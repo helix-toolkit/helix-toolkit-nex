@@ -1,0 +1,30 @@
+﻿global using int8 = sbyte;
+global using int8_t = sbyte;
+global using uint8 = byte;
+global using uint8_t = byte;
+global using TextureFormatCapabilities = byte;
+global using size_t = uint;
+global using uint32_t = uint;
+global using int32_t = int;
+global using uint64_t = ulong;
+global using uint16_t = ushort;
+
+global using ShaderModuleHandle = HelixToolkit.Nex.Handle<HelixToolkit.Nex.Graphics.ShaderModule>;
+global using TextureHandle = HelixToolkit.Nex.Handle<HelixToolkit.Nex.Graphics.Texture>;
+global using BufferHandle = HelixToolkit.Nex.Handle<HelixToolkit.Nex.Graphics.Buffer>;
+global using ComputePipelineHandle = HelixToolkit.Nex.Handle<HelixToolkit.Nex.Graphics.ComputePipeline>;
+global using RenderPipelineHandle = HelixToolkit.Nex.Handle<HelixToolkit.Nex.Graphics.RenderPipeline>;
+global using SamplerHandle = HelixToolkit.Nex.Handle<HelixToolkit.Nex.Graphics.Sampler>;
+global using QueryPoolHandle = HelixToolkit.Nex.Handle<HelixToolkit.Nex.Graphics.QueryPool>;
+
+global using Vortice.Vulkan;
+global using VK = Vortice.Vulkan.Vulkan;
+global using VK_BOOL = Vortice.Vulkan.VkBool32;
+global using VkDeviceAddress = ulong;
+global using VkDeviceSize = ulong;
+global using Microsoft.Extensions.Logging;
+global using System.Runtime.CompilerServices;
+global using Vortice.SPIRV.Reflect;
+global using static Vortice.SPIRV.Reflect.SPIRVReflectApi;
+global using System.Runtime.InteropServices;
+global using HelixToolkit.Nex.Maths;
