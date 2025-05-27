@@ -1,0 +1,17 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <RootNamespace>HelixToolkit.Nex.Graphics</RootNamespace>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <LangVersion>latest</LangVersion>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\HelixTookit.Nex\HelixToolkit.Nex.csproj" />
+      <ProjectReference Include="..\HelixToolkit.Nex.Maths\HelixToolkit.Nex.Maths.csproj" />
+    </ItemGroup>
+
+</Project>
