@@ -31,7 +31,7 @@ public static class Extensions
 #if DEBUG
             throw new InvalidOperationException($"{message}: {result}");
 #else
-            logger.Error($"{message}: {result}");
+            logger.LogError("{MESSAGE}: {RESULT}", message, result);
 #endif
         }
         return result;
