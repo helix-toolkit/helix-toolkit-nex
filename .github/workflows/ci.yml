@@ -27,6 +27,12 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
+          
+      # Install Vulkan SDK
+      - name: Install Vulkan SDK
+        run: |
+          choco install vulkan-sdk --version=1.3.280.0 -y
+        shell: powershell
 
       - name: Install GitVersion
         uses: gittools/actions/gitversion/setup@v3.2.0
