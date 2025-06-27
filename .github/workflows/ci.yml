@@ -1,0 +1,54 @@
+name: .NET Build and Test
+
+on:
+  push:
+    branches: [ main ]
+    paths-ignore:
+      - '**.md'
+      - 'LICENSE'
+      - '.gitignore'
+  pull_request:
+    branches: [ main ]
+    paths-ignore:
+      - '**.md'
+      - 'LICENSE'
+      - '.gitignore'
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Install GitVersion
+        uses: gittools/actions/gitversion/setup@v3.2.0
+        with:
+          versionSpec: '6.2.x'
+          
+      - name: Determine Version
+        id: version_step # step id used as reference for output values
+        uses: gittools/actions/gitversion/execute@v3.2.0
+        with:
+          useConfigFile: true
+          configFilePath: gitversion.yml
+
+      - name: Restore dependencies
+        run: dotnet restore Source/HelixToolkit-Nex/HelixToolkit.Nex.sln
+
+      - name: Build Debug
+        run: dotnet build Source/HelixToolkit-Nex/HelixToolkit.Nex.sln --configuration Debug --no-restore /p:Version=${{ steps.version_step.outputs.SemVer }} /p:AssemblyVersion=${{ steps.version_step.outputs.assemblySemVer }}
+
+      - name: Test Debug
+        run: dotnet test Source/HelixToolkit-Nex/HelixToolkit.Nex.sln --configuration Debug --no-build --verbosity normal
+
+      - name: Build Release
+        run: dotnet build Source/HelixToolkit-Nex/HelixToolkit.Nex.sln --configuration Release --no-restore /p:Version=${{ steps.version_step.outputs.SemVer }} /p:AssemblyVersion=${{ steps.version_step.outputs.assemblySemVer }}
+
+      - name: Test Release
+        run: dotnet test Source/HelixToolkit-Nex/HelixToolkit.Nex.sln --configuration Release --no-build --verbosity normal

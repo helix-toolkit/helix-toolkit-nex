@@ -1,0 +1,13 @@
+workflow: GitFlow/v1
+mode: ContinuousDeployment
+
+next-version: 0.0.1
+branches:
+  develop:
+    regex: ^develop
+    
+  release:
+    regex: ^release
+
+  main:
+    regex: ^main
