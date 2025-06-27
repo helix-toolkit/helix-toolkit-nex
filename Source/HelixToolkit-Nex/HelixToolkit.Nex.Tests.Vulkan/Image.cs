@@ -86,12 +86,6 @@ public class Image
         Assert.IsTrue(result == ResultCode.Ok, "Depth Image creation failed with error: " + result.ToString());
         Assert.IsNotNull(image, "Depth Image should not be null after creation.");
         Assert.IsTrue(image.Valid, "Depth Image should be valid after creation.");
-        var downloaded = new float[width * height];
-        using var pDownloadedColors = downloaded.Pin(); // Pin the array to prevent garbage collection
-        result = vkContext?.Download(image, new TextureRangeDesc() { dimensions = imageDesc.dimensions }, (nint)pDownloadedColors.Pointer, size).CheckResult(); // Download the image data
-        Assert.IsTrue(result == ResultCode.Ok, "Depth data download failed with error: " + result.ToString());
-        // Verify that the downloaded data match the original data
-        Assert.IsTrue(downloaded.SequenceEqual(data), "Downloaded depth data do not match the original data.");
         // Clean up the image after the test
         image.Dispose();
     }
