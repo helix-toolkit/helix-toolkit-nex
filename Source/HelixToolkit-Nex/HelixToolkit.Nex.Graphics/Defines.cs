@@ -370,21 +370,6 @@ public enum ShaderStage : uint8_t
     Mesh,
 }
 
-[StructLayout(LayoutKind.Explicit, Size = 4 * 32, Pack = 1)]
-public struct ClearColorValue()
-{
-    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 4)]
-    [FieldOffset(0)] public float[] Float32;
-    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 4)]
-    [FieldOffset(0)] public uint32_t[] UInt32;
-    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 4)]
-    [FieldOffset(0)] public int32_t[] Int32;
-    [FieldOffset(0)] public float R;
-    [FieldOffset(4)] public float G;
-    [FieldOffset(8)] public float B;
-    [FieldOffset(12)] public float A;
-}
-
 public struct VertexAttribute()
 {
     public uint32_t Location; // a buffer which contains this attribute stream
@@ -557,7 +542,7 @@ public struct RenderPass()
         public ResolveMode resolveMode = ResolveMode.Average;
         public uint8_t layer;
         public uint8_t level;
-        public ClearColorValue clearColor;
+        public Color4 clearColor;
         public float clearDepth = 1.0f;
         public uint32_t clearStencil;
     }

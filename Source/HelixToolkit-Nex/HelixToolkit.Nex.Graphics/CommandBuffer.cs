@@ -84,7 +84,7 @@ public interface ICommandBuffer
     void ResetQueryPool(in QueryPoolHandle pool, size_t firstQuery, size_t queryCount);
     void WriteTimestamp(in QueryPoolHandle pool, size_t query);
 
-    void ClearColorImage(in TextureHandle tex, in ClearColorValue value, in TextureLayers layers);
+    void ClearColorImage(in TextureHandle tex, in Color4 value, in TextureLayers layers);
     void CopyImage(in TextureHandle src,
                               in TextureHandle dst,
                               in Dimensions extent,

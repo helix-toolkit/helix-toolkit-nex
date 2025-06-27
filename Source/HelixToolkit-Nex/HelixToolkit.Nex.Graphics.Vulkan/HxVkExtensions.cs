@@ -657,9 +657,9 @@ internal static class HxVkExtensions
         };
     }
 
-    public static VkClearColorValue ToVk(this ClearColorValue color)
+    public static VkClearColorValue ToVk(this Color4 color)
     {
-        return new VkClearColorValue(color.R, color.G, color.B, color.A);
+        return new VkClearColorValue(color.Red, color.Green, color.Blue, color.Alpha);
     }
 
     public static void ImageMemoryBarrier2(this VkCommandBuffer buffer,

@@ -292,6 +292,12 @@ internal sealed partial class VulkanContext : IContext
         }
         if (desc.usage.HasFlag(TextureUsageBits.Storage))
         {
+            if (desc.format.IsDepthOrStencilFormat())              
+            {
+                HxDebug.Assert(false, "Depth stencil buffer cannot have TextureUsageBits.Storage as usage.");
+                logger.LogError("Depth stencil buffer cannot have TextureUsageBits.Storage as usage.");
+                return ResultCode.ArgumentError;
+            }
             HxDebug.Assert(desc.numSamples <= 1, "Storage images cannot be multisampled");
             usageFlags |= VK.VK_IMAGE_USAGE_STORAGE_BIT;
         }
@@ -411,8 +417,9 @@ internal sealed partial class VulkanContext : IContext
             {
                 GenerateMipmap(handle);
             }
-            texture = new TextureHolder(this, handle);
         }
+
+        texture = new TextureHolder(this, handle);
         return ResultCode.Ok;
     }
 

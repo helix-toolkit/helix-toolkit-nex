@@ -453,11 +453,11 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
         }
     }
 
-    public void ClearColorImage(in TextureHandle tex, in ClearColorValue value, in TextureLayers layers)
+    public void ClearColorImage(in TextureHandle tex, in Color4 value, in TextureLayers layers)
     {
         unsafe
         {
-            HxDebug.Assert(cond: Unsafe.SizeOf<ClearColorValue>() == Unsafe.SizeOf<VkClearColorValue>());
+            HxDebug.Assert(cond: Unsafe.SizeOf<Color4>() == Unsafe.SizeOf<VkClearColorValue>());
         }
 
 
