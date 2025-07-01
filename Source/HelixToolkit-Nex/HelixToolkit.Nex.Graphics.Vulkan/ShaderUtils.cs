@@ -218,6 +218,7 @@ internal static class ShaderExtensions
                     #extension GL_EXT_nonuniform_qualifier : require
                     #extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
                     #extension GL_EXT_mesh_shader : require
+                    
                     """);
             }
             if (vkStage == VkShaderStageFlags.Vertex || vkStage == VkShaderStageFlags.Compute
@@ -278,6 +279,7 @@ internal static class ShaderExtensions
                     int textureBindlessQueryLevelsCube(uint textureid) {
                       return textureQueryLevels(nonuniformEXT(kTexturesCube[textureid]));
                     }
+
                     """);
             }
             builder.Append(src);

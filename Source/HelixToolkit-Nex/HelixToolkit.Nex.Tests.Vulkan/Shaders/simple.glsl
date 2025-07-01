@@ -1,5 +1,3 @@
-#version 450
-
 // Vertex Shader
 #ifdef VERTEX_SHADER
 layout(location = 0) in vec3 inPosition;

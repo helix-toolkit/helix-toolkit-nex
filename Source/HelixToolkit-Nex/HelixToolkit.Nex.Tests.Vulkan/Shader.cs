@@ -31,6 +31,8 @@ public class Shader
     [DataTestMethod]
     [DataRow("simple_vs", ShaderStage.Vertex, "simple.glsl", "VERTEX_SHADER")]
     [DataRow("simple_fs", ShaderStage.Fragment, "simple.glsl", "FRAGMENT_SHADER")]
+    [DataRow("complex_vs", ShaderStage.Vertex, "complex.glsl", "VERTEX_SHADER")]
+    [DataRow("complex_fs", ShaderStage.Fragment, "complex.glsl", "FRAGMENT_SHADER")]
     public unsafe void CreateShaderModule(string shaderName, ShaderStage stage, string expectedFileName, string defines)
     {
         var shaderCode = GetGlslShaderCode(expectedFileName);

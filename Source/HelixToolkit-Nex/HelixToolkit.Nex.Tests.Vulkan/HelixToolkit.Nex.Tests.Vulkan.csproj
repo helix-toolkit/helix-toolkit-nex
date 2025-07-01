@@ -10,10 +10,12 @@
     </PropertyGroup>
 
     <ItemGroup>
+      <None Remove="Shaders\complex.glsl" />
       <None Remove="Shaders\simple.glsl" />
     </ItemGroup>
 
     <ItemGroup>
+      <EmbeddedResource Include="Shaders\complex.glsl" />
       <EmbeddedResource Include="Shaders\simple.glsl">
         <CopyToOutputDirectory>Never</CopyToOutputDirectory>
       </EmbeddedResource>
