@@ -10,6 +10,18 @@
     </PropertyGroup>
 
     <ItemGroup>
+      <None Remove="Shaders\HeaderFrag.glsl" />
+      <None Remove="Shaders\HeaderTask.glsl" />
+      <None Remove="Shaders\HeaderVertex.glsl" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <EmbeddedResource Include="Shaders\HeaderFrag.glsl" />
+      <EmbeddedResource Include="Shaders\HeaderTask.glsl" />
+      <EmbeddedResource Include="Shaders\HeaderVertex.glsl" />
+    </ItemGroup>
+
+    <ItemGroup>
         <PackageReference Include="Glslang.NET" Version="1.2.0" />
         <PackageReference Include="Vortice.SPIRV" Version="1.0.4" />
         <PackageReference Include="Vortice.SPIRV.Reflect" Version="1.0.5" />

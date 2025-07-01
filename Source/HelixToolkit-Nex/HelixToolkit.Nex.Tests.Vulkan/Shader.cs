@@ -23,7 +23,8 @@ public class Shader
     static byte[] GetGlslShaderCode(string shaderName)
     {
         var assembly = typeof(Shader).Assembly;
-        using var stream = assembly.GetManifestResourceStream($"HelixToolkit.Nex.Tests.Vulkan.Shaders.{shaderName}") ?? throw new FileNotFoundException($"Shader file '{shaderName}' not found in embedded resources.");
+        var assemblyName = assembly.GetName().Name ?? throw new InvalidOperationException("Assembly name cannot be null.");
+        using var stream = assembly.GetManifestResourceStream($"{assemblyName}.Shaders.{shaderName}") ?? throw new FileNotFoundException($"Shader file '{shaderName}' not found in embedded resources.");
         using var reader = new BinaryReader(stream);
         return reader.ReadBytes((int)stream.Length);
     }
