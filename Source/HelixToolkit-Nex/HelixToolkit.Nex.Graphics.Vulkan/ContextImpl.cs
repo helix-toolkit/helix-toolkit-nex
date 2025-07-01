@@ -197,8 +197,26 @@ internal sealed partial class VulkanContext : IContext
     public ResultCode CreateShaderModule(in ShaderModuleDesc desc, out ShaderModuleHolder shaderModule)
     {
         shaderModule = ShaderModuleHolder.Null;
-        ResultCode result = desc.DataSize > 0 ? vkDevice.CreateShaderModuleFromSPIRV(desc.Data, desc.DataSize, out var sm, desc.DebugName) // binary
-                                             : vkDevice.CreateShaderModuleFromGLSL(desc.Stage, desc.Data, GetVkPhysicalDeviceProperties().limits, out sm, desc.DebugName); // text
+        if (desc.Data.IsNull() || desc.DataSize == 0)
+        {
+            logger.LogError("Shader module data is null or size is zero");
+            return ResultCode.ArgumentNull;
+        }
+        ResultCode result;
+        ShaderModuleState sm;
+        switch (desc.DataType)
+        {
+            case ShaderDataType.Spirv:
+                result = vkDevice.CreateShaderModuleFromSPIRV(desc.Data, desc.DataSize, out sm, desc.DebugName);
+                break;
+            case ShaderDataType.Glsl:
+                result = vkDevice.CreateShaderModuleFromGLSL(desc.Stage, desc.Data, desc.Defines, GetVkPhysicalDeviceProperties().limits, out sm, desc.DebugName);
+                break;
+            default:
+                HxDebug.Assert(false, $"Unsupported shader data type: {desc.DataType}");
+                logger.LogError("Unsupported shader data type: {TYPE}", desc.DataType);
+                return ResultCode.NotSupported;
+        }
 
         if (result.HasError())
         {

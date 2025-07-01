@@ -191,8 +191,8 @@ internal static class ShaderExtensions
         }
     }
 
-    public static ResultCode CreateShaderModuleFromGLSL(this VkDevice vkDevice, ShaderStage stage, nint source,
-        in VkPhysicalDeviceLimits limits, out ShaderModuleState shaderModule, string? debugName)
+    public static ResultCode CreateShaderModuleFromGLSL(this VkDevice vkDevice, ShaderStage stage, nint source, ShaderDefine[]? defines,
+        in VkPhysicalDeviceLimits limits, out ShaderModuleState shaderModule, string? debugName = null)
     {
         shaderModule = ShaderModuleState.Null;
         HxDebug.Assert(source.Valid());
@@ -203,8 +203,8 @@ internal static class ShaderExtensions
         }
         VkShaderStageFlags vkStage = stage.ToVk();
         StringBuilder builder = new();
-        string src = Marshal.PtrToStringAnsi(source)!;
-        if (!src.Contains("#version )"))
+        string src = Marshal.PtrToStringUTF8(source)!.Trim();
+        if (!src.StartsWith("#version "))
         {
             if (vkStage == VkShaderStageFlags.TaskEXT || vkStage == VkShaderStageFlags.MeshEXT)
             {
@@ -285,7 +285,7 @@ internal static class ShaderExtensions
         }
         var glslangResource = limits.GetGlslangResource();
 
-        var result = ShaderUtils.CompileShader(vkStage, src, glslangResource, out var spirv);
+        var result = ShaderUtils.CompileShader(vkStage, src, glslangResource, defines, out var spirv);
         if (result.HasError())
         {
             logger.LogError("Failed to compile shader: {REASON}", result.ToString());
@@ -303,7 +303,7 @@ internal sealed class ShaderUtils
 {
     static readonly ILogger logger = LogManager.Create<ShaderUtils>();
 
-    public static ResultCode CompileShader(VkShaderStageFlags stage, string code, in ResourceLimits glslLangResource, out uint[] outSPIRV)
+    public static ResultCode CompileShader(VkShaderStageFlags stage, string code, in ResourceLimits glslLangResource, ShaderDefine[]? defines, out uint[] outSPIRV)
     {
         outSPIRV = [];
         CompilationInput input = new()
@@ -311,7 +311,7 @@ internal sealed class ShaderUtils
             language = SourceType.GLSL,
             stage = stage.ToGLSL(),
             client = ClientType.Vulkan,
-            clientVersion = TargetClientVersion.Vulkan_1_2,
+            clientVersion = TargetClientVersion.Vulkan_1_3,
             targetLanguage = TargetLanguage.SPV,
             targetLanguageVersion = TargetLanguageVersion.SPV_1_6,
             code = code,
@@ -324,6 +324,11 @@ internal sealed class ShaderUtils
         };
 
         using Shader shader = new(input);
+
+        foreach(var define in defines ?? [])
+        {
+            shader.SetPreamble($"{define}\n");
+        }
 
         if (!shader.Preprocess())
         {
