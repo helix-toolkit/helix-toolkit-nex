@@ -74,7 +74,7 @@ internal class HxVkUtils
     }
 
     public unsafe static VkSpecializationInfo GetPipelineShaderStageSpecializationInfo(in SpecializationConstantDesc desc,
-                                                                   VkSpecializationMapEntry* outEntries)
+                                                                   VkSpecializationMapEntry* outEntries, void* dataStorage)
     {
         uint32_t numEntries = desc.NumSpecializationConstants();
         if (outEntries != null)
@@ -94,8 +94,8 @@ internal class HxVkUtils
         {
             mapEntryCount = numEntries,
             pMapEntries = outEntries,
-            dataSize = desc.DataSize,
-            pData = desc.Data.ToPointer(),
+            dataSize = (nuint)desc.Data.Length,
+            pData = dataStorage,
         };
     }
 

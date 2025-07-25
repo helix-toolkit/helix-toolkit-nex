@@ -157,7 +157,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
         uint32_t fbWidth = 0;
         uint32_t fbHeight = 0;
 
-        var colorAttachments = stackalloc VkRenderingAttachmentInfo[Constants.LVK_MAX_COLOR_ATTACHMENTS];
+        var colorAttachments = stackalloc VkRenderingAttachmentInfo[Constants.MAX_COLOR_ATTACHMENTS];
 
         for (uint32_t i = 0; i != numFbColorAttachments; i++)
         {
@@ -898,8 +898,8 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
             return;
         }
 
-        var stateGraphics = vkContext.RenderPipelinesPool.Get(currentPipelineGraphics);
-        var stateCompute = vkContext.ComputePipelinesPool.Get(currentPipelineCompute);
+        var stateGraphics = currentPipelineGraphics.Empty ? RenderPipelineState.Null : vkContext.RenderPipelinesPool.Get(currentPipelineGraphics);
+        var stateCompute = currentPipelineCompute.Empty ? ComputePipelineState.Null : vkContext.ComputePipelinesPool.Get(currentPipelineCompute);
 
         HxDebug.Assert(stateGraphics || stateCompute);
 

@@ -26,8 +26,8 @@ internal sealed class VulkanPipelineBuilder
 
     uint32_t viewMask = 0;
     uint32_t numColorAttachments = 0;
-    readonly VkPipelineColorBlendAttachmentState[] colorBlendAttachmentStates = new VkPipelineColorBlendAttachmentState[Constants.LVK_MAX_COLOR_ATTACHMENTS];
-    readonly VkFormat[] colorAttachmentFormats = new VkFormat[Constants.LVK_MAX_COLOR_ATTACHMENTS];
+    readonly VkPipelineColorBlendAttachmentState[] colorBlendAttachmentStates = new VkPipelineColorBlendAttachmentState[Constants.MAX_COLOR_ATTACHMENTS];
+    readonly VkFormat[] colorAttachmentFormats = new VkFormat[Constants.MAX_COLOR_ATTACHMENTS];
 
     VkFormat depthAttachmentFormat = VK.VK_FORMAT_UNDEFINED;
     VkFormat stencilAttachmentFormat = VK.VK_FORMAT_UNDEFINED;

@@ -1514,8 +1514,8 @@ internal sealed partial class VulkanContext
         unsafe
         {
             // Not all attachments are valid. We need to create color blend attachments only for active attachments
-            var colorBlendAttachmentStates = new VkPipelineColorBlendAttachmentState[Constants.LVK_MAX_COLOR_ATTACHMENTS];
-            var colorAttachmentFormats = new VkFormat[Constants.LVK_MAX_COLOR_ATTACHMENTS];
+            var colorBlendAttachmentStates = new VkPipelineColorBlendAttachmentState[Constants.MAX_COLOR_ATTACHMENTS];
+            var colorAttachmentFormats = new VkFormat[Constants.MAX_COLOR_ATTACHMENTS];
 
             for (uint32_t i = 0; i != numColorAttachments; i++)
             {
@@ -1582,7 +1582,8 @@ internal sealed partial class VulkanContext
             };
 
             var entries = stackalloc VkSpecializationMapEntry[Constants.LVK_SPECIALIZATION_CONSTANTS_MAX];
-            VkSpecializationInfo si = HxVkUtils.GetPipelineShaderStageSpecializationInfo(desc.SpecInfo, entries);
+            using var pData = desc.SpecInfo.Data.Pin();
+            VkSpecializationInfo si = HxVkUtils.GetPipelineShaderStageSpecializationInfo(desc.SpecInfo, entries, pData.Pointer);
             // create pipeline layout
             {
                 uint32_t pushConstantsSize = 0;
@@ -1724,8 +1725,8 @@ internal sealed partial class VulkanContext
             unsafe
             {
                 var entries = stackalloc VkSpecializationMapEntry[Constants.LVK_SPECIALIZATION_CONSTANTS_MAX];
-
-                var siComp = HxVkUtils.GetPipelineShaderStageSpecializationInfo(cps.Desc.specInfo, entries);
+                using var pData = cps.Desc.SpecInfo.Data.Pin();
+                var siComp = HxVkUtils.GetPipelineShaderStageSpecializationInfo(cps.Desc.SpecInfo, entries, pData.Pointer);
 
                 // create pipeline layout
                 {

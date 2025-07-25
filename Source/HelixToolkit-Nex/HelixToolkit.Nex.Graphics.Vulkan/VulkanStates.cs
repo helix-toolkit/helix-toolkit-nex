@@ -22,7 +22,7 @@ internal sealed class ComputePipelineState()
     public VkPipelineLayout PipelineLayout = VkPipelineLayout.Null;
     public VkPipeline Pipeline = VkPipeline.Null;
 
-    public nint SpecConstantDataStorage = nint.Zero;
+    public byte[] SpecConstantDataStorage = [];
 
     public bool Valid => Pipeline != VkPipeline.Null && PipelineLayout != VkPipelineLayout.Null;
 
@@ -49,7 +49,7 @@ internal sealed class RenderPipelineState()
     public VkPipelineLayout PipelineLayout = VkPipelineLayout.Null;
     public VkPipeline Pipeline = VkPipeline.Null;
 
-    public nint SpecConstantDataStorage = nint.Zero;
+    public byte[] SpecConstantDataStorage = [];
 
     public uint32_t VewMask = 0;
 

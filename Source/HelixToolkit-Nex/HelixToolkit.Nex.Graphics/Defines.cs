@@ -2,7 +2,7 @@
 #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
 public static class Constants
 {
-    public const uint8 LVK_MAX_COLOR_ATTACHMENTS = 8;
+    public const uint8 MAX_COLOR_ATTACHMENTS = 8;
     public const uint8 LVK_MAX_MIP_LEVELS = 16;
     public const uint8 LVK_SPECIALIZATION_CONSTANTS_MAX = 16;
     public const uint8 LVK_MAX_RAY_TRACING_SHADER_GROUP_SIZE = 4;
@@ -217,7 +217,7 @@ public struct DepthState()
 public struct ComputePipelineDesc()
 {
     public ShaderModuleHandle smComp;
-    public SpecializationConstantDesc specInfo;
+    public SpecializationConstantDesc SpecInfo;
     public string entryPoint = "main";
     public string debugName = string.Empty;
 }
@@ -477,21 +477,20 @@ public struct SpecializationConstantEntry()
 
 public struct SpecializationConstantDesc()
 {
-    public const uint8_t LVK_SPECIALIZATION_CONSTANTS_MAX = 16;
+    public const uint8_t SPECIALIZATION_CONSTANTS_MAX = 16;
 
-    public readonly SpecializationConstantEntry[] Entries = new SpecializationConstantEntry[LVK_SPECIALIZATION_CONSTANTS_MAX];
+    public readonly SpecializationConstantEntry[] Entries = new SpecializationConstantEntry[SPECIALIZATION_CONSTANTS_MAX];
 
-    public nint Data;
-    public size_t DataSize;
+    public byte[] Data = [];
 
     public readonly uint32_t NumSpecializationConstants()
     {
-        for (uint32_t i = 0; i < LVK_SPECIALIZATION_CONSTANTS_MAX; i++)
+        for (uint32_t i = 0; i < SPECIALIZATION_CONSTANTS_MAX; i++)
         {
             if (Entries[i].Size == 0)
                 return i;
         }
-        return LVK_SPECIALIZATION_CONSTANTS_MAX;
+        return SPECIALIZATION_CONSTANTS_MAX;
     }
 };
 
@@ -519,7 +518,7 @@ public struct RenderPipelineDesc()
     public string EntryPointMesh = "main";
     public string EntryPointFrag = "main";
 
-    public readonly ColorAttachment[] Color = new ColorAttachment[Constants.LVK_MAX_COLOR_ATTACHMENTS];
+    public readonly ColorAttachment[] Color = new ColorAttachment[Constants.MAX_COLOR_ATTACHMENTS];
     public Format DepthFormat;
     public Format StencilFormat;
 
@@ -538,14 +537,14 @@ public struct RenderPipelineDesc()
 
     public readonly uint32_t GetNumColorAttachments()
     {
-        for (uint32_t i = 0; i < Constants.LVK_MAX_COLOR_ATTACHMENTS; i++)
+        for (uint32_t i = 0; i < Constants.MAX_COLOR_ATTACHMENTS; i++)
         {
             if (Color[i].Format == Format.Invalid)
             {
                 return i;
             }
         }
-        return Constants.LVK_MAX_COLOR_ATTACHMENTS;
+        return Constants.MAX_COLOR_ATTACHMENTS;
     }
 }
 
@@ -564,7 +563,7 @@ public unsafe struct RenderPass()
         public float clearDepth = 1.0f;
         public uint32_t clearStencil = 0;
     }
-    public readonly AttachmentDesc[] color = new AttachmentDesc[Constants.LVK_MAX_COLOR_ATTACHMENTS];
+    public readonly AttachmentDesc[] color = new AttachmentDesc[Constants.MAX_COLOR_ATTACHMENTS];
     public AttachmentDesc depth = new() { loadOp = LoadOp.DontCare, storeOp = StoreOp.DontCare };
     public AttachmentDesc stencil = new() { loadOp = LoadOp.Invalid, storeOp = StoreOp.DontCare };
     public uint32_t layerCount = 1;
@@ -572,14 +571,14 @@ public unsafe struct RenderPass()
 
     public readonly uint32_t GetNumColorAttachments()
     {
-        for (uint32_t i = 0; i < Constants.LVK_MAX_COLOR_ATTACHMENTS; i++)
+        for (uint32_t i = 0; i < Constants.MAX_COLOR_ATTACHMENTS; i++)
         {
             if (color[i].loadOp == LoadOp.Invalid)
             {
                 return i;
             }
         }
-        return Constants.LVK_MAX_COLOR_ATTACHMENTS;
+        return Constants.MAX_COLOR_ATTACHMENTS;
     }
 }
 
@@ -591,7 +590,7 @@ public struct Framebuffer
         public TextureHandle ResolveTexture = TextureHandle.Null;
     };
 
-    public readonly AttachmentDesc[] color = new AttachmentDesc[Constants.LVK_MAX_COLOR_ATTACHMENTS];
+    public readonly AttachmentDesc[] color = new AttachmentDesc[Constants.MAX_COLOR_ATTACHMENTS];
     public AttachmentDesc depthStencil;
 
     public string debugName = string.Empty;
@@ -608,14 +607,14 @@ public struct Framebuffer
         {
             return 0;
         }
-        for (uint32_t i = 0; i < Constants.LVK_MAX_COLOR_ATTACHMENTS; i++)
+        for (uint32_t i = 0; i < Constants.MAX_COLOR_ATTACHMENTS; i++)
         {
             if (!color[i].Texture.Valid)
             {
                 return i;
             }
         }
-        return Constants.LVK_MAX_COLOR_ATTACHMENTS;
+        return Constants.MAX_COLOR_ATTACHMENTS;
     }
 
     public static readonly Framebuffer Null = new();

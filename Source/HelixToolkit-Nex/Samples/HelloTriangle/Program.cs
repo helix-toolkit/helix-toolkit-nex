@@ -5,6 +5,7 @@ using HelixToolkit.Nex.Maths;
 using HelixToolkit.Nex.Sample.Application;
 using SDL3;
 using System.Diagnostics;
+using System.Numerics;
 using Vortice.Vulkan;
 using static SDL3.SDL3;
 
@@ -30,8 +31,14 @@ public class Program
             vec3(0.0, 1.0, 0.0),
             vec3(0.0, 0.0, 1.0)
         );
+
+        layout (push_constant) uniform constants {
+            mat4 transform;
+        } PushConstants;
+
         void main() {
-            gl_Position = vec4(pos[gl_VertexIndex], 0.0, 1.0);
+            vec4 pos = vec4(pos[gl_VertexIndex], 0.0, 1) * PushConstants.transform;
+            gl_Position = pos;
             color = col[gl_VertexIndex];
         }
         """;
@@ -52,6 +59,9 @@ public class Program
         public override string Name => "HelloTriangle";
 
         RenderPipelineHolder renderPipeline = RenderPipelineHolder.Null;
+        RenderPass pass = new();
+        Framebuffer frameBuffer = new();
+        uint frameCount = 0;
 
         protected override void Initialize()
         {
@@ -85,12 +95,18 @@ public class Program
                 var pipelineDesc = new RenderPipelineDesc
                 {
                     SmVert = vsModule,
-                    SmFrag = psModule,
-                    Topology = Topology.Triangle,
+                    SmFrag = psModule,                   
+                    Topology = Topology.Triangle,                 
                 };
                 pipelineDesc.Color[0].Format = vkContext.GetSwapchainFormat();
                 vkContext.CreateRenderPipeline(pipelineDesc, out renderPipeline).CheckResult();
             }
+
+            pass.color[0] = new RenderPass.AttachmentDesc
+            {
+                clearColor = new Color4(0.1f, 0.2f, 0.3f, 1.0f),
+                loadOp = LoadOp.Clear,
+            };
         }
 
         public override void Dispose()
@@ -101,6 +117,7 @@ public class Program
 
         protected override void OnTick()
         {
+            ++frameCount;
             Debug.Assert(vkContext != null, "Vulkan context should not be null at this point.");
 
             var tex = vkContext.GetCurrentSwapchainTexture();
@@ -109,16 +126,15 @@ public class Program
                 return; // No swapchain texture available, nothing to render to.
             }
             var cmdBuffer = vkContext!.AcquireCommandBuffer();
-            var pass = new RenderPass();
-            var frameBuffer = new Framebuffer();
             frameBuffer.color[0].Texture = tex;
-            pass.color[0] = new RenderPass.AttachmentDesc
-            {
-                clearColor = new Color4(0.1f, 0.2f, 0.3f, 1.0f),
-                loadOp = LoadOp.Clear,
-            };          
+            //pass.color[0].clearColor = new Color4((frameCount % 1000) / 1000f, 0.2f, 0.3f, 1.0f);     
             cmdBuffer.BeginRendering(pass, frameBuffer, Dependencies.Empty);
             cmdBuffer.BindRenderPipeline(renderPipeline);
+            var aspect = MainWindow.Size.Width / (float)MainWindow.Size.Height;
+            var transform = Matrix4x4.CreateFromAxisAngle(Vector3.UnitY, frameCount / 1000f);
+            var cam = Matrix4x4.CreateLookAt((-Vector3.UnitZ * 10).TransformCoordinate(transform), Vector3.Zero, Vector3.UnitY) * Matrix4x4.CreateOrthographic(2, 2 * aspect, 0.1f, 100f);
+            
+            cmdBuffer.PushConstants(cam);
             cmdBuffer.Draw(3); // Draw 3 vertices (a triangle)
             cmdBuffer.EndRendering();
             vkContext!.Submit(cmdBuffer, tex);

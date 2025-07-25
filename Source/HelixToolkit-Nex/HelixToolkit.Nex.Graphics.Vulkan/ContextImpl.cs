@@ -165,12 +165,63 @@ internal sealed partial class VulkanContext : IContext
 
     public ResultCode CreateComputePipeline(in ComputePipelineDesc desc, out ComputePipelineHolder computePipeline)
     {
-        throw new NotImplementedException();
+        computePipeline = ComputePipelineHolder.Null;
+        if (!desc.smComp.Valid)
+        {
+            logger.LogError("Missing compute shader");
+            return ResultCode.ArgumentError;
+        }
+
+        ComputePipelineState cps = new() { Desc = desc };
+
+        if (desc.SpecInfo.Data.Length > 0)
+        {
+            // copy into a local storage
+            cps.SpecConstantDataStorage = new byte[desc.SpecInfo.Data.Length];
+            Array.Copy(desc.SpecInfo.Data, cps.SpecConstantDataStorage, desc.SpecInfo.Data.Length);
+            cps.Desc.SpecInfo.Data = cps.SpecConstantDataStorage;
+        }
+        var handle = ComputePipelinesPool.Create(cps);
+        if (handle == ComputePipelineHandle.Null)
+        {
+            logger.LogError("Failed to create compute pipeline state");
+            return ResultCode.RuntimeError;
+        }
+        computePipeline = new ComputePipelineHolder(this, handle);
+        return ResultCode.Ok;
     }
 
     public ResultCode CreateQueryPool(uint numQueries, out QueryPoolHolder queryPool, string? debugName)
     {
-        throw new NotImplementedException();
+        unsafe
+        {
+            VkQueryPoolCreateInfo createInfo = new()
+            {
+                flags = 0,
+                queryType = VK.VK_QUERY_TYPE_TIMESTAMP,
+                queryCount = numQueries,
+                pipelineStatistics = 0,
+            };
+
+            VkQueryPool pool = VkQueryPool.Null;
+            VK.vkCreateQueryPool(vkDevice, &createInfo, null, &pool).CheckResult();
+
+            if (!String.IsNullOrEmpty(debugName))
+            {
+                vkDevice.SetDebugObjectName(VK.VK_OBJECT_TYPE_QUERY_POOL, (nuint)pool, debugName);
+            }
+
+            var handle = this.QueriesPool.Create(pool);
+
+            if (handle == QueryPoolHandle.Null)
+            {
+                logger.LogError("Failed to create query pool state");
+                queryPool = QueryPoolHolder.Null;
+                return ResultCode.RuntimeError;
+            }
+            queryPool = new QueryPoolHolder(this, handle);
+            return ResultCode.Ok;
+        }
     }
 
     public ResultCode CreateRenderPipeline(in RenderPipelineDesc desc, out RenderPipelineHolder renderPipeline)
@@ -184,7 +235,7 @@ internal sealed partial class VulkanContext : IContext
             logger.LogError("Need at least one attachment");
             return ResultCode.ArgumentError;
         }
-
+        VkShaderStageFlags stageFlags = VkShaderStageFlags.None;
         if (desc.SmMesh.Valid)
         {
             if (desc.VertexInput.AttributeCount() > 0 || desc.VertexInput.BindingCount() > 0)
@@ -223,9 +274,35 @@ internal sealed partial class VulkanContext : IContext
             return ResultCode.ArgumentError;
         }
 
+        if (desc.SmVert.Valid)
+        {
+            stageFlags |= VkShaderStageFlags.Vertex;
+        }
+
+        if (desc.SmTesc.Valid)
+        {
+            stageFlags |= VkShaderStageFlags.TessellationControl;
+        }
+
+        if (desc.SmTese.Valid)
+        {
+            stageFlags |= VkShaderStageFlags.TessellationEvaluation;
+        }
+
+        if (desc.SmGeom.Valid)
+        {
+            stageFlags |= VkShaderStageFlags.Geometry;
+        }
+
+        if (desc.SmFrag.Valid)
+        {
+            stageFlags |= VkShaderStageFlags.Fragment;
+        }
+
         RenderPipelineState rps = new()
         {
             Desc = desc,
+            ShaderStageFlags = stageFlags
         };
 
         // Iterate and cache vertex input bindings and attributes
@@ -260,10 +337,11 @@ internal sealed partial class VulkanContext : IContext
                 }
             }
 
-            if (desc.SpecInfo.Data != 0 && desc.SpecInfo.DataSize > 0)
+            if (desc.SpecInfo.Data.Length > 0)
             {
                 // copy into a local storage
-                rps.SpecConstantDataStorage = desc.SpecInfo.Data;
+                rps.SpecConstantDataStorage = new byte[desc.SpecInfo.Data.Length];
+                Array.Copy(desc.SpecInfo.Data, rps.SpecConstantDataStorage, desc.SpecInfo.Data.Length);
                 rps.Desc.SpecInfo.Data = rps.SpecConstantDataStorage;
             }
 
@@ -970,7 +1048,8 @@ internal sealed partial class VulkanContext : IContext
             return;
         }
 
-        Marshal.FreeCoTaskMem(cps.SpecConstantDataStorage);
+        cps.SpecConstantDataStorage = [];
+        cps.Desc.SpecInfo.Data = [];
 
         DeferredTask(() =>
         {
@@ -999,7 +1078,8 @@ internal sealed partial class VulkanContext : IContext
             return;
         }
 
-        Marshal.FreeCoTaskMem(rps.SpecConstantDataStorage);
+        rps.SpecConstantDataStorage = [];
+        rps.Desc.SpecInfo.Data = [];
 
         DeferredTask(() =>
         {
