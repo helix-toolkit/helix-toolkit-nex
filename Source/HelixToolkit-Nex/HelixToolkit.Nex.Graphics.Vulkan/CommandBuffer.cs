@@ -11,8 +11,8 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
     VkPipeline lastPipelineBound = VkPipeline.Null;
 
     public IContext Context => vkContext;
-    public ref VulkanImmediateCommands.CommandBufferWrapper Wrapper => ref vkContext.Immediate!.Acquire();
-    public ref VkCommandBuffer CmdBuffer => ref Wrapper.cmdBuf;
+    public readonly VulkanImmediateCommands.CommandBufferWrapper Wrapper = context.Immediate!.Acquire();
+    public VkCommandBuffer CmdBuffer => Wrapper.Instance;
 
     public Framebuffer Framebuffer => framebuffer;
 
@@ -51,7 +51,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
                              new VkImageSubresourceRange(tex.GetImageAspectFlags(), 0, VK.VK_REMAINING_MIP_LEVELS, 0, VK.VK_REMAINING_ARRAY_LAYERS));
     }
 
-    public void BeginRendering(in RenderPass renderPass, in Framebuffer fb, in Dependencies deps)
+    public unsafe void BeginRendering(in RenderPass renderPass, in Framebuffer fb, in Dependencies deps)
     {
         HxDebug.Assert(!isRendering);
 
@@ -99,7 +99,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
             if (handle)
             {
                 var colorTex = vkContext.TexturesPool.Get(handle);
-                HxDebug.Assert(false, "Color texture is null. Make sure the texture is created before binding it to the framebuffer.");
+                HxDebug.Assert(colorTex != null && colorTex.Valid, "Color texture is null. Make sure the texture is created before binding it to the framebuffer.");
                 if (colorTex is null)
                 {
                     continue;
@@ -132,7 +132,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
                 HxDebug.Assert(depthImg!.ImageFormat != VkFormat.Undefined, "Invalid depth attachment format");
                 HxDebug.Assert(depthImg!.IsDepthFormat, "Invalid depth attachment format");
                 var flags = depthImg.GetImageAspectFlags();
-                depthImg.TransitionLayout(Wrapper.cmdBuf,
+                depthImg.TransitionLayout(Wrapper.Instance,
                                           VK.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                                           new VkImageSubresourceRange(flags, 0, VK.VK_REMAINING_MIP_LEVELS, 0, VK.VK_REMAINING_ARRAY_LAYERS));
             }
@@ -145,7 +145,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
                 HxDebug.Assert(depthResolveImg!.IsDepthFormat, "Invalid resolve depth attachment format");
                 depthResolveImg.IsResolveAttachment = true;
                 var flags = depthResolveImg.GetImageAspectFlags();
-                depthResolveImg.TransitionLayout(Wrapper.cmdBuf,
+                depthResolveImg.TransitionLayout(Wrapper.Instance,
                                                  VK.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                                                  new VkImageSubresourceRange(flags, 0, VK.VK_REMAINING_MIP_LEVELS, 0, VK.VK_REMAINING_ARRAY_LAYERS));
             }
@@ -157,7 +157,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
         uint32_t fbWidth = 0;
         uint32_t fbHeight = 0;
 
-        var colorAttachments = new VkRenderingAttachmentInfo[Constants.LVK_MAX_COLOR_ATTACHMENTS];
+        var colorAttachments = stackalloc VkRenderingAttachmentInfo[Constants.LVK_MAX_COLOR_ATTACHMENTS];
 
         for (uint32_t i = 0; i != numFbColorAttachments; i++)
         {
@@ -282,15 +282,13 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
         bool isStencilFormat = renderPass.stencil.loadOp != LoadOp.Invalid;
         unsafe
         {
-            using var colorAttachmentsPtr = MemoryMarshal.CreateFromPinnedArray(colorAttachments, 0, (int)numFbColorAttachments).Pin();
-
             VkRenderingInfo renderingInfo = new()
             {
                 renderArea = new VkRect2D(new VkOffset2D((int32_t)scissor.X, (int32_t)scissor.Y), new VkExtent2D((int32_t)scissor.W, (int32_t)scissor.H)),
                 layerCount = renderPass.layerCount,
                 viewMask = renderPass.viewMask,
                 colorAttachmentCount = numFbColorAttachments,
-                pColorAttachments = (VkRenderingAttachmentInfo*)colorAttachmentsPtr.Pointer,
+                pColorAttachments = colorAttachments,
                 pDepthAttachment = depthTex ? &depthAttachment : null,
                 pStencilAttachment = isStencilFormat ? &stencilAttachment : null,
             };
@@ -301,10 +299,10 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
 
             vkContext.CheckAndUpdateDescriptorSets();
 
-            VK.vkCmdSetDepthCompareOp(Wrapper.cmdBuf, VkCompareOp.Always);
-            VK.vkCmdSetDepthBiasEnable(Wrapper.cmdBuf, VK_BOOL.False);
+            VK.vkCmdSetDepthCompareOp(Wrapper.Instance, VkCompareOp.Always);
+            VK.vkCmdSetDepthBiasEnable(Wrapper.Instance, VK_BOOL.False);
 
-            VK.vkCmdBeginRendering(Wrapper.cmdBuf, &renderingInfo);
+            VK.vkCmdBeginRendering(Wrapper.Instance, &renderingInfo);
         }
     }
 
@@ -329,17 +327,17 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
         if (lastPipelineBound != pipeline)
         {
             lastPipelineBound = pipeline;
-            VK.vkCmdBindPipeline(Wrapper.cmdBuf, VK.VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
+            VK.vkCmdBindPipeline(Wrapper.Instance, VK.VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
             vkContext.CheckAndUpdateDescriptorSets();
-            vkContext.BindDefaultDescriptorSets(Wrapper.cmdBuf, VK.VK_PIPELINE_BIND_POINT_COMPUTE, cps!.PipelineLayout);
+            vkContext.BindDefaultDescriptorSets(Wrapper.Instance, VK.VK_PIPELINE_BIND_POINT_COMPUTE, cps!.PipelineLayout);
         }
     }
 
     public void BindDepthState(in DepthState desc)
     {
         var op = desc.CompareOp.ToVk();
-        VK.vkCmdSetDepthWriteEnable(Wrapper.cmdBuf, desc.IsDepthWriteEnabled ? VK_BOOL.True : VK_BOOL.False);
-        VK.vkCmdSetDepthTestEnable(Wrapper.cmdBuf, (op != VK.VK_COMPARE_OP_ALWAYS || desc.IsDepthWriteEnabled) ? VK_BOOL.True : VK_BOOL.False);
+        VK.vkCmdSetDepthWriteEnable(Wrapper.Instance, desc.IsDepthWriteEnabled ? VK_BOOL.True : VK_BOOL.False);
+        VK.vkCmdSetDepthTestEnable(Wrapper.Instance, (op != VK.VK_COMPARE_OP_ALWAYS || desc.IsDepthWriteEnabled) ? VK_BOOL.True : VK_BOOL.False);
 
 #if ANDROID
       // This is a workaround for the issue.
@@ -349,7 +347,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
           return;
       }
 #endif
-        VK.vkCmdSetDepthCompareOp(Wrapper.cmdBuf, op);
+        VK.vkCmdSetDepthCompareOp(Wrapper.Instance, op);
     }
 
     public void BindIndexBuffer(in BufferHandle indexBuffer, IndexFormat indexFormat, size_t indexBufferOffset)
@@ -364,7 +362,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
         HxDebug.Assert(buf is not null && buf.vkUsageFlags_.HasFlag(VK.VK_BUFFER_USAGE_INDEX_BUFFER_BIT));
 
         var type = indexFormat.ToVk();
-        VK.vkCmdBindIndexBuffer(Wrapper.cmdBuf, buf!.VkBuffer, indexBufferOffset, type);
+        VK.vkCmdBindIndexBuffer(Wrapper.Instance, buf!.VkBuffer, indexBufferOffset, type);
     }
 
     public void BindRenderPipeline(in RenderPipelineHandle handle)
@@ -380,7 +378,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
 
         var rps = vkContext.RenderPipelinesPool.Get(handle);
 
-        HxDebug.Assert(rps);
+        HxDebug.Assert(rps != null);
 
         bool hasDepthAttachmentPipeline = rps!.Desc.DepthFormat != Format.Invalid;
         bool hasDepthAttachmentPass = framebuffer.depthStencil.Texture.Valid;
@@ -398,8 +396,8 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
         if (lastPipelineBound != pipeline)
         {
             lastPipelineBound = pipeline;
-            VK.vkCmdBindPipeline(Wrapper.cmdBuf, VK.VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-            vkContext.BindDefaultDescriptorSets(Wrapper.cmdBuf, VK.VK_PIPELINE_BIND_POINT_GRAPHICS, rps.PipelineLayout);
+            VK.vkCmdBindPipeline(Wrapper.Instance, VK.VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+            vkContext.BindDefaultDescriptorSets(Wrapper.Instance, VK.VK_PIPELINE_BIND_POINT_GRAPHICS, rps.PipelineLayout);
         }
     }
 
@@ -408,7 +406,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
         VkRect2D scissor = new(new VkOffset2D((int32_t)rect.X, (int32_t)rect.Y), new VkExtent2D(rect.W, rect.H));
         unsafe
         {
-            VK.vkCmdSetScissor(Wrapper.cmdBuf, 0, 1, &scissor);
+            VK.vkCmdSetScissor(Wrapper.Instance, 0, 1, &scissor);
         }
     }
 
@@ -449,7 +447,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
         };
         unsafe
         {
-            VK.vkCmdSetViewport(Wrapper.cmdBuf, 0, 1, &vp);
+            VK.vkCmdSetViewport(Wrapper.Instance, 0, 1, &vp);
         }
     }
 
@@ -493,7 +491,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
         var vkClearValue = value.ToVk();
         unsafe
         {
-            VK.vkCmdClearColorImage(Wrapper.cmdBuf, img.Image, VK.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &vkClearValue, 1, &range);
+            VK.vkCmdClearColorImage(Wrapper.Instance, img.Image, VK.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &vkClearValue, 1, &range);
         }
 
         // a ternary cascade...
@@ -619,7 +617,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
         {
             unsafe
             {
-                VK.vkCmdCopyImage(Wrapper.cmdBuf, imgSrc.Image, VK.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                VK.vkCmdCopyImage(Wrapper.Instance, imgSrc.Image, VK.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                                   imgDst.Image, VK.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                                   1, &regionCopy);
             }
@@ -629,7 +627,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
         {
             unsafe
             {
-                VK.vkCmdBlitImage(Wrapper.cmdBuf, imgSrc.Image, VK.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                VK.vkCmdBlitImage(Wrapper.Instance, imgSrc.Image, VK.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                                   imgDst.Image, VK.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                                   1, &regionBlit, VK.VK_FILTER_LINEAR);
             }
@@ -971,7 +969,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
         {
             VkImageAspectFlags flags = img.GetImageAspectFlags();
             // set the result of the previous render pass
-            img.TransitionLayout(Wrapper.cmdBuf,
+            img.TransitionLayout(Wrapper.Instance,
                                  img.IsSampledImage ? VK.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK.VK_IMAGE_LAYOUT_GENERAL,
                                  new VkImageSubresourceRange(flags, 0, VK.VK_REMAINING_MIP_LEVELS, 0, VK.VK_REMAINING_ARRAY_LAYERS));
         }

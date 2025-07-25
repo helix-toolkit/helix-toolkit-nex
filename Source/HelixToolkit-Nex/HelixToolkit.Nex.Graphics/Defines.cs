@@ -388,11 +388,9 @@ public struct VertexInput()
     public const uint32_t MAX_VERTEX_BINDINGS = 16;
     public const uint32_t MAX_VERTEX_ATTRIBUTES = 16;
 
-    [MarshalAs(UnmanagedType.ByValArray, SizeConst = (int)MAX_VERTEX_BINDINGS)]
-    public VertexInputBinding[] Bindings;
+    public readonly VertexInputBinding[] Bindings = new VertexInputBinding[MAX_VERTEX_BINDINGS];
 
-    [MarshalAs(UnmanagedType.ByValArray, SizeConst = (int)MAX_VERTEX_ATTRIBUTES)]
-    public VertexAttribute[] Attributes;
+    public readonly VertexAttribute[] Attributes = new VertexAttribute[MAX_VERTEX_ATTRIBUTES];
 
     public readonly uint32_t BindingCount()
     {
@@ -408,7 +406,7 @@ public struct VertexInput()
     {
         for (uint32_t i = 0; i < MAX_VERTEX_ATTRIBUTES; i++)
         {
-            if (Attributes[i].Format != VertexFormat.Invalid)
+            if (Attributes[i].Format == VertexFormat.Invalid)
                 return i;
         }
         return MAX_VERTEX_ATTRIBUTES;
@@ -480,8 +478,8 @@ public struct SpecializationConstantEntry()
 public struct SpecializationConstantDesc()
 {
     public const uint8_t LVK_SPECIALIZATION_CONSTANTS_MAX = 16;
-    [MarshalAs(UnmanagedType.ByValArray, SizeConst = (int)LVK_SPECIALIZATION_CONSTANTS_MAX)]
-    public SpecializationConstantEntry[] Entries;
+
+    public readonly SpecializationConstantEntry[] Entries = new SpecializationConstantEntry[LVK_SPECIALIZATION_CONSTANTS_MAX];
 
     public nint Data;
     public size_t DataSize;
@@ -499,7 +497,7 @@ public struct SpecializationConstantDesc()
 
 public struct RenderPipelineDesc()
 {
-    public Topology Topology;
+    public Topology Topology = Topology.Triangle;
 
     public VertexInput VertexInput = VertexInput.Null;
 
@@ -511,7 +509,7 @@ public struct RenderPipelineDesc()
     public ShaderModuleHandle SmMesh = ShaderModuleHandle.Null;
     public ShaderModuleHandle SmFrag = ShaderModuleHandle.Null;
 
-    public SpecializationConstantDesc SpecInfo;
+    public SpecializationConstantDesc SpecInfo = new();
 
     public string EntryPointVert = "main";
     public string EntryPointTesc = "main";
@@ -521,8 +519,7 @@ public struct RenderPipelineDesc()
     public string EntryPointMesh = "main";
     public string EntryPointFrag = "main";
 
-    [MarshalAs(UnmanagedType.ByValArray, SizeConst = (int)Constants.LVK_MAX_COLOR_ATTACHMENTS)]
-    public ColorAttachment[] Color;
+    public readonly ColorAttachment[] Color = new ColorAttachment[Constants.LVK_MAX_COLOR_ATTACHMENTS];
     public Format DepthFormat;
     public Format StencilFormat;
 
@@ -554,21 +551,20 @@ public struct RenderPipelineDesc()
 
 
 
-public struct RenderPass()
+public unsafe struct RenderPass()
 {
     public struct AttachmentDesc()
     {
         public LoadOp loadOp = LoadOp.Invalid;
         public StoreOp storeOp = StoreOp.Store;
         public ResolveMode resolveMode = ResolveMode.Average;
-        public uint8_t layer;
-        public uint8_t level;
-        public Color4 clearColor;
+        public uint8_t layer = 0;
+        public uint8_t level = 0;
+        public Color4 clearColor = new(0, 0, 0, 0);
         public float clearDepth = 1.0f;
-        public uint32_t clearStencil;
+        public uint32_t clearStencil = 0;
     }
-    [MarshalAs(UnmanagedType.ByValArray, SizeConst = (int)Constants.LVK_MAX_COLOR_ATTACHMENTS)]
-    public AttachmentDesc[] color;
+    public readonly AttachmentDesc[] color = new AttachmentDesc[Constants.LVK_MAX_COLOR_ATTACHMENTS];
     public AttachmentDesc depth = new() { loadOp = LoadOp.DontCare, storeOp = StoreOp.DontCare };
     public AttachmentDesc stencil = new() { loadOp = LoadOp.Invalid, storeOp = StoreOp.DontCare };
     public uint32_t layerCount = 1;
@@ -595,8 +591,7 @@ public struct Framebuffer
         public TextureHandle ResolveTexture = TextureHandle.Null;
     };
 
-    [MarshalAs(UnmanagedType.ByValArray, SizeConst = (int)Constants.LVK_MAX_COLOR_ATTACHMENTS)]
-    public AttachmentDesc[] color;
+    public readonly AttachmentDesc[] color = new AttachmentDesc[Constants.LVK_MAX_COLOR_ATTACHMENTS];
     public AttachmentDesc depthStencil;
 
     public string debugName = string.Empty;

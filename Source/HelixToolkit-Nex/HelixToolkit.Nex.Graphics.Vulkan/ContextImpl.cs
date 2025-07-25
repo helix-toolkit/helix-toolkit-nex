@@ -1,4 +1,6 @@
-﻿namespace HelixToolkit.Nex.Graphics.Vulkan;
+﻿using Vortice.Vulkan;
+
+namespace HelixToolkit.Nex.Graphics.Vulkan;
 
 internal sealed partial class VulkanContext : IContext
 {
@@ -149,7 +151,7 @@ internal sealed partial class VulkanContext : IContext
 
     public ICommandBuffer AcquireCommandBuffer()
     {
-        HxDebug.Assert(currentCommandBuffer_ != null, "Cannot acquire more than 1 command buffer simultaneously");
+        HxDebug.Assert(currentCommandBuffer_ == null, "Cannot acquire more than 1 command buffer simultaneously");
         if (RuntimeInformation.OSArchitecture.Equals(Architecture.Arm64) &&
             RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
@@ -173,7 +175,107 @@ internal sealed partial class VulkanContext : IContext
 
     public ResultCode CreateRenderPipeline(in RenderPipelineDesc desc, out RenderPipelineHolder renderPipeline)
     {
-        throw new NotImplementedException();
+        bool hasColorAttachments = desc.GetNumColorAttachments() > 0;
+        bool hasDepthAttachment = desc.DepthFormat != Format.Invalid;
+        bool hasAnyAttachments = hasColorAttachments || hasDepthAttachment;
+        renderPipeline = RenderPipelineHolder.Null;
+        if (!hasAnyAttachments)
+        {
+            logger.LogError("Need at least one attachment");
+            return ResultCode.ArgumentError;
+        }
+
+        if (desc.SmMesh.Valid)
+        {
+            if (desc.VertexInput.AttributeCount() > 0 || desc.VertexInput.BindingCount() > 0)
+            {
+                logger.LogError("CreateRenderPipeline failed. Cannot have vertexInput with mesh shaders");
+                return ResultCode.ArgumentError;
+            }
+            if (desc.SmVert.Valid)
+            {
+                logger.LogError("CreateRenderPipeline failed. Cannot have both vertex and mesh shaders");
+                return ResultCode.ArgumentError;
+            }
+            if (desc.SmTesc.Valid || desc.SmTese.Valid)
+            {
+                logger.LogError("CreateRenderPipeline failed. Cannot have both tessellation and mesh shaders");
+                return ResultCode.ArgumentError;
+            }
+            if (desc.SmGeom.Valid)
+            {
+                logger.LogError("CreateRenderPipeline failed. Cannot have both geometry and mesh shaders");
+                return ResultCode.ArgumentError;
+            }
+        }
+        else
+        {
+            if (!desc.SmVert.Valid)
+            {
+                logger.LogError("Missing vertex shader");
+                return ResultCode.ArgumentError;
+            }
+        }
+
+        if (!desc.SmFrag.Valid)
+        {
+            logger.LogError("Missing fragment shader");
+            return ResultCode.ArgumentError;
+        }
+
+        RenderPipelineState rps = new()
+        {
+            Desc = desc,
+        };
+
+        // Iterate and cache vertex input bindings and attributes
+        ref var vstate = ref rps.Desc.VertexInput;
+        unsafe
+        {
+            var bufferAlreadyBound = stackalloc bool[(int)VertexInput.MAX_VERTEX_BINDINGS];
+
+            rps.NumAttributes = vstate.AttributeCount();
+
+            for (uint32_t i = 0; i != rps.NumAttributes; i++)
+            {
+                ref var attr = ref vstate.Attributes[i];
+
+                rps.VkAttributes[i] = new()
+                {
+                    location = attr.Location,
+                    binding = attr.Binding,
+                    format = attr.Format.ToVk(),
+                    offset = (uint32_t)attr.Offset
+                };
+
+                if (!bufferAlreadyBound[attr.Binding])
+                {
+                    bufferAlreadyBound[attr.Binding] = true;
+                    rps.VkBindings[rps.NumBindings++] = new()
+                    {
+                        binding = attr.Binding,
+                        stride = vstate.Bindings[attr.Binding].Stride,
+                        inputRate = VK.VK_VERTEX_INPUT_RATE_VERTEX
+                    };
+                }
+            }
+
+            if (desc.SpecInfo.Data != 0 && desc.SpecInfo.DataSize > 0)
+            {
+                // copy into a local storage
+                rps.SpecConstantDataStorage = desc.SpecInfo.Data;
+                rps.Desc.SpecInfo.Data = rps.SpecConstantDataStorage;
+            }
+
+            var handle = RenderPipelinesPool.Create(rps);
+            if (handle == RenderPipelineHandle.Null)
+            {
+                logger.LogError("Failed to create render pipeline state");
+                return ResultCode.RuntimeError;
+            }
+            renderPipeline = new RenderPipelineHolder(this, handle);
+        }
+        return ResultCode.Ok;
     }
 
     public ResultCode CreateSampler(in SamplerStateDesc desc, out SamplerHolder sampler)
@@ -310,7 +412,7 @@ internal sealed partial class VulkanContext : IContext
         }
         if (desc.usage.HasFlag(TextureUsageBits.Storage))
         {
-            if (desc.format.IsDepthOrStencilFormat())              
+            if (desc.format.IsDepthOrStencilFormat())
             {
                 HxDebug.Assert(false, "Depth stencil buffer cannot have TextureUsageBits.Storage as usage.");
                 logger.LogError("Depth stencil buffer cannot have TextureUsageBits.Storage as usage.");
@@ -837,7 +939,7 @@ internal sealed partial class VulkanContext : IContext
             Immediate!.SignalSemaphore(TimelineSemaphore, signalValue);
         }
 
-        vkCmdBuffer.LastSubmitHandle = Immediate!.Submit(ref vkCmdBuffer.Wrapper);
+        vkCmdBuffer.LastSubmitHandle = Immediate!.Submit(vkCmdBuffer.Wrapper);
 
         if (shouldPresent)
         {

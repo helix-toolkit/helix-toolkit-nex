@@ -1,7 +1,4 @@
-﻿using System;
-using static System.Net.Mime.MediaTypeNames;
-
-namespace HelixToolkit.Nex.Graphics.Vulkan;
+﻿namespace HelixToolkit.Nex.Graphics.Vulkan;
 
 internal struct MemoryRegionDesc(uint32_t offset, uint32_t size)
 {
@@ -73,10 +70,10 @@ internal sealed class VulkanStagingDevice : IDisposable
                 size = chunkSize,
             };
 
-            ref VulkanImmediateCommands.CommandBufferWrapper wrapper = ref ctx.Immediate!.Acquire();
+            var cmdBuf = ctx.Immediate!.Acquire();
             unsafe
             {
-                VK.vkCmdCopyBuffer(wrapper.cmdBuf, stagingBuffer.VkBuffer, buffer.VkBuffer, 1, &copy);
+                VK.vkCmdCopyBuffer(cmdBuf.Instance, stagingBuffer.VkBuffer, buffer.VkBuffer, 1, &copy);
 
 
                 VkBufferMemoryBarrier barrier = new()
@@ -111,8 +108,8 @@ internal sealed class VulkanStagingDevice : IDisposable
                     barrier.dstAccessMask |= VK.VK_ACCESS_MEMORY_READ_BIT;
                 }
                 VK.vkCmdPipelineBarrier(
-                    wrapper.cmdBuf, VK.VK_PIPELINE_STAGE_TRANSFER_BIT, dstMask, new VkDependencyFlags { }, 0, null, 1, &barrier, 0, null);
-                desc.handle = ctx.Immediate!.Submit(ref wrapper);
+                    cmdBuf.Instance, VK.VK_PIPELINE_STAGE_TRANSFER_BIT, dstMask, new VkDependencyFlags { }, 0, null, 1, &barrier, 0, null);
+                desc.handle = ctx.Immediate!.Submit(cmdBuf);
                 regions.Add(desc);
 
                 size -= chunkSize;
@@ -161,8 +158,7 @@ internal sealed class VulkanStagingDevice : IDisposable
         }
         HxDebug.Assert(desc.size >= storageSize);
 
-        ref var wrapper = ref ctx.Immediate!.Acquire();
-        ref var cmdBuf = ref wrapper.cmdBuf;
+        var cmdBuf = ctx.Immediate!.Acquire();
 
         var stagingBuffer = ctx.BuffersPool.Get(this.stagingBuffer);
 
@@ -215,7 +211,7 @@ internal sealed class VulkanStagingDevice : IDisposable
                 HxDebug.Assert(mipLevel < image.NumLevels);
 
                 // 1. Transition initial image layout into TRANSFER_DST_OPTIMAL
-                cmdBuf.ImageMemoryBarrier2(image.Image, new StageAccess2
+                cmdBuf.Instance.ImageMemoryBarrier2(image.Image, new StageAccess2
                 {
                     stage = VkPipelineStageFlags2.TopOfPipe,
                     access = VkAccessFlags2.None
@@ -262,13 +258,13 @@ internal sealed class VulkanStagingDevice : IDisposable
                     };
                     unsafe
                     {
-                        VK.vkCmdCopyBufferToImage(wrapper.cmdBuf, stagingBuffer.VkBuffer, image.Image, VK.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copy);
+                        VK.vkCmdCopyBufferToImage(cmdBuf.Instance, stagingBuffer.VkBuffer, image.Image, VK.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copy);
                     }
                     planeOffset += HxVkUtils.GetTextureBytesPerPlane(imageRegion.extent.width, imageRegion.extent.height, format.ToFormat(), plane);
                 }
 
                 // 3. Transition TRANSFER_DST_OPTIMAL into SHADER_READ_ONLY_OPTIMAL
-                cmdBuf.ImageMemoryBarrier2(image.Image, new StageAccess2
+                cmdBuf.Instance.ImageMemoryBarrier2(image.Image, new StageAccess2
                 {
                     stage = VkPipelineStageFlags2.Transfer,
                     access = VkAccessFlags2.TransferWrite
@@ -288,7 +284,7 @@ internal sealed class VulkanStagingDevice : IDisposable
 
         image.ImageLayout = VK.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
-        desc.handle = ctx.Immediate!.Submit(ref wrapper);
+        desc.handle = ctx.Immediate!.Submit(cmdBuf);
         regions.Add(desc);
         return ResultCode.Ok;
     }
@@ -328,10 +324,9 @@ internal sealed class VulkanStagingDevice : IDisposable
         // 1. Copy the pixel data into the host visible staging buffer
         stagingBuffer!.BufferSubData(desc.offset, storageSize, data);
 
-        ref var wrapper = ref ctx.Immediate!.Acquire();
-        ref var cmdBuf = ref wrapper.cmdBuf;
+        var cmdBuf = ctx.Immediate!.Acquire();
         // 1. Transition initial image layout into TRANSFER_DST_OPTIMAL
-        cmdBuf.ImageMemoryBarrier2(image.Image, new StageAccess2
+        cmdBuf.Instance.ImageMemoryBarrier2(image.Image, new StageAccess2
         {
             stage = VkPipelineStageFlags2.TopOfPipe,
             access = VkAccessFlags2.None
@@ -357,10 +352,10 @@ internal sealed class VulkanStagingDevice : IDisposable
         };
         unsafe
         {
-            VK.vkCmdCopyBufferToImage(wrapper.cmdBuf, stagingBuffer.VkBuffer, image.Image, VK.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copy);
+            VK.vkCmdCopyBufferToImage(cmdBuf.Instance, stagingBuffer.VkBuffer, image.Image, VK.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copy);
         }
         // 3. Transition TRANSFER_DST_OPTIMAL into SHADER_READ_ONLY_OPTIMAL
-        cmdBuf.ImageMemoryBarrier2(image.Image, new StageAccess2
+        cmdBuf.Instance.ImageMemoryBarrier2(image.Image, new StageAccess2
         {
             stage = VkPipelineStageFlags2.Transfer,
             access = VkAccessFlags2.TransferWrite
@@ -372,7 +367,7 @@ internal sealed class VulkanStagingDevice : IDisposable
 
         image.ImageLayout = VK.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
-        desc.handle = ctx.Immediate!.Submit(ref wrapper);
+        desc.handle = ctx.Immediate!.Submit(cmdBuf);
         regions.Add(desc);
         return ResultCode.Ok;
     }
@@ -403,11 +398,10 @@ internal sealed class VulkanStagingDevice : IDisposable
             return ResultCode.InvalidState;
         }
 
-        ref var wrapper = ref ctx.Immediate!.Acquire();
-        ref var cmdBuf = ref wrapper.cmdBuf;
+        var cmdBuf = ctx.Immediate!.Acquire();
 
         // 1. Transition to VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL
-        cmdBuf.BufferBarrier2(buffer, VkPipelineStageFlags2.BottomOfPipe, VkPipelineStageFlags2.Transfer);
+        cmdBuf.Instance.BufferBarrier2(buffer, VkPipelineStageFlags2.BottomOfPipe, VkPipelineStageFlags2.Transfer);
 
         VkBufferCopy copy = new()
         {
@@ -418,10 +412,10 @@ internal sealed class VulkanStagingDevice : IDisposable
 
         unsafe
         {
-            VK.vkCmdCopyBuffer(wrapper.cmdBuf, buffer.VkBuffer, stagingBuffer!.VkBuffer, 1, &copy);
+            VK.vkCmdCopyBuffer(cmdBuf.Instance, buffer.VkBuffer, stagingBuffer!.VkBuffer, 1, &copy);
         }
 
-        desc.handle = ctx.Immediate!.Submit(ref wrapper);
+        desc.handle = ctx.Immediate!.Submit(cmdBuf);
         regions.Add(desc);
 
         WaitAndReset();
@@ -435,12 +429,11 @@ internal sealed class VulkanStagingDevice : IDisposable
         NativeHelper.MemoryCopy(outData, (nint)(stagingBuffer.MappedPtr + desc.offset), outDataSize);
 
         // 4. Transition back to the initial image layout
-        ref var wrapper2 = ref ctx.Immediate!.Acquire();
-        ref var cmdBuf2 = ref wrapper2.cmdBuf;
+        var cmdBuf2 = ctx.Immediate!.Acquire();
 
-        cmdBuf2.BufferBarrier2(buffer, VkPipelineStageFlags2.Transfer, VkPipelineStageFlags2.TopOfPipe);
+        cmdBuf2.Instance.BufferBarrier2(buffer, VkPipelineStageFlags2.Transfer, VkPipelineStageFlags2.TopOfPipe);
 
-        ctx.Immediate!.Wait(ctx.Immediate!.Submit(ref wrapper2));
+        ctx.Immediate!.Wait(ctx.Immediate!.Submit(cmdBuf2));
         return ResultCode.Ok;
     }
 
@@ -477,11 +470,10 @@ internal sealed class VulkanStagingDevice : IDisposable
             return ResultCode.InvalidState;
         }
 
-        ref var wrapper = ref ctx.Immediate!.Acquire();
-        ref var cmdBuf = ref wrapper.cmdBuf;
+        var cmdBuf = ctx.Immediate!.Acquire();
 
         // 1. Transition to VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL
-        cmdBuf.ImageMemoryBarrier2(image.Image, new StageAccess2
+        cmdBuf.Instance.ImageMemoryBarrier2(image.Image, new StageAccess2
         {
             stage = VkPipelineStageFlags2.BottomOfPipe,
             access = VkAccessFlags2.MemoryRead | VkAccessFlags2.MemoryWrite
@@ -509,10 +501,10 @@ internal sealed class VulkanStagingDevice : IDisposable
         };
         unsafe
         {
-            VK.vkCmdCopyImageToBuffer(wrapper.cmdBuf, image.Image, VK.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, stagingBuffer!.VkBuffer, 1, &copy);
+            VK.vkCmdCopyImageToBuffer(cmdBuf.Instance, image.Image, VK.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, stagingBuffer!.VkBuffer, 1, &copy);
         }
 
-        desc.handle = ctx.Immediate!.Submit(ref wrapper);
+        desc.handle = ctx.Immediate!.Submit(cmdBuf);
         regions.Add(desc);
 
         WaitAndReset();
@@ -526,10 +518,9 @@ internal sealed class VulkanStagingDevice : IDisposable
         NativeHelper.MemoryCopy(outData, (nint)(stagingBuffer.MappedPtr + desc.offset), storageSize);
 
         // 4. Transition back to the initial image layout
-        ref var wrapper2 = ref ctx.Immediate!.Acquire();
-        ref var cmdBuf2 = ref wrapper2.cmdBuf;
+        var cmdBuf2 = ctx.Immediate!.Acquire();
 
-        cmdBuf2.ImageMemoryBarrier2(image.Image,
+        cmdBuf2.Instance.ImageMemoryBarrier2(image.Image,
             new StageAccess2
             {
                 stage = VkPipelineStageFlags2.Transfer,
@@ -540,7 +531,7 @@ internal sealed class VulkanStagingDevice : IDisposable
                 access = VkAccessFlags2.MemoryRead | VkAccessFlags2.MemoryWrite
             }, VK.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, image.ImageLayout, range);
 
-        ctx.Immediate!.Wait(ctx.Immediate!.Submit(ref wrapper2));
+        ctx.Immediate!.Wait(ctx.Immediate!.Submit(cmdBuf2));
         return ResultCode.Ok;
     }
 

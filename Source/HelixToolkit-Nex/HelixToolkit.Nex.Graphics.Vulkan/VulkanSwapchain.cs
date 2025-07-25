@@ -1,4 +1,6 @@
-﻿namespace HelixToolkit.Nex.Graphics.Vulkan;
+﻿using Vortice.Vulkan;
+
+namespace HelixToolkit.Nex.Graphics.Vulkan;
 
 internal sealed class VulkanSwapchain : IDisposable
 {
@@ -109,7 +111,8 @@ internal sealed class VulkanSwapchain : IDisposable
             var usageFlags = chooseUsageFlags(vkContext.GetVkPhysicalDevice(), vkContext.VkSurface, surfaceFormat.format);
             var isCompositeAlphaOpaqueSupported = vkContext.DeviceSurfaceCapabilities.supportedCompositeAlpha.HasFlag(VK.VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR);
             var graphicsQueueFamilyIndex = vkContext.DeviceQueues.graphicsQueueFamilyIndex;
-
+            VkSurfaceCapabilitiesKHR capabilities = new();
+            VK.vkGetPhysicalDeviceSurfaceCapabilitiesKHR(vkContext.VkPhysicalDevice, vkContext.VkSurface, &capabilities).CheckResult();
             VkSwapchainCreateInfoKHR ci = new()
             {
                 surface = vkContext.VkSurface,

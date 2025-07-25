@@ -49,19 +49,13 @@ internal sealed class VulkanImage : IDisposable
 
     public VulkanImage(VulkanContext ctx, VkImage image, VkImageUsageFlags usage, VkExtent3D extent, VkImageType type,
            VkFormat format, bool isDepthFormat, bool isStencilFormat,
-           bool isSwapchainImage, bool isOwningVkImage, string? debugName = null)
+           bool isSwapchainImage, bool isOwningVkImage, string? debugName = null) : this(
+               ctx, usage, extent, type, format, VkSampleCountFlags.None, 0, 0, isDepthFormat, isStencilFormat, debugName)
     {
         this.ctx = ctx;
         vkImage = image;
-        UsageFlags = usage;
-        Extent = extent;
-        ImageType = type;
-        ImageFormat = format;
-        IsDepthFormat = isDepthFormat;
-        IsStencilFormat = isStencilFormat;
         IsSwapchainImage = isSwapchainImage;
         IsOwningVkImage = isOwningVkImage; // this image is not owned by this class, so don't destroy it
-        this.debugName = debugName;
     }
 
     public VulkanImage(VulkanContext ctx, VkImageUsageFlags usage, VkExtent3D extent, VkImageType type,

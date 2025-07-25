@@ -6,14 +6,14 @@ internal sealed class VulkanImmediateCommands : IDisposable
     // an existing buffer becomes available
     const uint32_t kMaxCommandBuffers = 64;
     static readonly ILogger logger = LogManager.Create<VulkanImmediateCommands>();
-    public struct CommandBufferWrapper()
+    public sealed class CommandBufferWrapper()
     {
-        public VkCommandBuffer cmdBuf = VkCommandBuffer.Null;
-        public VkCommandBuffer cmdBufAllocated = VkCommandBuffer.Null;
-        public SubmitHandle handle = SubmitHandle.Null;
-        public VkFence fence = VkFence.Null;
-        public VkSemaphore semaphore = VkSemaphore.Null;
-        public bool isEncoding = false;
+        public VkCommandBuffer Instance = VkCommandBuffer.Null;
+        public VkCommandBuffer CmdBufAllocated = VkCommandBuffer.Null;
+        public SubmitHandle Handle = SubmitHandle.Null;
+        public VkFence Fence = VkFence.Null;
+        public VkSemaphore Semaphore = VkSemaphore.Null;
+        public bool IsEncoding = false;
     };
 
     readonly VkDevice device = VkDevice.Null;
@@ -84,13 +84,14 @@ internal sealed class VulkanImmediateCommands : IDisposable
                     fenceName = $"Fence: {this.debugName} (cmdbuf {i})";
                     semaphoreName = $"Semaphore: {this.debugName} (cmdbuf {i})";
                 }
-                ref CommandBufferWrapper buf = ref buffers[i];
-                buf.semaphore = device.CreateSemaphore(semaphoreName);
-                buf.fence = device.CreateFence(fenceName);
+                buffers[i] = new CommandBufferWrapper();
+                var buf = buffers[i];
+                buf.Semaphore = device.CreateSemaphore(semaphoreName);
+                buf.Fence = device.CreateFence(fenceName);
                 VkCommandBuffer cmdBuf = VkCommandBuffer.Null;
                 VK.vkAllocateCommandBuffers(device, &ai, &cmdBuf);
-                buf.cmdBufAllocated = cmdBuf;
-                buf.handle.bufferIndex = i;
+                buf.CmdBufAllocated = cmdBuf;
+                buf.Handle.bufferIndex = i;
             }
         }
     }
@@ -98,7 +99,7 @@ internal sealed class VulkanImmediateCommands : IDisposable
 
 
     // returns the current command buffer (creates one if it does not exist)
-    public ref CommandBufferWrapper Acquire()
+    public CommandBufferWrapper Acquire()
     {
         if (numAvailableCommandBuffers == 0)
         {
@@ -116,7 +117,7 @@ internal sealed class VulkanImmediateCommands : IDisposable
         // we are ok with any available buffer
         for (; idx < kMaxCommandBuffers; ++idx)
         {
-            if (buffers[idx].cmdBuf == VkCommandBuffer.Null)
+            if (buffers[idx].Instance == VkCommandBuffer.Null)
             {
                 break;
             }
@@ -124,32 +125,32 @@ internal sealed class VulkanImmediateCommands : IDisposable
 
         HxDebug.Assert(numAvailableCommandBuffers > 0, "No available command buffers");
         HxDebug.Assert(idx < kMaxCommandBuffers, "No available command buffers");
-        HxDebug.Assert(buffers[idx].cmdBufAllocated != VkCommandBuffer.Null);
-        ref var buf = ref buffers[idx];
+        HxDebug.Assert(buffers[idx].CmdBufAllocated != VkCommandBuffer.Null);
+        var buf = buffers[idx];
 
-        buf.handle.submitId = submitCounter;
+        buf.Handle.submitId = submitCounter;
         numAvailableCommandBuffers--;
 
-        buf.cmdBuf = buf.cmdBufAllocated;
-        buf.isEncoding = true;
+        buf.Instance = buf.CmdBufAllocated;
+        buf.IsEncoding = true;
         unsafe
         {
             VkCommandBufferBeginInfo bi = new()
             {
                 flags = VK.VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
             };
-            VK.vkBeginCommandBuffer(buf.cmdBuf, &bi).CheckResult();
+            VK.vkBeginCommandBuffer(buf.Instance, &bi).CheckResult();
         }
 
-        nextSubmitHandle = buf.handle;
+        nextSubmitHandle = buf.Handle;
 
-        return ref buf;
+        return buf;
     }
 
-    public SubmitHandle Submit(ref CommandBufferWrapper wrapper)
+    public SubmitHandle Submit(CommandBufferWrapper wrapper)
     {
-        HxDebug.Assert(wrapper.isEncoding);
-        VK.vkEndCommandBuffer(wrapper.cmdBuf).CheckResult();
+        HxDebug.Assert(wrapper.IsEncoding);
+        VK.vkEndCommandBuffer(wrapper.Instance).CheckResult();
         unsafe
         {
             var waitSemaphores = stackalloc VkSemaphoreSubmitInfo[2];
@@ -167,7 +168,7 @@ internal sealed class VulkanImmediateCommands : IDisposable
 
             signalSemaphores[0] = new VkSemaphoreSubmitInfo()
             {
-                semaphore = wrapper.semaphore,
+                semaphore = wrapper.Semaphore,
                 stageMask = VkPipelineStageFlags2.AllCommands
             };
 
@@ -179,7 +180,7 @@ internal sealed class VulkanImmediateCommands : IDisposable
 
             VkCommandBufferSubmitInfo bufferSI = new()
             {
-                commandBuffer = wrapper.cmdBuf,
+                commandBuffer = wrapper.Instance,
             };
             VkSubmitInfo2 si = new()
             {
@@ -190,7 +191,7 @@ internal sealed class VulkanImmediateCommands : IDisposable
                 signalSemaphoreInfoCount = numSignalSemaphores,
                 pSignalSemaphoreInfos = signalSemaphores,
             };
-            var result = VK.vkQueueSubmit2(queue, 1u, &si, wrapper.fence);
+            var result = VK.vkQueueSubmit2(queue, 1u, &si, wrapper.Fence);
 
             if (hasExtDeviceFault && result == VkResult.ErrorDeviceLost)
             {
@@ -275,13 +276,13 @@ internal sealed class VulkanImmediateCommands : IDisposable
 
             result.CheckResult();
 
-            lastSubmitSemaphore.semaphore = wrapper.semaphore;
-            lastSubmitHandle = wrapper.handle;
+            lastSubmitSemaphore.semaphore = wrapper.Semaphore;
+            lastSubmitHandle = wrapper.Handle;
             waitSemaphore.semaphore = VkSemaphore.Null;
             signalSemaphore.semaphore = VkSemaphore.Null;
 
             // reset
-            wrapper.isEncoding = false;
+            wrapper.IsEncoding = false;
             submitCounter++;
 
             if (submitCounter == 0)
@@ -318,7 +319,7 @@ internal sealed class VulkanImmediateCommands : IDisposable
 
     public VkFence GetVkFence(SubmitHandle handle)
     {
-        return handle.Empty ? VkFence.Null : buffers[handle.bufferIndex].fence;
+        return handle.Empty ? VkFence.Null : buffers[handle.bufferIndex].Fence;
     }
 
     public SubmitHandle GetLastSubmitHandle()
@@ -341,13 +342,13 @@ internal sealed class VulkanImmediateCommands : IDisposable
 
         ref var buf = ref buffers[handle.bufferIndex];
 
-        if (buf.cmdBuf == VkCommandBuffer.Null)
+        if (buf.Instance == VkCommandBuffer.Null)
         {
             // already recycled and not yet reused
             return true;
         }
 
-        if (buf.handle.submitId != handle.submitId)
+        if (buf.Handle.submitId != handle.submitId)
         {
             // already recycled and reused by another command buffer
             return true;
@@ -360,7 +361,7 @@ internal sealed class VulkanImmediateCommands : IDisposable
         }
         unsafe
         {
-            var fence = buf.fence;
+            var fence = buf.Fence;
             return VK.vkWaitForFences(device, 1, &fence, VkBool32.True, 0) == VkResult.Success;
         }
     }
@@ -376,10 +377,10 @@ internal sealed class VulkanImmediateCommands : IDisposable
         {
             return;
         }
-        HxDebug.Assert(!buffers[handle.bufferIndex].isEncoding);
+        HxDebug.Assert(!buffers[handle.bufferIndex].IsEncoding);
         unsafe
         {
-            var fence = buffers[handle.bufferIndex].fence;
+            var fence = buffers[handle.bufferIndex].Fence;
             VK.vkWaitForFences(device, 1, &fence, VkBool32.True, ulong.MaxValue).CheckResult();
         }
         Purge();
@@ -396,9 +397,9 @@ internal sealed class VulkanImmediateCommands : IDisposable
             for (uint32_t i = 0; i < kMaxCommandBuffers; ++i)
             {
                 ref CommandBufferWrapper buf = ref buffers[i];
-                if (buf.cmdBuf != VkCommandBuffer.Null && !buf.isEncoding)
+                if (buf.Instance != VkCommandBuffer.Null && !buf.IsEncoding)
                 {
-                    fences[numFences++] = buf.fence;
+                    fences[numFences++] = buf.Fence;
                 }
             }
 
@@ -420,17 +421,17 @@ internal sealed class VulkanImmediateCommands : IDisposable
             for (uint32_t i = 0; i != kMaxCommandBuffers; i++)
             {
                 ref CommandBufferWrapper buf = ref buffers[(i + lastSubmitHandle.bufferIndex + 1) % kMaxCommandBuffers];
-                if (buf.cmdBuf == VkCommandBuffer.Null || buf.isEncoding)
+                if (buf.Instance == VkCommandBuffer.Null || buf.IsEncoding)
                 {
                     continue;
                 }
-                var result = VK.vkGetFenceStatus(device, buf.fence);
+                var result = VK.vkGetFenceStatus(device, buf.Fence);
                 if (result == VkResult.Success)
                 {
-                    VK.vkResetCommandBuffer(buf.cmdBuf, new VkCommandBufferResetFlags()).CheckResult();
-                    var fence = buf.fence;
+                    VK.vkResetCommandBuffer(buf.Instance, new VkCommandBufferResetFlags()).CheckResult();
+                    var fence = buf.Fence;
                     VK.vkResetFences(device, 1, &fence).CheckResult();
-                    buf.cmdBuf = VkCommandBuffer.Null;
+                    buf.Instance = VkCommandBuffer.Null;
                     numAvailableCommandBuffers++;
                 }
                 else if (result != VkResult.Timeout)
@@ -457,13 +458,13 @@ internal sealed class VulkanImmediateCommands : IDisposable
                         ref var buf = ref buffers[i];
 
                         // lifetimes of all VkFence objects are managed explicitly we do not use deferredTask() for them
-                        VK.vkDestroyFence(device, buf.fence, null);
-                        VK.vkDestroySemaphore(device, buf.semaphore, null);
-                        buf.semaphore = VkSemaphore.Null;
-                        buf.fence = VkFence.Null;
-                        var cmdBuf = buf.cmdBufAllocated;
+                        VK.vkDestroyFence(device, buf.Fence, null);
+                        VK.vkDestroySemaphore(device, buf.Semaphore, null);
+                        buf.Semaphore = VkSemaphore.Null;
+                        buf.Fence = VkFence.Null;
+                        var cmdBuf = buf.CmdBufAllocated;
                         VK.vkFreeCommandBuffers(device, commandPool, 1, &cmdBuf);
-                        buf.cmdBufAllocated = VkCommandBuffer.Null;
+                        buf.CmdBufAllocated = VkCommandBuffer.Null;
                     }
 
                     VK.vkDestroyCommandPool(device, commandPool, null);

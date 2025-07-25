@@ -2,6 +2,7 @@
 
 public sealed class VulkanContextConfig()
 {
+    public delegate VkSurfaceKHR CreateSurface(VkInstance instance);
     public readonly VkVersion VulkanVersion = VkVersion.Version_1_3;
     public bool TerminateOnValidationError = false; // invoke std::terminate() on any validation error
     public bool EnableValidation = true;
@@ -19,6 +20,8 @@ public sealed class VulkanContextConfig()
     public bool EnableHeadlessSurface = false; // VK_EXT_headless_surface
 
     public delegate void ShaderModuleErrorCallback(in string errorMessage, in string sourceFile, int lineNumber, int columnNumber);
+
+    public CreateSurface? OnCreateSurface = null; // custom surface creator, if not set, default surface creation will be used
 };
 
 internal sealed partial class VulkanContext
@@ -37,7 +40,7 @@ internal sealed partial class VulkanContext
     readonly nint display = nint.Zero;
     readonly FastList<VkFormat> deviceDepthFormats = [];
     readonly FastList<VkSurfaceFormatKHR> deviceSurfaceFormats = [];
-    readonly VkSurfaceCapabilitiesKHR deviceSurfaceCaps = new();
+    VkSurfaceCapabilitiesKHR deviceSurfaceCaps = new();
     readonly FastList<VkPresentModeKHR> devicePresentModes = [];
     readonly FastList<DeferredTask> deferredTasks_ = [];
     struct YcbcrConversionData
@@ -143,6 +146,15 @@ internal sealed partial class VulkanContext
     public VulkanContext(VulkanContextConfig config)
     {
         Config = config;
+        try
+        {
+            CreateInstance();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to create Vulkan instance.");
+            throw new Exception("Failed to create Vulkan instance.", ex);
+        }
     }
 
     public VulkanContext(VulkanContextConfig config, IntPtr window, IntPtr display)
@@ -152,17 +164,11 @@ internal sealed partial class VulkanContext
         this.display = display;
     }
 
-    public VulkanContext(VulkanContextConfig config, IntPtr window, IntPtr display, in VkSurfaceKHR surface)
-        : this(config, window, display)
-    {
-        vkSurface = surface;
-    }
-
     public ResultCode Initialize()
     {
+        vkSurface = Config.OnCreateSurface != null ? Config.OnCreateSurface(vkInstance) : VkSurfaceKHR.Null;
         try
         {
-            CreateInstance();
             if (vkSurface == VkSurfaceKHR.Null)
             {
                 if (Config.EnableHeadlessSurface)
@@ -469,7 +475,7 @@ internal sealed partial class VulkanContext
                     hwnd = (nint)window,
                 };
                 VkSurfaceKHR surface;
-                VK.vkCreateWin32SurfaceKHR(vkInstance, &ci, null, &surface);
+                VK.vkCreateWin32SurfaceKHR(vkInstance, &ci, null, &surface).CheckResult();
                 vkSurface = surface;
             }
             else if (OperatingSystem.IsLinux())
@@ -535,9 +541,15 @@ internal sealed partial class VulkanContext
         }
         if (presentFamily == VK.VK_QUEUE_FAMILY_IGNORED)
             return false;
-
-        var swapChainSupport = HxVkUtils.QuerySwapChainSupport(physicalDevice, surface);
-        return !swapChainSupport.Formats.IsEmpty && !swapChainSupport.PresentModes.IsEmpty;
+        try
+        {
+            var swapChainSupport = HxVkUtils.QuerySwapChainSupport(physicalDevice, surface);
+            return !swapChainSupport.Formats.IsEmpty && !swapChainSupport.PresentModes.IsEmpty;
+        }
+        catch (Exception)
+        {
+            return false;
+        }
     }
 
     static (uint graphicsFamily, uint presentFamily, uint computeFamily) FindQueueFamilies(in VkPhysicalDevice device, in VkSurfaceKHR surface)
@@ -550,15 +562,15 @@ internal sealed partial class VulkanContext
         uint i = 0;
         foreach (VkQueueFamilyProperties queueFamily in queueFamilies)
         {
-            if ((queueFamily.queueFlags & VkQueueFlags.Graphics) != VkQueueFlags.None)
+            if (queueFamily.queueFlags.HasFlag(VkQueueFlags.Graphics))
             {
                 graphicsFamily = i;
             }
-            else if ((queueFamily.queueFlags & VkQueueFlags.Compute) != VkQueueFlags.None)
+            if (queueFamily.queueFlags.HasFlag(VkQueueFlags.Compute))
             {
                 computeFamily = i;
             }
-            else if (surface != VkSurfaceKHR.Null)
+            if (surface != VkSurfaceKHR.Null)
             {
                 // Check if this queue family supports presentation to the surface
                 VK.vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, out VkBool32 presentSupport).CheckResult();
@@ -603,18 +615,18 @@ internal sealed partial class VulkanContext
 
             VK.vkGetPhysicalDeviceProperties(physicalDevice, out VkPhysicalDeviceProperties checkProperties);
             bool discrete = checkProperties.deviceType == VkPhysicalDeviceType.DiscreteGpu;
-
-            if (discrete || vkPhysicalDevice.IsNull)
+            vkPhysicalDevice = physicalDevice;
+            if (discrete)
             {
-                vkPhysicalDevice = physicalDevice;
-                if (discrete)
-                {
-                    // If this is discrete GPU, look no further (prioritize discrete GPU)
-                    break;
-                }
+                // If this is discrete GPU, look no further (prioritize discrete GPU)
+                break;
             }
         }
-
+        if (vkPhysicalDevice.IsNull)
+        {
+            logger.LogError("Vulkan: No suitable physical device found");
+            return ResultCode.RuntimeError;
+        }
         VK.vkGetPhysicalDeviceProperties(vkPhysicalDevice, out VkPhysicalDeviceProperties properties);
 
         DeviceQueues.graphicsQueueFamilyIndex = HxVkUtils.FindQueueFamilyIndex(vkPhysicalDevice, VkQueueFlags.Graphics);
@@ -840,9 +852,9 @@ internal sealed partial class VulkanContext
         }
 
         HxDebug.Assert(tex.ImageLayout != VK.VK_IMAGE_LAYOUT_UNDEFINED);
-        ref VulkanImmediateCommands.CommandBufferWrapper wrapper = ref Immediate!.Acquire();
-        tex.GenerateMipmap(wrapper.cmdBuf);
-        Immediate!.Submit(ref wrapper);
+        var wrapper = Immediate!.Acquire();
+        tex.GenerateMipmap(wrapper.Instance);
+        Immediate!.Submit(wrapper);
     }
 
     VkSampleCountFlags GetFramebufferMSAABitMaskVK()
@@ -1197,10 +1209,13 @@ internal sealed partial class VulkanContext
         {
             return;
         }
-        fixed (VkSurfaceCapabilitiesKHR* pCaps = &deviceSurfaceCaps)
+
         {
-            VK.vkGetPhysicalDeviceSurfaceCapabilitiesKHR(vkPhysicalDevice, vkSurface, pCaps).CheckResult();
+            VkSurfaceCapabilitiesKHR capabilities = new();
+            VK.vkGetPhysicalDeviceSurfaceCapabilitiesKHR(vkPhysicalDevice, vkSurface, &capabilities).CheckResult();
+            deviceSurfaceCaps = capabilities;
         }
+
 
         uint32_t formatCount;
         VK.vkGetPhysicalDeviceSurfaceFormatsKHR(vkPhysicalDevice, vkSurface, &formatCount, null);
@@ -1457,7 +1472,7 @@ internal sealed partial class VulkanContext
     {
         var rps = RenderPipelinesPool.Get(handle);
 
-        if (!rps)
+        if (rps == null)
         {
             return VkPipeline.Null;
         }
@@ -1537,13 +1552,13 @@ internal sealed partial class VulkanContext
                 }
             }
 
-            var vertModule = ShaderModulesPool.Get(desc.SmVert);
-            var tescModule = ShaderModulesPool.Get(desc.SmTesc);
-            var teseModule = ShaderModulesPool.Get(desc.SmTese);
-            var geomModule = ShaderModulesPool.Get(desc.SmGeom);
-            var fragModule = ShaderModulesPool.Get(desc.SmFrag);
-            var taskModule = ShaderModulesPool.Get(desc.SmTask);
-            var meshModule = ShaderModulesPool.Get(desc.SmMesh);
+            var vertModule = desc.SmVert ? ShaderModulesPool.Get(desc.SmVert) : ShaderModuleState.Null;
+            var tescModule = desc.SmTesc ? ShaderModulesPool.Get(desc.SmTesc) : ShaderModuleState.Null;
+            var teseModule = desc.SmTese ? ShaderModulesPool.Get(desc.SmTese) : ShaderModuleState.Null;
+            var geomModule = desc.SmGeom ? ShaderModulesPool.Get(desc.SmGeom) : ShaderModuleState.Null;
+            var fragModule = desc.SmFrag ? ShaderModulesPool.Get(desc.SmFrag) : ShaderModuleState.Null;
+            var taskModule = desc.SmTask ? ShaderModulesPool.Get(desc.SmTask) : ShaderModuleState.Null;
+            var meshModule = desc.SmMesh ? ShaderModulesPool.Get(desc.SmMesh) : ShaderModuleState.Null;
 
             HxDebug.Assert(vertModule || meshModule);
             HxDebug.Assert(fragModule);
@@ -1554,7 +1569,7 @@ internal sealed partial class VulkanContext
                 HxDebug.Assert(desc.patchControlPoints > 0 &&
                            desc.patchControlPoints <= vkPhysicalDeviceProperties2.properties.limits.maxTessellationPatchSize);
             }
-            using var pBindings = MemoryMarshal.CreateFromPinnedArray(rps.VkBindings_, 0, (int)rps.NumBindings).Pin();
+            using var pBindings = MemoryMarshal.CreateFromPinnedArray(rps.VkBindings, 0, (int)rps.NumBindings).Pin();
 
             using var pAttributes = MemoryMarshal.CreateFromPinnedArray(rps.VkAttributes, 0, (int)rps.NumAttributes).Pin();
 

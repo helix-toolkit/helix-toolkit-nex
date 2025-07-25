@@ -221,124 +221,130 @@ internal static class HxVkExtensions
     }
     public static Format ToFormat(this VkFormat format)
     {
-        switch (format)
+        return format switch
         {
-            case VK.VK_FORMAT_UNDEFINED:
-                return Format.Invalid;
-            case VK.VK_FORMAT_R8_UNORM:
-                return Format.R_UN8;
-            case VK.VK_FORMAT_R16_UNORM:
-                return Format.R_UN16;
-            case VK.VK_FORMAT_R16_SFLOAT:
-                return Format.R_F16;
-            case VK.VK_FORMAT_R16_UINT:
-                return Format.R_UI16;
-            case VK.VK_FORMAT_R8G8_UNORM:
-                return Format.RG_UN8;
-            case VK.VK_FORMAT_B8G8R8A8_UNORM:
-                return Format.BGRA_UN8;
-            case VK.VK_FORMAT_R8G8B8A8_UNORM:
-                return Format.RGBA_UN8;
-            case VK.VK_FORMAT_R8G8B8A8_SRGB:
-                return Format.RGBA_SRGB8;
-            case VK.VK_FORMAT_B8G8R8A8_SRGB:
-                return Format.BGRA_SRGB8;
-            case VK.VK_FORMAT_R16G16_UNORM:
-                return Format.RG_UN16;
-            case VK.VK_FORMAT_R16G16_SFLOAT:
-                return Format.RG_F16;
-            case VK.VK_FORMAT_R32G32_SFLOAT:
-                return Format.RG_F32;
-            case VK.VK_FORMAT_R16G16_UINT:
-                return Format.RG_UI16;
-            case VK.VK_FORMAT_R32_SFLOAT:
-                return Format.R_F32;
-            case VK.VK_FORMAT_R16G16B16A16_SFLOAT:
-                return Format.RGBA_F16;
-            case VK.VK_FORMAT_R32G32B32A32_UINT:
-                return Format.RGBA_UI32;
-            case VK.VK_FORMAT_R32G32B32A32_SFLOAT:
-                return Format.RGBA_F32;
-            case VK.VK_FORMAT_A2B10G10R10_UNORM_PACK32:
-                return Format.A2B10G10R10_UN;
-            case VK.VK_FORMAT_A2R10G10B10_UNORM_PACK32:
-                return Format.A2R10G10B10_UN;
-            case VK.VK_FORMAT_ETC2_R8G8B8_UNORM_BLOCK:
-                return Format.ETC2_RGB8;
-            case VK.VK_FORMAT_ETC2_R8G8B8_SRGB_BLOCK:
-                return Format.ETC2_SRGB8;
-            case VK.VK_FORMAT_D16_UNORM:
-                return Format.Z_UN16;
-            case VK.VK_FORMAT_BC7_UNORM_BLOCK:
-                return Format.BC7_RGBA;
-            case VK.VK_FORMAT_X8_D24_UNORM_PACK32:
-                return Format.Z_UN24;
-            case VK.VK_FORMAT_D24_UNORM_S8_UINT:
-                return Format.Z_UN24_S_UI8;
-            case VK.VK_FORMAT_D32_SFLOAT:
-                return Format.Z_F32;
-            case VK.VK_FORMAT_D32_SFLOAT_S8_UINT:
-                return Format.Z_F32_S_UI8;
-            case VK.VK_FORMAT_G8_B8R8_2PLANE_420_UNORM:
-                return Format.YUV_NV12;
-            case VK.VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM:
-                return Format.YUV_420p;
-        }
-        HxDebug.Assert(false, "VkFormat value not handled: {FORMAT}", format.ToString());
-        return Format.Invalid;
+            VK.VK_FORMAT_UNDEFINED => Format.Invalid,
+            VK.VK_FORMAT_R8_UNORM => Format.R_UN8,
+            VK.VK_FORMAT_R16_UNORM => Format.R_UN16,
+            VK.VK_FORMAT_R16_SFLOAT => Format.R_F16,
+            VK.VK_FORMAT_R16_UINT => Format.R_UI16,
+            VK.VK_FORMAT_R8G8_UNORM => Format.RG_UN8,
+            VK.VK_FORMAT_B8G8R8A8_UNORM => Format.BGRA_UN8,
+            VK.VK_FORMAT_R8G8B8A8_UNORM => Format.RGBA_UN8,
+            VK.VK_FORMAT_R8G8B8A8_SRGB => Format.RGBA_SRGB8,
+            VK.VK_FORMAT_B8G8R8A8_SRGB => Format.BGRA_SRGB8,
+            VK.VK_FORMAT_R16G16_UNORM => Format.RG_UN16,
+            VK.VK_FORMAT_R16G16_SFLOAT => Format.RG_F16,
+            VK.VK_FORMAT_R32G32_SFLOAT => Format.RG_F32,
+            VK.VK_FORMAT_R16G16_UINT => Format.RG_UI16,
+            VK.VK_FORMAT_R32_SFLOAT => Format.R_F32,
+            VK.VK_FORMAT_R16G16B16A16_SFLOAT => Format.RGBA_F16,
+            VK.VK_FORMAT_R32G32B32A32_UINT => Format.RGBA_UI32,
+            VK.VK_FORMAT_R32G32B32A32_SFLOAT => Format.RGBA_F32,
+            VK.VK_FORMAT_A2B10G10R10_UNORM_PACK32 => Format.A2B10G10R10_UN,
+            VK.VK_FORMAT_A2R10G10B10_UNORM_PACK32 => Format.A2R10G10B10_UN,
+            VK.VK_FORMAT_ETC2_R8G8B8_UNORM_BLOCK => Format.ETC2_RGB8,
+            VK.VK_FORMAT_ETC2_R8G8B8_SRGB_BLOCK => Format.ETC2_SRGB8,
+            VK.VK_FORMAT_D16_UNORM => Format.Z_UN16,
+            VK.VK_FORMAT_BC7_UNORM_BLOCK => Format.BC7_RGBA,
+            VK.VK_FORMAT_X8_D24_UNORM_PACK32 => Format.Z_UN24,
+            VK.VK_FORMAT_D24_UNORM_S8_UINT => Format.Z_UN24_S_UI8,
+            VK.VK_FORMAT_D32_SFLOAT => Format.Z_F32,
+            VK.VK_FORMAT_D32_SFLOAT_S8_UINT => Format.Z_F32_S_UI8,
+            VK.VK_FORMAT_G8_B8R8_2PLANE_420_UNORM => Format.YUV_NV12,
+            VK.VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM => Format.YUV_420p,
+            _ => throw new NotSupportedException($"VkFormat [{format}] is not supported."),
+        };
     }
 
     public static VkFormat ToVk(this Format format)
     {
-        switch (format)
+        return format switch
         {
-            case Format.R_UN8:
-                return VK.VK_FORMAT_R8_UNORM;
-            case Format.R_UN16:
-                return VK.VK_FORMAT_R16_UNORM;
-            case Format.R_F16:
-                return VK.VK_FORMAT_R16_SFLOAT;
-            case Format.R_UI16:
-                return VK.VK_FORMAT_R16_UINT;
-            case Format.RG_UN8:
-                return VK.VK_FORMAT_R8G8_UNORM;
-            case Format.BGRA_UN8:
-                return VK.VK_FORMAT_B8G8R8A8_UNORM;
-            case Format.RGBA_UN8:
-                return VK.VK_FORMAT_R8G8B8A8_UNORM;
-            case Format.RGBA_SRGB8:
-                return VK.VK_FORMAT_R8G8B8A8_SRGB;
-            case Format.BGRA_SRGB8:
-                return VK.VK_FORMAT_B8G8R8A8_SRGB;
-            case Format.RG_UN16:
-                return VK.VK_FORMAT_R16G16_UNORM;
-            case Format.RG_F16:
-                return VK.VK_FORMAT_R16G16_SFLOAT;
-            case Format.RG_F32:
-                return VK.VK_FORMAT_R32G32_SFLOAT;
-            case Format.RG_UI16:
-                return VK.VK_FORMAT_R16G16_UINT;
-            case Format.R_F32:
-                return VK.VK_FORMAT_R32_SFLOAT;
-            case Format.RGBA_F16:
-                return VK.VK_FORMAT_R16G16B16A16_SFLOAT;
-            case Format.RGBA_UI32:
-                return VK.VK_FORMAT_R32G32B32A32_UINT;
-            case Format.RGBA_F32:
-                return VK.VK_FORMAT_R32G32B32A32_SFLOAT;
-            case Format.A2B10G10R10_UN:
-                return VK.VK_FORMAT_A2B10G10R10_UNORM_PACK32;
-            case Format.A2R10G10B10_UN:
-                return VK.VK_FORMAT_A2R10G10B10_UNORM_PACK32;
-            case Format.ETC2_RGB8:
-                return VK.VK_FORMAT_ETC2_R8G8B8_UNORM_BLOCK;
-            case Format.ETC2_SRGB8:
-                return VK.VK_FORMAT_ETC2_R8G8B8_SRGB_BLOCK;
-            case Format.Z_UN16:
-                return VK.VK_FORMAT_D16_UNORM;
-        }
-        HxDebug.Assert(false, "Format value not handled: {FORMAT}", format.ToString());
-        return VkFormat.Undefined;
+            Format.Invalid => VK.VK_FORMAT_UNDEFINED,
+            Format.R_UN8 => VK.VK_FORMAT_R8_UNORM,
+            Format.R_UN16 => VK.VK_FORMAT_R16_UNORM,
+            Format.R_F16 => VK.VK_FORMAT_R16_SFLOAT,
+            Format.R_UI16 => VK.VK_FORMAT_R16_UINT,
+            Format.RG_UN8 => VK.VK_FORMAT_R8G8_UNORM,
+            Format.BGRA_UN8 => VK.VK_FORMAT_B8G8R8A8_UNORM,
+            Format.RGBA_UN8 => VK.VK_FORMAT_R8G8B8A8_UNORM,
+            Format.RGBA_SRGB8 => VK.VK_FORMAT_R8G8B8A8_SRGB,
+            Format.BGRA_SRGB8 => VK.VK_FORMAT_B8G8R8A8_SRGB,
+            Format.RG_UN16 => VK.VK_FORMAT_R16G16_UNORM,
+            Format.RG_F16 => VK.VK_FORMAT_R16G16_SFLOAT,
+            Format.RG_F32 => VK.VK_FORMAT_R32G32_SFLOAT,
+            Format.RG_UI16 => VK.VK_FORMAT_R16G16_UINT,
+            Format.R_F32 => VK.VK_FORMAT_R32_SFLOAT,
+            Format.RGBA_F16 => VK.VK_FORMAT_R16G16B16A16_SFLOAT,
+            Format.RGBA_UI32 => VK.VK_FORMAT_R32G32B32A32_UINT,
+            Format.RGBA_F32 => VK.VK_FORMAT_R32G32B32A32_SFLOAT,
+            Format.A2B10G10R10_UN => VK.VK_FORMAT_A2B10G10R10_UNORM_PACK32,
+            Format.A2R10G10B10_UN => VK.VK_FORMAT_A2R10G10B10_UNORM_PACK32,
+            Format.ETC2_RGB8 => VK.VK_FORMAT_ETC2_R8G8B8_UNORM_BLOCK,
+            Format.ETC2_SRGB8 => VK.VK_FORMAT_ETC2_R8G8B8_SRGB_BLOCK,
+            Format.Z_UN16 => VK.VK_FORMAT_D16_UNORM,
+            Format.R_UI32 => VK.VK_FORMAT_R32_UINT,
+            Format.RG_UI32 => VK.VK_FORMAT_R32G32_UINT,
+            Format.BC7_RGBA => VK.VK_FORMAT_BC7_SRGB_BLOCK,
+            Format.Z_UN24 => VK.VK_FORMAT_D24_UNORM_S8_UINT,
+            Format.Z_F32 => VK.VK_FORMAT_D32_SFLOAT,
+            Format.Z_UN24_S_UI8 => VK.VK_FORMAT_D24_UNORM_S8_UINT,
+            Format.Z_F32_S_UI8 => VK.VK_FORMAT_D32_SFLOAT_S8_UINT,
+            Format.YUV_NV12 => VK.VK_FORMAT_G8_B8R8_2PLANE_420_UNORM,
+            Format.YUV_420p => VK.VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM,
+            _ => throw new NotSupportedException($"Format [{format}] is not supported."),
+        };
+    }
+
+    public static VkFormat ToVk(this VertexFormat format)
+    {
+        return format switch
+        {
+            VertexFormat.Invalid => VK.VK_FORMAT_UNDEFINED,
+            VertexFormat.Float1 => VK.VK_FORMAT_R32_SFLOAT,
+            VertexFormat.Float2 => VK.VK_FORMAT_R32G32_SFLOAT,
+            VertexFormat.Float3 => VK.VK_FORMAT_R32G32B32_SFLOAT,
+            VertexFormat.Float4 => VK.VK_FORMAT_R32G32B32A32_SFLOAT,
+            VertexFormat.Byte1 => VK.VK_FORMAT_R8_SINT,
+            VertexFormat.Byte2 => VK.VK_FORMAT_R8G8_SINT,
+            VertexFormat.Byte3 => VK.VK_FORMAT_R8G8B8_SINT,
+            VertexFormat.Byte4 => VK.VK_FORMAT_R8G8B8A8_SINT,
+            VertexFormat.UByte1 => VK.VK_FORMAT_R8_UINT,
+            VertexFormat.UByte2 => VK.VK_FORMAT_R8G8_UINT,
+            VertexFormat.UByte3 => VK.VK_FORMAT_R8G8B8_UINT,
+            VertexFormat.UByte4 => VK.VK_FORMAT_R8G8B8A8_UINT,
+            VertexFormat.Short1 => VK.VK_FORMAT_R16_SINT,
+            VertexFormat.Short2 => VK.VK_FORMAT_R16G16_SINT,
+            VertexFormat.Short3 => VK.VK_FORMAT_R16G16B16_SINT,
+            VertexFormat.Short4 => VK.VK_FORMAT_R16G16B16A16_SINT,
+            VertexFormat.UShort1 => VK.VK_FORMAT_R16_UINT,
+            VertexFormat.UShort2 => VK.VK_FORMAT_R16G16_UINT,
+            VertexFormat.UShort3 => VK.VK_FORMAT_R16G16B16_UINT,
+            VertexFormat.UShort4 => VK.VK_FORMAT_R16G16B16A16_UINT,
+            VertexFormat.Byte2Norm => VK.VK_FORMAT_R8G8_SNORM,
+            VertexFormat.Byte4Norm => VK.VK_FORMAT_R8G8B8A8_SNORM,
+            VertexFormat.UByte2Norm => VK.VK_FORMAT_R8G8_UNORM,
+            VertexFormat.UByte4Norm => VK.VK_FORMAT_R8G8B8A8_UNORM,
+            VertexFormat.Short2Norm => VK.VK_FORMAT_R16G16_SNORM,
+            VertexFormat.Short4Norm => VK.VK_FORMAT_R16G16B16A16_SNORM,
+            VertexFormat.UShort2Norm => VK.VK_FORMAT_R16G16_UNORM,
+            VertexFormat.UShort4Norm => VK.VK_FORMAT_R16G16B16A16_UNORM,
+            VertexFormat.Int1 => VK.VK_FORMAT_R32_SINT,
+            VertexFormat.Int2 => VK.VK_FORMAT_R32G32_SINT,
+            VertexFormat.Int3 => VK.VK_FORMAT_R32G32B32_SINT,
+            VertexFormat.Int4 => VK.VK_FORMAT_R32G32B32A32_SINT,
+            VertexFormat.UInt1 => VK.VK_FORMAT_R32_UINT,
+            VertexFormat.UInt2 => VK.VK_FORMAT_R32G32_UINT,
+            VertexFormat.UInt3 => VK.VK_FORMAT_R32G32B32_UINT,
+            VertexFormat.UInt4 => VK.VK_FORMAT_R32G32B32A32_UINT,
+            VertexFormat.HalfFloat1 => VK.VK_FORMAT_R16_SFLOAT,
+            VertexFormat.HalfFloat2 => VK.VK_FORMAT_R16G16_SFLOAT,
+            VertexFormat.HalfFloat3 => VK.VK_FORMAT_R16G16B16_SFLOAT,
+            VertexFormat.HalfFloat4 => VK.VK_FORMAT_R16G16B16A16_SFLOAT,
+            VertexFormat.Int_2_10_10_10_REV => VK.VK_FORMAT_A2B10G10R10_UNORM_PACK32,
+            _ => throw new NotSupportedException($"Vertex format {format} is not supported."),
+        };
     }
 
     public static VkFormat[] GetCompatibleDepthStencilFormats(this Format format)
@@ -476,12 +482,12 @@ internal static class HxVkExtensions
 
     public static VkDevice GetVkDevice(this IContext ctx)
     {
-        return ctx is VulkanContext vkCtx ? vkCtx.GetVkDevice() : VkDevice.Null;
+        return ctx is VulkanContext vkCtx ? vkCtx.VkDevice : VkDevice.Null;
     }
 
     public static VkPhysicalDevice GetVkPhysicalDevice(this IContext ctx)
     {
-        return ctx is VulkanContext vkCtx ? vkCtx.GetVkPhysicalDevice() : VkPhysicalDevice.Null;
+        return ctx is VulkanContext vkCtx ? vkCtx.VkPhysicalDevice : VkPhysicalDevice.Null;
     }
 
     public static VkCommandBuffer GetVkCommandBuffer(this ICommandBuffer buffer)

@@ -13,6 +13,12 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HelixToolkit.Nex", "HelixTo
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HelixToolkit.Nex.Tests.Vulkan", "HelixToolkit.Nex.Tests.Vulkan\HelixToolkit.Nex.Tests.Vulkan.csproj", "{8AE4AA01-5BD4-4E26-B0B5-A47B7E6FFB96}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Samples", "Samples", "{02EA681E-C7D8-13C7-8484-4AC65E1B71E8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HelloTriangle", "Samples\HelloTriangle\HelloTriangle.csproj", "{3BF38992-949C-4603-AF03-C4E209F4FC55}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Application", "Samples\Application\Application.csproj", "{3F07EE1E-A973-4749-B506-8C6761EBE9ED}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -39,9 +45,21 @@ Global
 		{8AE4AA01-5BD4-4E26-B0B5-A47B7E6FFB96}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8AE4AA01-5BD4-4E26-B0B5-A47B7E6FFB96}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8AE4AA01-5BD4-4E26-B0B5-A47B7E6FFB96}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3BF38992-949C-4603-AF03-C4E209F4FC55}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3BF38992-949C-4603-AF03-C4E209F4FC55}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3BF38992-949C-4603-AF03-C4E209F4FC55}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3BF38992-949C-4603-AF03-C4E209F4FC55}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3F07EE1E-A973-4749-B506-8C6761EBE9ED}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3F07EE1E-A973-4749-B506-8C6761EBE9ED}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3F07EE1E-A973-4749-B506-8C6761EBE9ED}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3F07EE1E-A973-4749-B506-8C6761EBE9ED}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{3BF38992-949C-4603-AF03-C4E209F4FC55} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
+		{3F07EE1E-A973-4749-B506-8C6761EBE9ED} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {E5E7411B-7281-4FBB-8D21-475B6670439C}

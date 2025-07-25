@@ -79,7 +79,7 @@ internal class HxVkUtils
         uint32_t numEntries = desc.NumSpecializationConstants();
         if (outEntries != null)
         {
-            for (uint32_t i = 0; i != numEntries; i++)
+            for (uint32_t i = 0; i < numEntries; i++)
             {
                 outEntries[i] = new()
                 {

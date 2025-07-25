@@ -38,7 +38,7 @@ internal sealed class RenderPipelineState()
 
     public uint32_t NumBindings = 0;
     public uint32_t NumAttributes = 0;
-    public readonly VkVertexInputBindingDescription[] VkBindings_ = new VkVertexInputBindingDescription[VertexInput.MAX_VERTEX_BINDINGS];
+    public readonly VkVertexInputBindingDescription[] VkBindings = new VkVertexInputBindingDescription[VertexInput.MAX_VERTEX_BINDINGS];
     public readonly VkVertexInputAttributeDescription[] VkAttributes = new VkVertexInputAttributeDescription[VertexInput.MAX_VERTEX_ATTRIBUTES];
 
     // non-owning, the last seen VkDescriptorSetLayout from VulkanContext::vkDSL_ (if the context has a new layout, invalidate all VkPipeline
@@ -53,7 +53,7 @@ internal sealed class RenderPipelineState()
 
     public uint32_t VewMask = 0;
 
-    public bool Valid => Pipeline != VkPipeline.Null && PipelineLayout != VkPipelineLayout.Null && NumBindings > 0 && NumAttributes > 0;
+    public bool Valid => Pipeline != VkPipeline.Null && PipelineLayout != VkPipelineLayout.Null;
 
     public static readonly RenderPipelineState Null = new();
 
