@@ -123,7 +123,7 @@ internal sealed class VulkanStagingDevice : IDisposable
     public ResultCode ImageData2D(in VulkanImage image, in VkRect2D imageRegion, uint32_t baseMipLevel, uint32_t numMipLevels,
         uint32_t layer, uint32_t numLayers, VkFormat format, nint data, size_t dataSize)
     {
-        HxDebug.Assert(numMipLevels <= Constants.LVK_MAX_MIP_LEVELS);
+        HxDebug.Assert(numMipLevels <= Constants.MAX_MIP_LEVELS);
 
         // divide the width and height by 2 until we get to the size of level 'baseMipLevel'
         uint32_t width = image.Extent.width >> (int)baseMipLevel;

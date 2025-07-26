@@ -179,11 +179,16 @@ internal static class HxVkExtensions
                     access = VkAccessFlags2.DepthStencilAttachmentRead | VkAccessFlags2.DepthStencilAttachmentWrite,
                 };
             case VK.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
+                var stage = VkPipelineStageFlags2.FragmentShader | VkPipelineStageFlags2.ComputeShader
+                    | VkPipelineStageFlags2.VertexShader | VkPipelineStageFlags2.TessellationControlShader
+                    | VkPipelineStageFlags2.GeometryShader;
+                if (GraphicsSettings.SupportMeshShader)
+                {
+                    stage |= VkPipelineStageFlags2.MeshShaderEXT;
+                }
                 return new StageAccess2
                 {
-                    stage = VkPipelineStageFlags2.FragmentShader | VkPipelineStageFlags2.ComputeShader
-                    | VkPipelineStageFlags2.VertexShader | VkPipelineStageFlags2.TessellationControlShader
-                    | VkPipelineStageFlags2.GeometryShader | VkPipelineStageFlags2.TaskShaderEXT | VkPipelineStageFlags2.MeshShaderEXT,
+                    stage = stage,
                     access = VkAccessFlags2.ShaderRead,
                 };
             case VK.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:
@@ -706,7 +711,7 @@ internal static class HxVkExtensions
         return stage.HasFlag(VkPipelineStageFlags2.VertexShader) || stage.HasFlag(VkPipelineStageFlags2.TessellationControlShader)
             || stage.HasFlag(VkPipelineStageFlags2.TessellationEvaluationShader) || stage.HasFlag(VkPipelineStageFlags2.GeometryShader)
             || stage.HasFlag(VkPipelineStageFlags2.FragmentShader) || stage.HasFlag(VkPipelineStageFlags2.ComputeShader)
-            || stage.HasFlag(VkPipelineStageFlags2.MeshShaderEXT) || stage.HasFlag(VkPipelineStageFlags2.TaskShaderEXT);
+            || stage.HasFlag(VkPipelineStageFlags2.MeshShaderEXT);
     }
 
     public static void BufferBarrier2(this VkCommandBuffer cmdbuffer, in VulkanBuffer buf, VkPipelineStageFlags2 srcStage, VkPipelineStageFlags2 dstStage)

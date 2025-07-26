@@ -36,13 +36,13 @@ public class Image
         var size = (size_t)(colors.Length * NativeHelper.SizeOf<Color4>());
         var imageDesc = new TextureDesc
         {
-            format = format,
-            dimensions = new Dimensions((uint)width, (uint)height, 1),
-            usage = TextureUsageBits.Sampled | TextureUsageBits.Storage | TextureUsageBits.Attachment,
-            numMipLevels = 1,
-            numLayers = 1,
-            data = (nint)pColors.Pointer, // Use the pinned pointer for data
-            dataSize = size,
+            Format = format,
+            Dimensions = new Dimensions((uint)width, (uint)height, 1),
+            Usage = TextureUsageBits.Sampled | TextureUsageBits.Storage | TextureUsageBits.Attachment,
+            NumMipLevels = 1,
+            NumLayers = 1,
+            Data = (nint)pColors.Pointer, // Use the pinned pointer for data
+            DataSize = size,
         };
         TextureHolder? image = null;
         var result = vkContext?.CreateTexture(imageDesc, out image, "TestImage");
@@ -51,7 +51,7 @@ public class Image
         Assert.IsTrue(image.Valid, "Image should be valid after creation.");
         var downloadedColors = new Color4[width * height];
         using var pDownloadedColors = downloadedColors.Pin(); // Pin the array to prevent garbage collection
-        result = vkContext?.Download(image, new TextureRangeDesc() { dimensions = imageDesc.dimensions }, (nint)pDownloadedColors.Pointer, size).CheckResult(); // Download the image data
+        result = vkContext?.Download(image, new TextureRangeDesc() { dimensions = imageDesc.Dimensions }, (nint)pDownloadedColors.Pointer, size).CheckResult(); // Download the image data
         Assert.IsTrue(result == ResultCode.Ok, "Image download failed with error: " + result.ToString());
         // Verify that the downloaded colors match the original colors
         Assert.IsTrue(downloadedColors.SequenceEqual(colors), "Downloaded colors do not match the original colors.");
@@ -73,11 +73,11 @@ public class Image
         var size = (size_t)(data.Length * NativeHelper.SizeOf<float>());
         var imageDesc = new TextureDesc
         {
-            format = format,
-            dimensions = new Dimensions((uint)width, (uint)height, 1),
-            usage = TextureUsageBits.Sampled | TextureUsageBits.Attachment,
-            numMipLevels = 1,
-            numLayers = 1,
+            Format = format,
+            Dimensions = new Dimensions((uint)width, (uint)height, 1),
+            Usage = TextureUsageBits.Sampled | TextureUsageBits.Attachment,
+            NumMipLevels = 1,
+            NumLayers = 1,
             //data = (nint)pData.Pointer, // Use the pinned pointer for data
             //dataSize = size,
         };

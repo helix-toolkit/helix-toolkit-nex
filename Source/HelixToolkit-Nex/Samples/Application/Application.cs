@@ -1,6 +1,7 @@
 ﻿using SDL3;
 using static SDL3.SDL3;
 using Microsoft.Extensions.Logging;
+using Vortice.Vulkan;
 
 namespace HelixToolkit.Nex.Sample.Application;
 
@@ -93,6 +94,19 @@ public abstract class Application : IDisposable
     }
 
     protected virtual void HandleResize(in SDL_Event evt) { }
+
+    protected VkSurfaceKHR CreateSurface(VkInstance instance)
+    {
+        unsafe
+        {
+            VkSurfaceKHR surface;
+            if (!SDL_Vulkan_CreateSurface(MainWindow.Instance, instance, 0, (ulong**)&surface))
+            {
+                throw new PlatformNotSupportedException("SDL: Failed to create vulkan surface");
+            }
+            return surface;
+        }
+    }
 
     //[UnmanagedCallersOnly]
     private static void Log_SDL(SDL_LogCategory category, SDL_LogPriority priority, string? description)

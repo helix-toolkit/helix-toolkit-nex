@@ -1,4 +1,5 @@
 ﻿namespace HelixToolkit.Nex.Graphics;
+using HelixToolkit.Nex;
 
 public interface IContext : IDisposable
 {
@@ -13,6 +14,7 @@ public interface IContext : IDisposable
     ResultCode CreateComputePipeline(in ComputePipelineDesc desc, out ComputePipelineHolder computePipeline);
     ResultCode CreateRenderPipeline(in RenderPipelineDesc desc, out RenderPipelineHolder renderPipeline);
     ResultCode CreateShaderModule(in ShaderModuleDesc desc, out ShaderModuleHolder shaderModule);
+
     ResultCode CreateQueryPool(uint32_t numQueries, out QueryPoolHolder queryPool, string? debugName = null);
 
 
@@ -23,7 +25,7 @@ public interface IContext : IDisposable
     void Destroy(BufferHandle handle);
     void Destroy(TextureHandle handle);
     void Destroy(QueryPoolHandle handle);
-    void Destroy(Framebuffer fb);
+    void Destroy(in Framebuffer fb);
 
 
     ResultCode Upload(in BufferHandle handle, size_t offset, nint data, size_t size);
@@ -77,4 +79,34 @@ public interface IContext : IDisposable
 
     double GetTimestampPeriodToMs();
     bool GetQueryPoolResults(in QueryPoolHandle pool, uint32_t firstQuery, uint32_t queryCount, size_t dataSize, nint outData, size_t stride);
+}
+
+public static class ContextExtensions
+{
+    public static ResultCode CreateShaderModuleGlsl(this IContext context, string glsl, ShaderStage stage,
+        out ShaderModuleHolder shaderModule, string? debugName = null)
+    {
+        using var data = glsl.ToArray().Pin();
+        unsafe
+        {
+            return context.CreateShaderModule(new ShaderModuleDesc
+            {
+                Data = (nint)data.Pointer,
+                DataSize = (uint)glsl.Length,
+                Stage = stage,
+                DataType = ShaderDataType.Glsl,
+                DebugName = debugName ?? string.Empty
+            }, out shaderModule);
+        }
+    }
+
+    public static ResultCode CreateBuffer<T>(this IContext context, T[] data, BufferUsageBits usage,
+        StorageType storage, out BufferHolder buffer, string? debugName = null) where T : unmanaged
+    {
+        unsafe
+        {
+            using var pinnedData = data.Pin();
+            return context.CreateBuffer(new BufferDesc(usage, storage, (nint)pinnedData.Pointer, (uint)(data.Length * sizeof(T)), debugName), out buffer, debugName);
+        }
+    }
 }

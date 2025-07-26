@@ -4,7 +4,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
 {
     static readonly ILogger logger = LogManager.Create<CommandBuffer>();
     readonly VulkanContext vkContext = context;
-    Framebuffer framebuffer;
+    Framebuffer framebuffer = Framebuffer.Null;
     bool isRendering = false;
     RenderPipelineHandle currentPipelineGraphics = RenderPipelineHandle.Null;
     ComputePipelineHandle currentPipelineCompute = ComputePipelineHandle.Null;
@@ -56,16 +56,16 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
         HxDebug.Assert(!isRendering);
 
         isRendering = true;
-        ViewMask = renderPass.viewMask;
+        ViewMask = renderPass.ViewMask;
 
-        for (uint32_t i = 0; i != Dependencies.LVK_MAX_SUBMIT_DEPENDENCIES && deps.textures[i]; i++)
+        for (uint32_t i = 0; i != Dependencies.MAX_SUBMIT_DEPENDENCIES && deps.Textures[i]; i++)
         {
-            TransitionToShaderReadOnly(deps.textures[i]);
+            TransitionToShaderReadOnly(deps.Textures[i]);
         }
-        for (uint32_t i = 0; i != Dependencies.LVK_MAX_SUBMIT_DEPENDENCIES && deps.buffers[i]; i++)
+        for (uint32_t i = 0; i != Dependencies.MAX_SUBMIT_DEPENDENCIES && deps.Buffers[i]; i++)
         {
             VkPipelineStageFlags2 dstStageFlags = VkPipelineStageFlags2.VertexShader | VkPipelineStageFlags2.FragmentShader;
-            var buf = vkContext.BuffersPool.Get(deps.buffers[i]);
+            var buf = vkContext.BuffersPool.Get(deps.Buffers[i]);
             HxDebug.Assert(buf);
             if (buf!.vkUsageFlags_.HasFlag(VK.VK_BUFFER_USAGE_INDEX_BUFFER_BIT) || buf.vkUsageFlags_.HasFlag(VK.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT))
             {
@@ -75,7 +75,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
             {
                 dstStageFlags |= VkPipelineStageFlags2.DrawIndirect;
             }
-            var buffer = vkContext.BuffersPool.Get(deps.buffers[i]);
+            var buffer = vkContext.BuffersPool.Get(deps.Buffers[i]);
             HxDebug.Assert(buffer, "Buffer is null. Make sure the buffer is created before binding it to the command buffer.");
             if (buffer is null || !buffer.Valid)
             {
@@ -95,7 +95,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
         // transition all the color attachments
         for (uint32_t i = 0; i != numFbColorAttachments; i++)
         {
-            var handle = fb.color[i].Texture;
+            var handle = fb.Colors[i].Texture;
             if (handle)
             {
                 var colorTex = vkContext.TexturesPool.Get(handle);
@@ -107,7 +107,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
                 CmdBuffer.TransitionToColorAttachment(colorTex);
             }
             // handle MSAA
-            handle = fb.color[i].ResolveTexture;
+            handle = fb.Colors[i].ResolveTexture;
             if (handle)
             {
                 var colorResolveTex = vkContext.TexturesPool.Get(handle);
@@ -122,7 +122,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
             }
         }
 
-        var depthTex = fb.depthStencil.Texture;
+        var depthTex = fb.DepthStencil.Texture;
         {
             // transition depth-stencil attachment          
             if (depthTex)
@@ -137,7 +137,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
                                           new VkImageSubresourceRange(flags, 0, VK.VK_REMAINING_MIP_LEVELS, 0, VK.VK_REMAINING_ARRAY_LAYERS));
             }
             // handle depth MSAA
-            var handle = fb.depthStencil.ResolveTexture;
+            var handle = fb.DepthStencil.ResolveTexture;
             if (handle)
             {
                 var depthResolveImg = vkContext.TexturesPool.Get(handle);
@@ -159,9 +159,9 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
 
         var colorAttachments = stackalloc VkRenderingAttachmentInfo[Constants.MAX_COLOR_ATTACHMENTS];
 
-        for (uint32_t i = 0; i != numFbColorAttachments; i++)
+        for (uint32_t i = 0; i < numFbColorAttachments; i++)
         {
-            ref var attachment = ref fb.color[i];
+            ref var attachment = ref fb.Colors[i];
             HxDebug.Assert(!attachment.Texture.Empty);
 
             var colorTexture = vkContext.TexturesPool.Get(attachment.Texture);
@@ -171,10 +171,10 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
                 logger.LogError("Color texture {HANDLE} is null. Make sure the texture is created before binding it to the framebuffer.", attachment.Texture);
                 continue; // skip if texture is not found
             }
-            ref var descColor = ref renderPass.color[i];
-            if (mipLevel > 0 && descColor.level > 0)
+            ref var descColor = ref renderPass.Colors[i];
+            if (mipLevel > 0 && descColor.Level > 0)
             {
-                HxDebug.Assert(descColor.level == mipLevel, "All color attachments should have the same mip-level");
+                HxDebug.Assert(descColor.Level == mipLevel, "All color attachments should have the same mip-level");
             }
             var dim = colorTexture.Extent;
             if (fbWidth > 0)
@@ -185,26 +185,26 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
             {
                 HxDebug.Assert(dim.height == fbHeight, "All attachments should have the same height");
             }
-            mipLevel = descColor.level;
+            mipLevel = descColor.Level;
             fbWidth = dim.width;
             fbHeight = dim.height;
             samples = colorTexture.SampleCount;
             colorAttachments[i] = new()
             {
                 pNext = null,
-                imageView = colorTexture.GetOrCreateVkImageViewForFramebuffer(vkContext, descColor.level, descColor.layer),
+                imageView = colorTexture.GetOrCreateVkImageViewForFramebuffer(vkContext, descColor.Level, descColor.Layer),
                 imageLayout = VK.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                resolveMode = samples != VkSampleCountFlags.None ? descColor.resolveMode.ResolveModeToVkResolveModeFlagBits(VkResolveModeFlags.Max)
+                resolveMode = samples > VkSampleCountFlags.Count1 ? descColor.ResolveMode.ResolveModeToVkResolveModeFlagBits(VkResolveModeFlags.Max)
                                              : VkResolveModeFlags.None,
                 resolveImageView = VkImageView.Null,
                 resolveImageLayout = VkImageLayout.Undefined,
-                loadOp = descColor.loadOp.ToVk(),
-                storeOp = descColor.storeOp.ToVk(),
+                loadOp = descColor.LoadOp.ToVk(),
+                storeOp = descColor.StoreOp.ToVk(),
             };
 
-            colorAttachments[i].clearValue.color = descColor.clearColor.ToVk();
+            colorAttachments[i].clearValue.color = descColor.ClearColor.ToVk();
             // handle MSAA
-            if (descColor.storeOp == StoreOp.MsaaResolve)
+            if (descColor.StoreOp == StoreOp.MsaaResolve)
             {
                 HxDebug.Assert(samples != VkSampleCountFlags.None);
                 HxDebug.Assert(!attachment.ResolveTexture.Empty, "Framebuffer attachment should contain a resolve texture");
@@ -216,40 +216,40 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
                     continue; // skip if texture is not found
                 }
                 colorAttachments[i].resolveImageView =
-                    colorResolveTexture.GetOrCreateVkImageViewForFramebuffer(vkContext, descColor.level, descColor.layer);
+                    colorResolveTexture.GetOrCreateVkImageViewForFramebuffer(vkContext, descColor.Level, descColor.Layer);
                 colorAttachments[i].resolveImageLayout = VK.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
             }
         }
 
         VkRenderingAttachmentInfo depthAttachment = new();
 
-        if (fb.depthStencil.Texture)
+        if (fb.DepthStencil.Texture)
         {
-            var depthTexture = vkContext.TexturesPool.Get(fb.depthStencil.Texture);
+            var depthTexture = vkContext.TexturesPool.Get(fb.DepthStencil.Texture);
             HxDebug.Assert(depthTexture != null, "Depth attachment texture is null. Make sure the texture is created before binding it to the framebuffer.");
             if (depthTexture is null)
             {
-                logger.LogError("Depth attachment texture {TEXTURE} is null. Make sure the texture is created before binding it to the framebuffer.", fb.depthStencil.Texture);
+                logger.LogError("Depth attachment texture {TEXTURE} is null. Make sure the texture is created before binding it to the framebuffer.", fb.DepthStencil.Texture);
                 return; // skip if texture is not found
             }
-            ref readonly var descDepth = ref renderPass.depth;
-            HxDebug.Assert(descDepth.level == mipLevel, "Depth attachment should have the same mip-level as color attachments");
+            ref readonly var descDepth = ref renderPass.Depth;
+            HxDebug.Assert(descDepth.Level == mipLevel, "Depth attachment should have the same mip-level as color attachments");
             depthAttachment = new()
             {
-                imageView = depthTexture.GetOrCreateVkImageViewForFramebuffer(vkContext, descDepth.level, descDepth.layer),
+                imageView = depthTexture.GetOrCreateVkImageViewForFramebuffer(vkContext, descDepth.Level, descDepth.Layer),
                 imageLayout = VK.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                 resolveMode = VK.VK_RESOLVE_MODE_NONE,
                 resolveImageView = VkImageView.Null,
                 resolveImageLayout = VK.VK_IMAGE_LAYOUT_UNDEFINED,
-                loadOp = descDepth.loadOp.ToVk(),
-                storeOp = descDepth.storeOp.ToVk(),
-                clearValue = new() { depthStencil = new(descDepth.clearDepth, descDepth.clearStencil) },
+                loadOp = descDepth.LoadOp.ToVk(),
+                storeOp = descDepth.StoreOp.ToVk(),
+                clearValue = new() { depthStencil = new(descDepth.ClearDepth, descDepth.ClearStencil) },
             };
             // handle depth MSAA
-            if (descDepth.storeOp == StoreOp.MsaaResolve)
+            if (descDepth.StoreOp == StoreOp.MsaaResolve)
             {
                 HxDebug.Assert(depthTexture.SampleCount == samples);
-                ref readonly var attachment = ref fb.depthStencil;
+                ref readonly var attachment = ref fb.DepthStencil;
                 HxDebug.Assert(!attachment.ResolveTexture.Empty, "Framebuffer depth attachment should contain a resolve texture");
                 var depthResolveTexture = vkContext.TexturesPool.Get(attachment.ResolveTexture);
                 HxDebug.Assert(depthResolveTexture != null, "Depth resolve texture is null. Make sure the texture is created before binding it to the framebuffer.");
@@ -258,16 +258,16 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
                     logger.LogError("Depth resolve texture {TEXTURE} is null. Make sure the texture is created before binding it to the framebuffer.", attachment.ResolveTexture);
                     return; // skip if texture is not found
                 }
-                depthAttachment.resolveImageView = depthResolveTexture.GetOrCreateVkImageViewForFramebuffer(vkContext, descDepth.level, descDepth.layer);
+                depthAttachment.resolveImageView = depthResolveTexture.GetOrCreateVkImageViewForFramebuffer(vkContext, descDepth.Level, descDepth.Layer);
                 depthAttachment.resolveImageLayout = VK.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-                depthAttachment.resolveMode = descDepth.resolveMode.ResolveModeToVkResolveModeFlagBits(vkContext.VkPhysicalDeviceVulkan12Properties.supportedDepthResolveModes);
+                depthAttachment.resolveMode = descDepth.ResolveMode.ResolveModeToVkResolveModeFlagBits(vkContext.VkPhysicalDeviceVulkan12Properties.supportedDepthResolveModes);
             }
             var dim = depthTexture.Extent;
 
             HxDebug.Assert(fbWidth > 0 && dim.width == fbWidth, "All attachments should have the same width");
             HxDebug.Assert(fbHeight > 0 && dim.height == fbHeight, "All attachments should have the same height");
 
-            mipLevel = descDepth.level;
+            mipLevel = descDepth.Level;
             fbWidth = dim.width;
             fbHeight = dim.height;
         }
@@ -279,14 +279,14 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
 
         var stencilAttachment = depthAttachment;
 
-        bool isStencilFormat = renderPass.stencil.loadOp != LoadOp.Invalid;
+        bool isStencilFormat = renderPass.Stencil.LoadOp != LoadOp.Invalid;
         unsafe
         {
             VkRenderingInfo renderingInfo = new()
             {
                 renderArea = new VkRect2D(new VkOffset2D((int32_t)scissor.X, (int32_t)scissor.Y), new VkExtent2D((int32_t)scissor.W, (int32_t)scissor.H)),
-                layerCount = renderPass.layerCount,
-                viewMask = renderPass.viewMask,
+                layerCount = renderPass.LayerCount,
+                viewMask = renderPass.ViewMask,
                 colorAttachmentCount = numFbColorAttachments,
                 pColorAttachments = colorAttachments,
                 pDepthAttachment = depthTex ? &depthAttachment : null,
@@ -381,7 +381,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
         HxDebug.Assert(rps != null);
 
         bool hasDepthAttachmentPipeline = rps!.Desc.DepthFormat != Format.Invalid;
-        bool hasDepthAttachmentPass = framebuffer.depthStencil.Texture.Valid;
+        bool hasDepthAttachmentPass = framebuffer.DepthStencil.Texture.Valid;
 
         if (hasDepthAttachmentPipeline != hasDepthAttachmentPass)
         {
@@ -662,13 +662,13 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
     {
         HxDebug.Assert(!isRendering);
 
-        for (uint32_t i = 0; i != Dependencies.LVK_MAX_SUBMIT_DEPENDENCIES && deps.textures[i]; i++)
+        for (uint32_t i = 0; i != Dependencies.MAX_SUBMIT_DEPENDENCIES && deps.Textures[i]; i++)
         {
-            UseComputeTexture(deps.textures[i], VkPipelineStageFlags2.ComputeShader);
+            UseComputeTexture(deps.Textures[i], VkPipelineStageFlags2.ComputeShader);
         }
-        for (uint32_t i = 0; i != Dependencies.LVK_MAX_SUBMIT_DEPENDENCIES && deps.buffers[i]; i++)
+        for (uint32_t i = 0; i != Dependencies.MAX_SUBMIT_DEPENDENCIES && deps.Buffers[i]; i++)
         {
-            var buf = vkContext.BuffersPool.Get(deps.buffers[i]);
+            var buf = vkContext.BuffersPool.Get(deps.Buffers[i]);
             HxDebug.Assert(buf && buf!.vkUsageFlags_.HasFlag(VK.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                            "Did you forget to specify BufferUsageBits_Storage on your buffer?");
             if (buf is null || !buf.Valid)

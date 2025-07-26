@@ -62,6 +62,7 @@ internal sealed partial class VulkanContext
     VkPhysicalDeviceVulkan13Features vkFeatures13 = new();
     VkPhysicalDeviceVulkan12Features vkFeatures12 = new();
     VkPhysicalDeviceVulkan11Features vkFeatures11 = new();
+    VkPhysicalDeviceMeshShaderFeaturesEXT vkFeatureMeshShader = new();
     VkPhysicalDeviceFeatures2 vkFeatures10 = new();
 
     VkPhysicalDeviceVulkan13Properties vkPhysicalDeviceVulkan13Properties = new();
@@ -87,6 +88,8 @@ internal sealed partial class VulkanContext
     public ref readonly VkPhysicalDeviceVulkan12Properties VkPhysicalDeviceVulkan12Properties => ref vkPhysicalDeviceVulkan12Properties;
 
     public ref readonly VkPhysicalDeviceVulkan13Properties VkPhysicalDeviceVulkan13Properties => ref vkPhysicalDeviceVulkan13Properties;
+
+    public bool SupportMeshShader => vkFeatureMeshShader.meshShader;
 
     public IReadOnlyList<VkFormat> DeviceDepthFormats => deviceDepthFormats.AsReadOnly();
     public IReadOnlyList<VkSurfaceFormatKHR> DeviceSurfaceFormats => deviceSurfaceFormats.AsReadOnly();
@@ -663,9 +666,11 @@ internal sealed partial class VulkanContext
 
         {
             // Get features and properties of the physical device and create the logical device
-            VkPhysicalDeviceVulkan13Features features1_3 = new();
+            // VkPhysicalDeviceMeshShaderFeaturesEXT meshShaderFeatures = new();
+            VkPhysicalDeviceVulkan13Features features1_3 = new() { pNext = null };
             VkPhysicalDeviceVulkan12Features features1_2 = new() { pNext = &features1_3 };
             VkPhysicalDeviceVulkan11Features features1_1 = new() { pNext = &features1_2 };
+          
             VkPhysicalDeviceFeatures2 deviceFeatures2 = new() { pNext = &features1_1 };
 
             void** features_chain = &features1_2.pNext;
@@ -688,7 +693,10 @@ internal sealed partial class VulkanContext
             vkFeatures11 = features1_1;
             vkFeatures12 = features1_2;
             vkFeatures13 = features1_3;
+            //vkFeatureMeshShader = meshShaderFeatures;
 
+            GraphicsSettings.SupportMeshShader = vkFeatureMeshShader.meshShader;
+            // VkPhysicalDeviceMeshShaderPropertiesEXT meshShaderProps = new();
             VkPhysicalDeviceVulkan13Properties deviceProps1_3 = new();
             VkPhysicalDeviceVulkan12Properties deviceProps1_2 = new()
             {
@@ -759,11 +767,11 @@ internal sealed partial class VulkanContext
             uint32_t pixel = 0xFF000000;
             var result = CreateTexture(new TextureDesc
             {
-                format = Format.RGBA_UN8,
-                dimensions = new(1, 1, 1),
-                usage = TextureUsageBits.Sampled | TextureUsageBits.Storage,
-                data = (nint)(void*)&pixel,
-                dataSize = sizeof(uint32_t), // 1x1 pixel RGBA
+                Format = Format.RGBA_UN8,
+                Dimensions = new(1, 1, 1),
+                Usage = TextureUsageBits.Sampled | TextureUsageBits.Storage,
+                Data = (nint)(void*)&pixel,
+                DataSize = sizeof(uint32_t), // 1x1 pixel RGBA
             }, out var texture, "Dummy 1x1 (black)");
             if (result != ResultCode.Ok)
             {
@@ -787,7 +795,7 @@ internal sealed partial class VulkanContext
                 compareEnable = VK_BOOL.False,
                 compareOp = VK.VK_COMPARE_OP_ALWAYS,
                 minLod = 0.0f,
-                maxLod = (Constants.LVK_MAX_MIP_LEVELS - 1),
+                maxLod = (Constants.MAX_MIP_LEVELS - 1),
                 borderColor = VK.VK_BORDER_COLOR_INT_OPAQUE_BLACK,
                 unnormalizedCoordinates = VK_BOOL.False,
             }, Format.Invalid, out var sampler, "Sampler: default");
@@ -1563,11 +1571,11 @@ internal sealed partial class VulkanContext
             HxDebug.Assert(vertModule || meshModule);
             HxDebug.Assert(fragModule);
 
-            if (tescModule || teseModule || desc.patchControlPoints > 0)
+            if (tescModule || teseModule || desc.PatchControlPoints > 0)
             {
                 HxDebug.Assert(tescModule && teseModule, "Both tessellation control and evaluation shaders should be provided");
-                HxDebug.Assert(desc.patchControlPoints > 0 &&
-                           desc.patchControlPoints <= vkPhysicalDeviceProperties2.properties.limits.maxTessellationPatchSize);
+                HxDebug.Assert(desc.PatchControlPoints > 0 &&
+                           desc.PatchControlPoints <= vkPhysicalDeviceProperties2.properties.limits.maxTessellationPatchSize);
             }
             using var pBindings = MemoryMarshal.CreateFromPinnedArray(rps.VkBindings, 0, (int)rps.NumBindings).Pin();
 
@@ -1581,7 +1589,7 @@ internal sealed partial class VulkanContext
                 pVertexAttributeDescriptions = rps.NumAttributes > 0 ? (VkVertexInputAttributeDescription*)pAttributes.Pointer : null,
             };
 
-            var entries = stackalloc VkSpecializationMapEntry[Constants.LVK_SPECIALIZATION_CONSTANTS_MAX];
+            var entries = stackalloc VkSpecializationMapEntry[Constants.SPECIALIZATION_CONSTANTS_MAX];
             using var pData = desc.SpecInfo.Data.Pin();
             VkSpecializationInfo si = HxVkUtils.GetPipelineShaderStageSpecializationInfo(desc.SpecInfo, entries, pData.Pointer);
             // create pipeline layout
@@ -1620,9 +1628,9 @@ internal sealed partial class VulkanContext
                     pPushConstantRanges = pushConstantsSize > 0 ? &range : null,
                 };
                 VK.vkCreatePipelineLayout(vkDevice, &ci, null, &layout).CheckResult();
-                if (GraphicsSettings.EnableDebug && !string.IsNullOrEmpty(desc.debugName))
+                if (GraphicsSettings.EnableDebug && !string.IsNullOrEmpty(desc.DebugName))
                 {
-                    vkDevice.SetDebugObjectName(VK.VK_OBJECT_TYPE_PIPELINE_LAYOUT, (nuint)layout.Handle, $"Pipeline Layout: {desc.debugName}");
+                    vkDevice.SetDebugObjectName(VK.VK_OBJECT_TYPE_PIPELINE_LAYOUT, (nuint)layout.Handle, $"Pipeline Layout: {desc.DebugName}");
                 }
             }
 
@@ -1640,20 +1648,20 @@ internal sealed partial class VulkanContext
                 // from Vulkan 1.3 or VK_EXT_extended_dynamic_state2
                 .DynamicState(VK.VK_DYNAMIC_STATE_DEPTH_BIAS_ENABLE)
                 .PrimitiveTopology(desc.Topology.ToVk())
-                .RasterizationSamples(HxVkUtils.GetVulkanSampleCountFlags(desc.samplesCount, GetFramebufferMSAABitMaskVK()), desc.minSampleShading)
+                .RasterizationSamples(HxVkUtils.GetVulkanSampleCountFlags(desc.SamplesCount, GetFramebufferMSAABitMaskVK()), desc.MinSampleShading)
                 .PolygonMode(desc.PolygonMode.ToVk())
                 .StencilStateOps(VK.VK_STENCIL_FACE_FRONT_BIT,
-                                 desc.frontFaceStencil.StencilFailureOp.ToVk(),
-                                 desc.frontFaceStencil.DepthStencilPassOp.ToVk(),
-                                 desc.frontFaceStencil.DepthFailureOp.ToVk(),
-                                 desc.frontFaceStencil.StencilCompareOp.ToVk())
+                                 desc.FrontFaceStencil.StencilFailureOp.ToVk(),
+                                 desc.FrontFaceStencil.DepthStencilPassOp.ToVk(),
+                                 desc.FrontFaceStencil.DepthFailureOp.ToVk(),
+                                 desc.FrontFaceStencil.StencilCompareOp.ToVk())
                 .StencilStateOps(VK.VK_STENCIL_FACE_BACK_BIT,
-                                 desc.backFaceStencil.StencilFailureOp.ToVk(),
-                                 desc.backFaceStencil.DepthStencilPassOp.ToVk(),
-                                 desc.backFaceStencil.DepthFailureOp.ToVk(),
-                                 desc.backFaceStencil.StencilCompareOp.ToVk())
-                .StencilMasks(VK.VK_STENCIL_FACE_FRONT_BIT, 0xFF, desc.frontFaceStencil.WriteMask, desc.frontFaceStencil.ReadMask)
-                .StencilMasks(VK.VK_STENCIL_FACE_BACK_BIT, 0xFF, desc.backFaceStencil.WriteMask, desc.backFaceStencil.ReadMask)
+                                 desc.BackFaceStencil.StencilFailureOp.ToVk(),
+                                 desc.BackFaceStencil.DepthStencilPassOp.ToVk(),
+                                 desc.BackFaceStencil.DepthFailureOp.ToVk(),
+                                 desc.BackFaceStencil.StencilCompareOp.ToVk())
+                .StencilMasks(VK.VK_STENCIL_FACE_FRONT_BIT, 0xFF, desc.FrontFaceStencil.WriteMask, desc.FrontFaceStencil.ReadMask)
+                .StencilMasks(VK.VK_STENCIL_FACE_BACK_BIT, 0xFF, desc.BackFaceStencil.WriteMask, desc.BackFaceStencil.ReadMask)
                 .ShaderStage(taskModule
                                  ? HxVkUtils.GetPipelineShaderStageCreateInfo(VK.VK_SHADER_STAGE_TASK_BIT_EXT, taskModule!.ShaderModule, desc.EntryPointTask.ToVkUtf8ReadOnlyString(), &si)
                                  : new VkPipelineShaderStageCreateInfo { module = VkShaderModule.Null })
@@ -1674,8 +1682,8 @@ internal sealed partial class VulkanContext
                 .ColorAttachments(colorBlendAttachmentStates, colorAttachmentFormats, numColorAttachments)
                 .DepthAttachmentFormat(desc.DepthFormat.ToVk())
                 .StencilAttachmentFormat(desc.StencilFormat.ToVk())
-                .PatchControlPoints(desc.patchControlPoints)
-                .Build(vkDevice, PipelineCache, layout, out pipeline, desc.debugName);
+                .PatchControlPoints(desc.PatchControlPoints)
+                .Build(vkDevice, PipelineCache, layout, out pipeline, desc.DebugName);
 
             rps.Pipeline = pipeline;
             rps.PipelineLayout = layout;
@@ -1724,7 +1732,7 @@ internal sealed partial class VulkanContext
             HxDebug.Assert(sm is not null && sm.Valid);
             unsafe
             {
-                var entries = stackalloc VkSpecializationMapEntry[Constants.LVK_SPECIALIZATION_CONSTANTS_MAX];
+                var entries = stackalloc VkSpecializationMapEntry[Constants.SPECIALIZATION_CONSTANTS_MAX];
                 using var pData = cps.Desc.SpecInfo.Data.Pin();
                 var siComp = HxVkUtils.GetPipelineShaderStageSpecializationInfo(cps.Desc.SpecInfo, entries, pData.Pointer);
 
@@ -1746,13 +1754,13 @@ internal sealed partial class VulkanContext
                         pPushConstantRanges = &range,
                     };
                     VK.vkCreatePipelineLayout(vkDevice, &ci, null, out cps.PipelineLayout).CheckResult();
-                    if (GraphicsSettings.EnableDebug && !string.IsNullOrEmpty(cps.Desc.debugName))
+                    if (GraphicsSettings.EnableDebug && !string.IsNullOrEmpty(cps.Desc.DebugName))
                     {
-                        vkDevice.SetDebugObjectName(VK.VK_OBJECT_TYPE_PIPELINE_LAYOUT, (nuint)cps.PipelineLayout, $"Pipeline Layout: {cps.Desc.debugName}");
+                        vkDevice.SetDebugObjectName(VK.VK_OBJECT_TYPE_PIPELINE_LAYOUT, (nuint)cps.PipelineLayout, $"Pipeline Layout: {cps.Desc.DebugName}");
                     }
                 }
                 {
-                    VkUtf8ReadOnlyString pEntryPoint = cps.Desc.entryPoint.ToVkUtf8ReadOnlyString();
+                    VkUtf8ReadOnlyString pEntryPoint = cps.Desc.EntryPoint.ToVkUtf8ReadOnlyString();
                     VkComputePipelineCreateInfo ci = new()
                     {
                         flags = 0,
@@ -1764,9 +1772,9 @@ internal sealed partial class VulkanContext
                     VkPipeline pipeline = VkPipeline.Null;
                     VK.vkCreateComputePipelines(vkDevice, PipelineCache, 1, &ci, null, &pipeline).CheckResult();
                     cps.Pipeline = pipeline;
-                    if (GraphicsSettings.EnableDebug && !string.IsNullOrEmpty(cps.Desc.debugName))
+                    if (GraphicsSettings.EnableDebug && !string.IsNullOrEmpty(cps.Desc.DebugName))
                     {
-                        vkDevice.SetDebugObjectName(VK.VK_OBJECT_TYPE_PIPELINE, (nuint)cps.Pipeline, cps.Desc.debugName);
+                        vkDevice.SetDebugObjectName(VK.VK_OBJECT_TYPE_PIPELINE, (nuint)cps.Pipeline, cps.Desc.DebugName);
                     }
                 }
             }

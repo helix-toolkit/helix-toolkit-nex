@@ -442,23 +442,23 @@ internal class HxVkUtils
 
         ref TextureFormatProperties props = ref TextureFormatProperties.GetProperty(format);
 
-        if (!props.compressed)
+        if (!props.Compressed)
         {
-            return props.bytesPerBlock * levelWidth * levelHeight;
+            return props.BytesPerBlock * levelWidth * levelHeight;
         }
 
-        uint32_t blockWidth = Math.Max(props.blockWidth, 1u);
-        uint32_t blockHeight = Math.Max(props.blockHeight, 1u);
+        uint32_t blockWidth = Math.Max(props.BlockWidth, 1u);
+        uint32_t blockHeight = Math.Max(props.BlockHeight, 1u);
         uint32_t widthInBlocks = (levelWidth + blockWidth - 1) / blockWidth;
         uint32_t heightInBlocks = (levelHeight + blockHeight - 1) / blockHeight;
-        return widthInBlocks * heightInBlocks * props.bytesPerBlock;
+        return widthInBlocks * heightInBlocks * props.BytesPerBlock;
     }
 
     public static uint32_t GetTextureBytesPerPlane(uint32_t width, uint32_t height, Format format, uint32_t plane)
     {
         ref var props = ref TextureFormatProperties.GetProperty(format);
 
-        HxDebug.Assert(plane < props.numPlanes);
+        HxDebug.Assert(plane < props.NumPlanes);
 
         return format switch
         {

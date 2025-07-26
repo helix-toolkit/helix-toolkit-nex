@@ -7,7 +7,6 @@ using SDL3;
 using System.Diagnostics;
 using System.Numerics;
 using Vortice.Vulkan;
-using static SDL3.SDL3;
 
 public class Program
 {
@@ -68,44 +67,26 @@ public class Program
             base.Initialize();
             vkContext = VulkanBuilder.Create(new VulkanContextConfig
             {
-                TerminateOnValidationError = true,
-                OnCreateSurface = (instance) =>
-                {
-                    unsafe
-                    {
-                        VkSurfaceKHR surface;
-                        if (!SDL_Vulkan_CreateSurface(MainWindow.Instance, instance, 0, (ulong**)&surface))
-                        {
-                            throw new Exception("SDL: failed to create vulkan surface");
-                        }
-                        return surface;
-                    }
-                },
+                TerminateOnValidationError = true,            
+                OnCreateSurface = CreateSurface,
             }, MainWindow.Instance, 0);
             var windowSize = MainWindow.Size;
             vkContext.RecreateSwapchain(windowSize.Width, windowSize.Height);
-            unsafe
+            vkContext.CreateShaderModuleGlsl(vs, ShaderStage.Vertex, out var vsModule).CheckResult();
+            vkContext.CreateShaderModuleGlsl(ps, ShaderStage.Fragment, out var psModule).CheckResult();
+            var pipelineDesc = new RenderPipelineDesc
             {
-                var vsBytes = vs.ToArray();
-                var psBytes = ps.ToArray();
-                using var pVsBytes = vsBytes.Pin();
-                using var pPsBytes = psBytes.Pin();
-                vkContext.CreateShaderModule(new ShaderModuleDesc() { Data = (nint)pVsBytes.Pointer, DataSize = (uint)vs.Length, Stage = ShaderStage.Vertex, DataType = ShaderDataType.Glsl, DebugName = "vs" }, out var vsModule).CheckResult();
-                vkContext.CreateShaderModule(new ShaderModuleDesc() { Data = (nint)pPsBytes.Pointer, DataSize = (uint)ps.Length, Stage = ShaderStage.Fragment, DataType = ShaderDataType.Glsl, DebugName = "ps" }, out var psModule).CheckResult();
-                var pipelineDesc = new RenderPipelineDesc
-                {
-                    SmVert = vsModule,
-                    SmFrag = psModule,                   
-                    Topology = Topology.Triangle,                 
-                };
-                pipelineDesc.Color[0].Format = vkContext.GetSwapchainFormat();
-                vkContext.CreateRenderPipeline(pipelineDesc, out renderPipeline).CheckResult();
-            }
+                SmVert = vsModule,
+                SmFrag = psModule,
+                Topology = Topology.Triangle,
+            };
+            pipelineDesc.Color[0].Format = vkContext.GetSwapchainFormat();
+            vkContext.CreateRenderPipeline(pipelineDesc, out renderPipeline).CheckResult();
 
-            pass.color[0] = new RenderPass.AttachmentDesc
+            pass.Colors[0] = new RenderPass.AttachmentDesc
             {
-                clearColor = new Color4(0.1f, 0.2f, 0.3f, 1.0f),
-                loadOp = LoadOp.Clear,
+                ClearColor = new Color4(0.1f, 0.2f, 0.3f, 1.0f),
+                LoadOp = LoadOp.Clear,
             };
         }
 
@@ -126,14 +107,14 @@ public class Program
                 return; // No swapchain texture available, nothing to render to.
             }
             var cmdBuffer = vkContext!.AcquireCommandBuffer();
-            frameBuffer.color[0].Texture = tex;
-            //pass.color[0].clearColor = new Color4((frameCount % 1000) / 1000f, 0.2f, 0.3f, 1.0f);     
+            frameBuffer.Colors[0].Texture = tex;
+            pass.Colors[0].ClearColor = new Color4((frameCount % 1000) / 1000f, 0.2f, 0.3f, 1.0f);     
             cmdBuffer.BeginRendering(pass, frameBuffer, Dependencies.Empty);
             cmdBuffer.BindRenderPipeline(renderPipeline);
             var aspect = MainWindow.Size.Width / (float)MainWindow.Size.Height;
             var transform = Matrix4x4.CreateFromAxisAngle(Vector3.UnitY, frameCount / 1000f);
             var cam = Matrix4x4.CreateLookAt((-Vector3.UnitZ * 10).TransformCoordinate(transform), Vector3.Zero, Vector3.UnitY) * Matrix4x4.CreateOrthographic(2, 2 * aspect, 0.1f, 100f);
-            
+
             cmdBuffer.PushConstants(cam);
             cmdBuffer.Draw(3); // Draw 3 vertices (a triangle)
             cmdBuffer.EndRendering();

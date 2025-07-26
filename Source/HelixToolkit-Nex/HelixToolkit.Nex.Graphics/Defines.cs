@@ -1,11 +1,13 @@
-﻿namespace HelixToolkit.Nex.Graphics;
+﻿using System.Diagnostics.CodeAnalysis;
+
+namespace HelixToolkit.Nex.Graphics;
 #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
 public static class Constants
 {
     public const uint8 MAX_COLOR_ATTACHMENTS = 8;
-    public const uint8 LVK_MAX_MIP_LEVELS = 16;
-    public const uint8 LVK_SPECIALIZATION_CONSTANTS_MAX = 16;
-    public const uint8 LVK_MAX_RAY_TRACING_SHADER_GROUP_SIZE = 4;
+    public const uint8 MAX_MIP_LEVELS = 16;
+    public const uint8 SPECIALIZATION_CONSTANTS_MAX = 16;
+    public const uint8 MAX_RAY_TRACING_SHADER_GROUP_SIZE = 4;
 }
 
 
@@ -195,7 +197,7 @@ public struct SamplerStateDesc()
     public uint8_t MipLodMax = 15;
     public uint8_t MaxAnisotropic = 1;
     public bool DepthCompareEnabled = false;
-    public string? DebugName;
+    public string DebugName = string.Empty;
 }
 
 public struct StencilState()
@@ -218,8 +220,8 @@ public struct ComputePipelineDesc()
 {
     public ShaderModuleHandle smComp;
     public SpecializationConstantDesc SpecInfo;
-    public string entryPoint = "main";
-    public string debugName = string.Empty;
+    public string EntryPoint = "main";
+    public string DebugName = string.Empty;
 }
 
 public enum PolygonMode : uint8_t
@@ -465,7 +467,7 @@ public struct ShaderModuleDesc()
     public size_t DataSize;
 
     public ShaderDefine[] Defines = [];
-    public string? DebugName;
+    public string DebugName = string.Empty;
 }
 
 public struct SpecializationConstantEntry()
@@ -519,21 +521,21 @@ public struct RenderPipelineDesc()
     public string EntryPointFrag = "main";
 
     public readonly ColorAttachment[] Color = new ColorAttachment[Constants.MAX_COLOR_ATTACHMENTS];
-    public Format DepthFormat;
-    public Format StencilFormat;
+    public Format DepthFormat = Format.Invalid;
+    public Format StencilFormat = Format.Invalid;
 
-    public CullMode CullMode;
-    public WindingMode FrontFaceWinding;
-    public PolygonMode PolygonMode;
+    public CullMode CullMode = CullMode.Back;
+    public WindingMode FrontFaceWinding = WindingMode.CCW;
+    public PolygonMode PolygonMode = PolygonMode.Fill;
 
-    public StencilState backFaceStencil;
-    public StencilState frontFaceStencil;
+    public StencilState BackFaceStencil;
+    public StencilState FrontFaceStencil;
 
-    public uint32_t samplesCount = 1u;
-    public uint32_t patchControlPoints;
-    public float minSampleShading = 0.0f;
+    public uint32_t SamplesCount = 1u;
+    public uint32_t PatchControlPoints = 0;
+    public float MinSampleShading = 0.0f;
 
-    public string debugName = string.Empty;
+    public string DebugName = string.Empty;
 
     public readonly uint32_t GetNumColorAttachments()
     {
@@ -548,32 +550,32 @@ public struct RenderPipelineDesc()
     }
 }
 
-
-
-public unsafe struct RenderPass()
+public sealed class RenderPass()
 {
     public struct AttachmentDesc()
     {
-        public LoadOp loadOp = LoadOp.Invalid;
-        public StoreOp storeOp = StoreOp.Store;
-        public ResolveMode resolveMode = ResolveMode.Average;
-        public uint8_t layer = 0;
-        public uint8_t level = 0;
-        public Color4 clearColor = new(0, 0, 0, 0);
-        public float clearDepth = 1.0f;
-        public uint32_t clearStencil = 0;
+        public LoadOp LoadOp = LoadOp.Invalid;
+        public StoreOp StoreOp = StoreOp.Store;
+        public ResolveMode ResolveMode = ResolveMode.Average;
+        public uint8_t Layer = 0;
+        public uint8_t Level = 0;
+        public Color4 ClearColor = new(0, 0, 0, 0);
+        public float ClearDepth = 1.0f;
+        public uint32_t ClearStencil = 0;
     }
-    public readonly AttachmentDesc[] color = new AttachmentDesc[Constants.MAX_COLOR_ATTACHMENTS];
-    public AttachmentDesc depth = new() { loadOp = LoadOp.DontCare, storeOp = StoreOp.DontCare };
-    public AttachmentDesc stencil = new() { loadOp = LoadOp.Invalid, storeOp = StoreOp.DontCare };
-    public uint32_t layerCount = 1;
-    public uint32_t viewMask;
 
-    public readonly uint32_t GetNumColorAttachments()
+    public readonly AttachmentDesc[] Colors = new AttachmentDesc[Constants.MAX_COLOR_ATTACHMENTS];
+
+    public AttachmentDesc Depth = new() { LoadOp = LoadOp.DontCare, StoreOp = StoreOp.DontCare };
+    public AttachmentDesc Stencil = new() { LoadOp = LoadOp.Invalid, StoreOp = StoreOp.DontCare };
+    public uint32_t LayerCount = 1;
+    public uint32_t ViewMask;
+
+    public uint32_t GetNumColorAttachments()
     {
         for (uint32_t i = 0; i < Constants.MAX_COLOR_ATTACHMENTS; i++)
         {
-            if (color[i].loadOp == LoadOp.Invalid)
+            if (Colors[i].LoadOp == LoadOp.Invalid)
             {
                 return i;
             }
@@ -582,7 +584,7 @@ public unsafe struct RenderPass()
     }
 }
 
-public struct Framebuffer
+public sealed class Framebuffer
 {
     public struct AttachmentDesc()
     {
@@ -590,26 +592,16 @@ public struct Framebuffer
         public TextureHandle ResolveTexture = TextureHandle.Null;
     };
 
-    public readonly AttachmentDesc[] color = new AttachmentDesc[Constants.MAX_COLOR_ATTACHMENTS];
-    public AttachmentDesc depthStencil;
+    public readonly AttachmentDesc[] Colors = new AttachmentDesc[Constants.MAX_COLOR_ATTACHMENTS];
+    public AttachmentDesc DepthStencil = new();
 
-    public string debugName = string.Empty;
+    public string DebugName = string.Empty;
 
-#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
-    public Framebuffer()
-#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
+    public uint32_t GetNumColorAttachments()
     {
-    }
-
-    public readonly uint32_t GetNumColorAttachments()
-    {
-        if (color is null)
-        {
-            return 0;
-        }
         for (uint32_t i = 0; i < Constants.MAX_COLOR_ATTACHMENTS; i++)
         {
-            if (!color[i].Texture.Valid)
+            if (!Colors[i].Texture.Valid)
             {
                 return i;
             }
@@ -637,11 +629,11 @@ public enum BufferUsageBits : uint8_t
 
 public struct BufferDesc(BufferUsageBits usage, StorageType storage, nint data, size_t dataSize, string? debugName = null)
 {
-    public BufferUsageBits usage = usage;
-    public StorageType storage = storage;
-    public nint data = data;
-    public size_t dataSize = dataSize;
-    public string? debugName = debugName;
+    public BufferUsageBits Usage = usage;
+    public StorageType Storage = storage;
+    public nint Data = data;
+    public size_t DataSize = dataSize;
+    public string DebugName = debugName ?? string.Empty;
 }
 
 public struct Offset3D(int32_t x = 0, int32_t y = 0, int32_t z = 0)
@@ -690,51 +682,51 @@ public enum Swizzle : uint8_t
 
 public struct ComponentMapping()
 {
-    public Swizzle r = Swizzle.Default;
-    public Swizzle g = Swizzle.Default;
-    public Swizzle b = Swizzle.Default;
-    public Swizzle a = Swizzle.Default;
+    public Swizzle R = Swizzle.Default;
+    public Swizzle G = Swizzle.Default;
+    public Swizzle B = Swizzle.Default;
+    public Swizzle A = Swizzle.Default;
     public readonly bool Identity()
     {
-        return r == Swizzle.Default && g == Swizzle.Default && b == Swizzle.Default && a == Swizzle.Default;
+        return R == Swizzle.Default && G == Swizzle.Default && B == Swizzle.Default && A == Swizzle.Default;
     }
 }
 
 public struct TextureDesc()
 {
-    public TextureType type = TextureType.Texture2D;
-    public Format format = Format.Invalid;
-    public Dimensions dimensions = new() { Width = 1, Height = 1, Depth = 1 };
-    public uint32_t numLayers = 1;
-    public uint32_t numSamples = 1;
-    public TextureUsageBits usage = TextureUsageBits.Sampled;
-    public uint32_t numMipLevels = 1;
-    public StorageType storage = StorageType.Device;
-    public ComponentMapping swizzle;
-    public nint data = nint.Zero;
-    public size_t dataSize = 0; // size of the data to upload, if not null
-    public uint32_t dataNumMipLevels = 1; // how many mip-levels we want to upload
-    public bool generateMipmaps = false; // generate mip-levels immediately, valid only with non-null data
-    public string debugName = string.Empty;
+    public TextureType Type = TextureType.Texture2D;
+    public Format Format = Format.Invalid;
+    public Dimensions Dimensions = new() { Width = 1, Height = 1, Depth = 1 };
+    public uint32_t NumLayers = 1;
+    public uint32_t NumSamples = 0;
+    public TextureUsageBits Usage = TextureUsageBits.Sampled;
+    public uint32_t NumMipLevels = 1;
+    public StorageType Storage = StorageType.Device;
+    public ComponentMapping Swizzle;
+    public nint Data = nint.Zero;
+    public size_t DataSize = 0; // size of the data to upload, if not null
+    public uint32_t DataNumMipLevels = 1; // how many mip-levels we want to upload
+    public bool GenerateMipmaps = false; // generate mip-levels immediately, valid only with non-null data
+    public string DebugName = string.Empty;
 }
 
 public struct TextureViewDesc()
 {
-    public TextureType type = TextureType.Texture2D;
-    public uint32_t layer;
-    public uint32_t numLayers = 1;
-    public uint32_t mipLevel;
-    public uint32_t numMipLevels = 1;
-    public ComponentMapping swizzle;
+    public TextureType Type = TextureType.Texture2D;
+    public uint32_t Layer;
+    public uint32_t NumLayers = 1;
+    public uint32_t MipLevel;
+    public uint32_t NumMipLevels = 1;
+    public ComponentMapping Swizzle;
 }
 
 public struct Dependencies()
 {
-    public const uint32_t LVK_MAX_SUBMIT_DEPENDENCIES = 4;
+    public const uint32_t MAX_SUBMIT_DEPENDENCIES = 4;
 
-    public readonly TextureHandle[] textures = new TextureHandle[LVK_MAX_SUBMIT_DEPENDENCIES];
+    public readonly TextureHandle[] Textures = new TextureHandle[MAX_SUBMIT_DEPENDENCIES];
 
-    public readonly BufferHandle[] buffers = new BufferHandle[LVK_MAX_SUBMIT_DEPENDENCIES];
+    public readonly BufferHandle[] Buffers = new BufferHandle[MAX_SUBMIT_DEPENDENCIES];
 
     public static readonly Dependencies Empty = new();
 }
@@ -742,21 +734,21 @@ public struct Dependencies()
 [StructLayout(LayoutKind.Sequential, Size = sizeof(uint64_t))]
 public struct SubmitHandle
 {
-    public uint32_t bufferIndex = 0;
-    public uint32_t submitId = 0;
+    public uint32_t BufferIndex = 0;
+    public uint32_t SubmitId = 0;
 
     public SubmitHandle() { }
 
     public SubmitHandle(uint64_t handle)
     {
         HxDebug.Assert(handle != 0, "Invalid submit handle");
-        bufferIndex = (uint32_t)(handle & 0xffffffff);
-        submitId = (uint32_t)(handle >> 32);
+        BufferIndex = (uint32_t)(handle & 0xffffffff);
+        SubmitId = (uint32_t)(handle >> 32);
     }
 
-    public readonly bool Empty => submitId == 0;
+    public readonly bool Empty => SubmitId == 0;
 
-    public readonly uint64_t Handle => ((uint64_t)submitId << 32) + bufferIndex;
+    public readonly uint64_t Handle => ((uint64_t)SubmitId << 32) + BufferIndex;
 
     public static readonly SubmitHandle Null = new();
 }
@@ -766,16 +758,16 @@ public struct SubmitHandle
 [StructLayout(LayoutKind.Explicit, Size = sizeof(uint32_t), Pack = 1)]
 public readonly struct TextureFormatProperties
 {
-    [FieldOffset(0)] public readonly Format format;
-    [FieldOffset(5)] public readonly uint8_t bytesPerBlock;
-    [FieldOffset(8)] public readonly uint8_t blockWidth;
-    [FieldOffset(11)] public readonly uint8_t blockHeight;
-    [FieldOffset(13)] public readonly uint8_t minBlocksX;
-    [FieldOffset(15)] public readonly uint8_t minBlocksY;
-    [FieldOffset(16)] public readonly bool depth;
-    [FieldOffset(17)] public readonly bool stencil;
-    [FieldOffset(18)] public readonly bool compressed;
-    [FieldOffset(20)] public readonly uint8_t numPlanes;
+    [FieldOffset(0)] public readonly Format Format;
+    [FieldOffset(5)] public readonly uint8_t BytesPerBlock;
+    [FieldOffset(8)] public readonly uint8_t BlockWidth;
+    [FieldOffset(11)] public readonly uint8_t BlockHeight;
+    [FieldOffset(13)] public readonly uint8_t MinBlocksX;
+    [FieldOffset(15)] public readonly uint8_t MinBlocksY;
+    [FieldOffset(16)] public readonly bool Depth;
+    [FieldOffset(17)] public readonly bool Stencil;
+    [FieldOffset(18)] public readonly bool Compressed;
+    [FieldOffset(20)] public readonly uint8_t NumPlanes;
 
     public TextureFormatProperties(Format format, uint8_t bytesPerBlock,
         uint8_t blockWidth = 1, uint8_t blockHeight = 1,
@@ -783,16 +775,16 @@ public readonly struct TextureFormatProperties
         bool depth = false, bool stencil = false,
         bool compressed = false, uint8_t numPlanes = 1)
     {
-        this.format = format;
-        this.bytesPerBlock = bytesPerBlock;
-        this.blockWidth = blockWidth;
-        this.blockHeight = blockHeight;
-        this.minBlocksX = minBlocksX;
-        this.minBlocksY = minBlocksY;
-        this.depth = depth;
-        this.stencil = stencil;
-        this.compressed = compressed;
-        this.numPlanes = numPlanes;
+        this.Format = format;
+        this.BytesPerBlock = bytesPerBlock;
+        this.BlockWidth = blockWidth;
+        this.BlockHeight = blockHeight;
+        this.MinBlocksX = minBlocksX;
+        this.MinBlocksY = minBlocksY;
+        this.Depth = depth;
+        this.Stencil = stencil;
+        this.Compressed = compressed;
+        this.NumPlanes = numPlanes;
     }
 
     public static readonly TextureFormatProperties[] Properties =
@@ -838,7 +830,7 @@ public readonly struct TextureFormatProperties
             throw new ArgumentOutOfRangeException(nameof(format), "Invalid texture format");
         }
         ref var props = ref Properties[(int)format];
-        HxDebug.Assert(props.format == format);
+        HxDebug.Assert(props.Format == format);
         return ref props;
     }
 };
@@ -847,26 +839,26 @@ public static class FormatExtensions
 {
     public static bool IsCompressedFormat(this Format format)
     {
-        return TextureFormatProperties.Properties[(int)format].compressed;
+        return TextureFormatProperties.Properties[(int)format].Compressed;
     }
     public static bool IsDepthFormat(this Format format)
     {
-        return TextureFormatProperties.Properties[(int)format].depth;
+        return TextureFormatProperties.Properties[(int)format].Depth;
     }
 
     public static bool IsDepthOrStencilFormat(this Format format)
     {
-        return (TextureFormatProperties.Properties[(int)format].depth || TextureFormatProperties.Properties[(int)format].stencil);
+        return (TextureFormatProperties.Properties[(int)format].Depth || TextureFormatProperties.Properties[(int)format].Stencil);
     }
 
     public static uint32_t GetNumImagePlanes(this Format format)
     {
-        return TextureFormatProperties.Properties[(int)format].numPlanes;
+        return TextureFormatProperties.Properties[(int)format].NumPlanes;
     }
 
     public static uint8_t GetBytesPerBlock(this Format format)
     {
-        return TextureFormatProperties.Properties[(int)format].bytesPerBlock;
+        return TextureFormatProperties.Properties[(int)format].BytesPerBlock;
     }
 
     public static uint32_t GetVertexFormatSize(this VertexFormat format)
@@ -904,17 +896,17 @@ public static class FormatExtensions
         uint32_t levelWidth = Math.Max(1u, width >> (int)level);
         uint32_t levelHeight = Math.Max(1u, height >> (int)level);
         ref var properties = ref TextureFormatProperties.Properties[(int)format];
-        if (properties.compressed)
+        if (properties.Compressed)
         {
-            uint32_t blockWidth = Math.Max(1u, properties.blockWidth);
-            uint32_t blockHeight = Math.Max(1u, properties.blockHeight);
+            uint32_t blockWidth = Math.Max(1u, properties.BlockWidth);
+            uint32_t blockHeight = Math.Max(1u, properties.BlockHeight);
             uint32_t numBlocksX = (levelWidth + blockWidth - 1) / blockWidth;
             uint32_t numBlocksY = (levelHeight + blockHeight - 1) / blockHeight;
-            return properties.bytesPerBlock * numBlocksX * numBlocksY;
+            return properties.BytesPerBlock * numBlocksX * numBlocksY;
         }
         else
         {
-            return properties.bytesPerBlock * levelWidth * levelHeight;
+            return properties.BytesPerBlock * levelWidth * levelHeight;
         }
     }
 

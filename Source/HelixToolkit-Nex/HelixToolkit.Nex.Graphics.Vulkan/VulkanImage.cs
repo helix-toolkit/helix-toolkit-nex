@@ -24,13 +24,13 @@ internal sealed class VulkanImage : IDisposable
 
     public uint32_t NumLevels { private set; get; } = 1u;
     public uint32_t NumLayers { private set; get; } = 1u;
-    public VkSampleCountFlags SampleCount { private set; get; } = VkSampleCountFlags.Count1;
+    public VkSampleCountFlags SampleCount { private set; get; } = VkSampleCountFlags.None;
     public bool IsDepthFormat { get; } = false;
     public bool IsStencilFormat { get; } = false;
     public readonly VkExtent3D Extent;
     public readonly VkImageType ImageType;
     public readonly VkFormat ImageFormat = VkFormat.Undefined;
-    public readonly VkImageView[][] imageViewForFramebuffer_ = new VkImageView[Constants.LVK_MAX_MIP_LEVELS][]; // max 6 faces for cubemap rendering
+    public readonly VkImageView[][] imageViewForFramebuffer_ = new VkImageView[Constants.MAX_MIP_LEVELS][]; // max 6 faces for cubemap rendering
     public readonly VkImageUsageFlags UsageFlags = 0;
     public VkImage Image => vkImage;
     // precached image views - owned by this VulkanImage
@@ -74,7 +74,7 @@ internal sealed class VulkanImage : IDisposable
         IsStencilFormat = isStencilFormat || format.IsStencilFormat();
         this.debugName = debugName;
 
-        for (int i = 0; i < Constants.LVK_MAX_MIP_LEVELS; i++)
+        for (int i = 0; i < Constants.MAX_MIP_LEVELS; i++)
         {
             imageViewForFramebuffer_[i] = new VkImageView[6];
             for (int j = 0; j < 6; j++)
@@ -491,10 +491,10 @@ internal sealed class VulkanImage : IDisposable
     // framebuffers can render only into one level/layer
     public VkImageView GetOrCreateVkImageViewForFramebuffer(VulkanContext ctx, uint8_t level, uint16_t layer)
     {
-        HxDebug.Assert(level < Constants.LVK_MAX_MIP_LEVELS);
+        HxDebug.Assert(level < Constants.MAX_MIP_LEVELS);
         HxDebug.Assert(layer < imageViewForFramebuffer_[0].Length);
 
-        if (level >= Constants.LVK_MAX_MIP_LEVELS || layer >= imageViewForFramebuffer_[0].Length)
+        if (level >= Constants.MAX_MIP_LEVELS || layer >= imageViewForFramebuffer_[0].Length)
         {
             return VkImageView.Null;
         }
@@ -574,7 +574,7 @@ internal sealed class VulkanImage : IDisposable
                     }, SubmitHandle.Null);
                 }
 
-                for (size_t i = 0; i < Constants.LVK_MAX_MIP_LEVELS; i++)
+                for (size_t i = 0; i < Constants.MAX_MIP_LEVELS; i++)
                 {
                     for (size_t j = 0; j < imageViewForFramebuffer_[0].Length; j++)
                     {

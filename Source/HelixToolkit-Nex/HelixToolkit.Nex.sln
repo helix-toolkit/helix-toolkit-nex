@@ -19,6 +19,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HelloTriangle", "Samples\He
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Application", "Samples\Application\Application.csproj", "{3F07EE1E-A973-4749-B506-8C6761EBE9ED}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RenderToCubeMap", "Samples\RenderToCubeMap\RenderToCubeMap.csproj", "{F67AA7EA-FB52-47AA-B65F-4774A4AEEB53}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -53,6 +55,10 @@ Global
 		{3F07EE1E-A973-4749-B506-8C6761EBE9ED}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3F07EE1E-A973-4749-B506-8C6761EBE9ED}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3F07EE1E-A973-4749-B506-8C6761EBE9ED}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F67AA7EA-FB52-47AA-B65F-4774A4AEEB53}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F67AA7EA-FB52-47AA-B65F-4774A4AEEB53}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F67AA7EA-FB52-47AA-B65F-4774A4AEEB53}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F67AA7EA-FB52-47AA-B65F-4774A4AEEB53}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -60,6 +66,7 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{3BF38992-949C-4603-AF03-C4E209F4FC55} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 		{3F07EE1E-A973-4749-B506-8C6761EBE9ED} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
+		{F67AA7EA-FB52-47AA-B65F-4774A4AEEB53} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {E5E7411B-7281-4FBB-8D21-475B6670439C}

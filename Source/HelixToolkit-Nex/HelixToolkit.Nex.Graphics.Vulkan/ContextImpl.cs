@@ -412,7 +412,7 @@ internal sealed partial class VulkanContext : IContext
         TextureDesc desc = requestedDesc;
         if (debugName is not null)
         {
-            desc.debugName = debugName;
+            desc.DebugName = debugName;
         }
 
         var getClosestDepthStencilFormat = new Func<Format, VkFormat>((desiredFormat) =>
@@ -433,12 +433,12 @@ internal sealed partial class VulkanContext : IContext
             // no matching found, choose the first supported format
             return !deviceDepthFormats.Empty ? deviceDepthFormats[0] : VK.VK_FORMAT_D24_UNORM_S8_UINT;
         });
-        VkFormat vkFormat = desc.format.IsDepthOrStencilFormat() ? getClosestDepthStencilFormat(desc.format)
-                                                                     : desc.format.ToVk();
+        VkFormat vkFormat = desc.Format.IsDepthOrStencilFormat() ? getClosestDepthStencilFormat(desc.Format)
+                                                                     : desc.Format.ToVk();
 
         HxDebug.Assert(vkFormat != VK.VK_FORMAT_UNDEFINED, "Invalid VkFormat value");
 
-        TextureType type = desc.type;
+        TextureType type = desc.Type;
         if (!(type == TextureType.Texture2D || type == TextureType.TextureCube || type == TextureType.Texture3D))
         {
             HxDebug.Assert(false, "Only 2D, 3D and Cube textures are supported");
@@ -446,70 +446,70 @@ internal sealed partial class VulkanContext : IContext
             return ResultCode.NotSupported;
         }
 
-        if (desc.numMipLevels == 0)
+        if (desc.NumMipLevels == 0)
         {
             HxDebug.Assert(false, "The number of mip levels specified must be greater than 0");
-            logger.LogWarning("The number of mip levels specified must be greater than 0 but is {LEVELS}", desc.numMipLevels);
-            desc.numMipLevels = 1;
+            logger.LogWarning("The number of mip levels specified must be greater than 0 but is {LEVELS}", desc.NumMipLevels);
+            desc.NumMipLevels = 1;
         }
 
-        if (desc.numSamples > 1 && desc.numMipLevels != 1)
+        if (desc.NumSamples > 1 && desc.NumMipLevels != 1)
         {
             HxDebug.Assert(false, "The number of mip levels for multisampled images should be 1");
-            logger.LogError("The number of mip levels for multisampled images should be 1 but is {LEVELS}", desc.numMipLevels);
+            logger.LogError("The number of mip levels for multisampled images should be 1 but is {LEVELS}", desc.NumMipLevels);
             return ResultCode.ArgumentError;
         }
 
-        if (desc.numSamples > 1 && type == TextureType.Texture3D)
+        if (desc.NumSamples > 1 && type == TextureType.Texture3D)
         {
             HxDebug.Assert(false, "Multisampled 3D images are not supported");
             logger.LogError("Multisampled 3D images are not supported. Current format: {FORMAT}", type);
             return ResultCode.NotSupported;
         }
 
-        if (!(desc.numMipLevels <= HxVkUtils.CalcNumMipLevels(desc.dimensions.Width, desc.dimensions.Height)))
+        if (!(desc.NumMipLevels <= HxVkUtils.CalcNumMipLevels(desc.Dimensions.Width, desc.Dimensions.Height)))
         {
             HxDebug.Assert(false, $"The number of specified mip-levels is greater than the maximum possible number of mip-levels.");
             logger.LogError("The number of specified mip-levels is greater than the maximum possible number of mip-levels. Current: {LEVELS} Max: {MAX_LEVELS}",
-                              desc.numMipLevels, HxVkUtils.CalcNumMipLevels(desc.dimensions.Width, desc.dimensions.Height));
+                              desc.NumMipLevels, HxVkUtils.CalcNumMipLevels(desc.Dimensions.Width, desc.Dimensions.Height));
             return ResultCode.ArgumentError;
         }
 
-        if (desc.usage == 0)
+        if (desc.Usage == 0)
         {
             HxDebug.Assert(false, "Texture usage flags are not set");
-            desc.usage = TextureUsageBits.Sampled;
+            desc.Usage = TextureUsageBits.Sampled;
         }
 
         /* Use staging device to transfer data into the image when the storage is private to the device */
-        VkImageUsageFlags usageFlags = (desc.storage == StorageType.Device) ? VK.VK_IMAGE_USAGE_TRANSFER_DST_BIT : 0;
+        VkImageUsageFlags usageFlags = (desc.Storage == StorageType.Device) ? VK.VK_IMAGE_USAGE_TRANSFER_DST_BIT : 0;
 
-        if (desc.usage.HasFlag(TextureUsageBits.Sampled))
+        if (desc.Usage.HasFlag(TextureUsageBits.Sampled))
         {
             usageFlags |= VK.VK_IMAGE_USAGE_SAMPLED_BIT;
         }
-        if (desc.usage.HasFlag(TextureUsageBits.Storage))
+        if (desc.Usage.HasFlag(TextureUsageBits.Storage))
         {
-            if (desc.format.IsDepthOrStencilFormat())
+            if (desc.Format.IsDepthOrStencilFormat())
             {
                 HxDebug.Assert(false, "Depth stencil buffer cannot have TextureUsageBits.Storage as usage.");
                 logger.LogError("Depth stencil buffer cannot have TextureUsageBits.Storage as usage.");
                 return ResultCode.ArgumentError;
             }
-            HxDebug.Assert(desc.numSamples <= 1, "Storage images cannot be multisampled");
+            HxDebug.Assert(desc.NumSamples <= 1, "Storage images cannot be multisampled");
             usageFlags |= VK.VK_IMAGE_USAGE_STORAGE_BIT;
         }
-        if (desc.usage.HasFlag(TextureUsageBits.Attachment))
+        if (desc.Usage.HasFlag(TextureUsageBits.Attachment))
         {
-            usageFlags |= desc.format.IsDepthOrStencilFormat() ? VK.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
+            usageFlags |= desc.Format.IsDepthOrStencilFormat() ? VK.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
                                                                    : VK.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-            if (desc.storage == StorageType.Memoryless)
+            if (desc.Storage == StorageType.Memoryless)
             {
                 usageFlags |= VK.VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT;
             }
         }
 
-        if (desc.storage != StorageType.Memoryless)
+        if (desc.Storage != StorageType.Memoryless)
         {
             // For now, always set this flag so we can read it back
             usageFlags |= VK.VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
@@ -517,19 +517,19 @@ internal sealed partial class VulkanContext : IContext
 
         HxDebug.Assert(usageFlags != 0, "Invalid usage flags");
 
-        VkMemoryPropertyFlags memFlags = desc.storage.ToVkMemoryPropertyFlags();
+        VkMemoryPropertyFlags memFlags = desc.Storage.ToVkMemoryPropertyFlags();
 
         VkImageCreateFlags vkCreateFlags = 0;
         VkImageViewType vkImageViewType;
         VkImageType vkImageType;
-        VkSampleCountFlags vkSamples = VK.VK_SAMPLE_COUNT_1_BIT;
-        uint32_t numLayers = desc.numLayers;
-        switch (desc.type)
+        VkSampleCountFlags vkSamples = VkSampleCountFlags.Count1;
+        uint32_t numLayers = desc.NumLayers;
+        switch (desc.Type)
         {
             case TextureType.Texture2D:
                 vkImageViewType = numLayers > 1 ? VK.VK_IMAGE_VIEW_TYPE_2D_ARRAY : VK.VK_IMAGE_VIEW_TYPE_2D;
                 vkImageType = VK.VK_IMAGE_TYPE_2D;
-                vkSamples = HxVkUtils.GetVulkanSampleCountFlags(desc.numSamples, GetFramebufferMSAABitMaskVK());
+                vkSamples = HxVkUtils.GetVulkanSampleCountFlags(desc.NumSamples, GetFramebufferMSAABitMaskVK());
                 break;
             case TextureType.Texture3D:
                 vkImageViewType = VK.VK_IMAGE_VIEW_TYPE_3D;
@@ -543,13 +543,13 @@ internal sealed partial class VulkanContext : IContext
                 break;
             default:
                 HxDebug.Assert(false, "Code should NOT be reached");
-                logger.LogError("Unsupported texture type: {TYPE}", desc.type);
+                logger.LogError("Unsupported texture type: {TYPE}", desc.Type);
                 return ResultCode.NotSupported;
         }
 
-        VkExtent3D vkExtent = new(desc.dimensions.Width, desc.dimensions.Height, desc.dimensions.Depth);
+        VkExtent3D vkExtent = new(desc.Dimensions.Width, desc.Dimensions.Height, desc.Dimensions.Depth);
 
-        uint32_t numLevels = desc.numMipLevels;
+        uint32_t numLevels = desc.NumMipLevels;
 
         if (!(HxVkUtils.ValidateImageLimits(vkImageType, vkSamples, vkExtent, GetVkPhysicalDeviceProperties().limits, out var result)))
         {
@@ -566,13 +566,13 @@ internal sealed partial class VulkanContext : IContext
         VulkanImage image = new(this, usageFlags, vkExtent, vkImageType, vkFormat, vkSamples, numLevels, numLayers, vkFormat.IsDepthFormat(), vkFormat.IsStencilFormat(), debugName);
         VkComponentMapping mapping = new()
         {
-            r = desc.swizzle.r.ToVk(),
-            g = desc.swizzle.g.ToVk(),
-            b = desc.swizzle.b.ToVk(),
-            a = desc.swizzle.a.ToVk(),
+            r = desc.Swizzle.R.ToVk(),
+            g = desc.Swizzle.G.ToVk(),
+            b = desc.Swizzle.B.ToVk(),
+            a = desc.Swizzle.A.ToVk(),
         };
 
-        uint32_t numPlanes = desc.format.GetNumImagePlanes();
+        uint32_t numPlanes = desc.Format.GetNumImagePlanes();
         bool isDisjoint = numPlanes > 1;
 
         if (isDisjoint)
@@ -586,7 +586,7 @@ internal sealed partial class VulkanContext : IContext
             AwaitingNewImmutableSamplers = true;
         }
 
-        VkSamplerYcbcrConversionInfo? ycbcrInfo = isDisjoint ? GetOrCreateYcbcrConversionInfo(desc.format) : null;
+        VkSamplerYcbcrConversionInfo? ycbcrInfo = isDisjoint ? GetOrCreateYcbcrConversionInfo(desc.Format) : null;
         var ret = image.Create(vkCreateFlags, memFlags, mapping, vkImageViewType, ycbcrInfo);
 
         if (ret.HasError())
@@ -601,17 +601,17 @@ internal sealed partial class VulkanContext : IContext
 
         AwaitingCreation = true;
 
-        if (!desc.data.IsNull())
+        if (!desc.Data.IsNull())
         {
-            HxDebug.Assert(desc.type == TextureType.Texture2D || desc.type == TextureType.TextureCube);
-            HxDebug.Assert(desc.dataNumMipLevels <= desc.numMipLevels);
-            desc.numLayers = desc.type == TextureType.TextureCube ? 6u : 1u;
-            ResultCode res = Upload(handle, new TextureRangeDesc() { dimensions = desc.dimensions, numLayers = numLayers, numMipLevels = desc.dataNumMipLevels }, desc.data, desc.dataSize);
+            HxDebug.Assert(desc.Type == TextureType.Texture2D || desc.Type == TextureType.TextureCube);
+            HxDebug.Assert(desc.DataNumMipLevels <= desc.NumMipLevels);
+            desc.NumLayers = desc.Type == TextureType.TextureCube ? 6u : 1u;
+            ResultCode res = Upload(handle, new TextureRangeDesc() { dimensions = desc.Dimensions, numLayers = numLayers, numMipLevels = desc.DataNumMipLevels }, desc.Data, desc.DataSize);
             if (res != ResultCode.Ok)
             {
                 return res;
             }
-            if (desc.generateMipmaps)
+            if (desc.GenerateMipmaps)
             {
                 GenerateMipmap(handle);
             }
@@ -668,29 +668,29 @@ internal sealed partial class VulkanContext : IContext
         }
 
         var vkImageViewType = VkImageViewType.Image1D;
-        switch (desc.type)
+        switch (desc.Type)
         {
             case TextureType.Texture2D:
-                vkImageViewType = desc.numLayers > 1 ? VK.VK_IMAGE_VIEW_TYPE_2D_ARRAY : VK.VK_IMAGE_VIEW_TYPE_2D;
+                vkImageViewType = desc.NumLayers > 1 ? VK.VK_IMAGE_VIEW_TYPE_2D_ARRAY : VK.VK_IMAGE_VIEW_TYPE_2D;
                 break;
             case TextureType.Texture3D:
                 vkImageViewType = VkImageViewType.Image3D;
                 break;
             case TextureType.TextureCube:
-                vkImageViewType = desc.numLayers > 1 ? VK.VK_IMAGE_VIEW_TYPE_CUBE_ARRAY : VK.VK_IMAGE_VIEW_TYPE_CUBE;
+                vkImageViewType = desc.NumLayers > 1 ? VK.VK_IMAGE_VIEW_TYPE_CUBE_ARRAY : VK.VK_IMAGE_VIEW_TYPE_CUBE;
                 break;
             default:
                 HxDebug.Assert(false, "Code should NOT be reached");
-                logger.LogError("Unsupported texture view type {TYPE}", desc.type);
+                logger.LogError("Unsupported texture view type {TYPE}", desc.Type);
                 return ResultCode.NotSupported;
         }
 
         VkComponentMapping mapping = new()
         {
-            r = desc.swizzle.r.ToVk(),
-            g = desc.swizzle.g.ToVk(),
-            b = desc.swizzle.b.ToVk(),
-            a = desc.swizzle.a.ToVk(),
+            r = desc.Swizzle.R.ToVk(),
+            g = desc.Swizzle.G.ToVk(),
+            b = desc.Swizzle.B.ToVk(),
+            a = desc.Swizzle.A.ToVk(),
         };
 
         HxDebug.Assert(image.ImageFormat.GetNumImagePlanes() == 1, "Unsupported multiplanar image");
@@ -699,10 +699,10 @@ internal sealed partial class VulkanContext : IContext
                                                  vkImageViewType,
                                                  image.ImageFormat,
                                                  aspect,
-                                                 desc.mipLevel,
-                                                 desc.numMipLevels,
-                                                 desc.layer,
-                                                 desc.numLayers,
+                                                 desc.MipLevel,
+                                                 desc.NumMipLevels,
+                                                 desc.Layer,
+                                                 desc.NumLayers,
                                                  mapping,
                                                  null,
                                                  debugName);
@@ -715,17 +715,17 @@ internal sealed partial class VulkanContext : IContext
 
         if (image.UsageFlags.HasFlag(VK.VK_IMAGE_USAGE_STORAGE_BIT))
         {
-            if (!desc.swizzle.Identity())
+            if (!desc.Swizzle.Identity())
             {
                 // use identity swizzle for storage images
                 image.ImageViewStorage = image.CreateImageView(vkDevice,
                                                                 vkImageViewType,
                                                                 image.ImageFormat,
                                                                 aspect,
-                                                                desc.mipLevel,
-                                                                desc.numMipLevels,
-                                                                desc.layer,
-                                                                desc.numLayers,
+                                                                desc.MipLevel,
+                                                                desc.NumMipLevels,
+                                                                desc.Layer,
+                                                                desc.NumLayers,
                                                               new VkComponentMapping(),
                                                               null,
                                                               debugName);
@@ -747,64 +747,64 @@ internal sealed partial class VulkanContext : IContext
         BufferDesc desc = requestedDesc;
 
         if (debugName != null)
-            desc.debugName = debugName;
+            desc.DebugName = debugName;
 
-        if (!UseStaging && (desc.storage == StorageType.Device))
+        if (!UseStaging && (desc.Storage == StorageType.Device))
         {
-            desc.storage = StorageType.HostVisible;
+            desc.Storage = StorageType.HostVisible;
         }
 
         // Use staging device to transfer data into the buffer when the storage is private to the device
-        VkBufferUsageFlags usageFlags = (desc.storage == StorageType.Device) ? VK.VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK.VK_BUFFER_USAGE_TRANSFER_SRC_BIT : 0;
+        VkBufferUsageFlags usageFlags = (desc.Storage == StorageType.Device) ? VK.VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK.VK_BUFFER_USAGE_TRANSFER_SRC_BIT : 0;
 
-        if (desc.usage == BufferUsageBits.None)
+        if (desc.Usage == BufferUsageBits.None)
         {
             logger.LogError("Invalid buffer usage");
             return ResultCode.ArgumentError;
         }
 
-        if (desc.usage.HasFlag(BufferUsageBits.Index))
+        if (desc.Usage.HasFlag(BufferUsageBits.Index))
         {
             usageFlags |= VK.VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
         }
-        if (desc.usage.HasFlag(BufferUsageBits.Vertex))
+        if (desc.Usage.HasFlag(BufferUsageBits.Vertex))
         {
             usageFlags |= VK.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
         }
-        if (desc.usage.HasFlag(BufferUsageBits.Uniform))
+        if (desc.Usage.HasFlag(BufferUsageBits.Uniform))
         {
             usageFlags |= VK.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK.VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK.VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
         }
 
-        if (desc.usage.HasFlag(BufferUsageBits.Storage))
+        if (desc.Usage.HasFlag(BufferUsageBits.Storage))
         {
             usageFlags |= VK.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK.VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK.VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
         }
 
-        if (desc.usage.HasFlag(BufferUsageBits.Indirect))
+        if (desc.Usage.HasFlag(BufferUsageBits.Indirect))
         {
             usageFlags |= VK.VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK.VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
         }
 
-        if (desc.usage.HasFlag(BufferUsageBits.ShaderBindingTable))
+        if (desc.Usage.HasFlag(BufferUsageBits.ShaderBindingTable))
         {
             usageFlags |= VK.VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK.VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
         }
 
         HxDebug.Assert(usageFlags != VkBufferUsageFlags.None, "Invalid buffer usage");
 
-        VkMemoryPropertyFlags memFlags = desc.storage.ToVkMemoryPropertyFlags();
+        VkMemoryPropertyFlags memFlags = desc.Storage.ToVkMemoryPropertyFlags();
 
-        var result = CreateBuffer(desc.dataSize, usageFlags, memFlags, out var handle, desc.debugName);
+        var result = CreateBuffer(desc.DataSize, usageFlags, memFlags, out var handle, desc.DebugName);
 
         if (result != ResultCode.Ok)
         {
             return result;
         }
 
-        if (desc.data != IntPtr.Zero)
+        if (desc.Data != IntPtr.Zero)
         {
-            Upload(handle, 0, desc.data, desc.dataSize);
+            Upload(handle, 0, desc.Data, desc.DataSize);
         }
 
         buffer = new BufferHolder(this, handle);
@@ -1175,7 +1175,7 @@ internal sealed partial class VulkanContext : IContext
         }, SubmitHandle.Null);
     }
 
-    public void Destroy(Framebuffer fb)
+    public void Destroy(in Framebuffer fb)
     {
         var destroyFbTexture = new Action<TextureHandle>((handle) =>
         {
@@ -1189,13 +1189,13 @@ internal sealed partial class VulkanContext : IContext
             }
         });
 
-        foreach (Framebuffer.AttachmentDesc a in fb.color)
+        foreach (Framebuffer.AttachmentDesc a in fb.Colors)
         {
             destroyFbTexture(a.Texture);
             destroyFbTexture(a.ResolveTexture);
         }
-        destroyFbTexture(fb.depthStencil.Texture);
-        destroyFbTexture(fb.depthStencil.ResolveTexture);
+        destroyFbTexture(fb.DepthStencil.Texture);
+        destroyFbTexture(fb.DepthStencil.ResolveTexture);
     }
     #endregion
 }

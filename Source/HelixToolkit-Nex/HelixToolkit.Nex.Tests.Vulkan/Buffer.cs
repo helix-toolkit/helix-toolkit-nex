@@ -43,8 +43,8 @@ public class Buffer
         BufferHolder? buffer = null; // Initialize the variable to avoid CS0165
         var result = vkContext?.CreateBuffer(new BufferDesc()
         {
-            dataSize = NativeHelper.SizeOf(ref data),
-            usage = BufferUsageBits.Storage,
+            DataSize = NativeHelper.SizeOf(ref data),
+            Usage = BufferUsageBits.Storage,
         }, out buffer, "TestBuffer");
         Assert.IsTrue(result == ResultCode.Ok, "Buffer creation failed with error: " + result.ToString());
         Assert.IsNotNull(buffer, "Buffer should not be null after creation.");
@@ -70,8 +70,8 @@ public class Buffer
         BufferHolder? buffer = null; // Initialize the variable to avoid CS0165
         var result = vkContext?.CreateBuffer(new BufferDesc()
         {
-            dataSize = NativeHelper.SizeOf(ref data),
-            usage = BufferUsageBits.Uniform,
+            DataSize = NativeHelper.SizeOf(ref data),
+            Usage = BufferUsageBits.Uniform,
         }, out buffer, "TestUniformBuffer");
         Assert.IsTrue(result == ResultCode.Ok, "Uniform buffer creation failed with error: " + result.ToString());
         Assert.IsNotNull(buffer, "Uniform buffer should not be null after creation.");
@@ -99,8 +99,8 @@ public class Buffer
         BufferHolder? buffer = null; // Initialize the variable to avoid CS0165
         var result = vkContext?.CreateBuffer(new BufferDesc()
         {
-            dataSize = size,
-            usage = BufferUsageBits.Vertex,
+            DataSize = size,
+            Usage = BufferUsageBits.Vertex,
         }, out buffer, "TestVertexBuffer");
         Assert.IsTrue(result == ResultCode.Ok, "Vertex buffer creation failed with error: " + result.ToString());
         Assert.IsNotNull(buffer, "Vertex buffer should not be null after creation.");
@@ -129,8 +129,8 @@ public class Buffer
         BufferHolder? buffer = null;
         var result = vkContext?.CreateBuffer(new BufferDesc()
         {
-            dataSize = size,
-            usage = BufferUsageBits.Index,
+            DataSize = size,
+            Usage = BufferUsageBits.Index,
         }, out buffer, "TestIndexBuffer");
         Assert.IsTrue(result == ResultCode.Ok, "Index buffer creation failed with error: " + result.ToString());
         Assert.IsNotNull(buffer, "Index buffer should not be null after creation.");
@@ -154,8 +154,8 @@ public class Buffer
         BufferHolder? buffer = null; // Initialize the variable to avoid CS0165
         var result = vkContext?.CreateBuffer(new BufferDesc()
         {
-            dataSize = 512,
-            usage = BufferUsageBits.Indirect,
+            DataSize = 512,
+            Usage = BufferUsageBits.Indirect,
         }, out buffer, "TestIndirectBuffer");
         Assert.IsTrue(result == ResultCode.Ok, "Indirect buffer creation failed with error: " + result.ToString());
         Assert.IsNotNull(buffer, "Indirect buffer should not be null after creation.");
