@@ -7,6 +7,9 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <LangVersion>latest</LangVersion>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <IncludeSymbols>True</IncludeSymbols>
+        <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     </PropertyGroup>
 
     <ItemGroup>
@@ -14,7 +17,12 @@
       <None Remove="Shaders\HeaderTask.glsl" />
       <None Remove="Shaders\HeaderVertex.glsl" />
     </ItemGroup>
-
+    <ItemGroup>
+        <None Include="..\..\..\README.md">
+            <Pack>True</Pack>
+            <PackagePath>\</PackagePath>
+        </None>
+    </ItemGroup>
     <ItemGroup>
       <EmbeddedResource Include="Shaders\HeaderFrag.glsl" />
       <EmbeddedResource Include="Shaders\HeaderTask.glsl" />
