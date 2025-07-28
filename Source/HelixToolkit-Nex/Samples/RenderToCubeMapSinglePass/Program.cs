@@ -19,49 +19,53 @@ class App : Application
     [StructLayout(LayoutKind.Sequential)]
     struct PushCube
     {
-        public uint Face;
         public float Time;
     }
 
     const string codeGenCubeMapVS = """
         #version 460
-        layout(location= 0) out vec3 color;
         const vec2 pos[3] = vec2[3](
             vec2(-0.6, -0.6),
             vec2(0.6, -0.6),
             vec2(0.0, 0.6)
         );
-        const vec3 col[6] = vec3[6](
-            vec3(1.0, 0.0, 0.0),
-            vec3(0.0, 1.0, 0.0),
-            vec3(0.0, 0.0, 1.0),
-            vec3(1.0, 0.0, 1.0),
-            vec3(1.0, 1.0, 0.0),
-            vec3(0.0, 1.0, 1.0)
-        );
+
         layout(push_constant) uniform constants
         {
-            uint face;
             float time;
         } pc;
 
         void main()
         {
             gl_Position = vec4(pos[gl_VertexIndex] * (1.5 + sin(pc.time)) * 0.5, 0.0, 1.0);
-            color = col[pc.face];
         }
         """;
 
     const string codeGenCubeMapFS = """
         #version 460
         layout (location=0) in vec3 color;
-        layout(location = 0) out vec4 out_FragColor;
+        layout (location=0) out vec4 out_FragColor0;
+        layout (location=1) out vec4 out_FragColor1;
+        layout (location=2) out vec4 out_FragColor2;
+        layout (location=3) out vec4 out_FragColor3;
+        layout (location=4) out vec4 out_FragColor4;
+        layout (location=5) out vec4 out_FragColor5;
+
+        layout(push_constant) uniform constants
+        {
+            float time;
+        } pc;
 
         void main()
         {
-            out_FragColor = vec4(color, 1.0);
-        }
-        ;
+            float t = cos(pc.time);
+            out_FragColor0 = vec4(t, 0.0, 0.0, 1.0);
+            out_FragColor1 = vec4(0.0, t, 0.0, 1.0);
+            out_FragColor2 = vec4(0.0, 0.0, t, 1.0);
+            out_FragColor3 = vec4(1.0 - t, 0.0, t, 1.0);
+            out_FragColor4 = vec4(1.0 - t, t, 0.0, 1.0);
+            out_FragColor5 = vec4(0.0, t, 1.0 - t, 1.0);
+        };
         """;
 
     [StructLayout(LayoutKind.Sequential, Pack = 4)]
@@ -167,10 +171,24 @@ class App : Application
                 SmFrag = genCubeMapFsModule,
                 DebugName = "Pipeline: Gen Cube Map"
             };
-
-            renderToCubeMapPipelineDesc.Color[0].Format = vkContext.GetFormat(cubeMap);
+            for(int i =0; i < 6; i++)
+            {
+                renderToCubeMapPipelineDesc.Color[i].Format = vkContext.GetFormat(cubeMap);
+            }
 
             vkContext.CreateRenderPipeline(renderToCubeMapPipelineDesc, out genCubeMapPipeline).CheckResult();
+            for (int i = 0; i < 6; i++)
+            {
+                genCubeMapRenderPass.Colors[i] = new RenderPass.AttachmentDesc
+                {
+                    ClearColor = clearColors[i],
+                    LoadOp = LoadOp.Clear,
+                    StoreOp = StoreOp.Store,
+                    Layer = (byte)i
+                };
+                genCubeMapFramebuffer.Colors[i].Texture = cubeMap!;
+
+            }
         }
 
 
@@ -201,27 +219,15 @@ class App : Application
         Matrix4x4 mvp = model * view * proj;
 
         var cmdBuffer = vkContext!.AcquireCommandBuffer();
-        for (int i = 0; i < 6; i++)
-        {
-            genCubeMapRenderPass.Colors[0] = new RenderPass.AttachmentDesc
-            {
-                ClearColor = clearColors[i],
-                LoadOp = LoadOp.Clear,
-                StoreOp = StoreOp.Store,
-                Layer = (byte)i
-            };
-            genCubeMapFramebuffer.Colors[0].Texture = cubeMap!;
-            cmdBuffer.BeginRendering(genCubeMapRenderPass, genCubeMapFramebuffer, Dependencies.Empty);
-            cmdBuffer.BindRenderPipeline(genCubeMapPipeline);
-            cmdBuffer.PushConstants(new PushCube
-            {
-                Face = (uint)i,
-                Time = (float)DateTime.Now.TimeOfDay.TotalSeconds
-            });
-            cmdBuffer.Draw(3); // Draw a triangle for each face
-            cmdBuffer.EndRendering();
-        }
 
+        cmdBuffer.BeginRendering(genCubeMapRenderPass, genCubeMapFramebuffer, Dependencies.Empty);
+        cmdBuffer.BindRenderPipeline(genCubeMapPipeline);
+        cmdBuffer.PushConstants(new PushCube
+        {
+            Time = (float)DateTime.Now.TimeOfDay.TotalSeconds
+        });
+        cmdBuffer.Draw(3); // Draw a triangle for each face
+        cmdBuffer.EndRendering();
 
         renderCubeRenderPass.Colors[0] = new RenderPass.AttachmentDesc
         {
