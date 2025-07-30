@@ -70,6 +70,26 @@ public abstract class Application : IDisposable
                 {
                     HandleWindowEvent(evt);
                 }
+                else if (evt.type == SDL_EventType.MouseMotion)
+                {
+                    OnMouseMove(SDL_abs((int)evt.motion.x), SDL_abs((int)evt.motion.y), SDL_abs((int)evt.motion.xrel), SDL_abs((int)evt.motion.yrel));
+                }
+                else if (evt.type == SDL_EventType.MouseButtonDown)
+                {
+                    OnMouseButtonDown(evt.button.Button);
+                }
+                else if (evt.type == SDL_EventType.MouseButtonUp)
+                {
+                    OnMouseButtonUp(evt.button.Button);
+                }
+                else if (evt.type == SDL_EventType.MouseWheel)
+                {
+                    OnMouseWheel((int)evt.wheel.x, (int)evt.wheel.y);
+                }
+                else
+                {
+                    logger.LogInformation($"Window Event: {evt.type}");
+                }
             }
 
             if (!running)
@@ -81,16 +101,53 @@ public abstract class Application : IDisposable
 
     private void HandleWindowEvent(in SDL_Event evt)
     {
+        logger.LogInformation($"Window Event: {evt.window.type}");
         switch (evt.window.type)
         {
             case SDL_EventType.WindowResized:
-                //_minimized = false;
-                HandleResize(evt);
+                HandleResize(evt.window.data1, evt.window.data2);
+                break;
+            case SDL_EventType.WindowMouseEnter:
+                OnMouseEnter();
+                break;
+            case SDL_EventType.WindowMouseLeave:
+                OnMouseLeave();
+                break;
+            case SDL_EventType.WindowDisplayScaleChanged:
+                OnDisplayScaleChanged(evt.window.data1 / 100.0f, evt.window.data2 / 100.0f);
                 break;
         }
     }
 
-    protected virtual void HandleResize(in SDL_Event evt) { }
+    protected virtual void OnDisplayScaleChanged(float scaleX, float scaleY)
+    {
+    }
+
+    protected virtual void HandleResize(int width, int height) { }
+
+    protected virtual void OnMouseMove(int x, int y, int xrel, int yrel)
+    {
+    }
+
+    protected virtual void OnMouseEnter()
+    {
+
+    }
+
+    protected virtual void OnMouseLeave()
+    {
+    }
+
+    protected virtual void OnMouseButtonDown(SDL_Button button)
+    {
+
+    }
+
+    protected virtual void OnMouseButtonUp(SDL_Button button)
+    {
+    }
+
+    protected virtual void OnMouseWheel(int deltaX, int deltaY) { }
 
     protected VkSurfaceKHR CreateSurface(VkInstance instance)
     {

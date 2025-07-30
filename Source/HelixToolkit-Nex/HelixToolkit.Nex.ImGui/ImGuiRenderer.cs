@@ -117,6 +117,8 @@ public class ImGuiRenderer(IContext context, ImGuiConfig config) : IDisposable
 
     public TextureHolder FontTexture { get; private set; } = TextureHolder.Null;
 
+    public nint ImGuiContext => imguiContext;
+
     public bool Initialize()
     {
         imguiContext = Gui.CreateContext();
@@ -152,10 +154,9 @@ public class ImGuiRenderer(IContext context, ImGuiConfig config) : IDisposable
     {
         var io = Gui.GetIO();
         io.Fonts.Clear();
-        ImFontPtr fontPtr = 0;
         if (string.IsNullOrEmpty(fontPath))
         {
-            fontPtr = io.Fonts.AddFontDefault();
+            io.Fonts.AddFontDefault();
         }
         else
         {
@@ -164,7 +165,7 @@ public class ImGuiRenderer(IContext context, ImGuiConfig config) : IDisposable
                 logger.LogError($"Font file not found: {fontPath}");
                 return;
             }
-            fontPtr = io.Fonts.AddFontFromFileTTF(fontPath, config.FontSizeInPixel);
+            io.Fonts.AddFontFromFileTTF(fontPath, config.FontSizeInPixel);
         }
         if (!io.Fonts.Build())
         {

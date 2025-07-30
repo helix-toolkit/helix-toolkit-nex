@@ -126,7 +126,7 @@ internal sealed class VulkanSwapchain : IDisposable
                 queueFamilyIndexCount = 1,
                 pQueueFamilyIndices = &graphicsQueueFamilyIndex,
                 compositeAlpha = isCompositeAlphaOpaqueSupported ? VK.VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR : VK.VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR,
-                presentMode = chooseSwapPresentMode(vkContext.DevicePresentModes),
+                presentMode = vkContext.Config.ForcePresentModeFIFO ? VkPresentModeKHR.Fifo : chooseSwapPresentMode(vkContext.DevicePresentModes),
                 clipped = VK_BOOL.True,
                 oldSwapchain = VkSwapchainKHR.Null,
                 preTransform = vkContext.DeviceSurfaceCapabilities.currentTransform,

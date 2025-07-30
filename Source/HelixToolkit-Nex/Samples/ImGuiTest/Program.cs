@@ -5,6 +5,7 @@ using HelixToolkit.Nex.ImGui;
 using HelixToolkit.Nex.Maths;
 using HelixToolkit.Nex.Sample.Application;
 using ImGuiNET;
+using SDL3;
 using System.Numerics;
 
 Console.WriteLine("Hello, World!");
@@ -27,6 +28,7 @@ class App : Application
         {
             TerminateOnValidationError = true,
             OnCreateSurface = CreateSurface,
+            ForcePresentModeFIFO = true,
         }, MainWindow.Instance, 0);
         var windowSize = MainWindow.Size;
         vkContext.RecreateSwapchain(windowSize.Width, windowSize.Height);
@@ -34,7 +36,71 @@ class App : Application
         renderer.Initialize();
         pass.Colors[0].ClearColor = new Color4(0.1f, 0.1f, 0.1f, 1.0f);
         pass.Colors[0].LoadOp = LoadOp.Clear;
-        pass.Colors[0].StoreOp = StoreOp.Store;
+    }
+
+    protected override void OnDisplayScaleChanged(float scaleX, float scaleY)
+    {
+        if (renderer != null && scaleX != 0)
+        {
+            // Update the ImGui renderer with the new display scale.
+            renderer.DisplayScale = scaleX;
+        }
+    }
+
+    protected override void OnMouseMove(int x, int y, int xrel, int yrel)
+    {
+        if (renderer == null)
+        {
+            return; // Renderer not initialized, cannot set cursor position.
+        }
+        var io = ImGui.GetIO();
+        io.AddMousePosEvent(x, y);
+    }
+
+    protected override void OnMouseButtonDown(SDL_Button button)
+    {
+        base.OnMouseButtonDown(button);
+        var io = ImGui.GetIO();
+        switch (button)
+        {
+            case SDL_Button.Left:
+                io.AddMouseButtonEvent(0, true);
+                break;
+            case SDL_Button.Right:
+                io.AddMouseButtonEvent(1, true);
+                break;
+            case SDL_Button.Middle:
+                io.AddMouseButtonEvent(2, true);
+                break;
+            default:
+                break;
+        }
+    }
+
+    protected override void OnMouseButtonUp(SDL_Button button)
+    {
+        base.OnMouseButtonUp(button);
+        var io = ImGui.GetIO();
+        switch (button)
+        {
+            case SDL_Button.Left:
+                io.AddMouseButtonEvent(0, false);
+                break;
+            case SDL_Button.Right:
+                io.AddMouseButtonEvent(1, false);
+                break;
+            case SDL_Button.Middle:
+                io.AddMouseButtonEvent(2, false);
+                break;
+            default:
+                break;
+        }
+    }
+
+    protected override void OnMouseWheel(int deltaX, int deltaY)
+    {
+        var io = ImGui.GetIO();
+        io.AddMouseWheelEvent(deltaX, deltaY);
     }
 
     protected override void OnTick()

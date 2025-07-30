@@ -19,6 +19,8 @@ public sealed class VulkanContextConfig()
     // LVK knows about these extensions and can manage them automatically upon request
     public bool EnableHeadlessSurface = false; // VK_EXT_headless_surface
 
+    public bool ForcePresentModeFIFO = false; // force VK_PRESENT_MODE_FIFO_KHR as the only present mode, even if other modes are available
+
     public delegate void ShaderModuleErrorCallback(in string errorMessage, in string sourceFile, int lineNumber, int columnNumber);
 
     public CreateSurface? OnCreateSurface = null; // custom surface creator, if not set, default surface creation will be used

@@ -9,16 +9,6 @@
       <IncludeSymbols>True</IncludeSymbols>
       <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
   </PropertyGroup>
-
-  <ItemGroup>
-    <None Remove="Assets\MaterialIcons-Regular.ttf" />
-    <None Remove="Assets\SourceCodePro-Medium.ttf" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <EmbeddedResource Include="Assets\MaterialIcons-Regular.ttf" />
-    <EmbeddedResource Include="Assets\SourceCodePro-Medium.ttf" />
-  </ItemGroup>
     <ItemGroup>
         <None Include="..\..\..\README.md">
             <Pack>True</Pack>
