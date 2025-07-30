@@ -163,8 +163,8 @@ class App : Application
 
             var renderToCubeMapPipelineDesc = new RenderPipelineDesc
             {
-                SmVert = genCubeMapVsModule,
-                SmFrag = genCubeMapFsModule,
+                VertexShader = genCubeMapVsModule,
+                FragementShader = genCubeMapFsModule,
                 DebugName = "Pipeline: Gen Cube Map"
             };
 
@@ -179,8 +179,8 @@ class App : Application
             vkContext.CreateShaderModuleGlsl(codeFS, ShaderStage.Fragment, out var fsModule, "Shader: main (frag)").CheckResult();
             var pipelineDesc = new RenderPipelineDesc
             {
-                SmVert = vsModule,
-                SmFrag = fsModule,
+                VertexShader = vsModule,
+                FragementShader = fsModule,
                 DebugName = "Pipeline: Render Box"
             };
             pipelineDesc.Color[0].Format = vkContext.GetSwapchainFormat();

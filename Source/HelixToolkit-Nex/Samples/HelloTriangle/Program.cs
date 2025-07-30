@@ -76,8 +76,8 @@ public class Program
             vkContext.CreateShaderModuleGlsl(ps, ShaderStage.Fragment, out var psModule).CheckResult();
             var pipelineDesc = new RenderPipelineDesc
             {
-                SmVert = vsModule,
-                SmFrag = psModule,
+                VertexShader = vsModule,
+                FragementShader = psModule,
                 Topology = Topology.Triangle,
             };
             pipelineDesc.Color[0].Format = vkContext.GetSwapchainFormat();

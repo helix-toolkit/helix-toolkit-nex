@@ -1562,13 +1562,13 @@ internal sealed partial class VulkanContext
                 }
             }
 
-            var vertModule = desc.SmVert ? ShaderModulesPool.Get(desc.SmVert) : ShaderModuleState.Null;
-            var tescModule = desc.SmTesc ? ShaderModulesPool.Get(desc.SmTesc) : ShaderModuleState.Null;
-            var teseModule = desc.SmTese ? ShaderModulesPool.Get(desc.SmTese) : ShaderModuleState.Null;
-            var geomModule = desc.SmGeom ? ShaderModulesPool.Get(desc.SmGeom) : ShaderModuleState.Null;
-            var fragModule = desc.SmFrag ? ShaderModulesPool.Get(desc.SmFrag) : ShaderModuleState.Null;
-            var taskModule = desc.SmTask ? ShaderModulesPool.Get(desc.SmTask) : ShaderModuleState.Null;
-            var meshModule = desc.SmMesh ? ShaderModulesPool.Get(desc.SmMesh) : ShaderModuleState.Null;
+            var vertModule = desc.VertexShader ? ShaderModulesPool.Get(desc.VertexShader) : ShaderModuleState.Null;
+            var tescModule = desc.TessControlShader ? ShaderModulesPool.Get(desc.TessControlShader) : ShaderModuleState.Null;
+            var teseModule = desc.TessEvalShader ? ShaderModulesPool.Get(desc.TessEvalShader) : ShaderModuleState.Null;
+            var geomModule = desc.GeometryShader ? ShaderModulesPool.Get(desc.GeometryShader) : ShaderModuleState.Null;
+            var fragModule = desc.FragementShader ? ShaderModulesPool.Get(desc.FragementShader) : ShaderModuleState.Null;
+            var taskModule = desc.TaskShader ? ShaderModulesPool.Get(desc.TaskShader) : ShaderModuleState.Null;
+            var meshModule = desc.MeshShader ? ShaderModulesPool.Get(desc.MeshShader) : ShaderModuleState.Null;
 
             HxDebug.Assert(vertModule || meshModule);
             HxDebug.Assert(fragModule);
@@ -1729,7 +1729,7 @@ internal sealed partial class VulkanContext
 
         if (cps.Pipeline == VkPipeline.Null)
         {
-            var sm = ShaderModulesPool.Get(cps.Desc.smComp);
+            var sm = ShaderModulesPool.Get(cps.Desc.ComputeShader);
 
             HxDebug.Assert(sm is not null && sm.Valid);
             unsafe

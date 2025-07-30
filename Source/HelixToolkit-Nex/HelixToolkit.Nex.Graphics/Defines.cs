@@ -60,8 +60,10 @@ public enum SamplerMip : uint8_t
 }
 public enum SamplerWrap : uint8_t
 {
-    Repeat = 0, Clamp,
-    MirrorRepeat
+    Repeat = 0,
+    Clamp,
+    MirrorRepeat,
+    ClampToBorder,
 }
 
 public enum HWDeviceType
@@ -216,7 +218,7 @@ public struct DepthState()
 
 public struct ComputePipelineDesc()
 {
-    public ShaderModuleHandle smComp;
+    public ShaderModuleHandle ComputeShader;
     public SpecializationConstantDesc SpecInfo;
     public string EntryPoint = "main";
     public string DebugName = string.Empty;
@@ -512,13 +514,13 @@ public struct RenderPipelineDesc
 
     public VertexInput VertexInput = VertexInput.Null;
 
-    public ShaderModuleHandle SmVert = ShaderModuleHandle.Null;
-    public ShaderModuleHandle SmTesc = ShaderModuleHandle.Null;
-    public ShaderModuleHandle SmTese = ShaderModuleHandle.Null;
-    public ShaderModuleHandle SmGeom = ShaderModuleHandle.Null;
-    public ShaderModuleHandle SmTask = ShaderModuleHandle.Null;
-    public ShaderModuleHandle SmMesh = ShaderModuleHandle.Null;
-    public ShaderModuleHandle SmFrag = ShaderModuleHandle.Null;
+    public ShaderModuleHandle VertexShader = ShaderModuleHandle.Null;
+    public ShaderModuleHandle TessControlShader = ShaderModuleHandle.Null;
+    public ShaderModuleHandle TessEvalShader = ShaderModuleHandle.Null;
+    public ShaderModuleHandle GeometryShader = ShaderModuleHandle.Null;
+    public ShaderModuleHandle TaskShader = ShaderModuleHandle.Null;
+    public ShaderModuleHandle MeshShader = ShaderModuleHandle.Null;
+    public ShaderModuleHandle FragementShader = ShaderModuleHandle.Null;
 
     public SpecializationConstantDesc SpecInfo = new();
 

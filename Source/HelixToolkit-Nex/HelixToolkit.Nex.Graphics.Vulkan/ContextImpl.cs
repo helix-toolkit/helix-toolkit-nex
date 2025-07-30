@@ -164,7 +164,7 @@ internal sealed partial class VulkanContext : IContext
     public ResultCode CreateComputePipeline(in ComputePipelineDesc desc, out ComputePipelineResource computePipeline)
     {
         computePipeline = ComputePipelineResource.Null;
-        if (!desc.smComp.Valid)
+        if (!desc.ComputeShader.Valid)
         {
             logger.LogError("Missing compute shader");
             return ResultCode.ArgumentError;
@@ -234,24 +234,24 @@ internal sealed partial class VulkanContext : IContext
             return ResultCode.ArgumentError;
         }
         VkShaderStageFlags stageFlags = VkShaderStageFlags.None;
-        if (desc.SmMesh.Valid)
+        if (desc.MeshShader.Valid)
         {
             if (desc.VertexInput.AttributeCount() > 0 || desc.VertexInput.BindingCount() > 0)
             {
                 logger.LogError("CreateRenderPipeline failed. Cannot have vertexInput with mesh shaders");
                 return ResultCode.ArgumentError;
             }
-            if (desc.SmVert.Valid)
+            if (desc.VertexShader.Valid)
             {
                 logger.LogError("CreateRenderPipeline failed. Cannot have both vertex and mesh shaders");
                 return ResultCode.ArgumentError;
             }
-            if (desc.SmTesc.Valid || desc.SmTese.Valid)
+            if (desc.TessControlShader.Valid || desc.TessEvalShader.Valid)
             {
                 logger.LogError("CreateRenderPipeline failed. Cannot have both tessellation and mesh shaders");
                 return ResultCode.ArgumentError;
             }
-            if (desc.SmGeom.Valid)
+            if (desc.GeometryShader.Valid)
             {
                 logger.LogError("CreateRenderPipeline failed. Cannot have both geometry and mesh shaders");
                 return ResultCode.ArgumentError;
@@ -259,40 +259,40 @@ internal sealed partial class VulkanContext : IContext
         }
         else
         {
-            if (!desc.SmVert.Valid)
+            if (!desc.VertexShader.Valid)
             {
                 logger.LogError("Missing vertex shader");
                 return ResultCode.ArgumentError;
             }
         }
 
-        if (!desc.SmFrag.Valid)
+        if (!desc.FragementShader.Valid)
         {
             logger.LogError("Missing fragment shader");
             return ResultCode.ArgumentError;
         }
 
-        if (desc.SmVert.Valid)
+        if (desc.VertexShader.Valid)
         {
             stageFlags |= VkShaderStageFlags.Vertex;
         }
 
-        if (desc.SmTesc.Valid)
+        if (desc.TessControlShader.Valid)
         {
             stageFlags |= VkShaderStageFlags.TessellationControl;
         }
 
-        if (desc.SmTese.Valid)
+        if (desc.TessEvalShader.Valid)
         {
             stageFlags |= VkShaderStageFlags.TessellationEvaluation;
         }
 
-        if (desc.SmGeom.Valid)
+        if (desc.GeometryShader.Valid)
         {
             stageFlags |= VkShaderStageFlags.Geometry;
         }
 
-        if (desc.SmFrag.Valid)
+        if (desc.FragementShader.Valid)
         {
             stageFlags |= VkShaderStageFlags.Fragment;
         }

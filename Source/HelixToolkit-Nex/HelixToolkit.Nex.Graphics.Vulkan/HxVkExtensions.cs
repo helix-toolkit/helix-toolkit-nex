@@ -1,5 +1,4 @@
-﻿using Glslang.NET;
-using System.Text;
+﻿using System.Text;
 
 namespace HelixToolkit.Nex.Graphics.Vulkan;
 
@@ -44,6 +43,8 @@ internal static class HxVkExtensions
                 return VK.VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
             case SamplerWrap.MirrorRepeat:
                 return VK.VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
+            case SamplerWrap.ClampToBorder:
+                return VK.VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
         }
         HxDebug.Assert(false, $"SamplerWrapMode value not handled: {mode}");
         return VK.VK_SAMPLER_ADDRESS_MODE_REPEAT;
@@ -742,7 +743,7 @@ internal static class HxVkExtensions
         {
             barrier.dstAccessMask |= VkAccessFlags2.TransferRead | VkAccessFlags2.TransferWrite;
         }
-        else if(srcStage.HasFlag(VkPipelineStageFlags2.AllGraphics | VkPipelineStageFlags2.AllCommands) || srcStage.IsShaderStage())
+        else if (srcStage.HasFlag(VkPipelineStageFlags2.AllGraphics | VkPipelineStageFlags2.AllCommands) || srcStage.IsShaderStage())
         {
             barrier.dstAccessMask |= VkAccessFlags2.ShaderRead | VkAccessFlags2.ShaderWrite;
         }

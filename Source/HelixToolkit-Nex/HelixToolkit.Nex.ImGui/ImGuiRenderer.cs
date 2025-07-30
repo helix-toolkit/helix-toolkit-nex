@@ -132,8 +132,8 @@ public class ImGuiRenderer(IContext context, ImGuiConfig config) : IDisposable
     {
         uint nonLinearColorSpace = context.GetSwapchainColorSpace() == ColorSpace.SRGB_NONLINEAR ? 1u : 0u;
         var desc = new RenderPipelineDesc();
-        desc.SmVert = vertexShaderModule;
-        desc.SmFrag = fragmentShaderModule;
+        desc.VertexShader = vertexShaderModule;
+        desc.FragementShader = fragmentShaderModule;
         desc.SpecInfo.Entries[0].ConstantId = 0;
         desc.SpecInfo.Entries[0].Size = sizeof(uint);
         desc.SpecInfo.Data = new byte[sizeof(uint)];
