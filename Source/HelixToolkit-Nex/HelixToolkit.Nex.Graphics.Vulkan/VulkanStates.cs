@@ -32,7 +32,7 @@ internal sealed class ComputePipelineState()
     public static implicit operator bool(ComputePipelineState? state) => state is not null && state.Valid;
 }
 
-internal sealed class RenderPipelineState()
+internal sealed class RenderPipelineState
 {
     public RenderPipelineDesc Desc = new();
 
@@ -58,4 +58,16 @@ internal sealed class RenderPipelineState()
     public static readonly RenderPipelineState Null = new();
 
     public static implicit operator bool(RenderPipelineState? state) => state is not null && state.Valid;
+
+    public RenderPipelineState()
+    {
+        for (int i = 0; i < VertexInput.MAX_VERTEX_BINDINGS; i++)
+        {
+            VkBindings[i] = new VkVertexInputBindingDescription();
+        }
+        for (int i = 0; i < VertexInput.MAX_VERTEX_ATTRIBUTES; i++)
+        {
+            VkAttributes[i] = new VkVertexInputAttributeDescription();
+        }
+    }
 }

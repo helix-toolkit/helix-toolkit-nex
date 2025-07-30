@@ -48,7 +48,7 @@ internal sealed partial class VulkanContext
     struct YcbcrConversionData
     {
         public VkSamplerYcbcrConversionInfo info;
-        public SamplerHolder sampler;
+        public SamplerResource sampler;
     };
     readonly YcbcrConversionData[] ycbcrConversionData_ = new YcbcrConversionData[kMaxYcbcrConversionData]; // indexed by lvk::Format
 
@@ -1145,7 +1145,7 @@ internal sealed partial class VulkanContext
             HxDebug.Assert(false, "Failed to create YUV sampler.");
             return null;
         }
-        ycbcrConversionData_[(int)format].sampler = new SamplerHolder(this, sampler);
+        ycbcrConversionData_[(int)format].sampler = new SamplerResource(this, sampler);
         numYcbcrSamplers++;
         AwaitingNewImmutableSamplers = true;
 

@@ -40,7 +40,7 @@ public class Buffer
             Value1 = rnd.NextFloat(-1, 1),
             Value2 = rnd.Next(-100, 100)
         };
-        BufferHolder? buffer = null; // Initialize the variable to avoid CS0165
+        BufferResource? buffer = null; // Initialize the variable to avoid CS0165
         var result = vkContext?.CreateBuffer(new BufferDesc()
         {
             DataSize = NativeHelper.SizeOf(ref data),
@@ -67,7 +67,7 @@ public class Buffer
             Value2 = rnd.Next(-100, 100)
         };
 
-        BufferHolder? buffer = null; // Initialize the variable to avoid CS0165
+        BufferResource? buffer = null; // Initialize the variable to avoid CS0165
         var result = vkContext?.CreateBuffer(new BufferDesc()
         {
             DataSize = NativeHelper.SizeOf(ref data),
@@ -96,7 +96,7 @@ public class Buffer
             .Select(_ => new Vector3(rnd.NextFloat(-1, 1), rnd.NextFloat(-1, 1), rnd.NextFloat(-1, 1)))
             .ToArray();
         var size = (size_t)vertices.Length * NativeHelper.SizeOf<Vector3>();
-        BufferHolder? buffer = null; // Initialize the variable to avoid CS0165
+        BufferResource? buffer = null; // Initialize the variable to avoid CS0165
         var result = vkContext?.CreateBuffer(new BufferDesc()
         {
             DataSize = size,
@@ -126,7 +126,7 @@ public class Buffer
     {
         var indices = Enumerable.Range(0, indexCount).ToArray();
         var size = (size_t)indices.Length * NativeHelper.SizeOf<int>();
-        BufferHolder? buffer = null;
+        BufferResource? buffer = null;
         var result = vkContext?.CreateBuffer(new BufferDesc()
         {
             DataSize = size,
@@ -151,7 +151,7 @@ public class Buffer
     [TestMethod]
     public void CreateIndirectBuffer()
     {
-        BufferHolder? buffer = null; // Initialize the variable to avoid CS0165
+        BufferResource? buffer = null; // Initialize the variable to avoid CS0165
         var result = vkContext?.CreateBuffer(new BufferDesc()
         {
             DataSize = 512,

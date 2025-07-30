@@ -48,7 +48,7 @@ public class Shader
             DebugName = shaderName,
             Defines = defines.ToShaderDefines(), // Convert the defines string to ShaderDefines
         };
-        ShaderModuleHolder? shaderModule = null;
+        ShaderModuleResource? shaderModule = null;
         var result = vkContext?.CreateShaderModule(shaderDesc, out shaderModule).CheckResult();
         Assert.IsTrue(result == ResultCode.Ok, "Shader module creation failed with error: " + result.ToString());
         Assert.IsNotNull(shaderModule, "Shader module should not be null after creation.");

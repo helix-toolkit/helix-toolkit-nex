@@ -18,7 +18,7 @@ internal sealed class VulkanStagingDevice : IDisposable
     readonly uint32_t maxBufferSize;
     readonly FastList<MemoryRegionDesc> regions = [];
 
-    BufferHolder stagingBuffer = BufferHolder.Null;
+    BufferResource stagingBuffer = BufferResource.Null;
     uint32_t stagingBufferSize = 0;
     uint32_t stagingBufferCounter = 0;
 
@@ -638,7 +638,7 @@ internal sealed class VulkanStagingDevice : IDisposable
         WaitAndReset();
 
         // deallocate the previous staging buffer
-        stagingBuffer = BufferHolder.Null;
+        stagingBuffer = BufferResource.Null;
 
         // if the combined size of the new staging buffer and the existing one is larger than the limit imposed by some architectures on buffers
         // that are device and host visible, we need to wait for the current buffer to be destroyed before we can allocate a new one
@@ -689,7 +689,7 @@ internal sealed class VulkanStagingDevice : IDisposable
             if (disposing)
             {
                 stagingBuffer.Dispose();
-                stagingBuffer = BufferHolder.Null;
+                stagingBuffer = BufferResource.Null;
             }
 
             // TODO: free unmanaged resources (unmanaged objects) and override finalizer

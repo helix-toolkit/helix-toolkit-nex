@@ -124,4 +124,10 @@ class App : Application
         cmdBuf.EndRendering();
         vkContext.Submit(cmdBuf, tex);
     }
+
+    protected override void OnDisposing()
+    {
+        base.OnDisposing();
+        renderer?.Dispose();
+    }
 }

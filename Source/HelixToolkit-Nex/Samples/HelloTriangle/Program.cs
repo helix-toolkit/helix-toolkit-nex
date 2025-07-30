@@ -57,7 +57,7 @@ public class Program
         IContext? vkContext;
         public override string Name => "HelloTriangle";
 
-        RenderPipelineHolder renderPipeline = RenderPipelineHolder.Null;
+        RenderPipelineResource renderPipeline = RenderPipelineResource.Null;
         RenderPass pass = new();
         Framebuffer frameBuffer = new();
         uint frameCount = 0;
@@ -115,9 +115,9 @@ public class Program
             vkContext!.Submit(cmdBuffer, tex);
         }
 
-        protected override void HandleResize(in SDL_Event evt)
+        protected override void HandleResize(int width, int height)
         {
-            vkContext!.RecreateSwapchain(evt.window.data1, evt.window.data2);
+            vkContext!.RecreateSwapchain(width, height);
         }
 
         protected override void OnDisposing()

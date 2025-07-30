@@ -1,6 +1,4 @@
-﻿using System.Diagnostics.CodeAnalysis;
-
-namespace HelixToolkit.Nex.Graphics;
+﻿namespace HelixToolkit.Nex.Graphics;
 #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
 public static class Constants
 {
@@ -496,7 +494,7 @@ public struct SpecializationConstantDesc()
     }
 };
 
-public struct RenderPipelineDesc()
+public struct RenderPipelineDesc
 {
     public Topology Topology = Topology.Triangle;
 
@@ -536,6 +534,14 @@ public struct RenderPipelineDesc()
     public float MinSampleShading = 0.0f;
 
     public string DebugName = string.Empty;
+
+    public RenderPipelineDesc()
+    {
+        for (uint32_t i = 0; i < Constants.MAX_COLOR_ATTACHMENTS; i++)
+        {
+            Color[i] = new ColorAttachment();
+        }
+    }
 
     public readonly uint32_t GetNumColorAttachments()
     {

@@ -44,7 +44,7 @@ public class Image
             Data = (nint)pColors.Pointer, // Use the pinned pointer for data
             DataSize = size,
         };
-        TextureHolder? image = null;
+        TextureResource? image = null;
         var result = vkContext?.CreateTexture(imageDesc, out image, "TestImage");
         Assert.IsTrue(result == ResultCode.Ok, "Image creation failed with error: " + result.ToString());
         Assert.IsNotNull(image, "Image should not be null after creation.");
@@ -81,7 +81,7 @@ public class Image
             //data = (nint)pData.Pointer, // Use the pinned pointer for data
             //dataSize = size,
         };
-        TextureHolder? image = null;
+        TextureResource? image = null;
         var result = vkContext?.CreateTexture(imageDesc, out image, "TestDepth");
         Assert.IsTrue(result == ResultCode.Ok, "Depth Image creation failed with error: " + result.ToString());
         Assert.IsNotNull(image, "Depth Image should not be null after creation.");

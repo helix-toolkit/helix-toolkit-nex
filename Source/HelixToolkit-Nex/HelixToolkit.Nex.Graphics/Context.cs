@@ -7,15 +7,15 @@ public interface IContext : IDisposable
     ICommandBuffer AcquireCommandBuffer();
     SubmitHandle Submit(ICommandBuffer commandBuffer, in TextureHandle present);
     void Wait(in SubmitHandle handle); // waiting on an empty handle results in vkDeviceWaitIdle()
-    ResultCode CreateBuffer(in BufferDesc desc, out BufferHolder buffer, string? debugName = null);
-    ResultCode CreateSampler(in SamplerStateDesc desc, out SamplerHolder sampler);
-    ResultCode CreateTexture(in TextureDesc desc, out TextureHolder texture, string? debugName = null);
-    ResultCode CreateTextureView(in TextureHandle texture, in TextureViewDesc desc, out TextureHolder textureView, string? debugName = null);
-    ResultCode CreateComputePipeline(in ComputePipelineDesc desc, out ComputePipelineHolder computePipeline);
-    ResultCode CreateRenderPipeline(in RenderPipelineDesc desc, out RenderPipelineHolder renderPipeline);
-    ResultCode CreateShaderModule(in ShaderModuleDesc desc, out ShaderModuleHolder shaderModule);
+    ResultCode CreateBuffer(in BufferDesc desc, out BufferResource buffer, string? debugName = null);
+    ResultCode CreateSampler(in SamplerStateDesc desc, out SamplerResource sampler);
+    ResultCode CreateTexture(in TextureDesc desc, out TextureResource texture, string? debugName = null);
+    ResultCode CreateTextureView(in TextureHandle texture, in TextureViewDesc desc, out TextureResource textureView, string? debugName = null);
+    ResultCode CreateComputePipeline(in ComputePipelineDesc desc, out ComputePipelineResource computePipeline);
+    ResultCode CreateRenderPipeline(in RenderPipelineDesc desc, out RenderPipelineResource renderPipeline);
+    ResultCode CreateShaderModule(in ShaderModuleDesc desc, out ShaderModuleResource shaderModule);
 
-    ResultCode CreateQueryPool(uint32_t numQueries, out QueryPoolHolder queryPool, string? debugName = null);
+    ResultCode CreateQueryPool(uint32_t numQueries, out QueryPoolResource queryPool, string? debugName = null);
 
 
     void Destroy(ComputePipelineHandle handle);
@@ -25,7 +25,6 @@ public interface IContext : IDisposable
     void Destroy(BufferHandle handle);
     void Destroy(TextureHandle handle);
     void Destroy(QueryPoolHandle handle);
-    void Destroy(in Framebuffer fb);
 
 
     ResultCode Upload(in BufferHandle handle, size_t offset, nint data, size_t size);
@@ -84,7 +83,7 @@ public interface IContext : IDisposable
 public static class ContextExtensions
 {
     public static ResultCode CreateShaderModuleGlsl(this IContext context, string glsl, ShaderStage stage,
-        out ShaderModuleHolder shaderModule, string? debugName = null)
+        out ShaderModuleResource shaderModule, string? debugName = null)
     {
         using var data = glsl.ToArray().Pin();
         unsafe
@@ -100,7 +99,7 @@ public static class ContextExtensions
         }
     }
 
-    public static ShaderModuleHolder CreateShaderModuleGlsl(this IContext context, string glsl, ShaderStage stage, string? debugName = null)
+    public static ShaderModuleResource CreateShaderModuleGlsl(this IContext context, string glsl, ShaderStage stage, string? debugName = null)
     {
         using var data = glsl.ToArray().Pin();
         unsafe
@@ -117,14 +116,14 @@ public static class ContextExtensions
         }
     }
 
-    public static SamplerHolder CreateSampler(this IContext context, in SamplerStateDesc desc)
+    public static SamplerResource CreateSampler(this IContext context, in SamplerStateDesc desc)
     {
         context.CreateSampler(desc, out var sampler).CheckResult();
         return sampler;
     }
 
     public static ResultCode CreateBuffer<T>(this IContext context, T[] data, BufferUsageBits usage,
-        StorageType storage, out BufferHolder buffer, string? debugName = null) where T : unmanaged
+        StorageType storage, out BufferResource buffer, string? debugName = null) where T : unmanaged
     {
         unsafe
         {
@@ -133,20 +132,20 @@ public static class ContextExtensions
         }
     }
 
-    public static BufferHolder CreateBuffer<T>(this IContext context, T[] data, BufferUsageBits usage,
+    public static BufferResource CreateBuffer<T>(this IContext context, T[] data, BufferUsageBits usage,
         StorageType storage, string? debugName = null) where T : unmanaged
     {
         CreateBuffer(context, data, usage, storage, out var buffer, debugName).CheckResult();
         return buffer;
     }
 
-    public static BufferHolder CreateBuffer(this IContext context, in BufferDesc desc, string? debugName = null)
+    public static BufferResource CreateBuffer(this IContext context, in BufferDesc desc, string? debugName = null)
     {
         context.CreateBuffer(desc, out var buffer, debugName).CheckResult();
         return buffer;
     }
 
-    public static TextureHolder CreateTexture(this IContext context, in TextureDesc desc, string? debugName = null)
+    public static TextureResource CreateTexture(this IContext context, in TextureDesc desc, string? debugName = null)
     {
         context.CreateTexture(desc, out var texture, debugName).CheckResult();
         return texture;

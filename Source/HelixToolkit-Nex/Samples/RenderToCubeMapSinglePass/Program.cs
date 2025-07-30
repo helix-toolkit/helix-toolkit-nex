@@ -119,10 +119,10 @@ class App : Application
     static ILogger logger = LogManager.Create<App>();
     public override string Name => "Render to Cube Map Sample";
     IContext? vkContext;
-    TextureHolder cubeMap = TextureHolder.Null;
-    BufferHolder indexBuffer = BufferHolder.Null;
-    RenderPipelineHolder cubeRenderPipeline = RenderPipelineHolder.Null;
-    RenderPipelineHolder genCubeMapPipeline = RenderPipelineHolder.Null;
+    TextureResource cubeMap = TextureResource.Null;
+    BufferResource indexBuffer = BufferResource.Null;
+    RenderPipelineResource cubeRenderPipeline = RenderPipelineResource.Null;
+    RenderPipelineResource genCubeMapPipeline = RenderPipelineResource.Null;
     RenderPass genCubeMapRenderPass = new RenderPass();
     Framebuffer genCubeMapFramebuffer = new Framebuffer();
     RenderPass renderCubeRenderPass = new RenderPass();
@@ -264,8 +264,6 @@ class App : Application
             vkContext.Destroy(cubeRenderPipeline);
             vkContext.Destroy(cubeMap);
             vkContext.Destroy(indexBuffer);
-            vkContext.Destroy(genCubeMapFramebuffer);
-            vkContext.Destroy(renderCubeFramebuffer);
             vkContext.Dispose();
         }
     }

@@ -79,8 +79,8 @@ public class ImGuiRenderer(IContext context, ImGuiConfig config) : IDisposable
 
     struct Drawable()
     {
-        public BufferHolder VertexBuffer = BufferHolder.Null;
-        public BufferHolder IndexBuffer = BufferHolder.Null;
+        public BufferResource VertexBuffer = BufferResource.Null;
+        public BufferResource IndexBuffer = BufferResource.Null;
         public uint VertexCount = 0;
         public uint IndexCount = 0;
     }
@@ -95,10 +95,10 @@ public class ImGuiRenderer(IContext context, ImGuiConfig config) : IDisposable
 
     readonly IContext context = context ?? throw new ArgumentNullException(nameof(context));
     readonly ImGuiConfig config = config ?? throw new ArgumentNullException(nameof(config));
-    ShaderModuleHolder vertexShaderModule = context.CreateShaderModuleGlsl(codeVS, ShaderStage.Vertex, nameof(ImGuiRenderer));
-    ShaderModuleHolder fragmentShaderModule = context.CreateShaderModuleGlsl(codeFS, ShaderStage.Fragment, nameof(ImGuiRenderer));
-    RenderPipelineHolder pipeline = RenderPipelineHolder.Null;
-    SamplerHolder sampler = context.CreateSampler(new SamplerStateDesc
+    ShaderModuleResource vertexShaderModule = context.CreateShaderModuleGlsl(codeVS, ShaderStage.Vertex, nameof(ImGuiRenderer));
+    ShaderModuleResource fragmentShaderModule = context.CreateShaderModuleGlsl(codeFS, ShaderStage.Fragment, nameof(ImGuiRenderer));
+    RenderPipelineResource pipeline = RenderPipelineResource.Null;
+    SamplerResource sampler = context.CreateSampler(new SamplerStateDesc
     {
         WrapU = SamplerWrap.Clamp,
         WrapV = SamplerWrap.Clamp,
@@ -115,7 +115,7 @@ public class ImGuiRenderer(IContext context, ImGuiConfig config) : IDisposable
 
     public float DisplayScale { set; get; } = 1.0f;
 
-    public TextureHolder FontTexture { get; private set; } = TextureHolder.Null;
+    public TextureResource FontTexture { get; private set; } = TextureResource.Null;
 
     public nint ImGuiContext => imguiContext;
 
@@ -195,7 +195,7 @@ public class ImGuiRenderer(IContext context, ImGuiConfig config) : IDisposable
 
     public bool BeginFrame(Framebuffer fb)
     {
-        if (pipeline == RenderPipelineHolder.Null)
+        if (pipeline == RenderPipelineResource.Null)
         {
             if (!CreatePipeline(fb))
             {
@@ -227,9 +227,9 @@ public class ImGuiRenderer(IContext context, ImGuiConfig config) : IDisposable
         frameCount = (frameCount + 1) % drawables.Length;
         unsafe
         {
-            if (drawable.VertexBuffer == BufferHolder.Null || drawable.VertexCount < drawData.TotalVtxCount)
+            if (drawable.VertexBuffer == BufferResource.Null || drawable.VertexCount < drawData.TotalVtxCount)
             {
-                if (drawable.VertexBuffer != BufferHolder.Null)
+                if (drawable.VertexBuffer != BufferResource.Null)
                 {
                     context.Destroy(drawable.VertexBuffer);
                 }
@@ -246,9 +246,9 @@ public class ImGuiRenderer(IContext context, ImGuiConfig config) : IDisposable
                 });
                 drawable.VertexCount = (uint)drawData.TotalVtxCount;
             }
-            if (drawable.IndexBuffer == BufferHolder.Null || drawable.IndexCount < drawData.TotalIdxCount)
+            if (drawable.IndexBuffer == BufferResource.Null || drawable.IndexCount < drawData.TotalIdxCount)
             {
-                if (drawable.IndexBuffer != BufferHolder.Null)
+                if (drawable.IndexBuffer != BufferResource.Null)
                 {
                     context.Destroy(drawable.IndexBuffer);
                 }
@@ -342,15 +342,15 @@ public class ImGuiRenderer(IContext context, ImGuiConfig config) : IDisposable
         {
             if (disposing)
             {
-                context.Destroy(sampler);
-                context.Destroy(vertexShaderModule);
-                context.Destroy(fragmentShaderModule);
-                context.Destroy(pipeline);
-                context.Destroy(FontTexture);
+                sampler.Dispose();
+                vertexShaderModule.Dispose();
+                fragmentShaderModule.Dispose();
+                pipeline.Dispose();
+                FontTexture.Dispose();
                 foreach (var drawable in drawables)
                 {
-                    context.Destroy(drawable.VertexBuffer);
-                    context.Destroy(drawable.IndexBuffer);
+                    drawable.VertexBuffer.Dispose();
+                    drawable.IndexBuffer.Dispose();
                 }
                 if (imguiContext != 0)
                 {

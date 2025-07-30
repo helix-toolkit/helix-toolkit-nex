@@ -161,9 +161,9 @@ internal sealed partial class VulkanContext : IContext
         return currentCommandBuffer_;
     }
 
-    public ResultCode CreateComputePipeline(in ComputePipelineDesc desc, out ComputePipelineHolder computePipeline)
+    public ResultCode CreateComputePipeline(in ComputePipelineDesc desc, out ComputePipelineResource computePipeline)
     {
-        computePipeline = ComputePipelineHolder.Null;
+        computePipeline = ComputePipelineResource.Null;
         if (!desc.smComp.Valid)
         {
             logger.LogError("Missing compute shader");
@@ -185,11 +185,11 @@ internal sealed partial class VulkanContext : IContext
             logger.LogError("Failed to create compute pipeline state");
             return ResultCode.RuntimeError;
         }
-        computePipeline = new ComputePipelineHolder(this, handle);
+        computePipeline = new ComputePipelineResource(this, handle);
         return ResultCode.Ok;
     }
 
-    public ResultCode CreateQueryPool(uint numQueries, out QueryPoolHolder queryPool, string? debugName)
+    public ResultCode CreateQueryPool(uint numQueries, out QueryPoolResource queryPool, string? debugName)
     {
         unsafe
         {
@@ -214,20 +214,20 @@ internal sealed partial class VulkanContext : IContext
             if (handle == QueryPoolHandle.Null)
             {
                 logger.LogError("Failed to create query pool state");
-                queryPool = QueryPoolHolder.Null;
+                queryPool = QueryPoolResource.Null;
                 return ResultCode.RuntimeError;
             }
-            queryPool = new QueryPoolHolder(this, handle);
+            queryPool = new QueryPoolResource(this, handle);
             return ResultCode.Ok;
         }
     }
 
-    public ResultCode CreateRenderPipeline(in RenderPipelineDesc desc, out RenderPipelineHolder renderPipeline)
+    public ResultCode CreateRenderPipeline(in RenderPipelineDesc desc, out RenderPipelineResource renderPipeline)
     {
         bool hasColorAttachments = desc.GetNumColorAttachments() > 0;
         bool hasDepthAttachment = desc.DepthFormat != Format.Invalid;
         bool hasAnyAttachments = hasColorAttachments || hasDepthAttachment;
-        renderPipeline = RenderPipelineHolder.Null;
+        renderPipeline = RenderPipelineResource.Null;
         if (!hasAnyAttachments)
         {
             logger.LogError("Need at least one attachment");
@@ -349,14 +349,14 @@ internal sealed partial class VulkanContext : IContext
                 logger.LogError("Failed to create render pipeline state");
                 return ResultCode.RuntimeError;
             }
-            renderPipeline = new RenderPipelineHolder(this, handle);
+            renderPipeline = new RenderPipelineResource(this, handle);
         }
         return ResultCode.Ok;
     }
 
-    public ResultCode CreateSampler(in SamplerStateDesc desc, out SamplerHolder sampler)
+    public ResultCode CreateSampler(in SamplerStateDesc desc, out SamplerResource sampler)
     {
-        sampler = SamplerHolder.Null;
+        sampler = SamplerResource.Null;
 
         VkSamplerCreateInfo info = desc.ToVkSamplerCreateInfo(GetVkPhysicalDeviceProperties().limits);
 
@@ -368,13 +368,13 @@ internal sealed partial class VulkanContext : IContext
             return ret;
         }
 
-        sampler = new SamplerHolder(this, handle);
+        sampler = new SamplerResource(this, handle);
         return ResultCode.Ok;
     }
 
-    public ResultCode CreateShaderModule(in ShaderModuleDesc desc, out ShaderModuleHolder shaderModule)
+    public ResultCode CreateShaderModule(in ShaderModuleDesc desc, out ShaderModuleResource shaderModule)
     {
-        shaderModule = ShaderModuleHolder.Null;
+        shaderModule = ShaderModuleResource.Null;
         if (desc.Data.IsNull() || desc.DataSize == 0)
         {
             logger.LogError("Shader module data is null or size is zero");
@@ -404,9 +404,9 @@ internal sealed partial class VulkanContext : IContext
         return ResultCode.Ok;
     }
 
-    public ResultCode CreateTexture(in TextureDesc requestedDesc, out TextureHolder texture, string? debugName)
+    public ResultCode CreateTexture(in TextureDesc requestedDesc, out TextureResource texture, string? debugName)
     {
-        texture = TextureHolder.Null;
+        texture = TextureResource.Null;
         TextureDesc desc = requestedDesc;
         if (debugName is not null)
         {
@@ -615,13 +615,13 @@ internal sealed partial class VulkanContext : IContext
             }
         }
 
-        texture = new TextureHolder(this, handle);
+        texture = new TextureResource(this, handle);
         return ResultCode.Ok;
     }
 
-    public ResultCode CreateTextureView(in TextureHandle texture, in TextureViewDesc desc, out TextureHolder textureView, string? debugName)
+    public ResultCode CreateTextureView(in TextureHandle texture, in TextureViewDesc desc, out TextureResource textureView, string? debugName)
     {
-        textureView = TextureHolder.Null;
+        textureView = TextureResource.Null;
         if (!texture)
         {
             HxDebug.Assert(texture.Valid);
@@ -735,13 +735,13 @@ internal sealed partial class VulkanContext : IContext
 
         AwaitingCreation = true;
 
-        textureView = new TextureHolder(this, handle);
+        textureView = new TextureResource(this, handle);
         return ResultCode.Ok;
     }
 
-    public ResultCode CreateBuffer(in BufferDesc requestedDesc, out BufferHolder buffer, string? debugName)
+    public ResultCode CreateBuffer(in BufferDesc requestedDesc, out BufferResource buffer, string? debugName)
     {
-        buffer = new BufferHolder();
+        buffer = new BufferResource();
         BufferDesc desc = requestedDesc;
 
         if (debugName != null)
@@ -805,7 +805,7 @@ internal sealed partial class VulkanContext : IContext
             Upload(handle, 0, desc.Data, desc.DataSize);
         }
 
-        buffer = new BufferHolder(this, handle);
+        buffer = new BufferResource(this, handle);
         return ResultCode.Ok;
     }
 
@@ -1152,7 +1152,10 @@ internal sealed partial class VulkanContext : IContext
         });
 
         var tex = TexturesPool.Get(handle);
-
+        if (tex is null || !tex.IsOwningVkImage)
+        {
+            return;
+        }
         tex?.Dispose();
     }
 
@@ -1171,29 +1174,6 @@ internal sealed partial class VulkanContext : IContext
                 VK.vkDestroyQueryPool(vkDevice, pool, null);
             }
         }, SubmitHandle.Null);
-    }
-
-    public void Destroy(in Framebuffer fb)
-    {
-        var destroyFbTexture = new Action<TextureHandle>((handle) =>
-        {
-            {
-                if (handle.Empty)
-                    return;
-                var tex = TexturesPool.Get(handle);
-                if (tex is null || !tex.IsOwningVkImage)
-                    return;
-                Destroy(handle);
-            }
-        });
-
-        foreach (Framebuffer.AttachmentDesc a in fb.Colors)
-        {
-            destroyFbTexture(a.Texture);
-            destroyFbTexture(a.ResolveTexture);
-        }
-        destroyFbTexture(fb.DepthStencil.Texture);
-        destroyFbTexture(fb.DepthStencil.ResolveTexture);
     }
     #endregion
 }

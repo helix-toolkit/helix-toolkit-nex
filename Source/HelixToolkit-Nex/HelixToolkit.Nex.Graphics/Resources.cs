@@ -8,108 +8,108 @@ public struct RenderPipeline { }
 public struct Sampler { }
 public struct QueryPool { }
 
-public sealed class ShaderModuleHolder : Holder<ShaderModule>
+public sealed class ShaderModuleResource : Resource<ShaderModule>
 {
-    public ShaderModuleHolder() { }
+    public ShaderModuleResource() { }
 
-    public ShaderModuleHolder(IContext context, in ShaderModuleHandle handle) : base(context, handle)
+    public ShaderModuleResource(IContext context, in ShaderModuleHandle handle) : base(context, handle)
     {
     }
     protected override void OnDestroyHandle(IContext ctx)
     {
-        ctx.Destroy(handle_);
+        ctx.Destroy(handle);
     }
-    public static readonly ShaderModuleHolder Null = new(); // A null shader module holder for convenience   
+    public static readonly ShaderModuleResource Null = new(); // A null shader module holder for convenience   
 }
 
-public sealed class TextureHolder : Holder<Texture>
+public sealed class TextureResource : Resource<Texture>
 {
-    public TextureHolder() { }
+    public TextureResource() { }
 
-    public TextureHolder(IContext context, in TextureHandle handle) : base(context, handle)
+    public TextureResource(IContext context, in TextureHandle handle) : base(context, handle)
     {
     }
     protected override void OnDestroyHandle(IContext ctx)
     {
-        ctx.Destroy(handle_);
+        ctx.Destroy(handle);
     }
 
-    public static readonly TextureHolder Null = new (); // A null texture holder for convenience   
+    public static readonly TextureResource Null = new(); // A null texture holder for convenience   
 }
 
-public sealed class BufferHolder : Holder<Buffer>
+public sealed class BufferResource : Resource<Buffer>
 {
-    public BufferHolder() { }
+    public BufferResource() { }
 
-    public BufferHolder(IContext context, in BufferHandle handle) : base(context, handle)
+    public BufferResource(IContext context, in BufferHandle handle) : base(context, handle)
     {
     }
     protected override void OnDestroyHandle(IContext ctx)
     {
-        ctx.Destroy(handle_);
+        ctx.Destroy(handle);
     }
 
-    public static readonly BufferHolder Null = new(); // A null buffer holder for convenience   
+    public static readonly BufferResource Null = new(); // A null buffer holder for convenience   
 }
 
-public sealed class ComputePipelineHolder : Holder<ComputePipeline>
+public sealed class ComputePipelineResource : Resource<ComputePipeline>
 {
-    public ComputePipelineHolder() { }
+    public ComputePipelineResource() { }
 
-    public ComputePipelineHolder(IContext context, in ComputePipelineHandle handle) : base(context, handle)
+    public ComputePipelineResource(IContext context, in ComputePipelineHandle handle) : base(context, handle)
     {
     }
     protected override void OnDestroyHandle(IContext ctx)
     {
-        ctx.Destroy(handle_);
+        ctx.Destroy(handle);
     }
 
-    public static readonly ComputePipelineHolder Null = new(); // A null compute pipeline holder for convenience   
+    public static readonly ComputePipelineResource Null = new(); // A null compute pipeline holder for convenience   
 }
 
-public sealed class RenderPipelineHolder : Holder<RenderPipeline>
+public sealed class RenderPipelineResource : Resource<RenderPipeline>
 {
-    public RenderPipelineHolder() { }
+    public RenderPipelineResource() { }
 
-    public RenderPipelineHolder(IContext context, in RenderPipelineHandle handle) : base(context, handle)
+    public RenderPipelineResource(IContext context, in RenderPipelineHandle handle) : base(context, handle)
     {
     }
     protected override void OnDestroyHandle(IContext ctx)
     {
-        ctx.Destroy(handle_);
+        ctx.Destroy(handle);
     }
 
-    public static readonly RenderPipelineHolder Null = new(); // A null render pipeline holder for convenience   
+    public static readonly RenderPipelineResource Null = new(); // A null render pipeline holder for convenience   
 }
 
-public sealed class SamplerHolder : Holder<Sampler>
+public sealed class SamplerResource : Resource<Sampler>
 {
-    public SamplerHolder() { }
+    public SamplerResource() { }
 
-    public SamplerHolder(IContext context, in SamplerHandle handle) : base(context, handle)
+    public SamplerResource(IContext context, in SamplerHandle handle) : base(context, handle)
     {
     }
 
     protected override void OnDestroyHandle(IContext ctx)
     {
-        ctx.Destroy(handle_);
+        ctx.Destroy(handle);
     }
 
-    public static readonly SamplerHolder Null = new(); // A null sampler holder for convenience   
+    public static readonly SamplerResource Null = new(); // A null sampler holder for convenience   
 }
 
-public sealed class QueryPoolHolder : Holder<QueryPool>
+public sealed class QueryPoolResource : Resource<QueryPool>
 {
-    public QueryPoolHolder() { }
+    public QueryPoolResource() { }
 
-    public QueryPoolHolder(IContext context, in QueryPoolHandle handle) : base(context, handle)
+    public QueryPoolResource(IContext context, in QueryPoolHandle handle) : base(context, handle)
     {
     }
 
     protected override void OnDestroyHandle(IContext ctx)
     {
-        ctx.Destroy(handle_);
+        ctx.Destroy(handle);
     }
 
-    public static readonly QueryPoolHolder Null = new(); // A null query pool holder for convenience   
+    public static readonly QueryPoolResource Null = new(); // A null query pool holder for convenience   
 }
