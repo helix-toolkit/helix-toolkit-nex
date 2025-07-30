@@ -141,7 +141,7 @@ internal sealed class VulkanBuffer : IDisposable
         if (GraphicsSettings.EnableDebug && !string.IsNullOrEmpty(debugName))
         {
             // set debug name
-            ctx!.VkDevice.SetDebugObjectName(VK.VK_OBJECT_TYPE_BUFFER, (nuint)vkBuffer, debugName);
+            ctx!.VkDevice.SetDebugObjectName(VK.VK_OBJECT_TYPE_BUFFER, (nuint)vkBuffer, $"[Vk.Buf]: {debugName}");
         }
 
         // handle shader access

@@ -62,7 +62,7 @@ internal sealed class VulkanImmediateCommands : IDisposable
         }
         if (GraphicsSettings.EnableDebug && !string.IsNullOrEmpty(this.debugName))
         {
-            device.SetDebugObjectName(VK.VK_OBJECT_TYPE_COMMAND_POOL, (nuint)commandPool.Handle, debugName);
+            device.SetDebugObjectName(VK.VK_OBJECT_TYPE_COMMAND_POOL, (nuint)commandPool.Handle, $"[Vk.ImmediateCmdPool]: {debugName}");
         }
 
 

@@ -181,7 +181,7 @@ internal sealed class VulkanSwapchain : IDisposable
                     surfaceFormat.format,
                     isDepthFormat: surfaceFormat.format.IsDepthFormat(),
                     isStencilFormat: surfaceFormat.format.IsStencilFormat(), true, false);
-                device.SetDebugObjectName(VK.VK_OBJECT_TYPE_IMAGE, (nuint)image.Image, $"Image: Swapchain {i}");
+                device.SetDebugObjectName(VK.VK_OBJECT_TYPE_IMAGE, (nuint)image.Image, $"[Vk.SwapChainImage]: Swapchain {i}");
 
                 image.ImageView = image.CreateImageView(device, VK.VK_IMAGE_VIEW_TYPE_2D, surfaceFormat.format,
                                                          VK.VK_IMAGE_ASPECT_COLOR_BIT, 0,

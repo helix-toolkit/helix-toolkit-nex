@@ -170,7 +170,7 @@ internal static class ShaderExtensions
             }
             if (GraphicsSettings.EnableDebug && !string.IsNullOrEmpty(debugName))
             {
-                vkDevice.SetDebugObjectName(VK.VK_OBJECT_TYPE_SHADER_MODULE, (nuint)vkShaderModule.Handle, debugName);
+                vkDevice.SetDebugObjectName(VK.VK_OBJECT_TYPE_SHADER_MODULE, (nuint)vkShaderModule.Handle, $"[Vk.Shader]: {debugName}");
             }
 
             HxDebug.Assert(vkShaderModule != VkShaderModule.Null);
@@ -253,7 +253,7 @@ internal sealed class ShaderUtils
 
         using Shader shader = new(input);
 
-        foreach(var define in defines ?? [])
+        foreach (var define in defines ?? [])
         {
             shader.SetPreamble($"{define}\n");
         }

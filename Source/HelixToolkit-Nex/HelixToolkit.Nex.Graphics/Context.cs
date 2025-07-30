@@ -100,6 +100,29 @@ public static class ContextExtensions
         }
     }
 
+    public static ShaderModuleHolder CreateShaderModuleGlsl(this IContext context, string glsl, ShaderStage stage, string? debugName = null)
+    {
+        using var data = glsl.ToArray().Pin();
+        unsafe
+        {
+            context.CreateShaderModule(new ShaderModuleDesc
+            {
+                Data = (nint)data.Pointer,
+                DataSize = (uint)glsl.Length,
+                Stage = stage,
+                DataType = ShaderDataType.Glsl,
+                DebugName = debugName ?? string.Empty
+            }, out var shaderModule).CheckResult();
+            return shaderModule;
+        }
+    }
+
+    public static SamplerHolder CreateSampler(this IContext context, in SamplerStateDesc desc)
+    {
+        context.CreateSampler(desc, out var sampler).CheckResult();
+        return sampler;
+    }
+
     public static ResultCode CreateBuffer<T>(this IContext context, T[] data, BufferUsageBits usage,
         StorageType storage, out BufferHolder buffer, string? debugName = null) where T : unmanaged
     {
@@ -108,5 +131,24 @@ public static class ContextExtensions
             using var pinnedData = data.Pin();
             return context.CreateBuffer(new BufferDesc(usage, storage, (nint)pinnedData.Pointer, (uint)(data.Length * sizeof(T)), debugName), out buffer, debugName);
         }
+    }
+
+    public static BufferHolder CreateBuffer<T>(this IContext context, T[] data, BufferUsageBits usage,
+        StorageType storage, string? debugName = null) where T : unmanaged
+    {
+        CreateBuffer(context, data, usage, storage, out var buffer, debugName).CheckResult();
+        return buffer;
+    }
+
+    public static BufferHolder CreateBuffer(this IContext context, in BufferDesc desc, string? debugName = null)
+    {
+        context.CreateBuffer(desc, out var buffer, debugName).CheckResult();
+        return buffer;
+    }
+
+    public static TextureHolder CreateTexture(this IContext context, in TextureDesc desc, string? debugName = null)
+    {
+        context.CreateTexture(desc, out var texture, debugName).CheckResult();
+        return texture;
     }
 }

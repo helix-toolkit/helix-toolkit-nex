@@ -1,6 +1,4 @@
-﻿using Vortice.Vulkan;
-
-namespace HelixToolkit.Nex.Graphics.Vulkan;
+﻿namespace HelixToolkit.Nex.Graphics.Vulkan;
 
 internal sealed partial class VulkanContext : IContext
 {
@@ -206,9 +204,9 @@ internal sealed partial class VulkanContext : IContext
             VkQueryPool pool = VkQueryPool.Null;
             VK.vkCreateQueryPool(vkDevice, &createInfo, null, &pool).CheckResult();
 
-            if (!String.IsNullOrEmpty(debugName))
+            if (!string.IsNullOrEmpty(debugName))
             {
-                vkDevice.SetDebugObjectName(VK.VK_OBJECT_TYPE_QUERY_POOL, (nuint)pool, debugName);
+                vkDevice.SetDebugObjectName(VK.VK_OBJECT_TYPE_QUERY_POOL, (nuint)pool, $"[Vk.QueryPool]: {debugName}");
             }
 
             var handle = this.QueriesPool.Create(pool);
@@ -971,9 +969,9 @@ internal sealed partial class VulkanContext : IContext
 
         var buf = BuffersPool.Get(handle);
 
-        HxDebug.Assert(buf is not null && buf.VkDeviceAddress != 0);
+        HxDebug.Assert(buf && buf!.VkDeviceAddress != 0);
 
-        return buf is not null ? (uint64_t)buf.VkDeviceAddress + offset : 0u;
+        return buf ? (uint64_t)buf!.VkDeviceAddress + offset : 0u;
     }
 
     public void RecreateSwapchain(int newWidth, int newHeight)

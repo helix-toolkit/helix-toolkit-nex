@@ -248,4 +248,19 @@ class App : Application
 
         vkContext.Submit(cmdBuffer, vkContext.GetCurrentSwapchainTexture());
     }
+
+    protected override void OnDisposing()
+    {
+        base.OnDisposing();
+        if (vkContext != null)
+        {
+            vkContext.Destroy(genCubeMapPipeline);
+            vkContext.Destroy(cubeRenderPipeline);
+            vkContext.Destroy(cubeMap);
+            vkContext.Destroy(indexBuffer);
+            vkContext.Destroy(genCubeMapFramebuffer);
+            vkContext.Destroy(renderCubeFramebuffer);
+            vkContext.Dispose();
+        }
+    }
 }

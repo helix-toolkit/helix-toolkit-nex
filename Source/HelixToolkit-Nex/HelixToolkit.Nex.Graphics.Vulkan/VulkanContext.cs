@@ -670,7 +670,7 @@ internal sealed partial class VulkanContext
             VkPhysicalDeviceVulkan13Features features1_3 = new() { pNext = null };
             VkPhysicalDeviceVulkan12Features features1_2 = new() { pNext = &features1_3 };
             VkPhysicalDeviceVulkan11Features features1_1 = new() { pNext = &features1_2 };
-          
+
             VkPhysicalDeviceFeatures2 deviceFeatures2 = new() { pNext = &features1_1 };
 
             void** features_chain = &features1_2.pNext;
@@ -738,7 +738,7 @@ internal sealed partial class VulkanContext
 
         if (GraphicsSettings.EnableDebug)
         {
-            vkDevice.SetDebugObjectName(VkObjectType.Device, (nuint)vkDevice.Handle, "Device: VkContext::vkDevice");
+            vkDevice.SetDebugObjectName(VkObjectType.Device, (nuint)vkDevice.Handle, "[Vk.Device]: vkDevice");
         }
 
         immediate = new VulkanImmediateCommands(vkDevice, DeviceQueues.graphicsQueueFamilyIndex, HasExtDeviceFault, "VkContext::immediate");
@@ -893,7 +893,7 @@ internal sealed partial class VulkanContext
             VK.vkCreateSampler(vkDevice, &cinfo, null, out var vkSampler).CheckResult();
             if (GraphicsSettings.EnableDebug && !string.IsNullOrEmpty(debugName))
             {
-                vkDevice.SetDebugObjectName(VK.VK_OBJECT_TYPE_SAMPLER, (nuint)vkSampler.Handle, debugName);
+                vkDevice.SetDebugObjectName(VK.VK_OBJECT_TYPE_SAMPLER, (nuint)vkSampler.Handle, $"[Vk.Sampler]: {debugName}");
             }
 
             sampler = SamplersPool.Create(vkSampler);
@@ -1026,7 +1026,7 @@ internal sealed partial class VulkanContext
                 if (GraphicsSettings.EnableDebug)
                 {
                     // Set debug name for the descriptor set layout
-                    vkDevice.SetDebugObjectName(VkObjectType.DescriptorSetLayout, (nuint)VkDesSetLayout, "Descriptor Set Layout: VulkanContext::vkDSL_");
+                    vkDevice.SetDebugObjectName(VkObjectType.DescriptorSetLayout, (nuint)VkDesSetLayout, "[Vk.DescSetLayout]: VulkanContext::vkDSL_");
                 }
             }
 
@@ -1630,7 +1630,7 @@ internal sealed partial class VulkanContext
                 VK.vkCreatePipelineLayout(vkDevice, &ci, null, &layout).CheckResult();
                 if (GraphicsSettings.EnableDebug && !string.IsNullOrEmpty(desc.DebugName))
                 {
-                    vkDevice.SetDebugObjectName(VK.VK_OBJECT_TYPE_PIPELINE_LAYOUT, (nuint)layout.Handle, $"Pipeline Layout: {desc.DebugName}");
+                    vkDevice.SetDebugObjectName(VK.VK_OBJECT_TYPE_PIPELINE_LAYOUT, (nuint)layout.Handle, $"[Vk.PipelineLayout]: {desc.DebugName}");
                 }
             }
 
@@ -1756,7 +1756,7 @@ internal sealed partial class VulkanContext
                     VK.vkCreatePipelineLayout(vkDevice, &ci, null, out cps.PipelineLayout).CheckResult();
                     if (GraphicsSettings.EnableDebug && !string.IsNullOrEmpty(cps.Desc.DebugName))
                     {
-                        vkDevice.SetDebugObjectName(VK.VK_OBJECT_TYPE_PIPELINE_LAYOUT, (nuint)cps.PipelineLayout, $"Pipeline Layout: {cps.Desc.DebugName}");
+                        vkDevice.SetDebugObjectName(VK.VK_OBJECT_TYPE_PIPELINE_LAYOUT, (nuint)cps.PipelineLayout, $"[Vk.PipelineLayout]: {cps.Desc.DebugName}");
                     }
                 }
                 {
@@ -1774,7 +1774,7 @@ internal sealed partial class VulkanContext
                     cps.Pipeline = pipeline;
                     if (GraphicsSettings.EnableDebug && !string.IsNullOrEmpty(cps.Desc.DebugName))
                     {
-                        vkDevice.SetDebugObjectName(VK.VK_OBJECT_TYPE_PIPELINE, (nuint)cps.Pipeline, cps.Desc.DebugName);
+                        vkDevice.SetDebugObjectName(VK.VK_OBJECT_TYPE_PIPELINE, (nuint)cps.Pipeline, $"[Vk.Pipline]: {cps.Desc.DebugName}");
                     }
                 }
             }

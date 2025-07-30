@@ -127,7 +127,7 @@ class App : Application
     Framebuffer genCubeMapFramebuffer = new Framebuffer();
     RenderPass renderCubeRenderPass = new RenderPass();
     Framebuffer renderCubeFramebuffer = new Framebuffer();
-    Dependencies dependencies = new Dependencies();
+    Dependencies dependencies = new();
 
     Color4[] clearColors = new Color4[6]
         {
@@ -171,7 +171,7 @@ class App : Application
                 SmFrag = genCubeMapFsModule,
                 DebugName = "Pipeline: Gen Cube Map"
             };
-            for(int i =0; i < 6; i++)
+            for (int i = 0; i < 6; i++)
             {
                 renderToCubeMapPipelineDesc.Color[i].Format = vkContext.GetFormat(cubeMap);
             }
@@ -253,5 +253,20 @@ class App : Application
         cmdBuffer.EndRendering();
 
         vkContext.Submit(cmdBuffer, vkContext.GetCurrentSwapchainTexture());
+    }
+
+    protected override void OnDisposing()
+    {
+        base.OnDisposing();
+        if (vkContext != null)
+        {
+            vkContext.Destroy(genCubeMapPipeline);
+            vkContext.Destroy(cubeRenderPipeline);
+            vkContext.Destroy(cubeMap);
+            vkContext.Destroy(indexBuffer);
+            vkContext.Destroy(genCubeMapFramebuffer);
+            vkContext.Destroy(renderCubeFramebuffer);
+            vkContext.Dispose();
+        }
     }
 }

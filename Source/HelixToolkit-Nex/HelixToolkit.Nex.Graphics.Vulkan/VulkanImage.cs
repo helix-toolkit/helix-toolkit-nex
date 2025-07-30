@@ -221,7 +221,7 @@ internal sealed class VulkanImage : IDisposable
         if (GraphicsSettings.EnableDebug && !string.IsNullOrEmpty(debugNameImage))
         {
             // set debug name for the image
-            ctx!.VkDevice.SetDebugObjectName(VK.VK_OBJECT_TYPE_IMAGE, (nuint)vkImage, debugNameImage);
+            ctx!.VkDevice.SetDebugObjectName(VK.VK_OBJECT_TYPE_IMAGE, (nuint)vkImage, $"[Vk.Image]: {debugNameImage}");
         }
 
         unsafe
@@ -317,7 +317,7 @@ internal sealed class VulkanImage : IDisposable
             VK.vkCreateImageView(device, &ci, null, &vkView).CheckResult();
             if (GraphicsSettings.EnableDebug && !string.IsNullOrEmpty(debugName))
             {
-                device.SetDebugObjectName(VK.VK_OBJECT_TYPE_IMAGE_VIEW, (nuint)vkView.Handle, debugName);
+                device.SetDebugObjectName(VK.VK_OBJECT_TYPE_IMAGE_VIEW, (nuint)vkView.Handle, $"[Vk.ImageView]: {debugName}");
             }
             return vkView;
         }

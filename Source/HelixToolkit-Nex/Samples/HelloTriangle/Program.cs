@@ -67,7 +67,7 @@ public class Program
             base.Initialize();
             vkContext = VulkanBuilder.Create(new VulkanContextConfig
             {
-                TerminateOnValidationError = true,            
+                TerminateOnValidationError = true,
                 OnCreateSurface = CreateSurface,
             }, MainWindow.Instance, 0);
             var windowSize = MainWindow.Size;
@@ -90,12 +90,6 @@ public class Program
             };
         }
 
-        public override void Dispose()
-        {
-            vkContext?.Dispose();
-            base.Dispose();
-        }
-
         protected override void OnTick()
         {
             ++frameCount;
@@ -108,7 +102,7 @@ public class Program
             }
             var cmdBuffer = vkContext!.AcquireCommandBuffer();
             frameBuffer.Colors[0].Texture = tex;
-            pass.Colors[0].ClearColor = new Color4((frameCount % 1000) / 1000f, 0.2f, 0.3f, 1.0f);     
+            pass.Colors[0].ClearColor = new Color4((frameCount % 1000) / 1000f, 0.2f, 0.3f, 1.0f);
             cmdBuffer.BeginRendering(pass, frameBuffer, Dependencies.Empty);
             cmdBuffer.BindRenderPipeline(renderPipeline);
             var aspect = MainWindow.Size.Width / (float)MainWindow.Size.Height;
@@ -124,6 +118,13 @@ public class Program
         protected override void HandleResize(in SDL_Event evt)
         {
             vkContext!.RecreateSwapchain(evt.window.data1, evt.window.data2);
+        }
+
+        protected override void OnDisposing()
+        {
+            base.OnDisposing();
+            renderPipeline.Dispose();
+            vkContext?.Dispose();
         }
     }
 }

@@ -1,7 +1,7 @@
-﻿using SDL3;
-using static SDL3.SDL3;
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
+using SDL3;
 using Vortice.Vulkan;
+using static SDL3.SDL3;
 
 namespace HelixToolkit.Nex.Sample.Application;
 
@@ -10,6 +10,7 @@ public abstract class Application : IDisposable
     static readonly ILogger logger = LogManager.Create<Application>();
 
     private bool _closeRequested = false;
+    private bool disposedValue;
 
     protected unsafe Application()
     {
@@ -32,10 +33,6 @@ public abstract class Application : IDisposable
     public abstract string Name { get; }
 
     public Window MainWindow { get; }
-
-    public virtual void Dispose()
-    {
-    }
 
     protected virtual void Initialize()
     {
@@ -120,5 +117,33 @@ public abstract class Application : IDisposable
         {
             logger.LogInformation($"[{priority}] SDL: {description}");
         }
+    }
+
+    void Dispose(bool disposing)
+    {
+        if (!disposedValue)
+        {
+            if (disposing)
+            {
+                OnDisposing();
+            }
+
+            // TODO: free unmanaged resources (unmanaged objects) and override finalizer
+            // TODO: set large fields to null
+            disposedValue = true;
+        }
+    }
+
+    protected virtual void OnDisposing()
+    {
+        // This method can be overridden to perform actions before disposal
+        // For example, you might want to clean up resources or log messages
+        logger.LogInformation("Disposing application resources.");
+    }
+
+    public void Dispose()
+    {
+        Dispose(disposing: true);
+        GC.SuppressFinalize(this);
     }
 }

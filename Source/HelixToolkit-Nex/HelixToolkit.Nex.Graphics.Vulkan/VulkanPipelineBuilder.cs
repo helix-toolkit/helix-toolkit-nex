@@ -243,7 +243,7 @@ internal sealed class VulkanPipelineBuilder
             // set debug name
             if (GraphicsSettings.EnableDebug && !string.IsNullOrEmpty(debugName))
             {
-                device.SetDebugObjectName(VK.VK_OBJECT_TYPE_PIPELINE, (nuint)outPipeline, debugName);
+                device.SetDebugObjectName(VK.VK_OBJECT_TYPE_PIPELINE, (nuint)outPipeline, $"[Vk.Pipeline]: {debugName}");
             }
             return VkResult.Success;
         }

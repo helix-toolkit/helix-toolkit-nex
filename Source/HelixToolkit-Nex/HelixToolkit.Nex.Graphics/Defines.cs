@@ -550,7 +550,7 @@ public struct RenderPipelineDesc()
     }
 }
 
-public sealed class RenderPass()
+public sealed class RenderPass
 {
     public struct AttachmentDesc()
     {
@@ -570,6 +570,14 @@ public sealed class RenderPass()
     public AttachmentDesc Stencil = new() { LoadOp = LoadOp.Invalid, StoreOp = StoreOp.DontCare };
     public uint32_t LayerCount = 1;
     public uint32_t ViewMask;
+
+    public RenderPass()
+    {
+        for (uint32_t i = 0; i < Constants.MAX_COLOR_ATTACHMENTS; i++)
+        {
+            Colors[i] = new AttachmentDesc();
+        }
+    }
 
     public uint32_t GetNumColorAttachments()
     {
@@ -596,6 +604,14 @@ public sealed class Framebuffer
     public AttachmentDesc DepthStencil = new();
 
     public string DebugName = string.Empty;
+
+    public Framebuffer()
+    {
+        for (uint32_t i = 0; i < Constants.MAX_COLOR_ATTACHMENTS; i++)
+        {
+            Colors[i] = new AttachmentDesc();
+        }
+    }
 
     public uint32_t GetNumColorAttachments()
     {
@@ -720,7 +736,7 @@ public struct TextureViewDesc()
     public ComponentMapping Swizzle;
 }
 
-public struct Dependencies()
+public sealed class Dependencies
 {
     public const uint32_t MAX_SUBMIT_DEPENDENCIES = 4;
 
@@ -729,6 +745,15 @@ public struct Dependencies()
     public readonly BufferHandle[] Buffers = new BufferHandle[MAX_SUBMIT_DEPENDENCIES];
 
     public static readonly Dependencies Empty = new();
+
+    public Dependencies()
+    {
+        for (uint32_t i = 0; i < MAX_SUBMIT_DEPENDENCIES; i++)
+        {
+            Textures[i] = TextureHandle.Null;
+            Buffers[i] = BufferHandle.Null;
+        }
+    }
 }
 
 [StructLayout(LayoutKind.Sequential, Size = sizeof(uint64_t))]
