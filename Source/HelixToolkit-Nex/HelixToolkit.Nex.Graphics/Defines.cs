@@ -467,14 +467,20 @@ public struct ShaderModuleDesc()
     public ShaderDefine[] Defines = [];
     public string DebugName = string.Empty;
 }
-
+/// <summary>
+/// Specialization constant entry. Used to define each constant entry. More information can be found in the Vulkan specification.
+/// <see href="https://docs.vulkan.org/samples/latest/samples/performance/specialization_constants/README.html"/>
+/// </summary>
 public struct SpecializationConstantEntry()
 {
     public uint32_t ConstantId;
     public uint32_t Offset; // offset within ShaderSpecializationConstantDesc::data
     public size_t Size;
 };
-
+/// <summary>
+/// Specialization constant description. This structure is used to pass specialization data to the shader.
+/// <see href="https://docs.vulkan.org/samples/latest/samples/performance/specialization_constants/README.html"/>
+/// </summary>
 public struct SpecializationConstantDesc()
 {
     public const uint8_t SPECIALIZATION_CONSTANTS_MAX = 16;
@@ -493,7 +499,13 @@ public struct SpecializationConstantDesc()
         return SPECIALIZATION_CONSTANTS_MAX;
     }
 };
-
+/// <summary>
+/// Represents the configuration and state for a render pipeline in a graphics application.
+/// </summary>
+/// <remarks>This structure encapsulates various settings and resources required to define a render pipeline,
+/// including shader modules, vertex input, and rendering states such as topology, culling, and polygon modes. It also
+/// includes settings for color and depth-stencil attachments, as well as multisampling parameters. The default values
+/// are set to common defaults, but can be customized to fit specific rendering needs.</remarks>
 public struct RenderPipelineDesc
 {
     public Topology Topology = Topology.Triangle;
@@ -555,7 +567,12 @@ public struct RenderPipelineDesc
         return Constants.MAX_COLOR_ATTACHMENTS;
     }
 }
-
+/// <summary>
+/// Represents a rendering pass configuration, including color, depth, and stencil attachments.
+/// </summary>
+/// <remarks>The <see cref="RenderPass"/> class is used to define the setup for a rendering pass, specifying how
+/// color, depth, and stencil attachments should be handled. It includes configurations for loading, storing, and
+/// resolving attachments, as well as clear values for color, depth, and stencil.</remarks>
 public sealed class RenderPass
 {
     public struct AttachmentDesc()
@@ -597,7 +614,12 @@ public sealed class RenderPass
         return Constants.MAX_COLOR_ATTACHMENTS;
     }
 }
-
+/// <summary>
+/// Represents a framebuffer used in rendering operations, containing color and depth-stencil attachments.
+/// </summary>
+/// <remarks>The <see cref="Framebuffer"/> class provides a structure for managing multiple color attachments and
+/// a single depth-stencil attachment. It is designed to be used in graphics applications where rendering to textures is
+/// required.</remarks>
 public sealed class Framebuffer
 {
     public struct AttachmentDesc()
@@ -741,7 +763,12 @@ public struct TextureViewDesc()
     public uint32_t NumMipLevels = 1;
     public ComponentMapping Swizzle;
 }
-
+/// <summary>
+/// Represents a collection of dependencies, including textures and buffers,  that can be submitted for processing.
+/// </summary>
+/// <remarks>This class provides a fixed-size collection of texture and buffer handles  that can be used to manage
+/// dependencies in a rendering or processing pipeline.  The maximum number of dependencies is defined by <see
+/// cref="MAX_SUBMIT_DEPENDENCIES"/>.</remarks>
 public sealed class Dependencies
 {
     public const uint32_t MAX_SUBMIT_DEPENDENCIES = 4;
