@@ -28,6 +28,7 @@ public sealed class VulkanContextConfig()
 
 internal sealed partial class VulkanContext
 {
+    public const uint32_t kMaxYcbcrConversionData = 256; // maximum number of Ycbcr conversions that can be created in the context
     private static readonly ILogger logger = LogManager.Create<VulkanContext>();
     [StructLayout(LayoutKind.Sequential)]
 
@@ -35,9 +36,7 @@ internal sealed partial class VulkanContext
     {
         public bool TerminateOnValidationError;
     }
-    private NativeObj<ValidationSettings>? validationSettings;
-    public const uint32_t kMaxYcbcrConversionData = 256; // maximum number of Ycbcr conversions that can be created in the context
-
+    NativeObj<ValidationSettings>? validationSettings;
     readonly nint window = nint.Zero;
     readonly nint display = nint.Zero;
     readonly FastList<VkFormat> deviceDepthFormats = [];
@@ -990,13 +989,13 @@ internal sealed partial class VulkanContext
                 using var pImmutableSamplers = immutableSamplers.GetInternalArray().Pin(0, immutableSamplers.Count);
 
 
-                VkDescriptorSetLayoutBinding[] bindings = [
-                        HxVkUtils.GetDSLBinding((uint)Bindings.Textures, VK.VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, maxTextures, stageFlags),
+                var bindings = stackalloc VkDescriptorSetLayoutBinding[(int)Bindings.NumBindings] {
+                    HxVkUtils.GetDSLBinding((uint)Bindings.Textures, VK.VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, maxTextures, stageFlags),
                     HxVkUtils.GetDSLBinding((uint)Bindings.Samplers, VK.VK_DESCRIPTOR_TYPE_SAMPLER, maxSamplers, stageFlags),
                     HxVkUtils.GetDSLBinding((uint)Bindings.StorageImages, VK.VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, maxTextures, stageFlags),
                     HxVkUtils.GetDSLBinding(
                         (uint)Bindings.YUVImages, VK.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, (uint32_t)immutableSamplers.Count, stageFlags, (VkSampler*)pImmutableSamplers.Pointer),
-                ];
+                };
 
                 VkDescriptorBindingFlags flags = VK.VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT | VK.VK_DESCRIPTOR_BINDING_UPDATE_UNUSED_WHILE_PENDING_BIT |
                         VK.VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT;
@@ -1013,14 +1012,12 @@ internal sealed partial class VulkanContext
                     pBindingFlags = (VkDescriptorBindingFlags*)pBindingFlags.Pointer,
                 };
 
-                using var pBindings = bindings.Pin();
-
                 VkDescriptorSetLayoutCreateInfo dslci = new()
                 {
                     pNext = &setLayoutBindingFlagsCI,
                     flags = VkDescriptorSetLayoutCreateFlags.UpdateAfterBindPool,
                     bindingCount = (uint32_t)Bindings.NumBindings,
-                    pBindings = (VkDescriptorSetLayoutBinding*)pBindings.Pointer,
+                    pBindings = bindings,
                 };
 
                 VK.vkCreateDescriptorSetLayout(vkDevice, &dslci, null, out vkDesSetLayout).CheckResult();
@@ -1034,20 +1031,19 @@ internal sealed partial class VulkanContext
 
             {
                 // create default descriptor pool and allocate 1 descriptor set
-                VkDescriptorPoolSize[] poolSizes = [
+                var poolSizes = stackalloc VkDescriptorPoolSize[(int)Bindings.NumBindings] {
                     new VkDescriptorPoolSize{ type = VK.VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, descriptorCount = maxTextures},
                     new VkDescriptorPoolSize{ type = VK.VK_DESCRIPTOR_TYPE_SAMPLER, descriptorCount =maxSamplers},
                     new VkDescriptorPoolSize{ type = VK.VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, descriptorCount =maxTextures},
                     new VkDescriptorPoolSize{ type = VK.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,descriptorCount = maxTextures},
-                ];
-                using var pPoolSizes = poolSizes.Pin();
+                };
 
                 VkDescriptorPoolCreateInfo ci = new()
                 {
                     flags = VkDescriptorPoolCreateFlags.UpdateAfterBind,
                     maxSets = 1,
                     poolSizeCount = (uint)Bindings.NumBindings,
-                    pPoolSizes = (VkDescriptorPoolSize*)pPoolSizes.Pointer,
+                    pPoolSizes = poolSizes,
                 };
                 VK.vkCreateDescriptorPool(vkDevice, &ci, null, out vkDesPool).CheckResult();
 
