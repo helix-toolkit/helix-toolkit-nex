@@ -116,6 +116,18 @@ public static class ContextExtensions
         }
     }
 
+    public static ComputePipelineResource CreateComputePipeline(this IContext context, in ComputePipelineDesc desc)
+    {
+        context.CreateComputePipeline(desc, out var computePipeline).CheckResult();
+        return computePipeline;
+    }
+
+    public static RenderPipelineResource CreateRenderPipeline(this IContext context, in RenderPipelineDesc desc)
+    {
+        context.CreateRenderPipeline(desc, out var renderPipeline).CheckResult();
+        return renderPipeline;
+    }
+
     public static SamplerResource CreateSampler(this IContext context, in SamplerStateDesc desc)
     {
         context.CreateSampler(desc, out var sampler).CheckResult();
@@ -149,5 +161,10 @@ public static class ContextExtensions
     {
         context.CreateTexture(desc, out var texture, debugName).CheckResult();
         return texture;
+    }
+
+    public static SubmitHandle Submit(this IContext context, in ICommandBuffer commandBuffer)
+    {
+        return context.Submit(commandBuffer, TextureHandle.Null);
     }
 }

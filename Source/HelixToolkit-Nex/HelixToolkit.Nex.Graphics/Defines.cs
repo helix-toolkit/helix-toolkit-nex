@@ -532,7 +532,7 @@ public struct RenderPipelineDesc
     public string EntryPointMesh = "main";
     public string EntryPointFrag = "main";
 
-    public readonly ColorAttachment[] Color = new ColorAttachment[Constants.MAX_COLOR_ATTACHMENTS];
+    public readonly ColorAttachment[] Colors = new ColorAttachment[Constants.MAX_COLOR_ATTACHMENTS];
     public Format DepthFormat = Format.Invalid;
     public Format StencilFormat = Format.Invalid;
 
@@ -553,7 +553,7 @@ public struct RenderPipelineDesc
     {
         for (uint32_t i = 0; i < Constants.MAX_COLOR_ATTACHMENTS; i++)
         {
-            Color[i] = new ColorAttachment();
+            Colors[i] = new ColorAttachment();
         }
     }
 
@@ -561,7 +561,7 @@ public struct RenderPipelineDesc
     {
         for (uint32_t i = 0; i < Constants.MAX_COLOR_ATTACHMENTS; i++)
         {
-            if (Color[i].Format == Format.Invalid)
+            if (Colors[i].Format == Format.Invalid)
             {
                 return i;
             }
@@ -596,12 +596,32 @@ public sealed class RenderPass
     public uint32_t LayerCount = 1;
     public uint32_t ViewMask;
 
-    public RenderPass()
+    public RenderPass(IEnumerable<AttachmentDesc>? colors = null)
     {
         for (uint32_t i = 0; i < Constants.MAX_COLOR_ATTACHMENTS; i++)
         {
             Colors[i] = new AttachmentDesc();
         }
+        if (colors != null)
+        {
+            uint32_t i = 0;
+            foreach (var color in colors)
+            {
+                if (i < Constants.MAX_COLOR_ATTACHMENTS)
+                {
+                    Colors[i] = color;
+                    i++;
+                }
+                else
+                {
+                    break; // Avoid exceeding the maximum number of color attachments
+                }
+            }
+        }
+    }
+
+    public RenderPass(in AttachmentDesc colorAttachment) : this(Enumerable.Repeat(colorAttachment, 1))
+    {
     }
 
     public uint32_t GetNumColorAttachments()
@@ -635,12 +655,32 @@ public sealed class Framebuffer
 
     public string DebugName = string.Empty;
 
-    public Framebuffer()
+    public Framebuffer(IEnumerable<AttachmentDesc>? attachments = null)
     {
         for (uint32_t i = 0; i < Constants.MAX_COLOR_ATTACHMENTS; i++)
         {
             Colors[i] = new AttachmentDesc();
         }
+        if (attachments != null)
+        {
+            uint32_t i = 0;
+            foreach (var attachment in attachments)
+            {
+                if (i < Constants.MAX_COLOR_ATTACHMENTS)
+                {
+                    Colors[i] = attachment;
+                    i++;
+                }
+                else
+                {
+                    break; // Avoid exceeding the maximum number of color attachments
+                }
+            }
+        }
+    }
+
+    public Framebuffer(in AttachmentDesc colorAttachment) : this(Enumerable.Repeat(colorAttachment, 1))
+    {
     }
 
     public uint32_t GetNumColorAttachments()
@@ -753,7 +793,6 @@ public struct TextureDesc()
     public size_t DataSize = 0; // size of the data to upload, if not null
     public uint32_t DataNumMipLevels = 1; // how many mip-levels we want to upload
     public bool GenerateMipmaps = false; // generate mip-levels immediately, valid only with non-null data
-    public string DebugName = string.Empty;
 }
 
 public struct TextureViewDesc()

@@ -408,10 +408,6 @@ internal sealed partial class VulkanContext : IContext
     {
         texture = TextureResource.Null;
         TextureDesc desc = requestedDesc;
-        if (debugName is not null)
-        {
-            desc.DebugName = debugName;
-        }
 
         var getClosestDepthStencilFormat = new Func<Format, VkFormat>((desiredFormat) =>
         {
@@ -561,7 +557,8 @@ internal sealed partial class VulkanContext : IContext
         HxDebug.Assert(vkExtent.height > 0);
         HxDebug.Assert(vkExtent.depth > 0);
 
-        VulkanImage image = new(this, usageFlags, vkExtent, vkImageType, vkFormat, vkSamples, numLevels, numLayers, vkFormat.IsDepthFormat(), vkFormat.IsStencilFormat(), debugName);
+        VulkanImage image = new(this, usageFlags, vkExtent, vkImageType, vkFormat, vkSamples, numLevels, numLayers,
+            vkFormat.IsDepthFormat(), vkFormat.IsStencilFormat(), debugName);
         VkComponentMapping mapping = new()
         {
             r = desc.Swizzle.R.ToVk(),

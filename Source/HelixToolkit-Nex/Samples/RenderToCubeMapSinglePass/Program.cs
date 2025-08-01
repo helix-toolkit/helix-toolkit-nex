@@ -173,7 +173,7 @@ class App : Application
             };
             for (int i = 0; i < 6; i++)
             {
-                renderToCubeMapPipelineDesc.Color[i].Format = vkContext.GetFormat(cubeMap);
+                renderToCubeMapPipelineDesc.Colors[i].Format = vkContext.GetFormat(cubeMap);
             }
 
             vkContext.CreateRenderPipeline(renderToCubeMapPipelineDesc, out genCubeMapPipeline).CheckResult();
@@ -201,7 +201,7 @@ class App : Application
                 FragementShader = fsModule,
                 DebugName = "Pipeline: Render Box"
             };
-            pipelineDesc.Color[0].Format = vkContext.GetSwapchainFormat();
+            pipelineDesc.Colors[0].Format = vkContext.GetSwapchainFormat();
 
             vkContext.CreateRenderPipeline(pipelineDesc, out cubeRenderPipeline).CheckResult();
         }

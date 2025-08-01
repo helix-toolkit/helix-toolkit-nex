@@ -5,6 +5,7 @@ using HelixToolkit.Nex.ImGui;
 using HelixToolkit.Nex.Maths;
 using HelixToolkit.Nex.Sample.Application;
 using ImGuiNET;
+using ImGuiTest;
 using SDL3;
 using System.Numerics;
 
@@ -16,10 +17,12 @@ app.Run();
 class App : Application
 {
     IContext? vkContext;
-    ImGuiRenderer? renderer;
-    Framebuffer framebuffer = new Framebuffer();
+    ImGuiRenderer? guiRenderer;
+    Framebuffer framebuffer = new();
     RenderPass pass = new();
     Dependencies dp = new();
+    TextureResource frameTexture = TextureResource.Null;
+    ShaderRenderer? shaderRenderer = null;
     public override string Name => "ImGui Test Application";
 
     protected override void Initialize()
@@ -30,26 +33,38 @@ class App : Application
             OnCreateSurface = CreateSurface,
             ForcePresentModeFIFO = true,
         }, MainWindow.Instance, 0);
+        shaderRenderer = new ShaderRenderer(vkContext);
+        shaderRenderer.Initialize();
         var windowSize = MainWindow.Size;
         vkContext.RecreateSwapchain(windowSize.Width, windowSize.Height);
-        renderer = new ImGuiRenderer(vkContext, new ImGuiConfig());
-        renderer.Initialize();
+        guiRenderer = new ImGuiRenderer(vkContext, new ImGuiConfig());
+        guiRenderer.Initialize();
         pass.Colors[0].ClearColor = new Color4(0.1f, 0.1f, 0.1f, 1.0f);
         pass.Colors[0].LoadOp = LoadOp.Clear;
+
+        frameTexture = vkContext.CreateTexture(new TextureDesc()
+        {
+            Format = Format.RGBA_UN8,
+            Dimensions = new((uint)windowSize.Width, (uint)windowSize.Height, 1),
+            Usage = TextureUsageBits.Sampled | TextureUsageBits.Attachment
+        },
+            "Frame Texture");
+
+        dp.Textures[0] = frameTexture;
     }
 
     protected override void OnDisplayScaleChanged(float scaleX, float scaleY)
     {
-        if (renderer != null && scaleX != 0)
+        if (guiRenderer != null && scaleX != 0)
         {
-            // Update the ImGui renderer with the new display scale.
-            renderer.DisplayScale = scaleX;
+            // Update the ImGui guiRenderer with the new display scale.
+            guiRenderer.DisplayScale = scaleX;
         }
     }
 
     protected override void OnMouseMove(int x, int y, int xrel, int yrel)
     {
-        if (renderer == null)
+        if (guiRenderer == null)
         {
             return; // Renderer not initialized, cannot set cursor position.
         }
@@ -105,7 +120,7 @@ class App : Application
 
     protected override void OnTick()
     {
-        if (vkContext == null || renderer == null)
+        if (vkContext == null || guiRenderer == null)
         {
             return;
         }
@@ -116,11 +131,19 @@ class App : Application
         }
         framebuffer.Colors[0].Texture = tex;
         var cmdBuf = vkContext.AcquireCommandBuffer();
-        cmdBuf.BeginRendering(pass, framebuffer, dp);
-        renderer.BeginFrame(framebuffer);
-        ImGui.ShowDemoWindow();
+        shaderRenderer?.Render(cmdBuf, MainWindow.Size, frameTexture);
 
-        renderer.EndFrame(cmdBuf);
+        cmdBuf.BeginRendering(pass, framebuffer, dp);
+        guiRenderer.BeginFrame(framebuffer);
+        ImGui.ShowDemoWindow();
+        ImGui.Begin("Hello, ImGui!");
+        ImGui.Text("This is a simple ImGui test application.");
+        ImGui.Text($"Current time: {DateTime.Now:HH:mm:ss}");
+        ImGui.Text($"Window size: {MainWindow.Size.Width}x{MainWindow.Size.Height}");
+        ImGui.Text($"Display scale: {guiRenderer.DisplayScale}");
+        ImGui.Image((nint)frameTexture.Index, new Vector2(MainWindow.Size.Width / 2, MainWindow.Size.Height / 2), new Vector2(0, 0), new Vector2(1, 1));
+        ImGui.End();
+        guiRenderer.EndFrame(cmdBuf);
         cmdBuf.EndRendering();
         vkContext.Submit(cmdBuf, tex);
     }
@@ -128,6 +151,7 @@ class App : Application
     protected override void OnDisposing()
     {
         base.OnDisposing();
-        renderer?.Dispose();
+        shaderRenderer?.Dispose();
+        guiRenderer?.Dispose();
     }
 }

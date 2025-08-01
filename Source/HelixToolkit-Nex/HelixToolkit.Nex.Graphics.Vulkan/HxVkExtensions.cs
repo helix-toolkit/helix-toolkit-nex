@@ -772,7 +772,7 @@ internal static class HxVkExtensions
     {
         if (colorTex.IsDepthFormat || colorTex.IsStencilFormat)
         {
-            logger.LogError("Color attachments cannot have depth/stencil formats");
+            logger.LogError("Colors attachments cannot have depth/stencil formats");
             return;
         }
         HxDebug.Assert(colorTex.ImageFormat != VkFormat.Undefined, "Invalid color attachment format");

@@ -139,10 +139,10 @@ public class ImGuiRenderer(IContext context, ImGuiConfig config) : IDisposable
         desc.SpecInfo.Data = new byte[sizeof(uint)];
         using var pData = desc.SpecInfo.Data.Pin();
         NativeHelper.Write((nint)pData.Pointer, ref nonLinearColorSpace);
-        desc.Color[0].Format = context.GetFormat(fb.Colors[0].Texture);
-        desc.Color[0].BlendEnabled = true;
-        desc.Color[0].SrcRGBBlendFactor = BlendFactor.SrcAlpha;
-        desc.Color[0].DstRGBBlendFactor = BlendFactor.OneMinusSrcAlpha;
+        desc.Colors[0].Format = context.GetFormat(fb.Colors[0].Texture);
+        desc.Colors[0].BlendEnabled = true;
+        desc.Colors[0].SrcRGBBlendFactor = BlendFactor.SrcAlpha;
+        desc.Colors[0].DstRGBBlendFactor = BlendFactor.OneMinusSrcAlpha;
         desc.DepthFormat = fb.DepthStencil.Texture ? context.GetFormat(fb.DepthStencil.Texture) : Format.Invalid;
         desc.CullMode = CullMode.None;
         desc.DebugName = nameof(ImGuiRenderer);
@@ -182,12 +182,11 @@ public class ImGuiRenderer(IContext context, ImGuiConfig config) : IDisposable
                     Dimensions = new Dimensions((uint)width, (uint)height, 1),
                     Format = Format.RGBA_UN8,
                     Usage = TextureUsageBits.Sampled,
-                    DebugName = "ImGui Font Texture",
                     Data = data,
                     DataSize = Format.RGBA_UN8.GetBytesPerBlock() * (uint)(width * height),
                     Type = TextureType.Texture2D,
                 };
-                FontTexture = context.CreateTexture(textureDesc);
+                FontTexture = context.CreateTexture(textureDesc, "ImGui Font Texture");
                 io.Fonts.SetTexID((nint)FontTexture.Index);
             }
         }

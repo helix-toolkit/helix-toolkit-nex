@@ -1529,7 +1529,7 @@ internal sealed partial class VulkanContext
 
             for (uint32_t i = 0; i != numColorAttachments; i++)
             {
-                ref ColorAttachment attachment = ref desc.Color[i];
+                ref ColorAttachment attachment = ref desc.Colors[i];
                 HxDebug.Assert(attachment.Format != Format.Invalid);
                 colorAttachmentFormats[i] = attachment.Format.ToVk();
                 if (!attachment.BlendEnabled)

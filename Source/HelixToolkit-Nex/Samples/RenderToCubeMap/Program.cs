@@ -5,7 +5,6 @@ using HelixToolkit.Nex.Graphics.Vulkan;
 using HelixToolkit.Nex.Maths;
 using HelixToolkit.Nex.Sample.Application;
 using Microsoft.Extensions.Logging;
-using System;
 using System.Numerics;
 using System.Runtime.InteropServices;
 using Vortice.Vulkan;
@@ -168,7 +167,7 @@ class App : Application
                 DebugName = "Pipeline: Gen Cube Map"
             };
 
-            renderToCubeMapPipelineDesc.Color[0].Format = vkContext.GetFormat(cubeMap);
+            renderToCubeMapPipelineDesc.Colors[0].Format = vkContext.GetFormat(cubeMap);
 
             vkContext.CreateRenderPipeline(renderToCubeMapPipelineDesc, out genCubeMapPipeline).CheckResult();
         }
@@ -183,7 +182,7 @@ class App : Application
                 FragementShader = fsModule,
                 DebugName = "Pipeline: Render Box"
             };
-            pipelineDesc.Color[0].Format = vkContext.GetSwapchainFormat();
+            pipelineDesc.Colors[0].Format = vkContext.GetSwapchainFormat();
 
             vkContext.CreateRenderPipeline(pipelineDesc, out cubeRenderPipeline).CheckResult();
         }

@@ -80,7 +80,7 @@ public class Program
                 FragementShader = psModule,
                 Topology = Topology.Triangle,
             };
-            pipelineDesc.Color[0].Format = vkContext.GetSwapchainFormat();
+            pipelineDesc.Colors[0].Format = vkContext.GetSwapchainFormat();
             vkContext.CreateRenderPipeline(pipelineDesc, out renderPipeline).CheckResult();
 
             pass.Colors[0] = new RenderPass.AttachmentDesc

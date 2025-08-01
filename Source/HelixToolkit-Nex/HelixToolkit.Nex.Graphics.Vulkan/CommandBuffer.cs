@@ -99,7 +99,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
             if (handle)
             {
                 var colorTex = vkContext.TexturesPool.Get(handle);
-                HxDebug.Assert(colorTex != null && colorTex.Valid, "Color texture is null. Make sure the texture is created before binding it to the framebuffer.");
+                HxDebug.Assert(colorTex != null && colorTex.Valid, "Colors texture is null. Make sure the texture is created before binding it to the framebuffer.");
                 if (colorTex is null)
                 {
                     continue;
@@ -111,10 +111,10 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
             if (handle)
             {
                 var colorResolveTex = vkContext.TexturesPool.Get(handle);
-                HxDebug.Assert(colorResolveTex != null, "Color resolve texture is null. Make sure the texture is created before binding it to the framebuffer.");
+                HxDebug.Assert(colorResolveTex != null, "Colors resolve texture is null. Make sure the texture is created before binding it to the framebuffer.");
                 if (colorResolveTex is null)
                 {
-                    logger.LogError($"Color resolve texture {handle} is null. Make sure the texture is created before binding it to the framebuffer.");
+                    logger.LogError($"Colors resolve texture {handle} is null. Make sure the texture is created before binding it to the framebuffer.");
                     continue;
                 }
                 colorResolveTex.IsResolveAttachment = true;
@@ -165,10 +165,10 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
             HxDebug.Assert(!attachment.Texture.Empty);
 
             var colorTexture = vkContext.TexturesPool.Get(attachment.Texture);
-            HxDebug.Assert(colorTexture != null, "Color texture is null. Make sure the texture is created before binding it to the framebuffer.");
+            HxDebug.Assert(colorTexture != null, "Colors texture is null. Make sure the texture is created before binding it to the framebuffer.");
             if (colorTexture is null)
             {
-                logger.LogError("Color texture {HANDLE} is null. Make sure the texture is created before binding it to the framebuffer.", attachment.Texture);
+                logger.LogError("Colors texture {HANDLE} is null. Make sure the texture is created before binding it to the framebuffer.", attachment.Texture);
                 continue; // skip if texture is not found
             }
             ref var descColor = ref renderPass.Colors[i];
@@ -209,10 +209,10 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
                 HxDebug.Assert(samples != VkSampleCountFlags.None);
                 HxDebug.Assert(!attachment.ResolveTexture.Empty, "Framebuffer attachment should contain a resolve texture");
                 var colorResolveTexture = vkContext.TexturesPool.Get(attachment.ResolveTexture);
-                HxDebug.Assert(colorResolveTexture != null, "Color resolve texture is null. Make sure the texture is created before binding it to the framebuffer.");
+                HxDebug.Assert(colorResolveTexture != null, "Colors resolve texture is null. Make sure the texture is created before binding it to the framebuffer.");
                 if (colorResolveTexture is null)
                 {
-                    logger.LogError("Color resolve texture {TEXTURE} is null. Make sure the texture is created before binding it to the framebuffer.", attachment.ResolveTexture);
+                    logger.LogError("Colors resolve texture {TEXTURE} is null. Make sure the texture is created before binding it to the framebuffer.", attachment.ResolveTexture);
                     continue; // skip if texture is not found
                 }
                 colorAttachments[i].resolveImageView =
