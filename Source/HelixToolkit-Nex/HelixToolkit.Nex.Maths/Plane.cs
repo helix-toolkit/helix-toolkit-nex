@@ -379,12 +379,12 @@ namespace HelixToolkit.Nex.Maths
         /// This plane  is assumed to be normalized
         /// </summary>
         /// <param name="p"></param>
-        /// <param name="light">The light direction. If the W component is 0, the light is directional light; if the
-        /// W component is 1, the light is a point light.</param>
+        /// <param name="light">The light direction. If the Width component is 0, the light is directional light; if the
+        /// Width component is 1, the light is a point light.</param>
         /// <param name="result">When the method completes, contains the shadow matrix.</param>
         public static void Shadow(ref Plane p, ref Vector4 light, out Matrix result)
         {
-            float dot = Plane.Dot(p, light);// (p.Normal.X * light.X) + (p.Normal.Y * light.Y) + (p.Normal.Z * light.Z) + (p.D * light.W);
+            float dot = Plane.Dot(p, light);// (p.Normal.X * light.X) + (p.Normal.Y * light.Y) + (p.Normal.Z * light.Z) + (p.D * light.Width);
             float x = -p.Normal.X;
             float y = -p.Normal.Y;
             float z = -p.Normal.Z;
@@ -413,8 +413,8 @@ namespace HelixToolkit.Nex.Maths
         /// This plane  is assumed to be normalized
         /// </summary>
         /// <param name="p"></param>
-        /// <param name="light">The light direction. If the W component is 0, the light is directional light; if the
-        /// W component is 1, the light is a point light.</param>
+        /// <param name="light">The light direction. If the Width component is 0, the light is directional light; if the
+        /// Width component is 1, the light is a point light.</param>
         /// <returns>The shadow matrix.</returns>
         public static Matrix Shadow(this Plane p, Vector4 light)
         {
@@ -462,13 +462,13 @@ namespace HelixToolkit.Nex.Maths
         /// <summary>
         /// Creates a Matrix3x3 that flattens geometry into a shadow.
         /// </summary>
-        /// <param name="light">The light direction. If the W component is 0, the light is directional light; if the
-        /// W component is 1, the light is a point light.</param>
+        /// <param name="light">The light direction. If the Width component is 0, the light is directional light; if the
+        /// Width component is 1, the light is a point light.</param>
         /// <param name="plane">The plane onto which to project the geometry as a shadow. This parameter is assumed to be normalized.</param>
         /// <param name="result">When the method completes, contains the shadow Matrix3x3.</param>
         public static void Shadow(ref Vector4 light, ref Plane plane, out Matrix3x3 result)
         {
-            float dot = Plane.Dot(plane, light);//(plane.Normal.X * light.X) + (plane.Normal.Y * light.Y) + (plane.Normal.Z * light.Z) + (plane.D * light.W);
+            float dot = Plane.Dot(plane, light);//(plane.Normal.X * light.X) + (plane.Normal.Y * light.Y) + (plane.Normal.Z * light.Z) + (plane.D * light.Width);
             float x = -plane.Normal.X;
             float y = -plane.Normal.Y;
             float z = -plane.Normal.Z;
@@ -487,8 +487,8 @@ namespace HelixToolkit.Nex.Maths
         /// <summary>
         /// Creates a Matrix3x3 that flattens geometry into a shadow.
         /// </summary>
-        /// <param name="light">The light direction. If the W component is 0, the light is directional light; if the
-        /// W component is 1, the light is a point light.</param>
+        /// <param name="light">The light direction. If the Width component is 0, the light is directional light; if the
+        /// Width component is 1, the light is a point light.</param>
         /// <param name="plane">The plane onto which to project the geometry as a shadow. This parameter is assumed to be normalized.</param>
         /// <returns>The shadow Matrix3x3.</returns>
         public static Matrix3x3 Shadow(Vector4 light, Plane plane)

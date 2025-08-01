@@ -110,7 +110,7 @@ namespace HelixToolkit.Nex.Maths
         /// <summary>
         /// Initializes a new instance of the <see cref = "Int3" /> struct.
         /// </summary>
-        /// <param name = "values">The values to assign to the X, Y, Z, and W components of the vector. This must be an array with four elements.</param>
+        /// <param name = "values">The values to assign to the X, Y, Z, and Width components of the vector. This must be an array with four elements.</param>
         /// <exception cref = "ArgumentNullException">Thrown when <paramref name = "values" /> is <c>null</c>.</exception>
         /// <exception cref = "ArgumentOutOfRangeException">Thrown when <paramref name = "values" /> contains more or less than four elements.</exception>
         public Int3(int[] values)
@@ -134,8 +134,8 @@ namespace HelixToolkit.Nex.Maths
         /// <summary>
         /// Gets or sets the component at the specified index.
         /// </summary>
-        /// <value>The value of the X, Y, Z, or W component, depending on the index.</value>
-        /// <param name = "index">The index of the component to access. Use 0 for the X component, 1 for the Y component, 2 for the Z component, and 3 for the W component.</param>
+        /// <value>The value of the X, Y, Z, or Width component, depending on the index.</value>
+        /// <param name = "index">The index of the component to access. Use 0 for the X component, 1 for the Y component, 2 for the Z component, and 3 for the Width component.</param>
         /// <returns>The value of the component at the specified index.</returns>
         /// <exception cref = "System.ArgumentOutOfRangeException">Thrown when the <paramref name = "index" /> is out of the range [0, 3].</exception>
         public int this[int index]

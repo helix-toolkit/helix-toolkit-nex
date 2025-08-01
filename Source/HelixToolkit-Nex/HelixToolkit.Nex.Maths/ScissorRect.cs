@@ -5,12 +5,12 @@ public struct ScissorRect(uint x = 0, uint y = 0, uint w = 0, uint h = 0) : IEqu
 {
     public uint X = x;
     public uint Y = y;
-    public uint W = w;
-    public uint H = h;
+    public uint Width = w;
+    public uint Height = h;
 
     public readonly bool Equals(ScissorRect other)
     {
-        return X == other.X && Y == other.Y && W == other.W && H == other.H;
+        return X == other.X && Y == other.Y && Width == other.Width && Height == other.Height;
     }
 
     public readonly override bool Equals(object? obj)
@@ -29,6 +29,6 @@ public struct ScissorRect(uint x = 0, uint y = 0, uint w = 0, uint h = 0) : IEqu
 
     public override readonly int GetHashCode()
     {
-        return HashCode.Combine(X, Y, W, H);
+        return HashCode.Combine(X, Y, Width, Height);
     }
 }

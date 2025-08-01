@@ -82,7 +82,7 @@ namespace HelixToolkit.Nex.Maths
                         }
                         else if ((text.Length == 7 && text[0] == '#') ||
                                  (text.Length == 8 && (text.StartsWith("0x") || text.StartsWith("0X"))) ||
-                                 (text.Length == 8 && (text.StartsWith("&h") || text.StartsWith("&H"))))
+                                 (text.Length == 8 && (text.StartsWith("&h") || text.StartsWith("&Height"))))
                         {
                             // Note: ConvertFromString will raise exception if value cannot be converted.
                             var intVal = intConverter.ConvertFromString(text);

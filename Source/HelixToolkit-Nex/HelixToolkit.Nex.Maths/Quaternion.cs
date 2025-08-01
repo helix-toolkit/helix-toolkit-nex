@@ -105,9 +105,9 @@ namespace HelixToolkit.Nex.Maths
         /// <summary>
         /// Gets or sets the component at the specified index.
         /// </summary>
-        /// <value>The value of the X, Y, Z, or W component, depending on the index.</value>
+        /// <value>The value of the X, Y, Z, or Width component, depending on the index.</value>
         /// <param name="q"></param>
-        /// <param name="index">The index of the component to access. Use 0 for the X component, 1 for the Y component, 2 for the Z component, and 3 for the W component.</param>
+        /// <param name="index">The index of the component to access. Use 0 for the X component, 1 for the Y component, 2 for the Z component, and 3 for the Width component.</param>
         /// <returns>The value of the component at the specified index.</returns>
         /// <exception cref="System.ArgumentOutOfRangeException">Thrown when the <paramref name="index"/> is out of the range [0, 3].</exception>
         public static float Get(this Quaternion q,int index)
@@ -315,7 +315,7 @@ namespace HelixToolkit.Nex.Maths
             //result.X = normalized.X * sin;
             //result.Y = normalized.Y * sin;
             //result.Z = normalized.Z * sin;
-            //result.W = cos;
+            //result.Width = cos;
         }
 
         /// <summary>
@@ -377,7 +377,7 @@ namespace HelixToolkit.Nex.Maths
             //if (scale > 0.0f)
             //{
             //    sqrt = (float)Math.Sqrt(scale + 1.0f);
-            //    result.W = sqrt * 0.5f;
+            //    result.Width = sqrt * 0.5f;
             //    sqrt = 0.5f / sqrt;
 
             //    result.X = (matrix.M23 - matrix.M32) * sqrt;
@@ -392,7 +392,7 @@ namespace HelixToolkit.Nex.Maths
             //    result.X = 0.5f * sqrt;
             //    result.Y = (matrix.M12 + matrix.M21) * half;
             //    result.Z = (matrix.M13 + matrix.M31) * half;
-            //    result.W = (matrix.M23 - matrix.M32) * half;
+            //    result.Width = (matrix.M23 - matrix.M32) * half;
             //}
             //else if (matrix.M22 > matrix.M33)
             //{
@@ -402,7 +402,7 @@ namespace HelixToolkit.Nex.Maths
             //    result.X = (matrix.M21 + matrix.M12) * half;
             //    result.Y = 0.5f * sqrt;
             //    result.Z = (matrix.M32 + matrix.M23) * half;
-            //    result.W = (matrix.M31 - matrix.M13) * half;
+            //    result.Width = (matrix.M31 - matrix.M13) * half;
             //}
             //else
             //{
@@ -412,7 +412,7 @@ namespace HelixToolkit.Nex.Maths
             //    result.X = (matrix.M31 + matrix.M13) * half;
             //    result.Y = (matrix.M32 + matrix.M23) * half;
             //    result.Z = 0.5f * sqrt;
-            //    result.W = (matrix.M12 - matrix.M21) * half;
+            //    result.Width = (matrix.M12 - matrix.M21) * half;
             //}
         }
 
@@ -431,7 +431,7 @@ namespace HelixToolkit.Nex.Maths
             //if (scale > 0.0f)
             //{
             //    sqrt = (float)Math.Sqrt(scale + 1.0f);
-            //    result.W = sqrt * 0.5f;
+            //    result.Width = sqrt * 0.5f;
             //    sqrt = 0.5f / sqrt;
 
             //    result.X = (matrix.M23 - matrix.M32) * sqrt;
@@ -446,7 +446,7 @@ namespace HelixToolkit.Nex.Maths
             //    result.X = 0.5f * sqrt;
             //    result.Y = (matrix.M12 + matrix.M21) * half;
             //    result.Z = (matrix.M13 + matrix.M31) * half;
-            //    result.W = (matrix.M23 - matrix.M32) * half;
+            //    result.Width = (matrix.M23 - matrix.M32) * half;
             //}
             //else if (matrix.M22 > matrix.M33)
             //{
@@ -456,7 +456,7 @@ namespace HelixToolkit.Nex.Maths
             //    result.X = (matrix.M21 + matrix.M12) * half;
             //    result.Y = 0.5f * sqrt;
             //    result.Z = (matrix.M32 + matrix.M23) * half;
-            //    result.W = (matrix.M31 - matrix.M13) * half;
+            //    result.Width = (matrix.M31 - matrix.M13) * half;
             //}
             //else
             //{
@@ -466,7 +466,7 @@ namespace HelixToolkit.Nex.Maths
             //    result.X = (matrix.M31 + matrix.M13) * half;
             //    result.Y = (matrix.M32 + matrix.M23) * half;
             //    result.Z = 0.5f * sqrt;
-            //    result.W = (matrix.M12 - matrix.M21) * half;
+            //    result.Width = (matrix.M12 - matrix.M21) * half;
             //}
         }
 
@@ -661,7 +661,7 @@ namespace HelixToolkit.Nex.Maths
             //result.X = (cosYaw * sinPitch * cosRoll) + (sinYaw * cosPitch * sinRoll);
             //result.Y = (sinYaw * cosPitch * cosRoll) - (cosYaw * sinPitch * sinRoll);
             //result.Z = (cosYaw * cosPitch * sinRoll) - (sinYaw * sinPitch * cosRoll);
-            //result.W = (cosYaw * cosPitch * cosRoll) + (sinYaw * sinPitch * sinRoll);
+            //result.Width = (cosYaw * cosPitch * cosRoll) + (sinYaw * sinPitch * sinRoll);
         }
 
         /// <summary>

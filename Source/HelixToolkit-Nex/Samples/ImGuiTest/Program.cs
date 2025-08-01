@@ -7,7 +7,12 @@ using HelixToolkit.Nex.Sample.Application;
 using ImGuiNET;
 using ImGuiTest;
 using SDL3;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.ColorSpaces;
+using SixLabors.ImageSharp.PixelFormats;
+using SixLabors.ImageSharp.Processing;
 using System.Numerics;
+using System.Runtime.InteropServices;
 
 Console.WriteLine("Hello, World!");
 
@@ -22,7 +27,10 @@ class App : Application
     RenderPass pass = new();
     Dependencies dp = new();
     TextureResource frameTexture = TextureResource.Null;
-    ShaderRenderer? shaderRenderer = null;
+    ShaderToyRenderer? shaderToyRenderer = null;
+    TextureResource imageSample = TextureResource.Null;
+    uint toySelection = 0;
+
     public override string Name => "ImGui Test Application";
 
     protected override void Initialize()
@@ -33,8 +41,8 @@ class App : Application
             OnCreateSurface = CreateSurface,
             ForcePresentModeFIFO = true,
         }, MainWindow.Instance, 0);
-        shaderRenderer = new ShaderRenderer(vkContext);
-        shaderRenderer.Initialize();
+        shaderToyRenderer = new ShaderToyRenderer(vkContext);
+        shaderToyRenderer.Initialize();
         var windowSize = MainWindow.Size;
         vkContext.RecreateSwapchain(windowSize.Width, windowSize.Height);
         guiRenderer = new ImGuiRenderer(vkContext, new ImGuiConfig());
@@ -45,12 +53,42 @@ class App : Application
         frameTexture = vkContext.CreateTexture(new TextureDesc()
         {
             Format = Format.RGBA_UN8,
-            Dimensions = new((uint)windowSize.Width, (uint)windowSize.Height, 1),
+            Dimensions = new(512, 512, 1),
             Usage = TextureUsageBits.Sampled | TextureUsageBits.Attachment
         },
             "Frame Texture");
 
         dp.Textures[0] = frameTexture;
+
+        LoadImageSample();
+    }
+
+    private void LoadImageSample()
+    {
+        Configuration.Default.PreferContiguousImageBuffers = true;
+        using var image = Image.Load<Rgba32>("Assets/image_sample.jpg");
+        if (image == null || image.Width == 0 || image.Height == 0)
+        {
+            throw new Exception("Failed to load noise texture.");
+        }
+        image.Mutate(x => x.Resize(2048, 2048, KnownResamplers.Bicubic));
+        if (image!.DangerousTryGetSinglePixelMemory(out var pixels))
+        {
+            using var data = pixels.Pin();
+            unsafe
+            {
+                var textureDesc = new TextureDesc()
+                {
+                    Type = TextureType.Texture2D,
+                    Dimensions = new((uint)image.Width, (uint)image.Height, 1),
+                    Format = Format.RGBA_SRGB8,
+                    Usage = TextureUsageBits.Sampled,
+                    Data = (nint)data.Pointer,
+                    DataSize = (uint)(image.Width * image.Height * Marshal.SizeOf<Rgba32>()),
+                };
+                imageSample = vkContext!.CreateTexture(textureDesc, "ShaderRenderer: Image Sample");
+            }
+        }
     }
 
     protected override void OnDisplayScaleChanged(float scaleX, float scaleY)
@@ -131,7 +169,7 @@ class App : Application
         }
         framebuffer.Colors[0].Texture = tex;
         var cmdBuf = vkContext.AcquireCommandBuffer();
-        shaderRenderer?.Render(cmdBuf, MainWindow.Size, frameTexture);
+        shaderToyRenderer?.Render(cmdBuf, toySelection, new Vector2(512, 512), frameTexture);
 
         cmdBuf.BeginRendering(pass, framebuffer, dp);
         guiRenderer.BeginFrame(framebuffer);
@@ -141,7 +179,29 @@ class App : Application
         ImGui.Text($"Current time: {DateTime.Now:HH:mm:ss}");
         ImGui.Text($"Window size: {MainWindow.Size.Width}x{MainWindow.Size.Height}");
         ImGui.Text($"Display scale: {guiRenderer.DisplayScale}");
-        ImGui.Image((nint)frameTexture.Index, new Vector2(MainWindow.Size.Width / 2, MainWindow.Size.Height / 2), new Vector2(0, 0), new Vector2(1, 1));
+        ImGui.End();
+        ImGui.Begin("ShaderToy Renderer");
+        if (ImGui.BeginCombo("ShaderToy Renderer Options", shaderToyRenderer!.ToyTypes[toySelection]))
+        {
+            if (ImGui.Selectable(shaderToyRenderer.ToyTypes[0], toySelection == 0))
+            {
+                toySelection = 0;
+            }
+            if (ImGui.Selectable(shaderToyRenderer.ToyTypes[1], toySelection == 1))
+            {
+                toySelection = 1;
+            }
+            if (ImGui.Selectable(shaderToyRenderer.ToyTypes[2], toySelection == 2))
+            {
+                toySelection = 2;
+            }
+            ImGui.EndCombo();
+        }
+        ImGui.Image((nint)frameTexture.Index, new Vector2(512, 512), new Vector2(0, 0), new Vector2(1, 1));
+        ImGui.End();
+        ImGui.Begin("Image Sample");
+        ImGui.Text("This is an image sample loaded from Assets/image_sample.jpg.");
+        ImGui.Image((nint)imageSample.Index, new Vector2(256, 256), new Vector2(0, 0), new Vector2(1, 1));
         ImGui.End();
         guiRenderer.EndFrame(cmdBuf);
         cmdBuf.EndRendering();
@@ -151,7 +211,7 @@ class App : Application
     protected override void OnDisposing()
     {
         base.OnDisposing();
-        shaderRenderer?.Dispose();
+        shaderToyRenderer?.Dispose();
         guiRenderer?.Dispose();
     }
 }

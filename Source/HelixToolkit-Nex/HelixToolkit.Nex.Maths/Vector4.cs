@@ -64,7 +64,7 @@ namespace HelixToolkit.Nex.Maths
         public static readonly Vector4 UnitZ = new(0.0f, 0.0f, 1.0f, 0.0f);
 
         /// <summary>
-        /// The W unit <see cref="Vector4"/> (0, 0, 0, 1).
+        /// The Width unit <see cref="Vector4"/> (0, 0, 0, 1).
         /// </summary>
         public static readonly Vector4 UnitW = new(0.0f, 0.0f, 0.0f, 1.0f);
 
@@ -115,9 +115,9 @@ namespace HelixToolkit.Nex.Maths
         /// <summary>
         /// Gets or sets the component at the specified index.
         /// </summary>
-        /// <value>The value of the X, Y, Z, or W component, depending on the index.</value>
+        /// <value>The value of the X, Y, Z, or Width component, depending on the index.</value>
         /// <param name="v"></param>
-        /// <param name="index">The index of the component to access. Use 0 for the X component, 1 for the Y component, 2 for the Z component, and 3 for the W component.</param>
+        /// <param name="index">The index of the component to access. Use 0 for the X component, 1 for the Y component, 2 for the Z component, and 3 for the Width component.</param>
         /// <returns>The value of the component at the specified index.</returns>
         /// <exception cref="System.ArgumentOutOfRangeException">Thrown when the <paramref name="index"/> is out of the range [0, 3].</exception>
         public static float Get(this Vector4 v, int index)
@@ -168,7 +168,7 @@ namespace HelixToolkit.Nex.Maths
             //result = new Vector4((value1.X + (amount1 * (value2.X - value1.X))) + (amount2 * (value3.X - value1.X)),
             //    (value1.Y + (amount1 * (value2.Y - value1.Y))) + (amount2 * (value3.Y - value1.Y)),
             //    (value1.Z + (amount1 * (value2.Z - value1.Z))) + (amount2 * (value3.Z - value1.Z)),
-            //    (value1.W + (amount1 * (value2.W - value1.W))) + (amount2 * (value3.W - value1.W)));
+            //    (value1.Width + (amount1 * (value2.Width - value1.Width))) + (amount2 * (value3.Width - value1.Width)));
         }
 
         /// <summary>
@@ -234,7 +234,7 @@ namespace HelixToolkit.Nex.Maths
             //new Vector4((((value1.X * part1) + (value2.X * part2)) + (tangent1.X * part3)) + (tangent2.X * part4),
             //(((value1.Y * part1) + (value2.Y * part2)) + (tangent1.Y * part3)) + (tangent2.Y * part4),
             //(((value1.Z * part1) + (value2.Z * part2)) + (tangent1.Z * part3)) + (tangent2.Z * part4),
-            //(((value1.W * part1) + (value2.W * part2)) + (tangent1.W * part3)) + (tangent2.W * part4));
+            //(((value1.Width * part1) + (value2.Width * part2)) + (tangent1.Width * part3)) + (tangent2.Width * part4));
         }
 
         /// <summary>
@@ -269,7 +269,7 @@ namespace HelixToolkit.Nex.Maths
             //result.X = 0.5f * ((((2.0f * value2.X) + ((-value1.X + value3.X) * amount)) + (((((2.0f * value1.X) - (5.0f * value2.X)) + (4.0f * value3.X)) - value4.X) * squared)) + ((((-value1.X + (3.0f * value2.X)) - (3.0f * value3.X)) + value4.X) * cubed));
             //result.Y = 0.5f * ((((2.0f * value2.Y) + ((-value1.Y + value3.Y) * amount)) + (((((2.0f * value1.Y) - (5.0f * value2.Y)) + (4.0f * value3.Y)) - value4.Y) * squared)) + ((((-value1.Y + (3.0f * value2.Y)) - (3.0f * value3.Y)) + value4.Y) * cubed));
             //result.Z = 0.5f * ((((2.0f * value2.Z) + ((-value1.Z + value3.Z) * amount)) + (((((2.0f * value1.Z) - (5.0f * value2.Z)) + (4.0f * value3.Z)) - value4.Z) * squared)) + ((((-value1.Z + (3.0f * value2.Z)) - (3.0f * value3.Z)) + value4.Z) * cubed));
-            //result.W = 0.5f * ((((2.0f * value2.W) + ((-value1.W + value3.W) * amount)) + (((((2.0f * value1.W) - (5.0f * value2.W)) + (4.0f * value3.W)) - value4.W) * squared)) + ((((-value1.W + (3.0f * value2.W)) - (3.0f * value3.W)) + value4.W) * cubed));
+            //result.Width = 0.5f * ((((2.0f * value2.Width) + ((-value1.Width + value3.Width) * amount)) + (((((2.0f * value1.Width) - (5.0f * value2.Width)) + (4.0f * value3.Width)) - value4.Width) * squared)) + ((((-value1.Width + (3.0f * value2.Width)) - (3.0f * value3.Width)) + value4.Width) * cubed));
         }
 
         /// <summary>

@@ -446,7 +446,7 @@ namespace HelixToolkit.Nex.Maths
             //float x = rotation.X + rotation.X;
             //float y = rotation.Y + rotation.Y;
             //float z = rotation.Z + rotation.Z;
-            //float wz = rotation.W * z;
+            //float wz = rotation.Width * z;
             //float xx = rotation.X * x;
             //float xy = rotation.X * y;
             //float yy = rotation.Y * y;
@@ -518,9 +518,9 @@ namespace HelixToolkit.Nex.Maths
             //vector.X = (coordinate.X * transform.M11) + (coordinate.Y * transform.M21) + transform.M41;
             //vector.Y = (coordinate.X * transform.M12) + (coordinate.Y * transform.M22) + transform.M42;
             //vector.Z = (coordinate.X * transform.M13) + (coordinate.Y * transform.M23) + transform.M43;
-            //vector.W = 1f / ((coordinate.X * transform.M14) + (coordinate.Y * transform.M24) + transform.M44);
+            //vector.Width = 1f / ((coordinate.X * transform.M14) + (coordinate.Y * transform.M24) + transform.M44);
 
-            //result = new Vector2(vector.X * vector.W, vector.Y * vector.W);
+            //result = new Vector2(vector.X * vector.Width, vector.Y * vector.Width);
         }
 
         /// <summary>

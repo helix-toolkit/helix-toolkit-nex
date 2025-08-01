@@ -577,9 +577,9 @@ namespace HelixToolkit.Nex.Maths
             //float x = rotation.X + rotation.X;
             //float y = rotation.Y + rotation.Y;
             //float z = rotation.Z + rotation.Z;
-            //float wx = rotation.W * x;
-            //float wy = rotation.W * y;
-            //float wz = rotation.W * z;
+            //float wx = rotation.Width * x;
+            //float wy = rotation.Width * y;
+            //float wz = rotation.Width * z;
             //float xx = rotation.X * x;
             //float xy = rotation.X * y;
             //float xz = rotation.X * z;
@@ -711,9 +711,9 @@ namespace HelixToolkit.Nex.Maths
             //vector.X = (coordinate.X * transform.M11) + (coordinate.Y * transform.M21) + (coordinate.Z * transform.M31) + transform.M41;
             //vector.Y = (coordinate.X * transform.M12) + (coordinate.Y * transform.M22) + (coordinate.Z * transform.M32) + transform.M42;
             //vector.Z = (coordinate.X * transform.M13) + (coordinate.Y * transform.M23) + (coordinate.Z * transform.M33) + transform.M43;
-            //vector.W = 1f / ((coordinate.X * transform.M14) + (coordinate.Y * transform.M24) + (coordinate.Z * transform.M34) + transform.M44);
+            //vector.Width = 1f / ((coordinate.X * transform.M14) + (coordinate.Y * transform.M24) + (coordinate.Z * transform.M34) + transform.M44);
 
-            //result = new Vector3(vector.X * vector.W, vector.Y * vector.W, vector.Z * vector.W);
+            //result = new Vector3(vector.X * vector.Width, vector.Y * vector.Width, vector.Z * vector.Width);
         }
 
         /// <summary>

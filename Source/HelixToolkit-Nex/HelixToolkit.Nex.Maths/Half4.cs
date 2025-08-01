@@ -53,9 +53,9 @@ namespace HelixToolkit.Nex.Maths
         /// <value>The Z component of the vector.</value>
         public Half Z;
         /// <summary>
-        /// Gets or sets the W component of the vector.
+        /// Gets or sets the Width component of the vector.
         /// </summary>
-        /// <value>The W component of the vector.</value>
+        /// <value>The Width component of the vector.</value>
         public Half W;
 
         /// <summary>
@@ -64,7 +64,7 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="x">The X component.</param>
         /// <param name="y">The Y component.</param>
         /// <param name="z">The Z component.</param>
-        /// <param name="w">The W component.</param>
+        /// <param name="w">The Width component.</param>
         public Half4(Half x, Half y, Half z, Half w)
         {
             this.X = x;
@@ -79,7 +79,7 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="x">The X component.</param>
         /// <param name="y">The Y component.</param>
         /// <param name="z">The Z component.</param>
-        /// <param name="w">The W component.</param>
+        /// <param name="w">The Width component.</param>
         public Half4(float x, float y, float z, float w)
         {
             this.X = new Half(x);
@@ -94,7 +94,7 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="x">The X component.</param>
         /// <param name="y">The Y component.</param>
         /// <param name="z">The Z component.</param>
-        /// <param name="w">The W component.</param>
+        /// <param name="w">The Width component.</param>
         public Half4(ushort x, ushort y, ushort z, ushort w)
         {
             this.X = new Half(x);
@@ -106,7 +106,7 @@ namespace HelixToolkit.Nex.Maths
         /// <summary>
         /// Initializes a new instance of the <see cref="T:SharpDX.Half4" /> structure.
         /// </summary>
-        /// <param name="value">The value to set for the X, Y, Z, and W components.</param>
+        /// <param name="value">The value to set for the X, Y, Z, and Width components.</param>
         public Half4(Half value)
         {
             this.X = value;

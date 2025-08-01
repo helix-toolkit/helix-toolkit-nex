@@ -284,7 +284,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
         {
             VkRenderingInfo renderingInfo = new()
             {
-                renderArea = new VkRect2D(new VkOffset2D((int32_t)scissor.X, (int32_t)scissor.Y), new VkExtent2D((int32_t)scissor.W, (int32_t)scissor.H)),
+                renderArea = new VkRect2D(new VkOffset2D((int32_t)scissor.X, (int32_t)scissor.Y), new VkExtent2D((int32_t)scissor.Width, (int32_t)scissor.Height)),
                 layerCount = renderPass.LayerCount,
                 viewMask = renderPass.ViewMask,
                 colorAttachmentCount = numFbColorAttachments,
@@ -403,7 +403,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
 
     public void BindScissorRect(in ScissorRect rect)
     {
-        VkRect2D scissor = new(new VkOffset2D((int32_t)rect.X, (int32_t)rect.Y), new VkExtent2D(rect.W, rect.H));
+        VkRect2D scissor = new(new VkOffset2D((int32_t)rect.X, (int32_t)rect.Y), new VkExtent2D(rect.Width, rect.Height));
         unsafe
         {
             VK.vkCmdSetScissor(Wrapper.Instance, 0, 1, &scissor);

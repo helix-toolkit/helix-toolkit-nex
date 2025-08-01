@@ -66,7 +66,7 @@ namespace HelixToolkit.Nex.Maths
         public static readonly Bool4 UnitZ = new(false, false, true, false);
 
         /// <summary>
-        /// The W unit <see cref = "Bool4" /> (0, 0, 0, true).
+        /// The Width unit <see cref = "Bool4" /> (0, 0, 0, true).
         /// </summary>
         public static readonly Bool4 UnitW = new(false, false, false, true);
 
@@ -91,7 +91,7 @@ namespace HelixToolkit.Nex.Maths
         internal int iZ;
 
         /// <summary>
-        /// The W component of the vector.
+        /// The Width component of the vector.
         /// </summary>
         internal int iW;
 
@@ -141,7 +141,7 @@ namespace HelixToolkit.Nex.Maths
         }
 
         /// <summary>
-        /// The W component of the vector.
+        /// The Width component of the vector.
         /// </summary>
         public bool W
         {
@@ -173,7 +173,7 @@ namespace HelixToolkit.Nex.Maths
         /// <param name = "x">Initial value for the X component of the vector.</param>
         /// <param name = "y">Initial value for the Y component of the vector.</param>
         /// <param name = "z">Initial value for the Z component of the vector.</param>
-        /// <param name = "w">Initial value for the W component of the vector.</param>
+        /// <param name = "w">Initial value for the Width component of the vector.</param>
         public Bool4(bool x, bool y, bool z, bool w)
         {
             iX = x ? 1 : 0;
@@ -186,7 +186,7 @@ namespace HelixToolkit.Nex.Maths
         /// <summary>
         /// Initializes a new instance of the <see cref = "Bool4" /> struct.
         /// </summary>
-        /// <param name = "values">The values to assign to the X, Y, Z, and W components of the vector. This must be an array with four elements.</param>
+        /// <param name = "values">The values to assign to the X, Y, Z, and Width components of the vector. This must be an array with four elements.</param>
         /// <exception cref = "ArgumentNullException">Thrown when <paramref name = "values" /> is <c>null</c>.</exception>
         /// <exception cref = "ArgumentOutOfRangeException">Thrown when <paramref name = "values" /> contains more or less than four elements.</exception>
         public Bool4(bool[] values)
@@ -210,8 +210,8 @@ namespace HelixToolkit.Nex.Maths
         /// <summary>
         /// Gets or sets the component at the specified index.
         /// </summary>
-        /// <value>The value of the X, Y, Z, or W component, depending on the index.</value>
-        /// <param name = "index">The index of the component to access. Use 0 for the X component, 1 for the Y component, 2 for the Z component, and 3 for the W component.</param>
+        /// <value>The value of the X, Y, Z, or Width component, depending on the index.</value>
+        /// <param name = "index">The index of the component to access. Use 0 for the X component, 1 for the Y component, 2 for the Z component, and 3 for the Width component.</param>
         /// <returns>The value of the component at the specified index.</returns>
         /// <exception cref = "System.ArgumentOutOfRangeException">Thrown when the <paramref name = "index" /> is out of the range [0, 3].</exception>
         public bool this[int index]
@@ -291,12 +291,12 @@ namespace HelixToolkit.Nex.Maths
         /// </returns>
         public override readonly string ToString()
         {
-            return string.Format(CultureInfo.CurrentCulture, "X:{0} Y:{1} Z:{2} W:{3}", X, Y, Z, W);
+            return string.Format(CultureInfo.CurrentCulture, "X:{0} Y:{1} Z:{2} Width:{3}", X, Y, Z, W);
         }
 
         public readonly string ToString(IFormatProvider formatProvider)
         {
-            return string.Format(formatProvider, "[X:{0} Y:{1} Z:{2} W:{3}]",
+            return string.Format(formatProvider, "[X:{0} Y:{1} Z:{2} Width:{3}]",
                 X.ToString(formatProvider), Y.ToString(formatProvider), Z.ToString(formatProvider), W.ToString(formatProvider));
         }
         /// <summary>

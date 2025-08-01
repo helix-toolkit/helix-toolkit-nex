@@ -146,7 +146,7 @@ internal sealed class VulkanStagingDevice : IDisposable
         uint32_t storageSize = layerStorageSize * numLayers;
         EnsureStagingBufferSize(storageSize);
 
-        HxDebug.Assert(storageSize <= stagingBufferSize);
+        HxDebug.Assert(storageSize <= stagingBufferSize, $"Required storage size ({storageSize} is larger than maximum supported staging buffer size ({stagingBufferSize}).");
 
         var desc = GetNextFreeOffset(storageSize);
         // No support for copying image in multiple smaller chunk sizes. If we get smaller buffer size than storageSize, we will wait for GPU idle
