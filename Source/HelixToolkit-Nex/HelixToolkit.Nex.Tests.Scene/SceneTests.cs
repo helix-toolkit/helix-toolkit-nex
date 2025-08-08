@@ -26,6 +26,8 @@ public sealed class SceneTests
         Assert.IsTrue(root.Entity.Has<NodeInfo>());
         Assert.IsTrue(root.Entity.Has<Transform>());
         Assert.AreEqual(0, root.Info.Level);
+        root.Dispose();
+        Assert.IsFalse(root.Alive, "Node should be disposed and not alive after calling Dispose.");
     }
 
     [TestMethod]
@@ -47,6 +49,9 @@ public sealed class SceneTests
         Assert.IsTrue(child.HasParent);
         Assert.AreEqual(root, child.Parent);
         Assert.AreEqual(1, child.Info.Level);
+        root.Dispose();
+        Assert.IsFalse(root.Alive, "Root Node should be disposed and not alive after calling Dispose.");
+        Assert.IsFalse(child.Alive, "Child Node should be disposed and not alive after calling Dispose.");
     }
 
     [TestMethod]
@@ -124,6 +129,13 @@ public sealed class SceneTests
         Assert.IsTrue(child2.Children is not null && child2.Children.Count == 1);
         Assert.IsTrue(grandChild1.Children is not null && grandChild1.Children.Count == 0);
         Assert.IsTrue(grandChild2.Children is not null && grandChild2.Children.Count == 0);
+
+        root.Dispose();
+        Assert.IsFalse(root.Alive, "Root Node should be disposed and not alive after calling Dispose.");
+        Assert.IsFalse(child1.Alive, "Child Node 1 should be disposed and not alive after calling Dispose.");
+        Assert.IsFalse(child2.Alive, "Child Node 2 should be disposed and not alive after calling Dispose.");
+        Assert.IsFalse(grandChild1.Alive, "GrandChild Node 1 should be disposed and not alive after calling Dispose.");
+        Assert.IsFalse(grandChild2.Alive, "GrandChild Node 2 should be disposed and not alive after calling Dispose.");
     }
 
     [TestMethod]

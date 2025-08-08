@@ -150,6 +150,20 @@ public class Node : IDisposable
         {
             if (disposing)
             {
+                if (HasChildren)
+                {
+                    // Remove all children before destroying the node
+                    ref var children = ref Entity.Get<Children>();
+                    foreach (var child in children.ChildNodes.ToArray())
+                    {
+                        child.Dispose();
+                    }
+                }
+                // Remove the node from its parent if it has one
+                if (HasParent)
+                {
+                    Parent?.RemoveChild(this);
+                }
                 World.Destroy(Entity);
                 Entity = Entity.Null;
             }
