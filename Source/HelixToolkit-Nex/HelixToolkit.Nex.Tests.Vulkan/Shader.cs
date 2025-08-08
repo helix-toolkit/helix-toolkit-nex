@@ -1,5 +1,6 @@
 ﻿namespace HelixToolkit.Nex.Tests.Vulkan;
 [TestClass]
+[TestCategory("GPURequired")]
 public class Shader
 {
     private static IContext? vkContext;

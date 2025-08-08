@@ -4,6 +4,7 @@ using System.Runtime.InteropServices;
 namespace HelixToolkit.Nex.Tests.Vulkan;
 
 [TestClass]
+[TestCategory("GPURequired")]
 public class Buffer
 {
     private static IContext? vkContext;

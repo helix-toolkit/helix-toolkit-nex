@@ -53,11 +53,11 @@ jobs:
       - name: Build Debug
         run: dotnet build Source/HelixToolkit-Nex/HelixToolkit.Nex.sln --configuration Debug --no-restore /p:Version=${{ steps.version_step.outputs.SemVer }} /p:AssemblyVersion=${{ steps.version_step.outputs.assemblySemVer }}
 
-      #- name: Test Debug
-      #  run: dotnet test Source/HelixToolkit-Nex/HelixToolkit.Nex.sln --configuration Debug --no-build --verbosity normal
+      - name: Test Debug
+        run: dotnet test Source/HelixToolkit-Nex/HelixToolkit.Nex.sln --configuration Debug --no-build --verbosity normal --filter "TestCategory!=GPURequired"
 
       - name: Build Release
         run: dotnet build Source/HelixToolkit-Nex/HelixToolkit.Nex.sln --configuration Release --no-restore /p:Version=${{ steps.version_step.outputs.SemVer }} /p:AssemblyVersion=${{ steps.version_step.outputs.assemblySemVer }}
 
-      #- name: Test Release
-      #  run: dotnet test Source/HelixToolkit-Nex/HelixToolkit.Nex.sln --configuration Release --no-build --verbosity normal
+      - name: Test Release
+        run: dotnet test Source/HelixToolkit-Nex/HelixToolkit.Nex.sln --configuration Release --no-build --verbosity normal --filter "TestCategory!=GPURequired"

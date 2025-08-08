@@ -1,6 +1,7 @@
 ﻿namespace HelixToolkit.Nex.Tests.Vulkan;
 
 [TestClass]
+[TestCategory("GPURequired")]
 public class Image
 {
     private static IContext? vkContext;
