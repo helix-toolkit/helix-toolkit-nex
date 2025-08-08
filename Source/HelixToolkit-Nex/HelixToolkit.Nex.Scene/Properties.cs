@@ -35,7 +35,14 @@ public struct Transform()
 
     public Quaternion Rotation { set; get; } = Quaternion.Identity;
 
+    public Matrix4x4 WorldTransform { private set; get; } = Matrix4x4.Identity;
+
     public readonly Matrix4x4 Value => Matrix4x4.CreateScale(Scale) * Matrix4x4.CreateFromQuaternion(Rotation) * Matrix4x4.CreateTranslation(Translation);
+
+    public void UpdateWorldTransform(ref Matrix4x4 parent)
+    {
+        WorldTransform = Value * parent;
+    }
 
     public override readonly string ToString()
     {

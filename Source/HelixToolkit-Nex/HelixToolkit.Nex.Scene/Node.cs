@@ -1,8 +1,4 @@
-﻿using Arch.Core;
-using Arch.Core.Extensions;
-using System.Diagnostics;
-
-namespace HelixToolkit.Nex.Scene;
+﻿namespace HelixToolkit.Nex.Scene;
 
 public class Node : IDisposable
 {
@@ -67,6 +63,8 @@ public class Node : IDisposable
     public bool Alive => World.IsAlive(Entity);
 
     public bool IsRoot => Info.Level == 0;
+
+    public ref Transform Transform => ref World.Get<Transform>(Entity);
 
     public Node(in World world, in Entity? entity = null)
     {
