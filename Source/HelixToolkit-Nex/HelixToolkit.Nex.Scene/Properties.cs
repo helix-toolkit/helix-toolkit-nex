@@ -1,7 +1,4 @@
-﻿using Arch.Core;
-using System.Numerics;
-
-namespace HelixToolkit.Nex.Scene;
+﻿namespace HelixToolkit.Nex.Scene;
 
 public struct NodeInfo
 {
@@ -29,24 +26,89 @@ public struct NodeInfo
 
 public struct Transform()
 {
-    public Vector3 Scale { set; get; } = Vector3.One;
+    private bool isLocalDirty = true;
+    public readonly bool IsLocalDirty => isLocalDirty;
 
-    public Vector3 Translation { set; get; } = Vector3.Zero;
+    private bool isWorldDirty = true;
+    public readonly bool IsWorldDirty => isWorldDirty || IsLocalDirty;
+    private Vector3 scale = Vector3.One;
+    public Vector3 Scale
+    {
+        set
+        {
+            if (value != scale)
+            {
+                scale = value;
+                isLocalDirty = true;
+            }
+        }
+        readonly get => scale;
+    }
 
-    public Quaternion Rotation { set; get; } = Quaternion.Identity;
+    private Vector3 translation = Vector3.Zero;
+    public Vector3 Translation
+    {
+        set
+        {
+            if (value != translation)
+            {
+                translation = value;
+                isLocalDirty = true;
+            }
+        }
+        readonly get => translation;
+    }
+
+    private Quaternion rotation = Quaternion.Identity;
+
+    public Quaternion Rotation
+    {
+        set
+        {
+            if (value != rotation)
+            {
+                rotation = value;
+                isLocalDirty = true;
+            }
+        }
+        readonly get => rotation;
+    }
 
     public Matrix4x4 WorldTransform { private set; get; } = Matrix4x4.Identity;
 
-    public readonly Matrix4x4 Value => Matrix4x4.CreateScale(Scale) * Matrix4x4.CreateFromQuaternion(Rotation) * Matrix4x4.CreateTranslation(Translation);
-
-    public void UpdateWorldTransform(ref Matrix4x4 parent)
+    private Matrix4x4 value = Matrix4x4.Identity;
+    public Matrix4x4 Value
     {
-        WorldTransform = Value * parent;
+        get
+        {
+            if (isLocalDirty)
+            {
+                value = Matrix4x4.CreateScale(Scale) * Matrix4x4.CreateFromQuaternion(Rotation) * Matrix4x4.CreateTranslation(Translation);
+                isLocalDirty = false;
+                isWorldDirty = true;
+            }
+            return value;
+        }
     }
 
-    public override readonly string ToString()
+    public void UpdateWorldTransform(in Matrix4x4 parent)
+    {
+        if (!IsWorldDirty)
+        {
+            return; // No change in world transform
+        }
+        WorldTransform = parent * Value;
+        isWorldDirty = false;
+    }
+
+    public override string ToString()
     {
         return $"Transform: {Value}";
+    }
+
+    public void MarkWorldDirty()
+    {
+        isWorldDirty = true;
     }
 }
 
