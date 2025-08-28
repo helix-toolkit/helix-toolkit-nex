@@ -184,14 +184,13 @@ internal sealed partial class VulkanContext
                     CreateSurface(window, display);
                 }
             }
-            InitContext();
+            return InitContext();
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to initialize vulkan context.");
             return ResultCode.RuntimeError;
         }
-        return ResultCode.Ok;
     }
 
     public bool HasSwapchain => Swapchain != null && Swapchain.Valid;
@@ -633,6 +632,12 @@ internal sealed partial class VulkanContext
         }
         VK.vkGetPhysicalDeviceProperties(vkPhysicalDevice, out VkPhysicalDeviceProperties properties);
 
+        if (properties.apiVersion < Config.VulkanVersion)
+        {
+            logger.LogError("Vulkan: The physical device does not support Vulkan 1.3 or higher.");
+            return ResultCode.RuntimeError;
+        }
+
         DeviceQueues.graphicsQueueFamilyIndex = HxVkUtils.FindQueueFamilyIndex(vkPhysicalDevice, VkQueueFlags.Graphics);
         DeviceQueues.computeQueueFamilyIndex = HxVkUtils.FindQueueFamilyIndex(vkPhysicalDevice, VkQueueFlags.Compute);
         if (DeviceQueues.graphicsQueueFamilyIndex == DeviceQueues.INVALID)
@@ -678,7 +683,7 @@ internal sealed partial class VulkanContext
 
             VkPhysicalDevice8BitStorageFeatures storage_8bit_features = default;
             List<VkUtf8String> enabledExtensions = [VK.VK_KHR_SWAPCHAIN_EXTENSION_NAME];
-            if (properties.apiVersion <= VkVersion.Version_1_2)
+            if (properties.apiVersion <= VkVersion.Version_1_3)
             {
                 if (HxVkUtils.CheckDeviceExtensionSupport(VK.VK_KHR_8BIT_STORAGE_EXTENSION_NAME, availableDeviceExtensions))
                 {
