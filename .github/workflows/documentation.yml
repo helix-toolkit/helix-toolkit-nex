@@ -33,7 +33,7 @@ jobs:
       run: dotnet tool install -g docfx
     
     - name: Build Solution
-      run: dotnet build Source/HelixToolkit-Nex/HelixToolkit-Nex.sln --configuration Release
+      run: dotnet build Source/HelixToolkit-Nex/HelixToolkit.Nex.sln --configuration Release
       
     - name: Build Documentation
       run: |
