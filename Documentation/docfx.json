@@ -4,10 +4,10 @@
       "src": [
         {
           "files": [
+            "HelixToolkit.Nex/**.csproj",
+            "HelixToolkit.Nex.Maths/**.csproj",
             "HelixToolkit.Nex.Graphics/**.csproj",
             "HelixToolkit.Nex.Graphics.Vulkan/**.csproj",
-            "HelixToolkit.Nex.Maths/**.csproj",
-            "HelixToolkit.Nex/**.csproj",
             "HelixToolkit.Nex.Scene/**.csproj",
             "HelixToolkit.Nex.Rendering/**.csproj",
             "HelixToolkit.Nex.ImGui/**.csproj"
