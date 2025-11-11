@@ -1,0 +1,18 @@
+# DocFX generated files
+_site/
+api/.manifest
+api/.mta.cache
+obj/
+.docfx_cache/
+
+# Build artifacts
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vs/
+.vscode/
+.idea/

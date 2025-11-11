@@ -1,0 +1,79 @@
+{
+  "metadata": [
+    {
+      "src": [
+        {
+  "files": [
+            "HelixToolkit.Nex.Graphics/**.csproj",
+      "HelixToolkit.Nex.Graphics.Vulkan/**.csproj",
+            "HelixToolkit.Nex.Maths/**.csproj",
+  "HelixTookit.Nex/**.csproj",
+        "HelixToolkit.Nex.Scene/**.csproj",
+            "HelixToolkit.Nex.Rendering/**.csproj",
+          "HelixToolkit.Nex.ImGui/**.csproj"
+  ],
+      "exclude": [
+    "**/obj/**",
+        "**/bin/**",
+       "**/Samples/**",
+  "**/Tests/**"
+     ]
+        }
+      ],
+      "dest": "api",
+   "disableGitFeatures": false,
+      "disableDefaultFilter": false,
+      "includePrivateMembers": false,
+      "properties": {
+    "TargetFramework": "net8.0"
+}
+    }
+  ],
+  "build": {
+    "content": [
+    {
+        "files": [
+     "api/**.yml",
+          "api/index.md"
+    ]
+      },
+      {
+        "files": [
+          "articles/**.md",
+          "articles/**/toc.yml",
+   "toc.yml",
+ "*.md"
+      ]
+      }
+ ],
+    "resource": [
+      {
+ "files": [
+          "images/**"
+      ]
+      }
+    ],
+ "output": "_site",
+    "globalMetadataFiles": [],
+    "fileMetadataFiles": [],
+    "template": [
+      "default",
+   "modern"
+    ],
+    "postProcessors": [],
+    "keepFileLink": false,
+    "disableGitFeatures": false,
+    "globalMetadata": {
+      "_appTitle": "Helix Toolkit NEX",
+      "_appName": "HelixToolkit.Nex",
+   "_appFooter": "© 2024 Helix Toolkit Contributors. All rights reserved.",
+      "_enableSearch": true,
+      "_enableNewTab": true,
+      "_disableContribution": false,
+      "_gitContribute": {
+        "repo": "https://github.com/helix-toolkit/helix-toolkit-nex",
+        "branch": "main"
+      }
+    }
+  }
+}
