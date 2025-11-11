@@ -4,10 +4,25 @@ using System.Runtime.InteropServices.Marshalling;
 
 namespace HelixToolkit.Nex
 {
+    /// <summary>
+    /// Represents a native object wrapper that manages unmanaged memory for a struct of type <typeparamref name="T"/>.
+    /// </summary>
+    /// <typeparam name="T">The unmanaged struct type to wrap.</typeparam>
+    /// <param name="ptr">Pointer to the native memory.</param>
+    /// <remarks>
+    /// This class provides automatic memory management for unmanaged structs by allocating and freeing
+    /// global heap memory through <see cref="Marshal"/>.
+    /// </remarks>
     public class NativeObj<T>(IntPtr ptr) : IDisposable where T : unmanaged
     {
+        /// <summary>
+        /// Gets the pointer to the native memory.
+        /// </summary>
         public IntPtr Ptr { get; private set; } = ptr;
 
+        /// <summary>
+        /// Disposes the native object and frees the allocated memory.
+        /// </summary>
         public void Dispose()
         {
             if (Ptr != IntPtr.Zero)
@@ -18,9 +33,20 @@ namespace HelixToolkit.Nex
             GC.SuppressFinalize(this); // Fix for CA1816
         }
 
+        /// <summary>
+        /// Implicitly converts a <see cref="NativeObj{T}"/> to an <see cref="IntPtr"/>.
+        /// </summary>
         public static implicit operator IntPtr(NativeObj<T> obj) => obj.Ptr;
+
+        /// <summary>
+        /// Implicitly converts a <see cref="NativeObj{T}"/> to an unsafe pointer of type <typeparamref name="T"/>*.
+        /// </summary>
         public static unsafe implicit operator T*(NativeObj<T> obj) => (T*)obj.Ptr.ToPointer();
 
+        /// <summary>
+        /// Creates a new native object with allocated memory for type <typeparamref name="T"/>.
+        /// </summary>
+        /// <returns>A new <see cref="NativeObj{T}"/> with allocated memory.</returns>
         public static NativeObj<T> Create()
         {
             var size = NativeHelper.SizeOf<T>();
@@ -28,6 +54,11 @@ namespace HelixToolkit.Nex
             return new NativeObj<T>(ptr);
         }
 
+        /// <summary>
+        /// Creates a new native object and copies the specified struct to the allocated memory.
+        /// </summary>
+        /// <param name="obj">The struct to copy to native memory.</param>
+        /// <returns>A new <see cref="NativeObj{T}"/> containing a copy of <paramref name="obj"/>.</returns>
         public static NativeObj<T> Create(in T obj)
         {
             var nativeObj = Create();
@@ -40,13 +71,26 @@ namespace HelixToolkit.Nex
         }
     }
 
+    /// <summary>
+    /// Provides helper methods for working with native (unmanaged) memory and types.
+    /// </summary>
     public static class NativeHelper
     {
+        /// <summary>
+        /// Converts a native char pointer to a managed string.
+        /// </summary>
+        /// <param name="str">Pointer to a null-terminated char string.</param>
+        /// <returns>A managed string, or <see cref="String.Empty"/> if the pointer is null.</returns>
         public static unsafe string ToString(char* str)
         {
             return str == null ? String.Empty : new string(str);
         }
 
+        /// <summary>
+        /// Converts a native byte pointer (ANSI string) to a managed string.
+        /// </summary>
+        /// <param name="str">Pointer to a null-terminated byte string.</param>
+        /// <returns>A managed string, or <see cref="String.Empty"/> if the pointer is null.</returns>
         public static unsafe string ToString(byte* str)
         {
             return str == null ? String.Empty : new string((sbyte*)str);
@@ -420,6 +464,14 @@ namespace HelixToolkit.Nex
             }
         }
 
+        /// <summary>
+        /// Copies one unmanaged struct to another of different type if they have the same size.
+        /// </summary>
+        /// <typeparam name="T1">Source struct type.</typeparam>
+        /// <typeparam name="T2">Destination struct type.</typeparam>
+        /// <param name="t1">Source struct.</param>
+        /// <param name="t2">Destination struct.</param>
+        /// <returns>True if the structs have the same size and copy succeeded; otherwise, false.</returns>
         public static unsafe bool CopyStruct<T1, T2>(ref T1 t1, ref T2 t2) where T1 : unmanaged where T2 : unmanaged
         {
             if (SizeOf<T1>() != SizeOf<T2>())
@@ -435,11 +487,27 @@ namespace HelixToolkit.Nex
             return true;
         }
 
+        /// <summary>
+        /// Copies one unmanaged struct to another of different type if they have the same size.
+        /// </summary>
+        /// <typeparam name="T1">Source struct type.</typeparam>
+        /// <typeparam name="T2">Destination struct type.</typeparam>
+        /// <param name="t1">Source struct.</param>
+        /// <param name="t2">Destination struct.</param>
+        /// <returns>True if the structs have the same size and copy succeeded; otherwise, false.</returns>
         public static unsafe bool CopyStruct<T1, T2>(T1 t1, ref T2 t2) where T1 : unmanaged where T2 : unmanaged
         {
             return CopyStruct(t1, ref t2);
         }
 
+        /// <summary>
+        /// Converts an unmanaged struct of type <typeparamref name="T1"/> to type <typeparamref name="T2"/> via memory copy.
+        /// </summary>
+        /// <typeparam name="T1">Source struct type.</typeparam>
+        /// <typeparam name="T2">Destination struct type.</typeparam>
+        /// <param name="t1">Source struct.</param>
+        /// <returns>A struct of type <typeparamref name="T2"/> with the same memory representation.</returns>
+        /// <exception cref="System.Diagnostics.Debug">Asserts if the sizes don't match.</exception>
         public static unsafe T2 ToStruct<T1, T2>(ref T1 t1) where T1 : unmanaged where T2 : unmanaged
         {
             Debug.Assert(SizeOf<T1>() == SizeOf<T2>());
@@ -455,11 +523,23 @@ namespace HelixToolkit.Nex
             return t2;
         }
 
+        /// <summary>
+        /// Converts an unmanaged struct of type <typeparamref name="T1"/> to type <typeparamref name="T2"/> via memory copy.
+        /// </summary>
+        /// <typeparam name="T1">Source struct type.</typeparam>
+        /// <typeparam name="T2">Destination struct type.</typeparam>
+        /// <param name="t1">Source struct.</param>
+        /// <returns>A struct of type <typeparamref name="T2"/> with the same memory representation.</returns>
         public static unsafe T2 ToStruct<T1, T2>(this T1 t1) where T1 : unmanaged where T2 : unmanaged
         {
             return ToStruct<T1, T2>(ref t1);
         }
 
+        /// <summary>
+        /// Pins a string and executes an action with a pointer to its UTF-8 representation.
+        /// </summary>
+        /// <param name="str">The string to pin, or null.</param>
+        /// <param name="action">Action to execute with the pinned string pointer.</param>
         public unsafe static void PinStringAction(string? str, Action<nint> action)
         {
             byte* __pName_local = default;
@@ -476,11 +556,25 @@ namespace HelixToolkit.Nex
             }
         }
 
+        /// <summary>
+        /// Pins a portion of an array and returns a <see cref="MemoryHandle"/> for safe unmanaged access.
+        /// </summary>
+        /// <typeparam name="T">The unmanaged element type.</typeparam>
+        /// <param name="array">The array to pin.</param>
+        /// <param name="start">Starting index in the array.</param>
+        /// <param name="count">Number of elements to pin.</param>
+        /// <returns>A <see cref="MemoryHandle"/> representing the pinned memory.</returns>
         public static MemoryHandle Pin<T>(this T[] array, int start, int count) where T : unmanaged
         {
             return MemoryMarshal.CreateFromPinnedArray(array, start, count).Pin();
         }
 
+        /// <summary>
+        /// Pins an entire array and returns a <see cref="MemoryHandle"/> for safe unmanaged access.
+        /// </summary>
+        /// <typeparam name="T">The unmanaged element type.</typeparam>
+        /// <param name="array">The array to pin.</param>
+        /// <returns>A <see cref="MemoryHandle"/> representing the pinned memory.</returns>
         public static MemoryHandle Pin<T>(this T[] array) where T : unmanaged
         {
             return Pin(array, 0, array.Length);

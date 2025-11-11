@@ -2,6 +2,9 @@
 
 namespace HelixToolkit.Nex;
 
+/// <summary>
+/// A utility class for tokenizing strings based on separators and quotes, commonly used for parsing delimited data.
+/// </summary>
 public sealed class TokenizerHelper
 {
     private char quoteChar;
@@ -69,6 +72,10 @@ public sealed class TokenizerHelper
         }
     }
 
+    /// <summary>
+    /// Gets the current token as a read-only span of characters.
+    /// </summary>
+    /// <returns>A <see cref="ReadOnlySpan{T}"/> containing the current token, or null if no current token.</returns>
     public ReadOnlySpan<char> GetCurrentToken()
     {
         // if no current token, return null 
@@ -82,7 +89,8 @@ public sealed class TokenizerHelper
 
     /// <summary> 
     /// Throws an exception if there is any non-whitespace left un-parsed.
-    /// </summary> 
+    /// </summary>
+    /// <exception cref="InvalidOperationException">Thrown if extra data is encountered after the last token.</exception>
     public void LastTokenRequired()
     {
         if (this.charIndex != this.strLen)
@@ -104,6 +112,7 @@ public sealed class TokenizerHelper
     /// Advances to the NextToken, throwing an exception if not present
     /// </summary>
     /// <returns>The next token found</returns>
+    /// <exception cref="InvalidOperationException">Thrown if no next token is found.</exception>
     public ReadOnlySpan<char> NextTokenRequired()
     {
         if (!NextToken(false))
@@ -117,7 +126,9 @@ public sealed class TokenizerHelper
     /// <summary>
     /// Advances to the NextToken, throwing an exception if not present 
     /// </summary> 
+    /// <param name="allowQuotedToken">Whether to allow tokens enclosed in quotes.</param>
     /// <returns>The next token found</returns>
+    /// <exception cref="InvalidOperationException">Thrown if no next token is found.</exception>
     public ReadOnlySpan<char> NextTokenRequired(bool allowQuotedToken)
     {
         if (!NextToken(allowQuotedToken))
@@ -131,6 +142,7 @@ public sealed class TokenizerHelper
     /// <summary>
     /// Advances to the NextToken
     /// </summary>
+    /// <param name="allowQuotedToken">Whether to allow tokens enclosed in quotes.</param>
     /// <returns>true if next token was found, false if at end of string</returns> 
     public bool NextToken(bool allowQuotedToken)
     {
@@ -142,7 +154,10 @@ public sealed class TokenizerHelper
     /// Advances to the NextToken.  A separator character can be specified
     /// which overrides the one previously set. 
     /// </summary>
-    /// <returns>true if next token was found, false if at end of string</returns> 
+    /// <param name="allowQuotedToken">Whether to allow tokens enclosed in quotes.</param>
+    /// <param name="separator">The separator character to use for this call.</param>
+    /// <returns>true if next token was found, false if at end of string</returns>
+    /// <exception cref="InvalidOperationException">Thrown if the token format is invalid.</exception>
     public bool NextToken(bool allowQuotedToken, char separator)
     {
         this.currentTokenIndex = -1; // reset the currentTokenIndex 
@@ -288,8 +303,15 @@ public sealed class TokenizerHelper
         }
     }
 
-    // Helper to get the numeric list separator for a given IFormatProvider.
-    // Separator is a comma [,] if the decimal separator is not a comma, or a semicolon [;] otherwise. 
+    /// <summary>
+    /// Gets the numeric list separator for a given <see cref="IFormatProvider"/>.
+    /// </summary>
+    /// <param name="provider">The format provider to query.</param>
+    /// <returns>A comma ',' if the decimal separator is not a comma, otherwise a semicolon ';'.</returns>
+    /// <remarks>
+    /// Separator is a comma [,] if the decimal separator is not a comma, or a semicolon [;] otherwise.
+    /// This prevents ambiguity when parsing numeric lists.
+    /// </remarks>
     public static char GetNumericListSeparator(IFormatProvider provider)
     {
         var numericSeparator = ',';
@@ -311,6 +333,9 @@ public sealed class TokenizerHelper
         return numericSeparator;
     }
 
+    /// <summary>
+    /// Gets a value indicating whether a separator was found during the last token parsing operation.
+    /// </summary>
     public bool FoundSeparator
     {
         get

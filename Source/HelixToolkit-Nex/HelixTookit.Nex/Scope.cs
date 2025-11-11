@@ -1,5 +1,13 @@
 ﻿namespace HelixToolkit.Nex;
 
+/// <summary>
+/// Represents a disposable scope that executes an action when disposed.
+/// </summary>
+/// <param name="actionOnDispose">The action to execute when the scope is disposed.</param>
+/// <remarks>
+/// This class is useful for implementing custom resource management patterns,
+/// such as temporarily changing state and restoring it upon disposal.
+/// </remarks>
 public sealed class Scope(Action actionOnDispose) : IDisposable
 {
     private readonly Action actionOnDispose = actionOnDispose;
@@ -28,6 +36,9 @@ public sealed class Scope(Action actionOnDispose) : IDisposable
     //     Dispose(disposing: false);
     // }
 
+    /// <summary>
+    /// Disposes the scope and executes the action provided in the constructor.
+    /// </summary>
     public void Dispose()
     {
         // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
