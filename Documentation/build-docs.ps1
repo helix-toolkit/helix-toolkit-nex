@@ -52,13 +52,13 @@ if ($Clean) {
 Write-Host "Configuring projects for XML documentation generation..." -ForegroundColor Yellow
 
 $projects = @(
-    "Source\HelixToolkit-Nex\HelixToolkit.Nex.Graphics\HelixToolkit.Nex.Graphics.csproj",
-    "Source\HelixToolkit-Nex\HelixToolkit.Nex.Graphics.Vulkan\HelixToolkit.Nex.Graphics.Vulkan.csproj",
-    "Source\HelixToolkit-Nex\HelixToolkit.Nex.Maths\HelixToolkit.Nex.Maths.csproj",
-    "Source\HelixToolkit-Nex\HelixTookit.Nex\HelixToolkit.Nex.csproj",
-    "Source\HelixToolkit-Nex\HelixToolkit.Nex.Scene\HelixToolkit.Nex.Scene.csproj",
-    "Source\HelixToolkit-Nex\HelixToolkit.Nex.Rendering\HelixToolkit.Nex.Rendering.csproj",
-    "Source\HelixToolkit-Nex\HelixToolkit.Nex.ImGui\HelixToolkit.Nex.ImGui.csproj"
+    "..\Source\HelixToolkit-Nex\HelixToolkit.Nex.Graphics\HelixToolkit.Nex.Graphics.csproj",
+    "..\Source\HelixToolkit-Nex\HelixToolkit.Nex.Graphics.Vulkan\HelixToolkit.Nex.Graphics.Vulkan.csproj",
+    "..\Source\HelixToolkit-Nex\HelixToolkit.Nex.Maths\HelixToolkit.Nex.Maths.csproj",
+    "..\Source\HelixToolkit-Nex\HelixTookit.Nex\HelixToolkit.Nex.csproj",
+    "..\Source\HelixToolkit-Nex\HelixToolkit.Nex.Scene\HelixToolkit.Nex.Scene.csproj",
+    "..\Source\HelixToolkit-Nex\HelixToolkit.Nex.Rendering\HelixToolkit.Nex.Rendering.csproj",
+    "..\Source\HelixToolkit-Nex\HelixToolkit.Nex.ImGui\HelixToolkit.Nex.ImGui.csproj"
 )
 
 foreach ($project in $projects) {

@@ -37,13 +37,13 @@ jobs:
       
     - name: Build Documentation
       run: |
-        cd Source/HelixToolkit-Nex
+        cd Documentation
         docfx docfx.json
         
     - name: Upload artifact
       uses: actions/upload-pages-artifact@v3
       with:
-        path: Source/HelixToolkit-Nex/_site
+        path: Documentation/_site
 
   deploy:
     if: github.ref == 'refs/heads/main'
