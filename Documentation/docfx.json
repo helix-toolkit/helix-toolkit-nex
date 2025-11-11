@@ -4,14 +4,15 @@
       "src": [
         {
           "files": [
-            "../Source/HelixToolkit-Nex/HelixToolkit.Nex.Graphics/**.csproj",
-            "../Source/HelixToolkit-Nex/HelixToolkit.Nex.Graphics.Vulkan/**.csproj",
-            "../Source/HelixToolkit-Nex/HelixToolkit.Nex.Maths/**.csproj",
-            "../Source/HelixToolkit-Nex/HelixTookit.Nex/**.csproj",
-            "../Source/HelixToolkit-Nex/HelixToolkit.Nex.Scene/**.csproj",
-            "../Source/HelixToolkit-Nex/HelixToolkit.Nex.Rendering/**.csproj",
-            "../Source/HelixToolkit-Nex/HelixToolkit.Nex.ImGui/**.csproj"
+            "HelixToolkit.Nex.Graphics/**.csproj",
+            "HelixToolkit.Nex.Graphics.Vulkan/**.csproj",
+            "HelixToolkit.Nex.Maths/**.csproj",
+            "HelixToolkit.Nex/**.csproj",
+            "HelixToolkit.Nex.Scene/**.csproj",
+            "HelixToolkit.Nex.Rendering/**.csproj",
+            "HelixToolkit.Nex.ImGui/**.csproj"
           ],
+          "src": "../Source/HelixToolkit-Nex",
           "exclude": [
             "**/obj/**",
             "**/bin/**",
