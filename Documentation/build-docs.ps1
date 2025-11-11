@@ -18,10 +18,10 @@ $docfxInstalled = $null -ne (Get-Command docfx -ErrorAction SilentlyContinue)
 
 if (-not $docfxInstalled) {
     Write-Host "DocFX not found. Installing DocFX..." -ForegroundColor Yellow
- dotnet tool install -g docfx
+    dotnet tool install -g docfx
     
     if ($LASTEXITCODE -ne 0) {
-  Write-Error "Failed to install DocFX. Please install it manually: dotnet tool install -g docfx"
+        Write-Error "Failed to install DocFX. Please install it manually: dotnet tool install -g docfx"
         exit 1
     }
     
@@ -34,17 +34,17 @@ if ($Clean) {
     
     if (Test-Path "_site") {
         Remove-Item "_site" -Recurse -Force
-    Write-Host "Cleaned _site directory" -ForegroundColor Green
-    }
+        Write-Host "Cleaned _site directory" -ForegroundColor Green
+  }
     
- if (Test-Path "api") {
- Remove-Item "api" -Recurse -Force -Exclude "index.md"
+    if (Test-Path "api") {
+   Remove-Item "api" -Recurse -Force -Exclude "index.md"
         Write-Host "Cleaned api directory" -ForegroundColor Green
     }
     
     if (Test-Path "obj") {
-        Remove-Item "obj" -Recurse -Force
-     Write-Host "Cleaned obj directory" -ForegroundColor Green
+      Remove-Item "obj" -Recurse -Force
+    Write-Host "Cleaned obj directory" -ForegroundColor Green
     }
 }
 
@@ -52,7 +52,7 @@ if ($Clean) {
 Write-Host "Configuring projects for XML documentation generation..." -ForegroundColor Yellow
 
 $projects = @(
-    "..\Source\HelixToolkit-Nex\HelixToolkit.Nex.Graphics\HelixToolkit.Nex.Graphics.csproj",
+  "..\Source\HelixToolkit-Nex\HelixToolkit.Nex.Graphics\HelixToolkit.Nex.Graphics.csproj",
     "..\Source\HelixToolkit-Nex\HelixToolkit.Nex.Graphics.Vulkan\HelixToolkit.Nex.Graphics.Vulkan.csproj",
     "..\Source\HelixToolkit-Nex\HelixToolkit.Nex.Maths\HelixToolkit.Nex.Maths.csproj",
     "..\Source\HelixToolkit-Nex\HelixTookit.Nex\HelixToolkit.Nex.csproj",
@@ -63,45 +63,60 @@ $projects = @(
 
 foreach ($project in $projects) {
     if (Test-Path $project) {
- Write-Host "  Processing $project" -ForegroundColor Gray
+        Write-Host "  Processing $project" -ForegroundColor Gray
 
-        [xml]$projectXml = Get-Content $project
-        $propertyGroup = $projectXml.Project.PropertyGroup | Where-Object { $null -eq $_.Condition } | Select-Object -First 1
+    [xml]$projectXml = Get-Content $project
+      $propertyGroup = $projectXml.Project.PropertyGroup | Where-Object { $null -eq $_.Condition } | Select-Object -First 1
  
-        if ($null -eq $propertyGroup) {
-            $propertyGroup = $projectXml.CreateElement("PropertyGroup")
- $projectXml.Project.AppendChild($propertyGroup) | Out-Null
+      if ($null -eq $propertyGroup) {
+       $propertyGroup = $projectXml.CreateElement("PropertyGroup")
+  $projectXml.Project.AppendChild($propertyGroup) | Out-Null
         }
       
         # Check if GenerateDocumentationFile already exists
-  $docFileNode = $propertyGroup.SelectSingleNode("GenerateDocumentationFile")
+        $docFileNode = $propertyGroup.SelectSingleNode("GenerateDocumentationFile")
         if ($null -eq $docFileNode) {
-      $docFileNode = $projectXml.CreateElement("GenerateDocumentationFile")
-   $docFileNode.InnerText = "true"
-            $propertyGroup.AppendChild($docFileNode) | Out-Null
-   $projectXml.Save((Resolve-Path $project))
-            Write-Host "    Added GenerateDocumentationFile=true" -ForegroundColor Green
+ $docFileNode = $projectXml.CreateElement("GenerateDocumentationFile")
+         $docFileNode.InnerText = "true"
+      $propertyGroup.AppendChild($docFileNode) | Out-Null
+            $projectXml.Save((Resolve-Path $project))
+   Write-Host "    Added GenerateDocumentationFile=true" -ForegroundColor Green
         }
         elseif ($docFileNode.InnerText -ne "true") {
-            $docFileNode.InnerText = "true"
-      $projectXml.Save((Resolve-Path $project))
-            Write-Host "    Updated GenerateDocumentationFile=true" -ForegroundColor Green
+  $docFileNode.InnerText = "true"
+        $projectXml.Save((Resolve-Path $project))
+         Write-Host "    Updated GenerateDocumentationFile=true" -ForegroundColor Green
         }
-  }
+    }
 }
 
 Write-Host ""
 
 # Build the solution first to generate XML documentation
 Write-Host "Building solution to generate XML documentation..." -ForegroundColor Yellow
-dotnet build --configuration Release
+
+# Find the solution file
+$solutionFile = "..\Source\HelixToolkit-Nex\HelixToolkit-Nex.sln"
+
+if (Test-Path $solutionFile) {
+    Write-Host "Building solution: $solutionFile" -ForegroundColor Gray
+    dotnet build $solutionFile --configuration Release
+}
+else {
+    Write-Host "Solution file not found at $solutionFile, building projects individually..." -ForegroundColor Yellow
+ foreach ($project in $projects) {
+        if (Test-Path $project) {
+            dotnet build $project --configuration Release
+     }
+    }
+}
 
 if ($LASTEXITCODE -ne 0) {
-    Write-Error "Solution build failed. Please fix compilation errors first."
+    Write-Error "Build failed. Please fix compilation errors first."
     exit 1
 }
 
-Write-Host "Solution built successfully!" -ForegroundColor Green
+Write-Host "Build completed successfully!" -ForegroundColor Green
 Write-Host ""
 
 # Build documentation with DocFX
@@ -109,7 +124,7 @@ Write-Host "Building documentation with DocFX..." -ForegroundColor Yellow
 
 $docfxArgs = @()
 if ($Force) {
-    $docfxArgs += "--force"
+  $docfxArgs += "--force"
 }
 
 docfx docfx.json @docfxArgs

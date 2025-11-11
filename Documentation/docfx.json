@@ -3,62 +3,62 @@
     {
       "src": [
         {
-  "files": [
+          "files": [
             "../Source/HelixToolkit-Nex/HelixToolkit.Nex.Graphics/**.csproj",
-      "../Source/HelixToolkit-Nex/HelixToolkit.Nex.Graphics.Vulkan/**.csproj",
+            "../Source/HelixToolkit-Nex/HelixToolkit.Nex.Graphics.Vulkan/**.csproj",
             "../Source/HelixToolkit-Nex/HelixToolkit.Nex.Maths/**.csproj",
-  "../Source/HelixToolkit-Nex/HelixToolkit.Nex/**.csproj",
-        "../Source/HelixToolkit-Nex/HelixToolkit.Nex.Scene/**.csproj",
+            "../Source/HelixToolkit-Nex/HelixTookit.Nex/**.csproj",
+            "../Source/HelixToolkit-Nex/HelixToolkit.Nex.Scene/**.csproj",
             "../Source/HelixToolkit-Nex/HelixToolkit.Nex.Rendering/**.csproj",
-          "../Source/HelixToolkit-Nex/HelixToolkit.Nex.ImGui/**.csproj"
-  ],
-      "exclude": [
-    "**/obj/**",
-        "**/bin/**",
-       "**/Samples/**",
-  "**/Tests/**"
-     ]
+            "../Source/HelixToolkit-Nex/HelixToolkit.Nex.ImGui/**.csproj"
+          ],
+          "exclude": [
+            "**/obj/**",
+            "**/bin/**",
+            "**/Samples/**",
+            "**/Tests/**"
+          ]
         }
       ],
       "dest": "api",
-   "disableGitFeatures": false,
+      "disableGitFeatures": false,
       "disableDefaultFilter": false,
       "includePrivateMembers": false,
       "properties": {
-    "TargetFramework": "net8.0"
-}
+        "TargetFramework": "net8.0"
+      }
     }
   ],
   "build": {
     "content": [
-    {
+      {
         "files": [
-     "api/**.yml",
+          "api/**.yml",
           "api/index.md"
-    ]
+        ]
       },
       {
         "files": [
           "articles/**.md",
           "articles/**/toc.yml",
-   "toc.yml",
- "*.md"
-      ]
-      }
- ],
-    "resource": [
-      {
- "files": [
-          "images/**"
-      ]
+          "toc.yml",
+          "*.md"
+        ]
       }
     ],
- "output": "_site",
+    "resource": [
+      {
+        "files": [
+          "images/**"
+        ]
+      }
+    ],
+    "output": "_site",
     "globalMetadataFiles": [],
     "fileMetadataFiles": [],
     "template": [
       "default",
-   "modern"
+      "modern"
     ],
     "postProcessors": [],
     "keepFileLink": false,
@@ -66,7 +66,7 @@
     "globalMetadata": {
       "_appTitle": "Helix Toolkit NEX",
       "_appName": "HelixToolkit.Nex",
-   "_appFooter": "� 2024 Helix Toolkit Contributors. All rights reserved.",
+      "_appFooter": "© 2024 Helix Toolkit Contributors. All rights reserved.",
       "_enableSearch": true,
       "_enableNewTab": true,
       "_disableContribution": false,
