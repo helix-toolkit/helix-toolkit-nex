@@ -7,7 +7,11 @@ public class Node : IDisposable
 
     public NodeInfo Info => Entity.Get<NodeInfo>();
 
-    public string Name { get => Info.Name; set => Entity.Get<NodeInfo>().Name = value; }
+    public string Name
+    {
+        get => Info.Name;
+        set => Entity.Get<NodeInfo>().Name = value;
+    }
 
     public Guid Id => Info.Id;
 
@@ -50,10 +54,7 @@ public class Node : IDisposable
 
     public IReadOnlyList<Node>? Children
     {
-        get
-        {
-            return Entity.TryGet<Children>(out var children) ? children.ChildNodes : null;
-        }
+        get { return Entity.TryGet<Children>(out var children) ? children.ChildNodes : null; }
     }
 
     public int ChildCount => Children?.Count ?? 0;
@@ -69,7 +70,9 @@ public class Node : IDisposable
     public Node(in World world, in Entity? entity = null)
     {
         World = world ?? throw new ArgumentNullException(nameof(world));
-        Entity = entity ?? world.Create(new NodeInfo(this), new Transform(), new Parent(), new Children());
+        Entity =
+            entity
+            ?? world.Create(new NodeInfo(this), new Transform(), new Parent(), new Children());
         VerifyExternalEntity(Entity);
     }
 
@@ -83,7 +86,9 @@ public class Node : IDisposable
     {
         if (node.HasParent)
         {
-            throw new InvalidOperationException($"Node [{node}] already belongs to a parent [{node.Parent}]");
+            throw new InvalidOperationException(
+                $"Node [{node}] already belongs to a parent [{node.Parent}]"
+            );
         }
         ref var children = ref Entity.Get<Children>();
         children.Add(node);
@@ -122,7 +127,8 @@ public class Node : IDisposable
 
     private void UpdateChildrenLevels()
     {
-        if (!HasChildren) return;
+        if (!HasChildren)
+            return;
         ref var children = ref Entity.Get<Children>();
         foreach (var child in children.ChildNodes)
         {
@@ -133,7 +139,12 @@ public class Node : IDisposable
 
     private static void VerifyExternalEntity(in Entity entity)
     {
-        if (entity.Has<NodeInfo>() && entity.Has<Transform>() && entity.Has<Parent>() && entity.Has<Children>())
+        if (
+            entity.Has<NodeInfo>()
+            && entity.Has<Transform>()
+            && entity.Has<Parent>()
+            && entity.Has<Children>()
+        )
         {
             return;
         }
@@ -142,6 +153,7 @@ public class Node : IDisposable
 
     #region IDisposable Support
     private bool disposedValue;
+
     protected virtual void Dispose(bool disposing)
     {
         if (!disposedValue)
