@@ -2,13 +2,15 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, develop ]
+    tags:
+      - 'v*'
     paths-ignore:
       - '**.md'
       - 'LICENSE'
       - '.gitignore'
   pull_request:
-    branches: [ main ]
+    branches: [ main, develop ]
     paths-ignore:
       - '**.md'
       - 'LICENSE'
