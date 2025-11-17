@@ -53,13 +53,11 @@ public class RendererManager : IDisposable
         var stage = renderer.Stage;
         if (renderers.TryGetValue(stage, out var list))
         {
-            list.Remove(renderer);
-            if (list.Count == 0)
+            if (list.Remove(renderer))
             {
-                renderers.Remove(stage);
+                renderer.Detach();
             }
         }
-        renderer.Detach();
     }
 
     public void Render(RenderContext context)
@@ -88,7 +86,7 @@ public class RendererManager : IDisposable
     {
         foreach (var kvp in renderers)
         {
-            foreach (var renderer in kvp.Value)
+            foreach (var renderer in kvp.Value.ToArray())
             {
                 renderer.Detach();
             }
@@ -99,6 +97,8 @@ public class RendererManager : IDisposable
     #region IDisposable Support
 
     private bool disposedValue;
+
+    public bool IsDisposed => disposedValue;
 
     protected virtual void Dispose(bool disposing)
     {
