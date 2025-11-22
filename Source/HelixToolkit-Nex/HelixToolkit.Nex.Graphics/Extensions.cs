@@ -1,11 +1,11 @@
-﻿namespace HelixToolkit.Nex.Graphics;
+namespace HelixToolkit.Nex.Graphics;
 
 /// <summary>
 /// Provides extension methods for common graphics operations and type conversions.
 /// </summary>
 public static class Extensions
 {
-    static readonly ILogger logger = LogManager.Create("HelixToolkit.Nex.Graphics.Extensions");
+    private static readonly ILogger logger = LogManager.Create("HelixToolkit.Nex.Graphics.Extensions");
 
     /// <summary>
     /// Checks if the result code indicates success.

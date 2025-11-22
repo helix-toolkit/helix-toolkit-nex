@@ -1,68 +1,68 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 
 namespace HelixToolkit.Nex.Graphics;
+
 /// <summary>
 /// A reference counted graphics resource for holding a handle.
 /// </summary>
 /// <typeparam name="T"></typeparam>
 public abstract class Resource<T> : IDisposable
 {
-    IContext? ctx = null;
-    protected Handle<T> handle;
-
+    private IContext? _ctx = null;
+    protected Handle<T> _handle;
 
     public Resource()
     {
-        handle = new Handle<T>();
+        _handle = new Handle<T>();
     }
 
     public Resource(IContext ctx, in Handle<T> handle)
     {
-        this.ctx = ctx;
-        this.handle = handle;
+        _ctx = ctx;
+        _handle = handle;
     }
 
-    public bool Valid => handle.Valid && ctx != null;
+    public bool Valid => _handle.Valid && _ctx != null;
 
-    public bool Empty => handle.Empty || ctx == null;
+    public bool Empty => _handle.Empty || _ctx == null;
 
     public void Reset()
     {
         if (Valid)
         {
-            Debug.Assert(ctx != null, "Context is null");
-            OnDestroyHandle(ctx);
+            Debug.Assert(_ctx != null, "Context is null");
+            OnDestroyHandle(_ctx);
         }
-        ctx = null;
-        handle = new Handle<T>();
+        _ctx = null;
+        _handle = new Handle<T>();
     }
 
     protected abstract void OnDestroyHandle(IContext ctx);
 
-    public uint32_t Gen => handle.Gen;
+    public uint32_t Gen => _handle.Gen;
 
-    public uint32_t Index => handle.Index;
+    public uint32_t Index => _handle.Index;
 
     public nint IndexAsVoid()
     {
-        return handle.IndexAsVoid();
+        return _handle.IndexAsVoid();
     }
 
     public static implicit operator Handle<T>(Resource<T> holder)
     {
-        return holder == null ? new Handle<T>() : holder.handle;
+        return holder == null ? new Handle<T>() : holder._handle;
     }
 
     #region Reference Counter and Disposable Pattern
-    private int referenceCount = 1;
+    private int _referenceCount = 1;
 
-    private bool disposedValue;
+    private bool _disposedValue;
 
     public Resource<T> AddReference()
     {
-        if (!disposedValue)
+        if (!_disposedValue)
         {
-            Interlocked.Increment(ref referenceCount);
+            Interlocked.Increment(ref _referenceCount);
             return this;
         }
         else
@@ -73,9 +73,9 @@ public abstract class Resource<T> : IDisposable
 
     private bool Dispose(bool disposing)
     {
-        if (!disposedValue)
+        if (!_disposedValue)
         {
-            if (Interlocked.Decrement(ref referenceCount) > 0)
+            if (Interlocked.Decrement(ref _referenceCount) > 0)
             {
                 return false; // Still referenced, do not dispose
             }
@@ -85,7 +85,7 @@ public abstract class Resource<T> : IDisposable
             }
             // TODO: free unmanaged resources (unmanaged objects) and override finalizer
             // TODO: set large fields to null
-            disposedValue = true;
+            _disposedValue = true;
             return true;
         }
         return false;
@@ -107,7 +107,3 @@ public abstract class Resource<T> : IDisposable
     }
     #endregion
 }
-
-
-
-

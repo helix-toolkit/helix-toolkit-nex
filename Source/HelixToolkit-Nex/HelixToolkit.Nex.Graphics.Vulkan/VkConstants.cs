@@ -1,4 +1,4 @@
-﻿namespace HelixToolkit.Nex.Graphics.Vulkan;
+namespace HelixToolkit.Nex.Graphics.Vulkan;
 
 /// <summary>
 /// Provides constant values used throughout the Vulkan implementation.
@@ -14,12 +14,12 @@ public static class VkConstants
     /// <summary>
     /// Flag indicating VMA should not use Vulkan functions (all static).
     /// </summary>
-  public const uint8_t kVmaStaticVulkanFunctions = 0;
+    public const uint8_t kVmaStaticVulkanFunctions = 0;
 
     /// <summary>
     /// Flag indicating VMA should use dynamically loaded Vulkan functions.
     /// </summary>
- public const uint8_t kVmaDynamicVulkanFunctions = 1;
+    public const uint8_t kVmaDynamicVulkanFunctions = 1;
 
     /// <summary>
     /// Maximum number of custom Vulkan extensions that can be enabled.

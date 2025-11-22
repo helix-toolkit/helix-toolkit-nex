@@ -1,4 +1,4 @@
-﻿namespace HelixToolkit.Nex.Maths
+namespace HelixToolkit.Nex.Maths
 {
     /// <summary>
     /// Represents a bool value with size of 32 bits (4 bytes).
@@ -6,26 +6,26 @@
     [StructLayout(LayoutKind.Sequential, Pack = 4)]
     public struct Bool32Bit : IEquatable<Bool32Bit>, IFormattable
     {
-        internal uint v;
+        private uint _v;
         public bool V
-        { 
-            readonly get => v != 0;
-            set => v = value ? 1u : 0;
+        {
+            readonly get => _v != 0;
+            set => _v = value ? 1u : 0;
         }
 
         public Bool32Bit(bool value)
         {
-            v = value ? 1u : 0;
+            _v = value ? 1u : 0;
         }
 
         public readonly bool Equals(Bool32Bit other)
         {
-            return v == other.v;
+            return _v == other._v;
         }
 
         public readonly string ToString(string? format, IFormatProvider? formatProvider)
         {
-            return v.ToString(format, formatProvider);
+            return _v.ToString(format, formatProvider);
         }
 
         public static implicit operator Bool32Bit(bool value)
@@ -35,7 +35,7 @@
 
         public static implicit operator bool(Bool32Bit value)
         {
-            return value.v != 0;
+            return value._v != 0;
         }
 
         public override readonly bool Equals(object? obj)
@@ -55,7 +55,7 @@
 
         public override readonly int GetHashCode()
         {
-            return v.GetHashCode();
+            return _v.GetHashCode();
         }
     }
 }

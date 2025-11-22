@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 
 namespace HelixToolkit.Nex.Graphics.Vulkan;
 
@@ -147,14 +147,20 @@ internal static class HxVkExtensions
 
     public static bool IsDepthFormat(this VkFormat format)
     {
-        return (format == VK.VK_FORMAT_D16_UNORM) || (format == VK.VK_FORMAT_X8_D24_UNORM_PACK32) || (format == VK.VK_FORMAT_D32_SFLOAT) ||
-       (format == VK.VK_FORMAT_D16_UNORM_S8_UINT) || (format == VK.VK_FORMAT_D24_UNORM_S8_UINT) || (format == VK.VK_FORMAT_D32_SFLOAT_S8_UINT);
+        return (format == VK.VK_FORMAT_D16_UNORM)
+            || (format == VK.VK_FORMAT_X8_D24_UNORM_PACK32)
+            || (format == VK.VK_FORMAT_D32_SFLOAT)
+            || (format == VK.VK_FORMAT_D16_UNORM_S8_UINT)
+            || (format == VK.VK_FORMAT_D24_UNORM_S8_UINT)
+            || (format == VK.VK_FORMAT_D32_SFLOAT_S8_UINT);
     }
 
     public static bool IsStencilFormat(this VkFormat format)
     {
-        return (format == VK.VK_FORMAT_S8_UINT) || (format == VK.VK_FORMAT_D16_UNORM_S8_UINT) || (format == VK.VK_FORMAT_D24_UNORM_S8_UINT) ||
-       (format == VK.VK_FORMAT_D32_SFLOAT_S8_UINT);
+        return (format == VK.VK_FORMAT_S8_UINT)
+            || (format == VK.VK_FORMAT_D16_UNORM_S8_UINT)
+            || (format == VK.VK_FORMAT_D24_UNORM_S8_UINT)
+            || (format == VK.VK_FORMAT_D32_SFLOAT_S8_UINT);
     }
 
     public static StageAccess2 GetPipelineStageAccess(this VkImageLayout layout)
@@ -164,67 +170,77 @@ internal static class HxVkExtensions
             case VK.VK_IMAGE_LAYOUT_UNDEFINED:
                 return new StageAccess2
                 {
-                    stage = VkPipelineStageFlags2.TopOfPipe,
-                    access = VkAccessFlags2.None,
+                    Stage = VkPipelineStageFlags2.TopOfPipe,
+                    Access = VkAccessFlags2.None,
                 };
             case VK.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
                 return new StageAccess2
                 {
-                    stage = VkPipelineStageFlags2.ColorAttachmentOutput,
-                    access = VkAccessFlags2.ColorAttachmentRead | VkAccessFlags2.ColorAttachmentWrite,
+                    Stage = VkPipelineStageFlags2.ColorAttachmentOutput,
+                    Access =
+                        VkAccessFlags2.ColorAttachmentRead | VkAccessFlags2.ColorAttachmentWrite,
                 };
             case VK.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
                 return new StageAccess2
                 {
-                    stage = VkPipelineStageFlags2.LateFragmentTests | VkPipelineStageFlags2.EarlyFragmentTests,
-                    access = VkAccessFlags2.DepthStencilAttachmentRead | VkAccessFlags2.DepthStencilAttachmentWrite,
+                    Stage =
+                        VkPipelineStageFlags2.LateFragmentTests
+                        | VkPipelineStageFlags2.EarlyFragmentTests,
+                    Access =
+                        VkAccessFlags2.DepthStencilAttachmentRead
+                        | VkAccessFlags2.DepthStencilAttachmentWrite,
                 };
             case VK.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
-                var stage = VkPipelineStageFlags2.FragmentShader | VkPipelineStageFlags2.ComputeShader
-                    | VkPipelineStageFlags2.VertexShader | VkPipelineStageFlags2.TessellationControlShader
+                var stage =
+                    VkPipelineStageFlags2.FragmentShader
+                    | VkPipelineStageFlags2.ComputeShader
+                    | VkPipelineStageFlags2.VertexShader
+                    | VkPipelineStageFlags2.TessellationControlShader
                     | VkPipelineStageFlags2.GeometryShader;
                 if (GraphicsSettings.SupportMeshShader)
                 {
                     stage |= VkPipelineStageFlags2.MeshShaderEXT;
                 }
-                return new StageAccess2
-                {
-                    stage = stage,
-                    access = VkAccessFlags2.ShaderRead,
-                };
+                return new StageAccess2 { Stage = stage, Access = VkAccessFlags2.ShaderRead };
             case VK.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:
                 return new StageAccess2
                 {
-                    stage = VkPipelineStageFlags2.Transfer,
-                    access = VkAccessFlags2.TransferRead,
+                    Stage = VkPipelineStageFlags2.Transfer,
+                    Access = VkAccessFlags2.TransferRead,
                 };
             case VK.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
                 return new StageAccess2
                 {
-                    stage = VkPipelineStageFlags2.Transfer,
-                    access = VkAccessFlags2.TransferWrite,
+                    Stage = VkPipelineStageFlags2.Transfer,
+                    Access = VkAccessFlags2.TransferWrite,
                 };
             case VK.VK_IMAGE_LAYOUT_GENERAL:
                 return new StageAccess2
                 {
-                    stage = VkPipelineStageFlags2.ComputeShader | VkPipelineStageFlags2.Transfer,
-                    access = VkAccessFlags2.MemoryRead | VkAccessFlags2.MemoryWrite | VkAccessFlags2.TransferWrite,
+                    Stage = VkPipelineStageFlags2.ComputeShader | VkPipelineStageFlags2.Transfer,
+                    Access =
+                        VkAccessFlags2.MemoryRead
+                        | VkAccessFlags2.MemoryWrite
+                        | VkAccessFlags2.TransferWrite,
                 };
             case VK.VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:
                 return new StageAccess2
                 {
-                    stage = VkPipelineStageFlags2.ColorAttachmentOutput | VkPipelineStageFlags2.ComputeShader,
-                    access = VkAccessFlags2.None | VkAccessFlags2.ShaderWrite,
+                    Stage =
+                        VkPipelineStageFlags2.ColorAttachmentOutput
+                        | VkPipelineStageFlags2.ComputeShader,
+                    Access = VkAccessFlags2.None | VkAccessFlags2.ShaderWrite,
                 };
             default:
                 HxDebug.Assert(false, "Unsupported image layout transition!");
                 return new StageAccess2
                 {
-                    stage = VkPipelineStageFlags2.AllCommands,
-                    access = VkAccessFlags2.MemoryRead | VkAccessFlags2.MemoryWrite,
+                    Stage = VkPipelineStageFlags2.AllCommands,
+                    Access = VkAccessFlags2.MemoryRead | VkAccessFlags2.MemoryWrite,
                 };
         }
     }
+
     public static Format ToFormat(this VkFormat format)
     {
         return format switch
@@ -357,11 +373,32 @@ internal static class HxVkExtensions
     {
         return format switch
         {
-            Format.Z_UN16 => [VK.VK_FORMAT_D16_UNORM, VK.VK_FORMAT_D16_UNORM_S8_UINT, VK.VK_FORMAT_D24_UNORM_S8_UINT, VK.VK_FORMAT_D32_SFLOAT],
-            Format.Z_UN24 => [VK.VK_FORMAT_D24_UNORM_S8_UINT, VK.VK_FORMAT_D32_SFLOAT, VK.VK_FORMAT_D16_UNORM_S8_UINT],
-            Format.Z_F32 => [VK.VK_FORMAT_D32_SFLOAT, VK.VK_FORMAT_D32_SFLOAT_S8_UINT, VK.VK_FORMAT_D24_UNORM_S8_UINT],
+            Format.Z_UN16 =>
+            [
+                VK.VK_FORMAT_D16_UNORM,
+                VK.VK_FORMAT_D16_UNORM_S8_UINT,
+                VK.VK_FORMAT_D24_UNORM_S8_UINT,
+                VK.VK_FORMAT_D32_SFLOAT,
+            ],
+            Format.Z_UN24 =>
+            [
+                VK.VK_FORMAT_D24_UNORM_S8_UINT,
+                VK.VK_FORMAT_D32_SFLOAT,
+                VK.VK_FORMAT_D16_UNORM_S8_UINT,
+            ],
+            Format.Z_F32 =>
+            [
+                VK.VK_FORMAT_D32_SFLOAT,
+                VK.VK_FORMAT_D32_SFLOAT_S8_UINT,
+                VK.VK_FORMAT_D24_UNORM_S8_UINT,
+            ],
             Format.Z_UN24_S_UI8 => [VK.VK_FORMAT_D24_UNORM_S8_UINT, VK.VK_FORMAT_D16_UNORM_S8_UINT],
-            Format.Z_F32_S_UI8 => [VK.VK_FORMAT_D32_SFLOAT_S8_UINT, VK.VK_FORMAT_D24_UNORM_S8_UINT, VK.VK_FORMAT_D16_UNORM_S8_UINT],
+            Format.Z_F32_S_UI8 =>
+            [
+                VK.VK_FORMAT_D32_SFLOAT_S8_UINT,
+                VK.VK_FORMAT_D24_UNORM_S8_UINT,
+                VK.VK_FORMAT_D16_UNORM_S8_UINT,
+            ],
             _ => [VK.VK_FORMAT_D24_UNORM_S8_UINT, VK.VK_FORMAT_D32_SFLOAT],
         };
     }
@@ -376,10 +413,14 @@ internal static class HxVkExtensions
                 memFlags |= VK.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
                 break;
             case StorageType.HostVisible:
-                memFlags |= VK.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+                memFlags |=
+                    VK.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+                    | VK.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
                 break;
             case StorageType.Memoryless:
-                memFlags |= VK.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK.VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT;
+                memFlags |=
+                    VK.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+                    | VK.VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT;
                 break;
         }
         return memFlags;
@@ -396,19 +437,30 @@ internal static class HxVkExtensions
             Swizzle.Swizzle_G => VK.VK_COMPONENT_SWIZZLE_G,
             Swizzle.Swizzle_B => VK.VK_COMPONENT_SWIZZLE_B,
             Swizzle.Swizzle_A => VK.VK_COMPONENT_SWIZZLE_A,
-            _ => throw new ArgumentOutOfRangeException(nameof(swizzle), $"Unsupported swizzle: {swizzle}"),
+            _ => throw new ArgumentOutOfRangeException(
+                nameof(swizzle),
+                $"Unsupported swizzle: {swizzle}"
+            ),
         };
     }
 
     public static bool Identity(this VkComponentMapping mapping)
     {
-        return mapping.a == VkComponentSwizzle.Identity && mapping.r == VkComponentSwizzle.Identity && mapping.g == VkComponentSwizzle.Identity && mapping.b == VkComponentSwizzle.Identity;
+        return mapping.a == VkComponentSwizzle.Identity
+            && mapping.r == VkComponentSwizzle.Identity
+            && mapping.g == VkComponentSwizzle.Identity
+            && mapping.b == VkComponentSwizzle.Identity;
     }
 
-    public static VkSamplerCreateInfo ToVkSamplerCreateInfo(this SamplerStateDesc desc, in VkPhysicalDeviceLimits limits)
+    public static VkSamplerCreateInfo ToVkSamplerCreateInfo(
+        this SamplerStateDesc desc,
+        in VkPhysicalDeviceLimits limits
+    )
     {
-        HxDebug.Assert(desc.MipLodMax >= desc.MipLodMin,
-                 $"mipLodMax {desc.MipLodMax} must be greater than or equal to mipLodMin {desc.MipLodMin}");
+        HxDebug.Assert(
+            desc.MipLodMax >= desc.MipLodMin,
+            $"mipLodMax {desc.MipLodMax} must be greater than or equal to mipLodMin {desc.MipLodMin}"
+        );
 
         VkSamplerCreateInfo ci = new()
         {
@@ -422,9 +474,12 @@ internal static class HxVkExtensions
             anisotropyEnable = VK_BOOL.False,
             maxAnisotropy = 0.0f,
             compareEnable = desc.DepthCompareEnabled ? VK_BOOL.True : VK_BOOL.False,
-            compareOp = desc.DepthCompareEnabled ? desc.DepthCompareOp.ToVk() : VK.VK_COMPARE_OP_ALWAYS,
+            compareOp = desc.DepthCompareEnabled
+                ? desc.DepthCompareOp.ToVk()
+                : VK.VK_COMPARE_OP_ALWAYS,
             minLod = (float)desc.MipLodMin,
-            maxLod = desc.MipMap == SamplerMip.Disabled ? (float)desc.MipLodMin : (float)desc.MipLodMax,
+            maxLod =
+                desc.MipMap == SamplerMip.Disabled ? (float)desc.MipLodMin : (float)desc.MipLodMax,
             borderColor = VK.VK_BORDER_COLOR_INT_OPAQUE_BLACK,
             unnormalizedCoordinates = VK_BOOL.False,
         };
@@ -432,15 +487,23 @@ internal static class HxVkExtensions
         if (desc.MaxAnisotropic > 1)
         {
             bool isAnisotropicFilteringSupported = limits.maxSamplerAnisotropy > 1;
-            HxDebug.Assert(isAnisotropicFilteringSupported, "Anisotropic filtering is not supported by the device.");
+            HxDebug.Assert(
+                isAnisotropicFilteringSupported,
+                "Anisotropic filtering is not supported by the device."
+            );
             ci.anisotropyEnable = isAnisotropicFilteringSupported ? VK_BOOL.True : VK_BOOL.False;
 
             if (limits.maxSamplerAnisotropy < desc.MaxAnisotropic)
             {
                 logger.LogWarning(
-                    "Supplied sampler anisotropic value greater than max supported by the device, setting to {Anisotropic}", limits.maxSamplerAnisotropy);
+                    "Supplied sampler anisotropic value greater than max supported by the device, setting to {Anisotropic}",
+                    limits.maxSamplerAnisotropy
+                );
             }
-            ci.maxAnisotropy = Math.Min((float)limits.maxSamplerAnisotropy, (float)desc.MaxAnisotropic);
+            ci.maxAnisotropy = Math.Min(
+                (float)limits.maxSamplerAnisotropy,
+                (float)desc.MaxAnisotropic
+            );
         }
 
         return ci;
@@ -503,22 +566,30 @@ internal static class HxVkExtensions
 
     public static VkBuffer GetVkBuffer(this IContext ctx, in BufferHandle buffer)
     {
-        return ctx is VulkanContext vkCtx && buffer.Valid ? vkCtx.BuffersPool.Get(buffer)!.VkBuffer : VkBuffer.Null;
+        return ctx is VulkanContext vkCtx && buffer.Valid
+            ? vkCtx.BuffersPool.Get(buffer)!.VkBuffer
+            : VkBuffer.Null;
     }
 
     public static VkImage GetVkImage(this IContext ctx, in TextureHandle texture)
     {
-        return ctx is VulkanContext vkCtx && texture.Valid ? vkCtx.TexturesPool.Get(texture)!.Image : VkImage.Null;
+        return ctx is VulkanContext vkCtx && texture.Valid
+            ? vkCtx.TexturesPool.Get(texture)!.Image
+            : VkImage.Null;
     }
 
     public static VkImageView GetVkImageView(this IContext ctx, in TextureHandle texture)
     {
-        return ctx is VulkanContext vkCtx && texture.Valid ? vkCtx.TexturesPool.Get(texture)!.ImageView : VkImageView.Null;
+        return ctx is VulkanContext vkCtx && texture.Valid
+            ? vkCtx.TexturesPool.Get(texture)!.ImageView
+            : VkImageView.Null;
     }
 
     public static VkShaderModule GetVkShaderModule(this IContext ctx, in ShaderModuleHandle shader)
     {
-        return ctx is VulkanContext vkCtx && shader.Valid ? vkCtx.ShaderModulesPool.Get(shader)!.ShaderModule : VkShaderModule.Null;
+        return ctx is VulkanContext vkCtx && shader.Valid
+            ? vkCtx.ShaderModulesPool.Get(shader)!.ShaderModule
+            : VkShaderModule.Null;
     }
 
     public static VkUtf8ReadOnlyString ToVkUtf8ReadOnlyString(this string str)
@@ -568,9 +639,14 @@ internal static class HxVkExtensions
         };
     }
 
-    public static uint32_t GetMaxPushConstantsSize(this ShaderModuleState? state, uint32_t constantSize)
+    public static uint32_t GetMaxPushConstantsSize(
+        this ShaderModuleState? state,
+        uint32_t constantSize
+    )
     {
-        return state is not null && state ? Math.Max(state.PushConstantsSize, constantSize) : constantSize;
+        return state is not null && state
+            ? Math.Max(state.PushConstantsSize, constantSize)
+            : constantSize;
     }
 
     public static VkPrimitiveTopology ToVk(this Topology topology)
@@ -635,16 +711,25 @@ internal static class HxVkExtensions
         };
     }
 
-    public static VkResolveModeFlags ResolveModeToVkResolveModeFlagBits(this ResolveMode mode, VkResolveModeFlags supported)
+    public static VkResolveModeFlags ResolveModeToVkResolveModeFlagBits(
+        this ResolveMode mode,
+        VkResolveModeFlags supported
+    )
     {
         return mode switch
         {
             ResolveMode.None => VkResolveModeFlags.None,
             ResolveMode.SampleZero => VkResolveModeFlags.SampleZero,
-            ResolveMode.Average => supported.HasFlag(VkResolveModeFlags.Average) ? VkResolveModeFlags.Average : VkResolveModeFlags.SampleZero,
-            ResolveMode.Min => supported.HasFlag(VkResolveModeFlags.Min) ? VkResolveModeFlags.Min : VkResolveModeFlags.SampleZero,
-            ResolveMode.Max => supported.HasFlag(VkResolveModeFlags.Average) ? VkResolveModeFlags.Average : VkResolveModeFlags.SampleZero,
-            _ => VkResolveModeFlags.SampleZero,// Default to SampleZero if unsupported mode is provided
+            ResolveMode.Average => supported.HasFlag(VkResolveModeFlags.Average)
+                ? VkResolveModeFlags.Average
+                : VkResolveModeFlags.SampleZero,
+            ResolveMode.Min => supported.HasFlag(VkResolveModeFlags.Min)
+                ? VkResolveModeFlags.Min
+                : VkResolveModeFlags.SampleZero,
+            ResolveMode.Max => supported.HasFlag(VkResolveModeFlags.Average)
+                ? VkResolveModeFlags.Average
+                : VkResolveModeFlags.SampleZero,
+            _ => VkResolveModeFlags.SampleZero, // Default to SampleZero if unsupported mode is provided
         };
     }
 
@@ -674,20 +759,22 @@ internal static class HxVkExtensions
         return new VkClearColorValue(color.Red, color.Green, color.Blue, color.Alpha);
     }
 
-    public static void ImageMemoryBarrier2(this VkCommandBuffer buffer,
-                              VkImage image,
-                              StageAccess2 src,
-                              StageAccess2 dst,
-                              VkImageLayout oldImageLayout,
-                              VkImageLayout newImageLayout,
-                              VkImageSubresourceRange subresourceRange)
+    public static void ImageMemoryBarrier2(
+        this VkCommandBuffer buffer,
+        VkImage image,
+        StageAccess2 src,
+        StageAccess2 dst,
+        VkImageLayout oldImageLayout,
+        VkImageLayout newImageLayout,
+        VkImageSubresourceRange subresourceRange
+    )
     {
         VkImageMemoryBarrier2 barrier = new()
         {
-            srcStageMask = src.stage,
-            srcAccessMask = src.access,
-            dstStageMask = dst.stage,
-            dstAccessMask = dst.access,
+            srcStageMask = src.Stage,
+            srcAccessMask = src.Access,
+            dstStageMask = dst.Stage,
+            dstAccessMask = dst.Access,
             oldLayout = oldImageLayout,
             newLayout = newImageLayout,
             srcQueueFamilyIndex = VK.VK_QUEUE_FAMILY_IGNORED,
@@ -709,13 +796,21 @@ internal static class HxVkExtensions
 
     public static bool IsShaderStage(this VkPipelineStageFlags2 stage)
     {
-        return stage.HasFlag(VkPipelineStageFlags2.VertexShader) || stage.HasFlag(VkPipelineStageFlags2.TessellationControlShader)
-            || stage.HasFlag(VkPipelineStageFlags2.TessellationEvaluationShader) || stage.HasFlag(VkPipelineStageFlags2.GeometryShader)
-            || stage.HasFlag(VkPipelineStageFlags2.FragmentShader) || stage.HasFlag(VkPipelineStageFlags2.ComputeShader)
+        return stage.HasFlag(VkPipelineStageFlags2.VertexShader)
+            || stage.HasFlag(VkPipelineStageFlags2.TessellationControlShader)
+            || stage.HasFlag(VkPipelineStageFlags2.TessellationEvaluationShader)
+            || stage.HasFlag(VkPipelineStageFlags2.GeometryShader)
+            || stage.HasFlag(VkPipelineStageFlags2.FragmentShader)
+            || stage.HasFlag(VkPipelineStageFlags2.ComputeShader)
             || stage.HasFlag(VkPipelineStageFlags2.MeshShaderEXT);
     }
 
-    public static void BufferBarrier2(this VkCommandBuffer cmdbuffer, in VulkanBuffer buf, VkPipelineStageFlags2 srcStage, VkPipelineStageFlags2 dstStage)
+    public static void BufferBarrier2(
+        this VkCommandBuffer cmdbuffer,
+        in VulkanBuffer buf,
+        VkPipelineStageFlags2 srcStage,
+        VkPipelineStageFlags2 dstStage
+    )
     {
         VkBufferMemoryBarrier2 barrier = new()
         {
@@ -734,7 +829,10 @@ internal static class HxVkExtensions
         {
             barrier.srcAccessMask |= VkAccessFlags2.TransferRead | VkAccessFlags2.TransferWrite;
         }
-        else if (srcStage.HasFlag(VkPipelineStageFlags2.AllGraphics | VkPipelineStageFlags2.AllCommands) || srcStage.IsShaderStage())
+        else if (
+            srcStage.HasFlag(VkPipelineStageFlags2.AllGraphics | VkPipelineStageFlags2.AllCommands)
+            || srcStage.IsShaderStage()
+        )
         {
             barrier.srcAccessMask |= VkAccessFlags2.ShaderRead | VkAccessFlags2.ShaderWrite;
         }
@@ -743,7 +841,10 @@ internal static class HxVkExtensions
         {
             barrier.dstAccessMask |= VkAccessFlags2.TransferRead | VkAccessFlags2.TransferWrite;
         }
-        else if (srcStage.HasFlag(VkPipelineStageFlags2.AllGraphics | VkPipelineStageFlags2.AllCommands) || srcStage.IsShaderStage())
+        else if (
+            srcStage.HasFlag(VkPipelineStageFlags2.AllGraphics | VkPipelineStageFlags2.AllCommands)
+            || srcStage.IsShaderStage()
+        )
         {
             barrier.dstAccessMask |= VkAccessFlags2.ShaderRead | VkAccessFlags2.ShaderWrite;
         }
@@ -751,7 +852,7 @@ internal static class HxVkExtensions
         {
             barrier.dstAccessMask |= VkAccessFlags2.IndirectCommandRead;
         }
-        if (buf.vkUsageFlags_.HasFlag(VkBufferUsageFlags.IndexBuffer))
+        if (buf.VkUsageFlags.HasFlag(VkBufferUsageFlags.IndexBuffer))
         {
             barrier.dstAccessMask |= VkAccessFlags2.IndexRead;
             barrier.dstStageMask |= VkPipelineStageFlags2.IndexInput;
@@ -768,47 +869,77 @@ internal static class HxVkExtensions
         }
     }
 
-    public static void TransitionToColorAttachment(this VkCommandBuffer buffer, VulkanImage colorTex)
+    public static void TransitionToColorAttachment(
+        this VkCommandBuffer buffer,
+        VulkanImage colorTex
+    )
     {
         if (colorTex.IsDepthFormat || colorTex.IsStencilFormat)
         {
             logger.LogError("Colors attachments cannot have depth/stencil formats");
             return;
         }
-        HxDebug.Assert(colorTex.ImageFormat != VkFormat.Undefined, "Invalid color attachment format");
-        colorTex.TransitionLayout(buffer, VK.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, new VkImageSubresourceRange(VK.VK_IMAGE_ASPECT_COLOR_BIT, 0, VK.VK_REMAINING_MIP_LEVELS, 0, VK.VK_REMAINING_ARRAY_LAYERS));
+        HxDebug.Assert(
+            colorTex.ImageFormat != VkFormat.Undefined,
+            "Invalid color attachment format"
+        );
+        colorTex.TransitionLayout(
+            buffer,
+            VK.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            new VkImageSubresourceRange(
+                VK.VK_IMAGE_ASPECT_COLOR_BIT,
+                0,
+                VK.VK_REMAINING_MIP_LEVELS,
+                0,
+                VK.VK_REMAINING_ARRAY_LAYERS
+            )
+        );
     }
 
     public static VkSemaphore CreateSemaphore(this VkDevice device, string? debugName = null)
     {
         unsafe
         {
-            VK.vkCreateSemaphore(device, new VkSemaphoreCreateInfo(), null, out var semaphore).CheckResult();
+            VK.vkCreateSemaphore(device, new VkSemaphoreCreateInfo(), null, out var semaphore)
+                .CheckResult();
             if (debugName != null)
             {
-                VK.vkSetDebugUtilsObjectNameEXT(device, VkObjectType.Semaphore, semaphore.Handle, debugName).CheckResult("Failed to set debug name for semaphore.");
+                VK.vkSetDebugUtilsObjectNameEXT(
+                        device,
+                        VkObjectType.Semaphore,
+                        semaphore.Handle,
+                        debugName
+                    )
+                    .CheckResult("Failed to set debug name for semaphore.");
             }
             return semaphore;
         }
     }
 
-    public static VkSemaphore CreateSemaphoreTimeline(this VkDevice device, ulong initialValue, string? debugName = null)
+    public static VkSemaphore CreateSemaphoreTimeline(
+        this VkDevice device,
+        ulong initialValue,
+        string? debugName = null
+    )
     {
         var semaphoreInfo = new VkSemaphoreTypeCreateInfo()
         {
             semaphoreType = VkSemaphoreType.Timeline,
-            initialValue = initialValue
+            initialValue = initialValue,
         };
         unsafe
         {
-            var createInfo = new VkSemaphoreCreateInfo()
-            {
-                pNext = &semaphoreInfo
-            };
+            var createInfo = new VkSemaphoreCreateInfo() { pNext = &semaphoreInfo };
             VK.vkCreateSemaphore(device, &createInfo, null, out var semaphore).CheckResult();
             if (GraphicsSettings.EnableDebug && !string.IsNullOrEmpty(debugName))
             {
-                VK.vkSetDebugUtilsObjectNameEXT(device, VkObjectType.Semaphore, semaphore, debugName).CheckResult("Failed to set debug name for semaphore.");
+                VK.vkSetDebugUtilsObjectNameEXT(
+                        device,
+                        VkObjectType.Semaphore,
+                        semaphore,
+                        debugName
+                    )
+                    .CheckResult("Failed to set debug name for semaphore.");
             }
             return semaphore;
         }
@@ -821,13 +952,19 @@ internal static class HxVkExtensions
             VK.vkCreateFence(device, new VkFenceCreateInfo(), null, out var fence).CheckResult();
             if (GraphicsSettings.EnableDebug && !string.IsNullOrEmpty(debugName))
             {
-                VK.vkSetDebugUtilsObjectNameEXT(device, VkObjectType.Fence, fence, debugName).CheckResult("Failed to set debug name for fence.");
+                VK.vkSetDebugUtilsObjectNameEXT(device, VkObjectType.Fence, fence, debugName)
+                    .CheckResult("Failed to set debug name for fence.");
             }
             return fence;
         }
     }
 
-    public unsafe static VkResult SetDebugObjectName(this VkDevice device, VkObjectType type, nuint handle, VkUtf8ReadOnlyString name)
+    public static unsafe VkResult SetDebugObjectName(
+        this VkDevice device,
+        VkObjectType type,
+        nuint handle,
+        VkUtf8ReadOnlyString name
+    )
     {
         VkDebugUtilsObjectNameInfoEXT ni = new()
         {
@@ -838,17 +975,32 @@ internal static class HxVkExtensions
         return VK.vkSetDebugUtilsObjectNameEXT(device, &ni);
     }
 
-    public unsafe static VkResult SetDebugObjectName(this VkDevice device, VkObjectType type, nuint handle, string? name)
+    public static unsafe VkResult SetDebugObjectName(
+        this VkDevice device,
+        VkObjectType type,
+        nuint handle,
+        string? name
+    )
     {
         return VK.vkSetDebugUtilsObjectNameEXT(device, type, handle, name);
     }
 
-    public unsafe static VkResult SetDebugObjectName(this VkDevice device, VkObjectType type, nuint handle, ReadOnlySpan<byte> name)
+    public static unsafe VkResult SetDebugObjectName(
+        this VkDevice device,
+        VkObjectType type,
+        nuint handle,
+        ReadOnlySpan<byte> name
+    )
     {
         return VK.vkSetDebugUtilsObjectNameEXT(device, type, handle, name);
     }
 
-    public unsafe static VkResult SetDebugObjectName(this VkDevice device, VkObjectType type, nuint handle, ReadOnlySpan<char> name)
+    public static unsafe VkResult SetDebugObjectName(
+        this VkDevice device,
+        VkObjectType type,
+        nuint handle,
+        ReadOnlySpan<char> name
+    )
     {
         return VK.vkSetDebugUtilsObjectNameEXT(device, type, handle, name);
     }

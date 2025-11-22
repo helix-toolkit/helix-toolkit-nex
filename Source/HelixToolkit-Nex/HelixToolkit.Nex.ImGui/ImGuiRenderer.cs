@@ -1,15 +1,15 @@
-﻿using HelixToolkit.Nex.Graphics;
-using ImGuiNET;
-using Microsoft.Extensions.Logging;
 using System.Numerics;
 using System.Runtime.InteropServices;
+using HelixToolkit.Nex.Graphics;
+using ImGuiNET;
+using Microsoft.Extensions.Logging;
 using Gui = ImGuiNET.ImGui;
 
 namespace HelixToolkit.Nex.ImGui;
 
 public class ImGuiRenderer(IContext context, ImGuiConfig config) : IDisposable
 {
-    const string codeVS = """
+    private const string codeVS = """
         layout(location = 0) out vec4 out_color;
         layout(location = 1) out vec2 out_uv;
 
@@ -51,7 +51,7 @@ public class ImGuiRenderer(IContext context, ImGuiConfig config) : IDisposable
         }
         """;
 
-    const string codeFS = """
+    private const string codeFS = """
         layout(location = 0) in vec4 in_color;
         layout(location = 1) in vec2 in_uv;
 
@@ -75,78 +75,91 @@ public class ImGuiRenderer(IContext context, ImGuiConfig config) : IDisposable
         }
         """;
 
-    static readonly ILogger logger = LogManager.Create<ImGuiRenderer>();
+    private static readonly ILogger Logger = LogManager.Create<ImGuiRenderer>();
 
-    struct Drawable()
+    private struct Drawable()
     {
         public BufferResource VertexBuffer = BufferResource.Null;
         public BufferResource IndexBuffer = BufferResource.Null;
         public uint VertexCount = 0;
         public uint IndexCount = 0;
     }
+
     [StructLayout(LayoutKind.Sequential, Pack = 4)]
-    struct PushConstants
+    private struct PushConstants
     {
         public Vector4 LRTB; // Left, Right, Top, Bottom
-        public ulong vb; // Vertex buffer offset and index buffer offset
+        public ulong VertexBuffer; // Vertex buffer offset and index buffer offset
         public uint TextureId; // Texture ID
         public uint SamplerId; // Sampler ID
     }
 
-    readonly IContext context = context ?? throw new ArgumentNullException(nameof(context));
-    readonly ImGuiConfig config = config ?? throw new ArgumentNullException(nameof(config));
-    ShaderModuleResource vertexShaderModule = context.CreateShaderModuleGlsl(codeVS, ShaderStage.Vertex, nameof(ImGuiRenderer));
-    ShaderModuleResource fragmentShaderModule = context.CreateShaderModuleGlsl(codeFS, ShaderStage.Fragment, nameof(ImGuiRenderer));
-    RenderPipelineResource pipeline = RenderPipelineResource.Null;
-    SamplerResource sampler = context.CreateSampler(new SamplerStateDesc
-    {
-        WrapU = SamplerWrap.Clamp,
-        WrapV = SamplerWrap.Clamp,
-        WrapW = SamplerWrap.Clamp,
-        DebugName = nameof(ImGuiRenderer)
-    });
+    private readonly ImGuiConfig _config =
+        config ?? throw new ArgumentNullException(nameof(config));
+    private readonly ShaderModuleResource _vertexShaderModule = context.CreateShaderModuleGlsl(
+        codeVS,
+        ShaderStage.Vertex,
+        nameof(ImGuiRenderer)
+    );
+    private readonly ShaderModuleResource _fragShaderModule = context.CreateShaderModuleGlsl(
+        codeFS,
+        ShaderStage.Fragment,
+        nameof(ImGuiRenderer)
+    );
+    private RenderPipelineResource _pipeline = RenderPipelineResource.Null;
+    private readonly SamplerResource _sampler = context.CreateSampler(
+        new SamplerStateDesc
+        {
+            WrapU = SamplerWrap.Clamp,
+            WrapV = SamplerWrap.Clamp,
+            WrapW = SamplerWrap.Clamp,
+            DebugName = nameof(ImGuiRenderer),
+        }
+    );
 
-    readonly Drawable[] drawables = [new(), new(), new()];
-    int frameCount = 0;
-    nint imguiContext = 0;
-    private bool disposedValue;
+    private readonly Drawable[] _drawables = [new(), new(), new()];
+    private int _frameCount = 0;
+    private bool _disposedValue;
 
-    public IContext Context => context;
+    public IContext Context { get; } = context ?? throw new ArgumentNullException(nameof(context));
 
     public float DisplayScale { set; get; } = 1.0f;
 
     public TextureResource FontTexture { get; private set; } = TextureResource.Null;
 
-    public nint ImGuiContext => imguiContext;
+    public nint ImGuiContext { get; private set; } = 0;
 
     public bool Initialize()
     {
-        imguiContext = Gui.CreateContext();
+        ImGuiContext = Gui.CreateContext();
         var io = Gui.GetIO();
         io.BackendFlags |= ImGuiBackendFlags.RendererHasVtxOffset;
-        SetFont(config.FontPath);
+        SetFont(_config.FontPath);
         return true;
     }
 
     private unsafe bool CreatePipeline(Framebuffer fb)
     {
-        uint nonLinearColorSpace = context.GetSwapchainColorSpace() == ColorSpace.SRGB_NONLINEAR ? 1u : 0u;
+        uint nonLinearColorSpace =
+            Context.GetSwapchainColorSpace() == ColorSpace.SRGB_NONLINEAR ? 1u : 0u;
         var desc = new RenderPipelineDesc();
-        desc.VertexShader = vertexShaderModule;
-        desc.FragementShader = fragmentShaderModule;
+        desc.VertexShader = _vertexShaderModule;
+        desc.FragementShader = _fragShaderModule;
         desc.SpecInfo.Entries[0].ConstantId = 0;
         desc.SpecInfo.Entries[0].Size = sizeof(uint);
         desc.SpecInfo.Data = new byte[sizeof(uint)];
         using var pData = desc.SpecInfo.Data.Pin();
         NativeHelper.Write((nint)pData.Pointer, ref nonLinearColorSpace);
-        desc.Colors[0].Format = context.GetFormat(fb.Colors[0].Texture);
+        desc.Colors[0].Format = Context.GetFormat(fb.Colors[0].Texture);
         desc.Colors[0].BlendEnabled = true;
         desc.Colors[0].SrcRGBBlendFactor = BlendFactor.SrcAlpha;
         desc.Colors[0].DstRGBBlendFactor = BlendFactor.OneMinusSrcAlpha;
-        desc.DepthFormat = fb.DepthStencil.Texture ? context.GetFormat(fb.DepthStencil.Texture) : Format.Invalid;
+        desc.DepthFormat = fb.DepthStencil.Texture
+            ? Context.GetFormat(fb.DepthStencil.Texture)
+            : Format.Invalid;
         desc.CullMode = CullMode.None;
         desc.DebugName = nameof(ImGuiRenderer);
-        var ret = context.CreateRenderPipeline(desc, out pipeline);
+        var ret = Context.CreateRenderPipeline(desc, out _pipeline);
         return ret == ResultCode.Ok;
     }
 
@@ -162,14 +175,14 @@ public class ImGuiRenderer(IContext context, ImGuiConfig config) : IDisposable
         {
             if (!File.Exists(fontPath))
             {
-                logger.LogError($"Font file not found: {fontPath}");
+                Logger.LogError($"Font file not found: {fontPath}");
                 return;
             }
-            io.Fonts.AddFontFromFileTTF(fontPath, config.FontSizeInPixel);
+            io.Fonts.AddFontFromFileTTF(fontPath, _config.FontSizeInPixel);
         }
         if (!io.Fonts.Build())
         {
-            logger.LogError("Failed to build ImGui fonts.");
+            Logger.LogError("Failed to build ImGui fonts.");
         }
         else
         {
@@ -186,7 +199,7 @@ public class ImGuiRenderer(IContext context, ImGuiConfig config) : IDisposable
                     DataSize = Format.RGBA_UN8.GetBytesPerBlock() * (uint)(width * height),
                     Type = TextureType.Texture2D,
                 };
-                FontTexture = context.CreateTexture(textureDesc, "ImGui Font Texture");
+                FontTexture = Context.CreateTexture(textureDesc, "ImGui Font Texture");
                 io.Fonts.SetTexID((nint)FontTexture.Index);
             }
         }
@@ -194,16 +207,16 @@ public class ImGuiRenderer(IContext context, ImGuiConfig config) : IDisposable
 
     public bool BeginFrame(Framebuffer fb)
     {
-        if (pipeline == RenderPipelineResource.Null)
+        if (_pipeline == RenderPipelineResource.Null)
         {
             if (!CreatePipeline(fb))
             {
-                logger.LogError("Failed to create ImGui render pipeline.");
+                Logger.LogError("Failed to create ImGui render pipeline.");
                 return false;
             }
         }
-        var dim = context.GetDimensions(fb.Colors[0].Texture);
-        Gui.SetCurrentContext(imguiContext);
+        var dim = Context.GetDimensions(fb.Colors[0].Texture);
+        Gui.SetCurrentContext(ImGuiContext);
         var io = Gui.GetIO();
         io.DisplaySize = new Vector2(dim.Width / DisplayScale, dim.Height / DisplayScale);
         io.DisplayFramebufferScale = new Vector2(DisplayScale);
@@ -219,68 +232,96 @@ public class ImGuiRenderer(IContext context, ImGuiConfig config) : IDisposable
         var size = drawData.DisplaySize * drawData.FramebufferScale;
         if (size.X <= 0 || size.Y <= 0)
         {
-            logger.LogWarning("ImGui draw data has zero size, skipping rendering.");
+            Logger.LogWarning("ImGui draw data has zero size, skipping rendering.");
             return false;
         }
-        ref var drawable = ref drawables[frameCount];
-        frameCount = (frameCount + 1) % drawables.Length;
+        ref var drawable = ref _drawables[_frameCount];
+        _frameCount = (_frameCount + 1) % _drawables.Length;
         unsafe
         {
-            if (drawable.VertexBuffer == BufferResource.Null || drawable.VertexCount < drawData.TotalVtxCount)
+            if (
+                drawable.VertexBuffer == BufferResource.Null
+                || drawable.VertexCount < drawData.TotalVtxCount
+            )
             {
                 if (drawable.VertexBuffer != BufferResource.Null)
                 {
-                    context.Destroy(drawable.VertexBuffer);
+                    Context.Destroy(drawable.VertexBuffer);
                 }
                 if (drawData.TotalVtxCount == 0)
                 {
                     return false; // No vertex data to render.
                 }
-                drawable.VertexBuffer = context.CreateBuffer(new BufferDesc
-                {
-                    Usage = BufferUsageBits.Storage,
-                    Storage = StorageType.HostVisible,
-                    DataSize = (uint)(drawData.TotalVtxCount * sizeof(ImDrawVert)),
-                    DebugName = "ImGui Vertex Buffer"
-                });
+                drawable.VertexBuffer = Context.CreateBuffer(
+                    new BufferDesc
+                    {
+                        Usage = BufferUsageBits.Storage,
+                        Storage = StorageType.HostVisible,
+                        DataSize = (uint)(drawData.TotalVtxCount * sizeof(ImDrawVert)),
+                        DebugName = "ImGui Vertex Buffer",
+                    }
+                );
                 drawable.VertexCount = (uint)drawData.TotalVtxCount;
             }
-            if (drawable.IndexBuffer == BufferResource.Null || drawable.IndexCount < drawData.TotalIdxCount)
+            if (
+                drawable.IndexBuffer == BufferResource.Null
+                || drawable.IndexCount < drawData.TotalIdxCount
+            )
             {
                 if (drawable.IndexBuffer != BufferResource.Null)
                 {
-                    context.Destroy(drawable.IndexBuffer);
+                    Context.Destroy(drawable.IndexBuffer);
                 }
                 if (drawData.TotalIdxCount <= 0)
                 {
                     return false; // No index data to render.
                 }
-                drawable.IndexBuffer = context.CreateBuffer(new BufferDesc
-                {
-                    Usage = BufferUsageBits.Index,
-                    Storage = StorageType.HostVisible,
-                    DataSize = (uint)(drawData.TotalIdxCount * sizeof(ushort)),
-                    DebugName = "ImGui Index Buffer"
-                });
+                drawable.IndexBuffer = Context.CreateBuffer(
+                    new BufferDesc
+                    {
+                        Usage = BufferUsageBits.Index,
+                        Storage = StorageType.HostVisible,
+                        DataSize = (uint)(drawData.TotalIdxCount * sizeof(ushort)),
+                        DebugName = "ImGui Index Buffer",
+                    }
+                );
                 drawable.IndexCount = (uint)drawData.TotalIdxCount;
             }
 
             {
-                var vertexPtr = context.GetMappedPtr(drawable.VertexBuffer);
-                var indexPtr = context.GetMappedPtr(drawable.IndexBuffer);
+                var vertexPtr = Context.GetMappedPtr(drawable.VertexBuffer);
+                var indexPtr = Context.GetMappedPtr(drawable.IndexBuffer);
                 for (int i = 0; i < drawData.CmdListsCount; ++i)
                 {
                     var drawList = drawData.CmdLists[i];
                     var vPtr = drawList.VtxBuffer.Data;
-                    System.Buffer.MemoryCopy(vPtr.ToPointer(), vertexPtr.ToPointer(), drawable.VertexCount * sizeof(ImDrawVert), drawList.VtxBuffer.Size * sizeof(ImDrawVert));
+                    System.Buffer.MemoryCopy(
+                        vPtr.ToPointer(),
+                        vertexPtr.ToPointer(),
+                        drawable.VertexCount * sizeof(ImDrawVert),
+                        drawList.VtxBuffer.Size * sizeof(ImDrawVert)
+                    );
                     vertexPtr += drawList.VtxBuffer.Size * sizeof(ImDrawVert);
 
                     var iPtr = drawList.IdxBuffer.Data;
-                    System.Buffer.MemoryCopy(iPtr.ToPointer(), indexPtr.ToPointer(), drawable.IndexCount * sizeof(ushort), drawList.IdxBuffer.Size * sizeof(ushort));
+                    System.Buffer.MemoryCopy(
+                        iPtr.ToPointer(),
+                        indexPtr.ToPointer(),
+                        drawable.IndexCount * sizeof(ushort),
+                        drawList.IdxBuffer.Size * sizeof(ushort)
+                    );
                     indexPtr += drawList.IdxBuffer.Size * sizeof(ushort);
                 }
-                context.FlushMappedMemory(drawable.VertexBuffer, 0, (uint)(drawData.TotalVtxCount * sizeof(ImDrawVert)));
-                context.FlushMappedMemory(drawable.IndexBuffer, 0, (uint)(drawData.TotalIdxCount * sizeof(ushort)));
+                Context.FlushMappedMemory(
+                    drawable.VertexBuffer,
+                    0,
+                    (uint)(drawData.TotalVtxCount * sizeof(ImDrawVert))
+                );
+                Context.FlushMappedMemory(
+                    drawable.IndexBuffer,
+                    0,
+                    (uint)(drawData.TotalIdxCount * sizeof(ushort))
+                );
             }
         }
 
@@ -294,7 +335,7 @@ public class ImGuiRenderer(IContext context, ImGuiConfig config) : IDisposable
         var clipOff = drawData.DisplayPos;
         var clipScale = drawData.FramebufferScale;
 
-        cmdBuf.BindRenderPipeline(pipeline);
+        cmdBuf.BindRenderPipeline(_pipeline);
 
         uint idxOffset = 0;
         uint vtxOffset = 0;
@@ -307,25 +348,48 @@ public class ImGuiRenderer(IContext context, ImGuiConfig config) : IDisposable
             for (int j = 0; j < cmdList.CmdBuffer.Size; ++j)
             {
                 var cmd = cmdList.CmdBuffer[j];
-                Vector2 clipMin = new((cmd.ClipRect.X - clipOff.X) * clipScale.X, (cmd.ClipRect.Y - clipOff.Y) * clipScale.Y);
-                Vector2 clipMax = new((cmd.ClipRect.Z - clipOff.X) * clipScale.X, (cmd.ClipRect.W - clipOff.Y) * clipScale.Y);
+                Vector2 clipMin = new(
+                    (cmd.ClipRect.X - clipOff.X) * clipScale.X,
+                    (cmd.ClipRect.Y - clipOff.Y) * clipScale.Y
+                );
+                Vector2 clipMax = new(
+                    (cmd.ClipRect.Z - clipOff.X) * clipScale.X,
+                    (cmd.ClipRect.W - clipOff.Y) * clipScale.Y
+                );
                 // clang-format off
-                if (clipMin.X < 0.0f) clipMin.X = 0.0f;
-                if (clipMin.Y < 0.0f) clipMin.Y = 0.0f;
-                if (clipMax.X > size.X) clipMax.X = size.X;
-                if (clipMax.Y > size.Y) clipMax.Y = size.Y;
+                if (clipMin.X < 0.0f)
+                    clipMin.X = 0.0f;
+                if (clipMin.Y < 0.0f)
+                    clipMin.Y = 0.0f;
+                if (clipMax.X > size.X)
+                    clipMax.X = size.X;
+                if (clipMax.Y > size.Y)
+                    clipMax.Y = size.Y;
                 if (clipMax.X <= clipMin.X || clipMax.Y <= clipMin.Y)
                     continue;
                 var pushConstants = new PushConstants
                 {
                     LRTB = new Vector4(L, R, T, B),
-                    vb = context.GpuAddress(drawable.VertexBuffer),
+                    VertexBuffer = Context.GpuAddress(drawable.VertexBuffer),
                     TextureId = (uint)cmd.GetTexID(),
-                    SamplerId = sampler.Index
+                    SamplerId = _sampler.Index,
                 };
                 cmdBuf.PushConstants(pushConstants);
-                cmdBuf.BindScissorRect(new((uint)clipMin.X, (uint)clipMin.Y, (uint)(clipMax.X - clipMin.X), (uint)(clipMax.Y - clipMin.Y)));
-                cmdBuf.DrawIndexed(cmd.ElemCount, 1, idxOffset + cmd.IdxOffset, (int)(vtxOffset + cmd.VtxOffset), 0);
+                cmdBuf.BindScissorRect(
+                    new(
+                        (uint)clipMin.X,
+                        (uint)clipMin.Y,
+                        (uint)(clipMax.X - clipMin.X),
+                        (uint)(clipMax.Y - clipMin.Y)
+                    )
+                );
+                cmdBuf.DrawIndexed(
+                    cmd.ElemCount,
+                    1,
+                    idxOffset + cmd.IdxOffset,
+                    (int)(vtxOffset + cmd.VtxOffset),
+                    0
+                );
             }
             idxOffset += (uint)cmdList.IdxBuffer.Size;
             vtxOffset += (uint)cmdList.VtxBuffer.Size;
@@ -337,30 +401,29 @@ public class ImGuiRenderer(IContext context, ImGuiConfig config) : IDisposable
 
     protected virtual void Dispose(bool disposing)
     {
-        if (!disposedValue)
+        if (!_disposedValue)
         {
             if (disposing)
             {
-                sampler.Dispose();
-                vertexShaderModule.Dispose();
-                fragmentShaderModule.Dispose();
-                pipeline.Dispose();
+                _sampler.Dispose();
+                _vertexShaderModule.Dispose();
+                _fragShaderModule.Dispose();
+                _pipeline.Dispose();
                 FontTexture.Dispose();
-                foreach (var drawable in drawables)
+                foreach (var drawable in _drawables)
                 {
                     drawable.VertexBuffer.Dispose();
                     drawable.IndexBuffer.Dispose();
                 }
-                if (imguiContext != 0)
+                if (ImGuiContext != 0)
                 {
-                    Gui.DestroyContext(imguiContext);
-                    imguiContext = 0;
+                    Gui.DestroyContext(ImGuiContext);
+                    ImGuiContext = 0;
                 }
             }
-            disposedValue = true;
+            _disposedValue = true;
         }
     }
-
 
     public void Dispose()
     {

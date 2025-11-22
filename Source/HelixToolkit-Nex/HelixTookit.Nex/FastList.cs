@@ -1,4 +1,4 @@
-﻿// Modified from xenko fast list
+// Modified from xenko fast list
 // Copyright (c) Xenko contributors (https://xenko.com) and Silicon Studio Corp. (https://www.siliconstudio.co.jp)
 // Distributed under the MIT license. See the LICENSE.md file in the project root for more information.
 
@@ -15,21 +15,19 @@ namespace HelixToolkit.Nex;
 public class FastList<T> : IList<T>, IReadOnlyList<T>, ICollection<T>, IEnumerable<T>, IEnumerable
 {
     // Fields
-    private const int _defaultCapacity = 4;
-    private static readonly T[] empty = Array.Empty<T>();
+    private const int DefaultCapacity = 4;
+    private static readonly T[] EmptyArray = Array.Empty<T>();
+
     /// <summary>
     /// Gets the items from internal array. Make sure to access this array using <see cref="Count"/> instead of Array Length
     /// </summary>
-    internal T[] Items
-    {
-        get; private set;
-    } = empty;
+    internal T[] Items { get; private set; } = EmptyArray;
 
     private int _size;
 
     public FastList()
     {
-        Items = empty;
+        Items = EmptyArray;
     }
 
     public FastList(IEnumerable<T> collection)
@@ -51,7 +49,7 @@ public class FastList<T> : IList<T>, IReadOnlyList<T>, ICollection<T>, IEnumerab
         else if (collection is not null)
         {
             _size = 0;
-            Items = new T[_defaultCapacity];
+            Items = new T[DefaultCapacity];
             using var enumerator = collection.GetEnumerator();
             while (enumerator.MoveNext())
             {
@@ -67,10 +65,7 @@ public class FastList<T> : IList<T>, IReadOnlyList<T>, ICollection<T>, IEnumerab
 
     public int Capacity
     {
-        get
-        {
-            return Items.Length;
-        }
+        get { return Items.Length; }
         set
         {
             if (value != Items.Length)
@@ -86,7 +81,7 @@ public class FastList<T> : IList<T>, IReadOnlyList<T>, ICollection<T>, IEnumerab
                 }
                 else
                 {
-                    Items = empty;
+                    Items = EmptyArray;
                 }
             }
         }
@@ -201,14 +196,8 @@ public class FastList<T> : IList<T>, IReadOnlyList<T>, ICollection<T>, IEnumerab
 
     public T this[int index]
     {
-        get
-        {
-            return Items[index];
-        }
-        set
-        {
-            Items[index] = value;
-        }
+        get { return Items[index]; }
+        set { Items[index] = value; }
     }
 
     public ref T At(int index)
@@ -282,7 +271,7 @@ public class FastList<T> : IList<T>, IReadOnlyList<T>, ICollection<T>, IEnumerab
     {
         if (Items.Length < min)
         {
-            var num = (Items.Length == 0) ? _defaultCapacity : (Items.Length * 2);
+            var num = (Items.Length == 0) ? DefaultCapacity : (Items.Length * 2);
             if (num < min)
             {
                 num = min;
@@ -307,7 +296,6 @@ public class FastList<T> : IList<T>, IReadOnlyList<T>, ICollection<T>, IEnumerab
         }
         return default!;
     }
-
 
     public FastList<T> FindAll(Predicate<T> match)
     {
@@ -393,7 +381,6 @@ public class FastList<T> : IList<T>, IReadOnlyList<T>, ICollection<T>, IEnumerab
     {
         return new Enumerator(this);
     }
-
 
     public FastList<T> GetRange(int index, int count)
     {
@@ -551,7 +538,6 @@ public class FastList<T> : IList<T>, IReadOnlyList<T>, ICollection<T>, IEnumerab
         Array.Sort(Items, index, count, comparer);
     }
 
-
     public T[] ToArray()
     {
         var destinationArray = new T[_size];
@@ -566,7 +552,7 @@ public class FastList<T> : IList<T>, IReadOnlyList<T>, ICollection<T>, IEnumerab
             return;
         }
         var curr = Items;
-        Items = Count == 0 ? empty : new T[Count];
+        Items = Count == 0 ? EmptyArray : new T[Count];
         if (Count > 0)
         {
             Array.Copy(curr, 0, Items, 0, Count);
@@ -595,28 +581,26 @@ public class FastList<T> : IList<T>, IReadOnlyList<T>, ICollection<T>, IEnumerab
     [StructLayout(LayoutKind.Sequential)]
     public struct Enumerator : IEnumerator<T>, IDisposable, IEnumerator
     {
-        private readonly FastList<T> list;
-        private int index;
-        private T current;
+        private readonly FastList<T> _list;
+        private int _index;
+        private T _current;
 
         internal Enumerator(FastList<T> list)
         {
-            this.list = list;
-            index = 0;
-            current = default!;
+            _list = list;
+            _index = 0;
+            _current = default!;
         }
 
-        public void Dispose()
-        {
-        }
+        public void Dispose() { }
 
         public bool MoveNext()
         {
-            var list = this.list;
-            if (index < list._size)
+            var list = _list;
+            if (_index < list._size)
             {
-                current = list.Items[index];
-                index++;
+                _current = list.Items[_index];
+                _index++;
                 return true;
             }
             return MoveNextRare();
@@ -624,19 +608,19 @@ public class FastList<T> : IList<T>, IReadOnlyList<T>, ICollection<T>, IEnumerab
 
         private bool MoveNextRare()
         {
-            index = list._size + 1;
-            current = default!;
+            _index = _list._size + 1;
+            _current = default!;
             return false;
         }
 
-        public T Current => current;
+        public T Current => _current;
 
         object IEnumerator.Current => Current!;
 
         void IEnumerator.Reset()
         {
-            index = 0;
-            current = default!;
+            _index = 0;
+            _current = default!;
         }
     }
     #endregion

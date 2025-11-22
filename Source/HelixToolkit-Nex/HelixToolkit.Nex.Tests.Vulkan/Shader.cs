@@ -1,31 +1,35 @@
-﻿namespace HelixToolkit.Nex.Tests.Vulkan;
+namespace HelixToolkit.Nex.Tests.Vulkan;
+
 [TestClass]
 [TestCategory("GPURequired")]
 public class Shader
 {
-    private static IContext? vkContext;
+    private static IContext? _vkContext;
 
     [ClassInitialize]
     public static void ClassInit(TestContext context)
     {
-        var config = new VulkanContextConfig
-        {
-            TerminateOnValidationError = true
-        };
-        vkContext = VulkanBuilder.CreateHeadless(config);
+        var config = new VulkanContextConfig { TerminateOnValidationError = true };
+        _vkContext = VulkanBuilder.CreateHeadless(config);
     }
 
     [ClassCleanup]
     public static void ClassCleanup()
     {
-        vkContext?.Dispose();
+        _vkContext?.Dispose();
     }
 
-    static byte[] GetGlslShaderCode(string shaderName)
+    private static byte[] GetGlslShaderCode(string shaderName)
     {
         var assembly = typeof(Shader).Assembly;
-        var assemblyName = assembly.GetName().Name ?? throw new InvalidOperationException("Assembly name cannot be null.");
-        using var stream = assembly.GetManifestResourceStream($"{assemblyName}.Shaders.{shaderName}") ?? throw new FileNotFoundException($"Shader file '{shaderName}' not found in embedded resources.");
+        var assemblyName =
+            assembly.GetName().Name
+            ?? throw new InvalidOperationException("Assembly name cannot be null.");
+        using var stream =
+            assembly.GetManifestResourceStream($"{assemblyName}.Shaders.{shaderName}")
+            ?? throw new FileNotFoundException(
+                $"Shader file '{shaderName}' not found in embedded resources."
+            );
         using var reader = new BinaryReader(stream);
         return reader.ReadBytes((int)stream.Length);
     }
@@ -35,7 +39,12 @@ public class Shader
     [DataRow("simple_fs", ShaderStage.Fragment, "simple.glsl", "FRAGMENT_SHADER")]
     [DataRow("complex_vs", ShaderStage.Vertex, "complex.glsl", "VERTEX_SHADER")]
     [DataRow("complex_fs", ShaderStage.Fragment, "complex.glsl", "FRAGMENT_SHADER")]
-    public unsafe void CreateShaderModule(string shaderName, ShaderStage stage, string expectedFileName, string defines)
+    public unsafe void CreateShaderModule(
+        string shaderName,
+        ShaderStage stage,
+        string expectedFileName,
+        string defines
+    )
     {
         var shaderCode = GetGlslShaderCode(expectedFileName);
         using var pData = shaderCode.Pin(); // Pin the byte array to prevent garbage collection
@@ -50,11 +59,14 @@ public class Shader
             Defines = defines.ToShaderDefines(), // Convert the defines string to ShaderDefines
         };
         ShaderModuleResource? shaderModule = null;
-        var result = vkContext?.CreateShaderModule(shaderDesc, out shaderModule).CheckResult();
-        Assert.IsTrue(result == ResultCode.Ok, "Shader module creation failed with error: " + result.ToString());
+        var result = _vkContext?.CreateShaderModule(shaderDesc, out shaderModule).CheckResult();
+        Assert.IsTrue(
+            result == ResultCode.Ok,
+            "Shader module creation failed with error: " + result.ToString()
+        );
         Assert.IsNotNull(shaderModule, "Shader module should not be null after creation.");
         Assert.IsTrue(shaderModule.Valid, "Shader module should be valid after creation.");
         // Clean up the shader module after the test
-        vkContext?.Destroy(shaderModule);
+        _vkContext?.Destroy(shaderModule);
     }
 }

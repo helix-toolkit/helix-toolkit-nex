@@ -1,4 +1,4 @@
-﻿namespace HelixToolkit.Nex.Maths
+namespace HelixToolkit.Nex.Maths
 {
     public static class BoundingSphereExtensions
     {

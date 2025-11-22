@@ -1,4 +1,4 @@
-﻿/*
+/*
 The MIT License (MIT)
 Copyright (c) 2022 Helix Toolkit contributors
 
@@ -154,11 +154,17 @@ namespace HelixToolkit.Nex.Maths
 
         public static void SetRow1(ref Matrix m, ref Vector4 value)
         {
-            m.M11 = value.X; m.M12 = value.Y; m.M13 = value.Z; m.M14 = value.W;
+            m.M11 = value.X;
+            m.M12 = value.Y;
+            m.M13 = value.Z;
+            m.M14 = value.W;
         }
         public static void SetRow1(ref Matrix m, Vector4 value)
         {
-            m.M11 = value.X; m.M12 = value.Y; m.M13 = value.Z; m.M14 = value.W;
+            m.M11 = value.X;
+            m.M12 = value.Y;
+            m.M13 = value.Z;
+            m.M14 = value.W;
         }
         /// <summary>
         /// Gets or sets the second row in the matrix; that is M21, M22, M23, and M24.
@@ -170,11 +176,17 @@ namespace HelixToolkit.Nex.Maths
 
         public static void SetRow2(ref Matrix m, ref Vector4 value)
         {
-            m.M21 = value.X; m.M22 = value.Y; m.M23 = value.Z; m.M24 = value.W;
+            m.M21 = value.X;
+            m.M22 = value.Y;
+            m.M23 = value.Z;
+            m.M24 = value.W;
         }
         public static void SetRow2(ref Matrix m, Vector4 value)
         {
-            m.M21 = value.X; m.M22 = value.Y; m.M23 = value.Z; m.M24 = value.W;
+            m.M21 = value.X;
+            m.M22 = value.Y;
+            m.M23 = value.Z;
+            m.M24 = value.W;
         }
         /// <summary>
         /// Gets or sets the third row in the matrix; that is M31, M32, M33, and M34.
@@ -186,11 +198,17 @@ namespace HelixToolkit.Nex.Maths
 
         public static void SetRow3(ref Matrix m, ref Vector4 value)
         {
-            m.M31 = value.X; m.M32 = value.Y; m.M33 = value.Z; m.M34 = value.W;
+            m.M31 = value.X;
+            m.M32 = value.Y;
+            m.M33 = value.Z;
+            m.M34 = value.W;
         }
         public static void SetRow3(ref Matrix m, Vector4 value)
         {
-            m.M31 = value.X; m.M32 = value.Y; m.M33 = value.Z; m.M34 = value.W;
+            m.M31 = value.X;
+            m.M32 = value.Y;
+            m.M33 = value.Z;
+            m.M34 = value.W;
         }
         /// <summary>
         /// Gets or sets the fourth row in the matrix; that is M41, M42, M43, and M44.
@@ -202,11 +220,17 @@ namespace HelixToolkit.Nex.Maths
 
         public static void SetRow4(ref Matrix m, ref Vector4 value)
         {
-            m.M41 = value.X; m.M42 = value.Y; m.M43 = value.Z; m.M44 = value.W;
+            m.M41 = value.X;
+            m.M42 = value.Y;
+            m.M43 = value.Z;
+            m.M44 = value.W;
         }
         public static void SetRow4(ref Matrix m, Vector4 value)
         {
-            m.M41 = value.X; m.M42 = value.Y; m.M43 = value.Z; m.M44 = value.W;
+            m.M41 = value.X;
+            m.M42 = value.Y;
+            m.M43 = value.Z;
+            m.M44 = value.W;
         }
 
         /// <summary>
@@ -238,11 +262,20 @@ namespace HelixToolkit.Nex.Maths
         {
             switch (rowIdx)
             {
-                case 0: SetRow1(ref m, ref value); break;
-                case 1: SetRow2(ref m, ref value); break;
-                case 2: SetRow3(ref m, ref value); break;
-                case 3: SetRow4(ref m, ref value); break;
-                default: throw new ArgumentException("Row Index out of bound.");
+                case 0:
+                    SetRow1(ref m, ref value);
+                    break;
+                case 1:
+                    SetRow2(ref m, ref value);
+                    break;
+                case 2:
+                    SetRow3(ref m, ref value);
+                    break;
+                case 3:
+                    SetRow4(ref m, ref value);
+                    break;
+                default:
+                    throw new ArgumentException("Row Index out of bound.");
             }
         }
         /// <summary>
@@ -274,11 +307,20 @@ namespace HelixToolkit.Nex.Maths
         {
             switch (columnIdx)
             {
-                case 0: SetColumn1(ref m, ref value); break;
-                case 1: SetColumn2(ref m, ref value); break;
-                case 2: SetColumn3(ref m, ref value); break;
-                case 3: SetColumn4(ref m, ref value); break;
-                default: throw new ArgumentException("Column Index out of bound.");
+                case 0:
+                    SetColumn1(ref m, ref value);
+                    break;
+                case 1:
+                    SetColumn2(ref m, ref value);
+                    break;
+                case 2:
+                    SetColumn3(ref m, ref value);
+                    break;
+                case 3:
+                    SetColumn4(ref m, ref value);
+                    break;
+                default:
+                    throw new ArgumentException("Column Index out of bound.");
             }
         }
 
@@ -292,11 +334,17 @@ namespace HelixToolkit.Nex.Maths
 
         public static void SetColumn1(ref Matrix m, ref Vector4 value)
         {
-            m.M11 = value.X; m.M21 = value.Y; m.M31 = value.Z; m.M41 = value.W;
+            m.M11 = value.X;
+            m.M21 = value.Y;
+            m.M31 = value.Z;
+            m.M41 = value.W;
         }
         public static void SetColumn1(ref Matrix m, Vector4 value)
         {
-            m.M11 = value.X; m.M21 = value.Y; m.M31 = value.Z; m.M41 = value.W;
+            m.M11 = value.X;
+            m.M21 = value.Y;
+            m.M31 = value.Z;
+            m.M41 = value.W;
         }
         /// <summary>
         /// Gets or sets the second column in the matrix; that is M12, M22, M32, and M42.
@@ -308,11 +356,17 @@ namespace HelixToolkit.Nex.Maths
 
         public static void SetColumn2(ref Matrix m, ref Vector4 value)
         {
-            m.M12 = value.X; m.M22 = value.Y; m.M32 = value.Z; m.M42 = value.W;
+            m.M12 = value.X;
+            m.M22 = value.Y;
+            m.M32 = value.Z;
+            m.M42 = value.W;
         }
         public static void SetColumn2(ref Matrix m, Vector4 value)
         {
-            m.M12 = value.X; m.M22 = value.Y; m.M32 = value.Z; m.M42 = value.W;
+            m.M12 = value.X;
+            m.M22 = value.Y;
+            m.M32 = value.Z;
+            m.M42 = value.W;
         }
         /// <summary>
         /// Gets or sets the third column in the matrix; that is M13, M23, M33, and M43.
@@ -324,11 +378,17 @@ namespace HelixToolkit.Nex.Maths
 
         public static void SetColumn3(ref Matrix m, ref Vector4 value)
         {
-            m.M13 = value.X; m.M23 = value.Y; m.M33 = value.Z; m.M43 = value.W;
+            m.M13 = value.X;
+            m.M23 = value.Y;
+            m.M33 = value.Z;
+            m.M43 = value.W;
         }
         public static void SetColumn3(ref Matrix m, Vector4 value)
         {
-            m.M13 = value.X; m.M23 = value.Y; m.M33 = value.Z; m.M43 = value.W;
+            m.M13 = value.X;
+            m.M23 = value.Y;
+            m.M33 = value.Z;
+            m.M43 = value.W;
         }
         /// <summary>
         /// Gets or sets the fourth column in the matrix; that is M14, M24, M34, and M44.
@@ -340,11 +400,17 @@ namespace HelixToolkit.Nex.Maths
 
         public static void SetColumn4(ref Matrix m, ref Vector4 value)
         {
-            m.M14 = value.X; m.M24 = value.Y; m.M34 = value.Z; m.M44 = value.W;
+            m.M14 = value.X;
+            m.M24 = value.Y;
+            m.M34 = value.Z;
+            m.M44 = value.W;
         }
         public static void SetColumn4(ref Matrix m, Vector4 value)
         {
-            m.M14 = value.X; m.M24 = value.Y; m.M34 = value.Z; m.M44 = value.W;
+            m.M14 = value.X;
+            m.M24 = value.Y;
+            m.M34 = value.Z;
+            m.M44 = value.W;
         }
         /// <summary>
         /// Gets or sets the scale of the matrix; that is M11, M22, and M33.
@@ -356,7 +422,9 @@ namespace HelixToolkit.Nex.Maths
 
         public static void SetScaleVector(ref Matrix m, ref Vector3 value)
         {
-            m.M11 = value.X; m.M22 = value.Y; m.M33 = value.Z;
+            m.M11 = value.X;
+            m.M22 = value.Y;
+            m.M33 = value.Z;
         }
 
         /// <summary>
@@ -395,23 +463,56 @@ namespace HelixToolkit.Nex.Maths
         {
             switch (index)
             {
-                case 0: m.M11 = value; break;
-                case 1: m.M12 = value; break;
-                case 2: m.M13 = value; break;
-                case 3: m.M14 = value; break;
-                case 4: m.M21 = value; break;
-                case 5: m.M22 = value; break;
-                case 6: m.M23 = value; break;
-                case 7: m.M24 = value; break;
-                case 8: m.M31 = value; break;
-                case 9: m.M32 = value; break;
-                case 10: m.M33 = value; break;
-                case 11: m.M34 = value; break;
-                case 12: m.M41 = value; break;
-                case 13: m.M42 = value; break;
-                case 14: m.M43 = value; break;
-                case 15: m.M44 = value; break;
-                default: throw new ArgumentOutOfRangeException(nameof(index), "Indices for Matrix run from 0 to 15, inclusive.");
+                case 0:
+                    m.M11 = value;
+                    break;
+                case 1:
+                    m.M12 = value;
+                    break;
+                case 2:
+                    m.M13 = value;
+                    break;
+                case 3:
+                    m.M14 = value;
+                    break;
+                case 4:
+                    m.M21 = value;
+                    break;
+                case 5:
+                    m.M22 = value;
+                    break;
+                case 6:
+                    m.M23 = value;
+                    break;
+                case 7:
+                    m.M24 = value;
+                    break;
+                case 8:
+                    m.M31 = value;
+                    break;
+                case 9:
+                    m.M32 = value;
+                    break;
+                case 10:
+                    m.M33 = value;
+                    break;
+                case 11:
+                    m.M34 = value;
+                    break;
+                case 12:
+                    m.M41 = value;
+                    break;
+                case 13:
+                    m.M42 = value;
+                    break;
+                case 14:
+                    m.M43 = value;
+                    break;
+                case 15:
+                    m.M44 = value;
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(index), "Indices for Matrix run from 0 to 15, inclusive.");
             }
         }
 
@@ -1465,9 +1566,15 @@ namespace HelixToolkit.Nex.Maths
             Vector3 yaxis = Vector3.Cross(zaxis, xaxis);
 
             result = Matrix.Identity;
-            result.M11 = xaxis.X; result.M21 = xaxis.Y; result.M31 = xaxis.Z;
-            result.M12 = yaxis.X; result.M22 = yaxis.Y; result.M32 = yaxis.Z;
-            result.M13 = zaxis.X; result.M23 = zaxis.Y; result.M33 = zaxis.Z;
+            result.M11 = xaxis.X;
+            result.M21 = xaxis.Y;
+            result.M31 = xaxis.Z;
+            result.M12 = yaxis.X;
+            result.M22 = yaxis.Y;
+            result.M32 = yaxis.Z;
+            result.M13 = zaxis.X;
+            result.M23 = zaxis.Y;
+            result.M33 = zaxis.Z;
 
             result.M41 = -Vector3.Dot(xaxis, eye);
             result.M42 = -Vector3.Dot(yaxis, eye);

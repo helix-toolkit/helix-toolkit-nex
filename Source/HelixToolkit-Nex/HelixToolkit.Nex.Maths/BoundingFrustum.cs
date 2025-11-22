@@ -1,4 +1,4 @@
-﻿/*
+/*
 The MIT License (MIT)
 Copyright (c) 2022 Helix Toolkit contributors
 
@@ -32,94 +32,87 @@ The MIT License (MIT)
 namespace HelixToolkit.Nex.Maths
 {
     /// <summary>
-    /// Defines a frustum which can be used in frustum culling, zoom to Extents (zoom to fit) operations, 
+    /// Defines a frustum which can be used in frustum culling, zoom to Extents (zoom to fit) operations,
     /// (matrix, frustum, camera) interchange, and many kind of intersection testing.
     /// </summary>
     [StructLayout(LayoutKind.Sequential, Pack = 4)]
     public struct BoundingFrustum : IEquatable<BoundingFrustum>
     {
-        private Matrix pMatrix_;
-        private Plane pNear_;
-        private Plane pFar_;
-        private Plane pLeft_;
-        private Plane pRight_;
-        private Plane pTop_;
-        private Plane pBottom_;
+        private Matrix _pMatrix;
+        private Plane _pNear;
+        private Plane _pFar;
+        private Plane _pLeft;
+        private Plane _pRight;
+        private Plane _pTop;
+        private Plane _pBottom;
 
         /// <summary>
         /// Gets or sets the Matrix that describes this bounding frustum.
         /// </summary>
         public Matrix Matrix
         {
-            readonly get
-            {
-                return pMatrix_;
-            }
+            readonly get { return _pMatrix; }
             set
             {
-                pMatrix_ = value;
-                GetPlanesFromMatrix(ref pMatrix_, out pNear_, out pFar_, out pLeft_, out pRight_, out pTop_, out pBottom_);
+                _pMatrix = value;
+                GetPlanesFromMatrix(
+                    ref _pMatrix,
+                    out _pNear,
+                    out _pFar,
+                    out _pLeft,
+                    out _pRight,
+                    out _pTop,
+                    out _pBottom
+                );
             }
         }
+
         /// <summary>
         /// Gets the near plane of the BoundingFrustum.
         /// </summary>
         public readonly Plane Near
         {
-            get
-            {
-                return pNear_;
-            }
+            get { return _pNear; }
         }
+
         /// <summary>
         /// Gets the far plane of the BoundingFrustum.
         /// </summary>
         public readonly Plane Far
         {
-            get
-            {
-                return pFar_;
-            }
+            get { return _pFar; }
         }
+
         /// <summary>
         /// Gets the left plane of the BoundingFrustum.
         /// </summary>
         public readonly Plane Left
         {
-            get
-            {
-                return pLeft_;
-            }
+            get { return _pLeft; }
         }
+
         /// <summary>
         /// Gets the right plane of the BoundingFrustum.
         /// </summary>
         public readonly Plane Right
         {
-            get
-            {
-                return pRight_;
-            }
+            get { return _pRight; }
         }
+
         /// <summary>
         /// Gets the top plane of the BoundingFrustum.
         /// </summary>
         public readonly Plane Top
         {
-            get
-            {
-                return pTop_;
-            }
+            get { return _pTop; }
         }
+
         /// <summary>
         /// Gets the bottom plane of the BoundingFrustum.
         /// </summary>
         public readonly Plane Bottom
         {
-            get
-            {
-                return pBottom_;
-            }
+            get { return _pBottom; }
         }
 
         /// <summary>
@@ -128,13 +121,21 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="matrix">Combined matrix that usually takes view × projection matrix.</param>
         public BoundingFrustum(Matrix matrix)
         {
-            pMatrix_ = matrix;
-            GetPlanesFromMatrix(ref pMatrix_, out pNear_, out pFar_, out pLeft_, out pRight_, out pTop_, out pBottom_);
+            _pMatrix = matrix;
+            GetPlanesFromMatrix(
+                ref _pMatrix,
+                out _pNear,
+                out _pFar,
+                out _pLeft,
+                out _pRight,
+                out _pTop,
+                out _pBottom
+            );
         }
 
         public override readonly int GetHashCode()
         {
-            return pMatrix_.GetHashCode();
+            return _pMatrix.GetHashCode();
         }
 
         /// <summary>
@@ -147,7 +148,7 @@ namespace HelixToolkit.Nex.Maths
         [MethodImpl(MethodImplOptions.AggressiveInlining)] // MethodImplOptions.AggressiveInlining
         public readonly bool Equals(ref BoundingFrustum other)
         {
-            return this.pMatrix_ == other.pMatrix_;
+            return this._pMatrix == other._pMatrix;
         }
 
         /// <summary>
@@ -164,11 +165,11 @@ namespace HelixToolkit.Nex.Maths
         }
 
         /// <summary>
-        /// Determines whether the specified <see cref="System.Object"/> is equal to this instance.
+        /// Determines whether the specified <see cref="object"/> is equal to this instance.
         /// </summary>
-        /// <param name="obj">The <see cref="System.Object"/> to compare with this instance.</param>
+        /// <param name="obj">The <see cref="object"/> to compare with this instance.</param>
         /// <returns>
-        ///   <c>true</c> if the specified <see cref="System.Object"/> is equal to this instance; otherwise, <c>false</c>.
+        ///   <c>true</c> if the specified <see cref="object"/> is equal to this instance; otherwise, <c>false</c>.
         /// </returns>
         public override readonly bool Equals(object? obj)
         {
@@ -212,17 +213,25 @@ namespace HelixToolkit.Nex.Maths
         {
             return index switch
             {
-                0 => pLeft_,
-                1 => pRight_,
-                2 => pTop_,
-                3 => pBottom_,
-                4 => pNear_,
-                5 => pFar_,
+                0 => _pLeft,
+                1 => _pRight,
+                2 => _pTop,
+                3 => _pBottom,
+                4 => _pNear,
+                5 => _pFar,
                 _ => new Plane(),
             };
         }
 
-        private static void GetPlanesFromMatrix(ref Matrix matrix, out Plane near, out Plane far, out Plane left, out Plane right, out Plane top, out Plane bottom)
+        private static void GetPlanesFromMatrix(
+            ref Matrix matrix,
+            out Plane near,
+            out Plane far,
+            out Plane left,
+            out Plane right,
+            out Plane top,
+            out Plane bottom
+        )
         {
             //http://www.chadvernon.com/blog/resources/directx9/frustum-culling/
 
@@ -271,11 +280,17 @@ namespace HelixToolkit.Nex.Maths
 
         private static Vector3 Get3PlanesInterPoint(ref Plane p1, ref Plane p2, ref Plane p3)
         {
-            //P = -d1 * N2xN3 / N1.N2xN3 - d2 * N3xN1 / N2.N3xN1 - d3 * N1xN2 / N3.N1xN2 
+            //P = -d1 * N2xN3 / N1.N2xN3 - d2 * N3xN1 / N2.N3xN1 - d3 * N1xN2 / N3.N1xN2
             Vector3 v =
-                -p1.D * Vector3.Cross(p2.Normal, p3.Normal) / Vector3.Dot(p1.Normal, Vector3.Cross(p2.Normal, p3.Normal))
-                - p2.D * Vector3.Cross(p3.Normal, p1.Normal) / Vector3.Dot(p2.Normal, Vector3.Cross(p3.Normal, p1.Normal))
-                - p3.D * Vector3.Cross(p1.Normal, p2.Normal) / Vector3.Dot(p3.Normal, Vector3.Cross(p1.Normal, p2.Normal));
+                -p1.D
+                    * Vector3.Cross(p2.Normal, p3.Normal)
+                    / Vector3.Dot(p1.Normal, Vector3.Cross(p2.Normal, p3.Normal))
+                - p2.D
+                    * Vector3.Cross(p3.Normal, p1.Normal)
+                    / Vector3.Dot(p2.Normal, Vector3.Cross(p3.Normal, p1.Normal))
+                - p3.D
+                    * Vector3.Cross(p1.Normal, p2.Normal)
+                    / Vector3.Dot(p3.Normal, Vector3.Cross(p1.Normal, p2.Normal));
 
             return v;
         }
@@ -291,7 +306,15 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="zfar">The zfar.</param>
         /// <param name="aspect">The aspect.</param>
         /// <returns>The bounding frustum calculated from perspective camera</returns>
-        public static BoundingFrustum FromCamera(Vector3 cameraPos, Vector3 lookDir, Vector3 upDir, float fov, float znear, float zfar, float aspect)
+        public static BoundingFrustum FromCamera(
+            Vector3 cameraPos,
+            Vector3 lookDir,
+            Vector3 upDir,
+            float fov,
+            float znear,
+            float zfar,
+            float aspect
+        )
         {
             //http://knol.google.com/k/view-frustum
 
@@ -317,23 +340,25 @@ namespace HelixToolkit.Nex.Maths
 
             BoundingFrustum result = new()
             {
-                pNear_ = Plane.CreateFromVertices(Near1, Near2, Near3),
-                pFar_ = Plane.CreateFromVertices(Far3, Far2, Far1),
-                pLeft_ = Plane.CreateFromVertices(Near4, Near3, Far3),
-                pRight_ = Plane.CreateFromVertices(Far1, Far2, Near2),
-                pTop_ = Plane.CreateFromVertices(Near2, Far2, Far3),
-                pBottom_ = Plane.CreateFromVertices(Far4, Far1, Near1),
-                pMatrix_ = MatrixHelper.LookAtLH(cameraPos, cameraPos + lookDir * 10, upDir)
-                * MatrixHelper.PerspectiveFovLH(fov, aspect, znear, zfar)
+                _pNear = Plane.CreateFromVertices(Near1, Near2, Near3),
+                _pFar = Plane.CreateFromVertices(Far3, Far2, Far1),
+                _pLeft = Plane.CreateFromVertices(Near4, Near3, Far3),
+                _pRight = Plane.CreateFromVertices(Far1, Far2, Near2),
+                _pTop = Plane.CreateFromVertices(Near2, Far2, Far3),
+                _pBottom = Plane.CreateFromVertices(Far4, Far1, Near1),
+                _pMatrix =
+                    MatrixHelper.LookAtLH(cameraPos, cameraPos + lookDir * 10, upDir)
+                    * MatrixHelper.PerspectiveFovLH(fov, aspect, znear, zfar),
             };
             //result.pNear.Normalize();
             //result.pFar.Normalize();
             //result.pLeft.Normalize();
             //result.pRight.Normalize();
             //result.pTop.Normalize();
-            //result.pBottom.Normalize();                  
+            //result.pBottom.Normalize();
             return result;
         }
+
         /// <summary>
         /// Creates a new frustum relaying on perspective camera parameters
         /// </summary>
@@ -341,7 +366,15 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>The bounding frustum from camera params</returns>
         public static BoundingFrustum FromCamera(FrustumCameraParams cameraParams)
         {
-            return FromCamera(cameraParams.Position, cameraParams.LookAtDir, cameraParams.UpDir, cameraParams.FOV, cameraParams.ZNear, cameraParams.ZFar, cameraParams.AspectRatio);
+            return FromCamera(
+                cameraParams.Position,
+                cameraParams.LookAtDir,
+                cameraParams.UpDir,
+                cameraParams.FOV,
+                cameraParams.ZNear,
+                cameraParams.ZFar,
+                cameraParams.AspectRatio
+            );
         }
 
         /// <summary>
@@ -375,14 +408,14 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>The 8 corners of the frustum</returns>
         public void GetCorners(Vector3[] corners)
         {
-            corners[0] = Get3PlanesInterPoint(ref pNear_, ref pBottom_, ref pRight_);    //Near1
-            corners[1] = Get3PlanesInterPoint(ref pNear_, ref pTop_, ref pRight_);       //Near2
-            corners[2] = Get3PlanesInterPoint(ref pNear_, ref pTop_, ref pLeft_);        //Near3
-            corners[3] = Get3PlanesInterPoint(ref pNear_, ref pBottom_, ref pLeft_);     //Near3
-            corners[4] = Get3PlanesInterPoint(ref pFar_, ref pBottom_, ref pRight_);    //Far1
-            corners[5] = Get3PlanesInterPoint(ref pFar_, ref pTop_, ref pRight_);       //Far2
-            corners[6] = Get3PlanesInterPoint(ref pFar_, ref pTop_, ref pLeft_);        //Far3
-            corners[7] = Get3PlanesInterPoint(ref pFar_, ref pBottom_, ref pLeft_);     //Far3
+            corners[0] = Get3PlanesInterPoint(ref _pNear, ref _pBottom, ref _pRight); //Near1
+            corners[1] = Get3PlanesInterPoint(ref _pNear, ref _pTop, ref _pRight); //Near2
+            corners[2] = Get3PlanesInterPoint(ref _pNear, ref _pTop, ref _pLeft); //Near3
+            corners[3] = Get3PlanesInterPoint(ref _pNear, ref _pBottom, ref _pLeft); //Near3
+            corners[4] = Get3PlanesInterPoint(ref _pFar, ref _pBottom, ref _pRight); //Far1
+            corners[5] = Get3PlanesInterPoint(ref _pFar, ref _pTop, ref _pRight); //Far2
+            corners[6] = Get3PlanesInterPoint(ref _pFar, ref _pTop, ref _pLeft); //Far3
+            corners[7] = Get3PlanesInterPoint(ref _pFar, ref _pBottom, ref _pLeft); //Far3
         }
 
         /// <summary>
@@ -394,14 +427,17 @@ namespace HelixToolkit.Nex.Maths
             Vector3[] corners = GetCorners();
             FrustumCameraParams cameraParam = new()
             {
-                Position = Get3PlanesInterPoint(ref pRight_, ref pTop_, ref pLeft_),
-                LookAtDir = pNear_.Normal,
-                UpDir = Vector3.Normalize(Vector3.Cross(pRight_.Normal, pNear_.Normal)),
-                FOV = (float)((Math.PI / 2.0 - Math.Acos(Vector3.Dot(pNear_.Normal, pTop_.Normal))) * 2),
-                AspectRatio = (corners[6] - corners[5]).Length() / (corners[4] - corners[5]).Length()
+                Position = Get3PlanesInterPoint(ref _pRight, ref _pTop, ref _pLeft),
+                LookAtDir = _pNear.Normal,
+                UpDir = Vector3.Normalize(Vector3.Cross(_pRight.Normal, _pNear.Normal)),
+                FOV = (float)(
+                    (Math.PI / 2.0 - Math.Acos(Vector3.Dot(_pNear.Normal, _pTop.Normal))) * 2
+                ),
+                AspectRatio =
+                    (corners[6] - corners[5]).Length() / (corners[4] - corners[5]).Length(),
             };
-            cameraParam.ZNear = (cameraParam.Position + (pNear_.Normal * pNear_.D)).Length();
-            cameraParam.ZFar = (cameraParam.Position + (pFar_.Normal * pFar_.D)).Length();
+            cameraParam.ZNear = (cameraParam.Position + (_pNear.Normal * _pNear.D)).Length();
+            cameraParam.ZFar = (cameraParam.Position + (_pFar.Normal * _pFar.D)).Length();
             return cameraParam;
         }
 
@@ -418,12 +454,24 @@ namespace HelixToolkit.Nex.Maths
             {
                 switch (i)
                 {
-                    case 0: planeResult = pNear_.Intersects(ref point); break;
-                    case 1: planeResult = pFar_.Intersects(ref point); break;
-                    case 2: planeResult = pLeft_.Intersects(ref point); break;
-                    case 3: planeResult = pRight_.Intersects(ref point); break;
-                    case 4: planeResult = pTop_.Intersects(ref point); break;
-                    case 5: planeResult = pBottom_.Intersects(ref point); break;
+                    case 0:
+                        planeResult = _pNear.Intersects(ref point);
+                        break;
+                    case 1:
+                        planeResult = _pFar.Intersects(ref point);
+                        break;
+                    case 2:
+                        planeResult = _pLeft.Intersects(ref point);
+                        break;
+                    case 3:
+                        planeResult = _pRight.Intersects(ref point);
+                        break;
+                    case 4:
+                        planeResult = _pTop.Intersects(ref point);
+                        break;
+                    case 5:
+                        planeResult = _pBottom.Intersects(ref point);
+                        break;
                 }
                 switch (planeResult)
                 {
@@ -451,7 +499,12 @@ namespace HelixToolkit.Nex.Maths
             return Contains(ref point);
         }
 
-        private static void GetBoxToPlanePVertexNVertex(ref BoundingBox box, ref Vector3 planeNormal, out Vector3 p, out Vector3 n)
+        private static void GetBoxToPlanePVertexNVertex(
+            ref BoundingBox box,
+            ref Vector3 planeNormal,
+            out Vector3 p,
+            out Vector3 n
+        )
         {
             p = box.Minimum;
             if (planeNormal.X >= 0)
@@ -498,7 +551,12 @@ namespace HelixToolkit.Nex.Maths
             for (int i = 0; i < 6; i++)
             {
                 plane = GetPlane(i);
-                BoundingFrustum.GetBoxToPlanePVertexNVertex(ref box, ref plane.Normal, out Vector3 p, out Vector3 n);
+                BoundingFrustum.GetBoxToPlanePVertexNVertex(
+                    ref box,
+                    ref plane.Normal,
+                    out Vector3 p,
+                    out Vector3 n
+                );
                 if (Collision.PlaneIntersectsPoint(ref plane, ref p) == PlaneIntersectionType.Back)
                 {
                     return ContainmentType.Disjoint;
@@ -531,6 +589,7 @@ namespace HelixToolkit.Nex.Maths
         {
             result = Contains(ref box);
         }
+
         /// <summary>
         /// Determines the intersection relationship between the frustum and a bounding sphere.
         /// </summary>
@@ -544,12 +603,24 @@ namespace HelixToolkit.Nex.Maths
             {
                 switch (i)
                 {
-                    case 0: planeResult = pNear_.Intersects(ref sphere); break;
-                    case 1: planeResult = pFar_.Intersects(ref sphere); break;
-                    case 2: planeResult = pLeft_.Intersects(ref sphere); break;
-                    case 3: planeResult = pRight_.Intersects(ref sphere); break;
-                    case 4: planeResult = pTop_.Intersects(ref sphere); break;
-                    case 5: planeResult = pBottom_.Intersects(ref sphere); break;
+                    case 0:
+                        planeResult = _pNear.Intersects(ref sphere);
+                        break;
+                    case 1:
+                        planeResult = _pFar.Intersects(ref sphere);
+                        break;
+                    case 2:
+                        planeResult = _pLeft.Intersects(ref sphere);
+                        break;
+                    case 3:
+                        planeResult = _pRight.Intersects(ref sphere);
+                        break;
+                    case 4:
+                        planeResult = _pTop.Intersects(ref sphere);
+                        break;
+                    case 5:
+                        planeResult = _pBottom.Intersects(ref sphere);
+                        break;
                 }
                 switch (planeResult)
                 {
@@ -596,6 +667,7 @@ namespace HelixToolkit.Nex.Maths
         {
             return Contains(ref sphere) != ContainmentType.Disjoint;
         }
+
         /// <summary>
         /// Checks whether the current BoundingFrustum intersects a BoundingSphere.
         /// </summary>
@@ -605,6 +677,7 @@ namespace HelixToolkit.Nex.Maths
         {
             result = Contains(ref sphere) != ContainmentType.Disjoint;
         }
+
         /// <summary>
         /// Checks whether the current BoundingFrustum intersects a BoundingBox.
         /// </summary>
@@ -614,6 +687,7 @@ namespace HelixToolkit.Nex.Maths
         {
             return Contains(ref box) != ContainmentType.Disjoint;
         }
+
         /// <summary>
         /// Checks whether the current BoundingFrustum intersects a BoundingBox.
         /// </summary>
@@ -624,7 +698,10 @@ namespace HelixToolkit.Nex.Maths
             result = Contains(ref box) != ContainmentType.Disjoint;
         }
 
-        private static PlaneIntersectionType PlaneIntersectsPoints(ref Plane plane, Vector3[] points)
+        private static PlaneIntersectionType PlaneIntersectsPoints(
+            ref Plane plane,
+            Vector3[] points
+        )
         {
             PlaneIntersectionType result = Collision.PlaneIntersectsPoint(ref plane, ref points[0]);
             for (int i = 1; i < points.Length; i++)
@@ -647,6 +724,7 @@ namespace HelixToolkit.Nex.Maths
         {
             return BoundingFrustum.PlaneIntersectsPoints(ref plane, GetCorners());
         }
+
         /// <summary>
         /// Checks whether the current BoundingFrustum intersects the specified Plane.
         /// </summary>
@@ -664,7 +742,9 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>With of the frustum at the specified depth</returns>
         public readonly float GetWidthAtDepth(float depth)
         {
-            float hAngle = (float)(Math.PI / 2.0 - Math.Acos(Vector3.Dot(pNear_.Normal, pLeft_.Normal)));
+            float hAngle = (float)(
+                Math.PI / 2.0 - Math.Acos(Vector3.Dot(_pNear.Normal, _pLeft.Normal))
+            );
             return (float)(Math.Tan(hAngle) * depth * 2);
         }
 
@@ -675,19 +755,21 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>Height of the frustum at the specified depth</returns>
         public readonly float GetHeightAtDepth(float depth)
         {
-            float vAngle = (float)(Math.PI / 2.0 - Math.Acos(Vector3.Dot(pNear_.Normal, pTop_.Normal)));
+            float vAngle = (float)(
+                Math.PI / 2.0 - Math.Acos(Vector3.Dot(_pNear.Normal, _pTop.Normal))
+            );
             return (float)(Math.Tan(vAngle) * depth * 2);
         }
 
         private readonly BoundingFrustum GetInsideOutClone()
         {
             BoundingFrustum frustum = this;
-            frustum.pNear_.Normal = -frustum.pNear_.Normal;
-            frustum.pFar_.Normal = -frustum.pFar_.Normal;
-            frustum.pLeft_.Normal = -frustum.pLeft_.Normal;
-            frustum.pRight_.Normal = -frustum.pRight_.Normal;
-            frustum.pTop_.Normal = -frustum.pTop_.Normal;
-            frustum.pBottom_.Normal = -frustum.pBottom_.Normal;
+            frustum._pNear.Normal = -frustum._pNear.Normal;
+            frustum._pFar.Normal = -frustum._pFar.Normal;
+            frustum._pLeft.Normal = -frustum._pLeft.Normal;
+            frustum._pRight.Normal = -frustum._pRight.Normal;
+            frustum._pTop.Normal = -frustum._pTop.Normal;
+            frustum._pBottom.Normal = -frustum._pBottom.Normal;
             return frustum;
         }
 
@@ -700,6 +782,7 @@ namespace HelixToolkit.Nex.Maths
         {
             return Intersects(ref ray, out float? _, out float? _);
         }
+
         /// <summary>
         /// Checks whether the current BoundingFrustum intersects the specified Ray.
         /// </summary>
@@ -715,7 +798,10 @@ namespace HelixToolkit.Nex.Maths
                 for (int i = 0; i < 6; i++)
                 {
                     Plane plane = GetPlane(i);
-                    if (Collision.RayIntersectsPlane(ref ray, ref plane, out float distance) && distance < nearstPlaneDistance)
+                    if (
+                        Collision.RayIntersectsPlane(ref ray, ref plane, out float distance)
+                        && distance < nearstPlaneDistance
+                    )
                     {
                         nearstPlaneDistance = distance;
                     }
@@ -770,9 +856,13 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>The zoom to fit distance</returns>
         public readonly float GetZoomToExtentsShiftDistance(Vector3[] points)
         {
-            float vAngle = (float)(Math.PI / 2.0 - Math.Acos(Vector3.Dot(pNear_.Normal, pTop_.Normal)));
+            float vAngle = (float)(
+                Math.PI / 2.0 - Math.Acos(Vector3.Dot(_pNear.Normal, _pTop.Normal))
+            );
             float vSin = (float)Math.Sin(vAngle);
-            float hAngle = (float)(Math.PI / 2.0 - Math.Acos(Vector3.Dot(pNear_.Normal, pLeft_.Normal)));
+            float hAngle = (float)(
+                Math.PI / 2.0 - Math.Acos(Vector3.Dot(_pNear.Normal, _pLeft.Normal))
+            );
             float hSin = (float)Math.Sin(hAngle);
             float horizontalToVerticalMapping = vSin / hSin;
 
@@ -781,10 +871,21 @@ namespace HelixToolkit.Nex.Maths
             float maxPointDist = float.MinValue;
             for (int i = 0; i < points.Length; i++)
             {
-                float pointDist = Collision.DistancePlanePoint(ref ioFrustrum.pTop_, ref points[i]);
-                pointDist = Math.Max(pointDist, Collision.DistancePlanePoint(ref ioFrustrum.pBottom_, ref points[i]));
-                pointDist = Math.Max(pointDist, Collision.DistancePlanePoint(ref ioFrustrum.pLeft_, ref points[i]) * horizontalToVerticalMapping);
-                pointDist = Math.Max(pointDist, Collision.DistancePlanePoint(ref ioFrustrum.pRight_, ref points[i]) * horizontalToVerticalMapping);
+                float pointDist = Collision.DistancePlanePoint(ref ioFrustrum._pTop, ref points[i]);
+                pointDist = Math.Max(
+                    pointDist,
+                    Collision.DistancePlanePoint(ref ioFrustrum._pBottom, ref points[i])
+                );
+                pointDist = Math.Max(
+                    pointDist,
+                    Collision.DistancePlanePoint(ref ioFrustrum._pLeft, ref points[i])
+                        * horizontalToVerticalMapping
+                );
+                pointDist = Math.Max(
+                    pointDist,
+                    Collision.DistancePlanePoint(ref ioFrustrum._pRight, ref points[i])
+                        * horizontalToVerticalMapping
+                );
 
                 maxPointDist = Math.Max(maxPointDist, pointDist);
             }
@@ -812,8 +913,9 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>The zoom to fit vector</returns>
         public readonly Vector3 GetZoomToExtentsShiftVector(Vector3[] points)
         {
-            return GetZoomToExtentsShiftDistance(points) * pNear_.Normal;
+            return GetZoomToExtentsShiftDistance(points) * _pNear.Normal;
         }
+
         /// <summary>
         /// Get the vector shift which when added to camera position will do the effect of zoom to extents (zoom to fit) operation,
         /// so all the passed points will fit in the current view.
@@ -822,7 +924,7 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>The zoom to fit vector</returns>
         public readonly Vector3 GetZoomToExtentsShiftVector(ref BoundingBox boundingBox)
         {
-            return GetZoomToExtentsShiftDistance(boundingBox.GetCorners()) * pNear_.Normal;
+            return GetZoomToExtentsShiftDistance(boundingBox.GetCorners()) * _pNear.Normal;
         }
 
         /// <summary>
@@ -833,10 +935,7 @@ namespace HelixToolkit.Nex.Maths
         /// </value>
         public readonly bool IsOrthographic
         {
-            get
-            {
-                return (pLeft_.Normal == -pRight_.Normal) && (pTop_.Normal == -pBottom_.Normal);
-            }
+            get { return (_pLeft.Normal == -_pRight.Normal) && (_pTop.Normal == -_pBottom.Normal); }
         }
     }
 }

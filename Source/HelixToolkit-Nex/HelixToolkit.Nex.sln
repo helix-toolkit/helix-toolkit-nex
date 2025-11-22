@@ -35,6 +35,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HelixToolkit.Nex.Tests.Scen
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HelixToolkit.Nex.Tests.Rendering", "HelixToolkit.Nex.Tests.Rendering\HelixToolkit.Nex.Tests.Rendering.csproj", "{19B05FAB-6E92-4330-907E-FBAF1F2DBFA2}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HelixToolkit.Nex.Engine", "HelixToolkit.Nex.Engine\HelixToolkit.Nex.Engine.csproj", "{492398DB-1A83-4858-B641-E341BC5A42FD}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -101,6 +103,10 @@ Global
 		{19B05FAB-6E92-4330-907E-FBAF1F2DBFA2}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{19B05FAB-6E92-4330-907E-FBAF1F2DBFA2}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{19B05FAB-6E92-4330-907E-FBAF1F2DBFA2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{492398DB-1A83-4858-B641-E341BC5A42FD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{492398DB-1A83-4858-B641-E341BC5A42FD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{492398DB-1A83-4858-B641-E341BC5A42FD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{492398DB-1A83-4858-B641-E341BC5A42FD}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

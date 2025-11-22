@@ -1,4 +1,4 @@
-﻿namespace HelixToolkit.Nex.Graphics.Vulkan;
+namespace HelixToolkit.Nex.Graphics.Vulkan;
 
 public static class VulkanBuilder
 {

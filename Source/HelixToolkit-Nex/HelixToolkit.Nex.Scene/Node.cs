@@ -1,4 +1,4 @@
-﻿namespace HelixToolkit.Nex.Scene;
+namespace HelixToolkit.Nex.Scene;
 
 public class Node : IDisposable
 {
@@ -152,11 +152,11 @@ public class Node : IDisposable
     }
 
     #region IDisposable Support
-    private bool disposedValue;
+    private bool _disposedValue;
 
     protected virtual void Dispose(bool disposing)
     {
-        if (!disposedValue)
+        if (!_disposedValue)
         {
             if (disposing)
             {
@@ -180,7 +180,7 @@ public class Node : IDisposable
 
             // TODO: free unmanaged resources (unmanaged objects) and override finalizer
             // TODO: set large fields to null
-            disposedValue = true;
+            _disposedValue = true;
         }
     }
 

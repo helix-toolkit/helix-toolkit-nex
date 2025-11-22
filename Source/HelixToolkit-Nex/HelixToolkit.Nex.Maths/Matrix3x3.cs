@@ -1,4 +1,4 @@
-﻿/*
+/*
 The MIT License (MIT)
 Copyright (c) 2022 Helix Toolkit contributors
 
@@ -96,16 +96,16 @@ namespace HelixToolkit.Nex.Maths
         /// Value at row 3 column 3 of the Matrix3x3.
         /// </summary>
         public float M33;
-     
-                
+
+
         /// <summary>
         /// Initializes a new instance of the <see cref="Matrix3x3"/> struct.
         /// </summary>
         /// <param name="value">The value that will be assigned to all components.</param>
         public Matrix3x3(float value)
         {
-            M11 = M12 = M13 = 
-            M21 = M22 = M23 = 
+            M11 = M12 = M13 =
+            M21 = M22 = M23 =
             M31 = M32 = M33 = value;
         }
 
@@ -125,9 +125,15 @@ namespace HelixToolkit.Nex.Maths
             float M21, float M22, float M23,
             float M31, float M32, float M33)
         {
-            this.M11 = M11; this.M12 = M12; this.M13 = M13;
-            this.M21 = M21; this.M22 = M22; this.M23 = M23;
-            this.M31 = M31; this.M32 = M32; this.M33 = M33;
+            this.M11 = M11;
+            this.M12 = M12;
+            this.M13 = M13;
+            this.M21 = M21;
+            this.M22 = M22;
+            this.M23 = M23;
+            this.M31 = M31;
+            this.M32 = M32;
+            this.M33 = M33;
         }
 
         /// <summary>
@@ -213,7 +219,7 @@ namespace HelixToolkit.Nex.Maths
         {
             readonly get { return new Vector3(M13, M23, M33); }
             set { M13 = value.X; M23 = value.Y; M33 = value.Z; }
-        }        
+        }
 
         /// <summary>
         /// Gets or sets the scale of the Matrix3x3; that is M11, M22, and M33.
@@ -265,16 +271,35 @@ namespace HelixToolkit.Nex.Maths
             {
                 switch (index)
                 {
-                    case 0: M11 = value; break;
-                    case 1: M12 = value; break;
-                    case 2: M13 = value; break;
-                    case 3: M21 = value; break;
-                    case 4: M22 = value; break;
-                    case 5: M23 = value; break;
-                    case 6: M31 = value; break;
-                    case 7: M32 = value; break;
-                    case 8: M33 = value; break;
-                    default: throw new ArgumentOutOfRangeException(nameof(index), "Indices for Matrix3x3 run from 0 to 8, inclusive.");
+                    case 0:
+                        M11 = value;
+                        break;
+                    case 1:
+                        M12 = value;
+                        break;
+                    case 2:
+                        M13 = value;
+                        break;
+                    case 3:
+                        M21 = value;
+                        break;
+                    case 4:
+                        M22 = value;
+                        break;
+                    case 5:
+                        M23 = value;
+                        break;
+                    case 6:
+                        M31 = value;
+                        break;
+                    case 7:
+                        M32 = value;
+                        break;
+                    case 8:
+                        M33 = value;
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(index), "Indices for Matrix3x3 run from 0 to 8, inclusive.");
                 }
             }
         }
@@ -438,7 +463,7 @@ namespace HelixToolkit.Nex.Maths
         {
             //Source: Unknown
             //References: http://www.gamedev.net/community/forums/topic.asp?topic_id=441695
-            
+
             //Scaling is the length of the rows.
             scale.X = (float)Math.Sqrt((M11 * M11) + (M12 * M12) + (M13 * M13));
             scale.Y = (float)Math.Sqrt((M21 * M21) + (M22 * M22) + (M23 * M23));
@@ -1047,9 +1072,15 @@ namespace HelixToolkit.Nex.Maths
             float d32 = (value.M11 * value.M23) - (value.M13 * value.M21);
             float d33 = (value.M11 * value.M22) - (value.M12 * value.M21);
 
-            result.M11 = +d11 * det; result.M12 = -d21 * det; result.M13 = +d31 * det;
-            result.M21 = -d12 * det; result.M22 = +d22 * det; result.M23 = -d32 * det;
-            result.M31 = +d13 * det; result.M32 = -d23 * det; result.M33 = +d33 * det;
+            result.M11 = +d11 * det;
+            result.M12 = -d21 * det;
+            result.M13 = +d31 * det;
+            result.M21 = -d12 * det;
+            result.M22 = +d22 * det;
+            result.M23 = -d32 * det;
+            result.M31 = +d13 * det;
+            result.M32 = -d23 * det;
+            result.M33 = +d33 * det;
         }
 
         /// <summary>
@@ -1534,14 +1565,20 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="result">When the method completes, contains the created look-at Matrix3x3.</param>
         public static void LookAtLH(ref Vector3 eye, ref Vector3 target, ref Vector3 up, out Matrix3x3 result)
         {
-            Vector3 zaxis = Vector3.Normalize( Vector3.Subtract(target, eye));
-            Vector3 xaxis = Vector3.Normalize( Vector3.Cross(up, zaxis));
+            Vector3 zaxis = Vector3.Normalize(Vector3.Subtract(target, eye));
+            Vector3 xaxis = Vector3.Normalize(Vector3.Cross(up, zaxis));
             Vector3 yaxis = Vector3.Cross(zaxis, xaxis);
 
             result = Matrix3x3.Identity;
-            result.M11 = xaxis.X; result.M21 = xaxis.Y; result.M31 = xaxis.Z;
-            result.M12 = yaxis.X; result.M22 = yaxis.Y; result.M32 = yaxis.Z;
-            result.M13 = zaxis.X; result.M23 = zaxis.Y; result.M33 = zaxis.Z;
+            result.M11 = xaxis.X;
+            result.M21 = xaxis.Y;
+            result.M31 = xaxis.Z;
+            result.M12 = yaxis.X;
+            result.M22 = yaxis.Y;
+            result.M32 = yaxis.Z;
+            result.M13 = zaxis.X;
+            result.M23 = zaxis.Y;
+            result.M33 = zaxis.Z;
         }
 
         /// <summary>
@@ -1566,14 +1603,20 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="result">When the method completes, contains the created look-at Matrix3x3.</param>
         public static void LookAtRH(ref Vector3 eye, ref Vector3 target, ref Vector3 up, out Matrix3x3 result)
         {
-            Vector3 zaxis =Vector3.Normalize(Vector3.Subtract(eye, target));
+            Vector3 zaxis = Vector3.Normalize(Vector3.Subtract(eye, target));
             Vector3 xaxis = Vector3.Normalize(Vector3.Cross(up, zaxis));
             Vector3 yaxis = Vector3.Cross(zaxis, xaxis);
 
             result = Matrix3x3.Identity;
-            result.M11 = xaxis.X; result.M21 = xaxis.Y; result.M31 = xaxis.Z;
-            result.M12 = yaxis.X; result.M22 = yaxis.Y; result.M32 = yaxis.Z;
-            result.M13 = zaxis.X; result.M23 = zaxis.Y; result.M33 = zaxis.Z;
+            result.M11 = xaxis.X;
+            result.M21 = xaxis.Y;
+            result.M31 = xaxis.Z;
+            result.M12 = yaxis.X;
+            result.M22 = yaxis.Y;
+            result.M32 = yaxis.Z;
+            result.M13 = zaxis.X;
+            result.M23 = zaxis.Y;
+            result.M33 = zaxis.Z;
         }
 
         /// <summary>
@@ -1854,7 +1897,7 @@ namespace HelixToolkit.Nex.Maths
             RotationYawPitchRoll(yaw, pitch, roll, out Matrix3x3 result);
             return result;
         }
-        
+
         /// <summary>
         /// Adds two matrices.
         /// </summary>
@@ -1983,7 +2026,7 @@ namespace HelixToolkit.Nex.Maths
         {
             return !left.Equals(ref right);
         }
-        
+
         /// <summary>
         /// Convert the 3x3 Matrix to a 4x4 Matrix.
         /// </summary>
@@ -1991,10 +2034,10 @@ namespace HelixToolkit.Nex.Maths
         public static explicit operator Matrix(Matrix3x3 Value)
         {
             return new Matrix(
-                Value.M11, Value.M12, Value.M13 , 0 ,
-                Value.M21, Value.M22, Value.M23 , 0 ,
-                Value.M31, Value.M32, Value.M33 , 0 ,
-                0, 0, 0 , 1
+                Value.M11, Value.M12, Value.M13, 0,
+                Value.M21, Value.M22, Value.M23, 0,
+                Value.M31, Value.M32, Value.M33, 0,
+                0, 0, 0, 1
                 );
         }
 
@@ -2012,10 +2055,10 @@ namespace HelixToolkit.Nex.Maths
         }
 
         /// <summary>
-        /// Returns a <see cref="System.String"/> that represents this instance.
+        /// Returns a <see cref="string"/> that represents this instance.
         /// </summary>
         /// <returns>
-        /// A <see cref="System.String"/> that represents this instance.
+        /// A <see cref="string"/> that represents this instance.
         /// </returns>
         public override readonly string ToString()
         {
@@ -2024,11 +2067,11 @@ namespace HelixToolkit.Nex.Maths
         }
 
         /// <summary>
-        /// Returns a <see cref="System.String"/> that represents this instance.
+        /// Returns a <see cref="string"/> that represents this instance.
         /// </summary>
         /// <param name="format">The format.</param>
         /// <returns>
-        /// A <see cref="System.String"/> that represents this instance.
+        /// A <see cref="string"/> that represents this instance.
         /// </returns>
         public readonly string ToString(string format)
         {
@@ -2041,11 +2084,11 @@ namespace HelixToolkit.Nex.Maths
         }
 
         /// <summary>
-        /// Returns a <see cref="System.String"/> that represents this instance.
+        /// Returns a <see cref="string"/> that represents this instance.
         /// </summary>
         /// <param name="formatProvider">The format provider.</param>
         /// <returns>
-        /// A <see cref="System.String"/> that represents this instance.
+        /// A <see cref="string"/> that represents this instance.
         /// </returns>
         public readonly string ToString(IFormatProvider formatProvider)
         {
@@ -2056,17 +2099,17 @@ namespace HelixToolkit.Nex.Maths
         }
 
         /// <summary>
-        /// Returns a <see cref="System.String"/> that represents this instance.
+        /// Returns a <see cref="string"/> that represents this instance.
         /// </summary>
         /// <param name="format">The format.</param>
         /// <param name="formatProvider">The format provider.</param>
         /// <returns>
-        /// A <see cref="System.String"/> that represents this instance.
+        /// A <see cref="string"/> that represents this instance.
         /// </returns>
         public readonly string ToString(string? format, IFormatProvider? formatProvider)
         {
-            return format == null && formatProvider == null 
-                ? string.Empty 
+            return format == null && formatProvider == null
+                ? string.Empty
                 : format == null
                 ? ToString(formatProvider!)
                 : string.Format(format, formatProvider, "[M11:{0} M12:{1} M13:{2}] [M21:{3} M22:{4} M23:{5}] [M31:{6} M32:{7} M33:{8}]",
@@ -2134,17 +2177,17 @@ namespace HelixToolkit.Nex.Maths
         /// <summary>
         /// Determines whether the specified <see cref="Matrix3x3"/> are equal.
         /// </summary>
-        public static bool Equals(ref Matrix3x3 a,ref Matrix3x3 b)
+        public static bool Equals(ref Matrix3x3 a, ref Matrix3x3 b)
         {
-            return 
+            return
                 MathUtil.NearEqual(a.M11, b.M11) &&
                 MathUtil.NearEqual(a.M12, b.M12) &&
                 MathUtil.NearEqual(a.M13, b.M13) &&
-                                        
+
                 MathUtil.NearEqual(a.M21, b.M21) &&
                 MathUtil.NearEqual(a.M22, b.M22) &&
                 MathUtil.NearEqual(a.M23, b.M23) &&
-                                        
+
                 MathUtil.NearEqual(a.M31, b.M31) &&
                 MathUtil.NearEqual(a.M32, b.M32) &&
                 MathUtil.NearEqual(a.M33, b.M33)
@@ -2152,11 +2195,11 @@ namespace HelixToolkit.Nex.Maths
         }
 
         /// <summary>
-        /// Determines whether the specified <see cref="System.Object"/> is equal to this instance.
+        /// Determines whether the specified <see cref="object"/> is equal to this instance.
         /// </summary>
-        /// <param name="value">The <see cref="System.Object"/> to compare with this instance.</param>
+        /// <param name="value">The <see cref="object"/> to compare with this instance.</param>
         /// <returns>
-        /// <c>true</c> if the specified <see cref="System.Object"/> is equal to this instance; otherwise, <c>false</c>.
+        /// <c>true</c> if the specified <see cref="object"/> is equal to this instance; otherwise, <c>false</c>.
         /// </returns>
         public override readonly bool Equals(object? value)
         {

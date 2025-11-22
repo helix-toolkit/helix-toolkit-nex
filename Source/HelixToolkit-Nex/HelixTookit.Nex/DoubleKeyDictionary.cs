@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Diagnostics.CodeAnalysis;
 
 namespace HelixToolkit.Nex;
@@ -19,8 +19,9 @@ namespace HelixToolkit.Nex;
 /// See http://noocyte.wordpress.com/2008/02/18/double-key-dictionary/
 /// A Remove method was added.
 /// </remarks>
-public class DoubleKeyDictionary<K, T, V> : IEnumerable<DoubleKeyPairValue<K, T, V>>,
-                                            IEquatable<DoubleKeyDictionary<K, T, V>>
+public class DoubleKeyDictionary<K, T, V>
+    : IEnumerable<DoubleKeyPairValue<K, T, V>>,
+        IEquatable<DoubleKeyDictionary<K, T, V>>
     where K : notnull
     where T : notnull
 {
@@ -35,15 +36,8 @@ public class DoubleKeyDictionary<K, T, V> : IEnumerable<DoubleKeyPairValue<K, T,
     /// <value></value>
     public V this[K index1, T index2]
     {
-        get
-        {
-            return OuterDictionary[index1][index2];
-        }
-
-        set
-        {
-            Add(index1, index2, value);
-        }
+        get { return OuterDictionary[index1][index2]; }
+        set { Add(index1, index2, value); }
     }
 
     /// <summary>
@@ -73,7 +67,6 @@ public class DoubleKeyDictionary<K, T, V> : IEnumerable<DoubleKeyPairValue<K, T,
     /// </param>
     public void Add(K key1, T key2, V value)
     {
-
         if (OuterDictionary.TryGetValue(key1, out Dictionary<T, V>? inner))
         {
             if (inner.ContainsKey(key2))
@@ -87,10 +80,7 @@ public class DoubleKeyDictionary<K, T, V> : IEnumerable<DoubleKeyPairValue<K, T,
         }
         else
         {
-            inner = new Dictionary<T, V>
-            {
-                { key2, value }
-            };
+            inner = new Dictionary<T, V> { { key2, value } };
 
             OuterDictionary.Add(key1, inner);
         }
@@ -230,7 +220,7 @@ public class DoubleKeyDictionary<K, T, V> : IEnumerable<DoubleKeyPairValue<K, T,
     }
 
     /// <summary>
-    /// 
+    ///
     /// </summary>
     /// <param name="key1"></param>
     /// <param name="key2"></param>
@@ -238,7 +228,10 @@ public class DoubleKeyDictionary<K, T, V> : IEnumerable<DoubleKeyPairValue<K, T,
     /// <returns></returns>
     public bool TryGetValue(K key1, T key2, [MaybeNullWhen(false)] out V obj)
     {
-        if (OuterDictionary.TryGetValue(key1, out Dictionary<T, V>? inner) && inner.TryGetValue(key2, out obj))
+        if (
+            OuterDictionary.TryGetValue(key1, out Dictionary<T, V>? inner)
+            && inner.TryGetValue(key2, out obj)
+        )
         {
             return true;
         }
@@ -255,7 +248,10 @@ public class DoubleKeyDictionary<K, T, V> : IEnumerable<DoubleKeyPairValue<K, T,
 #else
     public override int GetHashCode()
     {
-        return -377771656 + EqualityComparer<Dictionary<K, Dictionary<T, V>>>.Default.GetHashCode(OuterDictionary);
+        return -377771656
+            + EqualityComparer<Dictionary<K, Dictionary<T, V>>>.Default.GetHashCode(
+                OuterDictionary
+            );
     }
 #endif
 

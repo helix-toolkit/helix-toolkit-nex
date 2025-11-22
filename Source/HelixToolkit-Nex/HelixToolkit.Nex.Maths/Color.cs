@@ -1,4 +1,4 @@
-﻿/*
+/*
 The MIT License (MIT)
 Copyright (c) 2022 Helix Toolkit contributors
 
@@ -106,7 +106,7 @@ namespace HelixToolkit.Nex.Maths
             B = blue;
             A = 255;
         }
-        
+
         /// <summary>
         /// Initializes a new instance of the <see cref="Color"/> struct.  Passed values are clamped within byte range.
         /// </summary>
@@ -121,7 +121,7 @@ namespace HelixToolkit.Nex.Maths
             B = ToByte(blue);
             A = ToByte(alpha);
         }
-        
+
         /// <summary>
         /// Initializes a new instance of the <see cref="Color"/> struct.  Alpha is set to 255.  Passed values are clamped within byte range.
         /// </summary>
@@ -129,7 +129,7 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="green">The green component of the color.</param>
         /// <param name="blue">The blue component of the color.</param>
         public Color(int red, int green, int blue)
-            : this (red, green, blue, 255) { }
+            : this(red, green, blue, 255) { }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="Color"/> struct.
@@ -294,11 +294,20 @@ namespace HelixToolkit.Nex.Maths
             {
                 switch (index)
                 {
-                    case 0: R = value; break;
-                    case 1: G = value; break;
-                    case 2: B = value; break;
-                    case 3: A = value; break;
-                    default: throw new ArgumentOutOfRangeException(nameof(index), "Indices for Color run from 0 to 3, inclusive.");
+                    case 0:
+                        R = value;
+                        break;
+                    case 1:
+                        G = value;
+                        break;
+                    case 2:
+                        B = value;
+                        break;
+                    case 3:
+                        A = value;
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(index), "Indices for Color run from 0 to 3, inclusive.");
                 }
             }
         }
@@ -378,7 +387,7 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>A four-element array containing the components of the color in RGBA order.</returns>
         public readonly byte[] ToArray()
         {
-            return new [] { R, G , B, A };
+            return new[] { R, G, B, A };
         }
 
         /// <summary>
@@ -393,7 +402,8 @@ namespace HelixToolkit.Nex.Maths
 
             float max, min;
 
-            max = r; min = r;
+            max = r;
+            min = r;
 
             if (g > max)
             {
@@ -437,7 +447,8 @@ namespace HelixToolkit.Nex.Maths
             float delta;
             float hue = 0.0f;
 
-            max = r; min = r;
+            max = r;
+            min = r;
 
             if (g > max)
             {
@@ -495,7 +506,8 @@ namespace HelixToolkit.Nex.Maths
             float max, min;
             float l, s = 0;
 
-            max = r; min = r;
+            max = r;
+            min = r;
 
             if (g > max)
             {
@@ -527,7 +539,7 @@ namespace HelixToolkit.Nex.Maths
                 s = l <= .5 ? (max - min) / (max + min) : (max - min) / (2 - max - min);
             }
             return s;
-        } 
+        }
 
         /// <summary>
         /// Adds two colors.
@@ -722,7 +734,7 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>A color.</returns>
         public static Color FromBgra(uint color)
         {
-            return FromBgra(unchecked((int) color));
+            return FromBgra(unchecked((int)color));
         }
 
         /// <summary>
@@ -912,10 +924,10 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>The adjusted color.</returns>
         public static Color AdjustContrast(Color value, float contrast)
         {
-            return new Color(                
+            return new Color(
                 ToByte(0.5f + contrast * (value.R / 255.0f - 0.5f)),
                 ToByte(0.5f + contrast * (value.G / 255.0f - 0.5f)),
-                ToByte(0.5f + contrast * (value.B / 255.0f- 0.5f)),
+                ToByte(0.5f + contrast * (value.B / 255.0f - 0.5f)),
                 value.A);
         }
 
@@ -927,11 +939,11 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="result">When the method completes, contains the adjusted color.</param>
         public static void AdjustSaturation(ref Color value, float saturation, out Color result)
         {
-            float grey = value.R  / 255.0f * 0.2125f + value.G / 255.0f * 0.7154f + value.B / 255.0f * 0.0721f;
+            float grey = value.R / 255.0f * 0.2125f + value.G / 255.0f * 0.7154f + value.B / 255.0f * 0.0721f;
 
             result.A = value.A;
             result.R = ToByte(grey + saturation * (value.R / 255.0f - grey));
-            result.G = ToByte(grey + saturation * (value.G / 255.0f- grey));
+            result.G = ToByte(grey + saturation * (value.G / 255.0f - grey));
             result.B = ToByte(grey + saturation * (value.B / 255.0f - grey));
         }
 
@@ -945,7 +957,7 @@ namespace HelixToolkit.Nex.Maths
         {
             float grey = value.R / 255.0f * 0.2125f + value.G / 255.0f * 0.7154f + value.B / 255.0f * 0.0721f;
 
-            return new Color(                
+            return new Color(
                 ToByte(grey + saturation * (value.R / 255.0f - grey)),
                 ToByte(grey + saturation * (value.G / 255.0f - grey)),
                 ToByte(grey + saturation * (value.B / 255.0f - grey)),
@@ -1141,7 +1153,7 @@ namespace HelixToolkit.Nex.Maths
         }
 
         /// <summary>
-        /// Performs an explicit conversion from <see cref="System.Int32"/> to <see cref="Color"/>.
+        /// Performs an explicit conversion from <see cref="int"/> to <see cref="Color"/>.
         /// </summary>
         /// <param name="value">The value.</param>
         /// <returns>
@@ -1153,7 +1165,7 @@ namespace HelixToolkit.Nex.Maths
         }
 
         /// <summary>
-        /// Performs an explicit conversion from <see cref="System.Int32"/> to <see cref="Color"/>.
+        /// Performs an explicit conversion from <see cref="int"/> to <see cref="Color"/>.
         /// </summary>
         /// <param name="value">The value.</param>
         /// <returns>
@@ -1165,10 +1177,10 @@ namespace HelixToolkit.Nex.Maths
         }
 
         /// <summary>
-        /// Returns a <see cref="System.String"/> that represents this instance.
+        /// Returns a <see cref="string"/> that represents this instance.
         /// </summary>
         /// <returns>
-        /// A <see cref="System.String"/> that represents this instance.
+        /// A <see cref="string"/> that represents this instance.
         /// </returns>
         public override readonly string ToString()
         {
@@ -1176,11 +1188,11 @@ namespace HelixToolkit.Nex.Maths
         }
 
         /// <summary>
-        /// Returns a <see cref="System.String"/> that represents this instance.
+        /// Returns a <see cref="string"/> that represents this instance.
         /// </summary>
         /// <param name="format">The format to apply to each channel element (byte).</param>
         /// <returns>
-        /// A <see cref="System.String"/> that represents this instance.
+        /// A <see cref="string"/> that represents this instance.
         /// </returns>
         public readonly string ToString(string format)
         {
@@ -1188,11 +1200,11 @@ namespace HelixToolkit.Nex.Maths
         }
 
         /// <summary>
-        /// Returns a <see cref="System.String"/> that represents this instance.
+        /// Returns a <see cref="string"/> that represents this instance.
         /// </summary>
         /// <param name="formatProvider">The format provider.</param>
         /// <returns>
-        /// A <see cref="System.String"/> that represents this instance.
+        /// A <see cref="string"/> that represents this instance.
         /// </returns>
         public readonly string ToString(IFormatProvider formatProvider)
         {
@@ -1200,12 +1212,12 @@ namespace HelixToolkit.Nex.Maths
         }
 
         /// <summary>
-        /// Returns a <see cref="System.String"/> that represents this instance.
+        /// Returns a <see cref="string"/> that represents this instance.
         /// </summary>
         /// <param name="format">The format to apply to each channel element (byte).</param>
         /// <param name="formatProvider">The format provider.</param>
         /// <returns>
-        /// A <see cref="System.String"/> that represents this instance.
+        /// A <see cref="string"/> that represents this instance.
         /// </returns>
         public readonly string ToString(string? format, IFormatProvider? formatProvider)
         {
@@ -1268,11 +1280,11 @@ namespace HelixToolkit.Nex.Maths
         }
 
         /// <summary>
-        /// Determines whether the specified <see cref="System.Object"/> is equal to this instance.
+        /// Determines whether the specified <see cref="object"/> is equal to this instance.
         /// </summary>
-        /// <param name="obj">The <see cref="System.Object"/> to compare with this instance.</param>
+        /// <param name="obj">The <see cref="object"/> to compare with this instance.</param>
         /// <returns>
-        /// <c>true</c> if the specified <see cref="System.Object"/> is equal to this instance; otherwise, <c>false</c>.
+        /// <c>true</c> if the specified <see cref="object"/> is equal to this instance; otherwise, <c>false</c>.
         /// </returns>
         public override readonly bool Equals(object? obj)
         {

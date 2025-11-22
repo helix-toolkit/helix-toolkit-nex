@@ -1,7 +1,7 @@
-﻿using SDL3;
 using System.Numerics;
-using static SDL3.SDL3;
 using HelixToolkit.Nex.Maths;
+using SDL3;
+using static SDL3.SDL3;
 
 namespace HelixToolkit.Nex.Sample.Application;
 [Flags]

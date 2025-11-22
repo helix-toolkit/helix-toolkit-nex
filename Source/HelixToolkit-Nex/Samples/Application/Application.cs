@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging;
 using SDL3;
 using Vortice.Vulkan;
 using static SDL3.SDL3;
@@ -7,10 +7,10 @@ namespace HelixToolkit.Nex.Sample.Application;
 
 public abstract class Application : IDisposable
 {
-    static readonly ILogger logger = LogManager.Create<Application>();
+    private static readonly ILogger Logger = LogManager.Create<Application>();
 
-    private bool _closeRequested = false;
-    private bool disposedValue;
+    private readonly bool _closeRequested = false;
+    private bool _disposedValue;
 
     protected unsafe Application()
     {
@@ -34,14 +34,9 @@ public abstract class Application : IDisposable
 
     public Window MainWindow { get; }
 
-    protected virtual void Initialize()
-    {
+    protected virtual void Initialize() { }
 
-    }
-
-    protected virtual void OnTick()
-    {
-    }
+    protected virtual void OnTick() { }
 
     public unsafe void Run()
     {
@@ -61,18 +56,29 @@ public abstract class Application : IDisposable
                     break;
                 }
 
-                if (evt.type == SDL_EventType.WindowCloseRequested && evt.window.windowID == MainWindow.Id)
+                if (
+                    evt.type == SDL_EventType.WindowCloseRequested
+                    && evt.window.windowID == MainWindow.Id
+                )
                 {
                     running = false;
                     break;
                 }
-                else if (evt.type >= SDL_EventType.WindowFirst && evt.type <= SDL_EventType.WindowLast)
+                else if (
+                    evt.type >= SDL_EventType.WindowFirst
+                    && evt.type <= SDL_EventType.WindowLast
+                )
                 {
                     HandleWindowEvent(evt);
                 }
                 else if (evt.type == SDL_EventType.MouseMotion)
                 {
-                    OnMouseMove(SDL_abs((int)evt.motion.x), SDL_abs((int)evt.motion.y), SDL_abs((int)evt.motion.xrel), SDL_abs((int)evt.motion.yrel));
+                    OnMouseMove(
+                        SDL_abs((int)evt.motion.x),
+                        SDL_abs((int)evt.motion.y),
+                        SDL_abs((int)evt.motion.xrel),
+                        SDL_abs((int)evt.motion.yrel)
+                    );
                 }
                 else if (evt.type == SDL_EventType.MouseButtonDown)
                 {
@@ -88,7 +94,7 @@ public abstract class Application : IDisposable
                 }
                 else
                 {
-                    logger.LogInformation($"Window Event: {evt.type}");
+                    Logger.LogInformation($"Window Event: {evt.type}");
                 }
             }
 
@@ -101,7 +107,7 @@ public abstract class Application : IDisposable
 
     private void HandleWindowEvent(in SDL_Event evt)
     {
-        logger.LogInformation($"Window Event: {evt.window.type}");
+        Logger.LogInformation($"Window Event: {evt.window.type}");
         switch (evt.window.type)
         {
             case SDL_EventType.WindowResized:
@@ -119,33 +125,19 @@ public abstract class Application : IDisposable
         }
     }
 
-    protected virtual void OnDisplayScaleChanged(float scaleX, float scaleY)
-    {
-    }
+    protected virtual void OnDisplayScaleChanged(float scaleX, float scaleY) { }
 
     protected virtual void HandleResize(int width, int height) { }
 
-    protected virtual void OnMouseMove(int x, int y, int xrel, int yrel)
-    {
-    }
+    protected virtual void OnMouseMove(int x, int y, int xrel, int yrel) { }
 
-    protected virtual void OnMouseEnter()
-    {
+    protected virtual void OnMouseEnter() { }
 
-    }
+    protected virtual void OnMouseLeave() { }
 
-    protected virtual void OnMouseLeave()
-    {
-    }
+    protected virtual void OnMouseButtonDown(SDL_Button button) { }
 
-    protected virtual void OnMouseButtonDown(SDL_Button button)
-    {
-
-    }
-
-    protected virtual void OnMouseButtonUp(SDL_Button button)
-    {
-    }
+    protected virtual void OnMouseButtonUp(SDL_Button button) { }
 
     protected virtual void OnMouseWheel(int deltaX, int deltaY) { }
 
@@ -163,22 +155,26 @@ public abstract class Application : IDisposable
     }
 
     //[UnmanagedCallersOnly]
-    private static void Log_SDL(SDL_LogCategory category, SDL_LogPriority priority, string? description)
+    private static void Log_SDL(
+        SDL_LogCategory category,
+        SDL_LogPriority priority,
+        string? description
+    )
     {
         if (priority >= SDL_LogPriority.Error)
         {
-            logger.LogError($"[{priority}] SDL: {description}");
+            Logger.LogError($"[{priority}] SDL: {description}");
             throw new Exception(description);
         }
         else
         {
-            logger.LogInformation($"[{priority}] SDL: {description}");
+            Logger.LogInformation($"[{priority}] SDL: {description}");
         }
     }
 
-    void Dispose(bool disposing)
+    private void Dispose(bool disposing)
     {
-        if (!disposedValue)
+        if (!_disposedValue)
         {
             if (disposing)
             {
@@ -187,7 +183,7 @@ public abstract class Application : IDisposable
 
             // TODO: free unmanaged resources (unmanaged objects) and override finalizer
             // TODO: set large fields to null
-            disposedValue = true;
+            _disposedValue = true;
         }
     }
 
@@ -195,7 +191,7 @@ public abstract class Application : IDisposable
     {
         // This method can be overridden to perform actions before disposal
         // For example, you might want to clean up resources or log messages
-        logger.LogInformation("Disposing application resources.");
+        Logger.LogInformation("Disposing application resources.");
     }
 
     public void Dispose()

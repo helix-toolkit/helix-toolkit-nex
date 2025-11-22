@@ -1,4 +1,4 @@
-﻿namespace HelixToolkit.Nex;
+namespace HelixToolkit.Nex;
 
 /// <summary>
 /// Represents a type-safe handle with generational versioning to prevent the ABA problem.
@@ -14,49 +14,49 @@
 [StructLayout(LayoutKind.Sequential)]
 public readonly struct Handle<T>(uint index, uint gen)
 {
-    private readonly uint index_ = index; // the index of this handle within a Pool  
-    private readonly uint gen_ = gen; // the generation of this handle to prevent the ABA Problem  
+    private readonly uint _index = index; // the index of this handle within a Pool
+    private readonly uint _gen = gen; // the generation of this handle to prevent the ABA Problem
 
     /// <summary>
     /// Gets a value indicating whether this handle is empty (invalid).
     /// </summary>
     /// <value>True if the generation is 0; otherwise, false.</value>
-    public bool Empty => gen_ == 0;
+    public bool Empty => _gen == 0;
 
     /// <summary>
     /// Gets a value indicating whether this handle is valid (not empty).
-  /// </summary>
+    /// </summary>
     /// <value>True if the generation is not 0; otherwise, false.</value>
- public bool Valid => gen_ != 0;
+    public bool Valid => _gen != 0;
 
     /// <summary>
     /// Gets the index component of this handle.
     /// </summary>
-  public uint Index => index_;
+    public uint Index => _index;
 
     /// <summary>
     /// Gets the generation component of this handle.
     /// </summary>
-    public uint Gen => gen_;
+    public uint Gen => _gen;
 
     /// <summary>
     /// Converts the index to a native pointer-sized integer.
     /// </summary>
     /// <returns>The index as an <see cref="nint"/>.</returns>
     public nint IndexAsVoid()
- {
-    return (nint)index_;
+    {
+        return (nint)_index;
     }
 
     /// <summary>
     /// Determines whether two handles are equal.
- /// </summary>
+    /// </summary>
     /// <param name="left">The first handle.</param>
     /// <param name="right">The second handle.</param>
     /// <returns>True if both index and generation are equal; otherwise, false.</returns>
-    public static bool operator ==(Handle<T> left, Handle<T> right) // Fixed CS0558: Made static and public  
-  {
-        return left.index_ == right.index_ && left.gen_ == right.gen_;
+    public static bool operator ==(Handle<T> left, Handle<T> right) // Fixed CS0558: Made static and public
+    {
+        return left._index == right._index && left._gen == right._gen;
     }
 
     /// <summary>
@@ -64,18 +64,18 @@ public readonly struct Handle<T>(uint index, uint gen)
     /// </summary>
     /// <param name="left">The first handle.</param>
     /// <param name="right">The second handle.</param>
- /// <returns>True if either index or generation differs; otherwise, false.</returns>
-    public static bool operator !=(Handle<T> left, Handle<T> right) // Fixed CS0558: Made static and public  
+    /// <returns>True if either index or generation differs; otherwise, false.</returns>
+    public static bool operator !=(Handle<T> left, Handle<T> right) // Fixed CS0558: Made static and public
     {
-        return left.index_ != right.index_ || left.gen_ != right.gen_;
+        return left._index != right._index || left._gen != right._gen;
     }
 
- /// <summary>
+    /// <summary>
     /// Determines whether this handle equals another object.
     /// </summary>
     /// <param name="obj">The object to compare with.</param>
     /// <returns>True if the object is a <see cref="Handle{T}"/> with the same index and generation; otherwise, false.</returns>
-    public override bool Equals(object? obj) // Added Equals override for proper equality comparison  
+    public override bool Equals(object? obj) // Added Equals override for proper equality comparison
     {
         return obj != null && obj is Handle<T> other && this == other;
     }
@@ -83,10 +83,10 @@ public readonly struct Handle<T>(uint index, uint gen)
     /// <summary>
     /// Gets the hash code for this handle.
     /// </summary>
- /// <returns>A hash code combining the index and generation.</returns>
-  public override int GetHashCode() // Added GetHashCode override for proper hashing
+    /// <returns>A hash code combining the index and generation.</returns>
+    public override int GetHashCode() // Added GetHashCode override for proper hashing
     {
-        return HashCode.Combine(index_, gen_);
+        return HashCode.Combine(_index, _gen);
     }
 
     /// <summary>
@@ -94,7 +94,7 @@ public readonly struct Handle<T>(uint index, uint gen)
     /// </summary>
     /// <param name="handle">The handle to convert.</param>
     /// <returns>True if the handle is valid; otherwise, false.</returns>
-    public static implicit operator bool(Handle<T> handle) // Fixed CS1019: Changed to explicit operator  
+    public static implicit operator bool(Handle<T> handle) // Fixed CS1019: Changed to explicit operator
     {
         return handle.Valid;
     }

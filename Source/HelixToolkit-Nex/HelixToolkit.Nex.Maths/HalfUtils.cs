@@ -1,4 +1,4 @@
-﻿/*
+/*
 The MIT License (MIT)
 Copyright (c) 2022 Helix Toolkit contributors
 
@@ -37,14 +37,14 @@ namespace HelixToolkit.Nex.Maths
     /// </summary>
     internal class HalfUtils
     {
-
         [StructLayout(LayoutKind.Explicit)]
         private struct FloatToUint
         {
             [FieldOffset(0)]
-            public uint uintValue;
+            public uint UIntValue;
+
             [FieldOffset(0)]
-            public float floatValue;
+            public float FloatValue;
         }
 
         /// <summary>
@@ -56,9 +56,12 @@ namespace HelixToolkit.Nex.Maths
         {
             FloatToUint conv = new()
             {
-                uintValue = halfToFloatMantissaTable_[halfToFloatOffsetTable_[h >> 10] + (((uint)h) & 0x3ff)] + halfToFloatExponentTable_[h >> 10]
+                UIntValue =
+                    halfToFloatMantissaTable_[
+                        halfToFloatOffsetTable_[h >> 10] + (((uint)h) & 0x3ff)
+                    ] + halfToFloatExponentTable_[h >> 10],
             };
-            return conv.floatValue;
+            return conv.FloatValue;
         }
 
         /// <summary>
@@ -68,18 +71,21 @@ namespace HelixToolkit.Nex.Maths
         /// <returns></returns>
         public static ushort Pack(float f)
         {
-            FloatToUint conv = new()
-            {
-                floatValue = f
-            };
-            return (ushort)(floatToHalfBaseTable_[(conv.uintValue >> 23) & 0x1ff] + ((conv.uintValue & 0x007fffff) >> floatToHalfShiftTable_[(conv.uintValue >> 23) & 0x1ff]));
+            FloatToUint conv = new() { FloatValue = f };
+            return (ushort)(
+                floatToHalfBaseTable_[(conv.UIntValue >> 23) & 0x1ff]
+                + (
+                    (conv.UIntValue & 0x007fffff)
+                    >> floatToHalfShiftTable_[(conv.UIntValue >> 23) & 0x1ff]
+                )
+            );
         }
 
-        static readonly uint[] halfToFloatMantissaTable_ = new uint[2048];
-        static readonly uint[] halfToFloatExponentTable_ = new uint[64];
-        static readonly uint[] halfToFloatOffsetTable_ = new uint[64];
-        static readonly ushort[] floatToHalfBaseTable_ = new ushort[512];
-        static readonly byte[] floatToHalfShiftTable_ = new byte[512];
+        private static readonly uint[] halfToFloatMantissaTable_ = new uint[2048];
+        private static readonly uint[] halfToFloatExponentTable_ = new uint[64];
+        private static readonly uint[] halfToFloatOffsetTable_ = new uint[64];
+        private static readonly ushort[] floatToHalfBaseTable_ = new ushort[512];
+        private static readonly byte[] floatToHalfShiftTable_ = new byte[512];
 
         static HalfUtils()
         {
@@ -105,7 +111,7 @@ namespace HelixToolkit.Nex.Maths
                     e -= 0x00800000;
                     m <<= 1;
                 }
-                m &= ~ 0x00800000U;
+                m &= ~0x00800000U;
                 e += 0x38800000;
                 halfToFloatMantissaTable_[i] = m | e;
             }
@@ -123,7 +129,8 @@ namespace HelixToolkit.Nex.Maths
 
             for (i = 1; i < 63; i++)
             {
-                halfToFloatExponentTable_[i] = i < 31 ? ((uint)i) << 23 : 0x80000000 + (((uint)(i - 32)) << 23);
+                halfToFloatExponentTable_[i] =
+                    i < 31 ? ((uint)i) << 23 : 0x80000000 + (((uint)(i - 32)) << 23);
             }
             halfToFloatExponentTable_[31] = 0x47800000;
             halfToFloatExponentTable_[32] = 0x80000000;
@@ -146,7 +153,6 @@ namespace HelixToolkit.Nex.Maths
                 int e = i - 127;
                 if (e < -24)
                 { // Very small numbers map to zero
-
                     floatToHalfBaseTable_[i | 0x000] = 0x0000;
                     floatToHalfBaseTable_[i | 0x100] = 0x8000;
                     floatToHalfShiftTable_[i | 0x000] = 24;

@@ -1,13 +1,12 @@
-﻿using Glslang.NET;
 using System.Runtime.InteropServices;
 using System.Text;
-
-namespace HelixToolkit.Nex.Graphics.Vulkan;
+using Glslang.NET;
 using GLSLShaderStage = Glslang.NET.ShaderStage;
 
+namespace HelixToolkit.Nex.Graphics.Vulkan;
 internal static class ShaderExtensions
 {
-    struct ShaderExt { }
+    private struct ShaderExt { }
     private static readonly ILogger logger = LogManager.Create<ShaderExt>();
 
     public static GLSLShaderStage ToGLSL(this VkShaderStageFlags stage)
@@ -229,7 +228,7 @@ internal static class ShaderExtensions
 
 internal sealed class ShaderUtils
 {
-    static readonly ILogger logger = LogManager.Create<ShaderUtils>();
+    private static readonly ILogger logger = LogManager.Create<ShaderUtils>();
 
     public static ResultCode CompileShader(VkShaderStageFlags stage, string code, in ResourceLimits glslLangResource, ShaderDefine[]? defines, out uint[] outSPIRV)
     {

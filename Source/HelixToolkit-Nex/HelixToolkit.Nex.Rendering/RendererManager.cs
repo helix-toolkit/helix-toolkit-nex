@@ -1,9 +1,9 @@
-﻿namespace HelixToolkit.Nex.Rendering;
+namespace HelixToolkit.Nex.Rendering;
 
 public class RendererManager : IDisposable
 {
-    private static readonly ILogger logger = LogManager.Create<RendererManager>();
-    private readonly Dictionary<RenderStages, List<Renderer>> renderers = [];
+    private static readonly ILogger Logger = LogManager.Create<RendererManager>();
+    private readonly Dictionary<RenderStages, List<Renderer>> _renderers = [];
 
     public virtual RenderStages[] RenderOrder =>
         [
@@ -21,10 +21,10 @@ public class RendererManager : IDisposable
     {
         ArgumentNullException.ThrowIfNull(renderer);
         var stage = renderer.Stage;
-        if (!renderers.TryGetValue(stage, out var list))
+        if (!_renderers.TryGetValue(stage, out var list))
         {
             list = [];
-            renderers[stage] = list;
+            _renderers[stage] = list;
         }
         if (list.Contains(renderer))
         {
@@ -36,7 +36,7 @@ public class RendererManager : IDisposable
         }
         catch (Exception e)
         {
-            logger.LogError(
+            Logger.LogError(
                 e,
                 "Failed to attach renderer '{RendererName}' to renderer manager.",
                 renderer.Name
@@ -51,7 +51,7 @@ public class RendererManager : IDisposable
     {
         ArgumentNullException.ThrowIfNull(renderer);
         var stage = renderer.Stage;
-        if (renderers.TryGetValue(stage, out var list))
+        if (_renderers.TryGetValue(stage, out var list))
         {
             if (list.Remove(renderer))
             {
@@ -70,7 +70,7 @@ public class RendererManager : IDisposable
 
     public void RenderStage(RenderStages stage, RenderContext context)
     {
-        if (renderers.TryGetValue(stage, out var list))
+        if (_renderers.TryGetValue(stage, out var list))
         {
             foreach (var renderer in list)
             {
@@ -84,25 +84,25 @@ public class RendererManager : IDisposable
 
     public void Clear()
     {
-        foreach (var kvp in renderers)
+        foreach (var kvp in _renderers)
         {
             foreach (var renderer in kvp.Value.ToArray())
             {
                 renderer.Detach();
             }
         }
-        renderers.Clear();
+        _renderers.Clear();
     }
 
     #region IDisposable Support
 
-    private bool disposedValue;
+    private bool _disposedValue;
 
-    public bool IsDisposed => disposedValue;
+    public bool IsDisposed => _disposedValue;
 
     protected virtual void Dispose(bool disposing)
     {
-        if (!disposedValue)
+        if (!_disposedValue)
         {
             if (disposing)
             {
@@ -111,7 +111,7 @@ public class RendererManager : IDisposable
 
             // TODO: free unmanaged resources (unmanaged objects) and override finalizer
             // TODO: set large fields to null
-            disposedValue = true;
+            _disposedValue = true;
         }
     }
 

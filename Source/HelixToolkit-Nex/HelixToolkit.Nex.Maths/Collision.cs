@@ -1,4 +1,4 @@
-﻿/*
+/*
 The MIT License (MIT)
 Copyright (c) 2022 Helix Toolkit contributors
 
@@ -234,7 +234,7 @@ namespace HelixToolkit.Nex.Maths
             //Reference: Page 127
 
             float dot = Vector3.Dot(plane.Normal, point);
-            
+
             return dot - plane.D;
         }
 
@@ -348,7 +348,7 @@ namespace HelixToolkit.Nex.Maths
             //Reference: None
 
             float distance = Vector3.Distance(sphere.Center, point);
-           
+
             distance -= sphere.Radius;
 
             return Math.Max(distance, 0f);
@@ -366,7 +366,7 @@ namespace HelixToolkit.Nex.Maths
             //Reference: None
 
             float distance = Vector3.Distance(sphere1.Center, sphere2.Center);
-            
+
             distance -= sphere1.Radius + sphere2.Radius;
 
             return Math.Max(distance, 0f);
@@ -444,7 +444,7 @@ namespace HelixToolkit.Nex.Maths
 
             //3x3 matrix for the first ray.
             Vector3 v = ray2.Position - ray1.Position;
-            Matrix m = new(v.X, v.Y, v.Z, 0, ray2.Direction.X, ray2.Direction.Y, ray2.Direction.Z, 0, 
+            Matrix m = new(v.X, v.Y, v.Z, 0, ray2.Direction.X, ray2.Direction.Y, ray2.Direction.Z, 0,
                 cross.X, cross.Y, cross.Z, 0, 0, 0, 0, 1);
 
 
@@ -495,7 +495,7 @@ namespace HelixToolkit.Nex.Maths
             //Reference: Page 175
 
             float direction = Vector3.Dot(plane.Normal, ray.Direction);
-            
+
 
             if (MathUtil.IsZero(direction))
             {
@@ -504,7 +504,7 @@ namespace HelixToolkit.Nex.Maths
             }
 
             float position = Vector3.Dot(plane.Normal, ray.Position);
-            
+
             distance = (-plane.D - position) / direction;
 
             if (distance < 0f)
@@ -857,7 +857,7 @@ namespace HelixToolkit.Nex.Maths
         public static PlaneIntersectionType PlaneIntersectsPoint(ref Plane plane, ref Vector3 point)
         {
             float distance = Vector3.Dot(plane.Normal, point);
-            
+
             distance += plane.D;
 
             return distance > 0f ? PlaneIntersectionType.Front : distance < 0f ? PlaneIntersectionType.Back : PlaneIntersectionType.Intersecting;
@@ -906,7 +906,7 @@ namespace HelixToolkit.Nex.Maths
             //If direction is the zero vector, the planes are parallel and possibly
             //coincident. It is not an intersection. The dot product will tell us.
             float denominator = Vector3.Dot(direction, direction);
-            
+
 
             //We assume the planes are normalized, therefore the denominator
             //only serves as a parallel and coincident check. Otherwise we need

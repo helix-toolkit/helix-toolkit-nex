@@ -1,4 +1,4 @@
-﻿namespace HelixToolkit.Nex.Graphics;
+namespace HelixToolkit.Nex.Graphics;
 
 /// <summary>
 /// Defines the format of vertex attributes in a vertex buffer.
@@ -63,10 +63,10 @@ public enum VertexFormat
     /// <summary>
     /// Three unsigned 8-bit integers.
     /// </summary>
-  UByte3,
+    UByte3,
 
     /// <summary>
-  /// Four unsigned 8-bit integers.
+    /// Four unsigned 8-bit integers.
     /// </summary>
     UByte4,
 
@@ -85,12 +85,12 @@ public enum VertexFormat
     /// </summary>
     Short3,
 
- /// <summary>
+    /// <summary>
     /// Four signed 16-bit integers.
     /// </summary>
     Short4,
 
-/// <summary>
+    /// <summary>
     /// Single unsigned 16-bit integer.
     /// </summary>
     UShort1,
@@ -121,7 +121,7 @@ public enum VertexFormat
     Byte4Norm,
 
     /// <summary>
-  /// Two unsigned 8-bit normalized integers (mapped to [0, 1]).
+    /// Two unsigned 8-bit normalized integers (mapped to [0, 1]).
     /// </summary>
     UByte2Norm,
 
@@ -135,7 +135,7 @@ public enum VertexFormat
     /// </summary>
     Short2Norm,
 
-  /// <summary>
+    /// <summary>
     /// Four signed 16-bit normalized integers (mapped to [-1, 1]).
     /// </summary>
     Short4Norm,
@@ -188,7 +188,7 @@ public enum VertexFormat
     /// <summary>
     /// Four unsigned 32-bit integers.
     /// </summary>
-  UInt4,
+    UInt4,
 
     /// <summary>
     /// Single 16-bit floating point value (half float).
@@ -240,7 +240,7 @@ public enum Format : uint8_t
     /// <summary>
     /// Single-channel 32-bit unsigned integer.
     /// </summary>
-  R_UI32,
+    R_UI32,
 
     /// <summary>
     /// Single-channel 16-bit unsigned normalized integer (range [0, 1]).
@@ -253,7 +253,7 @@ public enum Format : uint8_t
     R_F16,
 
     /// <summary>
-  /// Single-channel 32-bit floating point.
+    /// Single-channel 32-bit floating point.
     /// </summary>
     R_F32,
 
@@ -284,7 +284,7 @@ public enum Format : uint8_t
     RG_F16,
 
     /// <summary>
- /// Two-channel 32-bit floating point per channel.
+    /// Two-channel 32-bit floating point per channel.
     /// </summary>
     RG_F32,
 
@@ -299,9 +299,9 @@ public enum Format : uint8_t
     /// </summary>
     RGBA_UI32,
 
-/// <summary>
-  /// Four-channel 16-bit floating point per channel (RGBA).
-  /// </summary>
+    /// <summary>
+    /// Four-channel 16-bit floating point per channel (RGBA).
+    /// </summary>
     RGBA_F16,
 
     /// <summary>
@@ -316,7 +316,7 @@ public enum Format : uint8_t
 
     // Four-channel BGRA formats
     /// <summary>
-  /// Four-channel 8-bit unsigned normalized integer per channel (BGRA).
+    /// Four-channel 8-bit unsigned normalized integer per channel (BGRA).
     /// </summary>
     BGRA_UN8,
 
@@ -334,7 +334,7 @@ public enum Format : uint8_t
     /// <summary>
     /// Packed format: 2 bits alpha, 10 bits red, 10 bits green, 10 bits blue (unsigned normalized).
     /// </summary>
-  A2R10G10B10_UN,
+    A2R10G10B10_UN,
 
     // Compressed formats
     /// <summary>
@@ -361,7 +361,7 @@ public enum Format : uint8_t
     /// <summary>
     /// 24-bit unsigned normalized depth format.
     /// </summary>
-Z_UN24,
+    Z_UN24,
 
     /// <summary>
     /// 32-bit floating point depth format.
@@ -385,7 +385,7 @@ Z_UN24,
     YUV_NV12,
 
     /// <summary>
-  /// YUV 4:2:0 planar format (I420/YV12), three planes.
+    /// YUV 4:2:0 planar format (I420/YV12), three planes.
     /// </summary>
     YUV_420p,
 }

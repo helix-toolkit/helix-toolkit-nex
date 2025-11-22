@@ -1,4 +1,4 @@
-﻿namespace HelixToolkit.Nex.Graphics.Vulkan;
+namespace HelixToolkit.Nex.Graphics.Vulkan;
 
 /// <summary>
 /// Represents a combination of pipeline stage and memory access flags for Vulkan synchronization.
@@ -13,10 +13,10 @@ internal struct StageAccess2
     /// <summary>
     /// The pipeline stage flags indicating when the memory access occurs.
     /// </summary>
- public VkPipelineStageFlags2 stage;
+    public VkPipelineStageFlags2 Stage;
 
     /// <summary>
     /// The memory access flags indicating the type of memory access.
     /// </summary>
-    public VkAccessFlags2 access;
+    public VkAccessFlags2 Access;
 };

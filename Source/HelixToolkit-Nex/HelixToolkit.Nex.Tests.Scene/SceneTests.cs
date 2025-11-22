@@ -1,9 +1,9 @@
-﻿namespace HelixToolkit.Nex.Tests.Scene;
 
 using Arch.Core;
 using Arch.Core.Extensions;
 using HelixToolkit.Nex.Scene;
 
+namespace HelixToolkit.Nex.Tests.Scene;
 [TestClass]
 public sealed class SceneTests
 {

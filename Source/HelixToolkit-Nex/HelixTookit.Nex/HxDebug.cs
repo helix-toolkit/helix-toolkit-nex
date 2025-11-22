@@ -1,4 +1,4 @@
-﻿using System.Runtime.CompilerServices;
+using System.Runtime.CompilerServices;
 
 namespace HelixToolkit.Nex;
 
@@ -7,7 +7,7 @@ namespace HelixToolkit.Nex;
 /// </summary>
 public sealed class HxDebug
 {
-    static readonly ILogger logger = LogManager.Create<HxDebug>();
+    private static readonly ILogger logger = LogManager.Create<HxDebug>();
 
     /// <summary>
     /// Asserts that a condition is true. Only active in DEBUG builds.

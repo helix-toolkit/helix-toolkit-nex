@@ -1,4 +1,5 @@
-﻿namespace HelixToolkit.Nex.Graphics;
+namespace HelixToolkit.Nex.Graphics;
+
 #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
 
 /// <summary>
@@ -9,7 +10,7 @@ public static class Constants
     /// <summary>
     /// Maximum number of color attachments that can be bound to a framebuffer or render pass.
     /// </summary>
-public const uint8 MAX_COLOR_ATTACHMENTS = 8;
+    public const uint8 MAX_COLOR_ATTACHMENTS = 8;
 
     /// <summary>
     /// Maximum number of mip levels supported for textures.
@@ -23,7 +24,7 @@ public const uint8 MAX_COLOR_ATTACHMENTS = 8;
 
     /// <summary>
     /// Maximum size of a ray tracing shader group.
-/// </summary>
+    /// </summary>
     public const uint8 MAX_RAY_TRACING_SHADER_GROUP_SIZE = 4;
 }
 
@@ -53,7 +54,7 @@ public enum IndexFormat : uint8_t
     /// </summary>
     UI8,
 
- /// <summary>
+    /// <summary>
     /// 16-bit unsigned integer indices.
     /// </summary>
     UI16,
@@ -106,7 +107,7 @@ public enum Topology : uint8_t
 public enum ColorSpace : uint8_t
 {
     /// <summary>
-  /// sRGB color space with linear encoding.
+    /// sRGB color space with linear encoding.
     /// </summary>
     SRGB_LINEAR,
 
@@ -122,7 +123,7 @@ public enum ColorSpace : uint8_t
 
     /// <summary>
     /// HDR10 color space (ST2084 PQ transfer function with BT.2020 primaries).
-  /// </summary>
+    /// </summary>
     HDR10,
 }
 
@@ -139,7 +140,7 @@ public enum TextureType : uint8_t
     /// <summary>
     /// 3D (volumetric) texture.
     /// </summary>
-  Texture3D,
+    Texture3D,
 
     /// <summary>
     /// Cube map texture (6 faces).
@@ -152,7 +153,7 @@ public enum TextureType : uint8_t
 /// </summary>
 public enum SamplerFilter : uint8_t
 {
-  /// <summary>
+    /// <summary>
     /// Nearest-neighbor filtering (no interpolation).
     /// </summary>
     Nearest = 0,
@@ -160,7 +161,7 @@ public enum SamplerFilter : uint8_t
     /// <summary>
     /// Linear (bilinear/trilinear) filtering.
     /// </summary>
-    Linear
+    Linear,
 }
 
 /// <summary>
@@ -181,7 +182,7 @@ public enum SamplerMip : uint8_t
     /// <summary>
     /// Linear interpolation between mipmap levels.
     /// </summary>
- Linear
+    Linear,
 }
 
 /// <summary>
@@ -218,7 +219,7 @@ public enum HWDeviceType
     /// <summary>
     /// Discrete GPU (dedicated graphics card).
     /// </summary>
-  Discrete = 1,
+    Discrete = 1,
 
     /// <summary>
     /// External GPU (e.g., via Thunderbolt).
@@ -228,7 +229,7 @@ public enum HWDeviceType
     /// <summary>
     /// Integrated GPU (built into CPU).
     /// </summary>
- Integrated = 3,
+    Integrated = 3,
 
     /// <summary>
     /// Software renderer (CPU-based).
@@ -280,7 +281,7 @@ public enum StorageType
     /// <summary>
     /// Memoryless storage (tile memory, no backing store), used for transient attachments.
     /// </summary>
-    Memoryless
+    Memoryless,
 }
 
 /// <summary>
@@ -301,7 +302,7 @@ public enum CullMode : uint8_t
     /// <summary>
     /// Cull back-facing triangles.
     /// </summary>
-  Back
+    Back,
 }
 
 /// <summary>
@@ -317,7 +318,7 @@ public enum WindingMode : uint8_t
     /// <summary>
     /// Clockwise winding defines front faces.
     /// </summary>
-    CW
+    CW,
 }
 
 /// <summary>
@@ -346,21 +347,21 @@ public enum ResultCode
     RuntimeError,
 
     /// <summary>
- /// The requested operation or feature is not supported.
+    /// The requested operation or feature is not supported.
     /// </summary>
     NotSupported,
 
-  /// <summary>
+    /// <summary>
     /// An argument had an invalid value.
     /// </summary>
     ArgumentError,
 
     /// <summary>
     /// The system ran out of memory.
- /// </summary>
-OutOfMemory,
+    /// </summary>
+    OutOfMemory,
 
-/// <summary>
+    /// <summary>
     /// A required argument was null.
     /// </summary>
     ArgumentNull,
@@ -384,7 +385,7 @@ OutOfMemory,
 /// <param name="depth">Depth dimension. Defaults to 1.</param>
 public struct Dimensions(uint32_t width = 1, uint32_t height = 1, uint32_t depth = 1)
 {
-  /// <summary>
+    /// <summary>
     /// Width dimension.
     /// </summary>
     public uint32_t Width = width;
@@ -406,7 +407,12 @@ public struct Dimensions(uint32_t width = 1, uint32_t height = 1, uint32_t depth
     /// <returns>New dimensions with divided width.</returns>
     public Dimensions Divide1D(uint32_t v)
     {
-        return new Dimensions { Width = this.Width / v, Height = this.Height, Depth = this.Depth };
+        return new Dimensions
+        {
+            Width = this.Width / v,
+            Height = this.Height,
+            Depth = this.Depth,
+        };
     }
 
     /// <summary>
@@ -416,7 +422,12 @@ public struct Dimensions(uint32_t width = 1, uint32_t height = 1, uint32_t depth
     /// <returns>New dimensions with divided width and height.</returns>
     public Dimensions Divide2D(uint32_t v)
     {
-        return new Dimensions { Width = this.Width / v, Height = this.Height / v, Depth = this.Depth };
+        return new Dimensions
+        {
+            Width = this.Width / v,
+            Height = this.Height / v,
+            Depth = this.Depth,
+        };
     }
 
     /// <summary>
@@ -426,7 +437,12 @@ public struct Dimensions(uint32_t width = 1, uint32_t height = 1, uint32_t depth
     /// <returns>New dimensions with all components divided.</returns>
     public Dimensions Divide3D(uint32_t v)
     {
-        return new Dimensions { Width = this.Width / v, Height = this.Height / v, Depth = this.Depth / v };
+        return new Dimensions
+        {
+            Width = this.Width / v,
+            Height = this.Height / v,
+            Depth = this.Depth / v,
+        };
     }
 }
 
@@ -448,10 +464,10 @@ public enum CompareOp : uint8_t
     /// <summary>
     /// Test passes if the incoming value equals the stored value.
     /// </summary>
- Equal,
+    Equal,
 
     /// <summary>
-/// Test passes if the incoming value is less than or equal to the stored value.
+    /// Test passes if the incoming value is less than or equal to the stored value.
     /// </summary>
     LessEqual,
 
@@ -473,7 +489,7 @@ public enum CompareOp : uint8_t
     /// <summary>
     /// Test always passes.
     /// </summary>
-    AlwaysPass
+    AlwaysPass,
 }
 
 /// <summary>
@@ -494,7 +510,7 @@ public enum StencilOp : uint8_t
     /// <summary>
     /// Replace the stencil value with the reference value.
     /// </summary>
- Replace,
+    Replace,
 
     /// <summary>
     /// Increment the stencil value and clamp to maximum.
@@ -503,7 +519,7 @@ public enum StencilOp : uint8_t
 
     /// <summary>
     /// Decrement the stencil value and clamp to zero.
-  /// </summary>
+    /// </summary>
     DecrementClamp,
 
     /// <summary>
@@ -511,15 +527,15 @@ public enum StencilOp : uint8_t
     /// </summary>
     Invert,
 
- /// <summary>
+    /// <summary>
     /// Increment the stencil value with wrapping.
     /// </summary>
     IncrementWrap,
 
- /// <summary>
+    /// <summary>
     /// Decrement the stencil value with wrapping.
     /// </summary>
-    DecrementWrap
+    DecrementWrap,
 }
 
 /// <summary>
@@ -537,7 +553,7 @@ public enum BlendOp : uint8_t
     /// </summary>
     Subtract,
 
-  /// <summary>
+    /// <summary>
     /// Subtract source from destination: dst - src.
     /// </summary>
     ReverseSubtract,
@@ -550,7 +566,7 @@ public enum BlendOp : uint8_t
     /// <summary>
     /// Maximum of source and destination: max(src, dst).
     /// </summary>
-    Max
+    Max,
 }
 
 /// <summary>
@@ -559,8 +575,8 @@ public enum BlendOp : uint8_t
 public enum BlendFactor : uint8_t
 {
     /// <summary>
- /// Blend factor is (0, 0, 0, 0).
-  /// </summary>
+    /// Blend factor is (0, 0, 0, 0).
+    /// </summary>
     Zero = 0,
 
     /// <summary>
@@ -593,7 +609,7 @@ public enum BlendFactor : uint8_t
     /// </summary>
     DstColor,
 
-  /// <summary>
+    /// <summary>
     /// Blend factor is one minus the destination color (1-Rd, 1-Gd, 1-Bd, 1-Ad).
     /// </summary>
     OneMinusDstColor,
@@ -603,12 +619,12 @@ public enum BlendFactor : uint8_t
     /// </summary>
     DstAlpha,
 
- /// <summary>
+    /// <summary>
     /// Blend factor is one minus the destination alpha (1-Ad, 1-Ad, 1-Ad, 1-Ad).
     /// </summary>
     OneMinusDstAlpha,
 
- /// <summary>
+    /// <summary>
     /// Blend factor is saturated source alpha (min(As, 1-Ad), ...).
     /// </summary>
     SrcAlphaSaturated,
@@ -626,7 +642,7 @@ public enum BlendFactor : uint8_t
     /// <summary>
     /// Blend factor is the constant blend alpha.
     /// </summary>
-  BlendAlpha,
+    BlendAlpha,
 
     /// <summary>
     /// Blend factor is one minus the constant blend alpha.
@@ -636,7 +652,7 @@ public enum BlendFactor : uint8_t
     /// <summary>
     /// Blend factor is the secondary source color (dual-source blending).
     /// </summary>
-  Src1Color,
+    Src1Color,
 
     /// <summary>
     /// Blend factor is one minus the secondary source color.
@@ -651,7 +667,7 @@ public enum BlendFactor : uint8_t
     /// <summary>
     /// Blend factor is one minus the secondary source alpha.
     /// </summary>
-    OneMinusSrc1Alpha
+    OneMinusSrc1Alpha,
 }
 
 /// <summary>
@@ -675,8 +691,8 @@ public struct SamplerStateDesc()
     public SamplerMip MipMap = SamplerMip.Disabled;
 
     /// <summary>
- /// Texture wrap mode for U coordinate. Defaults to Repeat.
-  /// </summary>
+    /// Texture wrap mode for U coordinate. Defaults to Repeat.
+    /// </summary>
     public SamplerWrap WrapU = SamplerWrap.Repeat;
 
     /// <summary>
@@ -687,7 +703,7 @@ public struct SamplerStateDesc()
     /// <summary>
     /// Texture wrap mode for W coordinate. Defaults to Repeat.
     /// </summary>
- public SamplerWrap WrapW = SamplerWrap.Repeat;
+    public SamplerWrap WrapW = SamplerWrap.Repeat;
 
     /// <summary>
     /// Comparison operation for depth comparison samplers. Defaults to LessEqual.
@@ -705,8 +721,8 @@ public struct SamplerStateDesc()
     public uint8_t MipLodMax = 15;
 
     /// <summary>
- /// Maximum anisotropic filtering samples. Defaults to 1 (no anisotropic filtering).
-  /// </summary>
+    /// Maximum anisotropic filtering samples. Defaults to 1 (no anisotropic filtering).
+    /// </summary>
     public uint8_t MaxAnisotropic = 1;
 
     /// <summary>
@@ -725,7 +741,7 @@ public struct SamplerStateDesc()
 /// </summary>
 public struct StencilState()
 {
-/// <summary>
+    /// <summary>
     /// Operation to perform when stencil test fails. Defaults to Keep.
     /// </summary>
     public StencilOp StencilFailureOp = StencilOp.Keep;
@@ -747,13 +763,13 @@ public struct StencilState()
 
     /// <summary>
     /// Bitmask for reading stencil values during test. Defaults to 0xFFFFFFFF (all bits).
- /// </summary>
+    /// </summary>
     public uint32_t ReadMask = 0xFFFFFFFF;
 
     /// <summary>
- /// Bitmask for writing stencil values. Defaults to 0xFFFFFFFF (all bits).
+    /// Bitmask for writing stencil values. Defaults to 0xFFFFFFFF (all bits).
     /// </summary>
-  public uint32_t WriteMask = 0xFFFFFFFF;
+    public uint32_t WriteMask = 0xFFFFFFFF;
 }
 
 /// <summary>
@@ -780,7 +796,7 @@ public enum PolygonMode : uint8_t
     /// <summary>
     /// Fill polygons (solid rendering).
     /// </summary>
- Fill = 0,
+    Fill = 0,
 
     /// <summary>
     /// Draw polygon edges as lines (wireframe).
@@ -789,7 +805,7 @@ public enum PolygonMode : uint8_t
 
     /// <summary>
     /// Draw polygon vertices as points.
-  /// </summary>
+    /// </summary>
     Point = 2,
 }
 
@@ -800,7 +816,7 @@ public enum LoadOp : uint8_t
 {
     /// <summary>
     /// Invalid or unspecified load operation.
-  /// </summary>
+    /// </summary>
     Invalid = 0,
 
     /// <summary>
@@ -834,7 +850,7 @@ public enum StoreOp : uint8_t
     /// </summary>
     DontCare = 0,
 
-  /// <summary>
+    /// <summary>
     /// Store the results to memory.
     /// </summary>
     Store,
@@ -842,7 +858,7 @@ public enum StoreOp : uint8_t
     /// <summary>
     /// Resolve multisampled attachment to single-sampled.
     /// </summary>
-  MsaaResolve,
+    MsaaResolve,
 
     /// <summary>
     /// No store operation (attachment not used).
@@ -898,7 +914,7 @@ public enum ShaderStage : uint8_t
 
     /// <summary>
     /// Tessellation evaluation shader stage (domain shader).
-  /// </summary>
+    /// </summary>
     TessellationEvaluation,
 
     /// <summary>
@@ -911,7 +927,7 @@ public enum ShaderStage : uint8_t
     /// </summary>
     Fragment,
 
- /// <summary>
+    /// <summary>
     /// Compute shader stage.
     /// </summary>
     Compute,
@@ -938,7 +954,7 @@ public struct ColorAttachment()
     public Format Format = Format.Invalid;
 
     /// <summary>
-  /// Whether blending is enabled for this attachment. Defaults to false.
+    /// Whether blending is enabled for this attachment. Defaults to false.
     /// </summary>
     public bool BlendEnabled = false;
 
@@ -984,17 +1000,17 @@ public struct Offset3D(int32_t x = 0, int32_t y = 0, int32_t z = 0)
     /// <summary>
     /// X coordinate.
     /// </summary>
-    public int32_t x = x;
+    public int32_t X = x;
 
     /// <summary>
     /// Y coordinate.
     /// </summary>
-    public int32_t y = y;
+    public int32_t Y = y;
 
     /// <summary>
     /// Z coordinate.
     /// </summary>
-    public int32_t z = z;
+    public int32_t Z = z;
 }
 
 /// <summary>
@@ -1010,7 +1026,7 @@ public struct SubmitHandle
 
     /// <summary>
     /// The submission ID.
-  /// </summary>
+    /// </summary>
     public uint32_t SubmitId = 0;
 
     /// <summary>
@@ -1030,14 +1046,14 @@ public struct SubmitHandle
     }
 
     /// <summary>
-  /// Gets whether this handle is empty (invalid).
+    /// Gets whether this handle is empty (invalid).
     /// </summary>
     public readonly bool Empty => SubmitId == 0;
 
     /// <summary>
     /// Gets the packed 64-bit handle value.
     /// </summary>
- public readonly uint64_t Handle => ((uint64_t)SubmitId << 32) + BufferIndex;
+    public readonly uint64_t Handle => ((uint64_t)SubmitId << 32) + BufferIndex;
 
     /// <summary>
     /// A predefined null/empty submit handle.
@@ -1051,25 +1067,51 @@ public struct SubmitHandle
 [StructLayout(LayoutKind.Explicit, Size = sizeof(uint32_t), Pack = 1)]
 public readonly struct TextureFormatProperties
 {
-    [FieldOffset(0)] public readonly Format Format;
-    [FieldOffset(5)] public readonly uint8_t BytesPerBlock;
-    [FieldOffset(8)] public readonly uint8_t BlockWidth;
-    [FieldOffset(11)] public readonly uint8_t BlockHeight;
-    [FieldOffset(13)] public readonly uint8_t MinBlocksX;
-    [FieldOffset(15)] public readonly uint8_t MinBlocksY;
-    [FieldOffset(16)] public readonly bool Depth;
-    [FieldOffset(17)] public readonly bool Stencil;
-    [FieldOffset(18)] public readonly bool Compressed;
-    [FieldOffset(20)] public readonly uint8_t NumPlanes;
+    [FieldOffset(0)]
+    public readonly Format Format;
+
+    [FieldOffset(5)]
+    public readonly uint8_t BytesPerBlock;
+
+    [FieldOffset(8)]
+    public readonly uint8_t BlockWidth;
+
+    [FieldOffset(11)]
+    public readonly uint8_t BlockHeight;
+
+    [FieldOffset(13)]
+    public readonly uint8_t MinBlocksX;
+
+    [FieldOffset(15)]
+    public readonly uint8_t MinBlocksY;
+
+    [FieldOffset(16)]
+    public readonly bool Depth;
+
+    [FieldOffset(17)]
+    public readonly bool Stencil;
+
+    [FieldOffset(18)]
+    public readonly bool Compressed;
+
+    [FieldOffset(20)]
+    public readonly uint8_t NumPlanes;
 
     /// <summary>
     /// Initializes a new texture format properties descriptor.
     /// </summary>
-    public TextureFormatProperties(Format format, uint8_t bytesPerBlock,
-    uint8_t blockWidth = 1, uint8_t blockHeight = 1,
-        uint8_t minBlocksX = 1, uint8_t minBlocksY = 1,
-        bool depth = false, bool stencil = false,
-        bool compressed = false, uint8_t numPlanes = 1)
+    public TextureFormatProperties(
+        Format format,
+        uint8_t bytesPerBlock,
+        uint8_t blockWidth = 1,
+        uint8_t blockHeight = 1,
+        uint8_t minBlocksX = 1,
+        uint8_t minBlocksY = 1,
+        bool depth = false,
+        bool stencil = false,
+        bool compressed = false,
+        uint8_t numPlanes = 1
+    )
     {
         this.Format = format;
         this.BytesPerBlock = bytesPerBlock;
@@ -1085,41 +1127,41 @@ public readonly struct TextureFormatProperties
 
     /// <summary>
     /// Array of predefined properties for all supported texture formats.
-  /// </summary>
+    /// </summary>
     public static readonly TextureFormatProperties[] Properties =
     [
-        new (Format.Invalid, 1),
-        new (Format.R_UN8, 1),
-        new (Format.R_UI16, 2),
-        new (Format.R_UI32, 4),
-        new (Format.R_UN16, 2),
-        new (Format.R_F16, 2),
-        new (Format.R_F32, 4),
-        new (Format.RG_UN8, 2),
-        new (Format.RG_UI16, 4),
-        new (Format.RG_UI32, 8),
-        new (Format.RG_UN16, 4),
-        new (Format.RG_F16, 4),
-        new (Format.RG_F32, 8),
-        new (Format.RGBA_UN8, 4),
-        new (Format.RGBA_UI32, 16),
-        new (Format.RGBA_F16, 8),
-        new (Format.RGBA_F32, 16),
-        new (Format.RGBA_SRGB8, 4),
-        new (Format.BGRA_UN8, 4),
-        new (Format.BGRA_SRGB8, 4),
-        new (Format.A2B10G10R10_UN, 4),
-        new (Format.A2R10G10B10_UN, 4),
-        new (Format.ETC2_RGB8, 8, 4, 4, compressed:true),
-        new (Format.ETC2_SRGB8, 8, 4, 4, compressed:true),
-        new (Format.BC7_RGBA, 16, 4, 4 , compressed:true),
-        new (Format.Z_UN16, 2, depth:true),
-        new (Format.Z_UN24, 3, depth:true),
-        new (Format.Z_F32, 4, depth:true),
-        new (Format.Z_UN24_S_UI8, 4, depth:true, stencil:true),
-        new (Format.Z_F32_S_UI8, 4, depth:true, stencil:true),
-        new (Format.YUV_NV12, 2, compressed:true, numPlanes:2),
-        new (Format.YUV_420p, 1, compressed:true, numPlanes:3),
+        new(Format.Invalid, 1),
+        new(Format.R_UN8, 1),
+        new(Format.R_UI16, 2),
+        new(Format.R_UI32, 4),
+        new(Format.R_UN16, 2),
+        new(Format.R_F16, 2),
+        new(Format.R_F32, 4),
+        new(Format.RG_UN8, 2),
+        new(Format.RG_UI16, 4),
+        new(Format.RG_UI32, 8),
+        new(Format.RG_UN16, 4),
+        new(Format.RG_F16, 4),
+        new(Format.RG_F32, 8),
+        new(Format.RGBA_UN8, 4),
+        new(Format.RGBA_UI32, 16),
+        new(Format.RGBA_F16, 8),
+        new(Format.RGBA_F32, 16),
+        new(Format.RGBA_SRGB8, 4),
+        new(Format.BGRA_UN8, 4),
+        new(Format.BGRA_SRGB8, 4),
+        new(Format.A2B10G10R10_UN, 4),
+        new(Format.A2R10G10B10_UN, 4),
+        new(Format.ETC2_RGB8, 8, 4, 4, compressed: true),
+        new(Format.ETC2_SRGB8, 8, 4, 4, compressed: true),
+        new(Format.BC7_RGBA, 16, 4, 4, compressed: true),
+        new(Format.Z_UN16, 2, depth: true),
+        new(Format.Z_UN24, 3, depth: true),
+        new(Format.Z_F32, 4, depth: true),
+        new(Format.Z_UN24_S_UI8, 4, depth: true, stencil: true),
+        new(Format.Z_F32_S_UI8, 4, depth: true, stencil: true),
+        new(Format.YUV_NV12, 2, compressed: true, numPlanes: 2),
+        new(Format.YUV_420p, 1, compressed: true, numPlanes: 3),
     ];
 
     /// <summary>
@@ -1165,8 +1207,11 @@ public static class FormatExtensions
     /// Checks if a texture format is a depth or stencil format.
     /// </summary>
     public static bool IsDepthOrStencilFormat(this Format format)
- {
-        return (TextureFormatProperties.Properties[(int)format].Depth || TextureFormatProperties.Properties[(int)format].Stencil);
+    {
+        return (
+            TextureFormatProperties.Properties[(int)format].Depth
+            || TextureFormatProperties.Properties[(int)format].Stencil
+        );
     }
 
     /// <summary>
@@ -1180,15 +1225,15 @@ public static class FormatExtensions
     /// <summary>
     /// Gets the number of bytes per block for a texture format.
     /// </summary>
-public static uint8_t GetBytesPerBlock(this Format format)
- {
+    public static uint8_t GetBytesPerBlock(this Format format)
+    {
         return TextureFormatProperties.Properties[(int)format].BytesPerBlock;
     }
 
     /// <summary>
     /// Gets the size in bytes of a vertex format.
     /// </summary>
- public static uint32_t GetVertexFormatSize(this VertexFormat format)
+    public static uint32_t GetVertexFormatSize(this VertexFormat format)
     {
         return format switch
         {
@@ -1217,9 +1262,14 @@ public static uint8_t GetBytesPerBlock(this Format format)
     }
 
     /// <summary>
-  /// Calculates the total bytes required for a single layer of a texture at a specific mip level.
+    /// Calculates the total bytes required for a single layer of a texture at a specific mip level.
     /// </summary>
-    public static uint32_t GetTextureBytesPerLayer(this Format format, uint32_t width, uint32_t height, uint32_t level)
+    public static uint32_t GetTextureBytesPerLayer(
+        this Format format,
+        uint32_t width,
+        uint32_t height,
+        uint32_t level
+    )
     {
         if (format == Format.Invalid)
             return 0;
@@ -1243,7 +1293,12 @@ public static uint8_t GetBytesPerBlock(this Format format)
     /// <summary>
     /// Calculates the bytes required for a specific plane of a multi-planar texture format.
     /// </summary>
-public static uint32_t GetTextureBytesPerPlane(this Format format, uint32_t width, uint32_t height, uint32_t plane)
+    public static uint32_t GetTextureBytesPerPlane(
+        this Format format,
+        uint32_t width,
+        uint32_t height,
+        uint32_t plane
+    )
     {
         ref var properties = ref TextureFormatProperties.Properties[(int)format];
         switch (format)

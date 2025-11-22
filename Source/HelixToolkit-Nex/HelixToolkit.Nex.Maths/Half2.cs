@@ -1,4 +1,4 @@
-﻿/*
+/*
 The MIT License (MIT)
 Copyright (c) 2022 Helix Toolkit contributors
 
@@ -120,7 +120,7 @@ namespace HelixToolkit.Nex.Maths
         {
             return new Vector2(value.X, value.Y);
         }
-        
+
         /// <summary>
         /// Tests for equality between two objects.
         /// </summary>

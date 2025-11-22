@@ -1,4 +1,4 @@
-﻿/*
+/*
 The MIT License (MIT)
 Copyright (c) 2022 Helix Toolkit contributors
 
@@ -32,6 +32,7 @@ The MIT License (MIT)
 using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+
 namespace HelixToolkit.Nex.Maths
 {
     /// <summary>
@@ -78,36 +79,30 @@ namespace HelixToolkit.Nex.Maths
         /// <summary>
         /// The X component of the vector.
         /// </summary>
-        internal int iX;
+        private int _iX;
 
         /// <summary>
         /// The Y component of the vector.
         /// </summary>
-        internal int iY;
+        private int _iY;
 
         /// <summary>
         /// The Z component of the vector.
         /// </summary>
-        internal int iZ;
+        private int _iZ;
 
         /// <summary>
         /// The Width component of the vector.
         /// </summary>
-        internal int iW;
+        private int _iW;
 
         /// <summary>
         /// The X component of the vector.
         /// </summary>
         public bool X
         {
-            readonly get
-            {
-                return iX != 0;
-            }
-            set
-            {
-                iX = value ? 1 : 0;
-            }
+            readonly get { return _iX != 0; }
+            set { _iX = value ? 1 : 0; }
         }
 
         /// <summary>
@@ -115,14 +110,8 @@ namespace HelixToolkit.Nex.Maths
         /// </summary>
         public bool Y
         {
-            readonly get
-            {
-                return iY != 0;
-            }
-            set
-            {
-                iY = value ? 1 : 0;
-            }
+            readonly get { return _iY != 0; }
+            set { _iY = value ? 1 : 0; }
         }
 
         /// <summary>
@@ -130,14 +119,8 @@ namespace HelixToolkit.Nex.Maths
         /// </summary>
         public bool Z
         {
-            readonly get
-            {
-                return iZ != 0;
-            }
-            set
-            {
-                iZ = value ? 1 : 0;
-            }
+            readonly get { return _iZ != 0; }
+            set { _iZ = value ? 1 : 0; }
         }
 
         /// <summary>
@@ -145,14 +128,8 @@ namespace HelixToolkit.Nex.Maths
         /// </summary>
         public bool W
         {
-            readonly get
-            {
-                return iW != 0;
-            }
-            set
-            {
-                iW = value ? 1 : 0;
-            }
+            readonly get { return _iW != 0; }
+            set { _iW = value ? 1 : 0; }
         }
 
         /// <summary>
@@ -161,10 +138,10 @@ namespace HelixToolkit.Nex.Maths
         /// <param name = "value">The value that will be assigned to all components.</param>
         public Bool4(bool value)
         {
-            iX = value ? 1 : 0;
-            iY = value ? 1 : 0;
-            iZ = value ? 1 : 0;
-            iW = value ? 1 : 0;
+            _iX = value ? 1 : 0;
+            _iY = value ? 1 : 0;
+            _iZ = value ? 1 : 0;
+            _iW = value ? 1 : 0;
         }
 
         /// <summary>
@@ -176,12 +153,11 @@ namespace HelixToolkit.Nex.Maths
         /// <param name = "w">Initial value for the Width component of the vector.</param>
         public Bool4(bool x, bool y, bool z, bool w)
         {
-            iX = x ? 1 : 0;
-            iY = y ? 1 : 0;
-            iZ = z ? 1 : 0;
-            iW = w ? 1 : 0; 
+            _iX = x ? 1 : 0;
+            _iY = y ? 1 : 0;
+            _iZ = z ? 1 : 0;
+            _iW = w ? 1 : 0;
         }
-
 
         /// <summary>
         /// Initializes a new instance of the <see cref = "Bool4" /> struct.
@@ -198,13 +174,14 @@ namespace HelixToolkit.Nex.Maths
             if (values.Length != 4)
             {
                 throw new ArgumentOutOfRangeException(
-                   nameof(values),
-                   "There must be four and only four input values for Bool4.");
+                    nameof(values),
+                    "There must be four and only four input values for Bool4."
+                );
             }
-            iX = values[0] ? 1 : 0;
-            iY = values[1] ? 1 : 0;
-            iZ = values[2] ? 1 : 0;
-            iW = values[3] ? 1 : 0;
+            _iX = values[0] ? 1 : 0;
+            _iY = values[1] ? 1 : 0;
+            _iZ = values[2] ? 1 : 0;
+            _iW = values[3] ? 1 : 0;
         }
 
         /// <summary>
@@ -224,10 +201,12 @@ namespace HelixToolkit.Nex.Maths
                     1 => Y,
                     2 => Z,
                     3 => W,
-                    _ => throw new ArgumentOutOfRangeException(nameof(index), "Indices for Bool4 run from 0 to 3, inclusive."),
+                    _ => throw new ArgumentOutOfRangeException(
+                        nameof(index),
+                        "Indices for Bool4 run from 0 to 3, inclusive."
+                    ),
                 };
             }
-
             set
             {
                 switch (index)
@@ -245,7 +224,10 @@ namespace HelixToolkit.Nex.Maths
                         W = value;
                         break;
                     default:
-                        throw new ArgumentOutOfRangeException(nameof(index), "Indices for Bool4 run from 0 to 3, inclusive.");
+                        throw new ArgumentOutOfRangeException(
+                            nameof(index),
+                            "Indices for Bool4 run from 0 to 3, inclusive."
+                        );
                 }
             }
         }
@@ -256,7 +238,7 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>A four-element array containing the components of the vector.</returns>
         public readonly bool[] ToArray()
         {
-            return new bool[] {X, Y, Z, W};
+            return new bool[] { X, Y, Z, W };
         }
 
         /// <summary>
@@ -284,35 +266,47 @@ namespace HelixToolkit.Nex.Maths
         }
 
         /// <summary>
-        /// Returns a <see cref = "System.String" /> that represents this instance.
+        /// Returns a <see cref = "string" /> that represents this instance.
         /// </summary>
         /// <returns>
-        /// A <see cref = "System.String" /> that represents this instance.
+        /// A <see cref = "string" /> that represents this instance.
         /// </returns>
         public override readonly string ToString()
         {
-            return string.Format(CultureInfo.CurrentCulture, "X:{0} Y:{1} Z:{2} Width:{3}", X, Y, Z, W);
+            return string.Format(
+                CultureInfo.CurrentCulture,
+                "X:{0} Y:{1} Z:{2} Width:{3}",
+                X,
+                Y,
+                Z,
+                W
+            );
         }
 
         public readonly string ToString(IFormatProvider formatProvider)
         {
-            return string.Format(formatProvider, "[X:{0} Y:{1} Z:{2} Width:{3}]",
-                X.ToString(formatProvider), Y.ToString(formatProvider), Z.ToString(formatProvider), W.ToString(formatProvider));
+            return string.Format(
+                formatProvider,
+                "[X:{0} Y:{1} Z:{2} Width:{3}]",
+                X.ToString(formatProvider),
+                Y.ToString(formatProvider),
+                Z.ToString(formatProvider),
+                W.ToString(formatProvider)
+            );
         }
+
         /// <summary>
-        /// Returns a <see cref="System.String"/> that represents this instance.
+        /// Returns a <see cref="string"/> that represents this instance.
         /// </summary>
         /// <param name="format">The format.</param>
         /// <param name="formatProvider">The format provider.</param>
         /// <returns>
-        /// A <see cref="System.String"/> that represents this instance.
+        /// A <see cref="string"/> that represents this instance.
         /// </returns>
         public readonly string ToString(string? format, IFormatProvider? formatProvider)
         {
-            return format == null && formatProvider == null 
-                ? string.Empty 
-                : format == null 
-                ? ToString(formatProvider!)
+            return format == null && formatProvider == null ? string.Empty
+                : format == null ? ToString(formatProvider!)
                 : string.Format(formatProvider, format, X, Y, Z, W);
         }
 
@@ -320,16 +314,16 @@ namespace HelixToolkit.Nex.Maths
         /// Returns a hash code for this instance.
         /// </summary>
         /// <returns>
-        /// A hash code for this instance, suitable for use in hashing algorithms and data structures like a hash table. 
+        /// A hash code for this instance, suitable for use in hashing algorithms and data structures like a hash table.
         /// </returns>
         public override readonly int GetHashCode()
         {
             unchecked
             {
-                int hashCode = iX;
-                hashCode = (hashCode * 397) ^ iY;
-                hashCode = (hashCode * 397) ^ iZ;
-                hashCode = (hashCode * 397) ^ iW;
+                int hashCode = _iX;
+                hashCode = (hashCode * 397) ^ _iY;
+                hashCode = (hashCode * 397) ^ _iZ;
+                hashCode = (hashCode * 397) ^ _iW;
                 return hashCode;
             }
         }
@@ -361,11 +355,11 @@ namespace HelixToolkit.Nex.Maths
         }
 
         /// <summary>
-        /// Determines whether the specified <see cref = "System.Object" /> is equal to this instance.
+        /// Determines whether the specified <see cref = "object" /> is equal to this instance.
         /// </summary>
-        /// <param name = "obj">The <see cref = "System.Object" /> to compare with this instance.</param>
+        /// <param name = "obj">The <see cref = "object" /> to compare with this instance.</param>
         /// <returns>
-        /// <c>true</c> if the specified <see cref = "System.Object" /> is equal to this instance; otherwise, <c>false</c>.
+        /// <c>true</c> if the specified <see cref = "object" /> is equal to this instance; otherwise, <c>false</c>.
         /// </returns>
         public override readonly bool Equals(object? obj)
         {
@@ -383,7 +377,7 @@ namespace HelixToolkit.Nex.Maths
         }
 
         /// <summary>
-        /// Performs an implicit conversion from <see cref="Bool4"/> to <see cref="System.Int32"/> array.
+        /// Performs an implicit conversion from <see cref="Bool4"/> to <see cref="int"/> array.
         /// </summary>
         /// <param name="input">The input.</param>
         /// <returns>The result of the conversion.</returns>

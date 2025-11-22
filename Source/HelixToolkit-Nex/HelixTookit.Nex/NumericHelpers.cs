@@ -1,4 +1,4 @@
-﻿using System.Runtime.CompilerServices;
+using System.Runtime.CompilerServices;
 
 namespace HelixToolkit.Nex;
 
@@ -31,7 +31,7 @@ public static class NumericHelpers
     /// Parses a span of characters into a single-precision floating-point number.
     /// </summary>
     /// <param name="s">The span of characters to parse.</param>
-/// <param name="provider">An object that supplies culture-specific formatting information.</param>
+    /// <param name="provider">An object that supplies culture-specific formatting information.</param>
     /// <returns>The parsed float value.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static float ParseSingle(ReadOnlySpan<char> s, IFormatProvider? provider)
@@ -47,11 +47,11 @@ public static class NumericHelpers
     /// Parses a span of characters into a double-precision floating-point number.
     /// </summary>
     /// <param name="s">The span of characters to parse.</param>
-  /// <param name="provider">An object that supplies culture-specific formatting information.</param>
-  /// <returns>The parsed double value.</returns>
-  [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    /// <param name="provider">An object that supplies culture-specific formatting information.</param>
+    /// <returns>The parsed double value.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static double ParseDouble(ReadOnlySpan<char> s, IFormatProvider? provider)
-{
+    {
 #if NET8_0_OR_GREATER
         return double.Parse(s, provider);
 #else

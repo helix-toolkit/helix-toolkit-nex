@@ -1,4 +1,4 @@
-﻿using HelixToolkit.Nex.Rendering;
+using HelixToolkit.Nex.Rendering;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace HelixToolkit.Nex.Tests.Rendering;

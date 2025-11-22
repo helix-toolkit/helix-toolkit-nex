@@ -1,4 +1,4 @@
-﻿/*
+/*
 The MIT License (MIT)
 Copyright (c) 2022 Helix Toolkit contributors
 
@@ -79,11 +79,20 @@ namespace HelixToolkit.Nex.Maths
         {
             switch (index)
             {
-                case 0: p.Normal.X = value; break;
-                case 1: p.Normal.Y = value; break;
-                case 2: p.Normal.Z = value; break;
-                case 3: p.D = value; break;
-                default: throw new ArgumentOutOfRangeException(nameof(index), "Indices for Plane run from 0 to 3, inclusive.");
+                case 0:
+                    p.Normal.X = value;
+                    break;
+                case 1:
+                    p.Normal.Y = value;
+                    break;
+                case 2:
+                    p.Normal.Z = value;
+                    break;
+                case 3:
+                    p.D = value;
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(index), "Indices for Plane run from 0 to 3, inclusive.");
             }
         }
 

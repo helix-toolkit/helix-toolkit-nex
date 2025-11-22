@@ -1,14 +1,14 @@
-﻿using Glslang.NET;
+using Glslang.NET;
 
 namespace HelixToolkit.Nex.Graphics.Vulkan;
 
 public static class GlslHeaders
 {
-    const string TASK_MESH_SHADER = "HeaderTask.glsl";
+    private const string TASK_MESH_SHADER = "HeaderTask.glsl";
 
-    const string VERTEX_COMPUTE_TESS_SHADER = "HeaderVertex.glsl";
+    private const string VERTEX_COMPUTE_TESS_SHADER = "HeaderVertex.glsl";
 
-    const string FRAGMENT_SHADER = "HeaderFrag.glsl";
+    private const string FRAGMENT_SHADER = "HeaderFrag.glsl";
 
     public static string GetShaderHeader(ShaderStage stage)
     {
@@ -21,7 +21,7 @@ public static class GlslHeaders
         };
     }
 
-    static string GetGlslShaderHeader(string shaderName)
+    private static string GetGlslShaderHeader(string shaderName)
     {
         var assembly = typeof(GlslHeaders).Assembly;
         var assemblyName = assembly.GetName().Name ?? throw new InvalidOperationException("Assembly name cannot be null.");

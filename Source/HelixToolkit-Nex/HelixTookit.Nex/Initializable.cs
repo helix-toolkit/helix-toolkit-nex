@@ -5,7 +5,7 @@ namespace HelixToolkit.Nex;
 /// </summary>
 public abstract class Initializable : IDisposable
 {
-    private bool disposedValue;
+    private bool _disposedValue;
 
     /// <summary>
     /// Gets whether the object has been initialized.
@@ -60,7 +60,7 @@ public abstract class Initializable : IDisposable
     /// </summary>
     protected virtual void Dispose(bool disposing)
     {
-        if (!disposedValue)
+        if (!_disposedValue)
         {
             if (disposing)
             {
@@ -69,7 +69,7 @@ public abstract class Initializable : IDisposable
 
             // TODO: free unmanaged resources (unmanaged objects) and override finalizer
             // TODO: set large fields to null
-            disposedValue = true;
+            _disposedValue = true;
         }
     }
 

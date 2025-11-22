@@ -1,4 +1,4 @@
-﻿namespace HelixToolkit.Nex.Graphics.Vulkan;
+namespace HelixToolkit.Nex.Graphics.Vulkan;
 
 internal sealed partial class VulkanContext : IContext
 {
@@ -28,14 +28,24 @@ internal sealed partial class VulkanContext : IContext
 
         if (offset + size > (uint)buf.BufferSize)
         {
-            logger.LogError("Buffer upload out of range: offset {OFFSET}, size {SIZE}, buffer size {BUFFER_SIZE}", offset, size, buf.BufferSize);
+            logger.LogError(
+                "Buffer upload out of range: offset {OFFSET}, size {SIZE}, buffer size {BUFFER_SIZE}",
+                offset,
+                size,
+                buf.BufferSize
+            );
             return ResultCode.ArgumentOutOfRange;
         }
 
         return StagingDevice!.BufferSubData(buf, offset, size, data);
     }
 
-    public ResultCode Upload(in TextureHandle handle, in TextureRangeDesc range, nint data, size_t dataSize)
+    public ResultCode Upload(
+        in TextureHandle handle,
+        in TextureRangeDesc range,
+        nint data,
+        size_t dataSize
+    )
     {
         if (data.IsNull() || dataSize == 0)
         {
@@ -58,25 +68,43 @@ internal sealed partial class VulkanContext : IContext
             return result;
         }
 
-        uint32_t numLayers = Math.Max(range.numLayers, 1u);
+        uint32_t numLayers = Math.Max(range.NumLayers, 1u);
 
         VkFormat vkFormat = texture.ImageFormat;
 
         if (texture.ImageType == VK.VK_IMAGE_TYPE_3D)
         {
-            return StagingDevice!.ImageData3D(texture,
-                new VkOffset3D(range.offset.x, range.offset.y, range.offset.z),
-                new VkExtent3D(range.dimensions.Width, range.dimensions.Height, range.dimensions.Depth),
-                vkFormat, data, dataSize);
+            return StagingDevice!.ImageData3D(
+                texture,
+                new VkOffset3D(range.Offset.X, range.Offset.Y, range.Offset.Z),
+                new VkExtent3D(
+                    range.Dimensions.Width,
+                    range.Dimensions.Height,
+                    range.Dimensions.Depth
+                ),
+                vkFormat,
+                data,
+                dataSize
+            );
         }
         else
         {
             VkRect2D imageRegion = new()
             {
-                offset = { x = range.offset.x, y = range.offset.y },
-                extent = { width = range.dimensions.Width, height = range.dimensions.Height },
+                offset = { x = range.Offset.X, y = range.Offset.Y },
+                extent = { width = range.Dimensions.Width, height = range.Dimensions.Height },
             };
-            return StagingDevice!.ImageData2D(texture, imageRegion, range.mipLevel, range.numMipLevels, range.layer, numLayers, vkFormat, data, dataSize);
+            return StagingDevice!.ImageData2D(
+                texture,
+                imageRegion,
+                range.MipLevel,
+                range.NumMipLevels,
+                range.Layer,
+                numLayers,
+                vkFormat,
+                data,
+                dataSize
+            );
         }
     }
 
@@ -105,14 +133,24 @@ internal sealed partial class VulkanContext : IContext
 
         if (offset + size > buf.BufferSize)
         {
-            logger.LogError("Buffer download out of range: offset {OFFSET}, size {SIZE}, buffer size {BUFFER_SIZE}", offset, size, buf.BufferSize);
+            logger.LogError(
+                "Buffer download out of range: offset {OFFSET}, size {SIZE}, buffer size {BUFFER_SIZE}",
+                offset,
+                size,
+                buf.BufferSize
+            );
             return ResultCode.ArgumentOutOfRange;
         }
 
         return StagingDevice!.GetBufferData(buf, offset, data, size);
     }
 
-    public ResultCode Download(in TextureHandle handle, in TextureRangeDesc range, nint outData, size_t dataSize)
+    public ResultCode Download(
+        in TextureHandle handle,
+        in TextureRangeDesc range,
+        nint outData,
+        size_t dataSize
+    )
     {
         if (outData.IsNull() || dataSize == 0)
         {
@@ -132,36 +170,51 @@ internal sealed partial class VulkanContext : IContext
 
         return result.HasError()
             ? result
-            : StagingDevice!.GetImageData(texture,
-                                     new VkOffset3D(range.offset.x, range.offset.y, range.offset.z),
-                               new VkExtent3D(range.dimensions.Width, range.dimensions.Height, range.dimensions.Depth),
-                               new VkImageSubresourceRange
-                               {
-                                   aspectMask = texture.GetImageAspectFlags(),
-                                   baseMipLevel = range.mipLevel,
-                                   levelCount = range.numMipLevels,
-                                   baseArrayLayer = range.layer,
-                                   layerCount = range.numLayers,
-                               },
-                               texture.ImageFormat,
-                               outData, dataSize);
+            : StagingDevice!.GetImageData(
+                texture,
+                new VkOffset3D(range.Offset.X, range.Offset.Y, range.Offset.Z),
+                new VkExtent3D(
+                    range.Dimensions.Width,
+                    range.Dimensions.Height,
+                    range.Dimensions.Depth
+                ),
+                new VkImageSubresourceRange
+                {
+                    aspectMask = texture.GetImageAspectFlags(),
+                    baseMipLevel = range.MipLevel,
+                    levelCount = range.NumMipLevels,
+                    baseArrayLayer = range.Layer,
+                    layerCount = range.NumLayers,
+                },
+                texture.ImageFormat,
+                outData,
+                dataSize
+            );
     }
 
     public ICommandBuffer AcquireCommandBuffer()
     {
-        HxDebug.Assert(currentCommandBuffer_ == null, "Cannot acquire more than 1 command buffer simultaneously");
-        if (RuntimeInformation.OSArchitecture.Equals(Architecture.Arm64) &&
-            RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        HxDebug.Assert(
+            _currentCommandBuffer == null,
+            "Cannot acquire more than 1 command buffer simultaneously"
+        );
+        if (
+            RuntimeInformation.OSArchitecture.Equals(Architecture.Arm64)
+            && RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
+        )
         {
             // a temporary workaround for Windows on Snapdragon
-            VK.vkDeviceWaitIdle(vkDevice).CheckResult();
+            VK.vkDeviceWaitIdle(_vkDevice).CheckResult();
         }
-        currentCommandBuffer_ = new CommandBuffer(this);
+        _currentCommandBuffer = new CommandBuffer(this);
 
-        return currentCommandBuffer_;
+        return _currentCommandBuffer;
     }
 
-    public ResultCode CreateComputePipeline(in ComputePipelineDesc desc, out ComputePipelineResource computePipeline)
+    public ResultCode CreateComputePipeline(
+        in ComputePipelineDesc desc,
+        out ComputePipelineResource computePipeline
+    )
     {
         computePipeline = ComputePipelineResource.Null;
         if (!desc.ComputeShader.Valid)
@@ -189,7 +242,11 @@ internal sealed partial class VulkanContext : IContext
         return ResultCode.Ok;
     }
 
-    public ResultCode CreateQueryPool(uint numQueries, out QueryPoolResource queryPool, string? debugName)
+    public ResultCode CreateQueryPool(
+        uint numQueries,
+        out QueryPoolResource queryPool,
+        string? debugName
+    )
     {
         unsafe
         {
@@ -202,11 +259,15 @@ internal sealed partial class VulkanContext : IContext
             };
 
             VkQueryPool pool = VkQueryPool.Null;
-            VK.vkCreateQueryPool(vkDevice, &createInfo, null, &pool).CheckResult();
+            VK.vkCreateQueryPool(_vkDevice, &createInfo, null, &pool).CheckResult();
 
             if (!string.IsNullOrEmpty(debugName))
             {
-                vkDevice.SetDebugObjectName(VK.VK_OBJECT_TYPE_QUERY_POOL, (nuint)pool, $"[Vk.QueryPool]: {debugName}");
+                _vkDevice.SetDebugObjectName(
+                    VK.VK_OBJECT_TYPE_QUERY_POOL,
+                    (nuint)pool,
+                    $"[Vk.QueryPool]: {debugName}"
+                );
             }
 
             var handle = this.QueriesPool.Create(pool);
@@ -222,7 +283,10 @@ internal sealed partial class VulkanContext : IContext
         }
     }
 
-    public ResultCode CreateRenderPipeline(in RenderPipelineDesc desc, out RenderPipelineResource renderPipeline)
+    public ResultCode CreateRenderPipeline(
+        in RenderPipelineDesc desc,
+        out RenderPipelineResource renderPipeline
+    )
     {
         bool hasColorAttachments = desc.GetNumColorAttachments() > 0;
         bool hasDepthAttachment = desc.DepthFormat != Format.Invalid;
@@ -238,22 +302,30 @@ internal sealed partial class VulkanContext : IContext
         {
             if (desc.VertexInput.AttributeCount() > 0 || desc.VertexInput.BindingCount() > 0)
             {
-                logger.LogError("CreateRenderPipeline failed. Cannot have vertexInput with mesh shaders");
+                logger.LogError(
+                    "CreateRenderPipeline failed. Cannot have vertexInput with mesh shaders"
+                );
                 return ResultCode.ArgumentError;
             }
             if (desc.VertexShader.Valid)
             {
-                logger.LogError("CreateRenderPipeline failed. Cannot have both vertex and mesh shaders");
+                logger.LogError(
+                    "CreateRenderPipeline failed. Cannot have both vertex and mesh shaders"
+                );
                 return ResultCode.ArgumentError;
             }
             if (desc.TessControlShader.Valid || desc.TessEvalShader.Valid)
             {
-                logger.LogError("CreateRenderPipeline failed. Cannot have both tessellation and mesh shaders");
+                logger.LogError(
+                    "CreateRenderPipeline failed. Cannot have both tessellation and mesh shaders"
+                );
                 return ResultCode.ArgumentError;
             }
             if (desc.GeometryShader.Valid)
             {
-                logger.LogError("CreateRenderPipeline failed. Cannot have both geometry and mesh shaders");
+                logger.LogError(
+                    "CreateRenderPipeline failed. Cannot have both geometry and mesh shaders"
+                );
                 return ResultCode.ArgumentError;
             }
         }
@@ -297,11 +369,7 @@ internal sealed partial class VulkanContext : IContext
             stageFlags |= VkShaderStageFlags.Fragment;
         }
 
-        RenderPipelineState rps = new()
-        {
-            Desc = desc,
-            ShaderStageFlags = stageFlags
-        };
+        RenderPipelineState rps = new() { Desc = desc, ShaderStageFlags = stageFlags };
 
         // Iterate and cache vertex input bindings and attributes
         ref var vstate = ref rps.Desc.VertexInput;
@@ -320,7 +388,7 @@ internal sealed partial class VulkanContext : IContext
                     location = attr.Location,
                     binding = attr.Binding,
                     format = attr.Format.ToVk(),
-                    offset = (uint32_t)attr.Offset
+                    offset = (uint32_t)attr.Offset,
                 };
 
                 if (!bufferAlreadyBound[attr.Binding])
@@ -330,7 +398,7 @@ internal sealed partial class VulkanContext : IContext
                     {
                         binding = attr.Binding,
                         stride = vstate.Bindings[attr.Binding].Stride,
-                        inputRate = VK.VK_VERTEX_INPUT_RATE_VERTEX
+                        inputRate = VK.VK_VERTEX_INPUT_RATE_VERTEX,
                     };
                 }
             }
@@ -339,7 +407,11 @@ internal sealed partial class VulkanContext : IContext
             {
                 // copy into a local storage
                 rps.SpecConstantDataStorage = new byte[desc.SpecInfo.Data.Length];
-                Array.Copy(desc.SpecInfo.Data, rps.SpecConstantDataStorage, desc.SpecInfo.Data.Length);
+                Array.Copy(
+                    desc.SpecInfo.Data,
+                    rps.SpecConstantDataStorage,
+                    desc.SpecInfo.Data.Length
+                );
                 rps.Desc.SpecInfo.Data = rps.SpecConstantDataStorage;
             }
 
@@ -358,7 +430,9 @@ internal sealed partial class VulkanContext : IContext
     {
         sampler = SamplerResource.Null;
 
-        VkSamplerCreateInfo info = desc.ToVkSamplerCreateInfo(GetVkPhysicalDeviceProperties().limits);
+        VkSamplerCreateInfo info = desc.ToVkSamplerCreateInfo(
+            GetVkPhysicalDeviceProperties().limits
+        );
 
         var ret = CreateSampler(info, Format.Invalid, out var handle, desc.DebugName);
 
@@ -372,7 +446,10 @@ internal sealed partial class VulkanContext : IContext
         return ResultCode.Ok;
     }
 
-    public ResultCode CreateShaderModule(in ShaderModuleDesc desc, out ShaderModuleResource shaderModule)
+    public ResultCode CreateShaderModule(
+        in ShaderModuleDesc desc,
+        out ShaderModuleResource shaderModule
+    )
     {
         shaderModule = ShaderModuleResource.Null;
         if (desc.Data.IsNull() || desc.DataSize == 0)
@@ -385,10 +462,22 @@ internal sealed partial class VulkanContext : IContext
         switch (desc.DataType)
         {
             case ShaderDataType.Spirv:
-                result = vkDevice.CreateShaderModuleFromSPIRV(desc.Data, desc.DataSize, out sm, desc.DebugName);
+                result = _vkDevice.CreateShaderModuleFromSPIRV(
+                    desc.Data,
+                    desc.DataSize,
+                    out sm,
+                    desc.DebugName
+                );
                 break;
             case ShaderDataType.Glsl:
-                result = vkDevice.CreateShaderModuleFromGLSL(desc.Stage, desc.Data, desc.Defines, GetVkPhysicalDeviceProperties().limits, out sm, desc.DebugName);
+                result = _vkDevice.CreateShaderModuleFromGLSL(
+                    desc.Stage,
+                    desc.Data,
+                    desc.Defines,
+                    GetVkPhysicalDeviceProperties().limits,
+                    out sm,
+                    desc.DebugName
+                );
                 break;
             default:
                 HxDebug.Assert(false, $"Unsupported shader data type: {desc.DataType}");
@@ -404,68 +493,107 @@ internal sealed partial class VulkanContext : IContext
         return ResultCode.Ok;
     }
 
-    public ResultCode CreateTexture(in TextureDesc requestedDesc, out TextureResource texture, string? debugName)
+    public ResultCode CreateTexture(
+        in TextureDesc requestedDesc,
+        out TextureResource texture,
+        string? debugName
+    )
     {
         texture = TextureResource.Null;
         TextureDesc desc = requestedDesc;
 
-        var getClosestDepthStencilFormat = new Func<Format, VkFormat>((desiredFormat) =>
-        {
-            // Get a list of compatible depth formats for a given desired format.
-            // The list will contain depth format that are ordered from most to least closest
-            var compatibleDepthStencilFormatList = desiredFormat.GetCompatibleDepthStencilFormats();
-
-            // check if any of the format in compatible list is supported
-            foreach (var format in compatibleDepthStencilFormatList)
+        var getClosestDepthStencilFormat = new Func<Format, VkFormat>(
+            (desiredFormat) =>
             {
-                if (deviceDepthFormats.Contains(format))
-                {
-                    return format;
-                }
-            }
+                // Get a list of compatible depth formats for a given desired format.
+                // The list will contain depth format that are ordered from most to least closest
+                var compatibleDepthStencilFormatList =
+                    desiredFormat.GetCompatibleDepthStencilFormats();
 
-            // no matching found, choose the first supported format
-            return !deviceDepthFormats.Empty ? deviceDepthFormats[0] : VK.VK_FORMAT_D24_UNORM_S8_UINT;
-        });
-        VkFormat vkFormat = desc.Format.IsDepthOrStencilFormat() ? getClosestDepthStencilFormat(desc.Format)
-                                                                     : desc.Format.ToVk();
+                // check if any of the format in compatible list is supported
+                foreach (var format in compatibleDepthStencilFormatList)
+                {
+                    if (_deviceDepthFormats.Contains(format))
+                    {
+                        return format;
+                    }
+                }
+
+                // no matching found, choose the first supported format
+                return !_deviceDepthFormats.Empty
+                    ? _deviceDepthFormats[0]
+                    : VK.VK_FORMAT_D24_UNORM_S8_UINT;
+            }
+        );
+        VkFormat vkFormat = desc.Format.IsDepthOrStencilFormat()
+            ? getClosestDepthStencilFormat(desc.Format)
+            : desc.Format.ToVk();
 
         HxDebug.Assert(vkFormat != VK.VK_FORMAT_UNDEFINED, "Invalid VkFormat value");
 
         TextureType type = desc.Type;
-        if (!(type == TextureType.Texture2D || type == TextureType.TextureCube || type == TextureType.Texture3D))
+        if (
+            !(
+                type == TextureType.Texture2D
+                || type == TextureType.TextureCube
+                || type == TextureType.Texture3D
+            )
+        )
         {
             HxDebug.Assert(false, "Only 2D, 3D and Cube textures are supported");
-            logger.LogError("Only 2D, 3D and Cube textures are supported. Current format: {FORMAT}", type);
+            logger.LogError(
+                "Only 2D, 3D and Cube textures are supported. Current format: {FORMAT}",
+                type
+            );
             return ResultCode.NotSupported;
         }
 
         if (desc.NumMipLevels == 0)
         {
             HxDebug.Assert(false, "The number of mip levels specified must be greater than 0");
-            logger.LogWarning("The number of mip levels specified must be greater than 0 but is {LEVELS}", desc.NumMipLevels);
+            logger.LogWarning(
+                "The number of mip levels specified must be greater than 0 but is {LEVELS}",
+                desc.NumMipLevels
+            );
             desc.NumMipLevels = 1;
         }
 
         if (desc.NumSamples > 1 && desc.NumMipLevels != 1)
         {
             HxDebug.Assert(false, "The number of mip levels for multisampled images should be 1");
-            logger.LogError("The number of mip levels for multisampled images should be 1 but is {LEVELS}", desc.NumMipLevels);
+            logger.LogError(
+                "The number of mip levels for multisampled images should be 1 but is {LEVELS}",
+                desc.NumMipLevels
+            );
             return ResultCode.ArgumentError;
         }
 
         if (desc.NumSamples > 1 && type == TextureType.Texture3D)
         {
             HxDebug.Assert(false, "Multisampled 3D images are not supported");
-            logger.LogError("Multisampled 3D images are not supported. Current format: {FORMAT}", type);
+            logger.LogError(
+                "Multisampled 3D images are not supported. Current format: {FORMAT}",
+                type
+            );
             return ResultCode.NotSupported;
         }
 
-        if (!(desc.NumMipLevels <= HxVkUtils.CalcNumMipLevels(desc.Dimensions.Width, desc.Dimensions.Height)))
+        if (
+            !(
+                desc.NumMipLevels
+                <= HxVkUtils.CalcNumMipLevels(desc.Dimensions.Width, desc.Dimensions.Height)
+            )
+        )
         {
-            HxDebug.Assert(false, $"The number of specified mip-levels is greater than the maximum possible number of mip-levels.");
-            logger.LogError("The number of specified mip-levels is greater than the maximum possible number of mip-levels. Current: {LEVELS} Max: {MAX_LEVELS}",
-                              desc.NumMipLevels, HxVkUtils.CalcNumMipLevels(desc.Dimensions.Width, desc.Dimensions.Height));
+            HxDebug.Assert(
+                false,
+                $"The number of specified mip-levels is greater than the maximum possible number of mip-levels."
+            );
+            logger.LogError(
+                "The number of specified mip-levels is greater than the maximum possible number of mip-levels. Current: {LEVELS} Max: {MAX_LEVELS}",
+                desc.NumMipLevels,
+                HxVkUtils.CalcNumMipLevels(desc.Dimensions.Width, desc.Dimensions.Height)
+            );
             return ResultCode.ArgumentError;
         }
 
@@ -476,7 +604,8 @@ internal sealed partial class VulkanContext : IContext
         }
 
         /* Use staging device to transfer data into the image when the storage is private to the device */
-        VkImageUsageFlags usageFlags = (desc.Storage == StorageType.Device) ? VK.VK_IMAGE_USAGE_TRANSFER_DST_BIT : 0;
+        VkImageUsageFlags usageFlags =
+            (desc.Storage == StorageType.Device) ? VK.VK_IMAGE_USAGE_TRANSFER_DST_BIT : 0;
 
         if (desc.Usage.HasFlag(TextureUsageBits.Sampled))
         {
@@ -486,8 +615,13 @@ internal sealed partial class VulkanContext : IContext
         {
             if (desc.Format.IsDepthOrStencilFormat())
             {
-                HxDebug.Assert(false, "Depth stencil buffer cannot have TextureUsageBits.Storage as usage.");
-                logger.LogError("Depth stencil buffer cannot have TextureUsageBits.Storage as usage.");
+                HxDebug.Assert(
+                    false,
+                    "Depth stencil buffer cannot have TextureUsageBits.Storage as usage."
+                );
+                logger.LogError(
+                    "Depth stencil buffer cannot have TextureUsageBits.Storage as usage."
+                );
                 return ResultCode.ArgumentError;
             }
             HxDebug.Assert(desc.NumSamples <= 1, "Storage images cannot be multisampled");
@@ -495,8 +629,9 @@ internal sealed partial class VulkanContext : IContext
         }
         if (desc.Usage.HasFlag(TextureUsageBits.Attachment))
         {
-            usageFlags |= desc.Format.IsDepthOrStencilFormat() ? VK.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
-                                                                   : VK.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+            usageFlags |= desc.Format.IsDepthOrStencilFormat()
+                ? VK.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
+                : VK.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
             if (desc.Storage == StorageType.Memoryless)
             {
                 usageFlags |= VK.VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT;
@@ -521,16 +656,21 @@ internal sealed partial class VulkanContext : IContext
         switch (desc.Type)
         {
             case TextureType.Texture2D:
-                vkImageViewType = numLayers > 1 ? VK.VK_IMAGE_VIEW_TYPE_2D_ARRAY : VK.VK_IMAGE_VIEW_TYPE_2D;
+                vkImageViewType =
+                    numLayers > 1 ? VK.VK_IMAGE_VIEW_TYPE_2D_ARRAY : VK.VK_IMAGE_VIEW_TYPE_2D;
                 vkImageType = VK.VK_IMAGE_TYPE_2D;
-                vkSamples = HxVkUtils.GetVulkanSampleCountFlags(desc.NumSamples, GetFramebufferMSAABitMaskVK());
+                vkSamples = HxVkUtils.GetVulkanSampleCountFlags(
+                    desc.NumSamples,
+                    GetFramebufferMSAABitMaskVK()
+                );
                 break;
             case TextureType.Texture3D:
                 vkImageViewType = VK.VK_IMAGE_VIEW_TYPE_3D;
                 vkImageType = VK.VK_IMAGE_TYPE_3D;
                 break;
             case TextureType.TextureCube:
-                vkImageViewType = numLayers > 1 ? VK.VK_IMAGE_VIEW_TYPE_CUBE_ARRAY : VK.VK_IMAGE_VIEW_TYPE_CUBE;
+                vkImageViewType =
+                    numLayers > 1 ? VK.VK_IMAGE_VIEW_TYPE_CUBE_ARRAY : VK.VK_IMAGE_VIEW_TYPE_CUBE;
                 vkImageType = VK.VK_IMAGE_TYPE_2D;
                 vkCreateFlags = VK.VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
                 numLayers *= 6;
@@ -541,11 +681,25 @@ internal sealed partial class VulkanContext : IContext
                 return ResultCode.NotSupported;
         }
 
-        VkExtent3D vkExtent = new(desc.Dimensions.Width, desc.Dimensions.Height, desc.Dimensions.Depth);
+        VkExtent3D vkExtent = new(
+            desc.Dimensions.Width,
+            desc.Dimensions.Height,
+            desc.Dimensions.Depth
+        );
 
         uint32_t numLevels = desc.NumMipLevels;
 
-        if (!(HxVkUtils.ValidateImageLimits(vkImageType, vkSamples, vkExtent, GetVkPhysicalDeviceProperties().limits, out var result)))
+        if (
+            !(
+                HxVkUtils.ValidateImageLimits(
+                    vkImageType,
+                    vkSamples,
+                    vkExtent,
+                    GetVkPhysicalDeviceProperties().limits,
+                    out var result
+                )
+            )
+        )
         {
             return result;
         }
@@ -557,8 +711,19 @@ internal sealed partial class VulkanContext : IContext
         HxDebug.Assert(vkExtent.height > 0);
         HxDebug.Assert(vkExtent.depth > 0);
 
-        VulkanImage image = new(this, usageFlags, vkExtent, vkImageType, vkFormat, vkSamples, numLevels, numLayers,
-            vkFormat.IsDepthFormat(), vkFormat.IsStencilFormat(), debugName);
+        VulkanImage image = new(
+            this,
+            usageFlags,
+            vkExtent,
+            vkImageType,
+            vkFormat,
+            vkSamples,
+            numLevels,
+            numLayers,
+            vkFormat.IsDepthFormat(),
+            vkFormat.IsStencilFormat(),
+            debugName
+        );
         VkComponentMapping mapping = new()
         {
             r = desc.Swizzle.R.ToVk(),
@@ -577,11 +742,16 @@ internal sealed partial class VulkanContext : IContext
             HxDebug.Assert(vkSamples == VK.VK_SAMPLE_COUNT_1_BIT);
             HxDebug.Assert(numLayers == 1);
             HxDebug.Assert(numLevels == 1);
-            vkCreateFlags |= VK.VK_IMAGE_CREATE_DISJOINT_BIT | VK.VK_IMAGE_CREATE_ALIAS_BIT | VK.VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
+            vkCreateFlags |=
+                VK.VK_IMAGE_CREATE_DISJOINT_BIT
+                | VK.VK_IMAGE_CREATE_ALIAS_BIT
+                | VK.VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
             AwaitingNewImmutableSamplers = true;
         }
 
-        VkSamplerYcbcrConversionInfo? ycbcrInfo = isDisjoint ? GetOrCreateYcbcrConversionInfo(desc.Format) : null;
+        VkSamplerYcbcrConversionInfo? ycbcrInfo = isDisjoint
+            ? GetOrCreateYcbcrConversionInfo(desc.Format)
+            : null;
         var ret = image.Create(vkCreateFlags, memFlags, mapping, vkImageViewType, ycbcrInfo);
 
         if (ret.HasError())
@@ -598,10 +768,22 @@ internal sealed partial class VulkanContext : IContext
 
         if (!desc.Data.IsNull())
         {
-            HxDebug.Assert(desc.Type == TextureType.Texture2D || desc.Type == TextureType.TextureCube);
+            HxDebug.Assert(
+                desc.Type == TextureType.Texture2D || desc.Type == TextureType.TextureCube
+            );
             HxDebug.Assert(desc.DataNumMipLevels <= desc.NumMipLevels);
             desc.NumLayers = desc.Type == TextureType.TextureCube ? 6u : 1u;
-            ResultCode res = Upload(handle, new TextureRangeDesc() { dimensions = desc.Dimensions, numLayers = numLayers, numMipLevels = desc.DataNumMipLevels }, desc.Data, desc.DataSize);
+            ResultCode res = Upload(
+                handle,
+                new TextureRangeDesc()
+                {
+                    Dimensions = desc.Dimensions,
+                    NumLayers = numLayers,
+                    NumMipLevels = desc.DataNumMipLevels,
+                },
+                desc.Data,
+                desc.DataSize
+            );
             if (res != ResultCode.Ok)
             {
                 return res;
@@ -616,7 +798,12 @@ internal sealed partial class VulkanContext : IContext
         return ResultCode.Ok;
     }
 
-    public ResultCode CreateTextureView(in TextureHandle texture, in TextureViewDesc desc, out TextureResource textureView, string? debugName)
+    public ResultCode CreateTextureView(
+        in TextureHandle texture,
+        in TextureViewDesc desc,
+        out TextureResource textureView,
+        string? debugName
+    )
     {
         textureView = TextureResource.Null;
         if (!texture)
@@ -637,7 +824,7 @@ internal sealed partial class VulkanContext : IContext
 
         // drop all existing image views - they belong to the base image
         image.ImageViewStorage = new VkImageView();
-        foreach (var buf in image.imageViewForFramebuffer_)
+        foreach (var buf in image.ImageViewForFramebuffer)
         {
             for (int i = 0; i < buf.Length; i++)
             {
@@ -666,13 +853,17 @@ internal sealed partial class VulkanContext : IContext
         switch (desc.Type)
         {
             case TextureType.Texture2D:
-                vkImageViewType = desc.NumLayers > 1 ? VK.VK_IMAGE_VIEW_TYPE_2D_ARRAY : VK.VK_IMAGE_VIEW_TYPE_2D;
+                vkImageViewType =
+                    desc.NumLayers > 1 ? VK.VK_IMAGE_VIEW_TYPE_2D_ARRAY : VK.VK_IMAGE_VIEW_TYPE_2D;
                 break;
             case TextureType.Texture3D:
                 vkImageViewType = VkImageViewType.Image3D;
                 break;
             case TextureType.TextureCube:
-                vkImageViewType = desc.NumLayers > 1 ? VK.VK_IMAGE_VIEW_TYPE_CUBE_ARRAY : VK.VK_IMAGE_VIEW_TYPE_CUBE;
+                vkImageViewType =
+                    desc.NumLayers > 1
+                        ? VK.VK_IMAGE_VIEW_TYPE_CUBE_ARRAY
+                        : VK.VK_IMAGE_VIEW_TYPE_CUBE;
                 break;
             default:
                 HxDebug.Assert(false, "Code should NOT be reached");
@@ -690,17 +881,19 @@ internal sealed partial class VulkanContext : IContext
 
         HxDebug.Assert(image.ImageFormat.GetNumImagePlanes() == 1, "Unsupported multiplanar image");
 
-        image.ImageView = image.CreateImageView(vkDevice,
-                                                 vkImageViewType,
-                                                 image.ImageFormat,
-                                                 aspect,
-                                                 desc.MipLevel,
-                                                 desc.NumMipLevels,
-                                                 desc.Layer,
-                                                 desc.NumLayers,
-                                                 mapping,
-                                                 null,
-                                                 debugName);
+        image.ImageView = image.CreateImageView(
+            _vkDevice,
+            vkImageViewType,
+            image.ImageFormat,
+            aspect,
+            desc.MipLevel,
+            desc.NumMipLevels,
+            desc.Layer,
+            desc.NumLayers,
+            mapping,
+            null,
+            debugName
+        );
         if (image.ImageView == VkImage.Null)
         {
             HxDebug.Assert(false, "Cannot create VkImageView");
@@ -713,17 +906,19 @@ internal sealed partial class VulkanContext : IContext
             if (!desc.Swizzle.Identity())
             {
                 // use identity swizzle for storage images
-                image.ImageViewStorage = image.CreateImageView(vkDevice,
-                                                                vkImageViewType,
-                                                                image.ImageFormat,
-                                                                aspect,
-                                                                desc.MipLevel,
-                                                                desc.NumMipLevels,
-                                                                desc.Layer,
-                                                                desc.NumLayers,
-                                                              new VkComponentMapping(),
-                                                              null,
-                                                              debugName);
+                image.ImageViewStorage = image.CreateImageView(
+                    _vkDevice,
+                    vkImageViewType,
+                    image.ImageFormat,
+                    aspect,
+                    desc.MipLevel,
+                    desc.NumMipLevels,
+                    desc.Layer,
+                    desc.NumLayers,
+                    new VkComponentMapping(),
+                    null,
+                    debugName
+                );
                 HxDebug.Assert(image.ImageViewStorage != VkImageView.Null);
             }
         }
@@ -736,7 +931,11 @@ internal sealed partial class VulkanContext : IContext
         return ResultCode.Ok;
     }
 
-    public ResultCode CreateBuffer(in BufferDesc requestedDesc, out BufferResource buffer, string? debugName)
+    public ResultCode CreateBuffer(
+        in BufferDesc requestedDesc,
+        out BufferResource buffer,
+        string? debugName
+    )
     {
         buffer = new BufferResource();
         BufferDesc desc = requestedDesc;
@@ -750,7 +949,10 @@ internal sealed partial class VulkanContext : IContext
         }
 
         // Use staging device to transfer data into the buffer when the storage is private to the device
-        VkBufferUsageFlags usageFlags = (desc.Storage == StorageType.Device) ? VK.VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK.VK_BUFFER_USAGE_TRANSFER_SRC_BIT : 0;
+        VkBufferUsageFlags usageFlags =
+            (desc.Storage == StorageType.Device)
+                ? VK.VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK.VK_BUFFER_USAGE_TRANSFER_SRC_BIT
+                : 0;
 
         if (desc.Usage == BufferUsageBits.None)
         {
@@ -768,29 +970,45 @@ internal sealed partial class VulkanContext : IContext
         }
         if (desc.Usage.HasFlag(BufferUsageBits.Uniform))
         {
-            usageFlags |= VK.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK.VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK.VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+            usageFlags |=
+                VK.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
+                | VK.VK_BUFFER_USAGE_TRANSFER_DST_BIT
+                | VK.VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
         }
 
         if (desc.Usage.HasFlag(BufferUsageBits.Storage))
         {
-            usageFlags |= VK.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK.VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK.VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+            usageFlags |=
+                VK.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+                | VK.VK_BUFFER_USAGE_TRANSFER_DST_BIT
+                | VK.VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
         }
 
         if (desc.Usage.HasFlag(BufferUsageBits.Indirect))
         {
-            usageFlags |= VK.VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK.VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+            usageFlags |=
+                VK.VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT
+                | VK.VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
         }
 
         if (desc.Usage.HasFlag(BufferUsageBits.ShaderBindingTable))
         {
-            usageFlags |= VK.VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK.VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+            usageFlags |=
+                VK.VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR
+                | VK.VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
         }
 
         HxDebug.Assert(usageFlags != VkBufferUsageFlags.None, "Invalid buffer usage");
 
         VkMemoryPropertyFlags memFlags = desc.Storage.ToVkMemoryPropertyFlags();
 
-        var result = CreateBuffer(desc.DataSize, usageFlags, memFlags, out var handle, desc.DebugName);
+        var result = CreateBuffer(
+            desc.DataSize,
+            usageFlags,
+            memFlags,
+            out var handle,
+            desc.DebugName
+        );
 
         if (result != ResultCode.Ok)
         {
@@ -845,14 +1063,16 @@ internal sealed partial class VulkanContext : IContext
 
         TextureHandle tex = Swapchain!.GetCurrentTexture();
 
-
         if (tex.Empty)
         {
             HxDebug.Assert(false, "Swapchain has no valid texture");
             return TextureHandle.Null;
         }
 
-        HxDebug.Assert(TexturesPool.Get(tex)?.ImageFormat != VK.VK_FORMAT_UNDEFINED, "Invalid image format");
+        HxDebug.Assert(
+            TexturesPool.Get(tex)?.ImageFormat != VK.VK_FORMAT_UNDEFINED,
+            "Invalid image format"
+        );
 
         return tex;
     }
@@ -910,7 +1130,7 @@ internal sealed partial class VulkanContext : IContext
 
     public uint GetMaxStorageBufferRange()
     {
-        return vkPhysicalDeviceProperties2.properties.limits.maxStorageBufferRange;
+        return _vkPhysicalDeviceProperties2.properties.limits.maxStorageBufferRange;
     }
 
     public uint GetNumSwapchainImages()
@@ -918,13 +1138,29 @@ internal sealed partial class VulkanContext : IContext
         return HasSwapchain ? Swapchain!.NumSwapchainImages : 0;
     }
 
-    public bool GetQueryPoolResults(in QueryPoolHandle pool, uint firstQuery, uint queryCount, uint dataSize, nint outData, uint stride)
+    public bool GetQueryPoolResults(
+        in QueryPoolHandle pool,
+        uint firstQuery,
+        uint queryCount,
+        uint dataSize,
+        nint outData,
+        uint stride
+    )
     {
         var vkPool = QueriesPool.Get(pool);
         unsafe
         {
             VK.vkGetQueryPoolResults(
-                vkDevice, vkPool, firstQuery, queryCount, dataSize, (void*)outData, stride, VK.VK_QUERY_RESULT_WAIT_BIT | VK.VK_QUERY_RESULT_64_BIT).CheckResult();
+                    _vkDevice,
+                    vkPool,
+                    firstQuery,
+                    queryCount,
+                    dataSize,
+                    (void*)outData,
+                    stride,
+                    VK.VK_QUERY_RESULT_WAIT_BIT | VK.VK_QUERY_RESULT_64_BIT
+                )
+                .CheckResult();
         }
         return true;
     }
@@ -962,7 +1198,10 @@ internal sealed partial class VulkanContext : IContext
 
     public ulong GpuAddress(in BufferHandle handle, uint offset)
     {
-        HxDebug.Assert((offset & 7) == 0, "Buffer offset must be 8 bytes aligned as per GLSL_EXT_buffer_reference spec.");
+        HxDebug.Assert(
+            (offset & 7) == 0,
+            "Buffer offset must be 8 bytes aligned as per GLSL_EXT_buffer_reference spec."
+        );
 
         var buf = BuffersPool.Get(handle);
 
@@ -982,7 +1221,10 @@ internal sealed partial class VulkanContext : IContext
         HxDebug.Assert(Immediate != null);
         if (commandBuffer is not CommandBuffer vkCmdBuffer)
         {
-            throw new ArgumentException("CommandBuffer must be of type Vulkan CommandBuffer", nameof(commandBuffer));
+            throw new ArgumentException(
+                "CommandBuffer must be of type Vulkan CommandBuffer",
+                nameof(commandBuffer)
+            );
         }
 
         if (present)
@@ -996,9 +1238,17 @@ internal sealed partial class VulkanContext : IContext
                 return SubmitHandle.Null;
             }
 
-            tex.TransitionLayout(vkCmdBuffer.CmdBuffer,
-                                 VK.VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-                                 new VkImageSubresourceRange(VK.VK_IMAGE_ASPECT_COLOR_BIT, 0, VK.VK_REMAINING_MIP_LEVELS, 0, VK.VK_REMAINING_ARRAY_LAYERS));
+            tex.TransitionLayout(
+                vkCmdBuffer.CmdBuffer,
+                VK.VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+                new VkImageSubresourceRange(
+                    VK.VK_IMAGE_ASPECT_COLOR_BIT,
+                    0,
+                    VK.VK_REMAINING_MIP_LEVELS,
+                    0,
+                    VK.VK_REMAINING_ARRAY_LAYERS
+                )
+            );
         }
 
         var shouldPresent = HasSwapchain && present;
@@ -1024,7 +1274,7 @@ internal sealed partial class VulkanContext : IContext
         SubmitHandle handle = vkCmdBuffer.LastSubmitHandle;
 
         // reset
-        currentCommandBuffer_ = null;
+        _currentCommandBuffer = null;
 
         return handle;
     }
@@ -1046,20 +1296,26 @@ internal sealed partial class VulkanContext : IContext
         cps.SpecConstantDataStorage = [];
         cps.Desc.SpecInfo.Data = [];
 
-        DeferredTask(() =>
-        {
-            unsafe
+        DeferredTask(
+            () =>
             {
-                VK.vkDestroyPipeline(vkDevice, cps.Pipeline, null);
-            }
-        }, SubmitHandle.Null);
-        DeferredTask(() =>
-        {
-            unsafe
+                unsafe
+                {
+                    VK.vkDestroyPipeline(_vkDevice, cps.Pipeline, null);
+                }
+            },
+            SubmitHandle.Null
+        );
+        DeferredTask(
+            () =>
             {
-                VK.vkDestroyPipelineLayout(vkDevice, cps.PipelineLayout, null);
-            }
-        }, SubmitHandle.Null);
+                unsafe
+                {
+                    VK.vkDestroyPipelineLayout(_vkDevice, cps.PipelineLayout, null);
+                }
+            },
+            SubmitHandle.Null
+        );
 
         ComputePipelinesPool.Destroy(handle);
     }
@@ -1076,20 +1332,26 @@ internal sealed partial class VulkanContext : IContext
         rps.SpecConstantDataStorage = [];
         rps.Desc.SpecInfo.Data = [];
 
-        DeferredTask(() =>
-        {
-            unsafe
+        DeferredTask(
+            () =>
             {
-                VK.vkDestroyPipeline(vkDevice, rps.Pipeline, null);
-            }
-        }, SubmitHandle.Null);
-        DeferredTask(() =>
-        {
-            unsafe
+                unsafe
+                {
+                    VK.vkDestroyPipeline(_vkDevice, rps.Pipeline, null);
+                }
+            },
+            SubmitHandle.Null
+        );
+        DeferredTask(
+            () =>
             {
-                VK.vkDestroyPipelineLayout(vkDevice, rps.PipelineLayout, null);
-            }
-        }, SubmitHandle.Null);
+                unsafe
+                {
+                    VK.vkDestroyPipelineLayout(_vkDevice, rps.PipelineLayout, null);
+                }
+            },
+            SubmitHandle.Null
+        );
 
         RenderPipelinesPool.Destroy(handle);
     }
@@ -1108,7 +1370,7 @@ internal sealed partial class VulkanContext : IContext
         {
             // a shader module can be destroyed while pipelines created using its shaders are still in use
             // https://registry.khronos.org/vulkan/specs/1.3/html/chap9.html#vkDestroyShaderModule
-            VK.vkDestroyShaderModule(vkDevice, state.ShaderModule, null);
+            VK.vkDestroyShaderModule(_vkDevice, state.ShaderModule, null);
         }
 
         ShaderModulesPool.Destroy(handle);
@@ -1120,13 +1382,16 @@ internal sealed partial class VulkanContext : IContext
 
         SamplersPool.Destroy(handle);
 
-        DeferredTask(() =>
-        {
-            unsafe
+        DeferredTask(
+            () =>
             {
-                VK.vkDestroySampler(vkDevice, sampler, null);
-            }
-        }, SubmitHandle.Null);
+                unsafe
+                {
+                    VK.vkDestroySampler(_vkDevice, sampler, null);
+                }
+            },
+            SubmitHandle.Null
+        );
     }
 
     public void Destroy(BufferHandle handle)
@@ -1164,13 +1429,16 @@ internal sealed partial class VulkanContext : IContext
             QueriesPool.Destroy(handle);
         });
 
-        DeferredTask(() =>
-        {
-            unsafe
+        DeferredTask(
+            () =>
             {
-                VK.vkDestroyQueryPool(vkDevice, pool, null);
-            }
-        }, SubmitHandle.Null);
+                unsafe
+                {
+                    VK.vkDestroyQueryPool(_vkDevice, pool, null);
+                }
+            },
+            SubmitHandle.Null
+        );
     }
     #endregion
 }

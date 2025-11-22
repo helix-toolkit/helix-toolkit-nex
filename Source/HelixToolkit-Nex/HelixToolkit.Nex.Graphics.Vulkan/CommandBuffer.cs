@@ -1,4 +1,4 @@
-﻿namespace HelixToolkit.Nex.Graphics.Vulkan;
+namespace HelixToolkit.Nex.Graphics.Vulkan;
 
 /// <summary>
 /// Internal Vulkan implementation of the <see cref="ICommandBuffer"/> interface.
@@ -10,21 +10,17 @@
 /// </remarks>
 internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
 {
-    static readonly ILogger logger = LogManager.Create<CommandBuffer>();
-    readonly VulkanContext vkContext = context;
-    Framebuffer framebuffer = Framebuffer.Null;
-    bool isRendering = false;
-    RenderPipelineHandle currentPipelineGraphics = RenderPipelineHandle.Null;
-    ComputePipelineHandle currentPipelineCompute = ComputePipelineHandle.Null;
-    VkPipeline lastPipelineBound = VkPipeline.Null;
+    private static readonly ILogger Logger = LogManager.Create<CommandBuffer>();
+    private readonly VulkanContext _ctx = context;
 
     /// <inheritdoc/>
-    public IContext Context => vkContext;
+    public IContext Context => _ctx;
 
     /// <summary>
     /// Gets the wrapper for the underlying Vulkan command buffer.
     /// </summary>
-    public readonly VulkanImmediateCommands.CommandBufferWrapper Wrapper = context.Immediate!.Acquire();
+    public readonly VulkanImmediateCommands.CommandBufferWrapper Wrapper =
+        context.Immediate!.Acquire();
 
     /// <summary>
     /// Gets the native Vulkan command buffer handle.
@@ -34,7 +30,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
     /// <summary>
     /// Gets the currently bound framebuffer.
     /// </summary>
-    public Framebuffer Framebuffer => framebuffer;
+    public Framebuffer Framebuffer { get; private set; } = Framebuffer.Null;
 
     /// <summary>
     /// Gets or sets the last submit handle for this command buffer.
@@ -42,14 +38,14 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
     public SubmitHandle LastSubmitHandle { set; get; } = SubmitHandle.Null;
 
     /// <summary>
-  /// Gets the last Vulkan pipeline that was bound to this command buffer.
-  /// </summary>
-    public VkPipeline LastPipelineBound => lastPipelineBound;
+    /// Gets the last Vulkan pipeline that was bound to this command buffer.
+    /// </summary>
+    public VkPipeline LastPipelineBound { get; private set; } = VkPipeline.Null;
 
     /// <summary>
     /// Gets a value indicating whether a rendering pass is currently active.
     /// </summary>
-    public bool IsRendering => isRendering;
+    public bool IsRendering { get; private set; } = false;
 
     /// <summary>
     /// Gets the view mask for multiview rendering.
@@ -59,26 +55,33 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
     /// <summary>
     /// Gets the currently bound graphics render pipeline.
     /// </summary>
-    public RenderPipelineHandle CurrentPipelineGraphics => currentPipelineGraphics;
+    public RenderPipelineHandle CurrentPipelineGraphics { get; private set; } =
+        RenderPipelineHandle.Null;
 
     /// <summary>
     /// Gets the currently bound compute pipeline.
     /// </summary>
-    public ComputePipelineHandle CurrentPipelineCompute => currentPipelineCompute;
+    public ComputePipelineHandle CurrentPipelineCompute { get; private set; } =
+        ComputePipelineHandle.Null;
 
     /// <summary>
     /// Prepares a texture for use in a compute shader by transitioning it to the appropriate layout.
     /// </summary>
     /// <param name="handle">The texture handle.</param>
     /// <param name="dstStage">The destination pipeline stage (currently unused).</param>
-    void UseComputeTexture(TextureHandle handle, VkPipelineStageFlags2 dstStage)
+    private void UseComputeTexture(TextureHandle handle, VkPipelineStageFlags2 dstStage)
     {
         HxDebug.Assert(handle);
-        var tex = vkContext.TexturesPool.Get(handle);
-        HxDebug.Assert(tex != null, "Texture is null. Make sure the texture is created before using it in compute shader.");
+        var tex = _ctx.TexturesPool.Get(handle);
+        HxDebug.Assert(
+            tex != null,
+            "Texture is null. Make sure the texture is created before using it in compute shader."
+        );
         if (tex is null || !tex.Valid)
         {
-            logger.LogError($"Texture {handle} is null or invalid. Make sure the texture is created before using it in compute shader.");
+            Logger.LogError(
+                $"Texture {handle} is null or invalid. Make sure the texture is created before using it in compute shader."
+            );
             return;
         }
 
@@ -86,21 +89,38 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
 
         if (!tex.IsStorageImage && !tex.IsSampledImage)
         {
-            HxDebug.Assert(false, "Did you forget to specify TextureUsageBits::Storage or TextureUsageBits::Sampled on your texture?");
+            HxDebug.Assert(
+                false,
+                "Did you forget to specify TextureUsageBits::Storage or TextureUsageBits::Sampled on your texture?"
+            );
             return;
         }
 
-        tex.TransitionLayout(CmdBuffer,
-                             tex.IsStorageImage ? VK.VK_IMAGE_LAYOUT_GENERAL : VK.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                             new VkImageSubresourceRange(tex.GetImageAspectFlags(), 0, VK.VK_REMAINING_MIP_LEVELS, 0, VK.VK_REMAINING_ARRAY_LAYERS));
+        tex.TransitionLayout(
+            CmdBuffer,
+            tex.IsStorageImage
+                ? VK.VK_IMAGE_LAYOUT_GENERAL
+                : VK.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+            new VkImageSubresourceRange(
+                tex.GetImageAspectFlags(),
+                0,
+                VK.VK_REMAINING_MIP_LEVELS,
+                0,
+                VK.VK_REMAINING_ARRAY_LAYERS
+            )
+        );
     }
 
     /// <inheritdoc/>
-    public unsafe void BeginRendering(in RenderPass renderPass, in Framebuffer fb, in Dependencies deps)
+    public unsafe void BeginRendering(
+        in RenderPass renderPass,
+        in Framebuffer fb,
+        in Dependencies deps
+    )
     {
-        HxDebug.Assert(!isRendering);
+        HxDebug.Assert(!IsRendering);
 
-        isRendering = true;
+        IsRendering = true;
         ViewMask = renderPass.ViewMask;
 
         for (uint32_t i = 0; i != Dependencies.MAX_SUBMIT_DEPENDENCIES && deps.Textures[i]; i++)
@@ -109,22 +129,32 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
         }
         for (uint32_t i = 0; i != Dependencies.MAX_SUBMIT_DEPENDENCIES && deps.Buffers[i]; i++)
         {
-            VkPipelineStageFlags2 dstStageFlags = VkPipelineStageFlags2.VertexShader | VkPipelineStageFlags2.FragmentShader;
-            var buf = vkContext.BuffersPool.Get(deps.Buffers[i]);
+            VkPipelineStageFlags2 dstStageFlags =
+                VkPipelineStageFlags2.VertexShader | VkPipelineStageFlags2.FragmentShader;
+            var buf = _ctx.BuffersPool.Get(deps.Buffers[i]);
             HxDebug.Assert(buf);
-            if (buf!.vkUsageFlags_.HasFlag(VK.VK_BUFFER_USAGE_INDEX_BUFFER_BIT) || buf.vkUsageFlags_.HasFlag(VK.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT))
+            if (
+                buf!.VkUsageFlags.HasFlag(VK.VK_BUFFER_USAGE_INDEX_BUFFER_BIT)
+                || buf.VkUsageFlags.HasFlag(VK.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT)
+            )
             {
                 dstStageFlags |= VkPipelineStageFlags2.VertexInput;
             }
-            if (buf.vkUsageFlags_.HasFlag(VK.VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT))
+            if (buf.VkUsageFlags.HasFlag(VK.VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT))
             {
                 dstStageFlags |= VkPipelineStageFlags2.DrawIndirect;
             }
-            var buffer = vkContext.BuffersPool.Get(deps.Buffers[i]);
-            HxDebug.Assert(buffer, "Buffer is null. Make sure the buffer is created before binding it to the command buffer.");
+            var buffer = _ctx.BuffersPool.Get(deps.Buffers[i]);
+            HxDebug.Assert(
+                buffer,
+                "Buffer is null. Make sure the buffer is created before binding it to the command buffer."
+            );
             if (buffer is null || !buffer.Valid)
             {
-                logger.LogError("Buffer {INDEX} is null or invalid. Make sure the buffer is created before binding it to the command buffer.", i);
+                Logger.LogError(
+                    "Buffer {INDEX} is null or invalid. Make sure the buffer is created before binding it to the command buffer.",
+                    i
+                );
                 continue;
             }
             CmdBuffer.BufferBarrier2(buffer, VkPipelineStageFlags2.ComputeShader, dstStageFlags);
@@ -135,7 +165,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
 
         HxDebug.Assert(numPassColorAttachments == numFbColorAttachments);
 
-        framebuffer = fb;
+        Framebuffer = fb;
 
         // transition all the color attachments
         for (uint32_t i = 0; i != numFbColorAttachments; i++)
@@ -143,8 +173,11 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
             var handle = fb.Colors[i].Texture;
             if (handle)
             {
-                var colorTex = vkContext.TexturesPool.Get(handle);
-                HxDebug.Assert(colorTex != null && colorTex.Valid, "Colors texture is null. Make sure the texture is created before binding it to the framebuffer.");
+                var colorTex = _ctx.TexturesPool.Get(handle);
+                HxDebug.Assert(
+                    colorTex != null && colorTex.Valid,
+                    "Colors texture is null. Make sure the texture is created before binding it to the framebuffer."
+                );
                 if (colorTex is null)
                 {
                     continue;
@@ -155,11 +188,16 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
             handle = fb.Colors[i].ResolveTexture;
             if (handle)
             {
-                var colorResolveTex = vkContext.TexturesPool.Get(handle);
-                HxDebug.Assert(colorResolveTex != null, "Colors resolve texture is null. Make sure the texture is created before binding it to the framebuffer.");
+                var colorResolveTex = _ctx.TexturesPool.Get(handle);
+                HxDebug.Assert(
+                    colorResolveTex != null,
+                    "Colors resolve texture is null. Make sure the texture is created before binding it to the framebuffer."
+                );
                 if (colorResolveTex is null)
                 {
-                    logger.LogError($"Colors resolve texture {handle} is null. Make sure the texture is created before binding it to the framebuffer.");
+                    Logger.LogError(
+                        $"Colors resolve texture {handle} is null. Make sure the texture is created before binding it to the framebuffer."
+                    );
                     continue;
                 }
                 colorResolveTex.IsResolveAttachment = true;
@@ -169,57 +207,94 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
 
         var depthTex = fb.DepthStencil.Texture;
         {
-            // transition depth-stencil attachment          
+            // transition depth-stencil attachment
             if (depthTex)
             {
-                var depthImg = vkContext.TexturesPool.Get(depthTex);
-                HxDebug.Assert(depthImg != null, "Depth attachment texture is null. Make sure the texture is created before binding it to the framebuffer.");
-                HxDebug.Assert(depthImg!.ImageFormat != VkFormat.Undefined, "Invalid depth attachment format");
+                var depthImg = _ctx.TexturesPool.Get(depthTex);
+                HxDebug.Assert(
+                    depthImg != null,
+                    "Depth attachment texture is null. Make sure the texture is created before binding it to the framebuffer."
+                );
+                HxDebug.Assert(
+                    depthImg!.ImageFormat != VkFormat.Undefined,
+                    "Invalid depth attachment format"
+                );
                 HxDebug.Assert(depthImg!.IsDepthFormat, "Invalid depth attachment format");
                 var flags = depthImg.GetImageAspectFlags();
-                depthImg.TransitionLayout(Wrapper.Instance,
-                                          VK.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                                          new VkImageSubresourceRange(flags, 0, VK.VK_REMAINING_MIP_LEVELS, 0, VK.VK_REMAINING_ARRAY_LAYERS));
+                depthImg.TransitionLayout(
+                    Wrapper.Instance,
+                    VK.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                    new VkImageSubresourceRange(
+                        flags,
+                        0,
+                        VK.VK_REMAINING_MIP_LEVELS,
+                        0,
+                        VK.VK_REMAINING_ARRAY_LAYERS
+                    )
+                );
             }
             // handle depth MSAA
             var handle = fb.DepthStencil.ResolveTexture;
             if (handle)
             {
-                var depthResolveImg = vkContext.TexturesPool.Get(handle);
-                HxDebug.Assert(depthResolveImg != null, "Depth resolve texture is null. Make sure the texture is created before binding it to the framebuffer.");
-                HxDebug.Assert(depthResolveImg!.IsDepthFormat, "Invalid resolve depth attachment format");
+                var depthResolveImg = _ctx.TexturesPool.Get(handle);
+                HxDebug.Assert(
+                    depthResolveImg != null,
+                    "Depth resolve texture is null. Make sure the texture is created before binding it to the framebuffer."
+                );
+                HxDebug.Assert(
+                    depthResolveImg!.IsDepthFormat,
+                    "Invalid resolve depth attachment format"
+                );
                 depthResolveImg.IsResolveAttachment = true;
                 var flags = depthResolveImg.GetImageAspectFlags();
-                depthResolveImg.TransitionLayout(Wrapper.Instance,
-                                                 VK.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                                                 new VkImageSubresourceRange(flags, 0, VK.VK_REMAINING_MIP_LEVELS, 0, VK.VK_REMAINING_ARRAY_LAYERS));
+                depthResolveImg.TransitionLayout(
+                    Wrapper.Instance,
+                    VK.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                    new VkImageSubresourceRange(
+                        flags,
+                        0,
+                        VK.VK_REMAINING_MIP_LEVELS,
+                        0,
+                        VK.VK_REMAINING_ARRAY_LAYERS
+                    )
+                );
             }
         }
-
 
         VkSampleCountFlags samples = VkSampleCountFlags.Count1;
         uint32_t mipLevel = 0;
         uint32_t fbWidth = 0;
         uint32_t fbHeight = 0;
 
-        var colorAttachments = stackalloc VkRenderingAttachmentInfo[Constants.MAX_COLOR_ATTACHMENTS];
+        var colorAttachments =
+            stackalloc VkRenderingAttachmentInfo[Constants.MAX_COLOR_ATTACHMENTS];
 
         for (uint32_t i = 0; i < numFbColorAttachments; i++)
         {
             ref var attachment = ref fb.Colors[i];
             HxDebug.Assert(!attachment.Texture.Empty);
 
-            var colorTexture = vkContext.TexturesPool.Get(attachment.Texture);
-            HxDebug.Assert(colorTexture != null, "Colors texture is null. Make sure the texture is created before binding it to the framebuffer.");
+            var colorTexture = _ctx.TexturesPool.Get(attachment.Texture);
+            HxDebug.Assert(
+                colorTexture != null,
+                "Colors texture is null. Make sure the texture is created before binding it to the framebuffer."
+            );
             if (colorTexture is null)
             {
-                logger.LogError("Colors texture {HANDLE} is null. Make sure the texture is created before binding it to the framebuffer.", attachment.Texture);
+                Logger.LogError(
+                    "Colors texture {HANDLE} is null. Make sure the texture is created before binding it to the framebuffer.",
+                    attachment.Texture
+                );
                 continue; // skip if texture is not found
             }
             ref var descColor = ref renderPass.Colors[i];
             if (mipLevel > 0 && descColor.Level > 0)
             {
-                HxDebug.Assert(descColor.Level == mipLevel, "All color attachments should have the same mip-level");
+                HxDebug.Assert(
+                    descColor.Level == mipLevel,
+                    "All color attachments should have the same mip-level"
+                );
             }
             var dim = colorTexture.Extent;
             if (fbWidth > 0)
@@ -228,7 +303,10 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
             }
             if (fbHeight > 0)
             {
-                HxDebug.Assert(dim.height == fbHeight, "All attachments should have the same height");
+                HxDebug.Assert(
+                    dim.height == fbHeight,
+                    "All attachments should have the same height"
+                );
             }
             mipLevel = descColor.Level;
             fbWidth = dim.width;
@@ -237,10 +315,18 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
             colorAttachments[i] = new()
             {
                 pNext = null,
-                imageView = colorTexture.GetOrCreateVkImageViewForFramebuffer(vkContext, descColor.Level, descColor.Layer),
+                imageView = colorTexture.GetOrCreateVkImageViewForFramebuffer(
+                    _ctx,
+                    descColor.Level,
+                    descColor.Layer
+                ),
                 imageLayout = VK.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                resolveMode = samples > VkSampleCountFlags.Count1 ? descColor.ResolveMode.ResolveModeToVkResolveModeFlagBits(VkResolveModeFlags.Max)
-                                             : VkResolveModeFlags.None,
+                resolveMode =
+                    samples > VkSampleCountFlags.Count1
+                        ? descColor.ResolveMode.ResolveModeToVkResolveModeFlagBits(
+                            VkResolveModeFlags.Max
+                        )
+                        : VkResolveModeFlags.None,
                 resolveImageView = VkImageView.Null,
                 resolveImageLayout = VkImageLayout.Undefined,
                 loadOp = descColor.LoadOp.ToVk(),
@@ -252,17 +338,31 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
             if (descColor.StoreOp == StoreOp.MsaaResolve)
             {
                 HxDebug.Assert(samples != VkSampleCountFlags.None);
-                HxDebug.Assert(!attachment.ResolveTexture.Empty, "Framebuffer attachment should contain a resolve texture");
-                var colorResolveTexture = vkContext.TexturesPool.Get(attachment.ResolveTexture);
-                HxDebug.Assert(colorResolveTexture != null, "Colors resolve texture is null. Make sure the texture is created before binding it to the framebuffer.");
+                HxDebug.Assert(
+                    !attachment.ResolveTexture.Empty,
+                    "Framebuffer attachment should contain a resolve texture"
+                );
+                var colorResolveTexture = _ctx.TexturesPool.Get(attachment.ResolveTexture);
+                HxDebug.Assert(
+                    colorResolveTexture != null,
+                    "Colors resolve texture is null. Make sure the texture is created before binding it to the framebuffer."
+                );
                 if (colorResolveTexture is null)
                 {
-                    logger.LogError("Colors resolve texture {TEXTURE} is null. Make sure the texture is created before binding it to the framebuffer.", attachment.ResolveTexture);
+                    Logger.LogError(
+                        "Colors resolve texture {TEXTURE} is null. Make sure the texture is created before binding it to the framebuffer.",
+                        attachment.ResolveTexture
+                    );
                     continue; // skip if texture is not found
                 }
                 colorAttachments[i].resolveImageView =
-                    colorResolveTexture.GetOrCreateVkImageViewForFramebuffer(vkContext, descColor.Level, descColor.Layer);
-                colorAttachments[i].resolveImageLayout = VK.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+                    colorResolveTexture.GetOrCreateVkImageViewForFramebuffer(
+                        _ctx,
+                        descColor.Level,
+                        descColor.Layer
+                    );
+                colorAttachments[i].resolveImageLayout =
+                    VK.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
             }
         }
 
@@ -270,47 +370,87 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
 
         if (fb.DepthStencil.Texture)
         {
-            var depthTexture = vkContext.TexturesPool.Get(fb.DepthStencil.Texture);
-            HxDebug.Assert(depthTexture != null, "Depth attachment texture is null. Make sure the texture is created before binding it to the framebuffer.");
+            var depthTexture = _ctx.TexturesPool.Get(fb.DepthStencil.Texture);
+            HxDebug.Assert(
+                depthTexture != null,
+                "Depth attachment texture is null. Make sure the texture is created before binding it to the framebuffer."
+            );
             if (depthTexture is null)
             {
-                logger.LogError("Depth attachment texture {TEXTURE} is null. Make sure the texture is created before binding it to the framebuffer.", fb.DepthStencil.Texture);
+                Logger.LogError(
+                    "Depth attachment texture {TEXTURE} is null. Make sure the texture is created before binding it to the framebuffer.",
+                    fb.DepthStencil.Texture
+                );
                 return; // skip if texture is not found
             }
             ref readonly var descDepth = ref renderPass.Depth;
-            HxDebug.Assert(descDepth.Level == mipLevel, "Depth attachment should have the same mip-level as color attachments");
+            HxDebug.Assert(
+                descDepth.Level == mipLevel,
+                "Depth attachment should have the same mip-level as color attachments"
+            );
             depthAttachment = new()
             {
-                imageView = depthTexture.GetOrCreateVkImageViewForFramebuffer(vkContext, descDepth.Level, descDepth.Layer),
+                imageView = depthTexture.GetOrCreateVkImageViewForFramebuffer(
+                    _ctx,
+                    descDepth.Level,
+                    descDepth.Layer
+                ),
                 imageLayout = VK.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                 resolveMode = VK.VK_RESOLVE_MODE_NONE,
                 resolveImageView = VkImageView.Null,
                 resolveImageLayout = VK.VK_IMAGE_LAYOUT_UNDEFINED,
                 loadOp = descDepth.LoadOp.ToVk(),
                 storeOp = descDepth.StoreOp.ToVk(),
-                clearValue = new() { depthStencil = new(descDepth.ClearDepth, descDepth.ClearStencil) },
+                clearValue = new()
+                {
+                    depthStencil = new(descDepth.ClearDepth, descDepth.ClearStencil),
+                },
             };
             // handle depth MSAA
             if (descDepth.StoreOp == StoreOp.MsaaResolve)
             {
                 HxDebug.Assert(depthTexture.SampleCount == samples);
                 ref readonly var attachment = ref fb.DepthStencil;
-                HxDebug.Assert(!attachment.ResolveTexture.Empty, "Framebuffer depth attachment should contain a resolve texture");
-                var depthResolveTexture = vkContext.TexturesPool.Get(attachment.ResolveTexture);
-                HxDebug.Assert(depthResolveTexture != null, "Depth resolve texture is null. Make sure the texture is created before binding it to the framebuffer.");
+                HxDebug.Assert(
+                    !attachment.ResolveTexture.Empty,
+                    "Framebuffer depth attachment should contain a resolve texture"
+                );
+                var depthResolveTexture = _ctx.TexturesPool.Get(attachment.ResolveTexture);
+                HxDebug.Assert(
+                    depthResolveTexture != null,
+                    "Depth resolve texture is null. Make sure the texture is created before binding it to the framebuffer."
+                );
                 if (depthResolveTexture is null)
                 {
-                    logger.LogError("Depth resolve texture {TEXTURE} is null. Make sure the texture is created before binding it to the framebuffer.", attachment.ResolveTexture);
+                    Logger.LogError(
+                        "Depth resolve texture {TEXTURE} is null. Make sure the texture is created before binding it to the framebuffer.",
+                        attachment.ResolveTexture
+                    );
                     return; // skip if texture is not found
                 }
-                depthAttachment.resolveImageView = depthResolveTexture.GetOrCreateVkImageViewForFramebuffer(vkContext, descDepth.Level, descDepth.Layer);
-                depthAttachment.resolveImageLayout = VK.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-                depthAttachment.resolveMode = descDepth.ResolveMode.ResolveModeToVkResolveModeFlagBits(vkContext.VkPhysicalDeviceVulkan12Properties.supportedDepthResolveModes);
+                depthAttachment.resolveImageView =
+                    depthResolveTexture.GetOrCreateVkImageViewForFramebuffer(
+                        _ctx,
+                        descDepth.Level,
+                        descDepth.Layer
+                    );
+                depthAttachment.resolveImageLayout =
+                    VK.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+                depthAttachment.resolveMode =
+                    descDepth.ResolveMode.ResolveModeToVkResolveModeFlagBits(
+                        _ctx.VkPhysicalDeviceVulkan12Properties.supportedDepthResolveModes
+                    );
             }
             var dim = depthTexture.Extent;
 
-            HxDebug.Assert(fbWidth > 0 && dim.width == fbWidth, "All attachments should have the same width");
-            HxDebug.Assert(fbHeight > 0 && dim.height == fbHeight, "All attachments should have the same height");
+            HxDebug.Assert(
+                fbWidth > 0 && dim.width == fbWidth,
+                "All attachments should have the same width"
+            );
+            HxDebug.Assert(
+                fbHeight > 0 && dim.height == fbHeight,
+                "All attachments should have the same height"
+            );
 
             mipLevel = descDepth.Level;
             fbWidth = dim.width;
@@ -329,7 +469,10 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
         {
             VkRenderingInfo renderingInfo = new()
             {
-                renderArea = new VkRect2D(new VkOffset2D((int32_t)scissor.X, (int32_t)scissor.Y), new VkExtent2D((int32_t)scissor.Width, (int32_t)scissor.Height)),
+                renderArea = new VkRect2D(
+                    new VkOffset2D((int32_t)scissor.X, (int32_t)scissor.Y),
+                    new VkExtent2D((int32_t)scissor.Width, (int32_t)scissor.Height)
+                ),
                 layerCount = renderPass.LayerCount,
                 viewMask = renderPass.ViewMask,
                 colorAttachmentCount = numFbColorAttachments,
@@ -342,7 +485,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
             BindScissorRect(scissor);
             BindDepthState(new DepthState());
 
-            vkContext.CheckAndUpdateDescriptorSets();
+            _ctx.CheckAndUpdateDescriptorSets();
 
             VK.vkCmdSetDepthCompareOp(Wrapper.Instance, VkCompareOp.Always);
             VK.vkCmdSetDepthBiasEnable(Wrapper.Instance, VK_BOOL.False);
@@ -351,63 +494,82 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
         }
     }
 
-  /// <inheritdoc/>
+    /// <inheritdoc/>
     public void BindComputePipeline(ComputePipelineHandle handle)
-{
+    {
         if (handle.Empty)
         {
-            logger.LogError("Cannot bind empty compute pipeline handle.");
+            Logger.LogError("Cannot bind empty compute pipeline handle.");
             return;
         }
 
-        currentPipelineGraphics = RenderPipelineHandle.Null;
-        currentPipelineCompute = handle;
+        CurrentPipelineGraphics = RenderPipelineHandle.Null;
+        CurrentPipelineCompute = handle;
 
-        var pipeline = vkContext.GetVkPipeline(handle);
+        var pipeline = _ctx.GetVkPipeline(handle);
 
-        var cps = vkContext.ComputePipelinesPool.Get(handle);
+        var cps = _ctx.ComputePipelinesPool.Get(handle);
 
         HxDebug.Assert(cps);
         HxDebug.Assert(pipeline != VkPipeline.Null);
 
-        if (lastPipelineBound != pipeline)
+        if (LastPipelineBound != pipeline)
         {
-            lastPipelineBound = pipeline;
+            LastPipelineBound = pipeline;
             VK.vkCmdBindPipeline(Wrapper.Instance, VK.VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
-            vkContext.CheckAndUpdateDescriptorSets();
-            vkContext.BindDefaultDescriptorSets(Wrapper.Instance, VK.VK_PIPELINE_BIND_POINT_COMPUTE, cps!.PipelineLayout);
+            _ctx.CheckAndUpdateDescriptorSets();
+            _ctx.BindDefaultDescriptorSets(
+                Wrapper.Instance,
+                VK.VK_PIPELINE_BIND_POINT_COMPUTE,
+                cps!.PipelineLayout
+            );
         }
     }
 
-  /// <inheritdoc/>
+    /// <inheritdoc/>
     public void BindDepthState(in DepthState desc)
     {
         var op = desc.CompareOp.ToVk();
-        VK.vkCmdSetDepthWriteEnable(Wrapper.Instance, desc.IsDepthWriteEnabled ? VK_BOOL.True : VK_BOOL.False);
-        VK.vkCmdSetDepthTestEnable(Wrapper.Instance, (op != VK.VK_COMPARE_OP_ALWAYS || desc.IsDepthWriteEnabled) ? VK_BOOL.True : VK_BOOL.False);
+        VK.vkCmdSetDepthWriteEnable(
+            Wrapper.Instance,
+            desc.IsDepthWriteEnabled ? VK_BOOL.True : VK_BOOL.False
+        );
+        VK.vkCmdSetDepthTestEnable(
+            Wrapper.Instance,
+            (op != VK.VK_COMPARE_OP_ALWAYS || desc.IsDepthWriteEnabled)
+                ? VK_BOOL.True
+                : VK_BOOL.False
+        );
 
 #if ANDROID
-      // This is a workaround for the issue.
-      // On Android (Mali-G715-Immortalis MC11 v1.r38p1-01eac0.c1a71ccca2acf211eb87c5db5322f569)
-      // if depth-stencil texture is not set, call of vkCmdSetDepthCompareOp leads to disappearing of all content.
-      if (!framebuffer_.depthStencil.texture) {
-          return;
-      }
+        // This is a workaround for the issue.
+        // On Android (Mali-G715-Immortalis MC11 v1.r38p1-01eac0.c1a71ccca2acf211eb87c5db5322f569)
+        // if depth-stencil texture is not set, call of vkCmdSetDepthCompareOp leads to disappearing of all content.
+        if (!framebuffer_.depthStencil.texture)
+        {
+            return;
+        }
 #endif
         VK.vkCmdSetDepthCompareOp(Wrapper.Instance, op);
     }
 
     /// <inheritdoc/>
-    public void BindIndexBuffer(in BufferHandle indexBuffer, IndexFormat indexFormat, size_t indexBufferOffset)
+    public void BindIndexBuffer(
+        in BufferHandle indexBuffer,
+        IndexFormat indexFormat,
+        size_t indexBufferOffset
+    )
     {
         if (!indexBuffer)
         {
-            logger.LogError("Bind index buffer failed. Handle is not valid.");
+            Logger.LogError("Bind index buffer failed. Handle is not valid.");
             return;
         }
-        var buf = vkContext.BuffersPool.Get(indexBuffer);
+        var buf = _ctx.BuffersPool.Get(indexBuffer);
 
-        HxDebug.Assert(buf is not null && buf.vkUsageFlags_.HasFlag(VK.VK_BUFFER_USAGE_INDEX_BUFFER_BIT));
+        HxDebug.Assert(
+            buf is not null && buf.VkUsageFlags.HasFlag(VK.VK_BUFFER_USAGE_INDEX_BUFFER_BIT)
+        );
 
         var type = indexFormat.ToVk();
         VK.vkCmdBindIndexBuffer(Wrapper.Instance, buf!.VkBuffer, indexBufferOffset, type);
@@ -418,42 +580,51 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
     {
         if (!handle)
         {
-            logger.LogError("Bind render pipeline failed. Handle is not valid.");
+            Logger.LogError("Bind render pipeline failed. Handle is not valid.");
             return;
         }
 
-        currentPipelineGraphics = handle;
-        currentPipelineCompute = ComputePipelineHandle.Null;
+        CurrentPipelineGraphics = handle;
+        CurrentPipelineCompute = ComputePipelineHandle.Null;
 
-        var rps = vkContext.RenderPipelinesPool.Get(handle);
+        var rps = _ctx.RenderPipelinesPool.Get(handle);
 
         HxDebug.Assert(rps != null);
 
         bool hasDepthAttachmentPipeline = rps!.Desc.DepthFormat != Format.Invalid;
-        bool hasDepthAttachmentPass = framebuffer.DepthStencil.Texture.Valid;
+        bool hasDepthAttachmentPass = Framebuffer.DepthStencil.Texture.Valid;
 
         if (hasDepthAttachmentPipeline != hasDepthAttachmentPass)
         {
             HxDebug.Assert(false);
-            logger.LogError("Make sure your render pass and render pipeline both have matching depth attachments");
+            Logger.LogError(
+                "Make sure your render pass and render pipeline both have matching depth attachments"
+            );
         }
 
-        var pipeline = vkContext.GetVkPipeline(handle, ViewMask);
+        var pipeline = _ctx.GetVkPipeline(handle, ViewMask);
 
         HxDebug.Assert(pipeline.IsNotNull);
 
-        if (lastPipelineBound != pipeline)
+        if (LastPipelineBound != pipeline)
         {
-            lastPipelineBound = pipeline;
+            LastPipelineBound = pipeline;
             VK.vkCmdBindPipeline(Wrapper.Instance, VK.VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-            vkContext.BindDefaultDescriptorSets(Wrapper.Instance, VK.VK_PIPELINE_BIND_POINT_GRAPHICS, rps.PipelineLayout);
+            _ctx.BindDefaultDescriptorSets(
+                Wrapper.Instance,
+                VK.VK_PIPELINE_BIND_POINT_GRAPHICS,
+                rps.PipelineLayout
+            );
         }
     }
 
     /// <inheritdoc/>
     public void BindScissorRect(in ScissorRect rect)
     {
-        VkRect2D scissor = new(new VkOffset2D((int32_t)rect.X, (int32_t)rect.Y), new VkExtent2D(rect.Width, rect.Height));
+        VkRect2D scissor = new(
+            new VkOffset2D((int32_t)rect.X, (int32_t)rect.Y),
+            new VkExtent2D(rect.Width, rect.Height)
+        );
         unsafe
         {
             VK.vkCmdSetScissor(Wrapper.Instance, 0, 1, &scissor);
@@ -468,14 +639,17 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
             return;
         }
 
-        var buf = vkContext.BuffersPool.Get(buffer);
-        HxDebug.Assert(buf, "Vertex buffer is null. Make sure the buffer is created before binding it.");
+        var buf = _ctx.BuffersPool.Get(buffer);
+        HxDebug.Assert(
+            buf,
+            "Vertex buffer is null. Make sure the buffer is created before binding it."
+        );
         if (buf is null || !buf.Valid)
         {
-            logger.LogError("Bind vertex buffer failed. Buffer handle is not valid.");
+            Logger.LogError("Bind vertex buffer failed. Buffer handle is not valid.");
             return;
         }
-        HxDebug.Assert(buf.vkUsageFlags_.HasFlag(VK.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT));
+        HxDebug.Assert(buf.VkUsageFlags.HasFlag(VK.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT));
         unsafe
         {
             var vkBuffer = buf.VkBuffer;
@@ -511,8 +685,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
             HxDebug.Assert(cond: Unsafe.SizeOf<Color4>() == Unsafe.SizeOf<VkClearColorValue>());
         }
 
-
-        var img = vkContext.TexturesPool.Get(tex);
+        var img = _ctx.TexturesPool.Get(tex);
 
         if (img is null || !img.Valid)
         {
@@ -522,200 +695,295 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
         VkImageSubresourceRange range = new()
         {
             aspectMask = img.GetImageAspectFlags(),
-            baseMipLevel = layers.mipLevel,
+            baseMipLevel = layers.MipLevel,
             levelCount = VK.VK_REMAINING_MIP_LEVELS,
-            baseArrayLayer = layers.layer,
-            layerCount = layers.numLayers,
+            baseArrayLayer = layers.Layer,
+            layerCount = layers.NumLayers,
         };
 
-        CmdBuffer.ImageMemoryBarrier2(img.Image,
+        CmdBuffer.ImageMemoryBarrier2(
+            img.Image,
             new StageAccess2
             {
-                stage = VkPipelineStageFlags2.AllCommands,
-                access = VkAccessFlags2.MemoryRead | VkAccessFlags2.MemoryWrite
+                Stage = VkPipelineStageFlags2.AllCommands,
+                Access = VkAccessFlags2.MemoryRead | VkAccessFlags2.MemoryWrite,
             },
             new StageAccess2
             {
-                stage = VkPipelineStageFlags2.Transfer,
-                access = VkAccessFlags2.TransferWrite
+                Stage = VkPipelineStageFlags2.Transfer,
+                Access = VkAccessFlags2.TransferWrite,
             },
-            img.ImageLayout, VK.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, range);
+            img.ImageLayout,
+            VK.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            range
+        );
 
         var vkClearValue = value.ToVk();
         unsafe
         {
-            VK.vkCmdClearColorImage(Wrapper.Instance, img.Image, VK.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &vkClearValue, 1, &range);
+            VK.vkCmdClearColorImage(
+                Wrapper.Instance,
+                img.Image,
+                VK.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                &vkClearValue,
+                1,
+                &range
+            );
         }
 
         // a ternary cascade...
-        VkImageLayout newLayout = img.ImageLayout == VK.VK_IMAGE_LAYOUT_UNDEFINED ? 
-            (img.IsAttachment ? VK.VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL : img.IsSampledImage ? VK.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK.VK_IMAGE_LAYOUT_GENERAL) : img.ImageLayout;
+        VkImageLayout newLayout =
+            img.ImageLayout == VK.VK_IMAGE_LAYOUT_UNDEFINED
+                ? (
+                    img.IsAttachment ? VK.VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL
+                    : img.IsSampledImage ? VK.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+                    : VK.VK_IMAGE_LAYOUT_GENERAL
+                )
+                : img.ImageLayout;
 
-        CmdBuffer.ImageMemoryBarrier2(img.Image,
+        CmdBuffer.ImageMemoryBarrier2(
+            img.Image,
             new StageAccess2()
             {
-                stage = VkPipelineStageFlags2.Transfer,
-                access = VkAccessFlags2.TransferWrite
+                Stage = VkPipelineStageFlags2.Transfer,
+                Access = VkAccessFlags2.TransferWrite,
             },
             new StageAccess2
             {
-                stage = VkPipelineStageFlags2.AllCommands,
-                access = VkAccessFlags2.MemoryRead | VkAccessFlags2.MemoryWrite
+                Stage = VkPipelineStageFlags2.AllCommands,
+                Access = VkAccessFlags2.MemoryRead | VkAccessFlags2.MemoryWrite,
             },
-            VK.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, newLayout, range);
+            VK.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            newLayout,
+            range
+        );
 
         img.ImageLayout = newLayout;
     }
 
     /// <inheritdoc/>
-    public void CopyImage(in TextureHandle src, in TextureHandle dst, in Dimensions extent, in Offset3D srcOffset, in Offset3D dstOffset, in TextureLayers srcLayers, in TextureLayers dstLayers)
+    public void CopyImage(
+        in TextureHandle src,
+        in TextureHandle dst,
+        in Dimensions extent,
+        in Offset3D srcOffset,
+        in Offset3D dstOffset,
+        in TextureLayers srcLayers,
+        in TextureLayers dstLayers
+    )
     {
-        var imgSrc = vkContext.TexturesPool.Get(src);
-        var imgDst = vkContext.TexturesPool.Get(dst);
+        var imgSrc = _ctx.TexturesPool.Get(src);
+        var imgDst = _ctx.TexturesPool.Get(dst);
 
         HxDebug.Assert(imgSrc is not null && imgDst is not null);
-        HxDebug.Assert(srcLayers.numLayers == dstLayers.numLayers);
+        HxDebug.Assert(srcLayers.NumLayers == dstLayers.NumLayers);
 
         if (!imgSrc!.Valid || !imgDst!.Valid)
         {
-            logger.LogError("Cannot copy image. Source or destination image is not valid.");
+            Logger.LogError("Cannot copy image. Source or destination image is not valid.");
             return;
         }
 
         VkImageSubresourceRange rangeSrc = new()
         {
             aspectMask = imgSrc.GetImageAspectFlags(),
-            baseMipLevel = srcLayers.mipLevel,
+            baseMipLevel = srcLayers.MipLevel,
             levelCount = 1,
-            baseArrayLayer = srcLayers.layer,
-            layerCount = srcLayers.numLayers,
+            baseArrayLayer = srcLayers.Layer,
+            layerCount = srcLayers.NumLayers,
         };
         VkImageSubresourceRange rangeDst = new()
         {
             aspectMask = imgDst.GetImageAspectFlags(),
-            baseMipLevel = dstLayers.mipLevel,
+            baseMipLevel = dstLayers.MipLevel,
             levelCount = 1,
-            baseArrayLayer = dstLayers.layer,
-            layerCount = dstLayers.numLayers,
+            baseArrayLayer = dstLayers.Layer,
+            layerCount = dstLayers.NumLayers,
         };
 
         HxDebug.Assert(imgSrc.ImageLayout != VK.VK_IMAGE_LAYOUT_UNDEFINED);
 
         VkExtent3D dstExtent = imgDst.Extent;
-        bool coversFullDstImage = dstExtent.width == extent.Width && dstExtent.height == extent.Height && dstExtent.depth == extent.Depth &&
-                                        dstOffset.x == 0 && dstOffset.y == 0 && dstOffset.z == 0;
+        bool coversFullDstImage =
+            dstExtent.width == extent.Width
+            && dstExtent.height == extent.Height
+            && dstExtent.depth == extent.Depth
+            && dstOffset.X == 0
+            && dstOffset.Y == 0
+            && dstOffset.Z == 0;
 
         HxDebug.Assert(coversFullDstImage || imgDst.ImageLayout != VK.VK_IMAGE_LAYOUT_UNDEFINED);
 
-        CmdBuffer.ImageMemoryBarrier2(imgSrc.Image,
+        CmdBuffer.ImageMemoryBarrier2(
+            imgSrc.Image,
             new StageAccess2
             {
-                stage = VkPipelineStageFlags2.AllCommands,
-                access = VkAccessFlags2.MemoryRead | VkAccessFlags2.MemoryWrite
+                Stage = VkPipelineStageFlags2.AllCommands,
+                Access = VkAccessFlags2.MemoryRead | VkAccessFlags2.MemoryWrite,
             },
             new StageAccess2
             {
-                stage = VkPipelineStageFlags2.Transfer,
-                access = VkAccessFlags2.TransferRead
+                Stage = VkPipelineStageFlags2.Transfer,
+                Access = VkAccessFlags2.TransferRead,
             },
             imgSrc.ImageLayout,
             VK.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-            rangeSrc);
-        CmdBuffer.ImageMemoryBarrier2(imgDst.Image,
+            rangeSrc
+        );
+        CmdBuffer.ImageMemoryBarrier2(
+            imgDst.Image,
             new StageAccess2
             {
-                stage = VkPipelineStageFlags2.AllCommands,
-                access = VkAccessFlags2.MemoryRead | VkAccessFlags2.MemoryWrite
+                Stage = VkPipelineStageFlags2.AllCommands,
+                Access = VkAccessFlags2.MemoryRead | VkAccessFlags2.MemoryWrite,
             },
             new StageAccess2
             {
-                stage = VkPipelineStageFlags2.Transfer,
-                access = VkAccessFlags2.TransferWrite
+                Stage = VkPipelineStageFlags2.Transfer,
+                Access = VkAccessFlags2.TransferWrite,
             },
             coversFullDstImage ? VK.VK_IMAGE_LAYOUT_UNDEFINED : imgDst.ImageLayout,
             VK.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-            rangeDst);
+            rangeDst
+        );
 
         VkImageCopy regionCopy = new()
         {
             srcSubresource = new()
             {
                 aspectMask = imgSrc.GetImageAspectFlags(),
-                mipLevel = srcLayers.mipLevel,
-                baseArrayLayer = srcLayers.layer,
-                layerCount = srcLayers.numLayers,
+                mipLevel = srcLayers.MipLevel,
+                baseArrayLayer = srcLayers.Layer,
+                layerCount = srcLayers.NumLayers,
             },
-            srcOffset = new() { x = srcOffset.x, y = srcOffset.y, z = srcOffset.z },
+            srcOffset = new()
+            {
+                x = srcOffset.X,
+                y = srcOffset.Y,
+                z = srcOffset.Z,
+            },
             dstSubresource = new()
             {
                 aspectMask = imgDst.GetImageAspectFlags(),
-                mipLevel = dstLayers.mipLevel,
-                baseArrayLayer = dstLayers.layer,
-                layerCount = dstLayers.numLayers,
+                mipLevel = dstLayers.MipLevel,
+                baseArrayLayer = dstLayers.Layer,
+                layerCount = dstLayers.NumLayers,
             },
-            dstOffset = new() { x = dstOffset.x, y = dstOffset.y, z = dstOffset.z },
-            extent = new() { width = extent.Width, height = extent.Height, depth = extent.Depth },
+            dstOffset = new()
+            {
+                x = dstOffset.X,
+                y = dstOffset.Y,
+                z = dstOffset.Z,
+            },
+            extent = new()
+            {
+                width = extent.Width,
+                height = extent.Height,
+                depth = extent.Depth,
+            },
         };
         VkImageBlit regionBlit = new()
         {
             srcSubresource = regionCopy.srcSubresource,
-            dstSubresource = regionCopy.dstSubresource
+            dstSubresource = regionCopy.dstSubresource,
         };
-        regionBlit.srcOffsets[0] = new VkOffset3D(srcOffset.x, srcOffset.y, srcOffset.z);
-        regionBlit.srcOffsets[1] = new VkOffset3D((int)(srcOffset.x + extent.Width), (int)(srcOffset.y + extent.Height), (int)(srcOffset.z + extent.Depth));
-        regionBlit.dstOffsets[0] = new VkOffset3D(dstOffset.x, dstOffset.y, dstOffset.z);
-        regionBlit.dstOffsets[1] = new VkOffset3D((int)(dstOffset.x + extent.Width), (int)(dstOffset.y + extent.Height), (int)(dstOffset.z + extent.Depth));
-        bool isCompatible = imgSrc.ImageFormat.GetBytesPerPixel() == imgDst.ImageFormat.GetBytesPerPixel();
+        regionBlit.srcOffsets[0] = new VkOffset3D(srcOffset.X, srcOffset.Y, srcOffset.Z);
+        regionBlit.srcOffsets[1] = new VkOffset3D(
+            (int)(srcOffset.X + extent.Width),
+            (int)(srcOffset.Y + extent.Height),
+            (int)(srcOffset.Z + extent.Depth)
+        );
+        regionBlit.dstOffsets[0] = new VkOffset3D(dstOffset.X, dstOffset.Y, dstOffset.Z);
+        regionBlit.dstOffsets[1] = new VkOffset3D(
+            (int)(dstOffset.X + extent.Width),
+            (int)(dstOffset.Y + extent.Height),
+            (int)(dstOffset.Z + extent.Depth)
+        );
+        bool isCompatible =
+            imgSrc.ImageFormat.GetBytesPerPixel() == imgDst.ImageFormat.GetBytesPerPixel();
 
         if (isCompatible)
         {
             unsafe
             {
-                VK.vkCmdCopyImage(Wrapper.Instance, imgSrc.Image, VK.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                                  imgDst.Image, VK.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                                  1, &regionCopy);
+                VK.vkCmdCopyImage(
+                    Wrapper.Instance,
+                    imgSrc.Image,
+                    VK.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                    imgDst.Image,
+                    VK.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                    1,
+                    &regionCopy
+                );
             }
-
         }
         else
         {
             unsafe
             {
-                VK.vkCmdBlitImage(Wrapper.Instance, imgSrc.Image, VK.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                                  imgDst.Image, VK.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                                  1, &regionBlit, VK.VK_FILTER_LINEAR);
+                VK.vkCmdBlitImage(
+                    Wrapper.Instance,
+                    imgSrc.Image,
+                    VK.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                    imgDst.Image,
+                    VK.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                    1,
+                    &regionBlit,
+                    VK.VK_FILTER_LINEAR
+                );
             }
         }
-        CmdBuffer.ImageMemoryBarrier2(imgSrc.Image,
-             new StageAccess2()
-             { stage = VkPipelineStageFlags2.Transfer, access = VkAccessFlags2.TransferRead },
-             new StageAccess2()
-             { stage = VkPipelineStageFlags2.AllCommands, access = VkAccessFlags2.MemoryRead | VkAccessFlags2.MemoryWrite },
-             VK.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-             imgSrc.ImageLayout, rangeSrc);
+        CmdBuffer.ImageMemoryBarrier2(
+            imgSrc.Image,
+            new StageAccess2()
+            {
+                Stage = VkPipelineStageFlags2.Transfer,
+                Access = VkAccessFlags2.TransferRead,
+            },
+            new StageAccess2()
+            {
+                Stage = VkPipelineStageFlags2.AllCommands,
+                Access = VkAccessFlags2.MemoryRead | VkAccessFlags2.MemoryWrite,
+            },
+            VK.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+            imgSrc.ImageLayout,
+            rangeSrc
+        );
 
         // a ternary cascade...
-        VkImageLayout newLayout = imgDst.ImageLayout == VK.VK_IMAGE_LAYOUT_UNDEFINED
-                                            ? (imgDst.IsAttachment ? VK.VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL
-                                               : imgDst.IsSampledImage ? VK.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-                                                                          : VK.VK_IMAGE_LAYOUT_GENERAL)
-                                            : imgDst.ImageLayout;
+        VkImageLayout newLayout =
+            imgDst.ImageLayout == VK.VK_IMAGE_LAYOUT_UNDEFINED
+                ? (
+                    imgDst.IsAttachment ? VK.VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL
+                    : imgDst.IsSampledImage ? VK.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+                    : VK.VK_IMAGE_LAYOUT_GENERAL
+                )
+                : imgDst.ImageLayout;
 
-        CmdBuffer.ImageMemoryBarrier2(imgDst.Image,
+        CmdBuffer.ImageMemoryBarrier2(
+            imgDst.Image,
             new StageAccess2()
-            { stage = VkPipelineStageFlags2.Transfer, access = VkAccessFlags2.TransferWrite },
+            {
+                Stage = VkPipelineStageFlags2.Transfer,
+                Access = VkAccessFlags2.TransferWrite,
+            },
             new StageAccess2()
-            { stage = VkPipelineStageFlags2.AllCommands, access = VkAccessFlags2.MemoryRead | VkAccessFlags2.MemoryWrite },
+            {
+                Stage = VkPipelineStageFlags2.AllCommands,
+                Access = VkAccessFlags2.MemoryRead | VkAccessFlags2.MemoryWrite,
+            },
             VK.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-            newLayout, rangeDst);
+            newLayout,
+            rangeDst
+        );
 
         imgDst.ImageLayout = newLayout;
     }
 
     /// <inheritdoc/>
     public void DispatchThreadGroups(in Dimensions threadgroupCount, in Dependencies deps)
-{
-        HxDebug.Assert(!isRendering);
+    {
+        HxDebug.Assert(!IsRendering);
 
         for (uint32_t i = 0; i != Dependencies.MAX_SUBMIT_DEPENDENCIES && deps.Textures[i]; i++)
         {
@@ -723,20 +991,32 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
         }
         for (uint32_t i = 0; i != Dependencies.MAX_SUBMIT_DEPENDENCIES && deps.Buffers[i]; i++)
         {
-            var buf = vkContext.BuffersPool.Get(deps.Buffers[i]);
-            HxDebug.Assert(buf && buf!.vkUsageFlags_.HasFlag(VK.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
-                           "Did you forget to specify BufferUsageBits_Storage on your buffer?");
+            var buf = _ctx.BuffersPool.Get(deps.Buffers[i]);
+            HxDebug.Assert(
+                buf && buf!.VkUsageFlags.HasFlag(VK.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                "Did you forget to specify BufferUsageBits_Storage on your buffer?"
+            );
             if (buf is null || !buf.Valid)
             {
-                logger.LogError("Buffer {INDEX} is null or invalid. Make sure the buffer is created before binding it to the command buffer.", i);
+                Logger.LogError(
+                    "Buffer {INDEX} is null or invalid. Make sure the buffer is created before binding it to the command buffer.",
+                    i
+                );
                 continue;
             }
-            CmdBuffer.BufferBarrier2(buf,
-                      VkPipelineStageFlags2.VertexShader | VkPipelineStageFlags2.FragmentShader,
-                      VkPipelineStageFlags2.ComputeShader);
+            CmdBuffer.BufferBarrier2(
+                buf,
+                VkPipelineStageFlags2.VertexShader | VkPipelineStageFlags2.FragmentShader,
+                VkPipelineStageFlags2.ComputeShader
+            );
         }
 
-        VK.vkCmdDispatch(CmdBuffer, threadgroupCount.Width, threadgroupCount.Height, threadgroupCount.Depth);
+        VK.vkCmdDispatch(
+            CmdBuffer,
+            threadgroupCount.Width,
+            threadgroupCount.Height,
+            threadgroupCount.Depth
+        );
     }
 
     /// <inheritdoc/>
@@ -744,7 +1024,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
     {
         if (vertexCount == 0)
         {
-            logger.LogWarning("Unable to Draw. Vertex count is zero.");
+            Logger.LogWarning("Unable to Draw. Vertex count is zero.");
             return;
         }
 
@@ -752,113 +1032,176 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
     }
 
     /// <inheritdoc/>
-    public void DrawIndexed(uint indexCount, uint instanceCount, uint firstIndex, int vertexOffset, uint baseInstance)
+    public void DrawIndexed(
+        uint indexCount,
+        uint instanceCount,
+        uint firstIndex,
+        int vertexOffset,
+        uint baseInstance
+    )
     {
         if (indexCount == 0)
         {
-            logger.LogWarning("Unable to DrawIndexed. IndexCount is zero.");
+            Logger.LogWarning("Unable to DrawIndexed. IndexCount is zero.");
             return;
         }
 
-        VK.vkCmdDrawIndexed(CmdBuffer, indexCount, instanceCount, firstIndex, vertexOffset, baseInstance);
+        VK.vkCmdDrawIndexed(
+            CmdBuffer,
+            indexCount,
+            instanceCount,
+            firstIndex,
+            vertexOffset,
+            baseInstance
+        );
     }
 
     /// <inheritdoc/>
-    public void DrawIndexedIndirect(in BufferHandle indirectBuffer, uint indirectBufferOffset, uint drawCount, uint stride)
+    public void DrawIndexedIndirect(
+        in BufferHandle indirectBuffer,
+        uint indirectBufferOffset,
+        uint drawCount,
+        uint stride
+    )
     {
-        var bufIndirect = vkContext.BuffersPool.Get(indirectBuffer);
+        var bufIndirect = _ctx.BuffersPool.Get(indirectBuffer);
 
         HxDebug.Assert(bufIndirect);
         unsafe
         {
             VK.vkCmdDrawIndexedIndirect(
-                CmdBuffer, bufIndirect!.VkBuffer, indirectBufferOffset, drawCount, stride > 0 ? stride : (uint)sizeof(VkDrawIndexedIndirectCommand));
+                CmdBuffer,
+                bufIndirect!.VkBuffer,
+                indirectBufferOffset,
+                drawCount,
+                stride > 0 ? stride : (uint)sizeof(VkDrawIndexedIndirectCommand)
+            );
         }
     }
 
     /// <inheritdoc/>
-    public void DrawIndexedIndirectCount(BufferHandle indirectBuffer, uint indirectBufferOffset, BufferHandle countBuffer, uint countBufferOffset, uint maxDrawCount, uint stride)
+    public void DrawIndexedIndirectCount(
+        BufferHandle indirectBuffer,
+        uint indirectBufferOffset,
+        BufferHandle countBuffer,
+        uint countBufferOffset,
+        uint maxDrawCount,
+        uint stride
+    )
     {
-        var bufIndirect = vkContext.BuffersPool.Get(indirectBuffer);
-        var bufCount = vkContext.BuffersPool.Get(countBuffer);
+        var bufIndirect = _ctx.BuffersPool.Get(indirectBuffer);
+        var bufCount = _ctx.BuffersPool.Get(countBuffer);
 
         HxDebug.Assert(bufIndirect);
         HxDebug.Assert(bufCount);
         unsafe
         {
-            VK.vkCmdDrawIndexedIndirectCount(CmdBuffer,
-                                          bufIndirect!.VkBuffer,
-                                          indirectBufferOffset,
-                                          bufCount!.VkBuffer,
-                                          countBufferOffset,
-                                          maxDrawCount,
-                                          stride > 0 ? stride : (uint)sizeof(VkDrawIndexedIndirectCommand));
+            VK.vkCmdDrawIndexedIndirectCount(
+                CmdBuffer,
+                bufIndirect!.VkBuffer,
+                indirectBufferOffset,
+                bufCount!.VkBuffer,
+                countBufferOffset,
+                maxDrawCount,
+                stride > 0 ? stride : (uint)sizeof(VkDrawIndexedIndirectCommand)
+            );
         }
     }
 
     /// <inheritdoc/>
-    public void DrawIndirect(in BufferHandle indirectBuffer, uint indirectBufferOffset, uint drawCount, uint stride)
+    public void DrawIndirect(
+        in BufferHandle indirectBuffer,
+        uint indirectBufferOffset,
+        uint drawCount,
+        uint stride
+    )
     {
-        var bufIndirect = vkContext.BuffersPool.Get(indirectBuffer);
+        var bufIndirect = _ctx.BuffersPool.Get(indirectBuffer);
 
         HxDebug.Assert(bufIndirect);
         unsafe
         {
             VK.vkCmdDrawIndirect(
-                CmdBuffer, bufIndirect!.VkBuffer, indirectBufferOffset, drawCount, stride > 0 ? stride : (uint)sizeof(VkDrawIndirectCommand));
+                CmdBuffer,
+                bufIndirect!.VkBuffer,
+                indirectBufferOffset,
+                drawCount,
+                stride > 0 ? stride : (uint)sizeof(VkDrawIndirectCommand)
+            );
         }
     }
 
     /// <inheritdoc/>
     public void DrawMeshTasks(in Dimensions threadgroupCount)
     {
-        VK.vkCmdDrawMeshTasksEXT(CmdBuffer, threadgroupCount.Width, threadgroupCount.Height, threadgroupCount.Depth);
+        VK.vkCmdDrawMeshTasksEXT(
+            CmdBuffer,
+            threadgroupCount.Width,
+            threadgroupCount.Height,
+            threadgroupCount.Depth
+        );
     }
 
     /// <inheritdoc/>
-    public void DrawMeshTasksIndirect(in BufferHandle indirectBuffer, uint indirectBufferOffset, uint drawCount, uint stride)
+    public void DrawMeshTasksIndirect(
+        in BufferHandle indirectBuffer,
+        uint indirectBufferOffset,
+        uint drawCount,
+        uint stride
+    )
     {
-        var bufIndirect = vkContext.BuffersPool.Get(indirectBuffer);
+        var bufIndirect = _ctx.BuffersPool.Get(indirectBuffer);
 
         HxDebug.Assert(bufIndirect);
         unsafe
         {
-            VK.vkCmdDrawMeshTasksIndirectEXT(CmdBuffer,
-                                          bufIndirect!.VkBuffer,
-                                          indirectBufferOffset,
-                                          drawCount,
-                                          stride > 0 ? stride : (uint)sizeof(VkDrawMeshTasksIndirectCommandEXT));
+            VK.vkCmdDrawMeshTasksIndirectEXT(
+                CmdBuffer,
+                bufIndirect!.VkBuffer,
+                indirectBufferOffset,
+                drawCount,
+                stride > 0 ? stride : (uint)sizeof(VkDrawMeshTasksIndirectCommandEXT)
+            );
         }
     }
 
     /// <inheritdoc/>
-    public void DrawMeshTasksIndirectCount(in BufferHandle indirectBuffer, uint indirectBufferOffset, in BufferHandle countBuffer, uint countBufferOffset, uint maxDrawCount, uint stride)
+    public void DrawMeshTasksIndirectCount(
+        in BufferHandle indirectBuffer,
+        uint indirectBufferOffset,
+        in BufferHandle countBuffer,
+        uint countBufferOffset,
+        uint maxDrawCount,
+        uint stride
+    )
     {
-        var bufIndirect = vkContext.BuffersPool.Get(indirectBuffer);
-        var bufCount = vkContext.BuffersPool.Get(countBuffer);
+        var bufIndirect = _ctx.BuffersPool.Get(indirectBuffer);
+        var bufCount = _ctx.BuffersPool.Get(countBuffer);
 
         HxDebug.Assert(bufIndirect);
         HxDebug.Assert(bufCount);
         unsafe
         {
-            VK.vkCmdDrawMeshTasksIndirectCountEXT(CmdBuffer,
-                                               bufIndirect!.VkBuffer,
-                                               indirectBufferOffset,
-                                               bufCount!.VkBuffer,
-                                               countBufferOffset,
-                                               maxDrawCount,
-                                               stride > 0 ? stride : (uint)sizeof(VkDrawMeshTasksIndirectCommandEXT));
+            VK.vkCmdDrawMeshTasksIndirectCountEXT(
+                CmdBuffer,
+                bufIndirect!.VkBuffer,
+                indirectBufferOffset,
+                bufCount!.VkBuffer,
+                countBufferOffset,
+                maxDrawCount,
+                stride > 0 ? stride : (uint)sizeof(VkDrawMeshTasksIndirectCommandEXT)
+            );
         }
     }
 
     /// <inheritdoc/>
     public void EndRendering()
     {
-        isRendering = false;
+        IsRendering = false;
 
         VK.vkCmdEndRendering(CmdBuffer);
 
-        framebuffer = Framebuffer.Null;
+        Framebuffer = Framebuffer.Null;
     }
 
     /// <inheritdoc/>
@@ -869,27 +1212,31 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
         HxDebug.Assert(size % 4 == 0);
         HxDebug.Assert(bufferOffset % 4 == 0);
 
-        var buf = vkContext.BuffersPool.Get(buffer);
+        var buf = _ctx.BuffersPool.Get(buffer);
 
         HxDebug.Assert(buf);
 
         if (buf is null || !buf.Valid)
         {
-            logger.LogError("FillBuffer failed. Buffer handle is not valid.");
+            Logger.LogError("FillBuffer failed. Buffer handle is not valid.");
             return;
         }
 
-        CmdBuffer.BufferBarrier2(buf, VkPipelineStageFlags2.AllCommands, VkPipelineStageFlags2.Transfer);
+        CmdBuffer.BufferBarrier2(
+            buf,
+            VkPipelineStageFlags2.AllCommands,
+            VkPipelineStageFlags2.Transfer
+        );
 
         VK.vkCmdFillBuffer(CmdBuffer, buf!.VkBuffer, bufferOffset, size, data);
 
         var dstStage = VkPipelineStageFlags2.VertexShader;
 
-        if (buf.vkUsageFlags_.HasFlag(VK.VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT))
+        if (buf.VkUsageFlags.HasFlag(VK.VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT))
         {
             dstStage |= VkPipelineStageFlags2.DrawIndirect;
         }
-        if (buf.vkUsageFlags_.HasFlag(VK.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT))
+        if (buf.VkUsageFlags.HasFlag(VK.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT))
         {
             dstStage |= VkPipelineStageFlags2.VertexInput;
         }
@@ -905,11 +1252,11 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
             return;
         }
 
-        var tex = vkContext.TexturesPool.Get(handle);
+        var tex = _ctx.TexturesPool.Get(handle);
         HxDebug.Assert(tex is not null && tex.Valid, "Texture is null or not valid.");
         if (tex is null || !tex.Valid || tex.IsSwapchainImage)
         {
-            logger.LogError("Cannot generate mipmap for swapchain image or invalid texture.");
+            Logger.LogError("Cannot generate mipmap for swapchain image or invalid texture.");
             return;
         }
         if (tex.NumLevels <= 1)
@@ -936,7 +1283,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
             VkDebugUtilsLabelEXT utilsLabel = new()
             {
                 pNext = null,
-                pLabelName = label.ToVkUtf8ReadOnlyString()
+                pLabelName = label.ToVkUtf8ReadOnlyString(),
             };
             color.CopyTo(utilsLabel.color, 4);
             VK.vkCmdInsertDebugUtilsLabelEXT(CmdBuffer, &utilsLabel);
@@ -955,25 +1302,37 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
         HxDebug.Assert(size % 4 == 0); // VUID-vkCmdPushConstants-size-00369: size must be a multiple of 4
 
         // check push constant size is within max size
-        ref readonly var limits = ref vkContext.GetVkPhysicalDeviceProperties().limits;
+        ref readonly var limits = ref _ctx.GetVkPhysicalDeviceProperties().limits;
         if (!(size + offset <= limits.maxPushConstantsSize))
         {
-            logger.LogWarning("Push constants size exceeded {SIZE} (max {MAX} bytes)", size + offset, limits.maxPushConstantsSize);
+            Logger.LogWarning(
+                "Push constants size exceeded {SIZE} (max {MAX} bytes)",
+                size + offset,
+                limits.maxPushConstantsSize
+            );
         }
 
-        if (currentPipelineGraphics.Empty && currentPipelineCompute.Empty)
+        if (CurrentPipelineGraphics.Empty && CurrentPipelineCompute.Empty)
         {
-            logger.LogError("No pipeline bound - cannot set push constants");
+            Logger.LogError("No pipeline bound - cannot set push constants");
             return;
         }
 
-        var stateGraphics = currentPipelineGraphics.Empty ? RenderPipelineState.Null : vkContext.RenderPipelinesPool.Get(currentPipelineGraphics);
-        var stateCompute = currentPipelineCompute.Empty ? ComputePipelineState.Null : vkContext.ComputePipelinesPool.Get(currentPipelineCompute);
+        var stateGraphics = CurrentPipelineGraphics.Empty
+            ? RenderPipelineState.Null
+            : _ctx.RenderPipelinesPool.Get(CurrentPipelineGraphics);
+        var stateCompute = CurrentPipelineCompute.Empty
+            ? ComputePipelineState.Null
+            : _ctx.ComputePipelinesPool.Get(CurrentPipelineCompute);
 
         HxDebug.Assert(stateGraphics || stateCompute);
 
-        VkPipelineLayout layout = stateGraphics ? stateGraphics!.PipelineLayout : stateCompute!.PipelineLayout;
-        VkShaderStageFlags shaderStageFlags = stateGraphics ? stateGraphics!.ShaderStageFlags : VK.VK_SHADER_STAGE_COMPUTE_BIT;
+        VkPipelineLayout layout = stateGraphics
+            ? stateGraphics!.PipelineLayout
+            : stateCompute!.PipelineLayout;
+        VkShaderStageFlags shaderStageFlags = stateGraphics
+            ? stateGraphics!.ShaderStageFlags
+            : VK.VK_SHADER_STAGE_COMPUTE_BIT;
         unsafe
         {
             VK.vkCmdPushConstants(CmdBuffer, layout, shaderStageFlags, offset, size, (void*)data);
@@ -994,7 +1353,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
             VkDebugUtilsLabelEXT utilsLabel = new()
             {
                 pNext = null,
-                pLabelName = label.ToVkUtf8ReadOnlyString()
+                pLabelName = label.ToVkUtf8ReadOnlyString(),
             };
             color.CopyTo(utilsLabel.color, 4);
             VK.vkCmdBeginDebugUtilsLabelEXT(CmdBuffer, &utilsLabel);
@@ -1004,7 +1363,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
     /// <inheritdoc/>
     public void ResetQueryPool(in QueryPoolHandle pool, uint firstQuery, uint queryCount)
     {
-        var vkPool = vkContext.QueriesPool.Get(pool);
+        var vkPool = _ctx.QueriesPool.Get(pool);
         HxDebug.Assert(vkPool.IsNotNull, "Query pool is null or not valid.");
         VK.vkCmdResetQueryPool(CmdBuffer, vkPool, firstQuery, queryCount);
     }
@@ -1016,13 +1375,13 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
     }
 
     /// <inheritdoc/>
- public void SetDepthBias(float constantFactor, float slopeFactor, float clamp)
+    public void SetDepthBias(float constantFactor, float slopeFactor, float clamp)
     {
         VK.vkCmdSetDepthBias(CmdBuffer, constantFactor, clamp, slopeFactor);
     }
 
-/// <inheritdoc/>
-  public void SetDepthBiasEnable(bool enable)
+    /// <inheritdoc/>
+    public void SetDepthBiasEnable(bool enable)
     {
         VK.vkCmdSetDepthBiasEnable(CmdBuffer, enable ? VK_BOOL.True : VK_BOOL.False);
     }
@@ -1030,12 +1389,12 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
     /// <inheritdoc/>
     public void TransitionToShaderReadOnly(TextureHandle handle)
     {
-        var img = vkContext.TexturesPool.Get(handle);
+        var img = _ctx.TexturesPool.Get(handle);
 
         HxDebug.Assert(img is not null && !img.IsSwapchainImage);
         if (img is null || img.IsSwapchainImage)
         {
-            logger.LogError("Cannot transition swapchain image to shader read only layout.");
+            Logger.LogError("Cannot transition swapchain image to shader read only layout.");
             return;
         }
 
@@ -1044,9 +1403,19 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
         {
             VkImageAspectFlags flags = img.GetImageAspectFlags();
             // set the result of the previous render pass
-            img.TransitionLayout(Wrapper.Instance,
-                                 img.IsSampledImage ? VK.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK.VK_IMAGE_LAYOUT_GENERAL,
-                                 new VkImageSubresourceRange(flags, 0, VK.VK_REMAINING_MIP_LEVELS, 0, VK.VK_REMAINING_ARRAY_LAYERS));
+            img.TransitionLayout(
+                Wrapper.Instance,
+                img.IsSampledImage
+                    ? VK.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+                    : VK.VK_IMAGE_LAYOUT_GENERAL,
+                new VkImageSubresourceRange(
+                    flags,
+                    0,
+                    VK.VK_REMAINING_MIP_LEVELS,
+                    0,
+                    VK.VK_REMAINING_ARRAY_LAYERS
+                )
+            );
         }
     }
 
@@ -1059,16 +1428,20 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
         HxDebug.Assert(size % 4 == 0);
         HxDebug.Assert(bufferOffset % 4 == 0);
 
-        var buf = vkContext.BuffersPool.Get(buffer);
+        var buf = _ctx.BuffersPool.Get(buffer);
         HxDebug.Assert(buf);
 
         if (buf is null || !buf.Valid)
         {
-            logger.LogError("UpdateBuffer failed. Buffer handle is not valid.");
+            Logger.LogError("UpdateBuffer failed. Buffer handle is not valid.");
             return;
         }
 
-        CmdBuffer.BufferBarrier2(buf, VkPipelineStageFlags2.AllCommands, VkPipelineStageFlags2.Transfer);
+        CmdBuffer.BufferBarrier2(
+            buf,
+            VkPipelineStageFlags2.AllCommands,
+            VkPipelineStageFlags2.Transfer
+        );
         unsafe
         {
             VK.vkCmdUpdateBuffer(CmdBuffer, buf!.VkBuffer, bufferOffset, size, (void*)data);
@@ -1076,11 +1449,11 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
 
         var dstStage = VkPipelineStageFlags2.VertexShader;
 
-        if (buf.vkUsageFlags_.HasFlag(VK.VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT))
+        if (buf.VkUsageFlags.HasFlag(VK.VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT))
         {
             dstStage |= VkPipelineStageFlags2.DrawIndirect;
         }
-        if (buf.vkUsageFlags_.HasFlag(VK.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT))
+        if (buf.VkUsageFlags.HasFlag(VK.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT))
         {
             dstStage |= VkPipelineStageFlags2.VertexInput;
         }
@@ -1088,10 +1461,10 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
         CmdBuffer.BufferBarrier2(buf, VkPipelineStageFlags2.Transfer, dstStage);
     }
 
-  /// <inheritdoc/>
+    /// <inheritdoc/>
     public void WriteTimestamp(in QueryPoolHandle pool, uint query)
     {
-        var vkPool = vkContext.QueriesPool.Get(pool);
+        var vkPool = _ctx.QueriesPool.Get(pool);
         HxDebug.Assert(vkPool.IsNotNull, "Query pool is null or not valid.");
         VK.vkCmdWriteTimestamp(CmdBuffer, VK.VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, vkPool, query);
     }

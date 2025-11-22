@@ -1,4 +1,4 @@
-﻿namespace HelixToolkit.Nex.Rendering;
+namespace HelixToolkit.Nex.Rendering;
 
 public enum RenderStages
 {

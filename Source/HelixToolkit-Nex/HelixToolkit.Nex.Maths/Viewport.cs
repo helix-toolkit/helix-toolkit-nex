@@ -1,4 +1,4 @@
-﻿/*
+/*
 The MIT License (MIT)
 Copyright (c) 2022 Helix Toolkit contributors
 
@@ -90,7 +90,7 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="y"></param>
         /// <param name="width"></param>
         /// <param name="height"></param>
-        public Viewport(uint x, uint y, uint width, uint height) 
+        public Viewport(uint x, uint y, uint width, uint height)
             : this((int)x, (int)y, (int)width, (int)height)
         {
         }
@@ -124,7 +124,7 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="maxDepth"></param>
         public Viewport(uint x, uint y, uint width, uint height, float minDepth, float maxDepth)
             : this((int)x, (int)y, (int)width, (int)height, minDepth, maxDepth)
-        {    
+        {
         }
         /// <summary>
         /// Initializes a new instance of the <see cref="Viewport"/> struct.
@@ -217,7 +217,7 @@ namespace HelixToolkit.Nex.Maths
                 return hashCode;
             }
         }
-        
+
         /// <summary>
         /// Implements the operator ==.
         /// </summary>
@@ -245,7 +245,7 @@ namespace HelixToolkit.Nex.Maths
         /// <summary>
         /// Retrieves a string representation of this object.
         /// </summary>
-        /// <returns>A <see cref="System.String" /> that represents this instance.</returns>
+        /// <returns>A <see cref="string" /> that represents this instance.</returns>
         public override readonly string ToString()
         {
             return string.Format(CultureInfo.CurrentCulture, "{{X:{0} Y:{1} Width:{2} Height:{3} MinDepth:{4} MaxDepth:{5}}}", X, Y, Width, Height, MinDepth, MaxDepth);

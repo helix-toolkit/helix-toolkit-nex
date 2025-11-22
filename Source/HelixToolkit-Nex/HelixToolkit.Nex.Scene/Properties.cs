@@ -1,4 +1,4 @@
-﻿namespace HelixToolkit.Nex.Scene;
+namespace HelixToolkit.Nex.Scene;
 
 public struct NodeInfo
 {
@@ -8,10 +8,7 @@ public struct NodeInfo
     public string Name = string.Empty;
     public Node? Node = null;
 
-    public NodeInfo()
-    {
-
-    }
+    public NodeInfo() { }
 
     public NodeInfo(Node node)
     {
@@ -26,68 +23,71 @@ public struct NodeInfo
 
 public struct Transform()
 {
-    private bool isLocalDirty = true;
-    public readonly bool IsLocalDirty => isLocalDirty;
+    private bool _isLocalDirty = true;
+    public readonly bool IsLocalDirty => _isLocalDirty;
 
-    private bool isWorldDirty = true;
-    public readonly bool IsWorldDirty => isWorldDirty || IsLocalDirty;
-    private Vector3 scale = Vector3.One;
+    private bool _isWorldDirty = true;
+    public readonly bool IsWorldDirty => _isWorldDirty || IsLocalDirty;
+    private Vector3 _scale = Vector3.One;
     public Vector3 Scale
     {
         set
         {
-            if (value != scale)
+            if (value != _scale)
             {
-                scale = value;
-                isLocalDirty = true;
+                _scale = value;
+                _isLocalDirty = true;
             }
         }
-        readonly get => scale;
+        readonly get => _scale;
     }
 
-    private Vector3 translation = Vector3.Zero;
+    private Vector3 _translation = Vector3.Zero;
     public Vector3 Translation
     {
         set
         {
-            if (value != translation)
+            if (value != _translation)
             {
-                translation = value;
-                isLocalDirty = true;
+                _translation = value;
+                _isLocalDirty = true;
             }
         }
-        readonly get => translation;
+        readonly get => _translation;
     }
 
-    private Quaternion rotation = Quaternion.Identity;
+    private Quaternion _rotation = Quaternion.Identity;
 
     public Quaternion Rotation
     {
         set
         {
-            if (value != rotation)
+            if (value != _rotation)
             {
-                rotation = value;
-                isLocalDirty = true;
+                _rotation = value;
+                _isLocalDirty = true;
             }
         }
-        readonly get => rotation;
+        readonly get => _rotation;
     }
 
     public Matrix4x4 WorldTransform { private set; get; } = Matrix4x4.Identity;
 
-    private Matrix4x4 value = Matrix4x4.Identity;
+    private Matrix4x4 _value = Matrix4x4.Identity;
     public Matrix4x4 Value
     {
         get
         {
-            if (isLocalDirty)
+            if (_isLocalDirty)
             {
-                value = Matrix4x4.CreateScale(Scale) * Matrix4x4.CreateFromQuaternion(Rotation) * Matrix4x4.CreateTranslation(Translation);
-                isLocalDirty = false;
-                isWorldDirty = true;
+                _value =
+                    Matrix4x4.CreateScale(Scale)
+                    * Matrix4x4.CreateFromQuaternion(Rotation)
+                    * Matrix4x4.CreateTranslation(Translation);
+                _isLocalDirty = false;
+                _isWorldDirty = true;
             }
-            return value;
+            return _value;
         }
     }
 
@@ -98,7 +98,7 @@ public struct Transform()
             return; // No change in world transform
         }
         WorldTransform = parent * Value;
-        isWorldDirty = false;
+        _isWorldDirty = false;
     }
 
     public override string ToString()
@@ -108,7 +108,7 @@ public struct Transform()
 
     public void MarkWorldDirty()
     {
-        isWorldDirty = true;
+        _isWorldDirty = true;
     }
 }
 
@@ -120,9 +120,9 @@ public struct Parent()
 public readonly struct Children
 {
     public readonly FastList<Node> ChildNodes = [];
-    public Children()
-    {
-    }
+
+    public Children() { }
+
     public Children(IEnumerable<Node> children)
     {
         foreach (var child in children)

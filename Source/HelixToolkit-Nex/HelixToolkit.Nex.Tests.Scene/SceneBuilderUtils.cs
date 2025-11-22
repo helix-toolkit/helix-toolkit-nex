@@ -1,4 +1,4 @@
-﻿using Arch.Core;
+using Arch.Core;
 using HelixToolkit.Nex.Scene;
 
 namespace HelixToolkit.Nex.Tests.Scene;

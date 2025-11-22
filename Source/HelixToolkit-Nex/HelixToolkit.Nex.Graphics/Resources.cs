@@ -1,4 +1,4 @@
-﻿namespace HelixToolkit.Nex.Graphics;
+namespace HelixToolkit.Nex.Graphics;
 
 /// <summary>
 /// Marker struct representing a shader module resource type.
@@ -54,9 +54,8 @@ public sealed class ShaderModuleResource : Resource<ShaderModule>
     /// </summary>
     /// <param name="context">The graphics context that owns this resource.</param>
     /// <param name="handle">The shader module handle.</param>
-    public ShaderModuleResource(IContext context, in ShaderModuleHandle handle) : base(context, handle)
-    {
-    }
+    public ShaderModuleResource(IContext context, in ShaderModuleHandle handle)
+        : base(context, handle) { }
 
     /// <summary>
     /// Destroys the shader module handle using the graphics context.
@@ -64,13 +63,13 @@ public sealed class ShaderModuleResource : Resource<ShaderModule>
     /// <param name="ctx">The graphics context.</param>
     protected override void OnDestroyHandle(IContext ctx)
     {
-        ctx.Destroy(handle);
+        ctx.Destroy(_handle);
     }
 
     /// <summary>
     /// A predefined null shader module resource for convenience.
     /// </summary>
-    public static readonly ShaderModuleResource Null = new(); // A null shader module holder for convenience   
+    public static readonly ShaderModuleResource Null = new(); // A null shader module holder for convenience
 }
 
 /// <summary>
@@ -92,9 +91,8 @@ public sealed class TextureResource : Resource<Texture>
     /// </summary>
     /// <param name="context">The graphics context that owns this resource.</param>
     /// <param name="handle">The texture handle.</param>
-    public TextureResource(IContext context, in TextureHandle handle) : base(context, handle)
-    {
-    }
+    public TextureResource(IContext context, in TextureHandle handle)
+        : base(context, handle) { }
 
     /// <summary>
     /// Destroys the texture handle using the graphics context.
@@ -102,13 +100,13 @@ public sealed class TextureResource : Resource<Texture>
     /// <param name="ctx">The graphics context.</param>
     protected override void OnDestroyHandle(IContext ctx)
     {
-        ctx.Destroy(handle);
+        ctx.Destroy(_handle);
     }
 
     /// <summary>
     /// A predefined null texture resource for convenience.
     /// </summary>
-    public static readonly TextureResource Null = new(); // A null texture holder for convenience   
+    public static readonly TextureResource Null = new(); // A null texture holder for convenience
 }
 
 /// <summary>
@@ -129,10 +127,9 @@ public sealed class BufferResource : Resource<Buffer>
     /// Initializes a new buffer resource with the specified context and handle.
     /// </summary>
     /// <param name="context">The graphics context that owns this resource.</param>
-  /// <param name="handle">The buffer handle.</param>
-    public BufferResource(IContext context, in BufferHandle handle) : base(context, handle)
-    {
-}
+    /// <param name="handle">The buffer handle.</param>
+    public BufferResource(IContext context, in BufferHandle handle)
+        : base(context, handle) { }
 
     /// <summary>
     /// Destroys the buffer handle using the graphics context.
@@ -140,13 +137,13 @@ public sealed class BufferResource : Resource<Buffer>
     /// <param name="ctx">The graphics context.</param>
     protected override void OnDestroyHandle(IContext ctx)
     {
-        ctx.Destroy(handle);
+        ctx.Destroy(_handle);
     }
 
     /// <summary>
     /// A predefined null buffer resource for convenience.
     /// </summary>
-    public static readonly BufferResource Null = new(); // A null buffer holder for convenience   
+    public static readonly BufferResource Null = new(); // A null buffer holder for convenience
 }
 
 /// <summary>
@@ -168,9 +165,8 @@ public sealed class ComputePipelineResource : Resource<ComputePipeline>
     /// </summary>
     /// <param name="context">The graphics context that owns this resource.</param>
     /// <param name="handle">The compute pipeline handle.</param>
-    public ComputePipelineResource(IContext context, in ComputePipelineHandle handle) : base(context, handle)
-    {
-    }
+    public ComputePipelineResource(IContext context, in ComputePipelineHandle handle)
+        : base(context, handle) { }
 
     /// <summary>
     /// Destroys the compute pipeline handle using the graphics context.
@@ -178,13 +174,13 @@ public sealed class ComputePipelineResource : Resource<ComputePipeline>
     /// <param name="ctx">The graphics context.</param>
     protected override void OnDestroyHandle(IContext ctx)
     {
- ctx.Destroy(handle);
+        ctx.Destroy(_handle);
     }
 
     /// <summary>
     /// A predefined null compute pipeline resource for convenience.
     /// </summary>
-    public static readonly ComputePipelineResource Null = new(); // A null compute pipeline holder for convenience   
+    public static readonly ComputePipelineResource Null = new(); // A null compute pipeline holder for convenience
 }
 
 /// <summary>
@@ -201,28 +197,27 @@ public sealed class RenderPipelineResource : Resource<RenderPipeline>
     /// </summary>
     public RenderPipelineResource() { }
 
-  /// <summary>
+    /// <summary>
     /// Initializes a new render pipeline resource with the specified context and handle.
     /// </summary>
     /// <param name="context">The graphics context that owns this resource.</param>
- /// <param name="handle">The render pipeline handle.</param>
-    public RenderPipelineResource(IContext context, in RenderPipelineHandle handle) : base(context, handle)
-    {
-    }
+    /// <param name="handle">The render pipeline handle.</param>
+    public RenderPipelineResource(IContext context, in RenderPipelineHandle handle)
+        : base(context, handle) { }
 
     /// <summary>
     /// Destroys the render pipeline handle using the graphics context.
     /// </summary>
     /// <param name="ctx">The graphics context.</param>
-protected override void OnDestroyHandle(IContext ctx)
+    protected override void OnDestroyHandle(IContext ctx)
     {
-        ctx.Destroy(handle);
+        ctx.Destroy(_handle);
     }
 
     /// <summary>
     /// A predefined null render pipeline resource for convenience.
     /// </summary>
-    public static readonly RenderPipelineResource Null = new(); // A null render pipeline holder for convenience   
+    public static readonly RenderPipelineResource Null = new(); // A null render pipeline holder for convenience
 }
 
 /// <summary>
@@ -240,13 +235,12 @@ public sealed class SamplerResource : Resource<Sampler>
     public SamplerResource() { }
 
     /// <summary>
- /// Initializes a new sampler resource with the specified context and handle.
+    /// Initializes a new sampler resource with the specified context and handle.
     /// </summary>
     /// <param name="context">The graphics context that owns this resource.</param>
     /// <param name="handle">The sampler handle.</param>
-    public SamplerResource(IContext context, in SamplerHandle handle) : base(context, handle)
-    {
-    }
+    public SamplerResource(IContext context, in SamplerHandle handle)
+        : base(context, handle) { }
 
     /// <summary>
     /// Destroys the sampler handle using the graphics context.
@@ -254,13 +248,13 @@ public sealed class SamplerResource : Resource<Sampler>
     /// <param name="ctx">The graphics context.</param>
     protected override void OnDestroyHandle(IContext ctx)
     {
-        ctx.Destroy(handle);
+        ctx.Destroy(_handle);
     }
 
     /// <summary>
     /// A predefined null sampler resource for convenience.
     /// </summary>
-    public static readonly SamplerResource Null = new(); // A null sampler holder for convenience   
+    public static readonly SamplerResource Null = new(); // A null sampler holder for convenience
 }
 
 /// <summary>
@@ -280,23 +274,22 @@ public sealed class QueryPoolResource : Resource<QueryPool>
     /// <summary>
     /// Initializes a new query pool resource with the specified context and handle.
     /// </summary>
-  /// <param name="context">The graphics context that owns this resource.</param>
+    /// <param name="context">The graphics context that owns this resource.</param>
     /// <param name="handle">The query pool handle.</param>
-    public QueryPoolResource(IContext context, in QueryPoolHandle handle) : base(context, handle)
-    {
-    }
+    public QueryPoolResource(IContext context, in QueryPoolHandle handle)
+        : base(context, handle) { }
 
     /// <summary>
     /// Destroys the query pool handle using the graphics context.
     /// </summary>
     /// <param name="ctx">The graphics context.</param>
     protected override void OnDestroyHandle(IContext ctx)
-  {
-        ctx.Destroy(handle);
+    {
+        ctx.Destroy(_handle);
     }
 
     /// <summary>
     /// A predefined null query pool resource for convenience.
     /// </summary>
-    public static readonly QueryPoolResource Null = new(); // A null query pool holder for convenience   
+    public static readonly QueryPoolResource Null = new(); // A null query pool holder for convenience
 }

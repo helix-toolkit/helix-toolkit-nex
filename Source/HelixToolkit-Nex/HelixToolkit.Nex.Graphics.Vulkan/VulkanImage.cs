@@ -1,22 +1,23 @@
-﻿namespace HelixToolkit.Nex.Graphics.Vulkan;
-
+namespace HelixToolkit.Nex.Graphics.Vulkan;
 
 internal sealed class VulkanImage : IDisposable
 {
-    static readonly ILogger logger = LogManager.Create<VulkanImage>();
-    readonly VulkanContext? ctx;
-    VkImage vkImage = VkImage.Null;
+    private static readonly ILogger Logger = LogManager.Create<VulkanImage>();
+    private readonly VulkanContext? _ctx;
+    private VkImage _vkImage = VkImage.Null;
 
-    readonly VkDeviceMemory[] memory = [VkDeviceMemory.Null, VkDeviceMemory.Null, VkDeviceMemory.Null];
-    VmaAllocation vmaAllocation = VmaAllocation.Null;
-    VkFormatProperties formatProperties = new();
+    private readonly VkDeviceMemory[] _memory =
+    [
+        VkDeviceMemory.Null,
+        VkDeviceMemory.Null,
+        VkDeviceMemory.Null,
+    ];
+    private VmaAllocation _vmaAllocation = VmaAllocation.Null;
+    private VkFormatProperties _formatProperties = new();
+    private readonly string? _debugName;
 
-    nint mappedPtr = IntPtr.Zero;
-
-    readonly string? debugName;
     // current image layout
     public VkImageLayout ImageLayout = VkImageLayout.Undefined;
-
 
     public bool IsSwapchainImage { get; } = false;
     public bool IsOwningVkImage { set; get; } = true;
@@ -30,39 +31,77 @@ internal sealed class VulkanImage : IDisposable
     public readonly VkExtent3D Extent;
     public readonly VkImageType ImageType;
     public readonly VkFormat ImageFormat = VkFormat.Undefined;
-    public readonly VkImageView[][] imageViewForFramebuffer_ = new VkImageView[Constants.MAX_MIP_LEVELS][]; // max 6 faces for cubemap rendering
+    public readonly VkImageView[][] ImageViewForFramebuffer = new VkImageView[
+        Constants.MAX_MIP_LEVELS
+    ][]; // max 6 faces for cubemap rendering
     public readonly VkImageUsageFlags UsageFlags = 0;
-    public VkImage Image => vkImage;
+    public VkImage Image => _vkImage;
+
     // precached image views - owned by this VulkanImage
     public VkImageView ImageView = VkImageView.Null; // default view with all mip-levels
     public VkImageView ImageViewStorage = VkImageView.Null; // default view with identity swizzle (all mip-levels)
-    public nint MappedPtr => mappedPtr;
-    public bool Valid => ctx is not null && Image != VkImage.Null && UsageFlags != 0;
+    public nint MappedPtr { get; private set; } = IntPtr.Zero;
+    public bool Valid => _ctx is not null && Image != VkImage.Null && UsageFlags != 0;
 
     public bool IsSampledImage => UsageFlags.HasFlag(VK.VK_IMAGE_USAGE_SAMPLED_BIT);
     public bool IsStorageImage => UsageFlags.HasFlag(VK.VK_IMAGE_USAGE_STORAGE_BIT);
     public bool IsColorAttachment => UsageFlags.HasFlag(VK.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
-    public bool IsDepthAttachment => UsageFlags.HasFlag(VK.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
-    public bool IsAttachment => UsageFlags.HasFlag(VK.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) | UsageFlags.HasFlag(VK.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
+    public bool IsDepthAttachment =>
+        UsageFlags.HasFlag(VK.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
+    public bool IsAttachment =>
+        UsageFlags.HasFlag(VK.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
+        | UsageFlags.HasFlag(VK.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
 
     public VulkanImage() { }
 
-    public VulkanImage(VulkanContext ctx, VkImage image, VkImageUsageFlags usage, VkExtent3D extent, VkImageType type,
-           VkFormat format, bool isDepthFormat, bool isStencilFormat,
-           bool isSwapchainImage, bool isOwningVkImage, string? debugName = null) : this(
-               ctx, usage, extent, type, format, VkSampleCountFlags.None, 0, 0, isDepthFormat, isStencilFormat, debugName)
+    public VulkanImage(
+        VulkanContext ctx,
+        VkImage image,
+        VkImageUsageFlags usage,
+        VkExtent3D extent,
+        VkImageType type,
+        VkFormat format,
+        bool isDepthFormat,
+        bool isStencilFormat,
+        bool isSwapchainImage,
+        bool isOwningVkImage,
+        string? debugName = null
+    )
+        : this(
+            ctx,
+            usage,
+            extent,
+            type,
+            format,
+            VkSampleCountFlags.None,
+            0,
+            0,
+            isDepthFormat,
+            isStencilFormat,
+            debugName
+        )
     {
-        this.ctx = ctx;
-        vkImage = image;
+        this._ctx = ctx;
+        _vkImage = image;
         IsSwapchainImage = isSwapchainImage;
         IsOwningVkImage = isOwningVkImage; // this image is not owned by this class, so don't destroy it
     }
 
-    public VulkanImage(VulkanContext ctx, VkImageUsageFlags usage, VkExtent3D extent, VkImageType type,
-           VkFormat format, VkSampleCountFlags samples, uint32_t numLevels, uint32_t numLayers,
-           bool isDepthFormat, bool isStencilFormat, string? debugName)
+    public VulkanImage(
+        VulkanContext ctx,
+        VkImageUsageFlags usage,
+        VkExtent3D extent,
+        VkImageType type,
+        VkFormat format,
+        VkSampleCountFlags samples,
+        uint32_t numLevels,
+        uint32_t numLayers,
+        bool isDepthFormat,
+        bool isStencilFormat,
+        string? debugName
+    )
     {
-        this.ctx = ctx;
+        this._ctx = ctx;
         UsageFlags = usage;
         Extent = extent;
         ImageType = type;
@@ -72,25 +111,30 @@ internal sealed class VulkanImage : IDisposable
         NumLayers = numLayers > 0 ? numLayers : 1u; // at least one layer
         IsDepthFormat = isDepthFormat || format.IsDepthFormat();
         IsStencilFormat = isStencilFormat || format.IsStencilFormat();
-        this.debugName = debugName;
+        this._debugName = debugName;
 
         for (int i = 0; i < Constants.MAX_MIP_LEVELS; i++)
         {
-            imageViewForFramebuffer_[i] = new VkImageView[6];
+            ImageViewForFramebuffer[i] = new VkImageView[6];
             for (int j = 0; j < 6; j++)
             {
-                imageViewForFramebuffer_[i][j] = VkImageView.Null;
+                ImageViewForFramebuffer[i][j] = VkImageView.Null;
             }
         }
     }
 
-    public ResultCode Create(VkImageCreateFlags vkCreateFlags, VkMemoryPropertyFlags memFlags, in VkComponentMapping mapping,
-        VkImageViewType vkImageViewType, VkSamplerYcbcrConversionInfo? samplerYcbcrInfo)
+    public ResultCode Create(
+        VkImageCreateFlags vkCreateFlags,
+        VkMemoryPropertyFlags memFlags,
+        in VkComponentMapping mapping,
+        VkImageViewType vkImageViewType,
+        VkSamplerYcbcrConversionInfo? samplerYcbcrInfo
+    )
     {
         uint32_t numPlanes = ImageFormat.GetNumImagePlanes();
         bool isDisjoint = numPlanes > 1;
-        string debugNameImage = $"Image: {debugName ?? string.Empty}";
-        string debugNameImageView = $"ImageView: {debugName ?? string.Empty}";
+        string debugNameImage = $"Image: {_debugName ?? string.Empty}";
+        string debugNameImageView = $"ImageView: {_debugName ?? string.Empty}";
 
         if (isDisjoint)
         {
@@ -99,8 +143,11 @@ internal sealed class VulkanImage : IDisposable
             HxDebug.Assert(SampleCount == VK.VK_SAMPLE_COUNT_1_BIT);
             HxDebug.Assert(NumLayers == 1);
             HxDebug.Assert(NumLevels == 1);
-            vkCreateFlags |= VK.VK_IMAGE_CREATE_DISJOINT_BIT | VK.VK_IMAGE_CREATE_ALIAS_BIT | VK.VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
-            ctx!.AwaitingNewImmutableSamplers = true;
+            vkCreateFlags |=
+                VK.VK_IMAGE_CREATE_DISJOINT_BIT
+                | VK.VK_IMAGE_CREATE_ALIAS_BIT
+                | VK.VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
+            _ctx!.AwaitingNewImmutableSamplers = true;
         }
 
         VkImageCreateInfo ci = new()
@@ -121,28 +168,42 @@ internal sealed class VulkanImage : IDisposable
             initialLayout = VK.VK_IMAGE_LAYOUT_UNDEFINED,
         };
 
-        if (ctx!.UseVmaAllocator && numPlanes == 1)
+        if (_ctx!.UseVmaAllocator && numPlanes == 1)
         {
             unsafe
             {
                 VmaAllocationCreateInfo vmaAllocInfo = new()
                 {
-                    usage = memFlags.HasFlag(VK.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) ? VmaMemoryUsage.CpuToGpu : VmaMemoryUsage.Auto,
+                    usage = memFlags.HasFlag(VK.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
+                        ? VmaMemoryUsage.CpuToGpu
+                        : VmaMemoryUsage.Auto,
                 };
 
-                var ret = Vma.vmaCreateImage(ctx!.VmaAllocator, &ci, &vmaAllocInfo, out vkImage, out vmaAllocation, out _);
+                var ret = Vma.vmaCreateImage(
+                    _ctx!.VmaAllocator,
+                    &ci,
+                    &vmaAllocInfo,
+                    out _vkImage,
+                    out _vmaAllocation,
+                    out _
+                );
                 if (ret != VK.VK_SUCCESS)
                 {
-                    logger.LogError("Failed: error result: {RESULT}, memflags: {FLAG},  imageformat: {FORMAT}", ret, memFlags, ImageFormat);
-                    logger.LogError("VmaCreateImage() failed");
+                    Logger.LogError(
+                        "Failed: error result: {RESULT}, memflags: {FLAG},  imageformat: {FORMAT}",
+                        ret,
+                        memFlags,
+                        ImageFormat
+                    );
+                    Logger.LogError("VmaCreateImage() failed");
                     return ResultCode.RuntimeError;
                 }
                 // handle memory-mapped buffers
                 if (memFlags.HasFlag(VK.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))
                 {
                     void* mappedPtr;
-                    Vma.vmaMapMemory(ctx!.VmaAllocator, vmaAllocation, &mappedPtr).CheckResult();
-                    this.mappedPtr = (nint)mappedPtr;
+                    Vma.vmaMapMemory(_ctx!.VmaAllocator, _vmaAllocation, &mappedPtr).CheckResult();
+                    MappedPtr = (nint)mappedPtr;
                 }
             }
         }
@@ -150,24 +211,26 @@ internal sealed class VulkanImage : IDisposable
         {
             unsafe
             {
-                fixed (VkImage* pImage = &vkImage)
+                fixed (VkImage* pImage = &_vkImage)
                 {
-                    VK.vkCreateImage(ctx!.VkDevice, &ci, null, pImage).CheckResult();
+                    VK.vkCreateImage(_ctx!.VkDevice, &ci, null, pImage).CheckResult();
                 }
 
                 // back the image with some memory
-                int kNumMaxImagePlanes = memory.Length;
+                int kNumMaxImagePlanes = _memory.Length;
 
-                VkMemoryRequirements2[] memRequirements = [
+                VkMemoryRequirements2[] memRequirements =
+                [
                     new VkMemoryRequirements2(),
                     new VkMemoryRequirements2(),
-                    new VkMemoryRequirements2()
-                    ];
-                VkImagePlaneMemoryRequirementsInfo[] planes = [
-                    new (){planeAspect = VkImageAspectFlags.Plane0 },
-                    new (){planeAspect = VkImageAspectFlags.Plane1 },
-                    new (){planeAspect = VkImageAspectFlags.Plane2 },
-                    ];
+                    new VkMemoryRequirements2(),
+                ];
+                VkImagePlaneMemoryRequirementsInfo[] planes =
+                [
+                    new() { planeAspect = VkImageAspectFlags.Plane0 },
+                    new() { planeAspect = VkImageAspectFlags.Plane1 },
+                    new() { planeAspect = VkImageAspectFlags.Plane2 },
+                ];
                 var imgRequirements = new VkImageMemoryRequirementsInfo2[kNumMaxImagePlanes];
                 var bindImagePlaneMemoryInfo = new VkBindImagePlaneMemoryInfo[kNumMaxImagePlanes];
                 var bindInfo = new VkBindImageMemoryInfo[kNumMaxImagePlanes];
@@ -181,55 +244,79 @@ internal sealed class VulkanImage : IDisposable
                 {
                     imgRequirements[i] = new VkImageMemoryRequirementsInfo2
                     {
-                        pNext = i < numPlanes ? &((VkImagePlaneMemoryRequirementsInfo*)pPlanes.Pointer)[i] : null,
-                        image = vkImage,
+                        pNext =
+                            i < numPlanes
+                                ? &((VkImagePlaneMemoryRequirementsInfo*)pPlanes.Pointer)[i]
+                                : null,
+                        image = _vkImage,
                     };
                 }
                 for (uint32_t p = 0; p != numPlanes; p++)
                 {
-                    VK.vkGetImageMemoryRequirements2(ctx!.VkDevice, &((VkImageMemoryRequirementsInfo2*)pImageReq.Pointer)[p], &((VkMemoryRequirements2*)pMemReq.Pointer)[p]);
-                    HxVkUtils.AllocateMemory2(ctx!.VkPhysicalDevice, ctx!.VkDevice, memRequirements[p], memFlags, out memory[p]);
+                    VK.vkGetImageMemoryRequirements2(
+                        _ctx!.VkDevice,
+                        &((VkImageMemoryRequirementsInfo2*)pImageReq.Pointer)[p],
+                        &((VkMemoryRequirements2*)pMemReq.Pointer)[p]
+                    );
+                    HxVkUtils.AllocateMemory2(
+                        _ctx!.VkPhysicalDevice,
+                        _ctx!.VkDevice,
+                        memRequirements[p],
+                        memFlags,
+                        out _memory[p]
+                    );
                 }
                 for (int i = 0; i < kNumMaxImagePlanes; i++)
                 {
-
                     bindImagePlaneMemoryInfo[i] = new VkBindImagePlaneMemoryInfo
                     {
                         planeAspect = (VkImageAspectFlags)(1 << i), // VK_IMAGE_ASPECT_PLANE_0_BIT, VK_IMAGE_ASPECT_PLANE_1_BIT, etc.
                     };
                     bindInfo[i] = new VkBindImageMemoryInfo
                     {
-                        pNext = isDisjoint ? &((VkBindImagePlaneMemoryInfo*)pMemInfo.Pointer)[i] : null,
-                        image = vkImage,
-                        memory = memory[i],
+                        pNext = isDisjoint
+                            ? &((VkBindImagePlaneMemoryInfo*)pMemInfo.Pointer)[i]
+                            : null,
+                        image = _vkImage,
+                        memory = _memory[i],
                         memoryOffset = 0,
                     };
                 }
                 using var pBindInfo = bindInfo.Pin();
 
-                VK.vkBindImageMemory2(ctx!.VkDevice, numPlanes, (VkBindImageMemoryInfo*)pBindInfo.Pointer).CheckResult();
+                VK.vkBindImageMemory2(
+                        _ctx!.VkDevice,
+                        numPlanes,
+                        (VkBindImageMemoryInfo*)pBindInfo.Pointer
+                    )
+                    .CheckResult();
 
                 // handle memory-mapped images
                 if (memFlags.HasFlag(VK.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) && numPlanes == 1)
                 {
                     void* mappedPtr;
-                    VK.vkMapMemory(ctx!.VkDevice, memory[0], 0, VK.VK_WHOLE_SIZE, 0, &mappedPtr).CheckResult();
-                    this.mappedPtr = (nint)mappedPtr;
+                    VK.vkMapMemory(_ctx!.VkDevice, _memory[0], 0, VK.VK_WHOLE_SIZE, 0, &mappedPtr)
+                        .CheckResult();
+                    MappedPtr = (nint)mappedPtr;
                 }
             }
         }
         if (GraphicsSettings.EnableDebug && !string.IsNullOrEmpty(debugNameImage))
         {
             // set debug name for the image
-            ctx!.VkDevice.SetDebugObjectName(VK.VK_OBJECT_TYPE_IMAGE, (nuint)vkImage, $"[Vk.Image]: {debugNameImage}");
+            _ctx!.VkDevice.SetDebugObjectName(
+                VK.VK_OBJECT_TYPE_IMAGE,
+                (nuint)_vkImage,
+                $"[Vk.Image]: {debugNameImage}"
+            );
         }
 
         unsafe
         {
-            fixed (VkFormatProperties* props = &formatProperties)
+            fixed (VkFormatProperties* props = &_formatProperties)
             {
                 // Get physical device's properties for the image's format
-                VK.vkGetPhysicalDeviceFormatProperties(ctx!.VkPhysicalDevice, ImageFormat, props);
+                VK.vkGetPhysicalDeviceFormatProperties(_ctx!.VkPhysicalDevice, ImageFormat, props);
             }
         }
 
@@ -251,7 +338,18 @@ internal sealed class VulkanImage : IDisposable
         }
 
         ImageView = CreateImageView(
-            ctx!.VkDevice, vkImageViewType, ImageFormat, aspect, 0, VK.VK_REMAINING_MIP_LEVELS, 0, NumLayers, mapping, samplerYcbcrInfo, debugNameImageView);
+            _ctx!.VkDevice,
+            vkImageViewType,
+            ImageFormat,
+            aspect,
+            0,
+            VK.VK_REMAINING_MIP_LEVELS,
+            0,
+            NumLayers,
+            mapping,
+            samplerYcbcrInfo,
+            debugNameImageView
+        );
 
         if (UsageFlags.HasFlag(VK.VK_IMAGE_USAGE_STORAGE_BIT))
         {
@@ -259,86 +357,133 @@ internal sealed class VulkanImage : IDisposable
             {
                 // use identity swizzle for storage images
                 ImageViewStorage = CreateImageView(
-                    ctx!.VkDevice, vkImageViewType, ImageFormat, aspect, 0, VK.VK_REMAINING_MIP_LEVELS, 0, NumLayers, new VkComponentMapping(), samplerYcbcrInfo, debugNameImageView);
+                    _ctx!.VkDevice,
+                    vkImageViewType,
+                    ImageFormat,
+                    aspect,
+                    0,
+                    VK.VK_REMAINING_MIP_LEVELS,
+                    0,
+                    NumLayers,
+                    new VkComponentMapping(),
+                    samplerYcbcrInfo,
+                    debugNameImageView
+                );
                 HxDebug.Assert(ImageViewStorage != VkImageView.Null);
             }
         }
 
         if (ImageView == VkImageView.Null)
         {
-            logger.LogError("Cannot create VkImageView");
+            Logger.LogError("Cannot create VkImageView");
             return ResultCode.RuntimeError;
         }
         return ResultCode.Ok;
     }
 
-
-    public VkImageView CreateImageView(in VkDevice device,
-                                        VkImageViewType type,
-                                        VkFormat format,
-                                        VkImageAspectFlags aspectMask,
-                                        uint32_t baseLevel,
-                                        uint32_t numLevels = VK.VK_REMAINING_MIP_LEVELS,
-                                        uint32_t baseLayer = 0,
-                                        uint32_t numLayers = 1,
-                                        string? debugName = null)
+    public VkImageView CreateImageView(
+        in VkDevice device,
+        VkImageViewType type,
+        VkFormat format,
+        VkImageAspectFlags aspectMask,
+        uint32_t baseLevel,
+        uint32_t numLevels = VK.VK_REMAINING_MIP_LEVELS,
+        uint32_t baseLayer = 0,
+        uint32_t numLayers = 1,
+        string? debugName = null
+    )
     {
-        return CreateImageView(device, type, format, aspectMask, baseLevel, numLevels, baseLayer, numLayers, new VkComponentMapping(), null, debugName);
+        return CreateImageView(
+            device,
+            type,
+            format,
+            aspectMask,
+            baseLevel,
+            numLevels,
+            baseLayer,
+            numLayers,
+            new VkComponentMapping(),
+            null,
+            debugName
+        );
     }
+
     /*
      * Setting `numLevels` to a non-zero value will override `mipLevels_` value from the original Vulkan image, and can be used to create
      * image views with different number of levels.
      */
-    public VkImageView CreateImageView(in VkDevice device,
-                                            VkImageViewType type,
-                                            VkFormat format,
-                                            VkImageAspectFlags aspectMask,
-                                            uint32_t baseLevel,
-                                            uint32_t numLevels,
-                                            uint32_t baseLayer,
-                                            uint32_t numLayers,
-                                            in VkComponentMapping mapping,
-                                            in VkSamplerYcbcrConversionInfo? ycbcr = null,
-                                            string? debugName = null)
+    public VkImageView CreateImageView(
+        in VkDevice device,
+        VkImageViewType type,
+        VkFormat format,
+        VkImageAspectFlags aspectMask,
+        uint32_t baseLevel,
+        uint32_t numLevels,
+        uint32_t baseLayer,
+        uint32_t numLayers,
+        in VkComponentMapping mapping,
+        in VkSamplerYcbcrConversionInfo? ycbcr = null,
+        string? debugName = null
+    )
     {
         unsafe
         {
-            VkSamplerYcbcrConversionInfo cYcbcr = ycbcr is null ? new VkSamplerYcbcrConversionInfo() : ycbcr.Value;
+            VkSamplerYcbcrConversionInfo cYcbcr = ycbcr is null
+                ? new VkSamplerYcbcrConversionInfo()
+                : ycbcr.Value;
             VkImageViewCreateInfo ci = new()
             {
                 pNext = ycbcr is null ? null : &cYcbcr,
-                image = vkImage,
+                image = _vkImage,
                 viewType = type,
                 format = format,
                 components = mapping,
-                subresourceRange = new() { aspectMask = aspectMask, baseMipLevel = baseLevel, levelCount = numLevels > 0 ? numLevels : NumLevels, baseArrayLayer = baseLayer, layerCount = numLayers },
+                subresourceRange = new()
+                {
+                    aspectMask = aspectMask,
+                    baseMipLevel = baseLevel,
+                    levelCount = numLevels > 0 ? numLevels : NumLevels,
+                    baseArrayLayer = baseLayer,
+                    layerCount = numLayers,
+                },
             };
             VkImageView vkView = VkImageView.Null;
             VK.vkCreateImageView(device, &ci, null, &vkView).CheckResult();
             if (GraphicsSettings.EnableDebug && !string.IsNullOrEmpty(debugName))
             {
-                device.SetDebugObjectName(VK.VK_OBJECT_TYPE_IMAGE_VIEW, (nuint)vkView.Handle, $"[Vk.ImageView]: {debugName}");
+                device.SetDebugObjectName(
+                    VK.VK_OBJECT_TYPE_IMAGE_VIEW,
+                    (nuint)vkView.Handle,
+                    $"[Vk.ImageView]: {debugName}"
+                );
             }
             return vkView;
         }
-
     }
 
     public void GenerateMipmap(in VkCommandBuffer commandBuffer)
     {
-        const VkFormatFeatureFlags formatFeatureMask = (VK.VK_FORMAT_FEATURE_BLIT_SRC_BIT | VK.VK_FORMAT_FEATURE_BLIT_DST_BIT);
+        const VkFormatFeatureFlags formatFeatureMask = (
+            VK.VK_FORMAT_FEATURE_BLIT_SRC_BIT | VK.VK_FORMAT_FEATURE_BLIT_DST_BIT
+        );
 
-        bool hardwareDownscalingSupported = (formatProperties.optimalTilingFeatures & formatFeatureMask) == formatFeatureMask;
+        bool hardwareDownscalingSupported =
+            (_formatProperties.optimalTilingFeatures & formatFeatureMask) == formatFeatureMask;
 
         if (!hardwareDownscalingSupported)
         {
-            logger.LogWarning("Doesn't support hardware downscaling of this image format: {FORMAT}", ImageFormat);
+            Logger.LogWarning(
+                "Doesn't support hardware downscaling of this image format: {FORMAT}",
+                ImageFormat
+            );
             return;
         }
         // Choose linear filter for color formats if supported by the device, else use nearest filter
         // Choose nearest filter by default for depth/stencil formats
         var isDepthOrStencilFormat = IsDepthFormat || IsStencilFormat;
-        var imageFilterLinear = formatProperties.optimalTilingFeatures.HasFlag(VK.VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT);
+        var imageFilterLinear = _formatProperties.optimalTilingFeatures.HasFlag(
+            VK.VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT
+        );
         var blitFilter = VK.VK_FILTER_NEAREST;
         if (isDepthOrStencilFormat)
         {
@@ -352,14 +497,10 @@ internal sealed class VulkanImage : IDisposable
 
         unsafe
         {
-
             if (GraphicsSettings.EnableDebug)
             {
                 VkUtf8ReadOnlyString label = "GenerateMipMaps"u8;
-                VkDebugUtilsLabelEXT utilsLabel = new()
-                {
-                    pLabelName = label
-                };
+                VkDebugUtilsLabelEXT utilsLabel = new() { pLabelName = label };
                 utilsLabel.color[0] = 1.0f;
                 utilsLabel.color[1] = 0.75f;
                 utilsLabel.color[2] = 1.0f;
@@ -372,14 +513,18 @@ internal sealed class VulkanImage : IDisposable
             HxDebug.Assert(originalImageLayout != VK.VK_IMAGE_LAYOUT_UNDEFINED);
 
             // 0: Transition the first level and all layers into VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL
-            TransitionLayout(commandBuffer, VK.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, new VkImageSubresourceRange
-            {
-                aspectMask = imageAspectFlags,
-                baseMipLevel = 0,
-                levelCount = 1,
-                baseArrayLayer = 0,
-                layerCount = NumLayers
-            });
+            TransitionLayout(
+                commandBuffer,
+                VK.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                new VkImageSubresourceRange
+                {
+                    aspectMask = imageAspectFlags,
+                    baseMipLevel = 0,
+                    levelCount = 1,
+                    baseArrayLayer = 0,
+                    layerCount = NumLayers,
+                }
+            );
 
             for (uint32_t layer = 0; layer < NumLayers; ++layer)
             {
@@ -389,13 +534,22 @@ internal sealed class VulkanImage : IDisposable
                 for (uint32_t i = 1; i < NumLevels; ++i)
                 {
                     // 1: Transition the i-th level to VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL; it will be copied into from the (i-1)-th layer
-                    commandBuffer.ImageMemoryBarrier2(vkImage, new StageAccess2
-                    { stage = VkPipelineStageFlags2.TopOfPipe, access = VkAccessFlags2.None },
-                    new StageAccess2
-                    { stage = VkPipelineStageFlags2.Transfer, access = VkAccessFlags2.TransferWrite },
-                    VK.VK_IMAGE_LAYOUT_UNDEFINED, // oldImageLayout
-                    VK.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, // newImageLayout
-                    new VkImageSubresourceRange(imageAspectFlags, i, 1, layer, 1));
+                    commandBuffer.ImageMemoryBarrier2(
+                        _vkImage,
+                        new StageAccess2
+                        {
+                            Stage = VkPipelineStageFlags2.TopOfPipe,
+                            Access = VkAccessFlags2.None,
+                        },
+                        new StageAccess2
+                        {
+                            Stage = VkPipelineStageFlags2.Transfer,
+                            Access = VkAccessFlags2.TransferWrite,
+                        },
+                        VK.VK_IMAGE_LAYOUT_UNDEFINED, // oldImageLayout
+                        VK.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, // newImageLayout
+                        new VkImageSubresourceRange(imageAspectFlags, i, 1, layer, 1)
+                    );
 
                     int32_t nextLevelWidth = mipWidth > 1 ? mipWidth / 2 : 1;
                     int32_t nextLevelHeight = mipHeight > 1 ? mipHeight / 2 : 1;
@@ -405,28 +559,50 @@ internal sealed class VulkanImage : IDisposable
 
                     VkImageBlit blit = new()
                     {
-                        srcSubresource = new VkImageSubresourceLayers(imageAspectFlags, i - 1, layer, 1),
-                        dstSubresource = new VkImageSubresourceLayers(imageAspectFlags, i, layer, 1),
+                        srcSubresource = new VkImageSubresourceLayers(
+                            imageAspectFlags,
+                            i - 1,
+                            layer,
+                            1
+                        ),
+                        dstSubresource = new VkImageSubresourceLayers(
+                            imageAspectFlags,
+                            i,
+                            layer,
+                            1
+                        ),
                     };
                     blit.srcOffsets[0] = new VkOffset3D(0, 0, 0);
                     blit.srcOffsets[1] = new VkOffset3D(mipWidth, mipHeight, 1);
                     blit.dstOffsets[0] = new VkOffset3D(0, 0, 0);
                     blit.dstOffsets[1] = new VkOffset3D(nextLevelWidth, nextLevelHeight, 1);
-                    VK.vkCmdBlitImage(commandBuffer,
-                                   vkImage,
-                                   VK.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                                   vkImage,
-                                   VK.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                                   1,
-                                   &blit,
-                                   blitFilter);
+                    VK.vkCmdBlitImage(
+                        commandBuffer,
+                        _vkImage,
+                        VK.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                        _vkImage,
+                        VK.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                        1,
+                        &blit,
+                        blitFilter
+                    );
                     // 3: Transition i-th level to VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL as it will be read from in the next iteration
-                    commandBuffer.ImageMemoryBarrier2(vkImage, new StageAccess2
-                    { stage = VkPipelineStageFlags2.Transfer, access = VkAccessFlags2.TransferWrite },
-                    new StageAccess2 { stage = VkPipelineStageFlags2.Transfer, access = VkAccessFlags2.TransferRead },
-                    VK.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, /* oldImageLayout */
-                    VK.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, /* newImageLayout */
-                    new VkImageSubresourceRange(imageAspectFlags, i, 1, layer, 1));
+                    commandBuffer.ImageMemoryBarrier2(
+                        _vkImage,
+                        new StageAccess2
+                        {
+                            Stage = VkPipelineStageFlags2.Transfer,
+                            Access = VkAccessFlags2.TransferWrite,
+                        },
+                        new StageAccess2
+                        {
+                            Stage = VkPipelineStageFlags2.Transfer,
+                            Access = VkAccessFlags2.TransferRead,
+                        },
+                        VK.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, /* oldImageLayout */
+                        VK.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, /* newImageLayout */
+                        new VkImageSubresourceRange(imageAspectFlags, i, 1, layer, 1)
+                    );
 
                     // Compute the size of the next mip-level
                     mipWidth = nextLevelWidth;
@@ -435,12 +611,22 @@ internal sealed class VulkanImage : IDisposable
             }
 
             // 4: Transition all levels and layers (faces) to their final layout
-            commandBuffer.ImageMemoryBarrier2(vkImage,
-                new StageAccess2 { stage = VkPipelineStageFlags2.Transfer, access = VkAccessFlags2.TransferRead },
-                new StageAccess2 { stage = VkPipelineStageFlags2.AllCommands, access = VkAccessFlags2.MemoryRead | VkAccessFlags2.MemoryWrite },
+            commandBuffer.ImageMemoryBarrier2(
+                _vkImage,
+                new StageAccess2
+                {
+                    Stage = VkPipelineStageFlags2.Transfer,
+                    Access = VkAccessFlags2.TransferRead,
+                },
+                new StageAccess2
+                {
+                    Stage = VkPipelineStageFlags2.AllCommands,
+                    Access = VkAccessFlags2.MemoryRead | VkAccessFlags2.MemoryWrite,
+                },
                 VK.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, // oldImageLayout
                 originalImageLayout, // newImageLayout
-                new VkImageSubresourceRange(imageAspectFlags, 0, NumLevels, 0, NumLayers));
+                new VkImageSubresourceRange(imageAspectFlags, 0, NumLevels, 0, NumLayers)
+            );
 
             if (GraphicsSettings.EnableDebug)
             {
@@ -451,15 +637,26 @@ internal sealed class VulkanImage : IDisposable
         }
     }
 
-    public void TransitionLayout(in VkCommandBuffer commandBuffer, VkImageLayout newImageLayout, in VkImageSubresourceRange subresourceRange)
+    public void TransitionLayout(
+        in VkCommandBuffer commandBuffer,
+        VkImageLayout newImageLayout,
+        in VkImageSubresourceRange subresourceRange
+    )
     {
-        VkImageLayout oldImageLayout = ImageLayout == VK.VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL
-            ? (IsDepthAttachment ? VK.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
-            : ImageLayout;
+        VkImageLayout oldImageLayout =
+            ImageLayout == VK.VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL
+                ? (
+                    IsDepthAttachment
+                        ? VK.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+                        : VK.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+                )
+                : ImageLayout;
 
         if (newImageLayout == VK.VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL)
         {
-            newImageLayout = IsDepthAttachment ? VK.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+            newImageLayout = IsDepthAttachment
+                ? VK.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+                : VK.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
         }
 
         var src = oldImageLayout.GetPipelineStageAccess();
@@ -468,12 +665,19 @@ internal sealed class VulkanImage : IDisposable
         if (IsDepthAttachment && IsResolveAttachment)
         {
             // https://registry.khronos.org/vulkan/specs/latest/html/vkspec.html#renderpass-resolve-operations
-            src.stage |= VkPipelineStageFlags2.ColorAttachmentOutput;
-            dst.stage |= VkPipelineStageFlags2.ColorAttachmentOutput;
-            src.access |= VkAccessFlags2.ColorAttachmentRead | VkAccessFlags2.ColorAttachmentWrite;
-            dst.access |= VkAccessFlags2.ColorAttachmentRead | VkAccessFlags2.ColorAttachmentWrite;
+            src.Stage |= VkPipelineStageFlags2.ColorAttachmentOutput;
+            dst.Stage |= VkPipelineStageFlags2.ColorAttachmentOutput;
+            src.Access |= VkAccessFlags2.ColorAttachmentRead | VkAccessFlags2.ColorAttachmentWrite;
+            dst.Access |= VkAccessFlags2.ColorAttachmentRead | VkAccessFlags2.ColorAttachmentWrite;
         }
-        commandBuffer.ImageMemoryBarrier2(vkImage, src, dst, oldImageLayout, newImageLayout, subresourceRange);
+        commandBuffer.ImageMemoryBarrier2(
+            _vkImage,
+            src,
+            dst,
+            oldImageLayout,
+            newImageLayout,
+            subresourceRange
+        );
         ImageLayout = newImageLayout;
     }
 
@@ -489,45 +693,63 @@ internal sealed class VulkanImage : IDisposable
     }
 
     // framebuffers can render only into one level/layer
-    public VkImageView GetOrCreateVkImageViewForFramebuffer(VulkanContext ctx, uint8_t level, uint16_t layer)
+    public VkImageView GetOrCreateVkImageViewForFramebuffer(
+        VulkanContext ctx,
+        uint8_t level,
+        uint16_t layer
+    )
     {
         HxDebug.Assert(level < Constants.MAX_MIP_LEVELS);
-        HxDebug.Assert(layer < imageViewForFramebuffer_[0].Length);
+        HxDebug.Assert(layer < ImageViewForFramebuffer[0].Length);
 
-        if (level >= Constants.MAX_MIP_LEVELS || layer >= imageViewForFramebuffer_[0].Length)
+        if (level >= Constants.MAX_MIP_LEVELS || layer >= ImageViewForFramebuffer[0].Length)
         {
             return VkImageView.Null;
         }
 
-        if (imageViewForFramebuffer_[level][layer] != VkImageView.Null)
+        if (ImageViewForFramebuffer[level][layer] != VkImageView.Null)
         {
-            return imageViewForFramebuffer_[level][layer];
+            return ImageViewForFramebuffer[level][layer];
         }
 
-        var debugNameImageView = $"Image View: '{debugName}' imageViewForFramebuffer_[{level}][{layer}]";
+        var debugNameImageView =
+            $"Image View: '{_debugName}' imageViewForFramebuffer_[{level}][{layer}]";
 
-        imageViewForFramebuffer_[level][layer] = CreateImageView(ctx.GetVkDevice(),
-                                                                 VK.VK_IMAGE_VIEW_TYPE_2D,
-                                                                 ImageFormat,
-                                                                 GetImageAspectFlags(),
-                                                                 level,
-                                                                 1u,
-                                                                 layer,
-                                                                 1u,
-                                                                   debugNameImageView);
+        ImageViewForFramebuffer[level][layer] = CreateImageView(
+            ctx.GetVkDevice(),
+            VK.VK_IMAGE_VIEW_TYPE_2D,
+            ImageFormat,
+            GetImageAspectFlags(),
+            level,
+            1u,
+            layer,
+            1u,
+            debugNameImageView
+        );
 
-        return imageViewForFramebuffer_[level][layer];
+        return ImageViewForFramebuffer[level][layer];
     }
 
     public VulkanImage Clone()
     {
         if (!Valid)
         {
-            logger.LogError("Cannot clone an invalid VulkanImage.");
+            Logger.LogError("Cannot clone an invalid VulkanImage.");
             return Null;
         }
-        return new VulkanImage(ctx!, vkImage, UsageFlags, Extent, ImageType, ImageFormat, IsDepthFormat, IsStencilFormat,
-            IsSwapchainImage, IsOwningVkImage, debugName)
+        return new VulkanImage(
+            _ctx!,
+            _vkImage,
+            UsageFlags,
+            Extent,
+            ImageType,
+            ImageFormat,
+            IsDepthFormat,
+            IsStencilFormat,
+            IsSwapchainImage,
+            IsOwningVkImage,
+            _debugName
+        )
         {
             ImageLayout = ImageLayout,
             NumLevels = NumLevels,
@@ -535,15 +757,16 @@ internal sealed class VulkanImage : IDisposable
             SampleCount = SampleCount,
             ImageView = ImageView,
             ImageViewStorage = ImageViewStorage,
-            mappedPtr = mappedPtr
+            MappedPtr = MappedPtr,
         };
     }
 
     #region IDisposable Support
-    private bool disposedValue;
+    private bool _disposedValue;
+
     private void Dispose(bool disposing)
     {
-        if (!disposedValue)
+        if (!_disposedValue)
         {
             if (disposing)
             {
@@ -551,43 +774,52 @@ internal sealed class VulkanImage : IDisposable
                 {
                     return;
                 }
-                var vkDevice = ctx!.VkDevice;
+                var vkDevice = _ctx!.VkDevice;
                 if (ImageView.IsNotNull)
                 {
-                    ctx!.DeferredTask(() =>
-                    {
-                        unsafe
+                    _ctx!.DeferredTask(
+                        () =>
                         {
-                            VK.vkDestroyImageView(vkDevice, ImageView, null);
-                        }
-                    }, SubmitHandle.Null);
+                            unsafe
+                            {
+                                VK.vkDestroyImageView(vkDevice, ImageView, null);
+                            }
+                        },
+                        SubmitHandle.Null
+                    );
                 }
 
                 if (ImageViewStorage.IsNotNull)
                 {
-                    ctx!.DeferredTask(() =>
-                    {
-                        unsafe
+                    _ctx!.DeferredTask(
+                        () =>
                         {
-                            VK.vkDestroyImageView(vkDevice, ImageViewStorage, null);
-                        }
-                    }, SubmitHandle.Null);
+                            unsafe
+                            {
+                                VK.vkDestroyImageView(vkDevice, ImageViewStorage, null);
+                            }
+                        },
+                        SubmitHandle.Null
+                    );
                 }
 
                 for (size_t i = 0; i < Constants.MAX_MIP_LEVELS; i++)
                 {
-                    for (size_t j = 0; j < imageViewForFramebuffer_[0].Length; j++)
+                    for (size_t j = 0; j < ImageViewForFramebuffer[0].Length; j++)
                     {
-                        VkImageView v = imageViewForFramebuffer_[i][j];
+                        VkImageView v = ImageViewForFramebuffer[i][j];
                         if (v.IsNotNull)
                         {
-                            ctx!.DeferredTask(() =>
-                            {
-                                unsafe
+                            _ctx!.DeferredTask(
+                                () =>
                                 {
-                                    VK.vkDestroyImageView(vkDevice, v, null);
-                                }
-                            }, SubmitHandle.Null);
+                                    unsafe
+                                    {
+                                        VK.vkDestroyImageView(vkDevice, v, null);
+                                    }
+                                },
+                                SubmitHandle.Null
+                            );
                         }
                     }
                 }
@@ -597,49 +829,55 @@ internal sealed class VulkanImage : IDisposable
                     return;
                 }
 
-                if (ctx.UseVmaAllocator && memory[1].IsNull)
+                if (_ctx.UseVmaAllocator && _memory[1].IsNull)
                 {
-                    if (mappedPtr.Valid())
+                    if (MappedPtr.Valid())
                     {
-                        Vma.vmaUnmapMemory(ctx!.VmaAllocator, vmaAllocation);
+                        Vma.vmaUnmapMemory(_ctx!.VmaAllocator, _vmaAllocation);
                     }
-                    ctx!.DeferredTask(() =>
-                    {
-                        Vma.vmaDestroyImage(ctx!.VmaAllocator, vkImage, vmaAllocation);
-                    }, SubmitHandle.Null);
+                    _ctx!.DeferredTask(
+                        () =>
+                        {
+                            Vma.vmaDestroyImage(_ctx!.VmaAllocator, _vkImage, _vmaAllocation);
+                        },
+                        SubmitHandle.Null
+                    );
                 }
                 else
                 {
-                    if (mappedPtr.Valid())
+                    if (MappedPtr.Valid())
                     {
-                        VK.vkUnmapMemory(vkDevice, memory[0]);
+                        VK.vkUnmapMemory(vkDevice, _memory[0]);
                     }
-                    var image = vkImage;
-                    ctx!.DeferredTask(() =>
-                    {
-                        unsafe
+                    var image = _vkImage;
+                    _ctx!.DeferredTask(
+                        () =>
                         {
-                            VK.vkDestroyImage(vkDevice, vkImage, null);
-                            if (memory[0].IsNotNull)
+                            unsafe
                             {
-                                VK.vkFreeMemory(vkDevice, memory[0], null);
+                                VK.vkDestroyImage(vkDevice, _vkImage, null);
+                                if (_memory[0].IsNotNull)
+                                {
+                                    VK.vkFreeMemory(vkDevice, _memory[0], null);
+                                }
+                                if (_memory[1].IsNotNull)
+                                {
+                                    VK.vkFreeMemory(vkDevice, _memory[1], null);
+                                }
+                                if (_memory[2].IsNotNull)
+                                {
+                                    VK.vkFreeMemory(vkDevice, _memory[2], null);
+                                }
                             }
-                            if (memory[1].IsNotNull)
-                            {
-                                VK.vkFreeMemory(vkDevice, memory[1], null);
-                            }
-                            if (memory[2].IsNotNull)
-                            {
-                                VK.vkFreeMemory(vkDevice, memory[2], null);
-                            }
-                        }
-                    }, SubmitHandle.Null);
+                        },
+                        SubmitHandle.Null
+                    );
                 }
             }
 
             // TODO: free unmanaged resources (unmanaged objects) and override finalizer
             // TODO: set large fields to null
-            disposedValue = true;
+            _disposedValue = true;
         }
     }
 

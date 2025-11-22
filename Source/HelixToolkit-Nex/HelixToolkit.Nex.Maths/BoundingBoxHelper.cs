@@ -1,4 +1,4 @@
-﻿namespace HelixToolkit.Nex.Maths
+namespace HelixToolkit.Nex.Maths
 {
     /// <summary>
     /// 

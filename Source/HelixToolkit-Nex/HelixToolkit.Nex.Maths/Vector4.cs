@@ -1,4 +1,4 @@
-﻿/*
+/*
 The MIT License (MIT)
 Copyright (c) 2022 Helix Toolkit contributors
 
@@ -136,11 +136,20 @@ namespace HelixToolkit.Nex.Maths
         {
             switch (index)
             {
-                case 0: v.X = value; break;
-                case 1: v.Y = value; break;
-                case 2: v.Z = value; break;
-                case 3: v.W = value; break;
-                default: throw new ArgumentOutOfRangeException(nameof(index), "Indices for Vector4 run from 0 to 3, inclusive.");
+                case 0:
+                    v.X = value;
+                    break;
+                case 1:
+                    v.Y = value;
+                    break;
+                case 2:
+                    v.Z = value;
+                    break;
+                case 3:
+                    v.W = value;
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(index), "Indices for Vector4 run from 0 to 3, inclusive.");
             }
         }
 
@@ -485,7 +494,7 @@ namespace HelixToolkit.Nex.Maths
                     Vector128<float> row3X = Vector128.Create(transform.M41, transform.M42, transform.M43, transform.M44);
                     unsafe
                     {
-                        fixed(void* dst = destination)
+                        fixed (void* dst = destination)
                         {
                             float* dstPtr = (float*)dst;
                             for (; i < source.Length; i++, dstPtr += 4)

@@ -1,4 +1,4 @@
-﻿namespace HelixToolkit.Nex;
+namespace HelixToolkit.Nex;
 
 /// <summary>
 /// A generic object pool implementation that manages reusable objects with generational handles.
@@ -9,9 +9,10 @@
 /// This pool uses a free-list algorithm for efficient allocation and deallocation of objects.
 /// Each object is associated with a generation number to prevent the ABA problem and ensure handle validity.
 /// </remarks>
-public sealed class Pool<ObjectType, ImplObjectType> where ObjectType : new()
+public sealed class Pool<ObjectType, ImplObjectType>
+    where ObjectType : new()
 {
-    const uint32_t kListEndSentinel = 0xFFFFFFFF; // Sentinel value to indicate the end of the list
+    private const uint32_t kListEndSentinel = 0xFFFFFFFF; // Sentinel value to indicate the end of the list
 
     /// <summary>
     /// Represents an entry in the object pool containing the object and metadata.
@@ -22,33 +23,33 @@ public sealed class Pool<ObjectType, ImplObjectType> where ObjectType : new()
         /// <summary>
         /// The generation number for this entry, used to detect stale handles.
         /// </summary>
-        public uint32_t gen = 1;
+        public uint32_t Gen = 1;
 
         /// <summary>
- /// Index of the next free object in the free list, or <see cref="kListEndSentinel"/> if none.
+        /// Index of the next free object in the free list, or <see cref="kListEndSentinel"/> if none.
         /// </summary>
-        public uint32_t nextFree = kListEndSentinel; // Index of the next free object in the pool
+        public uint32_t NextFree = kListEndSentinel; // Index of the next free object in the pool
 
         /// <summary>
         /// The actual object stored in this pool entry.
         /// </summary>
-      public ImplObjectType? obj = obj; // The actual object in the pool       
-  }
+        public ImplObjectType? Obj = obj; // The actual object in the pool
+    }
 
-  uint32_t gen_ = 1;
-    uint32_t freeListHead_ = kListEndSentinel;
+    private uint32_t _gen = 1;
+    private uint32_t _freeListHead = kListEndSentinel;
 
     /// <summary>
- /// Gets the current number of active (non-freed) objects in the pool.
+    /// Gets the current number of active (non-freed) objects in the pool.
     /// </summary>
     public int32_t Count { private set; get; }
 
-    readonly FastList<PoolEntry> objects_ = new(1024); // Initial capacity of 1024    
+    private readonly FastList<PoolEntry> _objects = new(1024); // Initial capacity of 1024
 
     /// <summary>
     /// Gets a read-only view of all pool entries (both active and freed).
     /// </summary>
-    public IReadOnlyList<PoolEntry> Objects => objects_;
+    public IReadOnlyList<PoolEntry> Objects => _objects;
 
     /// <summary>
     /// Creates a new object in the pool and returns a handle to it.
@@ -58,27 +59,27 @@ public sealed class Pool<ObjectType, ImplObjectType> where ObjectType : new()
     public Handle<ObjectType> Create(in ImplObjectType obj)
     {
         int idx;
-        if (freeListHead_ != kListEndSentinel)
+        if (_freeListHead != kListEndSentinel)
         {
             // No free objects, create a new one
-            idx = (int32_t)freeListHead_;
-            freeListHead_ = objects_[idx].nextFree;
-            ref var entry = ref objects_.GetInternalArray()[idx];
-            entry.obj = obj;
+            idx = (int32_t)_freeListHead;
+            _freeListHead = _objects[idx].NextFree;
+            ref var entry = ref _objects.GetInternalArray()[idx];
+            entry.Obj = obj;
         }
         else
         {
-            idx = objects_.Count;
-            objects_.Add(new PoolEntry(obj));
+            idx = _objects.Count;
+            _objects.Add(new PoolEntry(obj));
         }
         ++Count;
-        return new Handle<ObjectType>((uint32_t)idx, objects_[idx].gen);
+        return new Handle<ObjectType>((uint32_t)idx, _objects[idx].Gen);
     }
 
     /// <summary>
     /// Destroys an object in the pool and resets the handle.
     /// </summary>
-  /// <param name="handle">Reference to the handle to destroy. Will be set to an empty handle after destruction.</param>
+    /// <param name="handle">Reference to the handle to destroy. Will be set to an empty handle after destruction.</param>
     public void Destroy(ref Handle<ObjectType> handle)
     {
         Destroy(handle);
@@ -97,19 +98,19 @@ public sealed class Pool<ObjectType, ImplObjectType> where ObjectType : new()
             return;
         }
         int32_t idx = (int32_t)handle.Index;
-        if (idx < 0 || idx >= objects_.Count || objects_[idx].gen != handle.Gen)
+        if (idx < 0 || idx >= _objects.Count || _objects[idx].Gen != handle.Gen)
         {
             throw new ArgumentException("Invalid handle for destruction.");
         }
-        ref var entry = ref objects_.GetInternalArray()[idx];
-        if (entry.obj is IDisposable disposableObj)
+        ref var entry = ref _objects.GetInternalArray()[idx];
+        if (entry.Obj is IDisposable disposableObj)
         {
             disposableObj.Dispose(); // Dispose the object if it implements IDisposable
         }
-        entry.obj = default; // Clear the object reference
-        entry.gen = gen_++;
-        entry.nextFree = freeListHead_;
-        freeListHead_ = (uint32_t)idx;
+        entry.Obj = default; // Clear the object reference
+        entry.Gen = _gen++;
+        entry.NextFree = _freeListHead;
+        _freeListHead = (uint32_t)idx;
         --Count;
     }
 
@@ -126,25 +127,25 @@ public sealed class Pool<ObjectType, ImplObjectType> where ObjectType : new()
             throw new ArgumentException("Invalid handle for retrieval.");
         }
         int32_t idx = (int32_t)handle.Index;
-        return idx < 0 || idx >= objects_.Count || objects_[idx].gen != handle.Gen
+        return idx < 0 || idx >= _objects.Count || _objects[idx].Gen != handle.Gen
             ? throw new ArgumentException("Invalid handle for retrieval.")
-            : objects_.GetInternalArray()[idx].obj;
+            : _objects.GetInternalArray()[idx].Obj;
     }
 
     /// <summary>
     /// Gets a handle for an object at a specific index in the pool.
     /// </summary>
     /// <param name="index">The index of the object in the pool.</param>
- /// <returns>A <see cref="Handle{T}"/> for the object at the specified index.</returns>
+    /// <returns>A <see cref="Handle{T}"/> for the object at the specified index.</returns>
     /// <exception cref="ArgumentOutOfRangeException">Thrown if the index is out of range.</exception>
     public Handle<ObjectType> GetHandle(int32_t index)
     {
-        if (index < 0 || index >= objects_.Count)
+        if (index < 0 || index >= _objects.Count)
         {
             throw new ArgumentOutOfRangeException(nameof(index), "Index out of range.");
         }
-        var entry = objects_[index];
-        return new Handle<ObjectType>((uint32_t)index, entry.gen);
+        var entry = _objects[index];
+        return new Handle<ObjectType>((uint32_t)index, entry.Gen);
     }
 
     /// <summary>
@@ -154,13 +155,13 @@ public sealed class Pool<ObjectType, ImplObjectType> where ObjectType : new()
     /// <returns>A <see cref="Handle{T}"/> for the object, or an empty handle if not found.</returns>
     public Handle<ObjectType> FindObject(in ImplObjectType obj)
     {
-        for (int32_t i = 0; i < objects_.Count; i++)
+        for (int32_t i = 0; i < _objects.Count; i++)
         {
-            HxDebug.Assert(objects_[i].obj != null, "Object in pool should not be null.");
+            HxDebug.Assert(_objects[i].Obj != null, "Object in pool should not be null.");
 #pragma warning disable CS8602 // Dereference of a possibly null reference.
-            if (objects_[i].obj.Equals(obj))
+            if (_objects[i].Obj.Equals(obj))
             {
-                return new Handle<ObjectType>((uint32_t)i, objects_[i].gen);
+                return new Handle<ObjectType>((uint32_t)i, _objects[i].Gen);
             }
 #pragma warning restore CS8602 // Dereference of a possibly null reference.
         }
@@ -168,12 +169,12 @@ public sealed class Pool<ObjectType, ImplObjectType> where ObjectType : new()
     }
 
     /// <summary>
-  /// Clears all objects from the pool.
+    /// Clears all objects from the pool.
     /// </summary>
     public void Clear()
     {
-        objects_.Clear();
-        freeListHead_ = kListEndSentinel;
+        _objects.Clear();
+        _freeListHead = kListEndSentinel;
         Count = 0;
     }
 }

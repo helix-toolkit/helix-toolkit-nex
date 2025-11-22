@@ -1,12 +1,17 @@
-﻿namespace HelixToolkit.Nex.Scene;
+namespace HelixToolkit.Nex.Scene;
 
 public static class SceneSorting
 {
-    private static readonly ThreadLocal<Stack<KeyValuePair<int, IReadOnlyList<Node>>>> stackLocal = new(() => new());
+    private static readonly ThreadLocal<Stack<KeyValuePair<int, IReadOnlyList<Node>>>> _stackLocal =
+        new(() => new());
 
-    public static void Flatten(this IReadOnlyList<Node> nodes, Func<Node, bool>? condition, IList<Node> sortedNodes)
+    public static void Flatten(
+        this IReadOnlyList<Node> nodes,
+        Func<Node, bool>? condition,
+        IList<Node> sortedNodes
+    )
     {
-        var stack = stackLocal.Value;
+        var stack = _stackLocal.Value;
         Debug.Assert(stack != null, "Stack should not be null");
         var i = -1;
         var level = 0;

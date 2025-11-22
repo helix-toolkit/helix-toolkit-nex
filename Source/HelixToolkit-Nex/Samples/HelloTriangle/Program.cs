@@ -1,23 +1,22 @@
-﻿using HelixToolkit.Nex;
+using System.Diagnostics;
+using System.Numerics;
+using HelixToolkit.Nex;
 using HelixToolkit.Nex.Graphics;
 using HelixToolkit.Nex.Graphics.Vulkan;
 using HelixToolkit.Nex.Maths;
 using HelixToolkit.Nex.Sample.Application;
 using SDL3;
-using System.Diagnostics;
-using System.Numerics;
 using Vortice.Vulkan;
 
 public class Program
 {
-
-    public unsafe static void Main()
+    public static unsafe void Main()
     {
         using var app = new App();
         app.Run();
     }
 
-    const string vs = """
+    private const string vs = """
         #version 460
         layout (location=0) out vec3 color;
         const vec2 pos[3] = vec2[3](
@@ -42,7 +41,7 @@ public class Program
         }
         """;
 
-    const string ps = """
+    private const string ps = """
         #version 460
         layout (location=0) in vec3 color;
         layout (location=0) out vec4 out_FragColor;
@@ -52,38 +51,42 @@ public class Program
         };
         """;
 
-    class App : Application
+    private class App : Application
     {
-        IContext? vkContext;
+        private IContext? _ctx;
         public override string Name => "HelloTriangle";
 
-        RenderPipelineResource renderPipeline = RenderPipelineResource.Null;
-        RenderPass pass = new();
-        Framebuffer frameBuffer = new();
-        uint frameCount = 0;
+        private RenderPipelineResource _renderPipeline = RenderPipelineResource.Null;
+        private readonly RenderPass _pass = new();
+        private readonly Framebuffer _frameBuffer = new();
+        private uint _frameCount = 0;
 
         protected override void Initialize()
         {
             base.Initialize();
-            vkContext = VulkanBuilder.Create(new VulkanContextConfig
-            {
-                TerminateOnValidationError = true,
-                OnCreateSurface = CreateSurface,
-            }, MainWindow.Instance, 0);
+            _ctx = VulkanBuilder.Create(
+                new VulkanContextConfig
+                {
+                    TerminateOnValidationError = true,
+                    OnCreateSurface = CreateSurface,
+                },
+                MainWindow.Instance,
+                0
+            );
             var windowSize = MainWindow.Size;
-            vkContext.RecreateSwapchain(windowSize.Width, windowSize.Height);
-            vkContext.CreateShaderModuleGlsl(vs, ShaderStage.Vertex, out var vsModule).CheckResult();
-            vkContext.CreateShaderModuleGlsl(ps, ShaderStage.Fragment, out var psModule).CheckResult();
+            _ctx.RecreateSwapchain(windowSize.Width, windowSize.Height);
+            _ctx.CreateShaderModuleGlsl(vs, ShaderStage.Vertex, out var vsModule).CheckResult();
+            _ctx.CreateShaderModuleGlsl(ps, ShaderStage.Fragment, out var psModule).CheckResult();
             var pipelineDesc = new RenderPipelineDesc
             {
                 VertexShader = vsModule,
                 FragementShader = psModule,
                 Topology = Topology.Triangle,
             };
-            pipelineDesc.Colors[0].Format = vkContext.GetSwapchainFormat();
-            vkContext.CreateRenderPipeline(pipelineDesc, out renderPipeline).CheckResult();
+            pipelineDesc.Colors[0].Format = _ctx.GetSwapchainFormat();
+            _ctx.CreateRenderPipeline(pipelineDesc, out _renderPipeline).CheckResult();
 
-            pass.Colors[0] = new RenderPass.AttachmentDesc
+            _pass.Colors[0] = new RenderPass.AttachmentDesc
             {
                 ClearColor = new Color4(0.1f, 0.2f, 0.3f, 1.0f),
                 LoadOp = LoadOp.Clear,
@@ -92,41 +95,44 @@ public class Program
 
         protected override void OnTick()
         {
-            ++frameCount;
-            Debug.Assert(vkContext != null, "Vulkan context should not be null at this point.");
+            ++_frameCount;
+            Debug.Assert(_ctx != null, "Vulkan context should not be null at this point.");
 
-            var tex = vkContext.GetCurrentSwapchainTexture();
+            var tex = _ctx.GetCurrentSwapchainTexture();
             if (tex.Empty)
             {
                 return; // No swapchain texture available, nothing to render to.
             }
-            var cmdBuffer = vkContext!.AcquireCommandBuffer();
-            frameBuffer.Colors[0].Texture = tex;
-            pass.Colors[0].ClearColor = new Color4((frameCount % 1000) / 1000f, 0.2f, 0.3f, 1.0f);
-            cmdBuffer.BeginRendering(pass, frameBuffer, Dependencies.Empty);
-            cmdBuffer.BindRenderPipeline(renderPipeline);
+            var cmdBuffer = _ctx!.AcquireCommandBuffer();
+            _frameBuffer.Colors[0].Texture = tex;
+            _pass.Colors[0].ClearColor = new Color4((_frameCount % 1000) / 1000f, 0.2f, 0.3f, 1.0f);
+            cmdBuffer.BeginRendering(_pass, _frameBuffer, Dependencies.Empty);
+            cmdBuffer.BindRenderPipeline(_renderPipeline);
             var aspect = MainWindow.Size.Width / (float)MainWindow.Size.Height;
-            var transform = Matrix4x4.CreateFromAxisAngle(Vector3.UnitY, frameCount / 1000f);
-            var cam = Matrix4x4.CreateLookAt((-Vector3.UnitZ * 10).TransformCoordinate(transform), Vector3.Zero, Vector3.UnitY) * Matrix4x4.CreateOrthographic(2, 2 * aspect, 0.1f, 100f);
+            var transform = Matrix4x4.CreateFromAxisAngle(Vector3.UnitY, _frameCount / 1000f);
+            var cam =
+                Matrix4x4.CreateLookAt(
+                    (-Vector3.UnitZ * 10).TransformCoordinate(transform),
+                    Vector3.Zero,
+                    Vector3.UnitY
+                ) * Matrix4x4.CreateOrthographic(2, 2 * aspect, 0.1f, 100f);
 
             cmdBuffer.PushConstants(cam);
             cmdBuffer.Draw(3); // Draw 3 vertices (a triangle)
             cmdBuffer.EndRendering();
-            vkContext!.Submit(cmdBuffer, tex);
+            _ctx!.Submit(cmdBuffer, tex);
         }
 
         protected override void HandleResize(int width, int height)
         {
-            vkContext!.RecreateSwapchain(width, height);
+            _ctx!.RecreateSwapchain(width, height);
         }
 
         protected override void OnDisposing()
         {
             base.OnDisposing();
-            renderPipeline.Dispose();
-            vkContext?.Dispose();
+            _renderPipeline.Dispose();
+            _ctx?.Dispose();
         }
     }
 }
-
-

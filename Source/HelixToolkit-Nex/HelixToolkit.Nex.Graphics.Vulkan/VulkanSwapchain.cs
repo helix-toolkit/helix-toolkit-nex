@@ -1,50 +1,48 @@
-﻿using Vortice.Vulkan;
+using Vortice.Vulkan;
 
 namespace HelixToolkit.Nex.Graphics.Vulkan;
 
 internal sealed class VulkanSwapchain : IDisposable
 {
     public const uint32_t MAX_SWAPCHAIN_IMAGES = 16;
-    private static readonly ILogger logger = LogManager.Create<VulkanSwapchain>();
+    private static readonly ILogger Logger = LogManager.Create<VulkanSwapchain>();
 
-    readonly VulkanContext vkContext;
-    readonly VkDevice device;
-    readonly VkQueue graphicsQueue;
-    readonly VkSurfaceFormatKHR surfaceFormat;
+    private readonly VulkanContext _ctx;
+    private readonly VkDevice _device;
+    private readonly VkQueue _graphicsQueue;
+    private uint32_t _currentImageIndex = 0; // [0...numSwapchainImages_)
+    private bool _getNextImage = true;
+    private VkSwapchainKHR _swapchain = VkSwapchainKHR.Null;
 
-    uint32_t width;
-    uint32_t height;
-    uint32_t numSwapchainImages = 0;
-    uint32_t currentImageIndex = 0; // [0...numSwapchainImages_)
-    uint64_t currentFrameIndex = 0; // [0...+inf)
-    bool getNextImage_ = true;
-    VkSwapchainKHR swapchain = VkSwapchainKHR.Null;
+    public uint32_t Width { get; private set; }
+    public uint32_t Height { get; private set; }
 
+    public uint32_t NumSwapchainImages { get; private set; } = 0;
+    public uint32_t CurrentImageIndex => _currentImageIndex;
+    public uint64_t CurrentFrameIndex { get; private set; } = 0;
 
-    public uint32_t Width => width;
-    public uint32_t Height => height;
-
-    public uint32_t NumSwapchainImages => numSwapchainImages;
-    public uint32_t CurrentImageIndex => currentImageIndex;
-    public uint64_t CurrentFrameIndex => currentFrameIndex;
-
-    public VkSurfaceFormatKHR SurfaceFormat => surfaceFormat;
+    public VkSurfaceFormatKHR SurfaceFormat { get; }
 
     public readonly TextureHandle[] SwapchainTextures = new TextureHandle[MAX_SWAPCHAIN_IMAGES];
     public readonly VkSemaphore[] AcquireSemaphore = new VkSemaphore[MAX_SWAPCHAIN_IMAGES];
     public readonly VkFence[] PresentFence = new VkFence[MAX_SWAPCHAIN_IMAGES];
     public readonly uint64_t[] TimelineWaitValues = new uint64_t[MAX_SWAPCHAIN_IMAGES];
 
-    public bool Valid => swapchain != VkSwapchainKHR.Null && surfaceFormat.format != VK.VK_FORMAT_UNDEFINED;
+    public bool Valid =>
+        _swapchain != VkSwapchainKHR.Null && SurfaceFormat.format != VK.VK_FORMAT_UNDEFINED;
 
     public VulkanSwapchain(VulkanContext ctx, uint32_t width, uint32_t height)
     {
-        this.vkContext = ctx;
-        this.width = width;
-        this.height = height;
-        this.device = ctx.GetVkDevice();
-        surfaceFormat = ChooseSwapSurfaceFormat(ctx.DeviceSurfaceFormats, ctx.Config.SwapchainRequestedColorSpace, ctx.HasExtSwapchainColorspace);
-        graphicsQueue = ctx.GraphicsQueue.graphicsQueue;
+        this._ctx = ctx;
+        Width = width;
+        Height = height;
+        this._device = ctx.GetVkDevice();
+        SurfaceFormat = ChooseSwapSurfaceFormat(
+            ctx.DeviceSurfaceFormats,
+            ctx.Config.SwapchainRequestedColorSpace,
+            ctx.HasExtSwapchainColorspace
+        );
+        _graphicsQueue = ctx.GraphicsQueue.GraphicsQueue;
 
         // Initialize swapchain textures and semaphores
         for (int i = 0; i < MAX_SWAPCHAIN_IMAGES; i++)
@@ -60,88 +58,143 @@ internal sealed class VulkanSwapchain : IDisposable
 
     private VkResult CreateSwapchain()
     {
-        HxDebug.Assert(surfaceFormat.format != VK.VK_FORMAT_UNDEFINED, "Invalid swapchain surface format. Ensure that the surface is created and the format is supported by the device.");
-        HxDebug.Assert(width > 0 && height > 0, "Swapchain dimensions must be greater than zero.");
-        HxDebug.Assert(vkContext.VkSurface != VkSurfaceKHR.Null, "Vulkan surface must be created before creating the swapchain.");
+        HxDebug.Assert(
+            SurfaceFormat.format != VK.VK_FORMAT_UNDEFINED,
+            "Invalid swapchain surface format. Ensure that the surface is created and the format is supported by the device."
+        );
+        HxDebug.Assert(Width > 0 && Height > 0, "Swapchain dimensions must be greater than zero.");
+        HxDebug.Assert(
+            _ctx.VkSurface != VkSurfaceKHR.Null,
+            "Vulkan surface must be created before creating the swapchain."
+        );
         var queueFamilySupportsPresentation = VK_BOOL.False;
         unsafe
         {
             VK.vkGetPhysicalDeviceSurfaceSupportKHR(
-                vkContext.GetVkPhysicalDevice(), vkContext.DeviceQueues.graphicsQueueFamilyIndex, vkContext.VkSurface, &queueFamilySupportsPresentation).CheckResult();
-            HxDebug.Assert(queueFamilySupportsPresentation == VK_BOOL.True, "The queue family used with the swapchain does not support presentation");
-            var chooseSwapImageCount = new Func<VkSurfaceCapabilitiesKHR, uint32_t>((caps) =>
-            {
-                uint32_t desired = caps.minImageCount + 1;
-                bool exceeded = caps.maxImageCount > 0 && desired > caps.maxImageCount;
-                return exceeded ? caps.maxImageCount : desired;
-            });
-
-            var chooseSwapPresentMode = new Func<IReadOnlyList<VkPresentModeKHR>, VkPresentModeKHR>(modes =>
-            {
-                if (SystemInfo.IsLinuxPlatform() || SystemInfo.IsArmArchitecture())
+                    _ctx.GetVkPhysicalDevice(),
+                    _ctx.DeviceQueues.GraphicsQueueFamilyIndex,
+                    _ctx.VkSurface,
+                    &queueFamilySupportsPresentation
+                )
+                .CheckResult();
+            HxDebug.Assert(
+                queueFamilySupportsPresentation == VK_BOOL.True,
+                "The queue family used with the swapchain does not support presentation"
+            );
+            var chooseSwapImageCount = new Func<VkSurfaceCapabilitiesKHR, uint32_t>(
+                (caps) =>
                 {
-                    if (modes.Contains(VkPresentModeKHR.Immediate))
+                    uint32_t desired = caps.minImageCount + 1;
+                    bool exceeded = caps.maxImageCount > 0 && desired > caps.maxImageCount;
+                    return exceeded ? caps.maxImageCount : desired;
+                }
+            );
+
+            var chooseSwapPresentMode = new Func<IReadOnlyList<VkPresentModeKHR>, VkPresentModeKHR>(
+                modes =>
+                {
+                    if (SystemInfo.IsLinuxPlatform() || SystemInfo.IsArmArchitecture())
                     {
-                        return VkPresentModeKHR.Immediate;
+                        if (modes.Contains(VkPresentModeKHR.Immediate))
+                        {
+                            return VkPresentModeKHR.Immediate;
+                        }
                     }
+                    return modes.Contains(VkPresentModeKHR.Mailbox)
+                        ? VkPresentModeKHR.Mailbox
+                        : VK.VK_PRESENT_MODE_FIFO_KHR;
                 }
-                return modes.Contains(VkPresentModeKHR.Mailbox) ? VkPresentModeKHR.Mailbox : VK.VK_PRESENT_MODE_FIFO_KHR;
-            });
+            );
 
-            var chooseUsageFlags = new Func<VkPhysicalDevice, VkSurfaceKHR, VkFormat, VkImageUsageFlags>((pd, surface, format) =>
-            {
-                VkImageUsageFlags usageFlags = VK.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK.VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK.VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-
-                VkSurfaceCapabilitiesKHR caps = new();
-                VK.vkGetPhysicalDeviceSurfaceCapabilitiesKHR(pd, surface, &caps).CheckResult();
-
-                VkFormatProperties props = new();
-                VK.vkGetPhysicalDeviceFormatProperties(pd, format, &props);
-
-                var isStorageSupported = caps.supportedUsageFlags.HasFlag(VK.VK_IMAGE_USAGE_STORAGE_BIT);
-                var isTilingOptimalSupported = props.optimalTilingFeatures.HasFlag(VK.VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT);
-
-                if (isStorageSupported && isTilingOptimalSupported)
+            var chooseUsageFlags = new Func<
+                VkPhysicalDevice,
+                VkSurfaceKHR,
+                VkFormat,
+                VkImageUsageFlags
+            >(
+                (pd, surface, format) =>
                 {
-                    usageFlags |= VK.VK_IMAGE_USAGE_STORAGE_BIT;
-                }
+                    VkImageUsageFlags usageFlags =
+                        VK.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
+                        | VK.VK_IMAGE_USAGE_TRANSFER_DST_BIT
+                        | VK.VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 
-                return usageFlags;
-            });
-            var usageFlags = chooseUsageFlags(vkContext.GetVkPhysicalDevice(), vkContext.VkSurface, surfaceFormat.format);
-            var isCompositeAlphaOpaqueSupported = vkContext.DeviceSurfaceCapabilities.supportedCompositeAlpha.HasFlag(VK.VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR);
-            var graphicsQueueFamilyIndex = vkContext.DeviceQueues.graphicsQueueFamilyIndex;
+                    VkSurfaceCapabilitiesKHR caps = new();
+                    VK.vkGetPhysicalDeviceSurfaceCapabilitiesKHR(pd, surface, &caps).CheckResult();
+
+                    VkFormatProperties props = new();
+                    VK.vkGetPhysicalDeviceFormatProperties(pd, format, &props);
+
+                    var isStorageSupported = caps.supportedUsageFlags.HasFlag(
+                        VK.VK_IMAGE_USAGE_STORAGE_BIT
+                    );
+                    var isTilingOptimalSupported = props.optimalTilingFeatures.HasFlag(
+                        VK.VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT
+                    );
+
+                    if (isStorageSupported && isTilingOptimalSupported)
+                    {
+                        usageFlags |= VK.VK_IMAGE_USAGE_STORAGE_BIT;
+                    }
+
+                    return usageFlags;
+                }
+            );
+            var usageFlags = chooseUsageFlags(
+                _ctx.GetVkPhysicalDevice(),
+                _ctx.VkSurface,
+                SurfaceFormat.format
+            );
+            var isCompositeAlphaOpaqueSupported =
+                _ctx.DeviceSurfaceCapabilities.supportedCompositeAlpha.HasFlag(
+                    VK.VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR
+                );
+            var graphicsQueueFamilyIndex = _ctx.DeviceQueues.GraphicsQueueFamilyIndex;
             VkSurfaceCapabilitiesKHR capabilities = new();
-            VK.vkGetPhysicalDeviceSurfaceCapabilitiesKHR(vkContext.VkPhysicalDevice, vkContext.VkSurface, &capabilities).CheckResult();
+            VK.vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
+                    _ctx.VkPhysicalDevice,
+                    _ctx.VkSurface,
+                    &capabilities
+                )
+                .CheckResult();
             VkSwapchainCreateInfoKHR ci = new()
             {
-                surface = vkContext.VkSurface,
-                minImageCount = chooseSwapImageCount(vkContext.DeviceSurfaceCapabilities),
-                imageFormat = surfaceFormat.format,
-                imageColorSpace = surfaceFormat.colorSpace,
-                imageExtent = new VkExtent2D(width, height),
+                surface = _ctx.VkSurface,
+                minImageCount = chooseSwapImageCount(_ctx.DeviceSurfaceCapabilities),
+                imageFormat = SurfaceFormat.format,
+                imageColorSpace = SurfaceFormat.colorSpace,
+                imageExtent = new VkExtent2D(Width, Height),
                 imageArrayLayers = 1,
                 imageUsage = usageFlags,
                 imageSharingMode = VK.VK_SHARING_MODE_EXCLUSIVE,
                 queueFamilyIndexCount = 1,
                 pQueueFamilyIndices = &graphicsQueueFamilyIndex,
-                compositeAlpha = isCompositeAlphaOpaqueSupported ? VK.VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR : VK.VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR,
-                presentMode = vkContext.Config.ForcePresentModeFIFO ? VkPresentModeKHR.Fifo : chooseSwapPresentMode(vkContext.DevicePresentModes),
+                compositeAlpha = isCompositeAlphaOpaqueSupported
+                    ? VK.VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR
+                    : VK.VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR,
+                presentMode = _ctx.Config.ForcePresentModeFIFO
+                    ? VkPresentModeKHR.Fifo
+                    : chooseSwapPresentMode(_ctx.DevicePresentModes),
                 clipped = VK_BOOL.True,
                 oldSwapchain = VkSwapchainKHR.Null,
-                preTransform = vkContext.DeviceSurfaceCapabilities.currentTransform,
+                preTransform = _ctx.DeviceSurfaceCapabilities.currentTransform,
             };
             VkSwapchainKHR sc = VkSwapchainKHR.Null;
-            VK.vkCreateSwapchainKHR(device, &ci, null, &sc).CheckResult();
-            HxDebug.Assert(sc.IsNotNull, "Failed to create swapchain. Ensure that the surface is created and the format is supported by the device.");
+            VK.vkCreateSwapchainKHR(_device, &ci, null, &sc).CheckResult();
+            HxDebug.Assert(
+                sc.IsNotNull,
+                "Failed to create swapchain. Ensure that the surface is created and the format is supported by the device."
+            );
             if (sc.IsNull)
             {
-                logger.LogError("Failed to create swapchain. Ensure that the surface is created and the format is supported by the device.");
+                Logger.LogError(
+                    "Failed to create swapchain. Ensure that the surface is created and the format is supported by the device."
+                );
                 return VkResult.ErrorInitializationFailed;
             }
-            swapchain = sc;
+            _swapchain = sc;
 
-            if (vkContext.HasExtHdrMetadata)
+            if (_ctx.HasExtHdrMetadata)
             {
                 VkHdrMetadataEXT metadata = new()
                 {
@@ -154,40 +207,64 @@ internal sealed class VulkanSwapchain : IDisposable
                     maxContentLightLevel = 2000.0f,
                     maxFrameAverageLightLevel = 500.0f,
                 };
-                VK.vkSetHdrMetadataEXT(device, 1, &sc, &metadata);
+                VK.vkSetHdrMetadataEXT(_device, 1, &sc, &metadata);
             }
 
             var swapchainImages = stackalloc VkImage[(int)MAX_SWAPCHAIN_IMAGES];
             uint numScImages = 0;
-            VK.vkGetSwapchainImagesKHR(device, swapchain, &numScImages, null).CheckResult();
+            VK.vkGetSwapchainImagesKHR(_device, _swapchain, &numScImages, null).CheckResult();
             if (numScImages > MAX_SWAPCHAIN_IMAGES)
             {
                 HxDebug.Assert(numScImages <= MAX_SWAPCHAIN_IMAGES);
                 numScImages = MAX_SWAPCHAIN_IMAGES;
             }
-            VK.vkGetSwapchainImagesKHR(device, swapchain, &numScImages, swapchainImages).CheckResult();
+            VK.vkGetSwapchainImagesKHR(_device, _swapchain, &numScImages, swapchainImages)
+                .CheckResult();
 
             HxDebug.Assert(numScImages > 0);
 
-            numSwapchainImages = numScImages;
+            NumSwapchainImages = numScImages;
 
             // create images, image views and framebuffers
-            for (uint32_t i = 0; i < numSwapchainImages; i++)
+            for (uint32_t i = 0; i < NumSwapchainImages; i++)
             {
-                AcquireSemaphore[i] = device.CreateSemaphore("Semaphore: swapchain-acquire");
+                AcquireSemaphore[i] = _device.CreateSemaphore("Semaphore: swapchain-acquire");
 
-                VulkanImage image = new(vkContext, swapchainImages[i], usageFlags, new VkExtent3D { width = width, height = height, depth = 1 },
+                VulkanImage image = new(
+                    _ctx,
+                    swapchainImages[i],
+                    usageFlags,
+                    new VkExtent3D
+                    {
+                        width = Width,
+                        height = Height,
+                        depth = 1,
+                    },
                     VK.VK_IMAGE_TYPE_2D,
-                    surfaceFormat.format,
-                    isDepthFormat: surfaceFormat.format.IsDepthFormat(),
-                    isStencilFormat: surfaceFormat.format.IsStencilFormat(), true, false);
-                device.SetDebugObjectName(VK.VK_OBJECT_TYPE_IMAGE, (nuint)image.Image, $"[Vk.SwapChainImage]: Swapchain {i}");
+                    SurfaceFormat.format,
+                    isDepthFormat: SurfaceFormat.format.IsDepthFormat(),
+                    isStencilFormat: SurfaceFormat.format.IsStencilFormat(),
+                    true,
+                    false
+                );
+                _device.SetDebugObjectName(
+                    VK.VK_OBJECT_TYPE_IMAGE,
+                    (nuint)image.Image,
+                    $"[Vk.SwapChainImage]: Swapchain {i}"
+                );
 
-                image.ImageView = image.CreateImageView(device, VK.VK_IMAGE_VIEW_TYPE_2D, surfaceFormat.format,
-                                                         VK.VK_IMAGE_ASPECT_COLOR_BIT, 0,
-                                                         VK.VK_REMAINING_MIP_LEVELS,
-                                                         0, 1, $"Image View: Swapchain {i}");
-                SwapchainTextures[i] = vkContext.TexturesPool.Create(image);
+                image.ImageView = image.CreateImageView(
+                    _device,
+                    VK.VK_IMAGE_VIEW_TYPE_2D,
+                    SurfaceFormat.format,
+                    VK.VK_IMAGE_ASPECT_COLOR_BIT,
+                    0,
+                    VK.VK_REMAINING_MIP_LEVELS,
+                    0,
+                    1,
+                    $"Image View: Swapchain {i}"
+                );
+                SwapchainTextures[i] = _ctx.TexturesPool.Create(image);
             }
         }
         return VkResult.Success;
@@ -195,21 +272,21 @@ internal sealed class VulkanSwapchain : IDisposable
 
     public ResultCode Resize(uint32_t newWidth, uint32_t newHeight)
     {
-        if (newWidth == width && newHeight == height)
+        if (newWidth == Width && newHeight == Height)
         {
             return ResultCode.Ok; // No resize needed
         }
-        width = newWidth;
-        height = newHeight;
+        Width = newWidth;
+        Height = newHeight;
         foreach (var handle in SwapchainTextures)
         {
-            vkContext.Destroy(handle);
+            _ctx.Destroy(handle);
         }
         unsafe
         {
-            VK.vkDestroySwapchainKHR(device, swapchain, null);
+            VK.vkDestroySwapchainKHR(_device, _swapchain, null);
         }
-        swapchain = VkSwapchainKHR.Null;
+        _swapchain = VkSwapchainKHR.Null;
         // Recreate the swapchain with the new dimensions
         return CreateSwapchain() == VkResult.Success ? ResultCode.Ok : ResultCode.RuntimeError;
     }
@@ -218,9 +295,9 @@ internal sealed class VulkanSwapchain : IDisposable
     {
         unsafe
         {
-            VkFence presentFence = PresentFence[currentImageIndex];
-            VkSwapchainKHR swapchain_1 = swapchain;
-            var idx = currentImageIndex;
+            VkFence presentFence = PresentFence[_currentImageIndex];
+            VkSwapchainKHR swapchain_1 = _swapchain;
+            var idx = _currentImageIndex;
 
             VkSwapchainPresentFenceInfoEXT fenceInfo = new()
             {
@@ -229,7 +306,7 @@ internal sealed class VulkanSwapchain : IDisposable
             };
             VkPresentInfoKHR pi = new()
             {
-                pNext = vkContext.HasExtSwapchainMaintenance1 ? &fenceInfo : null,
+                pNext = _ctx.HasExtSwapchainMaintenance1 ? &fenceInfo : null,
                 waitSemaphoreCount = 1,
                 pWaitSemaphores = &waitSemaphore,
                 swapchainCount = 1u,
@@ -237,29 +314,33 @@ internal sealed class VulkanSwapchain : IDisposable
                 pImageIndices = &idx,
             };
 
-            if (vkContext.HasExtSwapchainMaintenance1)
+            if (_ctx.HasExtSwapchainMaintenance1)
             {
-                if (PresentFence[currentImageIndex].IsNull)
+                if (PresentFence[_currentImageIndex].IsNull)
                 {
-                    PresentFence[currentImageIndex] = device.CreateFence($"Fence: present-fence [{currentImageIndex}]");
+                    PresentFence[_currentImageIndex] = _device.CreateFence(
+                        $"Fence: present-fence [{_currentImageIndex}]"
+                    );
                 }
             }
-            VkResult r = VK.vkQueuePresentKHR(graphicsQueue, &pi);
-            HxDebug.Assert(r == VK.VK_SUCCESS || r == VK.VK_SUBOPTIMAL_KHR || r == VK.VK_ERROR_OUT_OF_DATE_KHR);
+            VkResult r = VK.vkQueuePresentKHR(_graphicsQueue, &pi);
+            HxDebug.Assert(
+                r == VK.VK_SUCCESS || r == VK.VK_SUBOPTIMAL_KHR || r == VK.VK_ERROR_OUT_OF_DATE_KHR
+            );
 
             // Ready to call acquireNextImage() on the next getCurrentVulkanTexture();
-            getNextImage_ = true;
-            currentFrameIndex++;
+            _getNextImage = true;
+            CurrentFrameIndex++;
 
             return ResultCode.Ok;
         }
     }
+
     public VkImage GetCurrentVkImage()
     {
-
-        if (currentImageIndex < numSwapchainImages)
+        if (_currentImageIndex < NumSwapchainImages)
         {
-            var tex = vkContext.TexturesPool.Get(SwapchainTextures[currentImageIndex]);
+            var tex = _ctx.TexturesPool.Get(SwapchainTextures[_currentImageIndex]);
             HxDebug.Assert(tex is not null && tex.Valid, "Current swapchain texture is not valid.");
             return tex!.Image;
         }
@@ -268,72 +349,105 @@ internal sealed class VulkanSwapchain : IDisposable
 
     public VkImageView GetCurrentVkImageView()
     {
-        if (currentImageIndex < numSwapchainImages)
+        if (_currentImageIndex < NumSwapchainImages)
         {
-            var tex = vkContext.TexturesPool.Get(SwapchainTextures[currentImageIndex]);
+            var tex = _ctx.TexturesPool.Get(SwapchainTextures[_currentImageIndex]);
             HxDebug.Assert(tex is not null && tex.Valid, "Current swapchain texture is not valid.");
             return tex!.ImageView;
         }
         return VkImageView.Null;
     }
 
-
-    public static VkSurfaceFormatKHR ChooseSwapSurfaceFormat(IReadOnlyList<VkSurfaceFormatKHR> formats,
-                                           in ColorSpace requestedColorSpace,
-                                           bool hasSwapchainColorspaceExt)
+    public static VkSurfaceFormatKHR ChooseSwapSurfaceFormat(
+        IReadOnlyList<VkSurfaceFormatKHR> formats,
+        in ColorSpace requestedColorSpace,
+        bool hasSwapchainColorspaceExt
+    )
     {
         HxDebug.Assert(formats.Count > 0);
 
-        var isNativeSwapChainBGR = new Func<IReadOnlyList<VkSurfaceFormatKHR>, bool>((formats) =>
-        {
-            foreach (var fmt in formats)
+        var isNativeSwapChainBGR = new Func<IReadOnlyList<VkSurfaceFormatKHR>, bool>(
+            (formats) =>
             {
-                // The preferred format should be the one which is closer to the beginning of the formats
-                // container. If BGR is encountered earlier, it should be picked as the format of choice. If RGB
-                // happens to be earlier, take it.
-                if (fmt.format == VK.VK_FORMAT_R8G8B8A8_UNORM || fmt.format == VK.VK_FORMAT_R8G8B8A8_SRGB ||
-                    fmt.format == VK.VK_FORMAT_A2R10G10B10_UNORM_PACK32)
+                foreach (var fmt in formats)
                 {
-                    return false;
-                }
-                if (fmt.format == VK.VK_FORMAT_B8G8R8A8_UNORM || fmt.format == VK.VK_FORMAT_B8G8R8A8_SRGB ||
-                    fmt.format == VK.VK_FORMAT_A2B10G10R10_UNORM_PACK32)
-                {
-                    return true;
-                }
-            }
-            return false;
-        });
-
-        var colorSpaceToVkSurfaceFormat = new Func<ColorSpace, bool, bool, VkSurfaceFormatKHR>((colorSpace, isBGR, hasSwapChainColorspaceExt) =>
-        {
-            switch (colorSpace)
-            {
-                case ColorSpace.SRGB_LINEAR:
-                    // the closest thing to sRGB linear
-                    return new VkSurfaceFormatKHR() { format = isBGR ? VK.VK_FORMAT_B8G8R8A8_UNORM : VK.VK_FORMAT_R8G8B8A8_UNORM, colorSpace = VK.VK_COLOR_SPACE_BT709_LINEAR_EXT };
-                case ColorSpace.SRGB_EXTENDED_LINEAR:
+                    // The preferred format should be the one which is closer to the beginning of the formats
+                    // container. If BGR is encountered earlier, it should be picked as the format of choice. If RGB
+                    // happens to be earlier, take it.
+                    if (
+                        fmt.format == VK.VK_FORMAT_R8G8B8A8_UNORM
+                        || fmt.format == VK.VK_FORMAT_R8G8B8A8_SRGB
+                        || fmt.format == VK.VK_FORMAT_A2R10G10B10_UNORM_PACK32
+                    )
                     {
-                        if (hasSwapchainColorspaceExt)
-                            return new VkSurfaceFormatKHR() { format = VK.VK_FORMAT_R16G16B16A16_SFLOAT, colorSpace = VK.VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT };
-                        goto case ColorSpace.HDR10; // fall through to HDR10 case
+                        return false;
                     }
-                case ColorSpace.HDR10:
-                    if (hasSwapchainColorspaceExt)
+                    if (
+                        fmt.format == VK.VK_FORMAT_B8G8R8A8_UNORM
+                        || fmt.format == VK.VK_FORMAT_B8G8R8A8_SRGB
+                        || fmt.format == VK.VK_FORMAT_A2B10G10R10_UNORM_PACK32
+                    )
+                    {
+                        return true;
+                    }
+                }
+                return false;
+            }
+        );
+
+        var colorSpaceToVkSurfaceFormat = new Func<ColorSpace, bool, bool, VkSurfaceFormatKHR>(
+            (colorSpace, isBGR, hasSwapChainColorspaceExt) =>
+            {
+                switch (colorSpace)
+                {
+                    case ColorSpace.SRGB_LINEAR:
+                        // the closest thing to sRGB linear
                         return new VkSurfaceFormatKHR()
                         {
-                            format = isBGR ? VK.VK_FORMAT_A2B10G10R10_UNORM_PACK32 : VK.VK_FORMAT_A2R10G10B10_UNORM_PACK32,
-                            colorSpace = VK.VK_COLOR_SPACE_HDR10_ST2084_EXT
+                            format = isBGR
+                                ? VK.VK_FORMAT_B8G8R8A8_UNORM
+                                : VK.VK_FORMAT_R8G8B8A8_UNORM,
+                            colorSpace = VK.VK_COLOR_SPACE_BT709_LINEAR_EXT,
                         };
-                    goto case ColorSpace.SRGB_NONLINEAR; // fall through to default case
-                case ColorSpace.SRGB_NONLINEAR:
-                default:
-                    // default to normal sRGB non linear.
-                    return new VkSurfaceFormatKHR() { format = isBGR ? VK.VK_FORMAT_B8G8R8A8_SRGB : VK.VK_FORMAT_R8G8B8A8_SRGB, colorSpace = VK.VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
+                    case ColorSpace.SRGB_EXTENDED_LINEAR:
+                    {
+                        if (hasSwapchainColorspaceExt)
+                            return new VkSurfaceFormatKHR()
+                            {
+                                format = VK.VK_FORMAT_R16G16B16A16_SFLOAT,
+                                colorSpace = VK.VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT,
+                            };
+                        goto case ColorSpace.HDR10; // fall through to HDR10 case
+                    }
+                    case ColorSpace.HDR10:
+                        if (hasSwapchainColorspaceExt)
+                            return new VkSurfaceFormatKHR()
+                            {
+                                format = isBGR
+                                    ? VK.VK_FORMAT_A2B10G10R10_UNORM_PACK32
+                                    : VK.VK_FORMAT_A2R10G10B10_UNORM_PACK32,
+                                colorSpace = VK.VK_COLOR_SPACE_HDR10_ST2084_EXT,
+                            };
+                        goto case ColorSpace.SRGB_NONLINEAR; // fall through to default case
+                    case ColorSpace.SRGB_NONLINEAR:
+                    default:
+                        // default to normal sRGB non linear.
+                        return new VkSurfaceFormatKHR()
+                        {
+                            format = isBGR
+                                ? VK.VK_FORMAT_B8G8R8A8_SRGB
+                                : VK.VK_FORMAT_R8G8B8A8_SRGB,
+                            colorSpace = VK.VK_COLOR_SPACE_SRGB_NONLINEAR_KHR,
+                        };
+                }
             }
-        });
+        );
 
-        VkSurfaceFormatKHR preferred = colorSpaceToVkSurfaceFormat(requestedColorSpace, isNativeSwapChainBGR(formats), hasSwapchainColorspaceExt);
+        VkSurfaceFormatKHR preferred = colorSpaceToVkSurfaceFormat(
+            requestedColorSpace,
+            isNativeSwapChainBGR(formats),
+            hasSwapchainColorspaceExt
+        );
 
         foreach (var fmt in formats)
         {
@@ -352,29 +466,33 @@ internal sealed class VulkanSwapchain : IDisposable
             }
         }
 
-        logger.LogWarning("Could not find a native swap chain format that matched our designed swapchain format. Defaulting to first supported format.");
+        Logger.LogWarning(
+            "Could not find a native swap chain format that matched our designed swapchain format. Defaulting to first supported format."
+        );
 
         return formats[0];
     }
+
     public TextureHandle GetCurrentTexture()
     {
         unsafe
         {
-            if (getNextImage_)
+            if (_getNextImage)
             {
-                if (PresentFence[currentImageIndex].IsNotNull)
+                if (PresentFence[_currentImageIndex].IsNotNull)
                 {
-                    var fence = PresentFence[currentImageIndex];
+                    var fence = PresentFence[_currentImageIndex];
                     // Wait for the previous present operation to finish before acquiring the next image
                     // This is necessary to ensure that the image is ready for use
                     // VK_EXT_swapchain_maintenance1: wait for the fence associated with the current image index
-                    VK.vkWaitForFences(device, 1, &fence, VkBool32.True, uint64_t.MaxValue).CheckResult();
-                    VK.vkResetFences(device, 1, &fence).CheckResult();
-                    PresentFence[currentImageIndex] = fence;
+                    VK.vkWaitForFences(_device, 1, &fence, VkBool32.True, uint64_t.MaxValue)
+                        .CheckResult();
+                    VK.vkResetFences(_device, 1, &fence).CheckResult();
+                    PresentFence[_currentImageIndex] = fence;
                 }
-                var semaphore = vkContext.TimelineSemaphore;
+                var semaphore = _ctx.TimelineSemaphore;
                 {
-                    var waitValue = TimelineWaitValues[currentImageIndex];
+                    var waitValue = TimelineWaitValues[_currentImageIndex];
 
                     VkSemaphoreWaitInfo waitInfo = new()
                     {
@@ -384,52 +502,67 @@ internal sealed class VulkanSwapchain : IDisposable
                     };
                     // Wait for the timeline semaphore to be sign
 
-                    VK.vkWaitSemaphores(device, &waitInfo, uint64_t.MaxValue).CheckResult();
+                    VK.vkWaitSemaphores(_device, &waitInfo, uint64_t.MaxValue).CheckResult();
                     // when timeout is set to UINT64_MAX, we wait until the next image has been acquired
-                    ref VkSemaphore acquireSemaphore = ref AcquireSemaphore[currentImageIndex];
-                    VkResult r = VK.vkAcquireNextImageKHR(device, swapchain, uint64_t.MaxValue, acquireSemaphore, VkFence.Null, out currentImageIndex);
-                    if (r != VkResult.Success && r != VkResult.SuboptimalKHR && r != VkResult.ErrorOutOfDateKHR)
+                    ref VkSemaphore acquireSemaphore = ref AcquireSemaphore[_currentImageIndex];
+                    VkResult r = VK.vkAcquireNextImageKHR(
+                        _device,
+                        _swapchain,
+                        uint64_t.MaxValue,
+                        acquireSemaphore,
+                        VkFence.Null,
+                        out _currentImageIndex
+                    );
+                    if (
+                        r != VkResult.Success
+                        && r != VkResult.SuboptimalKHR
+                        && r != VkResult.ErrorOutOfDateKHR
+                    )
                     {
                         HxDebug.Assert(false);
                     }
-                    getNextImage_ = false;
-                    vkContext.Immediate!.WaitSemaphore(acquireSemaphore);
+                    _getNextImage = false;
+                    _ctx.Immediate!.WaitSemaphore(acquireSemaphore);
                 }
             }
         }
-        return currentImageIndex < numSwapchainImages ? SwapchainTextures[currentImageIndex] : TextureHandle.Null;
+        return _currentImageIndex < NumSwapchainImages
+            ? SwapchainTextures[_currentImageIndex]
+            : TextureHandle.Null;
     }
+
     #region IDisposable Support
-    private bool disposedValue;
+    private bool _disposedValue;
+
     private void Dispose(bool disposing)
     {
-        if (!disposedValue)
+        if (!_disposedValue)
         {
             if (disposing)
             {
                 foreach (var handle in SwapchainTextures)
                 {
-                    vkContext.Destroy(handle);
+                    _ctx.Destroy(handle);
                 }
                 unsafe
                 {
-                    VK.vkDestroySwapchainKHR(device, swapchain, null);
+                    VK.vkDestroySwapchainKHR(_device, _swapchain, null);
 
                     foreach (var sem in AcquireSemaphore)
                     {
-                        VK.vkDestroySemaphore(device, sem, null);
+                        VK.vkDestroySemaphore(_device, sem, null);
                     }
                     foreach (var fence in PresentFence)
                     {
                         if (fence.IsNotNull)
-                            VK.vkDestroyFence(device, fence, null);
+                            VK.vkDestroyFence(_device, fence, null);
                     }
                 }
             }
 
             // TODO: free unmanaged resources (unmanaged objects) and override finalizer
             // TODO: set large fields to null
-            disposedValue = true;
+            _disposedValue = true;
         }
     }
 

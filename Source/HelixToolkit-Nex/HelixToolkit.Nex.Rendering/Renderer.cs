@@ -1,4 +1,4 @@
-﻿namespace HelixToolkit.Nex.Rendering;
+namespace HelixToolkit.Nex.Rendering;
 
 public abstract class Renderer : IDisposable
 {
@@ -65,13 +65,13 @@ public abstract class Renderer : IDisposable
     protected abstract void OnRender(RenderContext context);
 
     #region IDisposable Support
-    private bool disposedValue;
+    private bool _disposedValue;
 
-    public bool IsDisposed => disposedValue;
+    public bool IsDisposed => _disposedValue;
 
     protected virtual void Dispose(bool disposing)
     {
-        if (!disposedValue)
+        if (!_disposedValue)
         {
             if (disposing)
             {
@@ -80,7 +80,7 @@ public abstract class Renderer : IDisposable
 
             // TODO: free unmanaged resources (unmanaged objects) and override finalizer
             // TODO: set large fields to null
-            disposedValue = true;
+            _disposedValue = true;
         }
     }
 

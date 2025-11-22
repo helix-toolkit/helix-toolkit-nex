@@ -1,4 +1,4 @@
-﻿namespace HelixToolkit.Nex.Graphics;
+namespace HelixToolkit.Nex.Graphics;
 
 /// <summary>
 /// Represents specifications for texture layers within a texture resource.
@@ -8,17 +8,17 @@ public struct TextureLayers()
     /// <summary>
     /// The mip level to access.
     /// </summary>
-    public uint32_t mipLevel;
+    public uint32_t MipLevel;
 
     /// <summary>
     /// The starting array layer index.
     /// </summary>
-    public uint32_t layer;
+    public uint32_t Layer;
 
     /// <summary>
     /// The number of array layers to access. Defaults to 1.
     /// </summary>
-    public uint32_t numLayers = 1;
+    public uint32_t NumLayers = 1;
 };
 
 /// <summary>
@@ -29,32 +29,37 @@ public struct TextureRangeDesc()
     /// <summary>
     /// The 3D offset within the texture where the range begins.
     /// </summary>
-    public Offset3D offset;
+    public Offset3D Offset;
 
     /// <summary>
     /// The dimensions of the range (width, height, depth). Defaults to 1x1x1.
     /// </summary>
-    public Dimensions dimensions = new() { Width = 1, Height = 1, Depth = 1 };
+    public Dimensions Dimensions = new()
+    {
+        Width = 1,
+        Height = 1,
+        Depth = 1,
+    };
 
     /// <summary>
     /// The starting array layer index.
     /// </summary>
-    public uint32_t layer;
+    public uint32_t Layer;
 
     /// <summary>
     /// The number of array layers in the range. Defaults to 1.
     /// </summary>
-    public uint32_t numLayers = 1;
+    public uint32_t NumLayers = 1;
 
     /// <summary>
     /// The starting mip level.
     /// </summary>
-    public uint32_t mipLevel;
+    public uint32_t MipLevel;
 
     /// <summary>
     /// The number of mip levels in the range. Defaults to 1.
     /// </summary>
-    public uint32_t numMipLevels = 1;
+    public uint32_t NumMipLevels = 1;
 };
 
 /// <summary>
@@ -157,7 +162,10 @@ public struct ComponentMapping()
     /// <returns>True if all components use default mapping; otherwise, false.</returns>
     public readonly bool Identity()
     {
-        return R == Swizzle.Default && G == Swizzle.Default && B == Swizzle.Default && A == Swizzle.Default;
+        return R == Swizzle.Default
+            && G == Swizzle.Default
+            && B == Swizzle.Default
+            && A == Swizzle.Default;
     }
 }
 
@@ -179,7 +187,12 @@ public struct TextureDesc()
     /// <summary>
     /// The dimensions of the texture (width, height, depth). Defaults to 1x1x1.
     /// </summary>
-    public Dimensions Dimensions = new() { Width = 1, Height = 1, Depth = 1 };
+    public Dimensions Dimensions = new()
+    {
+        Width = 1,
+        Height = 1,
+        Depth = 1,
+    };
 
     /// <summary>
     /// The number of array layers. For cube textures, this must be a multiple of 6. Defaults to 1.

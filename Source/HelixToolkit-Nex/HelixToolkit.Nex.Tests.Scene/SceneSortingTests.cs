@@ -1,6 +1,6 @@
-﻿using Arch.Core;
-using HelixToolkit.Nex.Scene;
 using System.Numerics;
+using Arch.Core;
+using HelixToolkit.Nex.Scene;
 
 namespace HelixToolkit.Nex.Tests.Scene;
 [TestClass]

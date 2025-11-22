@@ -1,26 +1,23 @@
-﻿namespace HelixToolkit.Nex.Tests.Vulkan;
+namespace HelixToolkit.Nex.Tests.Vulkan;
 
 [TestClass]
 [TestCategory("GPURequired")]
 public class Image
 {
-    private static IContext? vkContext;
-    private static readonly Random rnd = new();
+    private static IContext? _vkContext;
+    private static readonly Random _rnd = new();
 
     [ClassInitialize]
     public static void ClassInit(TestContext context)
     {
-        var config = new VulkanContextConfig
-        {
-            TerminateOnValidationError = true
-        };
-        vkContext = VulkanBuilder.CreateHeadless(config);
+        var config = new VulkanContextConfig { TerminateOnValidationError = true };
+        _vkContext = VulkanBuilder.CreateHeadless(config);
     }
 
     [ClassCleanup]
     public static void ClassCleanup()
     {
-        vkContext?.Dispose();
+        _vkContext?.Dispose();
     }
 
     [DataTestMethod]
@@ -30,8 +27,14 @@ public class Image
     [DataRow(1024, 1024, Format.RGBA_F32)]
     public unsafe void CreateImage(int width, int height, Format format)
     {
-        var colors = Enumerable.Range(0, width * height)
-            .Select(i => new Color4(rnd.NextFloat(-1, 1), rnd.NextFloat(-1, 1), rnd.NextFloat(-1, 1), rnd.NextFloat(-1, 1)))
+        var colors = Enumerable
+            .Range(0, width * height)
+            .Select(i => new Color4(
+                _rnd.NextFloat(-1, 1),
+                _rnd.NextFloat(-1, 1),
+                _rnd.NextFloat(-1, 1),
+                _rnd.NextFloat(-1, 1)
+            ))
             .ToArray();
         using var pColors = colors.Pin(); // Pin the array to prevent garbage collection
         var size = (size_t)(colors.Length * NativeHelper.SizeOf<Color4>());
@@ -39,23 +42,40 @@ public class Image
         {
             Format = format,
             Dimensions = new Dimensions((uint)width, (uint)height, 1),
-            Usage = TextureUsageBits.Sampled | TextureUsageBits.Storage | TextureUsageBits.Attachment,
+            Usage =
+                TextureUsageBits.Sampled | TextureUsageBits.Storage | TextureUsageBits.Attachment,
             NumMipLevels = 1,
             NumLayers = 1,
             Data = (nint)pColors.Pointer, // Use the pinned pointer for data
             DataSize = size,
         };
         TextureResource? image = null;
-        var result = vkContext?.CreateTexture(imageDesc, out image, "TestImage");
-        Assert.IsTrue(result == ResultCode.Ok, "Image creation failed with error: " + result.ToString());
+        var result = _vkContext?.CreateTexture(imageDesc, out image, "TestImage");
+        Assert.IsTrue(
+            result == ResultCode.Ok,
+            "Image creation failed with error: " + result.ToString()
+        );
         Assert.IsNotNull(image, "Image should not be null after creation.");
         Assert.IsTrue(image.Valid, "Image should be valid after creation.");
         var downloadedColors = new Color4[width * height];
         using var pDownloadedColors = downloadedColors.Pin(); // Pin the array to prevent garbage collection
-        result = vkContext?.Download(image, new TextureRangeDesc() { dimensions = imageDesc.Dimensions }, (nint)pDownloadedColors.Pointer, size).CheckResult(); // Download the image data
-        Assert.IsTrue(result == ResultCode.Ok, "Image download failed with error: " + result.ToString());
+        result = _vkContext
+            ?.Download(
+                image,
+                new TextureRangeDesc() { Dimensions = imageDesc.Dimensions },
+                (nint)pDownloadedColors.Pointer,
+                size
+            )
+            .CheckResult(); // Download the image data
+        Assert.IsTrue(
+            result == ResultCode.Ok,
+            "Image download failed with error: " + result.ToString()
+        );
         // Verify that the downloaded colors match the original colors
-        Assert.IsTrue(downloadedColors.SequenceEqual(colors), "Downloaded colors do not match the original colors.");
+        Assert.IsTrue(
+            downloadedColors.SequenceEqual(colors),
+            "Downloaded colors do not match the original colors."
+        );
         // Clean up the image after the test
         image.Dispose();
     }
@@ -67,9 +87,7 @@ public class Image
     [DataRow(1024, 1024, Format.Z_F32)]
     public unsafe void CreateDepthImage(int width, int height, Format format)
     {
-        var data = Enumerable.Range(0, width * height)
-            .Select(i => rnd.NextFloat(-1, 1))
-            .ToArray();
+        var data = Enumerable.Range(0, width * height).Select(i => _rnd.NextFloat(-1, 1)).ToArray();
         using var pData = data.Pin(); // Pin the array to prevent garbage collection
         var size = (size_t)(data.Length * NativeHelper.SizeOf<float>());
         var imageDesc = new TextureDesc
@@ -83,8 +101,11 @@ public class Image
             //dataSize = size,
         };
         TextureResource? image = null;
-        var result = vkContext?.CreateTexture(imageDesc, out image, "TestDepth");
-        Assert.IsTrue(result == ResultCode.Ok, "Depth Image creation failed with error: " + result.ToString());
+        var result = _vkContext?.CreateTexture(imageDesc, out image, "TestDepth");
+        Assert.IsTrue(
+            result == ResultCode.Ok,
+            "Depth Image creation failed with error: " + result.ToString()
+        );
         Assert.IsNotNull(image, "Depth Image should not be null after creation.");
         Assert.IsTrue(image.Valid, "Depth Image should be valid after creation.");
         // Clean up the image after the test

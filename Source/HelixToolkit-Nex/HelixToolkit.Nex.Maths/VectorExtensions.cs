@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -133,7 +133,7 @@ namespace HelixToolkit.Nex.Maths
         {
             return new System.Numerics.Vector3(vector.X / vector.W, vector.Y / vector.W, vector.Z / vector.W);
         }
-     
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Color4 ToColor4(this System.Numerics.Vector4 vector)
         {

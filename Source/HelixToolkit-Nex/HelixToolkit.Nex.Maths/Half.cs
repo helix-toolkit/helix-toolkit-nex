@@ -1,4 +1,4 @@
-﻿/*
+/*
 The MIT License (MIT)
 Copyright (c) 2022 Helix Toolkit contributors
 
@@ -37,7 +37,7 @@ namespace HelixToolkit.Nex.Maths
     [StructLayout(LayoutKind.Sequential)]
     public struct Half
     {
-        private ushort value_;
+        private ushort _value;
 
         /// <summary>
         /// Number of decimal digits of precision.
@@ -100,7 +100,7 @@ namespace HelixToolkit.Nex.Maths
         /// <param name = "value">The floating point value that should be stored in 16 bit format.</param>
         public Half(float value)
         {
-            this.value_ = HalfUtils.Pack(value);
+            this._value = HalfUtils.Pack(value);
         }
 
         /// <summary>
@@ -109,7 +109,7 @@ namespace HelixToolkit.Nex.Maths
         /// <param name = "rawvalue">The floating point value that should be stored in 16 bit format.</param>
         public Half(ushort rawvalue)
         {
-            this.value_ = rawvalue;
+            this._value = rawvalue;
         }
 
         /// <summary>
@@ -117,8 +117,8 @@ namespace HelixToolkit.Nex.Maths
         /// </summary>
         public ushort RawValue
         {
-            readonly get { return value_; }
-            set { this.value_ = value; }
+            readonly get { return _value; }
+            set { this._value = value; }
         }
 
         /// <summary>
@@ -129,7 +129,7 @@ namespace HelixToolkit.Nex.Maths
         public static float[] ConvertToFloat(Half[] values)
         {
             float[] results = new float[values.Length];
-            for(int i = 0; i < results.Length; i++)
+            for (int i = 0; i < results.Length; i++)
             {
                 results[i] = HalfUtils.Unpack(values[i].RawValue);
             }
@@ -145,7 +145,7 @@ namespace HelixToolkit.Nex.Maths
         public static Half[] ConvertToHalf(float[] values)
         {
             Half[] results = new Half[values.Length];
-            for(int i = 0; i < results.Length; i++)
+            for (int i = 0; i < results.Length; i++)
             {
                 results[i] = new Half(values[i]);
             }
@@ -170,7 +170,7 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>The converted value.</returns>
         public static implicit operator float(Half value)
         {
-            return HalfUtils.Unpack(value.value_);
+            return HalfUtils.Unpack(value._value);
         }
 
         /// <summary>
@@ -182,7 +182,7 @@ namespace HelixToolkit.Nex.Maths
         /// <c>true</c> if <paramref name = "left" /> has the same value as <paramref name = "right" />; otherwise, <c>false</c>.</returns>
         public static bool operator ==(Half left, Half right)
         {
-            return left.value_ == right.value_;
+            return left._value == right._value;
         }
 
         /// <summary>
@@ -194,7 +194,7 @@ namespace HelixToolkit.Nex.Maths
         /// <c>true</c> if <paramref name = "left" /> has a different value than <paramref name = "right" />; otherwise, <c>false</c>.</returns>
         public static bool operator !=(Half left, Half right)
         {
-            return left.value_ != right.value_;
+            return left._value != right._value;
         }
 
         /// <summary>
@@ -213,8 +213,8 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>A 32-bit signed integer hash code.</returns>
         public override readonly int GetHashCode()
         {
-            ushort num = value_;
-            return (num*3/2) ^ num;
+            ushort num = _value;
+            return (num * 3 / 2) ^ num;
         }
 
         /// <summary>
@@ -223,12 +223,12 @@ namespace HelixToolkit.Nex.Maths
         /// <param name = "value1" />
         /// <param name = "value2" />
         /// <returns>
-        /// <c>true</c> if <paramref name = "value1" /> is the same instance as <paramref name = "value2" /> or 
+        /// <c>true</c> if <paramref name = "value1" /> is the same instance as <paramref name = "value2" /> or
         /// if both are <c>null</c> references or if <c>value1.Equals(value2)</c> returns <c>true</c>; otherwise, <c>false</c>.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)] // MethodImplOptions.AggressiveInlining
         public static bool Equals(ref Half value1, ref Half value2)
         {
-            return value1.value_ == value2.value_;
+            return value1._value == value2._value;
         }
 
         /// <summary>
@@ -239,7 +239,7 @@ namespace HelixToolkit.Nex.Maths
         /// <c>true</c> if the current instance is equal to the specified object; <c>false</c> otherwise.</returns>
         public readonly bool Equals(Half other)
         {
-            return other.value_ == value_;
+            return other._value == _value;
         }
 
         /// <summary>

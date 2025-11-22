@@ -1,14 +1,15 @@
-﻿using HelixToolkit.Nex.Graphics;
-using HelixToolkit.Nex.Maths;
 using System.Diagnostics;
 using System.Numerics;
 using System.Runtime.InteropServices;
+using HelixToolkit.Nex.Graphics;
+using HelixToolkit.Nex.Maths;
 using HxColor = HelixToolkit.Nex.Maths.Color;
+
 namespace ImGuiTest;
 
 internal class ShaderToyRenderer : IDisposable
 {
-    const string vertexShaderCode = """
+    private const string vertexShaderCode = """
         #version 460
         // Vertex shader for rendering a full-screen quad using gl_VertexIndex
         layout(location = 0) out vec2 fragCoord;
@@ -34,7 +35,7 @@ internal class ShaderToyRenderer : IDisposable
         }
         """;
 
-    const string fragmentShaderCode = """
+    private const string fragmentShaderCode = """
 
         layout(push_constant) uniform constants
         {
@@ -121,7 +122,7 @@ internal class ShaderToyRenderer : IDisposable
                            / ( .03 + abs( length(p)-.7 ) )
                      );
         }
-        
+
         // End ShaderToy Shader.
         void main()
         {	
@@ -143,71 +144,99 @@ internal class ShaderToyRenderer : IDisposable
         """;
 
     [StructLayout(LayoutKind.Sequential, Pack = 4)]
-    struct PushConstants
+    private struct PushConstants
     {
-        public Vector3 iResolution;
-        public uint iChannel0;
-        public uint iSampler;
-        public float iTime;
-        public uint shaderType; // 0 for mainImage, 1 for mainImage1
+        public Vector3 Resolution;
+        public uint Channel0;
+        public uint Sampler;
+        public float Time;
+        public uint ShaderType; // 0 for mainImage, 1 for mainImage1
     };
 
-    readonly IContext context;
-    RenderPipelineResource pipeline = RenderPipelineResource.Null;
-    readonly RenderPass pass = new(new RenderPass.AttachmentDesc() { ClearColor = new Color4(0, 0, 0, 1), LoadOp = LoadOp.Clear, StoreOp = StoreOp.Store });
-    readonly Framebuffer fb = new();
-    ShaderModuleResource vertexShader = ShaderModuleResource.Null;
-    ShaderModuleResource fragmentShader = ShaderModuleResource.Null;
-    SamplerResource sampler = SamplerResource.Null;
-    long startTime = Stopwatch.GetTimestamp();
+    private readonly IContext _context;
+    private RenderPipelineResource _pipeline = RenderPipelineResource.Null;
+    private readonly RenderPass _pass = new(
+        new RenderPass.AttachmentDesc()
+        {
+            ClearColor = new Color4(0, 0, 0, 1),
+            LoadOp = LoadOp.Clear,
+            StoreOp = StoreOp.Store,
+        }
+    );
+    private readonly Framebuffer _fb = new();
+    private ShaderModuleResource _vertexShader = ShaderModuleResource.Null;
+    private ShaderModuleResource _fragmentShader = ShaderModuleResource.Null;
+    private SamplerResource _sampler = SamplerResource.Null;
+    private readonly long _startTime = Stopwatch.GetTimestamp();
 
-    public string[] ToyTypes { get; } =
-    [
-        "Option 1",
-        "Option 2",
-        "None"
-    ];
+    public string[] ToyTypes { get; } = ["Option 1", "Option 2", "None"];
 
     public ShaderToyRenderer(IContext context)
     {
-        this.context = context;
+        _context = context;
     }
 
     public bool Initialize()
     {
-        vertexShader = context.CreateShaderModuleGlsl(vertexShaderCode, ShaderStage.Vertex, "ShaderRenderer: Vertex");
-        fragmentShader = context.CreateShaderModuleGlsl(fragmentShaderCode, ShaderStage.Fragment, "ShaderRenderer: Fragment");
+        _vertexShader = _context.CreateShaderModuleGlsl(
+            vertexShaderCode,
+            ShaderStage.Vertex,
+            "ShaderRenderer: Vertex"
+        );
+        _fragmentShader = _context.CreateShaderModuleGlsl(
+            fragmentShaderCode,
+            ShaderStage.Fragment,
+            "ShaderRenderer: Fragment"
+        );
         var pipelineDesc = new RenderPipelineDesc()
         {
-            VertexShader = vertexShader,
-            FragementShader = fragmentShader,
+            VertexShader = _vertexShader,
+            FragementShader = _fragmentShader,
             DebugName = "ShaderRenderer: Pipeline",
             Topology = Topology.TriangleStrip,
         };
         pipelineDesc.Colors[0].Format = Format.RGBA_UN8;
-        pipeline = context.CreateRenderPipeline(pipelineDesc);
+        _pipeline = _context.CreateRenderPipeline(pipelineDesc);
 
-        sampler = context.CreateSampler(new SamplerStateDesc() { DebugName = "ShaderRenderer: Sampler" });
+        _sampler = _context.CreateSampler(
+            new SamplerStateDesc() { DebugName = "ShaderRenderer: Sampler" }
+        );
 
         return true;
     }
 
     public void Render(ICommandBuffer cmdBuf, uint type, Vector2 size, TextureResource target)
     {
-        fb.Colors[0].Texture = target;
-        cmdBuf.BeginRendering(pass, fb, Dependencies.Empty);
+        _fb.Colors[0].Texture = target;
+        cmdBuf.BeginRendering(_pass, _fb, Dependencies.Empty);
         cmdBuf.PushDebugGroupLabel("ShaderRenderer: Render", HxColor.Blue);
         cmdBuf.BindDepthState(new());
-        cmdBuf.BindViewport(new() { X = 0, Y = 0, Width = (uint)size.X, Height = (uint)size.Y });
-        cmdBuf.BindScissorRect(new() { X = 0, Y = 0, Width = (uint)size.X, Height = (uint)size.Y });
-        cmdBuf.BindRenderPipeline(pipeline);
+        cmdBuf.BindViewport(
+            new()
+            {
+                X = 0,
+                Y = 0,
+                Width = (uint)size.X,
+                Height = (uint)size.Y,
+            }
+        );
+        cmdBuf.BindScissorRect(
+            new()
+            {
+                X = 0,
+                Y = 0,
+                Width = (uint)size.X,
+                Height = (uint)size.Y,
+            }
+        );
+        cmdBuf.BindRenderPipeline(_pipeline);
         var pc = new PushConstants()
         {
-            iResolution = new(size, size.X / size.Y),
-            iChannel0 = 0,
-            iSampler = sampler.Index, // Assuming sampler is bound to channel 0
-            iTime = (float)Stopwatch.GetElapsedTime(startTime).TotalSeconds, // Use high-resolution timer for time
-            shaderType = type // 0 for mainImage, 1 for mainImage1
+            Resolution = new(size, size.X / size.Y),
+            Channel0 = 0,
+            Sampler = _sampler.Index, // Assuming sampler is bound to channel 0
+            Time = (float)Stopwatch.GetElapsedTime(_startTime).TotalSeconds, // Use high-resolution timer for time
+            ShaderType = type, // 0 for mainImage, 1 for mainImage1
         };
         cmdBuf.PushConstants(pc);
         cmdBuf.Draw(4);
@@ -215,10 +244,11 @@ internal class ShaderToyRenderer : IDisposable
         cmdBuf.EndRendering();
     }
 
-    private bool disposedValue;
+    private bool _disposedValue;
+
     protected virtual void Dispose(bool disposing)
     {
-        if (!disposedValue)
+        if (!_disposedValue)
         {
             if (disposing)
             {
@@ -227,7 +257,7 @@ internal class ShaderToyRenderer : IDisposable
 
             // TODO: free unmanaged resources (unmanaged objects) and override finalizer
             // TODO: set large fields to null
-            disposedValue = true;
+            _disposedValue = true;
         }
     }
 

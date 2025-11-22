@@ -1,101 +1,123 @@
-﻿namespace HelixToolkit.Nex.Graphics.Vulkan;
+namespace HelixToolkit.Nex.Graphics.Vulkan;
 
 internal sealed class VulkanBuffer : IDisposable
 {
-    static readonly ILogger logger = LogManager.Create<VulkanBuffer>();
-    readonly VulkanContext? ctx;
+    private static readonly ILogger Logger = LogManager.Create<VulkanBuffer>();
+    private readonly VulkanContext? _ctx;
     public readonly VkDeviceSize BufferSize = 0;
-    public readonly VkBufferUsageFlags vkUsageFlags_ = 0;
-    public readonly VkMemoryPropertyFlags vkMemFlags_ = 0;
+    public readonly VkBufferUsageFlags VkUsageFlags = 0;
+    public readonly VkMemoryPropertyFlags VkMemFlags = 0;
 
-    VkBuffer vkBuffer = VkBuffer.Null;
-    public VkBuffer VkBuffer => vkBuffer;
+    private VkBuffer _vkBuffer = VkBuffer.Null;
+    public VkBuffer VkBuffer => _vkBuffer;
 
-    VkDeviceMemory vkMemory = VkDeviceMemory.Null;
-    public VkDeviceMemory VkMemory => vkMemory;
+    private VkDeviceMemory _vkMemory = VkDeviceMemory.Null;
+    public VkDeviceMemory VkMemory => _vkMemory;
 
-    VmaAllocation vmaAllocation = VmaAllocation.Null;
-    public VmaAllocation VmaAllocation => vmaAllocation;
+    private VmaAllocation _vmaAllocation = VmaAllocation.Null;
+    public VmaAllocation VmaAllocation => _vmaAllocation;
 
-    VkDeviceAddress vkDeviceAddress = 0;
-    public VkDeviceAddress VkDeviceAddress => vkDeviceAddress;
+    private VkDeviceAddress _vkDeviceAddress = 0;
+    public VkDeviceAddress VkDeviceAddress => _vkDeviceAddress;
 
-    nint mappedPtr = nint.Zero;
-    public nint MappedPtr => mappedPtr;
+    private nint _mappedPtr = nint.Zero;
+    public nint MappedPtr => _mappedPtr;
 
-    bool isCoherentMemory_ = false;
-    public bool IsCoherentMemory => isCoherentMemory_;
+    private bool _isCoherentMemory = false;
+    public bool IsCoherentMemory => _isCoherentMemory;
 
-    public bool IsMapped => mappedPtr != nint.Zero;
+    public bool IsMapped => _mappedPtr != nint.Zero;
 
-    public bool Valid => ctx is not null && (vkBuffer != VkBuffer.Null || vkMemory != VkDeviceMemory.Null) && BufferSize > 0;
+    public bool Valid =>
+        _ctx is not null
+        && (_vkBuffer != VkBuffer.Null || _vkMemory != VkDeviceMemory.Null)
+        && BufferSize > 0;
 
     private VulkanBuffer() { }
 
-    public VulkanBuffer(VulkanContext ctx, VkDeviceSize bufferSize, VkBufferUsageFlags usage, VkMemoryPropertyFlags memFlags)
+    public VulkanBuffer(
+        VulkanContext ctx,
+        VkDeviceSize bufferSize,
+        VkBufferUsageFlags usage,
+        VkMemoryPropertyFlags memFlags
+    )
     {
-        this.ctx = ctx;
-        vkUsageFlags_ = usage;
+        _ctx = ctx;
+        VkUsageFlags = usage;
         BufferSize = bufferSize;
-        vkMemFlags_ = memFlags;
+        VkMemFlags = memFlags;
     }
 
     public ResultCode Create(string? debugName = null)
     {
-        HxDebug.Assert(ctx is not null);
+        HxDebug.Assert(_ctx is not null);
         VkBufferCreateInfo ci = new()
         {
             size = BufferSize,
-            usage = vkUsageFlags_,
+            usage = VkUsageFlags,
             sharingMode = VK.VK_SHARING_MODE_EXCLUSIVE,
             queueFamilyIndexCount = 0,
         };
-        if (ctx!.UseVmaAllocator)
+        if (_ctx!.UseVmaAllocator)
         {
             VmaAllocationCreateInfo vmaAllocInfo = new();
 
             // Initialize VmaAllocation Info
-            if (vkMemFlags_.HasFlag(VK.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))
+            if (VkMemFlags.HasFlag(VK.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))
             {
                 vmaAllocInfo = new()
                 {
-                    flags = VmaAllocationCreateFlags.Mapped | VmaAllocationCreateFlags.HostAccessRandom,
+                    flags =
+                        VmaAllocationCreateFlags.Mapped | VmaAllocationCreateFlags.HostAccessRandom,
                     requiredFlags = VK.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
-                    preferredFlags = VK.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK.VK_MEMORY_PROPERTY_HOST_CACHED_BIT,
+                    preferredFlags =
+                        VK.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+                        | VK.VK_MEMORY_PROPERTY_HOST_CACHED_BIT,
                 };
             }
 
-            if (vkMemFlags_.HasFlag(VK.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))
+            if (VkMemFlags.HasFlag(VK.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))
             {
                 // Check if coherent buffer is available.
                 VkMemoryRequirements requirements = new();
                 unsafe
                 {
-                    VK.vkCreateBuffer(ctx!.VkDevice, &ci, null, out vkBuffer).CheckResult();
-                    VK.vkGetBufferMemoryRequirements(ctx!.VkDevice, vkBuffer, &requirements);
-                    VK.vkDestroyBuffer(ctx!.VkDevice, vkBuffer, null);
+                    VK.vkCreateBuffer(_ctx!.VkDevice, &ci, null, out _vkBuffer).CheckResult();
+                    VK.vkGetBufferMemoryRequirements(_ctx!.VkDevice, _vkBuffer, &requirements);
+                    VK.vkDestroyBuffer(_ctx!.VkDevice, _vkBuffer, null);
                 }
 
-                vkBuffer = VkBuffer.Null;
+                _vkBuffer = VkBuffer.Null;
 
-                if ((requirements.memoryTypeBits | (uint)VK.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) != 0)
+                if (
+                    (requirements.memoryTypeBits | (uint)VK.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
+                    != 0
+                )
                 {
                     vmaAllocInfo.requiredFlags |= VK.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-                    isCoherentMemory_ = true;
+                    _isCoherentMemory = true;
                 }
             }
 
             vmaAllocInfo.usage = VmaMemoryUsage.Auto;
             unsafe
             {
-                Vma.vmaCreateBufferWithAlignment(ctx!.VmaAllocator, &ci, &vmaAllocInfo, 16, out vkBuffer, out vmaAllocation, out _);
+                Vma.vmaCreateBufferWithAlignment(
+                    _ctx!.VmaAllocator,
+                    &ci,
+                    &vmaAllocInfo,
+                    16,
+                    out _vkBuffer,
+                    out _vmaAllocation,
+                    out _
+                );
 
                 // handle memory-mapped buffers
-                if (vkMemFlags_.HasFlag(VK.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))
+                if (VkMemFlags.HasFlag(VK.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))
                 {
                     void* mappedPtr;
-                    Vma.vmaMapMemory(ctx!.VmaAllocator, vmaAllocation, &mappedPtr);
-                    this.mappedPtr = (nint)mappedPtr;
+                    Vma.vmaMapMemory(_ctx!.VmaAllocator, _vmaAllocation, &mappedPtr);
+                    this._mappedPtr = (nint)mappedPtr;
                 }
             }
         }
@@ -103,60 +125,70 @@ internal sealed class VulkanBuffer : IDisposable
         {
             unsafe
             {
-                VK.vkCreateBuffer(ctx!.VkDevice, &ci, null, out vkBuffer);
+                VK.vkCreateBuffer(_ctx!.VkDevice, &ci, null, out _vkBuffer);
 
                 // back the buffer with some memory
                 {
-                    VkBufferMemoryRequirementsInfo2 ri = new()
-                    {
-                        buffer = vkBuffer,
-                    };
+                    VkBufferMemoryRequirementsInfo2 ri = new() { buffer = _vkBuffer };
                     VkMemoryRequirements2 requirements = new();
-                    VK.vkGetBufferMemoryRequirements2(ctx!.VkDevice, &ri, &requirements);
-                    if ((requirements.memoryRequirements.memoryTypeBits & (uint)VK.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) != 0)
+                    VK.vkGetBufferMemoryRequirements2(_ctx!.VkDevice, &ri, &requirements);
+                    if (
+                        (
+                            requirements.memoryRequirements.memoryTypeBits
+                            & (uint)VK.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+                        ) != 0
+                    )
                     {
-                        isCoherentMemory_ = true;
+                        _isCoherentMemory = true;
                     }
 
-                    var ret = HxVkUtils.AllocateMemory2(ctx!.VkPhysicalDevice, ctx!.VkDevice, requirements, vkMemFlags_, out vkMemory);
+                    var ret = HxVkUtils.AllocateMemory2(
+                        _ctx!.VkPhysicalDevice,
+                        _ctx!.VkDevice,
+                        requirements,
+                        VkMemFlags,
+                        out _vkMemory
+                    );
                     if (ret != VkResult.Success)
                     {
-                        logger.LogError("Failed to allocate memory for buffer: {REASON}", ret);
+                        Logger.LogError("Failed to allocate memory for buffer: {REASON}", ret);
                         return ResultCode.RuntimeError;
                     }
-                    VK.vkBindBufferMemory(ctx!.VkDevice, vkBuffer, vkMemory, 0).CheckResult();
+                    VK.vkBindBufferMemory(_ctx!.VkDevice, _vkBuffer, _vkMemory, 0).CheckResult();
                 }
 
                 // handle memory-mapped buffers
-                if (vkMemFlags_.HasFlag(VK.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))
+                if (VkMemFlags.HasFlag(VK.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))
                 {
                     void* mappedPtr;
-                    VK.vkMapMemory(ctx!.VkDevice, vkMemory, 0, BufferSize, 0, &mappedPtr).CheckResult();
-                    this.mappedPtr = (nint)mappedPtr;
+                    VK.vkMapMemory(_ctx!.VkDevice, _vkMemory, 0, BufferSize, 0, &mappedPtr)
+                        .CheckResult();
+                    this._mappedPtr = (nint)mappedPtr;
                 }
             }
         }
-        HxDebug.Assert(vkBuffer != VkBuffer.Null);
+        HxDebug.Assert(_vkBuffer != VkBuffer.Null);
 
         if (GraphicsSettings.EnableDebug && !string.IsNullOrEmpty(debugName))
         {
             // set debug name
-            ctx!.VkDevice.SetDebugObjectName(VK.VK_OBJECT_TYPE_BUFFER, (nuint)vkBuffer, $"[Vk.Buf]: {debugName}");
+            _ctx!.VkDevice.SetDebugObjectName(
+                VK.VK_OBJECT_TYPE_BUFFER,
+                (nuint)_vkBuffer,
+                $"[Vk.Buf]: {debugName}"
+            );
         }
 
         // handle shader access
-        if (vkUsageFlags_.HasFlag(VK.VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT))
+        if (VkUsageFlags.HasFlag(VK.VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT))
         {
-            VkBufferDeviceAddressInfo ai = new()
-            {
-                buffer = vkBuffer,
-            };
+            VkBufferDeviceAddressInfo ai = new() { buffer = _vkBuffer };
             unsafe
             {
-                vkDeviceAddress = VK.vkGetBufferDeviceAddress(ctx!.VkDevice, &ai);
+                _vkDeviceAddress = VK.vkGetBufferDeviceAddress(_ctx!.VkDevice, &ai);
             }
 
-            HxDebug.Assert(vkDeviceAddress != 0);
+            HxDebug.Assert(_vkDeviceAddress != 0);
         }
         return ResultCode.Ok;
     }
@@ -167,7 +199,7 @@ internal sealed class VulkanBuffer : IDisposable
         HxDebug.Assert(IsMapped);
         if (!IsMapped)
         {
-            logger.LogError("Buffer is not mapped, cannot upload data.");
+            Logger.LogError("Buffer is not mapped, cannot upload data.");
             return ResultCode.InvalidState;
         }
 
@@ -177,18 +209,16 @@ internal sealed class VulkanBuffer : IDisposable
         {
             if (data != nint.Zero)
             {
-                NativeHelper.MemoryCopy((nint)(mappedPtr + offset), data, size);
-
+                NativeHelper.MemoryCopy((nint)(_mappedPtr + offset), data, size);
             }
             else
             {
-                Span<byte> dest = new((byte*)mappedPtr.ToPointer() + (long)offset, (int)size);
+                Span<byte> dest = new((byte*)_mappedPtr.ToPointer() + (long)offset, (int)size);
                 dest.Clear();
-
             }
         }
 
-        if (!isCoherentMemory_)
+        if (!_isCoherentMemory)
         {
             FlushMappedMemory(offset, size);
         }
@@ -202,20 +232,20 @@ internal sealed class VulkanBuffer : IDisposable
 
         if (!IsMapped)
         {
-            logger.LogError("Buffer is not mapped, cannot download data.");
+            Logger.LogError("Buffer is not mapped, cannot download data.");
             return ResultCode.InvalidState;
         }
 
         HxDebug.Assert(offset + size <= BufferSize);
 
-        if (!isCoherentMemory_)
+        if (!_isCoherentMemory)
         {
             InvalidateMappedMemory(offset, size);
         }
 
         unsafe
         {
-            var src = (nint)(mappedPtr + offset);
+            var src = (nint)(_mappedPtr + offset);
             NativeHelper.MemoryCopy(data, src, size);
         }
         return ResultCode.Ok;
@@ -229,9 +259,9 @@ internal sealed class VulkanBuffer : IDisposable
             return;
         }
 
-        if (ctx!.UseVmaAllocator)
+        if (_ctx!.UseVmaAllocator)
         {
-            Vma.vmaFlushAllocation(ctx!.VmaAllocator, vmaAllocation, offset, size);
+            Vma.vmaFlushAllocation(_ctx!.VmaAllocator, _vmaAllocation, offset, size);
         }
         else
         {
@@ -239,11 +269,11 @@ internal sealed class VulkanBuffer : IDisposable
             {
                 VkMappedMemoryRange range = new()
                 {
-                    memory = vkMemory,
+                    memory = _vkMemory,
                     offset = offset,
                     size = size,
                 };
-                VK.vkFlushMappedMemoryRanges(ctx!.GetVkDevice(), 1, &range);
+                VK.vkFlushMappedMemoryRanges(_ctx!.GetVkDevice(), 1, &range);
             }
         }
     }
@@ -257,9 +287,9 @@ internal sealed class VulkanBuffer : IDisposable
             return;
         }
 
-        if (ctx!.UseVmaAllocator)
+        if (_ctx!.UseVmaAllocator)
         {
-            Vma.vmaInvalidateAllocation(ctx!.VmaAllocator, vmaAllocation, offset, size);
+            Vma.vmaInvalidateAllocation(_ctx!.VmaAllocator, _vmaAllocation, offset, size);
         }
         else
         {
@@ -267,19 +297,21 @@ internal sealed class VulkanBuffer : IDisposable
             {
                 VkMappedMemoryRange range = new()
                 {
-                    memory = vkMemory,
+                    memory = _vkMemory,
                     offset = offset,
                     size = size,
                 };
-                VK.vkInvalidateMappedMemoryRanges(ctx!.GetVkDevice(), 1, &range);
+                VK.vkInvalidateMappedMemoryRanges(_ctx!.GetVkDevice(), 1, &range);
             }
         }
     }
+
     #region IDisposable Support
-    private bool disposedValue;
+    private bool _disposedValue;
+
     private void Dispose(bool disposing)
     {
-        if (!disposedValue)
+        if (!_disposedValue)
         {
             if (disposing)
             {
@@ -287,38 +319,44 @@ internal sealed class VulkanBuffer : IDisposable
                 {
                     return;
                 }
-                if (ctx!.UseVmaAllocator)
+                if (_ctx!.UseVmaAllocator)
                 {
-                    if (mappedPtr.Valid())
+                    if (_mappedPtr.Valid())
                     {
-                        Vma.vmaUnmapMemory(ctx!.VmaAllocator, vmaAllocation);
+                        Vma.vmaUnmapMemory(_ctx!.VmaAllocator, _vmaAllocation);
                     }
-                    ctx!.DeferredTask(() =>
-                    {
-                        Vma.vmaDestroyBuffer(ctx!.VmaAllocator, vkBuffer, vmaAllocation);
-                    }, SubmitHandle.Null);
+                    _ctx!.DeferredTask(
+                        () =>
+                        {
+                            Vma.vmaDestroyBuffer(_ctx!.VmaAllocator, _vkBuffer, _vmaAllocation);
+                        },
+                        SubmitHandle.Null
+                    );
                 }
                 else
                 {
-                    if (mappedPtr.Valid())
+                    if (_mappedPtr.Valid())
                     {
-                        VK.vkUnmapMemory(ctx!.VkDevice, vkMemory);
+                        VK.vkUnmapMemory(_ctx!.VkDevice, _vkMemory);
                     }
 
-                    ctx!.DeferredTask(() =>
-                    {
-                        unsafe
+                    _ctx!.DeferredTask(
+                        () =>
                         {
-                            VK.vkDestroyBuffer(ctx!.VkDevice, vkBuffer, null);
-                            VK.vkFreeMemory(ctx!.VkDevice, vkMemory, null);
-                        }
-                    }, SubmitHandle.Null);
+                            unsafe
+                            {
+                                VK.vkDestroyBuffer(_ctx!.VkDevice, _vkBuffer, null);
+                                VK.vkFreeMemory(_ctx!.VkDevice, _vkMemory, null);
+                            }
+                        },
+                        SubmitHandle.Null
+                    );
                 }
             }
 
             // TODO: free unmanaged resources (unmanaged objects) and override finalizer
             // TODO: set large fields to null
-            disposedValue = true;
+            _disposedValue = true;
         }
     }
 
@@ -336,4 +374,3 @@ internal sealed class VulkanBuffer : IDisposable
         return buffer is not null && buffer.Valid;
     }
 }
-

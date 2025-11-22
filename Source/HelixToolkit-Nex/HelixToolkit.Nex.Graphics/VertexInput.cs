@@ -1,4 +1,4 @@
-﻿namespace HelixToolkit.Nex.Graphics;
+namespace HelixToolkit.Nex.Graphics;
 
 /// <summary>
 /// Describes a single vertex attribute within a vertex buffer.
@@ -20,7 +20,7 @@ public struct VertexAttribute()
     public uint32_t Binding;
 
     /// <summary>
- /// The format of each element in this attribute stream.
+    /// The format of each element in this attribute stream.
     /// </summary>
     public VertexFormat Format; // per-element format
 
@@ -67,7 +67,7 @@ public struct VertexInput()
 
     /// <summary>
     /// Array of vertex attributes.
- /// </summary>
+    /// </summary>
     public readonly VertexAttribute[] Attributes = new VertexAttribute[MAX_VERTEX_ATTRIBUTES];
 
     /// <summary>
@@ -100,12 +100,12 @@ public struct VertexInput()
 
     /// <summary>
     /// Calculates the total size in bytes of a single vertex based on all attributes.
-/// </summary>
-/// <returns>The total vertex size in bytes.</returns>
-/// <remarks>
-/// This method assumes attributes are tightly packed in order. If attributes have gaps or
-/// are not sequential, an assertion will fail.
-/// </remarks>
+    /// </summary>
+    /// <returns>The total vertex size in bytes.</returns>
+    /// <remarks>
+    /// This method assumes attributes are tightly packed in order. If attributes have gaps or
+    /// are not sequential, an assertion will fail.
+    /// </remarks>
     public readonly uint32_t GetVertexSize()
     {
         uint32_t vertexSize = 0;
@@ -120,5 +120,5 @@ public struct VertexInput()
     /// <summary>
     /// A predefined null/empty vertex input configuration.
     /// </summary>
-  public static readonly VertexInput Null = new();
+    public static readonly VertexInput Null = new();
 }
