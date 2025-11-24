@@ -34,8 +34,10 @@ public sealed class VulkanContextConfig()
 
 internal sealed partial class VulkanContext
 {
-    public const uint32_t kMaxYcbcrConversionData = 256; // maximum number of Ycbcr conversions that can be created in the context
-    private static readonly ILogger logger = LogManager.Create<VulkanContext>();
+    public const uint32_t KMaxYcbcrConversionData = 256; // maximum number of Ycbcr conversions that can be created in the context
+    private static readonly ILogger _logger = LogManager.Create<VulkanContext>();
+
+    public override string Name { get; } = nameof(VulkanContext);
 
     [StructLayout(LayoutKind.Sequential)]
     private struct ValidationSettings
@@ -59,7 +61,7 @@ internal sealed partial class VulkanContext
     };
 
     private readonly YcbcrConversionData[] _ycbcrConversionData = new YcbcrConversionData[
-        kMaxYcbcrConversionData
+        KMaxYcbcrConversionData
     ]; // indexed by lvk::Format
 
     private VkInstance _vkInstance = VkInstance.Null;
@@ -173,7 +175,7 @@ internal sealed partial class VulkanContext
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to create Vulkan instance.");
+            _logger.LogError(ex, "Failed to create Vulkan instance.");
             throw new Exception("Failed to create Vulkan instance.", ex);
         }
     }
@@ -181,11 +183,11 @@ internal sealed partial class VulkanContext
     public VulkanContext(VulkanContextConfig config, IntPtr window, IntPtr display)
         : this(config)
     {
-        this._window = window;
-        this._display = display;
+        _window = window;
+        _display = display;
     }
 
-    public ResultCode Initialize()
+    protected override ResultCode OnInitializing()
     {
         _vkSurface =
             Config.OnCreateSurface != null
@@ -208,15 +210,15 @@ internal sealed partial class VulkanContext
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to initialize vulkan context.");
+            _logger.LogError(ex, "Failed to initialize vulkan context.");
             return ResultCode.RuntimeError;
         }
     }
 
     public bool HasSwapchain => Swapchain != null && Swapchain.Valid;
-    private static readonly Lazy<bool> s_isSupported = new(CheckIsSupported);
+    private static readonly Lazy<bool> _isSupported = new(CheckIsSupported);
 
-    public static bool IsSupported() => s_isSupported.Value;
+    public static bool IsSupported() => _isSupported.Value;
 
     private static bool CheckIsSupported()
     {
@@ -396,20 +398,20 @@ internal sealed partial class VulkanContext
                 .CheckResult();
         }
 
-        logger.LogInformation(
+        _logger.LogInformation(
             $"Created VkInstance with version: {appInfo.apiVersion.Major}.{appInfo.apiVersion.Minor}.{appInfo.apiVersion.Patch}"
         );
         if (instanceLayers.Count > 0)
         {
             foreach (var layer in instanceLayers)
             {
-                logger.LogInformation("Instance layer '{LAYER}'", layer);
+                _logger.LogInformation("Instance layer '{LAYER}'", layer);
             }
         }
 
         foreach (VkUtf8String extension in instanceExtensions)
         {
-            logger.LogInformation("Instance extension '{EXT}'", extension);
+            _logger.LogInformation("Instance extension '{EXT}'", extension);
         }
     }
 
@@ -431,11 +433,11 @@ internal sealed partial class VulkanContext
 
         if (messageTypes == VkDebugUtilsMessageTypeFlagsEXT.Validation)
         {
-            logger.Log(level, "[Vulkan Validation]: {MESSAGE}", message);
+            _logger.Log(level, "[Vulkan Validation]: {MESSAGE}", message);
         }
         else
         {
-            logger.Log(level, "[Vulkan]: {MESSAGE}", message);
+            _logger.Log(level, "[Vulkan]: {MESSAGE}", message);
         }
         if (
             userData != null
@@ -443,7 +445,7 @@ internal sealed partial class VulkanContext
             && messageSeverity == VkDebugUtilsMessageSeverityFlagsEXT.Error
         )
         {
-            logger.LogCritical("Vulkan validation error occurred, terminating application.");
+            _logger.LogCritical("Vulkan validation error occurred, terminating application.");
             throw new Exception("Vulkan validation error occurred, terminating application.");
         }
 
@@ -695,7 +697,7 @@ internal sealed partial class VulkanContext
         }
         if (_vkPhysicalDevice.IsNull)
         {
-            logger.LogError("Vulkan: No suitable physical device found");
+            _logger.LogError("Vulkan: No suitable physical device found");
             return ResultCode.RuntimeError;
         }
         VK.vkGetPhysicalDeviceProperties(
@@ -705,7 +707,7 @@ internal sealed partial class VulkanContext
 
         if (properties.apiVersion < Config.VulkanVersion)
         {
-            logger.LogError("Vulkan: The physical device does not support Vulkan 1.3 or higher.");
+            _logger.LogError("Vulkan: The physical device does not support Vulkan 1.3 or higher.");
             return ResultCode.RuntimeError;
         }
 
@@ -719,12 +721,12 @@ internal sealed partial class VulkanContext
         );
         if (DeviceQueues.GraphicsQueueFamilyIndex == DeviceQueues.INVALID)
         {
-            logger.LogError("VK_QUEUE_GRAPHICS_BIT is not supported");
+            _logger.LogError("VK_QUEUE_GRAPHICS_BIT is not supported");
             return ResultCode.RuntimeError;
         }
         if (DeviceQueues.ComputeQueueFamilyIndex == DeviceQueues.INVALID)
         {
-            logger.LogError("VK_QUEUE_COMPUTE_BIT is not supported");
+            _logger.LogError("VK_QUEUE_COMPUTE_BIT is not supported");
             return ResultCode.RuntimeError;
         }
         var availableDeviceExtensions = VK.vkEnumerateDeviceExtensionProperties(_vkPhysicalDevice);
@@ -965,7 +967,7 @@ internal sealed partial class VulkanContext
 
         if (tex is null)
         {
-            logger.LogWarning("Texture {HANDLE} not found in pool", handle);
+            _logger.LogWarning("Texture {HANDLE} not found in pool", handle);
             return;
         }
 
@@ -1037,7 +1039,7 @@ internal sealed partial class VulkanContext
         )
         {
             HxDebug.Assert(false);
-            logger.LogWarning(
+            _logger.LogWarning(
                 "Max Textures exceeded: {CURRENT} (max {MAX})",
                 maxTextures,
                 _vkPhysicalDeviceVulkan12Properties.maxDescriptorSetUpdateAfterBindSampledImages
@@ -1050,7 +1052,7 @@ internal sealed partial class VulkanContext
         )
         {
             HxDebug.Assert(false);
-            logger.LogWarning(
+            _logger.LogWarning(
                 "Max Samplers exceeded: {CURRENT} (max {MAX})",
                 maxSamplers,
                 _vkPhysicalDeviceVulkan12Properties.maxDescriptorSetUpdateAfterBindSamplers
@@ -1388,7 +1390,7 @@ internal sealed partial class VulkanContext
     {
         if (_vkDevice.IsNull || Immediate is null)
         {
-            logger.LogWarning("Call initContext() first");
+            _logger.LogWarning("Call initContext() first");
             return ResultCode.RuntimeError;
         }
         unsafe
@@ -1511,7 +1513,7 @@ internal sealed partial class VulkanContext
         {
             if (bufferSize > limits.maxUniformBufferRange)
             {
-                logger.LogError(
+                _logger.LogError(
                     "Buffer size {SIZE} exceeds max uniform buffer range {MAX}",
                     bufferSize,
                     limits.maxUniformBufferRange
@@ -1523,7 +1525,7 @@ internal sealed partial class VulkanContext
 
         if (bufferSize > limits.maxStorageBufferRange)
         {
-            logger.LogError(
+            _logger.LogError(
                 "Buffer size {SIZE} exceeds max storage buffer range {MAX}",
                 bufferSize,
                 limits.maxStorageBufferRange
@@ -1538,7 +1540,7 @@ internal sealed partial class VulkanContext
         if (ret.HasError())
         {
             HxDebug.Assert(false);
-            logger.LogError("Failed to create buffer: {ERROR}", ret.ToString());
+            _logger.LogError("Failed to create buffer: {ERROR}", ret.ToString());
             buf.Dispose();
             return ret;
         }
@@ -1614,7 +1616,7 @@ internal sealed partial class VulkanContext
         // use the dummy texture to avoid sparse array
         if (TexturesPool.Objects[0].Obj is null)
         {
-            logger.LogError("Dummy texture image view is null, cannot create descriptor sets");
+            _logger.LogError("Dummy texture image view is null, cannot create descriptor sets");
             return;
         }
         var dummyImageView = TexturesPool.Objects[0].Obj!.ImageView;
@@ -1935,7 +1937,7 @@ internal sealed partial class VulkanContext
                 ref readonly var limits = ref GetVkPhysicalDeviceProperties().limits;
                 if (!(pushConstantsSize <= limits.maxPushConstantsSize))
                 {
-                    logger.LogError(
+                    _logger.LogError(
                         "Push constants size exceeded {SIZE} (max {MAX_SIZE} bytes)",
                         pushConstantsSize,
                         limits.maxPushConstantsSize
@@ -2226,111 +2228,72 @@ internal sealed partial class VulkanContext
         return cps.Pipeline;
     }
 
-    #region IDisposable Support
-
-    private bool _disposedValue;
-
-    private void Dispose(bool disposing)
+    protected override ResultCode OnTearingDown()
     {
-        if (!_disposedValue)
+        unsafe
         {
-            if (disposing)
+            VK.vkDeviceWaitIdle(_vkDevice).CheckResult();
+            Disposer.DisposeAndRemove(ref _stagingDevice);
+            Disposer.DisposeAndRemove(ref _swapchain);
+            Destroy(_dummyTexture);
+            Destroy(_defaultSampler);
+
+            VK.vkDestroySemaphore(_vkDevice, TimelineSemaphore, null);
+
+            WaitDeferredTasks();
+
+            if (ShaderModulesPool.Count > 0)
             {
-                unsafe
-                {
-                    VK.vkDeviceWaitIdle(_vkDevice).CheckResult();
-                    Disposer.DisposeAndRemove(ref _stagingDevice);
-                    Disposer.DisposeAndRemove(ref _swapchain);
-                    Destroy(_dummyTexture);
-                    Destroy(_defaultSampler);
-
-                    VK.vkDestroySemaphore(_vkDevice, TimelineSemaphore, null);
-
-                    WaitDeferredTasks();
-
-                    if (ShaderModulesPool.Count > 0)
-                    {
-                        HxDebug.Assert(false, $"Leaked {ShaderModulesPool.Count} shader modules");
-                        logger.LogWarning("Leaked {COUNT} shader modules", ShaderModulesPool.Count);
-                    }
-                    if (RenderPipelinesPool.Count > 0)
-                    {
-                        HxDebug.Assert(
-                            false,
-                            $"Leaked {RenderPipelinesPool.Count} render pipelines"
-                        );
-                        logger.LogWarning(
-                            "Leaked {COUNT} render pipelines",
-                            RenderPipelinesPool.Count
-                        );
-                    }
-                    if (ComputePipelinesPool.Count > 0)
-                    {
-                        HxDebug.Assert(
-                            false,
-                            $"Leaked {ComputePipelinesPool.Count} compute pipelines"
-                        );
-                        logger.LogWarning(
-                            "Leaked {COUNT} compute pipelines",
-                            ComputePipelinesPool.Count
-                        );
-                    }
-                    if (SamplersPool.Count > 0)
-                    {
-                        HxDebug.Assert(false, $"Leaked {SamplersPool.Count} samplers");
-                        // the dummy value is owned by the context
-                        logger.LogWarning("Leaked {COUNT} samplers", SamplersPool.Count - 1);
-                    }
-                    if (TexturesPool.Count > 0)
-                    {
-                        HxDebug.Assert(false, $"Leaked {TexturesPool.Count} textures");
-                        logger.LogWarning("Leaked {COUNT} textures", TexturesPool.Count);
-                    }
-                    if (BuffersPool.Count > 0)
-                    {
-                        HxDebug.Assert(false, $"Leaked {BuffersPool.Count} buffers");
-                        logger.LogWarning("Leaked {COUNT} buffers", BuffersPool.Count);
-                    }
-
-                    SamplersPool.Clear();
-                    ComputePipelinesPool.Clear();
-                    RenderPipelinesPool.Clear();
-                    ShaderModulesPool.Clear();
-                    TexturesPool.Clear();
-
-                    Disposer.DisposeAndRemove(ref _immediate);
-
-                    VK.vkDestroyDescriptorSetLayout(_vkDevice, VkDesSetLayout, null);
-                    VK.vkDestroyDescriptorPool(_vkDevice, VkDesPool, null);
-                    VK.vkDestroySurfaceKHR(_vkInstance, _vkSurface, null);
-                    VK.vkDestroyPipelineCache(_vkDevice, PipelineCache, null);
-                    if (UseVmaAllocator)
-                    {
-                        Vma.vmaDestroyAllocator(VmaAllocator);
-                    }
-
-                    VK.vkDestroyDevice(_vkDevice, null);
-                    Disposer.DisposeAndRemove(ref _validationSettings);
-                }
+                HxDebug.Assert(false, $"Leaked {ShaderModulesPool.Count} shader modules");
+                _logger.LogWarning("Leaked {COUNT} shader modules", ShaderModulesPool.Count);
+            }
+            if (RenderPipelinesPool.Count > 0)
+            {
+                HxDebug.Assert(false, $"Leaked {RenderPipelinesPool.Count} render pipelines");
+                _logger.LogWarning("Leaked {COUNT} render pipelines", RenderPipelinesPool.Count);
+            }
+            if (ComputePipelinesPool.Count > 0)
+            {
+                HxDebug.Assert(false, $"Leaked {ComputePipelinesPool.Count} compute pipelines");
+                _logger.LogWarning("Leaked {COUNT} compute pipelines", ComputePipelinesPool.Count);
+            }
+            if (SamplersPool.Count > 0)
+            {
+                HxDebug.Assert(false, $"Leaked {SamplersPool.Count} samplers");
+                // the dummy value is owned by the context
+                _logger.LogWarning("Leaked {COUNT} samplers", SamplersPool.Count - 1);
+            }
+            if (TexturesPool.Count > 0)
+            {
+                HxDebug.Assert(false, $"Leaked {TexturesPool.Count} textures");
+                _logger.LogWarning("Leaked {COUNT} textures", TexturesPool.Count);
+            }
+            if (BuffersPool.Count > 0)
+            {
+                HxDebug.Assert(false, $"Leaked {BuffersPool.Count} buffers");
+                _logger.LogWarning("Leaked {COUNT} buffers", BuffersPool.Count);
             }
 
-            // TODO: free unmanaged resources (unmanaged objects) and override finalizer
-            // TODO: set large fields to null
-            _disposedValue = true;
+            SamplersPool.Clear();
+            ComputePipelinesPool.Clear();
+            RenderPipelinesPool.Clear();
+            ShaderModulesPool.Clear();
+            TexturesPool.Clear();
+
+            Disposer.DisposeAndRemove(ref _immediate);
+
+            VK.vkDestroyDescriptorSetLayout(_vkDevice, VkDesSetLayout, null);
+            VK.vkDestroyDescriptorPool(_vkDevice, VkDesPool, null);
+            VK.vkDestroySurfaceKHR(_vkInstance, _vkSurface, null);
+            VK.vkDestroyPipelineCache(_vkDevice, PipelineCache, null);
+            if (UseVmaAllocator)
+            {
+                Vma.vmaDestroyAllocator(VmaAllocator);
+            }
+
+            VK.vkDestroyDevice(_vkDevice, null);
+            Disposer.DisposeAndRemove(ref _validationSettings);
         }
+        return ResultCode.Ok;
     }
-
-    // // TODO: override finalizer only if 'Dispose(bool disposing)' has code to free unmanaged resources
-    // ~VulkanContext()
-    // {
-    //     // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-    //     Dispose(disposing: false);
-    // }
-
-    public void Dispose()
-    {
-        // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-        Dispose(disposing: true);
-    }
-    #endregion IDisposable Support
 }

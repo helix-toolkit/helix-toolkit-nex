@@ -5,7 +5,7 @@ namespace HelixToolkit.Nex.Graphics.Vulkan;
 internal sealed class VulkanSwapchain : IDisposable
 {
     public const uint32_t MAX_SWAPCHAIN_IMAGES = 16;
-    private static readonly ILogger Logger = LogManager.Create<VulkanSwapchain>();
+    private static readonly ILogger _logger = LogManager.Create<VulkanSwapchain>();
 
     private readonly VulkanContext _ctx;
     private readonly VkDevice _device;
@@ -187,7 +187,7 @@ internal sealed class VulkanSwapchain : IDisposable
             );
             if (sc.IsNull)
             {
-                Logger.LogError(
+                _logger.LogError(
                     "Failed to create swapchain. Ensure that the surface is created and the format is supported by the device."
                 );
                 return VkResult.ErrorInitializationFailed;
@@ -466,7 +466,7 @@ internal sealed class VulkanSwapchain : IDisposable
             }
         }
 
-        Logger.LogWarning(
+        _logger.LogWarning(
             "Could not find a native swap chain format that matched our designed swapchain format. Defaulting to first supported format."
         );
 

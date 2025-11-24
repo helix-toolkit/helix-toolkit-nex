@@ -1,6 +1,6 @@
 namespace HelixToolkit.Nex.Graphics.Vulkan;
 
-internal sealed partial class VulkanContext : IContext
+internal sealed partial class VulkanContext : Initializable, IContext
 {
     #region IContext implementation
     public ResultCode Upload(in BufferHandle handle, size_t offset, nint data, size_t size)
@@ -16,19 +16,19 @@ internal sealed partial class VulkanContext : IContext
 
         if (buf is null)
         {
-            logger.LogError("Buffer handle is invalid for upload: {HANDLE}", handle.ToString());
+            _logger.LogError("Buffer handle is invalid for upload: {HANDLE}", handle.ToString());
             return ResultCode.RuntimeError;
         }
 
         if (!buf.Valid)
         {
-            logger.LogError("Buffer handle is invalid for upload: {HANDLE}", handle.ToString());
+            _logger.LogError("Buffer handle is invalid for upload: {HANDLE}", handle.ToString());
             return ResultCode.RuntimeError;
         }
 
         if (offset + size > (uint)buf.BufferSize)
         {
-            logger.LogError(
+            _logger.LogError(
                 "Buffer upload out of range: offset {OFFSET}, size {SIZE}, buffer size {BUFFER_SIZE}",
                 offset,
                 size,
@@ -49,7 +49,7 @@ internal sealed partial class VulkanContext : IContext
     {
         if (data.IsNull() || dataSize == 0)
         {
-            logger.LogError("Data pointer is null for texture upload");
+            _logger.LogError("Data pointer is null for texture upload");
             return ResultCode.ArgumentNull;
         }
 
@@ -57,7 +57,7 @@ internal sealed partial class VulkanContext : IContext
 
         if (texture is null)
         {
-            logger.LogError("Texture handle is invalid for upload: {HANDLE}", handle.ToString());
+            _logger.LogError("Texture handle is invalid for upload: {HANDLE}", handle.ToString());
             return ResultCode.RuntimeError;
         }
 
@@ -112,7 +112,7 @@ internal sealed partial class VulkanContext : IContext
     {
         if (data.IsNull())
         {
-            logger.LogError("Data pointer is null for buffer download");
+            _logger.LogError("Data pointer is null for buffer download");
             return ResultCode.ArgumentNull;
         }
 
@@ -122,7 +122,7 @@ internal sealed partial class VulkanContext : IContext
 
         if (buf is null)
         {
-            logger.LogError("Buffer handle is invalid for download: {HANDLE}", handle.ToString());
+            _logger.LogError("Buffer handle is invalid for download: {HANDLE}", handle.ToString());
             return ResultCode.RuntimeError;
         }
 
@@ -133,7 +133,7 @@ internal sealed partial class VulkanContext : IContext
 
         if (offset + size > buf.BufferSize)
         {
-            logger.LogError(
+            _logger.LogError(
                 "Buffer download out of range: offset {OFFSET}, size {SIZE}, buffer size {BUFFER_SIZE}",
                 offset,
                 size,
@@ -219,7 +219,7 @@ internal sealed partial class VulkanContext : IContext
         computePipeline = ComputePipelineResource.Null;
         if (!desc.ComputeShader.Valid)
         {
-            logger.LogError("Missing compute shader");
+            _logger.LogError("Missing compute shader");
             return ResultCode.ArgumentError;
         }
 
@@ -235,7 +235,7 @@ internal sealed partial class VulkanContext : IContext
         var handle = ComputePipelinesPool.Create(cps);
         if (handle == ComputePipelineHandle.Null)
         {
-            logger.LogError("Failed to create compute pipeline state");
+            _logger.LogError("Failed to create compute pipeline state");
             return ResultCode.RuntimeError;
         }
         computePipeline = new ComputePipelineResource(this, handle);
@@ -274,7 +274,7 @@ internal sealed partial class VulkanContext : IContext
 
             if (handle == QueryPoolHandle.Null)
             {
-                logger.LogError("Failed to create query pool state");
+                _logger.LogError("Failed to create query pool state");
                 queryPool = QueryPoolResource.Null;
                 return ResultCode.RuntimeError;
             }
@@ -294,7 +294,7 @@ internal sealed partial class VulkanContext : IContext
         renderPipeline = RenderPipelineResource.Null;
         if (!hasAnyAttachments)
         {
-            logger.LogError("Need at least one attachment");
+            _logger.LogError("Need at least one attachment");
             return ResultCode.ArgumentError;
         }
         VkShaderStageFlags stageFlags = VkShaderStageFlags.None;
@@ -302,28 +302,28 @@ internal sealed partial class VulkanContext : IContext
         {
             if (desc.VertexInput.AttributeCount() > 0 || desc.VertexInput.BindingCount() > 0)
             {
-                logger.LogError(
+                _logger.LogError(
                     "CreateRenderPipeline failed. Cannot have vertexInput with mesh shaders"
                 );
                 return ResultCode.ArgumentError;
             }
             if (desc.VertexShader.Valid)
             {
-                logger.LogError(
+                _logger.LogError(
                     "CreateRenderPipeline failed. Cannot have both vertex and mesh shaders"
                 );
                 return ResultCode.ArgumentError;
             }
             if (desc.TessControlShader.Valid || desc.TessEvalShader.Valid)
             {
-                logger.LogError(
+                _logger.LogError(
                     "CreateRenderPipeline failed. Cannot have both tessellation and mesh shaders"
                 );
                 return ResultCode.ArgumentError;
             }
             if (desc.GeometryShader.Valid)
             {
-                logger.LogError(
+                _logger.LogError(
                     "CreateRenderPipeline failed. Cannot have both geometry and mesh shaders"
                 );
                 return ResultCode.ArgumentError;
@@ -333,14 +333,14 @@ internal sealed partial class VulkanContext : IContext
         {
             if (!desc.VertexShader.Valid)
             {
-                logger.LogError("Missing vertex shader");
+                _logger.LogError("Missing vertex shader");
                 return ResultCode.ArgumentError;
             }
         }
 
         if (!desc.FragementShader.Valid)
         {
-            logger.LogError("Missing fragment shader");
+            _logger.LogError("Missing fragment shader");
             return ResultCode.ArgumentError;
         }
 
@@ -418,7 +418,7 @@ internal sealed partial class VulkanContext : IContext
             var handle = RenderPipelinesPool.Create(rps);
             if (handle == RenderPipelineHandle.Null)
             {
-                logger.LogError("Failed to create render pipeline state");
+                _logger.LogError("Failed to create render pipeline state");
                 return ResultCode.RuntimeError;
             }
             renderPipeline = new RenderPipelineResource(this, handle);
@@ -438,7 +438,7 @@ internal sealed partial class VulkanContext : IContext
 
         if (ret != ResultCode.Ok)
         {
-            logger.LogError("Cannot create Sampler");
+            _logger.LogError("Cannot create Sampler");
             return ret;
         }
 
@@ -454,7 +454,7 @@ internal sealed partial class VulkanContext : IContext
         shaderModule = ShaderModuleResource.Null;
         if (desc.Data.IsNull() || desc.DataSize == 0)
         {
-            logger.LogError("Shader module data is null or size is zero");
+            _logger.LogError("Shader module data is null or size is zero");
             return ResultCode.ArgumentNull;
         }
         ResultCode result;
@@ -481,7 +481,7 @@ internal sealed partial class VulkanContext : IContext
                 break;
             default:
                 HxDebug.Assert(false, $"Unsupported shader data type: {desc.DataType}");
-                logger.LogError("Unsupported shader data type: {TYPE}", desc.DataType);
+                _logger.LogError("Unsupported shader data type: {TYPE}", desc.DataType);
                 return ResultCode.NotSupported;
         }
 
@@ -541,7 +541,7 @@ internal sealed partial class VulkanContext : IContext
         )
         {
             HxDebug.Assert(false, "Only 2D, 3D and Cube textures are supported");
-            logger.LogError(
+            _logger.LogError(
                 "Only 2D, 3D and Cube textures are supported. Current format: {FORMAT}",
                 type
             );
@@ -551,7 +551,7 @@ internal sealed partial class VulkanContext : IContext
         if (desc.NumMipLevels == 0)
         {
             HxDebug.Assert(false, "The number of mip levels specified must be greater than 0");
-            logger.LogWarning(
+            _logger.LogWarning(
                 "The number of mip levels specified must be greater than 0 but is {LEVELS}",
                 desc.NumMipLevels
             );
@@ -561,7 +561,7 @@ internal sealed partial class VulkanContext : IContext
         if (desc.NumSamples > 1 && desc.NumMipLevels != 1)
         {
             HxDebug.Assert(false, "The number of mip levels for multisampled images should be 1");
-            logger.LogError(
+            _logger.LogError(
                 "The number of mip levels for multisampled images should be 1 but is {LEVELS}",
                 desc.NumMipLevels
             );
@@ -571,7 +571,7 @@ internal sealed partial class VulkanContext : IContext
         if (desc.NumSamples > 1 && type == TextureType.Texture3D)
         {
             HxDebug.Assert(false, "Multisampled 3D images are not supported");
-            logger.LogError(
+            _logger.LogError(
                 "Multisampled 3D images are not supported. Current format: {FORMAT}",
                 type
             );
@@ -589,7 +589,7 @@ internal sealed partial class VulkanContext : IContext
                 false,
                 $"The number of specified mip-levels is greater than the maximum possible number of mip-levels."
             );
-            logger.LogError(
+            _logger.LogError(
                 "The number of specified mip-levels is greater than the maximum possible number of mip-levels. Current: {LEVELS} Max: {MAX_LEVELS}",
                 desc.NumMipLevels,
                 HxVkUtils.CalcNumMipLevels(desc.Dimensions.Width, desc.Dimensions.Height)
@@ -619,7 +619,7 @@ internal sealed partial class VulkanContext : IContext
                     false,
                     "Depth stencil buffer cannot have TextureUsageBits.Storage as usage."
                 );
-                logger.LogError(
+                _logger.LogError(
                     "Depth stencil buffer cannot have TextureUsageBits.Storage as usage."
                 );
                 return ResultCode.ArgumentError;
@@ -677,7 +677,7 @@ internal sealed partial class VulkanContext : IContext
                 break;
             default:
                 HxDebug.Assert(false, "Code should NOT be reached");
-                logger.LogError("Unsupported texture type: {TYPE}", desc.Type);
+                _logger.LogError("Unsupported texture type: {TYPE}", desc.Type);
                 return ResultCode.NotSupported;
         }
 
@@ -757,7 +757,7 @@ internal sealed partial class VulkanContext : IContext
         if (ret.HasError())
         {
             HxDebug.Assert(false, "Failed to create image: {ERROR}", ret.ToString());
-            logger.LogError("Failed to create image: {ERROR}", ret.ToString());
+            _logger.LogError("Failed to create image: {ERROR}", ret.ToString());
             image.Dispose();
             return ret;
         }
@@ -816,7 +816,7 @@ internal sealed partial class VulkanContext : IContext
         var image = TexturesPool.Get(texture)?.Clone();
         if (image is null || image == VulkanImage.Null)
         {
-            logger.LogError("Invalid texture handle: {HANDLE}", texture.ToString());
+            _logger.LogError("Invalid texture handle: {HANDLE}", texture.ToString());
             return ResultCode.ArgumentError;
         }
 
@@ -867,7 +867,7 @@ internal sealed partial class VulkanContext : IContext
                 break;
             default:
                 HxDebug.Assert(false, "Code should NOT be reached");
-                logger.LogError("Unsupported texture view type {TYPE}", desc.Type);
+                _logger.LogError("Unsupported texture view type {TYPE}", desc.Type);
                 return ResultCode.NotSupported;
         }
 
@@ -897,7 +897,7 @@ internal sealed partial class VulkanContext : IContext
         if (image.ImageView == VkImage.Null)
         {
             HxDebug.Assert(false, "Cannot create VkImageView");
-            logger.LogError("Cannot create VkImageView");
+            _logger.LogError("Cannot create VkImageView");
             return ResultCode.RuntimeError;
         }
 
@@ -956,7 +956,7 @@ internal sealed partial class VulkanContext : IContext
 
         if (desc.Usage == BufferUsageBits.None)
         {
-            logger.LogError("Invalid buffer usage");
+            _logger.LogError("Invalid buffer usage");
             return ResultCode.ArgumentError;
         }
 
@@ -1031,7 +1031,7 @@ internal sealed partial class VulkanContext : IContext
 
         if (buf == null)
         {
-            logger.LogError("Buffer handle is invalid for flush: {HANDLE}", handle.ToString());
+            _logger.LogError("Buffer handle is invalid for flush: {HANDLE}", handle.ToString());
             return;
         }
 
@@ -1107,7 +1107,7 @@ internal sealed partial class VulkanContext : IContext
         var image = TexturesPool.Get(handle);
         if (image is null)
         {
-            logger.LogError("Texture handle is invalid: {HANDLE}", handle.ToString());
+            _logger.LogError("Texture handle is invalid: {HANDLE}", handle.ToString());
             return Format.Invalid;
         }
 
@@ -1234,7 +1234,7 @@ internal sealed partial class VulkanContext : IContext
             HxDebug.Assert(tex is not null && tex.IsSwapchainImage);
             if (tex is null || !tex.IsSwapchainImage)
             {
-                logger.LogError("Cannot present texture: {HANDLE}", present.ToString());
+                _logger.LogError("Cannot present texture: {HANDLE}", present.ToString());
                 return SubmitHandle.Null;
             }
 
@@ -1362,7 +1362,7 @@ internal sealed partial class VulkanContext : IContext
 
         if (state is null || !state.Valid)
         {
-            logger.LogError("Shader module handle is invalid: {HANDLE}", handle.ToString());
+            _logger.LogError("Shader module handle is invalid: {HANDLE}", handle.ToString());
             return;
         }
 

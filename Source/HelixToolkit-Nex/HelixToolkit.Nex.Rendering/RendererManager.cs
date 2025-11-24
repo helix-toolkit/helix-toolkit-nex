@@ -1,10 +1,11 @@
 namespace HelixToolkit.Nex.Rendering;
 
-public class RendererManager : IDisposable
+public class RendererManager : Initializable
 {
-    private static readonly ILogger Logger = LogManager.Create<RendererManager>();
+    private static readonly ILogger _logger = LogManager.Create<RendererManager>();
     private readonly Dictionary<RenderStages, List<Renderer>> _renderers = [];
 
+    public override string Name => nameof(RendererManager);
     public virtual RenderStages[] RenderOrder =>
         [
             RenderStages.Begin,
@@ -36,7 +37,7 @@ public class RendererManager : IDisposable
         }
         catch (Exception e)
         {
-            Logger.LogError(
+            _logger.LogError(
                 e,
                 "Failed to attach renderer '{RendererName}' to renderer manager.",
                 renderer.Name
@@ -94,39 +95,14 @@ public class RendererManager : IDisposable
         _renderers.Clear();
     }
 
-    #region IDisposable Support
-
-    private bool _disposedValue;
-
-    public bool IsDisposed => _disposedValue;
-
-    protected virtual void Dispose(bool disposing)
+    protected override ResultCode OnInitializing()
     {
-        if (!_disposedValue)
-        {
-            if (disposing)
-            {
-                Clear();
-            }
-
-            // TODO: free unmanaged resources (unmanaged objects) and override finalizer
-            // TODO: set large fields to null
-            _disposedValue = true;
-        }
+        return ResultCode.Ok;
     }
 
-    // // TODO: override finalizer only if 'Dispose(bool disposing)' has code to free unmanaged resources
-    // ~RendererManager()
-    // {
-    //     // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-    //     Dispose(disposing: false);
-    // }
-
-    public void Dispose()
+    protected override ResultCode OnTearingDown()
     {
-        // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-        Dispose(disposing: true);
-        GC.SuppressFinalize(this);
+        Clear();
+        return ResultCode.Ok;
     }
-    #endregion
 }

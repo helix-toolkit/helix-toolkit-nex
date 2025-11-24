@@ -2,7 +2,7 @@ namespace HelixToolkit.Nex.Graphics.Vulkan;
 
 internal sealed class VulkanImage : IDisposable
 {
-    private static readonly ILogger Logger = LogManager.Create<VulkanImage>();
+    private static readonly ILogger _logger = LogManager.Create<VulkanImage>();
     private readonly VulkanContext? _ctx;
     private VkImage _vkImage = VkImage.Null;
 
@@ -189,13 +189,13 @@ internal sealed class VulkanImage : IDisposable
                 );
                 if (ret != VK.VK_SUCCESS)
                 {
-                    Logger.LogError(
+                    _logger.LogError(
                         "Failed: error result: {RESULT}, memflags: {FLAG},  imageformat: {FORMAT}",
                         ret,
                         memFlags,
                         ImageFormat
                     );
-                    Logger.LogError("VmaCreateImage() failed");
+                    _logger.LogError("VmaCreateImage() failed");
                     return ResultCode.RuntimeError;
                 }
                 // handle memory-mapped buffers
@@ -375,7 +375,7 @@ internal sealed class VulkanImage : IDisposable
 
         if (ImageView == VkImageView.Null)
         {
-            Logger.LogError("Cannot create VkImageView");
+            _logger.LogError("Cannot create VkImageView");
             return ResultCode.RuntimeError;
         }
         return ResultCode.Ok;
@@ -472,7 +472,7 @@ internal sealed class VulkanImage : IDisposable
 
         if (!hardwareDownscalingSupported)
         {
-            Logger.LogWarning(
+            _logger.LogWarning(
                 "Doesn't support hardware downscaling of this image format: {FORMAT}",
                 ImageFormat
             );
@@ -734,7 +734,7 @@ internal sealed class VulkanImage : IDisposable
     {
         if (!Valid)
         {
-            Logger.LogError("Cannot clone an invalid VulkanImage.");
+            _logger.LogError("Cannot clone an invalid VulkanImage.");
             return Null;
         }
         return new VulkanImage(

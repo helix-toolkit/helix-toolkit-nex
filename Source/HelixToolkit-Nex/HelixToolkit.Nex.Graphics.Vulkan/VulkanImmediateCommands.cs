@@ -5,7 +5,7 @@ internal sealed class VulkanImmediateCommands : IDisposable
     // the maximum number of command buffers which can similtaneously exist in the system; when we run out of buffers, we stall and wait until
     // an existing buffer becomes available
     private const uint32_t KMaxCommandBuffers = 64;
-    private static readonly ILogger Logger = LogManager.Create<VulkanImmediateCommands>();
+    private static readonly ILogger _logger = LogManager.Create<VulkanImmediateCommands>();
 
     public sealed class CommandBufferWrapper()
     {
@@ -116,7 +116,7 @@ internal sealed class VulkanImmediateCommands : IDisposable
 
         while (_numAvailableCommandBuffers == 0)
         {
-            Logger.LogWarning("Waiting for command buffers...\n");
+            _logger.LogWarning("Waiting for command buffers...\n");
             Purge();
         }
 
@@ -218,7 +218,7 @@ internal sealed class VulkanImmediateCommands : IDisposable
                 info.pVendorBinaryData = (uint8_t*)pBinary.Pointer;
                 VK.vkGetDeviceFaultInfoEXT(_device, &count, &info);
 
-                Logger.LogWarning(
+                _logger.LogWarning(
                     "VK_ERROR_DEVICE_LOST: {DESCRIPTION}",
                     Marshal.PtrToStringAnsi((IntPtr)info.description)
                 );
@@ -228,7 +228,7 @@ internal sealed class VulkanImmediateCommands : IDisposable
                         aInfo.reportedAddress & ~(aInfo.addressPrecision - 1);
                     VkDeviceSize upperAddress =
                         aInfo.reportedAddress | (aInfo.addressPrecision - 1);
-                    Logger.LogWarning(
+                    _logger.LogWarning(
                         "...address range [ {LOWER_ADDR}, {UPPER_ADDR} ]: {}",
                         lowerAddress,
                         upperAddress,
@@ -237,7 +237,7 @@ internal sealed class VulkanImmediateCommands : IDisposable
                 }
                 foreach (var vInfo in vendorInfo)
                 {
-                    Logger.LogWarning(
+                    _logger.LogWarning(
                         "...caused by `{DESCRIPTION}` with error code {FAULT_CODE} and data {FAULT_DATA}",
                         Marshal.PtrToStringAnsi((IntPtr)vInfo.description),
                         vInfo.vendorFaultCode,
@@ -279,19 +279,22 @@ internal sealed class VulkanImmediateCommands : IDisposable
                         uuid[i * 2 + 0] = hexDigits[(header->pipelineCacheUUID[i] >> 4) & 0xF];
                         uuid[i * 2 + 1] = hexDigits[header->pipelineCacheUUID[i] & 0xF];
                     }
-                    Logger.LogWarning("VkDeviceFaultVendorBinaryHeaderVersionOne:");
-                    Logger.LogWarning("   headerSize        : {}", header->headerSize);
-                    Logger.LogWarning("   headerVersion     : {}", (uint32_t)header->headerVersion);
-                    Logger.LogWarning("   vendorID          : {}", header->vendorID);
-                    Logger.LogWarning("   deviceID          : {}", header->deviceID);
-                    Logger.LogWarning("   driverVersion     : {}", header->driverVersion);
-                    Logger.LogWarning("   pipelineCacheUUID : {}", uuid);
+                    _logger.LogWarning("VkDeviceFaultVendorBinaryHeaderVersionOne:");
+                    _logger.LogWarning("   headerSize        : {}", header->headerSize);
+                    _logger.LogWarning(
+                        "   headerVersion     : {}",
+                        (uint32_t)header->headerVersion
+                    );
+                    _logger.LogWarning("   vendorID          : {}", header->vendorID);
+                    _logger.LogWarning("   deviceID          : {}", header->deviceID);
+                    _logger.LogWarning("   driverVersion     : {}", header->driverVersion);
+                    _logger.LogWarning("   pipelineCacheUUID : {}", uuid);
                     if (
                         header->applicationNameOffset > 0
                         && header->applicationNameOffset < binarySize
                     )
                     {
-                        Logger.LogWarning(
+                        _logger.LogWarning(
                             "   applicationName   : {NAME}",
                             Marshal.PtrToStringAnsi(
                                 (IntPtr)(
@@ -300,7 +303,7 @@ internal sealed class VulkanImmediateCommands : IDisposable
                             )
                         );
                     }
-                    Logger.LogWarning(
+                    _logger.LogWarning(
                         "   applicationVersion: {MAJOR}.{MINOR}.{PATCH}",
                         header->applicationVersion.Major,
                         header->applicationVersion.Minor,
@@ -308,20 +311,20 @@ internal sealed class VulkanImmediateCommands : IDisposable
                     );
                     if (header->engineNameOffset > 0 && header->engineNameOffset < binarySize)
                     {
-                        Logger.LogWarning(
+                        _logger.LogWarning(
                             "   engineName        : {NAME}",
                             Marshal.PtrToStringAnsi(
                                 (IntPtr)((char*)info.pVendorBinaryData + header->engineNameOffset)
                             )
                         );
                     }
-                    Logger.LogWarning(
+                    _logger.LogWarning(
                         "   engineVersion     : {MAJOR}.{MINOR}.{PATCH}",
                         header->engineVersion.Major,
                         header->engineVersion.Minor,
                         header->engineVersion.Patch
                     );
-                    Logger.LogWarning(
+                    _logger.LogWarning(
                         "   apiVersion        : {MAJOR}.{MINOR}.{PATCH}.{VARIANT}",
                         header->apiVersion.Major,
                         header->apiVersion.Minor,

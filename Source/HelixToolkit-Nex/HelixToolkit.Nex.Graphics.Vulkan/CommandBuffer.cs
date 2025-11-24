@@ -10,7 +10,7 @@ namespace HelixToolkit.Nex.Graphics.Vulkan;
 /// </remarks>
 internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
 {
-    private static readonly ILogger Logger = LogManager.Create<CommandBuffer>();
+    private static readonly ILogger _logger = LogManager.Create<CommandBuffer>();
     private readonly VulkanContext _ctx = context;
 
     /// <inheritdoc/>
@@ -79,7 +79,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
         );
         if (tex is null || !tex.Valid)
         {
-            Logger.LogError(
+            _logger.LogError(
                 $"Texture {handle} is null or invalid. Make sure the texture is created before using it in compute shader."
             );
             return;
@@ -151,7 +151,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
             );
             if (buffer is null || !buffer.Valid)
             {
-                Logger.LogError(
+                _logger.LogError(
                     "Buffer {INDEX} is null or invalid. Make sure the buffer is created before binding it to the command buffer.",
                     i
                 );
@@ -195,7 +195,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
                 );
                 if (colorResolveTex is null)
                 {
-                    Logger.LogError(
+                    _logger.LogError(
                         $"Colors resolve texture {handle} is null. Make sure the texture is created before binding it to the framebuffer."
                     );
                     continue;
@@ -282,7 +282,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
             );
             if (colorTexture is null)
             {
-                Logger.LogError(
+                _logger.LogError(
                     "Colors texture {HANDLE} is null. Make sure the texture is created before binding it to the framebuffer.",
                     attachment.Texture
                 );
@@ -349,7 +349,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
                 );
                 if (colorResolveTexture is null)
                 {
-                    Logger.LogError(
+                    _logger.LogError(
                         "Colors resolve texture {TEXTURE} is null. Make sure the texture is created before binding it to the framebuffer.",
                         attachment.ResolveTexture
                     );
@@ -377,7 +377,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
             );
             if (depthTexture is null)
             {
-                Logger.LogError(
+                _logger.LogError(
                     "Depth attachment texture {TEXTURE} is null. Make sure the texture is created before binding it to the framebuffer.",
                     fb.DepthStencil.Texture
                 );
@@ -422,7 +422,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
                 );
                 if (depthResolveTexture is null)
                 {
-                    Logger.LogError(
+                    _logger.LogError(
                         "Depth resolve texture {TEXTURE} is null. Make sure the texture is created before binding it to the framebuffer.",
                         attachment.ResolveTexture
                     );
@@ -499,7 +499,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
     {
         if (handle.Empty)
         {
-            Logger.LogError("Cannot bind empty compute pipeline handle.");
+            _logger.LogError("Cannot bind empty compute pipeline handle.");
             return;
         }
 
@@ -562,7 +562,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
     {
         if (!indexBuffer)
         {
-            Logger.LogError("Bind index buffer failed. Handle is not valid.");
+            _logger.LogError("Bind index buffer failed. Handle is not valid.");
             return;
         }
         var buf = _ctx.BuffersPool.Get(indexBuffer);
@@ -580,7 +580,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
     {
         if (!handle)
         {
-            Logger.LogError("Bind render pipeline failed. Handle is not valid.");
+            _logger.LogError("Bind render pipeline failed. Handle is not valid.");
             return;
         }
 
@@ -597,7 +597,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
         if (hasDepthAttachmentPipeline != hasDepthAttachmentPass)
         {
             HxDebug.Assert(false);
-            Logger.LogError(
+            _logger.LogError(
                 "Make sure your render pass and render pipeline both have matching depth attachments"
             );
         }
@@ -646,7 +646,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
         );
         if (buf is null || !buf.Valid)
         {
-            Logger.LogError("Bind vertex buffer failed. Buffer handle is not valid.");
+            _logger.LogError("Bind vertex buffer failed. Buffer handle is not valid.");
             return;
         }
         HxDebug.Assert(buf.VkUsageFlags.HasFlag(VK.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT));
@@ -780,7 +780,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
 
         if (!imgSrc!.Valid || !imgDst!.Valid)
         {
-            Logger.LogError("Cannot copy image. Source or destination image is not valid.");
+            _logger.LogError("Cannot copy image. Source or destination image is not valid.");
             return;
         }
 
@@ -998,7 +998,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
             );
             if (buf is null || !buf.Valid)
             {
-                Logger.LogError(
+                _logger.LogError(
                     "Buffer {INDEX} is null or invalid. Make sure the buffer is created before binding it to the command buffer.",
                     i
                 );
@@ -1024,7 +1024,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
     {
         if (vertexCount == 0)
         {
-            Logger.LogWarning("Unable to Draw. Vertex count is zero.");
+            _logger.LogWarning("Unable to Draw. Vertex count is zero.");
             return;
         }
 
@@ -1042,7 +1042,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
     {
         if (indexCount == 0)
         {
-            Logger.LogWarning("Unable to DrawIndexed. IndexCount is zero.");
+            _logger.LogWarning("Unable to DrawIndexed. IndexCount is zero.");
             return;
         }
 
@@ -1218,7 +1218,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
 
         if (buf is null || !buf.Valid)
         {
-            Logger.LogError("FillBuffer failed. Buffer handle is not valid.");
+            _logger.LogError("FillBuffer failed. Buffer handle is not valid.");
             return;
         }
 
@@ -1256,7 +1256,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
         HxDebug.Assert(tex is not null && tex.Valid, "Texture is null or not valid.");
         if (tex is null || !tex.Valid || tex.IsSwapchainImage)
         {
-            Logger.LogError("Cannot generate mipmap for swapchain image or invalid texture.");
+            _logger.LogError("Cannot generate mipmap for swapchain image or invalid texture.");
             return;
         }
         if (tex.NumLevels <= 1)
@@ -1305,7 +1305,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
         ref readonly var limits = ref _ctx.GetVkPhysicalDeviceProperties().limits;
         if (!(size + offset <= limits.maxPushConstantsSize))
         {
-            Logger.LogWarning(
+            _logger.LogWarning(
                 "Push constants size exceeded {SIZE} (max {MAX} bytes)",
                 size + offset,
                 limits.maxPushConstantsSize
@@ -1314,7 +1314,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
 
         if (CurrentPipelineGraphics.Empty && CurrentPipelineCompute.Empty)
         {
-            Logger.LogError("No pipeline bound - cannot set push constants");
+            _logger.LogError("No pipeline bound - cannot set push constants");
             return;
         }
 
@@ -1394,7 +1394,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
         HxDebug.Assert(img is not null && !img.IsSwapchainImage);
         if (img is null || img.IsSwapchainImage)
         {
-            Logger.LogError("Cannot transition swapchain image to shader read only layout.");
+            _logger.LogError("Cannot transition swapchain image to shader read only layout.");
             return;
         }
 
@@ -1433,7 +1433,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
 
         if (buf is null || !buf.Valid)
         {
-            Logger.LogError("UpdateBuffer failed. Buffer handle is not valid.");
+            _logger.LogError("UpdateBuffer failed. Buffer handle is not valid.");
             return;
         }
 

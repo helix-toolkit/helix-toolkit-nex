@@ -2,7 +2,7 @@ namespace HelixToolkit.Nex.Graphics.Vulkan;
 
 internal class HxVkUtils
 {
-    private static readonly ILogger Logger = LogManager.Create<HxVkUtils>();
+    private static readonly ILogger _logger = LogManager.Create<HxVkUtils>();
 
     public static unsafe uint32_t FindQueueFamilyIndex(
         in VkPhysicalDevice physicalDevice,
@@ -436,7 +436,7 @@ internal class HxVkUtils
     {
         if (samples != VK.VK_SAMPLE_COUNT_1_BIT && !(imageType == VK.VK_IMAGE_TYPE_2D))
         {
-            Logger.LogError("Multisampling is supported only for 2D images");
+            _logger.LogError("Multisampling is supported only for 2D images");
             result = ResultCode.ArgumentOutOfRange;
             return false;
         }
@@ -448,7 +448,7 @@ internal class HxVkUtils
             )
         )
         {
-            Logger.LogError("2D texture size exceeded");
+            _logger.LogError("2D texture size exceeded");
             result = ResultCode.ArgumentOutOfRange;
             return false;
         }
@@ -461,7 +461,7 @@ internal class HxVkUtils
             )
         )
         {
-            Logger.LogError("3D texture size exceeded");
+            _logger.LogError("3D texture size exceeded");
             result = ResultCode.ArgumentOutOfRange;
             return false;
         }
@@ -484,12 +484,12 @@ internal class HxVkUtils
             )
         )
         {
-            Logger.LogError("width, height, depth numLayers, and numMipLevels must be > 0");
+            _logger.LogError("width, height, depth numLayers, and numMipLevels must be > 0");
             return ResultCode.ArgumentOutOfRange;
         }
         if (range.MipLevel > numLevels)
         {
-            Logger.LogError(
+            _logger.LogError(
                 "range.MipLevel exceeds texture mip-levels: {MipLevel} > {NumLevels}",
                 range.MipLevel,
                 numLevels
@@ -507,7 +507,7 @@ internal class HxVkUtils
             || range.Dimensions.Depth > texDepth
         )
         {
-            Logger.LogError(
+            _logger.LogError(
                 "range dimensions exceed texture dimensions: {RangeWidth}x{RangeHeight}x{RangeDepth} > {TexWidth}x{TexHeight}x{TexDepth}",
                 range.Dimensions.Width,
                 range.Dimensions.Height,
@@ -524,7 +524,7 @@ internal class HxVkUtils
             || range.Offset.Z > texDepth - range.Dimensions.Depth
         )
         {
-            Logger.LogError(
+            _logger.LogError(
                 "range offset exceeds texture dimensions: {OffsetX}x{OffsetY}x{OffsetZ} > {TexWidth}x{TexHeight}x{TexDepth}",
                 range.Offset.X,
                 range.Offset.Y,

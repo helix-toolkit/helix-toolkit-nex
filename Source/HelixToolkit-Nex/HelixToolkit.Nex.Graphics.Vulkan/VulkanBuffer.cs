@@ -2,7 +2,7 @@ namespace HelixToolkit.Nex.Graphics.Vulkan;
 
 internal sealed class VulkanBuffer : IDisposable
 {
-    private static readonly ILogger Logger = LogManager.Create<VulkanBuffer>();
+    private static readonly ILogger _logger = LogManager.Create<VulkanBuffer>();
     private readonly VulkanContext? _ctx;
     public readonly VkDeviceSize BufferSize = 0;
     public readonly VkBufferUsageFlags VkUsageFlags = 0;
@@ -151,7 +151,7 @@ internal sealed class VulkanBuffer : IDisposable
                     );
                     if (ret != VkResult.Success)
                     {
-                        Logger.LogError("Failed to allocate memory for buffer: {REASON}", ret);
+                        _logger.LogError("Failed to allocate memory for buffer: {REASON}", ret);
                         return ResultCode.RuntimeError;
                     }
                     VK.vkBindBufferMemory(_ctx!.VkDevice, _vkBuffer, _vkMemory, 0).CheckResult();
@@ -199,7 +199,7 @@ internal sealed class VulkanBuffer : IDisposable
         HxDebug.Assert(IsMapped);
         if (!IsMapped)
         {
-            Logger.LogError("Buffer is not mapped, cannot upload data.");
+            _logger.LogError("Buffer is not mapped, cannot upload data.");
             return ResultCode.InvalidState;
         }
 
@@ -232,7 +232,7 @@ internal sealed class VulkanBuffer : IDisposable
 
         if (!IsMapped)
         {
-            Logger.LogError("Buffer is not mapped, cannot download data.");
+            _logger.LogError("Buffer is not mapped, cannot download data.");
             return ResultCode.InvalidState;
         }
 

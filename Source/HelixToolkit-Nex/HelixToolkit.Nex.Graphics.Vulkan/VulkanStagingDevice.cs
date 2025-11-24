@@ -12,7 +12,7 @@ internal sealed class VulkanStagingDevice : IDisposable
     private const uint32_t KStagingBufferAlignment = 16; // updated to support BC7 compressed image
     private const uint32_t KMinBufferSize = 4u * 2048u * 2048u;
 
-    private static readonly ILogger Logger = LogManager.Create<VulkanStagingDevice>();
+    private static readonly ILogger _logger = LogManager.Create<VulkanStagingDevice>();
 
     private readonly VulkanContext _ctx;
     private readonly uint32_t _maxBufferSize;
@@ -53,7 +53,7 @@ internal sealed class VulkanStagingDevice : IDisposable
 
         if (!stagingBuffer)
         {
-            Logger.LogError("Staging buffer is not valid, cannot upload data.");
+            _logger.LogError("Staging buffer is not valid, cannot upload data.");
             return ResultCode.InvalidState;
         }
 
@@ -211,7 +211,7 @@ internal sealed class VulkanStagingDevice : IDisposable
 
         if (!stagingBuffer)
         {
-            Logger.LogError("Staging buffer is not valid, cannot upload image data.");
+            _logger.LogError("Staging buffer is not valid, cannot upload image data.");
             return ResultCode.InvalidState;
         }
 
@@ -427,7 +427,7 @@ internal sealed class VulkanStagingDevice : IDisposable
         HxDebug.Assert(stagingBuffer, "Staging buffer is not valid, cannot upload image data.");
         if (!stagingBuffer)
         {
-            Logger.LogError("Staging buffer is not valid, cannot upload image data.");
+            _logger.LogError("Staging buffer is not valid, cannot upload image data.");
             return ResultCode.InvalidState;
         }
 
@@ -526,7 +526,7 @@ internal sealed class VulkanStagingDevice : IDisposable
         HxDebug.Assert(stagingBuffer, "Staging buffer is not valid, cannot upload image data.");
         if (!stagingBuffer)
         {
-            Logger.LogError("Staging buffer is not valid, cannot upload image data.");
+            _logger.LogError("Staging buffer is not valid, cannot upload image data.");
             return ResultCode.InvalidState;
         }
 
@@ -619,7 +619,7 @@ internal sealed class VulkanStagingDevice : IDisposable
         HxDebug.Assert(stagingBuffer, "Staging buffer is not valid, cannot upload image data.");
         if (!stagingBuffer)
         {
-            Logger.LogError("Staging buffer is not valid, cannot upload image data.");
+            _logger.LogError("Staging buffer is not valid, cannot upload image data.");
             return ResultCode.InvalidState;
         }
 
@@ -848,7 +848,7 @@ internal sealed class VulkanStagingDevice : IDisposable
         );
         if (ret.HasError())
         {
-            Logger.LogError(
+            _logger.LogError(
                 "Failed to create staging buffer of size {SIZE} bytes.",
                 _stagingBufferSize
             );

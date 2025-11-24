@@ -211,15 +211,25 @@ dotnet_naming_rule.private_fields_should_be_underscore_camel_case.severity = war
 dotnet_naming_rule.private_fields_should_be_underscore_camel_case.symbols = private_fields
 dotnet_naming_rule.private_fields_should_be_underscore_camel_case.style = underscore_camel_case
 
+# Private static fields (non-readonly, non-const) must start with underscore and be camelCase
+dotnet_naming_rule.private_static_fields_should_be_underscore_camel_case.severity = warning
+dotnet_naming_rule.private_static_fields_should_be_underscore_camel_case.symbols = private_static_fields
+dotnet_naming_rule.private_static_fields_should_be_underscore_camel_case.style = underscore_camel_case
+
 # Constant fields should be UPPER_CASE or PascalCase
 dotnet_naming_rule.constant_fields_should_be_pascal_case.severity = suggestion
 dotnet_naming_rule.constant_fields_should_be_pascal_case.symbols = constant_fields
 dotnet_naming_rule.constant_fields_should_be_pascal_case.style = pascal_case
 
-# Static readonly fields should be PascalCase
-dotnet_naming_rule.static_readonly_fields_should_be_pascal_case.severity = suggestion
-dotnet_naming_rule.static_readonly_fields_should_be_pascal_case.symbols = static_readonly_fields
-dotnet_naming_rule.static_readonly_fields_should_be_pascal_case.style = pascal_case
+# Private static readonly fields must start with underscore and be camelCase
+dotnet_naming_rule.private_static_readonly_fields_should_be_underscore_camel_case.severity = warning
+dotnet_naming_rule.private_static_readonly_fields_should_be_underscore_camel_case.symbols = private_static_readonly_fields
+dotnet_naming_rule.private_static_readonly_fields_should_be_underscore_camel_case.style = underscore_camel_case
+
+# Protected/protected_internal static readonly fields should be PascalCase
+dotnet_naming_rule.protected_static_readonly_fields_should_be_pascal_case.severity = suggestion
+dotnet_naming_rule.protected_static_readonly_fields_should_be_pascal_case.symbols = protected_static_readonly_fields
+dotnet_naming_rule.protected_static_readonly_fields_should_be_pascal_case.style = pascal_case
 
 # Public and internal fields should be PascalCase
 dotnet_naming_rule.public_internal_fields_should_be_pascal_case.severity = warning
@@ -243,13 +253,21 @@ dotnet_naming_symbols.private_fields.applicable_kinds = field
 dotnet_naming_symbols.private_fields.applicable_accessibilities = private
 dotnet_naming_symbols.private_fields.required_modifiers = 
 
+dotnet_naming_symbols.private_static_fields.applicable_kinds = field
+dotnet_naming_symbols.private_static_fields.applicable_accessibilities = private
+dotnet_naming_symbols.private_static_fields.required_modifiers = static
+
 dotnet_naming_symbols.constant_fields.applicable_kinds = field
 dotnet_naming_symbols.constant_fields.applicable_accessibilities = *
 dotnet_naming_symbols.constant_fields.required_modifiers = const
 
-dotnet_naming_symbols.static_readonly_fields.applicable_kinds = field
-dotnet_naming_symbols.static_readonly_fields.applicable_accessibilities = private, protected, protected_internal, private_protected
-dotnet_naming_symbols.static_readonly_fields.required_modifiers = static, readonly
+dotnet_naming_symbols.private_static_readonly_fields.applicable_kinds = field
+dotnet_naming_symbols.private_static_readonly_fields.applicable_accessibilities = private
+dotnet_naming_symbols.private_static_readonly_fields.required_modifiers = static, readonly
+
+dotnet_naming_symbols.protected_static_readonly_fields.applicable_kinds = field
+dotnet_naming_symbols.protected_static_readonly_fields.applicable_accessibilities = protected, protected_internal, private_protected
+dotnet_naming_symbols.protected_static_readonly_fields.required_modifiers = static, readonly
 
 dotnet_naming_symbols.public_internal_fields.applicable_kinds = field
 dotnet_naming_symbols.public_internal_fields.applicable_accessibilities = public, internal

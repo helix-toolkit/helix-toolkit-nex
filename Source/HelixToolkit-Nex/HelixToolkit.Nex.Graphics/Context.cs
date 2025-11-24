@@ -1,6 +1,5 @@
-using HelixToolkit.Nex;
-
 namespace HelixToolkit.Nex.Graphics;
+
 /// <summary>
 /// Represents the main graphics context interface for creating and managing GPU resources.
 /// </summary>
@@ -15,14 +14,8 @@ namespace HelixToolkit.Nex.Graphics;
 /// <item><description>Query pool operations for performance measurements</description></item>
 /// </list>
 /// </remarks>
-public interface IContext : IDisposable
+public interface IContext : IInitializable
 {
-    /// <summary>
-    /// Initializes the graphics context and underlying API.
-    /// </summary>
-    /// <returns>A <see cref="ResultCode"/> indicating success or failure.</returns>
-    ResultCode Initialize();
-
     /// <summary>
     /// Acquires a command buffer for recording GPU commands.
     /// </summary>
@@ -50,7 +43,11 @@ public interface IContext : IDisposable
     /// <param name="buffer">Receives the created buffer resource.</param>
     /// <param name="debugName">Optional debug name for the buffer.</param>
     /// <returns>A <see cref="ResultCode"/> indicating success or failure.</returns>
-    ResultCode CreateBuffer(in BufferDesc desc, out BufferResource buffer, string? debugName = null);
+    ResultCode CreateBuffer(
+        in BufferDesc desc,
+        out BufferResource buffer,
+        string? debugName = null
+    );
 
     /// <summary>
     /// Creates a sampler state object.
@@ -67,7 +64,11 @@ public interface IContext : IDisposable
     /// <param name="texture">Receives the created texture resource.</param>
     /// <param name="debugName">Optional debug name for the texture.</param>
     /// <returns>A <see cref="ResultCode"/> indicating success or failure.</returns>
-    ResultCode CreateTexture(in TextureDesc desc, out TextureResource texture, string? debugName = null);
+    ResultCode CreateTexture(
+        in TextureDesc desc,
+        out TextureResource texture,
+        string? debugName = null
+    );
 
     /// <summary>
     /// Creates a texture view from an existing texture.
@@ -77,7 +78,12 @@ public interface IContext : IDisposable
     /// <param name="textureView">Receives the created texture view resource.</param>
     /// <param name="debugName">Optional debug name for the texture view.</param>
     /// <returns>A <see cref="ResultCode"/> indicating success or failure.</returns>
-    ResultCode CreateTextureView(in TextureHandle texture, in TextureViewDesc desc, out TextureResource textureView, string? debugName = null);
+    ResultCode CreateTextureView(
+        in TextureHandle texture,
+        in TextureViewDesc desc,
+        out TextureResource textureView,
+        string? debugName = null
+    );
 
     /// <summary>
     /// Creates a compute pipeline.
@@ -85,7 +91,10 @@ public interface IContext : IDisposable
     /// <param name="desc">The compute pipeline description.</param>
     /// <param name="computePipeline">Receives the created compute pipeline resource.</param>
     /// <returns>A <see cref="ResultCode"/> indicating success or failure.</returns>
-    ResultCode CreateComputePipeline(in ComputePipelineDesc desc, out ComputePipelineResource computePipeline);
+    ResultCode CreateComputePipeline(
+        in ComputePipelineDesc desc,
+        out ComputePipelineResource computePipeline
+    );
 
     /// <summary>
     /// Creates a render pipeline.
@@ -93,7 +102,10 @@ public interface IContext : IDisposable
     /// <param name="desc">The render pipeline description.</param>
     /// <param name="renderPipeline">Receives the created render pipeline resource.</param>
     /// <returns>A <see cref="ResultCode"/> indicating success or failure.</returns>
-    ResultCode CreateRenderPipeline(in RenderPipelineDesc desc, out RenderPipelineResource renderPipeline);
+    ResultCode CreateRenderPipeline(
+        in RenderPipelineDesc desc,
+        out RenderPipelineResource renderPipeline
+    );
 
     /// <summary>
     /// Creates a shader module from shader code.
@@ -110,7 +122,11 @@ public interface IContext : IDisposable
     /// <param name="queryPool">Receives the created query pool resource.</param>
     /// <param name="debugName">Optional debug name for the query pool.</param>
     /// <returns>A <see cref="ResultCode"/> indicating success or failure.</returns>
-    ResultCode CreateQueryPool(uint32_t numQueries, out QueryPoolResource queryPool, string? debugName = null);
+    ResultCode CreateQueryPool(
+        uint32_t numQueries,
+        out QueryPoolResource queryPool,
+        string? debugName = null
+    );
 
     /// <summary>
     /// Destroys a compute pipeline handle.
@@ -172,7 +188,8 @@ public interface IContext : IDisposable
     /// <param name="offset">Byte offset within the buffer.</param>
     /// <param name="data">Reference to the data to upload.</param>
     /// <returns>A <see cref="ResultCode"/> indicating success or failure.</returns>
-    ResultCode Upload<T>(in BufferHandle handle, size_t offset, in T data) where T : unmanaged
+    ResultCode Upload<T>(in BufferHandle handle, size_t offset, in T data)
+        where T : unmanaged
     {
         unsafe
         {
@@ -202,7 +219,8 @@ public interface IContext : IDisposable
     /// <param name="data">Receives the downloaded data.</param>
     /// <param name="offset">Byte offset within the buffer. Defaults to 0.</param>
     /// <returns>A <see cref="ResultCode"/> indicating success or failure.</returns>
-    ResultCode Download<T>(in BufferHandle handle, out T data, size_t offset = 0) where T : unmanaged
+    ResultCode Download<T>(in BufferHandle handle, out T data, size_t offset = 0)
+        where T : unmanaged
     {
         unsafe
         {
@@ -256,7 +274,12 @@ public interface IContext : IDisposable
     /// <remarks>
     /// Data layout follows the KTX specification: https://registry.khronos.org/KTX/specs/1.0/ktxspec.v1.html
     /// </remarks>
-    ResultCode Upload(in TextureHandle handle, in TextureRangeDesc range, nint data, size_t dataSize);
+    ResultCode Upload(
+        in TextureHandle handle,
+        in TextureRangeDesc range,
+        nint data,
+        size_t dataSize
+    );
 
     /// <summary>
     /// Downloads data from a texture.
@@ -266,7 +289,12 @@ public interface IContext : IDisposable
     /// <param name="outData">Pointer to the destination buffer.</param>
     /// <param name="dataSize">Size of the destination buffer in bytes.</param>
     /// <returns>A <see cref="ResultCode"/> indicating success or failure.</returns>
-    ResultCode Download(in TextureHandle handle, in TextureRangeDesc range, nint outData, size_t dataSize);
+    ResultCode Download(
+        in TextureHandle handle,
+        in TextureRangeDesc range,
+        nint outData,
+        size_t dataSize
+    );
 
     /// <summary>
     /// Gets the dimensions of a texture.
@@ -349,7 +377,14 @@ public interface IContext : IDisposable
     /// <param name="outData">Pointer to the destination buffer for query results.</param>
     /// <param name="stride">The stride between consecutive query results in bytes.</param>
     /// <returns>True if results are available; false otherwise.</returns>
-    bool GetQueryPoolResults(in QueryPoolHandle pool, uint32_t firstQuery, uint32_t queryCount, size_t dataSize, nint outData, size_t stride);
+    bool GetQueryPoolResults(
+        in QueryPoolHandle pool,
+        uint32_t firstQuery,
+        uint32_t queryCount,
+        size_t dataSize,
+        nint outData,
+        size_t stride
+    );
 }
 
 /// <summary>
@@ -366,20 +401,28 @@ public static class ContextExtensions
     /// <param name="shaderModule">Receives the created shader module resource.</param>
     /// <param name="debugName">Optional debug name for the shader module.</param>
     /// <returns>A <see cref="ResultCode"/> indicating success or failure.</returns>
-    public static ResultCode CreateShaderModuleGlsl(this IContext context, string glsl, ShaderStage stage,
-        out ShaderModuleResource shaderModule, string? debugName = null)
+    public static ResultCode CreateShaderModuleGlsl(
+        this IContext context,
+        string glsl,
+        ShaderStage stage,
+        out ShaderModuleResource shaderModule,
+        string? debugName = null
+    )
     {
         using var data = glsl.ToArray().Pin();
         unsafe
         {
-            return context.CreateShaderModule(new ShaderModuleDesc
-            {
-                Data = (nint)data.Pointer,
-                DataSize = (uint)glsl.Length,
-                Stage = stage,
-                DataType = ShaderDataType.Glsl,
-                DebugName = debugName ?? string.Empty
-            }, out shaderModule);
+            return context.CreateShaderModule(
+                new ShaderModuleDesc
+                {
+                    Data = (nint)data.Pointer,
+                    DataSize = (uint)glsl.Length,
+                    Stage = stage,
+                    DataType = ShaderDataType.Glsl,
+                    DebugName = debugName ?? string.Empty,
+                },
+                out shaderModule
+            );
         }
     }
 
@@ -392,19 +435,29 @@ public static class ContextExtensions
     /// <param name="debugName">Optional debug name for the shader module.</param>
     /// <returns>The created shader module resource.</returns>
     /// <exception cref="InvalidOperationException">Thrown if shader creation fails.</exception>
-    public static ShaderModuleResource CreateShaderModuleGlsl(this IContext context, string glsl, ShaderStage stage, string? debugName = null)
+    public static ShaderModuleResource CreateShaderModuleGlsl(
+        this IContext context,
+        string glsl,
+        ShaderStage stage,
+        string? debugName = null
+    )
     {
         using var data = glsl.ToArray().Pin();
         unsafe
         {
-            context.CreateShaderModule(new ShaderModuleDesc
-            {
-                Data = (nint)data.Pointer,
-                DataSize = (uint)glsl.Length,
-                Stage = stage,
-                DataType = ShaderDataType.Glsl,
-                DebugName = debugName ?? string.Empty
-            }, out var shaderModule).CheckResult();
+            context
+                .CreateShaderModule(
+                    new ShaderModuleDesc
+                    {
+                        Data = (nint)data.Pointer,
+                        DataSize = (uint)glsl.Length,
+                        Stage = stage,
+                        DataType = ShaderDataType.Glsl,
+                        DebugName = debugName ?? string.Empty,
+                    },
+                    out var shaderModule
+                )
+                .CheckResult();
             return shaderModule;
         }
     }
@@ -416,7 +469,10 @@ public static class ContextExtensions
     /// <param name="desc">The compute pipeline description.</param>
     /// <returns>The created compute pipeline resource.</returns>
     /// <exception cref="InvalidOperationException">Thrown if pipeline creation fails.</exception>
-    public static ComputePipelineResource CreateComputePipeline(this IContext context, in ComputePipelineDesc desc)
+    public static ComputePipelineResource CreateComputePipeline(
+        this IContext context,
+        in ComputePipelineDesc desc
+    )
     {
         context.CreateComputePipeline(desc, out var computePipeline).CheckResult();
         return computePipeline;
@@ -429,7 +485,10 @@ public static class ContextExtensions
     /// <param name="desc">The render pipeline description.</param>
     /// <returns>The created render pipeline resource.</returns>
     /// <exception cref="InvalidOperationException">Thrown if pipeline creation fails.</exception>
-    public static RenderPipelineResource CreateRenderPipeline(this IContext context, in RenderPipelineDesc desc)
+    public static RenderPipelineResource CreateRenderPipeline(
+        this IContext context,
+        in RenderPipelineDesc desc
+    )
     {
         context.CreateRenderPipeline(desc, out var renderPipeline).CheckResult();
         return renderPipeline;
@@ -459,13 +518,30 @@ public static class ContextExtensions
     /// <param name="buffer">Receives the created buffer resource.</param>
     /// <param name="debugName">Optional debug name for the buffer.</param>
     /// <returns>A <see cref="ResultCode"/> indicating success or failure.</returns>
-    public static ResultCode CreateBuffer<T>(this IContext context, T[] data, BufferUsageBits usage,
-        StorageType storage, out BufferResource buffer, string? debugName = null) where T : unmanaged
+    public static ResultCode CreateBuffer<T>(
+        this IContext context,
+        T[] data,
+        BufferUsageBits usage,
+        StorageType storage,
+        out BufferResource buffer,
+        string? debugName = null
+    )
+        where T : unmanaged
     {
         unsafe
         {
             using var pinnedData = data.Pin();
-            return context.CreateBuffer(new BufferDesc(usage, storage, (nint)pinnedData.Pointer, (uint)(data.Length * sizeof(T)), debugName), out buffer, debugName);
+            return context.CreateBuffer(
+                new BufferDesc(
+                    usage,
+                    storage,
+                    (nint)pinnedData.Pointer,
+                    (uint)(data.Length * sizeof(T)),
+                    debugName
+                ),
+                out buffer,
+                debugName
+            );
         }
     }
 
@@ -480,8 +556,14 @@ public static class ContextExtensions
     /// <param name="debugName">Optional debug name for the buffer.</param>
     /// <returns>The created buffer resource.</returns>
     /// <exception cref="InvalidOperationException">Thrown if buffer creation fails.</exception>
-    public static BufferResource CreateBuffer<T>(this IContext context, T[] data, BufferUsageBits usage,
-        StorageType storage, string? debugName = null) where T : unmanaged
+    public static BufferResource CreateBuffer<T>(
+        this IContext context,
+        T[] data,
+        BufferUsageBits usage,
+        StorageType storage,
+        string? debugName = null
+    )
+        where T : unmanaged
     {
         CreateBuffer(context, data, usage, storage, out var buffer, debugName).CheckResult();
         return buffer;
@@ -495,7 +577,11 @@ public static class ContextExtensions
     /// <param name="debugName">Optional debug name for the buffer.</param>
     /// <returns>The created buffer resource.</returns>
     /// <exception cref="InvalidOperationException">Thrown if buffer creation fails.</exception>
-    public static BufferResource CreateBuffer(this IContext context, in BufferDesc desc, string? debugName = null)
+    public static BufferResource CreateBuffer(
+        this IContext context,
+        in BufferDesc desc,
+        string? debugName = null
+    )
     {
         context.CreateBuffer(desc, out var buffer, debugName).CheckResult();
         return buffer;
@@ -509,7 +595,11 @@ public static class ContextExtensions
     /// <param name="debugName">Optional debug name for the texture.</param>
     /// <returns>The created texture resource.</returns>
     /// <exception cref="InvalidOperationException">Thrown if texture creation fails.</exception>
-    public static TextureResource CreateTexture(this IContext context, in TextureDesc desc, string? debugName = null)
+    public static TextureResource CreateTexture(
+        this IContext context,
+        in TextureDesc desc,
+        string? debugName = null
+    )
     {
         context.CreateTexture(desc, out var texture, debugName).CheckResult();
         return texture;

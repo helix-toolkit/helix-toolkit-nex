@@ -7,7 +7,7 @@ namespace HelixToolkit.Nex.Sample.Application;
 
 public abstract class Application : IDisposable
 {
-    private static readonly ILogger Logger = LogManager.Create<Application>();
+    private static readonly ILogger _logger = LogManager.Create<Application>();
 
     private readonly bool _closeRequested = false;
     private bool _disposedValue;
@@ -94,7 +94,7 @@ public abstract class Application : IDisposable
                 }
                 else
                 {
-                    Logger.LogInformation($"Window Event: {evt.type}");
+                    _logger.LogInformation($"Window Event: {evt.type}");
                 }
             }
 
@@ -107,7 +107,7 @@ public abstract class Application : IDisposable
 
     private void HandleWindowEvent(in SDL_Event evt)
     {
-        Logger.LogInformation($"Window Event: {evt.window.type}");
+        _logger.LogInformation($"Window Event: {evt.window.type}");
         switch (evt.window.type)
         {
             case SDL_EventType.WindowResized:
@@ -163,12 +163,12 @@ public abstract class Application : IDisposable
     {
         if (priority >= SDL_LogPriority.Error)
         {
-            Logger.LogError($"[{priority}] SDL: {description}");
+            _logger.LogError($"[{priority}] SDL: {description}");
             throw new Exception(description);
         }
         else
         {
-            Logger.LogInformation($"[{priority}] SDL: {description}");
+            _logger.LogInformation($"[{priority}] SDL: {description}");
         }
     }
 
@@ -191,7 +191,7 @@ public abstract class Application : IDisposable
     {
         // This method can be overridden to perform actions before disposal
         // For example, you might want to clean up resources or log messages
-        Logger.LogInformation("Disposing application resources.");
+        _logger.LogInformation("Disposing application resources.");
     }
 
     public void Dispose()

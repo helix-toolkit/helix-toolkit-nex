@@ -75,7 +75,7 @@ public class ImGuiRenderer(IContext context, ImGuiConfig config) : IDisposable
         }
         """;
 
-    private static readonly ILogger Logger = LogManager.Create<ImGuiRenderer>();
+    private static readonly ILogger _logger = LogManager.Create<ImGuiRenderer>();
 
     private struct Drawable()
     {
@@ -175,14 +175,14 @@ public class ImGuiRenderer(IContext context, ImGuiConfig config) : IDisposable
         {
             if (!File.Exists(fontPath))
             {
-                Logger.LogError($"Font file not found: {fontPath}");
+                _logger.LogError($"Font file not found: {fontPath}");
                 return;
             }
             io.Fonts.AddFontFromFileTTF(fontPath, _config.FontSizeInPixel);
         }
         if (!io.Fonts.Build())
         {
-            Logger.LogError("Failed to build ImGui fonts.");
+            _logger.LogError("Failed to build ImGui fonts.");
         }
         else
         {
@@ -211,7 +211,7 @@ public class ImGuiRenderer(IContext context, ImGuiConfig config) : IDisposable
         {
             if (!CreatePipeline(fb))
             {
-                Logger.LogError("Failed to create ImGui render pipeline.");
+                _logger.LogError("Failed to create ImGui render pipeline.");
                 return false;
             }
         }
@@ -232,7 +232,7 @@ public class ImGuiRenderer(IContext context, ImGuiConfig config) : IDisposable
         var size = drawData.DisplaySize * drawData.FramebufferScale;
         if (size.X <= 0 || size.Y <= 0)
         {
-            Logger.LogWarning("ImGui draw data has zero size, skipping rendering.");
+            _logger.LogWarning("ImGui draw data has zero size, skipping rendering.");
             return false;
         }
         ref var drawable = ref _drawables[_frameCount];
