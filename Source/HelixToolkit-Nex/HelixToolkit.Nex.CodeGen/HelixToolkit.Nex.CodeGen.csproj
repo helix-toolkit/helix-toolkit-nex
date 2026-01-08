@@ -20,5 +20,6 @@
             Version="3.11.0"
             PrivateAssets="all"
         />
+        <PackageReference Include="System.Collections.Immutable" Version="9.0.0" />
     </ItemGroup>
 </Project>

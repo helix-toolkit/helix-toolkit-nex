@@ -16,6 +16,11 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\HelixToolkit.Nex.Graphics\HelixToolkit.Nex.Graphics.csproj" />
+        <ProjectReference Include="..\HelixToolkit.Nex.Graphics\HelixToolkit.Nex.Graphics.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Folder Include="fs\" />
+        <Folder Include="vs\" />
     </ItemGroup>
 </Project>
