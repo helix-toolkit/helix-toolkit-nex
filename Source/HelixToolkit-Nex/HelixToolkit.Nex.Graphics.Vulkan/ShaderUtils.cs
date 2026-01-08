@@ -319,6 +319,4 @@ internal sealed class ShaderUtils
         logger.LogDebug("Shader SPIR-V code generated successfully. Size: {Size} bytes", outSPIRV.Length);
         return ResultCode.Ok;
     }
-
-
 }

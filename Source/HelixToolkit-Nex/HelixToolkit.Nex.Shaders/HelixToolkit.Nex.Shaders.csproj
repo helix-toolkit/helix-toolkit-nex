@@ -1,0 +1,21 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <EmbeddedResource Include="Headers\HeaderFrag.glsl" />
+        <EmbeddedResource Include="Headers\HeaderTask.glsl" />
+        <EmbeddedResource Include="Headers\HeaderVertex.glsl" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Glslang.NET" Version="1.2.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\HelixToolkit.Nex.Graphics\HelixToolkit.Nex.Graphics.csproj" />
+    </ItemGroup>
+</Project>

@@ -1,6 +1,7 @@
 global using System.Runtime.CompilerServices;
 global using System.Runtime.InteropServices;
 global using HelixToolkit.Nex.Maths;
+global using HelixToolkit.Nex.Shaders;
 global using Microsoft.Extensions.Logging;
 global using Vortice.SPIRV.Reflect;
 global using Vortice.Vulkan;

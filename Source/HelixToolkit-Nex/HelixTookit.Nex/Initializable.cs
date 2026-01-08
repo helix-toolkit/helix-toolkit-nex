@@ -36,7 +36,7 @@ public interface IInitializable : IDisposable
     /// Tears down the object if initialized.
     /// </summary>
     /// <returns>Result code</returns>
-    ResultCode TearDown();
+    ResultCode Teardown();
 }
 
 /// <summary>
@@ -135,7 +135,7 @@ public abstract class Initializable : IInitializable
     /// The teardown process is logged for debugging purposes.
     /// After teardown, the object is marked as not initialized.
     /// </remarks>
-    public ResultCode TearDown()
+    public ResultCode Teardown()
     {
         if (!IsInitialized)
         {
@@ -164,7 +164,7 @@ public abstract class Initializable : IInitializable
     /// </returns>
     /// <remarks>
     /// Derived classes should implement their specific cleanup logic in this method.
-    /// This method is called by <see cref="TearDown"/> when the object is initialized.
+    /// This method is called by <see cref="Teardown"/> when the object is initialized.
     /// Resources allocated during <see cref="OnInitializing"/> should be released here.
     /// </remarks>
     protected abstract ResultCode OnTearingDown();
@@ -179,7 +179,7 @@ public abstract class Initializable : IInitializable
     /// <remarks>
     /// <para>
     /// When <paramref name="disposing"/> is <c>true</c>, this method releases all resources held by managed objects
-    /// by calling <see cref="TearDown"/> to ensure proper cleanup.
+    /// by calling <see cref="Teardown"/> to ensure proper cleanup.
     /// </para>
     /// <para>
     /// Derived classes can override this method to dispose of additional resources.
@@ -193,7 +193,7 @@ public abstract class Initializable : IInitializable
             if (disposing)
             {
                 _logger.LogTrace("[{Name}]: Disposing", Name);
-                TearDown();
+                Teardown();
                 _logger.LogTrace("[{Name}]: Disposed", Name);
             }
 
