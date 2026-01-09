@@ -5,6 +5,7 @@ using HelixToolkit.Nex.Graphics.Vulkan;
 namespace HelixToolkit.Nex.Geometries.Tests;
 
 [TestClass]
+[TestCategory("GPURequired")]
 public sealed class GeometryBufferCreation
 {
     private static IContext? _vkContext;
