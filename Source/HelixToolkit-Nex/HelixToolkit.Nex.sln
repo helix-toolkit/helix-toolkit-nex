@@ -44,6 +44,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		..\..\.editorconfig = ..\..\.editorconfig
 		..\..\.github\workflows\ci.yml = ..\..\.github\workflows\ci.yml
 		..\..\.github\workflows\documentation.yml = ..\..\.github\workflows\documentation.yml
+		..\..\Scripts\fix-naming.ps1 = ..\..\Scripts\fix-naming.ps1
+		..\..\Scripts\format-solution.ps1 = ..\..\Scripts\format-solution.ps1
 	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HelixToolkit.Nex.Shaders", "HelixToolkit.Nex.Shaders\HelixToolkit.Nex.Shaders.csproj", "{D26EC4B9-EE2B-8D2E-8398-4CBCC4099CAB}"

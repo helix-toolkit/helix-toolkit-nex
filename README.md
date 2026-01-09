@@ -11,3 +11,11 @@ The graphics interface and Vulkan backend are largely inspired by [LightWeightVk
 Currently in development.
 
 [Samples](Source/HelixToolkit-Nex/Samples).
+
+## Contributing
+
+Interested in contributing? Please read our [Contributing Guide](CONTRIBUTING.md) for information on:
+- Development setup and prerequisites
+- Code formatting requirements
+- Building and testing
+- Submitting pull requests

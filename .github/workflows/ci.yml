@@ -52,6 +52,9 @@ jobs:
       - name: Restore dependencies
         run: dotnet restore Source/HelixToolkit-Nex/HelixToolkit.Nex.sln
 
+      - name: Check code formatting
+        run: dotnet format Source/HelixToolkit-Nex/HelixToolkit.Nex.sln --verify-no-changes --verbosity diagnostic
+
       - name: Build Debug
         run: dotnet build Source/HelixToolkit-Nex/HelixToolkit.Nex.sln --configuration Debug --no-restore /p:Version=${{ steps.version_step.outputs.SemVer }} /p:AssemblyVersion=${{ steps.version_step.outputs.assemblySemVer }}
 

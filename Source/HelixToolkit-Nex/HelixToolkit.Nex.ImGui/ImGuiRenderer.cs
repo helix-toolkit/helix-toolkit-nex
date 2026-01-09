@@ -9,7 +9,7 @@ namespace HelixToolkit.Nex.ImGui;
 
 public class ImGuiRenderer(IContext context, ImGuiConfig config) : IDisposable
 {
-    private const string codeVS = """
+    private const string CodeVS = """
         layout(location = 0) out vec4 out_color;
         layout(location = 1) out vec2 out_uv;
 
@@ -51,7 +51,7 @@ public class ImGuiRenderer(IContext context, ImGuiConfig config) : IDisposable
         }
         """;
 
-    private const string codeFS = """
+    private const string CodeFS = """
         layout(location = 0) in vec4 in_color;
         layout(location = 1) in vec2 in_uv;
 
@@ -89,7 +89,7 @@ public class ImGuiRenderer(IContext context, ImGuiConfig config) : IDisposable
     private struct PushConstants
     {
         public Vector4 LRTB; // Left, Right, Top, Bottom
-        public ulong VertexBuffer; // Vertex buffer offset and index buffer offset
+        public ulong VertexBuffer; // Vertex buffer
         public uint TextureId; // Texture ID
         public uint SamplerId; // Sampler ID
     }
@@ -97,12 +97,12 @@ public class ImGuiRenderer(IContext context, ImGuiConfig config) : IDisposable
     private readonly ImGuiConfig _config =
         config ?? throw new ArgumentNullException(nameof(config));
     private readonly ShaderModuleResource _vertexShaderModule = context.CreateShaderModuleGlsl(
-        codeVS,
+        CodeVS,
         ShaderStage.Vertex,
         nameof(ImGuiRenderer)
     );
     private readonly ShaderModuleResource _fragShaderModule = context.CreateShaderModuleGlsl(
-        codeFS,
+        CodeFS,
         ShaderStage.Fragment,
         nameof(ImGuiRenderer)
     );
