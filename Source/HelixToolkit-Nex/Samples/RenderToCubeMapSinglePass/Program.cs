@@ -22,7 +22,7 @@ internal class App : Application
         public float Time;
     }
 
-    private const string codeGenCubeMapVS = """
+    private const string CodeGenCubeMapVS = """
         #version 460
         const vec2 pos[3] = vec2[3](
             vec2(-0.6, -0.6),
@@ -41,7 +41,7 @@ internal class App : Application
         }
         """;
 
-    private const string codeGenCubeMapFS = """
+    private const string CodeGenCubeMapFS = """
         #version 460
         layout (location=0) in vec3 color;
         layout (location=0) out vec4 out_FragColor0;
@@ -75,7 +75,7 @@ internal class App : Application
         public uint Texture0;
     }
 
-    private const string codeVS = """
+    private const string CodeVS = """
         layout (location=0) out vec3 dir;
 
         const vec3 vertices[8] = vec3[8](
@@ -97,7 +97,7 @@ internal class App : Application
         }
         """;
 
-    private const string codeFS = """
+    private const string CodeFS = """
         layout (location=0) in vec3 dir;
         layout(location = 1) in flat uint textureId;
         layout(location = 0) out vec4 out_FragColor;
@@ -221,14 +221,14 @@ internal class App : Application
 
         { // Create render pass for generate cube map
             _ctx.CreateShaderModuleGlsl(
-                    codeGenCubeMapVS,
+                    CodeGenCubeMapVS,
                     ShaderStage.Vertex,
                     out var genCubeMapVsModule,
                     "Shader: gen cube map (vert)"
                 )
                 .CheckResult();
             _ctx.CreateShaderModuleGlsl(
-                    codeGenCubeMapFS,
+                    CodeGenCubeMapFS,
                     ShaderStage.Fragment,
                     out var genCubeMapFsModule,
                     "Shader: gen cube map (frag)"
@@ -263,14 +263,14 @@ internal class App : Application
 
         { // Create render pass for cube map rendering
             _ctx.CreateShaderModuleGlsl(
-                    codeVS,
+                    CodeVS,
                     ShaderStage.Vertex,
                     out var vsModule,
                     "Shader: main (vert)"
                 )
                 .CheckResult();
             _ctx.CreateShaderModuleGlsl(
-                    codeFS,
+                    CodeFS,
                     ShaderStage.Fragment,
                     out var fsModule,
                     "Shader: main (frag)"

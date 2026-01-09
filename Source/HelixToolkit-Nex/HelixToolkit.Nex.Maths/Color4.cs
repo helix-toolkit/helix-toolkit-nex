@@ -37,7 +37,7 @@ namespace HelixToolkit.Nex.Maths
     [StructLayout(LayoutKind.Sequential, Pack = 4)]
     public struct Color4 : IEquatable<Color4>, IFormattable
     {
-        private const string toStringFormat_ = "Alpha:{0} Red:{1} Green:{2} Blue:{3}";
+        private const string ToStringFormat = "Alpha:{0} Red:{1} Green:{2} Blue:{3}";
 
         /// <summary>
         /// The Black color (0, 0, 0, 1).
@@ -48,10 +48,12 @@ namespace HelixToolkit.Nex.Maths
         /// The White color (1, 1, 1, 1).
         /// </summary>
         public static readonly Color4 White = new(1.0f, 1.0f, 1.0f, 1.0f);
+
         /// <summary>
         /// The Transparent color (1, 1, 1, 1).
         /// </summary>
         public static readonly Color4 Empty = new(0.0f, 0.0f, 0.0f, 0.0f);
+
         /// <summary>
         /// The red component of the color.
         /// </summary>
@@ -160,7 +162,10 @@ namespace HelixToolkit.Nex.Maths
 
             if (values.Length != 4)
             {
-                throw new ArgumentOutOfRangeException(nameof(values), "There must be four and only four input values for Color4.");
+                throw new ArgumentOutOfRangeException(
+                    nameof(values),
+                    "There must be four and only four input values for Color4."
+                );
             }
 
             Red = values[0];
@@ -211,10 +216,12 @@ namespace HelixToolkit.Nex.Maths
                     1 => Green,
                     2 => Blue,
                     3 => Alpha,
-                    _ => throw new ArgumentOutOfRangeException(nameof(index), "Indices for Color4 run from 0 to 3, inclusive."),
+                    _ => throw new ArgumentOutOfRangeException(
+                        nameof(index),
+                        "Indices for Color4 run from 0 to 3, inclusive."
+                    ),
                 };
             }
-
             set
             {
                 switch (index)
@@ -232,7 +239,10 @@ namespace HelixToolkit.Nex.Maths
                         Alpha = value;
                         break;
                     default:
-                        throw new ArgumentOutOfRangeException(nameof(index), "Indices for Color4 run from 0 to 3, inclusive.");
+                        throw new ArgumentOutOfRangeException(
+                            nameof(index),
+                            "Indices for Color4 run from 0 to 3, inclusive."
+                        );
                 }
             }
         }
@@ -336,7 +346,12 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>The sum of the two colors.</returns>
         public static Color4 Add(Color4 left, Color4 right)
         {
-            return new Color4(left.Red + right.Red, left.Green + right.Green, left.Blue + right.Blue, left.Alpha + right.Alpha);
+            return new Color4(
+                left.Red + right.Red,
+                left.Green + right.Green,
+                left.Blue + right.Blue,
+                left.Alpha + right.Alpha
+            );
         }
 
         /// <summary>
@@ -361,7 +376,12 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>The difference of the two colors.</returns>
         public static Color4 Subtract(Color4 left, Color4 right)
         {
-            return new Color4(left.Red - right.Red, left.Green - right.Green, left.Blue - right.Blue, left.Alpha - right.Alpha);
+            return new Color4(
+                left.Red - right.Red,
+                left.Green - right.Green,
+                left.Blue - right.Blue,
+                left.Alpha - right.Alpha
+            );
         }
 
         /// <summary>
@@ -386,7 +406,12 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>The modulated color.</returns>
         public static Color4 Modulate(Color4 left, Color4 right)
         {
-            return new Color4(left.Red * right.Red, left.Green * right.Green, left.Blue * right.Blue, left.Alpha * right.Alpha);
+            return new Color4(
+                left.Red * right.Red,
+                left.Green * right.Green,
+                left.Blue * right.Blue,
+                left.Alpha * right.Alpha
+            );
         }
 
         /// <summary>
@@ -411,7 +436,12 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>The scaled color.</returns>
         public static Color4 Scale(Color4 value, float scale)
         {
-            return new Color4(value.Red * scale, value.Green * scale, value.Blue * scale, value.Alpha * scale);
+            return new Color4(
+                value.Red * scale,
+                value.Green * scale,
+                value.Blue * scale,
+                value.Alpha * scale
+            );
         }
 
         /// <summary>
@@ -434,7 +464,12 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>The negated color.</returns>
         public static Color4 Negate(Color4 value)
         {
-            return new Color4(1.0f - value.Red, 1.0f - value.Green, 1.0f - value.Blue, 1.0f - value.Alpha);
+            return new Color4(
+                1.0f - value.Red,
+                1.0f - value.Green,
+                1.0f - value.Blue,
+                1.0f - value.Alpha
+            );
         }
 
         /// <summary>
@@ -444,7 +479,12 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="min">The minimum value.</param>
         /// <param name="max">The maximum value.</param>
         /// <param name="result">When the method completes, contains the clamped value.</param>
-        public static void Clamp(ref Color4 value, ref Color4 min, ref Color4 max, out Color4 result)
+        public static void Clamp(
+            ref Color4 value,
+            ref Color4 min,
+            ref Color4 max,
+            out Color4 result
+        )
         {
             float alpha = value.Alpha;
             alpha = (alpha > max.Alpha) ? max.Alpha : alpha;
@@ -486,7 +526,7 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="amount">Value between 0 and 1 indicating the weight of <paramref name="end"/>.</param>
         /// <param name="result">When the method completes, contains the linear interpolation of the two colors.</param>
         /// <remarks>
-        /// Passing <paramref name="amount"/> a value of 0 will cause <paramref name="start"/> to be returned; a value of 1 will cause <paramref name="end"/> to be returned. 
+        /// Passing <paramref name="amount"/> a value of 0 will cause <paramref name="start"/> to be returned; a value of 1 will cause <paramref name="end"/> to be returned.
         /// </remarks>
         public static void Lerp(ref Color4 start, ref Color4 end, float amount, out Color4 result)
         {
@@ -504,7 +544,7 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="amount">Value between 0 and 1 indicating the weight of <paramref name="end"/>.</param>
         /// <returns>The linear interpolation of the two colors.</returns>
         /// <remarks>
-        /// Passing <paramref name="amount"/> a value of 0 will cause <paramref name="start"/> to be returned; a value of 1 will cause <paramref name="end"/> to be returned. 
+        /// Passing <paramref name="amount"/> a value of 0 will cause <paramref name="start"/> to be returned; a value of 1 will cause <paramref name="end"/> to be returned.
         /// </remarks>
         public static Color4 Lerp(Color4 start, Color4 end, float amount)
         {
@@ -519,7 +559,12 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="end">End color.</param>
         /// <param name="amount">Value between 0 and 1 indicating the weight of <paramref name="end"/>.</param>
         /// <param name="result">When the method completes, contains the cubic interpolation of the two colors.</param>
-        public static void SmoothStep(ref Color4 start, ref Color4 end, float amount, out Color4 result)
+        public static void SmoothStep(
+            ref Color4 start,
+            ref Color4 end,
+            float amount,
+            out Color4 result
+        )
         {
             amount = MathUtil.SmoothStep(amount);
             Lerp(ref start, ref end, amount, out result);
@@ -616,7 +661,8 @@ namespace HelixToolkit.Nex.Maths
                 0.5f + contrast * (value.Red - 0.5f),
                 0.5f + contrast * (value.Green - 0.5f),
                 0.5f + contrast * (value.Blue - 0.5f),
-                value.Alpha);
+                value.Alpha
+            );
         }
 
         /// <summary>
@@ -649,7 +695,8 @@ namespace HelixToolkit.Nex.Maths
                 grey + saturation * (value.Red - grey),
                 grey + saturation * (value.Green - grey),
                 grey + saturation * (value.Blue - grey),
-                value.Alpha);
+                value.Alpha
+            );
         }
 
         /// <summary>
@@ -684,7 +731,12 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>The sum of the two colors.</returns>
         public static Color4 operator +(Color4 left, Color4 right)
         {
-            return new Color4(left.Red + right.Red, left.Green + right.Green, left.Blue + right.Blue, left.Alpha + right.Alpha);
+            return new Color4(
+                left.Red + right.Red,
+                left.Green + right.Green,
+                left.Blue + right.Blue,
+                left.Alpha + right.Alpha
+            );
         }
 
         /// <summary>
@@ -705,7 +757,12 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>The difference of the two colors.</returns>
         public static Color4 operator -(Color4 left, Color4 right)
         {
-            return new Color4(left.Red - right.Red, left.Green - right.Green, left.Blue - right.Blue, left.Alpha - right.Alpha);
+            return new Color4(
+                left.Red - right.Red,
+                left.Green - right.Green,
+                left.Blue - right.Blue,
+                left.Alpha - right.Alpha
+            );
         }
 
         /// <summary>
@@ -726,7 +783,12 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>The scaled color.</returns>
         public static Color4 operator *(float scale, Color4 value)
         {
-            return new Color4(value.Red * scale, value.Green * scale, value.Blue * scale, value.Alpha * scale);
+            return new Color4(
+                value.Red * scale,
+                value.Green * scale,
+                value.Blue * scale,
+                value.Alpha * scale
+            );
         }
 
         /// <summary>
@@ -737,7 +799,12 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>The scaled color.</returns>
         public static Color4 operator *(Color4 value, float scale)
         {
-            return new Color4(value.Red * scale, value.Green * scale, value.Blue * scale, value.Alpha * scale);
+            return new Color4(
+                value.Red * scale,
+                value.Green * scale,
+                value.Blue * scale,
+                value.Alpha * scale
+            );
         }
 
         /// <summary>
@@ -748,7 +815,12 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>The modulated color.</returns>
         public static Color4 operator *(Color4 left, Color4 right)
         {
-            return new Color4(left.Red * right.Red, left.Green * right.Green, left.Blue * right.Blue, left.Alpha * right.Alpha);
+            return new Color4(
+                left.Red * right.Red,
+                left.Green * right.Green,
+                left.Blue * right.Blue,
+                left.Alpha * right.Alpha
+            );
         }
 
         /// <summary>
@@ -901,7 +973,7 @@ namespace HelixToolkit.Nex.Maths
         /// </returns>
         public readonly string ToString(IFormatProvider formatProvider)
         {
-            return string.Format(formatProvider, toStringFormat_, Alpha, Red, Green, Blue);
+            return string.Format(formatProvider, ToStringFormat, Alpha, Red, Green, Blue);
         }
 
         /// <summary>
@@ -914,23 +986,23 @@ namespace HelixToolkit.Nex.Maths
         /// </returns>
         public readonly string ToString(string? format, IFormatProvider? formatProvider)
         {
-            return format == null && formatProvider == null
-                ? string.Empty
-                : format == null
-                ? ToString(formatProvider!)
-                : string.Format(formatProvider,
-                                 toStringFormat_,
-                                 Alpha.ToString(format, formatProvider),
-                                 Red.ToString(format, formatProvider),
-                                 Green.ToString(format, formatProvider),
-                                 Blue.ToString(format, formatProvider));
+            return format == null && formatProvider == null ? string.Empty
+                : format == null ? ToString(formatProvider!)
+                : string.Format(
+                    formatProvider,
+                    ToStringFormat,
+                    Alpha.ToString(format, formatProvider),
+                    Red.ToString(format, formatProvider),
+                    Green.ToString(format, formatProvider),
+                    Blue.ToString(format, formatProvider)
+                );
         }
 
         /// <summary>
         /// Returns a hash code for this instance.
         /// </summary>
         /// <returns>
-        /// A hash code for this instance, suitable for use in hashing algorithms and data structures like a hash table. 
+        /// A hash code for this instance, suitable for use in hashing algorithms and data structures like a hash table.
         /// </returns>
         public override readonly int GetHashCode()
         {
@@ -954,7 +1026,10 @@ namespace HelixToolkit.Nex.Maths
         [MethodImpl(MethodImplOptions.AggressiveInlining)] // MethodImplOptions.AggressiveInlining
         public readonly bool Equals(ref Color4 other)
         {
-            return Alpha == other.Alpha && Red == other.Red && Green == other.Green && Blue == other.Blue;
+            return Alpha == other.Alpha
+                && Red == other.Red
+                && Green == other.Green
+                && Blue == other.Blue;
         }
 
         /// <summary>
@@ -981,6 +1056,7 @@ namespace HelixToolkit.Nex.Maths
         {
             return obj is Color4 color && Equals(ref color);
         }
+
         /// <summary>
         /// Performs an implicit conversion from <see cref="string"/> to <see cref="Color4"/>.
         /// </summary>

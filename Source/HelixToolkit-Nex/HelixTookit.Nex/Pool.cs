@@ -12,7 +12,7 @@ namespace HelixToolkit.Nex;
 public sealed class Pool<ObjectType, ImplObjectType>
     where ObjectType : new()
 {
-    private const uint32_t kListEndSentinel = 0xFFFFFFFF; // Sentinel value to indicate the end of the list
+    private const uint32_t ListEndSentinel = 0xFFFFFFFF; // Sentinel value to indicate the end of the list
 
     /// <summary>
     /// Represents an entry in the object pool containing the object and metadata.
@@ -26,9 +26,9 @@ public sealed class Pool<ObjectType, ImplObjectType>
         public uint32_t Gen = 1;
 
         /// <summary>
-        /// Index of the next free object in the free list, or <see cref="kListEndSentinel"/> if none.
+        /// Index of the next free object in the free list, or <see cref="ListEndSentinel"/> if none.
         /// </summary>
-        public uint32_t NextFree = kListEndSentinel; // Index of the next free object in the pool
+        public uint32_t NextFree = ListEndSentinel; // Index of the next free object in the pool
 
         /// <summary>
         /// The actual object stored in this pool entry.
@@ -37,7 +37,7 @@ public sealed class Pool<ObjectType, ImplObjectType>
     }
 
     private uint32_t _gen = 1;
-    private uint32_t _freeListHead = kListEndSentinel;
+    private uint32_t _freeListHead = ListEndSentinel;
 
     /// <summary>
     /// Gets the current number of active (non-freed) objects in the pool.
@@ -59,7 +59,7 @@ public sealed class Pool<ObjectType, ImplObjectType>
     public Handle<ObjectType> Create(in ImplObjectType obj)
     {
         int idx;
-        if (_freeListHead != kListEndSentinel)
+        if (_freeListHead != ListEndSentinel)
         {
             // No free objects, create a new one
             idx = (int32_t)_freeListHead;
@@ -174,7 +174,7 @@ public sealed class Pool<ObjectType, ImplObjectType>
     public void Clear()
     {
         _objects.Clear();
-        _freeListHead = kListEndSentinel;
+        _freeListHead = ListEndSentinel;
         Count = 0;
     }
 }

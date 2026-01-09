@@ -9,20 +9,20 @@ public static class VkConstants
     /// The Vulkan API version used by VMA (Vulkan Memory Allocator).
     /// Corresponds to Vulkan 1.2.0.
     /// </summary>
-    public const uint64_t kVmaVulkanVersion = 1002000;
+    public const uint64_t VmaVulkanVersion = 1002000;
 
     /// <summary>
     /// Flag indicating VMA should not use Vulkan functions (all static).
     /// </summary>
-    public const uint8_t kVmaStaticVulkanFunctions = 0;
+    public const uint8_t VmaStaticVulkanFunctions = 0;
 
     /// <summary>
     /// Flag indicating VMA should use dynamically loaded Vulkan functions.
     /// </summary>
-    public const uint8_t kVmaDynamicVulkanFunctions = 1;
+    public const uint8_t VmaDynamicVulkanFunctions = 1;
 
     /// <summary>
     /// Maximum number of custom Vulkan extensions that can be enabled.
     /// </summary>
-    public const uint32_t kMaxCustomExtensions = 32;
+    public const uint32_t MaxCustomExtensions = 32;
 }

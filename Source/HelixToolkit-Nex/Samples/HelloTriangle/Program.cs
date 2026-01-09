@@ -16,7 +16,7 @@ public class Program
         app.Run();
     }
 
-    private const string vs = """
+    private const string Vs = """
         #version 460
         layout (location=0) out vec3 color;
         const vec2 pos[3] = vec2[3](
@@ -41,7 +41,7 @@ public class Program
         }
         """;
 
-    private const string ps = """
+    private const string Ps = """
         #version 460
         layout (location=0) in vec3 color;
         layout (location=0) out vec4 out_FragColor;
@@ -75,8 +75,8 @@ public class Program
             );
             var windowSize = MainWindow.Size;
             _ctx.RecreateSwapchain(windowSize.Width, windowSize.Height);
-            _ctx.CreateShaderModuleGlsl(vs, ShaderStage.Vertex, out var vsModule).CheckResult();
-            _ctx.CreateShaderModuleGlsl(ps, ShaderStage.Fragment, out var psModule).CheckResult();
+            _ctx.CreateShaderModuleGlsl(Vs, ShaderStage.Vertex, out var vsModule).CheckResult();
+            _ctx.CreateShaderModuleGlsl(Ps, ShaderStage.Fragment, out var psModule).CheckResult();
             var pipelineDesc = new RenderPipelineDesc
             {
                 VertexShader = vsModule,

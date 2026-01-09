@@ -9,7 +9,7 @@ namespace ImGuiTest;
 
 internal class ShaderToyRenderer : IDisposable
 {
-    private const string vertexShaderCode = """
+    private const string VertexShaderCode = """
         #version 460
         // Vertex shader for rendering a full-screen quad using gl_VertexIndex
         layout(location = 0) out vec2 fragCoord;
@@ -35,7 +35,7 @@ internal class ShaderToyRenderer : IDisposable
         }
         """;
 
-    private const string fragmentShaderCode = """
+    private const string FragmentShaderCode = """
 
         layout(push_constant) uniform constants
         {
@@ -179,12 +179,12 @@ internal class ShaderToyRenderer : IDisposable
     public bool Initialize()
     {
         _vertexShader = _context.CreateShaderModuleGlsl(
-            vertexShaderCode,
+            VertexShaderCode,
             ShaderStage.Vertex,
             "ShaderRenderer: Vertex"
         );
         _fragmentShader = _context.CreateShaderModuleGlsl(
-            fragmentShaderCode,
+            FragmentShaderCode,
             ShaderStage.Fragment,
             "ShaderRenderer: Fragment"
         );
