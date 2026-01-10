@@ -10,12 +10,15 @@ public static class GlslHeaders
 
     private const string FRAGMENT_SHADER = "HeaderFrag.glsl";
 
+    private const string PBR_FUNCTIONS = "PBRFunctions.glsl";
+
     public static string GetShaderHeader(ShaderStage stage)
     {
         return stage switch
         {
             ShaderStage.Task or ShaderStage.Mesh => GetGlslShaderHeader(TASK_MESH_SHADER),
             ShaderStage.Vertex
+            or ShaderStage.Geometry
             or ShaderStage.Compute
             or ShaderStage.TessellationControl
             or ShaderStage.TessellationEvaluation => GetGlslShaderHeader(
@@ -42,5 +45,26 @@ public static class GlslHeaders
             );
         using var reader = new StreamReader(stream);
         return reader.ReadToEnd();
+    }
+
+    public static string GetGlslShaderPBRFunction()
+    {
+        return GetGlslShaderHeader(PBR_FUNCTIONS);
+    }
+
+    /// <summary>
+    /// Create a new shader compiler instance
+    /// </summary>
+    public static ShaderCompiler CreateCompiler(bool useGlobalCache = true)
+    {
+        return new ShaderCompiler(useGlobalCache);
+    }
+
+    /// <summary>
+    /// Create a fluent shader compilation builder
+    /// </summary>
+    public static ShaderCompilationBuilder BuildShader()
+    {
+        return new ShaderCompilationBuilder();
     }
 }

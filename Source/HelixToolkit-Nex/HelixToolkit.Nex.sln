@@ -63,6 +63,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HelixToolkit.Nex.Geometries
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HelixToolkit.Nex.Geometries.Tests", "HelixToolkit.Nex.Geometry.Tests\HelixToolkit.Nex.Geometries.Tests.csproj", "{AA9FACF7-CD79-4062-BA73-6898C68510C5}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HelixToolkit.Nex.Shaders.Tests", "HelixToolkit.Nex.Shaders.Tests\HelixToolkit.Nex.Shaders.Tests.csproj", "{A463E1E2-DD59-40F6-8A82-354B58EA380D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -161,6 +163,10 @@ Global
 		{AA9FACF7-CD79-4062-BA73-6898C68510C5}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{AA9FACF7-CD79-4062-BA73-6898C68510C5}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{AA9FACF7-CD79-4062-BA73-6898C68510C5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A463E1E2-DD59-40F6-8A82-354B58EA380D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A463E1E2-DD59-40F6-8A82-354B58EA380D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A463E1E2-DD59-40F6-8A82-354B58EA380D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A463E1E2-DD59-40F6-8A82-354B58EA380D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -5,7 +5,9 @@ namespace HelixToolkit.Nex.Graphics;
 /// </summary>
 public static class Extensions
 {
-    private static readonly ILogger logger = LogManager.Create("HelixToolkit.Nex.Graphics.Extensions");
+    private static readonly ILogger logger = LogManager.Create(
+        "HelixToolkit.Nex.Graphics.Extensions"
+    );
 
     /// <summary>
     /// Checks if the result code indicates success.
@@ -57,16 +59,15 @@ public static class Extensions
     /// In DEBUG builds, this method throws an <see cref="InvalidOperationException"/> on error.
     /// In RELEASE builds, it logs the error instead.
     /// </remarks>
-    public static ResultCode CheckResult(this ResultCode result, string message = "Operation failed")
+    public static ResultCode CheckResult(
+        this ResultCode result,
+        string message = "Operation failed"
+    )
     {
-
         if (result.HasError())
         {
-#if DEBUG
-            throw new InvalidOperationException($"{message}: {result}");
-#else
             logger.LogError("{MESSAGE}: {RESULT}", message, result);
-#endif
+            HxDebug.Assert(false);
         }
         return result;
     }

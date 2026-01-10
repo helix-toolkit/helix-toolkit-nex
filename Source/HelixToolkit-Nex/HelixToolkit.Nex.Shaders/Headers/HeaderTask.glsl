@@ -1,4 +1,3 @@
-#version 460
 #extension GL_EXT_buffer_reference : require
 #extension GL_EXT_buffer_reference_uvec2 : require
 #extension GL_EXT_debug_printf : enable

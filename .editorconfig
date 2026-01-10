@@ -78,7 +78,7 @@ end_of_line = crlf
 
 # C# files
 [*.cs]
-
+dotnet_diagnostic.IDE0044.severity = suggestion
 #### Core EditorConfig Options ####
 
 # Indentation and spacing
