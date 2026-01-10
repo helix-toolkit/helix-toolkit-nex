@@ -1,5 +1,4 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
     <PropertyGroup>
         <TargetFramework>net8.0</TargetFramework>
         <RootNamespace>HelixToolkit.Nex.Graphics</RootNamespace>
@@ -12,14 +11,7 @@
         <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     </PropertyGroup>
     <ItemGroup>
-        <None Include="..\..\..\README.md">
-            <Pack>True</Pack>
-            <PackagePath>\</PackagePath>
-        </None>
+        <ProjectReference Include="..\HelixTookit.Nex\HelixToolkit.Nex.csproj" />
+        <ProjectReference Include="..\HelixToolkit.Nex.Maths\HelixToolkit.Nex.Maths.csproj" />
     </ItemGroup>
-    <ItemGroup>
-      <ProjectReference Include="..\HelixTookit.Nex\HelixToolkit.Nex.csproj" />
-      <ProjectReference Include="..\HelixToolkit.Nex.Maths\HelixToolkit.Nex.Maths.csproj" />
-    </ItemGroup>
-
 </Project>

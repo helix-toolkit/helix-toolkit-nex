@@ -13,10 +13,6 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="Glslang.NET" Version="1.2.0" />
-    </ItemGroup>
-
-    <ItemGroup>
         <ProjectReference Include="..\HelixToolkit.Nex.Graphics\HelixToolkit.Nex.Graphics.csproj" />
     </ItemGroup>
 

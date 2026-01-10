@@ -4,6 +4,7 @@ using SDL3;
 using static SDL3.SDL3;
 
 namespace HelixToolkit.Nex.Sample.Application;
+
 [Flags]
 public enum WindowFlags
 {
@@ -14,6 +15,7 @@ public enum WindowFlags
     Minimized = 1 << 3,
     Maximized = 1 << 4,
 }
+
 public sealed unsafe class Window
 {
     private readonly SDL_Window _window;
@@ -33,7 +35,8 @@ public sealed unsafe class Window
     {
         Title = title;
 
-        SDL_WindowFlags sdl_flags = SDL_WindowFlags.HighPixelDensity | SDL_WindowFlags.Vulkan | SDL_WindowFlags.Hidden;
+        SDL_WindowFlags sdl_flags =
+            SDL_WindowFlags.HighPixelDensity | SDL_WindowFlags.Vulkan | SDL_WindowFlags.Hidden;
         if ((flags & WindowFlags.Fullscreen) != WindowFlags.None)
         {
             sdl_flags |= SDL_WindowFlags.Fullscreen;

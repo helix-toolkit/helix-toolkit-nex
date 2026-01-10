@@ -1,9 +1,9 @@
-
 using Arch.Core;
 using Arch.Core.Extensions;
 using HelixToolkit.Nex.Scene;
 
 namespace HelixToolkit.Nex.Tests.Scene;
+
 [TestClass]
 public sealed class SceneTests
 {
@@ -11,10 +11,7 @@ public sealed class SceneTests
     public void CreateScene()
     {
         var world = World.Create();
-        var root = new Node(world)
-        {
-            Name = "Root Node"
-        };
+        var root = new Node(world) { Name = "Root Node" };
         Assert.IsNotNull(root);
         Assert.AreEqual("Root Node", root.Name);
         Assert.AreEqual(0, root.ChildCount);
@@ -34,14 +31,8 @@ public sealed class SceneTests
     public void AddChildToNode()
     {
         var world = World.Create();
-        var root = new Node(world)
-        {
-            Name = "Root Node"
-        };
-        var child = new Node(world)
-        {
-            Name = "Child Node"
-        };
+        var root = new Node(world) { Name = "Root Node" };
+        var child = new Node(world) { Name = "Child Node" };
         root.AddChild(child);
 
         Assert.IsTrue(root.HasChildren);
@@ -50,22 +41,22 @@ public sealed class SceneTests
         Assert.AreEqual(root, child.Parent);
         Assert.AreEqual(1, child.Info.Level);
         root.Dispose();
-        Assert.IsFalse(root.Alive, "Root Node should be disposed and not alive after calling Dispose.");
-        Assert.IsFalse(child.Alive, "Child Node should be disposed and not alive after calling Dispose.");
+        Assert.IsFalse(
+            root.Alive,
+            "Root Node should be disposed and not alive after calling Dispose."
+        );
+        Assert.IsFalse(
+            child.Alive,
+            "Child Node should be disposed and not alive after calling Dispose."
+        );
     }
 
     [TestMethod]
     public void RemoveChildToNode()
     {
         var world = World.Create();
-        var root = new Node(world)
-        {
-            Name = "Root Node"
-        };
-        var child = new Node(world)
-        {
-            Name = "Child Node"
-        };
+        var root = new Node(world) { Name = "Root Node" };
+        var child = new Node(world) { Name = "Child Node" };
         root.AddChild(child);
         Assert.IsTrue(root.HasChildren);
         Assert.AreEqual(1, root.ChildCount);
@@ -84,26 +75,11 @@ public sealed class SceneTests
     public void AddMultiLayerChildren()
     {
         var world = World.Create();
-        var root = new Node(world)
-        {
-            Name = "Root Node"
-        };
-        var child1 = new Node(world)
-        {
-            Name = "Child Node 1"
-        };
-        var child2 = new Node(world)
-        {
-            Name = "Child Node 2"
-        };
-        var grandChild1 = new Node(world)
-        {
-            Name = "GrandChild Node 1"
-        };
-        var grandChild2 = new Node(world)
-        {
-            Name = "GrandChild Node 2"
-        };
+        var root = new Node(world) { Name = "Root Node" };
+        var child1 = new Node(world) { Name = "Child Node 1" };
+        var child2 = new Node(world) { Name = "Child Node 2" };
+        var grandChild1 = new Node(world) { Name = "GrandChild Node 1" };
+        var grandChild2 = new Node(world) { Name = "GrandChild Node 2" };
         root.AddChild(child1);
         root.AddChild(child2);
         child1.AddChild(grandChild1);
@@ -131,37 +107,37 @@ public sealed class SceneTests
         Assert.IsTrue(grandChild2.Children is not null && grandChild2.Children.Count == 0);
 
         root.Dispose();
-        Assert.IsFalse(root.Alive, "Root Node should be disposed and not alive after calling Dispose.");
-        Assert.IsFalse(child1.Alive, "Child Node 1 should be disposed and not alive after calling Dispose.");
-        Assert.IsFalse(child2.Alive, "Child Node 2 should be disposed and not alive after calling Dispose.");
-        Assert.IsFalse(grandChild1.Alive, "GrandChild Node 1 should be disposed and not alive after calling Dispose.");
-        Assert.IsFalse(grandChild2.Alive, "GrandChild Node 2 should be disposed and not alive after calling Dispose.");
+        Assert.IsFalse(
+            root.Alive,
+            "Root Node should be disposed and not alive after calling Dispose."
+        );
+        Assert.IsFalse(
+            child1.Alive,
+            "Child Node 1 should be disposed and not alive after calling Dispose."
+        );
+        Assert.IsFalse(
+            child2.Alive,
+            "Child Node 2 should be disposed and not alive after calling Dispose."
+        );
+        Assert.IsFalse(
+            grandChild1.Alive,
+            "GrandChild Node 1 should be disposed and not alive after calling Dispose."
+        );
+        Assert.IsFalse(
+            grandChild2.Alive,
+            "GrandChild Node 2 should be disposed and not alive after calling Dispose."
+        );
     }
 
     [TestMethod]
     public void RemoveMultiLayerChildren()
     {
         var world = World.Create();
-        var root = new Node(world)
-        {
-            Name = "Root Node"
-        };
-        var child1 = new Node(world)
-        {
-            Name = "Child Node 1"
-        };
-        var child2 = new Node(world)
-        {
-            Name = "Child Node 2"
-        };
-        var grandChild1 = new Node(world)
-        {
-            Name = "GrandChild Node 1"
-        };
-        var grandChild2 = new Node(world)
-        {
-            Name = "GrandChild Node 2"
-        };
+        var root = new Node(world) { Name = "Root Node" };
+        var child1 = new Node(world) { Name = "Child Node 1" };
+        var child2 = new Node(world) { Name = "Child Node 2" };
+        var grandChild1 = new Node(world) { Name = "GrandChild Node 1" };
+        var grandChild2 = new Node(world) { Name = "GrandChild Node 2" };
         root.AddChild(child1);
         root.AddChild(child2);
         child1.AddChild(grandChild1);

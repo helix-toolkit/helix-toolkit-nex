@@ -10,12 +10,6 @@
         <IncludeSymbols>True</IncludeSymbols>
         <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     </PropertyGroup>
-    <ItemGroup>
-        <None Include="..\..\..\README.md">
-            <Pack>True</Pack>
-            <PackagePath>\</PackagePath>
-        </None>
-    </ItemGroup>
 
     <ItemGroup>
         <PackageReference Include="Glslang.NET" Version="1.2.0" />

@@ -1,12 +1,13 @@
-using System.Runtime.InteropServices;
 using System.Text;
 using Glslang.NET;
 using GLSLShaderStage = Glslang.NET.ShaderStage;
 
 namespace HelixToolkit.Nex.Graphics.Vulkan;
+
 internal static class ShaderExtensions
 {
     private struct ShaderExt { }
+
     private static readonly ILogger logger = LogManager.Create<ShaderExt>();
 
     public static GLSLShaderStage ToGLSL(this VkShaderStageFlags stage)
@@ -36,7 +37,8 @@ internal static class ShaderExtensions
                 maxTextureCoords = 32,
                 maxVertexAttribs = (int)limits.maxVertexInputAttributes,
                 maxVertexUniformComponents = (int)limits.maxUniformBufferRange / 4,
-                maxVaryingFloats = (int)Math.Min(limits.maxVertexOutputComponents, limits.maxFragmentInputComponents),
+                maxVaryingFloats = (int)
+                    Math.Min(limits.maxVertexOutputComponents, limits.maxFragmentInputComponents),
                 maxVertexTextureImageUnits = 32,
                 maxCombinedTextureImageUnits = 80,
                 maxTextureImageUnits = 32,
@@ -81,13 +83,17 @@ internal static class ShaderExtensions
                 maxGeometryTotalOutputComponents = (int)limits.maxGeometryTotalOutputComponents,
                 maxGeometryUniformComponents = 1024,
                 maxGeometryVaryingComponents = 64,
-                maxTessControlInputComponents = (int)limits.maxTessellationControlPerVertexInputComponents,
-                maxTessControlOutputComponents = (int)limits.maxTessellationControlPerVertexOutputComponents,
+                maxTessControlInputComponents = (int)
+                    limits.maxTessellationControlPerVertexInputComponents,
+                maxTessControlOutputComponents = (int)
+                    limits.maxTessellationControlPerVertexOutputComponents,
                 maxTessControlTextureImageUnits = 16,
                 maxTessControlUniformComponents = 1024,
                 maxTessControlTotalOutputComponents = 4096,
-                maxTessEvaluationInputComponents = (int)limits.maxTessellationEvaluationInputComponents,
-                maxTessEvaluationOutputComponents = (int)limits.maxTessellationEvaluationOutputComponents,
+                maxTessEvaluationInputComponents = (int)
+                    limits.maxTessellationEvaluationInputComponents,
+                maxTessEvaluationOutputComponents = (int)
+                    limits.maxTessellationEvaluationOutputComponents,
                 maxTessEvaluationTextureImageUnits = 16,
                 maxTessEvaluationUniformComponents = 1024,
                 maxTessPatchComponents = 120,
@@ -149,17 +155,19 @@ internal static class ShaderExtensions
         }
     }
 
-    public static ResultCode CreateShaderModuleFromSPIRV(this VkDevice vkDevice, nint spirv, size_t numBytes, out ShaderModuleState moduleOut, string? debugName)
+    public static ResultCode CreateShaderModuleFromSPIRV(
+        this VkDevice vkDevice,
+        nint spirv,
+        size_t numBytes,
+        out ShaderModuleState moduleOut,
+        string? debugName
+    )
     {
         moduleOut = ShaderModuleState.Null;
         VkShaderModule vkShaderModule = VkShaderModule.Null;
         unsafe
         {
-            VkShaderModuleCreateInfo ci = new()
-            {
-                codeSize = numBytes,
-                pCode = (uint32_t*)spirv,
-            };
+            VkShaderModuleCreateInfo ci = new() { codeSize = numBytes, pCode = (uint32_t*)spirv };
             {
                 VkResult result = VK.vkCreateShaderModule(vkDevice, &ci, null, out vkShaderModule);
                 if (result != VK.VK_SUCCESS)
@@ -169,7 +177,11 @@ internal static class ShaderExtensions
             }
             if (GraphicsSettings.EnableDebug && !string.IsNullOrEmpty(debugName))
             {
-                vkDevice.SetDebugObjectName(VK.VK_OBJECT_TYPE_SHADER_MODULE, (nuint)vkShaderModule.Handle, $"[Vk.Shader]: {debugName}");
+                vkDevice.SetDebugObjectName(
+                    VK.VK_OBJECT_TYPE_SHADER_MODULE,
+                    (nuint)vkShaderModule.Handle,
+                    $"[Vk.Shader]: {debugName}"
+                );
             }
 
             HxDebug.Assert(vkShaderModule != VkShaderModule.Null);
@@ -184,14 +196,25 @@ internal static class ShaderExtensions
                     pushConstantsSize = Math.Max(pushConstantsSize, block.offset + block.size);
                 }
                 spvReflectDestroyShaderModule(&mdl);
-                moduleOut = new ShaderModuleState() { ShaderModule = vkShaderModule, PushConstantsSize = pushConstantsSize };
+                moduleOut = new ShaderModuleState()
+                {
+                    ShaderModule = vkShaderModule,
+                    PushConstantsSize = pushConstantsSize,
+                };
                 return ResultCode.Ok;
             }
         }
     }
 
-    public static ResultCode CreateShaderModuleFromGLSL(this VkDevice vkDevice, ShaderStage stage, nint source, ShaderDefine[]? defines,
-        in VkPhysicalDeviceLimits limits, out ShaderModuleState shaderModule, string? debugName = null)
+    public static ResultCode CreateShaderModuleFromGLSL(
+        this VkDevice vkDevice,
+        ShaderStage stage,
+        nint source,
+        ShaderDefine[]? defines,
+        in VkPhysicalDeviceLimits limits,
+        out ShaderModuleState shaderModule,
+        string? debugName = null
+    )
     {
         shaderModule = ShaderModuleState.Null;
         HxDebug.Assert(source.Valid());
@@ -212,7 +235,13 @@ internal static class ShaderExtensions
         }
         var glslangResource = limits.GetGlslangResource();
 
-        var result = ShaderUtils.CompileShader(vkStage, src, glslangResource, defines, out var spirv);
+        var result = ShaderUtils.CompileShader(
+            vkStage,
+            src,
+            glslangResource,
+            defines,
+            out var spirv
+        );
         if (result.HasError())
         {
             logger.LogError("Failed to compile shader: {REASON}", result.ToString());
@@ -221,7 +250,12 @@ internal static class ShaderExtensions
         unsafe
         {
             using var pSpirv = spirv.Pin();
-            return vkDevice.CreateShaderModuleFromSPIRV((nint)pSpirv.Pointer, (size_t)(spirv.Length * sizeof(uint)), out shaderModule, debugName);
+            return vkDevice.CreateShaderModuleFromSPIRV(
+                (nint)pSpirv.Pointer,
+                (size_t)(spirv.Length * sizeof(uint)),
+                out shaderModule,
+                debugName
+            );
         }
     }
 }
@@ -230,7 +264,13 @@ internal sealed class ShaderUtils
 {
     private static readonly ILogger logger = LogManager.Create<ShaderUtils>();
 
-    public static ResultCode CompileShader(VkShaderStageFlags stage, string code, in ResourceLimits glslLangResource, ShaderDefine[]? defines, out uint[] outSPIRV)
+    public static ResultCode CompileShader(
+        VkShaderStageFlags stage,
+        string code,
+        in ResourceLimits glslLangResource,
+        ShaderDefine[]? defines,
+        out uint[] outSPIRV
+    )
     {
         outSPIRV = [];
         CompilationInput input = new()
@@ -316,7 +356,10 @@ internal sealed class ShaderUtils
             logger.LogWarning("{LOG}", message);
         }
 
-        logger.LogDebug("Shader SPIR-V code generated successfully. Size: {Size} bytes", outSPIRV.Length);
+        logger.LogDebug(
+            "Shader SPIR-V code generated successfully. Size: {Size} bytes",
+            outSPIRV.Length
+        );
         return ResultCode.Ok;
     }
 }

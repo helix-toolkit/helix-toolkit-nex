@@ -3,6 +3,7 @@ using Arch.Core;
 using HelixToolkit.Nex.Scene;
 
 namespace HelixToolkit.Nex.Tests.Scene;
+
 [TestClass]
 public sealed class SceneSortingTests
 {
@@ -12,18 +13,12 @@ public sealed class SceneSortingTests
     public void FlattenSceneSingleChildren(int nodeCount)
     {
         var world = World.Create();
-        var root = new Node(world)
-        {
-            Name = "Root Node"
-        };
+        var root = new Node(world) { Name = "Root Node" };
         {
             var node = root;
             for (int i = 0; i < nodeCount - 1; ++i)
             {
-                var child = new Node(world)
-                {
-                    Name = $"Child Node {i}"
-                };
+                var child = new Node(world) { Name = $"Child Node {i}" };
                 node.AddChild(child);
                 node = child;
             }
@@ -38,11 +33,13 @@ public sealed class SceneSortingTests
             var n = sortedNodes[i];
             if (n.HasParent)
             {
-                Assert.IsTrue(sortedNodes.IndexOf(n.Parent!) < i, $"Parent of {n.Name} should be before it in the sorted list.");
+                Assert.IsTrue(
+                    sortedNodes.IndexOf(n.Parent!) < i,
+                    $"Parent of {n.Name} should be before it in the sorted list."
+                );
             }
         }
     }
-
 
     [DataTestMethod]
     [DataRow(4, 4)]
@@ -50,10 +47,7 @@ public sealed class SceneSortingTests
     public void FlattenSceneMultiple(int childCount, int level)
     {
         var world = World.Create();
-        var root = new Node(world)
-        {
-            Name = "Root Node"
-        };
+        var root = new Node(world) { Name = "Root Node" };
         var total = SceneBuilderUtils.AddChildRecursively(root, 0, level, childCount, world) + 1;
 
         var sortedNodes = new List<Node>(total);
@@ -69,7 +63,10 @@ public sealed class SceneSortingTests
             var n = sortedNodes[i];
             if (n.HasParent)
             {
-                Assert.IsTrue(sortedNodes.IndexOf(n.Parent!) < i, $"Parent of {n.Name} should be before it in the sorted list.");
+                Assert.IsTrue(
+                    sortedNodes.IndexOf(n.Parent!) < i,
+                    $"Parent of {n.Name} should be before it in the sorted list."
+                );
             }
         }
     }
@@ -79,10 +76,7 @@ public sealed class SceneSortingTests
     public void TransformUpdate(int childCount, int level)
     {
         var world = World.Create();
-        var root = new Node(world)
-        {
-            Name = "Root Node"
-        };
+        var root = new Node(world) { Name = "Root Node" };
         var total = SceneBuilderUtils.AddChildRecursively(root, 0, level, childCount, world) + 1;
 
         var sortedNodes = new List<Node>(total);
@@ -97,7 +91,10 @@ public sealed class SceneSortingTests
         for (int i = 0; i < sortedNodes.Count; ++i)
         {
             var n = sortedNodes[i];
-            Assert.IsFalse(n.Transform.IsWorldDirty, $"Node {n.Name} should not have dirty world transform after update.");
+            Assert.IsFalse(
+                n.Transform.IsWorldDirty,
+                $"Node {n.Name} should not have dirty world transform after update."
+            );
             Assert.AreEqual(transform, n.Transform.WorldTransform);
         }
 
@@ -113,7 +110,10 @@ public sealed class SceneSortingTests
         for (int i = 1; i < sortedNodes.Count; ++i)
         {
             var n = sortedNodes[i];
-            Assert.IsFalse(n.Transform.IsWorldDirty, $"Node {n.Name} should not have dirty world transform after update.");
+            Assert.IsFalse(
+                n.Transform.IsWorldDirty,
+                $"Node {n.Name} should not have dirty world transform after update."
+            );
             Assert.AreEqual(transform, n.Transform.WorldTransform);
         }
     }
