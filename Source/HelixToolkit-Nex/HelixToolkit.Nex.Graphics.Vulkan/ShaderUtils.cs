@@ -225,11 +225,11 @@ internal static class ShaderExtensions
         }
         VkShaderStageFlags vkStage = stage.ToVk();
         StringBuilder builder = new();
-        string src = Marshal.PtrToStringAuto(source)!.Trim();
+        string src = Marshal.PtrToStringAnsi(source)!.Trim();
         if (!src.StartsWith("#version "))
         {
-            builder.Append(GlslHeaders.GetShaderHeader(stage));
-            builder.AppendLine("");
+            builder.AppendLine(GlslHeaders.DEFAULT_VERSION);
+            builder.AppendLine(GlslHeaders.GetShaderHeader(stage));
             builder.Append(src);
             src = builder.ToString();
         }

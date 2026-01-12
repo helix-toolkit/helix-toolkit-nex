@@ -1,232 +1,235 @@
-# ObservablePropertyGenerator - Usage Guide
+# HelixToolkit.Nex.CodeGen
 
 ## Overview
 
-The `ObservablePropertyGenerator` is a C# source generator that automatically creates observable properties from private fields marked with the `[Observable]` attribute. It follows the pattern used by CommunityToolkit.Mvvm.
+HelixToolkit.Nex.CodeGen is a C# source generator library that provides automated code generation tools for the HelixToolkit.Nex graphics framework. This library contains Roslyn-based incremental source generators that reduce boilerplate code and improve developer productivity.
 
-## How It Works
+## Features
 
-When you mark a private field with `[Observable]`, the generator:
-1. Creates a public property with the same name (PascalCase)
-2. Implements `INotifyPropertyChanged` using the `Set()` method from `ObservableObject`
-3. Generates the property in a partial class file
+This library includes two main source generators:
 
-### Example
+### 1. **GLSL to C# Struct Generator**
+Automatically converts GLSL shader struct definitions into equivalent C# structs with proper memory layout for GPU buffer interoperability.
 
-**Source Code:**
-```csharp
-public partial class UnlitMaterialProperties : MaterialProperties
-{
-    [Observable(Default = "Vector4.One")]
-    private Vector4 _albedo;
+**Key capabilities:**
+- Automatic type mapping from GLSL to C# types
+- Proper memory layout with `[StructLayout(LayoutKind.Sequential)]`
+- Documentation preservation from GLSL comments
+- Array support with marshaling attributes
 
-    [Observable(Default = "TextureResource.Null")]
-    private TextureResource _albedoTexture;
-}
-```
+?? **[Read the full GLSL Struct Generator documentation](GLSL_STRUCT_GENERATOR_README.md)**
 
-**Generated Code:**
-```csharp
-// UnlitMaterialProperties.Observable.g.cs
-partial class UnlitMaterialProperties
-{
-    public System.Numerics.Vector4 Albedo
-    {
-        get => _albedo;
-        set { Set(ref _albedo, value); }
-    }
+### 2. **Observable Property Generator**
+Automatically generates observable properties from fields marked with the `[Observable]` attribute, following the CommunityToolkit.Mvvm pattern.
 
-    public TextureResource AlbedoTexture
-    {
-        get => _albedoTexture;
-        set { Set(ref _albedoTexture, value); }
-    }
-}
-```
+**Key capabilities:**
+- Automatic `INotifyPropertyChanged` implementation
+- Convention-based property naming
+- Default value support
+- IntelliSense integration
 
-## IntelliSense Support
+?? **[Read the full Observable Property Generator documentation](OBSERVABLE_PROPERTY_GENERATOR_README.md)**
 
-To make IntelliSense recognize the generated properties, your project file should include:
+## Target Framework
 
-```xml
-<PropertyGroup>
-  <!-- Enable source generator diagnostics and emit generated files -->
-  <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
-  <CompilerGeneratedFilesOutputPath>$(BaseIntermediateOutputPath)\Generated</CompilerGeneratedFilesOutputPath>
-</PropertyGroup>
+- **.NET Standard 2.0** - Ensures maximum compatibility with various .NET runtimes and IDEs
 
-<!-- Include generated files in the project for IntelliSense -->
-<ItemGroup>
-  <Compile Include="$(CompilerGeneratedFilesOutputPath)\**\*.cs" Visible="false" />
-</ItemGroup>
-```
+## Technology Stack
 
-### If IntelliSense Doesn't Recognize Generated Properties
+- **Roslyn Compiler Platform** - Microsoft.CodeAnalysis.CSharp 4.14.0
+- **Incremental Generators** - For optimal build performance
+- **C# 11+ Language Features** - With LangVersion set to latest
 
-1. **Build the project** to trigger the source generator:
-   ```bash
-   dotnet build
-   ```
+## Installation
 
-2. **Restart your IDE**:
-   - Visual Studio: Close and reopen the solution
-   - VS Code: Reload window (Ctrl+Shift+P ? "Developer: Reload Window")
-
-3. **Check generated files** are created in:
-   ```
-   obj/Generated/HelixToolkit.Nex.CodeGen/HelixToolkit.Nex.CodeGen.ObservablePropertyGenerator/
-   ```
-
-4. **Clean and rebuild** if needed:
-   ```bash
-   dotnet clean
-   dotnet build
-   ```
-
-## Naming Conventions
-
-The generator converts field names to property names:
-
-| Field Name | Property Name |
-|------------|---------------|
-| `_albedo` | `Albedo` |
-| `_baseColor` | `BaseColor` |
-| `myField` | `MyField` |
-| `_metallicRoughnessTexture` | `MetallicRoughnessTexture` |
-
-Rules:
-1. Remove leading underscore (`_`)
-2. Capitalize first letter
-3. Keep the rest of the name as-is
-
-## Default Values
-
-You can specify default values for fields using the `Default` parameter:
-
-```csharp
-[Observable(Default = "Vector4.One")]
-private Vector4 _albedo;
-
-[Observable(Default = "1.0f")]
-private float _roughness;
-
-[Observable(Default = "TextureResource.Null")]
-private TextureResource _texture;
-
-[Observable]  // No default value
-private float _metallic;
-```
-
-The default value should be a valid C# expression.
-
-## Requirements
-
-1. The containing class must be `partial`
-2. The field must be marked with `[Observable]` attribute
-3. The class must inherit from `ObservableObject` or provide a `Set<T>()` method
-4. The field must be a field (not a property)
-
-## Troubleshooting
-
-### Error: "The type already contains a definition for 'PropertyName'"
-
-This means you're trying to generate a property that already exists. Make sure:
-- You're using **fields** (not properties) with the `[Observable]` attribute
-- You haven't manually declared the property in your source code
-
-### Error: "Attribute 'Observable' is not valid on this declaration type"
-
-The `[Observable]` attribute targets fields only. Make sure you're applying it to a field:
-```csharp
-// ? Correct
-[Observable]
-private int _myField;
-
-// ? Wrong - don't use on properties
-[Observable]
-public int MyProperty { get; set; }
-```
-
-### IntelliSense doesn't recognize generated properties
-
-1. Build the project
-2. Check that `EmitCompilerGeneratedFiles` is set to `true` in your `.csproj`
-3. Restart your IDE
-4. Verify generated files exist in `obj/Generated/`
-
-### Generated files not visible in Solution Explorer
-
-Generated files are intentionally hidden (`Visible="false"` in project file) but are included for compilation and IntelliSense. You can find them in:
-```
-obj/Generated/HelixToolkit.Nex.CodeGen/HelixToolkit.Nex.CodeGen.ObservablePropertyGenerator/
-```
-
-## Project Setup
-
-To use the generator in a project, add these references to your `.csproj`:
+Reference this project as an analyzer in your `.csproj` file:
 
 ```xml
 <ItemGroup>
-  <!-- Reference to ObservableObject and ObservableAttribute -->
-  <ProjectReference Include="..\HelixToolkit.Nex\HelixToolkit.Nex.csproj" />
-  
-  <!-- Source generator as analyzer -->
   <ProjectReference Include="..\HelixToolkit.Nex.CodeGen\HelixToolkit.Nex.CodeGen.csproj"
                     OutputItemType="Analyzer"
                     ReferenceOutputAssembly="false" />
 </ItemGroup>
 ```
 
-## Best Practices
+## Quick Start
 
-1. **Use descriptive field names** - They become your public property names
-2. **Group related fields** - Keep fields that generate related properties together
-3. **Initialize fields with default values** - The `Default` parameter in the attribute is for documentation; actual initialization should be in the field declaration
-4. **Make classes partial** - Required for the generator to add properties
-5. **Inherit from ObservableObject** - Provides the `Set()` method needed for change notification
+### Using the GLSL Struct Generator
 
-## Examples
+1. Add your GLSL shader files to the project as `AdditionalFiles`:
+```xml
+<ItemGroup>
+    <AdditionalFiles Include="Shaders\*.glsl" />
+</ItemGroup>
+```
 
-### Simple Material Properties
+2. Define structs in your GLSL files:
+```glsl
+struct Material {
+    vec3 color;
+    float roughness;
+};
+```
+
+3. Build the project - C# structs are automatically generated!
+
+### Using the Observable Property Generator
+
+1. Mark fields with `[Observable]` attribute:
 ```csharp
-public partial class SimpleMaterialProperties : MaterialProperties
+public partial class MyViewModel : ObservableObject
 {
-    [Observable(Default = "Color4.White")]
-    private Color4 _color;
-
     [Observable]
-    private float _opacity;
+    private string _title;
+    
+    [Observable(Default = "0")]
+    private int _count;
 }
 ```
 
-### PBR Material Properties
-```csharp
-public partial class PbrMaterialProperties : MaterialProperties
-{
-    [Observable(Default = "Vector4.One")]
-    private Vector4 _baseColor;
+2. Build the project - Observable properties are automatically generated!
 
-    [Observable]
-    private float _metallic;
+## Generated Files Location
 
-    [Observable(Default = "1.0f")]
-    private float _roughness;
-
-    [Observable(Default = "TextureResource.Null")]
-    private TextureResource _baseColorTexture;
-}
+By default, generated files are created in:
+```
+obj/Generated/HelixToolkit.Nex.CodeGen/
 ```
 
-## Generator Implementation Details
+To emit generated files to a visible directory for debugging:
+```bash
+dotnet build /p:EmitCompilerGeneratedFiles=true /p:CompilerGeneratedFilesOutputPath=obj/GeneratedFiles
+```
 
-- **Target Framework**: .NET Standard 2.0 (for maximum compatibility)
-- **Generator Type**: Incremental Generator (`IIncrementalGenerator`)
-- **Performance**: Only processes fields with `[Observable]` attribute
-- **Output**: Generates one `.g.cs` file per class with observable fields
+Or add to your `.csproj`:
+```xml
+<PropertyGroup>
+  <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+  <CompilerGeneratedFilesOutputPath>$(BaseIntermediateOutputPath)\Generated</CompilerGeneratedFilesOutputPath>
+</PropertyGroup>
 
-## Related Files
+<ItemGroup>
+  <Compile Include="$(CompilerGeneratedFilesOutputPath)\**\*.cs" Visible="false" />
+</ItemGroup>
+```
 
-- `ObservableObject.cs` - Base class providing `Set()` method
-- `ObservableAttribute.cs` - Attribute definition
-- `ObservablePropertyGenerator.cs` - Source generator implementation
-- `ObservablePropertyGeneratorTests.cs` - Unit tests
+## Project Structure
+
+```
+HelixToolkit.Nex.CodeGen/
+??? README.md                                    # This file
+??? GLSL_STRUCT_GENERATOR_README.md              # GLSL generator documentation
+??? OBSERVABLE_PROPERTY_GENERATOR_README.md      # Observable generator documentation
+??? HelixToolkit.Nex.CodeGen.csproj             # Project file
+??? GlslStructGenerator.cs                       # GLSL source generator
+??? GlslStructParser.cs                          # GLSL parsing logic
+??? CSharpStructGenerator.cs                     # C# code generation
+??? ObservablePropertyGenerator.cs               # Observable property generator
+```
+
+## Testing
+
+Unit tests are available in the companion test project:
+```bash
+dotnet test HelixToolkit.Nex.CodeGen.Tests
+```
+
+The test project includes:
+- `GlslStructParserTests` - GLSL parser validation
+- `ObservablePropertyGeneratorTests` - Observable property generation tests
+
+## Requirements
+
+- **.NET SDK 8.0 or higher** (for building)
+- **C# compiler with source generator support** (Visual Studio 2022, VS Code with C# extension, or Rider)
+
+## Documentation
+
+For detailed usage instructions, examples, and troubleshooting:
+
+- **[GLSL Struct Generator Guide](GLSL_STRUCT_GENERATOR_README.md)** - Complete documentation for shader struct generation
+- **[Observable Property Generator Guide](OBSERVABLE_PROPERTY_GENERATOR_README.md)** - Complete documentation for observable property generation
+
+## Architecture
+
+### Source Generator Pipeline
+
+```
+Input Files ? Syntax Analysis ? Code Generation ? Compilation
+```
+
+Both generators implement the `IIncrementalGenerator` interface for optimal performance:
+- Only process changed files
+- Cache intermediate results
+- Minimize allocations
+- Support incremental compilation
+
+### Key Components
+
+1. **GlslStructGenerator** - Main entry point for GLSL processing
+2. **GlslStructParser** - Regex-based GLSL struct parser
+3. **CSharpStructGenerator** - C# code emission for structs
+4. **ObservablePropertyGenerator** - Property generation from fields
+
+## Benefits
+
+? **Reduces Boilerplate** - Eliminates hundreds of lines of repetitive code  
+? **Type Safety** - Compile-time validation of generated code  
+? **IDE Support** - Full IntelliSense for generated members  
+? **Performance** - Incremental generation only processes changes  
+? **Maintainability** - Single source of truth for definitions  
+? **Consistency** - Enforces naming and pattern conventions  
+
+## Troubleshooting
+
+### Generator not running
+- Ensure the project is referenced as an analyzer (`OutputItemType="Analyzer"`)
+- Clean and rebuild the solution
+- Check for errors in the build output
+
+### IntelliSense not showing generated code
+- Build the project to trigger code generation
+- Restart your IDE
+- Verify `EmitCompilerGeneratedFiles` is enabled
+- Check that generated files exist in `obj/Generated/`
+
+### Generated code has errors
+- Review the generator documentation for correct usage patterns
+- Ensure your source code meets the generator requirements
+- Check the build output for generator diagnostics
+
+For detailed troubleshooting, see the individual generator documentation files.
+
+## Contributing
+
+When contributing to this project:
+
+1. **Follow the coding conventions** used in existing generators
+2. **Add unit tests** for new functionality
+3. **Update documentation** in the relevant README files
+4. **Test with incremental builds** to ensure performance
+5. **Validate in multiple IDEs** (Visual Studio, VS Code, Rider)
+
+## License
+
+This project is part of the HelixToolkit.Nex graphics framework. See the root repository for license information.
+
+## Related Projects
+
+- **HelixToolkit.Nex** - Main graphics framework library
+- **HelixToolkit.Nex.Shaders** - Shader compilation and management
+- **HelixToolkit.Nex.Material** - Material system (uses Observable properties)
+- **HelixToolkit.Nex.CodeGen.Tests** - Unit tests for this project
+
+## Support
+
+For questions, issues, or feature requests:
+- Visit the [HelixToolkit GitHub repository](https://github.com/helix-toolkit/helix-toolkit-nex)
+- Check the detailed documentation in the markdown files listed above
+- Review the test project for usage examples
+
+---
+
+**Version:** Compatible with .NET Standard 2.0 and higher  
+**Generator API:** Microsoft.CodeAnalysis 4.14.0  
+**Last Updated:** 2024

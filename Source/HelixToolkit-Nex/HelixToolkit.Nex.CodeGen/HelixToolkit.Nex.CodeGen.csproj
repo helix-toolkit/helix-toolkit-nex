@@ -22,4 +22,8 @@
         />
         <PackageReference Include="System.Collections.Immutable" Version="9.0.0" />
     </ItemGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="HelixToolkit.Nex.CodeGen.Tests" />
+    </ItemGroup>
 </Project>

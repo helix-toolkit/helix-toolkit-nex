@@ -1,39 +1,24 @@
 namespace HelixToolkit.Nex.Material;
 
-[StructLayout(LayoutKind.Sequential)]
-public struct PbrVariables
-{
-    public static readonly uint SizeInBytes = NativeHelper.SizeOf<PbrVariables>();
-
-    static PbrVariables()
-    {
-        Debug.Assert(SizeInBytes == 32);
-    }
-
-    public Vector4 BaseColor;
-    public float Metallic;
-    public float Roughness;
-    private Vector2 _padding;
-
-    public PbrVariables(Vector4 baseColor, float metallic, float roughness)
-    {
-        BaseColor = baseColor;
-        Metallic = metallic;
-        Roughness = roughness;
-        _padding = Vector2.Zero;
-    }
-
-    public static readonly PbrVariables Default = new(new Vector4(1, 1, 1, 1), 0.0f, 1.0f);
-}
-
 /// <summary>
 /// Physically Based Rendering (PBR) material properties (Metallic-Roughness workflow).
 /// Keep this POCO-style so it can be serialized or uploaded to GPU easily.
 /// </summary>
 public partial class PbrMaterialProperties : MaterialProperties
 {
+    public static readonly PBRMaterial Default = new()
+    {
+        Albedo = new Vector3(1.0f, 1.0f, 1.0f),
+        Metallic = 0.0f,
+        Roughness = 1.0f,
+        Ao = 1.0f,
+        Normal = new Vector3(0.0f, 0.0f, 1.0f),
+        Emissive = new Vector3(0.0f, 0.0f, 0.0f),
+        Opacity = 1.0f,
+    };
+
     [Observable]
-    private PbrVariables _variables = PbrVariables.Default;
+    private PBRMaterial _variables = Default;
 
     /// <summary>
     /// Texture resource used for the material's base color.

@@ -42,7 +42,7 @@ public class ShaderBuildOptions
     /// <summary>
     /// Gets or sets the default shader version string used when none is specified explicitly.
     /// </summary>
-    public string DefaultVersion { set; get; } = "#version 460";
+    public string DefaultVersion { set; get; } = GlslHeaders.DEFAULT_VERSION;
 }
 
 /// <summary>

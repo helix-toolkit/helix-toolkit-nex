@@ -4,6 +4,7 @@ namespace HelixToolkit.Nex.Shaders;
 
 public static class GlslHeaders
 {
+    public const string DEFAULT_VERSION = "#version 460";
     private const string TASK_MESH_SHADER = "HeaderTask.glsl";
 
     private const string VERTEX_COMPUTE_TESS_SHADER = "HeaderVertex.glsl";

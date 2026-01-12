@@ -1,8 +1,9 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <TargetFramework>net8.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     </PropertyGroup>
 
     <ItemGroup>
@@ -10,10 +11,20 @@
         <EmbeddedResource Include="Headers\HeaderTask.glsl" />
         <EmbeddedResource Include="Headers\HeaderVertex.glsl" />
         <EmbeddedResource Include="Headers\PBRFunctions.glsl" />
+
+        <!-- Add GLSL files as AdditionalFiles for source generator -->
+        <AdditionalFiles Include="Headers\*.glsl" />
     </ItemGroup>
 
     <ItemGroup>
         <ProjectReference Include="..\HelixToolkit.Nex.Graphics\HelixToolkit.Nex.Graphics.csproj" />
+
+        <!-- Add source generator reference -->
+        <ProjectReference
+            Include="..\HelixToolkit.Nex.CodeGen\HelixToolkit.Nex.CodeGen.csproj"
+            OutputItemType="Analyzer"
+            ReferenceOutputAssembly="false"
+        />
     </ItemGroup>
 
     <ItemGroup>

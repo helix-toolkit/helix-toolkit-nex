@@ -238,7 +238,7 @@ void main() {
             vertexShader,
             debugName: "TestMultiStage_Vertex"
         );
-        var (fsBuild, fsModule) = _context.BuildAndCompileShader(
+        var (fsBuild, fsModule) = _context!.BuildAndCompileShader(
             ShaderStage.Fragment,
             fragmentShader,
             debugName: "TestMultiStage_Fragment"
