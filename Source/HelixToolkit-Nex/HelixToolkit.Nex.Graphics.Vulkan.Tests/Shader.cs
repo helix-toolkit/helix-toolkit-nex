@@ -19,7 +19,7 @@ public class Shader
         _vkContext?.Dispose();
     }
 
-    private static byte[] GetGlslShaderCode(string shaderName)
+    private static string GetGlslShaderCode(string shaderName)
     {
         var assembly = typeof(Shader).Assembly;
         var assemblyName =
@@ -31,7 +31,7 @@ public class Shader
                 $"Shader file '{shaderName}' not found in embedded resources."
             );
         using var reader = new BinaryReader(stream);
-        return reader.ReadBytes((int)stream.Length);
+        return reader.ReadString();
     }
 
     [DataTestMethod]
@@ -47,11 +47,10 @@ public class Shader
     )
     {
         var shaderCode = GetGlslShaderCode(expectedFileName);
-        using var pData = shaderCode.Pin(); // Pin the byte array to prevent garbage collection
 
         var shaderDesc = new ShaderModuleDesc
         {
-            Data = (nint)pData.Pointer,
+            GlslSource = shaderCode,
             DataSize = (size_t)shaderCode.Length,
             DataType = ShaderDataType.Glsl,
             Stage = stage,

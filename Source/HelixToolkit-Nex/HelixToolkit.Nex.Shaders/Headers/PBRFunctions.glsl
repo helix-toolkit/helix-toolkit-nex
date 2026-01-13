@@ -25,13 +25,14 @@ struct PBRMaterial {
 // ============================================================================
 struct Light {
     vec3 position;         // Light position (world space)
+    uint type;              // Light type: 0=directional, 1=point, 2=spot
     vec3 direction;        // Light direction (for directional/spot lights)
+    float range;           // Light range (for point/spot lights)
     vec3 color;            // Light color (linear RGB)
     float intensity;       // Light intensity
-    int type;              // Light type: 0=directional, 1=point, 2=spot
-    float range;           // Light range (for point/spot lights)
     float innerConeAngle;  // Inner cone angle (for spot lights)
     float outerConeAngle;  // Outer cone angle (for spot lights)
+    vec2 _padding;          // Padding for alignment
 };
 
 // ============================================================================

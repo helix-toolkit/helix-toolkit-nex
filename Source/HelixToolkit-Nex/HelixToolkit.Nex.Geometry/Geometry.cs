@@ -1,56 +1,52 @@
-using System.Text.Json.Serialization;
-using Microsoft.Extensions.Logging;
-
 namespace HelixToolkit.Nex.Geometries;
 
-[StructLayout(LayoutKind.Sequential)]
+[StructLayout(LayoutKind.Sequential, Pack = 16)]
 [JsonConverter(typeof(Serialization.VertexJsonConverter))]
-public struct Vertex(Vector3 position, Vector3 normal, Vector2 texCoord, Vector4 color)
+public struct Vertex(Vector3 position, Vector3 normal, Vector2 texCoord, Vector4 tangent)
 {
     public static readonly uint SizeInBytes = NativeHelper.SizeOf<Vertex>();
 
     static Vertex()
     {
-        Debug.Assert(SizeInBytes == 48);
+        Debug.Assert(SizeInBytes == 64, $"Size of Vertex struct must be 64 but is {SizeInBytes}");
+        // Verify alignment
+        unsafe
+        {
+            var v = new Vertex();
+            var basePtr = (byte*)&v;
+            var normalOffset = (byte*)&v.Normal - basePtr;
+            var texCoordOffset = (byte*)&v.TexCoord - basePtr;
+            var tangentOffset = (byte*)&v.Tangent - basePtr;
+
+            Debug.Assert(normalOffset == 16, "Normal must be at offset 16");
+            Debug.Assert(texCoordOffset == 32, "TexCoord must be at offset 32");
+            Debug.Assert(tangentOffset == 48, "Tangent must be at offset 48");
+        }
     }
 
     public Vector3 Position = position;
+    private readonly float _padding0 = 0;
     public Vector3 Normal = normal;
+    private readonly float _padding1 = 0;
     public Vector2 TexCoord = texCoord;
-    public Vector4 Color = color;
+    private readonly Vector2 _padding2 = Vector2.Zero;
+    public Vector4 Tangent = tangent;
 
     public Vertex(Vector3 position, Vector3 normal, Vector2 texCoord)
-        : this(position, normal, texCoord, new Vector4(1, 1, 1, 1)) { }
+        : this(position, normal, texCoord, Vector4.Zero) { }
 
     public Vertex(Vector3 position, Vector3 normal)
-        : this(position, normal, new Vector2(0, 0), new Vector4(1, 1, 1, 1)) { }
+        : this(position, normal, Vector2.Zero, Vector4.Zero) { }
 
     public Vertex(Vector3 position)
-        : this(position, new Vector3(0, 0, 0), new Vector2(0, 0), new Vector4(1, 1, 1, 1)) { }
+        : this(position, Vector3.Zero, Vector2.Zero, Vector4.Zero) { }
 
     public static readonly Vertex Empty = new(
-        new Vector3(0, 0, 0),
-        new Vector3(0, 0, 0),
-        new Vector2(0, 0),
-        new Vector4(0, 0, 0, 0)
+        Vector3.Zero,
+        Vector3.Zero,
+        Vector2.Zero,
+        Vector4.Zero
     );
-}
-
-[StructLayout(LayoutKind.Sequential)]
-[JsonConverter(typeof(Serialization.BiNormalJsonConverter))]
-public struct BiNormal(Vector3 bitangent, Vector3 tangent)
-{
-    public static readonly uint SizeInBytes = NativeHelper.SizeOf<BiNormal>();
-
-    static BiNormal()
-    {
-        Debug.Assert(SizeInBytes == 24);
-    }
-
-    public Vector3 Bitangent = bitangent;
-    public Vector3 Tangent = tangent;
-
-    public static readonly BiNormal Empty = new(new Vector3(0, 0, 0), new Vector3(0, 0, 0));
 }
 
 [Flags]
@@ -58,8 +54,8 @@ public enum GeometryBufferType
 {
     Vertex = 1,
     Index = 1 << 1,
-    BiNormal = 1 << 2,
-    All = Vertex | Index | BiNormal,
+    VertexColor = 1 << 2,
+    All = Vertex | Index | VertexColor,
 }
 
 [JsonConverter(typeof(Serialization.GeometryJsonConverter))]
@@ -76,7 +72,7 @@ public partial class Geometry : ObservableObject, IDisposable
     private FastList<uint> _indices = [];
 
     [Observable]
-    private FastList<BiNormal> _biNormals = [];
+    private FastList<Vector4> _vertexColors = [];
 
     public Geometry(Topology topology = Topology.Triangle)
     {
@@ -92,9 +88,9 @@ public partial class Geometry : ObservableObject, IDisposable
             {
                 BufferDirty |= GeometryBufferType.Index;
             }
-            else if (e.PropertyName is nameof(BiNormals))
+            else if (e.PropertyName is nameof(VertexColors))
             {
-                BufferDirty |= GeometryBufferType.BiNormal;
+                BufferDirty |= GeometryBufferType.VertexColor;
             }
         };
     }
@@ -102,16 +98,17 @@ public partial class Geometry : ObservableObject, IDisposable
     public Geometry(
         IEnumerable<Vertex> vertices,
         IEnumerable<uint> indices,
-        IEnumerable<BiNormal>? biNormals = null,
+        IEnumerable<Vector4>? colors = null,
         Topology topology = Topology.Triangle
     )
         : this(topology)
     {
         _vertices.AddRange(vertices);
         _indices.AddRange(indices);
-        if (biNormals is not null)
+        if (colors is not null)
         {
-            _biNormals.AddRange(biNormals);
+            _vertexColors.AddRange(colors);
+            Debug.Assert(_vertices.Count == _vertexColors.Count);
         }
     }
 
@@ -130,11 +127,11 @@ public partial class Geometry : ObservableObject, IDisposable
 
     private BufferResource _vertexBuffer = BufferResource.Null;
     private BufferResource _indexBuffer = BufferResource.Null;
-    private BufferResource _binormalBuffer = BufferResource.Null;
+    private BufferResource _vertColorsBuffer = BufferResource.Null;
 
     public BufferResource VertexBuffer => _vertexBuffer;
     public BufferResource IndexBuffer => _indexBuffer;
-    public BufferResource BiNormalBuffer => _binormalBuffer;
+    public BufferResource BiNormalBuffer => _vertColorsBuffer;
 
     public GeometryBufferType BufferDirty { set; get; } = GeometryBufferType.All;
 
@@ -229,22 +226,22 @@ public partial class Geometry : ObservableObject, IDisposable
             }
             BufferDirty &= ~GeometryBufferType.Index;
         }
-        if (types.HasFlag(GeometryBufferType.BiNormal))
+        if (types.HasFlag(GeometryBufferType.VertexColor))
         {
-            _binormalBuffer?.Dispose();
-            if (_biNormals.Count > 0 && _biNormals.Count == _vertices.Count)
+            _vertColorsBuffer?.Dispose();
+            if (_vertexColors.Count > 0 && _vertexColors.Count == _vertices.Count)
             {
                 unsafe
                 {
-                    using var ptr = _biNormals.GetInternalArray().Pin();
+                    using var ptr = _vertexColors.GetInternalArray().Pin();
                     var result = context.CreateBuffer(
                         new BufferDesc(
                             BufferUsageBits.Vertex,
                             StorageType.Device,
                             (nint)ptr.Pointer,
-                            (uint)(_biNormals.Count * BiNormal.SizeInBytes)
+                            (uint)(_vertexColors.Count * sizeof(Vector4))
                         ),
-                        out _binormalBuffer,
+                        out _vertColorsBuffer,
                         debugName: GraphicsSettings.EnableDebug
                             ? $"{nameof(Geometry)}_{Id}_BiNormalBuffer"
                             : null
@@ -258,7 +255,7 @@ public partial class Geometry : ObservableObject, IDisposable
                     }
                 }
             }
-            BufferDirty &= ~GeometryBufferType.BiNormal;
+            BufferDirty &= ~GeometryBufferType.VertexColor;
         }
         return ResultCode.Ok;
     }
@@ -274,7 +271,7 @@ public partial class Geometry : ObservableObject, IDisposable
             {
                 _vertexBuffer?.Dispose();
                 _indexBuffer?.Dispose();
-                _binormalBuffer?.Dispose();
+                _vertColorsBuffer?.Dispose();
             }
 
             // TODO: free unmanaged resources (unmanaged objects) and override finalizer

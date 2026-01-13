@@ -7,10 +7,7 @@ namespace HelixToolkit.Nex.Geometries.Tests;
 [TestClass]
 public sealed class GeometrySerialization
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        WriteIndented = true
-    };
+    private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
 
     [TestMethod]
     public void SerializeDeserialize_EmptyGeometry()
@@ -28,7 +25,7 @@ public sealed class GeometrySerialization
         Assert.AreEqual(original.Topology, deserialized.Topology);
         Assert.AreEqual(0, deserialized.Vertices.Count);
         Assert.AreEqual(0, deserialized.Indices.Count);
-        Assert.AreEqual(0, deserialized.BiNormals.Count);
+        Assert.AreEqual(0, deserialized.VertexColors.Count);
         Assert.AreEqual(original.IsDynamic, deserialized.IsDynamic);
     }
 
@@ -40,7 +37,7 @@ public sealed class GeometrySerialization
         {
             new Vertex(new Vector3(0, 0, 0), new Vector3(0, 1, 0), new Vector2(0, 0)),
             new Vertex(new Vector3(1, 0, 0), new Vector3(0, 1, 0), new Vector2(1, 0)),
-            new Vertex(new Vector3(0, 1, 0), new Vector3(0, 1, 0), new Vector2(0, 1))
+            new Vertex(new Vector3(0, 1, 0), new Vector3(0, 1, 0), new Vector2(0, 1)),
         };
         var original = new Geometry(vertices, Topology.Triangle);
 
@@ -69,7 +66,7 @@ public sealed class GeometrySerialization
             new Vertex(new Vector3(0, 0, 0), new Vector3(0, 1, 0)),
             new Vertex(new Vector3(1, 0, 0), new Vector3(0, 1, 0)),
             new Vertex(new Vector3(1, 1, 0), new Vector3(0, 1, 0)),
-            new Vertex(new Vector3(0, 1, 0), new Vector3(0, 1, 0))
+            new Vertex(new Vector3(0, 1, 0), new Vector3(0, 1, 0)),
         };
         var indices = new uint[] { 0, 1, 2, 0, 2, 3 };
         var original = new Geometry(vertices, indices, topology: Topology.Triangle);
@@ -86,23 +83,23 @@ public sealed class GeometrySerialization
     }
 
     [TestMethod]
-    public void SerializeDeserialize_GeometryWithBiNormals()
+    public void SerializeDeserialize_GeometryWithVertexColors()
     {
         // Arrange
         var vertices = new[]
         {
             new Vertex(new Vector3(0, 0, 0)),
             new Vertex(new Vector3(1, 0, 0)),
-            new Vertex(new Vector3(0, 1, 0))
+            new Vertex(new Vector3(0, 1, 0)),
         };
-        var biNormals = new[]
+        var colors = new[]
         {
-            new BiNormal(new Vector3(1, 0, 0), new Vector3(0, 0, 1)),
-            new BiNormal(new Vector3(1, 0, 0), new Vector3(0, 0, 1)),
-            new BiNormal(new Vector3(1, 0, 0), new Vector3(0, 0, 1))
+            new Vector4(1, 0, 0, 0),
+            new Vector4(0, 1, 0, 0),
+            new Vector4(0, 0, 1, 0),
         };
         var indices = new uint[] { 0, 1, 2 };
-        var original = new Geometry(vertices, indices, biNormals, Topology.Triangle);
+        var original = new Geometry(vertices, indices, colors, Topology.Triangle);
 
         // Act
         string json = JsonSerializer.Serialize(original, JsonOptions);
@@ -110,11 +107,11 @@ public sealed class GeometrySerialization
 
         // Assert
         Assert.IsNotNull(deserialized);
-        Assert.AreEqual(3, deserialized.BiNormals.Count);
+        Assert.AreEqual(3, deserialized.VertexColors.Count);
 
-        for (int i = 0; i < biNormals.Length; i++)
+        for (int i = 0; i < colors.Length; i++)
         {
-            AssertBiNormalEqual(biNormals[i], deserialized.BiNormals[i]);
+            Assert.AreEqual(colors[i], deserialized.VertexColors[i]);
         }
     }
 
@@ -128,29 +125,32 @@ public sealed class GeometrySerialization
                 new Vector3(0, 0, 0),
                 new Vector3(0, 1, 0),
                 new Vector2(0, 0),
-                new Vector4(1, 0, 0, 1)),
+                new Vector4(1, 0, 0, 1)
+            ),
             new Vertex(
                 new Vector3(1, 0, 0),
                 new Vector3(0, 1, 0),
                 new Vector2(1, 0),
-                new Vector4(0, 1, 0, 1)),
+                new Vector4(0, 1, 0, 1)
+            ),
             new Vertex(
                 new Vector3(0, 1, 0),
                 new Vector3(0, 1, 0),
                 new Vector2(0, 1),
-                new Vector4(0, 0, 1, 1))
+                new Vector4(0, 0, 1, 1)
+            ),
         };
         var indices = new uint[] { 0, 1, 2 };
-        var biNormals = new[]
+        var colors = new[]
         {
-            new BiNormal(new Vector3(1, 0, 0), new Vector3(0, 0, 1)),
-            new BiNormal(new Vector3(1, 0, 0), new Vector3(0, 0, 1)),
-            new BiNormal(new Vector3(1, 0, 0), new Vector3(0, 0, 1))
+            new Vector4(1, 0, 0, 0),
+            new Vector4(0, 1, 0, 0),
+            new Vector4(0, 0, 1, 0),
         };
 
-        var original = new Geometry(vertices, indices, biNormals, Topology.Triangle)
+        var original = new Geometry(vertices, indices, colors, Topology.Triangle)
         {
-            IsDynamic = true
+            IsDynamic = true,
         };
         var originalId = original.Id;
 
@@ -164,7 +164,7 @@ public sealed class GeometrySerialization
         Assert.AreEqual(Topology.Triangle, deserialized.Topology);
         Assert.AreEqual(3, deserialized.Vertices.Count);
         Assert.AreEqual(3, deserialized.Indices.Count);
-        Assert.AreEqual(3, deserialized.BiNormals.Count);
+        Assert.AreEqual(3, deserialized.VertexColors.Count);
         Assert.IsTrue(deserialized.IsDynamic);
 
         for (int i = 0; i < vertices.Length; i++)
@@ -174,9 +174,9 @@ public sealed class GeometrySerialization
 
         CollectionAssert.AreEqual(indices, deserialized.Indices.ToArray());
 
-        for (int i = 0; i < biNormals.Length; i++)
+        for (int i = 0; i < colors.Length; i++)
         {
-            AssertBiNormalEqual(biNormals[i], deserialized.BiNormals[i]);
+            Assert.AreEqual(colors[i], deserialized.VertexColors[i]);
         }
     }
 
@@ -193,7 +193,7 @@ public sealed class GeometrySerialization
         {
             new Vertex(new Vector3(0, 0, 0)),
             new Vertex(new Vector3(1, 0, 0)),
-            new Vertex(new Vector3(0, 1, 0))
+            new Vertex(new Vector3(0, 1, 0)),
         };
         var original = new Geometry(vertices, topology);
 
@@ -226,23 +226,6 @@ public sealed class GeometrySerialization
     }
 
     [TestMethod]
-    public void SerializeDeserialize_BiNormal()
-    {
-        // Arrange
-        var biNormal = new BiNormal(
-            new Vector3(1, 0, 0),
-            new Vector3(0, 0, 1)
-        );
-
-        // Act
-        string json = JsonSerializer.Serialize(biNormal, JsonOptions);
-        var deserialized = JsonSerializer.Deserialize<BiNormal>(json);
-
-        // Assert
-        AssertBiNormalEqual(biNormal, deserialized);
-    }
-
-    [TestMethod]
     public void SerializeDeserialize_FastList()
     {
         // Arrange
@@ -263,12 +246,14 @@ public sealed class GeometrySerialization
     {
         // Arrange - Create a geometry with many vertices
         const int vertexCount = 1000;
-        var vertices = Enumerable.Range(0, vertexCount)
+        var vertices = Enumerable
+            .Range(0, vertexCount)
             .Select(i => new Vertex(
                 new Vector3(i, i * 2, i * 3),
                 new Vector3(0, 1, 0),
                 new Vector2(i / 1000f, i / 1000f),
-                new Vector4(1, 1, 1, 1)))
+                new Vector4(1, 1, 1, 1)
+            ))
             .ToArray();
 
         var indices = Enumerable.Range(0, vertexCount).Select(i => (uint)i).ToArray();
@@ -342,12 +327,17 @@ public sealed class GeometrySerialization
     {
         // Arrange
         var guid = Guid.NewGuid();
-        string json = @"{
-            ""Id"": """ + guid + @""",
-            ""Topology"": " + (int)Topology.Triangle + @",
+        string json =
+            @"{
+            ""Id"": """
+            + guid
+            + @""",
+            ""Topology"": "
+            + (int)Topology.Triangle
+            + @",
             ""Vertices"": [],
             ""Indices"": [],
-            ""BiNormals"": [],
+            ""VertexColors"": [],
             ""IsDynamic"": false
         }";
 
@@ -358,7 +348,7 @@ public sealed class GeometrySerialization
         Assert.IsNotNull(deserialized);
         Assert.AreEqual(0, deserialized.Vertices.Count);
         Assert.AreEqual(0, deserialized.Indices.Count);
-        Assert.AreEqual(0, deserialized.BiNormals.Count);
+        Assert.AreEqual(0, deserialized.VertexColors.Count);
     }
 
     [TestMethod]
@@ -366,9 +356,14 @@ public sealed class GeometrySerialization
     {
         // Arrange
         var guid = Guid.NewGuid();
-        string json = @"{
-            ""Id"": """ + guid + @""",
-            ""Topology"": " + (int)Topology.Triangle + @",
+        string json =
+            @"{
+            ""Id"": """
+            + guid
+            + @""",
+            ""Topology"": "
+            + (int)Topology.Triangle
+            + @",
             ""Vertices"": [],
             ""Indices"": [],
             ""IsDynamic"": false
@@ -379,7 +374,7 @@ public sealed class GeometrySerialization
 
         // Assert
         Assert.IsNotNull(deserialized);
-        Assert.AreEqual(0, deserialized.BiNormals.Count);
+        Assert.AreEqual(0, deserialized.VertexColors.Count);
     }
 
     #region Helper Methods
@@ -389,12 +384,6 @@ public sealed class GeometrySerialization
         Assert.AreEqual(expected.Position, actual.Position, $"Position mismatch");
         Assert.AreEqual(expected.Normal, actual.Normal, $"Normal mismatch");
         Assert.AreEqual(expected.TexCoord, actual.TexCoord, $"TexCoord mismatch");
-        Assert.AreEqual(expected.Color, actual.Color, $"Color mismatch");
-    }
-
-    private static void AssertBiNormalEqual(BiNormal expected, BiNormal actual)
-    {
-        Assert.AreEqual(expected.Bitangent, actual.Bitangent, $"Bitangent mismatch");
         Assert.AreEqual(expected.Tangent, actual.Tangent, $"Tangent mismatch");
     }
 

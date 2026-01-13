@@ -165,6 +165,10 @@ internal static class ShaderExtensions
     {
         moduleOut = ShaderModuleState.Null;
         VkShaderModule vkShaderModule = VkShaderModule.Null;
+        if (spirv.IsNull())
+        {
+            return ResultCode.ArgumentNull;
+        }
         unsafe
         {
             VkShaderModuleCreateInfo ci = new() { codeSize = numBytes, pCode = (uint32_t*)spirv };
@@ -209,7 +213,7 @@ internal static class ShaderExtensions
     public static ResultCode CreateShaderModuleFromGLSL(
         this VkDevice vkDevice,
         ShaderStage stage,
-        nint source,
+        string source,
         ShaderDefine[]? defines,
         in VkPhysicalDeviceLimits limits,
         out ShaderModuleState shaderModule,
@@ -217,15 +221,13 @@ internal static class ShaderExtensions
     )
     {
         shaderModule = ShaderModuleState.Null;
-        HxDebug.Assert(source.Valid());
-        if (source.IsNull())
+        if (source.Length == 0)
         {
-            logger.LogError("Shader source is empty");
             return ResultCode.ArgumentNull;
         }
         VkShaderStageFlags vkStage = stage.ToVk();
         StringBuilder builder = new();
-        string src = Marshal.PtrToStringAnsi(source)!.Trim();
+        string src = source.Trim();
         if (!src.StartsWith("#version "))
         {
             builder.AppendLine(GlslHeaders.DEFAULT_VERSION);

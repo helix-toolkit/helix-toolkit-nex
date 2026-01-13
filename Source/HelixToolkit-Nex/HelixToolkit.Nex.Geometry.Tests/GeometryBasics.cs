@@ -17,6 +17,7 @@ public sealed class GeometryBasics
                 propertyChangedRaised = true;
             }
         };
+        var v = new Vertex(new Vector3(1, 2, 3));
         geometry.Vertices = [.. Enumerable.Repeat(new Vertex(new Vector3(1, 2, 3)), 10)];
         Assert.IsTrue(propertyChangedRaised, "PropertyChanged event was not raised for Vertices.");
     }

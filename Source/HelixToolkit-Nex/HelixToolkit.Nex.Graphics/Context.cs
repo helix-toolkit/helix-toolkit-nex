@@ -409,13 +409,12 @@ public static class ContextExtensions
         string? debugName = null
     )
     {
-        using var data = glsl.ToArray().Pin();
         unsafe
         {
             return context.CreateShaderModule(
                 new ShaderModuleDesc
                 {
-                    Data = (nint)data.Pointer,
+                    GlslSource = glsl,
                     DataSize = (uint)glsl.Length,
                     Stage = stage,
                     DataType = ShaderDataType.Glsl,
@@ -442,14 +441,13 @@ public static class ContextExtensions
         string? debugName = null
     )
     {
-        using var data = glsl.ToArray().Pin();
         unsafe
         {
             context
                 .CreateShaderModule(
                     new ShaderModuleDesc
                     {
-                        Data = (nint)data.Pointer,
+                        GlslSource = glsl,
                         DataSize = (uint)glsl.Length,
                         Stage = stage,
                         DataType = ShaderDataType.Glsl,

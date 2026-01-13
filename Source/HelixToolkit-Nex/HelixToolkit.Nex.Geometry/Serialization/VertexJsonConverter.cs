@@ -1,6 +1,4 @@
-using System.Numerics;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 
 namespace HelixToolkit.Nex.Geometries.Serialization;
 
@@ -9,7 +7,11 @@ namespace HelixToolkit.Nex.Geometries.Serialization;
 /// </summary>
 public class VertexJsonConverter : JsonConverter<Vertex>
 {
-    public override Vertex Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    public override Vertex Read(
+        ref Utf8JsonReader reader,
+        Type typeToConvert,
+        JsonSerializerOptions options
+    )
     {
         if (reader.TokenType != JsonTokenType.StartObject)
         {
@@ -19,13 +21,13 @@ public class VertexJsonConverter : JsonConverter<Vertex>
         Vector3 position = default;
         Vector3 normal = default;
         Vector2 texCoord = default;
-        Vector4 color = new Vector4(1, 1, 1, 1);
+        Vector4 tangent = default;
 
         while (reader.Read())
         {
             if (reader.TokenType == JsonTokenType.EndObject)
             {
-                return new Vertex(position, normal, texCoord, color);
+                return new Vertex(position, normal, texCoord, tangent);
             }
 
             if (reader.TokenType != JsonTokenType.PropertyName)
@@ -47,8 +49,8 @@ public class VertexJsonConverter : JsonConverter<Vertex>
                 case "TexCoord":
                     texCoord = ReadVector2(ref reader);
                     break;
-                case "Color":
-                    color = ReadVector4(ref reader);
+                case "Tangent":
+                    tangent = ReadVector4(ref reader);
                     break;
                 default:
                     reader.Skip();
@@ -66,7 +68,9 @@ public class VertexJsonConverter : JsonConverter<Vertex>
             throw new JsonException("Expected StartObject for Vector3");
         }
 
-        float x = 0, y = 0, z = 0;
+        float x = 0,
+            y = 0,
+            z = 0;
         while (reader.Read())
         {
             if (reader.TokenType == JsonTokenType.EndObject)
@@ -103,7 +107,8 @@ public class VertexJsonConverter : JsonConverter<Vertex>
             throw new JsonException("Expected StartObject for Vector2");
         }
 
-        float x = 0, y = 0;
+        float x = 0,
+            y = 0;
         while (reader.Read())
         {
             if (reader.TokenType == JsonTokenType.EndObject)
@@ -137,7 +142,10 @@ public class VertexJsonConverter : JsonConverter<Vertex>
             throw new JsonException("Expected StartObject for Vector4");
         }
 
-        float x = 0, y = 0, z = 0, w = 0;
+        float x = 0,
+            y = 0,
+            z = 0,
+            w = 0;
         while (reader.Read())
         {
             if (reader.TokenType == JsonTokenType.EndObject)
@@ -194,12 +202,12 @@ public class VertexJsonConverter : JsonConverter<Vertex>
         writer.WriteNumber("Y", value.TexCoord.Y);
         writer.WriteEndObject();
 
-        writer.WritePropertyName("Color");
+        writer.WritePropertyName("Tangent");
         writer.WriteStartObject();
-        writer.WriteNumber("X", value.Color.X);
-        writer.WriteNumber("Y", value.Color.Y);
-        writer.WriteNumber("Z", value.Color.Z);
-        writer.WriteNumber("W", value.Color.W);
+        writer.WriteNumber("X", value.Tangent.X);
+        writer.WriteNumber("Y", value.Tangent.Y);
+        writer.WriteNumber("Z", value.Tangent.Z);
+        writer.WriteNumber("W", value.Tangent.W);
         writer.WriteEndObject();
 
         writer.WriteEndObject();

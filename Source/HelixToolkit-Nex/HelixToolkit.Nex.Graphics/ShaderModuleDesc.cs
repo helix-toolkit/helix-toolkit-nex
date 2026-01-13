@@ -18,7 +18,7 @@ public enum ShaderDataType
     /// <summary>
     /// GLSL source code format (will be compiled to SPIR-V).
     /// </summary>
-    Glsl
+    Glsl,
 }
 
 /// <summary>
@@ -64,9 +64,14 @@ public struct ShaderModuleDesc()
     public ShaderDataType DataType = ShaderDataType.Auto; // default is SPIR-V
 
     /// <summary>
-    /// Pointer to the shader data (either SPIR-V bytecode or GLSL source code).
+    /// Pointer to the shader data (SPIR-V bytecode).
     /// </summary>
     public nint Data;
+
+    /// <summary>
+    /// Gets or sets the GLSL (OpenGL Shading Language) source code associated with this object.
+    /// </summary>
+    public string GlslSource = string.Empty;
 
     /// <summary>
     /// Size of the shader data in bytes.

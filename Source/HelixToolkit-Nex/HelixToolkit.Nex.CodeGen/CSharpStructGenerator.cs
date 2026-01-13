@@ -79,7 +79,7 @@ public class CSharpStructGenerator
         sb.AppendLine($"/// </summary>");
 
         // StructLayout attribute for proper memory alignment
-        sb.AppendLine("[StructLayout(LayoutKind.Sequential)]");
+        sb.AppendLine("[StructLayout(LayoutKind.Sequential, Pack = 16)]");
         sb.AppendLine($"public struct {glslStruct.Name}");
         sb.AppendLine("{");
 
@@ -90,7 +90,7 @@ public class CSharpStructGenerator
         );
         sb.AppendLine($"    /// </summary>");
         sb.AppendLine(
-            $"    public static readonly unsafe int SizeInBytes = sizeof({glslStruct.Name});"
+            $"    public static readonly unsafe uint SizeInBytes = (uint)sizeof({glslStruct.Name});"
         );
         sb.AppendLine();
 
