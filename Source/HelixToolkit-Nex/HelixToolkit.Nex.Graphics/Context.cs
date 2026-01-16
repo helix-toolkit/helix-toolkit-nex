@@ -506,6 +506,41 @@ public static class ContextExtensions
     }
 
     /// <summary>
+    /// Creates a new buffer resource from the specified list of unmanaged data elements.
+    /// </summary>
+    /// <remarks>The buffer is initialized with the contents of <paramref name="data"/>. The usage and storage
+    /// parameters control how the buffer can be accessed and where it is allocated.</remarks>
+    /// <typeparam name="T">The type of elements in the buffer. Must be an unmanaged type.</typeparam>
+    /// <param name="context">The context in which the buffer will be created. Must not be <c>null</c>.</param>
+    /// <param name="data">The list of unmanaged elements to initialize the buffer with. The buffer will contain a copy of these elements.</param>
+    /// <param name="usage">A set of flags specifying the intended usage of the buffer, such as read, write, or copy operations.</param>
+    /// <param name="storage">The storage type that determines how and where the buffer's memory is allocated.</param>
+    /// <param name="buffer">When this method returns, contains the created <see cref="BufferResource"/> if the operation succeeds;
+    /// otherwise, <c>null</c>.</param>
+    /// <param name="debugName">An optional name for debugging purposes. If <c>null</c>, no debug name is assigned.</param>
+    /// <returns>A <see cref="ResultCode"/> value indicating the result of the buffer creation operation.</returns>
+    public static ResultCode CreateBuffer<T>(
+        this IContext context,
+        FastList<T> data,
+        BufferUsageBits usage,
+        StorageType storage,
+        out BufferResource buffer,
+        string? debugName = null
+    )
+        where T : unmanaged
+    {
+        return CreateBuffer(
+            context,
+            data.GetInternalArray(),
+            data.Count,
+            usage,
+            storage,
+            out buffer,
+            debugName
+        );
+    }
+
+    /// <summary>
     /// Creates a buffer from an array of unmanaged data.
     /// </summary>
     /// <typeparam name="T">The unmanaged type of the array elements.</typeparam>
@@ -526,6 +561,39 @@ public static class ContextExtensions
     )
         where T : unmanaged
     {
+        return CreateBuffer(context, data, data.Length, usage, storage, out buffer, debugName);
+    }
+
+    /// <summary>
+    /// Creates a new buffer resource and initializes it with the specified data.
+    /// </summary>
+    /// <remarks>The buffer is created using the provided usage and storage options, and is initialized with
+    /// the contents of <paramref name="data"/> up to <paramref name="count"/> elements. The buffer can be used for GPU
+    /// operations as defined by <paramref name="usage"/>. The caller is responsible for ensuring that <paramref
+    /// name="data"/> contains at least <paramref name="count"/> elements.</remarks>
+    /// <typeparam name="T"></typeparam>
+    /// <param name="context">The context used to create the buffer resource.</param>
+    /// <param name="data">The array of unmanaged elements to initialize the buffer with. Must not be <see langword="null"/> and must
+    /// contain at least <paramref name="count"/> elements.</param>
+    /// <param name="count">The number of elements from <paramref name="data"/> to copy into the buffer. Must be non-negative and not exceed
+    /// the length of <paramref name="data"/>.</param>
+    /// <param name="usage">A set of flags specifying how the buffer will be used (e.g., for vertex data, index data, etc.).</param>
+    /// <param name="storage">The storage type indicating where and how the buffer will be allocated (e.g., device-local, host-visible).</param>
+    /// <param name="buffer">When this method returns, contains the created buffer resource initialized with the specified data.</param>
+    /// <param name="debugName">An optional name for the buffer resource, used for debugging purposes. Can be <see langword="null"/>.</param>
+    /// <returns>A <see cref="ResultCode"/> indicating the result of the buffer creation operation. Returns <see
+    /// cref="ResultCode.Success"/> if the buffer was created successfully; otherwise, returns an error code.</returns>
+    public static ResultCode CreateBuffer<T>(
+        this IContext context,
+        T[] data,
+        int count,
+        BufferUsageBits usage,
+        StorageType storage,
+        out BufferResource buffer,
+        string? debugName = null
+    )
+        where T : unmanaged
+    {
         unsafe
         {
             using var pinnedData = data.Pin();
@@ -534,13 +602,51 @@ public static class ContextExtensions
                     usage,
                     storage,
                     (nint)pinnedData.Pointer,
-                    (uint)(data.Length * sizeof(T)),
+                    (uint)(count * sizeof(T)),
                     debugName
                 ),
                 out buffer,
                 debugName
             );
         }
+    }
+
+    /// <summary>
+    /// Creates a new <see cref="BufferResource"/> containing the elements of the specified list, with the given usage
+    /// and storage options.
+    /// </summary>
+    /// <remarks>The returned buffer will have a size equal to the number of elements in <paramref
+    /// name="data"/>. The buffer's usage and storage are determined by the <paramref name="usage"/> and <paramref
+    /// name="storage"/> parameters.</remarks>
+    /// <typeparam name="T">The type of elements in the buffer. Must be an unmanaged type.</typeparam>
+    /// <param name="context">The graphics context used to create the buffer. Must not be <c>null</c>.</param>
+    /// <param name="data">The list of elements to populate the buffer. The buffer will contain exactly <paramref name="data"/>.Count
+    /// elements.</param>
+    /// <param name="usage">A set of flags specifying how the buffer will be used (e.g., read, write, copy).</param>
+    /// <param name="storage">The type of memory storage to use for the buffer (e.g., device-local, host-visible).</param>
+    /// <param name="debugName">An optional name for debugging purposes. If <c>null</c>, no debug name is assigned.</param>
+    /// <returns>A <see cref="BufferResource"/> containing the data from <paramref name="data"/> and configured with the
+    /// specified usage and storage.</returns>
+    public static BufferResource CreateBuffer<T>(
+        this IContext context,
+        FastList<T> data,
+        BufferUsageBits usage,
+        StorageType storage,
+        string? debugName = null
+    )
+        where T : unmanaged
+    {
+        CreateBuffer(
+                context,
+                data.GetInternalArray(),
+                data.Count,
+                usage,
+                storage,
+                out var buffer,
+                debugName
+            )
+            .CheckResult();
+        return buffer;
     }
 
     /// <summary>
@@ -564,6 +670,35 @@ public static class ContextExtensions
         where T : unmanaged
     {
         CreateBuffer(context, data, usage, storage, out var buffer, debugName).CheckResult();
+        return buffer;
+    }
+
+    /// <summary>
+    /// Creates a new <see cref="BufferResource"/> containing the specified data and configuration.
+    /// </summary>
+    /// <remarks>The buffer is created with the specified usage and storage options, and is initialized with
+    /// the first <paramref name="count"/> elements from <paramref name="data"/>. The caller is responsible for
+    /// disposing the returned <see cref="BufferResource"/> when it is no longer needed.</remarks>
+    /// <typeparam name="T">The unmanaged value type of the buffer elements.</typeparam>
+    /// <param name="context">The graphics context used to create the buffer. Must not be <c>null</c>.</param>
+    /// <param name="data">The array of elements to initialize the buffer with. The array length must be at least <paramref name="count"/>.</param>
+    /// <param name="count">The number of elements from <paramref name="data"/> to include in the buffer. Must be non-negative and not
+    /// greater than <paramref name="data"/>.Length.</param>
+    /// <param name="usage">A set of flags specifying how the buffer will be used (e.g., for vertex data, index data, etc.).</param>
+    /// <param name="storage">The storage type that determines how and where the buffer's memory is allocated.</param>
+    /// <param name="debugName">An optional name for the buffer resource, used for debugging and profiling. Can be <c>null</c>.</param>
+    /// <returns>A <see cref="BufferResource"/> initialized with the specified data and configuration.</returns>
+    public static BufferResource CreateBuffer<T>(
+        this IContext context,
+        T[] data,
+        int count,
+        BufferUsageBits usage,
+        StorageType storage,
+        string? debugName = null
+    )
+        where T : unmanaged
+    {
+        CreateBuffer(context, data, count, usage, storage, out var buffer, debugName).CheckResult();
         return buffer;
     }
 

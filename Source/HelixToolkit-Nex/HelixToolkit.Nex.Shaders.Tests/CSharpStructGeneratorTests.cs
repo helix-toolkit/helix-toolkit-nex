@@ -31,8 +31,8 @@ struct Light {
     float intensity;       // Light intensity
     int type;              // Light type: 0=directional, 1=point, 2=spot
     float range;           // Light range (for point/spot lights)
-    float innerConeAngle;  // Inner cone angle (for spot lights)
-    float outerConeAngle;  // Outer cone angle (for spot lights)
+    vec2 spotAngles;       // x=inner, y=outer cone angles
+    vec2 _padding;          // Padding for alignment
 };
 ";
 
@@ -112,11 +112,11 @@ struct Light {
         Assert.AreEqual("range", light.Fields[5].Name);
         Assert.AreEqual("float", light.Fields[5].GlslType);
 
-        Assert.AreEqual("innerConeAngle", light.Fields[6].Name);
-        Assert.AreEqual("float", light.Fields[6].GlslType);
+        Assert.AreEqual("spotAngles", light.Fields[6].Name);
+        Assert.AreEqual("vec2", light.Fields[6].GlslType);
 
-        Assert.AreEqual("outerConeAngle", light.Fields[7].Name);
-        Assert.AreEqual("float", light.Fields[7].GlslType);
+        Assert.AreEqual("_padding", light.Fields[7].Name);
+        Assert.AreEqual("vec2", light.Fields[7].GlslType);
     }
 
     [TestMethod]
@@ -197,8 +197,7 @@ struct Light {
         Assert.IsTrue(code.Contains("float Intensity"), "Should map float to float");
         Assert.IsTrue(code.Contains("int Type"), "Should map int to int");
         Assert.IsTrue(code.Contains("float Range"), "Should map float to float");
-        Assert.IsTrue(code.Contains("float InnerConeAngle"), "Should convert to PascalCase");
-        Assert.IsTrue(code.Contains("float OuterConeAngle"), "Should convert to PascalCase");
+        Assert.IsTrue(code.Contains("System.Numerics.Vector2 SpotAngles"), "Should map vec2 to Vector2");
         Assert.IsTrue(
             code.Contains("[StructLayout(LayoutKind.Sequential)]"),
             "Should have StructLayout attribute"

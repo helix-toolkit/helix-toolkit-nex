@@ -4,19 +4,62 @@ namespace HelixToolkit.Nex.Material;
 /// Base abstraction for all materials used by the rendering engine.
 /// Concrete material types should inherit from <see cref="Material{TProperties}"/> to expose typed properties.
 /// </summary>
-public abstract class Material
+public class Material : IDisposable
 {
+    private bool _disposedValue;
+
     /// <summary>
     /// Optional per-material pipeline resource. Renderers may use this to cache a pipeline
     /// produced for this material (shaders, states, etc.). Default is <see cref="RenderPipelineResource.Null"/>.
     /// </summary>
-    public virtual RenderPipelineResource Pipeline { get; } = RenderPipelineResource.Null;
+    public RenderPipelineResource Pipeline { private set; get; } = RenderPipelineResource.Null;
+
+    public virtual bool CreatePipeline(IContext context, in RenderPipelineDesc pipelineDesc)
+    {
+        Pipeline.Dispose();
+        // Create the pipeline
+        Pipeline = context.CreateRenderPipeline(pipelineDesc);
+
+        return Pipeline.Valid;
+    }
 
     /// <summary>
     /// Optional friendly name useful for debugging or UI.
     /// Delegates to the underlying properties debug name when available.
     /// </summary>
     public virtual string? DebugName => null;
+
+    protected virtual void OnDisposing() { }
+
+    private void Dispose(bool disposing)
+    {
+        if (!_disposedValue)
+        {
+            if (disposing)
+            {
+                OnDisposing();
+                Pipeline.Dispose();
+            }
+
+            // TODO: free unmanaged resources (unmanaged objects) and override finalizer
+            // TODO: set large fields to null
+            _disposedValue = true;
+        }
+    }
+
+    // // TODO: override finalizer only if 'Dispose(bool disposing)' has code to free unmanaged resources
+    // ~Material()
+    // {
+    //     // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+    //     Dispose(disposing: false);
+    // }
+
+    public void Dispose()
+    {
+        // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+        Dispose(disposing: true);
+        GC.SuppressFinalize(this);
+    }
 }
 
 /// <summary>

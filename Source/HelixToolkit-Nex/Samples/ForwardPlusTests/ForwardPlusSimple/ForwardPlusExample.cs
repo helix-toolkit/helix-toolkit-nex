@@ -1,4 +1,9 @@
+using System.Diagnostics;
+using System.Numerics;
+using HelixToolkit.Nex.Geometries;
+using HelixToolkit.Nex.Graphics;
 using HelixToolkit.Nex.Material;
+using HelixToolkit.Nex.Shaders;
 
 namespace HelixToolkit.Nex.Examples;
 
@@ -7,36 +12,91 @@ namespace HelixToolkit.Nex.Examples;
 /// </summary>
 public class ForwardPlusExample
 {
+    private static readonly FastList<Vertex> _vertices =
+    [
+        new Vertex(new Vector3(-1, -1, 1)),
+        new Vertex(new Vector3(1, -1, 1)),
+        new Vertex(new Vector3(1, 1, 1)),
+        new Vertex(new Vector3(-1, 1, 1)),
+        new Vertex(new Vector3(-1, -1, -1)),
+        new Vertex(new Vector3(1, -1, -1)),
+        new Vertex(new Vector3(1, 1, -1)),
+        new Vertex(new Vector3(-1, 1, -1)),
+    ];
+
+    private static readonly FastList<uint> _indexData =
+    [
+        0,
+        1,
+        2,
+        2,
+        3,
+        0,
+        1,
+        5,
+        6,
+        6,
+        2,
+        1,
+        7,
+        6,
+        5,
+        5,
+        4,
+        7,
+        4,
+        0,
+        3,
+        3,
+        7,
+        4,
+        4,
+        5,
+        1,
+        1,
+        0,
+        4,
+        3,
+        2,
+        6,
+        6,
+        7,
+        3,
+    ];
     private readonly IContext _context;
-    private BufferResource _vertexBuffer = BufferResource.Null;
     private BufferResource _lightBuffer = BufferResource.Null;
     private BufferResource _lightGridBuffer = BufferResource.Null;
     private BufferResource _lightIndexBuffer = BufferResource.Null;
     private BufferResource _counterBuffer = BufferResource.Null;
+    private BufferResource _modelMatrixBuffer = BufferResource.Null;
     private RenderPipelineResource _renderPipeline = RenderPipelineResource.Null;
     private ComputePipelineResource _cullingPipeline = ComputePipelineResource.Null;
+    private SamplerResource _depthBufferSampler = SamplerResource.Null;
     private ForwardPlusConfig _config;
     private Light[] _lights = Array.Empty<Light>();
+    private Matrix4x4[] _modelMatrices = new[] { Matrix4x4.Identity };
+    private readonly Geometry _box;
+    private readonly Geometry _sphere;
 
     public ForwardPlusExample(IContext context)
     {
         _context = context;
         _config = ForwardPlusConfig.Default;
+        var builder = new MeshBuilder(true, true, true);
+        builder.AddBox(Vector3.Zero, 2, 2, 2);
+        _box = builder.ToMesh().ToGeometry();
+        builder = new MeshBuilder(true, true, true);
+        builder.AddSphere(Vector3.Zero, 2);
+        _sphere = builder.ToMesh().ToGeometry();
     }
 
     public void Initialize(int screenWidth, int screenHeight)
     {
-        // 1. Create test scene with vertices
-        var vertices = CreateTestCube();
-        _vertexBuffer = _context.CreateBuffer(
-            vertices,
-            BufferUsageBits.Storage,
-            StorageType.Device,
-            "ForwardPlus_VertexBuffer"
-        );
+        _box.UpdateBuffers(_context);
+        _sphere.UpdateBuffers(_context);
 
         // 2. Create lights
-        _lights = CreateTestLights(100); // 100 point lights
+        _lights = CreateTestLights(20); // 100 point lights
         _lightBuffer = _context.CreateBuffer(
             _lights,
             BufferUsageBits.Storage,
@@ -79,6 +139,21 @@ public class ForwardPlusExample
             "ForwardPlus_Counter"
         );
 
+        _modelMatrixBuffer = _context.CreateBuffer(
+            _modelMatrices,
+            BufferUsageBits.Storage,
+            StorageType.Device,
+            "ForwardPlus_ModelMatrices"
+        );
+
+        _depthBufferSampler = _context.CreateSampler(
+            new SamplerStateDesc
+            {
+                MinFilter = SamplerFilter.Nearest,
+                MagFilter = SamplerFilter.Nearest,
+            }
+        );
+
         // 4. Create light culling compute pipeline
         var cullingShader = ForwardPlusLightCulling.GenerateLightCullingComputeShader(_config);
         var cullingModule = _context.CreateShaderModuleGlsl(
@@ -93,8 +168,8 @@ public class ForwardPlusExample
         // 5. Create render pipeline with Forward+
         var builder = new MaterialShaderBuilder()
             .WithPBRShading(true)
-            .WithBindlessVertices(true)
-            .WithForwardPlus(true, _config);
+            .WithSimpleLighting(false)
+            .ConfigForwardPlus(_config);
 
         var shaderResult = builder.BuildMaterialPipeline(_context, "ForwardPlus_Render");
 
@@ -104,23 +179,39 @@ public class ForwardPlusExample
             VertexShader = shaderResult.VertexShader,
             FragementShader = shaderResult.FragmentShader,
             DebugName = "ForwardPlus_RenderPipeline",
+            CullMode = CullMode.Back,
+            FrontFaceWinding = WindingMode.CCW,
         };
-        pipelineDesc.Colors[0].Format = Format.RGBA_UN8;
+        pipelineDesc.Colors[0].Format = Format.BGRA_UN8;
+        pipelineDesc.DepthFormat = Format.Z_F32;
 
         _renderPipeline = _context.CreateRenderPipeline(pipelineDesc);
+        Debug.Assert(_renderPipeline.Valid);
     }
 
-    public void Render(ICommandBuffer cmdBuffer, Camera camera, int screenWidth, int screenHeight)
+    public void PreRender(ICommandBuffer cmdBuffer)
     {
         // Step 1: Reset counter
         cmdBuffer.FillBuffer(_counterBuffer, 0, sizeof(uint), 0);
+        // Update model matrices if needed
+        _modelMatrices[0] = Matrix4x4.CreateRotationY(
+            (float)DateTime.Now.TimeOfDay.TotalSeconds * 0.5f
+        );
+        cmdBuffer.UpdateBuffer(_modelMatrixBuffer, _modelMatrices, (uint)_modelMatrices.Length);
+    }
 
+    public void Render(
+        ICommandBuffer cmdBuffer,
+        Camera camera,
+        int screenWidth,
+        int screenHeight,
+        uint depthBufferIndex
+    )
+    {
         // Step 2: Run light culling compute shader
         var tileCountX = (screenWidth + (int)_config.TileSize - 1) / (int)_config.TileSize;
         var tileCountY = (screenHeight + (int)_config.TileSize - 1) / (int)_config.TileSize;
-
         cmdBuffer.BindComputePipeline(_cullingPipeline);
-
         // Push constants for culling
         Matrix4x4.Invert(camera.Projection, out var invProj);
         var cullingConstants = new LightCullingConstants
@@ -131,6 +222,12 @@ public class ForwardPlusExample
             LightCount = (uint)_lights.Length,
             ZNear = camera.NearPlane,
             ZFar = camera.FarPlane,
+            DepthTextureIndex = depthBufferIndex,
+            SamplerIndex = _depthBufferSampler.Index,
+            LightBufferAddress = _context.GpuAddress(_lightBuffer),
+            LightGridBufferAddress = _context.GpuAddress(_lightGridBuffer),
+            LightIndexBufferAddress = _context.GpuAddress(_lightIndexBuffer),
+            GlobalCounterBufferAddress = _context.GpuAddress(_counterBuffer),
         };
         cmdBuffer.PushConstants(cullingConstants);
 
@@ -142,6 +239,7 @@ public class ForwardPlusExample
 
         // Step 3: Render scene with Forward+
         cmdBuffer.BindRenderPipeline(_renderPipeline);
+        cmdBuffer.BindIndexBuffer(_sphere.IndexBuffer, IndexFormat.UI32);
 
         Matrix4x4.Invert(camera.View * camera.Projection, out var invViewProj);
         var renderConstants = new ForwardPlusConstants
@@ -150,8 +248,11 @@ public class ForwardPlusExample
             InverseViewProjection = invViewProj,
             CameraPosition = camera.Position,
             Time = (float)DateTime.Now.TimeOfDay.TotalSeconds,
-            VertexBufferAddress = (uint)_context.GpuAddress(_vertexBuffer),
-            LightBufferAddress = (uint)_context.GpuAddress(_lightBuffer),
+            VertexBufferAddress = _context.GpuAddress(_sphere.VertexBuffer),
+            LightBufferAddress = _context.GpuAddress(_lightBuffer),
+            LightGridBufferAddress = _context.GpuAddress(_lightGridBuffer),
+            LightIndexBufferAddress = _context.GpuAddress(_lightIndexBuffer),
+            ModelMatrixBufferAddress = _context.GpuAddress(_modelMatrixBuffer),
             LightCount = (uint)_lights.Length,
             TileSize = _config.TileSize,
             ScreenDimensions = new Vector2(screenWidth, screenHeight),
@@ -161,60 +262,7 @@ public class ForwardPlusExample
         cmdBuffer.PushConstants(renderConstants);
 
         // Draw without binding vertex buffers (bindless!)
-        cmdBuffer.Draw(36); // Cube has 36 vertices
-    }
-
-    private Vertex[] CreateTestCube()
-    {
-        // Simple cube vertices for demonstration
-        var vertices = new[]
-        {
-            // Front face
-            new Vertex
-            {
-                Position = new(-1, -1, 1),
-                Normal = new(0, 0, 1),
-                TexCoord = new(0, 0),
-                Tangent = new(1, 0, 0, 1),
-            },
-            new Vertex
-            {
-                Position = new(1, -1, 1),
-                Normal = new(0, 0, 1),
-                TexCoord = new(1, 0),
-                Tangent = new(1, 0, 0, 1),
-            },
-            new Vertex
-            {
-                Position = new(1, 1, 1),
-                Normal = new(0, 0, 1),
-                TexCoord = new(1, 1),
-                Tangent = new(1, 0, 0, 1),
-            },
-            new Vertex
-            {
-                Position = new(1, 1, 1),
-                Normal = new(0, 0, 1),
-                TexCoord = new(1, 1),
-                Tangent = new(1, 0, 0, 1),
-            },
-            new Vertex
-            {
-                Position = new(-1, 1, 1),
-                Normal = new(0, 0, 1),
-                TexCoord = new(0, 1),
-                Tangent = new(1, 0, 0, 1),
-            },
-            new Vertex
-            {
-                Position = new(-1, -1, 1),
-                Normal = new(0, 0, 1),
-                TexCoord = new(0, 0),
-                Tangent = new(1, 0, 0, 1),
-            },
-            // ... additional faces omitted for brevity
-        };
-        return vertices;
+        cmdBuffer.DrawIndexed((uint)_sphere.Indices.Count);
     }
 
     private Light[] CreateTestLights(int count)
@@ -242,11 +290,10 @@ public class ForwardPlusExample
                 Position = position,
                 Type = 1, // Point light
                 Direction = Vector3.Zero,
-                Range = 10.0f,
+                Range = 40.0f,
                 Color = color,
                 Intensity = 5.0f,
-                InnerConeAngle = 0,
-                OuterConeAngle = 0,
+                SpotAngles = Vector2.Zero,
             };
         }
 
@@ -255,7 +302,8 @@ public class ForwardPlusExample
 
     public void Dispose()
     {
-        _vertexBuffer.Dispose();
+        _box.Dispose();
+        _sphere.Dispose();
         _lightBuffer.Dispose();
         _lightGridBuffer.Dispose();
         _lightIndexBuffer.Dispose();
@@ -275,14 +323,4 @@ public struct Camera
     public Matrix4x4 Projection;
     public float NearPlane;
     public float FarPlane;
-}
-
-public struct LightCullingConstants
-{
-    public Matrix4x4 InverseProjection;
-    public Vector2 ScreenDimensions;
-    public Vector2 TileCount;
-    public uint LightCount;
-    public float ZNear;
-    public float ZFar;
 }

@@ -14,8 +14,7 @@ public class MaterialShaderBuilder
     private readonly Dictionary<string, string> _defines = new();
     private readonly List<string> _customCode = new();
     private bool _usePBR = true;
-    private bool _useBindlessVertices = false;
-    private bool _useForwardPlus = false;
+    private bool _simpleLighting = false;
     private ForwardPlusConfig _forwardPlusConfig = ForwardPlusConfig.Default;
     private string? _customFragmentMain;
 
@@ -27,51 +26,26 @@ public class MaterialShaderBuilder
     /// <summary>
     /// Enable or disable PBR shading (enabled by default).
     /// </summary>
-    public MaterialShaderBuilder WithPBRShading(bool enable)
+    public MaterialShaderBuilder WithPBRShading(bool enable = true)
     {
         _usePBR = enable;
         return this;
     }
 
     /// <summary>
-    /// Enable bindless vertex buffer access using buffer_reference.
+    /// Enable Forward+ rendering with tile-based light culling.
     /// </summary>
-    public MaterialShaderBuilder WithBindlessVertices(bool enable = true)
+    public MaterialShaderBuilder ConfigForwardPlus(ForwardPlusConfig? config = null)
     {
-        _useBindlessVertices = enable;
-        if (enable)
-        {
-            WithDefine("USE_BINDLESS_VERTICES");
-        }
-        else
-        {
-            _defines.Remove("USE_BINDLESS_VERTICES");
-        }
+        _forwardPlusConfig = config ?? ForwardPlusConfig.Default;
+        WithDefine("TILE_SIZE", _forwardPlusConfig.TileSize.ToString());
+        WithDefine("MAX_LIGHTS_PER_TILE", _forwardPlusConfig.MaxLightsPerTile.ToString());
         return this;
     }
 
-    /// <summary>
-    /// Enable Forward+ rendering with tile-based light culling.
-    /// </summary>
-    public MaterialShaderBuilder WithForwardPlus(
-        bool enable = true,
-        ForwardPlusConfig? config = null
-    )
+    public MaterialShaderBuilder WithSimpleLighting(bool enable = true)
     {
-        _useForwardPlus = enable;
-        if (enable)
-        {
-            WithDefine("USE_FORWARD_PLUS");
-            _forwardPlusConfig = config ?? ForwardPlusConfig.Default;
-            WithDefine("TILE_SIZE", _forwardPlusConfig.TileSize.ToString());
-            WithDefine("MAX_LIGHTS_PER_TILE", _forwardPlusConfig.MaxLightsPerTile.ToString());
-        }
-        else
-        {
-            _defines.Remove("USE_FORWARD_PLUS");
-            _defines.Remove("TILE_SIZE");
-            _defines.Remove("MAX_LIGHTS_PER_TILE");
-        }
+        _simpleLighting = enable;
         return this;
     }
 
@@ -201,41 +175,17 @@ public class MaterialShaderBuilder
         var sb = new StringBuilder();
 
         // Buffer reference declarations for bindless access
-        if (_useBindlessVertices)
-        {
-            sb.Append(BindlessVertexStruct);
-        }
-
-        if (_useForwardPlus)
-        {
-            sb.Append(ForwardPlusStructs);
-        }
+        sb.Append(BindlessVertexStruct);
+        sb.Append(ForwardPlusStructs);
 
         // Input attributes
-        if (!_useBindlessVertices)
-        {
-            sb.Append(StandardInputs);
-        }
-        else
-        {
-            sb.Append(BindlessInputs);
-        }
+        sb.Append(BindlessInputs);
 
         // Output
         sb.Append(OutputDef);
 
         // Push constants
-        if (_useForwardPlus)
-        {
-            sb.AppendFormat(
-                ForwardPlusPushConstant,
-                _useBindlessVertices ? "uint vertexBufferAddress;" : ""
-            );
-        }
-        else
-        {
-            sb.Append(StandardPushConstant);
-        }
+        sb.Append(ForwardPlusPushConstant);
 
         // Custom code sections
         foreach (var code in _customCode)
@@ -261,10 +211,11 @@ public class MaterialShaderBuilder
     {
         var sb = new StringBuilder();
 
-        sb.AppendFormat(DefaultMainHeader, _useBindlessVertices ? BindlessVertexFetch : "");
+        sb.AppendFormat(DefaultMainHeader, BindlessVertexFetch);
 
-        if (_useForwardPlus)
+        if (!_simpleLighting)
         {
+            //sb.Append(Diffuse);
             sb.Append(ForwardPlusLighting);
         }
         else
@@ -278,22 +229,9 @@ public class MaterialShaderBuilder
 
     private string GenerateVertexShader()
     {
-        if (_useBindlessVertices)
-        {
-            string pushConstants = _useForwardPlus
-                ? VertexShaderBindlessForwardPlusPushConstants
-                : VertexShaderBindlessStandardPushConstants;
-            string mainBody = _useForwardPlus
-                ? VertexShaderBindlessForwardPlusMain
-                : VertexShaderBindlessStandardMain;
-
-            return string.Format(VertexShaderBindlessTemplate, pushConstants, mainBody);
-        }
-        else
-        {
-            // Traditional vertex shader
-            return VertexShaderLegacy;
-        }
+        var pushConstants = VertexShaderBindlessForwardPlusPushConstants;
+        var mainBody = VertexShaderBindlessForwardPlusMain;
+        return string.Format(VertexShaderBindlessTemplate, pushConstants, mainBody);
     }
 }
 

@@ -26,8 +26,11 @@ public struct ForwardPlusConstants
     public Matrix4x4 InverseViewProjection;
     public Vector3 CameraPosition;
     public float Time;
-    public uint VertexBufferAddress; // Lower 32 bits of GPU address
-    public uint LightBufferAddress; // Lower 32 bits of GPU address
+    public ulong VertexBufferAddress;
+    public ulong LightBufferAddress;
+    public ulong LightGridBufferAddress;
+    public ulong LightIndexBufferAddress;
+    public ulong ModelMatrixBufferAddress;
     public uint LightCount;
     public uint TileSize; // Tile size in pixels (e.g., 16x16)
     public Vector2 ScreenDimensions;
@@ -52,7 +55,12 @@ public struct LightCullingConstants
     public uint LightCount;
     public float ZNear;
     public float ZFar;
-    private readonly float _padding;
+    public uint DepthTextureIndex;
+    public uint SamplerIndex;
+    public ulong LightBufferAddress;
+    public ulong LightGridBufferAddress;
+    public ulong LightIndexBufferAddress;
+    public ulong GlobalCounterBufferAddress;
 
     public static readonly uint SizeInBytes = (uint)Marshal.SizeOf<LightCullingConstants>();
 }

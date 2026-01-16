@@ -55,6 +55,7 @@ namespace HelixToolkit.Nex.Maths
         {
             return Plane.Normalize(plane);
         }
+
         /// <summary>
         /// Gets or sets the component at the specified index.
         /// </summary>
@@ -71,7 +72,10 @@ namespace HelixToolkit.Nex.Maths
                 1 => p.Normal.Y,
                 2 => p.Normal.Z,
                 3 => p.D,
-                _ => throw new ArgumentOutOfRangeException(nameof(index), "Indices for Plane run from 0 to 3, inclusive."),
+                _ => throw new ArgumentOutOfRangeException(
+                    nameof(index),
+                    "Indices for Plane run from 0 to 3, inclusive."
+                ),
             };
         }
 
@@ -92,7 +96,10 @@ namespace HelixToolkit.Nex.Maths
                     p.D = value;
                     break;
                 default:
-                    throw new ArgumentOutOfRangeException(nameof(index), "Indices for Plane run from 0 to 3, inclusive.");
+                    throw new ArgumentOutOfRangeException(
+                        nameof(index),
+                        "Indices for Plane run from 0 to 3, inclusive."
+                    );
             }
         }
 
@@ -126,6 +133,7 @@ namespace HelixToolkit.Nex.Maths
         {
             return Collision.PlaneIntersectsPoint(ref p, ref point);
         }
+
         /// <summary>
         /// Determines if there is an intersection between the current object and a <see cref="Ray"/>.
         /// </summary>
@@ -147,6 +155,7 @@ namespace HelixToolkit.Nex.Maths
         {
             return Collision.RayIntersectsPlane(ref ray, ref p, out float _);
         }
+
         /// <summary>
         /// Determines if there is an intersection between the current object and a <see cref="Ray"/>.
         /// </summary>
@@ -159,6 +168,7 @@ namespace HelixToolkit.Nex.Maths
         {
             return Collision.RayIntersectsPlane(ref ray, ref p, out distance);
         }
+
         /// <summary>
         /// Determines if there is an intersection between the current object and a <see cref="Ray"/>.
         /// </summary>
@@ -170,6 +180,7 @@ namespace HelixToolkit.Nex.Maths
         {
             return Collision.RayIntersectsPlane(ref ray, ref p, out distance);
         }
+
         /// <summary>
         /// Determines if there is an intersection between the current object and a <see cref="Ray"/>.
         /// </summary>
@@ -194,6 +205,7 @@ namespace HelixToolkit.Nex.Maths
         {
             return Collision.RayIntersectsPlane(ref ray, ref p, out point);
         }
+
         /// <summary>
         /// Determines if there is an intersection between the current object and a <see cref="Plane"/>.
         /// </summary>
@@ -228,6 +240,7 @@ namespace HelixToolkit.Nex.Maths
         {
             return Collision.PlaneIntersectsPlane(ref p, ref plane, out line);
         }
+
         /// <summary>
         /// Determines if there is an intersection between the current object and a <see cref="Plane"/>.
         /// </summary>
@@ -248,10 +261,16 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="vertex2">The second vertex of the triangle to test.</param>
         /// <param name="vertex3">The third vertex of the triangle to test.</param>
         /// <returns>Whether the two objects intersected.</returns>
-        public static PlaneIntersectionType Intersects(this Plane p, ref Vector3 vertex1, ref Vector3 vertex2, ref Vector3 vertex3)
+        public static PlaneIntersectionType Intersects(
+            this Plane p,
+            ref Vector3 vertex1,
+            ref Vector3 vertex2,
+            ref Vector3 vertex3
+        )
         {
             return Collision.PlaneIntersectsTriangle(ref p, ref vertex1, ref vertex2, ref vertex3);
         }
+
         /// <summary>
         /// Determines if there is an intersection between the current object and a triangle.
         /// </summary>
@@ -260,10 +279,16 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="vertex2">The vertex2.</param>
         /// <param name="vertex3">The vertex3.</param>
         /// <returns></returns>
-        public static PlaneIntersectionType Intersects(ref Plane p, ref Vector3 vertex1, ref Vector3 vertex2, ref Vector3 vertex3)
+        public static PlaneIntersectionType Intersects(
+            ref Plane p,
+            ref Vector3 vertex1,
+            ref Vector3 vertex2,
+            ref Vector3 vertex3
+        )
         {
             return Collision.PlaneIntersectsTriangle(ref p, ref vertex1, ref vertex2, ref vertex3);
         }
+
         /// <summary>
         /// Determines if there is an intersection between the current object and a <see cref="BoundingBox"/>.
         /// </summary>
@@ -296,6 +321,7 @@ namespace HelixToolkit.Nex.Maths
         {
             return Collision.PlaneIntersectsSphere(ref p, ref sphere);
         }
+
         /// <summary>
         /// Determines if there is an intersection between the current object and a <see cref="BoundingSphere"/>.
         /// </summary>
@@ -306,6 +332,7 @@ namespace HelixToolkit.Nex.Maths
         {
             return Collision.PlaneIntersectsSphere(ref p, ref sphere);
         }
+
         /// <summary>
         /// Check if a line intersects with plane
         /// </summary>
@@ -314,7 +341,12 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="p1"></param>
         /// <param name="intersection"></param>
         /// <returns></returns>
-        public static bool IntersectsLine(ref Plane p, ref Vector3 p0, ref Vector3 p1, out Vector3 intersection)
+        public static bool IntersectsLine(
+            ref Plane p,
+            ref Vector3 p0,
+            ref Vector3 p1,
+            out Vector3 intersection
+        )
         {
             // https://graphics.stanford.edu/~mdfisher/Code/Engine/Plane.cpp.html
             Vector3 diff = p0 - p1;
@@ -329,6 +361,7 @@ namespace HelixToolkit.Nex.Maths
             intersection = p0 + u * (p1 - p0);
             return true;
         }
+
         /// <summary>
         /// Check if a line intersects with plane
         /// </summary>
@@ -337,10 +370,16 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="p1"></param>
         /// <param name="intersection"></param>
         /// <returns></returns>
-        public static bool IntersectsLine(this Plane p, ref Vector3 p0, ref Vector3 p1, out Vector3 intersection)
+        public static bool IntersectsLine(
+            this Plane p,
+            ref Vector3 p0,
+            ref Vector3 p1,
+            out Vector3 intersection
+        )
         {
             return IntersectsLine(ref p, ref p0, ref p1, out intersection);
         }
+
         /// <summary>
         /// Builds a matrix that can be used to reflect vectors about a plane.
         /// </summary>
@@ -372,6 +411,7 @@ namespace HelixToolkit.Nex.Maths
             result.M43 = z2 * p.D;
             result.M44 = 1.0f;
         }
+
         /// <summary>
         /// Builds a matrix that can be used to reflect vectors about a plane.
         /// </summary>
@@ -384,7 +424,7 @@ namespace HelixToolkit.Nex.Maths
         }
 
         /// <summary>
-        /// Creates a matrix that flattens geometry into a shadow from the plane onto which to project the geometry as a shadow. 
+        /// Creates a matrix that flattens geometry into a shadow from the plane onto which to project the geometry as a shadow.
         /// This plane  is assumed to be normalized
         /// </summary>
         /// <param name="p"></param>
@@ -393,7 +433,7 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="result">When the method completes, contains the shadow matrix.</param>
         public static void Shadow(ref Plane p, ref Vector4 light, out Matrix result)
         {
-            float dot = Plane.Dot(p, light);// (p.Normal.X * light.X) + (p.Normal.Y * light.Y) + (p.Normal.Z * light.Z) + (p.D * light.Width);
+            float dot = Plane.Dot(p, light); // (p.Normal.X * light.X) + (p.Normal.Y * light.Y) + (p.Normal.Z * light.Z) + (p.D * light.Width);
             float x = -p.Normal.X;
             float y = -p.Normal.Y;
             float z = -p.Normal.Z;
@@ -418,7 +458,7 @@ namespace HelixToolkit.Nex.Maths
         }
 
         /// <summary>
-        /// Creates a matrix that flattens geometry into a shadow from this the plane onto which to project the geometry as a shadow. 
+        /// Creates a matrix that flattens geometry into a shadow from this the plane onto which to project the geometry as a shadow.
         /// This plane  is assumed to be normalized
         /// </summary>
         /// <param name="p"></param>
@@ -432,7 +472,7 @@ namespace HelixToolkit.Nex.Maths
         }
 
         /// <summary>
-        /// Builds a Matrix3x3 that can be used to reflect vectors about a plane for which the reflection occurs. 
+        /// Builds a Matrix3x3 that can be used to reflect vectors about a plane for which the reflection occurs.
         /// This plane is assumed to be normalized
         /// </summary>
         /// <param name="p"></param>
@@ -458,7 +498,7 @@ namespace HelixToolkit.Nex.Maths
         }
 
         /// <summary>
-        /// Builds a Matrix3x3 that can be used to reflect vectors about a plane for which the reflection occurs. 
+        /// Builds a Matrix3x3 that can be used to reflect vectors about a plane for which the reflection occurs.
         /// This plane is assumed to be normalized
         /// </summary>
         /// <returns>The reflection Matrix3x3.</returns>
@@ -477,7 +517,7 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="result">When the method completes, contains the shadow Matrix3x3.</param>
         public static void Shadow(ref Vector4 light, ref Plane plane, out Matrix3x3 result)
         {
-            float dot = Plane.Dot(plane, light);//(plane.Normal.X * light.X) + (plane.Normal.Y * light.Y) + (plane.Normal.Z * light.Z) + (plane.D * light.Width);
+            float dot = Plane.Dot(plane, light); //(plane.Normal.X * light.X) + (plane.Normal.Y * light.Y) + (plane.Normal.Z * light.Z) + (plane.D * light.Width);
             float x = -plane.Normal.X;
             float y = -plane.Normal.Y;
             float z = -plane.Normal.Z;
@@ -505,7 +545,6 @@ namespace HelixToolkit.Nex.Maths
             Shadow(ref light, ref plane, out Matrix3x3 result);
             return result;
         }
-
 
         /// <summary>
         /// Scales the plane by the given scaling factor.
@@ -692,6 +731,26 @@ namespace HelixToolkit.Nex.Maths
         public static Plane Flip(this Plane plane)
         {
             return Flip(ref plane);
+        }
+
+        /// <summary>
+        /// Get the origin of the plane.
+        /// </summary>
+        /// <param name="plane"></param>
+        /// <returns></returns>
+        public static Vector3 GetPlanOrigin(ref Plane plane)
+        {
+            return -plane.D * Vector3.Normalize(plane.Normal);
+        }
+
+        /// <summary>
+        /// Get the origin of the plane.
+        /// </summary>
+        /// <param name="plane"></param>
+        /// <returns></returns>
+        public static Vector3 GetPlanOrigin(this Plane plane)
+        {
+            return GetPlanOrigin(ref plane);
         }
     }
 }

@@ -2,7 +2,7 @@ namespace HelixToolkit.Nex.Geometries;
 
 [StructLayout(LayoutKind.Sequential, Pack = 16)]
 [JsonConverter(typeof(Serialization.VertexJsonConverter))]
-public struct Vertex(Vector3 position, Vector3 normal, Vector2 texCoord, Vector4 tangent)
+public struct Vertex(Vector3 position, Vector3 normal, Vector2 texCoord, Vector3 tangent)
 {
     public static readonly uint SizeInBytes = NativeHelper.SizeOf<Vertex>();
 
@@ -30,22 +30,23 @@ public struct Vertex(Vector3 position, Vector3 normal, Vector2 texCoord, Vector4
     private readonly float _padding1 = 0;
     public Vector2 TexCoord = texCoord;
     private readonly Vector2 _padding2 = Vector2.Zero;
-    public Vector4 Tangent = tangent;
+    public Vector3 Tangent = tangent;
+    private readonly float _padding3 = 0;
 
     public Vertex(Vector3 position, Vector3 normal, Vector2 texCoord)
-        : this(position, normal, texCoord, Vector4.Zero) { }
+        : this(position, normal, texCoord, Vector3.Zero) { }
 
     public Vertex(Vector3 position, Vector3 normal)
-        : this(position, normal, Vector2.Zero, Vector4.Zero) { }
+        : this(position, normal, Vector2.Zero, Vector3.Zero) { }
 
     public Vertex(Vector3 position)
-        : this(position, Vector3.Zero, Vector2.Zero, Vector4.Zero) { }
+        : this(position, Vector3.Zero, Vector2.Zero, Vector3.Zero) { }
 
     public static readonly Vertex Empty = new(
         Vector3.Zero,
         Vector3.Zero,
         Vector2.Zero,
-        Vector4.Zero
+        Vector3.Zero
     );
 }
 

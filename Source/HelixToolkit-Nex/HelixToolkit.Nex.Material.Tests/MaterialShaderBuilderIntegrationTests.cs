@@ -17,20 +17,12 @@ public class MaterialShaderBuilderIntegrationTests
     public void Initialize()
     {
         _compiler = GlslHeaders.CreateCompiler();
-        // Create headless Vulkan context for testing
-        var config = new VulkanContextConfig
-        {
-            TerminateOnValidationError = true,
-            EnableValidation = false, // Disable validation for faster tests
-        };
-        _context = VulkanBuilder.CreateHeadless(config);
     }
 
     [TestCleanup]
     public void Cleanup()
     {
         _compiler = null;
-        _context?.Dispose();
     }
 
     [TestMethod]
@@ -84,10 +76,7 @@ public class MaterialShaderBuilderIntegrationTests
         Assert.AreEqual(0, fragmentResult.Errors.Count, "Should have no compilation errors");
 
         // Verify Forward+ specific structures are present
-        Assert.IsTrue(
-            fragmentResult.Source.Contains("GpuLight"),
-            "Should contain GpuLight structure"
-        );
+        Assert.IsTrue(fragmentResult.Source.Contains("Light"), "Should contain Light structure");
         Assert.IsTrue(
             fragmentResult.Source.Contains("LightGridTile"),
             "Should contain LightGridTile structure"
@@ -164,10 +153,7 @@ public class MaterialShaderBuilderIntegrationTests
             fragmentResult.Source.Contains("GpuVertex"),
             "Should contain GpuVertex for bindless vertices"
         );
-        Assert.IsTrue(
-            fragmentResult.Source.Contains("GpuLight"),
-            "Should contain GpuLight for Forward+"
-        );
+        Assert.IsTrue(fragmentResult.Source.Contains("Light"), "Should contain Light for Forward+");
         Assert.IsTrue(
             fragmentResult.Source.Contains("vertexBufferAddress"),
             "Should have vertex buffer address in push constants"
@@ -792,7 +778,7 @@ void main() {
 layout(location = 0) in vec3 fragNormal;
 layout(location = 0) out vec4 outColor;
 
-struct GpuLight {
+struct Light {
     vec3 position;
     vec3 color;
 };
@@ -814,7 +800,7 @@ void main() {
 
         // Assert
         Assert.IsTrue(result.Success, "Shader should compile");
-        Assert.IsTrue(result.Source!.Contains("GpuLight"), "Should define GpuLight structure");
+        Assert.IsTrue(result.Source!.Contains("Light"), "Should define Light structure");
         Assert.IsTrue(result.Source.Contains("PBRMaterial"), "Should include PBRMaterial");
     }
 

@@ -4,11 +4,16 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <IncludeSymbols>True</IncludeSymbols>
+        <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
     </PropertyGroup>
 
     <ItemGroup>
         <EmbeddedResource Include="Headers\HeaderFrag.glsl" />
         <EmbeddedResource Include="Headers\HeaderTask.glsl" />
+        <EmbeddedResource Include="Headers\HeaderCompute.glsl" />
         <EmbeddedResource Include="Headers\HeaderVertex.glsl" />
         <EmbeddedResource Include="Headers\PBRFunctions.glsl" />
 
@@ -17,18 +22,21 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\HelixToolkit.Nex.Graphics\HelixToolkit.Nex.Graphics.csproj" />
 
         <!-- Add source generator reference -->
-        <ProjectReference
-            Include="..\HelixToolkit.Nex.CodeGen\HelixToolkit.Nex.CodeGen.csproj"
-            OutputItemType="Analyzer"
-            ReferenceOutputAssembly="false"
-        />
+        <ProjectReference Include="..\HelixTookit.Nex\HelixToolkit.Nex.csproj" />
+        <ProjectReference Include="..\HelixToolkit.Nex.CodeGen\HelixToolkit.Nex.CodeGen.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
     </ItemGroup>
 
     <ItemGroup>
         <Folder Include="fs\" />
         <Folder Include="vs\" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Update="README.md">
+            <Pack>True</Pack>
+            <PackagePath>\</PackagePath>
+        </None>
     </ItemGroup>
 </Project>

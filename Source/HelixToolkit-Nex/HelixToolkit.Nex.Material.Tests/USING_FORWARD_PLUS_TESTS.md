@@ -65,7 +65,7 @@ var builder = new MaterialShaderBuilder()
 var fragmentResult = builder.BuildFragmentShader();
 
 // The generated shader includes:
-// - GpuLight structure
+// - Light structure
 // - LightGridTile structure
 // - ForwardPlusConstants push constant block
 // - Tile-based light culling logic

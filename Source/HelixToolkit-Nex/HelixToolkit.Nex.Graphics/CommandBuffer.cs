@@ -29,7 +29,7 @@ public interface ICommandBuffer
     /// <param name="label">The label text for the debug group.</param>
     /// <param name="color">The color associated with this debug group in debugging tools.</param>
     /// <remarks>
-    /// Debug groups can be nested. Each call to <see cref="PushDebugGroupLabel"/> must be matched with 
+    /// Debug groups can be nested. Each call to <see cref="PushDebugGroupLabel"/> must be matched with
     /// a corresponding <see cref="PopDebugGroupLabel"/> call.
     /// </remarks>
     void PushDebugGroupLabel(string label, in Color4 color);
@@ -113,7 +113,11 @@ public interface ICommandBuffer
     /// <param name="indexBuffer">The handle to the index buffer to bind.</param>
     /// <param name="indexFormat">The format of indices in the buffer (e.g., 16-bit or 32-bit unsigned integers).</param>
     /// <param name="indexBufferOffset">Byte offset into the buffer where index data begins. Default is 0.</param>
-    void BindIndexBuffer(in BufferHandle indexBuffer, IndexFormat indexFormat, size_t indexBufferOffset = 0);
+    void BindIndexBuffer(
+        in BufferHandle indexBuffer,
+        IndexFormat indexFormat,
+        size_t indexBufferOffset = 0
+    );
 
     /// <summary>
     /// Pushes constant data to the pipeline for use in shaders.
@@ -132,7 +136,8 @@ public interface ICommandBuffer
     /// <typeparam name="T">The unmanaged type of the constant data.</typeparam>
     /// <param name="data">Reference to the constant data to push.</param>
     /// <param name="offset">Offset within the push constant block where data should be written. Default is 0.</param>
-    void PushConstants<T>(in T data, size_t offset = 0) where T : unmanaged
+    void PushConstants<T>(in T data, size_t offset = 0)
+        where T : unmanaged
     {
         unsafe
         {
@@ -171,7 +176,8 @@ public interface ICommandBuffer
     /// <param name="buffer">The handle to the buffer to update.</param>
     /// <param name="data">Reference to the data to copy into the buffer.</param>
     /// <param name="bufferOffset">Byte offset into the buffer where the update begins. Default is 0.</param>
-    void UpdateBuffer<T>(in BufferHandle buffer, in T data, size_t bufferOffset = 0) where T : unmanaged
+    void UpdateBuffer<T>(in BufferHandle buffer, in T data, size_t bufferOffset = 0)
+        where T : unmanaged
     {
         unsafe
         {
@@ -183,13 +189,66 @@ public interface ICommandBuffer
     }
 
     /// <summary>
+    /// Updates the contents of the specified buffer with data from the provided array.
+    /// </summary>
+    /// <remarks>This method copies <paramref name="count"/> elements of type <typeparamref name="T"/> from
+    /// <paramref name="data"/> into the specified buffer, starting at the given <paramref name="bufferOffset"/>. The
+    /// buffer must be large enough to accommodate the data being written.</remarks>
+    /// <typeparam name="T">The type of elements in the data array. Must be an unmanaged type.</typeparam>
+    /// <param name="buffer">A handle to the buffer to update.</param>
+    /// <param name="data">The array containing the data to write to the buffer. The array must have at least <paramref name="count"/>
+    /// elements.</param>
+    /// <param name="count">The number of elements from <paramref name="data"/> to copy to the buffer. Must be less than or equal to the
+    /// length of <paramref name="data"/>.</param>
+    /// <param name="bufferOffset">The offset, in bytes, within the buffer at which to begin writing data. Defaults to 0.</param>
+    void UpdateBuffer<T>(in BufferHandle buffer, in T[] data, size_t count, size_t bufferOffset = 0)
+        where T : unmanaged
+    {
+        unsafe
+        {
+            using var dataPtr = data.Pin();
+            UpdateBuffer(buffer, bufferOffset, (size_t)(sizeof(T) * count), (nint)dataPtr.Pointer);
+        }
+    }
+
+    /// <summary>
+    /// Updates the contents of the specified buffer with data from the provided list.
+    /// </summary>
+    /// <remarks>The method copies the entire contents of <paramref name="data"/> into the buffer, starting at
+    /// the specified <paramref name="bufferOffset"/>. The buffer must be large enough to accommodate the data at the
+    /// given offset.</remarks>
+    /// <typeparam name="T">The type of elements in the data list. Must be an unmanaged type.</typeparam>
+    /// <param name="buffer">A handle to the buffer to update. Must refer to a valid, writable buffer.</param>
+    /// <param name="data">A list containing the data to write to the buffer. The data is copied starting from the beginning of the list.</param>
+    /// <param name="bufferOffset">The offset, in bytes, within the buffer at which to begin writing data. Defaults to 0.</param>
+    void UpdateBuffer<T>(in BufferHandle buffer, in FastList<T> data, size_t bufferOffset = 0)
+        where T : unmanaged
+    {
+        unsafe
+        {
+            using var dataPtr = data.GetInternalArray().Pin();
+            UpdateBuffer(
+                buffer,
+                bufferOffset,
+                (size_t)(sizeof(T) * data.Count),
+                (nint)dataPtr.Pointer
+            );
+        }
+    }
+
+    /// <summary>
     /// Draws non-indexed primitives.
     /// </summary>
     /// <param name="vertexCount">Number of vertices to draw.</param>
     /// <param name="instanceCount">Number of instances to draw. Default is 1.</param>
     /// <param name="firstVertex">Index of the first vertex to draw. Default is 0.</param>
     /// <param name="baseInstance">Instance ID offset for the first instance. Default is 0.</param>
-    void Draw(size_t vertexCount, size_t instanceCount = 1, size_t firstVertex = 0, size_t baseInstance = 0);
+    void Draw(
+        size_t vertexCount,
+        size_t instanceCount = 1,
+        size_t firstVertex = 0,
+        size_t baseInstance = 0
+    );
 
     /// <summary>
     /// Draws indexed primitives using the bound index buffer.
@@ -199,11 +258,13 @@ public interface ICommandBuffer
     /// <param name="firstIndex">Index of the first index in the index buffer. Default is 0.</param>
     /// <param name="vertexOffset">Value added to each index before indexing into the vertex buffer. Default is 0.</param>
     /// <param name="baseInstance">Instance ID offset for the first instance. Default is 0.</param>
-    void DrawIndexed(size_t indexCount,
-                                size_t instanceCount = 1,
-                                size_t firstIndex = 0,
-                                int32_t vertexOffset = 0,
-                                size_t baseInstance = 0);
+    void DrawIndexed(
+        size_t indexCount,
+        size_t instanceCount = 1,
+        size_t firstIndex = 0,
+        int32_t vertexOffset = 0,
+        size_t baseInstance = 0
+    );
 
     /// <summary>
     /// Draws non-indexed primitives with parameters sourced from a buffer (indirect drawing).
@@ -212,7 +273,12 @@ public interface ICommandBuffer
     /// <param name="indirectBufferOffset">Byte offset into the indirect buffer where parameters begin.</param>
     /// <param name="drawCount">Number of draw calls to execute.</param>
     /// <param name="stride">Byte stride between consecutive draw parameter structures. If 0, assumes tightly packed. Default is 0.</param>
-    void DrawIndirect(in BufferHandle indirectBuffer, size_t indirectBufferOffset, size_t drawCount, size_t stride = 0);
+    void DrawIndirect(
+        in BufferHandle indirectBuffer,
+        size_t indirectBufferOffset,
+        size_t drawCount,
+        size_t stride = 0
+    );
 
     /// <summary>
     /// Draws indexed primitives with parameters sourced from a buffer (indirect drawing).
@@ -221,10 +287,12 @@ public interface ICommandBuffer
     /// <param name="indirectBufferOffset">Byte offset into the indirect buffer where parameters begin.</param>
     /// <param name="drawCount">Number of draw calls to execute.</param>
     /// <param name="stride">Byte stride between consecutive draw parameter structures. If 0, assumes tightly packed. Default is 0.</param>
-    void DrawIndexedIndirect(in BufferHandle indirectBuffer,
-                                        size_t indirectBufferOffset,
-                                        size_t drawCount,
-                                        size_t stride = 0);
+    void DrawIndexedIndirect(
+        in BufferHandle indirectBuffer,
+        size_t indirectBufferOffset,
+        size_t drawCount,
+        size_t stride = 0
+    );
 
     /// <summary>
     /// Draws indexed primitives with parameters and draw count sourced from buffers (indirect drawing with count).
@@ -235,12 +303,14 @@ public interface ICommandBuffer
     /// <param name="countBufferOffset">Byte offset into the count buffer where the draw count is stored.</param>
     /// <param name="maxDrawCount">Maximum number of draw calls that can be executed.</param>
     /// <param name="stride">Byte stride between consecutive draw parameter structures. If 0, assumes tightly packed. Default is 0.</param>
-    void DrawIndexedIndirectCount(BufferHandle indirectBuffer,
-                                             size_t indirectBufferOffset,
-                                             BufferHandle countBuffer,
-                                             size_t countBufferOffset,
-                                             size_t maxDrawCount,
-                                             size_t stride = 0);
+    void DrawIndexedIndirectCount(
+        BufferHandle indirectBuffer,
+        size_t indirectBufferOffset,
+        BufferHandle countBuffer,
+        size_t countBufferOffset,
+        size_t maxDrawCount,
+        size_t stride = 0
+    );
 
     /// <summary>
     /// Dispatches mesh shader tasks for mesh shading pipeline.
@@ -255,10 +325,12 @@ public interface ICommandBuffer
     /// <param name="indirectBufferOffset">Byte offset into the indirect buffer where parameters begin.</param>
     /// <param name="drawCount">Number of mesh task dispatches to execute.</param>
     /// <param name="stride">Byte stride between consecutive dispatch parameter structures. If 0, assumes tightly packed. Default is 0.</param>
-    void DrawMeshTasksIndirect(in BufferHandle indirectBuffer,
-                                          size_t indirectBufferOffset,
-                                          size_t drawCount,
-                                          size_t stride = 0);
+    void DrawMeshTasksIndirect(
+        in BufferHandle indirectBuffer,
+        size_t indirectBufferOffset,
+        size_t drawCount,
+        size_t stride = 0
+    );
 
     /// <summary>
     /// Dispatches mesh shader tasks with parameters and count sourced from buffers (indirect mesh drawing with count).
@@ -269,12 +341,14 @@ public interface ICommandBuffer
     /// <param name="countBufferOffset">Byte offset into the count buffer where the dispatch count is stored.</param>
     /// <param name="maxDrawCount">Maximum number of mesh task dispatches that can be executed.</param>
     /// <param name="stride">Byte stride between consecutive dispatch parameter structures. If 0, assumes tightly packed. Default is 0.</param>
-    void DrawMeshTasksIndirectCount(in BufferHandle indirectBuffer,
-                                               size_t indirectBufferOffset,
-                                               in BufferHandle countBuffer,
-                                               size_t countBufferOffset,
-                                               size_t maxDrawCount,
-                                               size_t stride = 0);
+    void DrawMeshTasksIndirectCount(
+        in BufferHandle indirectBuffer,
+        size_t indirectBufferOffset,
+        in BufferHandle countBuffer,
+        size_t countBufferOffset,
+        size_t maxDrawCount,
+        size_t stride = 0
+    );
 
     /// <summary>
     /// Sets the blend constant color used in blending operations.
@@ -329,13 +403,15 @@ public interface ICommandBuffer
     /// <param name="dstOffset">The offset within the destination texture where copying begins.</param>
     /// <param name="srcLayers">The layers of the source texture to copy from.</param>
     /// <param name="dstLayers">The layers of the destination texture to copy to.</param>
-    void CopyImage(in TextureHandle src,
-                              in TextureHandle dst,
-                              in Dimensions extent,
-                              in Offset3D srcOffset,
-                              in Offset3D dstOffset,
-                              in TextureLayers srcLayers,
-                              in TextureLayers dstLayers);
+    void CopyImage(
+        in TextureHandle src,
+        in TextureHandle dst,
+        in Dimensions extent,
+        in Offset3D srcOffset,
+        in Offset3D dstOffset,
+        in TextureLayers srcLayers,
+        in TextureLayers dstLayers
+    );
 
     /// <summary>
     /// Generates mipmaps for a texture automatically.

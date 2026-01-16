@@ -55,8 +55,7 @@ public static class GlslStructUsageExamples
             Intensity = 1.5f,
             Type = 0, // 0 = Directional
             Range = 0.0f, // Infinite range
-            InnerConeAngle = 0.0f, // Not used
-            OuterConeAngle = 0.0f, // Not used
+            SpotAngles = new Vector2(0.0f, 0.0f), // Not used
         };
     }
 
@@ -73,8 +72,7 @@ public static class GlslStructUsageExamples
             Intensity = 2.0f,
             Type = 1, // 1 = Point light
             Range = range,
-            InnerConeAngle = 0.0f, // Not used
-            OuterConeAngle = 0.0f, // Not used
+            SpotAngles = new Vector2(0.0f, 0.0f), // Not used
         };
     }
 
@@ -91,8 +89,7 @@ public static class GlslStructUsageExamples
             Intensity = 3.0f,
             Type = 2, // 2 = Spot light
             Range = 15.0f,
-            InnerConeAngle = 0.3f, // ~17 degrees inner cone
-            OuterConeAngle = 0.5f, // ~28 degrees outer cone
+            SpotAngles = new Vector2(0.3f, 0.5f), // x=inner (~17 deg), y=outer (~28 deg)
         };
     }
 

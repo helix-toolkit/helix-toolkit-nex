@@ -21,7 +21,7 @@ public class VertexJsonConverter : JsonConverter<Vertex>
         Vector3 position = default;
         Vector3 normal = default;
         Vector2 texCoord = default;
-        Vector4 tangent = default;
+        Vector3 tangent = default;
 
         while (reader.Read())
         {
@@ -50,7 +50,7 @@ public class VertexJsonConverter : JsonConverter<Vertex>
                     texCoord = ReadVector2(ref reader);
                     break;
                 case "Tangent":
-                    tangent = ReadVector4(ref reader);
+                    tangent = ReadVector3(ref reader);
                     break;
                 default:
                     reader.Skip();
@@ -207,7 +207,6 @@ public class VertexJsonConverter : JsonConverter<Vertex>
         writer.WriteNumber("X", value.Tangent.X);
         writer.WriteNumber("Y", value.Tangent.Y);
         writer.WriteNumber("Z", value.Tangent.Z);
-        writer.WriteNumber("W", value.Tangent.W);
         writer.WriteEndObject();
 
         writer.WriteEndObject();

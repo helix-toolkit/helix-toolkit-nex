@@ -37,95 +37,10 @@ public class MaterialShaderIntegrationExamplesTests
     }
 
     [TestMethod]
-    public void TestExample2_TexturedPBRMaterial()
-    {
-        // Arrange
-        // Create dummy 1x1 textures for the example
-        var textureDesc = new TextureDesc
-        {
-            Type = TextureType.Texture2D,
-            Format = Format.RGBA_UN8,
-            Dimensions = new Dimensions(1, 1, 1),
-            Usage = TextureUsageBits.Sampled,
-            NumMipLevels = 1,
-            Storage = StorageType.Device,
-        };
-
-        var samplerDesc = new SamplerStateDesc
-        {
-            MinFilter = SamplerFilter.Linear,
-            MagFilter = SamplerFilter.Linear,
-            WrapU = SamplerWrap.Repeat,
-            WrapV = SamplerWrap.Repeat,
-        };
-
-        _context!.CreateTexture(textureDesc, out var albedoTexture);
-        _context.CreateTexture(textureDesc, out var normalTexture);
-        _context.CreateSampler(samplerDesc, out var sampler);
-
-        try
-        {
-            // Act
-            MaterialShaderIntegrationExamples.Example2_TexturedPBRMaterial(
-                _context!,
-                albedoTexture,
-                normalTexture,
-                sampler
-            );
-        }
-        finally
-        {
-            // Cleanup resources created for this test
-            albedoTexture.Dispose();
-            normalTexture.Dispose();
-            sampler.Dispose();
-        }
-    }
-
-    [TestMethod]
     public void TestExample3_CustomMaterialShader()
     {
         // Act & Assert
         MaterialShaderIntegrationExamples.Example3_CustomMaterialShader(_context!);
-    }
-
-    [TestMethod]
-    public void TestExample4_MaterialFactory()
-    {
-        // Act & Assert
-        // This relies on "PBR" being a registered material name, which should be true if PbrMaterial is loaded
-        MaterialShaderIntegrationExamples.Example4_MaterialFactory(_context!);
-    }
-
-    [TestMethod]
-    public void TestExample5_MaterialLibrary()
-    {
-        // Act
-        var library = MaterialShaderIntegrationExamples.Example5_MaterialLibrary(_context!);
-
-        // Assert
-        Assert.IsNotNull(library);
-        Assert.IsTrue(library.Count > 0, "Library should contain materials");
-        Assert.IsTrue(library.ContainsKey("Metal"), "Library should contain 'Metal'");
-        Assert.IsTrue(library.ContainsKey("Plastic"), "Library should contain 'Plastic'");
-    }
-
-    [TestMethod]
-    public void TestExample6_DynamicMaterialUpdate()
-    {
-        // Arrange
-        var material = new PbrMaterial();
-        var pipelineDesc = new RenderPipelineDesc();
-        pipelineDesc.Colors[0].Format = Format.RGBA_UN8;
-
-        // Initialize first
-        material.InitializePipeline(_context!, pipelineDesc);
-
-        // Act
-        MaterialShaderIntegrationExamples.Example6_DynamicMaterialUpdate(_context!, material);
-
-        // Assert
-        Assert.IsTrue(material.Pipeline.Valid, "Material pipeline should be valid after update");
     }
 
     [TestMethod]

@@ -225,7 +225,7 @@ internal sealed partial class VulkanContext : Initializable, IContext
 
         ComputePipelineState cps = new() { Desc = desc };
 
-        if (desc.SpecInfo.Data.Length > 0)
+        if (desc.SpecInfo.Data != null && desc.SpecInfo.Data.Length > 0)
         {
             // copy into a local storage
             cps.SpecConstantDataStorage = new byte[desc.SpecInfo.Data.Length];

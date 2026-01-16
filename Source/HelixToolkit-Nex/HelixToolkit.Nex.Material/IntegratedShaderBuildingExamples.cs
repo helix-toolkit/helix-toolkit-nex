@@ -1,6 +1,6 @@
 using HelixToolkit.Nex.Graphics;
 
-namespace HelixToolkit.Nex.Shaders;
+namespace HelixToolkit.Nex.Material;
 
 /// <summary>
 /// Examples demonstrating integrated shader building and compilation

@@ -1,5 +1,3 @@
-using HelixToolkit.Nex.Graphics;
-
 namespace HelixToolkit.Nex.Shaders;
 
 /// <summary>

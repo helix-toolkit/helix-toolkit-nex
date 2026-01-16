@@ -44,7 +44,7 @@ public class MaterialShaderBuilderForwardPlusTests
         var result = builder.BuildFragmentShader();
 
         Assert.IsTrue(result.Success, "Forward+ shader should compile");
-        Assert.IsTrue(result.Source!.Contains("GpuLight"), "Should define GpuLight structure");
+        Assert.IsTrue(result.Source!.Contains("Light"), "Should define Light structure");
         Assert.IsTrue(
             result.Source.Contains("LightGridTile"),
             "Should define LightGridTile structure"

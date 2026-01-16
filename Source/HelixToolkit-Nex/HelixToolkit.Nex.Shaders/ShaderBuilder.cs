@@ -1,6 +1,5 @@
 using System.Text;
 using System.Text.RegularExpressions;
-using HelixToolkit.Nex.Graphics;
 
 namespace HelixToolkit.Nex.Shaders;
 
@@ -139,9 +138,11 @@ public class ShaderBuilder
                 result.Errors = new List<string>(_errors);
             }
 
+            processedSource = processedSource.Replace("{{", "{").Replace("}}", "}");
+
             result.Source = processedSource;
-            result.Warnings = new List<string>(_warnings);
-            result.IncludedFiles = new List<string>(_processedIncludes);
+            result.Warnings = [.. _warnings];
+            result.IncludedFiles = [.. _processedIncludes];
 
             return result;
         }
@@ -150,7 +151,7 @@ public class ShaderBuilder
             return new ShaderBuildResult
             {
                 Success = false,
-                Errors = new List<string> { $"Shader build failed: {ex.Message}" },
+                Errors = [$"Shader build failed: {ex.Message}"],
             };
         }
     }

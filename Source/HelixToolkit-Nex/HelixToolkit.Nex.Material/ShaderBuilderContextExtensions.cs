@@ -1,6 +1,6 @@
 using HelixToolkit.Nex.Graphics;
 
-namespace HelixToolkit.Nex.Shaders;
+namespace HelixToolkit.Nex.Material;
 
 /// <summary>
 /// Extension methods for integrating shader building with graphics context

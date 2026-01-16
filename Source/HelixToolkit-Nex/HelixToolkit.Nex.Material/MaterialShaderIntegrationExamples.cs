@@ -12,76 +12,41 @@ public static class MaterialShaderIntegrationExamples
     /// <summary>
     /// Example 1: Create a basic PBR material with auto-generated shaders
     /// </summary>
-    public static void Example1_BasicPBRMaterial(IContext context)
+    public static Material? Example1_BasicPBRMaterial(IContext context)
     {
         // Create a PBR material
-        var material = new PbrMaterial();
-        material.Properties.Variables = new PBRMaterial
-        {
-            Albedo = new Vector3(0.8f, 0.2f, 0.1f),
-            Metallic = 0.5f,
-            Roughness = 0.3f,
-            Ao = 1.0f,
-            Opacity = 1.0f,
-        };
+        var builder = new MaterialShaderBuilder().WithPBRShading(true);
+        var result = builder.BuildMaterialPipeline(context, "PbrMaterial");
 
-        // Initialize with pipeline - shaders are generated automatically
+        if (!result.Success)
+        {
+            return null;
+        }
+
+        // Update pipeline descriptor with generated shaders
         var pipelineDesc = new RenderPipelineDesc
         {
             Topology = Topology.Triangle,
             CullMode = CullMode.Back,
         };
+        pipelineDesc.VertexShader = result.VertexShader;
+        pipelineDesc.FragementShader = result.FragmentShader;
+        pipelineDesc.DebugName = "PbrMaterial_Pipeline";
+        var material = new Material();
         pipelineDesc.Colors[0].Format = Format.RGBA_UN8;
 
-        bool success = material.InitializePipeline(context, pipelineDesc);
-        if (success)
+        if (material.CreatePipeline(context, pipelineDesc))
         {
-            // Material is ready to use with its pipeline
-            var pipeline = material.Pipeline;
-            // Use in rendering...
+            return material;
         }
-    }
-
-    /// <summary>
-    /// Example 2: Create a textured PBR material
-    /// </summary>
-    public static void Example2_TexturedPBRMaterial(
-        IContext context,
-        TextureResource albedoTexture,
-        TextureResource normalTexture,
-        SamplerResource sampler
-    )
-    {
-        var material = new PbrMaterial();
-
-        // Set up material properties
-        material.Properties.Variables = new PBRMaterial
-        {
-            Albedo = Vector3.One,
-            Metallic = 0.0f,
-            Roughness = 0.5f,
-            Ao = 1.0f,
-        };
-
-        // Assign textures - shader will automatically enable texture sampling
-        material.Properties.BaseColorTexture = albedoTexture;
-        material.Properties.NormalTexture = normalTexture;
-        material.Properties.BaseColorSampler = sampler;
-        material.Properties.NormalSampler = sampler;
-
-        // Initialize pipeline
-        var pipelineDesc = new RenderPipelineDesc();
-        pipelineDesc.Colors[0].Format = Format.RGBA_UN8;
-        material.InitializePipeline(context, pipelineDesc);
+        return null;
     }
 
     /// <summary>
     /// Example 3: Create a custom material with shader modifications
     /// </summary>
-    public static void Example3_CustomMaterialShader(IContext context)
+    public static Material? Example3_CustomMaterialShader(IContext context)
     {
-        var material = new PbrMaterial();
-
         // Use the material shader builder directly for customization
         var builder = new MaterialShaderBuilder()
             .WithPBRShading(true)
@@ -125,110 +90,13 @@ public static class MaterialShaderIntegrationExamples
                 FragementShader = result.FragmentShader,
             };
             pipelineDesc.Colors[0].Format = Format.RGBA_UN8;
-
-            var pipeline = context.CreateRenderPipeline(pipelineDesc);
-        }
-    }
-
-    /// <summary>
-    /// Example 4: Using MaterialFactory to create materials
-    /// </summary>
-    public static void Example4_MaterialFactory(IContext context)
-    {
-        // Create a material by name using the factory
-        var material = MaterialFactory.Create("PBR");
-
-        if (material is PbrMaterial pbrMaterial)
-        {
-            pbrMaterial.Properties.Variables = new PBRMaterial
+            var material = new Material();
+            if (material.CreatePipeline(context, pipelineDesc))
             {
-                Albedo = new Vector3(0.5f, 0.5f, 0.8f),
-                Metallic = 1.0f,
-                Roughness = 0.2f,
-                Ao = 1.0f,
-            };
-
-            var pipelineDesc = new RenderPipelineDesc();
-            pipelineDesc.Colors[0].Format = Format.RGBA_UN8;
-            pbrMaterial.InitializePipeline(context, pipelineDesc);
+                return material;
+            }
         }
-    }
-
-    /// <summary>
-    /// Example 5: Create a material library with different presets
-    /// </summary>
-    public static Dictionary<string, PbrMaterial> Example5_MaterialLibrary(IContext context)
-    {
-        var library = new Dictionary<string, PbrMaterial>();
-
-        // Metallic material
-        var metallic = new PbrMaterial();
-        metallic.Properties.Variables = new PBRMaterial
-        {
-            Albedo = new Vector3(0.8f, 0.8f, 0.8f),
-            Metallic = 1.0f,
-            Roughness = 0.2f,
-            Ao = 1.0f,
-        };
-        library["Metal"] = metallic;
-
-        // Plastic material
-        var plastic = new PbrMaterial();
-        plastic.Properties.Variables = new PBRMaterial
-        {
-            Albedo = new Vector3(0.2f, 0.8f, 0.2f),
-            Metallic = 0.0f,
-            Roughness = 0.5f,
-            Ao = 1.0f,
-        };
-        library["Plastic"] = plastic;
-
-        // Rough metal
-        var roughMetal = new PbrMaterial();
-        roughMetal.Properties.Variables = new PBRMaterial
-        {
-            Albedo = new Vector3(0.7f, 0.6f, 0.5f),
-            Metallic = 1.0f,
-            Roughness = 0.8f,
-            Ao = 1.0f,
-        };
-        library["RoughMetal"] = roughMetal;
-
-        // Initialize all pipelines
-        var basePipelineDesc = new RenderPipelineDesc();
-        basePipelineDesc.Colors[0].Format = Format.RGBA_UN8;
-
-        foreach (var mat in library.Values)
-        {
-            mat.InitializePipeline(context, basePipelineDesc);
-        }
-
-        return library;
-    }
-
-    /// <summary>
-    /// Example 6: Dynamic material updates
-    /// </summary>
-    public static void Example6_DynamicMaterialUpdate(IContext context, PbrMaterial material)
-    {
-        // Update material properties at runtime
-        material.Properties.Variables = new PBRMaterial
-        {
-            Albedo = new Vector3(0.9f, 0.1f, 0.1f),
-            Metallic = 0.8f,
-            Roughness = 0.4f,
-            Ao = 1.0f,
-        };
-
-        // If textures change, invalidate and rebuild pipeline
-        if (material.Properties.BaseColorTexture.Valid)
-        {
-            material.InvalidatePipeline();
-
-            var pipelineDesc = new RenderPipelineDesc();
-            pipelineDesc.Colors[0].Format = Format.RGBA_UN8;
-            material.InitializePipeline(context, pipelineDesc);
-        }
+        return null;
     }
 
     /// <summary>

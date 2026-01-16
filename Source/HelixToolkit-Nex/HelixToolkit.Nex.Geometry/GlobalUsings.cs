@@ -4,4 +4,7 @@ global using System.Numerics;
 global using System.Runtime.InteropServices;
 global using System.Text.Json.Serialization;
 global using HelixToolkit.Nex.Graphics;
+global using HelixToolkit.Nex.Maths;
 global using Microsoft.Extensions.Logging;
+using System.Runtime.Intrinsics;
+using System.Runtime.Intrinsics.X86;

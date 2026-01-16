@@ -8,7 +8,7 @@ internal sealed class VulkanPipelineBuilder
 
     private uint32_t _numShaderStages = 0;
     private readonly VkPipelineShaderStageCreateInfo[] _shaderStages =
-        new VkPipelineShaderStageCreateInfo[(int)Graphics.ShaderStage.Fragment + 1];
+        new VkPipelineShaderStageCreateInfo[(int)Nex.ShaderStage.Fragment + 1];
 
     private VkPipelineVertexInputStateCreateInfo _vertexInputState = new();
     private VkPipelineInputAssemblyStateCreateInfo _inputAssembly = new()

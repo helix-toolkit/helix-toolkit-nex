@@ -730,6 +730,12 @@ public struct DepthState()
     /// Whether depth writes are enabled. Defaults to false.
     /// </summary>
     public bool IsDepthWriteEnabled = false;
+
+    public static readonly DepthState Default = new DepthState
+    {
+        CompareOp = CompareOp.LessEqual,
+        IsDepthWriteEnabled = true,
+    };
 }
 
 /// <summary>
@@ -839,52 +845,6 @@ public enum ResolveMode : uint8_t
     /// Resolve by taking the maximum value across samples.
     /// </summary>
     Max,
-}
-
-/// <summary>
-/// Defines the shader pipeline stage.
-/// </summary>
-public enum ShaderStage : uint8_t
-{
-    /// <summary>
-    /// Vertex shader stage.
-    /// </summary>
-    Vertex,
-
-    /// <summary>
-    /// Tessellation control shader stage (hull shader).
-    /// </summary>
-    TessellationControl,
-
-    /// <summary>
-    /// Tessellation evaluation shader stage (domain shader).
-    /// </summary>
-    TessellationEvaluation,
-
-    /// <summary>
-    /// Geometry shader stage.
-    /// </summary>
-    Geometry,
-
-    /// <summary>
-    /// Fragment shader stage (pixel shader).
-    /// </summary>
-    Fragment,
-
-    /// <summary>
-    /// Compute shader stage.
-    /// </summary>
-    Compute,
-
-    /// <summary>
-    /// Task shader stage (for mesh shading pipeline).
-    /// </summary>
-    Task,
-
-    /// <summary>
-    /// Mesh shader stage.
-    /// </summary>
-    Mesh,
 }
 
 /// <summary>

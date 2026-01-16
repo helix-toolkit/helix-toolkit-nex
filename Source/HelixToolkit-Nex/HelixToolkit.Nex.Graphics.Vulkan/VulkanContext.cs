@@ -2111,7 +2111,7 @@ internal sealed partial class VulkanContext
     {
         var cps = ComputePipelinesPool.Get(handle);
 
-        if (cps is null || !cps.Valid)
+        if (cps is null)
         {
             return VkPipeline.Null;
         }

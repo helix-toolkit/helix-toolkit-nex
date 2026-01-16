@@ -1,5 +1,3 @@
-using HelixToolkit.Nex.Graphics;
-
 namespace HelixToolkit.Nex.Shaders;
 
 public static class GlslHeaders
@@ -7,7 +5,9 @@ public static class GlslHeaders
     public const string DEFAULT_VERSION = "#version 460";
     private const string TASK_MESH_SHADER = "HeaderTask.glsl";
 
-    private const string VERTEX_COMPUTE_TESS_SHADER = "HeaderVertex.glsl";
+    private const string VERTEX_TESS_SHADER = "HeaderVertex.glsl";
+
+    private const string COMPUTE_SHADER = "HeaderCompute.glsl";
 
     private const string FRAGMENT_SHADER = "HeaderFrag.glsl";
 
@@ -20,12 +20,10 @@ public static class GlslHeaders
             ShaderStage.Task or ShaderStage.Mesh => GetGlslShaderHeader(TASK_MESH_SHADER),
             ShaderStage.Vertex
             or ShaderStage.Geometry
-            or ShaderStage.Compute
             or ShaderStage.TessellationControl
-            or ShaderStage.TessellationEvaluation => GetGlslShaderHeader(
-                VERTEX_COMPUTE_TESS_SHADER
-            ),
+            or ShaderStage.TessellationEvaluation => GetGlslShaderHeader(VERTEX_TESS_SHADER),
             ShaderStage.Fragment => GetGlslShaderHeader(FRAGMENT_SHADER),
+            ShaderStage.Compute => GetGlslShaderHeader(COMPUTE_SHADER),
             _ => throw new ArgumentOutOfRangeException(
                 nameof(stage),
                 $"Unsupported shader stage: {stage}"

@@ -61,7 +61,7 @@ public class ShaderCache
     public static string GenerateCacheKey(
         string source,
         ShaderBuildOptions options,
-        Graphics.ShaderStage stage
+        ShaderStage stage
     )
     {
         var keyBuilder = new StringBuilder();
