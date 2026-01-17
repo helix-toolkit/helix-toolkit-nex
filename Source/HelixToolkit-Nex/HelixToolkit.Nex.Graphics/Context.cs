@@ -506,6 +506,65 @@ public static class ContextExtensions
     }
 
     /// <summary>
+    /// Creates a new buffer resource initialized with the specified data.
+    /// </summary>
+    /// <remarks>This method creates a buffer resource and initializes it with the contents of <paramref
+    /// name="data"/>. The buffer's size is determined by the size of <typeparamref name="T"/>. The caller is
+    /// responsible for releasing the buffer resource when it is no longer needed.</remarks>
+    /// <typeparam name="T">The type of the data used to initialize the buffer. Must be an unmanaged type.</typeparam>
+    /// <param name="context">The graphics context used to create the buffer.</param>
+    /// <param name="data">The value to initialize the buffer with. The type must be unmanaged.</param>
+    /// <param name="usage">A bitmask specifying the intended usage of the buffer.</param>
+    /// <param name="storage">The storage type that determines how the buffer's memory is allocated and accessed.</param>
+    /// <param name="buffer">When this method returns, contains the created <see cref="BufferResource"/> if the operation succeeds;
+    /// otherwise, contains <see langword="null"/>.</param>
+    /// <param name="debugName">An optional name for the buffer resource, used for debugging purposes. Can be <see langword="null"/>.</param>
+    /// <returns>A <see cref="ResultCode"/> indicating the result of the buffer creation operation. Returns <see
+    /// cref="ResultCode.Success"/> if the buffer was created successfully; otherwise, returns an error code.</returns>
+    public static ResultCode CreateBuffer<T>(
+        this IContext context,
+        T data,
+        BufferUsageBits usage,
+        StorageType storage,
+        out BufferResource buffer,
+        string? debugName = null
+    )
+        where T : unmanaged
+    {
+        unsafe
+        {
+            return context.CreateBuffer(
+                new BufferDesc(usage, storage, (nint)(&data), (uint)sizeof(T), debugName),
+                out buffer,
+                debugName
+            );
+        }
+    }
+
+    /// <summary>
+    /// Creates a new buffer resource initialized with the specified data.
+    /// </summary>
+    /// <typeparam name="T">The type of the data to initialize the buffer with. Must be an unmanaged type.</typeparam>
+    /// <param name="context">The graphics context used to create the buffer resource.</param>
+    /// <param name="data">The value to initialize the buffer with. Must be an unmanaged type.</param>
+    /// <param name="usage">A bitmask specifying how the buffer will be used (e.g., for vertex data, index data, etc.).</param>
+    /// <param name="storage">The type of storage to use for the buffer, such as device-local or host-visible memory.</param>
+    /// <param name="debugName">An optional name for the buffer resource, used for debugging purposes. Can be <see langword="null"/>.</param>
+    /// <returns>A <see cref="BufferResource"/> representing the newly created buffer initialized with <paramref name="data"/>.</returns>
+    public static BufferResource CreateBuffer<T>(
+        this IContext context,
+        T data,
+        BufferUsageBits usage,
+        StorageType storage,
+        string? debugName = null
+    )
+        where T : unmanaged
+    {
+        context.CreateBuffer(data, usage, storage, out var buffer, debugName).CheckResult();
+        return buffer;
+    }
+
+    /// <summary>
     /// Creates a new buffer resource from the specified list of unmanaged data elements.
     /// </summary>
     /// <remarks>The buffer is initialized with the contents of <paramref name="data"/>. The usage and storage

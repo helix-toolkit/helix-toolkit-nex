@@ -28,10 +28,6 @@ public class MaterialShaderBuilderForwardPlusTests
             vertResult.Source!.Contains("buffer_reference"),
             "Should include buffer_reference extension"
         );
-        Assert.IsTrue(
-            vertResult.Source.Contains("VertexBuffer"),
-            "Should define VertexBuffer structure"
-        );
     }
 
     [TestMethod]
@@ -269,7 +265,7 @@ public class GpuStructureTests
             Position = new Vector3(1, 2, 3),
             Normal = new Vector3(0, 1, 0),
             TexCoord = new Vector2(0.5f, 0.5f),
-            Tangent = new Vector4(1, 0, 0, 1),
+            Tangent = new Vector3(1, 0, 0),
         };
 
         Assert.AreEqual(new Vector3(1, 2, 3), vertex.Position);

@@ -8,9 +8,7 @@
 #define EPSILON 1e-4 // Increased epsilon for better stability
 
 // ============================================================================
-
 // Material Structure
-
 // ============================================================================
 
 struct PBRMaterial {
@@ -20,35 +18,23 @@ struct PBRMaterial {
     float ao;              // Ambient occlusion [0..1]
     vec3 normal;           // World-space normal (normalized)
     vec3 emissive;         // Emissive color
-    float opacity;         // Opacity/alpha [0..1]
+    float opacity;         // Opacity [0..1]
 };
 
-// ============================================================================
-// Light Structure
-// ============================================================================
-struct Light {
-    vec3 position;         // Light position (world space)
-    uint type;              // Light type: 0=directional, 1=point, 2=spot
-    vec3 direction;        // Light direction (for directional/spot lights)
-    float range;           // Light range (for point/spot lights)
-    vec3 color;            // Light color (linear RGB)
-    float intensity;       // Light intensity
-    vec2 spotAngles;       // x=inner, y=outer cone angles
-    vec2 _padding;          // Padding for alignment
-};
+
 
 // ============================================================================
 // Fresnel Functions
 // ============================================================================
 
 // Schlick's approximation of Fresnel reflectance
-vec3 fresnelSchlick(float cosTheta, vec3 F0) {
+vec3 fresnelSchlick(float cosTheta, in vec3 F0) {
     return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }
 
 
 // Fresnel with roughness (for IBL)
-vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness) {
+vec3 fresnelSchlickRoughness(float cosTheta, in vec3 F0, float roughness) {
     return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }
 
@@ -56,7 +42,7 @@ vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness) {
 // Refined Geometry & Distribution
 // ============================================================================
 
-float distributionGGX(vec3 N, vec3 H, float roughness) {
+float distributionGGX(in vec3 N, in vec3 H, float roughness) {
     float a = roughness * roughness;
     float a2 = a * a;
     float NdotH = max(dot(N, H), 0.0);
@@ -75,7 +61,7 @@ float geometrySchlickGGX(float NdotV, float roughness) {
     return NdotV / (NdotV * (1.0 - k) + k + 0.0001);
 }
 
-float geometrySmith(vec3 N, vec3 V, vec3 L, float roughness) {
+float geometrySmith(in vec3 N, in vec3 V, in vec3 L, float roughness) {
     float NdotV = max(dot(N, V), 0.0);
     float NdotL = max(dot(N, L), 0.0);
     return geometrySchlickGGX(NdotV, roughness) * geometrySchlickGGX(NdotL, roughness);
@@ -87,7 +73,7 @@ float geometrySmith(vec3 N, vec3 V, vec3 L, float roughness) {
 
 // Point light attenuation (inverse square law with smooth cutoff)
 
-float getPointLightAttenuation(vec3 lightPos, vec3 fragPos, float range) {
+float getPointLightAttenuation(in vec3 lightPos, in vec3 fragPos, float range) {
     float distance = length(lightPos - fragPos);
     float attenuation = 1.0 / (distance * distance);
 
@@ -96,7 +82,7 @@ float getPointLightAttenuation(vec3 lightPos, vec3 fragPos, float range) {
     return attenuation * cutoff;
 }
 
-vec3 calculatePBRLighting(PBRMaterial material, Light light, vec3 fragPos, vec3 viewDir) {
+vec3 calculatePBRLighting(in PBRMaterial material, in Light light, in vec3 fragPos, in vec3 viewDir) {
     vec3 L;
     float attenuation = 1.0;
     

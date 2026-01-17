@@ -69,10 +69,6 @@ public class ShaderCache
         keyBuilder.Append('|');
         keyBuilder.Append(ComputeHash(source));
         keyBuilder.Append('|');
-        keyBuilder.Append(options.IncludeStandardHeader);
-        keyBuilder.Append('|');
-        keyBuilder.Append(options.IncludePBRFunctions);
-        keyBuilder.Append('|');
         keyBuilder.Append(options.StripComments);
 
         // Include defines in the key

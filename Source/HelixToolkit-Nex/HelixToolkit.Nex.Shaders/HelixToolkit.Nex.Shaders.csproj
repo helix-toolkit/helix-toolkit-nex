@@ -11,26 +11,21 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <EmbeddedResource Include="Headers\HeaderFrag.glsl" />
-        <EmbeddedResource Include="Headers\HeaderTask.glsl" />
-        <EmbeddedResource Include="Headers\HeaderCompute.glsl" />
-        <EmbeddedResource Include="Headers\HeaderVertex.glsl" />
-        <EmbeddedResource Include="Headers\PBRFunctions.glsl" />
-
-        <!-- Add GLSL files as AdditionalFiles for source generator -->
-        <AdditionalFiles Include="Headers\*.glsl" />
+        <EmbeddedResource Include="Headers\*.glsl" />
+        <EmbeddedResource Include="Vert\*.glsl" />
+        <EmbeddedResource Include="Frag\*.glsl" />
+        <EmbeddedResource Include="Compute\*.glsl" />
+        <AdditionalFiles Include="*\*.glsl" />
     </ItemGroup>
 
     <ItemGroup>
-
         <!-- Add source generator reference -->
         <ProjectReference Include="..\HelixTookit.Nex\HelixToolkit.Nex.csproj" />
-        <ProjectReference Include="..\HelixToolkit.Nex.CodeGen\HelixToolkit.Nex.CodeGen.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
-    </ItemGroup>
-
-    <ItemGroup>
-        <Folder Include="fs\" />
-        <Folder Include="vs\" />
+        <ProjectReference
+            Include="..\HelixToolkit.Nex.CodeGen\HelixToolkit.Nex.CodeGen.csproj"
+            OutputItemType="Analyzer"
+            ReferenceOutputAssembly="false"
+        />
     </ItemGroup>
 
     <ItemGroup>

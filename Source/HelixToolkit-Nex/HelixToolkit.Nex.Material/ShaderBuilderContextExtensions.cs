@@ -55,14 +55,7 @@ public static class ShaderBuilderContextExtensions
         string? debugName = null
     )
     {
-        options ??= new ShaderBuildOptions
-        {
-            IncludeStandardHeader = true,
-            IncludePBRFunctions = true,
-        };
-
-        options.IncludeStandardHeader = true;
-        options.IncludePBRFunctions = true;
+        options ??= new ShaderBuildOptions();
 
         return context.BuildAndCompileShader(ShaderStage.Fragment, source, options, debugName);
     }
@@ -117,18 +110,6 @@ public class ShaderCompilationWithContextBuilder
     public ShaderCompilationWithContextBuilder WithSource(string source)
     {
         _source = source;
-        return this;
-    }
-
-    public ShaderCompilationWithContextBuilder WithStandardHeader(bool include = true)
-    {
-        _options.IncludeStandardHeader = include;
-        return this;
-    }
-
-    public ShaderCompilationWithContextBuilder WithPBRFunctions(bool include = true)
-    {
-        _options.IncludePBRFunctions = include;
         return this;
     }
 

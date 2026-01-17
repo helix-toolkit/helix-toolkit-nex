@@ -581,4 +581,33 @@ void main() {
             "PBR functions should contain PBRMaterial"
         );
     }
+
+    [TestMethod]
+    [TestCategory("ShaderBuilding")]
+    [TestCategory("Includes")]
+    public void TestRelativePathInclude()
+    {
+        // This test specifically checks if relative paths like "../Headers/HeaderFrag.glsl" 
+        // are correctly resolved to the embedded resource path logic in ShaderBuilder.cs
+
+        string shader = @"
+#version 460
+#include ""../Headers/HeaderFrag.glsl""
+layout(location = 0) out vec4 outColor;
+void main() {
+    outColor = vec4(1.0);
+}";
+
+        var options = new ShaderBuildOptions
+        {
+            IncludeStandardHeader = false, // We're manually including it
+            IncludePBRFunctions = false
+        };
+
+        var result = _compiler!.Compile(ShaderStage.Fragment, shader, options);
+
+        Assert.IsTrue(result.Success, $"Compilation failed: {string.Join(", ", result.Errors)}");
+        Assert.IsTrue(result.Source!.Contains("// Begin include: ../Headers/HeaderFrag.glsl"),
+            "Should verify include directive was processed");
+    }
 }

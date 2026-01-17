@@ -9,16 +9,6 @@ namespace HelixToolkit.Nex.Shaders;
 public class ShaderBuildOptions
 {
     /// <summary>
-    /// Whether to automatically include the standard header for the shader stage
-    /// </summary>
-    public bool IncludeStandardHeader { get; set; } = true;
-
-    /// <summary>
-    /// Whether to automatically include PBR functions
-    /// </summary>
-    public bool IncludePBRFunctions { get; set; } = false;
-
-    /// <summary>
     /// Custom include directories (not yet implemented for embedded resources)
     /// </summary>
     public List<string> IncludeDirectories { get; set; } = new();
@@ -180,16 +170,6 @@ public class ShaderBuilder
         builder.AppendLine(versionDirective);
         builder.AppendLine();
 
-        // Include standard header if requested
-        if (_options.IncludeStandardHeader)
-        {
-            builder.AppendLine("// Standard Header");
-            string header = GlslHeaders.GetShaderHeader(_stage);
-            builder.AppendLine(header);
-            builder.AppendLine();
-            _processedIncludes.Add($"StandardHeader_{_stage}");
-        }
-
         // Add custom defines
         if (_options.Defines.Count > 0)
         {
@@ -206,16 +186,6 @@ public class ShaderBuilder
                 }
             }
             builder.AppendLine();
-        }
-
-        // Include PBR functions if requested
-        if (_options.IncludePBRFunctions)
-        {
-            builder.AppendLine("// PBR Functions");
-            string pbrFunctions = GlslHeaders.GetGlslShaderPBRFunction();
-            builder.AppendLine(pbrFunctions);
-            builder.AppendLine();
-            _processedIncludes.Add("PBRFunctions.glsl");
         }
 
         // Process user shader (handle includes, strip comments, etc.)
@@ -287,19 +257,31 @@ public class ShaderBuilder
                 ?? throw new InvalidOperationException("Assembly name cannot be null.");
 
             // Handle special includes
-            if (includePath == "PBRFunctions.glsl")
+            if (includePath.EndsWith("PBRFunctions.glsl"))
             {
                 return GlslHeaders.GetGlslShaderPBRFunction();
             }
 
+            // Normalize path separators to dots for resource lookup
+            // e.g. "Headers/HeaderFrag.glsl" -> "Headers.HeaderFrag.glsl"
+            // Also handle relative paths like "../Headers/HeaderFrag.glsl" by cleaning them up
+
+            // Simple path cleaning: remove "../" and "./"
+            string cleanPath = includePath.Replace("../", "").Replace("./", "").Replace("/", ".");
+
             // Try to load from Headers directory
-            string resourceName = $"{assemblyName}.Headers.{includePath}";
+            string includeNamespace = "HelixToolkit.Nex.Shaders";
+            string resourceName = $"{includeNamespace}.{cleanPath}";
+
             using var stream = assembly.GetManifestResourceStream(resourceName);
             if (stream != null)
             {
                 using var reader = new StreamReader(stream);
                 return reader.ReadToEnd();
             }
+
+            // If not found, try varying known namespaces or locations if needed
+            // E.g. try adding .glsl if missing or check root namespace
 
             // If not found in embedded resources, return null
             return null;

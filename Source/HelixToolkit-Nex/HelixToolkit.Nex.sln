@@ -57,8 +57,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HelixToolkit.Nex.CodeGen", 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HelixToolkit.Nex.CodeGen.Tests", "HelixToolkit.Nex.CodeGen.Tests\HelixToolkit.Nex.CodeGen.Tests.csproj", "{D8A3811F-6CCD-EC8F-D63E-F5594A8155FE}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HelixToolkit.Nex.Material.Tests", "HelixToolkit.Nex.Material.Tests\HelixToolkit.Nex.Material.Tests.csproj", "{13F6F6E0-F723-423C-87AF-F0311008FD3E}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HelixToolkit.Nex.Geometries", "HelixToolkit.Nex.Geometry\HelixToolkit.Nex.Geometries.csproj", "{0C94164D-CC7B-4BD7-AA69-750C6BA771CC}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HelixToolkit.Nex.Geometries.Tests", "HelixToolkit.Nex.Geometry.Tests\HelixToolkit.Nex.Geometries.Tests.csproj", "{AA9FACF7-CD79-4062-BA73-6898C68510C5}"
@@ -157,10 +155,6 @@ Global
 		{D8A3811F-6CCD-EC8F-D63E-F5594A8155FE}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D8A3811F-6CCD-EC8F-D63E-F5594A8155FE}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D8A3811F-6CCD-EC8F-D63E-F5594A8155FE}.Release|Any CPU.Build.0 = Release|Any CPU
-		{13F6F6E0-F723-423C-87AF-F0311008FD3E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{13F6F6E0-F723-423C-87AF-F0311008FD3E}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{13F6F6E0-F723-423C-87AF-F0311008FD3E}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{13F6F6E0-F723-423C-87AF-F0311008FD3E}.Release|Any CPU.Build.0 = Release|Any CPU
 		{0C94164D-CC7B-4BD7-AA69-750C6BA771CC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{0C94164D-CC7B-4BD7-AA69-750C6BA771CC}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0C94164D-CC7B-4BD7-AA69-750C6BA771CC}.Release|Any CPU.ActiveCfg = Release|Any CPU

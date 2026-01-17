@@ -13,6 +13,14 @@ public static class GlslHeaders
 
     private const string PBR_FUNCTIONS = "PBRFunctions.glsl";
 
+    private const string VertStruct = "VertStruct.glsl";
+
+    private const string LightStructs = "LightStructs.glsl";
+
+    private const string ModelMatrixStruct = "ModelMatrixStruct.glsl";
+
+    private const string ForwardPlusGuidBuffers = "ForwardPlusBindless.glsl";
+
     public static string GetShaderHeader(ShaderStage stage)
     {
         return stage switch

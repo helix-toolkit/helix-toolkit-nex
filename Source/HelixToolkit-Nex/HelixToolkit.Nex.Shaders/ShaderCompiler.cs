@@ -42,11 +42,7 @@ public class ShaderCompiler
     )
     {
         // Use default options if not provided
-        options ??= new ShaderBuildOptions
-        {
-            IncludeStandardHeader = true,
-            IncludePBRFunctions = true,
-        };
+        options ??= new ShaderBuildOptions();
 
         // Check cache first
         if (_useCache)
@@ -94,8 +90,6 @@ public class ShaderCompiler
     )
     {
         options ??= new ShaderBuildOptions();
-        options.IncludeStandardHeader = true;
-        options.IncludePBRFunctions = true;
 
         return Compile(ShaderStage.Fragment, source, options);
     }
@@ -222,24 +216,6 @@ public class ShaderCompilationBuilder
     public ShaderCompilationBuilder WithSource(string source)
     {
         _source = source;
-        return this;
-    }
-
-    /// <summary>
-    /// Include standard header for the shader stage
-    /// </summary>
-    public ShaderCompilationBuilder WithStandardHeader(bool include = true)
-    {
-        _options.IncludeStandardHeader = include;
-        return this;
-    }
-
-    /// <summary>
-    /// Include PBR functions
-    /// </summary>
-    public ShaderCompilationBuilder WithPBRFunctions(bool include = true)
-    {
-        _options.IncludePBRFunctions = include;
         return this;
     }
 

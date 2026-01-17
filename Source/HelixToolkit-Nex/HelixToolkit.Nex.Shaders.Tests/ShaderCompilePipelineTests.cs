@@ -1,5 +1,6 @@
 using HelixToolkit.Nex.Graphics;
 using HelixToolkit.Nex.Graphics.Vulkan;
+using HelixToolkit.Nex.Material; // Added to resolve extension methods
 
 namespace HelixToolkit.Nex.Shaders.Tests;
 

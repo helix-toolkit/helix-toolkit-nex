@@ -18,11 +18,6 @@ internal class App : Application
     private IContext? _ctx;
     private ForwardPlusExample? _example;
     private Camera _camera;
-    private readonly Dependencies _dependencies = Dependencies.Empty;
-    private readonly RenderPass _renderPass = new();
-    private readonly Framebuffer _framebuffer = new();
-    private TextureResource _depthBuffer = TextureResource.Null;
-    private DepthState _depthState = DepthState.Default;
 
     protected override void Initialize()
     {
@@ -56,50 +51,13 @@ internal class App : Application
             _camera.NearPlane,
             _camera.FarPlane
         );
-        _renderPass.Colors[0] = new RenderPass.AttachmentDesc
-        {
-            ClearColor = new Color4(0),
-            LoadOp = LoadOp.Clear,
-            StoreOp = StoreOp.Store,
-        };
-        _renderPass.Depth = new RenderPass.AttachmentDesc
-        {
-            ClearDepth = 1.0f,
-            LoadOp = LoadOp.Clear,
-            StoreOp = StoreOp.Store,
-        };
-
-        _depthBuffer = _ctx.CreateTexture(
-            new TextureDesc()
-            {
-                Type = TextureType.Texture2D,
-                Format = Format.Z_F32,
-                Dimensions = new Dimensions((uint)windowSize.Width, (uint)windowSize.Height, 1),
-                NumLayers = 1,
-                NumSamples = 1,
-                Usage = TextureUsageBits.Attachment | TextureUsageBits.Sampled,
-                NumMipLevels = 1,
-                Storage = StorageType.Device,
-            }
-        );
     }
 
     protected override void OnTick()
     {
-        _framebuffer.Colors[0].Texture = _ctx!.GetCurrentSwapchainTexture();
-        _framebuffer.DepthStencil.Texture = _depthBuffer;
         var cmdBuffer = _ctx!.AcquireCommandBuffer();
         _example?.PreRender(cmdBuffer);
-        cmdBuffer.BeginRendering(_renderPass, _framebuffer, _dependencies);
-        cmdBuffer.BindDepthState(_depthState);
-        _example?.Render(
-            cmdBuffer,
-            _camera,
-            MainWindow.Size.Width,
-            MainWindow.Size.Height,
-            _depthBuffer.Index
-        );
-        cmdBuffer.EndRendering();
+        _example?.Render(cmdBuffer, _camera, MainWindow.Size.Width, MainWindow.Size.Height);
         _ctx.Submit(cmdBuffer, _ctx.GetCurrentSwapchainTexture());
     }
 

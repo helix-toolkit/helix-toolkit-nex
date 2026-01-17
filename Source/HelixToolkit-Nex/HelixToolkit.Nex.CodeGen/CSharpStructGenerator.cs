@@ -16,6 +16,10 @@ public class CSharpStructGenerator
         ["int"] = "int",
         ["uint"] = "uint",
         ["bool"] = "bool",
+        ["uint64_t"] = "ulong",
+        ["int64_t"] = "long",
+        ["uint64"] = "ulong",
+        ["int64"] = "long",
 
         // Vector types (2D)
         ["vec2"] = "System.Numerics.Vector2",

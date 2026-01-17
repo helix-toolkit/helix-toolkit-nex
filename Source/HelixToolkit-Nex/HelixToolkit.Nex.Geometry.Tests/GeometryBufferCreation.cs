@@ -189,25 +189,25 @@ public sealed class GeometryBufferCreation
                     new Vector3(0, 0, 0),
                     new Vector3(0, 0, 1),
                     new Vector2(0, 0),
-                    new Vector4(1, 0, 0, 1)
+                    new Vector3(1, 0, 0)
                 ),
                 new Vertex(
                     new Vector3(1, 0, 0),
                     new Vector3(0, 0, 1),
                     new Vector2(1, 0),
-                    new Vector4(0, 1, 0, 1)
+                    new Vector3(0, 1, 0)
                 ),
                 new Vertex(
                     new Vector3(0, 1, 0),
                     new Vector3(0, 0, 1),
                     new Vector2(0, 1),
-                    new Vector4(0, 0, 1, 1)
+                    new Vector3(0, 0, 1)
                 ),
                 new Vertex(
                     new Vector3(1, 1, 0),
                     new Vector3(0, 0, 1),
                     new Vector2(1, 1),
-                    new Vector4(1, 1, 0, 1)
+                    new Vector3(1, 1, 0)
                 ),
             ],
         };

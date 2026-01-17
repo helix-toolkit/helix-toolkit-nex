@@ -125,19 +125,19 @@ public sealed class GeometrySerialization
                 new Vector3(0, 0, 0),
                 new Vector3(0, 1, 0),
                 new Vector2(0, 0),
-                new Vector4(1, 0, 0, 1)
+                new Vector3(1, 0, 0)
             ),
             new Vertex(
                 new Vector3(1, 0, 0),
                 new Vector3(0, 1, 0),
                 new Vector2(1, 0),
-                new Vector4(0, 1, 0, 1)
+                new Vector3(0, 1, 0)
             ),
             new Vertex(
                 new Vector3(0, 1, 0),
                 new Vector3(0, 1, 0),
                 new Vector2(0, 1),
-                new Vector4(0, 0, 1, 1)
+                new Vector3(0, 0, 1)
             ),
         };
         var indices = new uint[] { 0, 1, 2 };
@@ -214,7 +214,7 @@ public sealed class GeometrySerialization
             new Vector3(1.5f, 2.5f, 3.5f),
             new Vector3(0, 1, 0),
             new Vector2(0.5f, 0.75f),
-            new Vector4(0.8f, 0.6f, 0.4f, 1.0f)
+            new Vector3(0.8f, 0.6f, 0.4f)
         );
 
         // Act
@@ -252,7 +252,7 @@ public sealed class GeometrySerialization
                 new Vector3(i, i * 2, i * 3),
                 new Vector3(0, 1, 0),
                 new Vector2(i / 1000f, i / 1000f),
-                new Vector4(1, 1, 1, 1)
+                new Vector3(1, 1, 1)
             ))
             .ToArray();
 
