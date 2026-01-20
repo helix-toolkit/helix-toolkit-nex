@@ -1,6 +1,7 @@
 #include "../Headers/HeaderVertex.glsl"
 #include "../Headers/VertStruct.glsl"
-#include "Headers/ForwardPlusConstants.glsl"
+#include "../Headers/ForwardPlusConstants.glsl"
+#include "../Headers/MeshDraw.glsl"
 
 layout(location = 0) out flat uint vertexIndex;
 layout(location = 1) out vec3 fragPosition;

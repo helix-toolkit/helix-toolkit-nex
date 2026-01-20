@@ -11,10 +11,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <EmbeddedResource Include="Headers\*.glsl" />
-        <EmbeddedResource Include="Vert\*.glsl" />
-        <EmbeddedResource Include="Frag\*.glsl" />
-        <EmbeddedResource Include="Compute\*.glsl" />
+        <EmbeddedResource Include="*\*.glsl" />
         <AdditionalFiles Include="*\*.glsl" />
     </ItemGroup>
 

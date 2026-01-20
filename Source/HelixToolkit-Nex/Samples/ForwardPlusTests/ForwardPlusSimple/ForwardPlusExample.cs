@@ -22,7 +22,8 @@ public class ForwardPlusExample
     private BufferResource _modelMatrixBuffer = BufferResource.Null;
     private BufferResource _pbrPropertiesBuffer = BufferResource.Null;
     private BufferResource _fpConstBuffer = BufferResource.Null;
-    private RenderPipelineResource _renderPipeline = RenderPipelineResource.Null;
+    private RenderPipelineResource _renderPipelinePBR = RenderPipelineResource.Null;
+    private RenderPipelineResource _renderPipelineUnlit = RenderPipelineResource.Null;
     private ComputePipelineResource _cullingPipeline = ComputePipelineResource.Null;
     private SamplerResource _depthBufferSampler = SamplerResource.Null;
     private ForwardPlusConfig _config;
@@ -204,19 +205,32 @@ public class ForwardPlusExample
         };
         pipelineDesc.Colors[0].Format = Format.BGRA_UN8;
         pipelineDesc.DepthFormat = Format.Z_F32;
+        pipelineDesc.SpecInfo.Entries[0].ConstantId = 0;
+        pipelineDesc.SpecInfo.Entries[0].Size = sizeof(uint);
+        pipelineDesc.SpecInfo.Data = new byte[sizeof(uint)];
+        using var pData = pipelineDesc.SpecInfo.Data.Pin();
+        unsafe
+        {
+            NativeHelper.Write((nint)pData.Pointer, 0u);
+        }
+        _renderPipelinePBR = _context.CreateRenderPipeline(pipelineDesc);
+        Debug.Assert(_renderPipelinePBR.Valid);
 
-        _renderPipeline = _context.CreateRenderPipeline(pipelineDesc);
-        Debug.Assert(_renderPipeline.Valid);
+        unsafe
+        {
+            NativeHelper.Write((nint)pData.Pointer, 1u);
+        }
+        pipelineDesc.DebugName = "ForwardPlus_UnlitPipeline";
+        _renderPipelineUnlit = _context.CreateRenderPipeline(pipelineDesc);
     }
 
     public void Render(ICommandBuffer cmdBuffer, Camera camera, int screenWidth, int screenHeight)
     {
+        RotateLights(_lights, (float)DateTime.Now.TimeOfDay.TotalSeconds);
+        cmdBuffer.UpdateBuffer(_lightBuffer, _lights, (uint)_lights.Length);
         // Step 1: Reset counter
         cmdBuffer.FillBuffer(_counterBuffer, 0, sizeof(uint), 0);
         // Update model matrices if needed
-        _modelMatrices[0] = Matrix4x4.CreateRotationY(
-            (float)DateTime.Now.TimeOfDay.TotalSeconds * 0.5f
-        );
         cmdBuffer.UpdateBuffer(_modelMatrixBuffer, _modelMatrices, (uint)_modelMatrices.Length);
 
         _framebuffer.Colors[0].Texture = _context!.GetCurrentSwapchainTexture();
@@ -277,7 +291,7 @@ public class ForwardPlusExample
         // Step 3: Render scene with Forward+
         cmdBuffer.BeginRendering(_renderPass, _framebuffer, _dependencies);
         cmdBuffer.BindDepthState(_depthState);
-        cmdBuffer.BindRenderPipeline(_renderPipeline);
+        cmdBuffer.BindRenderPipeline(_renderPipelinePBR);
         cmdBuffer.BindIndexBuffer(_mesh.IndexBuffer, IndexFormat.UI32);
 
         _drawParams.ForwardPlusConstantsAddress = _context.GpuAddress(_fpConstBuffer);
@@ -289,6 +303,7 @@ public class ForwardPlusExample
         // Draw without binding vertex buffers (bindless!)
         cmdBuffer.DrawIndexed((uint)_mesh.Indices.Count);
         // Draw light spheres
+        cmdBuffer.BindRenderPipeline(_renderPipelineUnlit);
         cmdBuffer.BindIndexBuffer(_lightMesh.IndexBuffer, IndexFormat.UI32);
         _drawParams.VertexBufferAddress = _context.GpuAddress(_lightMesh.VertexBuffer);
         for (uint i = 0; i < _lights.Length; ++i)
@@ -336,6 +351,21 @@ public class ForwardPlusExample
         return lights;
     }
 
+    private void RotateLights(Light[] lights, float time)
+    {
+        for (int i = 0; i < lights.Length; i++)
+        {
+            var angle = time * 0.5f + i;
+            var radius = 10.0f + (i % 5) * 2.0f;
+            lights[i].Position = new Vector3(
+                (float)Math.Cos(angle) * radius,
+                lights[i].Position.Y,
+                (float)Math.Sin(angle) * radius
+            );
+            _modelMatrices[i + 1] = Matrix4x4.CreateTranslation(_lights[i].Position);
+        }
+    }
+
     public void Dispose()
     {
         _lightMesh.Dispose();
@@ -344,7 +374,7 @@ public class ForwardPlusExample
         _lightGridBuffer.Dispose();
         _lightIndexBuffer.Dispose();
         _counterBuffer.Dispose();
-        _renderPipeline.Dispose();
+        _renderPipelinePBR.Dispose();
         _cullingPipeline.Dispose();
     }
 }

@@ -3,7 +3,7 @@
 #include "../Headers/PBRFunctions.glsl"
 #include "../Headers/ForwardPlusConstants.glsl"
 #include "../Headers/ForwardPlusGridBuffers.glsl"
-
+#include "../Headers/MeshDraw.glsl"
 
 layout(location = 0) in flat uint vertexIndex;
 layout(location = 1) in vec3 fragPosition;
@@ -17,14 +17,16 @@ layout(location = 0) out vec4 outColor;
 struct PBRProperties {
     vec3 albedo;           // Base color (sRGB)
     float metallic;        // Metallic factor [0..1]
+    vec3 emissive;         // Emissive color
     float roughness;       // Roughness factor [0..1]
     float ao;              // Ambient occlusion [0..1]
-    vec3 emissive;         // Emissive color
     float opacity;         // Opacity/alpha [0..1]
+    float vertexColorMix; // Vertex color mix factor [0..1], 0 = no vertex color, 1 = full vertex color
     uint albedoTexIndex;
     uint normalTexIndex;
     uint metallicRoughnessTexIndex;
     uint samplerIndex;
+    float _padding;
 };
 
 layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer FPBuffer {
@@ -108,35 +110,57 @@ PBRMaterial createPBRMaterial()
     material.ao = props.ao;
     material.emissive = props.emissive;
     material.opacity = props.opacity;
-    #ifdef USE_BASE_COLOR_TEXTURE
-        material.albedo = props.albedo * texture(sampler2D(kTextures2D[props.baseColorTexIndex], kSamplers[props.samplerIndex]), fragTexCoord).rgb;
-    #endif
+    if (props.albedoTexIndex > 0)
+    {
+        material.albedo = material.albedo * texture(sampler2D(kTextures2D[props.albedoTexIndex], kSamplers[props.samplerIndex]), fragTexCoord).rgb;
+    }
+    material.albedo = mix(material.albedo, fragColor.rgb, props.vertexColorMix);
 
-    #ifdef USE_METALLIC_ROUGHNESS_TEXTURE
+    if (props.metallicRoughnessTexIndex > 0)
+    {
         vec2 metallicRoughness = texture(sampler2D(kTextures2D[props.metallicRoughnessTexIndex], kSamplers[props.samplerIndex]), fragTexCoord).bg;
         material.metallic = metallicRoughness.r;
         material.roughness = metallicRoughness.g;
-    #endif
+    }
 
-    #ifdef USE_NORMAL_TEXTURE
+    material.normal = normalize(fragNormal);
+    if (props.normalTexIndex > 0) {
         vec3 normalMap = texture(sampler2D(kTextures2D[props.normalTexIndex], kSamplers[props.samplerIndex]), fragTexCoord).xyz * 2.0 - 1.0;
         vec3 N = normalize(fragNormal);
         vec3 T = normalize(fragTangent);
         vec3 B = cross(N, T);
         mat3 TBN = mat3(T, B, N);
         material.normal = normalize(TBN * normalMap);
-    #else
-        material.normal = normalize(fragNormal);
-    #endif
+    }
 
     return material;
 /*TEMPLATE_CREATE_PBR_MATERIAL_IMPL_END*/
 }
 
+void nonLitOutputColor(in PBRMaterial material, out vec4 finalColor)
+{
+    finalColor = vec4(material.albedo + material.emissive, material.opacity);
+}
+
+// Shading model selection(0: PBR, 1: Non-Lit)
+layout (constant_id = 0) const uint shadingModel = 0; 
+
 // Template function to create final color
 void outputColor(in PBRMaterial material, out vec4 finalColor)
 {
-    forwardPlusLighting(material, finalColor);
+/*TEMPLATE_OUTPUT_COLOR_IMPL_START*/
+    if (shadingModel == 0u) {
+        forwardPlusLighting(material, finalColor);
+        return;
+    } else if (shadingModel == 1u) {
+        nonLitOutputColor(material, finalColor);
+        return;
+    } else {
+        // Default to PBR lighting
+        forwardPlusLighting(material, finalColor);
+        return;
+    }
+/*TEMPLATE_OUTPUT_COLOR_IMPL_END*/
 }
 
 void main() {
