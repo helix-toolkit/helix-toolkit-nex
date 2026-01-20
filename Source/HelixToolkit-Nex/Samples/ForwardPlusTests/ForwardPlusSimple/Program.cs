@@ -40,11 +40,11 @@ internal class App : Application
 
         _example.Initialize(windowSize.Width, windowSize.Height);
         _camera = new Camera();
-        _camera.Position = new Vector3(0, 0, -5);
+        _camera.Position = new Vector3(0, 0, -10);
         _camera.NearPlane = 0.1f;
         _camera.FarPlane = 100.0f;
         _camera.View = Matrix4x4.CreateLookAt(_camera.Position, Vector3.Zero, Vector3.UnitY);
-        float fov = 45f * MathF.PI / 180f;
+        float fov = 60 * MathF.PI / 180f;
         _camera.Projection = Matrix4x4.CreatePerspectiveFieldOfView(
             fov,
             (float)windowSize.Width / windowSize.Height,
@@ -56,7 +56,6 @@ internal class App : Application
     protected override void OnTick()
     {
         var cmdBuffer = _ctx!.AcquireCommandBuffer();
-        _example?.PreRender(cmdBuffer);
         _example?.Render(cmdBuffer, _camera, MainWindow.Size.Width, MainWindow.Size.Height);
         _ctx.Submit(cmdBuffer, _ctx.GetCurrentSwapchainTexture());
     }

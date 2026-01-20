@@ -27,8 +27,8 @@ struct PBRProperties {
     uint samplerIndex;
 };
 
-layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer ModelParamsBuffer {
-    ModelParams modelParams;
+layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer FPBuffer {
+    FPConstants fpConstants;
 };
 
 layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer MaterialBuffer {
@@ -41,19 +41,18 @@ layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer Mo
 
 
 layout(push_constant) uniform Pc {
-    ForwardPlusConstants value;
+    MeshDraw value;
 } pc;
 
-ModelParams getModelParams() {
-    ModelParamsBuffer paramsBuf = ModelParamsBuffer(pc.value.perModelParamsBufferAddress);
-    return paramsBuf.modelParams;
+FPConstants getFPConstants() {
+    FPBuffer buf = FPBuffer(pc.value.forwardPlusConstantsAddress);
+    return buf.fpConstants;
 }
 
 PBRProperties getPBRMaterial()
 {
-    MaterialBuffer materialBuf = MaterialBuffer(pc.value.materialBufferAddress);
-    ModelParams modelParams = getModelParams();
-    return materialBuf.materials[modelParams.materialId];
+    MaterialBuffer materialBuf = MaterialBuffer(getFPConstants().materialBufferAddress);
+    return materialBuf.materials[pc.value.materialId];
 }
 
 // Custom code injection point
@@ -61,19 +60,20 @@ PBRProperties getPBRMaterial()
 
 void forwardPlusLighting(in PBRMaterial material, out vec4 outFinalColor)
 {
+    FPConstants fpConst = getFPConstants();
     // Forward+ tiled lighting
-    vec3 viewDir = normalize(pc.value.cameraPosition - fragPosition);
+    vec3 viewDir = normalize(fpConst.cameraPosition - fragPosition);
     vec3 albedo = material.albedo; // Local var to avoid modifying input if const
     vec3 finalC = vec3(0.03) * albedo * material.ao; // Ambient
 
     // Calculate tile coordinates
-    ivec2 tileCoord = ivec2(gl_FragCoord.xy) / ivec2(pc.value.tileSize);
-    uint tileIndex = uint(tileCoord.y) * uint(pc.value.tileCount.x) + uint(tileCoord.x);
+    ivec2 tileCoord = ivec2(gl_FragCoord.xy) / ivec2(fpConst.tileSize);
+    uint tileIndex = uint(tileCoord.y) * uint(fpConst.tileCount.x) + uint(tileCoord.x);
 
     // Get light list for this tile
-    LightBuffer lightBuf = LightBuffer(pc.value.lightBufferAddress);
-    LightGridBuffer lightGrid = LightGridBuffer(pc.value.lightGridBufferAddress);
-    LightIndexBuffer lightIndices = LightIndexBuffer(pc.value.lightIndexBufferAddress);
+    LightBuffer lightBuf = LightBuffer(fpConst.lightBufferAddress);
+    LightGridBuffer lightGrid = LightGridBuffer(fpConst.lightGridBufferAddress);
+    LightIndexBuffer lightIndices = LightIndexBuffer(fpConst.lightIndexBufferAddress);
     LightGridTile tile = lightGrid.tiles[tileIndex];
 
     // Process lights in this tile
@@ -109,17 +109,17 @@ PBRMaterial createPBRMaterial()
     material.emissive = props.emissive;
     material.opacity = props.opacity;
     #ifdef USE_BASE_COLOR_TEXTURE
-        material.albedo = props.albedo * texture(sampler2D(kTextures2D[pc.value.baseColorTexIndex], kSamplers[pc.value.samplerIndex]), fragTexCoord).rgb;
+        material.albedo = props.albedo * texture(sampler2D(kTextures2D[props.baseColorTexIndex], kSamplers[props.samplerIndex]), fragTexCoord).rgb;
     #endif
 
     #ifdef USE_METALLIC_ROUGHNESS_TEXTURE
-        vec2 metallicRoughness = texture(sampler2D(kTextures2D[pc.value.metallicRoughnessTexIndex], kSamplers[pc.value.samplerIndex]), fragTexCoord).bg;
+        vec2 metallicRoughness = texture(sampler2D(kTextures2D[props.metallicRoughnessTexIndex], kSamplers[props.samplerIndex]), fragTexCoord).bg;
         material.metallic = metallicRoughness.r;
         material.roughness = metallicRoughness.g;
     #endif
 
     #ifdef USE_NORMAL_TEXTURE
-        vec3 normalMap = texture(sampler2D(kTextures2D[pc.value.normalTexIndex], kSamplers[pc.value.samplerIndex]), fragTexCoord).xyz * 2.0 - 1.0;
+        vec3 normalMap = texture(sampler2D(kTextures2D[props.normalTexIndex], kSamplers[props.samplerIndex]), fragTexCoord).xyz * 2.0 - 1.0;
         vec3 N = normalize(fragNormal);
         vec3 T = normalize(fragTangent);
         vec3 B = cross(N, T);

@@ -10,34 +10,33 @@ layout(location = 4) out vec3 fragTangent;
 layout(location = 5) out vec4 fragColor;
 
 layout(push_constant) uniform Pc {
-    ForwardPlusConstants value;
+    MeshDraw value;
 } pc;
 
-layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer VertexBuffer {{
+layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer VertexBuffer {
     GpuVertex vertices[];
-}};
+};
 
 layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer VertexColorBuffer {
     vec4 colors[];
 };
 
-layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer ModelParamsBuffer {
-    ModelParams modelParams;
+layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer FPBuffer {
+    FPConstants fpConstants;
 };
 
 layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer ModelMatrixBuffer {
     mat4 models[];
 };
 
-ModelParams getModelParams() {
-    ModelParamsBuffer paramsBuf = ModelParamsBuffer(pc.value.perModelParamsBufferAddress);
-    return paramsBuf.modelParams;
+FPConstants getFPConstants() {
+    FPBuffer buf = FPBuffer(pc.value.forwardPlusConstantsAddress);
+    return buf.fpConstants;
 }
 
 mat4 getModelMatrix() {
-    ModelMatrixBuffer modelBuf = ModelMatrixBuffer(pc.value.modelMatrixBufferAddress);
-    ModelParams modelParams = getModelParams();
-    return modelBuf.models[modelParams.modelId];
+    ModelMatrixBuffer modelBuf = ModelMatrixBuffer(getFPConstants().modelMatrixBufferAddress);
+    return modelBuf.models[pc.value.modelId];
 }
 
 
@@ -65,7 +64,7 @@ void calVertexOutput(out vec4 pos, out vec3 wp, out vec3 normal, out vec3 tangen
 
     vec4 worldPos = model * vec4(vertex.position, 1.0);
     wp = worldPos.xyz;
-    pos = pc.value.viewProjection * worldPos;
+    pos = getFPConstants().viewProjection * worldPos;
     normal = mat3(model) * vertex.normal;
     tangent = mat3(model) * vertex.tangent;
     color = getVertexColor();
