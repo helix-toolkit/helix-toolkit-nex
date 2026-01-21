@@ -124,10 +124,10 @@ struct TestStruct {
         Assert.Contains("System.Numerics.Vector3 Albedo", code);
         Assert.Contains("float Metallic", code);
         Assert.Contains("float Roughness", code);
-        Assert.Contains("[StructLayout(LayoutKind.Sequential)]", code);
+        Assert.Contains("[StructLayout(LayoutKind.Sequential, Pack = 16)]", code);
         Assert.Contains("namespace HelixToolkit.Nex.Shaders", code);
         Assert.Contains(
-            "public static readonly unsafe int SizeInBytes = sizeof(PBRMaterial);",
+            "public static readonly unsafe uint SizeInBytes = (uint)sizeof(PBRMaterial);",
             code
         );
     }
@@ -161,11 +161,11 @@ struct TestStruct {
 
         // Assert
         Assert.Contains(
-            "public static readonly unsafe int SizeInBytes = sizeof(SimpleStruct);",
+            "public static readonly unsafe uint SizeInBytes = (uint)sizeof(SimpleStruct);",
             code
         );
         Assert.Contains(
-            "public static readonly unsafe int SizeInBytes = sizeof(ComplexStruct);",
+            "public static readonly unsafe uint SizeInBytes = (uint)sizeof(ComplexStruct);",
             code
         );
         Assert.Contains("/// <summary>", code);

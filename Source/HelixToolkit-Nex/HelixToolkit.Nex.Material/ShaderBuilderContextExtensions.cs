@@ -43,24 +43,6 @@ public static class ShaderBuilderContextExtensions
     }
 
     /// <summary>
-    /// Builds and compiles a fragment shader with PBR functions
-    /// </summary>
-    public static (
-        ShaderBuildResult BuildResult,
-        ShaderModuleResource Module
-    ) BuildAndCompileFragmentShaderWithPBR(
-        this IContext context,
-        string source,
-        ShaderBuildOptions? options = null,
-        string? debugName = null
-    )
-    {
-        options ??= new ShaderBuildOptions();
-
-        return context.BuildAndCompileShader(ShaderStage.Fragment, source, options, debugName);
-    }
-
-    /// <summary>
     /// Builds and compiles a vertex shader
     /// </summary>
     public static (

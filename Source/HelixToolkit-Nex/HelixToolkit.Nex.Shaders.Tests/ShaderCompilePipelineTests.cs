@@ -61,44 +61,6 @@ void main() {
     }
 
     [TestMethod]
-    public void TestPBRShaderCompilePipeline()
-    {
-        // Arrange
-        string shader =
-            @"
-layout(location = 0) in vec3 fragNormal;
-layout(location = 0) out vec4 outColor;
-
-void main() {
-    PBRMaterial material;
-    material.albedo = vec3(0.8, 0.2, 0.2);
-    material.metallic = 0.5;
-    material.roughness = 0.3;
-    material.ao = 1.0;
-    material.opacity = 1.0;
-    material.emissive = vec3(0.0);
-    material.normal = normalize(fragNormal);
-    
-    outColor = vec4(material.albedo, material.opacity);
-}";
-
-        // Act
-        var (buildResult, shaderModule) = _context!.BuildAndCompileFragmentShaderWithPBR(
-            shader,
-            debugName: "TestPBRShader"
-        );
-        using var module = shaderModule;
-        // Assert
-        Assert.IsTrue(buildResult.Success, "Build should succeed");
-        Assert.IsTrue(shaderModule.Valid, "Shader module should be valid");
-        Assert.IsTrue(
-            buildResult.Source!.Contains("struct PBRMaterial"),
-            "Should include PBR material"
-        );
-        CollectionAssert.Contains(buildResult.IncludedFiles, "PBRFunctions.glsl");
-    }
-
-    [TestMethod]
     public void TestVertexShaderCompilePipeline()
     {
         // Arrange
@@ -157,7 +119,6 @@ void main() {
             .BuildAndCompileShader()
             .WithStage(ShaderStage.Fragment)
             .WithSource(shader)
-            .WithStandardHeader()
             .WithDefine("USE_COLOR_GRADIENT")
             .WithDebugName("TestFluentBuilder")
             .Build();
@@ -172,31 +133,26 @@ void main() {
     public void TestFluentBuilderWithPBRPipeline()
     {
         // Arrange
-        string shader =
-            @"
-layout(location = 0) in vec3 fragNormal;
-layout(location = 0) out vec4 outColor;
+        string shader = """
+    #include "Headers/HeaderFrag.glsl"
+    #include "Headers/LightStruct.glsl"
+    #include "Headers/PBRFunctions.glsl"
 
-void main() {
-    PBRMaterial mat;
-    mat.albedo = vec3(1.0);
-    mat.metallic = 0.0;
-    mat.roughness = 0.5;
-    mat.ao = 1.0;
-    mat.opacity = 1.0;
-    mat.emissive = vec3(0.0);
-    mat.normal = normalize(fragNormal);
-    
-    outColor = vec4(mat.albedo, 1.0);
-}";
+    layout(location = 0) in vec3 fragNormal;
+    layout(location = 0) out vec4 outColor;
+
+    void main() {
+        PBRMaterial mat;
+        mat.albedo = vec3(1, 1, 0);
+        outColor = vec4(mat.albedo, 1.0);
+    }
+""";
 
         // Act
         var (buildResult, shaderModule) = _context!
             .BuildAndCompileShader()
             .WithStage(ShaderStage.Fragment)
             .WithSource(shader)
-            .WithStandardHeader()
-            .WithPBRFunctions()
             .WithDebugName("TestFluentPBR")
             .Build();
         using var module = shaderModule;
@@ -273,7 +229,7 @@ void main() {
         var (buildResult, shaderModule) = _context!.BuildAndCompileShader(
             ShaderStage.Compute,
             shader,
-            new ShaderBuildOptions { IncludeStandardHeader = true },
+            new ShaderBuildOptions { },
             "TestComputeShader"
         );
         using var module = shaderModule;
@@ -315,7 +271,6 @@ void main() {
 
         var options = new ShaderBuildOptions
         {
-            IncludeStandardHeader = true,
             Defines = new Dictionary<string, string>
             {
                 { "FEATURE_A", "" },
@@ -399,7 +354,7 @@ void main() {
         var (buildResult, shaderModule) = _context!.BuildAndCompileShader(
             ShaderStage.Fragment,
             shader,
-            new ShaderBuildOptions { IncludeStandardHeader = false }, // Already has bindless texture declarations
+            new ShaderBuildOptions { }, // Already has bindless texture declarations
             "TestTextures"
         );
         using var module = shaderModule;
@@ -456,7 +411,7 @@ void main() {
         var (buildResult, shaderModule) = _context!.BuildAndCompileShader(
             ShaderStage.Fragment,
             shader,
-            new ShaderBuildOptions { IncludePBRFunctions = false },
+            new ShaderBuildOptions { },
             "TestMissingPBR"
         );
         using var module = shaderModule;
@@ -620,73 +575,6 @@ void main() {
         Assert.IsTrue(shaderModule.Valid, "ShaderToy module should be valid");
     }
 
-    [TestMethod]
-    public void TestPBRLightingShaderPipeline()
-    {
-        // Arrange - Full PBR lighting shader
-        string shader =
-            @"
-layout(location = 0) in vec3 fragPosition;
-layout(location = 1) in vec3 fragNormal;
-layout(location = 2) in vec2 fragTexCoord;
-
-layout(location = 0) out vec4 outColor;
-
-layout(push_constant) uniform PushConstants {
-    vec3 cameraPosition;
-    vec3 lightDirection;
-    vec3 lightColor;
-    float lightIntensity;
-} pc;
-
-void main() {
-    // Setup PBR material
-    PBRMaterial material;
-    material.albedo = vec3(0.8, 0.2, 0.2);
-    material.metallic = 0.5;
-    material.roughness = 0.3;
-    material.ao = 1.0;
-    material.opacity = 1.0;
-    material.emissive = vec3(0.0);
-    material.normal = normalize(fragNormal);
-    
-    // Calculate view direction
-    vec3 viewDir = normalize(pc.cameraPosition - fragPosition);
-    
-    // Use PBR shading function
-    vec3 color = pbrShadingSimple(
-        material,
-        pc.lightDirection,
-        pc.lightColor,
-        pc.lightIntensity,
-        viewDir,
-        vec3(0.03)
-    );
-    
-    // Tone mapping
-    color = color / (color + vec3(1.0));
-    
-    // Gamma correction
-    color = pow(color, vec3(1.0/2.2));
-    
-    outColor = vec4(color, material.opacity);
-}";
-
-        // Act
-        var (buildResult, shaderModule) = _context!.BuildAndCompileFragmentShaderWithPBR(
-            shader,
-            debugName: "TestPBRLighting"
-        );
-        using var module = shaderModule;
-        // Assert
-        Assert.IsTrue(buildResult.Success, "PBR lighting shader should compile");
-        Assert.IsTrue(shaderModule.Valid, "PBR lighting module should be valid");
-        Assert.IsTrue(
-            buildResult.Source!.Contains("pbrShadingSimple"),
-            "Should include PBR shading function"
-        );
-    }
-
     #endregion
 
     #region NonUniform Qualifier Tests
@@ -723,7 +611,7 @@ void main() {
         var (buildResult, shaderModule) = _context!.BuildAndCompileShader(
             ShaderStage.Fragment,
             shader,
-            new ShaderBuildOptions { IncludeStandardHeader = false },
+            new ShaderBuildOptions { },
             "TestNonUniformIndexing"
         );
         using var module = shaderModule;
@@ -767,7 +655,7 @@ void main() {
         var (buildResult, shaderModule) = _context!.BuildAndCompileShader(
             ShaderStage.Fragment,
             shader,
-            new ShaderBuildOptions { IncludeStandardHeader = false },
+            new ShaderBuildOptions { },
             "TestNonUniformBufferIndexing"
         );
         using var module = shaderModule;
@@ -809,7 +697,7 @@ void main() {
         var (buildResult, shaderModule) = _context!.BuildAndCompileShader(
             ShaderStage.Fragment,
             shader,
-            new ShaderBuildOptions { IncludeStandardHeader = false },
+            new ShaderBuildOptions { },
             "TestUniformIndexing"
         );
         using var module = shaderModule;
@@ -817,54 +705,6 @@ void main() {
         // Assert
         Assert.IsTrue(buildResult.Success, "Build should succeed");
         Assert.IsTrue(shaderModule.Valid, "Module should be valid");
-    }
-
-    #endregion
-
-    #region Comparison: Two-Step vs One-Step Pipeline
-
-    [TestMethod]
-    public void TestComparisonTwoStepVsOneStep()
-    {
-        // Arrange
-        string shader =
-            @"
-layout(location = 0) out vec4 outColor;
-void main() {
-    outColor = vec4(1.0, 0.0, 0.0, 1.0);
-}";
-
-        // Act - Two-step approach
-        var compiler = new ShaderCompiler();
-        var buildResult1 = compiler.CompileFragmentShaderWithPBR(shader);
-        var module1 = ShaderModuleResource.Null;
-        if (buildResult1.Success)
-        {
-            module1 = _context!.CreateShaderModuleGlsl(
-                buildResult1.Source!,
-                ShaderStage.Fragment,
-                "TwoStep"
-            );
-        }
-        using var m1 = module1;
-        // Act - One-step approach
-        var (buildResult2, module2) = _context!.BuildAndCompileFragmentShaderWithPBR(
-            shader,
-            debugName: "OneStep"
-        );
-        using var m2 = module2;
-        // Assert - Both should produce equivalent results
-        Assert.IsTrue(buildResult1.Success, "Two-step build should succeed");
-        Assert.IsTrue(buildResult2.Success, "One-step build should succeed");
-        Assert.IsTrue(module1.Valid, "Two-step module should be valid");
-        Assert.IsTrue(module2.Valid, "One-step module should be valid");
-
-        // Both approaches should include the same files
-        CollectionAssert.AreEquivalent(
-            buildResult1.IncludedFiles,
-            buildResult2.IncludedFiles,
-            "Both approaches should include the same files"
-        );
     }
 
     #endregion

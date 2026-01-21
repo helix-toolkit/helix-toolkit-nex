@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Numerics;
 using System.Runtime.InteropServices;
+using HelixToolkit.Nex;
 using HelixToolkit.Nex.Graphics;
 using HelixToolkit.Nex.Maths;
 using HxColor = HelixToolkit.Nex.Maths.Color;

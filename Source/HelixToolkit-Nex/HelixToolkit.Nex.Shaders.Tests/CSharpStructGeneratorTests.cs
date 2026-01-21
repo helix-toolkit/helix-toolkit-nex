@@ -154,7 +154,7 @@ struct Light {
         );
         Assert.IsTrue(code.Contains("float Opacity"), "Should map float to float");
         Assert.IsTrue(
-            code.Contains("[StructLayout(LayoutKind.Sequential)]"),
+            code.Contains("[StructLayout(LayoutKind.Sequential, Pack = 16)]"),
             "Should have StructLayout attribute"
         );
         Assert.IsTrue(
@@ -162,7 +162,9 @@ struct Light {
             "Should be in correct namespace"
         );
         Assert.IsTrue(
-            code.Contains("public static readonly unsafe int SizeInBytes = sizeof(PBRMaterial)"),
+            code.Contains(
+                "public static readonly unsafe uint SizeInBytes = (uint)sizeof(PBRMaterial)"
+            ),
             "Should include SizeInBytes constant"
         );
     }
@@ -197,9 +199,12 @@ struct Light {
         Assert.IsTrue(code.Contains("float Intensity"), "Should map float to float");
         Assert.IsTrue(code.Contains("int Type"), "Should map int to int");
         Assert.IsTrue(code.Contains("float Range"), "Should map float to float");
-        Assert.IsTrue(code.Contains("System.Numerics.Vector2 SpotAngles"), "Should map vec2 to Vector2");
         Assert.IsTrue(
-            code.Contains("[StructLayout(LayoutKind.Sequential)]"),
+            code.Contains("System.Numerics.Vector2 SpotAngles"),
+            "Should map vec2 to Vector2"
+        );
+        Assert.IsTrue(
+            code.Contains("[StructLayout(LayoutKind.Sequential, Pack = 16)]"),
             "Should have StructLayout attribute"
         );
     }
@@ -435,9 +440,8 @@ struct NamingTest {
         var structs = parser.ParseStructs(glslContent);
 
         // Assert
-        Assert.IsTrue(structs.Count >= 2, "Should find at least 2 structs in PBRFunctions.glsl");
+        Assert.IsTrue(structs.Count == 1, "Should find 1 structs in PBRFunctions.glsl");
         Assert.IsTrue(structs.Any(s => s.Name == "PBRMaterial"), "Should find PBRMaterial struct");
-        Assert.IsTrue(structs.Any(s => s.Name == "Light"), "Should find Light struct");
     }
 
     [TestMethod]
@@ -461,7 +465,7 @@ struct NamingTest {
         {
             Assert.IsTrue(
                 code.Contains(
-                    $"public static readonly unsafe int SizeInBytes = sizeof({glslStruct.Name})"
+                    $"public static readonly unsafe uint SizeInBytes = (uint)sizeof({glslStruct.Name})"
                 ),
                 $"Generated code should include SizeInBytes for {glslStruct.Name}"
             );

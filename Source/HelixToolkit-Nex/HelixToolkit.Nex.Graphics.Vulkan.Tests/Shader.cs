@@ -30,8 +30,8 @@ public class Shader
             ?? throw new FileNotFoundException(
                 $"Shader file '{shaderName}' not found in embedded resources."
             );
-        using var reader = new BinaryReader(stream);
-        return reader.ReadString();
+        using var reader = new StreamReader(stream);
+        return reader.ReadToEnd();
     }
 
     [DataTestMethod]

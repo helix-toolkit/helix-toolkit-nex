@@ -82,19 +82,6 @@ public class ShaderCompiler
     }
 
     /// <summary>
-    /// Compile a fragment shader with PBR support
-    /// </summary>
-    public ShaderBuildResult CompileFragmentShaderWithPBR(
-        string source,
-        ShaderBuildOptions? options = null
-    )
-    {
-        options ??= new ShaderBuildOptions();
-
-        return Compile(ShaderStage.Fragment, source, options);
-    }
-
-    /// <summary>
     /// Compile a vertex shader
     /// </summary>
     public ShaderBuildResult CompileVertexShader(string source, ShaderBuildOptions? options = null)
