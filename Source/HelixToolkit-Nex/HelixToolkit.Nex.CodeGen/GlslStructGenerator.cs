@@ -10,6 +10,7 @@ namespace HelixToolkit.Nex.CodeGen;
 /// <summary>
 /// Source generator that extracts struct definitions from GLSL files
 /// and generates equivalent C# structs with proper memory layout.
+/// Requires structs to be annotated with @code_gen to be processed.
 /// </summary>
 [Generator]
 public class GlslStructGenerator : IIncrementalGenerator

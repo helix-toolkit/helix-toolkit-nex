@@ -1,4 +1,4 @@
-﻿# HelixToolkit.Nex.Material
+# HelixToolkit.Nex.Material
 
 **Modern, type-safe material system with automatic shader generation for HelixToolkit.Nex**
 
@@ -151,7 +151,7 @@ public class PbrMaterial : Material<PbrMaterialProperties>
 ```
 
 **Properties:**
-- `Variables` - PBRMaterial struct (albedo, metallic, roughness, etc.)
+- `Variables` - PBRProperties struct (albedo, metallic, roughness, etc.)
 - `BaseColorTexture`, `NormalTexture`, `MetallicRoughnessTexture`, etc.
 - `BaseColorSampler` - Texture sampler configuration
 - Automatic texture detection and shader variant selection

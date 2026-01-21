@@ -14,6 +14,7 @@ layout(location = 5) in vec4 fragColor;
 
 layout(location = 0) out vec4 outColor;
 
+@code_gen
 struct PBRProperties {
     vec3 albedo;           // Base color (sRGB)
     float metallic;        // Metallic factor [0..1]

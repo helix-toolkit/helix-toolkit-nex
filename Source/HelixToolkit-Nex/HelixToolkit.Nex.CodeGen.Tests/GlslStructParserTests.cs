@@ -11,6 +11,7 @@ public class GlslStructParserTests
         // Arrange
         var glslCode =
             @"
+@code_gen
 struct PBRMaterial {
     vec3 albedo;           // Base color (sRGB)
     float metallic;        // Metallic factor [0..1]
@@ -47,6 +48,7 @@ struct PBRMaterial {
         // Arrange
         var glslCode =
             @"
+@code_gen
 struct Light {
     vec3 position;
     vec3 direction;
@@ -76,6 +78,7 @@ struct Light {
         // Arrange
         var glslCode =
             @"
+@code_gen
 struct TestStruct {
     float values[16];
     vec3 positions[8];
@@ -174,5 +177,24 @@ struct TestStruct {
             "/// The size of the <see cref=\"ComplexStruct\"/> struct, in bytes.",
             code
         );
+    }
+
+    [Fact]
+    public void ParseStructs_MissingCodeGen_ReturnsEmpty()
+    {
+        // Arrange
+        var glslCode =
+            @"
+struct NoGen {
+    float val;
+};
+";
+        var parser = new GlslStructParser();
+
+        // Act
+        var structs = parser.ParseStructs(glslCode);
+
+        // Assert
+        Assert.Empty(structs);
     }
 }

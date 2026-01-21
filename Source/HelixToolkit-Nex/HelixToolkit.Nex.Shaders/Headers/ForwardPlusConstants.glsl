@@ -1,3 +1,4 @@
+@code_gen
 struct FPConstants {
     mat4 viewProjection;
     mat4 inverseViewProjection;

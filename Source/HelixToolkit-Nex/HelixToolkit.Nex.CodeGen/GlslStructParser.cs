@@ -5,11 +5,12 @@ namespace HelixToolkit.Nex.CodeGen;
 
 /// <summary>
 /// Parses GLSL code to extract struct definitions.
+/// Only structs marked with the @code_gen annotation are extracted.
 /// </summary>
 public class GlslStructParser
 {
     private static readonly Regex StructPattern = new Regex(
-        @"struct\s+(\w+)\s*\{([^}]+)\}",
+        @"@code_gen\s+struct\s+(\w+)\s*\{([^}]+)\}",
         RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.Singleline
     );
 

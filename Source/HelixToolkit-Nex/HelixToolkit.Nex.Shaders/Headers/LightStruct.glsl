@@ -1,6 +1,7 @@
 // ============================================================================
 // Light Structure
 // ============================================================================
+@code_gen
 struct Light {
     vec3 position;         // Light position (world space)
     uint type;              // Light type: 0=directional, 1=point, 2=spot

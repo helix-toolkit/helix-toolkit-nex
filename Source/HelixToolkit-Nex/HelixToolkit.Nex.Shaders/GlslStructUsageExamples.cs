@@ -11,15 +11,14 @@ public static class GlslStructUsageExamples
     /// <summary>
     /// Example: Creating a PBR material for rendering
     /// </summary>
-    public static PBRMaterial CreateMetallicMaterial()
+    public static PBRProperties CreateMetallicMaterial()
     {
-        return new PBRMaterial
+        return new PBRProperties
         {
             Albedo = new Vector3(0.8f, 0.2f, 0.1f), // Reddish base color
             Metallic = 0.9f, // Highly metallic
             Roughness = 0.2f, // Fairly smooth
             Ao = 1.0f, // No ambient occlusion
-            Normal = new Vector3(0, 1, 0), // Up-facing normal
             Emissive = Vector3.Zero, // No emission
             Opacity = 1.0f, // Fully opaque
         };
@@ -28,15 +27,14 @@ public static class GlslStructUsageExamples
     /// <summary>
     /// Example: Creating a rough dielectric material
     /// </summary>
-    public static PBRMaterial CreateRoughPlastic()
+    public static PBRProperties CreateRoughPlastic()
     {
-        return new PBRMaterial
+        return new PBRProperties
         {
             Albedo = new Vector3(0.2f, 0.6f, 0.9f), // Blue plastic
             Metallic = 0.0f, // Non-metallic
             Roughness = 0.8f, // Rough surface
             Ao = 1.0f,
-            Normal = new Vector3(0, 1, 0),
             Emissive = Vector3.Zero,
             Opacity = 1.0f,
         };
@@ -96,15 +94,14 @@ public static class GlslStructUsageExamples
     /// <summary>
     /// Example: Creating an emissive material (glowing object)
     /// </summary>
-    public static PBRMaterial CreateEmissiveMaterial()
+    public static PBRProperties CreateEmissiveMaterial()
     {
-        return new PBRMaterial
+        return new PBRProperties
         {
             Albedo = new Vector3(0.1f, 0.1f, 0.1f), // Dark base
             Metallic = 0.0f,
             Roughness = 0.5f,
             Ao = 1.0f,
-            Normal = new Vector3(0, 1, 0),
             Emissive = new Vector3(2.0f, 1.5f, 0.3f), // Bright orange glow
             Opacity = 1.0f,
         };
@@ -113,15 +110,14 @@ public static class GlslStructUsageExamples
     /// <summary>
     /// Example: Creating a transparent glass material
     /// </summary>
-    public static PBRMaterial CreateGlassMaterial()
+    public static PBRProperties CreateGlassMaterial()
     {
-        return new PBRMaterial
+        return new PBRProperties
         {
             Albedo = new Vector3(0.95f, 0.95f, 0.98f), // Slightly blue tint
             Metallic = 0.0f, // Glass is dielectric
             Roughness = 0.05f, // Very smooth
             Ao = 1.0f,
-            Normal = new Vector3(0, 1, 0),
             Emissive = Vector3.Zero,
             Opacity = 0.3f, // Mostly transparent
         };
@@ -137,7 +133,7 @@ public static class GlslStructUsageExamples
     /// Usage with buffers:
     /// <code>
     /// var material = CreateMetallicMaterial();
-    /// var buffer = device.CreateBuffer(sizeof(PBRMaterial), BufferUsage.Uniform);
+    /// var buffer = device.CreateBuffer(sizeof(PBRProperties), BufferUsage.Uniform);
     /// buffer.Update(ref material);
     /// </code>
     /// </remarks>
@@ -149,7 +145,7 @@ public static class GlslStructUsageExamples
 
         // The StructLayout attribute ensures the C# struct layout matches
         // the GLSL struct layout byte-for-byte
-        var materialSize = System.Runtime.InteropServices.Marshal.SizeOf<PBRMaterial>();
+        var materialSize = System.Runtime.InteropServices.Marshal.SizeOf<PBRProperties>();
         var lightSize = System.Runtime.InteropServices.Marshal.SizeOf<Light>();
 
         // You can now upload these to GPU buffers safely

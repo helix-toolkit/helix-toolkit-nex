@@ -1,6 +1,4 @@
-using System.Runtime.InteropServices;
 using HelixToolkit.Nex.CodeGen;
-using HelixToolkit.Nex.Shaders;
 
 namespace HelixToolkit.Nex.Shaders.Tests;
 
@@ -13,17 +11,18 @@ public class CSharpStructGeneratorTests
     private const string PBRFunctionsGlsl =
         @"
 // PBR Material Structure
-struct PBRMaterial {
+@code_gen
+struct PBRProperties {
     vec3 albedo;           // Base color (sRGB)
     float metallic;        // Metallic factor [0..1]
     float roughness;       // Roughness factor [0..1]
     float ao;              // Ambient occlusion [0..1]
-    vec3 normal;           // World-space normal (normalized)
     vec3 emissive;         // Emissive color
     float opacity;         // Opacity/alpha [0..1]
 };
 
 // Light Structure
+@code_gen
 struct Light {
     vec3 position;         // Light position (world space)
     vec3 direction;        // Light direction (for directional/spot lights)
@@ -47,11 +46,11 @@ struct Light {
         var structs = parser.ParseStructs(PBRFunctionsGlsl);
 
         // Assert
-        Assert.IsTrue(structs.Count >= 1, "Should find at least one struct (PBRMaterial)");
+        Assert.IsTrue(structs.Count >= 1, "Should find at least one struct (PBRProperties)");
 
-        var pbrMaterial = structs.FirstOrDefault(s => s.Name == "PBRMaterial");
-        Assert.IsNotNull(pbrMaterial, "Should find PBRMaterial struct");
-        Assert.AreEqual(7, pbrMaterial.Fields.Count, "PBRMaterial should have 7 fields");
+        var pbrMaterial = structs.FirstOrDefault(s => s.Name == "PBRProperties");
+        Assert.IsNotNull(pbrMaterial, "Should find PBRProperties struct");
+        Assert.AreEqual(6, pbrMaterial.Fields.Count, "PBRProperties should have 6 fields");
 
         // Verify field names and types
         Assert.AreEqual("albedo", pbrMaterial.Fields[0].Name);
@@ -66,14 +65,11 @@ struct Light {
         Assert.AreEqual("ao", pbrMaterial.Fields[3].Name);
         Assert.AreEqual("float", pbrMaterial.Fields[3].GlslType);
 
-        Assert.AreEqual("normal", pbrMaterial.Fields[4].Name);
+        Assert.AreEqual("emissive", pbrMaterial.Fields[4].Name);
         Assert.AreEqual("vec3", pbrMaterial.Fields[4].GlslType);
 
-        Assert.AreEqual("emissive", pbrMaterial.Fields[5].Name);
-        Assert.AreEqual("vec3", pbrMaterial.Fields[5].GlslType);
-
-        Assert.AreEqual("opacity", pbrMaterial.Fields[6].Name);
-        Assert.AreEqual("float", pbrMaterial.Fields[6].GlslType);
+        Assert.AreEqual("opacity", pbrMaterial.Fields[5].Name);
+        Assert.AreEqual("float", pbrMaterial.Fields[5].GlslType);
     }
 
     [TestMethod]
@@ -126,7 +122,7 @@ struct Light {
         // Arrange
         var parser = new GlslStructParser();
         var structs = parser.ParseStructs(PBRFunctionsGlsl);
-        var pbrMaterial = structs.FirstOrDefault(s => s.Name == "PBRMaterial");
+        var pbrMaterial = structs.FirstOrDefault(s => s.Name == "PBRProperties");
         Assert.IsNotNull(pbrMaterial);
 
         var generator = new CSharpStructGenerator();
@@ -136,7 +132,7 @@ struct Light {
 
         // Assert
         Assert.IsNotNull(code);
-        Assert.IsTrue(code.Contains("struct PBRMaterial"), "Should contain struct declaration");
+        Assert.IsTrue(code.Contains("struct PBRProperties"), "Should contain struct declaration");
         Assert.IsTrue(
             code.Contains("System.Numerics.Vector3 Albedo"),
             "Should map vec3 to Vector3"
@@ -144,10 +140,6 @@ struct Light {
         Assert.IsTrue(code.Contains("float Metallic"), "Should map float to float");
         Assert.IsTrue(code.Contains("float Roughness"), "Should map float to float");
         Assert.IsTrue(code.Contains("float Ao"), "Should convert 'ao' to 'Ao' (PascalCase)");
-        Assert.IsTrue(
-            code.Contains("System.Numerics.Vector3 Normal"),
-            "Should map vec3 to Vector3"
-        );
         Assert.IsTrue(
             code.Contains("System.Numerics.Vector3 Emissive"),
             "Should map vec3 to Vector3"
@@ -163,7 +155,7 @@ struct Light {
         );
         Assert.IsTrue(
             code.Contains(
-                "public static readonly unsafe uint SizeInBytes = (uint)sizeof(PBRMaterial)"
+                "public static readonly unsafe uint SizeInBytes = (uint)sizeof(PBRProperties)"
             ),
             "Should include SizeInBytes constant"
         );
@@ -216,7 +208,7 @@ struct Light {
         // Arrange
         var parser = new GlslStructParser();
         var structs = parser.ParseStructs(PBRFunctionsGlsl);
-        var pbrMaterial = structs.FirstOrDefault(s => s.Name == "PBRMaterial");
+        var pbrMaterial = structs.FirstOrDefault(s => s.Name == "PBRProperties");
         Assert.IsNotNull(pbrMaterial);
 
         var generator = new CSharpStructGenerator();
@@ -270,6 +262,7 @@ struct Light {
         // Arrange
         var glslCode =
             @"
+@code_gen
 struct TestStruct {
     float values[16];
     vec3 positions[4];
@@ -315,7 +308,7 @@ struct TestStruct {
 
         // Assert
         Assert.IsTrue(structs.Count >= 2, "Should parse at least 2 structs");
-        Assert.IsTrue(code.Contains("struct PBRMaterial"), "Should include PBRMaterial");
+        Assert.IsTrue(code.Contains("struct PBRProperties"), "Should include PBRProperties");
         Assert.IsTrue(code.Contains("struct Light"), "Should include Light");
     }
 
@@ -326,6 +319,7 @@ struct TestStruct {
         // Arrange
         var glslCode =
             @"
+@code_gen
 struct TypeTest {
     float scalarFloat;
     double scalarDouble;
@@ -386,6 +380,7 @@ struct TypeTest {
         // Arrange
         var glslCode =
             @"
+@code_gen
 struct NamingTest {
     float camelCase;
     float PascalCase;
@@ -412,7 +407,7 @@ struct NamingTest {
 
     [TestMethod]
     [TestCategory("CodeGen")]
-    public void ReadActualPBRFunctionsFile_ShouldParseSuccessfully()
+    public void ReadActualPBRTemplateFile_ShouldParseSuccessfully()
     {
         // Arrange
         var glslFilePath = Path.Combine(
@@ -422,14 +417,14 @@ struct NamingTest {
             "..",
             "..",
             "HelixToolkit.Nex.Shaders",
-            "Headers",
-            "PBRFunctions.glsl"
+            "Frag",
+            "psPBRTemplate.glsl"
         );
 
         // Skip if file doesn't exist (for CI/CD environments)
         if (!File.Exists(glslFilePath))
         {
-            Assert.Inconclusive($"PBRFunctions.glsl not found at {glslFilePath}");
+            Assert.Inconclusive($"psPBRTemplate.glsl not found at {glslFilePath}");
             return;
         }
 
@@ -440,8 +435,11 @@ struct NamingTest {
         var structs = parser.ParseStructs(glslContent);
 
         // Assert
-        Assert.IsTrue(structs.Count == 1, "Should find 1 structs in PBRFunctions.glsl");
-        Assert.IsTrue(structs.Any(s => s.Name == "PBRMaterial"), "Should find PBRMaterial struct");
+        Assert.IsTrue(structs.Count == 1, "Should find 1 structs in psPBRTemplate.glsl");
+        Assert.IsTrue(
+            structs.Any(s => s.Name == "PBRProperties"),
+            "Should find PBRProperties struct"
+        );
     }
 
     [TestMethod]

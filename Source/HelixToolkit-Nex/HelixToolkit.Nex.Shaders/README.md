@@ -159,7 +159,7 @@ When you build the project, the source generator scans all `.glsl` files and ext
 
 **From `PBRFunctions.glsl`:**
 ```glsl
-struct PBRMaterial {
+struct PBRProperties {
     vec3 albedo;
     float metallic;
     float roughness;
@@ -169,7 +169,7 @@ struct PBRMaterial {
 **Generates:**
 ```csharp
 [StructLayout(LayoutKind.Sequential)]
-public struct PBRMaterial
+public struct PBRProperties
 {
     public System.Numerics.Vector3 Albedo;
     public float Metallic;
@@ -180,7 +180,7 @@ public struct PBRMaterial
 ### Currently Generated Structs
 
 From `Headers/PBRFunctions.glsl`:
-- **`PBRMaterial`** (7 fields) - Material properties for physically-based rendering
+- **`PBRProperties`** (7 fields) - Material properties for physically-based rendering
 - **`Light`** (8 fields) - Light source definition (directional, point, spot)
 
 ### Type Mapping
@@ -824,7 +824,7 @@ public class MaterialShaderBuilder
     {
         var shader = @"
 void main() {
-    PBRMaterial mat;
+    PBRProperties mat;
     " + (albedo != null ? "mat.albedo = texture(albedoTex, uv).rgb;" : "mat.albedo = vec3(0.8);") + @"
     mat.metallic = 0.0;
     mat.roughness = 0.5;
@@ -841,31 +841,29 @@ void main() {
 
 ```csharp
 // Create materials
-var glass = new PBRMaterial
+var glass = new PBRProperties
 {
     Albedo = new Vector3(0.95f, 0.95f, 0.98f),
     Metallic = 0.0f,
     Roughness = 0.05f,
     Ao = 1.0f,
-    Normal = new Vector3(0, 1, 0),
     Emissive = Vector3.Zero,
     Opacity = 0.3f
 };
 
-var metal = new PBRMaterial
+var metal = new PBRProperties
 {
     Albedo = new Vector3(0.8f, 0.8f, 0.8f),
     Metallic = 1.0f,
     Roughness = 0.2f,
     Ao = 1.0f,
-    Normal = new Vector3(0, 1, 0),
     Emissive = Vector3.Zero,
     Opacity = 1.0f
 };
 
 // Upload to GPU
 context.Upload(materialBuffer, 0, ref glass);
-context.Upload(materialBuffer, sizeof(PBRMaterial), ref metal);
+context.Upload(materialBuffer, sizeof(PBRProperties), ref metal);
 ```
 
 See also:

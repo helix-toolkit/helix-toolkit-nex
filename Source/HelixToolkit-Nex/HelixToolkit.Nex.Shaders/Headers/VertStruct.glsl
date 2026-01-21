@@ -1,4 +1,5 @@
 // Bindless vertex buffer structure
+@code_gen
 struct GpuVertex {{
     vec3 position;
     float _padding0;
@@ -9,4 +10,5 @@ struct GpuVertex {{
     vec3 tangent;
     float _padding3;
 }};
+
 

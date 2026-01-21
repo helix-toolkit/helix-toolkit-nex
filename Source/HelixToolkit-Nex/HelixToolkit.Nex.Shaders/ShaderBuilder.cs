@@ -32,6 +32,12 @@ public class ShaderBuildOptions
     /// Gets or sets the default shader version string used when none is specified explicitly.
     /// </summary>
     public string DefaultVersion { set; get; } = GlslHeaders.DEFAULT_VERSION;
+
+    /// <summary>
+    /// Custom include source provider.
+    /// Return null if the include file is not found.
+    /// </summary>
+    public Func<string, string?>? IncludeProvider { get; set; }
 }
 
 /// <summary>
@@ -73,6 +79,7 @@ public class ShaderBuilder
     private readonly ShaderStage _stage;
     private readonly ShaderBuildOptions _options;
     private readonly HashSet<string> _processedIncludes = new();
+    private readonly Stack<string> _includeStack = new();
     private readonly List<string> _errors = new();
     private readonly List<string> _warnings = new();
 
@@ -112,6 +119,7 @@ public class ShaderBuilder
     public ShaderBuildResult Build(string userShaderSource)
     {
         _processedIncludes.Clear();
+        _includeStack.Clear();
         _errors.Clear();
         _warnings.Clear();
 
@@ -128,7 +136,10 @@ public class ShaderBuilder
                 result.Errors = new List<string>(_errors);
             }
 
-            processedSource = processedSource.Replace("{{", "{").Replace("}}", "}");
+            processedSource = processedSource
+                .Replace("{{", "{")
+                .Replace("}}", "}")
+                .Replace("@code_gen", "");
 
             result.Source = processedSource;
             result.Warnings = [.. _warnings];
@@ -212,29 +223,54 @@ public class ShaderBuilder
             var match = IncludeDirectiveRegex.Match(line);
             if (match.Success)
             {
-                string includePath = match.Groups[1].Value;
+                string includePath = match.Groups[1].Value.Trim();
+                string includeKey = includePath;
 
-                // Check if already processed (prevent infinite loops)
-                if (_processedIncludes.Contains(includePath))
+                // Normalize path for default embedded resource loader to ensure correct deduplication
+                if (_options.IncludeProvider == null)
+                {
+                    includeKey = includePath.Replace("../", "").Replace("./", "").Replace("/", ".");
+                }
+
+                // Check for circular dependency
+                if (_includeStack.Contains(includeKey))
+                {
+                    _errors.Add($"Circular dependency detected: {string.Join(" -> ", _includeStack.Reverse())} -> {includePath}");
+                    builder.AppendLine($"// ERROR: Circular dependency detected: {includePath}");
+                    continue;
+                }
+
+                // Check if already processed (prevent infinite loops / double inclusion)
+                if (_processedIncludes.Contains(includeKey))
                 {
                     builder.AppendLine($"// Already included: {includePath}");
                     continue;
                 }
 
-                _processedIncludes.Add(includePath);
+                _processedIncludes.Add(includeKey);
+                _includeStack.Push(includeKey);
 
-                // Try to load the include file
-                string? includeContent = LoadIncludeFile(includePath);
-                if (includeContent != null)
+                try
                 {
-                    builder.AppendLine($"// Begin include: {includePath}");
-                    builder.AppendLine(ProcessIncludes(includeContent)); // Recursive processing
-                    builder.AppendLine($"// End include: {includePath}");
+                    // Try to load the include file
+                    // Use the original includePath for loading, as the loader might need the raw path
+                    // (though for default loader, they are compatible)
+                    string? includeContent = LoadIncludeFile(includePath);
+                    if (includeContent != null)
+                    {
+                        builder.AppendLine($"// Begin include: {includePath}");
+                        builder.AppendLine(ProcessIncludes(includeContent)); // Recursive processing
+                        builder.AppendLine($"// End include: {includePath}");
+                    }
+                    else
+                    {
+                        _errors.Add($"Failed to load include file: {includePath}");
+                        builder.AppendLine($"// ERROR: Failed to include: {includePath}");
+                    }
                 }
-                else
+                finally
                 {
-                    _errors.Add($"Failed to load include file: {includePath}");
-                    builder.AppendLine($"// ERROR: Failed to include: {includePath}");
+                    _includeStack.Pop();
                 }
             }
             else
@@ -248,6 +284,15 @@ public class ShaderBuilder
 
     private string? LoadIncludeFile(string includePath)
     {
+        if (_options.IncludeProvider != null)
+        {
+            var content = _options.IncludeProvider(includePath);
+            if (content != null)
+            {
+                return content;
+            }
+        }
+
         try
         {
             // Try to load from embedded resources

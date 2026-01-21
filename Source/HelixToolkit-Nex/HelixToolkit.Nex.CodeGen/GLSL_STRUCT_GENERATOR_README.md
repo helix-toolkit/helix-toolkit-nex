@@ -22,7 +22,7 @@ This source generator automatically extracts struct definitions from GLSL shader
 ## How It Works
 
 1. **Input**: GLSL files marked as `AdditionalFiles` in the project
-2. **Processing**: The generator scans for `struct` definitions using regex patterns
+2. **Processing**: The generator scans for `struct` definitions marked with `@code_gen` using regex patterns
 3. **Output**: Generates C# struct files in the `obj/GeneratedFiles` directory
 
 ## Usage
@@ -39,14 +39,14 @@ Add your GLSL shader files to the project and mark them as `AdditionalFiles`:
 
 ### 2. Define GLSL Structs
 
-Write standard GLSL struct definitions in your shader files:
+Write standard GLSL struct definitions in your shader files and annotate them with `@code_gen`:
 
 ```glsl
-struct PBRMaterial {
+@code_gen
+struct PBRProperties {
     vec3 albedo;           // Base color (sRGB)
     float metallic;        // Metallic factor [0..1]
     float roughness;       // Roughness factor [0..1]
-    vec3 normal;           // World-space normal
 };
 ```
 
@@ -56,10 +56,10 @@ The generator runs automatically during build and creates C# structs:
 
 ```csharp
 /// <summary>
-/// C# representation of the GLSL struct 'PBRMaterial'.
+/// C# representation of the GLSL struct 'PBRProperties'.
 /// </summary>
-[StructLayout(LayoutKind.Sequential)]
-public struct PBRMaterial
+[StructLayout(LayoutKind.Sequential, Pack = 16)]
+public struct PBRProperties
 {
     /// <summary>Base color (sRGB)</summary>
     public System.Numerics.Vector3 Albedo;
@@ -70,8 +70,7 @@ public struct PBRMaterial
     /// <summary>Roughness factor [0..1]</summary>
     public float Roughness;
 
-    /// <summary>World-space normal</summary>
-    public System.Numerics.Vector3 Normal;
+    public static readonly unsafe uint SizeInBytes = (uint)sizeof(PBRMaterial);
 }
 ```
 
@@ -82,7 +81,7 @@ The generated structs are available in the `HelixToolkit.Nex.Shaders` namespace:
 ```csharp
 using HelixToolkit.Nex.Shaders;
 
-var material = new PBRMaterial
+var material = new PBRProperties
 {
     Albedo = new Vector3(1.0f, 0.0f, 0.0f),
     Metallic = 0.5f,
@@ -99,7 +98,7 @@ CreateUniformBuffer(material);
 The generator processes `PBRFunctions.glsl` and creates two structs:
 
 ### Generated Output
-- `PBRMaterial` - 7 fields for physically-based rendering material properties
+- `PBRProperties` - 6 fields for physically-based rendering material properties
 - `Light` - 8 fields for light source definitions
 
 ### Type Mappings Applied
@@ -163,7 +162,7 @@ dotnet test HelixToolkit.Nex.CodeGen.Tests
 ### Parser Implementation
 
 Uses regex patterns to extract:
-- Struct name: `struct\s+(\w+)\s*\{([^}]+)\}`
+- Struct name: `@code_gen\s+struct\s+(\w+)\s*\{([^}]+)\}`
 - Field definitions: `(\w+)\s+(\w+)(?:\[(\d+)\])?\s*;(?:\s*//\s*(.*))?`
 
 ### Code Generation

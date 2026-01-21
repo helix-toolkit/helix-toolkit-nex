@@ -6,19 +6,18 @@ namespace HelixToolkit.Nex.Material;
 /// </summary>
 public partial class PbrMaterialProperties : MaterialProperties
 {
-    public static readonly PBRMaterial Default = new()
+    public static readonly PBRProperties Default = new()
     {
         Albedo = new Vector3(1.0f, 1.0f, 1.0f),
         Metallic = 0.0f,
         Roughness = 1.0f,
         Ao = 1.0f,
-        Normal = new Vector3(0.0f, 0.0f, 1.0f),
         Emissive = new Vector3(0.0f, 0.0f, 0.0f),
         Opacity = 1.0f,
     };
 
     [Observable]
-    private PBRMaterial _variables = Default;
+    private PBRProperties _variables = Default;
 
     /// <summary>
     /// Texture resource used for the material's base color.
