@@ -90,10 +90,10 @@ void forwardPlusLighting(in PBRMaterial material, out vec4 outFinalColor)
     finalC += material.emissive;
 
     // Tone mapping
-    finalC = finalC / (finalC + vec3(1.0));
+    //finalC = finalC / (finalC + vec3(1.0));
 
     // Gamma correction
-    finalC = pow(finalC, vec3(1.0/2.2));
+    //finalC = pow(finalC, vec3(1.0/2.2));
 
     outFinalColor = vec4(finalC, material.opacity);
 }

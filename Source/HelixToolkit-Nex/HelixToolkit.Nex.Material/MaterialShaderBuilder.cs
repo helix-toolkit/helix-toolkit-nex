@@ -10,15 +10,17 @@ namespace HelixToolkit.Nex.Material;
 public class MaterialShaderBuilder
 {
     private readonly ShaderCompiler _compiler;
-    private readonly Dictionary<string, string> _defines = new();
-    private readonly List<string> _customCode = new();
+    private readonly Dictionary<string, string> _defines = [];
+    private readonly List<string> _customCode = [];
 
     // New fields for template injection
-    private readonly Dictionary<string, string> _templateReplacements = new();
+    private readonly Dictionary<string, string> _templateReplacements = [];
 
     private bool _usePBR = true;
     private bool _simpleLighting = false;
-    private ForwardPlusConfig _forwardPlusConfig = ForwardPlusConfig.Default;
+    private ForwardPlusLightCulling.Config _forwardPlusConfig = ForwardPlusLightCulling
+        .Config
+        .Default;
     private string? _customFragmentMain;
 
     public MaterialShaderBuilder()
@@ -38,16 +40,19 @@ public class MaterialShaderBuilder
     /// <summary>
     /// Enable Forward+ rendering with tile-based light culling.
     /// </summary>
-    public MaterialShaderBuilder ConfigForwardPlus(ForwardPlusConfig? config = null)
+    public MaterialShaderBuilder ConfigForwardPlus(ForwardPlusLightCulling.Config? config = null)
     {
-        _forwardPlusConfig = config ?? ForwardPlusConfig.Default;
+        _forwardPlusConfig = config ?? ForwardPlusLightCulling.Config.Default;
         WithDefine("TILE_SIZE", _forwardPlusConfig.TileSize.ToString());
         WithDefine("MAX_LIGHTS_PER_TILE", _forwardPlusConfig.MaxLightsPerTile.ToString());
         return this;
     }
 
     // Legacy alias to fix build
-    public MaterialShaderBuilder WithForwardPlus(bool enable, ForwardPlusConfig? config = null)
+    public MaterialShaderBuilder WithForwardPlus(
+        bool enable,
+        ForwardPlusLightCulling.Config? config = null
+    )
     {
         // Ignore 'enable' flag if we assume it's part of config logic or separate feature flag
         // but if enable is true, we configure it.

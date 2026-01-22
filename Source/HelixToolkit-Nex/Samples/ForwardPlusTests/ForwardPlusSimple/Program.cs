@@ -44,7 +44,7 @@ internal class App : Application
         _camera.NearPlane = 0.1f;
         _camera.FarPlane = 100.0f;
         _camera.View = Matrix4x4.CreateLookAt(_camera.Position, Vector3.Zero, Vector3.UnitY);
-        float fov = 60 * MathF.PI / 180f;
+        float fov = 45 * MathF.PI / 180f;
         _camera.Projection = Matrix4x4.CreatePerspectiveFieldOfView(
             fov,
             (float)windowSize.Width / windowSize.Height,

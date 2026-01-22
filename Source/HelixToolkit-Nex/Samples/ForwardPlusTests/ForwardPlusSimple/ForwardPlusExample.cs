@@ -13,7 +13,7 @@ namespace HelixToolkit.Nex.Examples;
 /// </summary>
 public class ForwardPlusExample
 {
-    private static readonly int NumLights = 20;
+    private static readonly int NumPointLights = 20;
     private readonly IContext _context;
     private BufferResource _lightBuffer = BufferResource.Null;
     private BufferResource _lightGridBuffer = BufferResource.Null;
@@ -26,12 +26,12 @@ public class ForwardPlusExample
     private RenderPipelineResource _renderPipelineUnlit = RenderPipelineResource.Null;
     private ComputePipelineResource _cullingPipeline = ComputePipelineResource.Null;
     private SamplerResource _depthBufferSampler = SamplerResource.Null;
-    private ForwardPlusConfig _config;
+    private ForwardPlusLightCulling.Config _config = ForwardPlusLightCulling.Config.Default;
     private Light[] _lights = Array.Empty<Light>();
-    private Matrix4x4[] _modelMatrices = new Matrix4x4[NumLights + 1];
+    private Matrix4x4[] _modelMatrices = new Matrix4x4[NumPointLights + 1];
     private readonly Geometry _lightMesh;
     private readonly Geometry _mesh;
-    private readonly PBRProperties[] _pbrProperties = new PBRProperties[NumLights + 1];
+    private readonly PBRProperties[] _pbrProperties = new PBRProperties[NumPointLights + 1];
 
     private readonly Dependencies _dependencies = Dependencies.Empty;
     private readonly RenderPass _renderPass = new();
@@ -44,13 +44,11 @@ public class ForwardPlusExample
     {
         HxDebug.EnableDebugAssertions = true;
         _context = context;
-        _config = ForwardPlusConfig.Default;
         var builder = new MeshBuilder(true, true, true);
-        builder.AddSphere(Vector3.Zero, 0.5f);
+        builder.AddSphere(Vector3.Zero, 0.1f);
         _lightMesh = builder.ToMesh().ToGeometry();
         builder = new MeshBuilder(true, true, true);
-        builder.AddBox(Vector3.Zero, 2, 2, 2);
-        builder.AddSphere(Vector3.Zero, 1.5f);
+        builder.AddBox(new Vector3(0, 0, 0), 10, 10, 2);
         _mesh = builder.ToMesh().ToGeometry();
 
         _renderPass.Colors[0] = new RenderPass.AttachmentDesc
@@ -65,22 +63,22 @@ public class ForwardPlusExample
             LoadOp = LoadOp.Clear,
             StoreOp = StoreOp.Store,
         };
-        _lights = CreateTestLights(NumLights); // 100 point lights
+        _lights = CreateTestLights(NumPointLights); // 100 point lights
         _modelMatrices[0] = Matrix4x4.Identity;
         _pbrProperties[0] = new()
         {
             Albedo = new Vector3(1f, 1f, 1f),
-            Metallic = 0.9f,
-            Roughness = 0.4f,
+            Metallic = 0.5f,
+            Roughness = 0.5f,
             Ao = 1f,
         };
-        for (int i = 0; i < NumLights; i++)
+        for (int i = 0; i < NumPointLights; i++)
         {
             _modelMatrices[i + 1] = Matrix4x4.CreateTranslation(_lights[i].Position);
             _pbrProperties[i + 1] = new()
             {
                 Ao = 1f,
-                Emissive = _lights[i].Color,
+                Emissive = _lights[i + 1].Color * _lights[i + 1].Intensity,
                 Opacity = 1,
             };
         }
@@ -176,7 +174,7 @@ public class ForwardPlusExample
             }
         );
         // 4. Create light culling compute pipeline
-        var cullingShader = ForwardPlusLightCulling.GenerateLightCullingComputeShader(_config);
+        var cullingShader = ForwardPlusLightCulling.GenerateComputeShader(_config);
         var cullingModule = _context.CreateShaderModuleGlsl(
             cullingShader,
             ShaderStage.Compute,
@@ -226,9 +224,9 @@ public class ForwardPlusExample
 
     public void Render(ICommandBuffer cmdBuffer, Camera camera, int screenWidth, int screenHeight)
     {
-        RotateLights(_lights, (float)DateTime.Now.TimeOfDay.TotalSeconds);
+        MoveLights(_lights, (float)DateTime.Now.TimeOfDay.TotalSeconds);
         cmdBuffer.UpdateBuffer(_lightBuffer, _lights, (uint)_lights.Length);
-        // Step 1: Reset counter
+        // Step 1: Reset _counter
         cmdBuffer.FillBuffer(_counterBuffer, 0, sizeof(uint), 0);
         // Update model matrices if needed
         cmdBuffer.UpdateBuffer(_modelMatrixBuffer, _modelMatrices, (uint)_modelMatrices.Length);
@@ -241,8 +239,10 @@ public class ForwardPlusExample
         cmdBuffer.BindComputePipeline(_cullingPipeline);
         // Push constants for culling
         Matrix4x4.Invert(camera.Projection, out var invProj);
+
         var cullingConstants = new LightCullingConstants
         {
+            ViewMatrix = camera.View,
             InverseProjection = invProj,
             ScreenDimensions = new Vector2(screenWidth, screenHeight),
             TileCount = new Vector2(tileCountX, tileCountY),
@@ -318,32 +318,33 @@ public class ForwardPlusExample
 
     private Light[] CreateTestLights(int count)
     {
-        var lights = new Light[count];
-        var random = new Random(42);
-
+        var lights = new Light[count + 1];
+        var random = new Random((int)Stopwatch.GetTimestamp());
+        lights[0] = new Light
+        {
+            Position = new Vector3(0, 0, -10),
+            Type = 0, // Directional light
+            Direction = Vector3.Normalize(new Vector3(0, 0, 1)),
+            Range = 1000.0f,
+            Color = new Vector3(1),
+            Intensity = 0.2f,
+            SpotAngles = Vector2.Zero,
+        };
+        var colors = new[] { new Vector3(1, 0, 0), new Vector3(0, 1, 0), new Vector3(0, 0, 1) };
         for (int i = 0; i < count; i++)
         {
-            var position = new Vector3(
-                (float)(random.NextDouble() * 40 - 20),
-                (float)(random.NextDouble() * 20),
-                (float)(random.NextDouble() * 40 - 20)
-            );
+            var position = new Vector3(i - count / 2, 0, -2);
 
-            var color = new Vector3(
-                (float)random.NextDouble(),
-                (float)random.NextDouble(),
-                (float)random.NextDouble()
-            );
-            color = Vector3.Normalize(color);
+            var color = colors[i % colors.Length];
 
-            lights[i] = new Light
+            lights[i + 1] = new Light
             {
                 Position = position,
                 Type = 1, // Point light
                 Direction = Vector3.Zero,
-                Range = 10.0f,
+                Range = 10f,
                 Color = color,
-                Intensity = 5.0f,
+                Intensity = 1.0f,
                 SpotAngles = Vector2.Zero,
             };
         }
@@ -351,18 +352,24 @@ public class ForwardPlusExample
         return lights;
     }
 
-    private void RotateLights(Light[] lights, float time)
+    private int _counter = 0;
+    private float _offset = 1;
+
+    private void MoveLights(Light[] lights, float time)
     {
-        for (int i = 0; i < lights.Length; i++)
+        _counter = (_counter + 1) % 10000;
+        if (_counter < 5000)
         {
-            var angle = time * 0.5f + i;
-            var radius = 10.0f + (i % 5) * 2.0f;
-            lights[i].Position = new Vector3(
-                (float)Math.Cos(angle) * radius,
-                lights[i].Position.Y,
-                (float)Math.Sin(angle) * radius
-            );
-            _modelMatrices[i + 1] = Matrix4x4.CreateTranslation(_lights[i].Position);
+            _offset = 0.001f;
+        }
+        else
+        {
+            _offset = -0.001f;
+        }
+        for (int i = 0; i < lights.Length - 1; i++)
+        {
+            _lights[i + 1].Position += new Vector3(_offset, 0, 0);
+            _modelMatrices[i + 1] = Matrix4x4.CreateTranslation(_lights[i + 1].Position);
         }
     }
 

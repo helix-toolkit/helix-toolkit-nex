@@ -77,7 +77,7 @@ float geometrySmith(in vec3 N, in vec3 V, in vec3 L, float roughness) {
 
 float getPointLightAttenuation(in vec3 lightPos, in vec3 fragPos, float range) {
     float distance = length(lightPos - fragPos);
-    float attenuation = 1.0 / (distance * distance);
+    float attenuation = 1.0 / (distance * distance + 0.0001); // Add epsilon to prevent division by zero
 
     // Smooth cutoff at range
     float cutoff = 1.0 - smoothstep(range * 0.75, range, distance);
@@ -120,6 +120,7 @@ vec3 calculatePBRLighting(in PBRMaterial material, in Light light, in vec3 fragP
     float NDF = distributionGGX(N, H, material.roughness);
     float G   = geometrySmith(N, V, L, material.roughness);
     // Optimization: NdotL in the denominator cancels with the NdotL in the final radiance multiplication
+    // specular var here represents (fs * NdotL)
     vec3 specular = (NDF * G * F) / (4.0 * NdotV + 0.0001);
     
     // Diffuse Term (Energy Conservation)
@@ -128,7 +129,11 @@ vec3 calculatePBRLighting(in PBRMaterial material, in Light light, in vec3 fragP
     vec3 diffuse = kD * material.albedo * RECIPROCAL_PI;
     
     vec3 radiance = light.color * light.intensity * attenuation;
-    return (diffuse + specular) * radiance * NdotL;
+    
+    // Combine terms. Note: 'specular' variable already contains the NdotL factor due to the optimization above.
+    // We only need to multiply diffuse by NdotL.
+    // Scale by PI to cancel out the 1/PI factor in the BRDF terms, making intensity=1.0 result in expected brightness
+    return (diffuse * NdotL + specular) * radiance * PI;
 }
 
 // ============================================================================

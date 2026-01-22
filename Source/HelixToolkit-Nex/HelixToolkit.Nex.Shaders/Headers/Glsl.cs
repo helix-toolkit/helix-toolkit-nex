@@ -39,16 +39,21 @@ public static class GlslHeaders
         };
     }
 
-    private static string GetGlslShaderHeader(string shaderName)
+    public static string GetGlslShaderHeader(string shaderName)
+    {
+        return GetEmbeddedGlslShader($"Headers.{shaderName}");
+    }
+
+    public static string GetEmbeddedGlslShader(string shaderPath)
     {
         var assembly = typeof(GlslHeaders).Assembly;
         var assemblyName =
             assembly.GetName().Name
             ?? throw new InvalidOperationException("Assembly name cannot be null.");
         using var stream =
-            assembly.GetManifestResourceStream($"{assemblyName}.Headers.{shaderName}")
+            assembly.GetManifestResourceStream($"{assemblyName}.{shaderPath}")
             ?? throw new FileNotFoundException(
-                $"Shader file '{shaderName}' not found in embedded resources."
+                $"Shader file '{shaderPath}' not found in embedded resources."
             );
         using var reader = new StreamReader(stream);
         return reader.ReadToEnd();
