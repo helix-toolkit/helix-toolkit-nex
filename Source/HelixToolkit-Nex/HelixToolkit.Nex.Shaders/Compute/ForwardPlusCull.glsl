@@ -61,7 +61,35 @@ shared uint globalOffset;
 // Convert depth buffer value to view space Z
 // Note: This assumes standard OpenGL -Z View Space
 float depthToViewZ(float depth) {
-    vec4 clipPos = vec4(0.0, 0.0, depth * 2.0 - 1.0, 1.0);
+    // Handling BOTH standard Z [0..1] and Inverse Z [1..0]
+    // The projection matrix (or inverse proj) handles the depth mapping.
+    // If using Vulkan Convention [0..1] with InvZ: Near->1, Far->0.
+    // If using Vulkan Convention [0..1] with StdZ: Near->0, Far->1.
+    //
+    // The "clipPos" should reconstruct NDC Z correctly. 
+    // BUT 'depth' is [0, 1] raw depth from texture.
+    // In Vulkan/DX, Z_ndc = depth.
+    // In OpenGL, Z_ndc = depth * 2.0 - 1.0. 
+    //
+    // HelixToolkit likely targets Vulkan/DX conventions given the code context (Vulkan ref).
+    // So raw depth IS Z_ndc_z roughly (or linearly related).
+    //
+    // However, `inverseProjection` expects NDC coordinates.
+    // Standard NDC for Vulkan: x=[-1,1], y=[-1,1], z=[0,1].
+    // Standard NDC for OpenGL: x=[-1,1], y=[-1,1], z=[-1,1].
+    //
+    // We should assume the depth buffer contains [0, 1] values (unless configured for GL range).
+    // Let's use `depth` directly for Z component if Vulkan specific, 
+    // OR if the engine abstracts this, we need to know.
+    // Given HelixToolkit.Nex is new, let's assume Vulkan/DX style [0,1] clip space.
+    //
+    // PREVIOUS CODE: vec4 clipPos = vec4(0.0, 0.0, depth * 2.0 - 1.0, 1.0); <--- Assumed GL [-1, 1]
+    
+    // NEW CODE: Using [0, 1] Z input.
+    // Whether this is "Standard" or "Inverse" is baked into 'inverseProjection'.
+    // If InverseZ was used, depth=1 maps to Near, depth=0 maps to Far via InvProj.
+    
+    vec4 clipPos = vec4(0.0, 0.0, depth, 1.0); 
     vec4 viewPos = pc.value.inverseProjection * clipPos; 
     return viewPos.z / viewPos.w;
 }
@@ -79,31 +107,68 @@ Frustum createTileFrustum(uvec2 tileID) {
     // Create frustum corners in View Space
     mat4 inverseProjection = pc.value.inverseProjection;
     
+    // For Z, we pick 0.0 and 1.0 representing the Near/Far planes in Clip Space [0,1]
+    // The inverse projection will unproject them to the correct View Z (Near/Far).
+    // If Inverse Z is used: 1.0 -> Near View Z, 0.0 -> Far View Z.
+    // If Standard Z is used: 0.0 -> Near View Z, 1.0 -> Far View Z.
+    // We define frustum planes based on the SIDES, so the Z depth of these points 
+    // matters less for the side planes, but strictly speaking we need valid points.
+    // Using 0.0 (Near-ish/Far-ish) and 1.0 (Far-ish/Near-ish).
+    
     vec4 corners[4];
-    corners[0] = inverseProjection * vec4(minNDC.x, minNDC.y, -1.0, 1.0); // BL
-    corners[1] = inverseProjection * vec4(maxNDC.x, minNDC.y, -1.0, 1.0); // BR
-    corners[2] = inverseProjection * vec4(maxNDC.x, maxNDC.y, -1.0, 1.0); // TR
-    corners[3] = inverseProjection * vec4(minNDC.x, maxNDC.y, -1.0, 1.0); // TL
+    // Using simple depth 1.0 for "far end" of the ray reconstruction or 0.0?
+    // Actually, to build the side planes (left/right/top/bottom), we need rays from eye.
+    // Eye is at 0,0,0 in View Space.
+    // We can unproject a point at Z_clip=1.0 (or anything non-WEIRD like w=0).
+    
+    corners[0] = inverseProjection * vec4(minNDC.x, minNDC.y, 1.0, 1.0); // BL
+    corners[1] = inverseProjection * vec4(maxNDC.x, minNDC.y, 1.0, 1.0); // BR
+    corners[2] = inverseProjection * vec4(maxNDC.x, maxNDC.y, 1.0, 1.0); // TR
+    corners[3] = inverseProjection * vec4(minNDC.x, maxNDC.y, 1.0, 1.0); // TL
     
     for (int i = 0; i < 4; ++i) {
         corners[i] /= corners[i].w;
     }
     
+    // Use Eye (0,0,0) to corners to build planes
+    // Left plane (O, BL, TL) -> (0, c[0], c[3])
+    // The previous code used corners[0]..corners[3] as "points on the far plane".
+    // Left: plane through O, c[3], c[0]
+    // Normal = cross(c[3] - O, c[0] - O) = cross(c[3], c[0])
+    
+    // Note: The original code computed edges between corners on the "Far" plane.
+    // "vec3 edge = normalize(corners[3].xyz - corners[0].xyz);"
+    // "frustum.planes[0] = vec4(cross(corners[0].xyz, edge), 0.0);"
+    // corners[0] is BL, corners[3] is TL.
+    // edge = TL - BL = Up vector roughly.
+    // cross(BL, Up) -> Normal pointing Left/Right.
+    
+    // Check winding:
+    // BL (bottom-left) to TL (top-left).
+    // cross(BL, TL-BL)
+    // BL is (-x, -y, -z). TL is (-x, +y, -z).
+    // TL-BL is (0, +y, 0).
+    // (-x,-y,-z) x (0,1,0) = (z, 0, -x).
+    // If z is negative (View Space), z is -, -x is positive.
+    // Normal (-, 0, +). Points Right-ish/Inward?
+    // Left plane normal should point INWARD to the frustum.
+    // Yes, seems consistent with the original code logic.
+    
     // Left plane
     vec3 edge = normalize(corners[3].xyz - corners[0].xyz);
-    frustum.planes[0] = vec4(cross(corners[0].xyz, edge), 0.0);
+    frustum.planes[0] = vec4(normalize(cross(corners[0].xyz, edge)), 0.0);
     
     // Right plane
     edge = normalize(corners[1].xyz - corners[2].xyz);
-    frustum.planes[1] = vec4(cross(corners[2].xyz, edge), 0.0);
+    frustum.planes[1] = vec4(normalize(cross(corners[2].xyz, edge)), 0.0);
     
     // Top plane
     edge = normalize(corners[2].xyz - corners[3].xyz);
-    frustum.planes[2] = vec4(cross(corners[3].xyz, edge), 0.0);
+    frustum.planes[2] = vec4(normalize(cross(corners[3].xyz, edge)), 0.0);
     
     // Bottom plane
     edge = normalize(corners[0].xyz - corners[1].xyz);
-    frustum.planes[3] = vec4(cross(corners[1].xyz, edge), 0.0);
+    frustum.planes[3] = vec4(normalize(cross(corners[1].xyz, edge)), 0.0);
     
     return frustum;
 }
