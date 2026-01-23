@@ -16,9 +16,10 @@
 struct PBRMaterial {
     vec3 albedo;           // Base color (sRGB)
     float metallic;        // Metallic factor [0..1]
+    vec3 ambient;          // Ambient color
     float roughness;       // Roughness factor [0..1]
-    float ao;              // Ambient occlusion [0..1]
     vec3 normal;           // World-space normal (normalized)
+    float ao;              // Ambient occlusion [0..1]
     vec3 emissive;         // Emissive color
     float opacity;         // Opacity [0..1]
 };
@@ -136,17 +137,6 @@ vec3 calculatePBRLighting(in PBRMaterial material, in Light light, in vec3 fragP
     return (diffuse * NdotL + specular) * radiance * PI;
 }
 
-// ============================================================================
-// Post-Processing (Essential for PBR)
-// ============================================================================
-
-vec3 toneMapAndGamma(vec3 color) {
-    // Reinhard tone mapping to compress HDR to [0,1]
-    vec3 mapped = color / (color + vec3(1.0));
-    // Gamma correction (linear to sRGB)
-    return pow(mapped, vec3(1.0 / 2.2));
-}
-
 vec3 pbrShadingSimple(PBRMaterial material, vec3 fragPos, vec3 viewDir, 
                 Light light, vec3 ambientColor) {
     vec3 Lo = calculatePBRLighting(material, light, fragPos, viewDir);
@@ -155,5 +145,5 @@ vec3 pbrShadingSimple(PBRMaterial material, vec3 fragPos, vec3 viewDir,
     vec3 ambient = ambientColor * material.albedo * material.ao;
     vec3 color = ambient + Lo + material.emissive;
     
-    return toneMapAndGamma(color);
+    return color;
 }

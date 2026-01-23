@@ -20,6 +20,7 @@ struct PBRProperties {
     float metallic;        // Metallic factor [0..1]
     vec3 emissive;         // Emissive color
     float roughness;       // Roughness factor [0..1]
+    vec3 ambient;           // Ambient color
     float ao;              // Ambient occlusion [0..1]
     float opacity;         // Opacity/alpha [0..1]
     float vertexColorMix; // Vertex color mix factor [0..1], 0 = no vertex color, 1 = full vertex color
@@ -27,7 +28,7 @@ struct PBRProperties {
     uint normalTexIndex;
     uint metallicRoughnessTexIndex;
     uint samplerIndex;
-    float _padding;
+    vec2 _padding;
 };
 
 layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer FPBuffer {
@@ -47,14 +48,11 @@ layout(push_constant) uniform Pc {
     MeshDraw value;
 } pc;
 
-FPConstants getFPConstants() {
-    FPBuffer buf = FPBuffer(pc.value.forwardPlusConstantsAddress);
-    return buf.fpConstants;
-}
+FPConstants fpConst = FPBuffer(pc.value.forwardPlusConstantsAddress).fpConstants;
 
 PBRProperties getPBRMaterial()
 {
-    MaterialBuffer materialBuf = MaterialBuffer(getFPConstants().materialBufferAddress);
+    MaterialBuffer materialBuf = MaterialBuffer(fpConst.materialBufferAddress);
     return materialBuf.materials[pc.value.materialId];
 }
 
@@ -63,11 +61,9 @@ PBRProperties getPBRMaterial()
 
 void forwardPlusLighting(in PBRMaterial material, out vec4 outFinalColor)
 {
-    FPConstants fpConst = getFPConstants();
     // Forward+ tiled lighting
     vec3 viewDir = normalize(fpConst.cameraPosition - fragPosition);
-    vec3 albedo = material.albedo; // Local var to avoid modifying input if const
-    vec3 finalC = vec3(0.03) * albedo * material.ao; // Ambient
+    vec3 finalC = material.ambient * material.albedo * material.ao;
 
     // Calculate tile coordinates
     ivec2 tileCoord = ivec2(gl_FragCoord.xy) / ivec2(fpConst.tileSize);
@@ -89,12 +85,6 @@ void forwardPlusLighting(in PBRMaterial material, out vec4 outFinalColor)
 
     finalC += material.emissive;
 
-    // Tone mapping
-    //finalC = finalC / (finalC + vec3(1.0));
-
-    // Gamma correction
-    //finalC = pow(finalC, vec3(1.0/2.2));
-
     outFinalColor = vec4(finalC, material.opacity);
 }
 
@@ -111,6 +101,7 @@ PBRMaterial createPBRMaterial()
     material.ao = props.ao;
     material.emissive = props.emissive;
     material.opacity = props.opacity;
+    material.ambient = props.ambient;
     if (props.albedoTexIndex > 0)
     {
         material.albedo = material.albedo * texture(sampler2D(kTextures2D[props.albedoTexIndex], kSamplers[props.samplerIndex]), fragTexCoord).rgb;

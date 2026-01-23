@@ -32,7 +32,7 @@ public static class ForwardPlusLightCulling
     /// <returns>GLSL compute shader source code</returns>
     public static string GenerateComputeShader(in Config config)
     {
-        var shader = GlslHeaders.GetEmbeddedGlslShader(ShaderPath);
+        var shader = GlslUtils.GetEmbeddedGlslShader(ShaderPath);
         shader = $"""
 
             #define TILE_SIZE {config.TileSize}

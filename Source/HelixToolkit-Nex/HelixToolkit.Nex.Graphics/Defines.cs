@@ -737,10 +737,35 @@ public struct DepthState()
     /// <remarks>The default configuration sets the depth comparison operation to <see
     /// cref="CompareOp.GreaterEqual"/> and enables depth writing. This configuration is commonly used for rendering
     /// scenarios where objects closer to the camera should overwrite those farther away.</remarks>
-    public static readonly DepthState DefaultInvZ = new DepthState
+    public static readonly DepthState DefaultInvZ = new()
     {
         CompareOp = CompareOp.GreaterEqual,
         IsDepthWriteEnabled = true,
+    };
+
+    /// <summary>
+    /// Represents a depth state where depth testing is disabled.
+    /// </summary>
+    /// <remarks>In this state, the depth comparison operation always passes, and depth writes are disabled.
+    /// This configuration is typically used when depth testing is not required, such as for rendering 2D overlays or UI
+    /// elements.</remarks>
+    public static readonly DepthState Disabled = new()
+    {
+        CompareOp = CompareOp.AlwaysPass,
+        IsDepthWriteEnabled = false,
+    };
+
+    /// <summary>
+    /// Represents a depth state configuration where depth comparison is performed using the "greater than or equal to"
+    /// operation, and depth writing is disabled.
+    /// </summary>
+    /// <remarks>This predefined depth state is typically used in scenarios where depth testing is required to
+    /// allow fragments with a depth value greater than or equal to the existing depth, but no changes to the depth
+    /// buffer are permitted.</remarks>
+    public static readonly DepthState ReadOnlyInvZ = new()
+    {
+        CompareOp = CompareOp.GreaterEqual,
+        IsDepthWriteEnabled = false,
     };
 }
 

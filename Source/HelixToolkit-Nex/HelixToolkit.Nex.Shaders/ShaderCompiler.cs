@@ -90,6 +90,17 @@ public class ShaderCompiler
     }
 
     /// <summary>
+    /// Compile a fragment shader
+    /// </summary>
+    public ShaderBuildResult CompileFragmentShader(
+        string source,
+        ShaderBuildOptions? options = null
+    )
+    {
+        return Compile(ShaderStage.Fragment, source, options);
+    }
+
+    /// <summary>
     /// Compile a compute shader
     /// </summary>
     public ShaderBuildResult CompileComputeShader(string source, ShaderBuildOptions? options = null)

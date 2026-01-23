@@ -6,7 +6,7 @@ public sealed class VulkanContextConfig()
     public readonly VkVersion VulkanVersion = VkVersion.Version_1_3;
     public bool TerminateOnValidationError = false; // invoke std::terminate() on any validation error
     public bool EnableValidation = true;
-    public ColorSpace SwapchainRequestedColorSpace = ColorSpace.SRGB_LINEAR;
+    public ColorSpace SwapchainRequestedColorSpace = ColorSpace.SRGB_NONLINEAR;
     public bool EnableVma = true;
 
     // owned by the application - should be alive until createVulkanContextWithSwapchain() returns

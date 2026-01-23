@@ -542,6 +542,10 @@ internal sealed class VulkanSwapchain : IDisposable
             {
                 foreach (var handle in SwapchainTextures)
                 {
+                    if (handle.Empty)
+                    {
+                        continue;
+                    }
                     _ctx.Destroy(handle);
                 }
                 unsafe

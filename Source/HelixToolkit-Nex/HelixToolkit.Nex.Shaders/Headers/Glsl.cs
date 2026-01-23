@@ -1,5 +1,28 @@
 namespace HelixToolkit.Nex.Shaders;
 
+public static class GlslUtils
+{
+    public static string GetEmbeddedGlslShader(string shaderPath)
+    {
+        if (string.IsNullOrEmpty(shaderPath))
+        {
+            throw new ArgumentException("Shader path cannot be null or empty.", nameof(shaderPath));
+        }
+        shaderPath = shaderPath.Replace('\\', '.').Replace('/', '.');
+        var assembly = typeof(GlslHeaders).Assembly;
+        var assemblyName =
+            assembly.GetName().Name
+            ?? throw new InvalidOperationException("Assembly name cannot be null.");
+        using var stream =
+            assembly.GetManifestResourceStream($"{assemblyName}.{shaderPath}")
+            ?? throw new FileNotFoundException(
+                $"Shader file '{shaderPath}' not found in embedded resources."
+            );
+        using var reader = new StreamReader(stream);
+        return reader.ReadToEnd();
+    }
+}
+
 public static class GlslHeaders
 {
     public const string DEFAULT_VERSION = "#version 460";
@@ -12,14 +35,6 @@ public static class GlslHeaders
     private const string FRAGMENT_SHADER = "HeaderFrag.glsl";
 
     private const string PBR_FUNCTIONS = "PBRFunctions.glsl";
-
-    private const string VertStruct = "VertStruct.glsl";
-
-    private const string LightStructs = "LightStructs.glsl";
-
-    private const string ModelMatrixStruct = "ModelMatrixStruct.glsl";
-
-    private const string ForwardPlusGuidBuffers = "ForwardPlusBindless.glsl";
 
     public static string GetShaderHeader(ShaderStage stage)
     {
@@ -41,22 +56,7 @@ public static class GlslHeaders
 
     public static string GetGlslShaderHeader(string shaderName)
     {
-        return GetEmbeddedGlslShader($"Headers.{shaderName}");
-    }
-
-    public static string GetEmbeddedGlslShader(string shaderPath)
-    {
-        var assembly = typeof(GlslHeaders).Assembly;
-        var assemblyName =
-            assembly.GetName().Name
-            ?? throw new InvalidOperationException("Assembly name cannot be null.");
-        using var stream =
-            assembly.GetManifestResourceStream($"{assemblyName}.{shaderPath}")
-            ?? throw new FileNotFoundException(
-                $"Shader file '{shaderPath}' not found in embedded resources."
-            );
-        using var reader = new StreamReader(stream);
-        return reader.ReadToEnd();
+        return GlslUtils.GetEmbeddedGlslShader($"Headers.{shaderName}");
     }
 
     public static string GetGlslShaderPBRFunction()

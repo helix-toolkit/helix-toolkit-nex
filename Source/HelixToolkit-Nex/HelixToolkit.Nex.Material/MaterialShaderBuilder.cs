@@ -172,7 +172,6 @@ public class MaterialShaderBuilder
             Success = true,
             VertexShader = vertexModule,
             FragmentShader = fragmentModule,
-            BuildResult = fragmentResult,
         };
     }
 
@@ -292,11 +291,41 @@ public class MaterialShaderBuilder
 /// <summary>
 /// Result of building a material pipeline with vertex and fragment shaders.
 /// </summary>
-public struct MaterialShaderResult
+public sealed class MaterialShaderResult : IDisposable
 {
     public bool Success;
-    public List<string> Errors;
-    public ShaderModuleResource VertexShader;
-    public ShaderModuleResource FragmentShader;
-    public ShaderBuildResult BuildResult;
+    public List<string> Errors = [];
+    public ShaderModuleResource VertexShader = ShaderModuleResource.Null;
+    public ShaderModuleResource FragmentShader = ShaderModuleResource.Null;
+    private bool _disposedValue;
+
+    private void Dispose(bool disposing)
+    {
+        if (!_disposedValue)
+        {
+            if (disposing)
+            {
+                VertexShader.Dispose();
+                FragmentShader.Dispose();
+            }
+
+            // TODO: free unmanaged resources (unmanaged objects) and override finalizer
+            // TODO: set large fields to null
+            _disposedValue = true;
+        }
+    }
+
+    // // TODO: override finalizer only if 'Dispose(bool disposing)' has code to free unmanaged resources
+    // ~MaterialShaderResult()
+    // {
+    //     // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+    //     Dispose(disposing: false);
+    // }
+
+    public void Dispose()
+    {
+        // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+        Dispose(disposing: true);
+        GC.SuppressFinalize(this);
+    }
 }
