@@ -69,6 +69,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ForwardPlusSimple", "Sample
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HelixToolkit.Nex.Geometries.Builders", "HelixToolkit.Nex.Geometries.Builders\HelixToolkit.Nex.Geometries.Builders.csproj", "{F671CF26-B880-479E-87FE-64DA2C44909D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HelixToolkit.Nex.Maths.Tests", "HelixToolkit.Nex.Maths.Tests\HelixToolkit.Nex.Maths.Tests.csproj", "{B57F3DB6-FD5C-4471-A963-6787FFE5B6B3}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -175,6 +177,10 @@ Global
 		{F671CF26-B880-479E-87FE-64DA2C44909D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F671CF26-B880-479E-87FE-64DA2C44909D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F671CF26-B880-479E-87FE-64DA2C44909D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B57F3DB6-FD5C-4471-A963-6787FFE5B6B3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B57F3DB6-FD5C-4471-A963-6787FFE5B6B3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B57F3DB6-FD5C-4471-A963-6787FFE5B6B3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B57F3DB6-FD5C-4471-A963-6787FFE5B6B3}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

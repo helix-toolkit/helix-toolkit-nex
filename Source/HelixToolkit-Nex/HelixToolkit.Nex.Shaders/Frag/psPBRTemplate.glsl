@@ -71,7 +71,7 @@ void forwardPlusLighting(in PBRMaterial material, out vec4 outFinalColor)
 
     // Calculate tile coordinates
     ivec2 tileCoord = ivec2(gl_FragCoord.xy) / ivec2(fpConst.tileSize);
-    uint tileIndex = uint(tileCoord.y) * uint(fpConst.tileCount.x) + uint(tileCoord.x);
+    uint tileIndex = uint(tileCoord.y) * uint(fpConst.tileCountX) + uint(tileCoord.x);
 
     // Get light list for this tile
     LightBuffer lightBuf = LightBuffer(fpConst.lightBufferAddress);
@@ -164,7 +164,9 @@ void outputColor(in PBRMaterial material, out vec4 finalColor)
 /*TEMPLATE_OUTPUT_COLOR_IMPL_END*/
 }
 
+/*TEMPLATE_CUSTOM_MAIN_START*/
 void main() {
     PBRMaterial material = createPBRMaterial();
     outputColor(material, outColor);
 }
+/*TEMPLATE_CUSTOM_MAIN_END*/

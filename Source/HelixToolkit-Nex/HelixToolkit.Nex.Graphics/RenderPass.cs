@@ -16,7 +16,7 @@ public sealed class RenderPass
         public uint8_t Layer = 0;
         public uint8_t Level = 0;
         public Color4 ClearColor = new(0, 0, 0, 0);
-        public float ClearDepth = 1.0f;
+        public float ClearDepth = 0;
         public uint32_t ClearStencil = 0;
     }
 
@@ -51,9 +51,8 @@ public sealed class RenderPass
         }
     }
 
-    public RenderPass(in AttachmentDesc colorAttachment) : this(Enumerable.Repeat(colorAttachment, 1))
-    {
-    }
+    public RenderPass(in AttachmentDesc colorAttachment)
+        : this(Enumerable.Repeat(colorAttachment, 1)) { }
 
     public uint32_t GetNumColorAttachments()
     {

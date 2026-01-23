@@ -1,24 +1,17 @@
 #include "Headers/HeaderCompute.glsl"
 #include "Headers/LightStruct.glsl"
 
-layout(buffer_reference, scalar) buffer LightGridBuffer {
-    uvec2 tiles[]; // x=lightCount, y=lightIndexOffset
-};
-
-layout(buffer_reference, scalar) buffer LightIndexBuffer {
-    uint indices[];
-};
-
-layout(buffer_reference, scalar) buffer GlobalCounterBuffer {
-    uint globalLightIndexCounter;
-};
+#extension GL_KHR_shader_subgroup_basic : enable
+#extension GL_KHR_shader_subgroup_ballot : enable
+#extension GL_KHR_shader_subgroup_arithmetic : enable
 
 @code_gen
 struct LightCullingConstants {
     mat4 viewMatrix;
     mat4 inverseProjection;
     vec2 screenDimensions;
-    vec2 tileCount;
+    uint tileCountX;
+    uint tileCountY;
     uint lightCount;
     float zNear;
     float zFar;
@@ -31,8 +24,24 @@ struct LightCullingConstants {
     vec3 _padding;
 };
 
+layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer LightCullingConst {
+    LightCullingConstants value;
+};
+
+layout(buffer_reference, scalar) buffer LightGridBuffer {
+    uvec2 tiles[]; // x=lightCount, y=lightIndexOffset
+};
+
+layout(buffer_reference, scalar) buffer LightIndexBuffer {
+    uint indices[];
+};
+
+layout(buffer_reference, scalar) buffer GlobalCounterBuffer {
+    uint globalLightIndexCounter;
+};
+
 layout(push_constant) uniform LightCullingPC {
-  LightCullingConstants value;
+  uint64_t lightCullingConstAddress;
 } pc;
 
 layout(local_size_x = TILE_SIZE, local_size_y = TILE_SIZE, local_size_z = 1) in;
@@ -58,6 +67,8 @@ shared uint globalOffset;
 // HELPER FUNCTIONS
 // ------------------------------------------------------------------
 
+LightCullingConst cullingConst = LightCullingConst(pc.lightCullingConstAddress);
+
 // Convert depth buffer value to view space Z
 // Note: This assumes standard OpenGL -Z View Space
 float depthToViewZ(float depth) {
@@ -69,28 +80,13 @@ float depthToViewZ(float depth) {
     // The "clipPos" should reconstruct NDC Z correctly. 
     // BUT 'depth' is [0, 1] raw depth from texture.
     // In Vulkan/DX, Z_ndc = depth.
-    // In OpenGL, Z_ndc = depth * 2.0 - 1.0. 
-    //
-    // HelixToolkit likely targets Vulkan/DX conventions given the code context (Vulkan ref).
-    // So raw depth IS Z_ndc_z roughly (or linearly related).
-    //
-    // However, `inverseProjection` expects NDC coordinates.
-    // Standard NDC for Vulkan: x=[-1,1], y=[-1,1], z=[0,1].
-    // Standard NDC for OpenGL: x=[-1,1], y=[-1,1], z=[-1,1].
-    //
-    // We should assume the depth buffer contains [0, 1] values (unless configured for GL range).
-    // Let's use `depth` directly for Z component if Vulkan specific, 
-    // OR if the engine abstracts this, we need to know.
-    // Given HelixToolkit.Nex is new, let's assume Vulkan/DX style [0,1] clip space.
-    //
-    // PREVIOUS CODE: vec4 clipPos = vec4(0.0, 0.0, depth * 2.0 - 1.0, 1.0); <--- Assumed GL [-1, 1]
     
     // NEW CODE: Using [0, 1] Z input.
     // Whether this is "Standard" or "Inverse" is baked into 'inverseProjection'.
     // If InverseZ was used, depth=1 maps to Near, depth=0 maps to Far via InvProj.
     
     vec4 clipPos = vec4(0.0, 0.0, depth, 1.0); 
-    vec4 viewPos = pc.value.inverseProjection * clipPos; 
+    vec4 viewPos = cullingConst.value.inverseProjection * clipPos; 
     return viewPos.z / viewPos.w;
 }
 
@@ -98,14 +94,14 @@ float depthToViewZ(float depth) {
 Frustum createTileFrustum(uvec2 tileID) {
     Frustum frustum;
     
-    vec2 minScreen = vec2(tileID) * TILE_SIZE / pc.value.screenDimensions;
-    vec2 maxScreen = vec2(tileID + 1) * TILE_SIZE / pc.value.screenDimensions;
+    vec2 minScreen = vec2(tileID) * TILE_SIZE / cullingConst.value.screenDimensions;
+    vec2 maxScreen = vec2(tileID + 1) * TILE_SIZE / cullingConst.value.screenDimensions;
     
     vec2 minNDC = minScreen * 2.0 - 1.0;
     vec2 maxNDC = maxScreen * 2.0 - 1.0;
     
     // Create frustum corners in View Space
-    mat4 inverseProjection = pc.value.inverseProjection;
+    mat4 inverseProjection = cullingConst.value.inverseProjection;
     
     // For Z, we pick 0.0 and 1.0 representing the Near/Far planes in Clip Space [0,1]
     // The inverse projection will unproject them to the correct View Z (Near/Far).
@@ -134,14 +130,7 @@ Frustum createTileFrustum(uvec2 tileID) {
     // Left plane (O, BL, TL) -> (0, c[0], c[3])
     // The previous code used corners[0]..corners[3] as "points on the far plane".
     // Left: plane through O, c[3], c[0]
-    // Normal = cross(c[3] - O, c[0] - O) = cross(c[3], c[0])
-    
-    // Note: The original code computed edges between corners on the "Far" plane.
-    // "vec3 edge = normalize(corners[3].xyz - corners[0].xyz);"
-    // "frustum.planes[0] = vec4(cross(corners[0].xyz, edge), 0.0);"
-    // corners[0] is BL, corners[3] is TL.
-    // edge = TL - BL = Up vector roughly.
-    // cross(BL, Up) -> Normal pointing Left/Right.
+    // Normal = cross(corners[0].xyz, corners[3].xyz)
     
     // Check winding:
     // BL (bottom-left) to TL (top-left).
@@ -217,9 +206,9 @@ void main() {
     // 2. Calculate min/max depth for this tile
     // [FIX]: Sample pixel center (+0.5) to avoid edge artifacts
     vec2 pixelPos = vec2(tileID * TILE_SIZE + localID);
-    vec2 texCoord = (pixelPos + vec2(0.5)) / pc.value.screenDimensions;
+    vec2 texCoord = (pixelPos + vec2(0.5)) / cullingConst.value.screenDimensions;
     
-    float depth = textureBindless2D(pc.value.depthTextureIndex, pc.value.samplerIndex, texCoord).r;
+    float depth = textureBindless2D(cullingConst.value.depthTextureIndex, cullingConst.value.samplerIndex, texCoord).r;
     float viewZ = depthToViewZ(depth);
     
     // Note: FloatBitsToUint maintains order for positive floats.
@@ -227,8 +216,20 @@ void main() {
     // atomicMin finds SMALLEST Uint -> Smallest magnitude negative -> Near Z.
     // atomicMax finds LARGEST Uint -> Largest magnitude negative -> Far Z.
     // This logic works for standard Negative-Z View Space.
-    atomicMin(minDepthInt, floatBitsToUint(viewZ));
-    atomicMax(maxDepthInt, floatBitsToUint(viewZ));
+
+    // OPTIMIZATION: Use subgroup reductions to reduce contention on shared memory
+    // viewZ is negative in standard view space. 
+    // subgroupMin(-100, -0.1) -> -100 (Far). subgroupMax(-100, -0.1) -> -0.1 (Near).
+    // atomicMin on uint rep of negative floats wants Smallest Uint -> Smallest Magnitude -> Near Z.
+    // atomicMax on uint rep of negative floats wants Largest Uint -> Largest Magnitude -> Far Z.
+    
+    float farZ = subgroupMin(viewZ); // Most negative
+    float nearZ = subgroupMax(viewZ); // Least negative
+    
+    if (subgroupElect()) {
+        atomicMin(minDepthInt, floatBitsToUint(nearZ));
+        atomicMax(maxDepthInt, floatBitsToUint(farZ));
+    }
     
     barrier();
     
@@ -240,37 +241,46 @@ void main() {
     barrier();
     
     // 3. Cull lights against tile frustum
-    uint threadLightCount = (pc.value.lightCount + (TILE_SIZE * TILE_SIZE) - 1) / (TILE_SIZE * TILE_SIZE);
-    uint lightStart = localIndex * threadLightCount;
-    uint lightEnd = min(lightStart + threadLightCount, pc.value.lightCount);
+    LightBuffer lightBuffer = LightBuffer(cullingConst.value.lightBufferAddress);
 
-    LightBuffer lightBuffer = LightBuffer(pc.value.lightBufferAddress);
-    
-    for (uint i = lightStart; i < lightEnd; ++i) {
-        Light light = lightBuffer.lights[i];
-        
-        // Skip directional lights (handled in lighting shader usually)
-        if (light.type == 0) {
-            // Optional: If you really want them here, uncomment this.
-            // But usually directional lights are global.
-            uint index = atomicAdd(visibleLightCount, 1);
-            if (index < MAX_LIGHTS_PER_TILE)
-                 visibleLightIndices[index] = i;
-            continue;
+    // OPTIMIZATION: Stride loop by workgroup size and use subgroup ballot
+    uint workGroupSize = TILE_SIZE * TILE_SIZE; 
+
+    for (uint i = 0; i < cullingConst.value.lightCount; i += workGroupSize) {
+        uint lightIndex = i + localIndex;
+        bool isVisible = false;
+
+        if (lightIndex < cullingConst.value.lightCount) {
+            Light light = lightBuffer.lights[lightIndex];
+            if (light.type == 0) {
+                // Directional lights affect all tiles
+                isVisible = true;
+            } else {
+                // Convert Range Light Position (World) to Frustum Space (View)
+                vec3 lightPosView = (cullingConst.value.viewMatrix * vec4(light.position, 1.0)).xyz;
+                
+                if (sphereInsideFrustum(lightPosView, light.range, tileFrustum)) {
+                    isVisible = true;
+                }
+            }
         }
-        
-        // Convert Light Position (World) to Frustum Space (View)
-        // Optimization: viewMatrix is usually rigid, so length/radius is preserved.
-        // We do not need to transform the radius.
-        vec3 lightPosView = (pc.value.viewMatrix * vec4(light.position, 1.0)).xyz;
-        
-        // Test point and spot lights
-        // Note: For Spot lights, this only tests the bounding sphere.
-        // For tighter culling, you would check the cone against the frustum here.
-        if (sphereInsideFrustum(lightPosView, light.range, tileFrustum)) {
-            uint index = atomicAdd(visibleLightCount, 1);
-            if (index < MAX_LIGHTS_PER_TILE) {
-                visibleLightIndices[index] = i;
+
+        uvec4 ballot = subgroupBallot(isVisible);
+        uint count = subgroupBallotBitCount(ballot);
+
+        if (count > 0) {
+            uint baseIndex = 0;
+            if (subgroupElect()) {
+                baseIndex = atomicAdd(visibleLightCount, count);
+            }
+            baseIndex = subgroupBroadcastFirst(baseIndex);
+
+            if (isVisible) {
+                uint offset = subgroupBallotExclusiveBitCount(ballot);
+                uint idx = baseIndex + offset;
+                if (idx < MAX_LIGHTS_PER_TILE) {
+                    visibleLightIndices[idx] = lightIndex;
+                }
             }
         }
     }
@@ -278,14 +288,14 @@ void main() {
     barrier();
     
     // 4. Write results
-    GlobalCounterBuffer glCounterBuf = GlobalCounterBuffer(pc.value.globalCounterBufferAddress);
-    LightGridBuffer lightGridBuffer = LightGridBuffer(pc.value.lightGridBufferAddress);
-    LightIndexBuffer lightIndexBuffer = LightIndexBuffer(pc.value.lightIndexBufferAddress);
+    GlobalCounterBuffer glCounterBuf = GlobalCounterBuffer(cullingConst.value.globalCounterBufferAddress);
+    LightGridBuffer lightGridBuffer = LightGridBuffer(cullingConst.value.lightGridBufferAddress);
+    LightIndexBuffer lightIndexBuffer = LightIndexBuffer(cullingConst.value.lightIndexBufferAddress);
     
     uint count = min(visibleLightCount, MAX_LIGHTS_PER_TILE);
     
     if (localIndex == 0) {
-        uint tileIndex = tileID.y * uint(pc.value.tileCount.x) + tileID.x;
+        uint tileIndex = tileID.y * uint(cullingConst.value.tileCountX) + tileID.x;
         globalOffset = atomicAdd(glCounterBuf.globalLightIndexCounter, count);
         lightGridBuffer.tiles[tileIndex] = uvec2(count, globalOffset);
     }

@@ -13,5 +13,6 @@ struct FPConstants {
     uint lightCount;
     uint tileSize;
     vec2 screenDimensions;
-    vec2 tileCount;
+    uint tileCountX;
+    uint tileCountY;
 };

@@ -920,7 +920,7 @@ internal sealed partial class VulkanContext
             _defaultSampler = sampler;
             HxDebug.Assert(
                 SamplersPool.Count == 1,
-                "Default sampler should be created successfully"
+                "DefaultInvZ sampler should be created successfully"
             );
         }
         GrowDescriptorPool(CurrentMaxTextures, CurrentMaxSamplers);
@@ -1873,7 +1873,6 @@ internal sealed partial class VulkanContext
                 : ShaderModuleState.Null;
 
             HxDebug.Assert(vertModule || meshModule);
-            HxDebug.Assert(fragModule);
 
             if (tescModule || teseModule || desc.PatchControlPoints > 0)
             {

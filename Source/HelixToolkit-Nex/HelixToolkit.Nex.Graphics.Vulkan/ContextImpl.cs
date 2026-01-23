@@ -338,12 +338,6 @@ internal sealed partial class VulkanContext : Initializable, IContext
             }
         }
 
-        if (!desc.FragementShader.Valid)
-        {
-            _logger.LogError("Missing fragment shader");
-            return ResultCode.ArgumentError;
-        }
-
         if (desc.VertexShader.Valid)
         {
             stageFlags |= VkShaderStageFlags.Vertex;

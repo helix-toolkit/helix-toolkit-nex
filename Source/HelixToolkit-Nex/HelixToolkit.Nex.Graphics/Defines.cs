@@ -731,9 +731,15 @@ public struct DepthState()
     /// </summary>
     public bool IsDepthWriteEnabled = false;
 
-    public static readonly DepthState Default = new DepthState
+    /// <summary>
+    /// Represents the default depth state configuration. (Inversed Z)
+    /// </summary>
+    /// <remarks>The default configuration sets the depth comparison operation to <see
+    /// cref="CompareOp.GreaterEqual"/> and enables depth writing. This configuration is commonly used for rendering
+    /// scenarios where objects closer to the camera should overwrite those farther away.</remarks>
+    public static readonly DepthState DefaultInvZ = new DepthState
     {
-        CompareOp = CompareOp.LessEqual,
+        CompareOp = CompareOp.GreaterEqual,
         IsDepthWriteEnabled = true,
     };
 }

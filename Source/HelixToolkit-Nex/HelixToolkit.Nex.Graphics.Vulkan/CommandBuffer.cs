@@ -444,11 +444,11 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
             var dim = depthTexture.Extent;
 
             HxDebug.Assert(
-                fbWidth > 0 && dim.width == fbWidth,
+                fbWidth == 0 || dim.width == fbWidth,
                 "All attachments should have the same width"
             );
             HxDebug.Assert(
-                fbHeight > 0 && dim.height == fbHeight,
+                fbHeight == 0 || dim.height == fbHeight,
                 "All attachments should have the same height"
             );
 

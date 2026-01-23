@@ -107,30 +107,6 @@ public class MaterialShaderBuilder
     }
 
     /// <summary>
-    /// Enable texture features based on material properties.
-    /// </summary>
-    public MaterialShaderBuilder ForMaterial(PbrMaterialProperties material)
-    {
-        // Auto-configure based on material properties
-        if (material.BaseColorTexture.Valid)
-        {
-            WithDefine("USE_BASE_COLOR_TEXTURE");
-        }
-
-        if (material.MetallicRoughnessTexture.Valid)
-        {
-            WithDefine("USE_METALLIC_ROUGHNESS_TEXTURE");
-        }
-
-        if (material.NormalTexture.Valid)
-        {
-            WithDefine("USE_NORMAL_TEXTURE");
-        }
-
-        return this;
-    }
-
-    /// <summary>
     /// Build the fragment shader for this material.
     /// </summary>
     public ShaderBuildResult BuildFragmentShader()

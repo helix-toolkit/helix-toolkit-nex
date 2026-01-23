@@ -347,8 +347,8 @@ namespace HelixToolkit.Nex.Maths
                 _pTop = Plane.CreateFromVertices(Near2, Far2, Far3),
                 _pBottom = Plane.CreateFromVertices(Far4, Far1, Near1),
                 _pMatrix =
-                    MatrixHelper.LookAtLH(cameraPos, cameraPos + lookDir * 10, upDir)
-                    * MatrixHelper.PerspectiveFovLH(fov, aspect, znear, zfar),
+                    MatrixHelper.LookAtRH(cameraPos, cameraPos + lookDir * 10, upDir)
+                    * MatrixHelper.PerspectiveFovRHReverseZ(fov, aspect, znear, zfar),
             };
             //result.pNear.Normalize();
             //result.pFar.Normalize();
