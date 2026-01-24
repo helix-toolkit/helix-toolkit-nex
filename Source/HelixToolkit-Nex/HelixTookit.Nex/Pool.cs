@@ -9,7 +9,7 @@ namespace HelixToolkit.Nex;
 /// This pool uses a free-list algorithm for efficient allocation and deallocation of objects.
 /// Each object is associated with a generation number to prevent the ABA problem and ensure handle validity.
 /// </remarks>
-public sealed class Pool<ObjectType, ImplObjectType>
+public sealed class Pool<ObjectType, ImplObjectType> : IEnumerable<ImplObjectType>
     where ObjectType : new()
 {
     private const uint32_t ListEndSentinel = 0xFFFFFFFF; // Sentinel value to indicate the end of the list
@@ -173,8 +173,35 @@ public sealed class Pool<ObjectType, ImplObjectType>
     /// </summary>
     public void Clear()
     {
+        for (int32_t i = 0; i < _objects.Count; i++)
+        {
+            ref var entry = ref _objects.GetInternalArray()[i];
+            if (entry.Obj is IDisposable disposableObj)
+            {
+                disposableObj.Dispose(); // Dispose the object if it implements IDisposable
+            }
+            entry.Obj = default; // Clear the object reference
+        }
         _objects.Clear();
         _freeListHead = ListEndSentinel;
         Count = 0;
+    }
+
+    // Add these methods to implement IEnumerable<ImplObjectType> and IEnumerable
+    public IEnumerator<ImplObjectType> GetEnumerator()
+    {
+        for (int i = 0; i < _objects.Count; i++)
+        {
+            var obj = _objects[i].Obj;
+            if (obj != null)
+            {
+                yield return obj;
+            }
+        }
+    }
+
+    System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
+    {
+        return GetEnumerator();
     }
 }

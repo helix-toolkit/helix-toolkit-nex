@@ -64,6 +64,7 @@ public class ForwardPlusExample
         _lightMesh = builder.ToMesh().ToGeometry();
         builder = new MeshBuilder(true, true, true);
         builder.AddBox(new Vector3(0, 0, 0), 10, 10, 2);
+        builder.AddSphere(new Vector3(0, 0, 0), 1.5f);
         _mesh = builder.ToMesh().ToGeometry();
 
         _depthPass.Colors[0] = new RenderPass.AttachmentDesc
@@ -562,7 +563,7 @@ public class ForwardPlusExample
                 Position = position,
                 Type = 1, // Point light
                 Direction = Vector3.Zero,
-                Range = 10f,
+                Range = 4f,
                 Color = color,
                 Intensity = 1.0f,
                 SpotAngles = Vector2.Zero,
@@ -577,14 +578,14 @@ public class ForwardPlusExample
 
     private void MoveLights(Light[] lights, float time)
     {
-        _counter = (_counter + 1) % 10000;
+        _counter = (_counter + 1) % 15000;
         if (_counter < 5000)
         {
-            _offset = 0.001f;
+            _offset = 0.002f;
         }
         else
         {
-            _offset = -0.001f;
+            _offset = -0.002f;
         }
         for (int i = 1; i < lights.Length; i++)
         {

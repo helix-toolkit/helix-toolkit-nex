@@ -200,7 +200,7 @@ internal static class ShaderExtensions
                     pushConstantsSize = Math.Max(pushConstantsSize, block.offset + block.size);
                 }
                 spvReflectDestroyShaderModule(&mdl);
-                moduleOut = new ShaderModuleState()
+                moduleOut = new ShaderModuleState(vkDevice)
                 {
                     ShaderModule = vkShaderModule,
                     PushConstantsSize = pushConstantsSize,

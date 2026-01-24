@@ -1364,7 +1364,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
     public void ResetQueryPool(in QueryPoolHandle pool, uint firstQuery, uint queryCount)
     {
         var vkPool = _ctx.QueriesPool.Get(pool);
-        HxDebug.Assert(vkPool.IsNotNull, "Query pool is null or not valid.");
+        HxDebug.Assert(vkPool is not null, "Query pool is null or not valid.");
         VK.vkCmdResetQueryPool(CmdBuffer, vkPool, firstQuery, queryCount);
     }
 
@@ -1465,7 +1465,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
     public void WriteTimestamp(in QueryPoolHandle pool, uint query)
     {
         var vkPool = _ctx.QueriesPool.Get(pool);
-        HxDebug.Assert(vkPool.IsNotNull, "Query pool is null or not valid.");
+        HxDebug.Assert(vkPool is not null, "Query pool is null or not valid.");
         VK.vkCmdWriteTimestamp(CmdBuffer, VK.VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, vkPool, query);
     }
 }

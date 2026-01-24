@@ -223,7 +223,7 @@ internal sealed partial class VulkanContext : Initializable, IContext
             return ResultCode.ArgumentError;
         }
 
-        ComputePipelineState cps = new() { Desc = desc };
+        ComputePipelineState cps = new(this) { Desc = desc };
 
         if (desc.SpecInfo.Data != null && desc.SpecInfo.Data.Length > 0)
         {
@@ -270,7 +270,7 @@ internal sealed partial class VulkanContext : Initializable, IContext
                 );
             }
 
-            var handle = this.QueriesPool.Create(pool);
+            var handle = QueriesPool.Create(new(this, pool));
 
             if (handle == QueryPoolHandle.Null)
             {
@@ -363,7 +363,7 @@ internal sealed partial class VulkanContext : Initializable, IContext
             stageFlags |= VkShaderStageFlags.Fragment;
         }
 
-        RenderPipelineState rps = new() { Desc = desc, ShaderStageFlags = stageFlags };
+        RenderPipelineState rps = new(this) { Desc = desc, ShaderStageFlags = stageFlags };
 
         // Iterate and cache vertex input bindings and attributes
         ref var vstate = ref rps.Desc.VertexInput;
@@ -1280,159 +1280,38 @@ internal sealed partial class VulkanContext : Initializable, IContext
 
     public void Destroy(ComputePipelineHandle handle)
     {
-        var cps = ComputePipelinesPool.Get(handle);
-
-        if (cps is null || !cps.Valid)
-        {
-            return;
-        }
-
-        cps.SpecConstantDataStorage = [];
-        cps.Desc.SpecInfo.Data = [];
-
-        DeferredTask(
-            () =>
-            {
-                unsafe
-                {
-                    VK.vkDestroyPipeline(_vkDevice, cps.Pipeline, null);
-                }
-            },
-            SubmitHandle.Null
-        );
-        DeferredTask(
-            () =>
-            {
-                unsafe
-                {
-                    VK.vkDestroyPipelineLayout(_vkDevice, cps.PipelineLayout, null);
-                }
-            },
-            SubmitHandle.Null
-        );
-
         ComputePipelinesPool.Destroy(handle);
     }
 
     public void Destroy(RenderPipelineHandle handle)
     {
-        var rps = RenderPipelinesPool.Get(handle);
-
-        if (rps is null || !rps.Valid)
-        {
-            return;
-        }
-
-        rps.SpecConstantDataStorage = [];
-        rps.Desc.SpecInfo.Data = [];
-
-        DeferredTask(
-            () =>
-            {
-                unsafe
-                {
-                    VK.vkDestroyPipeline(_vkDevice, rps.Pipeline, null);
-                }
-            },
-            SubmitHandle.Null
-        );
-        DeferredTask(
-            () =>
-            {
-                unsafe
-                {
-                    VK.vkDestroyPipelineLayout(_vkDevice, rps.PipelineLayout, null);
-                }
-            },
-            SubmitHandle.Null
-        );
-
         RenderPipelinesPool.Destroy(handle);
     }
 
     public void Destroy(ShaderModuleHandle handle)
     {
-        var state = ShaderModulesPool.Get(handle);
-
-        if (state is null || !state.Valid)
-        {
-            _logger.LogError("Shader module handle is invalid: {HANDLE}", handle.ToString());
-            return;
-        }
-
-        unsafe
-        {
-            // a shader module can be destroyed while pipelines created using its shaders are still in use
-            // https://registry.khronos.org/vulkan/specs/1.3/html/chap9.html#vkDestroyShaderModule
-            VK.vkDestroyShaderModule(_vkDevice, state.ShaderModule, null);
-        }
-
         ShaderModulesPool.Destroy(handle);
     }
 
     public void Destroy(SamplerHandle handle)
     {
-        var sampler = SamplersPool.Get(handle);
-
         SamplersPool.Destroy(handle);
-
-        DeferredTask(
-            () =>
-            {
-                unsafe
-                {
-                    VK.vkDestroySampler(_vkDevice, sampler, null);
-                }
-            },
-            SubmitHandle.Null
-        );
     }
 
     public void Destroy(BufferHandle handle)
     {
-        using var scope = new Scope(() =>
-        {
-            BuffersPool.Destroy(handle);
-        });
-
-        var buf = BuffersPool.Get(handle);
-        buf?.Dispose();
+        BuffersPool.Destroy(handle);
     }
 
     public void Destroy(TextureHandle handle)
     {
-        using var scope = new Scope(() =>
-        {
-            TexturesPool.Destroy(handle);
-            AwaitingCreation = true; // make the validation layers happy
-        });
-
-        var tex = TexturesPool.Get(handle);
-        if (tex is null || !tex.IsOwningVkImage)
-        {
-            return;
-        }
-        tex?.Dispose();
+        TexturesPool.Destroy(handle);
+        AwaitingCreation = true; // make the validation layers happy
     }
 
     public void Destroy(QueryPoolHandle handle)
     {
-        VkQueryPool pool = QueriesPool.Get(handle);
-        using var scope = new Scope(() =>
-        {
-            QueriesPool.Destroy(handle);
-        });
-
-        DeferredTask(
-            () =>
-            {
-                unsafe
-                {
-                    VK.vkDestroyQueryPool(_vkDevice, pool, null);
-                }
-            },
-            SubmitHandle.Null
-        );
+        QueriesPool.Destroy(handle);
     }
     #endregion
 }

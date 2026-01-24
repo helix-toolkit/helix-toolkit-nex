@@ -153,10 +153,10 @@ internal sealed partial class VulkanContext
     public Pool<ShaderModule, ShaderModuleState> ShaderModulesPool { get; } = new();
     public Pool<RenderPipeline, RenderPipelineState> RenderPipelinesPool { get; } = new();
     public Pool<ComputePipeline, ComputePipelineState> ComputePipelinesPool { get; } = new();
-    public Pool<Sampler, VkSampler> SamplersPool { get; } = new();
+    public Pool<Sampler, SamplerState> SamplersPool { get; } = new();
     public Pool<Buffer, VulkanBuffer> BuffersPool { get; } = new();
     public Pool<Texture, VulkanImage> TexturesPool { get; } = new();
-    public Pool<QueryPool, VkQueryPool> QueriesPool { get; } = new();
+    public Pool<QueryPool, QueryPoolState> QueriesPool { get; } = new();
 
     public VkDevice VkDevice => _vkDevice;
 
@@ -1022,7 +1022,7 @@ internal sealed partial class VulkanContext
                 );
             }
 
-            sampler = SamplersPool.Create(vkSampler);
+            sampler = SamplersPool.Create(new(this, vkSampler));
 
             AwaitingCreation = true;
         }
@@ -1109,7 +1109,11 @@ internal sealed partial class VulkanContext
 
                 if (hasYUVImages)
                 {
-                    VkSampler dummySampler = SamplersPool.Objects[0].Obj;
+                    var dummySampler = SamplersPool.Objects[0].Obj;
+                    if (dummySampler is null || !dummySampler.Valid)
+                    {
+                        throw new Exception("Dummy sampler not found in pool");
+                    }
                     immutableSamplers.EnsureCapacity(TexturesPool.Objects.Count);
                     foreach (var obj in TexturesPool.Objects)
                     {
@@ -1675,7 +1679,7 @@ internal sealed partial class VulkanContext
             infoSamplers.Add(
                 new VkDescriptorImageInfo
                 {
-                    sampler = sampler.Obj.IsNotNull ? sampler.Obj : SamplersPool.Objects[0].Obj,
+                    sampler = sampler.Obj ? sampler.Obj : SamplersPool.Objects[0].Obj,
                     imageView = VkImageView.Null,
                     imageLayout = VK.VK_IMAGE_LAYOUT_UNDEFINED,
                 }
@@ -2245,40 +2249,40 @@ internal sealed partial class VulkanContext
             {
                 HxDebug.Assert(false, $"Leaked {ShaderModulesPool.Count} shader modules");
                 _logger.LogWarning("Leaked {COUNT} shader modules", ShaderModulesPool.Count);
+                ShaderModulesPool.Clear();
             }
             if (RenderPipelinesPool.Count > 0)
             {
                 HxDebug.Assert(false, $"Leaked {RenderPipelinesPool.Count} render pipelines");
                 _logger.LogWarning("Leaked {COUNT} render pipelines", RenderPipelinesPool.Count);
+                RenderPipelinesPool.Clear();
             }
             if (ComputePipelinesPool.Count > 0)
             {
                 HxDebug.Assert(false, $"Leaked {ComputePipelinesPool.Count} compute pipelines");
                 _logger.LogWarning("Leaked {COUNT} compute pipelines", ComputePipelinesPool.Count);
+                ComputePipelinesPool.Clear();
             }
             if (SamplersPool.Count > 0)
             {
                 HxDebug.Assert(false, $"Leaked {SamplersPool.Count} samplers");
                 // the dummy value is owned by the context
                 _logger.LogWarning("Leaked {COUNT} samplers", SamplersPool.Count - 1);
+                SamplersPool.Clear();
             }
             if (TexturesPool.Count > 0)
             {
                 HxDebug.Assert(false, $"Leaked {TexturesPool.Count} textures");
                 _logger.LogWarning("Leaked {COUNT} textures", TexturesPool.Count);
+                TexturesPool.Clear();
             }
             if (BuffersPool.Count > 0)
             {
                 HxDebug.Assert(false, $"Leaked {BuffersPool.Count} buffers");
                 _logger.LogWarning("Leaked {COUNT} buffers", BuffersPool.Count);
+                BuffersPool.Clear();
             }
-
-            SamplersPool.Clear();
-            ComputePipelinesPool.Clear();
-            RenderPipelinesPool.Clear();
-            ShaderModulesPool.Clear();
-            TexturesPool.Clear();
-
+            WaitDeferredTasks();
             Disposer.DisposeAndRemove(ref _immediate);
 
             VK.vkDestroyDescriptorSetLayout(_vkDevice, VkDesSetLayout, null);
