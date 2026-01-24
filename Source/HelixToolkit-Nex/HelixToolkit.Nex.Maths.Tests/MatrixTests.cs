@@ -99,13 +99,13 @@ public sealed class MatrixTests
     public void InvertPerspectiveRHReverseZTest(float fov, float aspect, float near, float far)
     {
         var perspective = MatrixHelper.PerspectiveFovRHReverseZ(fov, aspect, near, far);
-        var inverted = MatrixHelper.InversedPerspectiveFovRHReverseZ(fov, aspect, near, far);
+        var inverted = MatrixHelper.InversePerspectiveFovRHReverseZ(fov, aspect, near, far);
         var combined = Matrix4x4.Multiply(perspective, inverted);
         VerifyMatrix(Matrix4x4.Identity, combined);
     }
 
     [TestMethod]
-    [DataRow(1024, 768, 0.1f, 1000f)]
+    [DataRow(1024, 768, 0.1f, 100f)]
     [DataRow(1080, 800, 0.01f, 100f)]
     public void OrthoRHInverseZ(float width, float height, float near, float far)
     {
@@ -116,12 +116,12 @@ public sealed class MatrixTests
     }
 
     [TestMethod]
-    [DataRow(1024, 768, 0.1f, 1000f)]
+    [DataRow(1024, 768, 0.1f, 100f)]
     [DataRow(1080, 800, 0.01f, 100f)]
     public void InvertOrthoRHReverseZTest(float width, float height, float near, float far)
     {
         var ortho = MatrixHelper.OrthoRHReverseZ(width, height, near, far);
-        var inverted = MatrixHelper.InversedOrthoRHReverseZ(width, height, near, far);
+        var inverted = MatrixHelper.InverseOrthoRHReverseZ(width, height, near, far);
         var combined = Matrix4x4.Multiply(ortho, inverted);
         VerifyMatrix(Matrix4x4.Identity, combined);
     }

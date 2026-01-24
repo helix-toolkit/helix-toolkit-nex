@@ -641,6 +641,6 @@ public sealed class Camera
 
     public Matrix4x4 CreateInversePerspective(float aspect)
     {
-        return MatrixHelper.InversedPerspectiveFovRHReverseZ(Fov, aspect, NearPlane, FarPlane);
+        return MatrixHelper.InversePerspectiveFovRHReverseZ(Fov, aspect, NearPlane, FarPlane);
     }
 }

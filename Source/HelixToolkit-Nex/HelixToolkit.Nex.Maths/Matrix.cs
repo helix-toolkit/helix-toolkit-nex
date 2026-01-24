@@ -29,6 +29,7 @@ The MIT License (MIT)
 Copyright (c) 2007-2011 SlimDX Group
 The MIT License (MIT)
 */
+using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 
 namespace HelixToolkit.Nex.Maths
@@ -1908,6 +1909,7 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>A <see cref="Matrix"/> representing the orthographic projection.</returns>
         public static Matrix OrthoRHReverseZ(float width, float height, float znear, float zfar)
         {
+            Debug.Assert(zfar > znear, "Far clipping plane must larger than near clipping plane.");
             return new()
             {
                 M11 = 2.0f / width,
@@ -1932,13 +1934,14 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="zfar">The distance to the far clipping plane.</param>
         /// <returns>A <see cref="Matrix"/> representing the inverse orthographic projection for the specified dimensions  and
         /// depth range.</returns>
-        public static Matrix InversedOrthoRHReverseZ(
+        public static Matrix InverseOrthoRHReverseZ(
             float width,
             float height,
             float znear,
             float zfar
         )
         {
+            Debug.Assert(zfar > znear, "Far clipping plane must larger than near clipping plane.");
             return new()
             {
                 M11 = width * 0.5f,
@@ -2297,7 +2300,7 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="zfar">The distance to the far clipping plane. If set to <see cref="float.PositiveInfinity"/>,  the matrix will be
         /// configured for an infinite far plane.</param>
         /// <returns>A <see cref="Matrix"/> representing the inverse perspective projection matrix.</returns>
-        public static Matrix InversedPerspectiveFovRHReverseZ(
+        public static Matrix InversePerspectiveFovRHReverseZ(
             float fov,
             float aspect,
             float znear,
