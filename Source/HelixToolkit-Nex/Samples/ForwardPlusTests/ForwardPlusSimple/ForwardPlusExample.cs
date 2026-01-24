@@ -11,36 +11,65 @@ namespace HelixToolkit.Nex.Examples;
 
 /// <summary>
 /// Complete example demonstrating Forward+ rendering with bindless buffers.
+///
+/// Forward+ (Tiled Forward Rendering) is an advanced rendering technique that:
+/// 1. Divides the screen into tiles (e.g., 16x16 pixels)
+/// 2. Performs light culling per tile in a compute shader
+/// 3. Only processes lights that affect each tile during fragment shading
+///
+/// This significantly improves performance with many dynamic lights compared to traditional forward rendering.
 /// </summary>
 public class ForwardPlusExample
 {
+    #region Constants and Configuration
+
     private static readonly int NumPointLights = 20;
-    private readonly IContext _context;
-    private BufferResource _lightCullingBuffer = BufferResource.Null;
+
+    #endregion
+
+    #region GPU Resources - Buffers
+
+    // Light data and culling buffers
     private BufferResource _lightBuffer = BufferResource.Null;
+    private BufferResource _lightCullingBuffer = BufferResource.Null;
     private BufferResource _lightGridBuffer = BufferResource.Null;
     private BufferResource _lightIndexBuffer = BufferResource.Null;
     private BufferResource _counterBuffer = BufferResource.Null;
+
+    // Per-object data buffers
     private BufferResource _modelMatrixBuffer = BufferResource.Null;
     private BufferResource _pbrPropertiesBuffer = BufferResource.Null;
     private BufferResource _fpConstBuffer = BufferResource.Null;
+
+    #endregion
+
+    #region GPU Resources - Textures
+
     private TextureResource _f16Framebuffer = TextureResource.Null;
     private TextureResource _depthBuffer = TextureResource.Null;
+
+    #endregion
+
+    #region GPU Resources - Pipelines
+
     private RenderPipelineResource _depthPassPipeline = RenderPipelineResource.Null;
     private RenderPipelineResource _renderPipelinePBR = RenderPipelineResource.Null;
     private RenderPipelineResource _renderPipelineUnlit = RenderPipelineResource.Null;
     private RenderPipelineResource _toneGammePipeline = RenderPipelineResource.Null;
     private ComputePipelineResource _cullingPipeline = ComputePipelineResource.Null;
+
+    #endregion
+
+    #region GPU Resources - Samplers
+
     private SamplerResource _depthBufferSampler = SamplerResource.Null;
     private SamplerResource _toneMappingSampler = SamplerResource.Null;
 
-    private ForwardPlusLightCulling.Config _config = ForwardPlusLightCulling.Config.Default;
-    private Light[] _lights = Array.Empty<Light>();
-    private Matrix4x4[] _modelMatrices = new Matrix4x4[NumPointLights + 1];
-    private readonly Geometry _lightMesh;
-    private readonly Geometry _mesh;
-    private readonly PBRProperties[] _pbrProperties = new PBRProperties[NumPointLights + 1];
+    #endregion
 
+    #region Render State
+
+    private readonly IContext _context;
     private readonly Dependencies _dependencies = Dependencies.Empty;
     private readonly RenderPass _depthPass = new();
     private readonly RenderPass _renderPass = new();
@@ -55,18 +84,44 @@ public class ForwardPlusExample
     };
     private MeshDraw _drawParams = new();
 
+    #endregion
+
+    #region Scene Data
+
+    private ForwardPlusLightCulling.Config _config = ForwardPlusLightCulling.Config.Default;
+    private Light[] _lights = Array.Empty<Light>();
+    private Matrix4x4[] _modelMatrices = new Matrix4x4[NumPointLights + 1];
+    private readonly PBRProperties[] _pbrProperties = new PBRProperties[NumPointLights + 1];
+
+    private readonly Geometry _lightMesh;
+    private readonly Geometry _mesh;
+
+    #endregion
+
+    #region Constructor
+
+    /// <summary>
+    /// Initializes a new instance of the ForwardPlusExample class.
+    /// Sets up geometry, materials, and render pass configurations.
+    /// </summary>
+    /// <param name="context">The graphics context for resource creation.</param>
     public ForwardPlusExample(IContext context)
     {
         HxDebug.EnableDebugAssertions = true;
         _context = context;
+
+        // Create light representation mesh (small sphere)
         var builder = new MeshBuilder(true, true, true);
         builder.AddSphere(Vector3.Zero, 0.1f);
         _lightMesh = builder.ToMesh().ToGeometry();
+
+        // Create main scene mesh (box + sphere)
         builder = new MeshBuilder(true, true, true);
         builder.AddBox(new Vector3(0, 0, 0), 10, 10, 2);
         builder.AddSphere(new Vector3(0, 0, 0), 1.5f);
         _mesh = builder.ToMesh().ToGeometry();
 
+        // Configure depth prepass: clear depth, don't care about color
         _depthPass.Colors[0] = new RenderPass.AttachmentDesc
         {
             LoadOp = LoadOp.Invalid,
@@ -79,6 +134,7 @@ public class ForwardPlusExample
             StoreOp = StoreOp.Store,
         };
 
+        // Configure main render pass: clear color, load existing depth
         _renderPass.Colors[0] = new RenderPass.AttachmentDesc
         {
             ClearColor = new Color4(0),
@@ -92,19 +148,21 @@ public class ForwardPlusExample
             StoreOp = StoreOp.DontCare,
         };
 
+        // Configure tone mapping pass: clear color, no depth
         _toneMappingPass.Colors[0] = new RenderPass.AttachmentDesc
         {
             ClearColor = new Color4(0),
             LoadOp = LoadOp.Clear,
             StoreOp = StoreOp.Store,
         };
-
         _toneMappingPass.Depth = new RenderPass.AttachmentDesc
         {
             LoadOp = LoadOp.Invalid,
             StoreOp = StoreOp.DontCare,
         };
-        _lights = CreateTestLights(NumPointLights); // 100 point lights
+
+        // Initialize scene data
+        _lights = CreateTestLights(NumPointLights);
         _modelMatrices[0] = Matrix4x4.Identity;
         _pbrProperties[0] = new()
         {
@@ -113,6 +171,8 @@ public class ForwardPlusExample
             Roughness = 0.2f,
             Ao = 1f,
         };
+
+        // Setup light sphere transforms and emissive materials
         for (int i = 0; i < NumPointLights; i++)
         {
             _modelMatrices[i + 1] = Matrix4x4.CreateTranslation(_lights[i + 1].Position);
@@ -125,12 +185,41 @@ public class ForwardPlusExample
         }
     }
 
+    #endregion
+
+    #region Initialization
+
+    /// <summary>
+    /// Initializes all GPU resources including buffers, textures, and pipelines.
+    /// Must be called before rendering.
+    /// </summary>
+    /// <param name="screenWidth">Width of the rendering viewport.</param>
+    /// <param name="screenHeight">Height of the rendering viewport.</param>
     public void Initialize(int screenWidth, int screenHeight)
+    {
+        InitializeGeometry();
+        InitializeLightingBuffers(screenWidth, screenHeight);
+        InitializeRenderTargets(screenWidth, screenHeight);
+        InitializePipelines();
+    }
+
+    /// <summary>
+    /// Uploads geometry data to GPU buffers.
+    /// </summary>
+    private void InitializeGeometry()
     {
         _lightMesh.UpdateBuffers(_context);
         _mesh.UpdateBuffers(_context);
+    }
 
-        // 2. Create lights
+    /// <summary>
+    /// Creates all buffers required for Forward+ light culling.
+    /// </summary>
+    /// <param name="screenWidth">Width of the screen for tile calculation.</param>
+    /// <param name="screenHeight">Height of the screen for tile calculation.</param>
+    private void InitializeLightingBuffers(int screenWidth, int screenHeight)
+    {
+        // Create light data buffer
         _lightBuffer = _context.CreateBuffer(
             _lights,
             BufferUsageBits.Storage,
@@ -138,11 +227,12 @@ public class ForwardPlusExample
             "ForwardPlus_LightBuffer"
         );
 
-        // 3. Create light grid buffers
+        // Calculate tile grid dimensions
         var tileCountX = (screenWidth + _config.TileSize - 1) / _config.TileSize;
         var tileCountY = (screenHeight + _config.TileSize - 1) / _config.TileSize;
         var totalTiles = tileCountX * tileCountY;
 
+        // Light culling constants buffer
         _lightCullingBuffer = _context.CreateBuffer(
             new BufferDesc
             {
@@ -153,6 +243,7 @@ public class ForwardPlusExample
             "ForwardPlus_LightCulling"
         );
 
+        // Light grid buffer: stores light count and index offset per tile
         _lightGridBuffer = _context.CreateBuffer(
             new BufferDesc
             {
@@ -163,6 +254,7 @@ public class ForwardPlusExample
             "ForwardPlus_LightGrid"
         );
 
+        // Light index list buffer: stores light indices for all tiles
         _lightIndexBuffer = _context.CreateBuffer(
             new BufferDesc
             {
@@ -173,6 +265,7 @@ public class ForwardPlusExample
             "ForwardPlus_LightIndices"
         );
 
+        // Atomic counter for light index allocation
         _counterBuffer = _context.CreateBuffer(
             new BufferDesc
             {
@@ -183,6 +276,7 @@ public class ForwardPlusExample
             "ForwardPlus_Counter"
         );
 
+        // Per-object data buffers
         _modelMatrixBuffer = _context.CreateBuffer(
             _modelMatrices,
             BufferUsageBits.Storage,
@@ -203,7 +297,16 @@ public class ForwardPlusExample
             StorageType.Device,
             "ForwardPlus_Constants"
         );
+    }
 
+    /// <summary>
+    /// Creates render targets and samplers.
+    /// </summary>
+    /// <param name="screenWidth">Width of the render targets.</param>
+    /// <param name="screenHeight">Height of the render targets.</param>
+    private void InitializeRenderTargets(int screenWidth, int screenHeight)
+    {
+        // Depth buffer for depth prepass and culling
         _depthBufferSampler = _context.CreateSampler(
             new SamplerStateDesc
             {
@@ -224,6 +327,8 @@ public class ForwardPlusExample
                 Storage = StorageType.Device,
             }
         );
+
+        // HDR framebuffer (floating point for HDR rendering)
         _f16Framebuffer = _context.CreateTexture(
             new TextureDesc()
             {
@@ -237,7 +342,32 @@ public class ForwardPlusExample
                 Storage = StorageType.Device,
             }
         );
-        // 4. Create light culling compute pipeline
+
+        // Tone mapping sampler
+        _toneMappingSampler = _context.CreateSampler(
+            new SamplerStateDesc
+            {
+                MinFilter = SamplerFilter.Nearest,
+                MagFilter = SamplerFilter.Nearest,
+            }
+        );
+    }
+
+    /// <summary>
+    /// Creates all rendering and compute pipelines.
+    /// </summary>
+    private void InitializePipelines()
+    {
+        CreateLightCullingPipeline();
+        CreateRenderPipelines();
+        CreateToneMappingPipeline();
+    }
+
+    /// <summary>
+    /// Creates the compute pipeline for Forward+ light culling.
+    /// </summary>
+    private void CreateLightCullingPipeline()
+    {
         var cullingShader = ForwardPlusLightCulling.GenerateComputeShader(_config);
         var cullingModule = _context.CreateShaderModuleGlsl(
             cullingShader,
@@ -247,23 +377,21 @@ public class ForwardPlusExample
         _cullingPipeline = _context.CreateComputePipeline(
             new ComputePipelineDesc { ComputeShader = cullingModule }
         );
+    }
 
-        _toneMappingSampler = _context.CreateSampler(
-            new SamplerStateDesc
-            {
-                MinFilter = SamplerFilter.Nearest,
-                MagFilter = SamplerFilter.Nearest,
-            }
-        );
-
-        // 5. Create render pipeline with Forward+
+    /// <summary>
+    /// Creates the render pipelines for depth prepass, PBR shading, and unlit rendering.
+    /// </summary>
+    private void CreateRenderPipelines()
+    {
         var builder = new MaterialShaderBuilder()
             .WithPBRShading(true)
             .WithSimpleLighting(false)
             .ConfigForwardPlus(_config);
 
         var shaderResult = builder.BuildMaterialPipeline(_context, "ForwardPlus_Render");
-        // Create the actual render pipeline
+
+        // PBR pipeline with lighting
         {
             var pipelineDesc = new RenderPipelineDesc
             {
@@ -287,6 +415,7 @@ public class ForwardPlusExample
             Debug.Assert(_renderPipelinePBR.Valid);
         }
 
+        // Unlit pipeline for light visualization
         {
             var pipelineDesc = new RenderPipelineDesc
             {
@@ -310,6 +439,7 @@ public class ForwardPlusExample
             Debug.Assert(_renderPipelineUnlit.Valid);
         }
 
+        // Depth-only prepass pipeline
         {
             var pipelineDesc = new RenderPipelineDesc
             {
@@ -322,53 +452,77 @@ public class ForwardPlusExample
             _depthPassPipeline = _context.CreateRenderPipeline(pipelineDesc);
             Debug.Assert(_depthPassPipeline.Valid);
         }
-
-        {
-            var pipelineDesc = new RenderPipelineDesc
-            {
-                DebugName = "ToneMapping",
-                CullMode = CullMode.Back,
-                FrontFaceWinding = WindingMode.CCW,
-            };
-            var shaderCompiler = new ShaderCompiler();
-            pipelineDesc.Colors[0].Format = Format.BGRA_SRGB8;
-            var toneGammaShader = shaderCompiler.CompileFragmentShader(
-                GlslUtils.GetEmbeddedGlslShader("Frag/psToneGamma.glsl")
-            );
-            if (!toneGammaShader.Success || toneGammaShader.Source == null)
-            {
-                throw new InvalidOperationException(
-                    "Failed to compile tone mapping shader: "
-                        + string.Join("\n", toneGammaShader.Errors)
-                );
-            }
-            pipelineDesc.FragementShader = _context.CreateShaderModuleGlsl(
-                toneGammaShader.Source,
-                ShaderStage.Fragment,
-                "ToneMapping_Fragment"
-            );
-
-            var vsQuad = shaderCompiler.CompileVertexShader(
-                GlslUtils.GetEmbeddedGlslShader("Vert/vsFullScreenQuad.glsl")
-            );
-
-            if (!vsQuad.Success || vsQuad.Source == null)
-            {
-                throw new InvalidOperationException(
-                    "Failed to compile full-screen quad vertex shader: "
-                        + string.Join("\n", vsQuad.Errors)
-                );
-            }
-            pipelineDesc.VertexShader = _context.CreateShaderModuleGlsl(
-                vsQuad.Source,
-                ShaderStage.Vertex,
-                "FullScreenQuad_Vertex"
-            );
-            _toneGammePipeline = _context.CreateRenderPipeline(pipelineDesc);
-            Debug.Assert(_toneGammePipeline.Valid);
-        }
     }
 
+    /// <summary>
+    /// Creates the tone mapping and gamma correction pipeline.
+    /// </summary>
+    private void CreateToneMappingPipeline()
+    {
+        var pipelineDesc = new RenderPipelineDesc
+        {
+            DebugName = "ToneMapping",
+            CullMode = CullMode.Back,
+            FrontFaceWinding = WindingMode.CCW,
+        };
+        var shaderCompiler = new ShaderCompiler();
+        pipelineDesc.Colors[0].Format = Format.BGRA_SRGB8;
+
+        var toneGammaShader = shaderCompiler.CompileFragmentShader(
+            GlslUtils.GetEmbeddedGlslShader("Frag/psToneGamma.glsl")
+        );
+        if (!toneGammaShader.Success || toneGammaShader.Source == null)
+        {
+            throw new InvalidOperationException(
+                "Failed to compile tone mapping shader: "
+                    + string.Join("\n", toneGammaShader.Errors)
+            );
+        }
+        pipelineDesc.FragementShader = _context.CreateShaderModuleGlsl(
+            toneGammaShader.Source,
+            ShaderStage.Fragment,
+            "ToneMapping_Fragment"
+        );
+
+        var vsQuad = shaderCompiler.CompileVertexShader(
+            GlslUtils.GetEmbeddedGlslShader("Vert/vsFullScreenQuad.glsl")
+        );
+
+        if (!vsQuad.Success || vsQuad.Source == null)
+        {
+            throw new InvalidOperationException(
+                "Failed to compile full-screen quad vertex shader: "
+                    + string.Join("\n", vsQuad.Errors)
+            );
+        }
+        pipelineDesc.VertexShader = _context.CreateShaderModuleGlsl(
+            vsQuad.Source,
+            ShaderStage.Vertex,
+            "FullScreenQuad_Vertex"
+        );
+        _toneGammePipeline = _context.CreateRenderPipeline(pipelineDesc);
+        Debug.Assert(_toneGammePipeline.Valid);
+    }
+
+    #endregion
+
+    #region Rendering
+
+    /// <summary>
+    /// Renders a complete frame using Forward+ rendering.
+    ///
+    /// Rendering pipeline:
+    /// 1. Update dynamic data (lights, transforms)
+    /// 2. Depth prepass
+    /// 3. Light culling compute shader
+    /// 4. Main render pass with Forward+ lighting
+    /// 5. Tone mapping to final output
+    /// </summary>
+    /// <param name="cmdBuffer">Command buffer to record rendering commands.</param>
+    /// <param name="target">Target texture to render to.</param>
+    /// <param name="camera">Camera for view and projection matrices.</param>
+    /// <param name="screenWidth">Width of the rendering viewport.</param>
+    /// <param name="screenHeight">Height of the rendering viewport.</param>
     public void Render(
         ICommandBuffer cmdBuffer,
         TextureHandle target,
@@ -377,13 +531,34 @@ public class ForwardPlusExample
         int screenHeight
     )
     {
+        UpdateSceneData(cmdBuffer, camera, screenWidth, screenHeight);
+        DepthPrepass(cmdBuffer);
+        LightCulling(cmdBuffer, screenWidth, screenHeight);
+        RenderPass(cmdBuffer);
+        ToneGamma(cmdBuffer, target);
+    }
+
+    /// <summary>
+    /// Updates all dynamic scene data (lights, transforms, constants).
+    /// </summary>
+    private void UpdateSceneData(
+        ICommandBuffer cmdBuffer,
+        Camera camera,
+        int screenWidth,
+        int screenHeight
+    )
+    {
+        // Animate lights
         MoveLights(_lights, (float)DateTime.Now.TimeOfDay.TotalSeconds);
         cmdBuffer.UpdateBuffer(_lightBuffer, _lights, (uint)_lights.Length);
-        // Step 1: Reset _counter
+
+        // Reset atomic counter for light index allocation
         cmdBuffer.FillBuffer(_counterBuffer, 0, sizeof(uint), 0);
-        // Update model matrices if needed
+
+        // Update model matrices
         cmdBuffer.UpdateBuffer(_modelMatrixBuffer, _modelMatrices, (uint)_modelMatrices.Length);
 
+        // Calculate matrices
         float aspect = (float)screenWidth / screenHeight;
         var view = camera.CreateView();
         var proj = camera.CreatePerspective(aspect);
@@ -393,6 +568,7 @@ public class ForwardPlusExample
         var tileCountX = (screenWidth + (int)_config.TileSize - 1) / (int)_config.TileSize;
         var tileCountY = (screenHeight + (int)_config.TileSize - 1) / (int)_config.TileSize;
 
+        // Update Forward+ constants
         cmdBuffer.UpdateBuffer(
             _fpConstBuffer,
             new FPConstants()
@@ -415,6 +591,7 @@ public class ForwardPlusExample
             }
         );
 
+        // Update light culling constants
         cmdBuffer.UpdateBuffer(
             _lightCullingBuffer,
             new LightCullingConstants
@@ -435,13 +612,12 @@ public class ForwardPlusExample
                 GlobalCounterBufferAddress = _context.GpuAddress(_counterBuffer),
             }
         );
-
-        DepthPrepass(cmdBuffer);
-        LightCulling(cmdBuffer, (uint)tileCountX, (uint)tileCountY);
-        RenderPass(cmdBuffer);
-        ToneGamma(cmdBuffer, target);
     }
 
+    /// <summary>
+    /// Performs depth prepass to populate the depth buffer.
+    /// This is required for accurate light culling in screen space.
+    /// </summary>
     private void DepthPrepass(ICommandBuffer cmdBuffer)
     {
         _framebuffer.Colors[0].Texture = TextureResource.Null;
@@ -451,13 +627,12 @@ public class ForwardPlusExample
         cmdBuffer.BindRenderPipeline(_depthPassPipeline);
         cmdBuffer.BindIndexBuffer(_mesh.IndexBuffer, IndexFormat.UI32);
 
+        // Draw main scene geometry
         _drawParams.ForwardPlusConstantsAddress = _context.GpuAddress(_fpConstBuffer);
         _drawParams.VertexBufferAddress = _context.GpuAddress(_mesh.VertexBuffer);
         _drawParams.ModelId = 0;
         _drawParams.MaterialId = 0;
         cmdBuffer.PushConstants(_drawParams);
-
-        // Draw without binding vertex buffers (bindless!)
         cmdBuffer.DrawIndexed((uint)_mesh.Indices.Count);
 
         // Draw light spheres
@@ -473,35 +648,41 @@ public class ForwardPlusExample
         cmdBuffer.EndRendering();
     }
 
-    private void LightCulling(ICommandBuffer cmdBuffer, uint tileX, uint tileY)
+    /// <summary>
+    /// Runs the Forward+ light culling compute shader.
+    /// Calculates which lights affect each screen tile based on depth buffer.
+    /// </summary>
+    private void LightCulling(ICommandBuffer cmdBuffer, int screenWidth, int screenHeight)
     {
-        // Step 2: Run light culling compute shader
+        var tileCountX = (uint)((screenWidth + (int)_config.TileSize - 1) / (int)_config.TileSize);
+        var tileCountY = (uint)((screenHeight + (int)_config.TileSize - 1) / (int)_config.TileSize);
+
         cmdBuffer.BindComputePipeline(_cullingPipeline);
-        // Push constants for culling
         cmdBuffer.PushConstants(_context.GpuAddress(_lightCullingBuffer));
-        // Dispatch culling (one thread group per tile)
-        cmdBuffer.DispatchThreadGroups(new Dimensions(tileX, tileY), Dependencies.Empty);
+        cmdBuffer.DispatchThreadGroups(new Dimensions(tileCountX, tileCountY), Dependencies.Empty);
     }
 
+    /// <summary>
+    /// Main render pass: renders scene geometry with PBR shading using Forward+ lighting.
+    /// Only processes lights that were culled for each tile.
+    /// </summary>
     private void RenderPass(ICommandBuffer cmdBuffer)
     {
-        // Step 3: Render scene with Forward+
         _framebuffer.Colors[0].Texture = _f16Framebuffer;
         cmdBuffer.BeginRendering(_renderPass, _framebuffer, _dependencies);
         cmdBuffer.BindDepthState(_depthStateNoWrite);
         cmdBuffer.BindRenderPipeline(_renderPipelinePBR);
         cmdBuffer.BindIndexBuffer(_mesh.IndexBuffer, IndexFormat.UI32);
 
+        // Draw main scene with PBR lighting
         _drawParams.ForwardPlusConstantsAddress = _context.GpuAddress(_fpConstBuffer);
         _drawParams.VertexBufferAddress = _context.GpuAddress(_mesh.VertexBuffer);
         _drawParams.ModelId = 0;
         _drawParams.MaterialId = 0;
         cmdBuffer.PushConstants(_drawParams);
-
-        // Draw without binding vertex buffers (bindless!)
         cmdBuffer.DrawIndexed((uint)_mesh.Indices.Count);
 
-        // Draw light spheres
+        // Draw light spheres with emissive unlit material
         cmdBuffer.BindRenderPipeline(_renderPipelineUnlit);
         cmdBuffer.BindIndexBuffer(_lightMesh.IndexBuffer, IndexFormat.UI32);
         _drawParams.VertexBufferAddress = _context.GpuAddress(_lightMesh.VertexBuffer);
@@ -516,9 +697,11 @@ public class ForwardPlusExample
         cmdBuffer.EndRendering();
     }
 
+    /// <summary>
+    /// Applies tone mapping and gamma correction to convert HDR framebuffer to LDR output.
+    /// </summary>
     private void ToneGamma(ICommandBuffer cmdBuffer, TextureHandle target)
     {
-        // Step 4: Tone mapping pass
         _framebuffer.Colors[0].Texture = target;
         _framebuffer.DepthStencil.Texture = TextureResource.Null;
         cmdBuffer.BeginRendering(_toneMappingPass, _framebuffer, _dependencies);
@@ -537,10 +720,21 @@ public class ForwardPlusExample
         cmdBuffer.EndRendering();
     }
 
+    #endregion
+
+    #region Scene Setup
+
+    /// <summary>
+    /// Creates a test scene with one directional light and multiple colored point lights.
+    /// </summary>
+    /// <param name="count">Number of point lights to create.</param>
+    /// <returns>Array of lights including one directional light and the specified number of point lights.</returns>
     private Light[] CreateTestLights(int count)
     {
         var lights = new Light[count + 1];
         var random = new Random((int)Stopwatch.GetTimestamp());
+
+        // Directional light (sun)
         lights[0] = new Light
         {
             Position = new Vector3(0, 0, -10),
@@ -551,11 +745,12 @@ public class ForwardPlusExample
             Intensity = 0.01f,
             SpotAngles = Vector2.Zero,
         };
+
+        // Point lights with alternating colors
         var colors = new[] { new Vector3(1, 0, 0), new Vector3(0, 1, 0), new Vector3(0, 0, 1) };
         for (int i = 0; i < count; i++)
         {
             var position = new Vector3(i - count / 2, i - count / 2, -2);
-
             var color = colors[i % colors.Length];
 
             lights[i + 1] = new Light
@@ -573,9 +768,18 @@ public class ForwardPlusExample
         return lights;
     }
 
+    #endregion
+
+    #region Animation
+
     private int _counter = 0;
     private float _offset = 1;
 
+    /// <summary>
+    /// Animates lights by moving them horizontally back and forth.
+    /// </summary>
+    /// <param name="lights">Array of lights to animate.</param>
+    /// <param name="time">Current time in seconds.</param>
     private void MoveLights(Light[] lights, float time)
     {
         _counter = (_counter + 1) % 15000;
@@ -587,6 +791,8 @@ public class ForwardPlusExample
         {
             _offset = -0.002f;
         }
+
+        // Skip first light (directional), only move point lights
         for (int i = 1; i < lights.Length; i++)
         {
             _lights[i].Position += new Vector3(_offset, 0, 0);
@@ -594,32 +800,53 @@ public class ForwardPlusExample
         }
     }
 
+    #endregion
+
+    #region Cleanup
+
+    /// <summary>
+    /// Releases all GPU resources.
+    /// </summary>
     public void Dispose()
     {
+        // Dispose geometry
         _lightMesh.Dispose();
         _mesh.Dispose();
+
+        // Dispose buffers
         _lightBuffer.Dispose();
         _lightGridBuffer.Dispose();
         _lightIndexBuffer.Dispose();
         _counterBuffer.Dispose();
-        _renderPipelinePBR.Dispose();
-        _cullingPipeline.Dispose();
-        _depthBufferSampler.Dispose();
-        _toneMappingSampler.Dispose();
-        _depthBuffer.Dispose();
-        _f16Framebuffer.Dispose();
-        _depthPassPipeline.Dispose();
         _modelMatrixBuffer.Dispose();
         _pbrPropertiesBuffer.Dispose();
         _fpConstBuffer.Dispose();
-        _renderPipelineUnlit.Dispose();
         _lightCullingBuffer.Dispose();
+
+        // Dispose pipelines
+        _renderPipelinePBR.Dispose();
+        _renderPipelineUnlit.Dispose();
+        _cullingPipeline.Dispose();
+        _depthPassPipeline.Dispose();
         _toneGammePipeline.Dispose();
+
+        // Dispose samplers
+        _depthBufferSampler.Dispose();
+        _toneMappingSampler.Dispose();
+
+        // Dispose textures
+        _depthBuffer.Dispose();
+        _f16Framebuffer.Dispose();
     }
+
+    #endregion
 }
+
+#region Camera
 
 /// <summary>
 /// Simple camera structure for the example.
+/// Supports perspective projection with reverse-Z depth buffer.
 /// </summary>
 public sealed class Camera
 {
@@ -630,18 +857,31 @@ public sealed class Camera
     public float FarPlane = 1000;
     public float Fov = 45 * MathF.PI / 180;
 
+    /// <summary>
+    /// Creates a right-handed view matrix looking from Position to Target.
+    /// </summary>
     public Matrix4x4 CreateView()
     {
         return MatrixHelper.LookAtRH(Position, Target, Up);
     }
 
+    /// <summary>
+    /// Creates a right-handed perspective projection matrix with reverse-Z depth.
+    /// Reverse-Z provides better depth precision for distant objects.
+    /// </summary>
     public Matrix4x4 CreatePerspective(float aspect)
     {
         return MatrixHelper.PerspectiveFovRHReverseZ(Fov, aspect, NearPlane, FarPlane);
     }
 
+    /// <summary>
+    /// Creates the inverse of the perspective projection matrix.
+    /// Used for reconstructing world positions from screen space.
+    /// </summary>
     public Matrix4x4 CreateInversePerspective(float aspect)
     {
         return MatrixHelper.InversePerspectiveFovRHReverseZ(Fov, aspect, NearPlane, FarPlane);
     }
 }
+
+#endregion

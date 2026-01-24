@@ -17,7 +17,7 @@ internal class App : Application
     private static readonly ILogger logger = LogManager.Create<App>();
     private IContext? _ctx;
     private ForwardPlusExample? _example;
-    private Camera _camera;
+    private Camera _camera = new Camera();
 
     protected override void Initialize()
     {
@@ -39,7 +39,6 @@ internal class App : Application
         _example = new ForwardPlusExample(_ctx);
 
         _example.Initialize(windowSize.Width, windowSize.Height);
-        _camera = new Camera();
         _camera.Position = new Vector3(0, 0, -10);
     }
 
