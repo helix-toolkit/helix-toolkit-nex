@@ -180,6 +180,40 @@ struct TestStruct {
     }
 
     [Fact]
+    public void Generate_ArrayField_UnrollsAndCreatesAccessors()
+    {
+        // Arrange
+        var structs = new System.Collections.Generic.List<GlslStruct>
+        {
+            new GlslStruct(
+                "ArrayStruct",
+                new System.Collections.Generic.List<GlslField>
+                {
+                    new GlslField("vec4", "planes", "4", "Frustum planes"),
+                }
+            ),
+        };
+        var generator = new CSharpStructGenerator();
+
+        // Act
+        var code = generator.Generate("ArrayStructFile", structs);
+
+        // Assert
+        Assert.Contains("public System.Numerics.Vector4 Planes_0;", code);
+        Assert.Contains("public System.Numerics.Vector4 Planes_1;", code);
+        Assert.Contains("public System.Numerics.Vector4 Planes_2;", code);
+        Assert.Contains("public System.Numerics.Vector4 Planes_3;", code);
+
+        Assert.Contains("public System.Numerics.Vector4 GetPlanes(int index)", code);
+        Assert.Contains("public void SetPlanes(int index, in System.Numerics.Vector4 value)", code);
+
+        Assert.Contains("case 0: Planes_0 = value; break;", code);
+        Assert.Contains("case 3: Planes_3 = value; break;", code);
+        Assert.Contains("0 => Planes_0,", code);
+        Assert.Contains("3 => Planes_3,", code);
+    }
+
+    [Fact]
     public void ParseStructs_MissingCodeGen_ReturnsEmpty()
     {
         // Arrange

@@ -104,12 +104,22 @@ public class CSharpStructGenerator
             GenerateField(sb, field);
         }
 
+        // Generate helper methods for arrays
+        foreach (var field in glslStruct.Fields)
+        {
+            if (field.IsArray)
+            {
+                GenerateArrayAccessors(sb, field);
+            }
+        }
+
         sb.AppendLine("}");
     }
 
     private void GenerateField(StringBuilder sb, GlslField field)
     {
         var csharpType = MapGlslTypeToCSharp(field.GlslType);
+        var fieldName = FormatFieldName(field.Name);
 
         // Add comment if exists
         if (!string.IsNullOrEmpty(field.Comment))
@@ -118,25 +128,66 @@ public class CSharpStructGenerator
         }
 
         // Generate field
-        if (field.IsArray)
+        if (field.IsArray && int.TryParse(field.ArraySize, out int size))
         {
-            // For arrays, we need to create fixed-size arrays or use array syntax
-            // GLSL arrays need special handling for marshaling
+            // For arrays, we unroll them into individual fields
             sb.AppendLine(
                 $"    /// <remarks>GLSL array: {field.GlslType}[{field.ArraySize}]</remarks>"
             );
 
-            // Use MarshalAs for array size
-            sb.AppendLine(
-                $"    [MarshalAs(UnmanagedType.ByValArray, SizeConst = {field.ArraySize})]"
-            );
-            sb.AppendLine($"    public {csharpType}[]? {FormatFieldName(field.Name)};");
+            for (int i = 0; i < size; ++i)
+            {
+                sb.AppendLine($"    public {csharpType} {fieldName}_{i};");
+            }
         }
         else
         {
-            sb.AppendLine($"    public {csharpType} {FormatFieldName(field.Name)};");
+            sb.AppendLine($"    public {csharpType} {fieldName};");
         }
 
+        sb.AppendLine();
+    }
+
+    private void GenerateArrayAccessors(StringBuilder sb, GlslField field)
+    {
+        if (!field.IsArray || !int.TryParse(field.ArraySize, out int size))
+        {
+            return;
+        }
+
+        var csharpType = MapGlslTypeToCSharp(field.GlslType);
+        var fieldName = FormatFieldName(field.Name);
+
+        // Getter
+        sb.AppendLine($"    public {csharpType} Get{fieldName}(int index)");
+        sb.AppendLine("    {");
+        sb.AppendLine("        return index switch");
+        sb.AppendLine("        {");
+        for (int i = 0; i < size; ++i)
+        {
+            sb.AppendLine($"            {i} => {fieldName}_{i},");
+        }
+        sb.AppendLine(
+            $"            _ => throw new System.IndexOutOfRangeException($\"Index {{index}} is out of range for array {fieldName} of size {size}.\")"
+        );
+        sb.AppendLine("        };");
+        sb.AppendLine("    }");
+        sb.AppendLine();
+
+        // Setter
+        sb.AppendLine($"    public void Set{fieldName}(int index, in {csharpType} value)");
+        sb.AppendLine("    {");
+        sb.AppendLine("        switch (index)");
+        sb.AppendLine("        {");
+        for (int i = 0; i < size; ++i)
+        {
+            sb.AppendLine($"            case {i}: {fieldName}_{i} = value; break;");
+        }
+        sb.AppendLine(
+            $"            default: throw new System.IndexOutOfRangeException($\"Index {{index}} is out of range for array {fieldName} of size {size}.\");"
+        );
+        sb.AppendLine("        }");
+        sb.AppendLine("    }");
         sb.AppendLine();
     }
 
