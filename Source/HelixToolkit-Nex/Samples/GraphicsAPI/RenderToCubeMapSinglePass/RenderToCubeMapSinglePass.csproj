@@ -1,5 +1,4 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
     <PropertyGroup>
         <OutputType>Exe</OutputType>
         <TargetFramework>net8.0</TargetFramework>
@@ -8,10 +7,8 @@
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <LangVersion>latest</LangVersion>
     </PropertyGroup>
-
     <ItemGroup>
-        <ProjectReference Include="..\..\HelixToolkit.Nex.Graphics.Vulkan\HelixToolkit.Nex.Graphics.Vulkan.csproj" />
-        <ProjectReference Include="..\Application\Application.csproj" />
+        <ProjectReference Include="..\..\..\HelixToolkit.Nex.Graphics.Vulkan\HelixToolkit.Nex.Graphics.Vulkan.csproj" />
+        <ProjectReference Include="..\..\Application\Application.csproj" />
     </ItemGroup>
-
 </Project>
