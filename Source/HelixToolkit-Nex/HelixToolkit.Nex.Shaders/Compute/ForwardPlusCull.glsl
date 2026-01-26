@@ -87,6 +87,12 @@ float depthToViewZ(float depth) {
     
     vec4 clipPos = vec4(0.0, 0.0, depth, 1.0); 
     vec4 viewPos = cullingConst.value.inverseProjection * clipPos; 
+    if (abs(viewPos.w) < 1e-6) {
+        // Point is at infinity (or singular). 
+        // Return a sufficiently far distance (e.g. Far Plane or -Infinity)
+        // Since View Space is -Z, Far is negative.
+        return -3.402823466e+38; // -FLT_MAX
+    }
     return viewPos.z / viewPos.w;
 }
 
@@ -158,6 +164,15 @@ Frustum createTileFrustum(uvec2 tileID) {
     // Bottom plane
     edge = normalize(corners[0].xyz - corners[1].xyz);
     frustum.planes[3] = vec4(normalize(cross(corners[1].xyz, edge)), 0.0);
+
+    // [FIX] Robustly ensure plane normals point inward (towards Z-axis 0,0,-1)
+    // The Z-axis (0,0,-1) is strictly inside the view frustum (assuming standard centered perspective).
+    vec3 viewAxis = vec3(0.0, 0.0, -1.0);
+    for (int i = 0; i < 4; ++i) {
+        if (dot(frustum.planes[i].xyz, viewAxis) < 0.0) {
+            frustum.planes[i] = -frustum.planes[i];
+        }
+    }
     
     return frustum;
 }
