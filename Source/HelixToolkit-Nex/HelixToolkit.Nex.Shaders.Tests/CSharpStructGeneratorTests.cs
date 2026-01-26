@@ -276,21 +276,25 @@ struct TestStruct {
         var code = generator.Generate("TestArrays", structs);
 
         // Assert
+        for (int i = 0; i < 16; ++i)
+        {
+            Assert.IsTrue(
+                code.Contains($"public float Values_{i}"),
+                "Should create individual fields for array elements"
+            );
+        }
+        for (int i = 0; i < 4; ++i)
+        {
+            Assert.IsTrue(
+                code.Contains($"public System.Numerics.Vector3 Positions_{i}"),
+                "Should create individual fields for array elements"
+            );
+        }
+        Assert.IsTrue(code.Contains("public float GetValues(int index)"));
+        Assert.IsTrue(code.Contains("public void SetValues(int index, in float value)"));
+        Assert.IsTrue(code.Contains("public System.Numerics.Vector3 GetPositions(int index)"));
         Assert.IsTrue(
-            code.Contains("[MarshalAs(UnmanagedType.ByValArray, SizeConst = 16)]"),
-            "Should include MarshalAs for array"
-        );
-        Assert.IsTrue(
-            code.Contains("public float[]? Values;"),
-            "Should create nullable array field"
-        );
-        Assert.IsTrue(
-            code.Contains("[MarshalAs(UnmanagedType.ByValArray, SizeConst = 4)]"),
-            "Should include MarshalAs for vec3 array"
-        );
-        Assert.IsTrue(
-            code.Contains("public System.Numerics.Vector3[]? Positions;"),
-            "Should create Vector3 array"
+            code.Contains("public void SetPositions(int index, in System.Numerics.Vector3 value)")
         );
     }
 
