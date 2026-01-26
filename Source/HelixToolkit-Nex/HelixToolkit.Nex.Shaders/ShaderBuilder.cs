@@ -235,7 +235,9 @@ public class ShaderBuilder
                 // Check for circular dependency
                 if (_includeStack.Contains(includeKey))
                 {
-                    _errors.Add($"Circular dependency detected: {string.Join(" -> ", _includeStack.Reverse())} -> {includePath}");
+                    _errors.Add(
+                        $"Circular dependency detected: {string.Join(" -> ", _includeStack.Reverse())} -> {includePath}"
+                    );
                     builder.AppendLine($"// ERROR: Circular dependency detected: {includePath}");
                     continue;
                 }
@@ -300,12 +302,6 @@ public class ShaderBuilder
             var assemblyName =
                 assembly.GetName().Name
                 ?? throw new InvalidOperationException("Assembly name cannot be null.");
-
-            // Handle special includes
-            if (includePath.EndsWith("PBRFunctions.glsl"))
-            {
-                return GlslHeaders.GetGlslShaderPBRFunction();
-            }
 
             // Normalize path separators to dots for resource lookup
             // e.g. "Headers/HeaderFrag.glsl" -> "Headers.HeaderFrag.glsl"

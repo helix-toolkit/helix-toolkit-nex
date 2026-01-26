@@ -1,4 +1,4 @@
-#include "../Headers/HeaderVertex.glsl"
+#include "HxHeaders/HeaderVertex.glsl"
 
 layout(location = 0) out vec2 outTexCoord;
 

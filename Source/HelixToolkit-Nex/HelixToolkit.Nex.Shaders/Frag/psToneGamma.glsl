@@ -1,4 +1,4 @@
-#include "../Headers/HeaderFrag.glsl"
+#include "HxHeaders/HeaderFrag.glsl"
 
 // Fragment shader with tone mapping
 

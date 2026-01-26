@@ -134,9 +134,9 @@ void main() {
     {
         // Arrange
         string shader = """
-    #include "Headers/HeaderFrag.glsl"
-    #include "Headers/LightStruct.glsl"
-    #include "Headers/PBRFunctions.glsl"
+    #include "HxHeaders/HeaderFrag.glsl"
+    #include "HxHeaders/LightStruct.glsl"
+    #include "HxHeaders/PBRFunctions.glsl"
 
     layout(location = 0) in vec3 fragNormal;
     layout(location = 0) out vec4 outColor;

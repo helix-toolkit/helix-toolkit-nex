@@ -7,7 +7,7 @@
 #define RECIPROCAL_PI 0.31830988618
 #define EPSILON 1e-4 // Increased epsilon for better stability
 
-#include "../Headers/LightStruct.glsl"
+#include "HxHeaders/LightStruct.glsl"
 
 // ============================================================================
 // Material Structure

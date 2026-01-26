@@ -56,7 +56,7 @@ public static class GlslHeaders
 
     public static string GetGlslShaderHeader(string shaderName)
     {
-        return GlslUtils.GetEmbeddedGlslShader($"Headers.{shaderName}");
+        return GlslUtils.GetEmbeddedGlslShader($"HxHeaders.{shaderName}");
     }
 
     public static string GetGlslShaderPBRFunction()

@@ -1,9 +1,9 @@
-#include "../Headers/HeaderFrag.glsl"
-#include "../Headers/LightStruct.glsl"
-#include "../Headers/PBRFunctions.glsl"
-#include "../Headers/ForwardPlusConstants.glsl"
-#include "../Headers/ForwardPlusGridBuffers.glsl"
-#include "../Headers/MeshDraw.glsl"
+#include "HxHeaders/HeaderFrag.glsl"
+#include "HxHeaders/LightStruct.glsl"
+#include "HxHeaders/PBRFunctions.glsl"
+#include "HxHeaders/ForwardPlusConstants.glsl"
+#include "HxHeaders/ForwardPlusGridBuffers.glsl"
+#include "HxHeaders/MeshDraw.glsl"
 
 layout(location = 0) in flat uint vertexIndex;
 layout(location = 1) in vec3 fragPosition;

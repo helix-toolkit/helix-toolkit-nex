@@ -1,5 +1,5 @@
-#include "Headers/HeaderCompute.glsl"
-#include "Headers/LightStruct.glsl"
+#include "HxHeaders/HeaderCompute.glsl"
+#include "HxHeaders/LightStruct.glsl"
 
 #extension GL_KHR_shader_subgroup_basic : enable
 #extension GL_KHR_shader_subgroup_ballot : enable

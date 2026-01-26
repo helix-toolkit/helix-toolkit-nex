@@ -1,5 +1,5 @@
-#include "Headers/HeaderCompute.glsl"
-#include "Headers/ModelMatrixStruct.glsl"
+#include "HxHeaders/HeaderCompute.glsl"
+#include "HxHeaders/ModelMatrixStruct.glsl"
 // Enable subgroup extensions for efficient output compaction if allowed
 #extension GL_KHR_shader_subgroup_basic : enable
 #extension GL_KHR_shader_subgroup_ballot : enable
