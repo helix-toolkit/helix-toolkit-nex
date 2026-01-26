@@ -186,6 +186,7 @@ public partial class Geometry : ObservableObject, IDisposable
 
     public bool IsDynamic { set; get; } = false;
 
+    #region Buffer Creation
     /// <summary>
     /// Updates the internal buffers using the specified graphics context.
     /// </summary>
@@ -336,6 +337,7 @@ public partial class Geometry : ObservableObject, IDisposable
         }
         return ResultCode.Ok;
     }
+    #endregion
 
     #region Create Bounding Box
     public void CreateBoundingBox()
