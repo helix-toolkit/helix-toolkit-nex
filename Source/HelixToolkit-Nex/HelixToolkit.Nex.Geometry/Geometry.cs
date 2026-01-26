@@ -79,6 +79,26 @@ public partial class Geometry : ObservableObject, IDisposable
     [Observable]
     private FastList<Vector4> _vertexColors = [];
 
+    #region Buffers
+    private BufferResource _vertexBuffer = BufferResource.Null;
+    private BufferResource _vertexPropsBuffer = BufferResource.Null;
+    private BufferResource _indexBuffer = BufferResource.Null;
+    private BufferResource _vertColorsBuffer = BufferResource.Null;
+    public BufferResource VertexBuffer => _vertexBuffer;
+    public BufferResource VertexPropsBuffer => _vertexPropsBuffer;
+    public BufferResource IndexBuffer => _indexBuffer;
+    public BufferResource VertexColorBuffer => _vertColorsBuffer;
+    #endregion
+
+    public GeometryBufferType BufferDirty { set; get; } = GeometryBufferType.All;
+
+    public bool CanHaveIndexBuffer =>
+        Topology is not Topology.Point and not Topology.TriangleStrip and not Topology.LineStrip;
+
+    public bool IsDynamic { set; get; } = false;
+
+    public bool IsBoundDirty { set; get; } = true;
+
     /// <summary>
     /// Gets or sets the bounding box of the object in local space coordinates.
     /// </summary>
@@ -98,6 +118,7 @@ public partial class Geometry : ObservableObject, IDisposable
             if (e.PropertyName is nameof(Vertices))
             {
                 BufferDirty |= GeometryBufferType.Vertex;
+                IsBoundDirty = true;
             }
             else if (e.PropertyName is nameof(VertexProps))
             {
@@ -168,23 +189,6 @@ public partial class Geometry : ObservableObject, IDisposable
         _vertexProps.AddRange(other._vertexProps);
         _indices.AddRange(other._indices);
     }
-
-    private BufferResource _vertexBuffer = BufferResource.Null;
-    private BufferResource _vertexPropsBuffer = BufferResource.Null;
-    private BufferResource _indexBuffer = BufferResource.Null;
-    private BufferResource _vertColorsBuffer = BufferResource.Null;
-
-    public BufferResource VertexBuffer => _vertexBuffer;
-    public BufferResource VertexPropsBuffer => _vertexPropsBuffer;
-    public BufferResource IndexBuffer => _indexBuffer;
-    public BufferResource VertexColorBuffer => _vertColorsBuffer;
-
-    public GeometryBufferType BufferDirty { set; get; } = GeometryBufferType.All;
-
-    public bool CanHaveIndexBuffer =>
-        Topology is not Topology.Point and not Topology.TriangleStrip and not Topology.LineStrip;
-
-    public bool IsDynamic { set; get; } = false;
 
     #region Buffer Creation
     /// <summary>
@@ -340,6 +344,11 @@ public partial class Geometry : ObservableObject, IDisposable
     #endregion
 
     #region Create Bounding Box
+    /// <summary>
+    /// Creates a bounding box that encompasses all vertices in the current object.
+    /// </summary>
+    /// <remarks>If no vertices are present, the bounding box is set to <see cref="BoundingBox.Empty"/>.
+    /// Otherwise, the bounding box is calculated to enclose all vertices.</remarks>
     public void CreateBoundingBox()
     {
         if (_vertices.Count == 0)
@@ -350,6 +359,10 @@ public partial class Geometry : ObservableObject, IDisposable
         BoundingBoxLocal = BoundingBox.FromPoints(_vertices);
     }
 
+    /// <summary>
+    /// Creates a bounding sphere that encompasses all vertices in the current object.
+    /// </summary>
+    /// <remarks>If no vertices are present, the bounding sphere is set to an empty state.</remarks>
     public void CreateBoundingSphere()
     {
         if (_vertices.Count == 0)
@@ -359,6 +372,23 @@ public partial class Geometry : ObservableObject, IDisposable
         }
 
         BoundingSphereLocal = BoundingSphere.FromPoints(_vertices);
+    }
+
+    /// <summary>
+    /// Updates the bounding box and bounding sphere for the object if the bounds are marked as dirty.
+    /// </summary>
+    /// <remarks>This method recalculates the bounding box and bounding sphere only when the bounds are
+    /// flagged as dirty.  After the update, the dirty flag is cleared. Call this method to ensure the bounding data is
+    /// up-to-date  before performing operations that depend on accurate bounds.</remarks>
+    public void UpdateBounds()
+    {
+        if (!IsBoundDirty)
+        {
+            return;
+        }
+        CreateBoundingBox();
+        CreateBoundingSphere();
+        IsBoundDirty = false;
     }
     #endregion
 
