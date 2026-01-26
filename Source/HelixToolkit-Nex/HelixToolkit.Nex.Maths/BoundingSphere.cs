@@ -37,7 +37,14 @@ namespace HelixToolkit.Nex.Maths
     [StructLayout(LayoutKind.Sequential, Pack = 4)]
     public struct BoundingSphere : IEquatable<BoundingSphere>, IFormattable
     {
-        public static readonly BoundingSphere Empty = new();
+        /// <summary>
+        /// Represents an empty bounding sphere with a center at the origin and a radius of zero.
+        /// </summary>
+        /// <remarks>This static field provides a predefined instance of a bounding sphere that is
+        /// considered empty.  It can be used as a default value or to represent the absence of a valid bounding
+        /// sphere.</remarks>
+        public static readonly BoundingSphere Empty = new BoundingSphere(Vector3.Zero, 0);
+
         /// <summary>
         /// The center of the sphere in three dimensional space.
         /// </summary>
@@ -47,6 +54,11 @@ namespace HelixToolkit.Nex.Maths
         /// The radius of the sphere.
         /// </summary>
         public float Radius;
+
+        /// <summary>
+        /// Gets a value indicating whether the object represents an empty state.
+        /// </summary>
+        public readonly bool IsEmpty => Radius <= 0;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="BoundingSphere"/> struct.
@@ -112,7 +124,12 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>Whether the two objects intersected.</returns>
         public bool Intersects(ref Vector3 vertex1, ref Vector3 vertex2, ref Vector3 vertex3)
         {
-            return Collision.SphereIntersectsTriangle(ref this, ref vertex1, ref vertex2, ref vertex3);
+            return Collision.SphereIntersectsTriangle(
+                ref this,
+                ref vertex1,
+                ref vertex2,
+                ref vertex3
+            );
         }
 
         /// <summary>
@@ -172,9 +189,18 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="vertex2">The second vertex of the triangle to test.</param>
         /// <param name="vertex3">The third vertex of the triangle to test.</param>
         /// <returns>The type of containment the two objects have.</returns>
-        public ContainmentType Contains(ref Vector3 vertex1, ref Vector3 vertex2, ref Vector3 vertex3)
+        public ContainmentType Contains(
+            ref Vector3 vertex1,
+            ref Vector3 vertex2,
+            ref Vector3 vertex3
+        )
         {
-            return Collision.SphereContainsTriangle(ref this, ref vertex1, ref vertex2, ref vertex3);
+            return Collision.SphereContainsTriangle(
+                ref this,
+                ref vertex1,
+                ref vertex2,
+                ref vertex3
+            );
         }
 
         /// <summary>
@@ -210,7 +236,32 @@ namespace HelixToolkit.Nex.Maths
         /// or
         /// count
         /// </exception>
-        public static void FromPoints(Vector3[] points, int start, int count, out BoundingSphere result)
+        public static void FromPoints(
+            IList<Vector3> points,
+            int start,
+            int count,
+            out BoundingSphere result
+        )
+        {
+            result = points.GetBoundingSphere(start, count);
+        }
+
+        /// <summary>
+        /// Creates a <see cref="BoundingSphere"/> that encompasses a subset of points from the specified collection.
+        /// </summary>
+        /// <remarks>The method calculates a bounding sphere that tightly encloses the specified subset of
+        /// points. The <paramref name="start"/> and <paramref name="count"/> parameters must define a valid range
+        /// within the <paramref name="points"/> collection.</remarks>
+        /// <param name="points">The collection of points to include in the bounding sphere calculation.</param>
+        /// <param name="start">The zero-based index of the first point in the collection to include.</param>
+        /// <param name="count">The number of points to include, starting from <paramref name="start"/>.</param>
+        /// <param name="result">When this method returns, contains the calculated <see cref="BoundingSphere"/>.</param>
+        public static void FromPoints(
+            IList<Vector4> points,
+            int start,
+            int count,
+            out BoundingSphere result
+        )
         {
             result = points.GetBoundingSphere(start, count);
         }
@@ -220,9 +271,19 @@ namespace HelixToolkit.Nex.Maths
         /// </summary>
         /// <param name="points">The points that will be contained by the sphere.</param>
         /// <param name="result">When the method completes, contains the newly constructed bounding sphere.</param>
-        public static void FromPoints(Vector3[] points, out BoundingSphere result)
+        public static void FromPoints(IList<Vector3> points, out BoundingSphere result)
         {
-            FromPoints(points, 0, points.Length, out result);
+            FromPoints(points, 0, points.Count, out result);
+        }
+
+        /// <summary>
+        /// Constructs a <see cref="BoundingSphere"/> that fully contains the given points.
+        /// </summary>
+        /// <param name="points">The points that will be contained by the sphere.</param>
+        /// <param name="result">When the method completes, contains the newly constructed bounding sphere.</param>
+        public static void FromPoints(IList<Vector4> points, out BoundingSphere result)
+        {
+            FromPoints(points, 0, points.Count, out result);
         }
 
         /// <summary>
@@ -230,7 +291,18 @@ namespace HelixToolkit.Nex.Maths
         /// </summary>
         /// <param name="points">The points that will be contained by the sphere.</param>
         /// <returns>The newly constructed bounding sphere.</returns>
-        public static BoundingSphere FromPoints(Vector3[] points)
+        public static BoundingSphere FromPoints(IList<Vector3> points)
+        {
+            FromPoints(points, out BoundingSphere result);
+            return result;
+        }
+
+        /// <summary>
+        /// Constructs a <see cref="BoundingSphere"/> that fully contains the given points.
+        /// </summary>
+        /// <param name="points">The points that will be contained by the sphere.</param>
+        /// <returns>The newly constructed bounding sphere.</returns>
+        public static BoundingSphere FromPoints(IList<Vector4> points)
         {
             FromPoints(points, out BoundingSphere result);
             return result;
@@ -264,7 +336,11 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="value1">The first sphere to merge.</param>
         /// <param name="value2">The second sphere to merge.</param>
         /// <param name="result">When the method completes, contains the newly constructed bounding sphere.</param>
-        public static void Merge(ref BoundingSphere value1, ref BoundingSphere value2, out BoundingSphere result)
+        public static void Merge(
+            ref BoundingSphere value1,
+            ref BoundingSphere value2,
+            out BoundingSphere result
+        )
         {
             Vector3 difference = value2.Center - value1.Center;
 
@@ -339,7 +415,12 @@ namespace HelixToolkit.Nex.Maths
         /// </returns>
         public override readonly string ToString()
         {
-            return string.Format(CultureInfo.CurrentCulture, "Center:{0} Radius:{1}", Center.ToString(), Radius.ToString());
+            return string.Format(
+                CultureInfo.CurrentCulture,
+                "Center:{0} Radius:{1}",
+                Center.ToString(),
+                Radius.ToString()
+            );
         }
 
         /// <summary>
@@ -353,8 +434,12 @@ namespace HelixToolkit.Nex.Maths
         {
             return format == null
                 ? ToString()
-                : string.Format(CultureInfo.CurrentCulture, "Center:{0} Radius:{1}", Center.ToString(format, CultureInfo.CurrentCulture),
-                Radius.ToString(format, CultureInfo.CurrentCulture));
+                : string.Format(
+                    CultureInfo.CurrentCulture,
+                    "Center:{0} Radius:{1}",
+                    Center.ToString(format, CultureInfo.CurrentCulture),
+                    Radius.ToString(format, CultureInfo.CurrentCulture)
+                );
         }
 
         /// <summary>
@@ -366,7 +451,12 @@ namespace HelixToolkit.Nex.Maths
         /// </returns>
         public readonly string ToString(IFormatProvider formatProvider)
         {
-            return string.Format(formatProvider, "Center:{0} Radius:{1}", Center.ToString(), Radius.ToString());
+            return string.Format(
+                formatProvider,
+                "Center:{0} Radius:{1}",
+                Center.ToString(),
+                Radius.ToString()
+            );
         }
 
         /// <summary>
@@ -379,19 +469,21 @@ namespace HelixToolkit.Nex.Maths
         /// </returns>
         public readonly string ToString(string? format, IFormatProvider? formatProvider)
         {
-            return format == null && formatProvider == null
-                ? string.Empty
-                : format == null
-                ? ToString(formatProvider!)
-                : string.Format(formatProvider, "Center:{0} Radius:{1}", Center.ToString(format, formatProvider),
-                Radius.ToString(format, formatProvider));
+            return format == null && formatProvider == null ? string.Empty
+                : format == null ? ToString(formatProvider!)
+                : string.Format(
+                    formatProvider,
+                    "Center:{0} Radius:{1}",
+                    Center.ToString(format, formatProvider),
+                    Radius.ToString(format, formatProvider)
+                );
         }
 
         /// <summary>
         /// Returns a hash code for this instance.
         /// </summary>
         /// <returns>
-        /// A hash code for this instance, suitable for use in hashing algorithms and data structures like a hash table. 
+        /// A hash code for this instance, suitable for use in hashing algorithms and data structures like a hash table.
         /// </returns>
         public override readonly int GetHashCode()
         {

@@ -54,7 +54,8 @@ public class GeometryJsonConverter : JsonConverter<Geometry>
 
         Guid id = Guid.NewGuid();
         Topology topology = Topology.Triangle;
-        FastList<Vertex>? vertices = null;
+        FastList<Vector4>? vertices = null;
+        FastList<VertexProperties>? vertProps = null;
         FastList<uint>? indices = null;
         FastList<Vector4>? colors = null;
         bool isDynamic = false;
@@ -64,7 +65,8 @@ public class GeometryJsonConverter : JsonConverter<Geometry>
             if (reader.TokenType == JsonTokenType.EndObject)
             {
                 var geometry = new Geometry(
-                    vertices ?? new FastList<Vertex>(),
+                    vertices ?? new FastList<Vector4>(),
+                    vertProps ?? new FastList<VertexProperties>(),
                     indices ?? new FastList<uint>(),
                     colors,
                     topology
@@ -86,31 +88,37 @@ public class GeometryJsonConverter : JsonConverter<Geometry>
 
             switch (propertyName)
             {
-                case "Id":
+                case nameof(Geometry.Id):
                     id = reader.GetGuid();
                     break;
-                case "Topology":
+                case nameof(Geometry.Topology):
                     topology = JsonSerializer.Deserialize<Topology>(ref reader, effectiveOptions);
                     break;
-                case "Vertices":
-                    vertices = JsonSerializer.Deserialize<FastList<Vertex>>(
+                case nameof(Geometry.Vertices):
+                    vertices = JsonSerializer.Deserialize<FastList<Vector4>>(
                         ref reader,
                         effectiveOptions
                     );
                     break;
-                case "Indices":
+                case nameof(Geometry.VertexProps):
+                    vertProps = JsonSerializer.Deserialize<FastList<VertexProperties>>(
+                        ref reader,
+                        effectiveOptions
+                    );
+                    break;
+                case nameof(Geometry.Indices):
                     indices = JsonSerializer.Deserialize<FastList<uint>>(
                         ref reader,
                         effectiveOptions
                     );
                     break;
-                case "VertexColors":
+                case nameof(Geometry.VertexColors):
                     colors = JsonSerializer.Deserialize<FastList<Vector4>>(
                         ref reader,
                         effectiveOptions
                     );
                     break;
-                case "IsDynamic":
+                case nameof(Geometry.IsDynamic):
                     isDynamic = reader.GetBoolean();
                     break;
                 default:
@@ -128,16 +136,22 @@ public class GeometryJsonConverter : JsonConverter<Geometry>
 
         writer.WriteStartObject();
 
-        writer.WritePropertyName("Id");
+        writer.WritePropertyName(nameof(Geometry.Id));
         writer.WriteStringValue(value.Id);
 
-        writer.WritePropertyName("Topology");
+        writer.WritePropertyName(nameof(Geometry.Topology));
         JsonSerializer.Serialize(writer, value.Topology, effectiveOptions);
 
-        writer.WritePropertyName("Vertices");
+        writer.WritePropertyName(nameof(Geometry.Vertices));
         JsonSerializer.Serialize(writer, value.Vertices, effectiveOptions);
 
-        writer.WritePropertyName("Indices");
+        if (value.VertexProps.Count > 0)
+        {
+            writer.WritePropertyName(nameof(Geometry.VertexProps));
+            JsonSerializer.Serialize(writer, value.VertexProps, effectiveOptions);
+        }
+
+        writer.WritePropertyName(nameof(Geometry.Indices));
         JsonSerializer.Serialize(writer, value.Indices, effectiveOptions);
 
         if (value.VertexColors.Count > 0)

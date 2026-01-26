@@ -43,7 +43,8 @@ public sealed class MeshGeometry3D
     public Geometry ToGeometry()
     {
         Geometry geometry = new();
-        geometry.Vertices = new FastList<Vertex>(Positions.Count);
+        geometry.Vertices = new FastList<Vector4>(Positions.Count);
+        geometry.VertexProps = new FastList<VertexProperties>(Positions.Count);
         geometry.Indices = new FastList<uint>(TriangleIndices.Count);
         geometry.VertexColors = new FastList<Vector4>(Positions.Count);
 
@@ -53,7 +54,15 @@ public sealed class MeshGeometry3D
             var coord = TextureCoordinates is not null ? TextureCoordinates[i] : Vector2.Zero;
             var tangent = Tangents is not null ? Tangents[i] : Vector3.Zero;
 
-            geometry.Vertices.Add(new Vertex(Positions[i], normal, coord, tangent));
+            geometry.Vertices.Add(Positions[i].ToVector4(1));
+            geometry.VertexProps.Add(
+                new VertexProperties
+                {
+                    Normal = normal,
+                    TexCoord = coord,
+                    Tangent = tangent,
+                }
+            );
         }
         for (var i = 0; i < TriangleIndices.Count; ++i)
         {

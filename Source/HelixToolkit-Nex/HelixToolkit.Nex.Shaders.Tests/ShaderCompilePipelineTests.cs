@@ -203,8 +203,8 @@ void main() {
         using var vs = vsModule;
         using var fs = fsModule;
         // Assert
-        Assert.IsTrue(vsBuild.Success, "Vertex build should succeed");
-        Assert.IsTrue(vsModule.Valid, "Vertex module should be valid");
+        Assert.IsTrue(vsBuild.Success, "VertexProperties build should succeed");
+        Assert.IsTrue(vsModule.Valid, "VertexProperties module should be valid");
         Assert.IsTrue(fsBuild.Success, "Fragment build should succeed");
         Assert.IsTrue(fsModule.Valid, "Fragment module should be valid");
     }

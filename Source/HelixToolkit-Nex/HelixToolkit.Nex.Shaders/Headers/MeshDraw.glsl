@@ -3,6 +3,7 @@
 struct MeshDraw {
     uint64_t forwardPlusConstantsAddress;
     uint64_t vertexBufferAddress;
+    uint64_t vertexPropsBufferAddress;
     uint64_t vertexColorBufferAddress;
     uint modelId;
     uint materialId;

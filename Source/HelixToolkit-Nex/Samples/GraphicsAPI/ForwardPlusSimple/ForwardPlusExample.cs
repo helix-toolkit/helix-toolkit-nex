@@ -677,6 +677,7 @@ public class ForwardPlusExample
         // Draw main scene with PBR lighting
         _drawParams.ForwardPlusConstantsAddress = _context.GpuAddress(_fpConstBuffer);
         _drawParams.VertexBufferAddress = _context.GpuAddress(_mesh.VertexBuffer);
+        _drawParams.VertexPropsBufferAddress = _context.GpuAddress(_mesh.VertexPropsBuffer);
         _drawParams.ModelId = 0;
         _drawParams.MaterialId = 0;
         cmdBuffer.PushConstants(_drawParams);
@@ -686,6 +687,7 @@ public class ForwardPlusExample
         cmdBuffer.BindRenderPipeline(_renderPipelineUnlit);
         cmdBuffer.BindIndexBuffer(_lightMesh.IndexBuffer, IndexFormat.UI32);
         _drawParams.VertexBufferAddress = _context.GpuAddress(_lightMesh.VertexBuffer);
+        _drawParams.VertexPropsBufferAddress = _context.GpuAddress(_lightMesh.VertexPropsBuffer);
         for (uint i = 1; i < _lights.Length; ++i)
         {
             _drawParams.ModelId = i;

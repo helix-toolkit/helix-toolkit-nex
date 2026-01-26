@@ -1,31 +1,32 @@
 namespace HelixToolkit.Nex.Geometries;
 
 [StructLayout(LayoutKind.Sequential, Pack = 16)]
-[JsonConverter(typeof(Serialization.VertexJsonConverter))]
-public struct Vertex(Vector3 position, Vector3 normal, Vector2 texCoord, Vector3 tangent)
+[JsonConverter(typeof(Serialization.VertexPropsJsonConverter))]
+public struct VertexProperties(Vector3 normal, Vector2 texCoord, Vector3 tangent)
 {
-    public static readonly uint SizeInBytes = NativeHelper.SizeOf<Vertex>();
+    public static readonly uint SizeInBytes = NativeHelper.SizeOf<VertexProperties>();
 
-    static Vertex()
+    static VertexProperties()
     {
-        Debug.Assert(SizeInBytes == 64, $"Size of Vertex struct must be 64 but is {SizeInBytes}");
+        Debug.Assert(
+            SizeInBytes == 48,
+            $"Size of VertexProperties struct must be 64 but is {SizeInBytes}"
+        );
         // Verify alignment
         unsafe
         {
-            var v = new Vertex();
+            var v = new VertexProperties();
             var basePtr = (byte*)&v;
             var normalOffset = (byte*)&v.Normal - basePtr;
             var texCoordOffset = (byte*)&v.TexCoord - basePtr;
             var tangentOffset = (byte*)&v.Tangent - basePtr;
 
-            Debug.Assert(normalOffset == 16, "Normal must be at offset 16");
-            Debug.Assert(texCoordOffset == 32, "TexCoord must be at offset 32");
-            Debug.Assert(tangentOffset == 48, "Tangent must be at offset 48");
+            Debug.Assert(normalOffset == 0, "Normal must be at offset 0");
+            Debug.Assert(texCoordOffset == 16, "TexCoord must be at offset 16");
+            Debug.Assert(tangentOffset == 32, "Tangent must be at offset 32");
         }
     }
 
-    public Vector3 Position = position;
-    private readonly float _padding0 = 0;
     public Vector3 Normal = normal;
     private readonly float _padding1 = 0;
     public Vector2 TexCoord = texCoord;
@@ -33,30 +34,26 @@ public struct Vertex(Vector3 position, Vector3 normal, Vector2 texCoord, Vector3
     public Vector3 Tangent = tangent;
     private readonly float _padding3 = 0;
 
-    public Vertex(Vector3 position, Vector3 normal, Vector2 texCoord)
-        : this(position, normal, texCoord, Vector3.Zero) { }
+    public VertexProperties(Vector3 normal, Vector2 texCoord)
+        : this(normal, texCoord, Vector3.Zero) { }
 
-    public Vertex(Vector3 position, Vector3 normal)
-        : this(position, normal, Vector2.Zero, Vector3.Zero) { }
+    public VertexProperties(Vector3 normal)
+        : this(normal, Vector2.Zero, Vector3.Zero) { }
 
-    public Vertex(Vector3 position)
-        : this(position, Vector3.Zero, Vector2.Zero, Vector3.Zero) { }
+    public VertexProperties()
+        : this(Vector3.Zero, Vector2.Zero, Vector3.Zero) { }
 
-    public static readonly Vertex Empty = new(
-        Vector3.Zero,
-        Vector3.Zero,
-        Vector2.Zero,
-        Vector3.Zero
-    );
+    public static readonly VertexProperties Empty = new(Vector3.Zero, Vector2.Zero, Vector3.Zero);
 }
 
 [Flags]
 public enum GeometryBufferType
 {
     Vertex = 1,
-    Index = 1 << 1,
-    VertexColor = 1 << 2,
-    All = Vertex | Index | VertexColor,
+    VertexProp = 1 << 2,
+    Index = 1 << 3,
+    VertexColor = 1 << 4,
+    All = Vertex | VertexProp | Index | VertexColor,
 }
 
 [JsonConverter(typeof(Serialization.GeometryJsonConverter))]
@@ -64,16 +61,33 @@ public partial class Geometry : ObservableObject, IDisposable
 {
     private static readonly ILogger logger = LogManager.Create<Geometry>();
     public Guid Id { set; get; } = Guid.NewGuid();
+
+    /// <summary>
+    /// Gets the topology configuration of the geometry.
+    /// </summary>
     public Topology Topology { get; }
 
     [Observable]
     private FastList<Vertex> _vertices = [];
 
     [Observable]
+    private FastList<VertexProperties> _vertexProps = [];
+
+    [Observable]
     private FastList<uint> _indices = [];
 
     [Observable]
     private FastList<Vector4> _vertexColors = [];
+
+    /// <summary>
+    /// Gets or sets the bounding box of the object in local space coordinates.
+    /// </summary>
+    public BoundingBox BoundingBoxLocal { get; set; } = BoundingBox.Empty;
+
+    /// <summary>
+    /// Gets or sets the bounding sphere of the object in local space.
+    /// </summary>
+    public BoundingSphere BoundingSphereLocal { get; set; } = BoundingSphere.Empty;
 
     public Geometry(Topology topology = Topology.Triangle)
     {
@@ -82,6 +96,10 @@ public partial class Geometry : ObservableObject, IDisposable
         PropertyChanged += (s, e) =>
         {
             if (e.PropertyName is nameof(Vertices))
+            {
+                BufferDirty |= GeometryBufferType.Vertex;
+            }
+            else if (e.PropertyName is nameof(VertexProps))
             {
                 BufferDirty |= GeometryBufferType.Vertex;
             }
@@ -102,15 +120,39 @@ public partial class Geometry : ObservableObject, IDisposable
         IEnumerable<Vector4>? colors = null,
         Topology topology = Topology.Triangle
     )
+        : this(vertices, null, indices, colors, topology) { }
+
+    public Geometry(
+        IEnumerable<Vertex> vertices,
+        IEnumerable<VertexProperties>? vertexProps,
+        IEnumerable<uint> indices,
+        IEnumerable<Vector4>? colors = null,
+        Topology topology = Topology.Triangle
+    )
         : this(topology)
     {
         _vertices.AddRange(vertices);
+        if (vertexProps is not null)
+        {
+            _vertexProps.AddRange(vertexProps);
+        }
         _indices.AddRange(indices);
         if (colors is not null)
         {
             _vertexColors.AddRange(colors);
             Debug.Assert(_vertices.Count == _vertexColors.Count);
         }
+    }
+
+    public Geometry(
+        IEnumerable<Vertex> vertices,
+        IEnumerable<VertexProperties> vertexProps,
+        Topology topology = Topology.Point
+    )
+        : this(topology)
+    {
+        _vertices.AddRange(vertices);
+        _vertexProps.AddRange(vertexProps);
     }
 
     public Geometry(IEnumerable<Vertex> vertices, Topology topology = Topology.Point)
@@ -123,16 +165,19 @@ public partial class Geometry : ObservableObject, IDisposable
         : this(other.Topology)
     {
         _vertices.AddRange(other._vertices);
+        _vertexProps.AddRange(other._vertexProps);
         _indices.AddRange(other._indices);
     }
 
     private BufferResource _vertexBuffer = BufferResource.Null;
+    private BufferResource _vertexPropsBuffer = BufferResource.Null;
     private BufferResource _indexBuffer = BufferResource.Null;
     private BufferResource _vertColorsBuffer = BufferResource.Null;
 
     public BufferResource VertexBuffer => _vertexBuffer;
+    public BufferResource VertexPropsBuffer => _vertexPropsBuffer;
     public BufferResource IndexBuffer => _indexBuffer;
-    public BufferResource BiNormalBuffer => _vertColorsBuffer;
+    public BufferResource VertexColorBuffer => _vertColorsBuffer;
 
     public GeometryBufferType BufferDirty { set; get; } = GeometryBufferType.All;
 
@@ -178,11 +223,42 @@ public partial class Geometry : ObservableObject, IDisposable
                             BufferUsageBits.Vertex | BufferUsageBits.Storage,
                             storageType,
                             (nint)ptr.Pointer,
-                            (uint)(_vertices.Count * Vertex.SizeInBytes)
+                            (uint)(_vertices.Count * sizeof(Vertex))
                         ),
                         out _vertexBuffer,
                         debugName: GraphicsSettings.EnableDebug
                             ? $"{nameof(Geometry)}_{Id}_VertexBuffer"
+                            : null
+                    );
+                    if (result != ResultCode.Ok)
+                    {
+                        logger.LogError(
+                            $"Failed to create vertex property buffer for Geometry {Id}: {result}"
+                        );
+                        return result;
+                    }
+                }
+            }
+            BufferDirty &= ~GeometryBufferType.Vertex;
+        }
+        if (types.HasFlag(GeometryBufferType.VertexProp))
+        {
+            _vertexPropsBuffer?.Dispose();
+            if (_vertexProps.Count > 0 && _vertexProps.Count == _vertices.Count)
+            {
+                unsafe
+                {
+                    using var ptr = _vertexProps.GetInternalArray().Pin();
+                    var result = context.CreateBuffer(
+                        new BufferDesc(
+                            BufferUsageBits.Vertex | BufferUsageBits.Storage,
+                            storageType,
+                            (nint)ptr.Pointer,
+                            (uint)(_vertexProps.Count * VertexProperties.SizeInBytes)
+                        ),
+                        out _vertexPropsBuffer,
+                        debugName: GraphicsSettings.EnableDebug
+                            ? $"{nameof(Geometry)}_{Id}_VertexPropsBuffer"
                             : null
                     );
                     if (result != ResultCode.Ok)
@@ -194,7 +270,7 @@ public partial class Geometry : ObservableObject, IDisposable
                     }
                 }
             }
-            BufferDirty &= ~GeometryBufferType.Vertex;
+            BufferDirty &= ~GeometryBufferType.VertexProp;
         }
         if (types.HasFlag(GeometryBufferType.Index))
         {
@@ -261,6 +337,29 @@ public partial class Geometry : ObservableObject, IDisposable
         return ResultCode.Ok;
     }
 
+    #region Create Bounding Box
+    public void CreateBoundingBox()
+    {
+        if (_vertices.Count == 0)
+        {
+            BoundingBoxLocal = BoundingBox.Empty;
+            return;
+        }
+        BoundingBoxLocal = BoundingBox.FromPoints(_vertices);
+    }
+
+    public void CreateBoundingSphere()
+    {
+        if (_vertices.Count == 0)
+        {
+            BoundingSphereLocal = BoundingSphere.Empty;
+            return;
+        }
+
+        BoundingSphereLocal = BoundingSphere.FromPoints(_vertices);
+    }
+    #endregion
+
     #region Dispose Support
     private bool _disposedValue;
 
@@ -271,6 +370,7 @@ public partial class Geometry : ObservableObject, IDisposable
             if (disposing)
             {
                 _vertexBuffer?.Dispose();
+                _vertexPropsBuffer?.Dispose();
                 _indexBuffer?.Dispose();
                 _vertColorsBuffer?.Dispose();
             }

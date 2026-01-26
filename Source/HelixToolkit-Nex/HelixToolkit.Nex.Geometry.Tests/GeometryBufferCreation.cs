@@ -28,7 +28,7 @@ public sealed class GeometryBufferCreation
     {
         using var geometry = new Geometry
         {
-            Vertices = [.. Enumerable.Repeat(new Vertex(new Vector3(1, 2, 3)), 1024)],
+            Vertices = [.. Enumerable.Repeat(new Vector4(1, 2, 3, 1), 1024)],
         };
         var result = geometry.UpdateBuffers(_vkContext!, GeometryBufferType.Vertex);
         Assert.AreEqual(
@@ -58,7 +58,7 @@ public sealed class GeometryBufferCreation
     {
         using var geometry = new Geometry
         {
-            Vertices = [.. Enumerable.Repeat(new Vertex(new Vector3(1, 2, 3)), 1024)],
+            Vertices = [.. Enumerable.Repeat(new Vector4(1, 2, 3, 1), 1024)],
         };
         geometry.VertexColors = [.. Enumerable.Repeat(new Vector4(1, 0, 1, 0), 1024)];
         var result = geometry.UpdateBuffers(_vkContext!, GeometryBufferType.VertexColor);
@@ -100,7 +100,8 @@ public sealed class GeometryBufferCreation
     {
         using var geometry = new Geometry
         {
-            Vertices = [.. Enumerable.Repeat(new Vertex(new Vector3(1, 2, 3)), 512)],
+            Vertices = [.. Enumerable.Repeat(new Vector4(1, 2, 3, 1), 512)],
+            VertexProps = [.. Enumerable.Repeat(new VertexProperties(new Vector3(0, 1, 0)), 512)],
             Indices = [.. Enumerable.Range(0, 512).Select(i => (uint)i)],
         };
         geometry.VertexColors = [.. Enumerable.Repeat(new Vector4(1, 0, 1, 0), 512)];
@@ -112,20 +113,15 @@ public sealed class GeometryBufferCreation
             "Combined buffer creation failed with error: " + result.ToString()
         );
         Assert.IsTrue(geometry.VertexBuffer.Valid, "Vertex buffer should be valid");
+        Assert.IsTrue(geometry.VertexPropsBuffer.Valid, "VertexProps buffer should be valid");
         Assert.IsTrue(geometry.IndexBuffer.Valid, "Index buffer should be valid");
-        Assert.IsTrue(geometry.BiNormalBuffer.Valid, "VertexColor buffer should be valid");
+        Assert.IsTrue(geometry.VertexColorBuffer.Valid, "VertexColor buffer should be valid");
     }
 
     [TestMethod]
     public void TestSingleVertexBuffer()
     {
-        using var geometry = new Geometry
-        {
-            Vertices =
-            [
-                new Vertex(new Vector3(1, 2, 3), new Vector3(0, 1, 0), new Vector2(0.5f, 0.5f)),
-            ],
-        };
+        using var geometry = new Geometry { Vertices = [new Vector4(1, 2, 3, 1)] };
         var result = geometry.UpdateBuffers(_vkContext!, GeometryBufferType.Vertex);
         Assert.AreEqual(
             ResultCode.Ok,
@@ -145,11 +141,7 @@ public sealed class GeometryBufferCreation
             [
                 .. Enumerable
                     .Range(0, vertexCount)
-                    .Select(i => new Vertex(
-                        new Vector3(i, i + 1, i + 2),
-                        new Vector3(0, 1, 0),
-                        new Vector2(i * 0.01f, i * 0.01f)
-                    )),
+                    .Select(i => new Vector4(i + 1, i + 2, i + 3, 1)),
             ],
         };
         var result = geometry.UpdateBuffers(_vkContext!, GeometryBufferType.Vertex);
@@ -185,30 +177,10 @@ public sealed class GeometryBufferCreation
         {
             Vertices =
             [
-                new Vertex(
-                    new Vector3(0, 0, 0),
-                    new Vector3(0, 0, 1),
-                    new Vector2(0, 0),
-                    new Vector3(1, 0, 0)
-                ),
-                new Vertex(
-                    new Vector3(1, 0, 0),
-                    new Vector3(0, 0, 1),
-                    new Vector2(1, 0),
-                    new Vector3(0, 1, 0)
-                ),
-                new Vertex(
-                    new Vector3(0, 1, 0),
-                    new Vector3(0, 0, 1),
-                    new Vector2(0, 1),
-                    new Vector3(0, 0, 1)
-                ),
-                new Vertex(
-                    new Vector3(1, 1, 0),
-                    new Vector3(0, 0, 1),
-                    new Vector2(1, 1),
-                    new Vector3(1, 1, 0)
-                ),
+                new Vector4(1, 2, 3, 1),
+                new Vector4(2, 3, 4, 1),
+                new Vector4(3, 4, 5, 1),
+                new Vector4(5, 6, 7, 1),
             ],
         };
         var result = geometry.UpdateBuffers(_vkContext!, GeometryBufferType.Vertex);
@@ -225,7 +197,7 @@ public sealed class GeometryBufferCreation
     {
         using var geometry = new Geometry
         {
-            Vertices = [.. Enumerable.Repeat(new Vertex(new Vector3(1, 2, 3)), 256)],
+            Vertices = [.. Enumerable.Repeat(new Vector4(1, 2, 3, 1), 256)],
             IsDynamic = true,
         };
         var result = geometry.UpdateBuffers(_vkContext!, GeometryBufferType.Vertex);
@@ -259,7 +231,7 @@ public sealed class GeometryBufferCreation
     {
         using var geometry = new Geometry
         {
-            Vertices = [.. Enumerable.Repeat(new Vertex(new Vector3(1, 2, 3)), 128)],
+            Vertices = [.. Enumerable.Repeat(new Vector4(1, 2, 3, 1), 128)],
         };
 
         // First update
@@ -268,7 +240,7 @@ public sealed class GeometryBufferCreation
         Assert.IsTrue(geometry.VertexBuffer.Valid, "Buffer should be valid after first update");
 
         // Second update (should replace the buffer)
-        geometry.Vertices = [.. Enumerable.Repeat(new Vertex(new Vector3(4, 5, 6)), 256)];
+        geometry.Vertices = [.. Enumerable.Repeat(new Vector4(4, 5, 6, 1), 256)];
         var result2 = geometry.UpdateBuffers(_vkContext!, GeometryBufferType.Vertex);
         Assert.AreEqual(ResultCode.Ok, result2, "Second buffer update failed");
         Assert.IsTrue(geometry.VertexBuffer.Valid, "Buffer should be valid after second update");
@@ -279,7 +251,7 @@ public sealed class GeometryBufferCreation
     {
         using var geometry = new Geometry
         {
-            Vertices = [.. Enumerable.Repeat(new Vertex(new Vector3(1, 2, 3)), 512)],
+            Vertices = [.. Enumerable.Repeat(new Vector4(1, 2, 3, 1), 512)],
         };
         // Mismatched count - only 256 binormals for 512 vertices
         geometry.VertexColors = [.. Enumerable.Repeat(new Vector4(1, 0, 1, 0), 256)];
@@ -288,7 +260,7 @@ public sealed class GeometryBufferCreation
         Assert.AreEqual(ResultCode.Ok, result, "VertexColor buffer update should complete");
         // VertexColor buffer should not be created due to count mismatch
         Assert.IsFalse(
-            geometry.BiNormalBuffer.Valid,
+            geometry.VertexColorBuffer.Valid,
             "VertexColor buffer should not be valid with mismatched count"
         );
     }
@@ -296,7 +268,7 @@ public sealed class GeometryBufferCreation
     [TestMethod]
     public void TestVertexBufferWithAllEmptyComponents()
     {
-        using var geometry = new Geometry { Vertices = [.. Enumerable.Repeat(Vertex.Empty, 64)] };
+        using var geometry = new Geometry { Vertices = [.. Enumerable.Repeat(Vector4.Zero, 64)] };
         var result = geometry.UpdateBuffers(_vkContext!, GeometryBufferType.Vertex);
         Assert.AreEqual(
             ResultCode.Ok,
@@ -311,7 +283,7 @@ public sealed class GeometryBufferCreation
     {
         using var geometry = new Geometry
         {
-            Vertices = [.. Enumerable.Repeat(new Vertex(new Vector3(1, 2, 3)), 64)],
+            Vertices = [.. Enumerable.Repeat(new Vector4(1, 2, 3, 1), 64)],
         };
         geometry.VertexColors = [.. Enumerable.Repeat(Vector4.Zero, 64)];
 
@@ -322,7 +294,7 @@ public sealed class GeometryBufferCreation
             "Empty component VertexColor buffer creation failed with error: " + result.ToString()
         );
         Assert.IsTrue(
-            geometry.BiNormalBuffer.Valid,
+            geometry.VertexColorBuffer.Valid,
             "Empty component VertexColor buffer should be valid"
         );
     }
@@ -332,7 +304,7 @@ public sealed class GeometryBufferCreation
     {
         var geometry = new Geometry
         {
-            Vertices = [.. Enumerable.Repeat(new Vertex(new Vector3(1, 2, 3)), 128)],
+            Vertices = [.. Enumerable.Repeat(new Vector4(1, 2, 3, 1), 128)],
             Indices = [.. Enumerable.Range(0, 128).Select(i => (uint)i)],
         };
         geometry.VertexColors = [.. Enumerable.Repeat(new Vector4(1, 1, 0, 0), 128)];
@@ -346,11 +318,11 @@ public sealed class GeometryBufferCreation
         // Buffers should be disposed
         Assert.IsFalse(
             geometry.VertexBuffer.Valid,
-            "Vertex buffer should be invalid after disposal"
+            "VertexProperties buffer should be invalid after disposal"
         );
         Assert.IsFalse(geometry.IndexBuffer.Valid, "Index buffer should be invalid after disposal");
         Assert.IsFalse(
-            geometry.BiNormalBuffer.Valid,
+            geometry.VertexColorBuffer.Valid,
             "VertexColor buffer should be invalid after disposal"
         );
     }
@@ -360,14 +332,14 @@ public sealed class GeometryBufferCreation
     {
         using var geometry = new Geometry
         {
-            Vertices = [.. Enumerable.Repeat(new Vertex(new Vector3(1, 2, 3)), 128)],
+            Vertices = [.. Enumerable.Repeat(new Vector4(1, 2, 3, 1), 128)],
             Indices = [.. Enumerable.Range(0, 128).Select(i => (uint)i)],
         };
 
         // Update only vertex buffer
         var result1 = geometry.UpdateBuffers(_vkContext!, GeometryBufferType.Vertex);
-        Assert.AreEqual(ResultCode.Ok, result1, "Vertex buffer update failed");
-        Assert.IsTrue(geometry.VertexBuffer.Valid, "Vertex buffer should be valid");
+        Assert.AreEqual(ResultCode.Ok, result1, "VertexProperties buffer update failed");
+        Assert.IsTrue(geometry.VertexBuffer.Valid, "VertexProperties buffer should be valid");
         Assert.IsFalse(geometry.IndexBuffer.Valid, "Index buffer should not be valid yet");
 
         // Update only index buffer
@@ -396,25 +368,68 @@ public sealed class GeometryBufferCreation
     {
         using var geometry = new Geometry
         {
-            Vertices = [.. Enumerable.Repeat(new Vertex(new Vector3(1, 2, 3)), 64)],
+            Vertices = [.. Enumerable.Repeat(new Vector4(1, 2, 3, 1), 64)],
         };
 
         // Initially all buffers are dirty
         Assert.IsTrue(
             geometry.BufferDirty.HasFlag(GeometryBufferType.Vertex),
-            "Vertex buffer should be marked as dirty initially"
+            "VertexProperties buffer should be marked as dirty initially"
         );
 
         // Update vertex buffer
         geometry.UpdateBuffers(_vkContext!, GeometryBufferType.Vertex);
 
-        // Vertex dirty flag should be cleared
+        // VertexProperties dirty flag should be cleared
         Assert.IsFalse(
             geometry.BufferDirty.HasFlag(GeometryBufferType.Vertex),
-            "Vertex buffer dirty flag should be cleared after update"
+            "VertexProperties buffer dirty flag should be cleared after update"
         );
 
         // Other buffers should still be dirty
+        Assert.IsTrue(
+            geometry.BufferDirty.HasFlag(GeometryBufferType.VertexProp),
+            "VertexProperties buffer should still be marked as dirty"
+        );
+        Assert.IsTrue(
+            geometry.BufferDirty.HasFlag(GeometryBufferType.Index),
+            "Index buffer should still be marked as dirty"
+        );
+        Assert.IsTrue(
+            geometry.BufferDirty.HasFlag(GeometryBufferType.VertexColor),
+            "VertexColor buffer should still be marked as dirty"
+        );
+    }
+
+    [TestMethod]
+    public void TestBufferDirtyClearedAfterVertexPropsUpdate()
+    {
+        using var geometry = new Geometry
+        {
+            Vertices = [.. Enumerable.Repeat(new Vector4(1, 2, 3, 1), 64)],
+            VertexProps = [.. Enumerable.Repeat(new VertexProperties(new Vector3(0, 1, 0)), 64)],
+        };
+
+        // Initially all buffers are dirty
+        Assert.IsTrue(
+            geometry.BufferDirty.HasFlag(GeometryBufferType.VertexProp),
+            "VertexProperties buffer should be marked as dirty initially"
+        );
+
+        // Update vertex buffer
+        geometry.UpdateBuffers(_vkContext!, GeometryBufferType.VertexProp);
+
+        // VertexProperties dirty flag should be cleared
+        Assert.IsFalse(
+            geometry.BufferDirty.HasFlag(GeometryBufferType.VertexProp),
+            "VertexProperties buffer dirty flag should be cleared after update"
+        );
+
+        // Other buffers should still be dirty
+        Assert.IsTrue(
+            geometry.BufferDirty.HasFlag(GeometryBufferType.Vertex),
+            "Vertex buffer should still be marked as dirty"
+        );
         Assert.IsTrue(
             geometry.BufferDirty.HasFlag(GeometryBufferType.Index),
             "Index buffer should still be marked as dirty"
@@ -450,8 +465,12 @@ public sealed class GeometryBufferCreation
 
         // Other buffers should still be dirty
         Assert.IsTrue(
+            geometry.BufferDirty.HasFlag(GeometryBufferType.VertexProp),
+            "VertexProperties buffer should still be marked as dirty"
+        );
+        Assert.IsTrue(
             geometry.BufferDirty.HasFlag(GeometryBufferType.Vertex),
-            "Vertex buffer should still be marked as dirty"
+            "VertexProperties buffer should still be marked as dirty"
         );
         Assert.IsTrue(
             geometry.BufferDirty.HasFlag(GeometryBufferType.VertexColor),
@@ -460,11 +479,11 @@ public sealed class GeometryBufferCreation
     }
 
     [TestMethod]
-    public void TestBufferDirtyClearedAfterBiNormalUpdate()
+    public void TestBufferDirtyClearedAfterVertColorsUpdate()
     {
         using var geometry = new Geometry
         {
-            Vertices = [.. Enumerable.Repeat(new Vertex(new Vector3(1, 2, 3)), 64)],
+            Vertices = [.. Enumerable.Repeat(new Vector4(1, 2, 3, 1), 64)],
         };
         geometry.VertexColors = [.. Enumerable.Repeat(new Vector4(1, 1, 0, 0), 64)];
 
@@ -486,7 +505,7 @@ public sealed class GeometryBufferCreation
         // Other buffers should still be dirty
         Assert.IsTrue(
             geometry.BufferDirty.HasFlag(GeometryBufferType.Vertex),
-            "Vertex buffer should still be marked as dirty"
+            "VertexProperties buffer should still be marked as dirty"
         );
         Assert.IsTrue(
             geometry.BufferDirty.HasFlag(GeometryBufferType.Index),
@@ -499,7 +518,8 @@ public sealed class GeometryBufferCreation
     {
         using var geometry = new Geometry
         {
-            Vertices = [.. Enumerable.Repeat(new Vertex(new Vector3(1, 2, 3)), 64)],
+            Vertices = [.. Enumerable.Repeat(new Vector4(1, 2, 3, 1), 64)],
+            VertexProps = [.. Enumerable.Repeat(new VertexProperties(new Vector3(0, 1, 0)), 64)],
             Indices = [.. Enumerable.Range(0, 64).Select(i => (uint)i)],
         };
         geometry.VertexColors = [.. Enumerable.Repeat(new Vector4(1, 0, 0, 1), 64)];
@@ -520,23 +540,23 @@ public sealed class GeometryBufferCreation
     {
         using var geometry = new Geometry
         {
-            Vertices = [.. Enumerable.Repeat(new Vertex(new Vector3(1, 2, 3)), 64)],
+            Vertices = [.. Enumerable.Repeat(new Vector4(1, 2, 3, 1), 64)],
         };
 
         // Update buffers to clear dirty flag
         geometry.UpdateBuffers(_vkContext!, GeometryBufferType.All);
         Assert.IsFalse(
             geometry.BufferDirty.HasFlag(GeometryBufferType.Vertex),
-            "Vertex buffer dirty flag should be cleared after update"
+            "VertexProperties buffer dirty flag should be cleared after update"
         );
 
         // Modify vertices
-        geometry.Vertices = [.. Enumerable.Repeat(new Vertex(new Vector3(4, 5, 6)), 128)];
+        geometry.Vertices = [.. Enumerable.Repeat(new Vector4(4, 5, 6, 4), 128)];
 
-        // Vertex dirty flag should be set again
+        // VertexProperties dirty flag should be set again
         Assert.IsTrue(
             geometry.BufferDirty.HasFlag(GeometryBufferType.Vertex),
-            "Vertex buffer dirty flag should be set after vertices are modified"
+            "VertexProperties buffer dirty flag should be set after vertices are modified"
         );
     }
 
@@ -566,11 +586,11 @@ public sealed class GeometryBufferCreation
     }
 
     [TestMethod]
-    public void TestBufferDirtySetWhenBiNormalsModified()
+    public void TestBufferDirtySetWhenVertColorsModified()
     {
         using var geometry = new Geometry
         {
-            Vertices = [.. Enumerable.Repeat(new Vertex(new Vector3(1, 2, 3)), 64)],
+            Vertices = [.. Enumerable.Repeat(new Vector4(1, 2, 3, 1), 64)],
         };
         geometry.VertexColors = [.. Enumerable.Repeat(new Vector4(1, 0, 0, 1), 64)];
 
@@ -596,7 +616,7 @@ public sealed class GeometryBufferCreation
     {
         using var geometry = new Geometry
         {
-            Vertices = [.. Enumerable.Repeat(new Vertex(new Vector3(1, 2, 3)), 64)],
+            Vertices = [.. Enumerable.Repeat(new Vector4(1, 2, 3, 1), 64)],
             Indices = [.. Enumerable.Range(0, 64).Select(i => (uint)i)],
         };
 
@@ -605,7 +625,7 @@ public sealed class GeometryBufferCreation
 
         Assert.IsFalse(
             geometry.BufferDirty.HasFlag(GeometryBufferType.Vertex),
-            "Vertex should not be dirty"
+            "VertexProperties should not be dirty"
         );
         Assert.IsTrue(
             geometry.BufferDirty.HasFlag(GeometryBufferType.Index),
@@ -628,7 +648,7 @@ public sealed class GeometryBufferCreation
     {
         using var geometry = new Geometry
         {
-            Vertices = [.. Enumerable.Repeat(new Vertex(new Vector3(1, 2, 3)), 64)],
+            Vertices = [.. Enumerable.Repeat(new Vector4(1, 2, 3, 1), 64)],
         };
 
         // Update and clear dirty flags
@@ -640,7 +660,7 @@ public sealed class GeometryBufferCreation
 
         Assert.IsTrue(
             geometry.BufferDirty.HasFlag(GeometryBufferType.Vertex),
-            "Vertex buffer should be manually marked as dirty"
+            "VertexProperties buffer should be manually marked as dirty"
         );
         Assert.IsFalse(
             geometry.BufferDirty.HasFlag(GeometryBufferType.Index),
@@ -653,7 +673,7 @@ public sealed class GeometryBufferCreation
     {
         using var geometry = new Geometry
         {
-            Vertices = [.. Enumerable.Repeat(new Vertex(new Vector3(1, 2, 3)), 64)],
+            Vertices = [.. Enumerable.Repeat(new Vector4(1, 2, 3, 1), 64)],
             Indices = [.. Enumerable.Range(0, 64).Select(i => (uint)i)],
         };
 
@@ -662,10 +682,10 @@ public sealed class GeometryBufferCreation
         Assert.AreEqual((GeometryBufferType)0, geometry.BufferDirty, "All buffers should be clean");
 
         // Modify vertices
-        geometry.Vertices = [.. Enumerable.Repeat(new Vertex(new Vector3(4, 5, 6)), 32)];
+        geometry.Vertices = [.. Enumerable.Repeat(new Vector4(4, 5, 6, 1), 32)];
         Assert.IsTrue(
             geometry.BufferDirty.HasFlag(GeometryBufferType.Vertex),
-            "Vertex should be dirty"
+            "VertexProperties should be dirty"
         );
 
         // Modify indices
@@ -678,7 +698,7 @@ public sealed class GeometryBufferCreation
         // Both should be marked as dirty
         Assert.IsTrue(
             geometry.BufferDirty.HasFlag(GeometryBufferType.Vertex | GeometryBufferType.Index),
-            "Both Vertex and Index buffers should be dirty"
+            "Both VertexProperties and Index buffers should be dirty"
         );
     }
 
@@ -693,7 +713,7 @@ public sealed class GeometryBufferCreation
         // Dirty flag should still be cleared even though no buffer was created
         Assert.IsFalse(
             geometry.BufferDirty.HasFlag(GeometryBufferType.Vertex),
-            "Vertex buffer dirty flag should be cleared even for empty buffer"
+            "VertexProperties buffer dirty flag should be cleared even for empty buffer"
         );
     }
 

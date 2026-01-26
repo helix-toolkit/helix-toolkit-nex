@@ -5,20 +5,25 @@ namespace HelixToolkit.Nex.Geometries;
 
 public static class Extensions
 {
-    public static void UpdateNormals(this FastList<Vertex> vertices, FastList<uint> triangleIndices)
+    public static void UpdateNormalsInPlace(
+        this FastList<Vector4> verts,
+        FastList<VertexProperties> properties,
+        FastList<uint> triangleIndices
+    )
     {
-        var normals = new Vector3Collection(vertices.Count);
-        normals.Resize(vertices.Count, true);
+        var normals = new Vector3Collection(properties.Count);
+        normals.Resize(properties.Count, true);
+        var vertArray = verts.GetInternalArray();
         for (var t = 0; t < triangleIndices.Count; t += 3)
         {
             var i1 = (int)triangleIndices[t];
             var i2 = (int)triangleIndices[t + 1];
             var i3 = (int)triangleIndices[t + 2];
-            ref var v1 = ref vertices.GetInternalArray()[i1];
-            ref var v2 = ref vertices.GetInternalArray()[i2];
-            ref var v3 = ref vertices.GetInternalArray()[i3];
-            var p1 = v2.Position - v1.Position;
-            var p2 = v3.Position - v1.Position;
+            ref var v1 = ref vertArray[i1];
+            ref var v2 = ref vertArray[i2];
+            ref var v3 = ref vertArray[i3];
+            var p1 = (v2 - v1).ToVector3();
+            var p2 = (v3 - v1).ToVector3();
             var n = Vector3.Cross(p1, p2);
             // angle
             p1 = Vector3.Normalize(p1);
@@ -31,15 +36,16 @@ public static class Extensions
             normals[i3] += v;
         }
         NormalizeInPlace(normals);
-        for (var i = 0; i < vertices.Count; ++i)
+        var propArray = properties.GetInternalArray();
+        for (var i = 0; i < properties.Count; ++i)
         {
-            vertices.GetInternalArray()[i].Normal = normals[i];
+            propArray[i].Normal = normals[i];
         }
     }
 
     public static void UpdateNormals(this Geometry geometry)
     {
-        geometry.Vertices.UpdateNormals(geometry.Indices);
+        geometry.Vertices.UpdateNormalsInPlace(geometry.VertexProps, geometry.Indices);
     }
 
     public static unsafe void NormalizeInPlace(this FastList<Vector3> data)

@@ -7,4 +7,11 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\HelixToolkit.Nex.Geometry\HelixToolkit.Nex.Geometries.csproj" />
+    <ProjectReference Include="..\..\..\HelixToolkit.Nex.Graphics.Vulkan\HelixToolkit.Nex.Graphics.Vulkan.csproj" />
+    <ProjectReference Include="..\..\..\HelixToolkit.Nex.Shaders\HelixToolkit.Nex.Shaders.csproj" />
+    <ProjectReference Include="..\..\Application\Application.csproj" />
+  </ItemGroup>
+
 </Project>

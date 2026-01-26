@@ -3,11 +3,11 @@ using System.Text.Json;
 namespace HelixToolkit.Nex.Geometries.Serialization;
 
 /// <summary>
-/// JSON converter for the Vertex struct.
+/// JSON converter for the VertexProperties struct.
 /// </summary>
-public class VertexJsonConverter : JsonConverter<Vertex>
+public class VertexPropsJsonConverter : JsonConverter<VertexProperties>
 {
-    public override Vertex Read(
+    public override VertexProperties Read(
         ref Utf8JsonReader reader,
         Type typeToConvert,
         JsonSerializerOptions options
@@ -18,7 +18,6 @@ public class VertexJsonConverter : JsonConverter<Vertex>
             throw new JsonException("Expected StartObject token");
         }
 
-        Vector3 position = default;
         Vector3 normal = default;
         Vector2 texCoord = default;
         Vector3 tangent = default;
@@ -27,7 +26,7 @@ public class VertexJsonConverter : JsonConverter<Vertex>
         {
             if (reader.TokenType == JsonTokenType.EndObject)
             {
-                return new Vertex(position, normal, texCoord, tangent);
+                return new VertexProperties(normal, texCoord, tangent);
             }
 
             if (reader.TokenType != JsonTokenType.PropertyName)
@@ -40,9 +39,6 @@ public class VertexJsonConverter : JsonConverter<Vertex>
 
             switch (propertyName)
             {
-                case "Position":
-                    position = ReadVector3(ref reader);
-                    break;
                 case "Normal":
                     normal = ReadVector3(ref reader);
                     break;
@@ -178,16 +174,13 @@ public class VertexJsonConverter : JsonConverter<Vertex>
         throw new JsonException("Unexpected end while reading Vector4");
     }
 
-    public override void Write(Utf8JsonWriter writer, Vertex value, JsonSerializerOptions options)
+    public override void Write(
+        Utf8JsonWriter writer,
+        VertexProperties value,
+        JsonSerializerOptions options
+    )
     {
         writer.WriteStartObject();
-
-        writer.WritePropertyName("Position");
-        writer.WriteStartObject();
-        writer.WriteNumber("X", value.Position.X);
-        writer.WriteNumber("Y", value.Position.Y);
-        writer.WriteNumber("Z", value.Position.Z);
-        writer.WriteEndObject();
 
         writer.WritePropertyName("Normal");
         writer.WriteStartObject();

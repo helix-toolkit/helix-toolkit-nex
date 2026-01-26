@@ -9,9 +9,19 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="start"></param>
         /// <param name="count"></param>
         /// <returns></returns>
-        public static BoundingSphere GetBoundingSphere(this IList<Vector3> points, int start, int count)
+        public static BoundingSphere GetBoundingSphere(
+            this IList<Vector3> points,
+            int start,
+            int count
+        )
         {
-            if (points == null || start < 0 || start >= points.Count || count < 0 || (start + count) > points.Count)
+            if (
+                points == null
+                || start < 0
+                || start >= points.Count
+                || count < 0
+                || (start + count) > points.Count
+            )
             {
                 return BoundingSphere.Empty;
             }
@@ -42,6 +52,49 @@ namespace HelixToolkit.Nex.Maths
             return new BoundingSphere(center, radius);
         }
 
+        public static BoundingSphere GetBoundingSphere(
+            this IList<Vector4> points,
+            int start,
+            int count
+        )
+        {
+            if (
+                points == null
+                || start < 0
+                || start >= points.Count
+                || count < 0
+                || (start + count) > points.Count
+            )
+            {
+                return BoundingSphere.Empty;
+            }
+
+            int upperEnd = start + count;
+
+            //Find the center of all points.
+            Vector3 center = points.GetCentroid(start, count).ToVector3();
+
+            //Find the radius of the sphere
+            float radius = 0f;
+            for (int i = start; i < upperEnd; ++i)
+            {
+                //We are doing a relative distance comparison to find the maximum distance
+                //from the center of our sphere
+                float distance = Vector3.DistanceSquared(center, points[i].ToVector3());
+
+                if (distance > radius)
+                {
+                    radius = distance;
+                }
+            }
+
+            //Find the real distance from the DistanceSquared.
+            radius = (float)Math.Sqrt(radius);
+
+            //Construct the sphere.
+            return new BoundingSphere(center, radius);
+        }
+
         /// <summary>
         /// Froms the points.
         /// </summary>
@@ -49,7 +102,9 @@ namespace HelixToolkit.Nex.Maths
         /// <returns></returns>
         public static BoundingSphere GetBoundingSphere(this IList<Vector3> points)
         {
-            return points == null ? BoundingSphere.Empty : points.GetBoundingSphere(0, points.Count);
+            return points == null
+                ? BoundingSphere.Empty
+                : points.GetBoundingSphere(0, points.Count);
         }
 
         /// <summary>
@@ -105,7 +160,15 @@ namespace HelixToolkit.Nex.Maths
             // Quadratic solving
             float a = (dx * dx) + (dy * dy) + (dz * dz);
             float b = (2 * dx * (x1 - cx)) + (2 * dy * (y1 - cy)) + (2 * dz * (z1 - cz));
-            float c = (x1 * x1) + (y1 * y1) + (z1 * z1) + (cx * cx) + (cz * cz) + (cy * cy) - (2 * ((cy * y1) + (cz * z1) + (cx * x1))) - (r * r);
+            float c =
+                (x1 * x1)
+                + (y1 * y1)
+                + (z1 * z1)
+                + (cx * cx)
+                + (cz * cz)
+                + (cy * cy)
+                - (2 * ((cy * y1) + (cz * z1) + (cx * x1)))
+                - (r * r);
 
             // Discriminant
             float q = (b * b) - (4 * a * c);

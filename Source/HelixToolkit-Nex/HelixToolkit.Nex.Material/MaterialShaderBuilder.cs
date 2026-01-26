@@ -157,7 +157,7 @@ public class MaterialShaderBuilder
             $"{debugName}_Vertex"
         );
 
-        Debug.Assert(vertexModule.Valid, "Vertex shader module creation failed.");
+        Debug.Assert(vertexModule.Valid, "VertexProperties shader module creation failed.");
 
         var fragmentModule = context.CreateShaderModuleGlsl(
             fragmentResult.Source!,

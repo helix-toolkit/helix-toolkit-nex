@@ -35,11 +35,17 @@ public sealed class GeometrySerialization
         // Arrange
         var vertices = new[]
         {
-            new Vertex(new Vector3(0, 0, 0), new Vector3(0, 1, 0), new Vector2(0, 0)),
-            new Vertex(new Vector3(1, 0, 0), new Vector3(0, 1, 0), new Vector2(1, 0)),
-            new Vertex(new Vector3(0, 1, 0), new Vector3(0, 1, 0), new Vector2(0, 1)),
+            new Vector4(0, 0, 0, 1),
+            new Vector4(1, 0, 0, 1),
+            new Vector4(0, 1, 0, 1),
         };
-        var original = new Geometry(vertices, Topology.Triangle);
+        var vertexProps = new[]
+        {
+            new VertexProperties(new Vector3(0, 1, 0), new Vector2(0, 0)),
+            new VertexProperties(new Vector3(0, 1, 0), new Vector2(1, 0)),
+            new VertexProperties(new Vector3(0, 1, 0), new Vector2(0, 1)),
+        };
+        var original = new Geometry(vertices, vertexProps, Topology.Triangle);
 
         // Act
         string json = JsonSerializer.Serialize(original, JsonOptions);
@@ -53,7 +59,8 @@ public sealed class GeometrySerialization
 
         for (int i = 0; i < vertices.Length; i++)
         {
-            AssertVertexEqual(vertices[i], deserialized.Vertices[i]);
+            Assert.AreEqual(vertices[i], deserialized.Vertices[i]);
+            AssertVertexEqual(vertexProps[i], deserialized.VertexProps[i]);
         }
     }
 
@@ -63,10 +70,10 @@ public sealed class GeometrySerialization
         // Arrange
         var vertices = new[]
         {
-            new Vertex(new Vector3(0, 0, 0), new Vector3(0, 1, 0)),
-            new Vertex(new Vector3(1, 0, 0), new Vector3(0, 1, 0)),
-            new Vertex(new Vector3(1, 1, 0), new Vector3(0, 1, 0)),
-            new Vertex(new Vector3(0, 1, 0), new Vector3(0, 1, 0)),
+            new Vector4(0, 0, 0, 1),
+            new Vector4(1, 0, 0, 1),
+            new Vector4(0, 1, 0, 1),
+            new Vector4(0, 1, 1, 1),
         };
         var indices = new uint[] { 0, 1, 2, 0, 2, 3 };
         var original = new Geometry(vertices, indices, topology: Topology.Triangle);
@@ -88,9 +95,9 @@ public sealed class GeometrySerialization
         // Arrange
         var vertices = new[]
         {
-            new Vertex(new Vector3(0, 0, 0)),
-            new Vertex(new Vector3(1, 0, 0)),
-            new Vertex(new Vector3(0, 1, 0)),
+            new Vector4(0, 0, 0, 1),
+            new Vector4(1, 0, 0, 1),
+            new Vector4(0, 1, 0, 1),
         };
         var colors = new[]
         {
@@ -121,24 +128,9 @@ public sealed class GeometrySerialization
         // Arrange
         var vertices = new[]
         {
-            new Vertex(
-                new Vector3(0, 0, 0),
-                new Vector3(0, 1, 0),
-                new Vector2(0, 0),
-                new Vector3(1, 0, 0)
-            ),
-            new Vertex(
-                new Vector3(1, 0, 0),
-                new Vector3(0, 1, 0),
-                new Vector2(1, 0),
-                new Vector3(0, 1, 0)
-            ),
-            new Vertex(
-                new Vector3(0, 1, 0),
-                new Vector3(0, 1, 0),
-                new Vector2(0, 1),
-                new Vector3(0, 0, 1)
-            ),
+            new Vector4(0, 0, 0, 1),
+            new Vector4(1, 0, 0, 1),
+            new Vector4(0, 1, 0, 1),
         };
         var indices = new uint[] { 0, 1, 2 };
         var colors = new[]
@@ -169,7 +161,7 @@ public sealed class GeometrySerialization
 
         for (int i = 0; i < vertices.Length; i++)
         {
-            AssertVertexEqual(vertices[i], deserialized.Vertices[i]);
+            Assert.AreEqual(vertices[i], deserialized.Vertices[i]);
         }
 
         CollectionAssert.AreEqual(indices, deserialized.Indices.ToArray());
@@ -191,9 +183,9 @@ public sealed class GeometrySerialization
         // Arrange
         var vertices = new[]
         {
-            new Vertex(new Vector3(0, 0, 0)),
-            new Vertex(new Vector3(1, 0, 0)),
-            new Vertex(new Vector3(0, 1, 0)),
+            new Vector4(0, 0, 0, 1),
+            new Vector4(1, 0, 0, 1),
+            new Vector4(0, 1, 0, 1),
         };
         var original = new Geometry(vertices, topology);
 
@@ -210,19 +202,18 @@ public sealed class GeometrySerialization
     public void SerializeDeserialize_VertexWithAllProperties()
     {
         // Arrange
-        var vertex = new Vertex(
-            new Vector3(1.5f, 2.5f, 3.5f),
+        var vertexProps = new VertexProperties(
             new Vector3(0, 1, 0),
             new Vector2(0.5f, 0.75f),
             new Vector3(0.8f, 0.6f, 0.4f)
         );
 
         // Act
-        string json = JsonSerializer.Serialize(vertex, JsonOptions);
-        var deserialized = JsonSerializer.Deserialize<Vertex>(json);
+        string json = JsonSerializer.Serialize(vertexProps, JsonOptions);
+        var deserialized = JsonSerializer.Deserialize<VertexProperties>(json);
 
         // Assert
-        AssertVertexEqual(vertex, deserialized);
+        AssertVertexEqual(vertexProps, deserialized);
     }
 
     [TestMethod]
@@ -248,12 +239,7 @@ public sealed class GeometrySerialization
         const int vertexCount = 1000;
         var vertices = Enumerable
             .Range(0, vertexCount)
-            .Select(i => new Vertex(
-                new Vector3(i, i * 2, i * 3),
-                new Vector3(0, 1, 0),
-                new Vector2(i / 1000f, i / 1000f),
-                new Vector3(1, 1, 1)
-            ))
+            .Select(i => new Vector4(i, i * 2, i * 3, 1))
             .ToArray();
 
         var indices = Enumerable.Range(0, vertexCount).Select(i => (uint)i).ToArray();
@@ -305,11 +291,7 @@ public sealed class GeometrySerialization
     public void Serialize_ProducesValidJson()
     {
         // Arrange
-        var geometry = new Geometry(
-            new[] { new Vertex(new Vector3(0, 0, 0)) },
-            new uint[] { 0 },
-            topology: Topology.Triangle
-        );
+        var geometry = new Geometry([new Vector4(0, 0, 0, 1)], [0], topology: Topology.Triangle);
 
         // Act
         string json = JsonSerializer.Serialize(geometry, JsonOptions);
@@ -379,9 +361,8 @@ public sealed class GeometrySerialization
 
     #region Helper Methods
 
-    private static void AssertVertexEqual(Vertex expected, Vertex actual)
+    private static void AssertVertexEqual(VertexProperties expected, VertexProperties actual)
     {
-        Assert.AreEqual(expected.Position, actual.Position, $"Position mismatch");
         Assert.AreEqual(expected.Normal, actual.Normal, $"Normal mismatch");
         Assert.AreEqual(expected.TexCoord, actual.TexCoord, $"TexCoord mismatch");
         Assert.AreEqual(expected.Tangent, actual.Tangent, $"Tangent mismatch");
