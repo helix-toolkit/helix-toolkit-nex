@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Microsoft.Extensions.Logging;
 
 namespace HelixToolkit.Nex.Geometries;
 
@@ -31,6 +32,8 @@ namespace HelixToolkit.Nex.Geometries;
 /// </remarks>
 public sealed class MeshBuilder
 {
+    private static readonly ILogger _logger = LogManager.Create<MeshBuilder>();
+
     #region Static and Const
     /// <summary>
     /// 'All curves should have the same number of points' exception message.
@@ -4547,14 +4550,12 @@ public sealed class MeshBuilder
     {
         if (this.Positions.Count > 20000)
         {
-            Trace.WriteLine(string.Format("Too many positions ({0}).", this.Positions.Count));
+            _logger.LogWarning("Too many positions ({0}).", this.Positions.Count);
         }
 
         if (this.TriangleIndices.Count > 60002)
         {
-            Trace.WriteLine(
-                string.Format("Too many triangle indices ({0}).", this.TriangleIndices.Count)
-            );
+            _logger.LogWarning("Too many triangle indices ({0}).", this.TriangleIndices.Count);
         }
     }
 
