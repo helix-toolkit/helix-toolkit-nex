@@ -1,3 +1,5 @@
+using HelixToolkit.Nex.Trace;
+
 namespace HelixToolkit.Nex.Geometries;
 
 [StructLayout(LayoutKind.Sequential, Pack = 16)]
@@ -60,7 +62,12 @@ public enum GeometryBufferType
 public partial class Geometry : ObservableObject, IDisposable
 {
     private static readonly ILogger logger = LogManager.Create<Geometry>();
+    private static readonly ITracer _tracer = TracerFactory.GetTracer(nameof(Geometry));
+    private const string TRACE_BUFFER = "Buffer";
+    private const string TRACE_BOUNDS = "Bounds";
     public Guid Id { set; get; } = Guid.NewGuid();
+
+    public string Name { set; get; } = string.Empty;
 
     /// <summary>
     /// Gets the topology configuration of the geometry.
@@ -214,6 +221,7 @@ public partial class Geometry : ObservableObject, IDisposable
     /// cref="ResultCode.Ok"/> if all specified buffers are updated successfully; otherwise, returns an error code.</returns>
     public ResultCode UpdateBuffers(IContext context, GeometryBufferType types)
     {
+        using var scope = _tracer.BeginScope(nameof(UpdateBuffers), TRACE_BUFFER);
         var storageType = IsDynamic ? StorageType.HostVisible : StorageType.Device;
         if (types.HasFlag(GeometryBufferType.Vertex))
         {
@@ -370,7 +378,6 @@ public partial class Geometry : ObservableObject, IDisposable
             BoundingSphereLocal = BoundingSphere.Empty;
             return;
         }
-
         BoundingSphereLocal = BoundingSphere.FromPoints(_vertices);
     }
 
@@ -386,6 +393,7 @@ public partial class Geometry : ObservableObject, IDisposable
         {
             return;
         }
+        using var scope = _tracer.BeginScope(nameof(CreateBoundingBox), TRACE_BOUNDS);
         CreateBoundingBox();
         CreateBoundingSphere();
         IsBoundDirty = false;
