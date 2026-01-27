@@ -70,7 +70,6 @@ public class ForwardPlusExample
     #region Render State
 
     private readonly IContext _context;
-    private readonly Dependencies _dependencies = Dependencies.Empty;
     private readonly RenderPass _depthPass = new();
     private readonly RenderPass _renderPass = new();
     private readonly RenderPass _toneMappingPass = new();
@@ -622,7 +621,7 @@ public class ForwardPlusExample
     {
         _framebuffer.Colors[0].Texture = TextureResource.Null;
         _framebuffer.DepthStencil.Texture = _depthBuffer;
-        cmdBuffer.BeginRendering(_depthPass, _framebuffer, _dependencies);
+        cmdBuffer.BeginRendering(_depthPass, _framebuffer, Dependencies.Empty);
         cmdBuffer.BindDepthState(_depthState);
         cmdBuffer.BindRenderPipeline(_depthPassPipeline);
         cmdBuffer.BindIndexBuffer(_mesh.IndexBuffer, IndexFormat.UI32);
@@ -648,6 +647,8 @@ public class ForwardPlusExample
         cmdBuffer.EndRendering();
     }
 
+    private Dependencies _lightCullDeps = new();
+
     /// <summary>
     /// Runs the Forward+ light culling compute shader.
     /// Calculates which lights affect each screen tile based on depth buffer.
@@ -659,8 +660,11 @@ public class ForwardPlusExample
 
         cmdBuffer.BindComputePipeline(_cullingPipeline);
         cmdBuffer.PushConstants(_context.GpuAddress(_lightCullingBuffer));
-        cmdBuffer.DispatchThreadGroups(new Dimensions(tileCountX, tileCountY), Dependencies.Empty);
+        _lightCullDeps.Textures[0] = _depthBuffer;
+        cmdBuffer.DispatchThreadGroups(new Dimensions(tileCountX, tileCountY), _lightCullDeps);
     }
+
+    private readonly Dependencies _renderDeps = new();
 
     /// <summary>
     /// Main render pass: renders scene geometry with PBR shading using Forward+ lighting.
@@ -669,7 +673,8 @@ public class ForwardPlusExample
     private void RenderPass(ICommandBuffer cmdBuffer)
     {
         _framebuffer.Colors[0].Texture = _f16Framebuffer;
-        cmdBuffer.BeginRendering(_renderPass, _framebuffer, _dependencies);
+        _renderDeps.Buffers[0] = _lightIndexBuffer;
+        cmdBuffer.BeginRendering(_renderPass, _framebuffer, _renderDeps);
         cmdBuffer.BindDepthState(_depthStateNoWrite);
         cmdBuffer.BindRenderPipeline(_renderPipelinePBR);
         cmdBuffer.BindIndexBuffer(_mesh.IndexBuffer, IndexFormat.UI32);
@@ -699,6 +704,8 @@ public class ForwardPlusExample
         cmdBuffer.EndRendering();
     }
 
+    private Dependencies _toneMappingDeps = new();
+
     /// <summary>
     /// Applies tone mapping and gamma correction to convert HDR framebuffer to LDR output.
     /// </summary>
@@ -706,7 +713,8 @@ public class ForwardPlusExample
     {
         _framebuffer.Colors[0].Texture = target;
         _framebuffer.DepthStencil.Texture = TextureResource.Null;
-        cmdBuffer.BeginRendering(_toneMappingPass, _framebuffer, _dependencies);
+        _toneMappingDeps.Textures[0] = _f16Framebuffer;
+        cmdBuffer.BeginRendering(_toneMappingPass, _framebuffer, _toneMappingDeps);
         cmdBuffer.BindRenderPipeline(_toneGammePipeline);
         cmdBuffer.BindDepthState(DepthState.Disabled);
         cmdBuffer.PushConstants(
@@ -715,7 +723,7 @@ public class ForwardPlusExample
                 Exposure = 1f,
                 HdrTextureId = _f16Framebuffer.Index,
                 SamplerId = _toneMappingSampler.Index,
-                TonemapMode = 0,
+                TonemapMode = 2,
             }
         );
         cmdBuffer.Draw(3); // Full-screen triangle
@@ -752,7 +760,7 @@ public class ForwardPlusExample
         var colors = new[] { new Vector3(1, 0, 0), new Vector3(0, 1, 0), new Vector3(0, 0, 1) };
         for (int i = 0; i < count; i++)
         {
-            var position = new Vector3(i - count / 2, i - count / 2, -2);
+            var position = new Vector3(i - count / 2, i - count / 2, -6);
             var color = colors[i % colors.Length];
 
             lights[i + 1] = new Light
@@ -760,9 +768,9 @@ public class ForwardPlusExample
                 Position = position,
                 Type = 1, // Point light
                 Direction = Vector3.Zero,
-                Range = 4f,
+                Range = 6f,
                 Color = color,
-                Intensity = 1.0f,
+                Intensity = 10.0f,
                 SpotAngles = Vector2.Zero,
             };
         }
