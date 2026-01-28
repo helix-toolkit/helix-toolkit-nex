@@ -1,3 +1,5 @@
+using Vortice.Vulkan;
+
 namespace HelixToolkit.Nex.Graphics.Vulkan;
 
 public sealed class VulkanContextConfig()
@@ -35,6 +37,7 @@ public sealed class VulkanContextConfig()
 internal sealed partial class VulkanContext
 {
     public const uint32_t KMaxYcbcrConversionData = 256; // maximum number of Ycbcr conversions that can be created in the context
+    public const uint32_t KDescriptorSetInputAttachments = 4;
     private static readonly ILogger _logger = LogManager.Create<VulkanContext>();
 
     public override string Name { get; } = nameof(VulkanContext);
@@ -88,6 +91,7 @@ internal sealed partial class VulkanContext
     private VulkanStagingDevice? _stagingDevice = null;
     private VulkanImmediateCommands? _immediate = null;
     private VkDescriptorSetLayout _vkDesSetLayout = VkDescriptorSetLayout.Null;
+    private VkDescriptorSetLayout _dslInputAttachments = VkDescriptorSetLayout.Null;
     private VkDescriptorPool _vkDesPool = VkDescriptorPool.Null;
     private VkDescriptorSet _vkDesSet = VkDescriptorSet.Null;
     private VkPipelineCache _pipelineCache = VkPipelineCache.Null;
@@ -95,8 +99,15 @@ internal sealed partial class VulkanContext
     private VmaAllocator _vma = VmaAllocator.Null;
     private CommandBuffer? _currentCommandBuffer;
     private uint32_t _numYcbcrSamplers = 0;
+    private uint32_t _maxCombinedImageSamplerDescriptorCount = 1;
     private TextureHandle _dummyTexture = TextureHandle.Null;
     private SamplerHandle _defaultSampler = SamplerHandle.Null;
+    private readonly List<VkUtf8String> _deviceExtensions =
+    [
+        VK.VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+        VK.VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME,
+    ];
+    private readonly List<VkUtf8String> _instanceExtensions = [];
 
     public ref readonly VkPhysicalDeviceProperties2 VkPhysicalDeviceProperties2 =>
         ref _vkPhysicalDeviceProperties2;
@@ -109,7 +120,8 @@ internal sealed partial class VulkanContext
         ref _vkPhysicalDeviceVulkan13Properties;
 
     public bool SupportMeshShader => _vkFeatureMeshShader.meshShader;
-
+    public IReadOnlyList<VkUtf8String> DeviceExtensions => _deviceExtensions;
+    public IReadOnlyList<VkUtf8String> InstanceExtensions => _instanceExtensions;
     public IReadOnlyList<VkFormat> DeviceDepthFormats => _deviceDepthFormats.AsReadOnly();
     public IReadOnlyList<VkSurfaceFormatKHR> DeviceSurfaceFormats =>
         _deviceSurfaceFormats.AsReadOnly();
@@ -264,13 +276,12 @@ internal sealed partial class VulkanContext
         HashSet<VkUtf8String> availableInstanceLayers = [.. EnumerateInstanceLayers()];
         HashSet<VkUtf8String> availableInstanceExtensions = [.. GetInstanceExtensions()];
 
-        List<VkUtf8String> instanceExtensions = [];
-        using VkStringArray extensionsInstance = new(Config.ExtensionsInstance);
-        byte** pExtensionsInstance = extensionsInstance;
+        using VkStringArray additionalExtInstance = new(Config.ExtensionsInstance);
+        byte** pAdditionalExtInstance = additionalExtInstance;
 
-        for (int i = 0; i < extensionsInstance.Length; ++i)
+        for (int i = 0; i < additionalExtInstance.Length; ++i)
         {
-            instanceExtensions.Add(new VkUtf8String(pExtensionsInstance[i]));
+            _instanceExtensions.Add(new VkUtf8String(pAdditionalExtInstance[i]));
         }
         if (!availableInstanceExtensions.Contains(VK.VK_KHR_SURFACE_EXTENSION_NAME))
         {
@@ -278,7 +289,7 @@ internal sealed partial class VulkanContext
                 "Vulkan: Required instance extension 'VK_KHR_surface' is not supported by the Vulkan implementation."
             );
         }
-        instanceExtensions.Add(VK.VK_KHR_SURFACE_EXTENSION_NAME); // always required
+        _instanceExtensions.Add(VK.VK_KHR_SURFACE_EXTENSION_NAME); // always required
 
         List<VkUtf8String> instanceLayers = [];
 
@@ -295,16 +306,16 @@ internal sealed partial class VulkanContext
             )
             {
                 _hasExtHeadlessSurface = true;
-                instanceExtensions.Add(VK.VK_EXT_HEADLESS_SURFACE_EXTENSION_NAME);
+                _instanceExtensions.Add(VK.VK_EXT_HEADLESS_SURFACE_EXTENSION_NAME);
             }
             else if (availableExtension == VK.VK_EXT_DEBUG_UTILS_EXTENSION_NAME)
             {
                 HasExtDebugUtils = true;
-                instanceExtensions.Add(VK.VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+                _instanceExtensions.Add(VK.VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
             }
             else if (availableExtension == VK.VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME)
             {
-                instanceExtensions.Add(VK.VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME);
+                _instanceExtensions.Add(VK.VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME);
             }
         }
 
@@ -316,7 +327,7 @@ internal sealed partial class VulkanContext
                     "Vulkan: Required instance extension 'VK_KHR_win32_surface' is not supported by the Vulkan implementation."
                 );
             }
-            instanceExtensions.Add(VK.VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
+            _instanceExtensions.Add(VK.VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
         }
         else if (SystemInfo.IsLinuxPlatform())
         {
@@ -328,7 +339,7 @@ internal sealed partial class VulkanContext
                         "Vulkan: Required instance extension 'VK_KHR_wayland_surface' is not supported by the Vulkan implementation."
                     );
                 }
-                instanceExtensions.Add(VK.VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME);
+                _instanceExtensions.Add(VK.VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME);
             }
             else
             {
@@ -338,7 +349,7 @@ internal sealed partial class VulkanContext
                         "Vulkan: Required instance extension 'VK_KHR_xlib_surface' is not supported by the Vulkan implementation."
                     );
                 }
-                instanceExtensions.Add(VK.VK_KHR_XLIB_SURFACE_EXTENSION_NAME);
+                _instanceExtensions.Add(VK.VK_KHR_XLIB_SURFACE_EXTENSION_NAME);
             }
         }
 
@@ -354,7 +365,7 @@ internal sealed partial class VulkanContext
             apiVersion = Config.VulkanVersion,
         };
         using VkStringArray vkLayerNames = new(instanceLayers);
-        using VkStringArray vkInstanceExtensions = new(instanceExtensions);
+        using VkStringArray vkInstanceExtensions = new(_instanceExtensions);
 
         VkInstanceCreateInfo instanceCreateInfo = new()
         {
@@ -409,7 +420,7 @@ internal sealed partial class VulkanContext
             }
         }
 
-        foreach (VkUtf8String extension in instanceExtensions)
+        foreach (VkUtf8String extension in InstanceExtensions)
         {
             _logger.LogInformation("Instance extension '{EXT}'", extension);
         }
@@ -761,7 +772,12 @@ internal sealed partial class VulkanContext
             void** features_chain = &features1_2.pNext;
 
             VkPhysicalDevice8BitStorageFeatures storage_8bit_features = default;
-            List<VkUtf8String> enabledExtensions = [VK.VK_KHR_SWAPCHAIN_EXTENSION_NAME];
+            using var additionalExts = new VkStringArray(Config.ExtensionsDevice);
+            byte** pAdditionalExts = additionalExts;
+            for (int i = 0; i < additionalExts.Length; ++i)
+            {
+                _deviceExtensions.Add(new VkUtf8String(pAdditionalExts[i]));
+            }
             if (properties.apiVersion <= VkVersion.Version_1_3)
             {
                 if (
@@ -771,7 +787,7 @@ internal sealed partial class VulkanContext
                     )
                 )
                 {
-                    enabledExtensions.Add(VK.VK_KHR_8BIT_STORAGE_EXTENSION_NAME);
+                    _deviceExtensions.Add(VK.VK_KHR_8BIT_STORAGE_EXTENSION_NAME);
                     //storage_8bit_features.sType = VkStructureType.PhysicalDevice8bitStorageFeatures;
                     *features_chain = &storage_8bit_features;
                     features_chain = &storage_8bit_features.pNext;
@@ -797,7 +813,7 @@ internal sealed partial class VulkanContext
             _vkPhysicalDeviceVulkan12Properties = deviceProps1_2;
             _vkPhysicalDeviceVulkan13Properties = deviceProps1_3;
 
-            using var deviceExtensionNames = new VkStringArray(enabledExtensions);
+            using var deviceExtensionNames = new VkStringArray(_deviceExtensions);
 
             VkDeviceCreateInfo deviceCreateInfo = new()
             {
@@ -925,6 +941,38 @@ internal sealed partial class VulkanContext
         }
         GrowDescriptorPool(CurrentMaxTextures, CurrentMaxSamplers);
         QuerySurfaceCapabilities();
+        {
+            var bindings = stackalloc VkDescriptorSetLayoutBinding[Constants.MAX_COLOR_ATTACHMENTS];
+            for (uint32_t i = 0; i < Constants.MAX_COLOR_ATTACHMENTS; i++)
+            {
+                bindings[i] = HxVkUtils.GetDSLBinding(
+                    i,
+                    VK.VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
+                    1,
+                    VK.VK_SHADER_STAGE_FRAGMENT_BIT
+                );
+            }
+
+            var limits = GetVkPhysicalDeviceProperties().limits;
+            VkDescriptorSetLayoutCreateInfo dslci = new()
+            {
+                flags = VK.VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT,
+                bindingCount = Math.Min(
+                    Constants.MAX_COLOR_ATTACHMENTS,
+                    limits.maxPerStageDescriptorInputAttachments
+                ),
+                pBindings = bindings,
+            };
+            VkDescriptorSetLayout dslInputAttachmentLayout;
+            VK.vkCreateDescriptorSetLayout(_vkDevice, &dslci, null, &dslInputAttachmentLayout)
+                .CheckResult();
+            _dslInputAttachments = dslInputAttachmentLayout;
+            _vkDevice.SetDebugObjectName(
+                VK.VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,
+                (nuint)dslInputAttachmentLayout.Handle,
+                "Descriptor Set Layout: VulkanContext::dslInputAttachments"
+            );
+        }
         return ResultCode.Ok;
     }
 
@@ -1080,7 +1128,7 @@ internal sealed partial class VulkanContext
             });
         }
 
-        bool hasYUVImages = false;
+        VkSampler firstYcbcrSampler = VkSampler.Null;
         unsafe
         {
             // check if we have any YUV images
@@ -1094,26 +1142,20 @@ internal sealed partial class VulkanContext
                 // multisampled images cannot be directly accessed from shaders
                 bool isTextureAvailable =
                     (img.SampleCount & VK.VK_SAMPLE_COUNT_1_BIT) == VK.VK_SAMPLE_COUNT_1_BIT;
-                hasYUVImages =
+                var isYUVImage =
                     isTextureAvailable
                     && img.IsSampledImage
                     && img.ImageFormat.GetNumImagePlanes() > 1;
-                if (hasYUVImages)
+                if (isYUVImage)
                 {
+                    firstYcbcrSampler = GetOrCreateYcbcrSampler(img.ImageFormat.ToFormat());
                     break;
                 }
             }
-
+            FastList<VkSampler> immutableSamplers = [];
             {
-                FastList<VkSampler> immutableSamplers = [];
-
-                if (hasYUVImages)
+                if (firstYcbcrSampler.IsNotNull)
                 {
-                    var dummySampler = SamplersPool.Objects[0].Obj;
-                    if (dummySampler is null || !dummySampler.Valid)
-                    {
-                        throw new Exception("Dummy sampler not found in pool");
-                    }
                     immutableSamplers.EnsureCapacity(TexturesPool.Objects.Count);
                     foreach (var obj in TexturesPool.Objects)
                     {
@@ -1133,7 +1175,7 @@ internal sealed partial class VulkanContext
                         immutableSamplers.Add(
                             isYUVImage
                                 ? GetOrCreateYcbcrSampler(img.ImageFormat.ToFormat())
-                                : dummySampler
+                                : firstYcbcrSampler
                         );
                     }
                 }
@@ -1241,12 +1283,20 @@ internal sealed partial class VulkanContext
                             descriptorCount = maxTextures,
                         },
                     };
-
+                uint numPoolSizes = 3;
+                if (!immutableSamplers.Empty)
+                {
+                    poolSizes[numPoolSizes++] = new VkDescriptorPoolSize
+                    {
+                        type = VK.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                        descriptorCount = _maxCombinedImageSamplerDescriptorCount * maxTextures,
+                    };
+                }
                 VkDescriptorPoolCreateInfo ci = new()
                 {
                     flags = VkDescriptorPoolCreateFlags.UpdateAfterBind,
                     maxSets = 1,
-                    poolSizeCount = (uint)Bindings.NumBindings,
+                    poolSizeCount = numPoolSizes,
                     pPoolSizes = poolSizes,
                 };
                 VK.vkCreateDescriptorPool(_vkDevice, &ci, null, out _vkDesPool).CheckResult();
@@ -1350,6 +1400,10 @@ internal sealed partial class VulkanContext
                 .CheckResult("Failed on vkGetPhysicalDeviceImageFormatProperties2");
             HxDebug.Assert(
                 samplerYcbcrConversionImageFormatProps.combinedImageSamplerDescriptorCount <= 3
+            );
+            _maxCombinedImageSamplerDescriptorCount = Math.Max(
+                _maxCombinedImageSamplerDescriptorCount,
+                samplerYcbcrConversionImageFormatProps.combinedImageSamplerDescriptorCount
             );
         }
 
@@ -1771,20 +1825,17 @@ internal sealed partial class VulkanContext
 
         if (rps!.LastVkDescriptorSetLayout != VkDesSetLayout || rps!.VewMask != viewMask)
         {
-            DeferredTask(() =>
+            unsafe
             {
-                unsafe
+                if (rps.Pipeline.IsNotNull)
                 {
                     VK.vkDestroyPipeline(VkDevice, rps.Pipeline, null);
                 }
-            });
-            DeferredTask(() =>
-            {
-                unsafe
+                if (rps.PipelineLayout.IsNotNull)
                 {
                     VK.vkDestroyPipelineLayout(VkDevice, rps.PipelineLayout, null);
                 }
-            });
+            }
             rps.Pipeline = VkPipeline.Null;
             rps.LastVkDescriptorSetLayout = VkDesSetLayout;
             rps.VewMask = viewMask;
@@ -1949,11 +2000,12 @@ internal sealed partial class VulkanContext
 
                 // duplicate for MoltenVK
                 var dsls =
-                    stackalloc VkDescriptorSetLayout[4] {
+                    stackalloc VkDescriptorSetLayout[(int)KDescriptorSetInputAttachments + 1] {
                         VkDesSetLayout,
                         VkDesSetLayout,
                         VkDesSetLayout,
                         VkDesSetLayout,
+                        _dslInputAttachments,
                     };
                 VkPushConstantRange range = new()
                 {
@@ -2286,6 +2338,7 @@ internal sealed partial class VulkanContext
             Disposer.DisposeAndRemove(ref _immediate);
 
             VK.vkDestroyDescriptorSetLayout(_vkDevice, VkDesSetLayout, null);
+            VK.vkDestroyDescriptorSetLayout(_vkDevice, _dslInputAttachments, null);
             VK.vkDestroyDescriptorPool(_vkDevice, VkDesPool, null);
             VK.vkDestroySurfaceKHR(_vkInstance, _vkSurface, null);
             VK.vkDestroyPipelineCache(_vkDevice, PipelineCache, null);

@@ -66,6 +66,15 @@ public enum IndexFormat : uint8_t
 }
 
 /// <summary>
+///
+/// </summary>
+public enum VertexInputRate : uint8_t
+{
+    Vertex = 0,
+    Instance = 1,
+}
+
+/// <summary>
 /// Defines the primitive topology for rendering.
 /// </summary>
 public enum Topology : uint8_t
@@ -217,19 +226,19 @@ public enum SamplerWrap : uint8_t
 public enum HWDeviceType
 {
     /// <summary>
+    /// Integrated GPU (built into CPU).
+    /// </summary>
+    Integrated = 1,
+
+    /// <summary>
     /// Discrete GPU (dedicated graphics card).
     /// </summary>
-    Discrete = 1,
+    Discrete = 2,
 
     /// <summary>
     /// External GPU (e.g., via Thunderbolt).
     /// </summary>
-    External = 2,
-
-    /// <summary>
-    /// Integrated GPU (built into CPU).
-    /// </summary>
-    Integrated = 3,
+    External = 3,
 
     /// <summary>
     /// Software renderer (CPU-based).

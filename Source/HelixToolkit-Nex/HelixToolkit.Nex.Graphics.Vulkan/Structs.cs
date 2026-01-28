@@ -20,3 +20,11 @@ internal struct StageAccess2
     /// </summary>
     public VkAccessFlags2 Access;
 };
+
+internal struct InputAttachment()
+{
+    public readonly VkDescriptorImageInfo[] ImageInfos = new VkDescriptorImageInfo[
+        Constants.MAX_COLOR_ATTACHMENTS
+    ];
+    public uint32_t Count = 0;
+};

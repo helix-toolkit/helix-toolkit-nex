@@ -118,6 +118,8 @@ public sealed class TextureResource : Resource<Texture>
 /// </remarks>
 public sealed class BufferResource : Resource<Buffer>
 {
+    public uint64_t GpuAddress => Context is null ? 0 : Context.GpuAddress(_handle);
+
     /// <summary>
     /// Initializes a new null buffer resource.
     /// </summary>

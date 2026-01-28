@@ -113,6 +113,32 @@ internal static class HxVkExtensions
         return 1;
     }
 
+    public static VkVertexInputRate ToVk(this VertexInputRate rate)
+    {
+        switch (rate)
+        {
+            case VertexInputRate.Vertex:
+                return VK.VK_VERTEX_INPUT_RATE_VERTEX;
+            case VertexInputRate.Instance:
+                return VK.VK_VERTEX_INPUT_RATE_INSTANCE;
+        }
+        HxDebug.Assert(false, $"VertexInputRate value not handled: {rate}");
+        return VK.VK_VERTEX_INPUT_RATE_VERTEX;
+    }
+
+    public static VertexInputRate ToHx(this VkVertexInputRate rate)
+    {
+        switch (rate)
+        {
+            case VK.VK_VERTEX_INPUT_RATE_VERTEX:
+                return VertexInputRate.Vertex;
+            case VK.VK_VERTEX_INPUT_RATE_INSTANCE:
+                return VertexInputRate.Instance;
+        }
+        HxDebug.Assert(false, $"VkVertexInputRate value not handled: {rate}");
+        return VertexInputRate.Vertex;
+    }
+
     public static uint32_t GetNumImagePlanes(this VkFormat format)
     {
         switch (format)
@@ -230,6 +256,17 @@ internal static class HxVkExtensions
                         VkPipelineStageFlags2.ColorAttachmentOutput
                         | VkPipelineStageFlags2.ComputeShader,
                     Access = VkAccessFlags2.None | VkAccessFlags2.ShaderWrite,
+                };
+            case VkImageLayout.RenderingLocalRead:
+                return new StageAccess2
+                {
+                    Stage =
+                        VkPipelineStageFlags2.ColorAttachmentOutput
+                        | VkPipelineStageFlags2.FragmentShader,
+                    Access =
+                        VkAccessFlags2.ColorAttachmentRead
+                        | VkAccessFlags2.ColorAttachmentWrite
+                        | VkAccessFlags2.InputAttachmentRead,
                 };
             default:
                 HxDebug.Assert(false, "Unsupported image layout transition!");

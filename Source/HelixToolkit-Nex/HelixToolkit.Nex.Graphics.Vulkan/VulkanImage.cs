@@ -1,3 +1,5 @@
+using Vortice.Vulkan;
+
 namespace HelixToolkit.Nex.Graphics.Vulkan;
 
 internal sealed class VulkanImage : IDisposable
@@ -34,6 +36,9 @@ internal sealed class VulkanImage : IDisposable
     public readonly VkImageView[][] ImageViewForFramebuffer = new VkImageView[
         Constants.MAX_MIP_LEVELS
     ][]; // max 6 faces for cubemap rendering
+    public readonly VkImageView[] ImageViewForFramebufferMultiview = new VkImageView[
+        Constants.MAX_MIP_LEVELS
+    ];
     public readonly VkImageUsageFlags UsageFlags = 0;
     public VkImage Image => _vkImage;
 
@@ -143,6 +148,26 @@ internal sealed class VulkanImage : IDisposable
             HxDebug.Assert(SampleCount == VK.VK_SAMPLE_COUNT_1_BIT);
             HxDebug.Assert(NumLayers == 1);
             HxDebug.Assert(NumLevels == 1);
+            VkFormatProperties2 props = new();
+            unsafe
+            {
+                VK.vkGetPhysicalDeviceFormatProperties2(
+                    _ctx!.VkPhysicalDevice,
+                    ImageFormat,
+                    &props
+                );
+                if (
+                    !props.formatProperties.optimalTilingFeatures.HasFlag(
+                        VK.VK_FORMAT_FEATURE_DISJOINT_BIT
+                    )
+                )
+                {
+                    _logger.LogWarning(
+                        "VK_FORMAT_FEATURE_DISJOINT_BIT is not supported for VkFormat = {FORMAT}",
+                        ImageFormat
+                    );
+                }
+            }
             vkCreateFlags |=
                 VK.VK_IMAGE_CREATE_DISJOINT_BIT
                 | VK.VK_IMAGE_CREATE_ALIAS_BIT
@@ -421,7 +446,7 @@ internal sealed class VulkanImage : IDisposable
         uint32_t numLevels,
         uint32_t baseLayer,
         uint32_t numLayers,
-        in VkComponentMapping mapping,
+        in VkComponentMapping components,
         in VkSamplerYcbcrConversionInfo? ycbcr = null,
         string? debugName = null
     )
@@ -437,7 +462,7 @@ internal sealed class VulkanImage : IDisposable
                 image = _vkImage,
                 viewType = type,
                 format = format,
-                components = mapping,
+                components = components,
                 subresourceRange = new()
                 {
                     aspectMask = aspectMask,
@@ -696,26 +721,33 @@ internal sealed class VulkanImage : IDisposable
     public VkImageView GetOrCreateVkImageViewForFramebuffer(
         VulkanContext ctx,
         uint8_t level,
-        uint16_t layer
+        uint16_t layer,
+        uint viewMask
     )
     {
         HxDebug.Assert(level < Constants.MAX_MIP_LEVELS);
         HxDebug.Assert(layer < ImageViewForFramebuffer[0].Length);
+        HxDebug.Assert(layer == 0 || viewMask == 0); // viewMask is only for multiview.
 
         if (level >= Constants.MAX_MIP_LEVELS || layer >= ImageViewForFramebuffer[0].Length)
         {
             return VkImageView.Null;
         }
 
-        if (ImageViewForFramebuffer[level][layer] != VkImageView.Null)
+        if (viewMask == 0 && ImageViewForFramebuffer[level][layer] != VkImageView.Null)
         {
             return ImageViewForFramebuffer[level][layer];
+        }
+
+        if (viewMask != 0 && ImageViewForFramebufferMultiview[level] != VkImageView.Null)
+        {
+            return ImageViewForFramebufferMultiview[level];
         }
 
         var debugNameImageView =
             $"Image View: '{_debugName}' imageViewForFramebuffer_[{level}][{layer}]";
 
-        ImageViewForFramebuffer[level][layer] = CreateImageView(
+        var view = CreateImageView(
             ctx.GetVkDevice(),
             VK.VK_IMAGE_VIEW_TYPE_2D,
             ImageFormat,
@@ -726,7 +758,14 @@ internal sealed class VulkanImage : IDisposable
             1u,
             debugNameImageView
         );
-
+        if (viewMask == 0)
+        {
+            ImageViewForFramebuffer[level][layer] = view;
+        }
+        else
+        {
+            ImageViewForFramebufferMultiview[level] = view;
+        }
         return ImageViewForFramebuffer[level][layer];
     }
 
@@ -820,6 +859,25 @@ internal sealed class VulkanImage : IDisposable
                                 },
                                 SubmitHandle.Null
                             );
+                            ImageViewForFramebuffer[i][j] = VkImageView.Null;
+                        }
+                    }
+                    for (size_t j = 0; j < 1; j++)
+                    {
+                        VkImageView v = ImageViewForFramebufferMultiview[i];
+                        if (v.IsNotNull)
+                        {
+                            _ctx!.DeferredTask(
+                                () =>
+                                {
+                                    unsafe
+                                    {
+                                        VK.vkDestroyImageView(vkDevice, v, null);
+                                    }
+                                },
+                                SubmitHandle.Null
+                            );
+                            ImageViewForFramebufferMultiview[i] = VkImageView.Null;
                         }
                     }
                 }

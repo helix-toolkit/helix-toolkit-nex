@@ -392,7 +392,7 @@ internal sealed partial class VulkanContext : Initializable, IContext
                     {
                         binding = attr.Binding,
                         stride = vstate.Bindings[attr.Binding].Stride,
-                        inputRate = VK.VK_VERTEX_INPUT_RATE_VERTEX,
+                        inputRate = vstate.Bindings[attr.Binding].InputRate.ToVk(),
                     };
                 }
             }
@@ -637,7 +637,10 @@ internal sealed partial class VulkanContext : Initializable, IContext
             // For now, always set this flag so we can read it back
             usageFlags |= VK.VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
         }
-
+        if (desc.Usage.HasFlag(TextureUsageBits.InputAttachment))
+        {
+            usageFlags |= VK.VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
+        }
         HxDebug.Assert(usageFlags != 0, "Invalid usage flags");
 
         VkMemoryPropertyFlags memFlags = desc.Storage.ToVkMemoryPropertyFlags();
@@ -720,10 +723,10 @@ internal sealed partial class VulkanContext : Initializable, IContext
         );
         VkComponentMapping mapping = new()
         {
-            r = desc.Swizzle.R.ToVk(),
-            g = desc.Swizzle.G.ToVk(),
-            b = desc.Swizzle.B.ToVk(),
-            a = desc.Swizzle.A.ToVk(),
+            r = desc.Components.R.ToVk(),
+            g = desc.Components.G.ToVk(),
+            b = desc.Components.B.ToVk(),
+            a = desc.Components.A.ToVk(),
         };
 
         uint32_t numPlanes = desc.Format.GetNumImagePlanes();
@@ -867,10 +870,10 @@ internal sealed partial class VulkanContext : Initializable, IContext
 
         VkComponentMapping mapping = new()
         {
-            r = desc.Swizzle.R.ToVk(),
-            g = desc.Swizzle.G.ToVk(),
-            b = desc.Swizzle.B.ToVk(),
-            a = desc.Swizzle.A.ToVk(),
+            r = desc.Components.R.ToVk(),
+            g = desc.Components.G.ToVk(),
+            b = desc.Components.B.ToVk(),
+            a = desc.Components.A.ToVk(),
         };
 
         HxDebug.Assert(image.ImageFormat.GetNumImagePlanes() == 1, "Unsupported multiplanar image");
@@ -897,7 +900,7 @@ internal sealed partial class VulkanContext : Initializable, IContext
 
         if (image.UsageFlags.HasFlag(VK.VK_IMAGE_USAGE_STORAGE_BIT))
         {
-            if (!desc.Swizzle.Identity())
+            if (!desc.Components.Identity())
             {
                 // use identity swizzle for storage images
                 image.ImageViewStorage = image.CreateImageView(

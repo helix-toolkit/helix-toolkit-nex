@@ -39,6 +39,14 @@ public struct VertexInputBinding()
     /// The stride in bytes between consecutive vertex elements in the buffer.
     /// </summary>
     public uint32_t Stride;
+
+    /// <summary>
+    /// Specifies the rate at which vertex data is consumed by the input assembler.
+    /// </summary>
+    /// <remarks>This value determines whether the vertex data is processed per-vertex or per-instance. Common
+    /// values include <see cref="VertexInputRate.PerVertex"/> for per-vertex processing  and <see
+    /// cref="VertexInputRate.PerInstance"/> for per-instance processing.</remarks>
+    public VertexInputRate InputRate;
 }
 
 /// <summary>
@@ -109,9 +117,16 @@ public struct VertexInput()
     public readonly uint32_t GetVertexSize()
     {
         uint32_t vertexSize = 0;
-        for (uint32_t i = 0; i < MAX_VERTEX_ATTRIBUTES && Attributes[i].Format != VertexFormat.Invalid; i++)
+        for (
+            uint32_t i = 0;
+            i < MAX_VERTEX_ATTRIBUTES && Attributes[i].Format != VertexFormat.Invalid;
+            i++
+        )
         {
-            HxDebug.Assert(Attributes[i].Offset == vertexSize, "Unsupported vertex attributes format");
+            HxDebug.Assert(
+                Attributes[i].Offset == vertexSize,
+                "Unsupported vertex attributes format"
+            );
             vertexSize += Attributes[i].Format.GetVertexFormatSize();
         }
         return vertexSize;

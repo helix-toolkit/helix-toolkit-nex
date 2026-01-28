@@ -21,7 +21,15 @@ public interface ICommandBuffer
     /// Transitions a texture to a shader read-only state, making it accessible for sampling in shaders.
     /// </summary>
     /// <param name="surface">The texture handle to transition.</param>
-    void TransitionToShaderReadOnly(TextureHandle surface);
+    void TransitionToShaderReadOnly(TextureHandle handle);
+
+    /// <summary>
+    /// Transitions the specified texture to a state suitable for local read operations during rendering.
+    /// </summary>
+    /// <remarks>This method prepares the texture for read-only access in the rendering pipeline. Ensure that
+    /// the texture      is not being written to by other operations when calling this method.</remarks>
+    /// <param name="surface">The texture handle representing the surface to transition. Cannot be null.</param>
+    void TransitionToRenderingLocalRead(TextureHandle handle);
 
     /// <summary>
     /// Begins a debug group with a label and color for debugging and profiling tools.
@@ -74,6 +82,11 @@ public interface ICommandBuffer
     /// Ends the current rendering pass started by <see cref="BeginRendering"/>.
     /// </summary>
     void EndRendering();
+
+    /// <summary>
+    /// Begins a new subpass within the current rendering pass.
+    /// </summary>
+    void NextSubpass();
 
     /// <summary>
     /// Binds a viewport for subsequent rendering operations.
@@ -235,6 +248,25 @@ public interface ICommandBuffer
             );
         }
     }
+
+    /// <summary>
+    /// Copies a specified range of data from one buffer to another.
+    /// </summary>
+    /// <remarks>Both the source and destination buffers must be valid and large enough to accommodate the
+    /// specified offsets and size. Overlapping regions between the source and destination buffers are not supported and
+    /// may result in undefined behavior.</remarks>
+    /// <param name="src">The source buffer from which data will be copied.</param>
+    /// <param name="srcOffset">The byte offset within the source buffer at which the copy operation begins.</param>
+    /// <param name="dst">The destination buffer to which data will be copied.</param>
+    /// <param name="dstOffset">The byte offset within the destination buffer at which the copy operation begins.</param>
+    /// <param name="size">The number of bytes to copy from the source buffer to the destination buffer.</param>
+    void CopyBuffer(
+        in BufferHandle src,
+        size_t srcOffset,
+        in BufferHandle dst,
+        size_t dstOffset,
+        size_t size
+    );
 
     /// <summary>
     /// Draws non-indexed primitives.

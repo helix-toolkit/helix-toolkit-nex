@@ -88,6 +88,11 @@ public enum TextureUsageBits : uint8_t
     /// Texture can be used as a render target attachment (color, depth, or stencil).
     /// </summary>
     Attachment = 1 << 2,
+
+    /// <summary>
+    /// Texture can be used as input attachment in a render pass.
+    /// </summary>
+    InputAttachment = 1 << 3,
 }
 
 /// <summary>
@@ -101,12 +106,12 @@ public enum Swizzle : uint8_t
     Default = 0,
 
     /// <summary>
-    /// Swizzle to constant 0.
+    /// Components to constant 0.
     /// </summary>
     Swizzle_0,
 
     /// <summary>
-    /// Swizzle to constant 1.
+    /// Components to constant 1.
     /// </summary>
     Swizzle_1,
 
@@ -137,22 +142,22 @@ public enum Swizzle : uint8_t
 public struct ComponentMapping()
 {
     /// <summary>
-    /// Swizzle for the red component.
+    /// Components for the red component.
     /// </summary>
     public Swizzle R = Swizzle.Default;
 
     /// <summary>
-    /// Swizzle for the green component.
+    /// Components for the green component.
     /// </summary>
     public Swizzle G = Swizzle.Default;
 
     /// <summary>
-    /// Swizzle for the blue component.
+    /// Components for the blue component.
     /// </summary>
     public Swizzle B = Swizzle.Default;
 
     /// <summary>
-    /// Swizzle for the alpha component.
+    /// Components for the alpha component.
     /// </summary>
     public Swizzle A = Swizzle.Default;
 
@@ -222,7 +227,7 @@ public struct TextureDesc()
     /// <summary>
     /// Component swizzling configuration for the texture.
     /// </summary>
-    public ComponentMapping Swizzle;
+    public ComponentMapping Components;
 
     /// <summary>
     /// Pointer to initial data to upload. Can be IntPtr.Zero if no initial data.
@@ -281,5 +286,5 @@ public struct TextureViewDesc()
     /// <summary>
     /// Component swizzling configuration for the texture view.
     /// </summary>
-    public ComponentMapping Swizzle;
+    public ComponentMapping Components;
 }

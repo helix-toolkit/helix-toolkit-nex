@@ -11,7 +11,7 @@ public sealed class RenderPass
     public struct AttachmentDesc()
     {
         public LoadOp LoadOp = LoadOp.Invalid;
-        public StoreOp StoreOp = StoreOp.Store;
+        public StoreOp StoreOp = StoreOp.DontCare;
         public ResolveMode ResolveMode = ResolveMode.Average;
         public uint8_t Layer = 0;
         public uint8_t Level = 0;

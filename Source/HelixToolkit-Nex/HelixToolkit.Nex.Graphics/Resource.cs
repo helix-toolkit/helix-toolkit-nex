@@ -8,8 +8,15 @@ namespace HelixToolkit.Nex.Graphics;
 /// <typeparam name="T"></typeparam>
 public abstract class Resource<T> : IDisposable
 {
-    private IContext? _ctx = null;
+    protected IContext? _ctx = null;
     protected Handle<T> _handle;
+    public uint32_t Gen => _handle.Gen;
+
+    public uint32_t Index => _handle.Index;
+    public bool Valid => _handle.Valid && _ctx != null;
+
+    public bool Empty => _handle.Empty || _ctx == null;
+    public IContext? Context => _ctx;
 
     public Resource()
     {
@@ -21,10 +28,6 @@ public abstract class Resource<T> : IDisposable
         _ctx = ctx;
         _handle = handle;
     }
-
-    public bool Valid => _handle.Valid && _ctx != null;
-
-    public bool Empty => _handle.Empty || _ctx == null;
 
     public void Reset()
     {
@@ -38,10 +41,6 @@ public abstract class Resource<T> : IDisposable
     }
 
     protected abstract void OnDestroyHandle(IContext ctx);
-
-    public uint32_t Gen => _handle.Gen;
-
-    public uint32_t Index => _handle.Index;
 
     public nint IndexAsVoid()
     {

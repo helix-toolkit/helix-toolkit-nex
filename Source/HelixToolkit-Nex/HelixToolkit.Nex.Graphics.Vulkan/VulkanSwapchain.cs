@@ -100,9 +100,19 @@ internal sealed class VulkanSwapchain : IDisposable
                             return VkPresentModeKHR.Immediate;
                         }
                     }
-                    return modes.Contains(VkPresentModeKHR.Mailbox)
-                        ? VkPresentModeKHR.Mailbox
-                        : VK.VK_PRESENT_MODE_FIFO_KHR;
+                    if (modes.Contains(VkPresentModeKHR.Mailbox))
+                    {
+                        return VkPresentModeKHR.Mailbox;
+                    }
+                    if (modes.Contains(VkPresentModeKHR.Immediate))
+                    {
+                        return VkPresentModeKHR.Immediate;
+                    }
+                    if (modes.Contains(VkPresentModeKHR.FifoRelaxed))
+                    {
+                        return VkPresentModeKHR.FifoRelaxed;
+                    }
+                    return VkPresentModeKHR.Fifo;
                 }
             );
 

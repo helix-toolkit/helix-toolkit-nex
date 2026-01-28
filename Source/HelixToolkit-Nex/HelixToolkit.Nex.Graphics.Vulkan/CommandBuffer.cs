@@ -1,3 +1,7 @@
+using System.Data;
+using System.Reflection.Metadata;
+using Vortice.Vulkan;
+
 namespace HelixToolkit.Nex.Graphics.Vulkan;
 
 /// <summary>
@@ -12,6 +16,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
 {
     private static readonly ILogger _logger = LogManager.Create<CommandBuffer>();
     private readonly VulkanContext _ctx = context;
+    private InputAttachment _inputAttachments = new();
 
     /// <inheritdoc/>
     public IContext Context => _ctx;
@@ -262,6 +267,26 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
             }
         }
 
+        // calculate and transition input attachments
+        {
+            uint32_t i = 0;
+            while (i != Constants.MAX_COLOR_ATTACHMENTS && deps.InputAttachments[i])
+            {
+                var handle = deps.InputAttachments[i];
+                var tex = _ctx.TexturesPool.Get(handle);
+                HxDebug.Assert(tex != null && tex.Valid);
+                TransitionToRenderingLocalRead(handle);
+                _inputAttachments.ImageInfos[i] = new()
+                {
+                    sampler = VkSampler.Null,
+                    imageView = tex!.ImageView,
+                    imageLayout = VkImageLayout.RenderingLocalRead,
+                };
+                i++;
+            }
+            _inputAttachments.Count = i;
+        }
+
         VkSampleCountFlags samples = VkSampleCountFlags.Count1;
         uint32_t mipLevel = 0;
         uint32_t fbWidth = 0;
@@ -318,9 +343,10 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
                 imageView = colorTexture.GetOrCreateVkImageViewForFramebuffer(
                     _ctx,
                     descColor.Level,
-                    descColor.Layer
+                    descColor.Layer,
+                    ViewMask
                 ),
-                imageLayout = VK.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                imageLayout = colorTexture.ImageLayout,
                 resolveMode =
                     samples > VkSampleCountFlags.Count1
                         ? descColor.ResolveMode.ResolveModeToVkResolveModeFlagBits(
@@ -359,7 +385,8 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
                     colorResolveTexture.GetOrCreateVkImageViewForFramebuffer(
                         _ctx,
                         descColor.Level,
-                        descColor.Layer
+                        descColor.Layer,
+                        ViewMask
                     );
                 colorAttachments[i].resolveImageLayout =
                     VK.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
@@ -393,7 +420,8 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
                 imageView = depthTexture.GetOrCreateVkImageViewForFramebuffer(
                     _ctx,
                     descDepth.Level,
-                    descDepth.Layer
+                    descDepth.Layer,
+                    ViewMask
                 ),
                 imageLayout = VK.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                 resolveMode = VK.VK_RESOLVE_MODE_NONE,
@@ -432,7 +460,8 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
                     depthResolveTexture.GetOrCreateVkImageViewForFramebuffer(
                         _ctx,
                         descDepth.Level,
-                        descDepth.Layer
+                        descDepth.Layer,
+                        ViewMask
                     );
                 depthAttachment.resolveImageLayout =
                     VK.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
@@ -615,6 +644,34 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
                 VK.VK_PIPELINE_BIND_POINT_GRAPHICS,
                 rps.PipelineLayout
             );
+            if (_inputAttachments.Count > 0)
+            {
+                unsafe
+                {
+                    var writes = stackalloc VkWriteDescriptorSet[Constants.MAX_COLOR_ATTACHMENTS];
+                    using var pImageInfos = _inputAttachments.ImageInfos.Pin();
+                    for (uint i = 0; i < _inputAttachments.Count; ++i)
+                    {
+                        writes[i] = new()
+                        {
+                            dstSet = VkDescriptorSet.Null, // ignored for push descriptors
+                            dstBinding = i,
+                            dstArrayElement = 0,
+                            descriptorCount = 1,
+                            descriptorType = VkDescriptorType.InputAttachment,
+                            pImageInfo = &((VkDescriptorImageInfo*)pImageInfos.Pointer)[i],
+                        };
+                    }
+                    VK.vkCmdPushDescriptorSetKHR(
+                        Wrapper.Instance,
+                        VK.VK_PIPELINE_BIND_POINT_GRAPHICS,
+                        rps.PipelineLayout,
+                        VulkanContext.KDescriptorSetInputAttachments,
+                        _inputAttachments.Count,
+                        writes
+                    );
+                }
+            }
         }
     }
 
@@ -1205,6 +1262,33 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
     }
 
     /// <inheritdoc/>
+    public void NextSubpass()
+    {
+        HxDebug.Assert(IsRendering);
+        unsafe
+        {
+            VkMemoryBarrier2 memoryBarrier = new()
+            {
+                sType = VK.VK_STRUCTURE_TYPE_MEMORY_BARRIER_2,
+                srcStageMask = VkPipelineStageFlags2.ColorAttachmentOutput,
+                srcAccessMask = VkAccessFlags2.ColorAttachmentWrite,
+                dstStageMask = VkPipelineStageFlags2.FragmentShader,
+                dstAccessMask = VkAccessFlags2.InputAttachmentRead,
+            };
+
+            VkDependencyInfo dependencyInfo = new()
+            {
+                sType = VK.VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+                dependencyFlags = VK.VK_DEPENDENCY_BY_REGION_BIT,
+                memoryBarrierCount = 1,
+                pMemoryBarriers = &memoryBarrier,
+            };
+
+            VK.vkCmdPipelineBarrier2(CmdBuffer, &dependencyInfo);
+        }
+    }
+
+    /// <inheritdoc/>
     public void FillBuffer(in BufferHandle buffer, size_t bufferOffset, size_t size, size_t data)
     {
         HxDebug.Assert(buffer);
@@ -1242,6 +1326,93 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
         }
 
         CmdBuffer.BufferBarrier2(buf, VkPipelineStageFlags2.Transfer, dstStage);
+    }
+
+    /// <inheritdoc/>
+    public void CopyBuffer(
+        in BufferHandle src,
+        size_t srcOffset,
+        in BufferHandle dst,
+        size_t dstOffset,
+        size_t size
+    )
+    {
+        HxDebug.Assert(src.Valid);
+        HxDebug.Assert(dst.Valid);
+        HxDebug.Assert(size > 0);
+
+        if (src == dst)
+        {
+            if (srcOffset < dstOffset)
+            {
+                HxDebug.Assert(dstOffset - srcOffset >= size);
+            }
+            else
+            {
+                HxDebug.Assert(srcOffset - dstOffset >= size);
+            }
+        }
+
+        var srcBuf = _ctx.BuffersPool.Get(src);
+        var dstBuf = _ctx.BuffersPool.Get(dst);
+        HxDebug.Assert(srcBuf != null && srcBuf.Valid);
+        HxDebug.Assert(dstBuf != null && dstBuf.Valid);
+        CmdBuffer.BufferBarrier2(
+            srcBuf!,
+            VkPipelineStageFlags2.AllCommands,
+            VkPipelineStageFlags2.Transfer
+        );
+        CmdBuffer.BufferBarrier2(
+            dstBuf!,
+            VkPipelineStageFlags2.AllCommands,
+            VkPipelineStageFlags2.Transfer
+        );
+        unsafe
+        {
+            VkBufferCopy2 copyRegion = new()
+            {
+                sType = VkStructureType.BufferCopy2,
+                srcOffset = srcOffset,
+                dstOffset = dstOffset,
+                size = size,
+            };
+
+            VkCopyBufferInfo2 copyInfo = new()
+            {
+                sType = VkStructureType.CopyBufferInfo2,
+                srcBuffer = srcBuf!.VkBuffer,
+                dstBuffer = dstBuf!.VkBuffer,
+                regionCount = 1,
+                pRegions = &copyRegion,
+            };
+
+            VK.vkCmdCopyBuffer2(CmdBuffer, &copyInfo);
+
+            var srcStage = VkPipelineStageFlags2.VertexShader;
+
+            if (srcBuf.VkUsageFlags.HasFlag(VK.VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT))
+            {
+                srcStage |= VkPipelineStageFlags2.DrawIndirect;
+            }
+            if (srcBuf.VkUsageFlags.HasFlag(VK.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT))
+            {
+                srcStage |= VkPipelineStageFlags2.VertexInput;
+            }
+
+            var dstStage = VkPipelineStageFlags2.VertexShader;
+
+            if (dstBuf.VkUsageFlags.HasFlag(VK.VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT))
+            {
+                dstStage |= VkPipelineStageFlags2.DrawIndirect;
+            }
+            if (dstBuf.VkUsageFlags.HasFlag(VK.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT))
+            {
+                dstStage |= VkPipelineStageFlags2.VertexInput;
+            }
+
+            CmdBuffer.BufferBarrier2(srcBuf!, VkPipelineStageFlags2.Transfer, srcStage);
+            CmdBuffer.BufferBarrier2(dstBuf!, VkPipelineStageFlags2.Transfer, dstStage);
+        }
     }
 
     /// <inheritdoc/>
@@ -1417,6 +1588,30 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
                 )
             );
         }
+    }
+
+    /// <inheritdoc/>
+    public void TransitionToRenderingLocalRead(TextureHandle handle)
+    {
+        var img = _ctx.TexturesPool.Get(handle);
+        HxDebug.Assert(img is not null && !img.IsSwapchainImage);
+        HxDebug.Assert(
+            img!.UsageFlags.HasFlag(VK.VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT),
+            "Input attachment texture must have VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT (lvk::TextureUsageBits_InputAttachment)"
+        );
+
+        var flags = img.GetImageAspectFlags();
+        img.TransitionLayout(
+            Wrapper.Instance,
+            VkImageLayout.RenderingLocalRead,
+            new VkImageSubresourceRange(
+                flags,
+                0,
+                VK.VK_REMAINING_MIP_LEVELS,
+                0,
+                VK.VK_REMAINING_ARRAY_LAYERS
+            )
+        );
     }
 
     /// <inheritdoc/>
