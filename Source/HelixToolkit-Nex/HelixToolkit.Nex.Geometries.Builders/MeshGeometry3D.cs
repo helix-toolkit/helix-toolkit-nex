@@ -68,6 +68,7 @@ public sealed class MeshGeometry3D
         {
             geometry.Indices.Add((uint)TriangleIndices[i]);
         }
+        geometry.UpdateBounds();
         return geometry;
     }
 }

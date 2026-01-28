@@ -1,5 +1,6 @@
 #include "HxHeaders/HeaderCompute.glsl"
 #include "HxHeaders/ModelMatrixStruct.glsl"
+#include "HxHeaders/MeshDraw.glsl"
 // Enable subgroup extensions for efficient output compaction if allowed
 #extension GL_KHR_shader_subgroup_basic : enable
 #extension GL_KHR_shader_subgroup_ballot : enable
@@ -19,17 +20,15 @@ struct DrawIndexedIndirectCommand {
     uint firstInstance;
 };
 
-// Instance Data provided per mesh
-// Layout designed for std430 alignment (16-byte alignment)
 @code_gen
-struct InstanceData {
-    vec3 boxMin;            // 12 bytes (Local Space)
-    float sphereRadius;     // 4 bytes  (Local Space)
-    vec3 boxMax;            // 12 bytes (Local Space)
-    uint meshId;            // 4 bytes
-    vec3 sphereCenter;      // 12 bytes (Local Space)
-    uint padding;           // 4 bytes
-}; // Total: 112 bytes
+struct MeshBoundData {
+    vec3 boxMin;        // Local Space
+    float _padding0;
+    vec3 boxMax;        // Local Space
+    float _padding1;
+    vec3 sphereCenter;  // Local Space
+    float sphereRadius; // Local Space
+};
 
 // Culling Constants
 @code_gen
@@ -51,7 +50,8 @@ struct CullingConstants {
     uint _pad2;
 
     // Buffer Addresses
-    uint64_t instanceBufferAddress;       // Input: InstanceData[]
+    uint64_t meshIdBufferAddress;       // Input: uint[]
+    uint64_t meshBoundBufferAddress;     // Input: MeshBoundData[]
     uint64_t modelMatrixBufferAddress;    // Input: Model Matrices
     uint64_t drawCommandBufferAddress;    // In/Out: DrawIndexedIndirectCommand[]
     uint64_t visibilityBufferAddress;     // Output: uint[] (visible instance indices, optional)
@@ -66,19 +66,23 @@ layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer Cu
     CullingConstants value;
 };
 
-layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer InstanceBuffer {
-    InstanceData instances[];
+layout(buffer_reference, scalar) readonly buffer MeshIdBuffer {
+    uint value[];
+};
+
+layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer MeshBoundBuffer {
+    MeshBoundData value[];
 };
 
 layout(buffer_reference, std430, buffer_reference_align = 4) buffer DrawCommandBuffer {
     DrawIndexedIndirectCommand commands[];
 };
 
-layout(buffer_reference, std430, buffer_reference_align = 4) writeonly buffer VisibilityBuffer {
+layout(buffer_reference, scalar) writeonly buffer VisibilityBuffer {
     uint visibleIndices[];
 };
 
-layout(buffer_reference, std430, buffer_reference_align = 4) buffer DrawCountBuffer {
+layout(buffer_reference, scalar) buffer DrawCountBuffer {
     uint count;
 };
 
@@ -93,10 +97,6 @@ layout(push_constant) uniform CullingPC {
 // Constants
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
-CullingConstants cullingConst = CullingConstants(pc.cullingConstAddress).value;
-
-mat4[] modelMatrices = ModelMatrixBuffer(cullingConst.modelMatrixBufferAddress).models;
-
 // ------------------------------------------------------------------
 // FRUSTUM CULLING FUNCTIONS
 // ------------------------------------------------------------------
@@ -105,7 +105,7 @@ mat4[] modelMatrices = ModelMatrixBuffer(cullingConst.modelMatrixBufferAddress).
 // Distance from point to plane = dot(plane.xyz, point) + plane.w
 // If distance < -radius, object is outside
 
-bool IsVisibleByDistance(vec3 viewCenter, float radius, float maxDistance) {
+bool IsVisibleByDistance(in vec3 viewCenter, float radius, float maxDistance) {
     if (maxDistance <= 0.0) return true;
     // Simple check: closest point on sphere vs max distance
     // Using simple center distance is usually enough, but strictly: center - radius
@@ -115,7 +115,7 @@ bool IsVisibleByDistance(vec3 viewCenter, float radius, float maxDistance) {
 }
 
 // Check if projected sphere size is too small
-bool IsVisibleByScreenSize(vec3 viewCenter, float radius, float minScreenSize, float geometricMeanFov) {
+bool IsVisibleByScreenSize(in vec3 viewCenter, float radius, float minScreenSize, float geometricMeanFov) {
     if (minScreenSize <= 0.0) return true;
     
     float dist = length(viewCenter);
@@ -136,7 +136,7 @@ bool IsVisibleByScreenSize(vec3 viewCenter, float radius, float minScreenSize, f
     return (radius / depth) >= minScreenSize;
 }
 
-bool IsSphereVisible(vec3 center, float radius, vec4 planes[6], uint planeCount) {
+bool IsSphereVisible(in vec3 center, float radius, in vec4 planes[6], uint planeCount) {
     // Clamp to 6 just in case
     uint count = min(planeCount, 6);
     for (uint i = 0; i < count; i++) {
@@ -149,7 +149,7 @@ bool IsSphereVisible(vec3 center, float radius, vec4 planes[6], uint planeCount)
 
 // OBB Culling against planes
 // Based on: transforming AABB center to world, and projecting extents onto plane normal
-bool IsBoxVisible(vec3 center, vec3 extents, mat4 world, vec4 planes[6], uint planeCount) {
+bool IsBoxVisible(in vec3 center, in vec3 extents, in mat4 world, in vec4 planes[6], uint planeCount) {
     // Transform center to world space
     vec3 worldCenter = (world * vec4(center, 1.0)).xyz;
     
@@ -195,27 +195,30 @@ void main() {
     }
 
     // Access Buffers
-    InstanceBuffer instanceBuf = InstanceBuffer(cullingConst.value.instanceBufferAddress);
     DrawCommandBuffer drawCmdBuf = DrawCommandBuffer(cullingConst.value.drawCommandBufferAddress);
+    ModelMatrixBuffer modelMatrixBuf = ModelMatrixBuffer(cullingConst.value.modelMatrixBufferAddress);
+    MeshIdBuffer meshIdBuf = MeshIdBuffer(cullingConst.value.meshIdBufferAddress);
+    MeshBoundBuffer meshBoundBuf = MeshBoundBuffer(cullingConst.value.meshBoundBufferAddress);
     
     // Fetch Instance
-    InstanceData inst = instanceBuf.instances[gID];
+    uint meshId = meshIdBuf.value[gID];
+    MeshBoundData bound = meshBoundBuf.value[meshId];
     
     bool isVisible = true;
 
     // Frustum Culling
     if (cullingConst.value.cullingEnabled != 0) {
-        mat4 worldMatrix = modelMatrices[inst.meshId];
+        mat4 worldMatrix = modelMatrixBuf.models[gID];
         // 1. Sphere Culling (Cheap, fast reject)
         // Transform local sphere center to world
         // Note: Scale is baked into world matrix rows, so simple mult works for uniform scale
         // For non-uniform scale, this approximation might require max scale component
         
-        vec3 worldSphereCenter = (worldMatrix * vec4(inst.sphereCenter, 1.0)).xyz;
+        vec3 worldSphereCenter = (worldMatrix * vec4(bound.sphereCenter, 1.0)).xyz;
         
         // Extract max scale from world matrix for radius scaling
         float maxScale = max(max(length(worldMatrix[0].xyz), length(worldMatrix[1].xyz)), length(worldMatrix[2].xyz));
-        float worldRadius = inst.sphereRadius * maxScale;
+        float worldRadius = bound.sphereRadius * maxScale;
 
         // Use planeCount from constants (default to 6 if not set properly, but usually 5 for infinite far)
         uint pCount = cullingConst.value.planeCount == 0 ? 6 : cullingConst.value.planeCount;
@@ -234,8 +237,8 @@ void main() {
         } 
         else {
             // 2. Box Culling (More accurate for elongated objects)
-            vec3 boxCenter = (inst.boxMin + inst.boxMax) * 0.5;
-            vec3 boxExtents = (inst.boxMax - inst.boxMin) * 0.5;
+            vec3 boxCenter = (bound.boxMin + bound.boxMax) * 0.5;
+            vec3 boxExtents = (bound.boxMax - bound.boxMin) * 0.5;
             
             if (!IsBoxVisible(boxCenter, boxExtents, worldMatrix, cullingConst.value.frustumPlanes, pCount)) {
                 isVisible = false;
@@ -260,7 +263,6 @@ void main() {
     
     uvec4 ballot = subgroupBallot(isVisible);
     uint count = subgroupBallotBitCount(ballot);
-
     if (count > 0) {
         // Leader (first active thread) allocates space in output buffer
         uint baseIndex = 0;

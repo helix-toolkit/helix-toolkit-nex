@@ -38,34 +38,12 @@ namespace HelixToolkit.Nex.Maths
     [StructLayout(LayoutKind.Sequential, Pack = 4)]
     public struct BoundingFrustum : IEquatable<BoundingFrustum>
     {
-        private Matrix _pMatrix;
         private Plane _pNear;
         private Plane _pFar;
         private Plane _pLeft;
         private Plane _pRight;
         private Plane _pTop;
         private Plane _pBottom;
-
-        /// <summary>
-        /// Gets or sets the Matrix that describes this bounding frustum.
-        /// </summary>
-        public Matrix Matrix
-        {
-            readonly get { return _pMatrix; }
-            set
-            {
-                _pMatrix = value;
-                GetPlanesFromMatrix(
-                    ref _pMatrix,
-                    out _pNear,
-                    out _pFar,
-                    out _pLeft,
-                    out _pRight,
-                    out _pTop,
-                    out _pBottom
-                );
-            }
-        }
 
         /// <summary>
         /// Gets the near plane of the BoundingFrustum.
@@ -115,27 +93,9 @@ namespace HelixToolkit.Nex.Maths
             get { return _pBottom; }
         }
 
-        /// <summary>
-        /// Creates a new instance of BoundingFrustum.
-        /// </summary>
-        /// <param name="matrix">Combined matrix that usually takes view × projection matrix.</param>
-        public BoundingFrustum(Matrix matrix)
-        {
-            _pMatrix = matrix;
-            GetPlanesFromMatrix(
-                ref _pMatrix,
-                out _pNear,
-                out _pFar,
-                out _pLeft,
-                out _pRight,
-                out _pTop,
-                out _pBottom
-            );
-        }
-
         public override readonly int GetHashCode()
         {
-            return _pMatrix.GetHashCode();
+            return HashCode.Combine(_pBottom, _pFar, _pLeft, _pRight, _pTop, _pNear);
         }
 
         /// <summary>
@@ -148,7 +108,12 @@ namespace HelixToolkit.Nex.Maths
         [MethodImpl(MethodImplOptions.AggressiveInlining)] // MethodImplOptions.AggressiveInlining
         public readonly bool Equals(ref BoundingFrustum other)
         {
-            return this._pMatrix == other._pMatrix;
+            return _pBottom == other._pBottom
+                && _pFar == other._pFar
+                && _pLeft == other._pLeft
+                && _pRight == other._pRight
+                && _pTop == other._pTop
+                && _pNear == other._pNear;
         }
 
         /// <summary>
@@ -223,61 +188,6 @@ namespace HelixToolkit.Nex.Maths
             };
         }
 
-        private static void GetPlanesFromMatrix(
-            ref Matrix matrix,
-            out Plane near,
-            out Plane far,
-            out Plane left,
-            out Plane right,
-            out Plane top,
-            out Plane bottom
-        )
-        {
-            //http://www.chadvernon.com/blog/resources/directx9/frustum-culling/
-
-            // Left plane
-            left.Normal.X = matrix.M14 + matrix.M11;
-            left.Normal.Y = matrix.M24 + matrix.M21;
-            left.Normal.Z = matrix.M34 + matrix.M31;
-            left.D = matrix.M44 + matrix.M41;
-            left = Plane.Normalize(left);
-
-            // Right plane
-            right.Normal.X = matrix.M14 - matrix.M11;
-            right.Normal.Y = matrix.M24 - matrix.M21;
-            right.Normal.Z = matrix.M34 - matrix.M31;
-            right.D = matrix.M44 - matrix.M41;
-            right = Plane.Normalize(right);
-
-            // Top plane
-            top.Normal.X = matrix.M14 - matrix.M12;
-            top.Normal.Y = matrix.M24 - matrix.M22;
-            top.Normal.Z = matrix.M34 - matrix.M32;
-            top.D = matrix.M44 - matrix.M42;
-            top = Plane.Normalize(top);
-
-            // Bottom plane
-            bottom.Normal.X = matrix.M14 + matrix.M12;
-            bottom.Normal.Y = matrix.M24 + matrix.M22;
-            bottom.Normal.Z = matrix.M34 + matrix.M32;
-            bottom.D = matrix.M44 + matrix.M42;
-            bottom = Plane.Normalize(bottom);
-
-            // Near plane
-            near.Normal.X = matrix.M13;
-            near.Normal.Y = matrix.M23;
-            near.Normal.Z = matrix.M33;
-            near.D = matrix.M43;
-            near = Plane.Normalize(near);
-
-            // Far plane
-            far.Normal.X = matrix.M14 - matrix.M13;
-            far.Normal.Y = matrix.M24 - matrix.M23;
-            far.Normal.Z = matrix.M34 - matrix.M33;
-            far.D = matrix.M44 - matrix.M43;
-            far = Plane.Normalize(far);
-        }
-
         private static Vector3 Get3PlanesInterPoint(ref Plane p1, ref Plane p2, ref Plane p3)
         {
             //P = -d1 * N2xN3 / N1.N2xN3 - d2 * N3xN1 / N2.N3xN1 - d3 * N1xN2 / N3.N1xN2
@@ -306,57 +216,38 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="zfar">The zfar.</param>
         /// <param name="aspect">The aspect.</param>
         /// <returns>The bounding frustum calculated from perspective camera</returns>
-        public static BoundingFrustum FromCamera(
-            Vector3 cameraPos,
-            Vector3 lookDir,
-            Vector3 upDir,
+        public static BoundingFrustum FromCameraInverseZ(
+            in Vector3 cameraPos,
+            in Vector3 lookDir,
+            in Vector3 upDir,
             float fov,
             float znear,
             float zfar,
             float aspect
         )
         {
-            //http://knol.google.com/k/view-frustum
+            var view = Matrix.CreateLookAt(cameraPos, cameraPos + lookDir, upDir);
+            var projection = MatrixHelper.PerspectiveFovRHReverseZ(fov, aspect, znear, zfar);
+            var viewProj = Matrix.Multiply(view, projection);
+            return FromViewProjectInversedZ(in viewProj);
+        }
 
-            lookDir = Vector3.Normalize(lookDir);
-            upDir = Vector3.Normalize(upDir);
-
-            Vector3 nearCenter = cameraPos + lookDir * znear;
-            Vector3 farCenter = cameraPos + lookDir * zfar;
-            float nearHalfHeight = (float)(znear * Math.Tan(fov / 2f));
-            float farHalfHeight = (float)(zfar * Math.Tan(fov / 2f));
-            float nearHalfWidth = nearHalfHeight * aspect;
-            float farHalfWidth = farHalfHeight * aspect;
-
-            Vector3 rightDir = Vector3.Normalize(Vector3.Cross(upDir, lookDir));
-            Vector3 Near1 = nearCenter - nearHalfHeight * upDir + nearHalfWidth * rightDir;
-            Vector3 Near2 = nearCenter + nearHalfHeight * upDir + nearHalfWidth * rightDir;
-            Vector3 Near3 = nearCenter + nearHalfHeight * upDir - nearHalfWidth * rightDir;
-            Vector3 Near4 = nearCenter - nearHalfHeight * upDir - nearHalfWidth * rightDir;
-            Vector3 Far1 = farCenter - farHalfHeight * upDir + farHalfWidth * rightDir;
-            Vector3 Far2 = farCenter + farHalfHeight * upDir + farHalfWidth * rightDir;
-            Vector3 Far3 = farCenter + farHalfHeight * upDir - farHalfWidth * rightDir;
-            Vector3 Far4 = farCenter - farHalfHeight * upDir - farHalfWidth * rightDir;
-
-            BoundingFrustum result = new()
+        public static BoundingFrustum FromViewProjectInversedZ(in Matrix viewProj)
+        {
+            var col0 = viewProj.GetColumn(0);
+            var col1 = viewProj.GetColumn(1);
+            var col2 = viewProj.GetColumn(2);
+            var col3 = viewProj.GetColumn(3);
+            BoundingFrustum frustum = new()
             {
-                _pNear = Plane.CreateFromVertices(Near1, Near2, Near3),
-                _pFar = Plane.CreateFromVertices(Far3, Far2, Far1),
-                _pLeft = Plane.CreateFromVertices(Near4, Near3, Far3),
-                _pRight = Plane.CreateFromVertices(Far1, Far2, Near2),
-                _pTop = Plane.CreateFromVertices(Near2, Far2, Far3),
-                _pBottom = Plane.CreateFromVertices(Far4, Far1, Near1),
-                _pMatrix =
-                    MatrixHelper.LookAtRH(cameraPos, cameraPos + lookDir * 10, upDir)
-                    * MatrixHelper.PerspectiveFovRHReverseZ(fov, aspect, znear, zfar),
+                _pLeft = new Plane(col3 + col0).Normalize(),
+                _pRight = new Plane(col3 - col0).Normalize(),
+                _pBottom = new Plane(col3 + col1).Normalize(),
+                _pTop = new Plane(col3 - col1).Normalize(),
+                _pNear = new Plane(col3 - col2).Normalize(),
+                _pFar = viewProj.M33 != 0 ? new Plane(col2).Normalize() : new Plane(),
             };
-            //result.pNear.Normalize();
-            //result.pFar.Normalize();
-            //result.pLeft.Normalize();
-            //result.pRight.Normalize();
-            //result.pTop.Normalize();
-            //result.pBottom.Normalize();
-            return result;
+            return frustum;
         }
 
         /// <summary>
@@ -364,9 +255,9 @@ namespace HelixToolkit.Nex.Maths
         /// </summary>
         /// <param name="cameraParams">The camera params.</param>
         /// <returns>The bounding frustum from camera params</returns>
-        public static BoundingFrustum FromCamera(FrustumCameraParams cameraParams)
+        public static BoundingFrustum FromCameraInverseZ(in FrustumCameraParams cameraParams)
         {
-            return FromCamera(
+            return FromCameraInverseZ(
                 cameraParams.Position,
                 cameraParams.LookAtDir,
                 cameraParams.UpDir,

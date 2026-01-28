@@ -106,6 +106,7 @@ internal sealed partial class VulkanContext
     [
         VK.VK_KHR_SWAPCHAIN_EXTENSION_NAME,
         VK.VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME,
+        VK.VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
     ];
     private readonly List<VkUtf8String> _instanceExtensions = [];
 
@@ -936,7 +937,7 @@ internal sealed partial class VulkanContext
             _defaultSampler = sampler;
             HxDebug.Assert(
                 SamplersPool.Count == 1,
-                "DefaultInvZ sampler should be created successfully"
+                "Default sampler should be created successfully"
             );
         }
         GrowDescriptorPool(CurrentMaxTextures, CurrentMaxSamplers);

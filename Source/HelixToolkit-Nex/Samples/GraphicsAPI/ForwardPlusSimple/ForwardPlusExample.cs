@@ -75,7 +75,7 @@ public class ForwardPlusExample
     private readonly RenderPass _toneMappingPass = new();
     private readonly Framebuffer _framebuffer = new();
 
-    private DepthState _depthState = DepthState.DefaultInvZ;
+    private DepthState _depthState = DepthState.DefaultReversedZ;
     private DepthState _depthStateNoWrite = new DepthState
     {
         CompareOp = CompareOp.GreaterEqual,

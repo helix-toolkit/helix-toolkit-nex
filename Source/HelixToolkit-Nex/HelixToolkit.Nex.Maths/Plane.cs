@@ -113,6 +113,18 @@ namespace HelixToolkit.Nex.Maths
         }
 
         /// <summary>
+        /// Converts the specified <see cref="Plane"/> to a <see cref="Vector4"/> representation.
+        /// </summary>
+        /// <param name="p">The <see cref="Plane"/> to convert. The plane's normal vector and distance from the origin are used to
+        /// construct the resulting <see cref="Vector4"/>.</param>
+        /// <returns>A <see cref="Vector4"/> where the X, Y, and Z components represent the plane's normal vector, and the W
+        /// component represents the plane's distance from the origin.</returns>
+        public static Vector4 ToVector4(this Plane p)
+        {
+            return new Vector4(p.Normal, p.D);
+        }
+
+        /// <summary>
         /// Determines if there is an intersection between the current object and a point.
         /// </summary>
         /// <param name="p"></param>

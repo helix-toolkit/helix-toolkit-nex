@@ -10,7 +10,7 @@ public class Material : IDisposable
 
     /// <summary>
     /// Optional per-material pipeline resource. Renderers may use this to cache a pipeline
-    /// produced for this material (shaders, states, etc.). DefaultInvZ is <see cref="RenderPipelineResource.Null"/>.
+    /// produced for this material (shaders, states, etc.). DefaultReversedZ is <see cref="RenderPipelineResource.Null"/>.
     /// </summary>
     public RenderPipelineResource Pipeline { private set; get; } = RenderPipelineResource.Null;
 

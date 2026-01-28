@@ -766,7 +766,7 @@ internal static class HxVkExtensions
             ResolveMode.Max => supported.HasFlag(VkResolveModeFlags.Average)
                 ? VkResolveModeFlags.Average
                 : VkResolveModeFlags.SampleZero,
-            _ => VkResolveModeFlags.SampleZero, // DefaultInvZ to SampleZero if unsupported mode is provided
+            _ => VkResolveModeFlags.SampleZero, // Default to SampleZero if unsupported mode is provided
         };
     }
 
