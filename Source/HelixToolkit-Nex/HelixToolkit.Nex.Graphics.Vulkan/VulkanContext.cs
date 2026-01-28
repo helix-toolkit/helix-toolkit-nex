@@ -163,6 +163,8 @@ internal sealed partial class VulkanContext
     public bool HasExtDeviceFault { private set; get; } = false;
     public bool HasExtDebugUtils { private set; get; } = false;
 
+    public bool HasKHRSwapchainMaintenance1 { private set; get; } = false;
+
     public Pool<ShaderModule, ShaderModuleState> ShaderModulesPool { get; } = new();
     public Pool<RenderPipeline, RenderPipelineState> RenderPipelinesPool { get; } = new();
     public Pool<ComputePipeline, ComputePipelineState> ComputePipelinesPool { get; } = new();
@@ -317,6 +319,11 @@ internal sealed partial class VulkanContext
             else if (availableExtension == VK.VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME)
             {
                 _instanceExtensions.Add(VK.VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME);
+            }
+            else if (availableExtension == VK.VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME)
+            {
+                _instanceExtensions.Add(VK.VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME);
+                HasExtSwapchainMaintenance1 = true;
             }
         }
 

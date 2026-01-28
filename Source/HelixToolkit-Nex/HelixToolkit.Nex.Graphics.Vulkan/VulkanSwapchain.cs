@@ -167,6 +167,14 @@ internal sealed class VulkanSwapchain : IDisposable
                     &capabilities
                 )
                 .CheckResult();
+            var presentMode = _ctx.Config.ForcePresentModeFIFO
+                ? VkPresentModeKHR.Fifo
+                : chooseSwapPresentMode(_ctx.DevicePresentModes);
+            var pmci = new VkSwapchainPresentModesCreateInfoEXT
+            {
+                presentModeCount = 1,
+                pPresentModes = &presentMode,
+            };
             VkSwapchainCreateInfoKHR ci = new()
             {
                 surface = _ctx.VkSurface,
@@ -182,12 +190,11 @@ internal sealed class VulkanSwapchain : IDisposable
                 compositeAlpha = isCompositeAlphaOpaqueSupported
                     ? VK.VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR
                     : VK.VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR,
-                presentMode = _ctx.Config.ForcePresentModeFIFO
-                    ? VkPresentModeKHR.Fifo
-                    : chooseSwapPresentMode(_ctx.DevicePresentModes),
+                presentMode = presentMode,
                 clipped = VK_BOOL.True,
                 oldSwapchain = VkSwapchainKHR.Null,
                 preTransform = _ctx.DeviceSurfaceCapabilities.currentTransform,
+                pNext = _ctx.HasKHRSwapchainMaintenance1 ? &pmci : null,
             };
             VkSwapchainKHR sc = VkSwapchainKHR.Null;
             VK.vkCreateSwapchainKHR(_device, &ci, null, &sc).CheckResult();

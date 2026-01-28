@@ -12,16 +12,18 @@ internal class HxVkUtils
         uint32_t queueFamilyCount = 0;
         // Use a temporary variable to avoid taking the address of a local variable directly
         uint32_t tempQueueFamilyCount = 0;
-        VK.vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &tempQueueFamilyCount, null);
+        VK.vkGetPhysicalDeviceQueueFamilyProperties2(physicalDevice, &tempQueueFamilyCount, null);
         queueFamilyCount = tempQueueFamilyCount;
 
-        var queueFamilies = new VkQueueFamilyProperties[queueFamilyCount];
-        fixed (VkQueueFamilyProperties* queueFamiliesPtr = queueFamilies)
+        var queueFamilies = Enumerable
+            .Repeat(new VkQueueFamilyProperties2(), (int)queueFamilyCount)
+            .ToArray();
+        using var pQueueFamilies = queueFamilies.Pin();
         {
-            VK.vkGetPhysicalDeviceQueueFamilyProperties(
+            VK.vkGetPhysicalDeviceQueueFamilyProperties2(
                 physicalDevice,
                 &tempQueueFamilyCount,
-                queueFamiliesPtr
+                (VkQueueFamilyProperties2*)pQueueFamilies.Pointer
             );
         }
 
@@ -30,9 +32,9 @@ internal class HxVkUtils
             for (uint32_t i = 0; i < queueFamilyCount; i++)
             {
                 if (
-                    (queueFamilies[i].queueFlags & require) == require
-                    && (queueFamilies[i].queueFlags & avoid) == 0
-                    && queueFamilies[i].queueCount > 0
+                    (queueFamilies[i].queueFamilyProperties.queueFlags & require) == require
+                    && (queueFamilies[i].queueFamilyProperties.queueFlags & avoid) == 0
+                    && queueFamilies[i].queueFamilyProperties.queueCount > 0
                 )
                 {
                     return i;
@@ -150,15 +152,16 @@ internal class HxVkUtils
         VkMemoryPropertyFlags flags
     )
     {
-        VkPhysicalDeviceMemoryProperties memProperties;
+        VkPhysicalDeviceMemoryProperties2 memProperties;
         unsafe
         {
-            VK.vkGetPhysicalDeviceMemoryProperties(physDev, &memProperties);
+            VK.vkGetPhysicalDeviceMemoryProperties2(physDev, &memProperties);
         }
 
-        for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++)
+        for (uint32_t i = 0; i < memProperties.memoryProperties.memoryTypeCount; i++)
         {
-            bool hasProperties = (memProperties.memoryTypes[(int)i].propertyFlags & flags) == flags;
+            bool hasProperties =
+                (memProperties.memoryProperties.memoryTypes[(int)i].propertyFlags & flags) == flags;
             if (((memoryTypeBits & (1u << (int)i)) != 0) && hasProperties) // Cast 'i' to int for the shift operation
             {
                 return i;
