@@ -1,6 +1,6 @@
 #include "HxHeaders/HeaderCompute.glsl"
 #include "HxHeaders/ModelMatrixStruct.glsl"
-#include "HxHeaders/MeshDraw.glsl"
+#include "HxHeaders/DrawIndexIndirectCommand.glsl"
 // Enable subgroup extensions for efficient output compaction if allowed
 #extension GL_KHR_shader_subgroup_basic : enable
 #extension GL_KHR_shader_subgroup_ballot : enable
@@ -9,16 +9,6 @@
 // ------------------------------------------------------------------
 // STRUCTURES
 // ------------------------------------------------------------------
-
-// Indirect Draw Command (matches VkDrawIndexedIndirectCommand)
-@code_gen
-struct DrawIndexedIndirectCommand {
-    uint indexCount;
-    uint instanceCount;
-    uint firstIndex;
-    int vertexOffset;
-    uint firstInstance;
-};
 
 @code_gen
 struct MeshBoundData {
@@ -53,8 +43,8 @@ struct CullingConstants {
     uint64_t meshIdBufferAddress;       // Input: uint[]
     uint64_t meshBoundBufferAddress;     // Input: MeshBoundData[]
     uint64_t modelMatrixBufferAddress;    // Input: Model Matrices
-    uint64_t drawCommandBufferAddress;    // In/Out: DrawIndexedIndirectCommand[]
-    uint64_t visibilityBufferAddress;     // Output: uint[] (visible instance indices, optional)
+    uint64_t drawCommandBufferAddress;    // In: DrawIndexedIndirectCommand[]
+    uint64_t culledDrawCommandBufferAddress; // Output: DrawIndexedIndirectCommand[] Compact list of the culled draw commands
     uint64_t drawCountBufferAddress;      // Output: uint (visible count)
 };
 
@@ -74,12 +64,12 @@ layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer Me
     MeshBoundData value[];
 };
 
-layout(buffer_reference, std430, buffer_reference_align = 4) buffer DrawCommandBuffer {
+layout(buffer_reference, std430, buffer_reference_align = 4) readonly buffer DrawCommandBuffer {
     DrawIndexedIndirectCommand commands[];
 };
 
-layout(buffer_reference, scalar) writeonly buffer VisibilityBuffer {
-    uint visibleIndices[];
+layout(buffer_reference, scalar) writeonly buffer VisableDrawCommandsBuffer {
+    DrawIndexedIndirectCommand commands[];
 };
 
 layout(buffer_reference, scalar) buffer DrawCountBuffer {
@@ -195,7 +185,6 @@ void main() {
     }
 
     // Access Buffers
-    DrawCommandBuffer drawCmdBuf = DrawCommandBuffer(cullingConst.value.drawCommandBufferAddress);
     ModelMatrixBuffer modelMatrixBuf = ModelMatrixBuffer(cullingConst.value.modelMatrixBufferAddress);
     MeshIdBuffer meshIdBuf = MeshIdBuffer(cullingConst.value.meshIdBufferAddress);
     MeshBoundBuffer meshBoundBuf = MeshBoundBuffer(cullingConst.value.meshBoundBufferAddress);
@@ -276,51 +265,13 @@ void main() {
             uint offset = subgroupBallotExclusiveBitCount(ballot);
             uint outIndex = baseIndex + offset;
             
-            // Output to Draw Command Buffer (assuming indirect cull)
-            // We update instanceCount from 0 (if reset) to 1, or just fill a compact buffer of commands
-            
-            // Option A: Write visible instances to a packed Draw Command Buffer
-            // This assumes we are regenerating the draw buffer every frame
-            DrawIndexedIndirectCommand cmd;
-            cmd.indexCount = 0; // Filled from Mesh Info/Template or separate buffer?
-            // Usually we copy a template command or we just output the instance index
-            // If fetching mesh info is needed (indexCount, firstIndex), we need a MeshBuffer.
-            
-            // Option B: Multi-Draw Indirect with Instance Count = 1 or 0
-            // We just update the 'instanceCount' field of existing commands?
-            // If gID maps 1:1 to draw commands.
-            
-            // For the requested "Frustum Culling", a common output is a list of Draw Commands 
-            // OR a compacted list of Instance Indices for instanced rendering.
-            
-            // Implementation: Copy command from template or update count.
-            // Let's assume we copy the command from the source (if provided) or just write visibility index.
-            
             // If using Visibility Buffer (List of Instances):
-            if (cullingConst.value.visibilityBufferAddress != 0) {
-                VisibilityBuffer visBuf = VisibilityBuffer(cullingConst.value.visibilityBufferAddress);
-                visBuf.visibleIndices[outIndex] = gID;
-            }
-            
-            // If updating Draw Commands:
-            if (cullingConst.value.drawCommandBufferAddress != 0) {
-                 // Example: Just setting instanceCount = 1 for visible, 0 for invisible.
-                 // This requires 1:1 mapping and no compaction.
-                 // If compaction is desired, we write to drawCmdBuf.commands[outIndex].
-                 
-                 // Since we don't have a template commands buffer in input, 
-                 // we assume we might be generating them for "MeshId" if we had that info.
-                 
-                 // For now, let's write to the VisibilityBuffer as the primary output,
-                 // which is typical for "GPU Driven Rendering" where a subsequent pass consumes indices.
+            if (cullingConst.value.culledDrawCommandBufferAddress != 0 && cullingConst.value.drawCommandBufferAddress != 0) {
+                VisableDrawCommandsBuffer visBuf = VisableDrawCommandsBuffer(cullingConst.value.culledDrawCommandBufferAddress);
+                DrawCommandBuffer drawCmdBuf = DrawCommandBuffer(cullingConst.value.drawCommandBufferAddress);
+                visBuf.commands[outIndex] = drawCmdBuf.commands[gID];
+                visBuf.commands[outIndex].meshDrawIndex = gID;
             }
         }
-    }
-    
-    // Non-compacted output (if we just want to zero out invisible draw commands)
-    // Only works if we have 1:1 mapping gID -> DrawCommand
-    if (cullingConst.value.drawCommandBufferAddress != 0 && cullingConst.value.visibilityBufferAddress == 0) {
-        // If we are modifying commands in place (simplest form avoiding atomic compaction):
-        drawCmdBuf.commands[gID].instanceCount = isVisible ? 1 : 0;
     }
 }

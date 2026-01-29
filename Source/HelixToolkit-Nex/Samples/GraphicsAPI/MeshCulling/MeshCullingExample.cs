@@ -36,8 +36,10 @@ internal class MeshCullingExample : IDisposable
     private FastList<MeshBoundData> _bounds = [];
 
     // Arrays for reading back visibility results
-    private uint[] _visibilities = new uint[1000];
-    private int _instanceCount = 1000;
+    private int _instanceCount = 10000;
+    private FastList<MeshDraw> _meshDraws = [];
+    private readonly FastList<Geometry> _meshes = [];
+    private readonly FastList<DrawIndexedIndirectCommand> _drawCommands = [];
 
     // -- GPU Buffers --
     // Structured buffers holding scene data for the GPU
@@ -46,9 +48,12 @@ internal class MeshCullingExample : IDisposable
     private BufferResource _modelMatrixBuffer = BufferResource.Null; // Transform matrices for instances
     private BufferResource _pbrPropertiesBuffer = BufferResource.Null; // Material properties
     private BufferResource _boundsBuffer = BufferResource.Null; // AABB/Sphere bounds for culling
+    private BufferResource _meshDrawBuffer = BufferResource.Null; // Contains all mesh draw parameters.
+    private BufferResource _drawCmdsBuffer = BufferResource.Null; //Indirect Draw command buffer.
+    private BufferResource _indexBuffer = BufferResource.Null;
 
     // Buffers for culling output
-    private BufferResource _visibilityBuffer = BufferResource.Null; // Output: List of visible instance indices
+    private BufferResource _culledDrawCmdsBuffer = BufferResource.Null; // Output: List of culled draw commands.
     private BufferResource _visibleCountBuffer = BufferResource.Null; // Output: Atomic counter for visible instances
 
     // Rendering resources
@@ -67,6 +72,7 @@ internal class MeshCullingExample : IDisposable
     private long _startTimestamp;
     private RenderPass _renderPass = new RenderPass();
     private Framebuffer _frameBuffer = new Framebuffer();
+    private Dependencies _renderDependencies = new Dependencies();
     #endregion
 
     #region 2. Constructor & Initialization
@@ -116,19 +122,42 @@ internal class MeshCullingExample : IDisposable
             "BoundsBuffer"
         );
 
-        // 2.2 Create Output Buffers for Culling Results
-        _visibilityBuffer = _context.CreateBuffer(
-            _visibilities,
+        _meshDrawBuffer = _context.CreateBuffer(
+            _meshDraws,
             BufferUsageBits.Storage,
             StorageType.Device,
-            "VisibilityBuffer"
+            "MeshDrawBuffer"
+        );
+
+        _drawCmdsBuffer = _context.CreateBuffer(
+            _drawCommands,
+            BufferUsageBits.Storage,
+            StorageType.Device,
+            "CmdBuffer"
+        );
+
+        // 2.2 Create Output Buffers for Culling Results
+        _culledDrawCmdsBuffer = _context.CreateBuffer(
+            _drawCommands,
+            BufferUsageBits.Storage | BufferUsageBits.Indirect,
+            StorageType.Device,
+            "CulledCmdBuffer"
         );
 
         _visibleCountBuffer = _context.CreateBuffer(
             0u,
-            BufferUsageBits.Storage,
+            BufferUsageBits.Storage | BufferUsageBits.Indirect,
             StorageType.Device,
             "VisibleCountBuffer"
+        );
+
+        var indices = new FastList<uint>(_boxMesh!.Indices);
+        indices.AddRange(_sphereMesh!.Indices);
+        _indexBuffer = _context.CreateBuffer(
+            indices,
+            BufferUsageBits.Index,
+            StorageType.Device,
+            "StaticGeoIndexBuf"
         );
 
         // 2.3 Create Rendering Resources
@@ -158,7 +187,8 @@ internal class MeshCullingExample : IDisposable
         _cullConst.ModelMatrixBufferAddress = _modelMatrixBuffer.GpuAddress;
         _cullConst.MeshIdBufferAddress = _meshIdBuffer.GpuAddress;
         _cullConst.MeshBoundBufferAddress = _boundsBuffer.GpuAddress;
-        _cullConst.VisibilityBufferAddress = _visibilityBuffer.GpuAddress;
+        _cullConst.DrawCommandBufferAddress = _drawCmdsBuffer.GpuAddress;
+        _cullConst.CulledDrawCommandBufferAddress = _culledDrawCmdsBuffer.GpuAddress;
         _cullConst.DrawCountBufferAddress = _visibleCountBuffer.GpuAddress;
 
         // 2.4 Build Pipelines
@@ -223,6 +253,8 @@ internal class MeshCullingExample : IDisposable
         _renderPass.Colors[0].StoreOp = StoreOp.Store;
         _renderPass.Depth.ClearDepth = 0.0f; // 0.0f for Reverse-Z
         _renderPass.Depth.LoadOp = LoadOp.Clear;
+
+        _renderDependencies.Buffers[0] = _visibleCountBuffer;
     }
     #endregion
 
@@ -243,6 +275,9 @@ internal class MeshCullingExample : IDisposable
         var frustum = BoundingFrustum.FromViewProjectInversedZ(viewProj);
 
         // 3.2 Update Culling Constants
+        // Setup initial culling parms
+        _cullConst.CullingEnabled = 1;
+        _cullConst.InstanceCount = (uint)_instanceCount;
         _cullConst.ViewMatrix = view;
         _cullConst.ViewProjectionMatrix = viewProj;
         _cullConst.ProjectionMatrix = proj;
@@ -258,7 +293,7 @@ internal class MeshCullingExample : IDisposable
 
         _cullConst.MaxDrawDistance = 150;
         // Reducing MinScreenSize from 0.1f to 0.001f prevents aggressive culling of small/distant objects.
-        _cullConst.MinScreenSize = 0.001f;
+        _cullConst.MinScreenSize = 0.005f;
 
         // 3.3 Dispatch Culling Shader (GPU)
         var cmdBuffer = _context!.AcquireCommandBuffer();
@@ -276,16 +311,16 @@ internal class MeshCullingExample : IDisposable
             Dependencies.Empty
         );
 
-        // Submit culling work
-        var handle = _context.Submit(cmdBuffer);
+        //// Submit culling work
+        //var handle = _context.Submit(cmdBuffer);
 
-        // 3.4 Readback Results (Sync point)
-        // Wait for GPU to finish culling before reading back.
-        // NOTE: In a more advanced "GPU Driven" pipeline, we would use DrawIndirect
-        // and keep the count on the GPU to avoid this stall.
-        _context.Wait(handle);
-        cmdBuffer = _context!.AcquireCommandBuffer();
-        var count = GetVisibleIndices(); // Download the count and list of visible IDs
+        //// 3.4 Readback Results (Sync point)
+        //// Wait for GPU to finish culling before reading back.
+        //// NOTE: In a more advanced "GPU Driven" pipeline, we would use DrawIndirect
+        //// and keep the count on the GPU to avoid this stall.
+        //_context.Wait(handle);
+        //cmdBuffer = _context!.AcquireCommandBuffer();
+        //var count = GetVisibleIndices(); // Download the count and list of visible IDs
 
         // 3.5 Render Visible Objects
         var target = _context.GetCurrentSwapchainTexture();
@@ -305,6 +340,8 @@ internal class MeshCullingExample : IDisposable
                 ModelMatrixBufferAddress = _modelMatrixBuffer.GpuAddress,
                 MaterialBufferAddress = _pbrPropertiesBuffer.GpuAddress,
                 PerModelParamsBufferAddress = _fpConstBuffer.GpuAddress,
+                MeshDrawBufferAddress = _meshDrawBuffer.GpuAddress,
+                DrawCmdBufferAddress = _culledDrawCmdsBuffer.GpuAddress,
                 LightCount = 0, // No lights in this unlit demo
                 TileSize = 0,
                 ScreenDimensions = new Vector2(width, height),
@@ -316,28 +353,21 @@ internal class MeshCullingExample : IDisposable
         // Begin Rendering to screen
         _frameBuffer.Colors[0].Texture = target;
         _frameBuffer.DepthStencil.Texture = _depthBuffer;
-        cmdBuffer.BeginRendering(_renderPass, _frameBuffer, Dependencies.Empty);
+        cmdBuffer.BeginRendering(_renderPass, _frameBuffer, _renderDependencies);
         cmdBuffer.BindRenderPipeline(_renderPipeline);
         cmdBuffer.BindDepthState(_depthState);
-
-        // Loop through ONLY the visible instances
-        for (var i = 0; i < count; ++i)
-        {
-            var idx = _visibilities[i];
-            var mesh = _meshIds[(int)idx] == 0 ? _boxMesh! : _sphereMesh!;
-            cmdBuffer.BindIndexBuffer(mesh.IndexBuffer, IndexFormat.UI32);
-
-            // Set per-object draw constants using index
-            var drawParams = new MeshDraw();
-            drawParams.ForwardPlusConstantsAddress = _fpConstBuffer.GpuAddress;
-            drawParams.VertexBufferAddress = mesh.VertexBuffer.GpuAddress;
-            drawParams.ModelId = idx;
-            drawParams.MaterialId = idx;
-            cmdBuffer.PushConstants(drawParams);
-
-            cmdBuffer.DrawIndexed((uint)mesh.Indices.Count);
-        }
-
+        cmdBuffer.PushConstants(
+            new MeshDrawPushConstant() { FpConstAddress = _fpConstBuffer.GpuAddress }
+        );
+        cmdBuffer.BindIndexBuffer(_indexBuffer, IndexFormat.UI32);
+        cmdBuffer.DrawIndexedIndirectCount(
+            _culledDrawCmdsBuffer,
+            0,
+            _visibleCountBuffer,
+            0,
+            (uint)_instanceCount,
+            DrawIndexedIndirectCommand.SizeInBytes
+        );
         cmdBuffer.EndRendering();
         _context.Submit(cmdBuffer, target);
     }
@@ -357,8 +387,12 @@ internal class MeshCullingExample : IDisposable
             // If anything is visible, download the list of IDs
             if (count > 0)
             {
-                using var ptr = _visibilities.Pin();
-                _context.Download(_visibilityBuffer, (nint)ptr.Pointer, count * sizeof(uint));
+                using var drawPtr = _drawCommands.GetInternalArray().Pin();
+                _context.Download(
+                    _drawCmdsBuffer,
+                    (nint)drawPtr.Pointer,
+                    (uint)_instanceCount * DrawIndexedIndirectCommand.SizeInBytes
+                );
             }
             return count;
         }
@@ -373,11 +407,14 @@ internal class MeshCullingExample : IDisposable
         meshBuilder.AddBox(new Vector3(0, 0, 0), 1, 1, 1);
         _boxMesh = meshBuilder.ToMesh().ToGeometry();
         _boxMesh.UpdateBuffers(_context);
+        _meshes.Add(_boxMesh);
 
         meshBuilder.Reset();
         meshBuilder.AddSphere(new Vector3(2, 0, 0), 0.5f, 16, 16);
         _sphereMesh = meshBuilder.ToMesh().ToGeometry();
         _sphereMesh.UpdateBuffers(_context);
+        _meshes.Add(_sphereMesh);
+        _sphereMesh.FirstIndex = (uint)_boxMesh.Indices.Count;
 
         // Register bounds for geometry types (Box=0, Sphere=1)
         _bounds.Add(
@@ -403,6 +440,8 @@ internal class MeshCullingExample : IDisposable
         _pBRProperties.Resize(_instanceCount);
         _meshIds.Resize(_instanceCount);
         _modelMatrices.Resize(_instanceCount);
+        _drawCommands.Resize(_instanceCount);
+        _meshDraws.Resize(_instanceCount);
         var rnd = new Random((int)Stopwatch.GetTimestamp());
         for (int i = 0; i < _instanceCount; ++i)
         {
@@ -426,11 +465,22 @@ internal class MeshCullingExample : IDisposable
                 Metallic = (float)rnd.NextDouble(),
                 Roughness = (float)rnd.NextDouble(),
             };
+            var mesh = _meshes[(int)_meshIds[i]];
+            _meshDraws[i] = new MeshDraw()
+            {
+                VertexBufferAddress = mesh.VertexBuffer.GpuAddress,
+                VertexPropsBufferAddress = mesh.VertexPropsBuffer.GpuAddress,
+                VertexColorBufferAddress = mesh.VertexColorBuffer.GpuAddress,
+                MaterialId = (uint)i,
+                ModelId = (uint)i,
+            };
+            _drawCommands[i] = new()
+            {
+                IndexCount = (uint)mesh.Indices.Count,
+                InstanceCount = 1,
+                FirstIndex = mesh.FirstIndex,
+            };
         }
-
-        // Setup initial culling parms
-        _cullConst.CullingEnabled = 1;
-        _cullConst.InstanceCount = (uint)_instanceCount;
     }
 
     private void RotateCamera(float totalTime)
@@ -457,10 +507,13 @@ internal class MeshCullingExample : IDisposable
                 _modelMatrixBuffer.Dispose();
                 _pbrPropertiesBuffer.Dispose();
                 _boundsBuffer.Dispose();
-                _visibilityBuffer.Dispose();
+                _culledDrawCmdsBuffer.Dispose();
                 _visibleCountBuffer.Dispose();
                 _fpConstBuffer.Dispose();
                 _depthBuffer.Dispose();
+                _meshDrawBuffer.Dispose();
+                _drawCmdsBuffer.Dispose();
+                _indexBuffer.Dispose();
 
                 // Dispose pipelines
                 _cullingPipeline.Dispose();

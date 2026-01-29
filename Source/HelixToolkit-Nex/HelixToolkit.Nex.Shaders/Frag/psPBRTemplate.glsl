@@ -11,6 +11,7 @@ layout(location = 2) in vec3 fragNormal;
 layout(location = 3) in vec2 fragTexCoord;
 layout(location = 4) in vec3 fragTangent;
 layout(location = 5) in vec4 fragColor;
+layout(location = 6) in flat uint materialId;
 
 layout(location = 0) out vec4 outColor;
 
@@ -45,15 +46,15 @@ layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer Mo
 
 
 layout(push_constant) uniform Pc {
-    MeshDraw value;
+    MeshDrawPushConstant value;
 } pc;
 
-FPConstants fpConst = FPBuffer(pc.value.forwardPlusConstantsAddress).fpConstants;
+FPConstants fpConst = FPBuffer(pc.value.fpConstAddress).fpConstants;
 
 PBRProperties getPBRMaterial()
 {
     MaterialBuffer materialBuf = MaterialBuffer(fpConst.materialBufferAddress);
-    return materialBuf.materials[pc.value.materialId];
+    return materialBuf.materials[materialId];
 }
 
 // Custom code injection point

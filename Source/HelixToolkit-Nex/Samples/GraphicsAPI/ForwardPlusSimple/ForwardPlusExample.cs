@@ -40,6 +40,8 @@ public class ForwardPlusExample
     private BufferResource _modelMatrixBuffer = BufferResource.Null;
     private BufferResource _pbrPropertiesBuffer = BufferResource.Null;
     private BufferResource _fpConstBuffer = BufferResource.Null;
+    private BufferResource _meshDrawBuffer = BufferResource.Null;
+    private BufferResource _indexBuffer = BufferResource.Null;
 
     #endregion
 
@@ -81,17 +83,17 @@ public class ForwardPlusExample
         CompareOp = CompareOp.GreaterEqual,
         IsDepthWriteEnabled = false,
     };
-    private MeshDraw _drawParams = new();
+    private FastList<MeshDraw> _drawParams = new();
 
     #endregion
 
     #region Scene Data
 
     private ForwardPlusLightCulling.Config _config = ForwardPlusLightCulling.Config.Default;
-    private Light[] _lights = Array.Empty<Light>();
+    private FastList<Light> _lights = new();
     private Matrix4x4[] _modelMatrices = new Matrix4x4[NumPointLights + 1];
     private readonly PBRProperties[] _pbrProperties = new PBRProperties[NumPointLights + 1];
-
+    private readonly FastList<DrawIndexedIndirectCommand> _drawCmds = [];
     private readonly Geometry _lightMesh;
     private readonly Geometry _mesh;
 
@@ -119,6 +121,8 @@ public class ForwardPlusExample
         builder.AddBox(new Vector3(0, 0, 0), 10, 10, 2);
         builder.AddSphere(new Vector3(0, 0, 0), 1.5f);
         _mesh = builder.ToMesh().ToGeometry();
+        _lightMesh.UpdateBuffers(_context);
+        _mesh.UpdateBuffers(_context);
 
         // Configure depth prepass: clear depth, don't care about color
         _depthPass.Colors[0] = new RenderPass.AttachmentDesc
@@ -170,17 +174,34 @@ public class ForwardPlusExample
             Roughness = 0.2f,
             Ao = 1f,
         };
-
+        _drawParams.Add(
+            new()
+            {
+                MaterialId = 0,
+                ModelId = 0,
+                VertexBufferAddress = _mesh.VertexBuffer.GpuAddress,
+                VertexPropsBufferAddress = _mesh.VertexPropsBuffer.GpuAddress,
+            }
+        );
         // Setup light sphere transforms and emissive materials
-        for (int i = 0; i < NumPointLights; i++)
+        for (int i = 1; i < _lights.Count; i++)
         {
-            _modelMatrices[i + 1] = Matrix4x4.CreateTranslation(_lights[i + 1].Position);
-            _pbrProperties[i + 1] = new()
+            _modelMatrices[i] = Matrix4x4.CreateTranslation(_lights[i].Position);
+            _pbrProperties[i] = new()
             {
                 Ao = 1f,
-                Emissive = _lights[i + 1].Color * _lights[i + 1].Intensity,
+                Emissive = _lights[i].Color * _lights[i].Intensity,
                 Opacity = 1,
             };
+            _drawParams.Add(
+                new()
+                {
+                    MaterialId = (uint)i,
+                    ModelId = (uint)i,
+                    VertexBufferAddress = _lightMesh.VertexBuffer.GpuAddress,
+                    VertexPropsBufferAddress = _lightMesh.VertexPropsBuffer.GpuAddress,
+                }
+            );
         }
     }
 
@@ -196,19 +217,9 @@ public class ForwardPlusExample
     /// <param name="screenHeight">Height of the rendering viewport.</param>
     public void Initialize(int screenWidth, int screenHeight)
     {
-        InitializeGeometry();
         InitializeLightingBuffers(screenWidth, screenHeight);
         InitializeRenderTargets(screenWidth, screenHeight);
         InitializePipelines();
-    }
-
-    /// <summary>
-    /// Uploads geometry data to GPU buffers.
-    /// </summary>
-    private void InitializeGeometry()
-    {
-        _lightMesh.UpdateBuffers(_context);
-        _mesh.UpdateBuffers(_context);
     }
 
     /// <summary>
@@ -295,6 +306,22 @@ public class ForwardPlusExample
             BufferUsageBits.Storage,
             StorageType.Device,
             "ForwardPlus_Constants"
+        );
+
+        _meshDrawBuffer = _context.CreateBuffer(
+            _drawParams,
+            BufferUsageBits.Storage,
+            StorageType.Device,
+            "MeshDrawBuf"
+        );
+
+        var indices = new FastList<uint>(_mesh.Indices);
+        indices.AddRange(_lightMesh.Indices);
+        _indexBuffer = _context.CreateBuffer(
+            indices,
+            BufferUsageBits.Index | BufferUsageBits.Storage,
+            StorageType.Device,
+            "IndexBuffer"
         );
     }
 
@@ -548,8 +575,8 @@ public class ForwardPlusExample
     )
     {
         // Animate lights
-        MoveLights(_lights, (float)DateTime.Now.TimeOfDay.TotalSeconds);
-        cmdBuffer.UpdateBuffer(_lightBuffer, _lights, (uint)_lights.Length);
+        MoveLights((float)DateTime.Now.TimeOfDay.TotalSeconds);
+        cmdBuffer.UpdateBuffer(_lightBuffer, _lights);
 
         // Reset atomic counter for light index allocation
         cmdBuffer.FillBuffer(_counterBuffer, 0, sizeof(uint), 0);
@@ -576,13 +603,14 @@ public class ForwardPlusExample
                 InverseViewProjection = invViewProj,
                 CameraPosition = camera.Position,
                 Time = (float)DateTime.Now.TimeOfDay.TotalSeconds,
-                LightBufferAddress = _context.GpuAddress(_lightBuffer),
-                LightGridBufferAddress = _context.GpuAddress(_lightGridBuffer),
-                LightIndexBufferAddress = _context.GpuAddress(_lightIndexBuffer),
-                ModelMatrixBufferAddress = _context.GpuAddress(_modelMatrixBuffer),
-                MaterialBufferAddress = _context.GpuAddress(_pbrPropertiesBuffer),
-                PerModelParamsBufferAddress = _context.GpuAddress(_fpConstBuffer),
-                LightCount = (uint)_lights.Length,
+                LightBufferAddress = _lightBuffer.GpuAddress,
+                LightGridBufferAddress = _lightGridBuffer.GpuAddress,
+                LightIndexBufferAddress = _lightIndexBuffer.GpuAddress,
+                ModelMatrixBufferAddress = _modelMatrixBuffer.GpuAddress,
+                MaterialBufferAddress = _pbrPropertiesBuffer.GpuAddress,
+                PerModelParamsBufferAddress = _fpConstBuffer.GpuAddress,
+                MeshDrawBufferAddress = _meshDrawBuffer.GpuAddress,
+                LightCount = (uint)_lights.Count,
                 TileSize = _config.TileSize,
                 ScreenDimensions = new Vector2(screenWidth, screenHeight),
                 TileCountX = (uint)tileCountX,
@@ -600,7 +628,7 @@ public class ForwardPlusExample
                 ScreenDimensions = new Vector2(screenWidth, screenHeight),
                 TileCountX = (uint)tileCountX,
                 TileCountY = (uint)tileCountY,
-                LightCount = (uint)_lights.Length,
+                LightCount = (uint)_lights.Count,
                 ZNear = camera.NearPlane,
                 ZFar = camera.FarPlane,
                 DepthTextureIndex = _depthBuffer.Index,
@@ -624,26 +652,30 @@ public class ForwardPlusExample
         cmdBuffer.BeginRendering(_depthPass, _framebuffer, Dependencies.Empty);
         cmdBuffer.BindDepthState(_depthState);
         cmdBuffer.BindRenderPipeline(_depthPassPipeline);
-        cmdBuffer.BindIndexBuffer(_mesh.IndexBuffer, IndexFormat.UI32);
+        cmdBuffer.BindIndexBuffer(_indexBuffer, IndexFormat.UI32);
 
         // Draw main scene geometry
-        _drawParams.ForwardPlusConstantsAddress = _context.GpuAddress(_fpConstBuffer);
-        _drawParams.VertexBufferAddress = _context.GpuAddress(_mesh.VertexBuffer);
-        _drawParams.ModelId = 0;
-        _drawParams.MaterialId = 0;
-        cmdBuffer.PushConstants(_drawParams);
+        cmdBuffer.PushConstants(
+            new MeshDrawPushConstant()
+            {
+                FpConstAddress = _fpConstBuffer.GpuAddress,
+                MeshDrawId = 0,
+            }
+        );
         cmdBuffer.DrawIndexed((uint)_mesh.Indices.Count);
 
-        // Draw light spheres
-        cmdBuffer.BindIndexBuffer(_lightMesh.IndexBuffer, IndexFormat.UI32);
-        _drawParams.VertexBufferAddress = _context.GpuAddress(_lightMesh.VertexBuffer);
-        for (uint i = 1; i < _lights.Length; ++i)
-        {
-            _drawParams.ModelId = i;
-            _drawParams.MaterialId = i;
-            cmdBuffer.PushConstants(_drawParams);
-            cmdBuffer.DrawIndexed((uint)_lightMesh.Indices.Count);
-        }
+        //for (int i = 1; i < _lights.Count; i++)
+        //{
+        //    // Draw light spheres
+        //    cmdBuffer.PushConstants(
+        //        new MeshDrawPushConstant()
+        //        {
+        //            FpConstAddress = _fpConstBuffer.GpuAddress,
+        //            MeshDrawId = (uint)i,
+        //        }
+        //    );
+        //    cmdBuffer.DrawIndexed((uint)_lightMesh.Indices.Count, 1, (uint)_mesh.Indices.Count);
+        //}
         cmdBuffer.EndRendering();
     }
 
@@ -675,32 +707,32 @@ public class ForwardPlusExample
         _framebuffer.Colors[0].Texture = _f16Framebuffer;
         _renderDeps.Buffers[0] = _lightIndexBuffer;
         cmdBuffer.BeginRendering(_renderPass, _framebuffer, _renderDeps);
-        cmdBuffer.BindDepthState(_depthStateNoWrite);
+        cmdBuffer.BindDepthState(DepthState.DefaultReversedZ);
         cmdBuffer.BindRenderPipeline(_renderPipelinePBR);
-        cmdBuffer.BindIndexBuffer(_mesh.IndexBuffer, IndexFormat.UI32);
 
         // Draw main scene with PBR lighting
-        _drawParams.ForwardPlusConstantsAddress = _context.GpuAddress(_fpConstBuffer);
-        _drawParams.VertexBufferAddress = _context.GpuAddress(_mesh.VertexBuffer);
-        _drawParams.VertexPropsBufferAddress = _context.GpuAddress(_mesh.VertexPropsBuffer);
-        _drawParams.ModelId = 0;
-        _drawParams.MaterialId = 0;
-        cmdBuffer.PushConstants(_drawParams);
+        cmdBuffer.PushConstants(
+            new MeshDrawPushConstant()
+            {
+                FpConstAddress = _fpConstBuffer.GpuAddress,
+                MeshDrawId = 0,
+            }
+        );
+        cmdBuffer.BindIndexBuffer(_indexBuffer, IndexFormat.UI32);
         cmdBuffer.DrawIndexed((uint)_mesh.Indices.Count);
 
-        // Draw light spheres with emissive unlit material
-        cmdBuffer.BindRenderPipeline(_renderPipelineUnlit);
-        cmdBuffer.BindIndexBuffer(_lightMesh.IndexBuffer, IndexFormat.UI32);
-        _drawParams.VertexBufferAddress = _context.GpuAddress(_lightMesh.VertexBuffer);
-        _drawParams.VertexPropsBufferAddress = _context.GpuAddress(_lightMesh.VertexPropsBuffer);
-        for (uint i = 1; i < _lights.Length; ++i)
+        for (int i = 1; i < _lights.Count; i++)
         {
-            _drawParams.ModelId = i;
-            _drawParams.MaterialId = i;
-            cmdBuffer.PushConstants(_drawParams);
-            cmdBuffer.DrawIndexed((uint)_lightMesh.Indices.Count);
+            // Draw light spheres
+            cmdBuffer.PushConstants(
+                new MeshDrawPushConstant()
+                {
+                    FpConstAddress = _fpConstBuffer.GpuAddress,
+                    MeshDrawId = (uint)i,
+                }
+            );
+            cmdBuffer.DrawIndexed((uint)_lightMesh.Indices.Count, 1, (uint)_mesh.Indices.Count);
         }
-
         cmdBuffer.EndRendering();
     }
 
@@ -720,10 +752,11 @@ public class ForwardPlusExample
         cmdBuffer.PushConstants(
             new ToneGammaPushConstants()
             {
+                Enabled = 1,
                 Exposure = 1f,
                 HdrTextureId = _f16Framebuffer.Index,
                 SamplerId = _toneMappingSampler.Index,
-                TonemapMode = 2,
+                TonemapMode = 0,
             }
         );
         cmdBuffer.Draw(3); // Full-screen triangle
@@ -739,40 +772,47 @@ public class ForwardPlusExample
     /// </summary>
     /// <param name="count">Number of point lights to create.</param>
     /// <returns>Array of lights including one directional light and the specified number of point lights.</returns>
-    private Light[] CreateTestLights(int count)
+    private FastList<Light> CreateTestLights(int count)
     {
-        var lights = new Light[count + 1];
+        var lights = new FastList<Light>(count + 1);
         var random = new Random((int)Stopwatch.GetTimestamp());
 
         // Directional light (sun)
-        lights[0] = new Light
-        {
-            Position = new Vector3(0, 0, -10),
-            Type = 0, // Directional light
-            Direction = Vector3.Normalize(new Vector3(0, 0, 1)),
-            Range = 1000.0f,
-            Color = new Vector3(1),
-            Intensity = 0.01f,
-            SpotAngles = Vector2.Zero,
-        };
+        lights.Add(
+            new Light
+            {
+                Position = new Vector3(0, 0, -10),
+                Type = 0, // Directional light
+                Direction = Vector3.Normalize(new Vector3(0, 0, 1)),
+                Range = 1000.0f,
+                Color = new Vector3(1),
+                Intensity = 0.01f,
+                SpotAngles = Vector2.Zero,
+            }
+        );
 
         // Point lights with alternating colors
         var colors = new[] { new Vector3(1, 0, 0), new Vector3(0, 1, 0), new Vector3(0, 0, 1) };
-        for (int i = 0; i < count; i++)
+        for (int i = 0; i < 4; i++)
         {
-            var position = new Vector3(i - count / 2, i - count / 2, -6);
-            var color = colors[i % colors.Length];
-
-            lights[i + 1] = new Light
+            for (int j = 0; j < count / 4; j++)
             {
-                Position = position,
-                Type = 1, // Point light
-                Direction = Vector3.Zero,
-                Range = 6f,
-                Color = color,
-                Intensity = 10.0f,
-                SpotAngles = Vector2.Zero,
-            };
+                var position = new Vector3(i - count / 2, (j - count / 4) * 1.2f + 4, -3);
+                var color = colors[(i + j) % colors.Length];
+
+                lights.Add(
+                    new Light
+                    {
+                        Position = position,
+                        Type = 1, // Point light
+                        Direction = Vector3.Zero,
+                        Range = 3f,
+                        Color = color,
+                        Intensity = 10.0f,
+                        SpotAngles = Vector2.Zero,
+                    }
+                );
+            }
         }
 
         return lights;
@@ -790,22 +830,22 @@ public class ForwardPlusExample
     /// </summary>
     /// <param name="lights">Array of lights to animate.</param>
     /// <param name="time">Current time in seconds.</param>
-    private void MoveLights(Light[] lights, float time)
+    private void MoveLights(float time)
     {
-        _counter = (_counter + 1) % 15000;
+        _counter = (_counter + 1) % 10000;
         if (_counter < 5000)
         {
-            _offset = 0.002f;
+            _offset = 0.004f;
         }
         else
         {
-            _offset = -0.002f;
+            _offset = -0.004f;
         }
 
         // Skip first light (directional), only move point lights
-        for (int i = 1; i < lights.Length; i++)
+        for (int i = 1; i < _lights.Count; i++)
         {
-            _lights[i].Position += new Vector3(_offset, 0, 0);
+            _lights.GetInternalArray()[i].Position += new Vector3(_offset, 0, 0);
             _modelMatrices[i] = Matrix4x4.CreateTranslation(_lights[i].Position);
         }
     }

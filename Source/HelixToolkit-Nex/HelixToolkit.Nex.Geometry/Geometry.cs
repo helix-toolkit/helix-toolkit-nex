@@ -89,6 +89,10 @@ public partial class Geometry : ObservableObject, IDisposable
     #region Buffers
     private BufferResource _vertexBuffer = BufferResource.Null;
     private BufferResource _vertexPropsBuffer = BufferResource.Null;
+
+    /// <summary>
+    /// Index buffer is only used for dynamic geometry. All static geometry shares single index buffer externally.
+    /// </summary>
     private BufferResource _indexBuffer = BufferResource.Null;
     private BufferResource _vertColorsBuffer = BufferResource.Null;
     public BufferResource VertexBuffer => _vertexBuffer;
@@ -102,9 +106,14 @@ public partial class Geometry : ObservableObject, IDisposable
     public bool CanHaveIndexBuffer =>
         Topology is not Topology.Point and not Topology.TriangleStrip and not Topology.LineStrip;
 
-    public bool IsDynamic { set; get; } = false;
+    public bool IsDynamic { get; } = false;
 
     public bool IsBoundDirty { set; get; } = true;
+
+    /// <summary>
+    /// Used to indicate the first index in shared index buffer. For dynamic geometry, it should always be 0.
+    /// </summary>
+    public uint FirstIndex { set; get; } = 0;
 
     /// <summary>
     /// Gets or sets the bounding box of the object in local space coordinates.
@@ -116,48 +125,53 @@ public partial class Geometry : ObservableObject, IDisposable
     /// </summary>
     public BoundingSphere BoundingSphereLocal { get; set; } = BoundingSphere.Empty;
 
-    public Geometry(Topology topology = Topology.Triangle)
+    public Geometry(Topology topology = Topology.Triangle, bool isDynamic = false)
     {
         Topology = topology;
-
-        PropertyChanged += (s, e) =>
+        IsDynamic = isDynamic;
+        if (IsDynamic)
         {
-            if (e.PropertyName is nameof(Vertices))
+            PropertyChanged += (s, e) =>
             {
-                BufferDirty |= GeometryBufferType.Vertex;
-                IsBoundDirty = true;
-            }
-            else if (e.PropertyName is nameof(VertexProps))
-            {
-                BufferDirty |= GeometryBufferType.Vertex;
-            }
-            else if (e.PropertyName is nameof(Indices))
-            {
-                BufferDirty |= GeometryBufferType.Index;
-            }
-            else if (e.PropertyName is nameof(VertexColors))
-            {
-                BufferDirty |= GeometryBufferType.VertexColor;
-            }
-        };
+                if (e.PropertyName is nameof(Vertices))
+                {
+                    BufferDirty |= GeometryBufferType.Vertex;
+                    IsBoundDirty = true;
+                }
+                else if (e.PropertyName is nameof(VertexProps))
+                {
+                    BufferDirty |= GeometryBufferType.Vertex;
+                }
+                else if (e.PropertyName is nameof(Indices))
+                {
+                    BufferDirty |= GeometryBufferType.Index;
+                }
+                else if (e.PropertyName is nameof(VertexColors))
+                {
+                    BufferDirty |= GeometryBufferType.VertexColor;
+                }
+            };
+        }
     }
 
     public Geometry(
         IEnumerable<Vertex> vertices,
         IEnumerable<uint> indices,
         IEnumerable<Vector4>? colors = null,
-        Topology topology = Topology.Triangle
+        Topology topology = Topology.Triangle,
+        bool isDynamic = false
     )
-        : this(vertices, null, indices, colors, topology) { }
+        : this(vertices, null, indices, colors, topology, isDynamic) { }
 
     public Geometry(
         IEnumerable<Vertex> vertices,
         IEnumerable<VertexProperties>? vertexProps,
         IEnumerable<uint> indices,
         IEnumerable<Vector4>? colors = null,
-        Topology topology = Topology.Triangle
+        Topology topology = Topology.Triangle,
+        bool isDynamic = false
     )
-        : this(topology)
+        : this(topology, isDynamic)
     {
         _vertices.AddRange(vertices);
         if (vertexProps is not null)
@@ -288,7 +302,7 @@ public partial class Geometry : ObservableObject, IDisposable
         if (types.HasFlag(GeometryBufferType.Index))
         {
             _indexBuffer?.Dispose();
-            if (CanHaveIndexBuffer && _indices.Count > 0)
+            if (CanHaveIndexBuffer && IsDynamic && _indices.Count > 0)
             {
                 unsafe
                 {

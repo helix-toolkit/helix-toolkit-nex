@@ -47,8 +47,11 @@ internal class App : Application
 
         // 1.2 Setup Swapchain
         var windowSize = MainWindow.Size;
-        _ctx.RecreateSwapchain(windowSize.Width, windowSize.Height);
-
+        _ctx?.RecreateSwapchain(windowSize.Width, windowSize.Height);
+        if (_ctx == null)
+        {
+            throw new Exception("Failed to create Vulkan context");
+        }
         // 1.3 Initialize the Culling Example
         _example = new MeshCullingExample(_ctx);
         _example.Initialize(windowSize.Width, windowSize.Height);

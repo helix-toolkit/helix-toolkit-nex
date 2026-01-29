@@ -69,11 +69,11 @@ public class GeometryJsonConverter : JsonConverter<Geometry>
                     vertProps ?? new FastList<VertexProperties>(),
                     indices ?? new FastList<uint>(),
                     colors,
-                    topology
+                    topology,
+                    isDynamic
                 )
                 {
                     Id = id,
-                    IsDynamic = isDynamic,
                 };
                 return geometry;
             }

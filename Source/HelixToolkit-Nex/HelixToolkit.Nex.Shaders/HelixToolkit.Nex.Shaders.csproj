@@ -23,6 +23,7 @@
             OutputItemType="Analyzer"
             ReferenceOutputAssembly="false"
         />
+        <ProjectReference Include="..\HelixToolkit.Nex.Maths\HelixToolkit.Nex.Maths.csproj" />
     </ItemGroup>
 
     <ItemGroup>

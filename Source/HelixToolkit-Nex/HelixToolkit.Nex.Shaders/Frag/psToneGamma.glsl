@@ -7,11 +7,13 @@ layout(location = 0) out vec4 outColor;
 
 @code_gen
 struct ToneGammaPushConstants {
+    uint enabled;
     uint hdrTextureId;
     uint samplerId;
     float exposure;
     uint tonemapMode; // 0=ACES, 1=Reinhard, 2=Uncharted2
     uint gamma;
+    vec2 _padding;
 };
 
 layout(push_constant) uniform PushConstants {
@@ -41,8 +43,12 @@ vec3 Uncharted2ToneMap(vec3 x) {
 
 void main() {
     // Sample HDR texture
-    vec3 hdrColor = textureBindless2D(pc.value.hdrTextureId, pc.value.samplerId, inTexCoord).rgb;
-    
+    vec4 hdrColor = textureBindless2D(pc.value.hdrTextureId, pc.value.samplerId, inTexCoord);
+    if (pc.value.enabled == 0u) {
+        // Tone mapping disabled, output white
+        outColor = hdrColor;
+        return;
+    }
     // Apply exposure
     hdrColor *= pc.value.exposure;
     
@@ -50,14 +56,14 @@ void main() {
     vec3 mapped;
     if (pc.value.tonemapMode == 0u) {
         // ACES (best for most cases)
-        mapped = ACESFilm(hdrColor);
+        mapped = ACESFilm(hdrColor.rgb);
     } else if (pc.value.tonemapMode == 1u) {
         // Reinhard
-        mapped = hdrColor / (hdrColor + vec3(1.0));
+        mapped = hdrColor.rgb / (hdrColor.rgb + vec3(1.0));
     } else {
         // Uncharted 2
         const float exposureBias = 2.0;
-        vec3 curr = Uncharted2ToneMap(hdrColor * exposureBias);
+        vec3 curr = Uncharted2ToneMap(hdrColor.rgb * exposureBias);
         vec3 whiteScale = 1.0 / Uncharted2ToneMap(vec3(11.2));
         mapped = curr * whiteScale;
     }
