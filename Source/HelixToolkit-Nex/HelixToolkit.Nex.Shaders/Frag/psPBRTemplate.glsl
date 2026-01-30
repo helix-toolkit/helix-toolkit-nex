@@ -65,28 +65,50 @@ void forwardPlusLighting(in PBRMaterial material, out vec4 outFinalColor)
     // Forward+ tiled lighting
     vec3 viewDir = normalize(fpConst.cameraPosition - fragPosition);
     vec3 finalC = material.ambient * material.albedo * material.ao;
-
-    // Calculate tile coordinates
-    ivec2 tileCoord = ivec2(gl_FragCoord.xy) / ivec2(fpConst.tileSize);
-    uint tileIndex = uint(tileCoord.y) * uint(fpConst.tileCountX) + uint(tileCoord.x);
-
-    // Get light list for this tile
     LightBuffer lightBuf = LightBuffer(fpConst.lightBufferAddress);
-    LightGridBuffer lightGrid = LightGridBuffer(fpConst.lightGridBufferAddress);
-    LightIndexBuffer lightIndices = LightIndexBuffer(fpConst.lightIndexBufferAddress);
-    LightGridTile tile = lightGrid.tiles[tileIndex];
+    if (fpConst.enabled == 0) {
+        for (uint i = 0; i < fpConst.lightCount; ++i) {
+            Light light = lightBuf.lights[i];
+            vec3 lightContribution = calculatePBRLighting(material, light, fragPosition, viewDir);
+            finalC += lightContribution;
+        }
+    } else {
+        // Calculate tile coordinates
+        uvec2 tileCoord = uvec2(gl_FragCoord.xy) / uvec2(fpConst.tileSize);
+        tileCoord = min(tileCoord, uvec2(fpConst.tileCountX - 1, fpConst.tileCountY - 1));
+        uint tileIndex = tileCoord.y * fpConst.tileCountX + tileCoord.x;
 
-    // Process lights in this tile
-    for (uint i = 0; i < tile.lightCount; ++i) {
-        uint lightIndex = lightIndices.indices[tile.lightIndexOffset + i];
-        Light light = lightBuf.lights[lightIndex];
-        vec3 lightContribution = calculatePBRLighting(material, light, fragPosition, viewDir);
-        finalC += lightContribution;
+        // Get light list for this tile
+        LightGridBuffer lightGrid = LightGridBuffer(fpConst.lightGridBufferAddress);
+        LightIndexBuffer lightIndices = LightIndexBuffer(fpConst.lightIndexBufferAddress);
+        LightGridTile tile = lightGrid.tiles[tileIndex];
+        // Process lights in this tile
+        for (uint i = 0; i < tile.lightCount; ++i) {
+            uint lightIndex = lightIndices.indices[tile.lightIndexOffset + i];
+            Light light = lightBuf.lights[lightIndex];
+            vec3 lightContribution = calculatePBRLighting(material, light, fragPosition, viewDir);
+           finalC += lightContribution;
+        }
     }
 
     finalC += material.emissive;
 
     outFinalColor = vec4(finalC, material.opacity);
+}
+
+void debugTileLighting(out vec4 outFinalColor)
+{
+    // Calculate tile coordinates
+    uvec2 tileCoord = uvec2(gl_FragCoord.xy) / uvec2(fpConst.tileSize);
+    tileCoord = min(tileCoord, uvec2(fpConst.tileCountX - 1, fpConst.tileCountY - 1));
+    uint tileIndex = tileCoord.y * fpConst.tileCountX + tileCoord.x;
+    // Get light list for this tile
+    LightGridBuffer lightGrid = LightGridBuffer(fpConst.lightGridBufferAddress);
+    LightIndexBuffer lightIndices = LightIndexBuffer(fpConst.lightIndexBufferAddress);
+    LightGridTile tile = lightGrid.tiles[tileIndex];
+    // Visualize number of lights in the tile
+    float lightCountNormalized = float(tile.lightCount) / float(fpConst.maxLightsPerTile);
+    outFinalColor = vec4(float(tileCoord.x) / fpConst.tileCountX, float(tileCoord.y) / fpConst.tileCountY, lightCountNormalized, 1.0);
 }
 
 // Template function to create final PBR material properties
@@ -135,7 +157,7 @@ void nonLitOutputColor(in PBRMaterial material, out vec4 finalColor)
     finalColor = vec4(material.albedo + material.emissive, material.opacity);
 }
 
-// Shading model selection(0: PBR, 1: Non-Lit)
+// Shading model selection(0: PBR, 1: Non-Lit, 2: Debug tile)
 layout (constant_id = 0) const uint shadingModel = 0; 
 
 // Template function to create final color
@@ -148,9 +170,12 @@ void outputColor(in PBRMaterial material, out vec4 finalColor)
     } else if (shadingModel == 1u) {
         nonLitOutputColor(material, finalColor);
         return;
-    } else {
+    } else if (shadingModel == 2u) {
         // Default to PBR lighting
-        forwardPlusLighting(material, finalColor);
+        debugTileLighting(finalColor);
+        return;
+    } else {
+        finalColor = vec4(1.0, 0.0, 1.0, 1.0); // Magenta for unsupported shading model
         return;
     }
 /*TEMPLATE_OUTPUT_COLOR_IMPL_END*/

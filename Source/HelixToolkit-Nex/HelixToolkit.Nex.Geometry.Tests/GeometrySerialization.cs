@@ -140,10 +140,7 @@ public sealed class GeometrySerialization
             new Vector4(0, 0, 1, 0),
         };
 
-        var original = new Geometry(vertices, indices, colors, Topology.Triangle)
-        {
-            IsDynamic = true,
-        };
+        var original = new Geometry(vertices, indices, colors, Topology.Triangle, true);
         var originalId = original.Id;
 
         // Act
@@ -276,7 +273,7 @@ public sealed class GeometrySerialization
     public void SerializeDeserialize_IsDynamicProperty()
     {
         // Arrange
-        var original = new Geometry { IsDynamic = true };
+        var original = new Geometry(Topology.Triangle, true);
 
         // Act
         string json = JsonSerializer.Serialize(original, JsonOptions);

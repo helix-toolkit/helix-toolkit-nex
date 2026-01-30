@@ -12,7 +12,7 @@ struct LightCullingConstants {
     vec2 screenDimensions;
     uint tileCountX;
     uint tileCountY;
-    uint lightCount;
+    uint lightCount;    
     float zNear;
     float zFar;
     uint depthTextureIndex;
@@ -21,15 +21,21 @@ struct LightCullingConstants {
     uint64_t lightIndexBufferAddress;
     uint64_t globalCounterBufferAddress;
     uint samplerIndex;
-    vec3 _padding;
+    uint maxLightsPerTile;
+    vec2 _padding;
 };
 
 layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer LightCullingConst {
     LightCullingConstants value;
 };
 
+struct LightGridTile {
+    uint lightCount;
+    uint lightIndexOffset;
+};
+
 layout(buffer_reference, scalar) buffer LightGridBuffer {
-    uvec2 tiles[]; // x=lightCount, y=lightIndexOffset
+    LightGridTile tiles[]; // x=lightCount, y=lightIndexOffset
 };
 
 layout(buffer_reference, scalar) buffer LightIndexBuffer {
@@ -269,7 +275,7 @@ void main() {
             Light light = lightBuffer.lights[lightIndex];
             if (light.type == 0) {
                 // Directional lights affect all tiles
-                isVisible = true;
+                // isVisible = true;
             } else {
                 // Convert Range Light Position (World) to Frustum Space (View)
                 vec3 lightPosView = (cullingConst.value.viewMatrix * vec4(light.position, 1.0)).xyz;
@@ -312,7 +318,11 @@ void main() {
     if (localIndex == 0) {
         uint tileIndex = tileID.y * uint(cullingConst.value.tileCountX) + tileID.x;
         globalOffset = atomicAdd(glCounterBuf.globalLightIndexCounter, count);
-        lightGridBuffer.tiles[tileIndex] = uvec2(count, globalOffset);
+        
+        LightGridTile tile;
+        tile.lightCount = count;
+        tile.lightIndexOffset = globalOffset;
+        lightGridBuffer.tiles[tileIndex] = tile;
     }
     
     barrier();

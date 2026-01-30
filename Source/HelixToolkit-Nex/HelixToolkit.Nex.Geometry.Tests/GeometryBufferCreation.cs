@@ -195,10 +195,9 @@ public sealed class GeometryBufferCreation
     [TestMethod]
     public void TestDynamicVertexBuffer()
     {
-        using var geometry = new Geometry
+        using var geometry = new Geometry()
         {
             Vertices = [.. Enumerable.Repeat(new Vector4(1, 2, 3, 1), 256)],
-            IsDynamic = true,
         };
         var result = geometry.UpdateBuffers(_vkContext!, GeometryBufferType.Vertex);
         Assert.AreEqual(
@@ -215,7 +214,6 @@ public sealed class GeometryBufferCreation
         using var geometry = new Geometry
         {
             Indices = [.. Enumerable.Range(0, 256).Select(i => (uint)i)],
-            IsDynamic = true,
         };
         var result = geometry.UpdateBuffers(_vkContext!, GeometryBufferType.Index);
         Assert.AreEqual(

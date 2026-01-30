@@ -5,6 +5,7 @@ using HelixToolkit.Nex.Graphics;
 using HelixToolkit.Nex.Material;
 using HelixToolkit.Nex.Maths;
 using HelixToolkit.Nex.Shaders;
+using HelixToolkit.Nex.Shaders.Frag;
 using TextureHandle = HelixToolkit.Nex.Handle<HelixToolkit.Nex.Graphics.Texture>;
 
 namespace HelixToolkit.Nex.Examples;
@@ -78,12 +79,8 @@ public class ForwardPlusExample
     private readonly Framebuffer _framebuffer = new();
 
     private DepthState _depthState = DepthState.DefaultReversedZ;
-    private DepthState _depthStateNoWrite = new DepthState
-    {
-        CompareOp = CompareOp.GreaterEqual,
-        IsDepthWriteEnabled = false,
-    };
     private FastList<MeshDraw> _drawParams = new();
+    private PBRShadingMode _shadingMode = PBRShadingMode.PBR;
 
     #endregion
 
@@ -93,7 +90,6 @@ public class ForwardPlusExample
     private FastList<Light> _lights = new();
     private Matrix4x4[] _modelMatrices = new Matrix4x4[NumPointLights + 1];
     private readonly PBRProperties[] _pbrProperties = new PBRProperties[NumPointLights + 1];
-    private readonly FastList<DrawIndexedIndirectCommand> _drawCmds = [];
     private readonly Geometry _lightMesh;
     private readonly Geometry _mesh;
 
@@ -435,7 +431,7 @@ public class ForwardPlusExample
             using var pData = pipelineDesc.SpecInfo.Data.Pin();
             unsafe
             {
-                NativeHelper.Write((nint)pData.Pointer, 0u);
+                NativeHelper.Write((nint)pData.Pointer, _shadingMode);
             }
             _renderPipelinePBR = _context.CreateRenderPipeline(pipelineDesc);
             Debug.Assert(_renderPipelinePBR.Valid);
@@ -459,7 +455,7 @@ public class ForwardPlusExample
             using var pData = pipelineDesc.SpecInfo.Data.Pin();
             unsafe
             {
-                NativeHelper.Write((nint)pData.Pointer, 1u);
+                NativeHelper.Write((nint)pData.Pointer, PBRShadingMode.Unlit);
             }
             _renderPipelineUnlit = _context.CreateRenderPipeline(pipelineDesc);
             Debug.Assert(_renderPipelineUnlit.Valid);
@@ -599,6 +595,7 @@ public class ForwardPlusExample
             _fpConstBuffer,
             new FPConstants()
             {
+                Enabled = 1,
                 ViewProjection = view * proj,
                 InverseViewProjection = invViewProj,
                 CameraPosition = camera.Position,
@@ -612,6 +609,7 @@ public class ForwardPlusExample
                 MeshDrawBufferAddress = _meshDrawBuffer.GpuAddress,
                 LightCount = (uint)_lights.Count,
                 TileSize = _config.TileSize,
+                MaxLightsPerTile = _config.MaxLightsPerTile,
                 ScreenDimensions = new Vector2(screenWidth, screenHeight),
                 TileCountX = (uint)tileCountX,
                 TileCountY = (uint)tileCountY,
@@ -633,6 +631,7 @@ public class ForwardPlusExample
                 ZFar = camera.FarPlane,
                 DepthTextureIndex = _depthBuffer.Index,
                 SamplerIndex = _depthBufferSampler.Index,
+                MaxLightsPerTile = _config.MaxLightsPerTile,
                 LightBufferAddress = _context.GpuAddress(_lightBuffer),
                 LightGridBufferAddress = _context.GpuAddress(_lightGridBuffer),
                 LightIndexBufferAddress = _context.GpuAddress(_lightIndexBuffer),
@@ -720,7 +719,7 @@ public class ForwardPlusExample
         );
         cmdBuffer.BindIndexBuffer(_indexBuffer, IndexFormat.UI32);
         cmdBuffer.DrawIndexed((uint)_mesh.Indices.Count);
-
+        cmdBuffer.BindRenderPipeline(_renderPipelineUnlit);
         for (int i = 1; i < _lights.Count; i++)
         {
             // Draw light spheres
@@ -752,7 +751,7 @@ public class ForwardPlusExample
         cmdBuffer.PushConstants(
             new ToneGammaPushConstants()
             {
-                Enabled = 1,
+                Enabled = 0,
                 Exposure = 1f,
                 HdrTextureId = _f16Framebuffer.Index,
                 SamplerId = _toneMappingSampler.Index,
