@@ -24,8 +24,9 @@ public class ForwardPlusExample
 {
     #region Constants and Configuration
 
-    private static readonly int NumPointLights = 20;
-
+    private static readonly int NumPointLights = 100;
+    private const PBRShadingMode ShadingMode = PBRShadingMode.PBR;
+    private const float LightRange = 6.0f;
     #endregion
 
     #region GPU Resources - Buffers
@@ -36,6 +37,7 @@ public class ForwardPlusExample
     private BufferResource _lightGridBuffer = BufferResource.Null;
     private BufferResource _lightIndexBuffer = BufferResource.Null;
     private BufferResource _counterBuffer = BufferResource.Null;
+    private BufferResource _directionalLightBuffer = BufferResource.Null;
 
     // Per-object data buffers
     private BufferResource _modelMatrixBuffer = BufferResource.Null;
@@ -80,7 +82,6 @@ public class ForwardPlusExample
 
     private DepthState _depthState = DepthState.DefaultReversedZ;
     private FastList<MeshDraw> _drawParams = new();
-    private PBRShadingMode _shadingMode = PBRShadingMode.PBR;
 
     #endregion
 
@@ -88,6 +89,7 @@ public class ForwardPlusExample
 
     private ForwardPlusLightCulling.Config _config = ForwardPlusLightCulling.Config.Default;
     private FastList<Light> _lights = new();
+    private DirectionalLights _dirLights = new();
     private Matrix4x4[] _modelMatrices = new Matrix4x4[NumPointLights + 1];
     private readonly PBRProperties[] _pbrProperties = new PBRProperties[NumPointLights + 1];
     private readonly Geometry _lightMesh;
@@ -114,8 +116,12 @@ public class ForwardPlusExample
 
         // Create main scene mesh (box + sphere)
         builder = new MeshBuilder(true, true, true);
-        builder.AddBox(new Vector3(0, 0, 0), 10, 10, 2);
-        builder.AddSphere(new Vector3(0, 0, 0), 1.5f);
+        builder.AddBox(new Vector3(0, 0, 0), 40, 40, 2);
+        builder.AddSphere(new Vector3(0, 0, 0), 3f);
+        builder.AddSphere(new Vector3(-5, 5, 0), 3f);
+        builder.AddBox(new Vector3(-10, 0, 0), 5, 5, 4);
+        builder.AddBox(new Vector3(10, 10, 0), 5, 5, 4);
+        builder.AddBox(new Vector3(10, -10, 0), 5, 5, 4);
         _mesh = builder.ToMesh().ToGeometry();
         _lightMesh.UpdateBuffers(_context);
         _mesh.UpdateBuffers(_context);
@@ -180,10 +186,10 @@ public class ForwardPlusExample
             }
         );
         // Setup light sphere transforms and emissive materials
-        for (int i = 1; i < _lights.Count; i++)
+        for (int i = 0; i < _lights.Count; i++)
         {
-            _modelMatrices[i] = Matrix4x4.CreateTranslation(_lights[i].Position);
-            _pbrProperties[i] = new()
+            _modelMatrices[i + 1] = Matrix4x4.CreateTranslation(_lights[i].Position);
+            _pbrProperties[i + 1] = new()
             {
                 Ao = 1f,
                 Emissive = _lights[i].Color * _lights[i].Intensity,
@@ -192,8 +198,8 @@ public class ForwardPlusExample
             _drawParams.Add(
                 new()
                 {
-                    MaterialId = (uint)i,
-                    ModelId = (uint)i,
+                    MaterialId = (uint)i + 1,
+                    ModelId = (uint)i + 1,
                     VertexBufferAddress = _lightMesh.VertexBuffer.GpuAddress,
                     VertexPropsBufferAddress = _lightMesh.VertexPropsBuffer.GpuAddress,
                 }
@@ -280,6 +286,13 @@ public class ForwardPlusExample
                 Storage = StorageType.Device,
             },
             "ForwardPlus_Counter"
+        );
+
+        _directionalLightBuffer = _context.CreateBuffer(
+            _dirLights,
+            BufferUsageBits.Storage,
+            StorageType.Device,
+            "DirectionalLightBuffer"
         );
 
         // Per-object data buffers
@@ -431,7 +444,7 @@ public class ForwardPlusExample
             using var pData = pipelineDesc.SpecInfo.Data.Pin();
             unsafe
             {
-                NativeHelper.Write((nint)pData.Pointer, _shadingMode);
+                NativeHelper.Write((nint)pData.Pointer, ShadingMode);
             }
             _renderPipelinePBR = _context.CreateRenderPipeline(pipelineDesc);
             Debug.Assert(_renderPipelinePBR.Valid);
@@ -607,6 +620,7 @@ public class ForwardPlusExample
                 MaterialBufferAddress = _pbrPropertiesBuffer.GpuAddress,
                 PerModelParamsBufferAddress = _fpConstBuffer.GpuAddress,
                 MeshDrawBufferAddress = _meshDrawBuffer.GpuAddress,
+                DirectionalLightsBufferAddress = _directionalLightBuffer.GpuAddress,
                 LightCount = (uint)_lights.Count,
                 TileSize = _config.TileSize,
                 MaxLightsPerTile = _config.MaxLightsPerTile,
@@ -622,6 +636,7 @@ public class ForwardPlusExample
             new LightCullingConstants
             {
                 ViewMatrix = view,
+                Projection = proj,
                 InverseProjection = invPersp,
                 ScreenDimensions = new Vector2(screenWidth, screenHeight),
                 TileCountX = (uint)tileCountX,
@@ -720,14 +735,14 @@ public class ForwardPlusExample
         cmdBuffer.BindIndexBuffer(_indexBuffer, IndexFormat.UI32);
         cmdBuffer.DrawIndexed((uint)_mesh.Indices.Count);
         cmdBuffer.BindRenderPipeline(_renderPipelineUnlit);
-        for (int i = 1; i < _lights.Count; i++)
+        for (int i = 0; i < _lights.Count; i++)
         {
             // Draw light spheres
             cmdBuffer.PushConstants(
                 new MeshDrawPushConstant()
                 {
                     FpConstAddress = _fpConstBuffer.GpuAddress,
-                    MeshDrawId = (uint)i,
+                    MeshDrawId = (uint)i + 1,
                 }
             );
             cmdBuffer.DrawIndexed((uint)_lightMesh.Indices.Count, 1, (uint)_mesh.Indices.Count);
@@ -773,45 +788,47 @@ public class ForwardPlusExample
     /// <returns>Array of lights including one directional light and the specified number of point lights.</returns>
     private FastList<Light> CreateTestLights(int count)
     {
-        var lights = new FastList<Light>(count + 1);
+        var lights = new FastList<Light>(count);
         var random = new Random((int)Stopwatch.GetTimestamp());
 
         // Directional light (sun)
-        lights.Add(
-            new Light
-            {
-                Position = new Vector3(0, 0, -10),
-                Type = 0, // Directional light
-                Direction = Vector3.Normalize(new Vector3(0, 0, 1)),
-                Range = 1000.0f,
-                Color = new Vector3(1),
-                Intensity = 0.01f,
-                SpotAngles = Vector2.Zero,
-            }
-        );
+        _dirLights.Lights_0 = new Light
+        {
+            Position = new Vector3(0, 0, -10),
+            Type = 0, // Directional light
+            Direction = Vector3.Normalize(new Vector3(0, 0, 1)),
+            Color = new Vector3(1),
+            Intensity = 0.01f,
+        };
+        _dirLights.LightCount = 1;
 
         // Point lights with alternating colors
         var colors = new[] { new Vector3(1, 0, 0), new Vector3(0, 1, 0), new Vector3(0, 0, 1) };
-        for (int i = 0; i < 4; i++)
-        {
-            for (int j = 0; j < count / 4; j++)
-            {
-                var position = new Vector3(i - count / 2, (j - count / 4) * 1.2f + 4, -3);
-                var color = colors[(i + j) % colors.Length];
 
-                lights.Add(
-                    new Light
-                    {
-                        Position = position,
-                        Type = 1, // Point light
-                        Direction = Vector3.Zero,
-                        Range = 3f,
-                        Color = color,
-                        Intensity = 10.0f,
-                        SpotAngles = Vector2.Zero,
-                    }
-                );
-            }
+        int gridSize = (int)MathF.Ceiling(MathF.Sqrt(count));
+        float spacing = 4.0f;
+        float offset = (gridSize - 1) * spacing * 0.5f;
+
+        for (int i = 0; i < count; i++)
+        {
+            int x = i % gridSize;
+            int y = i / gridSize;
+
+            var position = new Vector3(x * spacing - offset, y * spacing - offset, -5);
+            var color = colors[i % colors.Length];
+
+            lights.Add(
+                new Light
+                {
+                    Position = position,
+                    Type = 1, // Point light
+                    Direction = Vector3.Zero,
+                    Range = LightRange,
+                    Color = color,
+                    Intensity = 10.0f,
+                    SpotAngles = Vector2.Zero,
+                }
+            );
         }
 
         return lights;
@@ -842,10 +859,10 @@ public class ForwardPlusExample
         }
 
         // Skip first light (directional), only move point lights
-        for (int i = 1; i < _lights.Count; i++)
+        for (int i = 0; i < _lights.Count; i++)
         {
             _lights.GetInternalArray()[i].Position += new Vector3(_offset, 0, 0);
-            _modelMatrices[i] = Matrix4x4.CreateTranslation(_lights[i].Position);
+            _modelMatrices[i + 1] = Matrix4x4.CreateTranslation(_lights[i].Position);
         }
     }
 
@@ -871,6 +888,7 @@ public class ForwardPlusExample
         _pbrPropertiesBuffer.Dispose();
         _fpConstBuffer.Dispose();
         _lightCullingBuffer.Dispose();
+        _directionalLightBuffer.Dispose();
 
         // Dispose pipelines
         _renderPipelinePBR.Dispose();

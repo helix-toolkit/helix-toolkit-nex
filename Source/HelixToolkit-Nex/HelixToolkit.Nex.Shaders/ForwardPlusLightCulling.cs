@@ -15,14 +15,14 @@ public static class ForwardPlusLightCulling
         /// <summary>
         /// Size of each tile in pixels (typically 16x16 or 32x32).
         /// </summary>
-        public uint TileSize;
+        public uint TileSize = 16;
 
         /// <summary>
         /// Maximum number of lights per tile.
         /// </summary>
-        public uint MaxLightsPerTile;
+        public uint MaxLightsPerTile = 8;
 
-        public static Config Default => new() { TileSize = 16, MaxLightsPerTile = 16 };
+        public static Config Default => new();
     }
 
     /// <summary>

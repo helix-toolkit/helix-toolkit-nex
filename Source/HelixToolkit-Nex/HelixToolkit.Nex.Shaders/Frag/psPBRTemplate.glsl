@@ -2,7 +2,7 @@
 #include "HxHeaders/LightStruct.glsl"
 #include "HxHeaders/PBRFunctions.glsl"
 #include "HxHeaders/ForwardPlusConstants.glsl"
-#include "HxHeaders/ForwardPlusGridBuffers.glsl"
+#include "HxHeaders/ForwardPlusTile.glsl"
 #include "HxHeaders/MeshDraw.glsl"
 
 layout(location = 0) in flat uint vertexIndex;
@@ -12,6 +12,9 @@ layout(location = 3) in vec2 fragTexCoord;
 layout(location = 4) in vec3 fragTangent;
 layout(location = 5) in vec4 fragColor;
 layout(location = 6) in flat uint materialId;
+
+// Ensure FragCoord (0,0) is Top-Left to match Compute Shader tile generation
+// layout(origin_upper_left) in vec4 gl_FragCoord;
 
 layout(location = 0) out vec4 outColor;
 
@@ -42,6 +45,18 @@ layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer Ma
 
 layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer ModelMatrixBuffer {
     mat4 models[];
+};
+
+layout(buffer_reference, std430, buffer_reference_align = 4) readonly buffer DirectionalLightBuffer {
+    DirectionalLights value;
+};
+
+layout(buffer_reference, scalar) readonly buffer LightGridBuffer {
+    LightGridTile tiles[];
+};
+
+layout(buffer_reference, scalar) readonly buffer LightIndexBuffer {
+    uint indices[];
 };
 
 
@@ -75,6 +90,7 @@ void forwardPlusLighting(in PBRMaterial material, out vec4 outFinalColor)
     } else {
         // Calculate tile coordinates
         uvec2 tileCoord = uvec2(gl_FragCoord.xy) / uvec2(fpConst.tileSize);
+        tileCoord.y = (fpConst.tileCountY - 1u) - tileCoord.y; // Flip Y to match top-left origin
         tileCoord = min(tileCoord, uvec2(fpConst.tileCountX - 1, fpConst.tileCountY - 1));
         uint tileIndex = tileCoord.y * fpConst.tileCountX + tileCoord.x;
 
@@ -90,7 +106,14 @@ void forwardPlusLighting(in PBRMaterial material, out vec4 outFinalColor)
            finalC += lightContribution;
         }
     }
-
+    if (fpConst.directionalLightsBufferAddress != 0u) {
+        DirectionalLightBuffer dirLightBuf = DirectionalLightBuffer(fpConst.directionalLightsBufferAddress);
+        for (uint i = 0u; i < dirLightBuf.value.lightCount; ++i) {
+            Light dirLight = dirLightBuf.value.lights[i];
+            vec3 lightContribution = calculatePBRLighting(material, dirLight, fragPosition, viewDir);
+            finalC += lightContribution;
+        }
+    }
     finalC += material.emissive;
 
     outFinalColor = vec4(finalC, material.opacity);
@@ -100,6 +123,7 @@ void debugTileLighting(out vec4 outFinalColor)
 {
     // Calculate tile coordinates
     uvec2 tileCoord = uvec2(gl_FragCoord.xy) / uvec2(fpConst.tileSize);
+    tileCoord.y = (fpConst.tileCountY - 1u) - tileCoord.y;
     tileCoord = min(tileCoord, uvec2(fpConst.tileCountX - 1, fpConst.tileCountY - 1));
     uint tileIndex = tileCoord.y * fpConst.tileCountX + tileCoord.x;
     // Get light list for this tile
@@ -108,7 +132,8 @@ void debugTileLighting(out vec4 outFinalColor)
     LightGridTile tile = lightGrid.tiles[tileIndex];
     // Visualize number of lights in the tile
     float lightCountNormalized = float(tile.lightCount) / float(fpConst.maxLightsPerTile);
-    outFinalColor = vec4(float(tileCoord.x) / fpConst.tileCountX, float(tileCoord.y) / fpConst.tileCountY, lightCountNormalized, 1.0);
+    outFinalColor = vec4(lightCountNormalized, 0, 0, 1.0);
+    //outFinalColor = vec4(float(tileCoord.x) / fpConst.tileCountX, float(tileCoord.y) / fpConst.tileCountY, lightCountNormalized, 1.0);
 }
 
 // Template function to create final PBR material properties

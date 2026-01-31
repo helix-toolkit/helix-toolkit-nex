@@ -1,18 +1,19 @@
 #include "HxHeaders/HeaderCompute.glsl"
 #include "HxHeaders/LightStruct.glsl"
-
+#include "HxHeaders/ForwardPlusTile.glsl"
 #extension GL_KHR_shader_subgroup_basic : enable
 #extension GL_KHR_shader_subgroup_ballot : enable
 #extension GL_KHR_shader_subgroup_arithmetic : enable
-
+#extension GL_EXT_debug_printf : enable
 @code_gen
 struct LightCullingConstants {
     mat4 viewMatrix;
+    mat4 projection;
     mat4 inverseProjection;
     vec2 screenDimensions;
-    uint tileCountX;
-    uint tileCountY;
-    uint lightCount;    
+    uint tileCountX; // Total tile counts on X axis
+    uint tileCountY; // Total tile counts on Y axis
+    uint lightCount; // Light counts
     float zNear;
     float zFar;
     uint depthTextureIndex;
@@ -29,13 +30,8 @@ layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer Li
     LightCullingConstants value;
 };
 
-struct LightGridTile {
-    uint lightCount;
-    uint lightIndexOffset;
-};
-
 layout(buffer_reference, scalar) buffer LightGridBuffer {
-    LightGridTile tiles[]; // x=lightCount, y=lightIndexOffset
+    LightGridTile tiles[];
 };
 
 layout(buffer_reference, scalar) buffer LightIndexBuffer {
@@ -43,7 +39,7 @@ layout(buffer_reference, scalar) buffer LightIndexBuffer {
 };
 
 layout(buffer_reference, scalar) buffer GlobalCounterBuffer {
-    uint globalLightIndexCounter;
+    uint value;
 };
 
 layout(push_constant) uniform LightCullingPC {
@@ -52,283 +48,162 @@ layout(push_constant) uniform LightCullingPC {
 
 layout(local_size_x = TILE_SIZE, local_size_y = TILE_SIZE, local_size_z = 1) in;
 
-// Tile frustum structure
-struct Frustum {
-    vec4 planes[4]; // left, right, top, bottom
-    float minDepth;
-    float maxDepth;
-};
-
-// ------------------------------------------------------------------
-// SHARED MEMORY
-// ------------------------------------------------------------------
-shared uint visibleLightCount;
-shared uint visibleLightIndices[MAX_LIGHTS_PER_TILE];
-shared uint minDepthInt;
-shared uint maxDepthInt;
-shared Frustum tileFrustum;
-shared uint globalOffset;
-
-// ------------------------------------------------------------------
-// HELPER FUNCTIONS
-// ------------------------------------------------------------------
-
 LightCullingConst cullingConst = LightCullingConst(pc.lightCullingConstAddress);
 
-// Convert depth buffer value to view space Z
-// Note: This assumes standard OpenGL -Z View Space
+struct AABB {
+    vec3 minBounds;
+    vec3 maxBounds;
+};
+
+
+// --- Shared Memory ---
+shared uint sharedMinDepth;
+shared uint sharedMaxDepth;
+shared uint sharedLightCount;
+shared uint sharedLightIndices[MAX_LIGHTS_PER_TILE];
+shared AABB sharedTileAABB;
+shared vec4 sharedFrustumPlanes[4]; // Left, Right, Top, Bottom
+
+// --- Helper Functions ---
+
 float depthToViewZ(float depth) {
-    // Handling BOTH standard Z [0..1] and Inverse Z [1..0]
-    // The projection matrix (or inverse proj) handles the depth mapping.
-    // If using Vulkan Convention [0..1] with InvZ: Near->1, Far->0.
-    // If using Vulkan Convention [0..1] with StdZ: Near->0, Far->1.
-    //
-    // The "clipPos" should reconstruct NDC Z correctly. 
-    // BUT 'depth' is [0, 1] raw depth from texture.
-    // In Vulkan/DX, Z_ndc = depth.
-    
-    // NEW CODE: Using [0, 1] Z input.
-    // Whether this is "Standard" or "Inverse" is baked into 'inverseProjection'.
-    // If InverseZ was used, depth=1 maps to Near, depth=0 maps to Far via InvProj.
-    
-    vec4 clipPos = vec4(0.0, 0.0, depth, 1.0); 
-    vec4 viewPos = cullingConst.value.inverseProjection * clipPos; 
-    if (abs(viewPos.w) < 1e-6) {
-        // Point is at infinity (or singular). 
-        // Return a sufficiently far distance (e.g. Far Plane or -Infinity)
-        // Since View Space is -Z, Far is negative.
-        return -3.402823466e+38; // -FLT_MAX
-    }
-    return viewPos.z / viewPos.w;
+    // Reversed-Z Infinite Perspective: vZ = n / d (assuming P[3][2] is 'n')
+    // We use matrix elements for robustness across different projection types
+    return cullingConst.value.projection[3][2] / (depth + cullingConst.value.projection[2][2]);
 }
 
-// Build frustum for tile in VIEW SPACE (Camera at 0,0,0)
-Frustum createTileFrustum(uvec2 tileID) {
-    Frustum frustum;
-    
-    vec2 minScreen = vec2(tileID) * TILE_SIZE / cullingConst.value.screenDimensions;
-    vec2 maxScreen = vec2(tileID + 1) * TILE_SIZE / cullingConst.value.screenDimensions;
-    
-    vec2 minNDC = minScreen * 2.0 - 1.0;
-    vec2 maxNDC = maxScreen * 2.0 - 1.0;
-    
-    // Create frustum corners in View Space
-    mat4 inverseProjection = cullingConst.value.inverseProjection;
-    
-    // For Z, we pick 0.0 and 1.0 representing the Near/Far planes in Clip Space [0,1]
-    // The inverse projection will unproject them to the correct View Z (Near/Far).
-    // If Inverse Z is used: 1.0 -> Near View Z, 0.0 -> Far View Z.
-    // If Standard Z is used: 0.0 -> Near View Z, 1.0 -> Far View Z.
-    // We define frustum planes based on the SIDES, so the Z depth of these points 
-    // matters less for the side planes, but strictly speaking we need valid points.
-    // Using 0.0 (Near-ish/Far-ish) and 1.0 (Far-ish/Near-ish).
-    
-    vec4 corners[4];
-    // Using simple depth 1.0 for "far end" of the ray reconstruction or 0.0?
-    // Actually, to build the side planes (left/right/top/bottom), we need rays from eye.
-    // Eye is at 0,0,0 in View Space.
-    // We can unproject a point at Z_clip=1.0 (or anything non-WEIRD like w=0).
-    
-    corners[0] = inverseProjection * vec4(minNDC.x, minNDC.y, 1.0, 1.0); // BL
-    corners[1] = inverseProjection * vec4(maxNDC.x, minNDC.y, 1.0, 1.0); // BR
-    corners[2] = inverseProjection * vec4(maxNDC.x, maxNDC.y, 1.0, 1.0); // TR
-    corners[3] = inverseProjection * vec4(minNDC.x, maxNDC.y, 1.0, 1.0); // TL
-    
-    for (int i = 0; i < 4; ++i) {
-        corners[i] /= corners[i].w;
-    }
-    
-    // Use Eye (0,0,0) to corners to build planes
-    // Left plane (O, BL, TL) -> (0, c[0], c[3])
-    // The previous code used corners[0]..corners[3] as "points on the far plane".
-    // Left: plane through O, c[3], c[0]
-    // Normal = cross(corners[0].xyz, corners[3].xyz)
-    
-    // Check winding:
-    // BL (bottom-left) to TL (top-left).
-    // cross(BL, TL-BL)
-    // BL is (-x, -y, -z). TL is (-x, +y, -z).
-    // TL-BL is (0, +y, 0).
-    // (-x,-y,-z) x (0,1,0) = (z, 0, -x).
-    // If z is negative (View Space), z is -, -x is positive.
-    // Normal (-, 0, +). Points Right-ish/Inward?
-    // Left plane normal should point INWARD to the frustum.
-    // Yes, seems consistent with the original code logic.
-    
-    // Left plane
-    vec3 edge = normalize(corners[3].xyz - corners[0].xyz);
-    frustum.planes[0] = vec4(normalize(cross(corners[0].xyz, edge)), 0.0);
-    
-    // Right plane
-    edge = normalize(corners[1].xyz - corners[2].xyz);
-    frustum.planes[1] = vec4(normalize(cross(corners[2].xyz, edge)), 0.0);
-    
-    // Top plane
-    edge = normalize(corners[2].xyz - corners[3].xyz);
-    frustum.planes[2] = vec4(normalize(cross(corners[3].xyz, edge)), 0.0);
-    
-    // Bottom plane
-    edge = normalize(corners[0].xyz - corners[1].xyz);
-    frustum.planes[3] = vec4(normalize(cross(corners[1].xyz, edge)), 0.0);
+vec3 screenToView(vec2 screenPos, float zView) {
+    vec2 ndc = (screenPos / cullingConst.value.screenDimensions) * 2.0 - 1.0;
+    // Vulkan NDC Y is usually pointing down, handle based on your proj matrix
+    return vec3(ndc.x / cullingConst.value.projection[0][0], ndc.y / cullingConst.value.projection[1][1], -1) * -zView;
+}
 
-    // [FIX] Robustly ensure plane normals point inward (towards Z-axis 0,0,-1)
-    // The Z-axis (0,0,-1) is strictly inside the view frustum (assuming standard centered perspective).
-    vec3 viewAxis = vec3(0.0, 0.0, -1.0);
-    for (int i = 0; i < 4; ++i) {
-        if (dot(frustum.planes[i].xyz, viewAxis) < 0.0) {
-            frustum.planes[i] = -frustum.planes[i];
+bool sqSphereAABBIntersect(in vec3 center, float radius, in AABB tile) {
+    float sqDist = 0.0;
+    for (int i = 0; i < 3; ++i) {
+        float v = center[i];
+        if (v < tile.minBounds[i]) {
+            float d = tile.minBounds[i] - v;
+            sqDist += d * d;
+        }
+        if (v > tile.maxBounds[i]) {
+            float d = v - tile.maxBounds[i];
+            sqDist += d * d;
         }
     }
-    
-    return frustum;
+    return sqDist <= (radius * radius);
 }
-
-// Test if sphere intersects frustum
-bool sphereInsideFrustum(vec3 center, float radius, Frustum frustum) {
-    // Note: In standard View Space, Z is negative (e.g., -10).
-    // minDepth is the "Near" Z (closest to 0, e.g. -2)
-    // maxDepth is the "Far" Z (furthest from 0, e.g. -100)
-    
-    // Check if object is closer than Near Plane (center.z > minDepth)
-    // or further than Far Plane (center.z < maxDepth)
-    if (center.z - radius > frustum.minDepth || center.z + radius < frustum.maxDepth) {
-        return false;
-    }
-    
-    // Test against frustum planes
-    for (int i = 0; i < 4; ++i) {
-        float distance = dot(frustum.planes[i].xyz, center) + frustum.planes[i].w;
-        // If distance is negative, we are outside the plane (because normal points In)
-        if (distance < -radius) {
-            return false;
-        }
-    }
-    return true;
-}
-
 // ------------------------------------------------------------------
 // MAIN
 // ------------------------------------------------------------------
 void main() {
-    uvec2 tileID = gl_WorkGroupID.xy;
-    uvec2 localID = gl_LocalInvocationID.xy;
-    uint localIndex = localID.y * TILE_SIZE + localID.x;
-    
-    // 1. Initialize shared memory
-    if (localIndex == 0) {
-        visibleLightCount = 0;
-        minDepthInt = 0xFFFFFFFF; // Init to Max Uint
-        maxDepthInt = 0;          // Init to Min Uint
-        tileFrustum = createTileFrustum(tileID);
-    }
-    
-    barrier();
-    
-    // 2. Calculate min/max depth for this tile
-    // [FIX]: Sample pixel center (+0.5) to avoid edge artifacts
-    vec2 pixelPos = vec2(tileID * TILE_SIZE + localID);
-    vec2 texCoord = (pixelPos + vec2(0.5)) / cullingConst.value.screenDimensions;
-    
-    float depth = textureBindless2D(cullingConst.value.depthTextureIndex, cullingConst.value.samplerIndex, texCoord).r;
-    float viewZ = depthToViewZ(depth);
-    
-    // Note: FloatBitsToUint maintains order for positive floats.
-    // For negative floats (View Z), larger magnitude = larger Uint.
-    // atomicMin finds SMALLEST Uint -> Smallest magnitude negative -> Near Z.
-    // atomicMax finds LARGEST Uint -> Largest magnitude negative -> Far Z.
-    // This logic works for standard Negative-Z View Space.
+    vec2 pixelCoord = (vec2(gl_GlobalInvocationID.xy) + vec2(0.5)) / cullingConst.value.screenDimensions;
+    ivec2 tileID = ivec2(gl_WorkGroupID.xy);
+    uint threadIdx = gl_LocalInvocationIndex;
 
-    // OPTIMIZATION: Use subgroup reductions to reduce contention on shared memory
-    // viewZ is negative in standard view space. 
-    // subgroupMin(-100, -0.1) -> -100 (Far). subgroupMax(-100, -0.1) -> -0.1 (Near).
-    // atomicMin on uint rep of negative floats wants Smallest Uint -> Smallest Magnitude -> Near Z.
-    // atomicMax on uint rep of negative floats wants Largest Uint -> Largest Magnitude -> Far Z.
-    
-    float farZ = subgroupMin(viewZ); // Most negative
-    float nearZ = subgroupMax(viewZ); // Least negative
-    
-    if (subgroupElect()) {
-        atomicMin(minDepthInt, floatBitsToUint(nearZ));
-        atomicMax(maxDepthInt, floatBitsToUint(farZ));
+    // 1. Initialize Shared Data
+    if (threadIdx == 0) {
+        sharedMinDepth = 0xFFFFFFFF; // Reversed-Z: Far is 0.0
+        sharedMaxDepth = 0;          // Reversed-Z: Near is 1.0
+        sharedLightCount = 0;
     }
-    
+
+    if (threadIdx < 4) {
+        vec2 tilePixelsMin = vec2(tileID * TILE_SIZE);
+        vec2 tilePixelsMax = vec2((tileID + 1) * TILE_SIZE);
+        
+        // Corners in View Space at Z = -1.0
+        vec3 tl = screenToView(vec2(tilePixelsMin.x, tilePixelsMax.y), 1);
+        vec3 tr = screenToView(vec2(tilePixelsMax.x, tilePixelsMax.y), 1);
+        vec3 bl = screenToView(vec2(tilePixelsMin.x, tilePixelsMin.y), 1);
+        vec3 br = screenToView(vec2(tilePixelsMax.x, tilePixelsMin.y), 1);
+
+        if (threadIdx == 0) sharedFrustumPlanes[0] = vec4(normalize(cross(bl, tl)), 0); // Left
+        if (threadIdx == 1) sharedFrustumPlanes[1] = vec4(normalize(cross(tr, br)), 0); // Right
+        if (threadIdx == 2) sharedFrustumPlanes[2] = vec4(normalize(cross(tl, tr)), 0); // Top
+        if (threadIdx == 3) sharedFrustumPlanes[3] = vec4(normalize(cross(br, bl)), 0); // Bottom
+    }
     barrier();
-    
-    if (localIndex == 0) {
-        tileFrustum.minDepth = uintBitsToFloat(minDepthInt);
-        tileFrustum.maxDepth = uintBitsToFloat(maxDepthInt);
+
+    // 2. Depth Reduction (Atomic)
+    float depth = textureBindless2D(cullingConst.value.depthTextureIndex, cullingConst.value.samplerIndex, pixelCoord).r;
+    if (depth > 0.0) { // Skip skybox/background
+        uint zInt = floatBitsToUint(depth);
+        atomicMin(sharedMinDepth, zInt);
+        atomicMax(sharedMaxDepth, zInt);
+    } else {
+        return;
     }
+    barrier();
+
+    if (threadIdx == 0) {
+        // 3. Construct AABB for Tile
+        float minDepth = uintBitsToFloat(sharedMinDepth);
+        float maxDepth = uintBitsToFloat(sharedMaxDepth);
     
+        float viewZFar = -depthToViewZ(minDepth);
+        float viewZNear = -depthToViewZ(maxDepth);
+
+        vec2 tilePixelsMin = vec2(tileID * TILE_SIZE);
+        vec2 tilePixelsMax = vec2((tileID + 1) * TILE_SIZE);
+
+        // Get XY bounds at near and far planes
+        vec3 p0 = screenToView(tilePixelsMin, viewZNear);
+        vec3 p1 = screenToView(tilePixelsMax, viewZNear);
+        vec3 p2 = screenToView(tilePixelsMin, viewZFar);
+        vec3 p3 = screenToView(tilePixelsMax, viewZFar);
+
+        AABB tileAABB;
+        tileAABB.minBounds = vec3(min(min(p0.x, p1.x), min(p2.x, p3.x)),
+                                  min(min(p0.y, p1.y), min(p2.y, p3.y)),
+                                  viewZFar); // View-Z is negative, so Far is Min
+        tileAABB.maxBounds = vec3(max(max(p0.x, p1.x), max(p2.x, p3.x)),
+                                  max(max(p0.y, p1.y), max(p2.y, p3.y)),
+                                  viewZNear);
+        sharedTileAABB = tileAABB;
+    }
     barrier();
     
     // 3. Cull lights against tile frustum
     LightBuffer lightBuffer = LightBuffer(cullingConst.value.lightBufferAddress);
+    uint count = 0;
+    for (uint i = threadIdx; i < cullingConst.value.lightCount; i += (TILE_SIZE * TILE_SIZE)) {
+        bool inside = true;
 
-    // OPTIMIZATION: Stride loop by workgroup size and use subgroup ballot
-    uint workGroupSize = TILE_SIZE * TILE_SIZE; 
-
-    for (uint i = 0; i < cullingConst.value.lightCount; i += workGroupSize) {
-        uint lightIndex = i + localIndex;
-        bool isVisible = false;
-
-        if (lightIndex < cullingConst.value.lightCount) {
-            Light light = lightBuffer.lights[lightIndex];
-            if (light.type == 0) {
-                // Directional lights affect all tiles
-                // isVisible = true;
-            } else {
-                // Convert Range Light Position (World) to Frustum Space (View)
-                vec3 lightPosView = (cullingConst.value.viewMatrix * vec4(light.position, 1.0)).xyz;
-                
-                if (sphereInsideFrustum(lightPosView, light.range, tileFrustum)) {
-                    isVisible = true;
-                }
+        Light light = lightBuffer.lights[i];
+        if (light.type == 0) { // Directional Light
+            continue; // Directional lights are processed separately
+        }
+        // Convert Range Light Position (World) to Frustum Space (View)
+        vec3 lightPosView = (cullingConst.value.viewMatrix * vec4(light.position, 1.0)).xyz;
+        for (int j = 0; j < 4; ++j) {
+            if (dot(sharedFrustumPlanes[j].xyz, lightPosView) < -light.range) {
+                inside = false;
+                break;
             }
         }
 
-        uvec4 ballot = subgroupBallot(isVisible);
-        uint count = subgroupBallotBitCount(ballot);
-
-        if (count > 0) {
-            uint baseIndex = 0;
-            if (subgroupElect()) {
-                baseIndex = atomicAdd(visibleLightCount, count);
-            }
-            baseIndex = subgroupBroadcastFirst(baseIndex);
-
-            if (isVisible) {
-                uint offset = subgroupBallotExclusiveBitCount(ballot);
-                uint idx = baseIndex + offset;
-                if (idx < MAX_LIGHTS_PER_TILE) {
-                    visibleLightIndices[idx] = lightIndex;
-                }
+        if (inside && sqSphereAABBIntersect(lightPosView, light.range, sharedTileAABB)) {
+            uint index = atomicAdd(sharedLightCount, 1);
+            if (index < MAX_LIGHTS_PER_TILE) {
+                sharedLightIndices[index] = i;
             }
         }
     }
-    
     barrier();
-    
-    // 4. Write results
-    GlobalCounterBuffer glCounterBuf = GlobalCounterBuffer(cullingConst.value.globalCounterBufferAddress);
-    LightGridBuffer lightGridBuffer = LightGridBuffer(cullingConst.value.lightGridBufferAddress);
-    LightIndexBuffer lightIndexBuffer = LightIndexBuffer(cullingConst.value.lightIndexBufferAddress);
-    
-    uint count = min(visibleLightCount, MAX_LIGHTS_PER_TILE);
-    
-    if (localIndex == 0) {
-        uint tileIndex = tileID.y * uint(cullingConst.value.tileCountX) + tileID.x;
-        globalOffset = atomicAdd(glCounterBuf.globalLightIndexCounter, count);
-        
+    if (threadIdx == 0) {
+        GlobalCounterBuffer glCounterBuf = GlobalCounterBuffer(cullingConst.value.globalCounterBufferAddress);
+        LightGridBuffer lightGridBuffer = LightGridBuffer(cullingConst.value.lightGridBufferAddress);
+        LightIndexBuffer lightIndexBuffer = LightIndexBuffer(cullingConst.value.lightIndexBufferAddress);
+
+        uint tileIdx = tileID.y * cullingConst.value.tileCountX + tileID.x;
         LightGridTile tile;
-        tile.lightCount = count;
-        tile.lightIndexOffset = globalOffset;
-        lightGridBuffer.tiles[tileIndex] = tile;
-    }
-    
-    barrier();
-    
-    // Write light indices
-    for (uint i = localIndex; i < count; i += TILE_SIZE * TILE_SIZE) {
-        lightIndexBuffer.indices[globalOffset + i] = visibleLightIndices[i];
+        tile.lightCount = min(sharedLightCount, MAX_LIGHTS_PER_TILE);;
+        tile.lightIndexOffset = tileIdx * MAX_LIGHTS_PER_TILE;
+        lightGridBuffer.tiles[tileIdx] = tile;
+
+        for (uint i = 0; i < tile.lightCount; ++i) {
+            lightIndexBuffer.indices[tileIdx * MAX_LIGHTS_PER_TILE + i] = sharedLightIndices[i];
+        }
     }
 }

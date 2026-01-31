@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.RegularExpressions;
+using Microsoft.Extensions.Logging;
 
 namespace HelixToolkit.Nex.Shaders;
 
@@ -76,6 +77,7 @@ public class ShaderBuildResult
 /// </summary>
 public class ShaderBuilder
 {
+    private static readonly ILogger _logger = LogManager.Create<ShaderBuilder>();
     private readonly ShaderStage _stage;
     private readonly ShaderBuildOptions _options;
     private readonly HashSet<string> _processedIncludes = new();
@@ -267,6 +269,7 @@ public class ShaderBuilder
                     else
                     {
                         _errors.Add($"Failed to load include file: {includePath}");
+                        _logger.LogError($"Failed to load include file: {includePath}");
                         builder.AppendLine($"// ERROR: Failed to include: {includePath}");
                     }
                 }
