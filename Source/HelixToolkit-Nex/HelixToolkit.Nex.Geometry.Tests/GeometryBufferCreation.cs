@@ -98,7 +98,7 @@ public sealed class GeometryBufferCreation
     [TestMethod]
     public void TestCombinedBuffersUpload()
     {
-        using var geometry = new Geometry
+        using var geometry = new Geometry(true)
         {
             Vertices = [.. Enumerable.Repeat(new Vector4(1, 2, 3, 1), 512)],
             VertexProps = [.. Enumerable.Repeat(new VertexProperties(new Vector3(0, 1, 0)), 512)],
@@ -157,7 +157,7 @@ public sealed class GeometryBufferCreation
     public void TestLargeIndexBuffer()
     {
         const int indexCount = 100000;
-        using var geometry = new Geometry
+        using var geometry = new Geometry(true)
         {
             Indices = [.. Enumerable.Range(0, indexCount).Select(i => (uint)i)],
         };
@@ -211,7 +211,7 @@ public sealed class GeometryBufferCreation
     [TestMethod]
     public void TestDynamicIndexBuffer()
     {
-        using var geometry = new Geometry
+        using var geometry = new Geometry(true)
         {
             Indices = [.. Enumerable.Range(0, 256).Select(i => (uint)i)],
         };
@@ -328,7 +328,7 @@ public sealed class GeometryBufferCreation
     [TestMethod]
     public void TestPartialBufferUpdate()
     {
-        using var geometry = new Geometry
+        using var geometry = new Geometry(true)
         {
             Vertices = [.. Enumerable.Repeat(new Vector4(1, 2, 3, 1), 128)],
             Indices = [.. Enumerable.Range(0, 128).Select(i => (uint)i)],
@@ -536,7 +536,7 @@ public sealed class GeometryBufferCreation
     [TestMethod]
     public void TestBufferDirtySetWhenVerticesModified()
     {
-        using var geometry = new Geometry
+        using var geometry = new Geometry(true)
         {
             Vertices = [.. Enumerable.Repeat(new Vector4(1, 2, 3, 1), 64)],
         };
@@ -561,7 +561,7 @@ public sealed class GeometryBufferCreation
     [TestMethod]
     public void TestBufferDirtySetWhenIndicesModified()
     {
-        using var geometry = new Geometry
+        using var geometry = new Geometry(true)
         {
             Indices = [.. Enumerable.Range(0, 64).Select(i => (uint)i)],
         };
@@ -586,7 +586,7 @@ public sealed class GeometryBufferCreation
     [TestMethod]
     public void TestBufferDirtySetWhenVertColorsModified()
     {
-        using var geometry = new Geometry
+        using var geometry = new Geometry(true)
         {
             Vertices = [.. Enumerable.Repeat(new Vector4(1, 2, 3, 1), 64)],
         };
@@ -612,7 +612,7 @@ public sealed class GeometryBufferCreation
     [TestMethod]
     public void TestBufferDirtyParameterlessUpdateUsesFlag()
     {
-        using var geometry = new Geometry
+        using var geometry = new Geometry(true)
         {
             Vertices = [.. Enumerable.Repeat(new Vector4(1, 2, 3, 1), 64)],
             Indices = [.. Enumerable.Range(0, 64).Select(i => (uint)i)],
@@ -644,7 +644,7 @@ public sealed class GeometryBufferCreation
     [TestMethod]
     public void TestBufferDirtyManualSet()
     {
-        using var geometry = new Geometry
+        using var geometry = new Geometry(true)
         {
             Vertices = [.. Enumerable.Repeat(new Vector4(1, 2, 3, 1), 64)],
         };
@@ -669,7 +669,7 @@ public sealed class GeometryBufferCreation
     [TestMethod]
     public void TestBufferDirtyMultipleModifications()
     {
-        using var geometry = new Geometry
+        using var geometry = new Geometry(true)
         {
             Vertices = [.. Enumerable.Repeat(new Vector4(1, 2, 3, 1), 64)],
             Indices = [.. Enumerable.Range(0, 64).Select(i => (uint)i)],

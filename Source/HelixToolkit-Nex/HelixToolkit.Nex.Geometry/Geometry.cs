@@ -106,7 +106,14 @@ public partial class Geometry : ObservableObject, IDisposable
     public bool CanHaveIndexBuffer =>
         Topology is not Topology.Point and not Topology.TriangleStrip and not Topology.LineStrip;
 
-    public bool IsDynamic { get; } = false;
+    /// <summary>
+    /// Gets or sets a value indicating whether the object is dynamic.
+    /// If true, the geometry is expected to change frequently.
+    /// If false, the geometry is static and does not change after creation. This can allow for certain optimizations such as mesh batching and shared buffers.
+    /// Especially for index buffer, dynamic geometry will have its own index buffer, while all static geometries share a single index buffer externally.
+    /// Gpu culling only supports static geometry with a single shared index buffer for batched indirect draw.
+    /// </summary>
+    public bool IsDynamic { set; get; } = false;
 
     public bool IsBoundDirty { set; get; } = true;
 
@@ -129,30 +136,31 @@ public partial class Geometry : ObservableObject, IDisposable
     {
         Topology = topology;
         IsDynamic = isDynamic;
-        if (IsDynamic)
+
+        PropertyChanged += (s, e) =>
         {
-            PropertyChanged += (s, e) =>
+            if (e.PropertyName is nameof(Vertices))
             {
-                if (e.PropertyName is nameof(Vertices))
-                {
-                    BufferDirty |= GeometryBufferType.Vertex;
-                    IsBoundDirty = true;
-                }
-                else if (e.PropertyName is nameof(VertexProps))
-                {
-                    BufferDirty |= GeometryBufferType.Vertex;
-                }
-                else if (e.PropertyName is nameof(Indices))
-                {
-                    BufferDirty |= GeometryBufferType.Index;
-                }
-                else if (e.PropertyName is nameof(VertexColors))
-                {
-                    BufferDirty |= GeometryBufferType.VertexColor;
-                }
-            };
-        }
+                BufferDirty |= GeometryBufferType.Vertex;
+                IsBoundDirty = true;
+            }
+            else if (e.PropertyName is nameof(VertexProps))
+            {
+                BufferDirty |= GeometryBufferType.Vertex;
+            }
+            else if (e.PropertyName is nameof(Indices))
+            {
+                BufferDirty |= GeometryBufferType.Index;
+            }
+            else if (e.PropertyName is nameof(VertexColors))
+            {
+                BufferDirty |= GeometryBufferType.VertexColor;
+            }
+        };
     }
+
+    public Geometry(bool isDynamic)
+        : this(Topology.Triangle, isDynamic) { }
 
     public Geometry(
         IEnumerable<Vertex> vertices,
