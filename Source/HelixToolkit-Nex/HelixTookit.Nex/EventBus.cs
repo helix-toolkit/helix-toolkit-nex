@@ -30,12 +30,16 @@ public sealed class EventBus : IDisposable
     /// </summary>
     /// <param name="captureMainThreadContext">If true, captures the current synchronization context as the main thread context</param>
     public EventBus(bool captureMainThreadContext = true)
-    {
-        if (captureMainThreadContext)
-        {
-            _mainThreadContext = SynchronizationContext.Current;
-        }
+        : this(captureMainThreadContext ? SynchronizationContext.Current : null) { }
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="EventBus"/> class with the specified synchronization context.
+    /// </summary>
+    /// <param name="context">The <see cref="SynchronizationContext"/> to use for invoking event handlers on the main thread. If <see
+    /// langword="null"/>, event handlers will not be marshaled to a specific synchronization context.</param>
+    public EventBus(SynchronizationContext? context)
+    {
+        _mainThreadContext = context;
         _publishThread = new Thread(ProcessEventQueue)
         {
             Name = "EventBus Publisher Thread",

@@ -73,6 +73,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RenderToCubeMap", "Samples\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RenderToCubeMapSinglePass", "Samples\GraphicsAPI\RenderToCubeMapSinglePass\RenderToCubeMapSinglePass.csproj", "{8EC79638-31B1-6676-EE06-3CE53C258781}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HelixToolkit.Nex.Tests", "HelixToolkit.Nex.Tests\HelixToolkit.Nex.Tests.csproj", "{BAD5EDC0-8EAC-4245-A89D-ED7C50D31A84}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -187,6 +189,10 @@ Global
 		{8EC79638-31B1-6676-EE06-3CE53C258781}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8EC79638-31B1-6676-EE06-3CE53C258781}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8EC79638-31B1-6676-EE06-3CE53C258781}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BAD5EDC0-8EAC-4245-A89D-ED7C50D31A84}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BAD5EDC0-8EAC-4245-A89D-ED7C50D31A84}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BAD5EDC0-8EAC-4245-A89D-ED7C50D31A84}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BAD5EDC0-8EAC-4245-A89D-ED7C50D31A84}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
