@@ -14,13 +14,13 @@ internal static class StringHelper
 /// <remarks>
 /// When applied to a field, this attribute causes the source generator to create a public property
 /// that implements the INotifyPropertyChanged pattern using the Set method from ObservableObject.
-/// 
+///
 /// Example:
 /// <code>
 /// [Observable(Default = "Vector4.One")]
 /// private Vector4 _albedo;
 /// </code>
-/// 
+///
 /// Will generate:
 /// <code>
 /// public Vector4 Albedo
@@ -45,6 +45,7 @@ public sealed class ObservableAttribute : Attribute
 
 public abstract class ObservableObject : INotifyPropertyChanged
 {
+    public static EventBus EventBus => EventBus.Instance;
     private bool _disablePropertyChangedEvent = false;
     public bool DisablePropertyChangedEvent
     {

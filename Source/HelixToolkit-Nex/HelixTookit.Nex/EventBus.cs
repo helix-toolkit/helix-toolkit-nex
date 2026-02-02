@@ -293,4 +293,11 @@ public sealed class EventBus : IDisposable
             }
         }
     }
+
+    private static class DefaultEventBusHolder
+    {
+        internal static readonly EventBus Instance = new();
+    }
+
+    public static EventBus Instance => DefaultEventBusHolder.Instance;
 }

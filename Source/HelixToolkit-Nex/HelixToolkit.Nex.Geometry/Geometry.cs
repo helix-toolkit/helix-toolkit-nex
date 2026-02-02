@@ -51,6 +51,7 @@ public struct VertexProperties(Vector3 normal, Vector2 texCoord, Vector3 tangent
 [Flags]
 public enum GeometryBufferType
 {
+    None = 0,
     Vertex = 1,
     VertexProp = 1 << 2,
     Index = 1 << 3,
@@ -61,6 +62,8 @@ public enum GeometryBufferType
 [JsonConverter(typeof(Serialization.GeometryJsonConverter))]
 public partial class Geometry : ObservableObject, IDisposable
 {
+    public record GeometryUpdatedEvent(Geometry Source) : IEvent;
+
     private static readonly ILogger logger = LogManager.Create<Geometry>();
     private static readonly ITracer _tracer = TracerFactory.GetTracer(nameof(Geometry));
     private const string TRACE_BUFFER = "Buffer";
@@ -155,6 +158,10 @@ public partial class Geometry : ObservableObject, IDisposable
             else if (e.PropertyName is nameof(VertexColors))
             {
                 BufferDirty |= GeometryBufferType.VertexColor;
+            }
+            if (BufferDirty != GeometryBufferType.None)
+            {
+                EventBus.PublishAsync(new GeometryUpdatedEvent(this));
             }
         };
     }
