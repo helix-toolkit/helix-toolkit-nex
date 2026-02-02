@@ -24,7 +24,8 @@ public class ForwardPlusExample
 {
     #region Constants and Configuration
 
-    private static readonly int NumPointLights = 100;
+    private static readonly int NumLights = 100;
+    private static readonly int NumSpotLights = 4;
     private const PBRShadingMode ShadingMode = PBRShadingMode.PBR;
     private const float LightRange = 6.0f;
     #endregion
@@ -90,8 +91,8 @@ public class ForwardPlusExample
     private ForwardPlusLightCulling.Config _config = ForwardPlusLightCulling.Config.Default;
     private FastList<Light> _lights = new();
     private DirectionalLights _dirLights = new();
-    private Matrix4x4[] _modelMatrices = new Matrix4x4[NumPointLights + 1];
-    private readonly PBRProperties[] _pbrProperties = new PBRProperties[NumPointLights + 1];
+    private Matrix4x4[] _modelMatrices = new Matrix4x4[NumLights + 1];
+    private readonly PBRProperties[] _pbrProperties = new PBRProperties[NumLights + 1];
     private readonly Geometry _lightMesh;
     private readonly Geometry _mesh;
 
@@ -167,7 +168,7 @@ public class ForwardPlusExample
         };
 
         // Initialize scene data
-        _lights = CreateTestLights(NumPointLights);
+        _lights = CreateTestLights(NumLights);
         _modelMatrices[0] = Matrix4x4.Identity;
         _pbrProperties[0] = new()
         {
@@ -186,7 +187,7 @@ public class ForwardPlusExample
             }
         );
         // Setup light sphere transforms and emissive materials
-        for (int i = 0; i < _lights.Count; i++)
+        for (int i = 0; i < NumLights; i++)
         {
             _modelMatrices[i + 1] = Matrix4x4.CreateTranslation(_lights[i].Position);
             _pbrProperties[i + 1] = new()
@@ -647,6 +648,8 @@ public class ForwardPlusExample
                 DepthTextureIndex = _depthBuffer.Index,
                 SamplerIndex = _depthBufferSampler.Index,
                 MaxLightsPerTile = _config.MaxLightsPerTile,
+                EnableAABBCulling = 1,
+                EnableDepthMaskCulling = 1,
                 LightBufferAddress = _context.GpuAddress(_lightBuffer),
                 LightGridBufferAddress = _context.GpuAddress(_lightGridBuffer),
                 LightIndexBufferAddress = _context.GpuAddress(_lightIndexBuffer),
@@ -803,13 +806,21 @@ public class ForwardPlusExample
         _dirLights.LightCount = 1;
 
         // Point lights with alternating colors
-        var colors = new[] { new Vector3(1, 0, 0), new Vector3(0, 1, 0), new Vector3(0, 0, 1) };
+        var colors = new[]
+        {
+            new Vector3(1, 0, 0),
+            new Vector3(0, 1, 0),
+            new Vector3(0, 0, 1),
+            new Vector3(1, 1, 0),
+            new Vector3(1, 0, 1),
+            new Vector3(0, 1, 1),
+        };
 
         int gridSize = (int)MathF.Ceiling(MathF.Sqrt(count));
-        float spacing = 4.0f;
+        float spacing = 8.0f;
         float offset = (gridSize - 1) * spacing * 0.5f;
 
-        for (int i = 0; i < count; i++)
+        for (int i = 0; i < count - NumSpotLights; i++)
         {
             int x = i % gridSize;
             int y = i / gridSize;
@@ -830,7 +841,24 @@ public class ForwardPlusExample
                 }
             );
         }
-
+        for (int i = 0; i < NumSpotLights; ++i)
+        {
+            lights.Add(
+                new Light
+                {
+                    Position = new Vector3((i - NumSpotLights / 2) * 4, 0, -15),
+                    Type = 2, // Spot light
+                    Direction = Vector3.Normalize(new Vector3(0, 0, 1)),
+                    Range = 40,
+                    Color = colors[i % colors.Length],
+                    Intensity = 100.0f,
+                    SpotAngles = new Vector2(
+                        MathF.Cos(new AngleSingle(15, AngleType.Degree).Radians),
+                        MathF.Cos(new AngleSingle(30, AngleType.Degree).Radians)
+                    ),
+                }
+            );
+        }
         return lights;
     }
 
@@ -859,7 +887,7 @@ public class ForwardPlusExample
         }
 
         // Skip first light (directional), only move point lights
-        for (int i = 0; i < _lights.Count; i++)
+        for (int i = 0; i < NumLights - NumSpotLights; i++)
         {
             _lights.GetInternalArray()[i].Position += new Vector3(_offset, 0, 0);
             _modelMatrices[i + 1] = Matrix4x4.CreateTranslation(_lights[i].Position);
