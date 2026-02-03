@@ -5,7 +5,7 @@
 #extension GL_KHR_shader_subgroup_ballot : enable
 #extension GL_KHR_shader_subgroup_arithmetic : enable
 #extension GL_EXT_debug_printf : enable
-@code_gen
+
 /*
  * Forward+ Light Culling Compute Shader
  * -------------------------------------
@@ -18,7 +18,7 @@
  * 4. Subgroup Intrinsics: Uses subgroup operations (ballot, arithmetic) to reduce atomic memory contention on shared memory.
  * 5. Branchless Loop Logic: Vectorized AABB checks.
  */
-
+@code_gen
 struct LightCullingConstants {
     mat4 viewMatrix;
     mat4 projection;

@@ -6,4 +6,5 @@ struct DrawIndexedIndirectCommand {
     int     vertexOffset;
     uint    firstInstance;
     uint    meshDrawIndex;
+    vec2    _padding;
 };

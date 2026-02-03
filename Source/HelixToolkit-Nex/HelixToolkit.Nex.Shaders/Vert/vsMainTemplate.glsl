@@ -39,6 +39,10 @@ layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer In
     mat4 instancing[];
 };
 
+layout(buffer_reference, std430, buffer_reference_align = 4) readonly buffer InstancingIndexBuffer {
+    uint value[];
+};
+
 layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer MeshDrawBuffer {
     MeshDraw draws[];
 };
@@ -64,6 +68,11 @@ mat4 getInstancingMatrix() {
         return mat4(1.0);
     }
     InstancingBuffer instancingBuf = InstancingBuffer(meshDraw.instancingBufferAddress);
+    if (meshDraw.instancingIndexBufferAddress != 0) {
+        InstancingIndexBuffer instancingIdx = InstancingIndexBuffer(meshDraw.instancingIndexBufferAddress);
+        uint idx = instancingIdx.value[gl_InstanceIndex];
+        return instancingBuf.instancing[idx];
+    }
     return instancingBuf.instancing[gl_InstanceIndex];
 }
 

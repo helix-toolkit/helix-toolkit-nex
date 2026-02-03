@@ -313,7 +313,19 @@ internal sealed class ShaderUtils
             logger.LogError("Shader parsing failed:");
             logger.LogError("{LOG}", shader.GetInfoLog());
             logger.LogError("{LOG}", shader.GetDebugLog());
-            logger.LogError("{LOG}", shader.GetPreprocessedCode());
+            var completeCode = shader.GetPreprocessedCode();
+
+            if (!string.IsNullOrEmpty(completeCode))
+            {
+                var lines = completeCode.Replace("\r\n", "\n").Split('\n');
+                StringBuilder sb = new();
+                for (var i = 0; i < lines.Length; ++i)
+                {
+                    sb.AppendLine($"{i + 1}: {lines[i]}");
+                }
+                logger.LogError("\n{LOG}", sb.ToString());
+            }
+
             HxDebug.Assert(false);
             return ResultCode.CompileError;
         }

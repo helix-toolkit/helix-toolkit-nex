@@ -75,6 +75,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RenderToCubeMapSinglePass",
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HelixToolkit.Nex.Tests", "HelixToolkit.Nex.Tests\HelixToolkit.Nex.Tests.csproj", "{BAD5EDC0-8EAC-4245-A89D-ED7C50D31A84}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InstancingMeshCulling", "Samples\GraphicsAPI\InstancingMeshCulling\InstancingMeshCulling.csproj", "{980B7CE2-172F-3EEE-B720-DAD995281C19}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -193,6 +195,10 @@ Global
 		{BAD5EDC0-8EAC-4245-A89D-ED7C50D31A84}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{BAD5EDC0-8EAC-4245-A89D-ED7C50D31A84}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BAD5EDC0-8EAC-4245-A89D-ED7C50D31A84}.Release|Any CPU.Build.0 = Release|Any CPU
+		{980B7CE2-172F-3EEE-B720-DAD995281C19}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{980B7CE2-172F-3EEE-B720-DAD995281C19}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{980B7CE2-172F-3EEE-B720-DAD995281C19}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{980B7CE2-172F-3EEE-B720-DAD995281C19}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -206,6 +212,7 @@ Global
 		{DC092D25-63FD-6B4B-4ECD-26A55547BAF5} = {303D1651-C6C1-43C2-A7A7-01BEF4D17E86}
 		{FFDECA0C-0202-AA08-93E2-000398EA4D08} = {303D1651-C6C1-43C2-A7A7-01BEF4D17E86}
 		{8EC79638-31B1-6676-EE06-3CE53C258781} = {303D1651-C6C1-43C2-A7A7-01BEF4D17E86}
+		{980B7CE2-172F-3EEE-B720-DAD995281C19} = {303D1651-C6C1-43C2-A7A7-01BEF4D17E86}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {E5E7411B-7281-4FBB-8D21-475B6670439C}

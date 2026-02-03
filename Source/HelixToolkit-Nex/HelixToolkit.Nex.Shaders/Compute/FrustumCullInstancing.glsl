@@ -1,8 +1,8 @@
 #include "HxHeaders/HeaderCompute.glsl"
 #include "HxHeaders/ModelMatrixStruct.glsl"
 #include "HxHeaders/DrawIndexIndirectCommand.glsl"
-#include "HxHeaders/MeshDraw.glsl"
 #include "HxHeaders/FrustumCullingCommon.glsl"
+#include "HxHeaders/MeshDraw.glsl"
 // Enable subgroup extensions for efficient output compaction if allowed
 #extension GL_KHR_shader_subgroup_basic : enable
 #extension GL_KHR_shader_subgroup_ballot : enable
@@ -20,7 +20,7 @@ layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer Me
     MeshBoundData value[];
 };
 
-layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer DrawCommandBuffer {
+layout(buffer_reference, std430, buffer_reference_align = 16) buffer DrawCommandBuffer {
     DrawIndexedIndirectCommand commands[];
 };
 
@@ -28,20 +28,28 @@ layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer Me
     MeshDraw draws[];
 };
 
-layout(buffer_reference, scalar) writeonly buffer VisableDrawCommandsBuffer {
-    DrawIndexedIndirectCommand commands[];
+layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer InstancingBuffer {
+    mat4 instances[];
 };
 
+layout(buffer_reference, scalar) writeonly buffer VisableInstanceIndexBuffer {
+    uint indices[];
+};
 layout(buffer_reference, scalar) buffer DrawCountBuffer {
     uint count;
 };
-
 // ------------------------------------------------------------------
 // PUSH CONSTANTS
 // ------------------------------------------------------------------
+@code_gen
+struct FrustumCullInstancingPC {
+    uint64_t cullingConstAddress;
+    uint drawCommandIdx;
+    uint instanceCount;
+};
 
 layout(push_constant) uniform CullingPC {
-    uint64_t cullingConstAddress;
+    FrustumCullInstancingPC value;
 } pc;
 
 // Constants
@@ -55,36 +63,32 @@ void main() {
     uint gID = gl_GlobalInvocationID.x;
 
     // Access Constants
-    CullingConstBuffer cullingConst = CullingConstBuffer(pc.cullingConstAddress);
-    if (cullingConst.value.cullingEnabled == 0) { // Early out if culling is disabled
+    CullingConstBuffer cullingConst = CullingConstBuffer(pc.value.cullingConstAddress);
+    if (cullingConst.value.cullingEnabled == 0) {
        return;
     }
-    if (gID >= cullingConst.value.instanceCount) { // Ensure valid access
-        return;
-    }
-    DrawCommandBuffer drawCmdBuf = DrawCommandBuffer(cullingConst.value.drawCommandBufferAddress);
-    DrawIndexedIndirectCommand cmd = drawCmdBuf.commands[gID];
-    if (cmd.instanceCount == 0) {
-        // Skip zero-instance draws
+    
+    if (gID >= pc.value.instanceCount) {
         return;
     }
     // Access Buffers
     MeshDrawBuffer meshDrawBuf = MeshDrawBuffer(cullingConst.value.meshDrawBufferAddress);
-    
+    DrawCommandBuffer drawCmdBuf = DrawCommandBuffer(cullingConst.value.drawCommandBufferAddress);
+    DrawIndexedIndirectCommand cmd = drawCmdBuf.commands[pc.value.drawCommandIdx];   
     MeshDraw draw = meshDrawBuf.draws[cmd.meshDrawIndex];
-    if (draw.instancingBufferAddress != 0) {
-        // For instanced draws, we handle seperately.
+    if (draw.instancingBufferAddress == 0) {
         return;
     }
 
-    ModelMatrixBuffer modelMatrixBuf = ModelMatrixBuffer(cullingConst.value.modelMatrixBufferAddress);
-    MeshBoundBuffer meshBoundBuf = MeshBoundBuffer(cullingConst.value.meshBoundBufferAddress);
-
-    MeshBoundData bound = meshBoundBuf.value[draw.meshId];
     bool isVisible = true;
 
+    InstancingBuffer instBuf = InstancingBuffer(draw.instancingBufferAddress);
+    ModelMatrixBuffer modelMatrixBuf = ModelMatrixBuffer(cullingConst.value.modelMatrixBufferAddress);
+    MeshBoundBuffer meshBoundBuf = MeshBoundBuffer(cullingConst.value.meshBoundBufferAddress);
+    MeshBoundData bound = meshBoundBuf.value[draw.meshId];
+
     // Frustum Culling
-    mat4 worldMatrix = modelMatrixBuf.models[draw.modelId];
+    mat4 worldMatrix = instBuf.instances[gID] * modelMatrixBuf.models[draw.modelId];
     // 1. Sphere Culling (Cheap, fast reject)
     // Transform local sphere center to world
     // Note: Scale is baked into world matrix rows, so simple mult works for uniform scale
@@ -120,7 +124,6 @@ void main() {
             isVisible = false;
         }
     }
-
     // Occlusion Culling (Placeholder / Suggestion)
     // ---------------------------------------------------------
     // if (isVisible && cullingConst.value.occlusionEnabled != 0) {
@@ -135,22 +138,17 @@ void main() {
 
     // Output visibility
     // We can use subgroup ops to compact atomic writes
-    
     uvec4 ballot = subgroupBallot(isVisible);
     uint count = subgroupBallotBitCount(ballot);
     if (count > 0) {
-        // Ensure we have valid buffers before writing
-        if (cullingConst.value.culledDrawCommandBufferAddress == 0 || 
-            cullingConst.value.drawCommandBufferAddress == 0 || 
-            cullingConst.value.drawCountBufferAddress == 0) {
+        if (draw.instancingIndexBufferAddress == 0) {
+            // Error: Instancing Index Buffer is required for output
             return;
         }
-
         // Leader (first active thread) allocates space in output buffer
         uint baseIndex = 0;
         if (subgroupElect()) {
-            DrawCountBuffer countBuf = DrawCountBuffer(cullingConst.value.drawCountBufferAddress);
-            baseIndex = atomicAdd(countBuf.count, count);
+            baseIndex =  atomicAdd(drawCmdBuf.commands[pc.value.drawCommandIdx].instanceCount, count);
         }
         baseIndex = subgroupBroadcastFirst(baseIndex);
 
@@ -158,9 +156,12 @@ void main() {
             uint offset = subgroupBallotExclusiveBitCount(ballot);
             uint outIndex = baseIndex + offset;
             
-            VisableDrawCommandsBuffer visBuf = VisableDrawCommandsBuffer(cullingConst.value.culledDrawCommandBufferAddress);
-
-            visBuf.commands[outIndex] = cmd;
+            // If using Visibility Buffer (List of Instances):
+            if (draw.instancingIndexBufferAddress != 0) {
+                VisableInstanceIndexBuffer visBuf = VisableInstanceIndexBuffer(draw.instancingIndexBufferAddress);
+                DrawCommandBuffer drawCmdBuf = DrawCommandBuffer(cullingConst.value.drawCommandBufferAddress);
+                visBuf.indices[outIndex] = gID;
+            }
         }
     }
 }
