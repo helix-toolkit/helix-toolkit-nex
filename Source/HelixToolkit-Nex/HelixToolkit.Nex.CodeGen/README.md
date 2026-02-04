@@ -18,7 +18,7 @@ Automatically converts GLSL shader struct definitions into equivalent C# structs
 - Documentation preservation from GLSL comments
 - Array support with generated index accessors
 
-?? **[Read the full GLSL Struct Generator documentation](GLSL_STRUCT_GENERATOR_README.md)**
+**[Read the full GLSL Struct Generator documentation](GLSL_STRUCT_GENERATOR_README.md)**
 
 ### 2. **Observable Property Generator**
 Automatically generates observable properties from fields marked with the `[Observable]` attribute, following the CommunityToolkit.Mvvm pattern.
