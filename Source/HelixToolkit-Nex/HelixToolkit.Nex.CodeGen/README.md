@@ -29,7 +29,7 @@ Automatically generates observable properties from fields marked with the `[Obse
 - Default value support
 - IntelliSense integration
 
-?? **[Read the full Observable Property Generator documentation](OBSERVABLE_PROPERTY_GENERATOR_README.md)**
+**[Read the full Observable Property Generator documentation](OBSERVABLE_PROPERTY_GENERATOR_README.md)**
 
 ## Target Framework
 
