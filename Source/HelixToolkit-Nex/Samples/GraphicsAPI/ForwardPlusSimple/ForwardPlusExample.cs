@@ -26,7 +26,7 @@ public class ForwardPlusExample
 
     private static readonly int NumLights = 100;
     private static readonly int NumSpotLights = 4;
-    private const PBRShadingMode ShadingMode = PBRShadingMode.DebugTileLightCount;
+    private const PBRShadingMode ShadingMode = PBRShadingMode.PBR;
     private const float LightRange = 6.0f;
     #endregion
 
@@ -585,7 +585,7 @@ public class ForwardPlusExample
     )
     {
         // Animate lights
-        //MoveLights((float)DateTime.Now.TimeOfDay.TotalSeconds);
+        MoveLights((float)DateTime.Now.TimeOfDay.TotalSeconds);
         cmdBuffer.UpdateBuffer(_lightBuffer, _lights);
 
         // Reset atomic counter for light index allocation
@@ -681,18 +681,6 @@ public class ForwardPlusExample
         );
         cmdBuffer.DrawIndexed((uint)_mesh.Indices.Count);
 
-        //for (int i = 1; i < _lights.Count; i++)
-        //{
-        //    // Draw light spheres
-        //    cmdBuffer.PushConstants(
-        //        new MeshDrawPushConstant()
-        //        {
-        //            FpConstAddress = _fpConstBuffer.GpuAddress,
-        //            MeshDrawId = (uint)i,
-        //        }
-        //    );
-        //    cmdBuffer.DrawIndexed((uint)_lightMesh.Indices.Count, 1, (uint)_mesh.Indices.Count);
-        //}
         cmdBuffer.EndRendering();
     }
 

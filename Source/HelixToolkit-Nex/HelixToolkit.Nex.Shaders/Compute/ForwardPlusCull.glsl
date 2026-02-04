@@ -126,6 +126,7 @@ bool sqSphereAABBIntersect(in vec3 center, float radius, in AABB tile) {
 // ------------------------------------------------------------------
 void main() {
     vec2 pixelCoord = (vec2(gl_GlobalInvocationID.xy) + vec2(0.5)) / cullingConst.value.screenDimensions;
+    pixelCoord.y = 1.0 - pixelCoord.y; // Flip Y for texture lookup if needed
     ivec2 tileID = ivec2(gl_WorkGroupID.xy);
     uint threadIdx = gl_LocalInvocationIndex;
 

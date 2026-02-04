@@ -39,7 +39,7 @@ internal class App : Application
         _example = new ForwardPlusExample(_ctx);
 
         _example.Initialize(windowSize.Width, windowSize.Height);
-        _camera.Position = new Vector3(0, 0, -30);
+        _camera.Position = new Vector3(0, 10, -30);
     }
 
     protected override void OnTick()
