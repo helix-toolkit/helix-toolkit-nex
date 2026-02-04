@@ -13,9 +13,10 @@ Automatically converts GLSL shader struct definitions into equivalent C# structs
 
 **Key capabilities:**
 - Automatic type mapping from GLSL to C# types
-- Proper memory layout with `[StructLayout(LayoutKind.Sequential)]`
+- Proper memory layout with `[StructLayout(LayoutKind.Sequential, Pack = 16)]`
+- Automatic `SizeInBytes` constant generation
 - Documentation preservation from GLSL comments
-- Array support with marshaling attributes
+- Array support with generated index accessors
 
 ?? **[Read the full GLSL Struct Generator documentation](GLSL_STRUCT_GENERATOR_README.md)**
 
@@ -63,8 +64,9 @@ Reference this project as an analyzer in your `.csproj` file:
 </ItemGroup>
 ```
 
-2. Define structs in your GLSL files:
+2. Define structs in your GLSL files and mark them with `@code_gen`:
 ```glsl
+@code_gen
 struct Material {
     vec3 color;
     float roughness;
@@ -117,14 +119,14 @@ Or add to your `.csproj`:
 
 ```
 HelixToolkit.Nex.CodeGen/
-??? README.md                                    # This file
-??? GLSL_STRUCT_GENERATOR_README.md              # GLSL generator documentation
-??? OBSERVABLE_PROPERTY_GENERATOR_README.md      # Observable generator documentation
-??? HelixToolkit.Nex.CodeGen.csproj             # Project file
-??? GlslStructGenerator.cs                       # GLSL source generator
-??? GlslStructParser.cs                          # GLSL parsing logic
-??? CSharpStructGenerator.cs                     # C# code generation
-??? ObservablePropertyGenerator.cs               # Observable property generator
+- README.md                                    # This file
+- GLSL_STRUCT_GENERATOR_README.md              # GLSL generator documentation
+- OBSERVABLE_PROPERTY_GENERATOR_README.md      # Observable generator documentation
+- HelixToolkit.Nex.CodeGen.csproj             # Project file
+- GlslStructGenerator.cs                       # GLSL source generator
+- GlslStructParser.cs                          # GLSL parsing logic
+- CSharpStructGenerator.cs                     # C# code generation
+- ObservablePropertyGenerator.cs               # Observable property generator
 ```
 
 ## Testing
@@ -232,4 +234,4 @@ For questions, issues, or feature requests:
 
 **Version:** Compatible with .NET Standard 2.0 and higher  
 **Generator API:** Microsoft.CodeAnalysis 4.14.0  
-**Last Updated:** 2024
+**Last Updated:** 2026

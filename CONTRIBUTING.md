@@ -70,7 +70,7 @@ dotnet build Source/HelixToolkit-Nex/HelixToolkit.Nex.sln --configuration Debug
 To run the test suite:
 
 ```powershell
-dotnet test Source/HelixToolkit-Nex/HelixToolkit.Nex.sln --configuration Debug"
+dotnet test Source/HelixToolkit-Nex/HelixToolkit.Nex.sln --configuration Debug
 ```
 
 Note: Tests tagged with `TestCategory=GPURequired` require GPU access and are skipped in CI environments.

@@ -131,49 +131,6 @@ public class VertexPropsJsonConverter : JsonConverter<VertexProperties>
         throw new JsonException("Unexpected end while reading Vector2");
     }
 
-    private static Vector4 ReadVector4(ref Utf8JsonReader reader)
-    {
-        if (reader.TokenType != JsonTokenType.StartObject)
-        {
-            throw new JsonException("Expected StartObject for Vector4");
-        }
-
-        float x = 0,
-            y = 0,
-            z = 0,
-            w = 0;
-        while (reader.Read())
-        {
-            if (reader.TokenType == JsonTokenType.EndObject)
-            {
-                return new Vector4(x, y, z, w);
-            }
-
-            if (reader.TokenType == JsonTokenType.PropertyName)
-            {
-                string? propName = reader.GetString();
-                reader.Read();
-
-                switch (propName)
-                {
-                    case "X":
-                        x = reader.GetSingle();
-                        break;
-                    case "Y":
-                        y = reader.GetSingle();
-                        break;
-                    case "Z":
-                        z = reader.GetSingle();
-                        break;
-                    case "W":
-                        w = reader.GetSingle();
-                        break;
-                }
-            }
-        }
-        throw new JsonException("Unexpected end while reading Vector4");
-    }
-
     public override void Write(
         Utf8JsonWriter writer,
         VertexProperties value,

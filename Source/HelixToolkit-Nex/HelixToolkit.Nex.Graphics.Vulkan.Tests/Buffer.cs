@@ -105,7 +105,6 @@ public class Buffer
             result == ResultCode.Ok,
             "Data upload to uniform buffer failed with error: " + result.ToString()
         );
-        buffer.Dispose(); // Clean up the buffer after the test
         Assert.AreEqual(data, downloaded, "Downloaded Value1 does not match the original data.");
         buffer.Dispose(); // Clean up the buffer after the test
     }
