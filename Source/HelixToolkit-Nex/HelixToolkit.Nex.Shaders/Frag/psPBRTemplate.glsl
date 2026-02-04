@@ -80,8 +80,8 @@ void forwardPlusLighting(in PBRMaterial material, out vec4 outFinalColor)
     // Forward+ tiled lighting
     vec3 viewDir = normalize(fpConst.cameraPosition - fragPosition);
     vec3 finalC = material.ambient * material.albedo * material.ao;
-    LightBuffer lightBuf = LightBuffer(fpConst.lightBufferAddress);
-    if (fpConst.lightCount > 0) {
+    if (fpConst.lightCount > 0 && fpConst.lightBufferAddress != 0) {
+        LightBuffer lightBuf = LightBuffer(fpConst.lightBufferAddress);
         if (fpConst.enabled == 0) {
             for (uint i = 0; i < fpConst.lightCount; ++i) {
                 Light light = lightBuf.lights[i];
@@ -109,9 +109,9 @@ void forwardPlusLighting(in PBRMaterial material, out vec4 outFinalColor)
         }
     }
 
-    if (fpConst.directionalLightsBufferAddress != 0u) {
+    if (fpConst.directionalLightsBufferAddress != 0) {
         DirectionalLightBuffer dirLightBuf = DirectionalLightBuffer(fpConst.directionalLightsBufferAddress);
-        for (uint i = 0u; i < dirLightBuf.value.lightCount; ++i) {
+        for (uint i = 0; i < dirLightBuf.value.lightCount; ++i) {
             Light dirLight = dirLightBuf.value.lights[i];
             vec3 lightContribution = calculatePBRLighting(material, dirLight, fragPosition, viewDir);
             finalC += lightContribution;

@@ -58,7 +58,7 @@ uint getMeshDrawId() {
         return pc.value.meshDrawId;
      }
      DrawCmdsBuffer cmds = DrawCmdsBuffer(fpConst.drawCmdBufferAddress);
-     return cmds.commands[gl_DrawID].meshDrawIndex;
+     return cmds.commands[gl_DrawID + pc.value.drawCommandIdxOffset].meshDrawIndex;
 }
 
 MeshDraw meshDraw = MeshDrawBuffer(fpConst.meshDrawBufferAddress).draws[getMeshDrawId()];

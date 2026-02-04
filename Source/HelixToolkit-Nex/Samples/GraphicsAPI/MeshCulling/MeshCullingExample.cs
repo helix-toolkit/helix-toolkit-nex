@@ -6,6 +6,7 @@ using HelixToolkit.Nex.Graphics;
 using HelixToolkit.Nex.Material;
 using HelixToolkit.Nex.Maths;
 using HelixToolkit.Nex.Shaders;
+using HelixToolkit.Nex.Shaders.Frag;
 
 namespace MeshCulling;
 
@@ -61,17 +62,15 @@ internal class MeshCullingExample : IDisposable
 
     private BufferResource _drawCmdsBuffer = BufferResource.Null; // Input: All potential draw commands
 
-    // Buffers for culling output (Written by CS, Read by Indirect Draw)
-    private BufferResource _culledDrawCmdsBuffer = BufferResource.Null; // Output: Compacted list of visible draw commands
-    private BufferResource _visibleCountBuffer = BufferResource.Null; // Output: Count of visible commands
-
     // Rendering resources
     private BufferResource _fpConstBuffer = BufferResource.Null;
     private TextureResource _depthBuffer = TextureResource.Null;
+    private BufferResource _directionalLightBuffer = BufferResource.Null;
 
     // -- Pipelines --
     private ComputePipelineResource _cullingPipeline = ComputePipelineResource.Null;
-    private RenderPipelineResource _renderPipeline = RenderPipelineResource.Null;
+    private RenderPipelineResource _unlitRenderPipeline = RenderPipelineResource.Null;
+    private RenderPipelineResource _pbrRenderPipeline = RenderPipelineResource.Null;
 
     // -- State & Helpers --
     private DepthState _depthState = DepthState.DefaultReversedZ;
@@ -137,29 +136,9 @@ internal class MeshCullingExample : IDisposable
 
         _drawCmdsBuffer = _context.CreateBuffer(
             _drawCommands,
-            BufferUsageBits.Storage,
+            BufferUsageBits.Storage | BufferUsageBits.Indirect,
             StorageType.Device,
             "CmdBuffer"
-        );
-
-        // 2.2 Create Output Buffers for Culling Results
-
-        // This buffer will store the compacted list of visible commands.
-        // Usage 'Indirect' allows it to be used as the buffer for DrawIndexedIndirect.
-        _culledDrawCmdsBuffer = _context.CreateBuffer(
-            _drawCommands,
-            BufferUsageBits.Storage | BufferUsageBits.Indirect,
-            StorageType.Device,
-            "CulledCmdBuffer"
-        );
-
-        // This buffer stores the atomic counter (number of visible items).
-        // Usage 'Indirect' is technically for the CountBuffer in DrawIndexedIndirectCount (if supported/abstracted).
-        _visibleCountBuffer = _context.CreateBuffer(
-            0u,
-            BufferUsageBits.Storage | BufferUsageBits.Indirect,
-            StorageType.Device,
-            "VisibleCountBuffer"
         );
 
         var indices = new FastList<uint>(_meshes[0].Indices);
@@ -194,12 +173,27 @@ internal class MeshCullingExample : IDisposable
             }
         );
 
+        _directionalLightBuffer = _context.CreateBuffer(
+            new DirectionalLights()
+            {
+                Lights_0 = new Light
+                {
+                    Direction = new Vector3(0, -1, 0),
+                    Color = Vector3.One,
+                    Intensity = 1,
+                    Type = 0,
+                },
+                LightCount = 1,
+            },
+            BufferUsageBits.Storage,
+            StorageType.Device,
+            "DirectionalLightBuffer"
+        );
+
         // Link buffer addresses to the culling constants so the shader can access them
         _cullConst.ModelMatrixBufferAddress = _modelMatrixBuffer.GpuAddress;
         _cullConst.MeshBoundBufferAddress = _boundsBuffer.GpuAddress;
         _cullConst.DrawCommandBufferAddress = _drawCmdsBuffer.GpuAddress;
-        _cullConst.CulledDrawCommandBufferAddress = _culledDrawCmdsBuffer.GpuAddress;
-        _cullConst.DrawCountBufferAddress = _visibleCountBuffer.GpuAddress;
         _cullConst.MeshDrawBufferAddress = _meshDrawBuffer.GpuAddress;
 
         // 2.4 Build Pipelines
@@ -234,32 +228,59 @@ internal class MeshCullingExample : IDisposable
             .ConfigForwardPlus(ForwardPlusLightCulling.Config.Default);
 
         var shaderResult = builder.BuildMaterialPipeline(_context, "Unlit");
-
-        var pipelineDesc = new RenderPipelineDesc
         {
-            VertexShader = shaderResult.VertexShader,
-            FragementShader = shaderResult.FragmentShader,
-            DebugName = "UnlitPipeline",
-            CullMode = CullMode.Back,
-            FrontFaceWinding = WindingMode.CCW,
-        };
+            var pipelineDesc = new RenderPipelineDesc
+            {
+                VertexShader = shaderResult.VertexShader,
+                FragementShader = shaderResult.FragmentShader,
+                DebugName = "UnlitPipeline",
+                CullMode = CullMode.Back,
+                FrontFaceWinding = WindingMode.CCW,
+            };
 
-        // Configure blending and depth formats
-        pipelineDesc.Colors[0].Format = Format.BGRA_SRGB8;
-        pipelineDesc.DepthFormat = Format.Z_F32;
+            // Configure blending and depth formats
+            pipelineDesc.Colors[0].Format = Format.BGRA_SRGB8;
+            pipelineDesc.DepthFormat = Format.Z_F32;
 
-        // Specialization constants setup (if needed by the shader)
-        pipelineDesc.SpecInfo.Entries[0].ConstantId = 0;
-        pipelineDesc.SpecInfo.Entries[0].Size = sizeof(uint);
-        pipelineDesc.SpecInfo.Data = new byte[sizeof(uint)];
-        using var pData = pipelineDesc.SpecInfo.Data.Pin();
-        unsafe
-        {
-            NativeHelper.Write((nint)pData.Pointer, 1u);
+            // Specialization constants setup (if needed by the shader)
+            pipelineDesc.SpecInfo.Entries[0].ConstantId = 0;
+            pipelineDesc.SpecInfo.Entries[0].Size = sizeof(uint);
+            pipelineDesc.SpecInfo.Data = new byte[sizeof(uint)];
+            using var pData = pipelineDesc.SpecInfo.Data.Pin();
+            unsafe
+            {
+                NativeHelper.Write((nint)pData.Pointer, PBRShadingMode.Unlit);
+            }
+
+            _unlitRenderPipeline = _context.CreateRenderPipeline(pipelineDesc);
+            Debug.Assert(_unlitRenderPipeline.Valid);
         }
+        {
+            var pipelineDesc = new RenderPipelineDesc
+            {
+                VertexShader = shaderResult.VertexShader,
+                FragementShader = shaderResult.FragmentShader,
+                DebugName = "PbrPipeline",
+                CullMode = CullMode.Back,
+                FrontFaceWinding = WindingMode.CCW,
+            };
 
-        _renderPipeline = _context.CreateRenderPipeline(pipelineDesc);
-        Debug.Assert(_renderPipeline.Valid);
+            // Configure blending and depth formats
+            pipelineDesc.Colors[0].Format = Format.BGRA_SRGB8;
+            pipelineDesc.DepthFormat = Format.Z_F32;
+
+            // Specialization constants setup (if needed by the shader)
+            pipelineDesc.SpecInfo.Entries[0].ConstantId = 0;
+            pipelineDesc.SpecInfo.Entries[0].Size = sizeof(uint);
+            pipelineDesc.SpecInfo.Data = new byte[sizeof(uint)];
+            using var pData = pipelineDesc.SpecInfo.Data.Pin();
+            unsafe
+            {
+                NativeHelper.Write((nint)pData.Pointer, PBRShadingMode.PBR);
+            }
+            _pbrRenderPipeline = _context.CreateRenderPipeline(pipelineDesc);
+        }
+        Debug.Assert(_pbrRenderPipeline.Valid);
 
         // Configure Render Pass (how to clear screen, store results)
         _renderPass.Colors[0].ClearColor = Color.Black;
@@ -268,7 +289,7 @@ internal class MeshCullingExample : IDisposable
         _renderPass.Depth.ClearDepth = 0.0f; // 0.0f for Reverse-Z
         _renderPass.Depth.LoadOp = LoadOp.Clear;
 
-        _renderDependencies.Buffers[0] = _visibleCountBuffer;
+        _renderDependencies.Buffers[0] = _drawCmdsBuffer;
     }
     #endregion
 
@@ -312,10 +333,6 @@ internal class MeshCullingExample : IDisposable
         var cmdBuffer = _context!.AcquireCommandBuffer();
         cmdBuffer.UpdateBuffer(_cullConstBuffer, _cullConst);
 
-        // Reset the count buffer to 0 before dispatch.
-        // The Compute Shader will increment this for each visible object.
-        cmdBuffer.FillBuffer(_visibleCountBuffer, 0, sizeof(uint), 0);
-
         cmdBuffer.BindComputePipeline(_cullingPipeline);
         cmdBuffer.PushConstants(_cullConstBuffer.GpuAddress);
 
@@ -344,7 +361,8 @@ internal class MeshCullingExample : IDisposable
                 MaterialBufferAddress = _pbrPropertiesBuffer.GpuAddress,
                 PerModelParamsBufferAddress = _fpConstBuffer.GpuAddress,
                 MeshDrawBufferAddress = _meshDrawBuffer.GpuAddress,
-                DrawCmdBufferAddress = _culledDrawCmdsBuffer.GpuAddress,
+                DrawCmdBufferAddress = _drawCmdsBuffer.GpuAddress,
+                DirectionalLightsBufferAddress = _directionalLightBuffer.GpuAddress,
                 LightCount = 0, // No lights in this unlit demo
                 TileSize = 0,
                 ScreenDimensions = new Vector2(width, height),
@@ -359,21 +377,31 @@ internal class MeshCullingExample : IDisposable
 
         // Wait for buffer writes from Compute Shader
         cmdBuffer.BeginRendering(_renderPass, _frameBuffer, _renderDependencies);
-        cmdBuffer.BindRenderPipeline(_renderPipeline);
         cmdBuffer.BindDepthState(_depthState);
+        cmdBuffer.BindRenderPipeline(_unlitRenderPipeline);
         cmdBuffer.PushConstants(
             new MeshDrawPushConstant() { FpConstAddress = _fpConstBuffer.GpuAddress }
         );
         cmdBuffer.BindIndexBuffer(_indexBuffer, IndexFormat.UI32);
+        cmdBuffer.DrawIndexedIndirect(
+            _drawCmdsBuffer,
+            0,
+            (uint)_instanceCount / 2,
+            DrawIndexedIndirectCommand.SizeInBytes
+        );
 
-        // Draw Indirect Count:
-        // Reads count from '_visibleCountBuffer' and executes that many commands from '_culledDrawCmdsBuffer'.
-        cmdBuffer.DrawIndexedIndirectCount(
-            _culledDrawCmdsBuffer,
-            0,
-            _visibleCountBuffer,
-            0,
-            (uint)_instanceCount,
+        cmdBuffer.BindRenderPipeline(_pbrRenderPipeline);
+        cmdBuffer.PushConstants(
+            new MeshDrawPushConstant()
+            {
+                FpConstAddress = _fpConstBuffer.GpuAddress,
+                DrawCommandIdxOffset = (uint)(_instanceCount / 2),
+            }
+        );
+        cmdBuffer.DrawIndexedIndirect(
+            _drawCmdsBuffer,
+            (uint)_instanceCount / 2 * DrawIndexedIndirectCommand.SizeInBytes,
+            (uint)_instanceCount / 2,
             DrawIndexedIndirectCommand.SizeInBytes
         );
         cmdBuffer.EndRendering();
@@ -425,7 +453,9 @@ internal class MeshCullingExample : IDisposable
         _drawCommands.Resize(_instanceCount);
         _meshDraws.Resize(_instanceCount);
         var rnd = new Random((int)Stopwatch.GetTimestamp());
-        for (int i = 0; i < _instanceCount; ++i)
+        int i = 0;
+        // First half: Unlit objects
+        for (; i < _instanceCount / 2; ++i)
         {
             _meshIds[i] = (uint)rnd.Next(0, 2); // Randomly choose Box or Sphere
             var position = new Vector3(
@@ -444,8 +474,6 @@ internal class MeshCullingExample : IDisposable
                     (float)rnd.NextDouble(),
                     (float)rnd.NextDouble()
                 ),
-                Metallic = (float)rnd.NextDouble(),
-                Roughness = (float)rnd.NextDouble(),
             };
             var mesh = _meshes[(int)_meshIds[i]];
             _meshDraws[i] = new MeshDraw()
@@ -456,6 +484,50 @@ internal class MeshCullingExample : IDisposable
                 MaterialId = (uint)i,
                 ModelId = (uint)i,
                 MeshId = _meshIds[i],
+                MaterialType = (uint)PBRShadingMode.Unlit,
+            };
+            _drawCommands[i] = new()
+            {
+                IndexCount = (uint)mesh.Indices.Count,
+                InstanceCount = 1,
+                FirstIndex = mesh.FirstIndex,
+                MeshDrawIndex = (uint)i,
+            };
+        }
+        // Second half: PBR objects
+        for (i = _instanceCount / 2; i < _instanceCount; ++i)
+        {
+            _meshIds[i] = (uint)rnd.Next(0, 2); // Randomly choose Box or Sphere
+            var position = new Vector3(
+                (float)(rnd.NextDouble() * 200.0 - 100.0),
+                (float)(rnd.NextDouble() * 200.0 - 100.0),
+                (float)(rnd.NextDouble() * 200.0 - 100.0)
+            );
+            _modelMatrices[i] =
+                Matrix4x4.CreateRotationX(rnd.NextFloat(0, 180) * MathF.PI / 180)
+                * Matrix4x4.CreateRotationY(rnd.NextFloat(0, 180) * MathF.PI / 180)
+                * Matrix4x4.CreateTranslation(position);
+            _pBRProperties[i] = new PBRProperties()
+            {
+                Albedo = new Vector3(rnd.NextFloat(0, 1), rnd.NextFloat(0, 1), rnd.NextFloat(0, 1)),
+                Metallic = (float)rnd.NextDouble(),
+                Roughness = (float)rnd.NextDouble(),
+                Ambient = new Vector3(
+                    rnd.NextFloat(0.01f, 0.2f),
+                    rnd.NextFloat(0.01f, 0.2f),
+                    rnd.NextFloat(0.01f, 0.2f)
+                ),
+            };
+            var mesh = _meshes[(int)_meshIds[i]];
+            _meshDraws[i] = new MeshDraw()
+            {
+                VertexBufferAddress = mesh.VertexBuffer.GpuAddress,
+                VertexPropsBufferAddress = mesh.VertexPropsBuffer.GpuAddress,
+                VertexColorBufferAddress = mesh.VertexColorBuffer.GpuAddress,
+                MaterialId = (uint)i,
+                ModelId = (uint)i,
+                MeshId = _meshIds[i],
+                MaterialType = (uint)PBRShadingMode.PBR,
             };
             _drawCommands[i] = new()
             {
@@ -490,17 +562,17 @@ internal class MeshCullingExample : IDisposable
                 _modelMatrixBuffer.Dispose();
                 _pbrPropertiesBuffer.Dispose();
                 _boundsBuffer.Dispose();
-                _culledDrawCmdsBuffer.Dispose();
-                _visibleCountBuffer.Dispose();
                 _fpConstBuffer.Dispose();
                 _depthBuffer.Dispose();
                 _meshDrawBuffer.Dispose();
                 _drawCmdsBuffer.Dispose();
                 _indexBuffer.Dispose();
+                _directionalLightBuffer.Dispose();
 
                 // Dispose pipelines
                 _cullingPipeline.Dispose();
-                _renderPipeline.Dispose();
+                _unlitRenderPipeline.Dispose();
+                _pbrRenderPipeline.Dispose();
             }
             _disposedValue = true;
         }

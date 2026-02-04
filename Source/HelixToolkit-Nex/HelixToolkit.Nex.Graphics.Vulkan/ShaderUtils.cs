@@ -221,7 +221,7 @@ internal static class ShaderExtensions
     )
     {
         shaderModule = ShaderModuleState.Null;
-        if (source.Length == 0)
+        if (string.IsNullOrEmpty(source))
         {
             return ResultCode.ArgumentNull;
         }

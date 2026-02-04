@@ -16,6 +16,6 @@ struct MeshDraw {
 @code_gen
 struct MeshDrawPushConstant {
     uint64_t fpConstAddress;
+    uint drawCommandIdxOffset;
     uint meshDrawId;
-    uint _padding;
 };

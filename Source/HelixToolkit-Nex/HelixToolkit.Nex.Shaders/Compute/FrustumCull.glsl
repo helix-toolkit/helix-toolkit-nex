@@ -20,7 +20,7 @@ layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer Me
     MeshBoundData value[];
 };
 
-layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer DrawCommandBuffer {
+layout(buffer_reference, std430, buffer_reference_align = 16) buffer DrawCommandBuffer {
     DrawIndexedIndirectCommand commands[];
 };
 
@@ -64,10 +64,6 @@ void main() {
     }
     DrawCommandBuffer drawCmdBuf = DrawCommandBuffer(cullingConst.value.drawCommandBufferAddress);
     DrawIndexedIndirectCommand cmd = drawCmdBuf.commands[gID];
-    if (cmd.instanceCount == 0) {
-        // Skip zero-instance draws
-        return;
-    }
     // Access Buffers
     MeshDrawBuffer meshDrawBuf = MeshDrawBuffer(cullingConst.value.meshDrawBufferAddress);
     
@@ -134,18 +130,15 @@ void main() {
     // ---------------------------------------------------------
 
     // Output visibility
+    if (cullingConst.value.culledDrawCommandBufferAddress == 0 || 
+        cullingConst.value.drawCountBufferAddress == 0) {
+        drawCmdBuf.commands[gID].instanceCount = isVisible ? 1 : 0;
+        return;
+    }
     // We can use subgroup ops to compact atomic writes
-    
     uvec4 ballot = subgroupBallot(isVisible);
     uint count = subgroupBallotBitCount(ballot);
     if (count > 0) {
-        // Ensure we have valid buffers before writing
-        if (cullingConst.value.culledDrawCommandBufferAddress == 0 || 
-            cullingConst.value.drawCommandBufferAddress == 0 || 
-            cullingConst.value.drawCountBufferAddress == 0) {
-            return;
-        }
-
         // Leader (first active thread) allocates space in output buffer
         uint baseIndex = 0;
         if (subgroupElect()) {
