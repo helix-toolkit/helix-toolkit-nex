@@ -5,13 +5,14 @@
 #include "HxHeaders/ForwardPlusTile.glsl"
 #include "HxHeaders/MeshDraw.glsl"
 
-layout(location = 0) in flat uint vertexIndex;
-layout(location = 1) in vec3 fragPosition;
-layout(location = 2) in vec3 fragNormal;
-layout(location = 3) in vec2 fragTexCoord;
+layout(location = 0) in vec3 fragWorldPos;
+layout(location = 1) in flat uint materialId;
+layout(location = 2) in vec4 fragColor;
+#ifndef EXCLUDE_MESH_PROPS
+layout(location = 3) in vec3 fragNormal;
 layout(location = 4) in vec3 fragTangent;
-layout(location = 5) in vec4 fragColor;
-layout(location = 6) in flat uint materialId;
+layout(location = 5) in vec2 fragTexCoord;
+#endif
 
 // Ensure FragCoord (0,0) is Top-Left to match Compute Shader tile generation
 // layout(origin_upper_left) in vec4 gl_FragCoord;
@@ -78,14 +79,14 @@ PBRProperties getPBRMaterial()
 void forwardPlusLighting(in PBRMaterial material, out vec4 outFinalColor)
 {
     // Forward+ tiled lighting
-    vec3 viewDir = normalize(fpConst.cameraPosition - fragPosition);
+    vec3 viewDir = normalize(fpConst.cameraPosition - fragWorldPos);
     vec3 finalC = material.ambient * material.albedo * material.ao;
     if (fpConst.lightCount > 0 && fpConst.lightBufferAddress != 0) {
         LightBuffer lightBuf = LightBuffer(fpConst.lightBufferAddress);
         if (fpConst.enabled == 0) {
             for (uint i = 0; i < fpConst.lightCount; ++i) {
                 Light light = lightBuf.lights[i];
-                vec3 lightContribution = calculatePBRLighting(material, light, fragPosition, viewDir);
+                vec3 lightContribution = calculatePBRLighting(material, light, fragWorldPos, viewDir);
                 finalC += lightContribution;
             }
         } else {
@@ -103,7 +104,7 @@ void forwardPlusLighting(in PBRMaterial material, out vec4 outFinalColor)
             for (uint i = 0; i < tile.lightCount; ++i) {
                 uint lightIndex = lightIndices.indices[tile.lightIndexOffset + i];
                 Light light = lightBuf.lights[lightIndex];
-                vec3 lightContribution = calculatePBRLighting(material, light, fragPosition, viewDir);
+                vec3 lightContribution = calculatePBRLighting(material, light, fragWorldPos, viewDir);
                finalC += lightContribution;
             }
         }
@@ -113,7 +114,7 @@ void forwardPlusLighting(in PBRMaterial material, out vec4 outFinalColor)
         DirectionalLightBuffer dirLightBuf = DirectionalLightBuffer(fpConst.directionalLightsBufferAddress);
         for (uint i = 0; i < dirLightBuf.value.lightCount; ++i) {
             Light dirLight = dirLightBuf.value.lights[i];
-            vec3 lightContribution = calculatePBRLighting(material, dirLight, fragPosition, viewDir);
+            vec3 lightContribution = calculatePBRLighting(material, dirLight, fragWorldPos, viewDir);
             finalC += lightContribution;
         }
     }
@@ -168,19 +169,17 @@ PBRMaterial createPBRMaterial()
     material.emissive = props.emissive;
     material.opacity = props.opacity;
     material.ambient = props.ambient;
+#ifndef EXCLUDE_MESH_PROPS
     if (props.albedoTexIndex > 0)
     {
         material.albedo = material.albedo * texture(sampler2D(kTextures2D[props.albedoTexIndex], kSamplers[props.samplerIndex]), fragTexCoord).rgb;
     }
-    material.albedo = mix(material.albedo, fragColor.rgb, props.vertexColorMix);
-
     if (props.metallicRoughnessTexIndex > 0)
     {
         vec2 metallicRoughness = texture(sampler2D(kTextures2D[props.metallicRoughnessTexIndex], kSamplers[props.samplerIndex]), fragTexCoord).bg;
         material.metallic = metallicRoughness.r;
         material.roughness = metallicRoughness.g;
     }
-
     material.normal = normalize(fragNormal);
     if (props.normalTexIndex > 0) {
         vec3 normalMap = texture(sampler2D(kTextures2D[props.normalTexIndex], kSamplers[props.samplerIndex]), fragTexCoord).xyz * 2.0 - 1.0;
@@ -190,7 +189,12 @@ PBRMaterial createPBRMaterial()
         mat3 TBN = mat3(T, B, N);
         material.normal = normalize(TBN * normalMap);
     }
-
+#else
+    {
+        material.normal = normalize(cross(dFdy(fragWorldPos), dFdx(fragWorldPos)));
+    }
+#endif
+    material.albedo = mix(material.albedo, fragColor.rgb, props.vertexColorMix);
     return material;
 /*TEMPLATE_CREATE_PBR_MATERIAL_IMPL_END*/
 }

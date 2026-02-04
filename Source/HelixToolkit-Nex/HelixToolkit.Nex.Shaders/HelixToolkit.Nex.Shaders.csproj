@@ -18,11 +18,7 @@
     <ItemGroup>
         <!-- Add source generator reference -->
         <ProjectReference Include="..\HelixTookit.Nex\HelixToolkit.Nex.csproj" />
-        <ProjectReference
-            Include="..\HelixToolkit.Nex.CodeGen\HelixToolkit.Nex.CodeGen.csproj"
-            OutputItemType="Analyzer"
-            ReferenceOutputAssembly="false"
-        />
+        <ProjectReference Include="..\HelixToolkit.Nex.CodeGen\HelixToolkit.Nex.CodeGen.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
         <ProjectReference Include="..\HelixToolkit.Nex.Maths\HelixToolkit.Nex.Maths.csproj" />
     </ItemGroup>
 
