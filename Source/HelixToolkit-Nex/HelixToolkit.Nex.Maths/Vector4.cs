@@ -887,6 +887,8 @@ namespace HelixToolkit.Nex.Maths
             {
                 return default;
             }
+            var end = Math.Min(start + count, vertices.Count);
+            var counter = 0;
 #if NET6_0_OR_GREATER
             if (MathSettings.EnableSIMD && Sse.IsSupported)
             {
@@ -903,18 +905,17 @@ namespace HelixToolkit.Nex.Maths
                     }
                     unsafe
                     {
-                        var end = Math.Min(start + count, vertices.Count);
                         using var ptr = data.Pin();
 
                         var ptrStart = (float*)ptr.Pointer + start * 4;
                         Vector128<float> sum = Vector128.Load(ptrStart);
                         ptrStart += 4;
-                        int counter = 1;
-                        for (int i = start + 1; i < end; ++i, ++counter, ptrStart += 4)
+                        counter = 1;
+                        for (int i = start + 1; i < end; ++i, ptrStart += 4)
                         {
                             var v = Vector128.Load(ptrStart);
                             var diff = Sse.Subtract(v, sum);
-                            diff = Sse.Divide(diff, Vector128.Create((float)(counter + 1)));
+                            diff = Sse.Divide(diff, Vector128.Create((float)(counter++ + 1)));
                             sum = Sse.Add(sum, diff);
                         }
                         return new Vector4(
@@ -933,7 +934,7 @@ namespace HelixToolkit.Nex.Maths
                         vertices[start].Z,
                         vertices[start].W
                     );
-                    var end = Math.Min(start + count, vertices.Count);
+                    counter = 1;
                     for (int i = start + 1; i < end; ++i)
                     {
                         var v = Vector128.Create(
@@ -943,7 +944,7 @@ namespace HelixToolkit.Nex.Maths
                             vertices[i].W
                         );
                         var diff = Sse.Subtract(v, sum);
-                        diff = Sse.Divide(diff, Vector128.Create((float)(i - start + 1)));
+                        diff = Sse.Divide(diff, Vector128.Create((float)(counter++ + 1)));
                         sum = Sse.Add(sum, diff);
                     }
                     return new Vector4(
@@ -955,10 +956,11 @@ namespace HelixToolkit.Nex.Maths
                 }
             }
 #endif
-            var centroid = vertices[0];
-            for (var i = 1; i < vertices.Count; i++)
+            counter = 1;
+            var centroid = vertices[start];
+            for (var i = start + 1; i < end; i++)
             {
-                centroid += (vertices[i] - centroid) / (i + 1);
+                centroid += (vertices[i] - centroid) / (counter++ + 1);
             }
             return centroid;
         }
