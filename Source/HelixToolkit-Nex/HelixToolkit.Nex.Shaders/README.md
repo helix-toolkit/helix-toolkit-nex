@@ -1,6 +1,6 @@
 # HelixToolkit.Nex.Shaders - Complete Reference
 
-**A powerful shader building system with automatic header inclusion, PBR support, and auto-generated GLSL-to-C# struct mapping for HelixToolkit.Nex.**
+**A powerful shader building system with include processing, PBR support, GPU Culling utilities, and auto-generated GLSL-to-C# struct mapping for HelixToolkit.Nex.**
 
 ---
 
@@ -12,6 +12,7 @@
 - [Auto-Generated GLSL Structs](#auto-generated-glsl-structs)
 - [Shader Building System](#shader-building-system)
 - [PBR Functions](#pbr-functions)
+- [GPU Culling Utilities](#gpu-culling-utilities)
 - [API Reference](#api-reference)
 - [Integration Guide](#integration-guide)
 - [Performance & Caching](#performance--caching)
@@ -23,11 +24,12 @@
 
 ## Overview
 
-HelixToolkit.Nex.Shaders provides three major features:
+HelixToolkit.Nex.Shaders provides four major features:
 
-1. **Shader Building System** - Automatically includes headers, handles preprocessor directives, and provides fluent API for shader compilation
+1. **Shader Building System** - Handles `#include` directives (including from embedded resources), preprocessor defines, and provides a fluent API for shader compilation
 2. **PBR Lighting Functions** - Complete physically-based rendering implementation with Cook-Torrance BRDF
-3. **GLSL Struct Generator** - Source generator that automatically creates C# equivalents of GLSL structs with proper memory layout
+3. **GPU Culling Utilities** - Ready-to-use compute shader generation for Forward+ Light Culling and Frustum Culling
+4. **GLSL Struct Generator** - Source generator that automatically creates C# equivalents of GLSL structs with proper memory layout
 
 ---
 
@@ -40,13 +42,17 @@ using HelixToolkit.Nex.Shaders;
 using HelixToolkit.Nex.Graphics;
 
 // Your custom fragment shader
+// Note: Use #include to pull in standard headers and PBR functions
 string myShader = @"
+#include ""HxHeaders/HeaderFrag.glsl""
+#include ""HxHeaders/PBRFunctions.glsl""
+
 layout(location = 0) in vec3 fragPosition;
 layout(location = 1) in vec3 fragNormal;
 layout(location = 0) out vec4 outColor;
 
 void main() {
-    // Use PBR functions directly - they're automatically included!
+    // Use PBR functions directly - they're included via the header!
     PBRMaterial material;
     material.albedo = vec3(0.8, 0.2, 0.2);
     material.metallic = 0.5;
@@ -54,19 +60,20 @@ void main() {
     material.ao = 1.0;
     material.opacity = 1.0;
     material.emissive = vec3(0.0);
-    material.normal = normalize(fragNormal);
+    // material.normal requires calculation or input
     
     vec3 viewDir = vec3(0.0, 0.0, 1.0);
     vec3 lightDir = normalize(vec3(-0.5, -1.0, -0.3));
     
-    vec3 color = pbrShadingSimple(material, lightDir, vec3(1.0), 3.0, viewDir, vec3(0.03));
+    // Example usage of a PBR function (check PBRFunctions.glsl for signature)
+    // vec3 color = pbrShadingSimple(material, ...); 
     
-    outColor = vec4(color, 1.0);
+    outColor = vec4(1.0, 0.0, 0.0, 1.0);
 }";
 
-// Compile with automatic header and PBR inclusion
+// Compile the shader
 var compiler = new ShaderCompiler();
-var result = compiler.CompileFragmentShaderWithPBR(myShader);
+var result = compiler.CompileFragmentShader(myShader);
 
 if (result.Success)
 {
@@ -81,8 +88,6 @@ if (result.Success)
 var result = GlslHeaders.BuildShader()
     .WithStage(ShaderStage.Fragment)
     .WithSource(myShader)
-    .WithStandardHeader()
-    .WithPBRFunctions()
     .WithDefine("USE_ADVANCED_LIGHTING")
     .WithDefine("MAX_LIGHTS", "8")
     .StripComments()
@@ -96,15 +101,12 @@ using HelixToolkit.Nex.Shaders;
 using System.Numerics;
 
 // Structs are automatically generated from PBRFunctions.glsl
-var material = new PBRMaterial
+var material = new PBRProperties
 {
     Albedo = new Vector3(0.8f, 0.2f, 0.1f),
     Metallic = 0.9f,
     Roughness = 0.2f,
-    Ao = 1.0f,
-    Normal = new Vector3(0, 1, 0),
-    Emissive = Vector3.Zero,
-    Opacity = 1.0f
+    // ...
 };
 
 var light = new Light
@@ -125,9 +127,8 @@ var light = new Light
 
 ### Shader Building System
 
-- ? **Automatic Header Inclusion** - Correct headers based on shader stage
-- ? **PBR Support** - Easy PBR functions inclusion
-- ? **Preprocessor** - Handles #include and custom defines
+- ? **Include System** - processing of `#include` directives from embedded resources
+- ? **Preprocessor** - Handles custom defines
 - ? **Caching** - Built-in LRU cache for performance
 - ? **Fluent API** - Clean builder pattern
 - ? **Thread-Safe** - All operations are thread-safe
@@ -141,12 +142,16 @@ var light = new Light
 - ? **IntelliSense** - Full IDE support with documentation
 - ? **Source Generator** - Zero-runtime cost code generation
 
+### GPU Culling
+
+- ? **Forward+ Light Culling** - Compute shader generation for tiled light culling
+- ? **Frustum Culling** - GPU-based frustum culling generation
+- ? **Instancing Support** - Culling support for instanced rendering
+
 ### PBR Functions
 
 - ? **Cook-Torrance BRDF** - Industry-standard PBR model
 - ? **GGX Distribution** - High-quality specular reflections
-- ? **Multiple Light Types** - Directional, point, and spot lights
-- ? **Energy Conservation** - Physically accurate light behavior
 - ? **Metallic Workflow** - Proper metallic/non-metallic rendering
 
 ---
@@ -155,33 +160,38 @@ var light = new Light
 
 ### What Gets Generated
 
-When you build the project, the source generator scans all `.glsl` files and extracts `struct` definitions, generating C# equivalents.
+When you build the project, the source generator scans all `.glsl` files and extracts `struct` definitions marked with `@code_gen`, generating C# equivalents.
 
-**From `PBRFunctions.glsl`:**
+**From `PBRFunctions.glsl` (example):**
 ```glsl
+@code_gen
 struct PBRProperties {
-    vec3 albedo;
-    float metallic;
-    float roughness;
+    vec3 albedo;           // Base color (sRGB)
+    float metallic;        // Metallic factor [0..1]
+    float roughness;       // Roughness factor [0..1]
 };
 ```
 
 **Generates:**
 ```csharp
-[StructLayout(LayoutKind.Sequential)]
+[StructLayout(LayoutKind.Sequential, Pack=16)]
 public struct PBRProperties
 {
     public System.Numerics.Vector3 Albedo;
     public float Metallic;
     public float Roughness;
+    public static readonly unsafe uint SizeInBytes = (uint)sizeof(PBRProperties);
 }
 ```
 
 ### Currently Generated Structs
 
-From `Headers/PBRFunctions.glsl`:
-- **`PBRProperties`** (7 fields) - Material properties for physically-based rendering
-- **`Light`** (8 fields) - Light source definition (directional, point, spot)
+From `HxHeaders/LightStruct.glsl`:
+- **`Light`** - Light source definition (directional, point, spot)
+- **`DirectionalLights`** - Container for directional lights
+
+From `Frag/psPBRTemplate.glsl`:
+- **`PBRProperties`** - Material properties for physically-based rendering
 
 ### Type Mapping
 
@@ -197,77 +207,30 @@ From `Headers/PBRFunctions.glsl`:
 | `mat4` | `System.Numerics.Matrix4x4` |
 | User-defined | Same name in C# |
 
-### Usage Examples
-
-See `GlslStructUsageExamples.cs` for complete examples:
-
-```csharp
-// Creating materials
-var metallicMaterial = new PBRMaterial
-{
-    Albedo = new Vector3(0.8f, 0.2f, 0.1f),
-    Metallic = 0.9f,
-    Roughness = 0.2f,
-    Ao = 1.0f,
-    Normal = new Vector3(0, 1, 0),
-    Emissive = Vector3.Zero,
-    Opacity = 1.0f
-};
-
-// Creating lights
-var directionalLight = new Light
-{
-    Type = 0,
-    Direction = Vector3.Normalize(new Vector3(-1, -1, -0.5f)),
-    Color = new Vector3(1.0f, 0.95f, 0.8f),
-    Intensity = 1.5f,
-    Range = 0.0f
-};
-
-var pointLight = new Light
-{
-    Type = 1,
-    Position = new Vector3(5, 3, 2),
-    Color = new Vector3(1.0f, 1.0f, 1.0f),
-    Intensity = 2.0f,
-    Range = 10.0f
-};
-```
-
-### Adding New Structs
-
-1. Define your struct in any `.glsl` file in the `Headers` folder
-2. Rebuild the project
-3. The struct will be automatically available in C#
-
-### Viewing Generated Code
-
-Generated files are located in:
-```
-obj/GeneratedFiles/HelixToolkit.Nex.CodeGen/HelixToolkit.Nex.CodeGen.GlslStructGenerator/
-```
-
-To output to a visible location during build:
-```bash
-dotnet build /p:EmitCompilerGeneratedFiles=true /p:CompilerGeneratedFilesOutputPath=obj/GeneratedFiles
-```
-
 ---
 
 ## Shader Building System
 
-### What Gets Automatically Included
+### Include Resolution
 
-When you use `IncludeStandardHeader = true`, the appropriate header for your shader stage is included:
+The shader builder automatically resolves `#include` directives. By default, it looks for files in the embedded resources of the library.
 
-- **Fragment shaders**: `HeaderFrag.glsl`
-- **Vertex/Compute/Tessellation**: `HeaderVertex.glsl`
-- **Mesh/Task**: `HeaderTask.glsl`
+Use the `HxHeaders/` prefix to include standard library headers:
 
-When you use `IncludePBRFunctions = true`, `PBRFunctions.glsl` is included with:
-- PBR material and light structures
-- Complete BRDF functions
-- Helper functions for lighting calculations
+```glsl
+// Include standard fragment shader header
+#include "HxHeaders/HeaderFrag.glsl"
+
+// Include PBR functions
+#include "HxHeaders/PBRFunctions.glsl"
+```
+Common headers available:
+- `HxHeaders/HeaderFrag.glsl` - Standard Fragment header
+- `HxHeaders/HeaderVertex.glsl` - Standard Vertex/Tessellation header
+- `HxHeaders/HeaderCompute.glsl` - Standard Compute header
+- `HxHeaders/HeaderTask.glsl` - Standard Mesh/Task header
+- `HxHeaders/PBRFunctions.glsl` - PBR lighting functions
+- `HxHeaders/LightStruct.glsl` - Light structure definitions
 
 ### Stage-Specific Methods
 
@@ -275,7 +238,7 @@ When you use `IncludePBRFunctions = true`, `PBRFunctions.glsl` is included with:
 var compiler = new ShaderCompiler();
 
 compiler.CompileVertexShader(source);
-compiler.CompileFragmentShaderWithPBR(source);
+compiler.CompileFragmentShader(source);
 compiler.CompileComputeShader(source);
 compiler.CompileGeometryShader(source);
 compiler.CompileTessControlShader(source);
@@ -289,8 +252,6 @@ compiler.CompileTaskShader(source);
 ```csharp
 var options = new ShaderBuildOptions
 {
-    IncludeStandardHeader = true,
-    IncludePBRFunctions = true,
     StripComments = false,
     EnableDebug = false,
     Defines = new Dictionary<string, string>
@@ -308,8 +269,7 @@ var result = compiler.Compile(ShaderStage.Fragment, source, options);
 #### Include Directives
 
 ```glsl
-#include "PBRFunctions.glsl"
-#include "MyCustomFunctions.glsl"
+#include "HxHeaders/PBRFunctions.glsl"
 ```
 
 The builder automatically:
@@ -333,19 +293,6 @@ Generates:
 #define SHADOW_MAP_SIZE 2048
 ```
 
-### ShaderBuildResult
-
-```csharp
-public class ShaderBuildResult
-{
-    public bool Success { get; set; }              // Compilation successful?
-    public string? Source { get; set; }            // Final processed source
-    public List<string> Errors { get; set; }       // Errors
-    public List<string> Warnings { get; set; }     // Warnings
-    public List<string> IncludedFiles { get; set; } // Included files
-}
-```
-
 ---
 
 ## PBR Functions
@@ -357,145 +304,78 @@ Complete physically-based rendering implementation using:
 - **GGX/Trowbridge-Reitz** normal distribution
 - **Schlick-GGX** geometry function (Smith's method)
 - **Schlick's approximation** for Fresnel reflectance
-- **Lambertian diffuse** for energy conservation
 
-### PBRMaterial Structure
+### PBRProperties Structure
 
 ```glsl
-struct PBRMaterial {
+struct PBRProperties {
     vec3 albedo;           // Base color (sRGB)
     float metallic;        // Metallic factor [0..1]
-    float roughness;       // Roughness factor [0..1]
-    float ao;              // Ambient occlusion [0..1]
-    vec3 normal;           // World-space normal
     vec3 emissive;         // Emissive color
+    float roughness;       // Roughness factor [0..1]
+    vec3 ambient;          // Ambient color
+    float ao;              // Ambient occlusion [0..1]
     float opacity;         // Opacity/alpha [0..1]
+    float vertexColorMix;  // Vertex color mix factor
+    uint albedoTexIndex;
+    uint normalTexIndex;
+    uint metallicRoughnessTexIndex;
+    uint samplerIndex;
+    vec2 _padding;
 };
 ```
 
-### Light Structure
-
+To use these functions, simply include the header:
 ```glsl
-struct Light {
-    vec3 position;         // Light position (world space)
-    vec3 direction;        // Light direction
-    vec3 color;            // Light color (linear RGB)
-    float intensity;       // Light intensity
-    int type;              // 0=directional, 1=point, 2=spot
-    float range;           // Light range
-    float innerConeAngle;  // Inner cone (spot lights)
-    float outerConeAngle;  // Outer cone (spot lights)
+#include "HxHeaders/PBRFunctions.glsl"
+```
+
+---
+
+## GPU Culling Utilities
+
+HelixToolkit.Nex.Shaders provides built-in generation of compute shaders for advanced culling techniques.
+
+### Forward+ Light Culling
+
+Generates a compute shader for screen-space tile-based light culling.
+
+```csharp
+using HelixToolkit.Nex.Shaders;
+
+var config = new ForwardPlusLightCulling.Config
+{
+    TileSize = 16,
+    MaxLightsPerTile = 32
 };
+
+// Returns the full GLSL compute shader source
+string source = ForwardPlusLightCulling.GenerateComputeShader(config);
 ```
 
-### Main Shading Functions
+### GPU Frustum Culling
 
-```glsl
-// Full PBR shading with multiple lights
-vec3 pbrShading(PBRMaterial material, vec3 fragPos, vec3 viewDir, 
-                Light lights[16], int numLights, vec3 ambientColor);
+Generates compute shaders for indirect draw frustum culling.
 
-// Simplified PBR with single directional light
-vec3 pbrShadingSimple(PBRMaterial material, vec3 lightDir, vec3 lightColor, 
-                      float lightIntensity, vec3 viewDir, vec3 ambientColor);
+```csharp
+using HelixToolkit.Nex.Shaders;
+
+// Generate simpler culling shader (MultiMeshSingleInstance)
+string cullShader = GpuFrustumCulling.GenerateComputeShader(GpuFrustumCulling.CullMode.MultiMeshSingleInstance);
+
+// Generate instancing culling shader (SingleMeshInstancing)
+string instancingShader = GpuFrustumCulling.GenerateComputeShader(GpuFrustumCulling.CullMode.SingleMeshInstancing);
 ```
 
-### BRDF Component Functions
+### Culling Helpers
 
-```glsl
-// Fresnel reflectance (Schlick's approximation)
-vec3 fresnelSchlick(float cosTheta, vec3 F0);
+Use `Helpers` to generate culling constants for the shaders.
 
-// GGX Normal Distribution Function
-float distributionGGX(vec3 N, vec3 H, float roughness);
-
-// Smith's Geometry function
-float geometrySmith(vec3 N, vec3 V, vec3 L, float roughness);
-
-// Cook-Torrance specular BRDF
-vec3 cookTorranceBRDF(vec3 N, vec3 V, vec3 L, vec3 H, vec3 F0, float roughness);
-
-// Lambertian diffuse BRDF
-vec3 lambertianDiffuse(vec3 albedo);
+```csharp
+var cullConstants = Helpers.CreateCullConstants(viewMatrix, projectionMatrix);
+// Update existing
+Helpers.UpdateCullConstants(ref cullConstants, view, proj);
 ```
-
-### Usage Example
-
-```glsl
-void main() {
-    // Setup material
-    PBRMaterial material;
-    material.albedo = vec3(0.8, 0.1, 0.1);
-    material.metallic = 0.0;
-    material.roughness = 0.5;
-    material.ao = 1.0;
-    material.normal = normalize(fragNormal);
-    material.emissive = vec3(0.0);
-    material.opacity = 1.0;
-    
-    // Setup light
-    vec3 lightDir = normalize(vec3(-0.5, -1.0, -0.3));
-    vec3 lightColor = vec3(1.0);
-    float lightIntensity = 3.0;
-    vec3 viewDir = normalize(cameraPosition - fragPosition);
-    
-    // Render with PBR
-    vec3 color = pbrShadingSimple(
-        material, lightDir, lightColor, lightIntensity,
-        viewDir, vec3(0.03)
-    );
-    
-    // Tone mapping + gamma correction
-    color = color / (color + vec3(1.0));
-    color = pow(color, vec3(1.0/2.2));
-    
-    outColor = vec4(color, 1.0);
-}
-```
-
-### Multiple Lights Example
-
-```glsl
-void main() {
-    // ... setup material ...
-    
-    Light lights[3];
-    
-    // Directional light
-    lights[0].type = 0;
-    lights[0].direction = normalize(vec3(-0.5, -1.0, -0.3));
-    lights[0].color = vec3(1.0, 0.95, 0.9);
-    lights[0].intensity = 3.0;
-    
-    // Point light
-    lights[1].type = 1;
-    lights[1].position = vec3(5.0, 3.0, 2.0);
-    lights[1].color = vec3(1.0, 0.5, 0.2);
-    lights[1].intensity = 10.0;
-    lights[1].range = 15.0;
-    
-    // Spot light
-    lights[2].type = 2;
-    lights[2].position = vec3(-2.0, 5.0, 0.0);
-    lights[2].direction = normalize(vec3(0.5, -1.0, 0.0));
-    lights[2].color = vec3(0.2, 0.5, 1.0);
-    lights[2].intensity = 20.0;
-    lights[2].range = 20.0;
-    lights[2].innerConeAngle = cos(radians(15.0));
-    lights[2].outerConeAngle = cos(radians(25.0));
-    
-    vec3 viewDir = normalize(cameraPosition - fragPosition);
-    vec3 color = pbrShading(material, fragPosition, viewDir, lights, 3, vec3(0.03));
-    
-    outColor = vec4(color, material.opacity);
-}
-```
-
-### Metallic Workflow
-
-- **Dielectric materials** (metallic = 0): F0 = 0.04, colored diffuse
-- **Metallic materials** (metallic = 1): F0 = albedo, no diffuse
-- **In-between values**: Linear interpolation
 
 ---
 
@@ -508,7 +388,7 @@ void main() {
 var compiler = new ShaderCompiler(useGlobalCache: true);
 
 // Compile for different stages
-compiler.CompileFragmentShaderWithPBR(source);
+compiler.CompileFragmentShader(source);
 compiler.CompileVertexShader(source);
 compiler.CompileComputeShader(source);
 
@@ -525,11 +405,10 @@ var stats = compiler.GetCacheStatistics();
 ```csharp
 public class ShaderBuildOptions
 {
-    public bool IncludeStandardHeader { get; set; }
-    public bool IncludePBRFunctions { get; set; }
     public bool StripComments { get; set; }
     public bool EnableDebug { get; set; }
     public Dictionary<string, string> Defines { get; set; }
+    public Func<string, string?>? IncludeProvider { get; set; }
 }
 ```
 
@@ -588,7 +467,7 @@ public class MyRenderer
     public void InitializeShaders()
     {
         string fragmentSource = LoadShaderFromFile("shader.frag");
-        var result = _compiler.CompileFragmentShaderWithPBR(fragmentSource);
+        var result = _compiler.CompileFragmentShader(fragmentSource);
         
         if (!result.Success)
         {
@@ -611,8 +490,6 @@ public class ShaderVariantManager
     {
         var options = new ShaderBuildOptions
         {
-            IncludeStandardHeader = true,
-            IncludePBRFunctions = true,
             Defines = new Dictionary<string, string>
             {
                 { "USE_SHADOWS", shadows ? "1" : "0" },
@@ -636,7 +513,7 @@ public class PBRMaterialGenerator
         var shaderCode = BuildShaderFromMaterial(material);
         
         var compiler = GlslHeaders.CreateCompiler();
-        var result = compiler.CompileFragmentShaderWithPBR(shaderCode);
+        var result = compiler.CompileFragmentShader(shaderCode);
         
         return result.Success ? result.Source! : throw new Exception("Compilation failed");
     }
@@ -726,16 +603,16 @@ dotnet test --filter "TestCategory=Caching"
 ### Common Issues
 
 **Issue**: "Shader file not found in embedded resources"
-- **Solution**: Ensure the file is marked as `EmbeddedResource` in .csproj
+- **Solution**: Ensure the file is marked as `EmbeddedResource` in .csproj and check the path (use `HxHeaders/...`).
 
-**Issue**: "PBRMaterial struct not found"
-- **Solution**: Enable `IncludePBRFunctions = true`
+**Issue**: "PBRProperties struct not found"
+- **Solution**: Ensure you added `#include "HxHeaders/PBRFunctions.glsl"` to your shader.
 
 **Issue**: "Duplicate definition errors"
-- **Solution**: The builder prevents duplicates, but don't manually include files that are auto-included
+- **Solution**: The builder prevents duplicates for includes, but check your defines.
 
 **Issue**: "Generated C# structs not found"
-- **Solution**: Rebuild the project to trigger source generator
+- **Solution**: Rebuild the project to trigger source generator and ensure structs in glsl are marked `with @code_gen`.
 
 ### Debug Mode
 
@@ -752,7 +629,7 @@ Console.WriteLine($"Included files: {string.Join(", ", result.IncludedFiles)}");
 ### Error Handling
 
 ```csharp
-var result = compiler.CompileFragmentShaderWithPBR(source);
+var result = compiler.CompileFragmentShader(source);
 
 if (!result.Success)
 {
@@ -777,12 +654,14 @@ foreach (var warning in result.Warnings)
 
 ```csharp
 var compiler = new ShaderCompiler();
-var result = compiler.CompileFragmentShaderWithPBR(@"
+
+var shaderSource = @"
+#include ""HxHeaders/PBRFunctions.glsl""
 layout(location = 0) in vec3 fragNormal;
 layout(location = 0) out vec4 outColor;
 
 void main() {
-    PBRMaterial mat;
+    PBRProperties mat;
     mat.albedo = vec3(0.8, 0.2, 0.1);
     mat.metallic = 0.5;
     mat.roughness = 0.3;
@@ -791,9 +670,11 @@ void main() {
     mat.emissive = vec3(0.0);
     mat.opacity = 1.0;
     
-    vec3 color = pbrShadingSimple(mat, vec3(0, -1, 0), vec3(1), 3.0, vec3(0, 0, 1), vec3(0.03));
-    outColor = vec4(color, 1.0);
-}");
+    // ... use PBR functions ...
+    outColor = vec4(mat.albedo, 1.0);
+}";
+
+var result = compiler.CompileFragmentShader(shaderSource);
 
 if (result.Success)
 {
@@ -806,9 +687,7 @@ if (result.Success)
 ```csharp
 var result = GlslHeaders.BuildShader()
     .WithStage(ShaderStage.Fragment)
-    .WithSource(myShader)
-    .WithStandardHeader()
-    .WithPBRFunctions()
+    .WithSource(myShader) // Ensure myShader contains necessary #includes
     .WithDefine("USE_SHADOWS")
     .WithDefine("MAX_LIGHTS", "8")
     .StripComments()
@@ -823,6 +702,7 @@ public class MaterialShaderBuilder
     public string BuildPBRShader(Texture2D? albedo, Texture2D? normal)
     {
         var shader = @"
+#include ""HxHeaders/PBRFunctions.glsl""
 void main() {
     PBRProperties mat;
     " + (albedo != null ? "mat.albedo = texture(albedoTex, uv).rgb;" : "mat.albedo = vec3(0.8);") + @"
@@ -832,7 +712,7 @@ void main() {
     // ... render ...
 }";
 
-        return new ShaderCompiler().CompileFragmentShaderWithPBR(shader).Source!;
+        return new ShaderCompiler().CompileFragmentShader(shader).Source!;
     }
 }
 ```
@@ -846,9 +726,7 @@ var glass = new PBRProperties
     Albedo = new Vector3(0.95f, 0.95f, 0.98f),
     Metallic = 0.0f,
     Roughness = 0.05f,
-    Ao = 1.0f,
-    Emissive = Vector3.Zero,
-    Opacity = 0.3f
+    // ...
 };
 
 var metal = new PBRProperties
@@ -856,9 +734,7 @@ var metal = new PBRProperties
     Albedo = new Vector3(0.8f, 0.8f, 0.8f),
     Metallic = 1.0f,
     Roughness = 0.2f,
-    Ao = 1.0f,
-    Emissive = Vector3.Zero,
-    Opacity = 1.0f
+    // ...
 };
 
 // Upload to GPU

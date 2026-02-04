@@ -20,5 +20,6 @@
     </ItemGroup>
     <ItemGroup>
         <ProjectReference Include="..\HelixToolkit.Nex.Graphics\HelixToolkit.Nex.Graphics.csproj" />
+        <ProjectReference Include="..\HelixToolkit.Nex.Shaders\HelixToolkit.Nex.Shaders.csproj" />
     </ItemGroup>
 </Project>

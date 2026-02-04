@@ -108,4 +108,15 @@ public static class Extensions
         }
         return shaderDefines;
     }
+
+    /// <summary>
+    /// Retrieves the format of the specified texture.
+    /// </summary>
+    /// <param name="tex">The texture handle for which the format is to be retrieved.</param>
+    /// <param name="context">The context used to resolve the texture format. This cannot be <see langword="null"/>.</param>
+    /// <returns>The format of the specified texture.</returns>
+    public static Format GetFormat(this TextureHandle tex, IContext context)
+    {
+        return context.GetFormat(tex);
+    }
 }

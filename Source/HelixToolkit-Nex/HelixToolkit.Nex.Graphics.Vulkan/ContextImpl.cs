@@ -446,7 +446,10 @@ internal sealed partial class VulkanContext : Initializable, IContext
     )
     {
         shaderModule = ShaderModuleResource.Null;
-        if ((desc.Data.IsNull() && desc.GlslSource.Length == 0) || desc.DataSize == 0)
+        if (
+            (desc.Data.IsNull() && desc.GlslSource.Length == 0)
+            || (!desc.Data.IsNull() && desc.DataSize == 0)
+        )
         {
             _logger.LogError("Shader module data is null or size is zero");
             return ResultCode.ArgumentNull;

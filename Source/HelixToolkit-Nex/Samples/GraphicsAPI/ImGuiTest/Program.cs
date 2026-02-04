@@ -53,6 +53,7 @@ internal class App : Application
         _guiRenderer.Initialize();
         _pass.Colors[0].ClearColor = new Color4(0.1f, 0.1f, 0.1f, 1.0f);
         _pass.Colors[0].LoadOp = LoadOp.Clear;
+        _pass.Colors[0].StoreOp = StoreOp.Store;
 
         _frameTexture = _ctx.CreateTexture(
             new TextureDesc()
@@ -234,5 +235,8 @@ internal class App : Application
         base.OnDisposing();
         _shaderToyRenderer?.Dispose();
         _guiRenderer?.Dispose();
+        _frameTexture?.Dispose();
+        _imageSample?.Dispose();
+        _ctx?.Dispose();
     }
 }

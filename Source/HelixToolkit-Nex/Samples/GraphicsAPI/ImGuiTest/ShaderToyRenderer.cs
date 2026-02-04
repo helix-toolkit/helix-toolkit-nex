@@ -253,7 +253,10 @@ internal class ShaderToyRenderer : IDisposable
         {
             if (disposing)
             {
-                // TODO: dispose managed state (managed objects)
+                _vertexShader?.Dispose();
+                _fragmentShader?.Dispose();
+                _pipeline?.Dispose();
+                _sampler?.Dispose();
             }
 
             // TODO: free unmanaged resources (unmanaged objects) and override finalizer

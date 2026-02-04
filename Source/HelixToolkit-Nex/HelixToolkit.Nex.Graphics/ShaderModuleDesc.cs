@@ -6,11 +6,6 @@ namespace HelixToolkit.Nex.Graphics;
 public enum ShaderDataType
 {
     /// <summary>
-    /// Automatically detect the shader data type based on the content.
-    /// </summary>
-    Auto, // automatically detect the type based on the data
-
-    /// <summary>
     /// SPIR-V binary format (pre-compiled shader bytecode).
     /// </summary>
     Spirv,
@@ -61,7 +56,7 @@ public struct ShaderModuleDesc()
     /// <summary>
     /// The type of shader data provided. Defaults to <see cref="ShaderDataType.Auto"/>.
     /// </summary>
-    public ShaderDataType DataType = ShaderDataType.Auto; // default is SPIR-V
+    public ShaderDataType DataType = ShaderDataType.Glsl;
 
     /// <summary>
     /// Pointer to the shader data (SPIR-V bytecode).

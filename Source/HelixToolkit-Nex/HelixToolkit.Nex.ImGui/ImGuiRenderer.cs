@@ -1,6 +1,7 @@
 using System.Numerics;
 using System.Runtime.InteropServices;
 using HelixToolkit.Nex.Graphics;
+using HelixToolkit.Nex.Shaders;
 using ImGuiNET;
 using Microsoft.Extensions.Logging;
 using Gui = ImGuiNET.ImGui;
@@ -10,6 +11,7 @@ namespace HelixToolkit.Nex.ImGui;
 public class ImGuiRenderer(IContext context, ImGuiConfig config) : IDisposable
 {
     private const string CodeVS = """
+        #include "HxHeaders/HeaderVertex.glsl"
         layout(location = 0) out vec4 out_color;
         layout(location = 1) out vec2 out_uv;
 
@@ -52,6 +54,7 @@ public class ImGuiRenderer(IContext context, ImGuiConfig config) : IDisposable
         """;
 
     private const string CodeFS = """
+        #include "HxHeaders/HeaderFrag.glsl"
         layout(location = 0) in vec4 in_color;
         layout(location = 1) in vec2 in_uv;
 
@@ -69,7 +72,7 @@ public class ImGuiRenderer(IContext context, ImGuiConfig config) : IDisposable
 
         void main()
         {
-            vec4 c = in_color * texture(nonuniformEXT(sampler2D(kTextures2D[pc.textureId], kSamplers[pc.samplerId])), in_uv);
+            vec4 c = in_color * textureBindless2D(pc.textureId, pc.samplerId, in_uv);
             // Render UI in linear color space to sRGB framebuffer.
             out_color = kNonLinearColorSpace ? vec4(pow(c.rgb, vec3(2.2)), c.a) : c;
         }
@@ -96,16 +99,9 @@ public class ImGuiRenderer(IContext context, ImGuiConfig config) : IDisposable
 
     private readonly ImGuiConfig _config =
         config ?? throw new ArgumentNullException(nameof(config));
-    private readonly ShaderModuleResource _vertexShaderModule = context.CreateShaderModuleGlsl(
-        CodeVS,
-        ShaderStage.Vertex,
-        nameof(ImGuiRenderer)
-    );
-    private readonly ShaderModuleResource _fragShaderModule = context.CreateShaderModuleGlsl(
-        CodeFS,
-        ShaderStage.Fragment,
-        nameof(ImGuiRenderer)
-    );
+    private readonly ShaderCompiler _shaderCompiler = new();
+    private ShaderModuleResource _vertexShaderModule = ShaderModuleResource.Null;
+    private ShaderModuleResource _fragShaderModule = ShaderModuleResource.Null;
     private RenderPipelineResource _pipeline = RenderPipelineResource.Null;
     private readonly SamplerResource _sampler = context.CreateSampler(
         new SamplerStateDesc
@@ -135,6 +131,51 @@ public class ImGuiRenderer(IContext context, ImGuiConfig config) : IDisposable
         var io = Gui.GetIO();
         io.BackendFlags |= ImGuiBackendFlags.RendererHasVtxOffset;
         SetFont(_config.FontPath);
+        // Compile shaders
+        {
+            var vsResult = _shaderCompiler.Compile(ShaderStage.Vertex, CodeVS);
+            if (!vsResult.Success)
+            {
+                _logger.LogError("Failed to compile ImGui vertex shader: " + vsResult.Errors);
+                return false;
+            }
+            var result = Context.CreateShaderModule(
+                new ShaderModuleDesc
+                {
+                    Stage = ShaderStage.Vertex,
+                    DebugName = "ImGui Vertex Shader",
+                    GlslSource = vsResult.Source!,
+                },
+                out _vertexShaderModule
+            );
+            if (result != ResultCode.Ok)
+            {
+                _logger.LogError("Failed to create ImGui vertex shader module.");
+                return false;
+            }
+        }
+        {
+            var fsResult = _shaderCompiler.Compile(ShaderStage.Fragment, CodeFS);
+            if (!fsResult.Success)
+            {
+                _logger.LogError("Failed to compile ImGui fragment shader: " + fsResult.Errors);
+                return false;
+            }
+            var result = Context.CreateShaderModule(
+                new ShaderModuleDesc
+                {
+                    Stage = ShaderStage.Fragment,
+                    DebugName = "ImGui Fragment Shader",
+                    GlslSource = fsResult.Source!,
+                },
+                out _fragShaderModule
+            );
+            if (result != ResultCode.Ok)
+            {
+                _logger.LogError("Failed to create ImGui fragment shader module.");
+                return false;
+            }
+        }
         return true;
     }
 
