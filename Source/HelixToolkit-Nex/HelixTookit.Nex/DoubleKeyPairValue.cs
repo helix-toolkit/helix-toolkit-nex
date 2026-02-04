@@ -1,4 +1,4 @@
-﻿namespace HelixToolkit.Nex;
+namespace HelixToolkit.Nex;
 
 /// <summary>
 /// Represents two keys and a value.
@@ -39,28 +39,19 @@ public sealed class DoubleKeyPairValue<K, T, V>
     /// Gets or sets the key1.
     /// </summary>
     /// <value>The key1.</value>
-    public K Key1
-    {
-        get; set;
-    }
+    public K Key1 { get; set; }
 
     /// <summary>
     /// Gets or sets the key2.
     /// </summary>
     /// <value>The key2.</value>
-    public T Key2
-    {
-        get; set;
-    }
+    public T Key2 { get; set; }
 
     /// <summary>
     /// Gets or sets the value.
     /// </summary>
     /// <value>The value.</value>
-    public V Value
-    {
-        get; set;
-    }
+    public V Value { get; set; }
 
     /// <summary>
     /// Returns a <see cref="string"/> that represents this instance.

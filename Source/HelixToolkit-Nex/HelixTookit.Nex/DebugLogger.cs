@@ -1,4 +1,4 @@
-﻿namespace HelixToolkit.Nex;
+namespace HelixToolkit.Nex;
 
 /// <summary>
 /// A logger that writes messages in the debug output window only when a debugger is attached.
@@ -13,14 +13,9 @@ internal sealed class DebugLogger(string name) : ILogger
     {
         public static readonly NullScope Instance = new();
 
-        private NullScope()
-        {
+        private NullScope() { }
 
-        }
-
-        public void Dispose()
-        {
-        }
+        public void Dispose() { }
     }
 
     private readonly string _name = name;
@@ -45,7 +40,13 @@ internal sealed class DebugLogger(string name) : ILogger
     }
 
     /// <inheritdoc />
-    public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+    public void Log<TState>(
+        LogLevel logLevel,
+        EventId eventId,
+        TState state,
+        Exception? exception,
+        Func<TState, Exception?, string> formatter
+    )
     {
         if (!IsEnabled(logLevel))
         {

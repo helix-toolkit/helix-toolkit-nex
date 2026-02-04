@@ -1,4 +1,4 @@
-﻿namespace HelixToolkit.Nex.Graphics;
+namespace HelixToolkit.Nex.Graphics;
 
 /// <summary>
 /// Provides global configuration settings for the graphics system.

@@ -1,4 +1,4 @@
-﻿namespace HelixToolkit.Nex;
+namespace HelixToolkit.Nex;
 
 /// <summary>
 /// A simple logger factory that creates <see cref="DebugLogger"/> instances.
@@ -15,12 +15,8 @@ internal sealed class DebugLoggerFactory : ILoggerFactory
     }
 
     /// <inheritdoc/>
-    public void AddProvider(ILoggerProvider provider)
-    {
-    }
+    public void AddProvider(ILoggerProvider provider) { }
 
     /// <inheritdoc/>
-    public void Dispose()
-    {
-    }
+    public void Dispose() { }
 }

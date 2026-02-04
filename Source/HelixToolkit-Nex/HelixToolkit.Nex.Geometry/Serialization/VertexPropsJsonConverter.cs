@@ -1,0 +1,164 @@
+using System.Text.Json;
+
+namespace HelixToolkit.Nex.Geometries.Serialization;
+
+/// <summary>
+/// JSON converter for the VertexProperties struct.
+/// </summary>
+public class VertexPropsJsonConverter : JsonConverter<VertexProperties>
+{
+    public override VertexProperties Read(
+        ref Utf8JsonReader reader,
+        Type typeToConvert,
+        JsonSerializerOptions options
+    )
+    {
+        if (reader.TokenType != JsonTokenType.StartObject)
+        {
+            throw new JsonException("Expected StartObject token");
+        }
+
+        Vector3 normal = default;
+        Vector2 texCoord = default;
+        Vector3 tangent = default;
+
+        while (reader.Read())
+        {
+            if (reader.TokenType == JsonTokenType.EndObject)
+            {
+                return new VertexProperties(normal, texCoord, tangent);
+            }
+
+            if (reader.TokenType != JsonTokenType.PropertyName)
+            {
+                throw new JsonException("Expected PropertyName token");
+            }
+
+            string? propertyName = reader.GetString();
+            reader.Read();
+
+            switch (propertyName)
+            {
+                case "Normal":
+                    normal = ReadVector3(ref reader);
+                    break;
+                case "TexCoord":
+                    texCoord = ReadVector2(ref reader);
+                    break;
+                case "Tangent":
+                    tangent = ReadVector3(ref reader);
+                    break;
+                default:
+                    reader.Skip();
+                    break;
+            }
+        }
+
+        throw new JsonException("Unexpected end of JSON");
+    }
+
+    private static Vector3 ReadVector3(ref Utf8JsonReader reader)
+    {
+        if (reader.TokenType != JsonTokenType.StartObject)
+        {
+            throw new JsonException("Expected StartObject for Vector3");
+        }
+
+        float x = 0,
+            y = 0,
+            z = 0;
+        while (reader.Read())
+        {
+            if (reader.TokenType == JsonTokenType.EndObject)
+            {
+                return new Vector3(x, y, z);
+            }
+
+            if (reader.TokenType == JsonTokenType.PropertyName)
+            {
+                string? propName = reader.GetString();
+                reader.Read();
+
+                switch (propName)
+                {
+                    case "X":
+                        x = reader.GetSingle();
+                        break;
+                    case "Y":
+                        y = reader.GetSingle();
+                        break;
+                    case "Z":
+                        z = reader.GetSingle();
+                        break;
+                }
+            }
+        }
+        throw new JsonException("Unexpected end while reading Vector3");
+    }
+
+    private static Vector2 ReadVector2(ref Utf8JsonReader reader)
+    {
+        if (reader.TokenType != JsonTokenType.StartObject)
+        {
+            throw new JsonException("Expected StartObject for Vector2");
+        }
+
+        float x = 0,
+            y = 0;
+        while (reader.Read())
+        {
+            if (reader.TokenType == JsonTokenType.EndObject)
+            {
+                return new Vector2(x, y);
+            }
+
+            if (reader.TokenType == JsonTokenType.PropertyName)
+            {
+                string? propName = reader.GetString();
+                reader.Read();
+
+                switch (propName)
+                {
+                    case "X":
+                        x = reader.GetSingle();
+                        break;
+                    case "Y":
+                        y = reader.GetSingle();
+                        break;
+                }
+            }
+        }
+        throw new JsonException("Unexpected end while reading Vector2");
+    }
+
+    public override void Write(
+        Utf8JsonWriter writer,
+        VertexProperties value,
+        JsonSerializerOptions options
+    )
+    {
+        writer.WriteStartObject();
+
+        writer.WritePropertyName("Normal");
+        writer.WriteStartObject();
+        writer.WriteNumber("X", value.Normal.X);
+        writer.WriteNumber("Y", value.Normal.Y);
+        writer.WriteNumber("Z", value.Normal.Z);
+        writer.WriteEndObject();
+
+        writer.WritePropertyName("TexCoord");
+        writer.WriteStartObject();
+        writer.WriteNumber("X", value.TexCoord.X);
+        writer.WriteNumber("Y", value.TexCoord.Y);
+        writer.WriteEndObject();
+
+        writer.WritePropertyName("Tangent");
+        writer.WriteStartObject();
+        writer.WriteNumber("X", value.Tangent.X);
+        writer.WriteNumber("Y", value.Tangent.Y);
+        writer.WriteNumber("Z", value.Tangent.Z);
+        writer.WriteEndObject();
+
+        writer.WriteEndObject();
+    }
+}

@@ -1,4 +1,4 @@
-﻿namespace HelixToolkit.Nex.Graphics;
+namespace HelixToolkit.Nex.Graphics;
 
 /// <summary>
 /// Represents a framebuffer used in rendering operations, containing color and depth-stencil attachments.

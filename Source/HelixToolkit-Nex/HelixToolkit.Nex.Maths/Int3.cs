@@ -1,4 +1,4 @@
-﻿/*
+/*
 The MIT License (MIT)
 Copyright (c) 2022 Helix Toolkit contributors
 
@@ -176,7 +176,7 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>A four-element array containing the components of the vector.</returns>
         public readonly int[] ToArray()
         {
-            return new int[] {X, Y, Z};
+            return new int[] { X, Y, Z };
         }
 
         /// <summary>
@@ -231,7 +231,7 @@ namespace HelixToolkit.Nex.Maths
         /// <param name = "result">When the method completes, contains the scaled vector.</param>
         public static void Multiply(ref Int3 value, int scale, out Int3 result)
         {
-            result = new Int3(value.X*scale, value.Y*scale, value.Z*scale);
+            result = new Int3(value.X * scale, value.Y * scale, value.Z * scale);
         }
 
         /// <summary>
@@ -242,7 +242,7 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>The scaled vector.</returns>
         public static Int3 Multiply(Int3 value, int scale)
         {
-            return new Int3(value.X*scale, value.Y*scale, value.Z*scale);
+            return new Int3(value.X * scale, value.Y * scale, value.Z * scale);
         }
 
         /// <summary>
@@ -253,7 +253,7 @@ namespace HelixToolkit.Nex.Maths
         /// <param name = "result">When the method completes, contains the modulated vector.</param>
         public static void Modulate(ref Int3 left, ref Int3 right, out Int3 result)
         {
-            result = new Int3(left.X*right.X, left.Y*right.Y, left.Z*right.Z);
+            result = new Int3(left.X * right.X, left.Y * right.Y, left.Z * right.Z);
         }
 
         /// <summary>
@@ -264,7 +264,7 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>The modulated vector.</returns>
         public static Int3 Modulate(Int3 left, Int3 right)
         {
-            return new Int3(left.X*right.X, left.Y*right.Y, left.Z*right.Z);
+            return new Int3(left.X * right.X, left.Y * right.Y, left.Z * right.Z);
         }
 
         /// <summary>
@@ -275,7 +275,7 @@ namespace HelixToolkit.Nex.Maths
         /// <param name = "result">When the method completes, contains the scaled vector.</param>
         public static void Divide(ref Int3 value, int scale, out Int3 result)
         {
-            result = new Int3(value.X/scale, value.Y/scale, value.Z/scale);
+            result = new Int3(value.X / scale, value.Y / scale, value.Z / scale);
         }
 
         /// <summary>
@@ -286,7 +286,7 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>The scaled vector.</returns>
         public static Int3 Divide(Int3 value, int scale)
         {
-            return new Int3(value.X/scale, value.Y/scale, value.Z/scale);
+            return new Int3(value.X / scale, value.Y / scale, value.Z / scale);
         }
 
         /// <summary>
@@ -446,7 +446,7 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>The scaled vector.</returns>
         public static Int3 operator *(int scale, Int3 value)
         {
-            return new Int3(value.X*scale, value.Y*scale, value.Z*scale);
+            return new Int3(value.X * scale, value.Y * scale, value.Z * scale);
         }
 
         /// <summary>
@@ -457,7 +457,7 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>The scaled vector.</returns>
         public static Int3 operator *(Int3 value, int scale)
         {
-            return new Int3(value.X*scale, value.Y*scale, value.Z*scale);
+            return new Int3(value.X * scale, value.Y * scale, value.Z * scale);
         }
 
         /// <summary>
@@ -468,7 +468,7 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>The scaled vector.</returns>
         public static Int3 operator /(Int3 value, int scale)
         {
-            return new Int3(value.X/scale, value.Y/scale, value.Z/scale);
+            return new Int3(value.X / scale, value.Y / scale, value.Z / scale);
         }
 
         /// <summary>
@@ -516,10 +516,10 @@ namespace HelixToolkit.Nex.Maths
         }
 
         /// <summary>
-        /// Returns a <see cref = "System.String" /> that represents this instance.
+        /// Returns a <see cref = "string" /> that represents this instance.
         /// </summary>
         /// <returns>
-        /// A <see cref = "System.String" /> that represents this instance.
+        /// A <see cref = "string" /> that represents this instance.
         /// </returns>
         public override readonly string ToString()
         {
@@ -527,11 +527,11 @@ namespace HelixToolkit.Nex.Maths
         }
 
         /// <summary>
-        /// Returns a <see cref = "System.String" /> that represents this instance.
+        /// Returns a <see cref = "string" /> that represents this instance.
         /// </summary>
         /// <param name = "format">The format.</param>
         /// <returns>
-        /// A <see cref = "System.String" /> that represents this instance.
+        /// A <see cref = "string" /> that represents this instance.
         /// </returns>
         public readonly string ToString(string format)
         {
@@ -544,11 +544,11 @@ namespace HelixToolkit.Nex.Maths
         }
 
         /// <summary>
-        /// Returns a <see cref = "System.String" /> that represents this instance.
+        /// Returns a <see cref = "string" /> that represents this instance.
         /// </summary>
         /// <param name = "formatProvider">The format provider.</param>
         /// <returns>
-        /// A <see cref = "System.String" /> that represents this instance.
+        /// A <see cref = "string" /> that represents this instance.
         /// </returns>
         public readonly string ToString(IFormatProvider formatProvider)
         {
@@ -556,12 +556,12 @@ namespace HelixToolkit.Nex.Maths
         }
 
         /// <summary>
-        /// Returns a <see cref = "System.String" /> that represents this instance.
+        /// Returns a <see cref = "string" /> that represents this instance.
         /// </summary>
         /// <param name = "format">The format.</param>
         /// <param name = "formatProvider">The format provider.</param>
         /// <returns>
-        /// A <see cref = "System.String" /> that represents this instance.
+        /// A <see cref = "string" /> that represents this instance.
         /// </returns>
         public readonly string ToString(string? format, IFormatProvider? formatProvider)
         {
@@ -569,7 +569,7 @@ namespace HelixToolkit.Nex.Maths
                 ? string.Empty
                 : format == null
                 ? ToString(formatProvider!)
-                :string.Format(formatProvider, "X:{0} Y:{1} Z:{2}", X.ToString(format, formatProvider),
+                : string.Format(formatProvider, "X:{0} Y:{1} Z:{2}", X.ToString(format, formatProvider),
                                  Y.ToString(format, formatProvider), Z.ToString(format, formatProvider));
         }
 
@@ -617,11 +617,11 @@ namespace HelixToolkit.Nex.Maths
         }
 
         /// <summary>
-        /// Determines whether the specified <see cref = "System.Object" /> is equal to this instance.
+        /// Determines whether the specified <see cref = "object" /> is equal to this instance.
         /// </summary>
-        /// <param name = "obj">The <see cref = "System.Object" /> to compare with this instance.</param>
+        /// <param name = "obj">The <see cref = "object" /> to compare with this instance.</param>
         /// <returns>
-        /// <c>true</c> if the specified <see cref = "System.Object" /> is equal to this instance; otherwise, <c>false</c>.
+        /// <c>true</c> if the specified <see cref = "object" /> is equal to this instance; otherwise, <c>false</c>.
         /// </returns>
         public override readonly bool Equals(object? obj)
         {
@@ -639,7 +639,7 @@ namespace HelixToolkit.Nex.Maths
         }
 
         /// <summary>
-        /// Performs an implicit conversion from <see cref="Int3"/> to <see cref="System.Int32"/> array.
+        /// Performs an implicit conversion from <see cref="Int3"/> to <see cref="int"/> array.
         /// </summary>
         /// <param name="input">The input.</param>
         /// <returns>The result of the conversion.</returns>

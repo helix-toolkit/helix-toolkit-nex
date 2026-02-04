@@ -1,4 +1,4 @@
-﻿namespace HelixToolkit.Nex.Graphics;
+namespace HelixToolkit.Nex.Graphics;
 
 /// <summary>
 /// Specialization constant entry. Used to define each constant entry. More information can be found in the Vulkan specification.

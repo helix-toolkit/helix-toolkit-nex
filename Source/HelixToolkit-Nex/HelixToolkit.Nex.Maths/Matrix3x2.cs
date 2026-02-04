@@ -1,4 +1,4 @@
-﻿/*
+/*
 The MIT License (MIT)
 Copyright (c) 2022 Helix Toolkit contributors
 
@@ -84,7 +84,8 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="value">The value.</param>
         public static void SetRow2(ref Matrix3x2 m, ref Vector2 value)
         {
-            m.M21 = value.X; m.M22 = value.Y;
+            m.M21 = value.X;
+            m.M22 = value.Y;
         }
         /// <summary>
         /// Sets the row2.
@@ -93,7 +94,8 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="value">The value.</param>
         public static void SetRow2(ref Matrix3x2 m, Vector2 value)
         {
-            m.M21 = value.X; m.M22 = value.Y;
+            m.M21 = value.X;
+            m.M22 = value.Y;
         }
         /// <summary>
         /// Gets or sets the third row in the matrix; that is M31 and M32.
@@ -109,7 +111,8 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="value">The value.</param>
         public static void SetRow3(ref Matrix3x2 m, ref Vector2 value)
         {
-            m.M31 = value.X; m.M32 = value.Y;
+            m.M31 = value.X;
+            m.M32 = value.Y;
         }
         /// <summary>
         /// Sets the row3.
@@ -118,7 +121,8 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="value">The value.</param>
         public static void SetRow3(ref Matrix3x2 m, Vector2 value)
         {
-            m.M31 = value.X; m.M32 = value.Y;
+            m.M31 = value.X;
+            m.M32 = value.Y;
         }
         /// <summary>
         /// Gets or sets the first column in the matrix; that is M11, M21, and M31.
@@ -134,7 +138,9 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="value">The value.</param>
         public static void SetColumn1(ref Matrix3x2 m, ref Vector3 value)
         {
-            m.M11 = value.X; m.M21 = value.Y; m.M31 = value.Z;
+            m.M11 = value.X;
+            m.M21 = value.Y;
+            m.M31 = value.Z;
         }
         /// <summary>
         /// Sets the column1.
@@ -143,7 +149,9 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="value">The value.</param>
         public static void SetColumn1(ref Matrix3x2 m, Vector3 value)
         {
-            m.M11 = value.X; m.M21 = value.Y; m.M31 = value.Z;
+            m.M11 = value.X;
+            m.M21 = value.Y;
+            m.M31 = value.Z;
         }
 
         /// <summary>
@@ -160,7 +168,9 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="value">The value.</param>
         public static void SetColumn2(ref Matrix3x2 m, ref Vector3 value)
         {
-            m.M12 = value.X; m.M22 = value.Y; m.M32 = value.Z;
+            m.M12 = value.X;
+            m.M22 = value.Y;
+            m.M32 = value.Z;
         }
         /// <summary>
         /// Sets the column2.
@@ -169,7 +179,9 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="value">The value.</param>
         public static void SetColumn2(ref Matrix3x2 m, Vector3 value)
         {
-            m.M12 = value.X; m.M22 = value.Y; m.M32 = value.Z;
+            m.M12 = value.X;
+            m.M22 = value.Y;
+            m.M32 = value.Z;
         }
         /// <summary>
         /// Sets the translation.
@@ -217,7 +229,8 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="value">The value.</param>
         public static void SetScaleVector(ref Matrix3x2 m, Vector2 value)
         {
-            m.M11 = value.X; m.M22 = value.Y;
+            m.M11 = value.X;
+            m.M22 = value.Y;
         }
         /// <summary>
         /// Sets the scale vector.
@@ -226,7 +239,8 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="value">The value.</param>
         public static void SetScaleVector(ref Matrix3x2 m, ref Vector2 value)
         {
-            m.M11 = value.X; m.M22 = value.Y;
+            m.M11 = value.X;
+            m.M22 = value.Y;
         }
 
         /// <summary>
@@ -259,16 +273,29 @@ namespace HelixToolkit.Nex.Maths
         /// <exception cref="ArgumentOutOfRangeException">index - Indices for Matrix3x2 run from 0 to 5, inclusive.</exception>
         public static void Set(ref Matrix3x2 m, int index, float value)
         {
-                switch (index)
-                {
-                    case 0: m.M11 = value; break;
-                    case 1: m.M12 = value; break;
-                    case 2: m.M21 = value; break;
-                    case 3: m.M22 = value; break;
-                    case 4: m.M31 = value; break;
-                    case 5: m.M32 = value; break;
-                    default: throw new ArgumentOutOfRangeException(nameof(index), "Indices for Matrix3x2 run from 0 to 5, inclusive.");
-                }
+            switch (index)
+            {
+                case 0:
+                    m.M11 = value;
+                    break;
+                case 1:
+                    m.M12 = value;
+                    break;
+                case 2:
+                    m.M21 = value;
+                    break;
+                case 3:
+                    m.M22 = value;
+                    break;
+                case 4:
+                    m.M31 = value;
+                    break;
+                case 5:
+                    m.M32 = value;
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(index), "Indices for Matrix3x2 run from 0 to 5, inclusive.");
+            }
         }
         /// <summary>
         /// Gets or sets the component at the specified index.
@@ -393,8 +420,8 @@ namespace HelixToolkit.Nex.Maths
         public static void Skew(float angleX, float angleY, out Matrix3x2 result)
         {
             result = Identity;
-            result.M12 = (float) Math.Tan(angleX);
-            result.M21 = (float) Math.Tan(angleY);
+            result.M12 = (float)Math.Tan(angleX);
+            result.M21 = (float)Math.Tan(angleY);
         }
 
         /// <summary>

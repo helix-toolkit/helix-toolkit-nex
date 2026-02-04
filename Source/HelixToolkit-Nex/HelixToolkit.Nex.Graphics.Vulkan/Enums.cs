@@ -1,4 +1,4 @@
-﻿namespace HelixToolkit.Nex.Graphics.Vulkan;
+namespace HelixToolkit.Nex.Graphics.Vulkan;
 
 /// <summary>
 /// Defines the descriptor set binding points used in Vulkan pipelines.

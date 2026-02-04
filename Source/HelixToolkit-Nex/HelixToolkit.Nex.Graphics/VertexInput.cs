@@ -1,4 +1,4 @@
-﻿namespace HelixToolkit.Nex.Graphics;
+namespace HelixToolkit.Nex.Graphics;
 
 /// <summary>
 /// Describes a single vertex attribute within a vertex buffer.
@@ -20,7 +20,7 @@ public struct VertexAttribute()
     public uint32_t Binding;
 
     /// <summary>
- /// The format of each element in this attribute stream.
+    /// The format of each element in this attribute stream.
     /// </summary>
     public VertexFormat Format; // per-element format
 
@@ -39,6 +39,14 @@ public struct VertexInputBinding()
     /// The stride in bytes between consecutive vertex elements in the buffer.
     /// </summary>
     public uint32_t Stride;
+
+    /// <summary>
+    /// Specifies the rate at which vertex data is consumed by the input assembler.
+    /// </summary>
+    /// <remarks>This value determines whether the vertex data is processed per-vertex or per-instance. Common
+    /// values include <see cref="VertexInputRate.PerVertex"/> for per-vertex processing  and <see
+    /// cref="VertexInputRate.PerInstance"/> for per-instance processing.</remarks>
+    public VertexInputRate InputRate;
 }
 
 /// <summary>
@@ -67,7 +75,7 @@ public struct VertexInput()
 
     /// <summary>
     /// Array of vertex attributes.
- /// </summary>
+    /// </summary>
     public readonly VertexAttribute[] Attributes = new VertexAttribute[MAX_VERTEX_ATTRIBUTES];
 
     /// <summary>
@@ -100,18 +108,25 @@ public struct VertexInput()
 
     /// <summary>
     /// Calculates the total size in bytes of a single vertex based on all attributes.
-/// </summary>
-/// <returns>The total vertex size in bytes.</returns>
-/// <remarks>
-/// This method assumes attributes are tightly packed in order. If attributes have gaps or
-/// are not sequential, an assertion will fail.
-/// </remarks>
+    /// </summary>
+    /// <returns>The total vertex size in bytes.</returns>
+    /// <remarks>
+    /// This method assumes attributes are tightly packed in order. If attributes have gaps or
+    /// are not sequential, an assertion will fail.
+    /// </remarks>
     public readonly uint32_t GetVertexSize()
     {
         uint32_t vertexSize = 0;
-        for (uint32_t i = 0; i < MAX_VERTEX_ATTRIBUTES && Attributes[i].Format != VertexFormat.Invalid; i++)
+        for (
+            uint32_t i = 0;
+            i < MAX_VERTEX_ATTRIBUTES && Attributes[i].Format != VertexFormat.Invalid;
+            i++
+        )
         {
-            HxDebug.Assert(Attributes[i].Offset == vertexSize, "Unsupported vertex attributes format");
+            HxDebug.Assert(
+                Attributes[i].Offset == vertexSize,
+                "Unsupported vertex attributes format"
+            );
             vertexSize += Attributes[i].Format.GetVertexFormatSize();
         }
         return vertexSize;
@@ -120,5 +135,5 @@ public struct VertexInput()
     /// <summary>
     /// A predefined null/empty vertex input configuration.
     /// </summary>
-  public static readonly VertexInput Null = new();
+    public static readonly VertexInput Null = new();
 }

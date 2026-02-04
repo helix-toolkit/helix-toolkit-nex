@@ -1,4 +1,4 @@
-﻿namespace HelixToolkit.Nex.Graphics.Vulkan;
+namespace HelixToolkit.Nex.Graphics.Vulkan;
 
 public static class VulkanBuilder
 {
@@ -11,12 +11,20 @@ public static class VulkanBuilder
     /// <param name="surface"></param>
     /// <param name="initialize"></param>
     /// <returns></returns>
-    public static IContext Create(VulkanContextConfig config, nint window, nint display, bool initialize = true)
+    public static IContext Create(
+        VulkanContextConfig config,
+        nint window,
+        nint display,
+        bool initialize = true
+    )
     {
         var ctx = new VulkanContext(config, window, display);
         if (initialize)
         {
-            ctx.Initialize().CheckResult();
+            if (ctx.Initialize().CheckResult() != ResultCode.Ok)
+            {
+                throw new InvalidOperationException("Failed to create Vulkan Context.");
+            }
         }
         return ctx;
     }
@@ -30,7 +38,10 @@ public static class VulkanBuilder
         var ctx = new VulkanContext(config);
         if (initialize)
         {
-            ctx.Initialize().CheckResult();
+            if (ctx.Initialize().CheckResult() != ResultCode.Ok)
+            {
+                throw new InvalidOperationException("Failed to create Vulkan Context.");
+            }
         }
         return ctx;
     }

@@ -1,4 +1,4 @@
-﻿namespace HelixToolkit.Nex;
+namespace HelixToolkit.Nex;
 
 /// <summary>
 /// Provides static utility methods for managing <see cref="IDisposable"/> objects.
@@ -14,12 +14,13 @@ public static class Disposer
     /// This method is safe to call even if <paramref name="disposable"/> is already null.
     /// After disposal, the reference is set to the default value (null for reference types).
     /// </remarks>
-    public static void DisposeAndRemove<T>(ref T? disposable) where T : IDisposable
+    public static void DisposeAndRemove<T>(ref T? disposable)
+        where T : IDisposable
     {
         if (disposable != null)
         {
-          disposable.Dispose();
-         disposable = default;
+            disposable.Dispose();
+            disposable = default;
         }
     }
 }

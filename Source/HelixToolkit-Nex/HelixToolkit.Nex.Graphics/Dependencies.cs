@@ -1,4 +1,4 @@
-﻿namespace HelixToolkit.Nex.Graphics;
+namespace HelixToolkit.Nex.Graphics;
 
 /// <summary>
 /// Represents a collection of dependencies, including textures and buffers,  that can be submitted for processing.
@@ -14,14 +14,18 @@ public sealed class Dependencies
 
     public readonly BufferHandle[] Buffers = new BufferHandle[MAX_SUBMIT_DEPENDENCIES];
 
+    public readonly TextureHandle[] InputAttachments = new TextureHandle[
+        Constants.MAX_COLOR_ATTACHMENTS
+    ];
+
     public static readonly Dependencies Empty = new();
 
-    public Dependencies()
+    public Dependencies(TextureHandle[]? textures = null, BufferHandle[]? buffers = null)
     {
         for (uint32_t i = 0; i < MAX_SUBMIT_DEPENDENCIES; i++)
         {
-            Textures[i] = TextureHandle.Null;
-            Buffers[i] = BufferHandle.Null;
+            Textures[i] = i < textures?.Length ? textures[i] : TextureHandle.Null;
+            Buffers[i] = i < buffers?.Length ? buffers[i] : BufferHandle.Null;
         }
     }
 }

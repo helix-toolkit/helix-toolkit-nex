@@ -1,4 +1,4 @@
-﻿/*
+/*
 The MIT License (MIT)
 Copyright (c) 2022 Helix Toolkit contributors
 
@@ -29,6 +29,7 @@ The MIT License (MIT)
 Copyright (c) 2007-2011 SlimDX Group
 The MIT License (MIT)
 */
+using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 
 namespace HelixToolkit.Nex.Maths
@@ -39,6 +40,7 @@ namespace HelixToolkit.Nex.Maths
     public static class MatrixHelper
     {
         private static readonly ILogger logger = LogManager.Create(nameof(MatrixHelper));
+
         /// <summary>
         /// The size of the <see cref="Matrix"/> type, in bytes.
         /// </summary>
@@ -52,8 +54,13 @@ namespace HelixToolkit.Nex.Maths
         /// <summary>
         /// The identity <see cref="Matrix"/>.
         /// </summary>
-        public static readonly Matrix Identity = new() { M11 = 1.0f, M22 = 1.0f, M33 = 1.0f, M44 = 1.0f };
-
+        public static readonly Matrix Identity = new()
+        {
+            M11 = 1.0f,
+            M22 = 1.0f,
+            M33 = 1.0f,
+            M44 = 1.0f,
+        };
 
         /// <summary>
         /// Gets or sets the up <see cref="Vector3"/> of the matrix; that is M21, M22, and M23.
@@ -114,6 +121,7 @@ namespace HelixToolkit.Nex.Maths
             m.M12 = -value.Y;
             m.M13 = -value.Z;
         }
+
         /// <summary>
         /// Gets or sets the forward <see cref="Vector3"/> of the matrix; that is -M31, -M32, and -M33.
         /// </summary>
@@ -128,6 +136,7 @@ namespace HelixToolkit.Nex.Maths
             m.M32 = -value.Y;
             m.M33 = -value.Z;
         }
+
         /// <summary>
         /// Gets or sets the backward <see cref="Vector3"/> of the matrix; that is M31, M32, and M33.
         /// </summary>
@@ -143,7 +152,6 @@ namespace HelixToolkit.Nex.Maths
             m.M33 = value.Z;
         }
 
-
         /// <summary>
         /// Gets or sets the first row in the matrix; that is M11, M12, M13, and M14.
         /// </summary>
@@ -154,12 +162,20 @@ namespace HelixToolkit.Nex.Maths
 
         public static void SetRow1(ref Matrix m, ref Vector4 value)
         {
-            m.M11 = value.X; m.M12 = value.Y; m.M13 = value.Z; m.M14 = value.W;
+            m.M11 = value.X;
+            m.M12 = value.Y;
+            m.M13 = value.Z;
+            m.M14 = value.W;
         }
+
         public static void SetRow1(ref Matrix m, Vector4 value)
         {
-            m.M11 = value.X; m.M12 = value.Y; m.M13 = value.Z; m.M14 = value.W;
+            m.M11 = value.X;
+            m.M12 = value.Y;
+            m.M13 = value.Z;
+            m.M14 = value.W;
         }
+
         /// <summary>
         /// Gets or sets the second row in the matrix; that is M21, M22, M23, and M24.
         /// </summary>
@@ -170,12 +186,20 @@ namespace HelixToolkit.Nex.Maths
 
         public static void SetRow2(ref Matrix m, ref Vector4 value)
         {
-            m.M21 = value.X; m.M22 = value.Y; m.M23 = value.Z; m.M24 = value.W;
+            m.M21 = value.X;
+            m.M22 = value.Y;
+            m.M23 = value.Z;
+            m.M24 = value.W;
         }
+
         public static void SetRow2(ref Matrix m, Vector4 value)
         {
-            m.M21 = value.X; m.M22 = value.Y; m.M23 = value.Z; m.M24 = value.W;
+            m.M21 = value.X;
+            m.M22 = value.Y;
+            m.M23 = value.Z;
+            m.M24 = value.W;
         }
+
         /// <summary>
         /// Gets or sets the third row in the matrix; that is M31, M32, M33, and M34.
         /// </summary>
@@ -186,12 +210,20 @@ namespace HelixToolkit.Nex.Maths
 
         public static void SetRow3(ref Matrix m, ref Vector4 value)
         {
-            m.M31 = value.X; m.M32 = value.Y; m.M33 = value.Z; m.M34 = value.W;
+            m.M31 = value.X;
+            m.M32 = value.Y;
+            m.M33 = value.Z;
+            m.M34 = value.W;
         }
+
         public static void SetRow3(ref Matrix m, Vector4 value)
         {
-            m.M31 = value.X; m.M32 = value.Y; m.M33 = value.Z; m.M34 = value.W;
+            m.M31 = value.X;
+            m.M32 = value.Y;
+            m.M33 = value.Z;
+            m.M34 = value.W;
         }
+
         /// <summary>
         /// Gets or sets the fourth row in the matrix; that is M41, M42, M43, and M44.
         /// </summary>
@@ -202,11 +234,18 @@ namespace HelixToolkit.Nex.Maths
 
         public static void SetRow4(ref Matrix m, ref Vector4 value)
         {
-            m.M41 = value.X; m.M42 = value.Y; m.M43 = value.Z; m.M44 = value.W;
+            m.M41 = value.X;
+            m.M42 = value.Y;
+            m.M43 = value.Z;
+            m.M44 = value.W;
         }
+
         public static void SetRow4(ref Matrix m, Vector4 value)
         {
-            m.M41 = value.X; m.M42 = value.Y; m.M43 = value.Z; m.M44 = value.W;
+            m.M41 = value.X;
+            m.M42 = value.Y;
+            m.M43 = value.Z;
+            m.M44 = value.W;
         }
 
         /// <summary>
@@ -227,6 +266,7 @@ namespace HelixToolkit.Nex.Maths
                 _ => throw new ArgumentException("Row Index out of bound."),
             };
         }
+
         /// <summary>
         /// Sets the row by index. Index 0 sets row 1.
         /// </summary>
@@ -238,13 +278,23 @@ namespace HelixToolkit.Nex.Maths
         {
             switch (rowIdx)
             {
-                case 0: SetRow1(ref m, ref value); break;
-                case 1: SetRow2(ref m, ref value); break;
-                case 2: SetRow3(ref m, ref value); break;
-                case 3: SetRow4(ref m, ref value); break;
-                default: throw new ArgumentException("Row Index out of bound.");
+                case 0:
+                    SetRow1(ref m, ref value);
+                    break;
+                case 1:
+                    SetRow2(ref m, ref value);
+                    break;
+                case 2:
+                    SetRow3(ref m, ref value);
+                    break;
+                case 3:
+                    SetRow4(ref m, ref value);
+                    break;
+                default:
+                    throw new ArgumentException("Row Index out of bound.");
             }
         }
+
         /// <summary>
         /// Gets the column. Zero based index. column Index = 0 will get column 1.
         /// </summary>
@@ -263,6 +313,7 @@ namespace HelixToolkit.Nex.Maths
                 _ => throw new ArgumentException("Column Index out of bound."),
             };
         }
+
         /// <summary>
         /// Sets the column by index. Index 0 sets column 1;
         /// </summary>
@@ -274,11 +325,20 @@ namespace HelixToolkit.Nex.Maths
         {
             switch (columnIdx)
             {
-                case 0: SetColumn1(ref m, ref value); break;
-                case 1: SetColumn2(ref m, ref value); break;
-                case 2: SetColumn3(ref m, ref value); break;
-                case 3: SetColumn4(ref m, ref value); break;
-                default: throw new ArgumentException("Column Index out of bound.");
+                case 0:
+                    SetColumn1(ref m, ref value);
+                    break;
+                case 1:
+                    SetColumn2(ref m, ref value);
+                    break;
+                case 2:
+                    SetColumn3(ref m, ref value);
+                    break;
+                case 3:
+                    SetColumn4(ref m, ref value);
+                    break;
+                default:
+                    throw new ArgumentException("Column Index out of bound.");
             }
         }
 
@@ -292,12 +352,20 @@ namespace HelixToolkit.Nex.Maths
 
         public static void SetColumn1(ref Matrix m, ref Vector4 value)
         {
-            m.M11 = value.X; m.M21 = value.Y; m.M31 = value.Z; m.M41 = value.W;
+            m.M11 = value.X;
+            m.M21 = value.Y;
+            m.M31 = value.Z;
+            m.M41 = value.W;
         }
+
         public static void SetColumn1(ref Matrix m, Vector4 value)
         {
-            m.M11 = value.X; m.M21 = value.Y; m.M31 = value.Z; m.M41 = value.W;
+            m.M11 = value.X;
+            m.M21 = value.Y;
+            m.M31 = value.Z;
+            m.M41 = value.W;
         }
+
         /// <summary>
         /// Gets or sets the second column in the matrix; that is M12, M22, M32, and M42.
         /// </summary>
@@ -308,12 +376,20 @@ namespace HelixToolkit.Nex.Maths
 
         public static void SetColumn2(ref Matrix m, ref Vector4 value)
         {
-            m.M12 = value.X; m.M22 = value.Y; m.M32 = value.Z; m.M42 = value.W;
+            m.M12 = value.X;
+            m.M22 = value.Y;
+            m.M32 = value.Z;
+            m.M42 = value.W;
         }
+
         public static void SetColumn2(ref Matrix m, Vector4 value)
         {
-            m.M12 = value.X; m.M22 = value.Y; m.M32 = value.Z; m.M42 = value.W;
+            m.M12 = value.X;
+            m.M22 = value.Y;
+            m.M32 = value.Z;
+            m.M42 = value.W;
         }
+
         /// <summary>
         /// Gets or sets the third column in the matrix; that is M13, M23, M33, and M43.
         /// </summary>
@@ -324,12 +400,20 @@ namespace HelixToolkit.Nex.Maths
 
         public static void SetColumn3(ref Matrix m, ref Vector4 value)
         {
-            m.M13 = value.X; m.M23 = value.Y; m.M33 = value.Z; m.M43 = value.W;
+            m.M13 = value.X;
+            m.M23 = value.Y;
+            m.M33 = value.Z;
+            m.M43 = value.W;
         }
+
         public static void SetColumn3(ref Matrix m, Vector4 value)
         {
-            m.M13 = value.X; m.M23 = value.Y; m.M33 = value.Z; m.M43 = value.W;
+            m.M13 = value.X;
+            m.M23 = value.Y;
+            m.M33 = value.Z;
+            m.M43 = value.W;
         }
+
         /// <summary>
         /// Gets or sets the fourth column in the matrix; that is M14, M24, M34, and M44.
         /// </summary>
@@ -340,12 +424,20 @@ namespace HelixToolkit.Nex.Maths
 
         public static void SetColumn4(ref Matrix m, ref Vector4 value)
         {
-            m.M14 = value.X; m.M24 = value.Y; m.M34 = value.Z; m.M44 = value.W;
+            m.M14 = value.X;
+            m.M24 = value.Y;
+            m.M34 = value.Z;
+            m.M44 = value.W;
         }
+
         public static void SetColumn4(ref Matrix m, Vector4 value)
         {
-            m.M14 = value.X; m.M24 = value.Y; m.M34 = value.Z; m.M44 = value.W;
+            m.M14 = value.X;
+            m.M24 = value.Y;
+            m.M34 = value.Z;
+            m.M44 = value.W;
         }
+
         /// <summary>
         /// Gets or sets the scale of the matrix; that is M11, M22, and M33.
         /// </summary>
@@ -356,7 +448,9 @@ namespace HelixToolkit.Nex.Maths
 
         public static void SetScaleVector(ref Matrix m, ref Vector3 value)
         {
-            m.M11 = value.X; m.M22 = value.Y; m.M33 = value.Z;
+            m.M11 = value.X;
+            m.M22 = value.Y;
+            m.M33 = value.Z;
         }
 
         /// <summary>
@@ -387,7 +481,10 @@ namespace HelixToolkit.Nex.Maths
                 13 => m.M42,
                 14 => m.M43,
                 15 => m.M44,
-                _ => throw new ArgumentOutOfRangeException(nameof(index), "Indices for Matrix run from 0 to 15, inclusive."),
+                _ => throw new ArgumentOutOfRangeException(
+                    nameof(index),
+                    "Indices for Matrix run from 0 to 15, inclusive."
+                ),
             };
         }
 
@@ -395,23 +492,59 @@ namespace HelixToolkit.Nex.Maths
         {
             switch (index)
             {
-                case 0: m.M11 = value; break;
-                case 1: m.M12 = value; break;
-                case 2: m.M13 = value; break;
-                case 3: m.M14 = value; break;
-                case 4: m.M21 = value; break;
-                case 5: m.M22 = value; break;
-                case 6: m.M23 = value; break;
-                case 7: m.M24 = value; break;
-                case 8: m.M31 = value; break;
-                case 9: m.M32 = value; break;
-                case 10: m.M33 = value; break;
-                case 11: m.M34 = value; break;
-                case 12: m.M41 = value; break;
-                case 13: m.M42 = value; break;
-                case 14: m.M43 = value; break;
-                case 15: m.M44 = value; break;
-                default: throw new ArgumentOutOfRangeException(nameof(index), "Indices for Matrix run from 0 to 15, inclusive.");
+                case 0:
+                    m.M11 = value;
+                    break;
+                case 1:
+                    m.M12 = value;
+                    break;
+                case 2:
+                    m.M13 = value;
+                    break;
+                case 3:
+                    m.M14 = value;
+                    break;
+                case 4:
+                    m.M21 = value;
+                    break;
+                case 5:
+                    m.M22 = value;
+                    break;
+                case 6:
+                    m.M23 = value;
+                    break;
+                case 7:
+                    m.M24 = value;
+                    break;
+                case 8:
+                    m.M31 = value;
+                    break;
+                case 9:
+                    m.M32 = value;
+                    break;
+                case 10:
+                    m.M33 = value;
+                    break;
+                case 11:
+                    m.M34 = value;
+                    break;
+                case 12:
+                    m.M41 = value;
+                    break;
+                case 13:
+                    m.M42 = value;
+                    break;
+                case 14:
+                    m.M43 = value;
+                    break;
+                case 15:
+                    m.M44 = value;
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(
+                        nameof(index),
+                        "Indices for Matrix run from 0 to 15, inclusive."
+                    );
             }
         }
 
@@ -427,9 +560,15 @@ namespace HelixToolkit.Nex.Maths
         public static float Get(this Matrix m, int row, int column)
         {
             return row < 0 || row > 3
-                ? throw new ArgumentOutOfRangeException(nameof(row), "Rows and columns for matrices run from 0 to 3, inclusive.")
+                    ? throw new ArgumentOutOfRangeException(
+                        nameof(row),
+                        "Rows and columns for matrices run from 0 to 3, inclusive."
+                    )
                 : column < 0 || column > 3
-                ? throw new ArgumentOutOfRangeException(nameof(column), "Rows and columns for matrices run from 0 to 3, inclusive.")
+                    ? throw new ArgumentOutOfRangeException(
+                        nameof(column),
+                        "Rows and columns for matrices run from 0 to 3, inclusive."
+                    )
                 : m.Get((row * 4) + column);
         }
 
@@ -437,12 +576,18 @@ namespace HelixToolkit.Nex.Maths
         {
             if (row < 0 || row > 3)
             {
-                throw new ArgumentOutOfRangeException(nameof(row), "Rows and columns for matrices run from 0 to 3, inclusive.");
+                throw new ArgumentOutOfRangeException(
+                    nameof(row),
+                    "Rows and columns for matrices run from 0 to 3, inclusive."
+                );
             }
 
             if (column < 0 || column > 3)
             {
-                throw new ArgumentOutOfRangeException(nameof(column), "Rows and columns for matrices run from 0 to 3, inclusive.");
+                throw new ArgumentOutOfRangeException(
+                    nameof(column),
+                    "Rows and columns for matrices run from 0 to 3, inclusive."
+                );
             }
 
             Set(ref m, (row * 4) + column, value);
@@ -514,7 +659,7 @@ namespace HelixToolkit.Nex.Maths
                 M33 = Vector4.Dot(Q.Column3(), m.Column3()),
                 M34 = Vector4.Dot(Q.Column3(), m.Column4()),
 
-                M44 = Vector4.Dot(Q.Column4(), m.Column4())
+                M44 = Vector4.Dot(Q.Column4(), m.Column4()),
             };
         }
 
@@ -542,7 +687,7 @@ namespace HelixToolkit.Nex.Maths
                 M41 = Vector4.Dot(Q.Row1(), m.Row4()),
                 M42 = Vector4.Dot(Q.Row2(), m.Row4()),
                 M43 = Vector4.Dot(Q.Row3(), m.Row4()),
-                M44 = Vector4.Dot(Q.Row4(), m.Row4())
+                M44 = Vector4.Dot(Q.Row4(), m.Row4()),
             };
         }
 
@@ -557,7 +702,12 @@ namespace HelixToolkit.Nex.Maths
         /// <remarks>
         /// This method is designed to decompose only an SRT transformation matrix that has the same scale in every axis.
         /// </remarks>
-        public static bool DecomposeUniformScale(this Matrix m, out float scale, out Quaternion rotation, out Vector3 translation)
+        public static bool DecomposeUniformScale(
+            this Matrix m,
+            out float scale,
+            out Quaternion rotation,
+            out Vector3 translation
+        )
         {
             //Get the translation.
             translation.X = m.M41;
@@ -590,7 +740,7 @@ namespace HelixToolkit.Nex.Maths
                 M32 = m.M32 * inv_scale,
                 M33 = m.M33 * inv_scale,
 
-                M44 = 1f
+                M44 = 1f,
             };
 
             rotation = Quaternion.CreateFromRotationMatrix(rotationmatrix);
@@ -607,22 +757,34 @@ namespace HelixToolkit.Nex.Maths
         {
             if (firstRow < 0)
             {
-                throw new ArgumentOutOfRangeException(nameof(firstRow), "The parameter firstRow must be greater than or equal to zero.");
+                throw new ArgumentOutOfRangeException(
+                    nameof(firstRow),
+                    "The parameter firstRow must be greater than or equal to zero."
+                );
             }
 
             if (firstRow > 3)
             {
-                throw new ArgumentOutOfRangeException(nameof(firstRow), "The parameter firstRow must be less than or equal to three.");
+                throw new ArgumentOutOfRangeException(
+                    nameof(firstRow),
+                    "The parameter firstRow must be less than or equal to three."
+                );
             }
 
             if (secondRow < 0)
             {
-                throw new ArgumentOutOfRangeException(nameof(secondRow), "The parameter secondRow must be greater than or equal to zero.");
+                throw new ArgumentOutOfRangeException(
+                    nameof(secondRow),
+                    "The parameter secondRow must be greater than or equal to zero."
+                );
             }
 
             if (secondRow > 3)
             {
-                throw new ArgumentOutOfRangeException(nameof(secondRow), "The parameter secondRow must be less than or equal to three.");
+                throw new ArgumentOutOfRangeException(
+                    nameof(secondRow),
+                    "The parameter secondRow must be less than or equal to three."
+                );
             }
 
             if (firstRow == secondRow)
@@ -656,22 +818,34 @@ namespace HelixToolkit.Nex.Maths
         {
             if (firstColumn < 0)
             {
-                throw new ArgumentOutOfRangeException(nameof(firstColumn), "The parameter firstColumn must be greater than or equal to zero.");
+                throw new ArgumentOutOfRangeException(
+                    nameof(firstColumn),
+                    "The parameter firstColumn must be greater than or equal to zero."
+                );
             }
 
             if (firstColumn > 3)
             {
-                throw new ArgumentOutOfRangeException(nameof(firstColumn), "The parameter firstColumn must be less than or equal to three.");
+                throw new ArgumentOutOfRangeException(
+                    nameof(firstColumn),
+                    "The parameter firstColumn must be less than or equal to three."
+                );
             }
 
             if (secondColumn < 0)
             {
-                throw new ArgumentOutOfRangeException(nameof(secondColumn), "The parameter secondColumn must be greater than or equal to zero.");
+                throw new ArgumentOutOfRangeException(
+                    nameof(secondColumn),
+                    "The parameter secondColumn must be greater than or equal to zero."
+                );
             }
 
             if (secondColumn > 3)
             {
-                throw new ArgumentOutOfRangeException(nameof(secondColumn), "The parameter secondColumn must be less than or equal to three.");
+                throw new ArgumentOutOfRangeException(
+                    nameof(secondColumn),
+                    "The parameter secondColumn must be less than or equal to three."
+                );
             }
 
             if (firstColumn == secondColumn)
@@ -702,7 +876,25 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>A sixteen-element array containing the components of the matrix.</returns>
         public static float[] ToArray(this Matrix m)
         {
-            return new[] { m.M11, m.M12, m.M13, m.M14, m.M21, m.M22, m.M23, m.M24, m.M31, m.M32, m.M33, m.M34, m.M41, m.M42, m.M43, m.M44 };
+            return new[]
+            {
+                m.M11,
+                m.M12,
+                m.M13,
+                m.M14,
+                m.M21,
+                m.M22,
+                m.M23,
+                m.M24,
+                m.M31,
+                m.M32,
+                m.M33,
+                m.M34,
+                m.M41,
+                m.M42,
+                m.M43,
+                m.M44,
+            };
         }
 
         /// <summary>
@@ -719,7 +911,10 @@ namespace HelixToolkit.Nex.Maths
 
             if (exponent < 0)
             {
-                throw new ArgumentOutOfRangeException(nameof(exponent), "The exponent can not be negative.");
+                throw new ArgumentOutOfRangeException(
+                    nameof(exponent),
+                    "The exponent can not be negative."
+                );
             }
 
             if (exponent == 0)
@@ -804,7 +999,12 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="end">End matrix.</param>
         /// <param name="amount">Value between 0 and 1 indicating the weight of <paramref name="end"/>.</param>
         /// <param name="result">When the method completes, contains the cubic interpolation of the two matrices.</param>
-        public static void SmoothStep(ref Matrix start, ref Matrix end, float amount, out Matrix result)
+        public static void SmoothStep(
+            ref Matrix start,
+            ref Matrix end,
+            float amount,
+            out Matrix result
+        )
         {
             amount = MathUtil.SmoothStep(amount);
             result = Matrix.Lerp(start, end, amount);
@@ -850,14 +1050,32 @@ namespace HelixToolkit.Nex.Maths
             //By separating the above algorithm into multiple lines, we actually increase accuracy.
             result = value;
             Vector4 row1 = result.Row1();
-            SetRow2(ref result, result.Row2() - Vector4.Dot(row1, result.Row2()) / Vector4.Dot(row1, row1) * row1);
+            SetRow2(
+                ref result,
+                result.Row2() - Vector4.Dot(row1, result.Row2()) / Vector4.Dot(row1, row1) * row1
+            );
             Vector4 row2 = result.Row2();
-            SetRow3(ref result, result.Row3() - Vector4.Dot(row1, result.Row3()) / Vector4.Dot(row1, row1) * row1);
-            SetRow3(ref result, result.Row3() - Vector4.Dot(row2, result.Row3()) / Vector4.Dot(row2, row2) * row2);
+            SetRow3(
+                ref result,
+                result.Row3() - Vector4.Dot(row1, result.Row3()) / Vector4.Dot(row1, row1) * row1
+            );
+            SetRow3(
+                ref result,
+                result.Row3() - Vector4.Dot(row2, result.Row3()) / Vector4.Dot(row2, row2) * row2
+            );
             Vector4 row3 = result.Row3();
-            SetRow4(ref result, result.Row4() - Vector4.Dot(row1, result.Row4()) / Vector4.Dot(row1, row1) * row1);
-            SetRow4(ref result, result.Row4() - Vector4.Dot(row2, result.Row4()) / Vector4.Dot(row2, row2) * row2);
-            SetRow4(ref result, result.Row4() - Vector4.Dot(row3, result.Row4()) / Vector4.Dot(row3, row3) * row3);
+            SetRow4(
+                ref result,
+                result.Row4() - Vector4.Dot(row1, result.Row4()) / Vector4.Dot(row1, row1) * row1
+            );
+            SetRow4(
+                ref result,
+                result.Row4() - Vector4.Dot(row2, result.Row4()) / Vector4.Dot(row2, row2) * row2
+            );
+            SetRow4(
+                ref result,
+                result.Row4() - Vector4.Dot(row3, result.Row4()) / Vector4.Dot(row3, row3) * row3
+            );
         }
 
         /// <summary>
@@ -1007,7 +1225,11 @@ namespace HelixToolkit.Nex.Maths
                 {
                     if (i != r)
                     {
-                        SetRow(ref result, i, result.GetRow(i) - result.GetRow(r) * multiplier * result.Get(i, lead));
+                        SetRow(
+                            ref result,
+                            i,
+                            result.GetRow(i) - result.GetRow(r) * multiplier * result.Get(i, lead)
+                        );
 
                         //Set(ref result, i, 0, result.Get(i, 0) - result.Get(r, 0) * multiplier * result.Get(i, lead));
                         //Set(ref result, i, 1, result.Get(i, 1) - result.Get(r, 1) * multiplier * result.Get(i, lead));
@@ -1094,7 +1316,11 @@ namespace HelixToolkit.Nex.Maths
                 {
                     if (i != r)
                     {
-                        SetRow(ref result, i, result.GetRow(i) - result.GetRow(r) * multiplier * result.Get(i, lead));
+                        SetRow(
+                            ref result,
+                            i,
+                            result.GetRow(i) - result.GetRow(r) * multiplier * result.Get(i, lead)
+                        );
 
                         //Set(ref result, i, 0, result.Get(i, 0) - result.Get(r, 0) * multiplier * result.Get(i, lead));
                         //Set(ref result, i, 1, result.Get(i, 1) - result.Get(r, 1) * multiplier * result.Get(i, lead));
@@ -1182,7 +1408,11 @@ namespace HelixToolkit.Nex.Maths
                 {
                     if (i != r)
                     {
-                        SetRow(ref result, i, result.GetRow(i) - result.GetRow(r) * result.Get(i, lead));
+                        SetRow(
+                            ref result,
+                            i,
+                            result.GetRow(i) - result.GetRow(r) * result.Get(i, lead)
+                        );
                         //result[i, 0] -= result[r, 0] * result[i, lead];
                         //result[i, 1] -= result[r, 1] * result[i, lead];
                         //result[i, 2] -= result[r, 2] * result[i, lead];
@@ -1222,7 +1452,12 @@ namespace HelixToolkit.Nex.Maths
         /// the <paramref name="augmentResult"/> will contain the solution for the system. It is up to the user
         /// to analyze both the input and the result to determine if a solution really exists.</para>
         /// </remarks>
-        public static void ReducedRowEchelonForm(ref Matrix value, ref Vector4 augment, out Matrix result, out Vector4 augmentResult)
+        public static void ReducedRowEchelonForm(
+            ref Matrix value,
+            ref Vector4 augment,
+            out Matrix result,
+            out Vector4 augmentResult
+        )
         {
             //Source: http://rosettacode.org
             //Reference: http://rosettacode.org/wiki/Reduced_row_echelon_form
@@ -1343,7 +1578,13 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="cameraUpVector">The up vector of the camera.</param>
         /// <param name="cameraForwardVector">The forward vector of the camera.</param>
         /// <param name="result">When the method completes, contains the created billboard matrix.</param>
-        public static void BillboardLH(ref Vector3 objectPosition, ref Vector3 cameraPosition, ref Vector3 cameraUpVector, ref Vector3 cameraForwardVector, out Matrix result)
+        public static void BillboardLH(
+            ref Vector3 objectPosition,
+            ref Vector3 cameraPosition,
+            ref Vector3 cameraUpVector,
+            ref Vector3 cameraForwardVector,
+            out Matrix result
+        )
         {
             Vector3 difference = cameraPosition - objectPosition;
 
@@ -1386,9 +1627,20 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="cameraUpVector">The up vector of the camera.</param>
         /// <param name="cameraForwardVector">The forward vector of the camera.</param>
         /// <returns>The created billboard matrix.</returns>
-        public static Matrix BillboardLH(Vector3 objectPosition, Vector3 cameraPosition, Vector3 cameraUpVector, Vector3 cameraForwardVector)
+        public static Matrix BillboardLH(
+            Vector3 objectPosition,
+            Vector3 cameraPosition,
+            Vector3 cameraUpVector,
+            Vector3 cameraForwardVector
+        )
         {
-            BillboardLH(ref objectPosition, ref cameraPosition, ref cameraUpVector, ref cameraForwardVector, out Matrix result);
+            BillboardLH(
+                ref objectPosition,
+                ref cameraPosition,
+                ref cameraUpVector,
+                ref cameraForwardVector,
+                out Matrix result
+            );
             return result;
         }
 
@@ -1400,9 +1652,20 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="cameraUpVector">The up vector of the camera.</param>
         /// <param name="cameraForwardVector">The forward vector of the camera.</param>
         /// <param name="result">When the method completes, contains the created billboard matrix.</param>
-        public static void BillboardRH(ref Vector3 objectPosition, ref Vector3 cameraPosition, ref Vector3 cameraUpVector, ref Vector3 cameraForwardVector, out Matrix result)
+        public static void BillboardRH(
+            ref Vector3 objectPosition,
+            ref Vector3 cameraPosition,
+            ref Vector3 cameraUpVector,
+            ref Vector3 cameraForwardVector,
+            out Matrix result
+        )
         {
-            result = Matrix.CreateBillboard(objectPosition, cameraPosition, cameraUpVector, cameraForwardVector);
+            result = Matrix.CreateBillboard(
+                objectPosition,
+                cameraPosition,
+                cameraUpVector,
+                cameraForwardVector
+            );
             //Vector3 crossed;
             //Vector3 final;
             //Vector3 difference = objectPosition - cameraPosition;
@@ -1443,9 +1706,19 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="cameraUpVector">The up vector of the camera.</param>
         /// <param name="cameraForwardVector">The forward vector of the camera.</param>
         /// <returns>The created billboard matrix.</returns>
-        public static Matrix BillboardRH(Vector3 objectPosition, Vector3 cameraPosition, Vector3 cameraUpVector, Vector3 cameraForwardVector)
+        public static Matrix BillboardRH(
+            Vector3 objectPosition,
+            Vector3 cameraPosition,
+            Vector3 cameraUpVector,
+            Vector3 cameraForwardVector
+        )
         {
-            return Matrix.CreateBillboard(objectPosition, cameraPosition, cameraUpVector, cameraForwardVector);
+            return Matrix.CreateBillboard(
+                objectPosition,
+                cameraPosition,
+                cameraUpVector,
+                cameraForwardVector
+            );
             //Matrix result;
             //BillboardRH(ref objectPosition, ref cameraPosition, ref cameraUpVector, ref cameraForwardVector, out result);
             //return result;
@@ -1458,16 +1731,27 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="target">The camera look-at target.</param>
         /// <param name="up">The camera's up vector.</param>
         /// <param name="result">When the method completes, contains the created look-at matrix.</param>
-        public static void LookAtLH(ref Vector3 eye, ref Vector3 target, ref Vector3 up, out Matrix result)
+        public static void LookAtLH(
+            ref Vector3 eye,
+            ref Vector3 target,
+            ref Vector3 up,
+            out Matrix result
+        )
         {
             Vector3 zaxis = Vector3.Normalize(Vector3.Subtract(target, eye));
             Vector3 xaxis = Vector3.Normalize(Vector3.Cross(up, zaxis));
             Vector3 yaxis = Vector3.Cross(zaxis, xaxis);
 
             result = Matrix.Identity;
-            result.M11 = xaxis.X; result.M21 = xaxis.Y; result.M31 = xaxis.Z;
-            result.M12 = yaxis.X; result.M22 = yaxis.Y; result.M32 = yaxis.Z;
-            result.M13 = zaxis.X; result.M23 = zaxis.Y; result.M33 = zaxis.Z;
+            result.M11 = xaxis.X;
+            result.M21 = xaxis.Y;
+            result.M31 = xaxis.Z;
+            result.M12 = yaxis.X;
+            result.M22 = yaxis.Y;
+            result.M32 = yaxis.Z;
+            result.M13 = zaxis.X;
+            result.M23 = zaxis.Y;
+            result.M33 = zaxis.Z;
 
             result.M41 = -Vector3.Dot(xaxis, eye);
             result.M42 = -Vector3.Dot(yaxis, eye);
@@ -1494,7 +1778,12 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="target">The camera look-at target.</param>
         /// <param name="up">The camera's up vector.</param>
         /// <param name="result">When the method completes, contains the created look-at matrix.</param>
-        public static void LookAtRH(ref Vector3 eye, ref Vector3 target, ref Vector3 up, out Matrix result)
+        public static void LookAtRH(
+            ref Vector3 eye,
+            ref Vector3 target,
+            ref Vector3 up,
+            out Matrix result
+        )
         {
             result = Matrix.CreateLookAt(eye, target, up);
             //Vector3 xaxis, yaxis, zaxis;
@@ -1539,12 +1828,26 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="znear">Minimum z-value of the viewing volume.</param>
         /// <param name="zfar">Maximum z-value of the viewing volume.</param>
         /// <param name="result">When the method completes, contains the created projection matrix.</param>
-        public static void OrthoLH(float width, float height, float znear, float zfar, out Matrix result)
+        public static void OrthoLH(
+            float width,
+            float height,
+            float znear,
+            float zfar,
+            out Matrix result
+        )
         {
             float halfWidth = width * 0.5f;
             float halfHeight = height * 0.5f;
 
-            OrthoOffCenterLH(-halfWidth, halfWidth, -halfHeight, halfHeight, znear, zfar, out result);
+            OrthoOffCenterLH(
+                -halfWidth,
+                halfWidth,
+                -halfHeight,
+                halfHeight,
+                znear,
+                zfar,
+                out result
+            );
         }
 
         /// <summary>
@@ -1569,13 +1872,15 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="znear">Minimum z-value of the viewing volume.</param>
         /// <param name="zfar">Maximum z-value of the viewing volume.</param>
         /// <param name="result">When the method completes, contains the created projection matrix.</param>
-        public static void OrthoRH(float width, float height, float znear, float zfar, out Matrix result)
+        public static void OrthoRH(
+            float width,
+            float height,
+            float znear,
+            float zfar,
+            out Matrix result
+        )
         {
             result = Matrix.CreateOrthographic(width, height, znear, zfar);
-            //float halfWidth = width * 0.5f;
-            //float halfHeight = height * 0.5f;
-
-            //OrthoOffCenterRH(-halfWidth, halfWidth, -halfHeight, halfHeight, znear, zfar, out result);
         }
 
         /// <summary>
@@ -1589,9 +1894,62 @@ namespace HelixToolkit.Nex.Maths
         public static Matrix OrthoRH(float width, float height, float znear, float zfar)
         {
             return Matrix.CreateOrthographic(width, height, znear, zfar);
-            //Matrix result;
-            //OrthoRH(width, height, znear, zfar, out result);
-            //return result;
+        }
+
+        /// <summary>
+        /// Creates a right-handed orthographic projection matrix with a reversed Z-axis.
+        /// </summary>
+        /// <remarks>This method generates a projection matrix suitable for right-handed coordinate
+        /// systems where the Z-axis is reversed. The resulting matrix maps the viewing volume to normalized device
+        /// coordinates (NDC) with the Z-axis range [0, 1].</remarks>
+        /// <param name="width">The width of the viewing volume.</param>
+        /// <param name="height">The height of the viewing volume.</param>
+        /// <param name="znear">The distance to the near clipping plane. Must be greater than 0.</param>
+        /// <param name="zfar">The distance to the far clipping plane. Must be greater than <paramref name="znear"/>.</param>
+        /// <returns>A <see cref="Matrix"/> representing the orthographic projection.</returns>
+        public static Matrix OrthoRHReverseZ(float width, float height, float znear, float zfar)
+        {
+            Debug.Assert(zfar > znear, "Far clipping plane must larger than near clipping plane.");
+            return new()
+            {
+                M11 = 2.0f / width,
+                M22 = 2.0f / height,
+                M33 = 1.0f / (zfar - znear),
+                M43 = zfar / (zfar - znear),
+                M44 = 1.0f,
+            };
+        }
+
+        /// <summary>
+        /// Creates an inverse orthographic projection matrix for a right-handed coordinate system  with reversed depth
+        /// (Z) values.
+        /// </summary>
+        /// <remarks>This method generates a matrix suitable for use in graphics applications where a
+        /// right-handed  coordinate system and reversed depth (Z) values are required. The resulting matrix maps the
+        /// specified width and height to normalized device coordinates, and the depth range is reversed  such that the
+        /// far plane has a smaller depth value than the near plane.</remarks>
+        /// <param name="width">The width of the viewing volume.</param>
+        /// <param name="height">The height of the viewing volume.</param>
+        /// <param name="znear">The distance to the near clipping plane.</param>
+        /// <param name="zfar">The distance to the far clipping plane.</param>
+        /// <returns>A <see cref="Matrix"/> representing the inverse orthographic projection for the specified dimensions  and
+        /// depth range.</returns>
+        public static Matrix InverseOrthoRHReverseZ(
+            float width,
+            float height,
+            float znear,
+            float zfar
+        )
+        {
+            Debug.Assert(zfar > znear, "Far clipping plane must larger than near clipping plane.");
+            return new()
+            {
+                M11 = width * 0.5f,
+                M22 = height * 0.5f,
+                M33 = (zfar - znear),
+                M43 = -zfar,
+                M44 = 1.0f,
+            };
         }
 
         /// <summary>
@@ -1604,7 +1962,15 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="znear">Minimum z-value of the viewing volume.</param>
         /// <param name="zfar">Maximum z-value of the viewing volume.</param>
         /// <param name="result">When the method completes, contains the created projection matrix.</param>
-        public static void OrthoOffCenterLH(float left, float right, float bottom, float top, float znear, float zfar, out Matrix result)
+        public static void OrthoOffCenterLH(
+            float left,
+            float right,
+            float bottom,
+            float top,
+            float znear,
+            float zfar,
+            out Matrix result
+        )
         {
             float zRange = 1.0f / (zfar - znear);
 
@@ -1627,7 +1993,14 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="znear">Minimum z-value of the viewing volume.</param>
         /// <param name="zfar">Maximum z-value of the viewing volume.</param>
         /// <returns>The created projection matrix.</returns>
-        public static Matrix OrthoOffCenterLH(float left, float right, float bottom, float top, float znear, float zfar)
+        public static Matrix OrthoOffCenterLH(
+            float left,
+            float right,
+            float bottom,
+            float top,
+            float znear,
+            float zfar
+        )
         {
             OrthoOffCenterLH(left, right, bottom, top, znear, zfar, out Matrix result);
             return result;
@@ -1643,7 +2016,15 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="znear">Minimum z-value of the viewing volume.</param>
         /// <param name="zfar">Maximum z-value of the viewing volume.</param>
         /// <param name="result">When the method completes, contains the created projection matrix.</param>
-        public static void OrthoOffCenterRH(float left, float right, float bottom, float top, float znear, float zfar, out Matrix result)
+        public static void OrthoOffCenterRH(
+            float left,
+            float right,
+            float bottom,
+            float top,
+            float znear,
+            float zfar,
+            out Matrix result
+        )
         {
             result = Matrix.CreateOrthographicOffCenter(left, right, bottom, top, znear, zfar);
             //OrthoOffCenterLH(left, right, bottom, top, znear, zfar, out result);
@@ -1660,7 +2041,14 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="znear">Minimum z-value of the viewing volume.</param>
         /// <param name="zfar">Maximum z-value of the viewing volume.</param>
         /// <returns>The created projection matrix.</returns>
-        public static Matrix OrthoOffCenterRH(float left, float right, float bottom, float top, float znear, float zfar)
+        public static Matrix OrthoOffCenterRH(
+            float left,
+            float right,
+            float bottom,
+            float top,
+            float znear,
+            float zfar
+        )
         {
             return Matrix.CreateOrthographicOffCenter(left, right, bottom, top, znear, zfar);
             //Matrix result;
@@ -1676,12 +2064,26 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="znear">Minimum z-value of the viewing volume.</param>
         /// <param name="zfar">Maximum z-value of the viewing volume.</param>
         /// <param name="result">When the method completes, contains the created projection matrix.</param>
-        public static void PerspectiveLH(float width, float height, float znear, float zfar, out Matrix result)
+        public static void PerspectiveLH(
+            float width,
+            float height,
+            float znear,
+            float zfar,
+            out Matrix result
+        )
         {
             float halfWidth = width * 0.5f;
             float halfHeight = height * 0.5f;
 
-            PerspectiveOffCenterLH(-halfWidth, halfWidth, -halfHeight, halfHeight, znear, zfar, out result);
+            PerspectiveOffCenterLH(
+                -halfWidth,
+                halfWidth,
+                -halfHeight,
+                halfHeight,
+                znear,
+                zfar,
+                out result
+            );
         }
 
         /// <summary>
@@ -1706,13 +2108,55 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="znear">Minimum z-value of the viewing volume.</param>
         /// <param name="zfar">Maximum z-value of the viewing volume.</param>
         /// <param name="result">When the method completes, contains the created projection matrix.</param>
-        public static void PerspectiveRH(float width, float height, float znear, float zfar, out Matrix result)
+        public static void PerspectiveRH(
+            float width,
+            float height,
+            float znear,
+            float zfar,
+            out Matrix result
+        )
         {
             result = Matrix.CreatePerspective(width, height, znear, zfar);
-            //float halfWidth = width * 0.5f;
-            //float halfHeight = height * 0.5f;
+        }
 
-            //PerspectiveOffCenterRH(-halfWidth, halfWidth, -halfHeight, halfHeight, znear, zfar, out result);
+        /// <summary>
+        /// Creates a right-handed perspective projection matrix with a reversed depth range.
+        /// </summary>
+        /// <remarks>This method generates a projection matrix suitable for rendering with a reversed
+        /// depth buffer, where the depth values decrease as the distance from the camera increases. This technique can
+        /// improve depth precision, especially when using an infinite far plane.</remarks>
+        /// <param name="width">The width of the view volume at the near clipping plane.</param>
+        /// <param name="height">The height of the view volume at the near clipping plane.</param>
+        /// <param name="znear">The distance to the near clipping plane. Must be greater than zero.</param>
+        /// <param name="zfar">The distance to the far clipping plane. If set to <see cref="float.PositiveInfinity"/>, an infinite far
+        /// plane is used.</param>
+        /// <returns>A <see cref="Matrix"/> representing the perspective projection with a reversed depth range.</returns>
+        public static Matrix PerspectiveRHReverseZ(
+            float width,
+            float height,
+            float znear,
+            float zfar = float.PositiveInfinity
+        )
+        {
+            if (zfar == float.PositiveInfinity)
+            {
+                // Infinite far plane
+                return new()
+                {
+                    M11 = 2.0f * znear / width,
+                    M22 = 2.0f * znear / height,
+                    M34 = -1.0f,
+                    M43 = znear,
+                };
+            }
+            return new()
+            {
+                M11 = 2.0f * znear / width,
+                M22 = 2.0f * znear / height,
+                M33 = znear / (zfar - znear),
+                M34 = -1.0f,
+                M43 = znear * zfar / (zfar - znear),
+            };
         }
 
         /// <summary>
@@ -1726,9 +2170,6 @@ namespace HelixToolkit.Nex.Maths
         public static Matrix PerspectiveRH(float width, float height, float znear, float zfar)
         {
             return Matrix.CreatePerspective(width, height, znear, zfar);
-            //Matrix result;
-            //PerspectiveRH(width, height, znear, zfar, out result);
-            //return result;
         }
 
         /// <summary>
@@ -1739,7 +2180,13 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="znear">Minimum z-value of the viewing volume.</param>
         /// <param name="zfar">Maximum z-value of the viewing volume.</param>
         /// <param name="result">When the method completes, contains the created projection matrix.</param>
-        public static void PerspectiveFovLH(float fov, float aspect, float znear, float zfar, out Matrix result)
+        public static void PerspectiveFovLH(
+            float fov,
+            float aspect,
+            float znear,
+            float zfar,
+            out Matrix result
+        )
         {
             float yScale = (float)(1.0f / Math.Tan(fov * 0.5f));
             float q = zfar / (zfar - znear);
@@ -1750,7 +2197,7 @@ namespace HelixToolkit.Nex.Maths
                 M22 = yScale,
                 M33 = q,
                 M34 = 1.0f,
-                M43 = -q * znear
+                M43 = -q * znear,
             };
         }
 
@@ -1776,18 +2223,15 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="znear">Minimum z-value of the viewing volume.</param>
         /// <param name="zfar">Maximum z-value of the viewing volume.</param>
         /// <param name="result">When the method completes, contains the created projection matrix.</param>
-        public static void PerspectiveFovRH(float fov, float aspect, float znear, float zfar, out Matrix result)
+        public static void PerspectiveFovRH(
+            float fov,
+            float aspect,
+            float znear,
+            float zfar,
+            out Matrix result
+        )
         {
             result = Matrix.CreatePerspectiveFieldOfView(fov, aspect, znear, zfar);
-            //float yScale = (float)(1.0f / Math.Tan(fov * 0.5f));
-            //float q = zfar / (znear - zfar);
-
-            //result = new Matrix();
-            //result.M11 = yScale / aspect;
-            //result.M22 = yScale;
-            //result.M33 = q;
-            //result.M34 = -1.0f;
-            //result.M43 = q * znear;
         }
 
         /// <summary>
@@ -1801,9 +2245,88 @@ namespace HelixToolkit.Nex.Maths
         public static Matrix PerspectiveFovRH(float fov, float aspect, float znear, float zfar)
         {
             return Matrix.CreatePerspectiveFieldOfView(fov, aspect, znear, zfar);
-            //Matrix result;
-            //PerspectiveFovRH(fov, aspect, znear, zfar, out result);
-            //return result;
+        }
+
+        /// <summary>
+        /// Creates a perspective projection matrix for a right-handed coordinate system with a reverse-Z depth buffer.
+        /// </summary>
+        /// <remarks>This method generates a projection matrix suitable for use with a reverse-Z depth
+        /// buffer, where the depth values are inverted to improve precision. The resulting matrix is designed for a
+        /// right-handed coordinate system.</remarks>
+        /// <param name="fov">The vertical field of view, in radians. Must be greater than 0 and less than π.</param>
+        /// <param name="aspect">The aspect ratio, defined as the view space width divided by height. Must be greater than 0.</param>
+        /// <param name="znear">The distance to the near clipping plane. Must be greater than 0.</param>
+        /// <param name="zfar">The distance to the far clipping plane. If set to <see cref="float.PositiveInfinity"/>, the matrix will use
+        /// an infinite far plane. Must be greater than <paramref name="znear"/> if not infinite.</param>
+        /// <returns>A <see cref="Matrix"/> representing the perspective projection.</returns>
+        public static Matrix PerspectiveFovRHReverseZ(
+            float fov,
+            float aspect,
+            float znear,
+            float zfar = float.PositiveInfinity
+        )
+        {
+            var g = MathF.Tan(fov / 2);
+            if (zfar == float.PositiveInfinity)
+            {
+                return new()
+                {
+                    M11 = 1 / (aspect * g),
+                    M22 = 1 / g,
+                    M34 = -1,
+                    M43 = znear,
+                };
+            }
+            return new()
+            {
+                M11 = 1 / (aspect * g),
+                M22 = 1 / g,
+                M33 = znear / (zfar - znear),
+                M34 = -1,
+                M43 = znear * zfar / (zfar - znear),
+            };
+        }
+
+        /// <summary>
+        /// Creates an inverse perspective projection matrix for a right-handed coordinate system  with reverse Z depth,
+        /// based on the specified field of view, aspect ratio, and near and far clipping planes.
+        /// </summary>
+        /// <remarks>This method is designed for use in graphics applications that utilize reverse Z depth
+        /// buffering,  which improves depth precision by reversing the depth range. The resulting matrix is suitable
+        /// for  right-handed coordinate systems.</remarks>
+        /// <param name="fov">The vertical field of view, in radians.</param>
+        /// <param name="aspect">The aspect ratio, defined as the ratio of width to height.</param>
+        /// <param name="znear">The distance to the near clipping plane. Must be greater than zero.</param>
+        /// <param name="zfar">The distance to the far clipping plane. If set to <see cref="float.PositiveInfinity"/>,  the matrix will be
+        /// configured for an infinite far plane.</param>
+        /// <returns>A <see cref="Matrix"/> representing the inverse perspective projection matrix.</returns>
+        public static Matrix InversePerspectiveFovRHReverseZ(
+            float fov,
+            float aspect,
+            float znear,
+            float zfar
+        )
+        {
+            var g = MathF.Tan(fov / 2);
+            if (zfar == float.PositiveInfinity)
+            {
+                return new()
+                {
+                    M11 = aspect * g,
+                    M22 = g,
+                    M34 = 1 / znear,
+                    M43 = -1,
+                };
+            }
+            return new()
+            {
+                M11 = aspect * g,
+                M22 = g,
+                M33 = 0,
+                M34 = (1 / znear) - (1 / zfar),
+                M43 = -1,
+                M44 = 1 / zfar,
+            };
         }
 
         /// <summary>
@@ -1816,7 +2339,15 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="znear">Minimum z-value of the viewing volume.</param>
         /// <param name="zfar">Maximum z-value of the viewing volume.</param>
         /// <param name="result">When the method completes, contains the created projection matrix.</param>
-        public static void PerspectiveOffCenterLH(float left, float right, float bottom, float top, float znear, float zfar, out Matrix result)
+        public static void PerspectiveOffCenterLH(
+            float left,
+            float right,
+            float bottom,
+            float top,
+            float znear,
+            float zfar,
+            out Matrix result
+        )
         {
             float zRange = zfar / (zfar - znear);
 
@@ -1828,7 +2359,7 @@ namespace HelixToolkit.Nex.Maths
                 M32 = (top + bottom) / (bottom - top),
                 M33 = zRange,
                 M34 = 1.0f,
-                M43 = -znear * zRange
+                M43 = -znear * zRange,
             };
         }
 
@@ -1842,7 +2373,14 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="znear">Minimum z-value of the viewing volume.</param>
         /// <param name="zfar">Maximum z-value of the viewing volume.</param>
         /// <returns>The created projection matrix.</returns>
-        public static Matrix PerspectiveOffCenterLH(float left, float right, float bottom, float top, float znear, float zfar)
+        public static Matrix PerspectiveOffCenterLH(
+            float left,
+            float right,
+            float bottom,
+            float top,
+            float znear,
+            float zfar
+        )
         {
             PerspectiveOffCenterLH(left, right, bottom, top, znear, zfar, out Matrix result);
             return result;
@@ -1858,7 +2396,15 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="znear">Minimum z-value of the viewing volume.</param>
         /// <param name="zfar">Maximum z-value of the viewing volume.</param>
         /// <param name="result">When the method completes, contains the created projection matrix.</param>
-        public static void PerspectiveOffCenterRH(float left, float right, float bottom, float top, float znear, float zfar, out Matrix result)
+        public static void PerspectiveOffCenterRH(
+            float left,
+            float right,
+            float bottom,
+            float top,
+            float znear,
+            float zfar,
+            out Matrix result
+        )
         {
             result = Matrix.CreatePerspectiveOffCenter(left, right, bottom, top, znear, zfar);
             //PerspectiveOffCenterLH(left, right, bottom, top, znear, zfar, out result);
@@ -1878,7 +2424,14 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="znear">Minimum z-value of the viewing volume.</param>
         /// <param name="zfar">Maximum z-value of the viewing volume.</param>
         /// <returns>The created projection matrix.</returns>
-        public static Matrix PerspectiveOffCenterRH(float left, float right, float bottom, float top, float znear, float zfar)
+        public static Matrix PerspectiveOffCenterRH(
+            float left,
+            float right,
+            float bottom,
+            float top,
+            float znear,
+            float zfar
+        )
         {
             return Matrix.CreatePerspectiveOffCenter(left, right, bottom, top, znear, zfar);
             //Matrix result;
@@ -1895,7 +2448,12 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="rotationVec">The rotation vector</param>
         /// <param name="transVec">The translation vector</param>
         /// <param name="matrix">Contains the created skew/shear matrix. </param>
-        public static void Skew(float angle, ref Vector3 rotationVec, ref Vector3 transVec, out Matrix matrix)
+        public static void Skew(
+            float angle,
+            ref Vector3 rotationVec,
+            ref Vector3 transVec,
+            out Matrix matrix
+        )
         {
             //http://elckerlyc.ewi.utwente.nl/browser/Elckerlyc/Hmi/HmiMath/src/hmi/math/Mat3f.java
             float MINIMAL_SKEW_ANGLE = 0.000001f;
@@ -1939,9 +2497,17 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="rotation">The rotation of the transformation.</param>
         /// <param name="translation">The translation factor of the transformation.</param>
         /// <param name="result">When the method completes, contains the created affine transformation matrix.</param>
-        public static void AffineTransformation(float scaling, ref Quaternion rotation, ref Vector3 translation, out Matrix result)
+        public static void AffineTransformation(
+            float scaling,
+            ref Quaternion rotation,
+            ref Vector3 translation,
+            out Matrix result
+        )
         {
-            result = Matrix.CreateScale(scaling) * Matrix.CreateFromQuaternion(rotation) * Matrix.CreateTranslation(translation);
+            result =
+                Matrix.CreateScale(scaling)
+                * Matrix.CreateFromQuaternion(rotation)
+                * Matrix.CreateTranslation(translation);
         }
 
         /// <summary>
@@ -1951,9 +2517,15 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="rotation">The rotation of the transformation.</param>
         /// <param name="translation">The translation factor of the transformation.</param>
         /// <returns>The created affine transformation matrix.</returns>
-        public static Matrix AffineTransformation(float scaling, Quaternion rotation, Vector3 translation)
+        public static Matrix AffineTransformation(
+            float scaling,
+            Quaternion rotation,
+            Vector3 translation
+        )
         {
-            return Matrix.CreateScale(scaling) * Matrix.CreateFromQuaternion(rotation) * Matrix.CreateTranslation(translation);
+            return Matrix.CreateScale(scaling)
+                * Matrix.CreateFromQuaternion(rotation)
+                * Matrix.CreateTranslation(translation);
         }
 
         /// <summary>
@@ -1964,10 +2536,19 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="rotation">The rotation of the transformation.</param>
         /// <param name="translation">The translation factor of the transformation.</param>
         /// <param name="result">When the method completes, contains the created affine transformation matrix.</param>
-        public static void AffineTransformation(float scaling, ref Vector3 rotationCenter, ref Quaternion rotation, ref Vector3 translation, out Matrix result)
+        public static void AffineTransformation(
+            float scaling,
+            ref Vector3 rotationCenter,
+            ref Quaternion rotation,
+            ref Vector3 translation,
+            out Matrix result
+        )
         {
-            result = Matrix.CreateScale(scaling) * Matrix.CreateTranslation(-rotationCenter)
-                * Matrix.CreateFromQuaternion(rotation) * Matrix.CreateTranslation(rotationCenter)
+            result =
+                Matrix.CreateScale(scaling)
+                * Matrix.CreateTranslation(-rotationCenter)
+                * Matrix.CreateFromQuaternion(rotation)
+                * Matrix.CreateTranslation(rotationCenter)
                 * Matrix.CreateTranslation(translation);
             //result = Scaling(scaling) * Translation(-rotationCenter) * RotationQuaternion(rotation) *
             //    Translation(rotationCenter) * Translation(translation);
@@ -1981,10 +2562,17 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="rotation">The rotation of the transformation.</param>
         /// <param name="translation">The translation factor of the transformation.</param>
         /// <returns>The created affine transformation matrix.</returns>
-        public static Matrix AffineTransformation(float scaling, Vector3 rotationCenter, Quaternion rotation, Vector3 translation)
+        public static Matrix AffineTransformation(
+            float scaling,
+            Vector3 rotationCenter,
+            Quaternion rotation,
+            Vector3 translation
+        )
         {
-            return Matrix.CreateScale(scaling) * Matrix.CreateTranslation(-rotationCenter)
-                * Matrix.CreateFromQuaternion(rotation) * Matrix.CreateTranslation(rotationCenter)
+            return Matrix.CreateScale(scaling)
+                * Matrix.CreateTranslation(-rotationCenter)
+                * Matrix.CreateFromQuaternion(rotation)
+                * Matrix.CreateTranslation(rotationCenter)
                 * Matrix.CreateTranslation(translation);
         }
 
@@ -1995,9 +2583,16 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="rotation">The rotation of the transformation.</param>
         /// <param name="translation">The translation factor of the transformation.</param>
         /// <param name="result">When the method completes, contains the created affine transformation matrix.</param>
-        public static void AffineTransformation2D(float scaling, float rotation, ref Vector2 translation, out Matrix result)
+        public static void AffineTransformation2D(
+            float scaling,
+            float rotation,
+            ref Vector2 translation,
+            out Matrix result
+        )
         {
-            result = Matrix.CreateScale(scaling, scaling, 1) * Matrix.CreateRotationZ(rotation)
+            result =
+                Matrix.CreateScale(scaling, scaling, 1)
+                * Matrix.CreateRotationZ(rotation)
                 * Matrix.CreateTranslation(new Vector3(translation, 0));
             //Scaling(scaling, scaling, 1.0f) * RotationZ(rotation) * Translation((Vector3)translation);
         }
@@ -2009,7 +2604,11 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="rotation">The rotation of the transformation.</param>
         /// <param name="translation">The translation factor of the transformation.</param>
         /// <returns>The created affine transformation matrix.</returns>
-        public static Matrix AffineTransformation2D(float scaling, float rotation, Vector2 translation)
+        public static Matrix AffineTransformation2D(
+            float scaling,
+            float rotation,
+            Vector2 translation
+        )
         {
             AffineTransformation2D(scaling, rotation, ref translation, out Matrix result);
             return result;
@@ -2023,10 +2622,19 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="rotation">The rotation of the transformation.</param>
         /// <param name="translation">The translation factor of the transformation.</param>
         /// <param name="result">When the method completes, contains the created affine transformation matrix.</param>
-        public static void AffineTransformation2D(float scaling, ref Vector2 rotationCenter, float rotation, ref Vector2 translation, out Matrix result)
+        public static void AffineTransformation2D(
+            float scaling,
+            ref Vector2 rotationCenter,
+            float rotation,
+            ref Vector2 translation,
+            out Matrix result
+        )
         {
-            result = Matrix.CreateScale(scaling, scaling, 1) * Matrix.CreateTranslation(new Vector3(-rotationCenter, 0))
-                * Matrix.CreateRotationZ(rotation) * Matrix.CreateTranslation(new Vector3(rotationCenter, 0))
+            result =
+                Matrix.CreateScale(scaling, scaling, 1)
+                * Matrix.CreateTranslation(new Vector3(-rotationCenter, 0))
+                * Matrix.CreateRotationZ(rotation)
+                * Matrix.CreateTranslation(new Vector3(rotationCenter, 0))
                 * Matrix.CreateTranslation(new Vector3(translation, 0));
             //Scaling(scaling, scaling, 1.0f) * Translation((Vector3)(-rotationCenter)) * RotationZ(rotation) *
             //Translation((Vector3)rotationCenter) * Translation((Vector3)translation);
@@ -2040,9 +2648,20 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="rotation">The rotation of the transformation.</param>
         /// <param name="translation">The translation factor of the transformation.</param>
         /// <returns>The created affine transformation matrix.</returns>
-        public static Matrix AffineTransformation2D(float scaling, Vector2 rotationCenter, float rotation, Vector2 translation)
+        public static Matrix AffineTransformation2D(
+            float scaling,
+            Vector2 rotationCenter,
+            float rotation,
+            Vector2 translation
+        )
         {
-            AffineTransformation2D(scaling, ref rotationCenter, rotation, ref translation, out Matrix result);
+            AffineTransformation2D(
+                scaling,
+                ref rotationCenter,
+                rotation,
+                ref translation,
+                out Matrix result
+            );
             return result;
         }
 
@@ -2056,19 +2675,32 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="rotation">The rotation of the transformation.</param>
         /// <param name="translation">The translation factor of the transformation.</param>
         /// <param name="result">When the method completes, contains the created transformation matrix.</param>
-        public static void Transformation(ref Vector3 scalingCenter, ref Quaternion scalingRotation, ref Vector3 scaling, ref Vector3 rotationCenter, ref Quaternion rotation, ref Vector3 translation, out Matrix result)
+        public static void Transformation(
+            ref Vector3 scalingCenter,
+            ref Quaternion scalingRotation,
+            ref Vector3 scaling,
+            ref Vector3 rotationCenter,
+            ref Quaternion rotation,
+            ref Vector3 translation,
+            out Matrix result
+        )
         {
             Matrix sr = Matrix.CreateFromQuaternion(scalingRotation);
-            result = Matrix.CreateTranslation(-scalingCenter) * Matrix.Transpose(sr)
-                * Matrix.CreateScale(scaling) * sr * Matrix.CreateTranslation(scalingCenter)
+            result =
+                Matrix.CreateTranslation(-scalingCenter)
+                * Matrix.Transpose(sr)
+                * Matrix.CreateScale(scaling)
+                * sr
+                * Matrix.CreateTranslation(scalingCenter)
                 * Matrix.CreateTranslation(-rotationCenter)
-                * Matrix.CreateFromQuaternion(rotation) * Matrix.CreateTranslation(rotationCenter)
+                * Matrix.CreateFromQuaternion(rotation)
+                * Matrix.CreateTranslation(rotationCenter)
                 * Matrix.CreateTranslation(translation);
             //Matrix sr = RotationQuaternion(scalingRotation);
 
-            //result = Translation(-scalingCenter) * Transpose(sr) * Scaling(scaling) * sr 
+            //result = Translation(-scalingCenter) * Transpose(sr) * Scaling(scaling) * sr
             //    * Translation(scalingCenter) * Translation(-rotationCenter) *
-            //    RotationQuaternion(rotation) * Translation(rotationCenter) * Translation(translation);       
+            //    RotationQuaternion(rotation) * Translation(rotationCenter) * Translation(translation);
         }
 
         /// <summary>
@@ -2081,9 +2713,24 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="rotation">The rotation of the transformation.</param>
         /// <param name="translation">The translation factor of the transformation.</param>
         /// <returns>The created transformation matrix.</returns>
-        public static Matrix Transformation(Vector3 scalingCenter, Quaternion scalingRotation, Vector3 scaling, Vector3 rotationCenter, Quaternion rotation, Vector3 translation)
+        public static Matrix Transformation(
+            Vector3 scalingCenter,
+            Quaternion scalingRotation,
+            Vector3 scaling,
+            Vector3 rotationCenter,
+            Quaternion rotation,
+            Vector3 translation
+        )
         {
-            Transformation(ref scalingCenter, ref scalingRotation, ref scaling, ref rotationCenter, ref rotation, ref translation, out Matrix result);
+            Transformation(
+                ref scalingCenter,
+                ref scalingRotation,
+                ref scaling,
+                ref rotationCenter,
+                ref rotation,
+                ref translation,
+                out Matrix result
+            );
             return result;
         }
 
@@ -2097,16 +2744,28 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="rotation">The rotation of the transformation.</param>
         /// <param name="translation">The translation factor of the transformation.</param>
         /// <param name="result">When the method completes, contains the created transformation matrix.</param>
-        public static void Transformation2D(ref Vector2 scalingCenter, float scalingRotation, ref Vector2 scaling, ref Vector2 rotationCenter, float rotation, ref Vector2 translation, out Matrix result)
+        public static void Transformation2D(
+            ref Vector2 scalingCenter,
+            float scalingRotation,
+            ref Vector2 scaling,
+            ref Vector2 rotationCenter,
+            float rotation,
+            ref Vector2 translation,
+            out Matrix result
+        )
         {
-            result = Matrix.CreateTranslation(new Vector3(-scalingCenter, 0))
-                * Matrix.CreateRotationZ(-scalingRotation) * Matrix.CreateScale(new Vector3(scaling, 0))
-                * Matrix.CreateRotationZ(scalingRotation) * Matrix.CreateTranslation(new Vector3(scalingCenter, 0))
+            result =
+                Matrix.CreateTranslation(new Vector3(-scalingCenter, 0))
+                * Matrix.CreateRotationZ(-scalingRotation)
+                * Matrix.CreateScale(new Vector3(scaling, 0))
+                * Matrix.CreateRotationZ(scalingRotation)
+                * Matrix.CreateTranslation(new Vector3(scalingCenter, 0))
                 * Matrix.CreateTranslation(new Vector3(-rotationCenter, 0))
-                * Matrix.CreateRotationZ(rotation) * Matrix.CreateTranslation(new Vector3(rotationCenter, 0))
+                * Matrix.CreateRotationZ(rotation)
+                * Matrix.CreateTranslation(new Vector3(rotationCenter, 0))
                 * Matrix.CreateTranslation(new Vector3(translation, 0));
-            //result = Translation((Vector3)(-scalingCenter)) * RotationZ(-scalingRotation) * Scaling((Vector3)scaling) 
-            //    * RotationZ(scalingRotation) * Translation((Vector3)scalingCenter) * 
+            //result = Translation((Vector3)(-scalingCenter)) * RotationZ(-scalingRotation) * Scaling((Vector3)scaling)
+            //    * RotationZ(scalingRotation) * Translation((Vector3)scalingCenter) *
             //    Translation((Vector3)(-rotationCenter)) * RotationZ(rotation) * Translation((Vector3)rotationCenter)
             //    * Translation((Vector3)translation);
 
@@ -2124,9 +2783,24 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="rotation">The rotation of the transformation.</param>
         /// <param name="translation">The translation factor of the transformation.</param>
         /// <returns>The created transformation matrix.</returns>
-        public static Matrix Transformation2D(Vector2 scalingCenter, float scalingRotation, Vector2 scaling, Vector2 rotationCenter, float rotation, Vector2 translation)
+        public static Matrix Transformation2D(
+            Vector2 scalingCenter,
+            float scalingRotation,
+            Vector2 scaling,
+            Vector2 rotationCenter,
+            float rotation,
+            Vector2 translation
+        )
         {
-            Transformation2D(ref scalingCenter, scalingRotation, ref scaling, ref rotationCenter, rotation, ref translation, out Matrix result);
+            Transformation2D(
+                ref scalingCenter,
+                scalingRotation,
+                ref scaling,
+                ref rotationCenter,
+                rotation,
+                ref translation,
+                out Matrix result
+            );
             return result;
         }
 
@@ -2151,6 +2825,7 @@ namespace HelixToolkit.Nex.Maths
         {
             return Matrix.CreateScale(x, y, z);
         }
+
         /// <summary>
         /// Scalings the specified v.
         /// </summary>
@@ -2160,6 +2835,7 @@ namespace HelixToolkit.Nex.Maths
         {
             return Matrix.CreateScale(v);
         }
+
         /// <summary>
         /// Scalings the specified v.
         /// </summary>
@@ -2170,6 +2846,7 @@ namespace HelixToolkit.Nex.Maths
         {
             return Matrix.CreateScale(v, center);
         }
+
         /// <summary>
         /// Translations the specified x.
         /// </summary>
@@ -2181,6 +2858,7 @@ namespace HelixToolkit.Nex.Maths
         {
             return Matrix.CreateTranslation(x, y, z);
         }
+
         /// <summary>
         /// Translations the specified v.
         /// </summary>
@@ -2190,6 +2868,7 @@ namespace HelixToolkit.Nex.Maths
         {
             return Matrix.CreateTranslation(v);
         }
+
         /// <summary>
         /// Rotations the axis. Angle is radian.
         /// </summary>
@@ -2200,6 +2879,7 @@ namespace HelixToolkit.Nex.Maths
         {
             return Matrix.CreateFromAxisAngle(axis, angle);
         }
+
         /// <summary>
         /// Rotations the x.Angle is radian.
         /// </summary>
@@ -2209,6 +2889,7 @@ namespace HelixToolkit.Nex.Maths
         {
             return Matrix.CreateRotationX(angle);
         }
+
         /// <summary>
         /// Rotations the y.Angle is radian.
         /// </summary>
@@ -2218,6 +2899,7 @@ namespace HelixToolkit.Nex.Maths
         {
             return Matrix.CreateRotationY(angle);
         }
+
         /// <summary>
         /// Rotations the z.Angle is radian.
         /// </summary>
@@ -2235,15 +2917,39 @@ namespace HelixToolkit.Nex.Maths
         /// <returns></returns>
         public static Matrix PsudoInvert(ref Matrix viewMatrix)
         {
-            float x = viewMatrix.M41 * viewMatrix.M11 + viewMatrix.M42 * viewMatrix.M12 + viewMatrix.M43 * viewMatrix.M13;
-            float y = viewMatrix.M41 * viewMatrix.M21 + viewMatrix.M42 * viewMatrix.M22 + viewMatrix.M43 * viewMatrix.M23;
-            float z = viewMatrix.M41 * viewMatrix.M31 + viewMatrix.M42 * viewMatrix.M32 + viewMatrix.M43 * viewMatrix.M33;
+            float x =
+                viewMatrix.M41 * viewMatrix.M11
+                + viewMatrix.M42 * viewMatrix.M12
+                + viewMatrix.M43 * viewMatrix.M13;
+            float y =
+                viewMatrix.M41 * viewMatrix.M21
+                + viewMatrix.M42 * viewMatrix.M22
+                + viewMatrix.M43 * viewMatrix.M23;
+            float z =
+                viewMatrix.M41 * viewMatrix.M31
+                + viewMatrix.M42 * viewMatrix.M32
+                + viewMatrix.M43 * viewMatrix.M33;
 
             return new Matrix(
-                viewMatrix.M11, viewMatrix.M21, viewMatrix.M31, 0,
-                viewMatrix.M12, viewMatrix.M22, viewMatrix.M32, 0,
-                viewMatrix.M13, viewMatrix.M23, viewMatrix.M33, 0, -x, -y, -z, 1);
+                viewMatrix.M11,
+                viewMatrix.M21,
+                viewMatrix.M31,
+                0,
+                viewMatrix.M12,
+                viewMatrix.M22,
+                viewMatrix.M32,
+                0,
+                viewMatrix.M13,
+                viewMatrix.M23,
+                viewMatrix.M33,
+                0,
+                -x,
+                -y,
+                -z,
+                1
+            );
         }
+
         /// <summary>
         /// Pseudo inversion. Usually use to perform fast view matrix inversion.
         /// </summary>

@@ -1,4 +1,4 @@
-﻿namespace HelixToolkit.Nex.Graphics;
+namespace HelixToolkit.Nex.Graphics;
 
 /// <summary>
 /// Describes the configuration for creating a compute pipeline.
@@ -21,7 +21,7 @@ public struct ComputePipelineDesc()
     /// Specialization constants enable optimizations by providing constant values at pipeline creation time
     /// rather than at shader compilation time. See <see cref="SpecializationConstantDesc"/> for more information.
     /// </remarks>
-    public SpecializationConstantDesc SpecInfo;
+    public SpecializationConstantDesc SpecInfo = new();
 
     /// <summary>
     /// The name of the entry point function in the compute shader. Defaults to "main".

@@ -1,4 +1,4 @@
-﻿/*
+/*
 The MIT License (MIT)
 Copyright (c) 2022 Helix Toolkit contributors
 
@@ -167,10 +167,17 @@ namespace HelixToolkit.Nex.Maths
         {
             switch (index)
             {
-                case 0: v.X = value; break;
-                case 1: v.Y = value; break;
-                case 2: v.Z = value; break;
-                default: throw new ArgumentOutOfRangeException(nameof(index), "Indices for Vector3 run from 0 to 2, inclusive.");
+                case 0:
+                    v.X = value;
+                    break;
+                case 1:
+                    v.Y = value;
+                    break;
+                case 2:
+                    v.Z = value;
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(index), "Indices for Vector3 run from 0 to 2, inclusive.");
             }
         }
 

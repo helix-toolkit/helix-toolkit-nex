@@ -1,0 +1,43 @@
+#!/bin/sh
+# Git pre-commit hook to validate C# code formatting
+# This hook runs dotnet format to check for formatting issues before allowing a commit
+
+echo "Running code format validation..."
+
+# Check if dotnet is installed
+if ! command -v dotnet &> /dev/null; then
+    echo "Error: dotnet CLI not found. Please install .NET SDK."
+    exit 1
+fi
+
+# Get list of staged .cs files
+STAGED_CS_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep '\.cs$')
+
+if [ -z "$STAGED_CS_FILES" ]; then
+    echo "No C# files to check."
+    exit 0
+fi
+
+echo "Checking C# files for formatting issues..."
+
+# Run dotnet format with verify-no-changes flag
+# This checks if the code is properly formatted without making changes
+dotnet format Source/HelixToolkit-Nex/HelixToolkit.Nex.sln --verify-no-changes --include $STAGED_CS_FILES
+
+FORMAT_EXIT_CODE=$?
+
+if [ $FORMAT_EXIT_CODE -ne 0 ]; then
+    echo ""
+    echo "❌ Code formatting issues detected!"
+    echo ""
+    echo "Please run 'dotnet format Source/HelixToolkit-Nex/HelixToolkit.Nex.sln' to fix formatting issues, then stage and commit again."
+    echo ""
+    echo "Alternatively, you can run:"
+    echo "  dotnet format Source/HelixToolkit-Nex/HelixToolkit.Nex.sln --include $(echo $STAGED_CS_FILES | tr '\n' ' ')"
+    echo ""
+    echo "To bypass this check (not recommended), use: git commit --no-verify"
+    exit 1
+fi
+
+echo "✅ Code formatting validation passed!"
+exit 0

@@ -1,4 +1,4 @@
-﻿/*
+/*
 The MIT License (MIT)
 Copyright (c) 2022 Helix Toolkit contributors
 
@@ -36,7 +36,11 @@ namespace HelixToolkit.Nex.Maths
     /// internal representation.
     /// </summary>
     [StructLayout(LayoutKind.Explicit)]
-    public struct AngleSingle : IComparable, IComparable<AngleSingle>, IEquatable<AngleSingle>, IFormattable
+    public struct AngleSingle
+        : IComparable,
+            IComparable<AngleSingle>,
+            IEquatable<AngleSingle>,
+            IFormattable
     {
         /// <summary>
         /// A value that specifies the size of a single degree.
@@ -72,10 +76,10 @@ namespace HelixToolkit.Nex.Maths
         /// The internal representation of the angle.
         /// </summary>
         [FieldOffset(0)]
-        float radians_;
+        private float _radians;
 
         [FieldOffset(0)]
-        private readonly int radiansInt_;
+        private readonly int _radiansInt;
 
         /// <summary>
         /// Initializes a new instance of the SharpDX.AngleSingle structure with the
@@ -85,8 +89,8 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="type">The type of unit the angle argument is.</param>
         public AngleSingle(float angle, AngleType type)
         {
-            radiansInt_ = 0;
-            radians_ = type switch
+            _radiansInt = 0;
+            _radians = type switch
             {
                 AngleType.Revolution => MathUtil.RevolutionsToRadians(angle),
                 AngleType.Degree => MathUtil.DegreesToRadians(angle),
@@ -104,8 +108,8 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="radius">The radius of the circle.</param>
         public AngleSingle(float arcLength, float radius)
         {
-            radiansInt_ = 0;
-            radians_ = arcLength / radius;
+            _radiansInt = 0;
+            _radians = arcLength / radius;
         }
 
         /// <summary>
@@ -113,7 +117,7 @@ namespace HelixToolkit.Nex.Maths
         /// </summary>
         public void Wrap()
         {
-            float newangle = (float)Math.IEEERemainder(radians_, MathUtil.TwoPi);
+            float newangle = (float)Math.IEEERemainder(_radians, MathUtil.TwoPi);
 
             if (newangle <= -MathUtil.Pi)
             {
@@ -124,7 +128,7 @@ namespace HelixToolkit.Nex.Maths
                 newangle -= MathUtil.TwoPi;
             }
 
-            radians_ = newangle;
+            _radians = newangle;
         }
 
         /// <summary>
@@ -132,14 +136,14 @@ namespace HelixToolkit.Nex.Maths
         /// </summary>
         public void WrapPositive()
         {
-            float newangle = radians_ % MathUtil.TwoPi;
+            float newangle = _radians % MathUtil.TwoPi;
 
             if (newangle < 0.0)
             {
                 newangle += MathUtil.TwoPi;
             }
 
-            radians_ = newangle;
+            _radians = newangle;
         }
 
         /// <summary>
@@ -147,8 +151,8 @@ namespace HelixToolkit.Nex.Maths
         /// </summary>
         public float Revolutions
         {
-            readonly get { return MathUtil.RadiansToRevolutions(radians_); }
-            set { radians_ = MathUtil.RevolutionsToRadians(value); }
+            readonly get { return MathUtil.RadiansToRevolutions(_radians); }
+            set { _radians = MathUtil.RevolutionsToRadians(value); }
         }
 
         /// <summary>
@@ -156,8 +160,8 @@ namespace HelixToolkit.Nex.Maths
         /// </summary>
         public float Degrees
         {
-            readonly get { return MathUtil.RadiansToDegrees(radians_); }
-            set { radians_ = MathUtil.DegreesToRadians(value); }
+            readonly get { return MathUtil.RadiansToDegrees(_radians); }
+            set { _radians = MathUtil.DegreesToRadians(value); }
         }
 
         /// <summary>
@@ -170,7 +174,7 @@ namespace HelixToolkit.Nex.Maths
         {
             readonly get
             {
-                float degrees = MathUtil.RadiansToDegrees(radians_);
+                float degrees = MathUtil.RadiansToDegrees(_radians);
 
                 if (degrees < 0)
                 {
@@ -185,11 +189,11 @@ namespace HelixToolkit.Nex.Maths
             }
             set
             {
-                float degrees = MathUtil.RadiansToDegrees(radians_);
+                float degrees = MathUtil.RadiansToDegrees(_radians);
                 float degreesfloor = (float)Math.Floor(degrees);
 
                 degreesfloor += value / 60.0f;
-                radians_ = MathUtil.DegreesToRadians(degreesfloor);
+                _radians = MathUtil.DegreesToRadians(degreesfloor);
             }
         }
 
@@ -203,7 +207,7 @@ namespace HelixToolkit.Nex.Maths
         {
             readonly get
             {
-                float degrees = MathUtil.RadiansToDegrees(radians_);
+                float degrees = MathUtil.RadiansToDegrees(_radians);
 
                 if (degrees < 0)
                 {
@@ -226,7 +230,7 @@ namespace HelixToolkit.Nex.Maths
             }
             set
             {
-                float degrees = MathUtil.RadiansToDegrees(radians_);
+                float degrees = MathUtil.RadiansToDegrees(_radians);
                 float degreesfloor = (float)Math.Floor(degrees);
 
                 float minutes = (degrees - degreesfloor) * 60.0f;
@@ -234,17 +238,17 @@ namespace HelixToolkit.Nex.Maths
 
                 minutesfloor += value / 60.0f;
                 degreesfloor += minutesfloor / 60.0f;
-                radians_ = MathUtil.DegreesToRadians(degreesfloor);
+                _radians = MathUtil.DegreesToRadians(degreesfloor);
             }
         }
-        
+
         /// <summary>
         /// Gets or sets the total number of radians this SharpDX.AngleSingle represents.
         /// </summary>
         public float Radians
         {
-            readonly get { return radians_; }
-            set { radians_ = value; }
+            readonly get { return _radians; }
+            set { _radians = value; }
         }
 
         /// <summary>
@@ -253,8 +257,8 @@ namespace HelixToolkit.Nex.Maths
         /// </summary>
         public float Milliradians
         {
-            readonly get { return radians_ / (Milliradian * MathUtil.TwoPi); }
-            set { radians_ = value * (Milliradian * MathUtil.TwoPi); }
+            readonly get { return _radians / (Milliradian * MathUtil.TwoPi); }
+            set { _radians = value * (Milliradian * MathUtil.TwoPi); }
         }
 
         /// <summary>
@@ -262,8 +266,8 @@ namespace HelixToolkit.Nex.Maths
         /// </summary>
         public float Gradians
         {
-            readonly get { return MathUtil.RadiansToGradians(radians_); }
-            set { radians_ = MathUtil.RadiansToGradians(value); }
+            readonly get { return MathUtil.RadiansToGradians(_radians); }
+            set { _radians = MathUtil.RadiansToGradians(value); }
         }
 
         /// <summary>
@@ -272,7 +276,7 @@ namespace HelixToolkit.Nex.Maths
         /// </summary>
         public readonly bool IsRight
         {
-            get { return radians_ == MathUtil.PiOverTwo; }
+            get { return _radians == MathUtil.PiOverTwo; }
         }
 
         /// <summary>
@@ -281,7 +285,7 @@ namespace HelixToolkit.Nex.Maths
         /// </summary>
         public readonly bool IsStraight
         {
-            get { return radians_ == MathUtil.Pi; }
+            get { return _radians == MathUtil.Pi; }
         }
 
         /// <summary>
@@ -290,7 +294,7 @@ namespace HelixToolkit.Nex.Maths
         /// </summary>
         public readonly bool IsFullRotation
         {
-            get { return radians_ == MathUtil.TwoPi; }
+            get { return _radians == MathUtil.TwoPi; }
         }
 
         /// <summary>
@@ -299,7 +303,7 @@ namespace HelixToolkit.Nex.Maths
         /// </summary>
         public readonly bool IsOblique
         {
-            get { return WrapPositive(this).radians_ != MathUtil.PiOverTwo; }
+            get { return WrapPositive(this)._radians != MathUtil.PiOverTwo; }
         }
 
         /// <summary>
@@ -308,7 +312,7 @@ namespace HelixToolkit.Nex.Maths
         /// </summary>
         public readonly bool IsAcute
         {
-            get { return radians_ > 0.0 && radians_ < MathUtil.PiOverTwo; }
+            get { return _radians > 0.0 && _radians < MathUtil.PiOverTwo; }
         }
 
         /// <summary>
@@ -317,7 +321,7 @@ namespace HelixToolkit.Nex.Maths
         /// </summary>
         public readonly bool IsObtuse
         {
-            get { return radians_ > MathUtil.PiOverTwo && radians_ < MathUtil.Pi; }
+            get { return _radians > MathUtil.PiOverTwo && _radians < MathUtil.Pi; }
         }
 
         /// <summary>
@@ -326,7 +330,7 @@ namespace HelixToolkit.Nex.Maths
         /// </summary>
         public readonly bool IsReflex
         {
-            get { return radians_ > MathUtil.Pi && radians_ < MathUtil.TwoPi; }
+            get { return _radians > MathUtil.Pi && _radians < MathUtil.TwoPi; }
         }
 
         /// <summary>
@@ -334,7 +338,7 @@ namespace HelixToolkit.Nex.Maths
         /// </summary>
         public readonly AngleSingle Complement
         {
-            get { return new AngleSingle(MathUtil.PiOverTwo - radians_, AngleType.Radian); }
+            get { return new AngleSingle(MathUtil.PiOverTwo - _radians, AngleType.Radian); }
         }
 
         /// <summary>
@@ -342,7 +346,7 @@ namespace HelixToolkit.Nex.Maths
         /// </summary>
         public readonly AngleSingle Supplement
         {
-            get { return new AngleSingle(MathUtil.Pi - radians_, AngleType.Radian); }
+            get { return new AngleSingle(MathUtil.Pi - _radians, AngleType.Radian); }
         }
 
         /// <summary>
@@ -375,7 +379,7 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>The smaller of the two given SharpDX.AngleSingle instances.</returns>
         public static AngleSingle Min(AngleSingle left, AngleSingle right)
         {
-            return left.radians_ < right.radians_ ? left : right;
+            return left._radians < right._radians ? left : right;
         }
 
         /// <summary>
@@ -386,7 +390,7 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>The greater of the two given SharpDX.AngleSingle instances.</returns>
         public static AngleSingle Max(AngleSingle left, AngleSingle right)
         {
-            return left.radians_ > right.radians_ ? left : right;
+            return left._radians > right._radians ? left : right;
         }
 
         /// <summary>
@@ -397,7 +401,7 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>The value of the two objects added together.</returns>
         public static AngleSingle Add(AngleSingle left, AngleSingle right)
         {
-            return new AngleSingle(left.radians_ + right.radians_, AngleType.Radian);
+            return new AngleSingle(left._radians + right._radians, AngleType.Radian);
         }
 
         /// <summary>
@@ -408,7 +412,7 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>The value of the two objects subtracted.</returns>
         public static AngleSingle Subtract(AngleSingle left, AngleSingle right)
         {
-            return new AngleSingle(left.radians_ - right.radians_, AngleType.Radian);
+            return new AngleSingle(left._radians - right._radians, AngleType.Radian);
         }
 
         /// <summary>
@@ -419,7 +423,7 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>The value of the two objects multiplied together.</returns>
         public static AngleSingle Multiply(AngleSingle left, AngleSingle right)
         {
-            return new AngleSingle(left.radians_ * right.radians_, AngleType.Radian);
+            return new AngleSingle(left._radians * right._radians, AngleType.Radian);
         }
 
         /// <summary>
@@ -430,7 +434,7 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>The value of the two objects divided.</returns>
         public static AngleSingle Divide(AngleSingle left, AngleSingle right)
         {
-            return new AngleSingle(left.radians_ / right.radians_, AngleType.Radian);
+            return new AngleSingle(left._radians / right._radians, AngleType.Radian);
         }
 
         /// <summary>
@@ -474,7 +478,7 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>True if the left and right parameters have the same value; otherwise, false.</returns>
         public static bool operator ==(AngleSingle left, AngleSingle right)
         {
-            return left.radians_ == right.radians_;
+            return left._radians == right._radians;
         }
 
         /// <summary>
@@ -486,7 +490,7 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>True if the left and right parameters do not have the same value; otherwise, false.</returns>
         public static bool operator !=(AngleSingle left, AngleSingle right)
         {
-            return left.radians_ != right.radians_;
+            return left._radians != right._radians;
         }
 
         /// <summary>
@@ -498,7 +502,7 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>True if left is less than right; otherwise, false.</returns>
         public static bool operator <(AngleSingle left, AngleSingle right)
         {
-            return left.radians_ < right.radians_;
+            return left._radians < right._radians;
         }
 
         /// <summary>
@@ -510,7 +514,7 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>True if left is greater than right; otherwise, false.</returns>
         public static bool operator >(AngleSingle left, AngleSingle right)
         {
-            return left.radians_ > right.radians_;
+            return left._radians > right._radians;
         }
 
         /// <summary>
@@ -522,7 +526,7 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>True if left is less than or equal to right; otherwise, false.</returns>
         public static bool operator <=(AngleSingle left, AngleSingle right)
         {
-            return left.radians_ <= right.radians_;
+            return left._radians <= right._radians;
         }
 
         /// <summary>
@@ -534,7 +538,7 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>True if left is greater than or equal to right; otherwise, false.</returns>
         public static bool operator >=(AngleSingle left, AngleSingle right)
         {
-            return left.radians_ >= right.radians_;
+            return left._radians >= right._radians;
         }
 
         /// <summary>
@@ -555,7 +559,7 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>The negated value of the value parameter.</returns>
         public static AngleSingle operator -(AngleSingle value)
         {
-            return new AngleSingle(-value.radians_, AngleType.Radian);
+            return new AngleSingle(-value._radians, AngleType.Radian);
         }
 
         /// <summary>
@@ -566,7 +570,7 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>The value of the two objects added together.</returns>
         public static AngleSingle operator +(AngleSingle left, AngleSingle right)
         {
-            return new AngleSingle(left.radians_ + right.radians_, AngleType.Radian);
+            return new AngleSingle(left._radians + right._radians, AngleType.Radian);
         }
 
         /// <summary>
@@ -577,7 +581,7 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>The value of the two objects subtracted.</returns>
         public static AngleSingle operator -(AngleSingle left, AngleSingle right)
         {
-            return new AngleSingle(left.radians_ - right.radians_, AngleType.Radian);
+            return new AngleSingle(left._radians - right._radians, AngleType.Radian);
         }
 
         /// <summary>
@@ -588,7 +592,7 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>The value of the two objects multiplied together.</returns>
         public static AngleSingle operator *(AngleSingle left, AngleSingle right)
         {
-            return new AngleSingle(left.radians_ * right.radians_, AngleType.Radian);
+            return new AngleSingle(left._radians * right._radians, AngleType.Radian);
         }
 
         /// <summary>
@@ -599,7 +603,7 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>The value of the two objects divided.</returns>
         public static AngleSingle operator /(AngleSingle left, AngleSingle right)
         {
-            return new AngleSingle(left.radians_ / right.radians_, AngleType.Radian);
+            return new AngleSingle(left._radians / right._radians, AngleType.Radian);
         }
 
         /// <summary>
@@ -627,9 +631,11 @@ namespace HelixToolkit.Nex.Maths
                 throw new ArgumentException("Argument must be of type Angle.", nameof(other));
             }
 
-            float radians = angle.radians_;
+            float radians = angle._radians;
 
-            return this.radians_ > radians ? 1 : this.radians_ < radians ? -1 : 0;
+            return this._radians > radians ? 1
+                : this._radians < radians ? -1
+                : 0;
         }
 
         /// <summary>
@@ -647,7 +653,9 @@ namespace HelixToolkit.Nex.Maths
         /// </returns>
         public readonly int CompareTo(AngleSingle other)
         {
-            return this.radians_ > other.radians_ ? 1 : this.radians_ < other.radians_ ? -1 : 0;
+            return this._radians > other._radians ? 1
+                : this._radians < other._radians ? -1
+                : 0;
         }
 
         /// <summary>
@@ -665,57 +673,69 @@ namespace HelixToolkit.Nex.Maths
         }
 
         /// <summary>
-        /// Returns a <see cref="System.String"/> that represents this instance.
+        /// Returns a <see cref="string"/> that represents this instance.
         /// </summary>
         /// <returns>
-        /// A <see cref="System.String"/> that represents this instance.
+        /// A <see cref="string"/> that represents this instance.
         /// </returns>
         public override readonly string ToString()
         {
-            return string.Format(CultureInfo.CurrentCulture, MathUtil.RadiansToDegrees(radians_).ToString("0.##°"));
+            return string.Format(
+                CultureInfo.CurrentCulture,
+                MathUtil.RadiansToDegrees(_radians).ToString("0.##°")
+            );
         }
 
         /// <summary>
-        /// Returns a <see cref="System.String"/> that represents this instance.
+        /// Returns a <see cref="string"/> that represents this instance.
         /// </summary>
         /// <param name="format">The format.</param>
         /// <returns>
-        /// A <see cref="System.String"/> that represents this instance.
+        /// A <see cref="string"/> that represents this instance.
         /// </returns>
         public readonly string ToString(string format)
         {
             return format == null
                 ? ToString()
-                : string.Format(CultureInfo.CurrentCulture, "{0}°", MathUtil.RadiansToDegrees(radians_).ToString(format, CultureInfo.CurrentCulture));
+                : string.Format(
+                    CultureInfo.CurrentCulture,
+                    "{0}°",
+                    MathUtil.RadiansToDegrees(_radians).ToString(format, CultureInfo.CurrentCulture)
+                );
         }
 
         /// <summary>
-        /// Returns a <see cref="System.String"/> that represents this instance.
+        /// Returns a <see cref="string"/> that represents this instance.
         /// </summary>
         /// <param name="formatProvider">The format provider.</param>
         /// <returns>
-        /// A <see cref="System.String"/> that represents this instance.
+        /// A <see cref="string"/> that represents this instance.
         /// </returns>
         public readonly string ToString(IFormatProvider formatProvider)
         {
-            return string.Format(formatProvider, MathUtil.RadiansToDegrees(radians_).ToString("0.##°"));
+            return string.Format(
+                formatProvider,
+                MathUtil.RadiansToDegrees(_radians).ToString("0.##°")
+            );
         }
 
         /// <summary>
-        /// Returns a <see cref="System.String"/> that represents this instance.
+        /// Returns a <see cref="string"/> that represents this instance.
         /// </summary>
         /// <param name="format">The format.</param>
         /// <param name="formatProvider">The format provider.</param>
         /// <returns>
-        /// A <see cref="System.String"/> that represents this instance.
+        /// A <see cref="string"/> that represents this instance.
         /// </returns>
         public readonly string ToString(string? format, IFormatProvider? formatProvider)
         {
-            return format == null && formatProvider == null
-                ? string.Empty
-                : format == null
-                ? ToString(formatProvider!)
-                : string.Format(formatProvider, "{0}°", MathUtil.RadiansToDegrees(radians_).ToString(format, CultureInfo.CurrentCulture));
+            return format == null && formatProvider == null ? string.Empty
+                : format == null ? ToString(formatProvider!)
+                : string.Format(
+                    formatProvider,
+                    "{0}°",
+                    MathUtil.RadiansToDegrees(_radians).ToString(format, CultureInfo.CurrentCulture)
+                );
         }
 
         /// <summary>
@@ -724,7 +744,7 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>A 32-bit signed integer hash code.</returns>
         public override readonly int GetHashCode()
         {
-            return radiansInt_;
+            return _radiansInt;
         }
 
         /// <summary>

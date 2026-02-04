@@ -1,4 +1,4 @@
-﻿/*
+/*
 The MIT License (MIT)
 Copyright (c) 2022 Helix Toolkit contributors
 
@@ -38,6 +38,18 @@ namespace HelixToolkit.Nex.Maths
     public struct BoundingBox : IEquatable<BoundingBox>, IFormattable
     {
         /// <summary>
+        /// Represents an empty bounding box with no volume.
+        /// </summary>
+        /// <remarks>The <see cref="Empty"/> bounding box is defined with its minimum corner set to  <see
+        /// cref="float.MaxValue"/> and its maximum corner set to <see cref="float.MinValue"/>.  This ensures that it
+        /// represents an invalid or uninitialized state, as no valid bounding box  can have its minimum corner greater
+        /// than its maximum corner.</remarks>
+        public static readonly BoundingBox Empty = new BoundingBox(
+            new Vector3(float.MaxValue),
+            new Vector3(float.MinValue)
+        );
+
+        /// <summary>
         /// The minimum point of the box.
         /// </summary>
         public Vector3 Minimum;
@@ -46,6 +58,14 @@ namespace HelixToolkit.Nex.Maths
         /// The maximum point of the box.
         /// </summary>
         public Vector3 Maximum;
+
+        /// <summary>
+        /// Gets a value indicating whether the current object represents an empty state.
+        /// </summary>
+        /// <remarks>The object is considered empty if the minimum bounds exceed the maximum bounds in any
+        /// dimension.</remarks>
+        public readonly bool IsEmpty =>
+            Minimum.X > Maximum.X || Minimum.Y > Maximum.Y || Minimum.Z > Maximum.Z;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="BoundingBox"/> struct.
@@ -303,7 +323,7 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="points">The points that will be contained by the box.</param>
         /// <param name="result">When the method completes, contains the newly constructed bounding box.</param>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="points"/> is <c>null</c>.</exception>
-        public static void FromPoints(Vector3[] points, out BoundingBox result)
+        public static void FromPoints(IList<Vector3> points, out BoundingBox result)
         {
 #if NET6_0_OR_GREATER
             ArgumentNullException.ThrowIfNull(points, nameof(points));
@@ -318,12 +338,45 @@ namespace HelixToolkit.Nex.Maths
         }
 
         /// <summary>
+        /// Creates a <see cref="BoundingBox"/> that encompasses the specified array of 4D points.
+        /// </summary>
+        /// <param name="points">An array of <see cref="Vector4"/> points to calculate the bounding box from. Cannot be <see
+        /// langword="null"/>.</param>
+        /// <param name="result">When this method returns, contains the calculated <see cref="BoundingBox"/> that encloses the specified
+        /// points.</param>
+        public static void FromPoints(IList<Vector4> points, out BoundingBox result)
+        {
+#if NET6_0_OR_GREATER
+            ArgumentNullException.ThrowIfNull(points, nameof(points));
+#else
+            if (points == null)
+                throw new ArgumentNullException(nameof(points));
+#endif
+
+            points.MinMax(out var min, out var max);
+
+            result = new BoundingBox(min.ToVector3(), max.ToVector3());
+        }
+
+        /// <summary>
         /// Constructs a <see cref="BoundingBox"/> that fully contains the given points.
         /// </summary>
         /// <param name="points">The points that will be contained by the box.</param>
         /// <returns>The newly constructed bounding box.</returns>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="points"/> is <c>null</c>.</exception>
-        public static BoundingBox FromPoints(Vector3[] points)
+        public static BoundingBox FromPoints(IList<Vector3> points)
+        {
+            FromPoints(points, out BoundingBox result);
+            return result;
+        }
+
+        /// <summary>
+        /// Constructs a <see cref="BoundingBox"/> that fully contains the given points.
+        /// </summary>
+        /// <param name="points">The points that will be contained by the box.</param>
+        /// <returns>The newly constructed bounding box.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="points"/> is <c>null</c>.</exception>
+        public static BoundingBox FromPoints(IList<Vector4> points)
         {
             FromPoints(points, out BoundingBox result);
             return result;
@@ -336,8 +389,16 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="result">When the method completes, contains the newly constructed bounding box.</param>
         public static void FromSphere(ref BoundingSphere sphere, out BoundingBox result)
         {
-            result.Minimum = new Vector3(sphere.Center.X - sphere.Radius, sphere.Center.Y - sphere.Radius, sphere.Center.Z - sphere.Radius);
-            result.Maximum = new Vector3(sphere.Center.X + sphere.Radius, sphere.Center.Y + sphere.Radius, sphere.Center.Z + sphere.Radius);
+            result.Minimum = new Vector3(
+                sphere.Center.X - sphere.Radius,
+                sphere.Center.Y - sphere.Radius,
+                sphere.Center.Z - sphere.Radius
+            );
+            result.Maximum = new Vector3(
+                sphere.Center.X + sphere.Radius,
+                sphere.Center.Y + sphere.Radius,
+                sphere.Center.Z + sphere.Radius
+            );
         }
 
         /// <summary>
@@ -348,8 +409,16 @@ namespace HelixToolkit.Nex.Maths
         public static BoundingBox FromSphere(BoundingSphere sphere)
         {
             BoundingBox box;
-            box.Minimum = new Vector3(sphere.Center.X - sphere.Radius, sphere.Center.Y - sphere.Radius, sphere.Center.Z - sphere.Radius);
-            box.Maximum = new Vector3(sphere.Center.X + sphere.Radius, sphere.Center.Y + sphere.Radius, sphere.Center.Z + sphere.Radius);
+            box.Minimum = new Vector3(
+                sphere.Center.X - sphere.Radius,
+                sphere.Center.Y - sphere.Radius,
+                sphere.Center.Z - sphere.Radius
+            );
+            box.Maximum = new Vector3(
+                sphere.Center.X + sphere.Radius,
+                sphere.Center.Y + sphere.Radius,
+                sphere.Center.Z + sphere.Radius
+            );
             return box;
         }
 
@@ -359,7 +428,11 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="value1">The first box to merge.</param>
         /// <param name="value2">The second box to merge.</param>
         /// <param name="result">When the method completes, contains the newly constructed bounding box.</param>
-        public static void Merge(ref BoundingBox value1, ref BoundingBox value2, out BoundingBox result)
+        public static void Merge(
+            ref BoundingBox value1,
+            ref BoundingBox value2,
+            out BoundingBox result
+        )
         {
             result.Minimum = Vector3.Min(value1.Minimum, value2.Minimum);
             result.Maximum = Vector3.Max(value1.Maximum, value2.Maximum);
@@ -373,7 +446,10 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>The newly constructed bounding box.</returns>
         public static BoundingBox Merge(BoundingBox value1, BoundingBox value2)
         {
-            return new BoundingBox(Vector3.Min(value1.Minimum, value2.Minimum), Vector3.Max(value1.Maximum, value2.Maximum));
+            return new BoundingBox(
+                Vector3.Min(value1.Minimum, value2.Minimum),
+                Vector3.Max(value1.Maximum, value2.Maximum)
+            );
         }
 
         /// <summary>
@@ -401,66 +477,82 @@ namespace HelixToolkit.Nex.Maths
         }
 
         /// <summary>
-        /// Returns a <see cref="System.String"/> that represents this instance.
+        /// Returns a <see cref="string"/> that represents this instance.
         /// </summary>
         /// <returns>
-        /// A <see cref="System.String"/> that represents this instance.
+        /// A <see cref="string"/> that represents this instance.
         /// </returns>
         public override readonly string ToString()
         {
-            return string.Format(CultureInfo.CurrentCulture, "Minimum:{0} Maximum:{1}", Minimum.ToString(), Maximum.ToString());
+            return string.Format(
+                CultureInfo.CurrentCulture,
+                "Minimum:{0} Maximum:{1}",
+                Minimum.ToString(),
+                Maximum.ToString()
+            );
         }
 
         /// <summary>
-        /// Returns a <see cref="System.String"/> that represents this instance.
+        /// Returns a <see cref="string"/> that represents this instance.
         /// </summary>
         /// <param name="format">The format.</param>
         /// <returns>
-        /// A <see cref="System.String"/> that represents this instance.
+        /// A <see cref="string"/> that represents this instance.
         /// </returns>
         public readonly string ToString(string format)
         {
             return format == null
                 ? ToString()
-                : string.Format(CultureInfo.CurrentCulture, "Minimum:{0} Maximum:{1}", Minimum.ToString(format, CultureInfo.CurrentCulture),
-                Maximum.ToString(format, CultureInfo.CurrentCulture));
+                : string.Format(
+                    CultureInfo.CurrentCulture,
+                    "Minimum:{0} Maximum:{1}",
+                    Minimum.ToString(format, CultureInfo.CurrentCulture),
+                    Maximum.ToString(format, CultureInfo.CurrentCulture)
+                );
         }
 
         /// <summary>
-        /// Returns a <see cref="System.String"/> that represents this instance.
+        /// Returns a <see cref="string"/> that represents this instance.
         /// </summary>
         /// <param name="formatProvider">The format provider.</param>
         /// <returns>
-        /// A <see cref="System.String"/> that represents this instance.
+        /// A <see cref="string"/> that represents this instance.
         /// </returns>
         public readonly string ToString(IFormatProvider formatProvider)
         {
-            return string.Format(formatProvider, "Minimum:{0} Maximum:{1}", Minimum.ToString(), Maximum.ToString());
+            return string.Format(
+                formatProvider,
+                "Minimum:{0} Maximum:{1}",
+                Minimum.ToString(),
+                Maximum.ToString()
+            );
         }
 
         /// <summary>
-        /// Returns a <see cref="System.String"/> that represents this instance.
+        /// Returns a <see cref="string"/> that represents this instance.
         /// </summary>
         /// <param name="format">The format.</param>
         /// <param name="formatProvider">The format provider.</param>
         /// <returns>
-        /// A <see cref="System.String"/> that represents this instance.
+        /// A <see cref="string"/> that represents this instance.
         /// </returns>
         public readonly string ToString(string? format, IFormatProvider? formatProvider)
         {
-            return format == null && formatProvider == null
-                ? string.Empty
-                : format == null
-                ? ToString(formatProvider!)
-                : string.Format(formatProvider, "Minimum:{0} Maximum:{1}", Minimum.ToString(format, formatProvider),
-                Maximum.ToString(format, formatProvider));
+            return format == null && formatProvider == null ? string.Empty
+                : format == null ? ToString(formatProvider!)
+                : string.Format(
+                    formatProvider,
+                    "Minimum:{0} Maximum:{1}",
+                    Minimum.ToString(format, formatProvider),
+                    Maximum.ToString(format, formatProvider)
+                );
         }
 
         /// <summary>
         /// Returns a hash code for this instance.
         /// </summary>
         /// <returns>
-        /// A hash code for this instance, suitable for use in hashing algorithms and data structures like a hash table. 
+        /// A hash code for this instance, suitable for use in hashing algorithms and data structures like a hash table.
         /// </returns>
         public override readonly int GetHashCode()
         {
@@ -497,11 +589,11 @@ namespace HelixToolkit.Nex.Maths
         }
 
         /// <summary>
-        /// Determines whether the specified <see cref="System.Object"/> is equal to this instance.
+        /// Determines whether the specified <see cref="object"/> is equal to this instance.
         /// </summary>
-        /// <param name="obj">The <see cref="System.Object"/> to compare with this instance.</param>
+        /// <param name="obj">The <see cref="object"/> to compare with this instance.</param>
         /// <returns>
-        /// <c>true</c> if the specified <see cref="System.Object"/> is equal to this instance; otherwise, <c>false</c>.
+        /// <c>true</c> if the specified <see cref="object"/> is equal to this instance; otherwise, <c>false</c>.
         /// </returns>
         public override readonly bool Equals(object? obj)
         {

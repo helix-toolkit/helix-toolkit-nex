@@ -1,5 +1,4 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
     <PropertyGroup>
         <TargetFramework>net8.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
@@ -11,14 +10,15 @@
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <IncludeSymbols>True</IncludeSymbols>
         <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
     </PropertyGroup>
     <ItemGroup>
-        <None Include="..\..\..\README.md">
+        <ProjectReference Include="..\HelixTookit.Nex\HelixToolkit.Nex.csproj" />
+    </ItemGroup>
+    <ItemGroup>
+        <None Update="README.md">
             <Pack>True</Pack>
             <PackagePath>\</PackagePath>
         </None>
-    </ItemGroup>
-    <ItemGroup>
-      <ProjectReference Include="..\HelixTookit.Nex\HelixToolkit.Nex.csproj" />
     </ItemGroup>
 </Project>

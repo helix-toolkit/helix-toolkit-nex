@@ -1,4 +1,4 @@
-﻿namespace HelixToolkit.Nex.Graphics;
+namespace HelixToolkit.Nex.Graphics;
 
 /// <summary>
 /// Represents specifications for texture layers within a texture resource.
@@ -8,17 +8,17 @@ public struct TextureLayers()
     /// <summary>
     /// The mip level to access.
     /// </summary>
-    public uint32_t mipLevel;
+    public uint32_t MipLevel;
 
     /// <summary>
     /// The starting array layer index.
     /// </summary>
-    public uint32_t layer;
+    public uint32_t Layer;
 
     /// <summary>
     /// The number of array layers to access. Defaults to 1.
     /// </summary>
-    public uint32_t numLayers = 1;
+    public uint32_t NumLayers = 1;
 };
 
 /// <summary>
@@ -29,32 +29,37 @@ public struct TextureRangeDesc()
     /// <summary>
     /// The 3D offset within the texture where the range begins.
     /// </summary>
-    public Offset3D offset;
+    public Offset3D Offset;
 
     /// <summary>
     /// The dimensions of the range (width, height, depth). Defaults to 1x1x1.
     /// </summary>
-    public Dimensions dimensions = new() { Width = 1, Height = 1, Depth = 1 };
+    public Dimensions Dimensions = new()
+    {
+        Width = 1,
+        Height = 1,
+        Depth = 1,
+    };
 
     /// <summary>
     /// The starting array layer index.
     /// </summary>
-    public uint32_t layer;
+    public uint32_t Layer;
 
     /// <summary>
     /// The number of array layers in the range. Defaults to 1.
     /// </summary>
-    public uint32_t numLayers = 1;
+    public uint32_t NumLayers = 1;
 
     /// <summary>
     /// The starting mip level.
     /// </summary>
-    public uint32_t mipLevel;
+    public uint32_t MipLevel;
 
     /// <summary>
     /// The number of mip levels in the range. Defaults to 1.
     /// </summary>
-    public uint32_t numMipLevels = 1;
+    public uint32_t NumMipLevels = 1;
 };
 
 /// <summary>
@@ -83,6 +88,11 @@ public enum TextureUsageBits : uint8_t
     /// Texture can be used as a render target attachment (color, depth, or stencil).
     /// </summary>
     Attachment = 1 << 2,
+
+    /// <summary>
+    /// Texture can be used as input attachment in a render pass.
+    /// </summary>
+    InputAttachment = 1 << 3,
 }
 
 /// <summary>
@@ -96,12 +106,12 @@ public enum Swizzle : uint8_t
     Default = 0,
 
     /// <summary>
-    /// Swizzle to constant 0.
+    /// Components to constant 0.
     /// </summary>
     Swizzle_0,
 
     /// <summary>
-    /// Swizzle to constant 1.
+    /// Components to constant 1.
     /// </summary>
     Swizzle_1,
 
@@ -132,22 +142,22 @@ public enum Swizzle : uint8_t
 public struct ComponentMapping()
 {
     /// <summary>
-    /// Swizzle for the red component.
+    /// Components for the red component.
     /// </summary>
     public Swizzle R = Swizzle.Default;
 
     /// <summary>
-    /// Swizzle for the green component.
+    /// Components for the green component.
     /// </summary>
     public Swizzle G = Swizzle.Default;
 
     /// <summary>
-    /// Swizzle for the blue component.
+    /// Components for the blue component.
     /// </summary>
     public Swizzle B = Swizzle.Default;
 
     /// <summary>
-    /// Swizzle for the alpha component.
+    /// Components for the alpha component.
     /// </summary>
     public Swizzle A = Swizzle.Default;
 
@@ -157,7 +167,10 @@ public struct ComponentMapping()
     /// <returns>True if all components use default mapping; otherwise, false.</returns>
     public readonly bool Identity()
     {
-        return R == Swizzle.Default && G == Swizzle.Default && B == Swizzle.Default && A == Swizzle.Default;
+        return R == Swizzle.Default
+            && G == Swizzle.Default
+            && B == Swizzle.Default
+            && A == Swizzle.Default;
     }
 }
 
@@ -179,7 +192,12 @@ public struct TextureDesc()
     /// <summary>
     /// The dimensions of the texture (width, height, depth). Defaults to 1x1x1.
     /// </summary>
-    public Dimensions Dimensions = new() { Width = 1, Height = 1, Depth = 1 };
+    public Dimensions Dimensions = new()
+    {
+        Width = 1,
+        Height = 1,
+        Depth = 1,
+    };
 
     /// <summary>
     /// The number of array layers. For cube textures, this must be a multiple of 6. Defaults to 1.
@@ -209,7 +227,7 @@ public struct TextureDesc()
     /// <summary>
     /// Component swizzling configuration for the texture.
     /// </summary>
-    public ComponentMapping Swizzle;
+    public ComponentMapping Components;
 
     /// <summary>
     /// Pointer to initial data to upload. Can be IntPtr.Zero if no initial data.
@@ -268,5 +286,5 @@ public struct TextureViewDesc()
     /// <summary>
     /// Component swizzling configuration for the texture view.
     /// </summary>
-    public ComponentMapping Swizzle;
+    public ComponentMapping Components;
 }

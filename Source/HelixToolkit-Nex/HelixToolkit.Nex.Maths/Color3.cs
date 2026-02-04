@@ -1,4 +1,4 @@
-﻿/*
+/*
 The MIT License (MIT)
 Copyright (c) 2022 Helix Toolkit contributors
 
@@ -37,7 +37,7 @@ namespace HelixToolkit.Nex.Maths
     [StructLayout(LayoutKind.Sequential, Pack = 4)]
     public struct Color3 : IEquatable<Color3>, IFormattable
     {
-        private const string toStringFormat_ = "Red:{0} Green:{1} Blue:{2}";
+        private const string ToStringFormat = "Red:{0} Green:{1} Blue:{2}";
 
         /// <summary>
         /// The Black color (0, 0, 0).
@@ -53,7 +53,7 @@ namespace HelixToolkit.Nex.Maths
         /// The red component of the color.
         /// </summary>
         public float Red;
-         
+
         /// <summary>
         /// The green component of the color.
         /// </summary>
@@ -124,7 +124,10 @@ namespace HelixToolkit.Nex.Maths
 
             if (values.Length != 3)
             {
-                throw new ArgumentOutOfRangeException(nameof(values), "There must be three and only three input values for Color3.");
+                throw new ArgumentOutOfRangeException(
+                    nameof(values),
+                    "There must be three and only three input values for Color3."
+                );
             }
 
             Red = values[0];
@@ -148,18 +151,30 @@ namespace HelixToolkit.Nex.Maths
                     0 => Red,
                     1 => Green,
                     2 => Blue,
-                    _ => throw new ArgumentOutOfRangeException(nameof(index), "Indices for Color3 run from 0 to 2, inclusive."),
+                    _ => throw new ArgumentOutOfRangeException(
+                        nameof(index),
+                        "Indices for Color3 run from 0 to 2, inclusive."
+                    ),
                 };
             }
-
             set
             {
                 switch (index)
                 {
-                    case 0: Red = value; break;
-                    case 1: Green = value; break;
-                    case 2: Blue = value; break;
-                    default: throw new ArgumentOutOfRangeException(nameof(index), "Indices for Color3 run from 0 to 2, inclusive.");
+                    case 0:
+                        Red = value;
+                        break;
+                    case 1:
+                        Green = value;
+                        break;
+                    case 2:
+                        Blue = value;
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException(
+                            nameof(index),
+                            "Indices for Color3 run from 0 to 2, inclusive."
+                        );
                 }
             }
         }
@@ -172,9 +187,9 @@ namespace HelixToolkit.Nex.Maths
         public readonly int ToRgba()
         {
             uint a = 255;
-            uint r = (uint) (Red * 255.0f) & 255;
-            uint g = (uint) (Green * 255.0f) & 255;
-            uint b = (uint) (Blue * 255.0f) & 255;
+            uint r = (uint)(Red * 255.0f) & 255;
+            uint g = (uint)(Green * 255.0f) & 255;
+            uint b = (uint)(Blue * 255.0f) & 255;
 
             uint value = r;
             value |= g << 8;
@@ -243,7 +258,11 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>The sum of the two colors.</returns>
         public static Color3 Add(Color3 left, Color3 right)
         {
-            return new Color3(left.Red + right.Red, left.Green + right.Green, left.Blue + right.Blue);
+            return new Color3(
+                left.Red + right.Red,
+                left.Green + right.Green,
+                left.Blue + right.Blue
+            );
         }
 
         /// <summary>
@@ -267,7 +286,11 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>The difference of the two colors.</returns>
         public static Color3 Subtract(Color3 left, Color3 right)
         {
-            return new Color3(left.Red - right.Red, left.Green - right.Green, left.Blue - right.Blue);
+            return new Color3(
+                left.Red - right.Red,
+                left.Green - right.Green,
+                left.Blue - right.Blue
+            );
         }
 
         /// <summary>
@@ -291,7 +314,11 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>The modulated color.</returns>
         public static Color3 Modulate(Color3 left, Color3 right)
         {
-            return new Color3(left.Red * right.Red, left.Green * right.Green, left.Blue * right.Blue);
+            return new Color3(
+                left.Red * right.Red,
+                left.Green * right.Green,
+                left.Blue * right.Blue
+            );
         }
 
         /// <summary>
@@ -347,7 +374,12 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="min">The minimum value.</param>
         /// <param name="max">The maximum value.</param>
         /// <param name="result">When the method completes, contains the clamped value.</param>
-        public static void Clamp(ref Color3 value, ref Color3 min, ref Color3 max, out Color3 result)
+        public static void Clamp(
+            ref Color3 value,
+            ref Color3 min,
+            ref Color3 max,
+            out Color3 result
+        )
         {
             float red = value.Red;
             red = (red > max.Red) ? max.Red : red;
@@ -385,7 +417,7 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="amount">Value between 0 and 1 indicating the weight of <paramref name="end"/>.</param>
         /// <param name="result">When the method completes, contains the linear interpolation of the two colors.</param>
         /// <remarks>
-        /// Passing <paramref name="amount"/> a value of 0 will cause <paramref name="start"/> to be returned; a value of 1 will cause <paramref name="end"/> to be returned. 
+        /// Passing <paramref name="amount"/> a value of 0 will cause <paramref name="start"/> to be returned; a value of 1 will cause <paramref name="end"/> to be returned.
         /// </remarks>
         public static void Lerp(ref Color3 start, ref Color3 end, float amount, out Color3 result)
         {
@@ -402,7 +434,7 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="amount">Value between 0 and 1 indicating the weight of <paramref name="end"/>.</param>
         /// <returns>The linear interpolation of the two colors.</returns>
         /// <remarks>
-        /// Passing <paramref name="amount"/> a value of 0 will cause <paramref name="start"/> to be returned; a value of 1 will cause <paramref name="end"/> to be returned. 
+        /// Passing <paramref name="amount"/> a value of 0 will cause <paramref name="start"/> to be returned; a value of 1 will cause <paramref name="end"/> to be returned.
         /// </remarks>
         public static Color3 Lerp(Color3 start, Color3 end, float amount)
         {
@@ -417,7 +449,12 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="end">End color.</param>
         /// <param name="amount">Value between 0 and 1 indicating the weight of <paramref name="end"/>.</param>
         /// <param name="result">When the method completes, contains the cubic interpolation of the two colors.</param>
-        public static void SmoothStep(ref Color3 start, ref Color3 end, float amount, out Color3 result)
+        public static void SmoothStep(
+            ref Color3 start,
+            ref Color3 end,
+            float amount,
+            out Color3 result
+        )
         {
             amount = MathUtil.SmoothStep(amount);
             Lerp(ref start, ref end, amount, out result);
@@ -510,7 +547,8 @@ namespace HelixToolkit.Nex.Maths
             return new Color3(
                 0.5f + contrast * (value.Red - 0.5f),
                 0.5f + contrast * (value.Green - 0.5f),
-                0.5f + contrast * (value.Blue - 0.5f));
+                0.5f + contrast * (value.Blue - 0.5f)
+            );
         }
 
         /// <summary>
@@ -541,7 +579,8 @@ namespace HelixToolkit.Nex.Maths
             return new Color3(
                 grey + saturation * (value.Red - grey),
                 grey + saturation * (value.Green - grey),
-                grey + saturation * (value.Blue - grey));
+                grey + saturation * (value.Blue - grey)
+            );
         }
 
         /// <summary>
@@ -577,7 +616,11 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>The sum of the two colors.</returns>
         public static Color3 operator +(Color3 left, Color3 right)
         {
-            return new Color3(left.Red + right.Red, left.Green + right.Green, left.Blue + right.Blue);
+            return new Color3(
+                left.Red + right.Red,
+                left.Green + right.Green,
+                left.Blue + right.Blue
+            );
         }
 
         /// <summary>
@@ -598,7 +641,11 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>The difference of the two colors.</returns>
         public static Color3 operator -(Color3 left, Color3 right)
         {
-            return new Color3(left.Red - right.Red, left.Green - right.Green, left.Blue - right.Blue);
+            return new Color3(
+                left.Red - right.Red,
+                left.Green - right.Green,
+                left.Blue - right.Blue
+            );
         }
 
         /// <summary>
@@ -641,7 +688,11 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>The modulated color.</returns>
         public static Color3 operator *(Color3 left, Color3 right)
         {
-            return new Color3(left.Red * right.Red, left.Green * right.Green, left.Blue * right.Blue);
+            return new Color3(
+                left.Red * right.Red,
+                left.Green * right.Green,
+                left.Blue * right.Blue
+            );
         }
 
         /// <summary>
@@ -699,7 +750,7 @@ namespace HelixToolkit.Nex.Maths
         }
 
         /// <summary>
-        /// Performs an explicit conversion from <see cref="System.Int32"/> to <see cref="Color3"/>.
+        /// Performs an explicit conversion from <see cref="int"/> to <see cref="Color3"/>.
         /// </summary>
         /// <param name="value">The value.</param>
         /// <returns>The result of the conversion.</returns>
@@ -709,10 +760,10 @@ namespace HelixToolkit.Nex.Maths
         }
 
         /// <summary>
-        /// Returns a <see cref="System.String"/> that represents this instance.
+        /// Returns a <see cref="string"/> that represents this instance.
         /// </summary>
         /// <returns>
-        /// A <see cref="System.String"/> that represents this instance.
+        /// A <see cref="string"/> that represents this instance.
         /// </returns>
         public override readonly string ToString()
         {
@@ -720,11 +771,11 @@ namespace HelixToolkit.Nex.Maths
         }
 
         /// <summary>
-        /// Returns a <see cref="System.String"/> that represents this instance.
+        /// Returns a <see cref="string"/> that represents this instance.
         /// </summary>
         /// <param name="format">The format to apply to each channel element (float)</param>
         /// <returns>
-        /// A <see cref="System.String"/> that represents this instance.
+        /// A <see cref="string"/> that represents this instance.
         /// </returns>
         public readonly string ToString(string format)
         {
@@ -732,43 +783,43 @@ namespace HelixToolkit.Nex.Maths
         }
 
         /// <summary>
-        /// Returns a <see cref="System.String"/> that represents this instance.
+        /// Returns a <see cref="string"/> that represents this instance.
         /// </summary>
         /// <param name="formatProvider">The format provider.</param>
         /// <returns>
-        /// A <see cref="System.String"/> that represents this instance.
+        /// A <see cref="string"/> that represents this instance.
         /// </returns>
         public readonly string ToString(IFormatProvider formatProvider)
         {
-            return string.Format(formatProvider, toStringFormat_, Red, Green, Blue);
+            return string.Format(formatProvider, ToStringFormat, Red, Green, Blue);
         }
 
         /// <summary>
-        /// Returns a <see cref="System.String"/> that represents this instance.
+        /// Returns a <see cref="string"/> that represents this instance.
         /// </summary>
         /// <param name="format">The format to apply to each channel element (float).</param>
         /// <param name="formatProvider">The format provider.</param>
         /// <returns>
-        /// A <see cref="System.String"/> that represents this instance.
+        /// A <see cref="string"/> that represents this instance.
         /// </returns>
         public readonly string ToString(string? format, IFormatProvider? formatProvider)
         {
-            return format == null && formatProvider == null
-                ? string.Empty
-                : format == null
-                ? ToString(formatProvider!)
-                : string.Format(formatProvider,
-                                 toStringFormat_,
-                                 Red.ToString(format, formatProvider),
-                                 Green.ToString(format, formatProvider),
-                                 Blue.ToString(format, formatProvider));
+            return format == null && formatProvider == null ? string.Empty
+                : format == null ? ToString(formatProvider!)
+                : string.Format(
+                    formatProvider,
+                    ToStringFormat,
+                    Red.ToString(format, formatProvider),
+                    Green.ToString(format, formatProvider),
+                    Blue.ToString(format, formatProvider)
+                );
         }
 
         /// <summary>
         /// Returns a hash code for this instance.
         /// </summary>
         /// <returns>
-        /// A hash code for this instance, suitable for use in hashing algorithms and data structures like a hash table. 
+        /// A hash code for this instance, suitable for use in hashing algorithms and data structures like a hash table.
         /// </returns>
         public override readonly int GetHashCode()
         {
@@ -808,11 +859,11 @@ namespace HelixToolkit.Nex.Maths
         }
 
         /// <summary>
-        /// Determines whether the specified <see cref="System.Object"/> is equal to this instance.
+        /// Determines whether the specified <see cref="object"/> is equal to this instance.
         /// </summary>
-        /// <param name="obj">The <see cref="System.Object"/> to compare with this instance.</param>
+        /// <param name="obj">The <see cref="object"/> to compare with this instance.</param>
         /// <returns>
-        /// <c>true</c> if the specified <see cref="System.Object"/> is equal to this instance; otherwise, <c>false</c>.
+        /// <c>true</c> if the specified <see cref="object"/> is equal to this instance; otherwise, <c>false</c>.
         /// </returns>
         public override readonly bool Equals(object? obj)
         {

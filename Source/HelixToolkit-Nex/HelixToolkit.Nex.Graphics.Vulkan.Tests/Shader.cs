@@ -1,0 +1,71 @@
+namespace HelixToolkit.Nex.Tests.Vulkan;
+
+[TestClass]
+[TestCategory("GPURequired")]
+public class Shader
+{
+    private static IContext? _vkContext;
+
+    [ClassInitialize]
+    public static void ClassInit(TestContext context)
+    {
+        var config = new VulkanContextConfig { TerminateOnValidationError = true };
+        _vkContext = VulkanBuilder.CreateHeadless(config);
+    }
+
+    [ClassCleanup]
+    public static void ClassCleanup()
+    {
+        _vkContext?.Dispose();
+    }
+
+    private static string GetGlslShaderCode(string shaderName)
+    {
+        var assembly = typeof(Shader).Assembly;
+        var assemblyName =
+            assembly.GetName().Name
+            ?? throw new InvalidOperationException("Assembly name cannot be null.");
+        using var stream =
+            assembly.GetManifestResourceStream($"{assemblyName}.Shaders.{shaderName}")
+            ?? throw new FileNotFoundException(
+                $"Shader file '{shaderName}' not found in embedded resources."
+            );
+        using var reader = new StreamReader(stream);
+        return reader.ReadToEnd();
+    }
+
+    [DataTestMethod]
+    [DataRow("simple_vs", ShaderStage.Vertex, "simple.glsl", "VERTEX_SHADER")]
+    [DataRow("simple_fs", ShaderStage.Fragment, "simple.glsl", "FRAGMENT_SHADER")]
+    [DataRow("complex_vs", ShaderStage.Vertex, "complex.glsl", "VERTEX_SHADER")]
+    [DataRow("complex_fs", ShaderStage.Fragment, "complex.glsl", "FRAGMENT_SHADER")]
+    public unsafe void CreateShaderModule(
+        string shaderName,
+        ShaderStage stage,
+        string expectedFileName,
+        string defines
+    )
+    {
+        var shaderCode = GetGlslShaderCode(expectedFileName);
+
+        var shaderDesc = new ShaderModuleDesc
+        {
+            GlslSource = shaderCode,
+            DataSize = (size_t)shaderCode.Length,
+            DataType = ShaderDataType.Glsl,
+            Stage = stage,
+            DebugName = shaderName,
+            Defines = defines.ToShaderDefines(), // Convert the defines string to ShaderDefines
+        };
+        ShaderModuleResource? shaderModule = null;
+        var result = _vkContext?.CreateShaderModule(shaderDesc, out shaderModule).CheckResult();
+        Assert.IsTrue(
+            result == ResultCode.Ok,
+            "Shader module creation failed with error: " + result.ToString()
+        );
+        Assert.IsNotNull(shaderModule, "Shader module should not be null after creation.");
+        Assert.IsTrue(shaderModule.Valid, "Shader module should be valid after creation.");
+        // Clean up the shader module after the test
+        _vkContext?.Destroy(shaderModule);
+    }
+}

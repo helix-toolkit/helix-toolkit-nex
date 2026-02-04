@@ -1,4 +1,4 @@
-﻿/*
+/*
 The MIT License (MIT)
 Copyright (c) 2022 Helix Toolkit contributors
 
@@ -31,8 +31,8 @@ The MIT License (MIT)
 */
 using System;
 using System.Collections.Generic;
-using System.Text;
 using System.Numerics;
+using System.Text;
 
 namespace HelixToolkit.Nex.Maths
 {

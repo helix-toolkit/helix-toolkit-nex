@@ -1,4 +1,4 @@
-﻿/*
+/*
 The MIT License (MIT)
 Copyright (c) 2022 Helix Toolkit contributors
 
@@ -78,16 +78,19 @@ namespace HelixToolkit.Nex.Maths
         {
             return Vector4.Min(v1, v2);
         }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Vector4 Min(this Vector4 v1, Vector4 v2)
         {
             return Vector4.Min(v1, v2);
         }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Vector4 Max(this Vector4 v1, ref Vector4 v2)
         {
             return Vector4.Max(v1, v2);
         }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Vector4 Max(this Vector4 v1, Vector4 v2)
         {
@@ -128,7 +131,10 @@ namespace HelixToolkit.Nex.Maths
                 1 => v.Y,
                 2 => v.Z,
                 3 => v.W,
-                _ => throw new ArgumentOutOfRangeException(nameof(index), "Indices for Vector4 run from 0 to 3, inclusive."),
+                _ => throw new ArgumentOutOfRangeException(
+                    nameof(index),
+                    "Indices for Vector4 run from 0 to 3, inclusive."
+                ),
             };
         }
 
@@ -136,11 +142,23 @@ namespace HelixToolkit.Nex.Maths
         {
             switch (index)
             {
-                case 0: v.X = value; break;
-                case 1: v.Y = value; break;
-                case 2: v.Z = value; break;
-                case 3: v.W = value; break;
-                default: throw new ArgumentOutOfRangeException(nameof(index), "Indices for Vector4 run from 0 to 3, inclusive.");
+                case 0:
+                    v.X = value;
+                    break;
+                case 1:
+                    v.Y = value;
+                    break;
+                case 2:
+                    v.Z = value;
+                    break;
+                case 3:
+                    v.W = value;
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(
+                        nameof(index),
+                        "Indices for Vector4 run from 0 to 3, inclusive."
+                    );
             }
         }
 
@@ -162,7 +180,14 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="amount1">Barycentric coordinate b2, which expresses the weighting factor toward vertex 2 (specified in <paramref name="value2"/>).</param>
         /// <param name="amount2">Barycentric coordinate b3, which expresses the weighting factor toward vertex 3 (specified in <paramref name="value3"/>).</param>
         /// <param name="result">When the method completes, contains the 4D Cartesian coordinates of the specified point.</param>
-        public static void Barycentric(ref Vector4 value1, ref Vector4 value2, ref Vector4 value3, float amount1, float amount2, out Vector4 result)
+        public static void Barycentric(
+            ref Vector4 value1,
+            ref Vector4 value2,
+            ref Vector4 value3,
+            float amount1,
+            float amount2,
+            out Vector4 result
+        )
         {
             result = value1 + amount1 * (value2 - value1) + amount2 * (value3 - value1);
             //result = new Vector4((value1.X + (amount1 * (value2.X - value1.X))) + (amount2 * (value3.X - value1.X)),
@@ -180,7 +205,13 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="amount1">Barycentric coordinate b2, which expresses the weighting factor toward vertex 2 (specified in <paramref name="value2"/>).</param>
         /// <param name="amount2">Barycentric coordinate b3, which expresses the weighting factor toward vertex 3 (specified in <paramref name="value3"/>).</param>
         /// <returns>A new <see cref="Vector4"/> containing the 4D Cartesian coordinates of the specified point.</returns>
-        public static Vector4 Barycentric(Vector4 value1, Vector4 value2, Vector4 value3, float amount1, float amount2)
+        public static Vector4 Barycentric(
+            Vector4 value1,
+            Vector4 value2,
+            Vector4 value3,
+            float amount1,
+            float amount2
+        )
         {
             Barycentric(ref value1, ref value2, ref value3, amount1, amount2, out Vector4 result);
             return result;
@@ -193,7 +224,12 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="end">End vector.</param>
         /// <param name="amount">Value between 0 and 1 indicating the weight of <paramref name="end"/>.</param>
         /// <param name="result">When the method completes, contains the cubic interpolation of the two vectors.</param>
-        public static void SmoothStep(ref Vector4 start, ref Vector4 end, float amount, out Vector4 result)
+        public static void SmoothStep(
+            ref Vector4 start,
+            ref Vector4 end,
+            float amount,
+            out Vector4 result
+        )
         {
             amount = MathUtil.SmoothStep(amount);
             result = Vector4.Lerp(start, end, amount);
@@ -221,7 +257,14 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="tangent2">Second source tangent vector.</param>
         /// <param name="amount">Weighting factor.</param>
         /// <param name="result">When the method completes, contains the result of the Hermite spline interpolation.</param>
-        public static void Hermite(ref Vector4 value1, ref Vector4 tangent1, ref Vector4 value2, ref Vector4 tangent2, float amount, out Vector4 result)
+        public static void Hermite(
+            ref Vector4 value1,
+            ref Vector4 tangent1,
+            ref Vector4 value2,
+            ref Vector4 tangent2,
+            float amount,
+            out Vector4 result
+        )
         {
             float squared = amount * amount;
             float cubed = amount * squared;
@@ -246,7 +289,13 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="tangent2">Second source tangent vector.</param>
         /// <param name="amount">Weighting factor.</param>
         /// <returns>The result of the Hermite spline interpolation.</returns>
-        public static Vector4 Hermite(Vector4 value1, Vector4 tangent1, Vector4 value2, Vector4 tangent2, float amount)
+        public static Vector4 Hermite(
+            Vector4 value1,
+            Vector4 tangent1,
+            Vector4 value2,
+            Vector4 tangent2,
+            float amount
+        )
         {
             Hermite(ref value1, ref tangent1, ref value2, ref tangent2, amount, out Vector4 result);
             return result;
@@ -261,11 +310,25 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="value4">The fourth position in the interpolation.</param>
         /// <param name="amount">Weighting factor.</param>
         /// <param name="result">When the method completes, contains the result of the Catmull-Rom interpolation.</param>
-        public static void CatmullRom(ref Vector4 value1, ref Vector4 value2, ref Vector4 value3, ref Vector4 value4, float amount, out Vector4 result)
+        public static void CatmullRom(
+            ref Vector4 value1,
+            ref Vector4 value2,
+            ref Vector4 value3,
+            ref Vector4 value4,
+            float amount,
+            out Vector4 result
+        )
         {
             float squared = amount * amount;
             float cubed = amount * squared;
-            result = 0.5f * ((2.0f * value2) + ((-value1 + value3) * amount) + (((2.0f * value1) - (5.0f * value2) + (4.0f * value3) - value4) * squared) + ((-value1 + (3.0f * value2) - (3.0f * value3) + value4) * cubed));
+            result =
+                0.5f
+                * (
+                    (2.0f * value2)
+                    + ((-value1 + value3) * amount)
+                    + (((2.0f * value1) - (5.0f * value2) + (4.0f * value3) - value4) * squared)
+                    + ((-value1 + (3.0f * value2) - (3.0f * value3) + value4) * cubed)
+                );
             //result.X = 0.5f * ((((2.0f * value2.X) + ((-value1.X + value3.X) * amount)) + (((((2.0f * value1.X) - (5.0f * value2.X)) + (4.0f * value3.X)) - value4.X) * squared)) + ((((-value1.X + (3.0f * value2.X)) - (3.0f * value3.X)) + value4.X) * cubed));
             //result.Y = 0.5f * ((((2.0f * value2.Y) + ((-value1.Y + value3.Y) * amount)) + (((((2.0f * value1.Y) - (5.0f * value2.Y)) + (4.0f * value3.Y)) - value4.Y) * squared)) + ((((-value1.Y + (3.0f * value2.Y)) - (3.0f * value3.Y)) + value4.Y) * cubed));
             //result.Z = 0.5f * ((((2.0f * value2.Z) + ((-value1.Z + value3.Z) * amount)) + (((((2.0f * value1.Z) - (5.0f * value2.Z)) + (4.0f * value3.Z)) - value4.Z) * squared)) + ((((-value1.Z + (3.0f * value2.Z)) - (3.0f * value3.Z)) + value4.Z) * cubed));
@@ -281,7 +344,13 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="value4">The fourth position in the interpolation.</param>
         /// <param name="amount">Weighting factor.</param>
         /// <returns>A vector that is the result of the Catmull-Rom interpolation.</returns>
-        public static Vector4 CatmullRom(Vector4 value1, Vector4 value2, Vector4 value3, Vector4 value4, float amount)
+        public static Vector4 CatmullRom(
+            Vector4 value1,
+            Vector4 value2,
+            Vector4 value3,
+            Vector4 value4,
+            float amount
+        )
         {
             CatmullRom(ref value1, ref value2, ref value3, ref value4, amount, out Vector4 result);
             return result;
@@ -324,7 +393,10 @@ namespace HelixToolkit.Nex.Maths
 
             if (destination.Length < source.Length)
             {
-                throw new ArgumentOutOfRangeException(nameof(destination), "The destination array must be of same length or larger length than the source array.");
+                throw new ArgumentOutOfRangeException(
+                    nameof(destination),
+                    "The destination array must be of same length or larger length than the source array."
+                );
             }
 
             for (int i = 0; i < source.Length; ++i)
@@ -333,7 +405,10 @@ namespace HelixToolkit.Nex.Maths
 
                 for (int r = 0; r < i; ++r)
                 {
-                    newvector -= Vector4.Dot(destination[r], newvector) / Vector4.Dot(destination[r], destination[r]) * destination[r];
+                    newvector -=
+                        Vector4.Dot(destination[r], newvector)
+                        / Vector4.Dot(destination[r], destination[r])
+                        * destination[r];
                 }
 
                 destination[i] = newvector;
@@ -379,7 +454,10 @@ namespace HelixToolkit.Nex.Maths
 
             if (destination.Length < source.Length)
             {
-                throw new ArgumentOutOfRangeException(nameof(destination), "The destination array must be of same length or larger length than the source array.");
+                throw new ArgumentOutOfRangeException(
+                    nameof(destination),
+                    "The destination array must be of same length or larger length than the source array."
+                );
             }
 
             for (int i = 0; i < source.Length; ++i)
@@ -403,7 +481,11 @@ namespace HelixToolkit.Nex.Maths
         /// This array may be the same array as <paramref name="source"/>.</param>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="source"/> or <paramref name="destination"/> is <c>null</c>.</exception>
         /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="destination"/> is shorter in length than <paramref name="source"/>.</exception>
-        public static void Transform(Vector4[] source, ref Quaternion rotation, Vector4[] destination)
+        public static void Transform(
+            Vector4[] source,
+            ref Quaternion rotation,
+            Vector4[] destination
+        )
         {
             if (source == null)
             {
@@ -417,7 +499,10 @@ namespace HelixToolkit.Nex.Maths
 
             if (destination.Length < source.Length)
             {
-                throw new ArgumentOutOfRangeException(nameof(destination), "The destination array must be of same length or larger length than the source array.");
+                throw new ArgumentOutOfRangeException(
+                    nameof(destination),
+                    "The destination array must be of same length or larger length than the source array."
+                );
             }
 
             for (int i = 0; i < source.Length; ++i)
@@ -437,6 +522,7 @@ namespace HelixToolkit.Nex.Maths
         {
             result = Vector4.Transform(vector, transform);
         }
+
         /// <summary>
         /// Transforms a 4D vector by the given <see cref="Matrix"/>.
         /// </summary>
@@ -447,6 +533,7 @@ namespace HelixToolkit.Nex.Maths
         {
             return Vector4.Transform(vector, transform);
         }
+
         /// <summary>
         /// Transforms an array of 4D vectors by the given <see cref="Matrix"/>.
         /// </summary>
@@ -456,7 +543,11 @@ namespace HelixToolkit.Nex.Maths
         /// This array may be the same array as <paramref name="source"/>.</param>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="source"/> or <paramref name="destination"/> is <c>null</c>.</exception>
         /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="destination"/> is shorter in length than <paramref name="source"/>.</exception>
-        public static void Transform(this Vector4[] source, ref Matrix transform, Vector4[] destination)
+        public static void Transform(
+            this Vector4[] source,
+            ref Matrix transform,
+            Vector4[] destination
+        )
         {
             if (source == null)
             {
@@ -470,7 +561,10 @@ namespace HelixToolkit.Nex.Maths
 
             if (destination.Length < source.Length)
             {
-                throw new ArgumentOutOfRangeException(nameof(destination), "The destination array must be of same length or larger length than the source array.");
+                throw new ArgumentOutOfRangeException(
+                    nameof(destination),
+                    "The destination array must be of same length or larger length than the source array."
+                );
             }
             var i = 0;
 #if NET6_0_OR_GREATER
@@ -479,13 +573,33 @@ namespace HelixToolkit.Nex.Maths
                 if (Sse.IsSupported)
                 {
                     // Load matrix rows into Vector128 vectors
-                    Vector128<float> row0X = Vector128.Create(transform.M11, transform.M12, transform.M13, transform.M14);
-                    Vector128<float> row1X = Vector128.Create(transform.M21, transform.M22, transform.M23, transform.M24);
-                    Vector128<float> row2X = Vector128.Create(transform.M31, transform.M32, transform.M33, transform.M34);
-                    Vector128<float> row3X = Vector128.Create(transform.M41, transform.M42, transform.M43, transform.M44);
+                    Vector128<float> row0X = Vector128.Create(
+                        transform.M11,
+                        transform.M12,
+                        transform.M13,
+                        transform.M14
+                    );
+                    Vector128<float> row1X = Vector128.Create(
+                        transform.M21,
+                        transform.M22,
+                        transform.M23,
+                        transform.M24
+                    );
+                    Vector128<float> row2X = Vector128.Create(
+                        transform.M31,
+                        transform.M32,
+                        transform.M33,
+                        transform.M34
+                    );
+                    Vector128<float> row3X = Vector128.Create(
+                        transform.M41,
+                        transform.M42,
+                        transform.M43,
+                        transform.M44
+                    );
                     unsafe
                     {
-                        fixed(void* dst = destination)
+                        fixed (void* dst = destination)
                         {
                             float* dstPtr = (float*)dst;
                             for (; i < source.Length; i++, dstPtr += 4)
@@ -505,7 +619,10 @@ namespace HelixToolkit.Nex.Maths
                                 vW = Sse.Multiply(vW, row3X);
 
                                 // Perform horizontal addition to get the dot products
-                                Vector128<float> rowResults = Sse.Add(Sse.Add(vX, vY), Sse.Add(vZ, vW));
+                                Vector128<float> rowResults = Sse.Add(
+                                    Sse.Add(vX, vY),
+                                    Sse.Add(vZ, vW)
+                                );
                                 Sse.Store(dstPtr, rowResults);
                             }
                         }
@@ -520,7 +637,12 @@ namespace HelixToolkit.Nex.Maths
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void Clamp(ref Vector4 value, ref Vector4 min, ref Vector4 max, out Vector4 result)
+        public static void Clamp(
+            ref Vector4 value,
+            ref Vector4 min,
+            ref Vector4 max,
+            out Vector4 result
+        )
         {
 #if NET6_0_OR_GREATER
             if (MathSettings.EnableSIMD && Sse.IsSupported)
@@ -530,7 +652,12 @@ namespace HelixToolkit.Nex.Maths
                 Vector128<float> value128 = Vector128.Create(value.X, value.Y, value.Z, value.W);
                 value128 = Sse.Max(value128, min128);
                 value128 = Sse.Min(value128, max128);
-                result = new Vector4(value128.GetElement(0), value128.GetElement(1), value128.GetElement(2), value128.GetElement(3));
+                result = new Vector4(
+                    value128.GetElement(0),
+                    value128.GetElement(1),
+                    value128.GetElement(2),
+                    value128.GetElement(3)
+                );
                 return;
             }
 #endif
@@ -546,6 +673,296 @@ namespace HelixToolkit.Nex.Maths
         {
             Clamp(ref value, ref min, ref max, out var result);
             return result;
+        }
+
+        public static void MinMax(this IList<Vector4> vectors, out Vector4 min, out Vector4 max)
+        {
+            MinMax(vectors, 0, vectors.Count, out min, out max);
+        }
+
+        public static void MinMax(
+            this IList<Vector4> vectors,
+            int start,
+            int count,
+            out Vector4 min,
+            out Vector4 max
+        )
+        {
+            if (vectors == null || vectors.Count == 0 || count == 0)
+            {
+                min = max = Vector4.Zero;
+                return;
+            }
+            if (start + count > vectors.Count)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(count),
+                    "The start and count exceed the length of the vectors array."
+                );
+            }
+
+            int i = start;
+            int end = start + count;
+            var currentMin = new Vector4(float.MaxValue);
+            var currentMax = new Vector4(float.MinValue);
+#if NET6_0_OR_GREATER
+            if (MathSettings.EnableSIMD)
+            {
+                if (Avx.IsSupported && i + 8 <= end)
+                {
+                    // Initialize min and max vectors with the first element
+                    var minX = Vector256.Create(currentMin.X);
+                    var minY = Vector256.Create(currentMin.Y);
+                    var minZ = Vector256.Create(currentMin.Z);
+                    var minW = Vector256.Create(currentMin.W);
+                    var maxX = Vector256.Create(currentMax.X);
+                    var maxY = Vector256.Create(currentMax.Y);
+                    var maxZ = Vector256.Create(currentMax.Z);
+                    var maxW = Vector256.Create(currentMax.W);
+                    // Process vectors in chunks of 8
+                    for (; i <= end - 8;)
+                    {
+                        var v1 = vectors[i++];
+                        var v2 = vectors[i++];
+                        var v3 = vectors[i++];
+                        var v4 = vectors[i++];
+                        var v5 = vectors[i++];
+                        var v6 = vectors[i++];
+                        var v7 = vectors[i++];
+                        var v8 = vectors[i++];
+                        // Load 8 X components
+                        var xVec = Vector256.Create(v1.X, v2.X, v3.X, v4.X, v5.X, v6.X, v7.X, v8.X);
+                        minX = Avx.Min(minX, xVec);
+                        maxX = Avx.Max(maxX, xVec);
+                        // Load 8 Y components
+                        var yVec = Vector256.Create(v1.Y, v2.Y, v3.Y, v4.Y, v5.Y, v6.Y, v7.Y, v8.Y);
+                        minY = Avx.Min(minY, yVec);
+                        maxY = Avx.Max(maxY, yVec);
+                        // Load 8 Z components
+                        var zVec = Vector256.Create(v1.Z, v2.Z, v3.Z, v4.Z, v5.Z, v6.Z, v7.Z, v8.Z);
+                        minZ = Avx.Min(minZ, zVec);
+                        maxZ = Avx.Max(maxZ, zVec);
+
+                        // Load 8 W components
+                        var wVec = Vector256.Create(v1.W, v2.W, v3.W, v4.W, v5.W, v6.W, v7.W, v8.W);
+                        minW = Avx.Min(minW, wVec);
+                        maxW = Avx.Max(maxW, wVec);
+                    }
+                    // Reduce the 8 min/max values in the vectors to a single value
+                    currentMin = new(
+                        HorizontalMin(minX),
+                        HorizontalMin(minY),
+                        HorizontalMin(minZ),
+                        HorizontalMin(minW)
+                    );
+                    currentMax = new(
+                        HorizontalMax(maxX),
+                        HorizontalMax(maxY),
+                        HorizontalMax(maxZ),
+                        HorizontalMax(maxW)
+                    );
+                }
+
+                if (Sse.IsSupported && i + 4 <= end)
+                {
+                    // Initialize min and max vectors with the first element
+                    var minX = Vector128.Create(currentMin.X);
+                    var minY = Vector128.Create(currentMin.Y);
+                    var minZ = Vector128.Create(currentMin.Z);
+                    var minW = Vector128.Create(currentMin.W);
+                    var maxX = Vector128.Create(currentMax.X);
+                    var maxY = Vector128.Create(currentMax.Y);
+                    var maxZ = Vector128.Create(currentMax.Z);
+                    var maxW = Vector128.Create(currentMax.W);
+                    // Process vectors in chunks of 4
+                    for (; i <= end - 4;)
+                    {
+                        var v1 = vectors[i++];
+                        var v2 = vectors[i++];
+                        var v3 = vectors[i++];
+                        var v4 = vectors[i++];
+                        // Load 4 X components
+                        var xVec = Vector128.Create(v1.X, v2.X, v3.X, v4.X);
+                        minX = Sse.Min(minX, xVec);
+                        maxX = Sse.Max(maxX, xVec);
+
+                        // Load 4 Y components
+                        var yVec = Vector128.Create(v1.Y, v2.Y, v3.Y, v4.Y);
+                        minY = Sse.Min(minY, yVec);
+                        maxY = Sse.Max(maxY, yVec);
+
+                        // Load 4 Z components
+                        var zVec = Vector128.Create(v1.Z, v2.Z, v3.Z, v4.Z);
+                        minZ = Sse.Min(minZ, zVec);
+                        maxZ = Sse.Max(maxZ, zVec);
+
+                        // Load 4 W components
+                        var wVec = Vector128.Create(v1.W, v2.W, v3.W, v4.W);
+                        minW = Sse.Min(minW, wVec);
+                        maxW = Sse.Max(maxW, wVec);
+                    }
+
+                    // Reduce the 4 min/max values in the vectors to a single value
+                    currentMin = new(
+                        HorizontalMin(minX),
+                        HorizontalMin(minY),
+                        HorizontalMin(minZ),
+                        HorizontalMin(minW)
+                    );
+                    currentMax = new(
+                        HorizontalMax(maxX),
+                        HorizontalMax(maxY),
+                        HorizontalMax(maxZ),
+                        HorizontalMax(maxW)
+                    );
+                }
+            }
+
+#endif
+            // Process remaining vectors
+            for (; i < end; i++)
+            {
+                currentMax = Vector4.Max(currentMax, vectors[i]);
+                currentMin = Vector4.Min(currentMin, vectors[i]);
+            }
+
+            min = currentMin;
+            max = currentMax;
+        }
+#if NET6_0_OR_GREATER
+        // Helper function to find the minimum of 4 floats in an SSE vector
+        private static float HorizontalMin(Vector128<float> vector)
+        {
+            vector = Sse.Min(vector, Sse.Shuffle(vector, vector, 0b01001110)); // Swap 0 and 1, 2 and 3
+            vector = Sse.Min(vector, Sse.Shuffle(vector, vector, 0b10110001)); // Swap 0 and 2, 1 and 3
+            return vector.GetElement(0);
+        }
+
+        private static float HorizontalMin(Vector256<float> vector)
+        {
+            var v1 = Avx.Permute(vector, 0b10110001); // swap floats: 0<->1, 2<->3, 4<->5, 6<->7
+            var v2 = Avx.Min(vector, v1);
+            var v3 = Avx.Permute(v2, 0b01001110); // swap floats
+            var v4 = Avx.Min(v2, v3);
+            var v5 = Avx.Permute2x128(v4, v4, 0b00000001); // swap 128-bit lanes
+            var min = Avx.Min(v4, v5);
+            return min.GetElement(0);
+        }
+
+        // Helper function to find the maximum of 4 floats in an SSE vector
+        private static float HorizontalMax(Vector128<float> vector)
+        {
+            vector = Sse.Max(vector, Sse.Shuffle(vector, vector, 0b01001110)); // Swap 0 and 1, 2 and 3
+            vector = Sse.Max(vector, Sse.Shuffle(vector, vector, 0b10110001)); // Swap 0 and 2, 1 and 3
+            return vector.GetElement(0);
+        }
+
+        private static float HorizontalMax(Vector256<float> vector)
+        {
+            var v1 = Avx.Permute(vector, 0b10110001); // swap floats: 0<->1, 2<->3, 4<->5, 6<->7
+            var v2 = Avx.Max(vector, v1);
+            var v3 = Avx.Permute(v2, 0b01001110); // swap floats
+            var v4 = Avx.Max(v2, v3);
+            var v5 = Avx.Permute2x128(v4, v4, 0b00000001); // swap 128-bit lanes
+            var max = Avx.Max(v4, v5);
+            return max.GetElement(0);
+        }
+#endif
+
+        public static Vector4 GetCentroid(this IList<Vector4> vertices)
+        {
+            return vertices.GetCentroid(0, vertices.Count);
+        }
+
+        public static Vector4 GetCentroid(this IList<Vector4> vertices, int start, int count)
+        {
+            if (start + count > vertices.Count)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(count),
+                    "The start and count exceed the length of the vertices array."
+                );
+            }
+            if (vertices.Count == 0)
+            {
+                return default;
+            }
+            var end = Math.Min(start + count, vertices.Count);
+            var counter = 0;
+#if NET6_0_OR_GREATER
+            if (MathSettings.EnableSIMD && Sse.IsSupported)
+            {
+                if (vertices is FastList<Vector4> || vertices is Vector4[])
+                {
+                    Vector4[] data;
+                    if (vertices is FastList<Vector4> fl)
+                    {
+                        data = fl.GetInternalArray();
+                    }
+                    else
+                    {
+                        data = (Vector4[])vertices;
+                    }
+                    unsafe
+                    {
+                        using var ptr = data.Pin();
+
+                        var ptrStart = (float*)ptr.Pointer + start * 4;
+                        Vector128<float> sum = Vector128.Load(ptrStart);
+                        ptrStart += 4;
+                        counter = 1;
+                        for (int i = start + 1; i < end; ++i, ptrStart += 4)
+                        {
+                            var v = Vector128.Load(ptrStart);
+                            var diff = Sse.Subtract(v, sum);
+                            diff = Sse.Divide(diff, Vector128.Create((float)(counter++ + 1)));
+                            sum = Sse.Add(sum, diff);
+                        }
+                        return new Vector4(
+                            sum.GetElement(0),
+                            sum.GetElement(1),
+                            sum.GetElement(2),
+                            sum.GetElement(3)
+                        );
+                    }
+                }
+                else
+                {
+                    Vector128<float> sum = Vector128.Create(
+                        vertices[start].X,
+                        vertices[start].Y,
+                        vertices[start].Z,
+                        vertices[start].W
+                    );
+                    counter = 1;
+                    for (int i = start + 1; i < end; ++i)
+                    {
+                        var v = Vector128.Create(
+                            vertices[i].X,
+                            vertices[i].Y,
+                            vertices[i].Z,
+                            vertices[i].W
+                        );
+                        var diff = Sse.Subtract(v, sum);
+                        diff = Sse.Divide(diff, Vector128.Create((float)(counter++ + 1)));
+                        sum = Sse.Add(sum, diff);
+                    }
+                    return new Vector4(
+                        sum.GetElement(0),
+                        sum.GetElement(1),
+                        sum.GetElement(2),
+                        sum.GetElement(3)
+                    );
+                }
+            }
+#endif
+            counter = 1;
+            var centroid = vertices[start];
+            for (var i = start + 1; i < end; i++)
+            {
+                centroid += (vertices[i] - centroid) / (counter++ + 1);
+            }
+            return centroid;
         }
     }
 }

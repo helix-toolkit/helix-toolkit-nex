@@ -1,4 +1,4 @@
-﻿namespace HelixToolkit.Nex.Graphics;
+namespace HelixToolkit.Nex.Graphics;
 
 /// <summary>
 /// Represents a rendering pass configuration, including color, depth, and stencil attachments.
@@ -11,12 +11,12 @@ public sealed class RenderPass
     public struct AttachmentDesc()
     {
         public LoadOp LoadOp = LoadOp.Invalid;
-        public StoreOp StoreOp = StoreOp.Store;
+        public StoreOp StoreOp = StoreOp.DontCare;
         public ResolveMode ResolveMode = ResolveMode.Average;
         public uint8_t Layer = 0;
         public uint8_t Level = 0;
         public Color4 ClearColor = new(0, 0, 0, 0);
-        public float ClearDepth = 1.0f;
+        public float ClearDepth = 0;
         public uint32_t ClearStencil = 0;
     }
 
@@ -51,9 +51,8 @@ public sealed class RenderPass
         }
     }
 
-    public RenderPass(in AttachmentDesc colorAttachment) : this(Enumerable.Repeat(colorAttachment, 1))
-    {
-    }
+    public RenderPass(in AttachmentDesc colorAttachment)
+        : this(Enumerable.Repeat(colorAttachment, 1)) { }
 
     public uint32_t GetNumColorAttachments()
     {

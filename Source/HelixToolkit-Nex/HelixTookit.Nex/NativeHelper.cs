@@ -1,4 +1,4 @@
-﻿using System.Buffers;
+using System.Buffers;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices.Marshalling;
 
@@ -80,20 +80,20 @@ namespace HelixToolkit.Nex
         /// Converts a native char pointer to a managed string.
         /// </summary>
         /// <param name="str">Pointer to a null-terminated char string.</param>
-        /// <returns>A managed string, or <see cref="String.Empty"/> if the pointer is null.</returns>
+        /// <returns>A managed string, or <see cref="string.Empty"/> if the pointer is null.</returns>
         public static unsafe string ToString(char* str)
         {
-            return str == null ? String.Empty : new string(str);
+            return str == null ? string.Empty : new string(str);
         }
 
         /// <summary>
         /// Converts a native byte pointer (ANSI string) to a managed string.
         /// </summary>
         /// <param name="str">Pointer to a null-terminated byte string.</param>
-        /// <returns>A managed string, or <see cref="String.Empty"/> if the pointer is null.</returns>
+        /// <returns>A managed string, or <see cref="string.Empty"/> if the pointer is null.</returns>
         public static unsafe string ToString(byte* str)
         {
-            return str == null ? String.Empty : new string((sbyte*)str);
+            return str == null ? string.Empty : new string((sbyte*)str);
         }
 
         /// <summary>

@@ -1,4 +1,4 @@
-﻿using System.ComponentModel;
+using System.ComponentModel;
 
 namespace HelixToolkit.Nex.Maths
 {
@@ -32,7 +32,7 @@ namespace HelixToolkit.Nex.Maths
                     if (color != null)
                     {
                         hash.Add(field.Name, color);
-                    }               
+                    }
                 }
             }
         }

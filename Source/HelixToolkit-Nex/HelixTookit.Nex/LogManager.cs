@@ -1,4 +1,6 @@
-﻿namespace HelixToolkit.Nex;
+using System.Diagnostics.CodeAnalysis;
+
+namespace HelixToolkit.Nex;
 
 /// <summary>
 /// Provides centralized logging management for the Helix Toolkit.

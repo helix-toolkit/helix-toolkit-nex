@@ -1,4 +1,4 @@
-﻿/*
+/*
 The MIT License (MIT)
 Copyright (c) 2022 Helix Toolkit contributors
 
@@ -38,7 +38,7 @@ namespace HelixToolkit.Nex.Maths
     [StructLayout(LayoutKind.Sequential, Size = 4)]
     public partial struct Color : IEquatable<Color>, IFormattable
     {
-        private const string toStringFormat_ = "A:{0} R:{1} G:{2} B:{3}";
+        private const string ToStringFormat = "A:{0} R:{1} G:{2} B:{3}";
 
         /// <summary>
         /// The red component of the color.
@@ -106,7 +106,7 @@ namespace HelixToolkit.Nex.Maths
             B = blue;
             A = 255;
         }
-        
+
         /// <summary>
         /// Initializes a new instance of the <see cref="Color"/> struct.  Passed values are clamped within byte range.
         /// </summary>
@@ -121,7 +121,7 @@ namespace HelixToolkit.Nex.Maths
             B = ToByte(blue);
             A = ToByte(alpha);
         }
-        
+
         /// <summary>
         /// Initializes a new instance of the <see cref="Color"/> struct.  Alpha is set to 255.  Passed values are clamped within byte range.
         /// </summary>
@@ -129,7 +129,7 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="green">The green component of the color.</param>
         /// <param name="blue">The blue component of the color.</param>
         public Color(int red, int green, int blue)
-            : this (red, green, blue, 255) { }
+            : this(red, green, blue, 255) { }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="Color"/> struct.
@@ -236,7 +236,10 @@ namespace HelixToolkit.Nex.Maths
 
             if (values.Length != 4)
             {
-                throw new ArgumentOutOfRangeException(nameof(values), "There must be four and only four input values for Color.");
+                throw new ArgumentOutOfRangeException(
+                    nameof(values),
+                    "There must be four and only four input values for Color."
+                );
             }
 
             R = ToByte(values[0]);
@@ -260,7 +263,10 @@ namespace HelixToolkit.Nex.Maths
 
             if (values.Length != 4)
             {
-                throw new ArgumentOutOfRangeException(nameof(values), "There must be four and only four input values for Color.");
+                throw new ArgumentOutOfRangeException(
+                    nameof(values),
+                    "There must be four and only four input values for Color."
+                );
             }
 
             R = values[0];
@@ -286,19 +292,33 @@ namespace HelixToolkit.Nex.Maths
                     1 => G,
                     2 => B,
                     3 => A,
-                    _ => throw new ArgumentOutOfRangeException(nameof(index), "Indices for Color run from 0 to 3, inclusive."),
+                    _ => throw new ArgumentOutOfRangeException(
+                        nameof(index),
+                        "Indices for Color run from 0 to 3, inclusive."
+                    ),
                 };
             }
-
             set
             {
                 switch (index)
                 {
-                    case 0: R = value; break;
-                    case 1: G = value; break;
-                    case 2: B = value; break;
-                    case 3: A = value; break;
-                    default: throw new ArgumentOutOfRangeException(nameof(index), "Indices for Color run from 0 to 3, inclusive.");
+                    case 0:
+                        R = value;
+                        break;
+                    case 1:
+                        G = value;
+                        break;
+                    case 2:
+                        B = value;
+                        break;
+                    case 3:
+                        A = value;
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException(
+                            nameof(index),
+                            "Indices for Color run from 0 to 3, inclusive."
+                        );
                 }
             }
         }
@@ -378,7 +398,7 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>A four-element array containing the components of the color in RGBA order.</returns>
         public readonly byte[] ToArray()
         {
-            return new [] { R, G , B, A };
+            return new[] { R, G, B, A };
         }
 
         /// <summary>
@@ -391,9 +411,11 @@ namespace HelixToolkit.Nex.Maths
             float g = (float)G / 255.0f;
             float b = (float)B / 255.0f;
 
-            float max, min;
+            float max,
+                min;
 
-            max = r; min = r;
+            max = r;
+            min = r;
 
             if (g > max)
             {
@@ -433,11 +455,13 @@ namespace HelixToolkit.Nex.Maths
             float g = (float)G / 255.0f;
             float b = (float)B / 255.0f;
 
-            float max, min;
+            float max,
+                min;
             float delta;
             float hue = 0.0f;
 
-            max = r; min = r;
+            max = r;
+            min = r;
 
             if (g > max)
             {
@@ -492,10 +516,13 @@ namespace HelixToolkit.Nex.Maths
             float g = (float)G / 255.0f;
             float b = (float)B / 255.0f;
 
-            float max, min;
-            float l, s = 0;
+            float max,
+                min;
+            float l,
+                s = 0;
 
-            max = r; min = r;
+            max = r;
+            min = r;
 
             if (g > max)
             {
@@ -527,7 +554,7 @@ namespace HelixToolkit.Nex.Maths
                 s = l <= .5 ? (max - min) / (max + min) : (max - min) / (2 - max - min);
             }
             return s;
-        } 
+        }
 
         /// <summary>
         /// Adds two colors.
@@ -551,7 +578,12 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>The sum of the two colors.</returns>
         public static Color Add(Color left, Color right)
         {
-            return new Color(left.R + right.R, left.G + right.G, left.B + right.B, left.A + right.A);
+            return new Color(
+                left.R + right.R,
+                left.G + right.G,
+                left.B + right.B,
+                left.A + right.A
+            );
         }
 
         /// <summary>
@@ -576,7 +608,12 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>The difference of the two colors.</returns>
         public static Color Subtract(Color left, Color right)
         {
-            return new Color(left.R - right.R, left.G - right.G, left.B - right.B, left.A - right.A);
+            return new Color(
+                left.R - right.R,
+                left.G - right.G,
+                left.B - right.B,
+                left.A - right.A
+            );
         }
 
         /// <summary>
@@ -601,7 +638,12 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>The modulated color.</returns>
         public static Color Modulate(Color left, Color right)
         {
-            return new Color(left.R * right.R, left.G * right.G, left.B * right.B, left.A * right.A);
+            return new Color(
+                left.R * right.R,
+                left.G * right.G,
+                left.B * right.B,
+                left.A * right.A
+            );
         }
 
         /// <summary>
@@ -626,7 +668,12 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>The scaled color.</returns>
         public static Color Scale(Color value, float scale)
         {
-            return new Color((byte)(value.R * scale), (byte)(value.G * scale), (byte)(value.B * scale), (byte)(value.A * scale));
+            return new Color(
+                (byte)(value.R * scale),
+                (byte)(value.G * scale),
+                (byte)(value.B * scale),
+                (byte)(value.A * scale)
+            );
         }
 
         /// <summary>
@@ -712,7 +759,12 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>A color.</returns>
         public static Color FromBgra(int color)
         {
-            return new Color((byte)((color >> 16) & 255), (byte)((color >> 8) & 255), (byte)(color & 255), (byte)((color >> 24) & 255));
+            return new Color(
+                (byte)((color >> 16) & 255),
+                (byte)((color >> 8) & 255),
+                (byte)(color & 255),
+                (byte)((color >> 24) & 255)
+            );
         }
 
         /// <summary>
@@ -722,7 +774,7 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>A color.</returns>
         public static Color FromBgra(uint color)
         {
-            return FromBgra(unchecked((int) color));
+            return FromBgra(unchecked((int)color));
         }
 
         /// <summary>
@@ -732,7 +784,12 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>A color.</returns>
         public static Color FromAbgr(int color)
         {
-            return new Color((byte)(color >> 24), (byte)(color >> 16), (byte)(color >> 8), (byte)color);
+            return new Color(
+                (byte)(color >> 24),
+                (byte)(color >> 16),
+                (byte)(color >> 8),
+                (byte)color
+            );
         }
 
         /// <summary>
@@ -786,7 +843,7 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="amount">Value between 0 and 1 indicating the weight of <paramref name="end"/>.</param>
         /// <param name="result">When the method completes, contains the linear interpolation of the two colors.</param>
         /// <remarks>
-        /// Passing <paramref name="amount"/> a value of 0 will cause <paramref name="start"/> to be returned; a value of 1 will cause <paramref name="end"/> to be returned. 
+        /// Passing <paramref name="amount"/> a value of 0 will cause <paramref name="start"/> to be returned; a value of 1 will cause <paramref name="end"/> to be returned.
         /// </remarks>
         public static void Lerp(ref Color start, ref Color end, float amount, out Color result)
         {
@@ -804,7 +861,7 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="amount">Value between 0 and 1 indicating the weight of <paramref name="end"/>.</param>
         /// <returns>The linear interpolation of the two colors.</returns>
         /// <remarks>
-        /// Passing <paramref name="amount"/> a value of 0 will cause <paramref name="start"/> to be returned; a value of 1 will cause <paramref name="end"/> to be returned. 
+        /// Passing <paramref name="amount"/> a value of 0 will cause <paramref name="start"/> to be returned; a value of 1 will cause <paramref name="end"/> to be returned.
         /// </remarks>
         public static Color Lerp(Color start, Color end, float amount)
         {
@@ -819,7 +876,12 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="end">End color.</param>
         /// <param name="amount">Value between 0 and 1 indicating the weight of <paramref name="end"/>.</param>
         /// <param name="result">When the method completes, contains the cubic interpolation of the two colors.</param>
-        public static void SmoothStep(ref Color start, ref Color end, float amount, out Color result)
+        public static void SmoothStep(
+            ref Color start,
+            ref Color end,
+            float amount,
+            out Color result
+        )
         {
             amount = MathUtil.SmoothStep(amount);
             Lerp(ref start, ref end, amount, out result);
@@ -912,11 +974,12 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>The adjusted color.</returns>
         public static Color AdjustContrast(Color value, float contrast)
         {
-            return new Color(                
+            return new Color(
                 ToByte(0.5f + contrast * (value.R / 255.0f - 0.5f)),
                 ToByte(0.5f + contrast * (value.G / 255.0f - 0.5f)),
-                ToByte(0.5f + contrast * (value.B / 255.0f- 0.5f)),
-                value.A);
+                ToByte(0.5f + contrast * (value.B / 255.0f - 0.5f)),
+                value.A
+            );
         }
 
         /// <summary>
@@ -927,11 +990,14 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="result">When the method completes, contains the adjusted color.</param>
         public static void AdjustSaturation(ref Color value, float saturation, out Color result)
         {
-            float grey = value.R  / 255.0f * 0.2125f + value.G / 255.0f * 0.7154f + value.B / 255.0f * 0.0721f;
+            float grey =
+                value.R / 255.0f * 0.2125f
+                + value.G / 255.0f * 0.7154f
+                + value.B / 255.0f * 0.0721f;
 
             result.A = value.A;
             result.R = ToByte(grey + saturation * (value.R / 255.0f - grey));
-            result.G = ToByte(grey + saturation * (value.G / 255.0f- grey));
+            result.G = ToByte(grey + saturation * (value.G / 255.0f - grey));
             result.B = ToByte(grey + saturation * (value.B / 255.0f - grey));
         }
 
@@ -943,13 +1009,17 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>The adjusted color.</returns>
         public static Color AdjustSaturation(Color value, float saturation)
         {
-            float grey = value.R / 255.0f * 0.2125f + value.G / 255.0f * 0.7154f + value.B / 255.0f * 0.0721f;
+            float grey =
+                value.R / 255.0f * 0.2125f
+                + value.G / 255.0f * 0.7154f
+                + value.B / 255.0f * 0.0721f;
 
-            return new Color(                
+            return new Color(
                 ToByte(grey + saturation * (value.R / 255.0f - grey)),
                 ToByte(grey + saturation * (value.G / 255.0f - grey)),
                 ToByte(grey + saturation * (value.B / 255.0f - grey)),
-                value.A);
+                value.A
+            );
         }
 
         /// <summary>
@@ -960,7 +1030,12 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>The sum of the two colors.</returns>
         public static Color operator +(Color left, Color right)
         {
-            return new Color(left.R + right.R, left.G + right.G, left.B + right.B, left.A + right.A);
+            return new Color(
+                left.R + right.R,
+                left.G + right.G,
+                left.B + right.B,
+                left.A + right.A
+            );
         }
 
         /// <summary>
@@ -981,7 +1056,12 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>The difference of the two colors.</returns>
         public static Color operator -(Color left, Color right)
         {
-            return new Color(left.R - right.R, left.G - right.G, left.B - right.B, left.A - right.A);
+            return new Color(
+                left.R - right.R,
+                left.G - right.G,
+                left.B - right.B,
+                left.A - right.A
+            );
         }
 
         /// <summary>
@@ -1002,7 +1082,12 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>The scaled color.</returns>
         public static Color operator *(float scale, Color value)
         {
-            return new Color((byte)(value.R * scale), (byte)(value.G * scale), (byte)(value.B * scale), (byte)(value.A * scale));
+            return new Color(
+                (byte)(value.R * scale),
+                (byte)(value.G * scale),
+                (byte)(value.B * scale),
+                (byte)(value.A * scale)
+            );
         }
 
         /// <summary>
@@ -1013,7 +1098,12 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>The scaled color.</returns>
         public static Color operator *(Color value, float scale)
         {
-            return new Color((byte)(value.R * scale), (byte)(value.G * scale), (byte)(value.B * scale), (byte)(value.A * scale));
+            return new Color(
+                (byte)(value.R * scale),
+                (byte)(value.G * scale),
+                (byte)(value.B * scale),
+                (byte)(value.A * scale)
+            );
         }
 
         /// <summary>
@@ -1024,7 +1114,12 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>The modulated color.</returns>
         public static Color operator *(Color left, Color right)
         {
-            return new Color((byte)(left.R * right.R / 255.0f), (byte)(left.G * right.G / 255.0f), (byte)(left.B * right.B / 255.0f), (byte)(left.A * right.A / 255.0f));
+            return new Color(
+                (byte)(left.R * right.R / 255.0f),
+                (byte)(left.G * right.G / 255.0f),
+                (byte)(left.B * right.B / 255.0f),
+                (byte)(left.A * right.A / 255.0f)
+            );
         }
 
         /// <summary>
@@ -1078,7 +1173,12 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>The result of the conversion.</returns>
         public static explicit operator Vector4(Color value)
         {
-            return new Vector4(value.R / 255.0f, value.G / 255.0f, value.B / 255.0f, value.A / 255.0f);
+            return new Vector4(
+                value.R / 255.0f,
+                value.G / 255.0f,
+                value.B / 255.0f,
+                value.A / 255.0f
+            );
         }
 
         /// <summary>
@@ -1141,7 +1241,7 @@ namespace HelixToolkit.Nex.Maths
         }
 
         /// <summary>
-        /// Performs an explicit conversion from <see cref="System.Int32"/> to <see cref="Color"/>.
+        /// Performs an explicit conversion from <see cref="int"/> to <see cref="Color"/>.
         /// </summary>
         /// <param name="value">The value.</param>
         /// <returns>
@@ -1153,7 +1253,7 @@ namespace HelixToolkit.Nex.Maths
         }
 
         /// <summary>
-        /// Performs an explicit conversion from <see cref="System.Int32"/> to <see cref="Color"/>.
+        /// Performs an explicit conversion from <see cref="int"/> to <see cref="Color"/>.
         /// </summary>
         /// <param name="value">The value.</param>
         /// <returns>
@@ -1165,10 +1265,10 @@ namespace HelixToolkit.Nex.Maths
         }
 
         /// <summary>
-        /// Returns a <see cref="System.String"/> that represents this instance.
+        /// Returns a <see cref="string"/> that represents this instance.
         /// </summary>
         /// <returns>
-        /// A <see cref="System.String"/> that represents this instance.
+        /// A <see cref="string"/> that represents this instance.
         /// </returns>
         public override readonly string ToString()
         {
@@ -1176,11 +1276,11 @@ namespace HelixToolkit.Nex.Maths
         }
 
         /// <summary>
-        /// Returns a <see cref="System.String"/> that represents this instance.
+        /// Returns a <see cref="string"/> that represents this instance.
         /// </summary>
         /// <param name="format">The format to apply to each channel element (byte).</param>
         /// <returns>
-        /// A <see cref="System.String"/> that represents this instance.
+        /// A <see cref="string"/> that represents this instance.
         /// </returns>
         public readonly string ToString(string format)
         {
@@ -1188,44 +1288,44 @@ namespace HelixToolkit.Nex.Maths
         }
 
         /// <summary>
-        /// Returns a <see cref="System.String"/> that represents this instance.
+        /// Returns a <see cref="string"/> that represents this instance.
         /// </summary>
         /// <param name="formatProvider">The format provider.</param>
         /// <returns>
-        /// A <see cref="System.String"/> that represents this instance.
+        /// A <see cref="string"/> that represents this instance.
         /// </returns>
         public readonly string ToString(IFormatProvider formatProvider)
         {
-            return string.Format(formatProvider, toStringFormat_, A, R, G, B);
+            return string.Format(formatProvider, ToStringFormat, A, R, G, B);
         }
 
         /// <summary>
-        /// Returns a <see cref="System.String"/> that represents this instance.
+        /// Returns a <see cref="string"/> that represents this instance.
         /// </summary>
         /// <param name="format">The format to apply to each channel element (byte).</param>
         /// <param name="formatProvider">The format provider.</param>
         /// <returns>
-        /// A <see cref="System.String"/> that represents this instance.
+        /// A <see cref="string"/> that represents this instance.
         /// </returns>
         public readonly string ToString(string? format, IFormatProvider? formatProvider)
         {
-            return format == null && formatProvider == null
-                ? string.Empty
-                : format == null
-                ? ToString(formatProvider!)
-                : string.Format(formatProvider,
-                                 toStringFormat_,
-                                 A.ToString(format, formatProvider),
-                                 R.ToString(format, formatProvider),
-                                 G.ToString(format, formatProvider),
-                                 B.ToString(format, formatProvider));
+            return format == null && formatProvider == null ? string.Empty
+                : format == null ? ToString(formatProvider!)
+                : string.Format(
+                    formatProvider,
+                    ToStringFormat,
+                    A.ToString(format, formatProvider),
+                    R.ToString(format, formatProvider),
+                    G.ToString(format, formatProvider),
+                    B.ToString(format, formatProvider)
+                );
         }
 
         /// <summary>
         /// Returns a hash code for this instance.
         /// </summary>
         /// <returns>
-        /// A hash code for this instance, suitable for use in hashing algorithms and data structures like a hash table. 
+        /// A hash code for this instance, suitable for use in hashing algorithms and data structures like a hash table.
         /// </returns>
 #pragma warning disable IDE0070 // Use 'System.HashCode'
         public override readonly int GetHashCode()
@@ -1268,11 +1368,11 @@ namespace HelixToolkit.Nex.Maths
         }
 
         /// <summary>
-        /// Determines whether the specified <see cref="System.Object"/> is equal to this instance.
+        /// Determines whether the specified <see cref="object"/> is equal to this instance.
         /// </summary>
-        /// <param name="obj">The <see cref="System.Object"/> to compare with this instance.</param>
+        /// <param name="obj">The <see cref="object"/> to compare with this instance.</param>
         /// <returns>
-        /// <c>true</c> if the specified <see cref="System.Object"/> is equal to this instance; otherwise, <c>false</c>.
+        /// <c>true</c> if the specified <see cref="object"/> is equal to this instance; otherwise, <c>false</c>.
         /// </returns>
         public override readonly bool Equals(object? obj)
         {
@@ -1287,7 +1387,11 @@ namespace HelixToolkit.Nex.Maths
 
         public static byte ToByte(int value)
         {
-            return (byte)(value < 0 ? 0 : value <= 255 ? value : 255);
+            return (byte)(
+                value < 0 ? 0
+                : value <= 255 ? value
+                : 255
+            );
         }
     }
 }

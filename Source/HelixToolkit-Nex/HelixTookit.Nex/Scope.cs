@@ -1,4 +1,4 @@
-﻿namespace HelixToolkit.Nex;
+namespace HelixToolkit.Nex;
 
 /// <summary>
 /// Represents a disposable scope that executes an action when disposed.
@@ -10,22 +10,22 @@
 /// </remarks>
 public sealed class Scope(Action actionOnDispose) : IDisposable
 {
-    private readonly Action actionOnDispose = actionOnDispose;
+    private readonly Action _actionOnDispose = actionOnDispose;
 
-    private bool disposedValue;
+    private bool _disposedValue;
 
     private void Dispose(bool disposing)
     {
-        if (!disposedValue)
+        if (!_disposedValue)
         {
             if (disposing)
             {
-                actionOnDispose();
+                _actionOnDispose();
             }
 
             // TODO: free unmanaged resources (unmanaged objects) and override finalizer
             // TODO: set large fields to null
-            disposedValue = true;
+            _disposedValue = true;
         }
     }
 

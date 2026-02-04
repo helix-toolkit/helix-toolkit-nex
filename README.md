@@ -10,4 +10,20 @@ The graphics interface and Vulkan backend are largely inspired by [LightWeightVk
 
 Currently in development.
 
-[Samples](Source/HelixToolkit-Nex/Samples).
+## Features (Done or In progress)
+
+- Vulkan backend implementation (Done)
+- [ImGui integration](Source/HelixToolkit-Nex/Samples/GraphicsAPI/ImGuiTest/README.md) (Done)
+- [Forward+(Tiled based GPU light culling)](Source/HelixToolkit-Nex/Samples/GraphicsAPI/ForwardPlusSimple/README.md) rendering pipeline. (Done)
+- PBR material system. (In Progress)
+- [GPU Frustum Culling](Source/HelixToolkit-Nex/Samples/GraphicsAPI/MeshCulling/README.md) and [GPU Frustum Culling on Instancing](Source/HelixToolkit-Nex/Samples/GraphicsAPI/InstancingMeshCulling/README.md). (Done)
+- ECS based scene management system. (In Progress)
+- Engine architecture design. (In Progress)
+
+## Contributing
+
+Interested in contributing? Please read our [Contributing Guide](CONTRIBUTING.md) for information on:
+- Development setup and prerequisites
+- Code formatting requirements
+- Building and testing
+- Submitting pull requests

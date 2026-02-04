@@ -1,15 +1,10 @@
-﻿namespace HelixToolkit.Nex.Graphics;
+namespace HelixToolkit.Nex.Graphics;
 
 /// <summary>
 /// Defines the type of shader data being provided to the shader module.
 /// </summary>
 public enum ShaderDataType
 {
-    /// <summary>
-    /// Automatically detect the shader data type based on the content.
-    /// </summary>
-    Auto, // automatically detect the type based on the data
-
     /// <summary>
     /// SPIR-V binary format (pre-compiled shader bytecode).
     /// </summary>
@@ -18,7 +13,7 @@ public enum ShaderDataType
     /// <summary>
     /// GLSL source code format (will be compiled to SPIR-V).
     /// </summary>
-    Glsl
+    Glsl,
 }
 
 /// <summary>
@@ -61,12 +56,17 @@ public struct ShaderModuleDesc()
     /// <summary>
     /// The type of shader data provided. Defaults to <see cref="ShaderDataType.Auto"/>.
     /// </summary>
-    public ShaderDataType DataType = ShaderDataType.Auto; // default is SPIR-V
+    public ShaderDataType DataType = ShaderDataType.Glsl;
 
     /// <summary>
-    /// Pointer to the shader data (either SPIR-V bytecode or GLSL source code).
+    /// Pointer to the shader data (SPIR-V bytecode).
     /// </summary>
     public nint Data;
+
+    /// <summary>
+    /// Gets or sets the GLSL (OpenGL Shading Language) source code associated with this object.
+    /// </summary>
+    public string GlslSource = string.Empty;
 
     /// <summary>
     /// Size of the shader data in bytes.

@@ -1,4 +1,4 @@
-﻿/*
+/*
 The MIT License (MIT)
 Copyright (c) 2022 Helix Toolkit contributors
 
@@ -61,7 +61,7 @@ namespace HelixToolkit.Nex.Maths
         /// </summary>
         public static bool IsNormalized(this Quaternion q)
         {
-            return MathUtil.IsOne(Quaternion.Dot(q,q));
+            return MathUtil.IsOne(Quaternion.Dot(q, q));
         }
 
         /// <summary>
@@ -70,7 +70,7 @@ namespace HelixToolkit.Nex.Maths
         /// <value>The quaternion's angle.</value>
         public static float Angle(this Quaternion q)
         {
-            float length =  (q.X * q.X) + (q.Y * q.Y) + (q.Z * q.Z);
+            float length = (q.X * q.X) + (q.Y * q.Y) + (q.Z * q.Z);
             return MathUtil.IsZero(length) ? 0.0f : (float)(2.0 * Math.Acos(MathUtil.Clamp(q.W, -1f, 1f)));
         }
 
@@ -92,14 +92,14 @@ namespace HelixToolkit.Nex.Maths
         /// <value>The axis components of the quaternion.</value>
         public static Vector3 Axis(this Quaternion q)
         {
-            float length =  (q.X * q.X) + (q.Y * q.Y) + (q.Z * q.Z);
+            float length = (q.X * q.X) + (q.Y * q.Y) + (q.Z * q.Z);
             if (MathUtil.IsZero(length))
             {
                 return Vector3.UnitX;
             }
 
             float inv = 1.0f / (float)Math.Sqrt(length);
-                return new Vector3(q.X * inv, q.Y * inv, q.Z * inv);
+            return new Vector3(q.X * inv, q.Y * inv, q.Z * inv);
         }
 
         /// <summary>
@@ -110,7 +110,7 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="index">The index of the component to access. Use 0 for the X component, 1 for the Y component, 2 for the Z component, and 3 for the Width component.</param>
         /// <returns>The value of the component at the specified index.</returns>
         /// <exception cref="System.ArgumentOutOfRangeException">Thrown when the <paramref name="index"/> is out of the range [0, 3].</exception>
-        public static float Get(this Quaternion q,int index)
+        public static float Get(this Quaternion q, int index)
         {
             return index switch
             {
@@ -131,14 +131,23 @@ namespace HelixToolkit.Nex.Maths
         /// <exception cref="ArgumentOutOfRangeException">index - Indices for Quaternion run from 0 to 3, inclusive.</exception>
         public static void Set(ref Quaternion q, int index, float value)
         {
-                switch (index)
-                {
-                    case 0: q.X = value; break;
-                    case 1: q.Y = value; break;
-                    case 2: q.Z = value; break;
-                    case 3: q.W = value; break;
-                    default: throw new ArgumentOutOfRangeException(nameof(index), "Indices for Quaternion run from 0 to 3, inclusive.");
-                }
+            switch (index)
+            {
+                case 0:
+                    q.X = value;
+                    break;
+                case 1:
+                    q.Y = value;
+                    break;
+                case 2:
+                    q.Z = value;
+                    break;
+                case 3:
+                    q.W = value;
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(index), "Indices for Quaternion run from 0 to 3, inclusive.");
+            }
         }
 
         /// <summary>
@@ -273,7 +282,7 @@ namespace HelixToolkit.Nex.Maths
         /// </summary>
         /// <param name="value">The quaternion.</param>
         /// <param name="vector">The vector to rotate.</param>
-        public static void Rotate(Quaternion value,ref Vector3 vector)
+        public static void Rotate(Quaternion value, ref Vector3 vector)
         {
             // Ref: https://github.com/stride3d/stride/blob/master/sources/core/Stride.Core.Mathematics/Quaternion.cs
             var pureQuaternion = new Quaternion(vector, 0);

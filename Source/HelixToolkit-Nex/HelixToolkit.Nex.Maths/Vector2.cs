@@ -1,4 +1,4 @@
-﻿/*
+/*
 The MIT License (MIT)
 Copyright (c) 2022 Helix Toolkit contributors
 
@@ -121,9 +121,14 @@ namespace HelixToolkit.Nex.Maths
         {
             switch (index)
             {
-                case 0: v.X = value; break;
-                case 1: v.Y = value; break;
-                default: throw new ArgumentOutOfRangeException(nameof(index), "Indices for Vector2 run from 0 to 1, inclusive.");
+                case 0:
+                    v.X = value;
+                    break;
+                case 1:
+                    v.Y = value;
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(index), "Indices for Vector2 run from 0 to 1, inclusive.");
             }
         }
 
@@ -188,7 +193,7 @@ namespace HelixToolkit.Nex.Maths
         /// <returns><c>true</c> if left and right are near another 2D, <c>false</c> otherwise</returns>
         public static bool NearEqual(ref Vector2 left, ref Vector2 right, ref Vector2 epsilon)
         {
-            return MathUtil.WithinEpsilon(left.X, right.X, epsilon.X) 
+            return MathUtil.WithinEpsilon(left.X, right.X, epsilon.X)
                 && MathUtil.WithinEpsilon(left.Y, right.Y, epsilon.Y);
         }
 

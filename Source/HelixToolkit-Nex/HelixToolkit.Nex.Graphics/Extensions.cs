@@ -1,11 +1,13 @@
-﻿namespace HelixToolkit.Nex.Graphics;
+namespace HelixToolkit.Nex.Graphics;
 
 /// <summary>
 /// Provides extension methods for common graphics operations and type conversions.
 /// </summary>
 public static class Extensions
 {
-    static readonly ILogger logger = LogManager.Create("HelixToolkit.Nex.Graphics.Extensions");
+    private static readonly ILogger logger = LogManager.Create(
+        "HelixToolkit.Nex.Graphics.Extensions"
+    );
 
     /// <summary>
     /// Checks if the result code indicates success.
@@ -57,16 +59,15 @@ public static class Extensions
     /// In DEBUG builds, this method throws an <see cref="InvalidOperationException"/> on error.
     /// In RELEASE builds, it logs the error instead.
     /// </remarks>
-    public static ResultCode CheckResult(this ResultCode result, string message = "Operation failed")
+    public static ResultCode CheckResult(
+        this ResultCode result,
+        string message = "Operation failed"
+    )
     {
-
         if (result.HasError())
         {
-#if DEBUG
-            throw new InvalidOperationException($"{message}: {result}");
-#else
             logger.LogError("{MESSAGE}: {RESULT}", message, result);
-#endif
+            HxDebug.Assert(false);
         }
         return result;
     }
@@ -106,5 +107,16 @@ public static class Extensions
             }
         }
         return shaderDefines;
+    }
+
+    /// <summary>
+    /// Retrieves the format of the specified texture.
+    /// </summary>
+    /// <param name="tex">The texture handle for which the format is to be retrieved.</param>
+    /// <param name="context">The context used to resolve the texture format. This cannot be <see langword="null"/>.</param>
+    /// <returns>The format of the specified texture.</returns>
+    public static Format GetFormat(this TextureHandle tex, IContext context)
+    {
+        return context.GetFormat(tex);
     }
 }

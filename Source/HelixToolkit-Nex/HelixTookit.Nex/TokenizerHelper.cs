@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 
 namespace HelixToolkit.Nex;
 
@@ -7,24 +7,24 @@ namespace HelixToolkit.Nex;
 /// </summary>
 public sealed class TokenizerHelper
 {
-    private char quoteChar;
-    private char argSeparator;
-    private string str = string.Empty;
-    private int strLen;
-    private int charIndex;
-    private int currentTokenIndex;
-    private int currentTokenLength;
-    private bool foundSeparator;
+    private char _quoteChar;
+    private char _argSeparator;
+    private string _str = string.Empty;
+    private int _strLen;
+    private int _charIndex;
+    private int _currentTokenIndex;
+    private int _currentTokenLength;
+    private bool _foundSeparator;
 
-    /// <summary> 
+    /// <summary>
     /// Constructor for TokenizerHelper which accepts an IFormatProvider.
-    /// If the IFormatProvider is null, we use the thread's IFormatProvider info. 
+    /// If the IFormatProvider is null, we use the thread's IFormatProvider info.
     /// We will use ',' as the list separator, unless it's the same as the
     /// decimal separator.  If it *is*, then we can't determine if, say, "23,5" is one
     /// number or two.  In this case, we will use ";" as the separator.
-    /// </summary> 
+    /// </summary>
     /// <param name="str"> The string which will be tokenized. </param>
-    /// <param name="formatProvider"> The IFormatProvider which controls this tokenization. </param> 
+    /// <param name="formatProvider"> The IFormatProvider which controls this tokenization. </param>
     public TokenizerHelper(string str, IFormatProvider formatProvider)
     {
         var numberSeparator = GetNumericListSeparator(formatProvider);
@@ -34,10 +34,10 @@ public sealed class TokenizerHelper
     /// <summary>
     /// Initialize the TokenizerHelper with the string to tokenize,
     /// the char which represents quotes and the list separator.
-    /// </summary> 
+    /// </summary>
     /// <param name="str"> The string to tokenize. </param>
-    /// <param name="quoteChar"> The quote char. </param> 
-    /// <param name="separator"> The list separator. </param> 
+    /// <param name="quoteChar"> The quote char. </param>
+    /// <param name="separator"> The list separator. </param>
     public TokenizerHelper(string str, char quoteChar, char separator)
     {
         this.Initialize(str, quoteChar, separator);
@@ -46,29 +46,29 @@ public sealed class TokenizerHelper
     /// <summary>
     /// Initialize the TokenizerHelper with the string to tokenize,
     /// the char which represents quotes and the list separator.
-    /// </summary> 
+    /// </summary>
     /// <param name="str"> The string to tokenize. </param>
-    /// <param name="quoteChar"> The quote char. </param> 
-    /// <param name="separator"> The list separator. </param> 
+    /// <param name="quoteChar"> The quote char. </param>
+    /// <param name="separator"> The list separator. </param>
     private void Initialize(string str, char quoteChar, char separator)
     {
-        this.str = str;
-        this.strLen = str == null ? 0 : str.Length;
-        this.currentTokenIndex = -1;
-        this.quoteChar = quoteChar;
-        this.argSeparator = separator;
+        this._str = str;
+        this._strLen = str == null ? 0 : str.Length;
+        this._currentTokenIndex = -1;
+        this._quoteChar = quoteChar;
+        this._argSeparator = separator;
 
-        // immediately forward past any whitespace so 
+        // immediately forward past any whitespace so
         // NextToken() logic always starts on the first
         // character of the next token.
-        while (this.charIndex < this.strLen)
+        while (this._charIndex < this._strLen)
         {
-            if (!Char.IsWhiteSpace(this.str, this.charIndex))
+            if (!char.IsWhiteSpace(this._str, this._charIndex))
             {
                 break;
             }
 
-            ++this.charIndex;
+            ++this._charIndex;
         }
     }
 
@@ -78,28 +78,28 @@ public sealed class TokenizerHelper
     /// <returns>A <see cref="ReadOnlySpan{T}"/> containing the current token, or null if no current token.</returns>
     public ReadOnlySpan<char> GetCurrentToken()
     {
-        // if no current token, return null 
-        if (this.currentTokenIndex < 0)
+        // if no current token, return null
+        if (this._currentTokenIndex < 0)
         {
             return null;
         }
 
-        return this.str.AsSpan(this.currentTokenIndex, this.currentTokenLength);
+        return this._str.AsSpan(this._currentTokenIndex, this._currentTokenLength);
     }
 
-    /// <summary> 
+    /// <summary>
     /// Throws an exception if there is any non-whitespace left un-parsed.
     /// </summary>
     /// <exception cref="InvalidOperationException">Thrown if extra data is encountered after the last token.</exception>
     public void LastTokenRequired()
     {
-        if (this.charIndex != this.strLen)
+        if (this._charIndex != this._strLen)
         {
             throw new InvalidOperationException("TokenizerHelperExtraDataEncountered");
         }
     }
 
-    /// <summary> 
+    /// <summary>
     /// Advances to the NextToken
     /// </summary>
     /// <returns>true if next token was found, false if at end of string</returns>
@@ -108,7 +108,7 @@ public sealed class TokenizerHelper
         return NextToken(false);
     }
 
-    /// <summary> 
+    /// <summary>
     /// Advances to the NextToken, throwing an exception if not present
     /// </summary>
     /// <returns>The next token found</returns>
@@ -124,8 +124,8 @@ public sealed class TokenizerHelper
     }
 
     /// <summary>
-    /// Advances to the NextToken, throwing an exception if not present 
-    /// </summary> 
+    /// Advances to the NextToken, throwing an exception if not present
+    /// </summary>
     /// <param name="allowQuotedToken">Whether to allow tokens enclosed in quotes.</param>
     /// <returns>The next token found</returns>
     /// <exception cref="InvalidOperationException">Thrown if no next token is found.</exception>
@@ -143,16 +143,16 @@ public sealed class TokenizerHelper
     /// Advances to the NextToken
     /// </summary>
     /// <param name="allowQuotedToken">Whether to allow tokens enclosed in quotes.</param>
-    /// <returns>true if next token was found, false if at end of string</returns> 
+    /// <returns>true if next token was found, false if at end of string</returns>
     public bool NextToken(bool allowQuotedToken)
     {
-        // use the currently-set separator character. 
-        return NextToken(allowQuotedToken, this.argSeparator);
+        // use the currently-set separator character.
+        return NextToken(allowQuotedToken, this._argSeparator);
     }
 
     /// <summary>
     /// Advances to the NextToken.  A separator character can be specified
-    /// which overrides the one previously set. 
+    /// which overrides the one previously set.
     /// </summary>
     /// <param name="allowQuotedToken">Whether to allow tokens enclosed in quotes.</param>
     /// <param name="separator">The separator character to use for this call.</param>
@@ -160,68 +160,67 @@ public sealed class TokenizerHelper
     /// <exception cref="InvalidOperationException">Thrown if the token format is invalid.</exception>
     public bool NextToken(bool allowQuotedToken, char separator)
     {
-        this.currentTokenIndex = -1; // reset the currentTokenIndex 
-        this.foundSeparator = false; // reset
+        this._currentTokenIndex = -1; // reset the currentTokenIndex
+        this._foundSeparator = false; // reset
 
         // If we're at end of the string, just return false.
-        if (this.charIndex >= this.strLen)
+        if (this._charIndex >= this._strLen)
         {
             return false;
         }
 
-        var currentChar = this.str[this.charIndex];
+        var currentChar = this._str[this._charIndex];
 
-        Debug.Assert(!Char.IsWhiteSpace(currentChar), "Token started on Whitespace");
+        Debug.Assert(!char.IsWhiteSpace(currentChar), "Token started on Whitespace");
 
-        // setup the quoteCount 
+        // setup the quoteCount
         var quoteCount = 0;
 
-        // If we are allowing a quoted token and this token begins with a quote, 
+        // If we are allowing a quoted token and this token begins with a quote,
         // set up the quote count and skip the initial quote
-        if (allowQuotedToken &&
-            currentChar == this.quoteChar)
+        if (allowQuotedToken && currentChar == this._quoteChar)
         {
             quoteCount++; // increment quote count
-            ++this.charIndex; // move to next character 
+            ++this._charIndex; // move to next character
         }
 
-        var newTokenIndex = this.charIndex;
+        var newTokenIndex = this._charIndex;
         var newTokenLength = 0;
 
         // loop until hit end of string or hit a , or whitespace
         // if at end of string ust return false.
-        while (this.charIndex < this.strLen)
+        while (this._charIndex < this._strLen)
         {
-            currentChar = this.str[this.charIndex];
+            currentChar = this._str[this._charIndex];
 
-            // if have a QuoteCount and this is a quote 
+            // if have a QuoteCount and this is a quote
             // decrement the quoteCount
             if (quoteCount > 0)
             {
                 // if anything but a quoteChar we move on
-                if (currentChar == this.quoteChar)
+                if (currentChar == this._quoteChar)
                 {
                     --quoteCount;
 
-                    // if at zero which it always should for now 
+                    // if at zero which it always should for now
                     // break out of the loop
                     if (0 == quoteCount)
                     {
-                        ++this.charIndex; // move past the quote
+                        ++this._charIndex; // move past the quote
                         break;
                     }
                 }
             }
-            else if ((Char.IsWhiteSpace(currentChar)) || (currentChar == separator))
+            else if ((char.IsWhiteSpace(currentChar)) || (currentChar == separator))
             {
                 if (currentChar == separator)
                 {
-                    this.foundSeparator = true;
+                    this._foundSeparator = true;
                 }
                 break;
             }
 
-            ++this.charIndex;
+            ++this._charIndex;
             ++newTokenLength;
         }
 
@@ -232,13 +231,13 @@ public sealed class TokenizerHelper
             throw new InvalidOperationException("TokenizerHelperMissingEndQuote");
         }
 
-        ScanToNextToken(separator); // move so at the start of the nextToken for next call 
+        ScanToNextToken(separator); // move so at the start of the nextToken for next call
 
         // finally made it, update the _currentToken values
-        this.currentTokenIndex = newTokenIndex;
-        this.currentTokenLength = newTokenLength;
+        this._currentTokenIndex = newTokenIndex;
+        this._currentTokenLength = newTokenLength;
 
-        if (this.currentTokenLength < 1)
+        if (this._currentTokenLength < 1)
         {
             throw new InvalidOperationException("TokenizerHelperEmptyToken");
         }
@@ -250,41 +249,40 @@ public sealed class TokenizerHelper
     private void ScanToNextToken(char separator)
     {
         // if already at end of the string don't bother
-        if (this.charIndex < this.strLen)
+        if (this._charIndex < this._strLen)
         {
-            var currentChar = this.str[this.charIndex];
+            var currentChar = this._str[this._charIndex];
 
-            // check that the currentChar is a space or the separator.  If not 
+            // check that the currentChar is a space or the separator.  If not
             // we have an error. this can happen in the quote case
-            // that the char after the quotes string isn't a char. 
-            if (!(currentChar == separator) &&
-                !Char.IsWhiteSpace(currentChar))
+            // that the char after the quotes string isn't a char.
+            if (!(currentChar == separator) && !char.IsWhiteSpace(currentChar))
             {
                 throw new InvalidOperationException("TokenizerHelperExtraDataEncountered");
             }
 
-            // loop until hit a character that isn't 
+            // loop until hit a character that isn't
             // an argument separator or whitespace.
-            // !!!Todo: if more than one argSet throw an exception 
+            // !!!Todo: if more than one argSet throw an exception
             var argSepCount = 0;
-            while (this.charIndex < this.strLen)
+            while (this._charIndex < this._strLen)
             {
-                currentChar = this.str[this.charIndex];
+                currentChar = this._str[this._charIndex];
 
                 if (currentChar == separator)
                 {
-                    this.foundSeparator = true;
+                    this._foundSeparator = true;
                     ++argSepCount;
-                    this.charIndex++;
+                    this._charIndex++;
 
                     if (argSepCount > 1)
                     {
                         throw new InvalidOperationException("TokenizerHelperEmptyToken");
                     }
                 }
-                else if (Char.IsWhiteSpace(currentChar))
+                else if (char.IsWhiteSpace(currentChar))
                 {
-                    ++this.charIndex;
+                    ++this._charIndex;
                 }
                 else
                 {
@@ -292,11 +290,11 @@ public sealed class TokenizerHelper
                 }
             }
 
-            // if there was a separatorChar then we shouldn't be 
-            // at the end of string or means there was a separator 
+            // if there was a separatorChar then we shouldn't be
+            // at the end of string or means there was a separator
             // but there isn't an arg
 
-            if (argSepCount > 0 && this.charIndex >= this.strLen)
+            if (argSepCount > 0 && this._charIndex >= this._strLen)
             {
                 throw new InvalidOperationException("TokenizerHelperEmptyToken");
             }
@@ -317,15 +315,19 @@ public sealed class TokenizerHelper
         var numericSeparator = ',';
 
         // Get the NumberFormatInfo out of the provider, if possible
-        // If the IFormatProvider doesn't not contain a NumberFormatInfo, then 
-        // this method returns the current culture's NumberFormatInfo. 
+        // If the IFormatProvider doesn't not contain a NumberFormatInfo, then
+        // this method returns the current culture's NumberFormatInfo.
         var numberFormat = NumberFormatInfo.GetInstance(provider);
 
         Debug.Assert(null != numberFormat);
 
         // Is the decimal separator is the same as the list separator?
-        // If so, we use the ";". 
-        if (numberFormat is not null && (numberFormat.NumberDecimalSeparator.Length > 0) && (numericSeparator == numberFormat.NumberDecimalSeparator[0]))
+        // If so, we use the ";".
+        if (
+            numberFormat is not null
+            && (numberFormat.NumberDecimalSeparator.Length > 0)
+            && (numericSeparator == numberFormat.NumberDecimalSeparator[0])
+        )
         {
             numericSeparator = ';';
         }
@@ -338,9 +340,6 @@ public sealed class TokenizerHelper
     /// </summary>
     public bool FoundSeparator
     {
-        get
-        {
-            return this.foundSeparator;
-        }
+        get { return this._foundSeparator; }
     }
 }

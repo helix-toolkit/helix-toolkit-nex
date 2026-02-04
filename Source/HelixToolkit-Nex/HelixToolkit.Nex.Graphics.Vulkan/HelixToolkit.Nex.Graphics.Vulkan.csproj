@@ -1,5 +1,4 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
     <PropertyGroup>
         <TargetFramework>net8.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
@@ -10,24 +9,8 @@
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <IncludeSymbols>True</IncludeSymbols>
         <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
     </PropertyGroup>
-
-    <ItemGroup>
-      <None Remove="Shaders\HeaderFrag.glsl" />
-      <None Remove="Shaders\HeaderTask.glsl" />
-      <None Remove="Shaders\HeaderVertex.glsl" />
-    </ItemGroup>
-    <ItemGroup>
-        <None Include="..\..\..\README.md">
-            <Pack>True</Pack>
-            <PackagePath>\</PackagePath>
-        </None>
-    </ItemGroup>
-    <ItemGroup>
-      <EmbeddedResource Include="Shaders\HeaderFrag.glsl" />
-      <EmbeddedResource Include="Shaders\HeaderTask.glsl" />
-      <EmbeddedResource Include="Shaders\HeaderVertex.glsl" />
-    </ItemGroup>
 
     <ItemGroup>
         <PackageReference Include="Glslang.NET" Version="1.2.0" />
@@ -40,5 +23,13 @@
     <ItemGroup>
         <ProjectReference Include="..\HelixToolkit.Nex.Graphics\HelixToolkit.Nex.Graphics.csproj" />
         <ProjectReference Include="..\HelixToolkit.Nex.Maths\HelixToolkit.Nex.Maths.csproj" />
+        <ProjectReference Include="..\HelixToolkit.Nex.Shaders\HelixToolkit.Nex.Shaders.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Update="README.md">
+        <Pack>True</Pack>
+        <PackagePath>\</PackagePath>
+      </None>
     </ItemGroup>
 </Project>
