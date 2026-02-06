@@ -512,12 +512,11 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
 
             BindViewport(viewport);
             BindScissorRect(scissor);
-            BindDepthState(new DepthState());
+            BindDepthState(
+                fb.DepthStencil.Texture ? DepthState.DefaultReversedZ : DepthState.Disabled
+            );
 
             _ctx.CheckAndUpdateDescriptorSets();
-
-            VK.vkCmdSetDepthCompareOp(Wrapper.Instance, VkCompareOp.Always);
-            VK.vkCmdSetDepthBiasEnable(Wrapper.Instance, VK_BOOL.False);
 
             VK.vkCmdBeginRendering(Wrapper.Instance, &renderingInfo);
         }
@@ -580,6 +579,19 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
         }
 #endif
         VK.vkCmdSetDepthCompareOp(Wrapper.Instance, op);
+        VK.vkCmdSetDepthBiasEnable(
+            Wrapper.Instance,
+            desc.IsDepthBiasEnabled ? VK_BOOL.True : VK_BOOL.False
+        );
+        if (desc.IsDepthBiasEnabled)
+        {
+            VK.vkCmdSetDepthBias(
+                Wrapper.Instance,
+                desc.DepthBiasConstantFactor,
+                desc.DepthBiasClamp,
+                desc.DepthBiasSlopeFactor
+            );
+        }
     }
 
     /// <inheritdoc/>

@@ -743,6 +743,29 @@ public sealed class DepthState()
     public bool IsDepthWriteEnabled = false;
 
     /// <summary>
+    /// Gets or sets a value indicating whether depth bias is enabled.
+    /// </summary>
+    public bool IsDepthBiasEnabled = false;
+
+    /// <summary>
+    /// Gets or sets the constant factor applied to the depth bias.
+    /// </summary>
+    public float DepthBiasConstantFactor = 0;
+
+    /// <summary>
+    /// Gets or sets the maximum depth bias value that can be applied to a rendering operation.
+    /// </summary>
+    public float DepthBiasClamp = 0;
+
+    /// <summary>
+    /// Specifies the scalar factor applied to the depth bias of a fragment based on the slope of the polygon.
+    /// </summary>
+    /// <remarks>This value is used to adjust the depth bias dynamically based on the slope of the polygon
+    /// being rendered. A higher value increases the bias for steeper slopes, which can help reduce z-fighting artifacts
+    /// in certain scenarios.</remarks>
+    public float DepthBiasSlopeFactor = 0;
+
+    /// <summary>
     /// Represents the default depth state configuration. (Inversed Z)
     /// </summary>
     /// <remarks>The default configuration sets the depth comparison operation to <see
