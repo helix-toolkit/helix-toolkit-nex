@@ -241,16 +241,7 @@ internal class MeshCullingExample : IDisposable
             // Configure blending and depth formats
             pipelineDesc.Colors[0].Format = Format.BGRA_SRGB8;
             pipelineDesc.DepthFormat = Format.Z_F32;
-
-            // Specialization constants setup (if needed by the shader)
-            pipelineDesc.SpecInfo.Entries[0].ConstantId = 0;
-            pipelineDesc.SpecInfo.Entries[0].Size = sizeof(uint);
-            pipelineDesc.SpecInfo.Data = new byte[sizeof(uint)];
-            using var pData = pipelineDesc.SpecInfo.Data.Pin();
-            unsafe
-            {
-                NativeHelper.Write((nint)pData.Pointer, PBRShadingMode.Unlit);
-            }
+            pipelineDesc.WriteSpecInfo(0, PBRShadingMode.Unlit);
 
             _unlitRenderPipeline = _context.CreateRenderPipeline(pipelineDesc);
             Debug.Assert(_unlitRenderPipeline.Valid);
@@ -268,16 +259,7 @@ internal class MeshCullingExample : IDisposable
             // Configure blending and depth formats
             pipelineDesc.Colors[0].Format = Format.BGRA_SRGB8;
             pipelineDesc.DepthFormat = Format.Z_F32;
-
-            // Specialization constants setup (if needed by the shader)
-            pipelineDesc.SpecInfo.Entries[0].ConstantId = 0;
-            pipelineDesc.SpecInfo.Entries[0].Size = sizeof(uint);
-            pipelineDesc.SpecInfo.Data = new byte[sizeof(uint)];
-            using var pData = pipelineDesc.SpecInfo.Data.Pin();
-            unsafe
-            {
-                NativeHelper.Write((nint)pData.Pointer, PBRShadingMode.PBR);
-            }
+            pipelineDesc.WriteSpecInfo(0, PBRShadingMode.PBR);
             _pbrRenderPipeline = _context.CreateRenderPipeline(pipelineDesc);
         }
         Debug.Assert(_pbrRenderPipeline.Valid);

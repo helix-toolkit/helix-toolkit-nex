@@ -439,14 +439,7 @@ public class ForwardPlusExample
             };
             pipelineDesc.Colors[0].Format = Format.RGBA_F16;
             pipelineDesc.DepthFormat = Format.Z_F32;
-            pipelineDesc.SpecInfo.Entries[0].ConstantId = 0;
-            pipelineDesc.SpecInfo.Entries[0].Size = sizeof(uint);
-            pipelineDesc.SpecInfo.Data = new byte[sizeof(uint)];
-            using var pData = pipelineDesc.SpecInfo.Data.Pin();
-            unsafe
-            {
-                NativeHelper.Write((nint)pData.Pointer, ShadingMode);
-            }
+            pipelineDesc.WriteSpecInfo(0, ShadingMode);
             _renderPipelinePBR = _context.CreateRenderPipeline(pipelineDesc);
             Debug.Assert(_renderPipelinePBR.Valid);
         }
@@ -463,14 +456,7 @@ public class ForwardPlusExample
             };
             pipelineDesc.Colors[0].Format = Format.RGBA_F16;
             pipelineDesc.DepthFormat = Format.Z_F32;
-            pipelineDesc.SpecInfo.Entries[0].ConstantId = 0;
-            pipelineDesc.SpecInfo.Entries[0].Size = sizeof(uint);
-            pipelineDesc.SpecInfo.Data = new byte[sizeof(uint)];
-            using var pData = pipelineDesc.SpecInfo.Data.Pin();
-            unsafe
-            {
-                NativeHelper.Write((nint)pData.Pointer, PBRShadingMode.Unlit);
-            }
+            pipelineDesc.WriteSpecInfo(0, PBRShadingMode.Unlit);
             _renderPipelineUnlit = _context.CreateRenderPipeline(pipelineDesc);
             Debug.Assert(_renderPipelineUnlit.Valid);
         }

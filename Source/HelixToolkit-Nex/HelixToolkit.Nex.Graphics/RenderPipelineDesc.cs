@@ -92,6 +92,13 @@ public sealed class RenderPipelineDesc
         }
     }
 
+    /// <summary>
+    /// Retrieves the number of valid color attachments.
+    /// </summary>
+    /// <remarks>The method iterates through the color attachments and counts the number of attachments  with
+    /// a valid format. The count stops at the first attachment with an invalid format.</remarks>
+    /// <returns>The number of valid color attachments. This value will be between 0 and  <see
+    /// cref="Constants.MAX_COLOR_ATTACHMENTS"/>, inclusive.</returns>
     public uint32_t GetNumColorAttachments()
     {
         for (uint32_t i = 0; i < Constants.MAX_COLOR_ATTACHMENTS; i++)
@@ -102,5 +109,58 @@ public sealed class RenderPipelineDesc
             }
         }
         return Constants.MAX_COLOR_ATTACHMENTS;
+    }
+
+    /// <summary>
+    /// Adds a specialization constant entry to the current specialization info.
+    /// </summary>
+    /// <remarks>This method appends the provided specialization constant data to the internal data buffer and
+    /// updates the specialization constant entries accordingly. The maximum number of specialization constants is
+    /// defined by <see cref="SpecializationConstantDesc.SPECIALIZATION_CONSTANTS_MAX"/>.</remarks>
+    /// <param name="constantId">The unique identifier of the specialization constant.</param>
+    /// <param name="data">The data associated with the specialization constant. Cannot be null.</param>
+    /// <exception cref="InvalidOperationException">Thrown if the maximum number of specialization constants has been exceeded.</exception>
+    public void WriteSpecInfo(uint32_t constantId, byte[] data)
+    {
+        if (
+            SpecInfo.NumSpecializationConstants()
+            >= SpecializationConstantDesc.SPECIALIZATION_CONSTANTS_MAX
+        )
+        {
+            throw new InvalidOperationException(
+                "Maximum number of specialization constants exceeded."
+            );
+        }
+        uint32_t offset = (uint32_t)SpecInfo.Data.Length;
+        SpecInfo.Entries[SpecInfo.NumSpecializationConstants()] = new SpecializationConstantEntry
+        {
+            ConstantId = constantId,
+            Offset = offset,
+            Size = (uint32_t)data.Length,
+        };
+        SpecInfo.Data = SpecInfo.Data.Concat(data).ToArray();
+    }
+
+    /// <summary>
+    /// Writes specification information for a given constant identifier and value.
+    /// </summary>
+    /// <remarks>This method serializes the provided value into a byte array and writes it along with the
+    /// specified constant identifier. The type parameter <typeparamref name="T"/> must be unmanaged, ensuring that the
+    /// value can be safely converted to raw memory.</remarks>
+    /// <typeparam name="T">The type of the value to write. Must be an unmanaged type.</typeparam>
+    /// <param name="constantId">The identifier of the constant associated with the specification information.</param>
+    /// <param name="value">The value to write, represented as an unmanaged type.</param>
+    public void WriteSpecInfo<T>(uint32_t constantId, T value)
+        where T : unmanaged
+    {
+        var data = new byte[NativeHelper.SizeOf<T>()];
+        unsafe
+        {
+            fixed (byte* pData = data)
+            {
+                *(T*)pData = value;
+            }
+        }
+        WriteSpecInfo(constantId, data);
     }
 }

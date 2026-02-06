@@ -6,6 +6,7 @@ using HelixToolkit.Nex.Graphics;
 using HelixToolkit.Nex.Material;
 using HelixToolkit.Nex.Maths;
 using HelixToolkit.Nex.Shaders;
+using HelixToolkit.Nex.Shaders.Frag;
 
 namespace InstancingMeshCulling;
 
@@ -257,16 +258,7 @@ internal class InstancingMeshCullingExample : IDisposable
         // Configure blending and depth formats
         pipelineDesc.Colors[0].Format = Format.BGRA_SRGB8;
         pipelineDesc.DepthFormat = Format.Z_F32;
-
-        // Specialization constants setup (Shader feature flags)
-        pipelineDesc.SpecInfo.Entries[0].ConstantId = 0;
-        pipelineDesc.SpecInfo.Entries[0].Size = sizeof(uint);
-        pipelineDesc.SpecInfo.Data = new byte[sizeof(uint)];
-        using var pData = pipelineDesc.SpecInfo.Data.Pin();
-        unsafe
-        {
-            NativeHelper.Write((nint)pData.Pointer, 1u);
-        }
+        pipelineDesc.WriteSpecInfo(0, PBRShadingMode.Unlit);
 
         _renderPipeline = _context.CreateRenderPipeline(pipelineDesc);
         Debug.Assert(_renderPipeline.Valid);
