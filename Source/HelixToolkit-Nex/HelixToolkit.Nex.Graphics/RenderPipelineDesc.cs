@@ -131,6 +131,15 @@ public sealed class RenderPipelineDesc
                 "Maximum number of specialization constants exceeded."
             );
         }
+        for (uint32_t i = 0; i < SpecInfo.NumSpecializationConstants(); i++)
+        {
+            if (SpecInfo.Entries[i].ConstantId == constantId)
+            {
+                throw new InvalidOperationException(
+                    $"Specialization constant with ID {constantId} already exists."
+                );
+            }
+        }
         uint32_t offset = (uint32_t)SpecInfo.Data.Length;
         SpecInfo.Entries[SpecInfo.NumSpecializationConstants()] = new SpecializationConstantEntry
         {
