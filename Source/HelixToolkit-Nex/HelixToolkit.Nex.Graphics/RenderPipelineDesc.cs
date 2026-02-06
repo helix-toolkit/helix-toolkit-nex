@@ -10,6 +10,7 @@ public struct SpecializationConstantEntry()
     public uint32_t Offset; // offset within ShaderSpecializationConstantDesc::data
     public size_t Size;
 };
+
 /// <summary>
 /// Specialization constant description. This structure is used to pass specialization data to the shader.
 /// <see href="https://docs.vulkan.org/samples/latest/samples/performance/specialization_constants/README.html"/>
@@ -18,7 +19,9 @@ public struct SpecializationConstantDesc()
 {
     public const uint8_t SPECIALIZATION_CONSTANTS_MAX = 16;
 
-    public readonly SpecializationConstantEntry[] Entries = new SpecializationConstantEntry[SPECIALIZATION_CONSTANTS_MAX];
+    public readonly SpecializationConstantEntry[] Entries = new SpecializationConstantEntry[
+        SPECIALIZATION_CONSTANTS_MAX
+    ];
 
     public byte[] Data = [];
 
@@ -32,6 +35,7 @@ public struct SpecializationConstantDesc()
         return SPECIALIZATION_CONSTANTS_MAX;
     }
 };
+
 /// <summary>
 /// Represents the configuration and state for a render pipeline in a graphics application.
 /// </summary>
@@ -39,7 +43,7 @@ public struct SpecializationConstantDesc()
 /// including shader modules, vertex input, and rendering states such as topology, culling, and polygon modes. It also
 /// includes settings for color and depth-stencil attachments, as well as multisampling parameters. The default values
 /// are set to common defaults, but can be customized to fit specific rendering needs.</remarks>
-public struct RenderPipelineDesc
+public sealed class RenderPipelineDesc
 {
     public Topology Topology = Topology.Triangle;
 
@@ -71,8 +75,8 @@ public struct RenderPipelineDesc
     public WindingMode FrontFaceWinding = WindingMode.CCW;
     public PolygonMode PolygonMode = PolygonMode.Fill;
 
-    public StencilState BackFaceStencil;
-    public StencilState FrontFaceStencil;
+    public StencilState BackFaceStencil = StencilState.Disabled;
+    public StencilState FrontFaceStencil = StencilState.Disabled;
 
     public uint32_t SamplesCount = 1u;
     public uint32_t PatchControlPoints = 0;
@@ -88,7 +92,7 @@ public struct RenderPipelineDesc
         }
     }
 
-    public readonly uint32_t GetNumColorAttachments()
+    public uint32_t GetNumColorAttachments()
     {
         for (uint32_t i = 0; i < Constants.MAX_COLOR_ATTACHMENTS; i++)
         {

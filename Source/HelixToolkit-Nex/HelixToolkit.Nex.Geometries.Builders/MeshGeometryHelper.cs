@@ -406,7 +406,7 @@ public static class MeshGeometryHelper
         var p = new Vector3Collection();
         var ti = new IntCollection();
 
-        // create new positions array
+        // create new positions Array
         var newIndex = new Dictionary<int, int>(); // map old index to new index
         for (var i = 0; i < mesh.Positions.Count; i++)
         {

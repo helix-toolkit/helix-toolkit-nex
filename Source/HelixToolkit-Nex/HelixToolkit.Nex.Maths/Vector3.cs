@@ -105,21 +105,25 @@ namespace HelixToolkit.Nex.Maths
         /// A unit <see cref="Vector3"/> designating backward in a left-handed coordinate system (0, 0, -1).
         /// </summary>
         public static readonly Vector3 BackwardLH = new(0.0f, 0.0f, -1.0f);
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Vector3 Min(this Vector3 v1, ref Vector3 v2)
         {
             return Vector3.Min(v1, v2);
         }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Vector3 Min(this Vector3 v1, Vector3 v2)
         {
             return Vector3.Min(v1, v2);
         }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Vector3 Max(this Vector3 v1, ref Vector3 v2)
         {
             return Vector3.Max(v1, v2);
         }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Vector3 Max(this Vector3 v1, Vector3 v2)
         {
@@ -159,7 +163,10 @@ namespace HelixToolkit.Nex.Maths
                 0 => v.X,
                 1 => v.Y,
                 2 => v.Z,
-                _ => throw new ArgumentOutOfRangeException(nameof(index), "Indices for Vector3 run from 0 to 2, inclusive."),
+                _ => throw new ArgumentOutOfRangeException(
+                    nameof(index),
+                    "Indices for Vector3 run from 0 to 2, inclusive."
+                ),
             };
         }
 
@@ -177,7 +184,10 @@ namespace HelixToolkit.Nex.Maths
                     v.Z = value;
                     break;
                 default:
-                    throw new ArgumentOutOfRangeException(nameof(index), "Indices for Vector3 run from 0 to 2, inclusive.");
+                    throw new ArgumentOutOfRangeException(
+                        nameof(index),
+                        "Indices for Vector3 run from 0 to 2, inclusive."
+                    );
             }
         }
 
@@ -199,7 +209,14 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="amount1">Barycentric coordinate b2, which expresses the weighting factor toward vertex 2 (specified in <paramref name="value2"/>).</param>
         /// <param name="amount2">Barycentric coordinate b3, which expresses the weighting factor toward vertex 3 (specified in <paramref name="value3"/>).</param>
         /// <param name="result">When the method completes, contains the 3D Cartesian coordinates of the specified point.</param>
-        public static void Barycentric(ref Vector3 value1, ref Vector3 value2, ref Vector3 value3, float amount1, float amount2, out Vector3 result)
+        public static void Barycentric(
+            ref Vector3 value1,
+            ref Vector3 value2,
+            ref Vector3 value3,
+            float amount1,
+            float amount2,
+            out Vector3 result
+        )
         {
             result = value1 + amount1 * (value2 - value1) + amount2 * (value3 - value1);
             //result = new Vector3((value1.X + (amount1 * (value2.X - value1.X))) + (amount2 * (value3.X - value1.X)),
@@ -216,7 +233,13 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="amount1">Barycentric coordinate b2, which expresses the weighting factor toward vertex 2 (specified in <paramref name="value2"/>).</param>
         /// <param name="amount2">Barycentric coordinate b3, which expresses the weighting factor toward vertex 3 (specified in <paramref name="value3"/>).</param>
         /// <returns>A new <see cref="Vector3"/> containing the 3D Cartesian coordinates of the specified point.</returns>
-        public static Vector3 Barycentric(Vector3 value1, Vector3 value2, Vector3 value3, float amount1, float amount2)
+        public static Vector3 Barycentric(
+            Vector3 value1,
+            Vector3 value2,
+            Vector3 value3,
+            float amount1,
+            float amount2
+        )
         {
             Barycentric(ref value1, ref value2, ref value3, amount1, amount2, out Vector3 result);
             return result;
@@ -243,9 +266,9 @@ namespace HelixToolkit.Nex.Maths
         /// <returns><c>true</c> if left and right are near another 3D, <c>false</c> otherwise</returns>
         public static bool NearEqual(ref Vector3 left, ref Vector3 right, ref Vector3 epsilon)
         {
-            return MathUtil.WithinEpsilon(left.X, right.X, epsilon.X) &&
-                    MathUtil.WithinEpsilon(left.Y, right.Y, epsilon.Y) &&
-                    MathUtil.WithinEpsilon(left.Z, right.Z, epsilon.Z);
+            return MathUtil.WithinEpsilon(left.X, right.X, epsilon.X)
+                && MathUtil.WithinEpsilon(left.Y, right.Y, epsilon.Y)
+                && MathUtil.WithinEpsilon(left.Z, right.Z, epsilon.Z);
         }
 
         /// <summary>
@@ -255,7 +278,12 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="end">End vector.</param>
         /// <param name="amount">Value between 0 and 1 indicating the weight of <paramref name="end"/>.</param>
         /// <param name="result">When the method completes, contains the cubic interpolation of the two vectors.</param>
-        public static void SmoothStep(ref Vector3 start, ref Vector3 end, float amount, out Vector3 result)
+        public static void SmoothStep(
+            ref Vector3 start,
+            ref Vector3 end,
+            float amount,
+            out Vector3 result
+        )
         {
             amount = MathUtil.SmoothStep(amount);
             result = Vector3.Lerp(start, end, amount);
@@ -283,7 +311,14 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="tangent2">Second source tangent vector.</param>
         /// <param name="amount">Weighting factor.</param>
         /// <param name="result">When the method completes, contains the result of the Hermite spline interpolation.</param>
-        public static void Hermite(ref Vector3 value1, ref Vector3 tangent1, ref Vector3 value2, ref Vector3 tangent2, float amount, out Vector3 result)
+        public static void Hermite(
+            ref Vector3 value1,
+            ref Vector3 tangent1,
+            ref Vector3 value2,
+            ref Vector3 tangent2,
+            float amount,
+            out Vector3 result
+        )
         {
             float squared = amount * amount;
             float cubed = amount * squared;
@@ -308,7 +343,13 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="tangent2">Second source tangent vector.</param>
         /// <param name="amount">Weighting factor.</param>
         /// <returns>The result of the Hermite spline interpolation.</returns>
-        public static Vector3 Hermite(Vector3 value1, Vector3 tangent1, Vector3 value2, Vector3 tangent2, float amount)
+        public static Vector3 Hermite(
+            Vector3 value1,
+            Vector3 tangent1,
+            Vector3 value2,
+            Vector3 tangent2,
+            float amount
+        )
         {
             Hermite(ref value1, ref tangent1, ref value2, ref tangent2, amount, out Vector3 result);
             return result;
@@ -323,14 +364,26 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="value4">The fourth position in the interpolation.</param>
         /// <param name="amount">Weighting factor.</param>
         /// <param name="result">When the method completes, contains the result of the Catmull-Rom interpolation.</param>
-        public static void CatmullRom(ref Vector3 value1, ref Vector3 value2, ref Vector3 value3, ref Vector3 value4, float amount, out Vector3 result)
+        public static void CatmullRom(
+            ref Vector3 value1,
+            ref Vector3 value2,
+            ref Vector3 value3,
+            ref Vector3 value4,
+            float amount,
+            out Vector3 result
+        )
         {
             float squared = amount * amount;
             float cubed = amount * squared;
 
-            result = 0.5f * ((2f * value2) + ((-value1 + value3) * amount) +
-                (((2f * value1) - (5f * value2) + (4 * value3) - value4) * squared) +
-                ((-value1 + (3f * value2) - (3f * value3) + value4) * cubed));
+            result =
+                0.5f
+                * (
+                    (2f * value2)
+                    + ((-value1 + value3) * amount)
+                    + (((2f * value1) - (5f * value2) + (4 * value3) - value4) * squared)
+                    + ((-value1 + (3f * value2) - (3f * value3) + value4) * cubed)
+                );
 
             //result.X = 0.5f * ((((2.0f * value2.X) + ((-value1.X + value3.X) * amount)) +
             //(((((2.0f * value1.X) - (5.0f * value2.X)) + (4.0f * value3.X)) - value4.X) * squared)) +
@@ -354,14 +407,20 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="value4">The fourth position in the interpolation.</param>
         /// <param name="amount">Weighting factor.</param>
         /// <returns>A vector that is the result of the Catmull-Rom interpolation.</returns>
-        public static Vector3 CatmullRom(Vector3 value1, Vector3 value2, Vector3 value3, Vector3 value4, float amount)
+        public static Vector3 CatmullRom(
+            Vector3 value1,
+            Vector3 value2,
+            Vector3 value3,
+            Vector3 value4,
+            float amount
+        )
         {
             CatmullRom(ref value1, ref value2, ref value3, ref value4, amount, out Vector3 result);
             return result;
         }
 
         /// <summary>
-        /// Projects a 3D vector from object space into screen space. 
+        /// Projects a 3D vector from object space into screen space.
         /// </summary>
         /// <param name="vector">The vector to project.</param>
         /// <param name="x">The X position of the viewport.</param>
@@ -372,15 +431,29 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="maxZ">The maximum depth of the viewport.</param>
         /// <param name="worldViewProjection">The combined world-view-projection matrix.</param>
         /// <param name="result">When the method completes, contains the vector in screen space.</param>
-        public static void Project(ref Vector3 vector, float x, float y, float width, float height, float minZ, float maxZ, ref Matrix worldViewProjection, out Vector3 result)
+        public static void Project(
+            ref Vector3 vector,
+            float x,
+            float y,
+            float width,
+            float height,
+            float minZ,
+            float maxZ,
+            ref Matrix worldViewProjection,
+            out Vector3 result
+        )
         {
-            TransformCoordinate(ref vector, ref worldViewProjection, out Vector3 v);
+            vector.TransformCoordinate(ref worldViewProjection, out Vector3 v);
 
-            result = new Vector3(((1.0f + v.X) * 0.5f * width) + x, ((1.0f - v.Y) * 0.5f * height) + y, (v.Z * (maxZ - minZ)) + minZ);
+            result = new Vector3(
+                ((1.0f + v.X) * 0.5f * width) + x,
+                ((1.0f - v.Y) * 0.5f * height) + y,
+                (v.Z * (maxZ - minZ)) + minZ
+            );
         }
 
         /// <summary>
-        /// Projects a 3D vector from object space into screen space. 
+        /// Projects a 3D vector from object space into screen space.
         /// </summary>
         /// <param name="vector">The vector to project.</param>
         /// <param name="x">The X position of the viewport.</param>
@@ -389,16 +462,35 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="height">The height of the viewport.</param>
         /// <param name="minZ">The minimum depth of the viewport.</param>
         /// <param name="maxZ">The maximum depth of the viewport.</param>
-        /// <param name="worldViewProjection">The combined world-view-projection matrix.</param>
+        /// <param name="worldViewProjection">Inversed view-projection matrix.</param>
         /// <returns>The vector in screen space.</returns>
-        public static Vector3 Project(Vector3 vector, float x, float y, float width, float height, float minZ, float maxZ, Matrix worldViewProjection)
+        public static Vector3 Project(
+            Vector3 vector,
+            float x,
+            float y,
+            float width,
+            float height,
+            float minZ,
+            float maxZ,
+            Matrix worldViewProjection
+        )
         {
-            Project(ref vector, x, y, width, height, minZ, maxZ, ref worldViewProjection, out Vector3 result);
+            Project(
+                ref vector,
+                x,
+                y,
+                width,
+                height,
+                minZ,
+                maxZ,
+                ref worldViewProjection,
+                out Vector3 result
+            );
             return result;
         }
 
         /// <summary>
-        /// Projects a 3D vector from screen space into object space. 
+        /// Projects a 3D vector from screen space into object space.
         /// </summary>
         /// <param name="vector">The vector to project.</param>
         /// <param name="x">The X position of the viewport.</param>
@@ -407,22 +499,31 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="height">The height of the viewport.</param>
         /// <param name="minZ">The minimum depth of the viewport.</param>
         /// <param name="maxZ">The maximum depth of the viewport.</param>
-        /// <param name="worldViewProjection">The combined world-view-projection matrix.</param>
+        /// <param name="inversedViewProjection">Inversed view-projection matrix.</param>
         /// <param name="result">When the method completes, contains the vector in object space.</param>
-        public static void Unproject(ref Vector3 vector, float x, float y, float width, float height, float minZ, float maxZ, ref Matrix worldViewProjection, out Vector3 result)
+        public static void Unproject(
+            ref Vector3 vector,
+            float x,
+            float y,
+            float width,
+            float height,
+            float minZ,
+            float maxZ,
+            ref Matrix inversedViewProjection,
+            out Vector3 result
+        )
         {
             Vector3 v = new();
-            Matrix.Invert(worldViewProjection, out Matrix matrix);
 
             v.X = ((vector.X - x) / width * 2.0f) - 1.0f;
             v.Y = -(((vector.Y - y) / height * 2.0f) - 1.0f);
             v.Z = (vector.Z - minZ) / (maxZ - minZ);
 
-            TransformCoordinate(ref v, ref matrix, out result);
+            v.TransformCoordinate(ref inversedViewProjection, out result);
         }
 
         /// <summary>
-        /// Projects a 3D vector from screen space into object space. 
+        /// Projects a 3D vector from screen space into object space.
         /// </summary>
         /// <param name="vector">The vector to project.</param>
         /// <param name="x">The X position of the viewport.</param>
@@ -431,14 +532,32 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="height">The height of the viewport.</param>
         /// <param name="minZ">The minimum depth of the viewport.</param>
         /// <param name="maxZ">The maximum depth of the viewport.</param>
-        /// <param name="worldViewProjection">The combined world-view-projection matrix.</param>
+        /// <param name="inversedViewProjection">The combined world-view-projection matrix.</param>
         /// <returns>The vector in object space.</returns>
-        public static Vector3 Unproject(Vector3 vector, float x, float y, float width, float height, float minZ, float maxZ, Matrix worldViewProjection)
+        public static Vector3 Unproject(
+            Vector3 vector,
+            float x,
+            float y,
+            float width,
+            float height,
+            float minZ,
+            float maxZ,
+            Matrix inversedViewProjection
+        )
         {
-            Unproject(ref vector, x, y, width, height, minZ, maxZ, ref worldViewProjection, out Vector3 result);
+            Unproject(
+                ref vector,
+                x,
+                y,
+                width,
+                height,
+                minZ,
+                maxZ,
+                ref inversedViewProjection,
+                out Vector3 result
+            );
             return result;
         }
-
 
         /// <summary>
         /// Orthogonalizes a list of vectors.
@@ -478,7 +597,10 @@ namespace HelixToolkit.Nex.Maths
 
             if (destination.Length < source.Length)
             {
-                throw new ArgumentOutOfRangeException(nameof(destination), "The destination array must be of same length or larger length than the source array.");
+                throw new ArgumentOutOfRangeException(
+                    nameof(destination),
+                    "The destination array must be of same length or larger length than the source array."
+                );
             }
 
             for (int i = 0; i < source.Length; ++i)
@@ -487,7 +609,10 @@ namespace HelixToolkit.Nex.Maths
 
                 for (int r = 0; r < i; ++r)
                 {
-                    newvector -= Vector3.Dot(destination[r], newvector) / Vector3.Dot(destination[r], destination[r]) * destination[r];
+                    newvector -=
+                        Vector3.Dot(destination[r], newvector)
+                        / Vector3.Dot(destination[r], destination[r])
+                        * destination[r];
                 }
 
                 destination[i] = newvector;
@@ -534,7 +659,10 @@ namespace HelixToolkit.Nex.Maths
 
             if (destination.Length < source.Length)
             {
-                throw new ArgumentOutOfRangeException(nameof(destination), "The destination array must be of same length or larger length than the source array.");
+                throw new ArgumentOutOfRangeException(
+                    nameof(destination),
+                    "The destination array must be of same length or larger length than the source array."
+                );
             }
 
             for (int i = 0; i < source.Length; ++i)
@@ -560,7 +688,11 @@ namespace HelixToolkit.Nex.Maths
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="source"/> or <paramref name="destination"/> is <c>null</c>.</exception>
         /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="destination"/> is shorter in length than <paramref name="source"/>.</exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void Transform(Vector3[] source, ref Quaternion rotation, Vector3[] destination)
+        public static void Transform(
+            Vector3[] source,
+            ref Quaternion rotation,
+            Vector3[] destination
+        )
         {
             if (source == null)
             {
@@ -574,7 +706,10 @@ namespace HelixToolkit.Nex.Maths
 
             if (destination.Length < source.Length)
             {
-                throw new ArgumentOutOfRangeException(nameof(destination), "The destination array must be of same length or larger length than the source array.");
+                throw new ArgumentOutOfRangeException(
+                    nameof(destination),
+                    "The destination array must be of same length or larger length than the source array."
+                );
             }
 
             for (int i = 0; i < source.Length; ++i)
@@ -613,7 +748,6 @@ namespace HelixToolkit.Nex.Maths
             //}
         }
 
-
         /// <summary>
         /// Transforms a 3D vector by the given <see cref="Matrix3x3"/>.
         /// </summary>
@@ -621,7 +755,11 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="transform">The transformation <see cref="Matrix3x3"/>.</param>
         /// <param name="result">When the method completes, contains the transformed <see cref="Vector3"/>.</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void Transform(ref Vector3 vector, ref Matrix3x3 transform, out Vector3 result)
+        public static void Transform(
+            ref Vector3 vector,
+            ref Matrix3x3 transform,
+            out Vector3 result
+        )
         {
             result = Vector3.Transform(vector, (Matrix)transform);
         }
@@ -638,6 +776,7 @@ namespace HelixToolkit.Nex.Maths
             Transform(ref vector, ref transform, out Vector3 result);
             return result;
         }
+
         /// <summary>
         /// Transforms a 3D vector by the given <see cref="Matrix3x3"/>.
         /// </summary>
@@ -650,6 +789,7 @@ namespace HelixToolkit.Nex.Maths
             Transform(ref vector, ref transform, out Vector3 result);
             return result;
         }
+
         /// <summary>
         /// Transforms a 3D vector by the given <see cref="Matrix"/>.
         /// </summary>
@@ -685,7 +825,10 @@ namespace HelixToolkit.Nex.Maths
 
             if (destination.Length < source.Length)
             {
-                throw new ArgumentOutOfRangeException(nameof(destination), "The destination array must be of same length or larger length than the source array.");
+                throw new ArgumentOutOfRangeException(
+                    nameof(destination),
+                    "The destination array must be of same length or larger length than the source array."
+                );
             }
 
             for (int i = 0; i < source.Length; ++i)
@@ -708,7 +851,11 @@ namespace HelixToolkit.Nex.Maths
         /// with coordinates as the w component can safely be ignored.
         /// </remarks>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void TransformCoordinate(ref Vector3 coordinate, ref Matrix transform, out Vector3 result)
+        public static void TransformCoordinate(
+            this Vector3 coordinate,
+            ref Matrix transform,
+            out Vector3 result
+        )
         {
             Vector4 v = Vector4.Transform(new Vector4(coordinate, 1), transform);
             v /= v.W;
@@ -737,12 +884,13 @@ namespace HelixToolkit.Nex.Maths
         /// with coordinates as the w component can safely be ignored.
         /// </remarks>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static Vector3 TransformCoordinate(this Vector3 coordinate, Matrix transform)
+        public static Vector3 TransformCoordinate(this Vector3 coordinate, ref Matrix transform)
         {
             Vector4 v = Vector4.Transform(new Vector4(coordinate, 1), transform);
             v /= v.W;
             return new Vector3(v.X, v.Y, v.Z);
         }
+
         /// <summary>
         /// Performs a coordinate transformation using the given <see cref="Matrix"/>.
         /// </summary>
@@ -757,12 +905,28 @@ namespace HelixToolkit.Nex.Maths
         /// with coordinates as the w component can safely be ignored.
         /// </remarks>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static Vector3 TransformCoordinate(this Vector3 coordinate, ref Matrix transform)
+        public static Vector3 TransformCoordinate(this Vector3 coordinate, Matrix transform)
         {
             Vector4 v = Vector4.Transform(new Vector4(coordinate, 1), transform);
             v /= v.W;
             return new Vector3(v.X, v.Y, v.Z);
         }
+
+        /// <summary>
+        /// Transforms a 3D vector normal by the specified transformation matrix.
+        /// </summary>
+        /// <remarks>This method is typically used to transform normal vectors, which are not affected by
+        /// translation components of the matrix. The transformation preserves the direction and magnitude of the normal
+        /// relative to the applied matrix.</remarks>
+        /// <param name="coordinate">The 3D vector normal to transform.</param>
+        /// <param name="transform">The transformation matrix to apply to the vector normal.</param>
+        /// <returns>The transformed 3D vector normal.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static Vector3 TransformNormal(this Vector3 coordinate, ref Matrix transform)
+        {
+            return Vector3.TransformNormal(coordinate, transform);
+        }
+
         /// <summary>
         /// Performs a coordinate transformation on an array of vectors using the given <see cref="Matrix"/>.
         /// </summary>
@@ -780,7 +944,11 @@ namespace HelixToolkit.Nex.Maths
         /// with coordinates as the w component can safely be ignored.
         /// </remarks>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void TransformCoordinate(this IList<Vector3> source, ref Matrix transform, IList<Vector3> destination)
+        public static void TransformCoordinate(
+            this IList<Vector3> source,
+            ref Matrix transform,
+            IList<Vector3> destination
+        )
         {
             if (source == null)
             {
@@ -794,7 +962,10 @@ namespace HelixToolkit.Nex.Maths
 
             if (destination.Count < source.Count)
             {
-                throw new ArgumentOutOfRangeException(nameof(destination), "The destination array must be of same length or larger length than the source array.");
+                throw new ArgumentOutOfRangeException(
+                    nameof(destination),
+                    "The destination array must be of same length or larger length than the source array."
+                );
             }
             int i = 0;
 #if NET6_0_OR_GREATER
@@ -803,10 +974,30 @@ namespace HelixToolkit.Nex.Maths
                 if (Sse.IsSupported)
                 {
                     // Load matrix rows into Vector128 vectors
-                    Vector128<float> row0X = Vector128.Create(transform.M11, transform.M12, transform.M13, transform.M14);
-                    Vector128<float> row1X = Vector128.Create(transform.M21, transform.M22, transform.M23, transform.M24);
-                    Vector128<float> row2X = Vector128.Create(transform.M31, transform.M32, transform.M33, transform.M34);
-                    Vector128<float> row3X = Vector128.Create(transform.M41, transform.M42, transform.M43, transform.M44);
+                    Vector128<float> row0X = Vector128.Create(
+                        transform.M11,
+                        transform.M12,
+                        transform.M13,
+                        transform.M14
+                    );
+                    Vector128<float> row1X = Vector128.Create(
+                        transform.M21,
+                        transform.M22,
+                        transform.M23,
+                        transform.M24
+                    );
+                    Vector128<float> row2X = Vector128.Create(
+                        transform.M31,
+                        transform.M32,
+                        transform.M33,
+                        transform.M34
+                    );
+                    Vector128<float> row3X = Vector128.Create(
+                        transform.M41,
+                        transform.M42,
+                        transform.M43,
+                        transform.M44
+                    );
 
                     for (; i < source.Count; i++)
                     {
@@ -825,7 +1016,11 @@ namespace HelixToolkit.Nex.Maths
                         Vector128<float> rowResults = Sse.Add(Sse.Add(vX, vY), Sse.Add(vZ, vW));
                         vW = Sse.Shuffle(rowResults, rowResults, 0xFF);
                         rowResults = Sse.Divide(rowResults, vW);
-                        destination[i] = new Vector3(rowResults.GetElement(0), rowResults.GetElement(1), rowResults.GetElement(2));
+                        destination[i] = new Vector3(
+                            rowResults.GetElement(0),
+                            rowResults.GetElement(1),
+                            rowResults.GetElement(2)
+                        );
                     }
                 }
             }
@@ -850,27 +1045,15 @@ namespace HelixToolkit.Nex.Maths
         /// rather than location because normal vectors should not be translated.
         /// </remarks>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void TransformNormal(ref Vector3 normal, ref Matrix transform, out Vector3 result)
+        public static void TransformNormal(
+            ref Vector3 normal,
+            ref Matrix transform,
+            out Vector3 result
+        )
         {
             result = Vector3.TransformNormal(normal, transform);
         }
-        /// <summary>
-        /// Performs a normal transformation using the given <see cref="Matrix"/>.
-        /// </summary>
-        /// <param name="normal">The normal vector to transform.</param>
-        /// <param name="transform">The transformation <see cref="Matrix"/>.</param>
-        /// <remarks>
-        /// A normal transform performs the transformation with the assumption that the w component
-        /// is zero. This causes the fourth row and fourth column of the matrix to be unused. The
-        /// end result is a vector that is not translated, but all other transformation properties
-        /// apply. This is often preferred for normal vectors as normals purely represent direction
-        /// rather than location because normal vectors should not be translated.
-        /// </remarks>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static Vector3 TransformNormal(this Vector3 normal, ref Matrix transform)
-        {
-            return Vector3.TransformNormal(normal, transform);
-        }
+
         /// <summary>
         /// Performs a normal transformation on an array of vectors using the given <see cref="Matrix"/>.
         /// </summary>
@@ -888,7 +1071,11 @@ namespace HelixToolkit.Nex.Maths
         /// rather than location because normal vectors should not be translated.
         /// </remarks>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void TransformNormal(this IList<Vector3> source, ref Matrix transform, IList<Vector3> destination)
+        public static void TransformNormal(
+            this IList<Vector3> source,
+            ref Matrix transform,
+            IList<Vector3> destination
+        )
         {
             if (source == null)
             {
@@ -902,7 +1089,10 @@ namespace HelixToolkit.Nex.Maths
 
             if (destination.Count < source.Count)
             {
-                throw new ArgumentOutOfRangeException(nameof(destination), "The destination array must be of same length or larger length than the source array.");
+                throw new ArgumentOutOfRangeException(
+                    nameof(destination),
+                    "The destination array must be of same length or larger length than the source array."
+                );
             }
             int i = 0;
 #if NET6_0_OR_GREATER
@@ -911,9 +1101,24 @@ namespace HelixToolkit.Nex.Maths
                 if (Sse.IsSupported)
                 {
                     // Load matrix rows into Vector128 vectors
-                    Vector128<float> row0X = Vector128.Create(transform.M11, transform.M12, transform.M13, transform.M14);
-                    Vector128<float> row1X = Vector128.Create(transform.M21, transform.M22, transform.M23, transform.M24);
-                    Vector128<float> row2X = Vector128.Create(transform.M31, transform.M32, transform.M33, transform.M34);
+                    Vector128<float> row0X = Vector128.Create(
+                        transform.M11,
+                        transform.M12,
+                        transform.M13,
+                        transform.M14
+                    );
+                    Vector128<float> row1X = Vector128.Create(
+                        transform.M21,
+                        transform.M22,
+                        transform.M23,
+                        transform.M24
+                    );
+                    Vector128<float> row2X = Vector128.Create(
+                        transform.M31,
+                        transform.M32,
+                        transform.M33,
+                        transform.M34
+                    );
 
                     for (; i < source.Count; ++i)
                     {
@@ -929,7 +1134,11 @@ namespace HelixToolkit.Nex.Maths
 
                         // Perform horizontal addition to get the dot products
                         Vector128<float> rowResults = Sse.Add(Sse.Add(mulX, mulY), mulZ);
-                        destination[i] = new Vector3(rowResults.GetElement(0), rowResults.GetElement(1), rowResults.GetElement(2));
+                        destination[i] = new Vector3(
+                            rowResults.GetElement(0),
+                            rowResults.GetElement(1),
+                            rowResults.GetElement(2)
+                        );
                     }
                 }
             }
@@ -941,17 +1150,36 @@ namespace HelixToolkit.Nex.Maths
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void Clamp(ref Vector3 value, ref Vector3 min, ref Vector3 max, out Vector3 result)
+        public static void Clamp(
+            ref Vector3 value,
+            ref Vector3 min,
+            ref Vector3 max,
+            out Vector3 result
+        )
         {
 #if NET6_0_OR_GREATER
             if (MathSettings.EnableSIMD && Sse.IsSupported)
             {
-                Vector128<float> min128 = Vector128.Create(min.X, min.Y, min.Z, float.NegativeInfinity);
-                Vector128<float> max128 = Vector128.Create(max.X, max.Y, max.Z, float.PositiveInfinity);
+                Vector128<float> min128 = Vector128.Create(
+                    min.X,
+                    min.Y,
+                    min.Z,
+                    float.NegativeInfinity
+                );
+                Vector128<float> max128 = Vector128.Create(
+                    max.X,
+                    max.Y,
+                    max.Z,
+                    float.PositiveInfinity
+                );
                 Vector128<float> value128 = Vector128.Create(value.X, value.Y, value.Z, 0);
                 value128 = Sse.Max(value128, min128);
                 value128 = Sse.Min(value128, max128);
-                result = new Vector3(value128.GetElement(0), value128.GetElement(1), value128.GetElement(2));
+                result = new Vector3(
+                    value128.GetElement(0),
+                    value128.GetElement(1),
+                    value128.GetElement(2)
+                );
                 return;
             }
 #endif
@@ -984,7 +1212,9 @@ namespace HelixToolkit.Nex.Maths
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool AnyInfinity(this Vector3 vector)
         {
-            return float.IsInfinity(vector.X) || float.IsInfinity(vector.Y) || float.IsInfinity(vector.Z);
+            return float.IsInfinity(vector.X)
+                || float.IsInfinity(vector.Y)
+                || float.IsInfinity(vector.Z);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -1040,7 +1270,7 @@ namespace HelixToolkit.Nex.Maths
         }
 
         /// <summary>
-        /// Rotates the source around the target by the rotation angle around the supplied axis. 
+        /// Rotates the source around the target by the rotation angle around the supplied axis.
         /// </summary>
         /// <param name="source">The position to rotate.</param>
         /// <param name="target">The point to rotate around.</param>
@@ -1048,7 +1278,12 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="angle">The angle to rotate by in radians.</param>
         /// <returns>The rotated vector.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static Vector3 RotateAround(this in Vector3 source, in Vector3 target, in Vector3 axis, float angle)
+        public static Vector3 RotateAround(
+            this in Vector3 source,
+            in Vector3 target,
+            in Vector3 axis,
+            float angle
+        )
         {
             // Ref: https://github.com/stride3d/stride/blob/master/sources/core/Stride.Core.Mathematics/Vector3.csv
             Vector3 local = source - target;
@@ -1064,13 +1299,18 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="plane">The plane.</param>
         /// <returns></returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static PlaneIntersectionType PointToPlanePosition(this Vector3 point, ref Plane plane)
+        public static PlaneIntersectionType PointToPlanePosition(
+            this Vector3 point,
+            ref Plane plane
+        )
         {
             var normal = plane.Normal * (plane.D >= 0 ? 1 : -1);
             var v1 = new Vector4(normal, Math.Abs(plane.D));
             var v2 = new Vector4(point, 1);
             var ret = Vector4.Dot(v1, v2);
-            return ret > 0 ? PlaneIntersectionType.Front : ret == 0 ? PlaneIntersectionType.Intersecting : PlaneIntersectionType.Back;
+            return ret > 0 ? PlaneIntersectionType.Front
+                : ret == 0 ? PlaneIntersectionType.Intersecting
+                : PlaneIntersectionType.Back;
         }
 
         /// <summary>
@@ -1085,7 +1325,9 @@ namespace HelixToolkit.Nex.Maths
             var v1 = new Vector4((plane.Normal * (plane.D > 0 ? 1 : -1)), Math.Abs(plane.D));
             var v2 = new Vector4(point, 1);
             var ret = Vector4.Dot(v1, v2);
-            return ret > 0 ? PlaneIntersectionType.Front : ret == 0 ? PlaneIntersectionType.Intersecting : PlaneIntersectionType.Back;
+            return ret > 0 ? PlaneIntersectionType.Front
+                : ret == 0 ? PlaneIntersectionType.Intersecting
+                : PlaneIntersectionType.Back;
         }
 
         public static void MinMax(this IList<Vector3> vectors, out Vector3 min, out Vector3 max)
@@ -1093,7 +1335,13 @@ namespace HelixToolkit.Nex.Maths
             MinMax(vectors, 0, vectors.Count, out min, out max);
         }
 
-        public static void MinMax(this IList<Vector3> vectors, int start, int count, out Vector3 min, out Vector3 max)
+        public static void MinMax(
+            this IList<Vector3> vectors,
+            int start,
+            int count,
+            out Vector3 min,
+            out Vector3 max
+        )
         {
             if (vectors == null || vectors.Count == 0 || count == 0)
             {
@@ -1102,7 +1350,10 @@ namespace HelixToolkit.Nex.Maths
             }
             if (start + count > vectors.Count)
             {
-                throw new ArgumentOutOfRangeException(nameof(count), "The start and count exceed the length of the vectors array.");
+                throw new ArgumentOutOfRangeException(
+                    nameof(count),
+                    "The start and count exceed the length of the vectors array."
+                );
             }
 
             int i = start;
@@ -1238,6 +1489,7 @@ namespace HelixToolkit.Nex.Maths
             return max.GetElement(0);
         }
 #endif
+
         public static Vector3 GetCentroid(this IList<Vector3> vertices)
         {
             return vertices.GetCentroid(0, vertices.Count);
@@ -1247,7 +1499,10 @@ namespace HelixToolkit.Nex.Maths
         {
             if (start + count > vertices.Count)
             {
-                throw new ArgumentOutOfRangeException(nameof(count), "The start and count exceed the length of the vertices array.");
+                throw new ArgumentOutOfRangeException(
+                    nameof(count),
+                    "The start and count exceed the length of the vertices array."
+                );
             }
             if (vertices.Count == 0)
             {
@@ -1256,7 +1511,12 @@ namespace HelixToolkit.Nex.Maths
 #if NET6_0_OR_GREATER
             if (MathSettings.EnableSIMD && Sse.IsSupported)
             {
-                Vector128<float> sum = Vector128.Create(vertices[start].X, vertices[start].Y, vertices[start].Z, 0);
+                Vector128<float> sum = Vector128.Create(
+                    vertices[start].X,
+                    vertices[start].Y,
+                    vertices[start].Z,
+                    0
+                );
                 var end = Math.Min(start + count, vertices.Count);
                 for (int i = start + 1; i < end; ++i)
                 {

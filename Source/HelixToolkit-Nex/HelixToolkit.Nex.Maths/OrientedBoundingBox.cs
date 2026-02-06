@@ -29,6 +29,8 @@ The MIT License (MIT)
 Copyright (c) 2007-2011 SlimDX Group
 The MIT License (MIT)
 */
+using System.Security.Cryptography;
+
 namespace HelixToolkit.Nex.Maths
 {
     /// <summary>
@@ -211,15 +213,12 @@ namespace HelixToolkit.Nex.Maths
         /// The size of the <see cref="OrientedBoundingBox"/> if no scaling is applied to the transformation matrix.
         /// </summary>
         /// <remarks>
-        /// The property will return the actual size even if the scaling is applied using Scale method, 
+        /// The property will return the actual size even if the scaling is applied using Scale method,
         /// but if the scaling is applied to transformation matrix, use GetSize Function instead.
         /// </remarks>
         public readonly Vector3 Size
         {
-            get
-            {
-                return Extents * 2;
-            }
+            get { return Extents * 2; }
         }
 
         /// <summary>
@@ -263,14 +262,11 @@ namespace HelixToolkit.Nex.Maths
         /// </summary>
         public readonly Vector3 Center
         {
-            get
-            {
-                return Transformation.Translation;
-            }
+            get { return Transformation.Translation; }
         }
 
         /// <summary>
-        /// Determines whether a <see cref="OrientedBoundingBox"/> contains a point. 
+        /// Determines whether a <see cref="OrientedBoundingBox"/> contains a point.
         /// </summary>
         /// <param name="point">The point to test.</param>
         /// <returns>The type of containment the two objects have.</returns>
@@ -279,22 +275,24 @@ namespace HelixToolkit.Nex.Maths
             // Transform the point into the obb coordinates
             Matrix.Invert(Transformation, out Matrix invTrans);
 
-            Vector3Helper.TransformCoordinate(ref point, ref invTrans, out Vector3 locPoint);
+            point.TransformCoordinate(ref invTrans, out Vector3 locPoint);
 
             locPoint.X = Math.Abs(locPoint.X);
             locPoint.Y = Math.Abs(locPoint.Y);
             locPoint.Z = Math.Abs(locPoint.Z);
 
             //Simple axes-aligned BB check
-            return MathUtil.NearEqual(locPoint.X, Extents.X) && MathUtil.NearEqual(locPoint.Y, Extents.Y) && MathUtil.NearEqual(locPoint.Z, Extents.Z)
-                ? ContainmentType.Intersects
+            return MathUtil.NearEqual(locPoint.X, Extents.X)
+                && MathUtil.NearEqual(locPoint.Y, Extents.Y)
+                && MathUtil.NearEqual(locPoint.Z, Extents.Z)
+                    ? ContainmentType.Intersects
                 : locPoint.X < Extents.X && locPoint.Y < Extents.Y && locPoint.Z < Extents.Z
-                ? ContainmentType.Contains
+                    ? ContainmentType.Contains
                 : ContainmentType.Disjoint;
         }
 
         /// <summary>
-        /// Determines whether a <see cref="OrientedBoundingBox"/> contains a point. 
+        /// Determines whether a <see cref="OrientedBoundingBox"/> contains a point.
         /// </summary>
         /// <param name="point">The point to test.</param>
         /// <returns>The type of containment the two objects have.</returns>
@@ -314,19 +312,21 @@ namespace HelixToolkit.Nex.Maths
 
             bool containsAll = true;
             bool containsAny = false;
-
-            for (int i = 0; i < points.Length; i++)
+            var transformedPoints = new Vector3[points.Length];
+            points.TransformCoordinate(ref invTrans, transformedPoints);
+            for (int i = 0; i < transformedPoints.Length; i++)
             {
-                Vector3Helper.TransformCoordinate(ref points[i], ref invTrans, out Vector3 locPoint);
-
+                ref var locPoint = ref transformedPoints[i];
                 locPoint.X = Math.Abs(locPoint.X);
                 locPoint.Y = Math.Abs(locPoint.Y);
                 locPoint.Z = Math.Abs(locPoint.Z);
 
                 //Simple axes-aligned BB check
-                if (MathUtil.NearEqual(locPoint.X, Extents.X) &&
-                    MathUtil.NearEqual(locPoint.Y, Extents.Y) &&
-                    MathUtil.NearEqual(locPoint.Z, Extents.Z))
+                if (
+                    MathUtil.NearEqual(locPoint.X, Extents.X)
+                    && MathUtil.NearEqual(locPoint.Y, Extents.Y)
+                    && MathUtil.NearEqual(locPoint.Z, Extents.Z)
+                )
                 {
                     containsAny = true;
                 }
@@ -341,7 +341,9 @@ namespace HelixToolkit.Nex.Maths
                 }
             }
 
-            return containsAll ? ContainmentType.Contains : containsAny ? ContainmentType.Intersects : ContainmentType.Disjoint;
+            return containsAll ? ContainmentType.Contains
+                : containsAny ? ContainmentType.Intersects
+                : ContainmentType.Disjoint;
         }
 
         /// <summary>
@@ -359,7 +361,7 @@ namespace HelixToolkit.Nex.Maths
             Matrix.Invert(Transformation, out Matrix invTrans);
 
             // Transform sphere center into the obb coordinates
-            Vector3Helper.TransformCoordinate(ref sphere.Center, ref invTrans, out Vector3 locCenter);
+            sphere.Center.TransformCoordinate(ref invTrans, out Vector3 locCenter);
 
             float locRadius;
             if (IgnoreScale)
@@ -379,21 +381,27 @@ namespace HelixToolkit.Nex.Maths
             Vector3 vector = Vector3.Clamp(locCenter, minusExtens, Extents);
             float distance = Vector3.DistanceSquared(locCenter, vector);
 
-            return distance > locRadius * locRadius
-                ? ContainmentType.Disjoint
-                : (minusExtens.X + locRadius <= locCenter.X) && (locCenter.X <= Extents.X - locRadius) && (Extents.X - minusExtens.X > locRadius) &&
-                (minusExtens.Y + locRadius <= locCenter.Y) && (locCenter.Y <= Extents.Y - locRadius) && (Extents.Y - minusExtens.Y > locRadius) &&
-                (minusExtens.Z + locRadius <= locCenter.Z) && (locCenter.Z <= Extents.Z - locRadius) && (Extents.Z - minusExtens.Z > locRadius)
-                ? ContainmentType.Contains
+            return distance > locRadius * locRadius ? ContainmentType.Disjoint
+                : (minusExtens.X + locRadius <= locCenter.X)
+                && (locCenter.X <= Extents.X - locRadius)
+                && (Extents.X - minusExtens.X > locRadius)
+                && (minusExtens.Y + locRadius <= locCenter.Y)
+                && (locCenter.Y <= Extents.Y - locRadius)
+                && (Extents.Y - minusExtens.Y > locRadius)
+                && (minusExtens.Z + locRadius <= locCenter.Z)
+                && (locCenter.Z <= Extents.Z - locRadius)
+                && (Extents.Z - minusExtens.Z > locRadius)
+                    ? ContainmentType.Contains
                 : ContainmentType.Intersects;
         }
 
         private static Vector3[] GetRows(ref Matrix mat)
         {
-            return new Vector3[] {
-                new(mat.M11,mat.M12,mat.M13),
-                new(mat.M21,mat.M22,mat.M23),
-                new(mat.M31,mat.M32,mat.M33)
+            return new Vector3[]
+            {
+                new(mat.M11, mat.M12, mat.M13),
+                new(mat.M21, mat.M22, mat.M23),
+                new(mat.M31, mat.M32, mat.M33),
             };
         }
 
@@ -420,11 +428,14 @@ namespace HelixToolkit.Nex.Maths
             Vector3[] RotA = GetRows(ref Transformation);
             Vector3[] RotB = GetRows(ref obb.Transformation);
 
-            Matrix R = new();       // Rotation from B to A
-            Matrix AR = new();      // absolute values of R matrix, to use with box extents
+            Matrix R = new(); // Rotation from B to A
+            Matrix AR = new(); // absolute values of R matrix, to use with box extents
 
-            float ExtentA, ExtentB, Separation;
-            int i, k;
+            float ExtentA,
+                ExtentB,
+                Separation;
+            int i,
+                k;
 
             // Calculate B to A rotation matrix
             for (i = 0; i < 3; i++)
@@ -436,11 +447,14 @@ namespace HelixToolkit.Nex.Maths
                 }
             }
 
-
-            // Vector separating the centers of Box B and of Box A	
+            // Vector separating the centers of Box B and of Box A
             Vector3 vSepWS = obb.Center - Center;
             // Rotated into Box A's coordinates
-            Vector3 vSepA = new(Vector3.Dot(vSepWS, RotA[0]), Vector3.Dot(vSepWS, RotA[1]), Vector3.Dot(vSepWS, RotA[2]));
+            Vector3 vSepA = new(
+                Vector3.Dot(vSepWS, RotA[0]),
+                Vector3.Dot(vSepWS, RotA[1]),
+                Vector3.Dot(vSepWS, RotA[2])
+            );
 
             // Test if any of A's basis vectors separate the box
             for (i = 0; i < 3; i++)
@@ -460,7 +474,9 @@ namespace HelixToolkit.Nex.Maths
             {
                 ExtentA = Vector3.Dot(SizeA, new Vector3(AR.Get(0, k), AR.Get(1, k), AR.Get(2, k)));
                 ExtentB = SizeB.Get(k);
-                Separation = Math.Abs(Vector3.Dot(vSepA, new Vector3(R.Get(0, k), R.Get(1, k), R.Get(2, k))));
+                Separation = Math.Abs(
+                    Vector3.Dot(vSepA, new Vector3(R.Get(0, k), R.Get(1, k), R.Get(2, k)))
+                );
 
                 if (Separation > ExtentA + ExtentB)
                 {
@@ -473,11 +489,15 @@ namespace HelixToolkit.Nex.Maths
             {
                 for (k = 0; k < 3; k++)
                 {
-                    int i1 = (i + 1) % 3, i2 = (i + 2) % 3;
-                    int k1 = (k + 1) % 3, k2 = (k + 2) % 3;
+                    int i1 = (i + 1) % 3,
+                        i2 = (i + 2) % 3;
+                    int k1 = (k + 1) % 3,
+                        k2 = (k + 2) % 3;
                     ExtentA = SizeA.Get(i1) * AR.Get(i2, k) + SizeA.Get(i2) * AR.Get(i1, k);
                     ExtentB = SizeB.Get(k1) * AR.Get(i, k2) + SizeB.Get(k2) * AR.Get(i, k1);
-                    Separation = Math.Abs(vSepA.Get(i2) * R.Get(i1, k) - vSepA.Get(i1) * R.Get(i2, k));
+                    Separation = Math.Abs(
+                        vSepA.Get(i2) * R.Get(i1, k) - vSepA.Get(i1) * R.Get(i2, k)
+                    );
                     if (Separation > ExtentA + ExtentB)
                     {
                         return ContainmentType.Disjoint;
@@ -485,7 +505,7 @@ namespace HelixToolkit.Nex.Maths
                 }
             }
 
-            // No separating axis found, the boxes overlap	
+            // No separating axis found, the boxes overlap
             return ContainmentType.Intersects;
         }
 
@@ -511,8 +531,8 @@ namespace HelixToolkit.Nex.Maths
             // Put line in box space
             Matrix.Invert(Transformation, out Matrix invTrans);
 
-            Vector3Helper.TransformCoordinate(ref L1, ref invTrans, out Vector3 LB1);
-            Vector3Helper.TransformCoordinate(ref L1, ref invTrans, out Vector3 LB2);
+            L1.TransformCoordinate(ref invTrans, out Vector3 LB1);
+            L1.TransformCoordinate(ref invTrans, out Vector3 LB2);
 
             // Get line midpoint and extent
             Vector3 LMid = (LB1 + LB2) * 0.5f;
@@ -578,12 +598,15 @@ namespace HelixToolkit.Nex.Maths
             Vector3 SizeB = boxExtents;
             Vector3[] RotA = GetRows(ref Transformation);
 
-            float ExtentA, ExtentB, Separation;
-            int i, k;
+            float ExtentA,
+                ExtentB,
+                Separation;
+            int i,
+                k;
 
             // Rotation from B to A
             Matrix.Invert(Transformation, out Matrix R);
-            Matrix AR = new();      // absolute values of R matrix, to use with box extents
+            Matrix AR = new(); // absolute values of R matrix, to use with box extents
 
             for (i = 0; i < 3; i++)
             {
@@ -593,11 +616,14 @@ namespace HelixToolkit.Nex.Maths
                 }
             }
 
-
-            // Vector separating the centers of Box B and of Box A	
+            // Vector separating the centers of Box B and of Box A
             Vector3 vSepWS = boxCenter - Center;
             // Rotated into Box A's coordinates
-            Vector3 vSepA = new(Vector3.Dot(vSepWS, RotA[0]), Vector3.Dot(vSepWS, RotA[1]), Vector3.Dot(vSepWS, RotA[2]));
+            Vector3 vSepA = new(
+                Vector3.Dot(vSepWS, RotA[0]),
+                Vector3.Dot(vSepWS, RotA[1]),
+                Vector3.Dot(vSepWS, RotA[2])
+            );
 
             // Test if any of A's basis vectors separate the box
             for (i = 0; i < 3; i++)
@@ -617,7 +643,9 @@ namespace HelixToolkit.Nex.Maths
             {
                 ExtentA = Vector3.Dot(SizeA, new Vector3(AR.Get(0, k), AR.Get(1, k), AR.Get(2, k)));
                 ExtentB = SizeB.Get(k);
-                Separation = Math.Abs(Vector3.Dot(vSepA, new Vector3(R.Get(0, k), R.Get(1, k), R.Get(2, k))));
+                Separation = Math.Abs(
+                    Vector3.Dot(vSepA, new Vector3(R.Get(0, k), R.Get(1, k), R.Get(2, k)))
+                );
 
                 if (Separation > ExtentA + ExtentB)
                 {
@@ -630,11 +658,15 @@ namespace HelixToolkit.Nex.Maths
             {
                 for (k = 0; k < 3; k++)
                 {
-                    int i1 = (i + 1) % 3, i2 = (i + 2) % 3;
-                    int k1 = (k + 1) % 3, k2 = (k + 2) % 3;
+                    int i1 = (i + 1) % 3,
+                        i2 = (i + 2) % 3;
+                    int k1 = (k + 1) % 3,
+                        k2 = (k + 2) % 3;
                     ExtentA = SizeA.Get(i1) * AR.Get(i2, k) + SizeA.Get(i2) * AR.Get(i1, k);
                     ExtentB = SizeB.Get(k1) * AR.Get(i, k2) + SizeB.Get(k2) * AR.Get(i, k1);
-                    Separation = Math.Abs(vSepA.Get(i2) * R.Get(i1, k) - vSepA.Get(i1) * R.Get(i2, k));
+                    Separation = Math.Abs(
+                        vSepA.Get(i2) * R.Get(i1, k) - vSepA.Get(i1) * R.Get(i2, k)
+                    );
                     if (Separation > ExtentA + ExtentB)
                     {
                         return ContainmentType.Disjoint;
@@ -642,7 +674,7 @@ namespace HelixToolkit.Nex.Maths
                 }
             }
 
-            // No separating axis found, the boxes overlap	
+            // No separating axis found, the boxes overlap
             return ContainmentType.Intersects;
         }
 
@@ -660,7 +692,7 @@ namespace HelixToolkit.Nex.Maths
 
             Ray bRay;
             bRay.Direction = Vector3.TransformNormal(ray.Direction, invTrans);
-            Vector3Helper.TransformCoordinate(ref ray.Position, ref invTrans, out bRay.Position);
+            ray.Position.TransformCoordinate(ref invTrans, out bRay.Position);
 
             //Perform a regular ray to BoundingBox check
             BoundingBox bb = new(-Extents, Extents);
@@ -669,7 +701,7 @@ namespace HelixToolkit.Nex.Maths
             //Put the result intersection back to world
             if (intersects)
             {
-                Vector3Helper.TransformCoordinate(ref point, ref Transformation, out point);
+                point.TransformCoordinate(ref Transformation, out point);
             }
 
             return intersects;
@@ -722,7 +754,11 @@ namespace HelixToolkit.Nex.Maths
         /// If true, the method will use a fast algorithm which is inapplicable if a scale is applied to the transformation matrix of the OrientedBoundingBox.
         /// </param>
         /// <returns></returns>
-        public static Matrix GetBoxToBoxMatrix(ref OrientedBoundingBox A, ref OrientedBoundingBox B, bool NoMatrixScaleApplied = false)
+        public static Matrix GetBoxToBoxMatrix(
+            ref OrientedBoundingBox A,
+            ref OrientedBoundingBox B,
+            bool NoMatrixScaleApplied = false
+        )
         {
             Matrix AtoB_Matrix;
 
@@ -732,7 +768,8 @@ namespace HelixToolkit.Nex.Maths
                 Vector3[] RotA = GetRows(ref A.Transformation);
                 Vector3[] RotB = GetRows(ref B.Transformation);
                 AtoB_Matrix = new Matrix();
-                int i, k;
+                int i,
+                    k;
                 for (i = 0; i < 3; i++)
                 {
                     for (k = 0; k < 3; k++)
@@ -767,7 +804,11 @@ namespace HelixToolkit.Nex.Maths
         /// <remarks>
         /// Unlike merging axis aligned boxes, The operation is not interchangeable, because it keeps A orientation and merge B into it.
         /// </remarks>
-        public static void Merge(ref OrientedBoundingBox A, ref OrientedBoundingBox B, bool NoMatrixScaleApplied = false)
+        public static void Merge(
+            ref OrientedBoundingBox A,
+            ref OrientedBoundingBox B,
+            bool NoMatrixScaleApplied = false
+        )
         {
             Matrix AtoB_Matrix = GetBoxToBoxMatrix(ref A, ref B, NoMatrixScaleApplied);
 
@@ -787,7 +828,7 @@ namespace HelixToolkit.Nex.Maths
             //Find the new Extents and Center, Transform Center back to world
             Vector3 newCenter = mergedBB.Minimum + (mergedBB.Maximum - mergedBB.Minimum) / 2f;
             A.Extents = mergedBB.Maximum - newCenter;
-            Vector3Helper.TransformCoordinate(ref newCenter, ref A.Transformation, out newCenter);
+            newCenter.TransformCoordinate(ref A.Transformation, out newCenter);
             A.Transformation.Translation = newCenter;
         }
 
@@ -881,7 +922,7 @@ namespace HelixToolkit.Nex.Maths
         /// Returns a hash code for this instance.
         /// </summary>
         /// <returns>
-        /// A hash code for this instance, suitable for use in hashing algorithms and data structures like a hash table. 
+        /// A hash code for this instance, suitable for use in hashing algorithms and data structures like a hash table.
         /// </returns>
         public override readonly int GetHashCode()
         {
@@ -896,7 +937,12 @@ namespace HelixToolkit.Nex.Maths
         /// </returns>
         public override readonly string ToString()
         {
-            return string.Format(CultureInfo.CurrentCulture, "Center: {0}, Extents: {1}", Center, Extents);
+            return string.Format(
+                CultureInfo.CurrentCulture,
+                "Center: {0}, Extents: {1}",
+                Center,
+                Extents
+            );
         }
 
         /// <summary>
@@ -910,8 +956,12 @@ namespace HelixToolkit.Nex.Maths
         {
             return format == null
                 ? ToString()
-                : string.Format(CultureInfo.CurrentCulture, "Center: {0}, Extents: {1}", Center.ToString(format, CultureInfo.CurrentCulture),
-                Extents.ToString(format, CultureInfo.CurrentCulture));
+                : string.Format(
+                    CultureInfo.CurrentCulture,
+                    "Center: {0}, Extents: {1}",
+                    Center.ToString(format, CultureInfo.CurrentCulture),
+                    Extents.ToString(format, CultureInfo.CurrentCulture)
+                );
         }
 
         /// <summary>
@@ -923,7 +973,12 @@ namespace HelixToolkit.Nex.Maths
         /// </returns>
         public readonly string ToString(IFormatProvider formatProvider)
         {
-            return string.Format(formatProvider, "Center: {0}, Extents: {1}", Center.ToString(), Extents.ToString());
+            return string.Format(
+                formatProvider,
+                "Center: {0}, Extents: {1}",
+                Center.ToString(),
+                Extents.ToString()
+            );
         }
 
         /// <summary>
@@ -936,13 +991,14 @@ namespace HelixToolkit.Nex.Maths
         /// </returns>
         public readonly string ToString(string? format, IFormatProvider? formatProvider)
         {
-            return format == null && formatProvider == null
-                ? string.Empty
-                : format == null
-                ? ToString(formatProvider!)
-                : string.Format(formatProvider, "Center: {0}, Extents: {1}", Center.ToString(format, formatProvider),
-                Extents.ToString(format, formatProvider));
+            return format == null && formatProvider == null ? string.Empty
+                : format == null ? ToString(formatProvider!)
+                : string.Format(
+                    formatProvider,
+                    "Center: {0}, Extents: {1}",
+                    Center.ToString(format, formatProvider),
+                    Extents.ToString(format, formatProvider)
+                );
         }
     }
 }
-

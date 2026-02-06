@@ -2393,7 +2393,7 @@ public sealed class MeshBuilder
     /// Adds a rectangular mesh (m x n points).
     /// </summary>
     /// <param name="points">
-    /// The one-dimensional array of points. The points are stored row-by-row.
+    /// The one-dimensional Array of points. The points are stored row-by-row.
     /// </param>
     /// <param name="columns">
     /// The number of columns in the rectangular mesh.
@@ -2422,7 +2422,7 @@ public sealed class MeshBuilder
     }
 
     /// <summary>
-    /// Adds a rectangular mesh defined by a two-dimensional array of points.
+    /// Adds a rectangular mesh defined by a two-dimensional Array of points.
     /// </summary>
     /// <param name="points">
     /// The points.
@@ -2484,7 +2484,7 @@ public sealed class MeshBuilder
     /// Adds a rectangular mesh (m x n points).
     /// </summary>
     /// <param name="points">
-    /// The one-dimensional array of points. The points are stored row-by-row.
+    /// The one-dimensional Array of points. The points are stored row-by-row.
     /// </param>
     /// <param name="columns">
     /// The number of columns in the rectangular mesh.

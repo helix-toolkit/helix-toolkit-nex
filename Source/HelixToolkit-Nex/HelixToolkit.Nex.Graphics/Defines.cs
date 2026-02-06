@@ -626,7 +626,7 @@ public enum BlendFactor : uint8_t
 /// <summary>
 /// Describes the configuration for a texture sampler.
 /// </summary>
-public struct SamplerStateDesc()
+public sealed class SamplerStateDesc()
 {
     /// <summary>
     /// Minification filter mode. Defaults to Linear.
@@ -692,7 +692,7 @@ public struct SamplerStateDesc()
 /// <summary>
 /// Describes stencil test and operation configuration.
 /// </summary>
-public struct StencilState()
+public sealed class StencilState()
 {
     /// <summary>
     /// Operation to perform when stencil test fails. Defaults to Keep.
@@ -723,12 +723,14 @@ public struct StencilState()
     /// Bitmask for writing stencil values. Defaults to 0xFFFFFFFF (all bits).
     /// </summary>
     public uint32_t WriteMask = 0xFFFFFFFF;
+
+    public static readonly StencilState Disabled = new();
 }
 
 /// <summary>
 /// Describes depth test configuration.
 /// </summary>
-public struct DepthState()
+public sealed class DepthState()
 {
     /// <summary>
     /// Comparison operation for depth testing. Defaults to AlwaysPass.

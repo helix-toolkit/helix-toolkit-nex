@@ -93,7 +93,14 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="height">The height of the viewport in pixels.</param>
         /// <param name="minDepth">The minimum depth of the clip volume.</param>
         /// <param name="maxDepth">The maximum depth of the clip volume.</param>
-        public ViewportF(float x, float y, float width, float height, float minDepth, float maxDepth)
+        public ViewportF(
+            float x,
+            float y,
+            float width,
+            float height,
+            float minDepth,
+            float maxDepth
+        )
         {
             X = x;
             Y = y;
@@ -123,11 +130,7 @@ namespace HelixToolkit.Nex.Maths
         /// <value>The bounds.</value>
         public RectangleF Bounds
         {
-            readonly get
-            {
-                return new RectangleF(X, Y, Width, Height);
-            }
-
+            readonly get { return new RectangleF(X, Y, Width, Height); }
             set
             {
                 X = value.X;
@@ -146,12 +149,12 @@ namespace HelixToolkit.Nex.Maths
         /// </returns>
         public readonly bool Equals(ref ViewportF other)
         {
-            return MathUtil.NearEqual(X, other.X) &&
-                MathUtil.NearEqual(Y, other.Y) &&
-                MathUtil.NearEqual(Width, other.Width) &&
-                MathUtil.NearEqual(Height, other.Height) &&
-                MathUtil.NearEqual(MinDepth, other.MinDepth) &&
-                MathUtil.NearEqual(MaxDepth, other.MaxDepth);
+            return MathUtil.NearEqual(X, other.X)
+                && MathUtil.NearEqual(Y, other.Y)
+                && MathUtil.NearEqual(Width, other.Width)
+                && MathUtil.NearEqual(Height, other.Height)
+                && MathUtil.NearEqual(MinDepth, other.MinDepth)
+                && MathUtil.NearEqual(MaxDepth, other.MaxDepth);
         }
 
         /// <summary>
@@ -183,7 +186,7 @@ namespace HelixToolkit.Nex.Maths
         /// Returns a hash code for this instance.
         /// </summary>
         /// <returns>
-        /// A hash code for this instance, suitable for use in hashing algorithms and data structures like a hash table. 
+        /// A hash code for this instance, suitable for use in hashing algorithms and data structures like a hash table.
         /// </returns>
         public override readonly int GetHashCode()
         {
@@ -229,7 +232,16 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>A <see cref="string"/> that represents this instance.</returns>
         public override readonly string ToString()
         {
-            return string.Format(CultureInfo.CurrentCulture, "{{X:{0} Y:{1} Width:{2} Height:{3} MinDepth:{4} MaxDepth:{5}}}", X, Y, Width, Height, MinDepth, MaxDepth);
+            return string.Format(
+                CultureInfo.CurrentCulture,
+                "{{X:{0} Y:{1} Width:{2} Height:{3} MinDepth:{4} MaxDepth:{5}}}",
+                X,
+                Y,
+                Width,
+                Height,
+                MinDepth,
+                MaxDepth
+            );
         }
 
         /// <summary>
@@ -240,7 +252,12 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="view">The view matrix.</param>
         /// <param name="world">The world matrix.</param>
         /// <returns>The projected vector.</returns>
-        public readonly Vector3 Project(Vector3 source, Matrix projection, Matrix view, Matrix world)
+        public readonly Vector3 Project(
+            Vector3 source,
+            Matrix projection,
+            Matrix view,
+            Matrix world
+        )
         {
             Matrix matrix = world * view * projection;
             //Matrix.Multiply(ref world, ref view, out matrix);
@@ -258,8 +275,12 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="vector">The projected vector.</param>
         public readonly void Project(ref Vector3 source, ref Matrix matrix, out Vector3 vector)
         {
-            vector = Vector3Helper.TransformCoordinate(source, matrix);
-            float a = (source.X * matrix.M14) + (source.Y * matrix.M24) + (source.Z * matrix.M34) + matrix.M44;
+            vector = Vector3Helper.TransformCoordinate(source, ref matrix);
+            float a =
+                (source.X * matrix.M14)
+                + (source.Y * matrix.M24)
+                + (source.Z * matrix.M34)
+                + matrix.M44;
 
             if (!MathUtil.IsOne(a))
             {
@@ -279,7 +300,12 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="view">The view matrix.</param>
         /// <param name="world">The world matrix.</param>
         /// <returns>The unprojected Vector.</returns>
-        public readonly Vector3 Unproject(Vector3 source, Matrix projection, Matrix view, Matrix world)
+        public readonly Vector3 Unproject(
+            Vector3 source,
+            Matrix projection,
+            Matrix view,
+            Matrix world
+        )
         {
             Matrix.Invert(world * view * projection, out Matrix matrix);
             //Matrix.Multiply(ref world, ref view, out matrix);
@@ -302,8 +328,12 @@ namespace HelixToolkit.Nex.Maths
             vector.Y = -(((source.Y - Y) / Height * 2f) - 1f);
             vector.Z = (source.Z - MinDepth) / (MaxDepth - MinDepth);
 
-            float a = (vector.X * matrix.M14) + (vector.Y * matrix.M24) + (vector.Z * matrix.M34) + matrix.M44;
-            vector = Vector3Helper.TransformCoordinate(vector, matrix);
+            float a =
+                (vector.X * matrix.M14)
+                + (vector.Y * matrix.M24)
+                + (vector.Z * matrix.M34)
+                + matrix.M44;
+            vector = Vector3Helper.TransformCoordinate(vector, ref matrix);
 
             if (!MathUtil.IsOne(a))
             {
@@ -317,10 +347,7 @@ namespace HelixToolkit.Nex.Maths
         /// <value>The aspect ratio.</value>
         public readonly float AspectRatio
         {
-            get
-            {
-                return !MathUtil.IsZero(Height) ? Width / Height : 0f;
-            }
+            get { return !MathUtil.IsZero(Height) ? Width / Height : 0f; }
         }
 
         /// <summary>
@@ -330,7 +357,14 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>The result of the conversion.</returns>
         public static implicit operator ViewportF(Viewport value)
         {
-            return new ViewportF(value.X, value.Y, value.Width, value.Height, value.MinDepth, value.MaxDepth);
+            return new ViewportF(
+                value.X,
+                value.Y,
+                value.Width,
+                value.Height,
+                value.MinDepth,
+                value.MaxDepth
+            );
         }
     }
 }

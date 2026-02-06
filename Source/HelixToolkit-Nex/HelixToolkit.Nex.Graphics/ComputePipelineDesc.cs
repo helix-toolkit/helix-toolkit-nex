@@ -7,12 +7,12 @@ namespace HelixToolkit.Nex.Graphics;
 /// A compute pipeline is used for GPU compute operations. It specifies the compute shader,
 /// entry point, and optional specialization constants that control shader behavior at pipeline creation time.
 /// </remarks>
-public struct ComputePipelineDesc()
+public sealed class ComputePipelineDesc()
 {
     /// <summary>
     /// The handle to the compute shader module to use in this pipeline.
     /// </summary>
-    public ShaderModuleHandle ComputeShader;
+    public ShaderModuleHandle ComputeShader = ShaderModuleHandle.Null;
 
     /// <summary>
     /// Specialization constants that allow compile-time configuration of the shader.
