@@ -743,11 +743,11 @@ public class ForwardPlusExample
         cmdBuffer.PushConstants(
             new ToneGammaPushConstants()
             {
-                Enabled = 0,
+                Enabled = 1,
                 Exposure = 1f,
                 HdrTextureId = _f16Framebuffer.Index,
                 SamplerId = _toneMappingSampler.Index,
-                TonemapMode = 0,
+                TonemapMode = (uint)ToneMappingMode.Uncharted2,
             }
         );
         cmdBuffer.Draw(3); // Full-screen triangle
