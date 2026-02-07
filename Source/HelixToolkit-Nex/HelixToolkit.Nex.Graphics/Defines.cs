@@ -956,6 +956,41 @@ public struct ColorAttachment()
     /// Destination blend factor for alpha channel. Defaults to Zero.
     /// </summary>
     public BlendFactor DstAlphaBlendFactor = BlendFactor.Zero;
+
+    public static ColorAttachment CreateAlphaBlend(Format format)
+    {
+        return new ColorAttachment
+        {
+            Format = format,
+            BlendEnabled = true,
+            RgbBlendOp = BlendOp.Add,
+            AlphaBlendOp = BlendOp.Add,
+            SrcRGBBlendFactor = BlendFactor.SrcAlpha,
+            SrcAlphaBlendFactor = BlendFactor.SrcAlpha,
+            DstRGBBlendFactor = BlendFactor.OneMinusSrcAlpha,
+            DstAlphaBlendFactor = BlendFactor.OneMinusSrcAlpha,
+        };
+    }
+
+    public static ColorAttachment CreateAdditiveBlend(Format format)
+    {
+        return new ColorAttachment
+        {
+            Format = format,
+            BlendEnabled = true,
+            RgbBlendOp = BlendOp.Add,
+            AlphaBlendOp = BlendOp.Add,
+            SrcRGBBlendFactor = BlendFactor.SrcAlpha,
+            SrcAlphaBlendFactor = BlendFactor.SrcAlpha,
+            DstRGBBlendFactor = BlendFactor.One,
+            DstAlphaBlendFactor = BlendFactor.One,
+        };
+    }
+
+    public static ColorAttachment CreateOpaque(Format format)
+    {
+        return new ColorAttachment { Format = format, BlendEnabled = false };
+    }
 }
 
 /// <summary>
