@@ -35,6 +35,11 @@ public class ServiceProvider : IServiceProvider, IDisposable, IServiceScopeFacto
             return this;
         }
 
+        if (serviceType == typeof(IServiceScopeFactory))
+        {
+            return this;
+        }
+
         if (!_descriptors.TryGetValue(serviceType, out var descriptor))
         {
             return null;
@@ -186,7 +191,8 @@ public class ServiceProvider : IServiceProvider, IDisposable, IServiceScopeFacto
         {
             foreach (var instance in _scopedInstances.Values)
             {
-                if (instance is IDisposable disposable)
+                // Don't dispose the provider itself
+                if (instance is IDisposable disposable && !ReferenceEquals(instance, this))
                 {
                     disposable.Dispose();
                 }
@@ -203,7 +209,8 @@ public class ServiceProvider : IServiceProvider, IDisposable, IServiceScopeFacto
             {
                 foreach (var instance in _singletons.Values)
                 {
-                    if (instance is IDisposable disposable)
+                    // Don't dispose the provider itself (registered as IServiceScopeFactory)
+                    if (instance is IDisposable disposable && !ReferenceEquals(instance, this))
                     {
                         disposable.Dispose();
                     }
