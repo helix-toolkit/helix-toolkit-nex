@@ -47,7 +47,7 @@ internal sealed class VulkanStagingDevice : IDisposable
             return ResultCode.Ok;
         }
 
-        var stagingBuffer = _ctx.BuffersPool.Get(this._stagingBuffer);
+        var stagingBuffer = _ctx.BuffersPool.Get(this._stagingBuffer.Handle);
 
         HxDebug.Assert(stagingBuffer);
 
@@ -205,7 +205,7 @@ internal sealed class VulkanStagingDevice : IDisposable
 
         var cmdBuf = _ctx.Immediate!.Acquire();
 
-        var stagingBuffer = _ctx.BuffersPool.Get(this._stagingBuffer);
+        var stagingBuffer = _ctx.BuffersPool.Get(this._stagingBuffer.Handle);
 
         HxDebug.Assert(stagingBuffer, "Staging buffer is not valid, cannot upload image data.");
 
@@ -422,7 +422,7 @@ internal sealed class VulkanStagingDevice : IDisposable
 
         HxDebug.Assert(desc.Size >= storageSize);
 
-        var stagingBuffer = _ctx.BuffersPool.Get(this._stagingBuffer);
+        var stagingBuffer = _ctx.BuffersPool.Get(this._stagingBuffer.Handle);
 
         HxDebug.Assert(stagingBuffer, "Staging buffer is not valid, cannot upload image data.");
         if (!stagingBuffer)
@@ -521,7 +521,7 @@ internal sealed class VulkanStagingDevice : IDisposable
 
         HxDebug.Assert(desc.Size >= outDataSize);
 
-        var stagingBuffer = _ctx.BuffersPool.Get(this._stagingBuffer);
+        var stagingBuffer = _ctx.BuffersPool.Get(this._stagingBuffer.Handle);
 
         HxDebug.Assert(stagingBuffer, "Staging buffer is not valid, cannot upload image data.");
         if (!stagingBuffer)
@@ -614,7 +614,7 @@ internal sealed class VulkanStagingDevice : IDisposable
 
         HxDebug.Assert(desc.Size >= storageSize);
 
-        var stagingBuffer = _ctx.BuffersPool.Get(this._stagingBuffer);
+        var stagingBuffer = _ctx.BuffersPool.Get(this._stagingBuffer.Handle);
 
         HxDebug.Assert(stagingBuffer, "Staging buffer is not valid, cannot upload image data.");
         if (!stagingBuffer)

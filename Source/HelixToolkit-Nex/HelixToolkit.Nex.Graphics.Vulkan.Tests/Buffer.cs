@@ -54,13 +54,13 @@ public class Buffer
         );
         Assert.IsNotNull(buffer, "Buffer should not be null after creation.");
         Assert.IsTrue(buffer.Valid, "Buffer should be valid after creation.");
-        result = _vkContext?.Upload(buffer, 0, in data).CheckResult(); // Upload the data to the buffer
+        result = _vkContext?.Upload(buffer.Handle, 0, in data).CheckResult(); // Upload the data to the buffer
         Assert.IsTrue(
             result == ResultCode.Ok,
             "Data upload to storage buffer failed with error: " + result.ToString()
         );
         DummyUniformData downloaded = default;
-        result = _vkContext?.Download(buffer, out downloaded).CheckResult(); // Upload the data to the buffer
+        result = _vkContext?.Download(buffer.Handle, out downloaded).CheckResult(); // Upload the data to the buffer
         Assert.IsTrue(
             result == ResultCode.Ok,
             "Data upload to storage buffer failed with error: " + result.ToString()
@@ -94,13 +94,13 @@ public class Buffer
         );
         Assert.IsNotNull(buffer, "Uniform buffer should not be null after creation.");
         Assert.IsTrue(buffer.Valid, "Uniform buffer should be valid after creation.");
-        result = _vkContext?.Upload(buffer, 0, in data).CheckResult(); // Upload the data to the buffer
+        result = _vkContext?.Upload(buffer.Handle, 0, in data).CheckResult(); // Upload the data to the buffer
         Assert.IsTrue(
             result == ResultCode.Ok,
             "Data upload to uniform buffer failed with error: " + result.ToString()
         );
         DummyUniformData downloaded = default;
-        result = _vkContext?.Download(buffer, out downloaded).CheckResult(); // Upload the data to the buffer
+        result = _vkContext?.Download(buffer.Handle, out downloaded).CheckResult(); // Upload the data to the buffer
         Assert.IsTrue(
             result == ResultCode.Ok,
             "Data upload to uniform buffer failed with error: " + result.ToString()
@@ -138,7 +138,7 @@ public class Buffer
         Assert.IsTrue(buffer.Valid, "Vertex buffer should be valid after creation.");
         using var pVerts = vertices.Pin(); // Pin the array to prevent garbage collection
 
-        result = _vkContext?.Upload(buffer, 0, (nint)pVerts.Pointer, size).CheckResult(); // Upload the data to the buffer
+        result = _vkContext?.Upload(buffer.Handle, 0, (nint)pVerts.Pointer, size).CheckResult(); // Upload the data to the buffer
         Assert.IsTrue(
             result == ResultCode.Ok,
             "Data upload to vertex buffer failed with error: " + result.ToString()
@@ -146,7 +146,7 @@ public class Buffer
 
         var downloaded = new Vector3[vertices.Length];
         using var pDownloaded = downloaded.Pin(); // Pin the array to prevent garbage collection
-        result = _vkContext?.Download(buffer, (nint)pDownloaded.Pointer, size).CheckResult(); // Download the data from the buffer
+        result = _vkContext?.Download(buffer.Handle, (nint)pDownloaded.Pointer, size).CheckResult(); // Download the data from the buffer
         Assert.IsTrue(
             result == ResultCode.Ok,
             "Data download from vertex buffer failed with error: " + result.ToString()
@@ -180,7 +180,7 @@ public class Buffer
         Assert.IsTrue(buffer.Valid, "Index buffer should be valid after creation.");
 
         using var pIndices = indices.Pin(); // Pin the array to prevent garbage collection
-        result = _vkContext?.Upload(buffer, 0, (nint)pIndices.Pointer, size).CheckResult(); // Upload the data to the buffer
+        result = _vkContext?.Upload(buffer.Handle, 0, (nint)pIndices.Pointer, size).CheckResult(); // Upload the data to the buffer
         Assert.IsTrue(
             result == ResultCode.Ok,
             "Data upload to index buffer failed with error: " + result.ToString()
@@ -188,7 +188,7 @@ public class Buffer
 
         var downloaded = new int[indices.Length];
         using var pDownloaded = downloaded.Pin(); // Pin the array to prevent garbage collection
-        result = _vkContext?.Download(buffer, (nint)pDownloaded.Pointer, size).CheckResult(); // Download the data from the buffer
+        result = _vkContext?.Download(buffer.Handle, (nint)pDownloaded.Pointer, size).CheckResult(); // Download the data from the buffer
         Assert.IsTrue(
             result == ResultCode.Ok,
             "Data download from index buffer failed with error: " + result.ToString()

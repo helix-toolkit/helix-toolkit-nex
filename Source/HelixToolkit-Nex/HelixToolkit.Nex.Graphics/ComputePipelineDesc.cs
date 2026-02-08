@@ -12,7 +12,7 @@ public sealed class ComputePipelineDesc()
     /// <summary>
     /// The handle to the compute shader module to use in this pipeline.
     /// </summary>
-    public ShaderModuleHandle ComputeShader = ShaderModuleHandle.Null;
+    public ShaderModuleResource ComputeShader = ShaderModuleResource.Null;
 
     /// <summary>
     /// Specialization constants that allow compile-time configuration of the shader.

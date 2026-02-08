@@ -18,6 +18,28 @@ namespace HelixToolkit.Nex.Graphics;
 public interface ICommandBuffer
 {
     /// <summary>
+    /// Gets the graphics context that owns this command buffer.
+    /// </summary>
+    IContext Context { get; }
+
+    /// <summary>
+    /// Gets a value indicating whether this command buffer is a secondary command buffer.
+    /// Secondary command buffers can be recorded in parallel and executed by a primary command buffer.
+    /// </summary>
+    bool IsSecondary { get; }
+
+    /// <summary>
+    /// Executes secondary command buffers within this primary command buffer.
+    /// This method can only be called on primary command buffers during an active render pass.
+    /// </summary>
+    /// <param name="secondaryBuffers">The array of secondary command buffers to execute.</param>
+    /// <remarks>
+    /// Secondary command buffers must be recorded before being executed.
+    /// All secondary buffers must be compatible with the current render pass.
+    /// </remarks>
+    void ExecuteCommands(params ICommandBuffer[] secondaryBuffers);
+
+    /// <summary>
     /// Transitions a texture to a shader read-only state, making it accessible for sampling in shaders.
     /// </summary>
     /// <param name="surface">The texture handle to transition.</param>

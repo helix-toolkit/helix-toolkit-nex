@@ -100,8 +100,8 @@ internal sealed partial class VulkanContext
     private CommandBuffer? _currentCommandBuffer;
     private uint32_t _numYcbcrSamplers = 0;
     private uint32_t _maxCombinedImageSamplerDescriptorCount = 1;
-    private TextureHandle _dummyTexture = TextureHandle.Null;
-    private SamplerHandle _defaultSampler = SamplerHandle.Null;
+    private TextureResource _dummyTexture = TextureResource.Null;
+    private SamplerResource _defaultSampler = SamplerResource.Null;
     private readonly List<VkUtf8String> _deviceExtensions =
     [
         VK.VK_KHR_SWAPCHAIN_EXTENSION_NAME,
@@ -941,7 +941,7 @@ internal sealed partial class VulkanContext
             {
                 return result;
             }
-            _defaultSampler = sampler;
+            _defaultSampler = new SamplerResource(this, sampler);
             HxDebug.Assert(
                 SamplersPool.Count == 1,
                 "Default sampler should be created successfully"
@@ -1332,7 +1332,7 @@ internal sealed partial class VulkanContext
 
         return info is null
             ? VkSampler.Null
-            : SamplersPool.Get(_ycbcrConversionData[(int)format].Sampler);
+            : SamplersPool.Get(_ycbcrConversionData[(int)format].Sampler.Handle);
     }
 
     private VkSamplerYcbcrConversionInfo? GetOrCreateYcbcrConversionInfo(Format format)
@@ -1914,25 +1914,25 @@ internal sealed partial class VulkanContext
             }
 
             var vertModule = desc.VertexShader
-                ? ShaderModulesPool.Get(desc.VertexShader)
+                ? ShaderModulesPool.Get(desc.VertexShader.Handle)
                 : ShaderModuleState.Null;
             var tescModule = desc.TessControlShader
-                ? ShaderModulesPool.Get(desc.TessControlShader)
+                ? ShaderModulesPool.Get(desc.TessControlShader.Handle)
                 : ShaderModuleState.Null;
             var teseModule = desc.TessEvalShader
-                ? ShaderModulesPool.Get(desc.TessEvalShader)
+                ? ShaderModulesPool.Get(desc.TessEvalShader.Handle)
                 : ShaderModuleState.Null;
             var geomModule = desc.GeometryShader
-                ? ShaderModulesPool.Get(desc.GeometryShader)
+                ? ShaderModulesPool.Get(desc.GeometryShader.Handle)
                 : ShaderModuleState.Null;
             var fragModule = desc.FragementShader
-                ? ShaderModulesPool.Get(desc.FragementShader)
+                ? ShaderModulesPool.Get(desc.FragementShader.Handle)
                 : ShaderModuleState.Null;
             var taskModule = desc.TaskShader
-                ? ShaderModulesPool.Get(desc.TaskShader)
+                ? ShaderModulesPool.Get(desc.TaskShader.Handle)
                 : ShaderModuleState.Null;
             var meshModule = desc.MeshShader
-                ? ShaderModulesPool.Get(desc.MeshShader)
+                ? ShaderModulesPool.Get(desc.MeshShader.Handle)
                 : ShaderModuleState.Null;
 
             HxDebug.Assert(vertModule || meshModule);
@@ -2210,7 +2210,7 @@ internal sealed partial class VulkanContext
 
         if (cps.Pipeline == VkPipeline.Null)
         {
-            var sm = ShaderModulesPool.Get(cps.Desc.ComputeShader);
+            var sm = ShaderModulesPool.Get(cps.Desc.ComputeShader.Handle);
 
             HxDebug.Assert(sm is not null && sm.Valid);
             unsafe
@@ -2298,8 +2298,8 @@ internal sealed partial class VulkanContext
             VK.vkDeviceWaitIdle(_vkDevice).CheckResult();
             Disposer.DisposeAndRemove(ref _stagingDevice);
             Disposer.DisposeAndRemove(ref _swapchain);
-            Destroy(_dummyTexture);
-            Destroy(_defaultSampler);
+            _dummyTexture?.Dispose();
+            _defaultSampler?.Dispose();
 
             VK.vkDestroySemaphore(_vkDevice, TimelineSemaphore, null);
 

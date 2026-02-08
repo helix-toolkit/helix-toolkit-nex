@@ -49,13 +49,13 @@ public sealed class RenderPipelineDesc
 
     public VertexInput VertexInput = VertexInput.Null;
 
-    public ShaderModuleHandle VertexShader = ShaderModuleHandle.Null;
-    public ShaderModuleHandle TessControlShader = ShaderModuleHandle.Null;
-    public ShaderModuleHandle TessEvalShader = ShaderModuleHandle.Null;
-    public ShaderModuleHandle GeometryShader = ShaderModuleHandle.Null;
-    public ShaderModuleHandle TaskShader = ShaderModuleHandle.Null;
-    public ShaderModuleHandle MeshShader = ShaderModuleHandle.Null;
-    public ShaderModuleHandle FragementShader = ShaderModuleHandle.Null;
+    public ShaderModuleResource VertexShader = ShaderModuleResource.Null;
+    public ShaderModuleResource TessControlShader = ShaderModuleResource.Null;
+    public ShaderModuleResource TessEvalShader = ShaderModuleResource.Null;
+    public ShaderModuleResource GeometryShader = ShaderModuleResource.Null;
+    public ShaderModuleResource TaskShader = ShaderModuleResource.Null;
+    public ShaderModuleResource MeshShader = ShaderModuleResource.Null;
+    public ShaderModuleResource FragementShader = ShaderModuleResource.Null;
 
     public SpecializationConstantDesc SpecInfo = new();
 

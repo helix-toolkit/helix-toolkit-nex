@@ -66,6 +66,6 @@ public class Shader
         Assert.IsNotNull(shaderModule, "Shader module should not be null after creation.");
         Assert.IsTrue(shaderModule.Valid, "Shader module should be valid after creation.");
         // Clean up the shader module after the test
-        _vkContext?.Destroy(shaderModule);
+        shaderModule.Dispose();
     }
 }

@@ -22,9 +22,14 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
     public IContext Context => _ctx;
 
     /// <summary>
-    /// Gets the wrapper for the underlying Vulkan command buffer.
+    /// Gets a value indicating whether this is a secondary command buffer.
     /// </summary>
-    public readonly VulkanImmediateCommands.CommandBufferWrapper Wrapper =
+    public bool IsSecondary { get; internal set; } = false;
+
+    /// <summary>
+    /// Gets or sets the wrapper for the underlying Vulkan command buffer.
+    /// </summary>
+    public VulkanImmediateCommands.CommandBufferWrapper Wrapper { get; internal set; } =
         context.Immediate!.Acquire();
 
     /// <summary>
@@ -1271,6 +1276,56 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
         VK.vkCmdEndRendering(CmdBuffer);
 
         Framebuffer = Framebuffer.Null;
+    }
+
+    /// <inheritdoc/>
+    public void ExecuteCommands(params ICommandBuffer[] secondaryBuffers)
+    {
+        if (IsSecondary)
+        {
+            _logger.LogError("Cannot execute secondary command buffers from a secondary command buffer.");
+            return;
+        }
+
+        if (!IsRendering)
+        {
+            _logger.LogError("ExecuteCommands must be called within an active render pass.");
+            return;
+        }
+
+        if (secondaryBuffers == null || secondaryBuffers.Length == 0)
+        {
+            return;
+        }
+
+        unsafe
+        {
+            var vkBuffers = stackalloc VkCommandBuffer[secondaryBuffers.Length];
+            int validCount = 0;
+
+            for (int i = 0; i < secondaryBuffers.Length; i++)
+            {
+                if (secondaryBuffers[i] is CommandBuffer vkCmdBuffer)
+                {
+                    if (!vkCmdBuffer.IsSecondary)
+                    {
+                        _logger.LogWarning($"Command buffer at index {i} is not a secondary buffer. Skipping.");
+                        continue;
+                    }
+
+                    vkBuffers[validCount++] = vkCmdBuffer.CmdBuffer;
+                }
+                else
+                {
+                    _logger.LogWarning($"Command buffer at index {i} is not a Vulkan command buffer. Skipping.");
+                }
+            }
+
+            if (validCount > 0)
+            {
+                VK.vkCmdExecuteCommands(CmdBuffer, (uint)validCount, vkBuffers);
+            }
+        }
     }
 
     /// <inheritdoc/>

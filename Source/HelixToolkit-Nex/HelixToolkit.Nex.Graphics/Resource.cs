@@ -17,6 +17,7 @@ public abstract class Resource<T> : IDisposable
 
     public bool Empty => _handle.Empty || _ctx == null;
     public IContext? Context => _ctx;
+    public Handle<T> Handle => _handle;
 
     public Resource()
     {
@@ -52,6 +53,11 @@ public abstract class Resource<T> : IDisposable
         return holder == null ? new Handle<T>() : holder._handle;
     }
 
+    public static implicit operator bool(Resource<T> holder)
+    {
+        return holder.Valid;
+    }
+
     #region Reference Counter and Disposable Pattern
     private int _referenceCount = 1;
 
@@ -59,7 +65,7 @@ public abstract class Resource<T> : IDisposable
 
     public Resource<T> AddReference()
     {
-        if (!_disposedValue)
+        if (Valid && !_disposedValue)
         {
             Interlocked.Increment(ref _referenceCount);
             return this;
@@ -78,7 +84,7 @@ public abstract class Resource<T> : IDisposable
             {
                 return false; // Still referenced, do not dispose
             }
-            if (disposing)
+            if (Valid && disposing)
             {
                 Reset();
             }

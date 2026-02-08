@@ -211,6 +211,25 @@ internal sealed partial class VulkanContext : Initializable, IContext
         return _currentCommandBuffer;
     }
 
+    public ICommandBuffer CreateSecondaryCommandBuffer(in RenderPass renderPassInfo)
+    {
+        HxDebug.Assert(Immediate != null, "Immediate commands not initialized");
+
+        if (Immediate == null)
+        {
+            throw new InvalidOperationException("Graphics context not properly initialized");
+        }
+
+        var wrapper = Immediate.CreateSecondaryBuffer(renderPassInfo);
+        var secondaryBuffer = new CommandBuffer(this)
+        {
+            IsSecondary = true,
+            Wrapper = wrapper
+        };
+
+        return secondaryBuffer;
+    }
+
     public ResultCode CreateComputePipeline(
         in ComputePipelineDesc desc,
         out ComputePipelineResource computePipeline
