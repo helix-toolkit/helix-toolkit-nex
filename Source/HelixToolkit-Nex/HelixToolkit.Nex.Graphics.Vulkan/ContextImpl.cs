@@ -221,11 +221,7 @@ internal sealed partial class VulkanContext : Initializable, IContext
         }
 
         var wrapper = Immediate.CreateSecondaryBuffer(renderPassInfo);
-        var secondaryBuffer = new CommandBuffer(this)
-        {
-            IsSecondary = true,
-            Wrapper = wrapper
-        };
+        var secondaryBuffer = new CommandBuffer(this) { IsSecondary = true, Wrapper = wrapper };
 
         return secondaryBuffer;
     }
@@ -1000,7 +996,8 @@ internal sealed partial class VulkanContext : Initializable, IContext
             usageFlags |=
                 VK.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
                 | VK.VK_BUFFER_USAGE_TRANSFER_DST_BIT
-                | VK.VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+                | VK.VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
+                | VK.VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
         }
 
         if (desc.Usage.HasFlag(BufferUsageBits.Indirect))
