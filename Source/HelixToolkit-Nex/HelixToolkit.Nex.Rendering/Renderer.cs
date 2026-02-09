@@ -13,41 +13,75 @@ public abstract class Renderer : IDisposable
     /// </summary>
     public bool Enabled { get; set; } = true;
 
+    public IContext? Context => RenderManager?.Context;
+
+    private bool _isAttached = false;
+
+    private static readonly ITracer _tracer = TracerFactory.GetTracer(nameof(Renderer));
+
     /// <summary>
     /// Gets a value indicating whether the object is currently attached to a render manager.
     /// </summary>
-    public bool IsAttached => RenderManager != null;
+    public bool IsAttached => RenderManager != null && _isAttached;
 
-    public void Attach(RendererManager manager)
+    /// <summary>
+    /// Gets the width of the rendered content.
+    /// </summary>
+    public int Width => RenderManager?.Width ?? 0;
+
+    /// <summary>
+    /// Gets the height of the rendered content.
+    /// </summary>
+    public int Height => RenderManager?.Height ?? 0;
+
+    /// <summary>
+    /// Gets the list of resource names that this renderer reads from.
+    /// </summary>
+    public virtual IEnumerable<string> GetInputs() => [];
+
+    /// <summary>
+    /// Gets the list of resource names that this renderer writes to.
+    /// </summary>
+    public virtual IEnumerable<string> GetOutputs() => [];
+
+    public bool Setup(RendererManager manager)
     {
         if (IsAttached)
         {
             if (RenderManager == manager)
             {
-                return;
+                return IsAttached;
             }
             throw new InvalidOperationException(
                 "Renderer is already attached to another RendererManager."
             );
         }
-        RenderManager = manager;
-        OnAttach(manager);
+        using (_tracer.BeginScope($"Attaching renderer: {Name}"))
+        {
+            RenderManager = manager;
+            _isAttached = OnSetup();
+            return IsAttached;
+        }
     }
 
-    protected virtual void OnAttach(RendererManager manager) { }
+    protected abstract bool OnSetup();
 
-    public void Detach()
+    public void TearDown()
     {
         if (!IsAttached)
         {
             return;
         }
-        OnDetach();
-        RenderManager?.RemoveRenderer(this);
-        RenderManager = null;
+        using (_tracer.BeginScope($"Detaching renderer: {Name}"))
+        {
+            OnTearDown();
+            RenderManager?.RemoveRenderer(this);
+            RenderManager = null;
+            _isAttached = false;
+        }
     }
 
-    protected virtual void OnDetach() { }
+    protected virtual void OnTearDown() { }
 
     public void Render(RenderContext context)
     {
@@ -64,6 +98,16 @@ public abstract class Renderer : IDisposable
 
     protected abstract void OnRender(RenderContext context);
 
+    public void Resize(int width, int height)
+    {
+        using (_tracer.BeginScope($"Resizing renderer: {Name} to {width}x{height}"))
+        {
+            OnResize(width, height);
+        }
+    }
+
+    protected virtual void OnResize(int width, int height) { }
+
     #region IDisposable Support
     private bool _disposedValue;
 
@@ -75,7 +119,7 @@ public abstract class Renderer : IDisposable
         {
             if (disposing)
             {
-                Detach();
+                TearDown();
             }
 
             // TODO: free unmanaged resources (unmanaged objects) and override finalizer

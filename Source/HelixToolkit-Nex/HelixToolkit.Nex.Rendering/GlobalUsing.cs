@@ -3,4 +3,7 @@ global using System.Runtime.InteropServices;
 global using Arch;
 global using Arch.Core;
 global using Arch.Core.Extensions;
+global using HelixToolkit.Nex.Graphics;
+global using HelixToolkit.Nex.Shaders;
+global using HelixToolkit.Nex.Trace;
 global using Microsoft.Extensions.Logging;

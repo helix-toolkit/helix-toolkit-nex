@@ -98,6 +98,11 @@ public partial class Geometry : ObservableObject, IDisposable
     /// </summary>
     private BufferResource _indexBuffer = BufferResource.Null;
     private BufferResource _vertColorsBuffer = BufferResource.Null;
+
+    public uint IndexOffset { private set; get; } = 0;
+
+    public uint IndexCount => (uint)_indices.Count;
+
     public BufferResource VertexBuffer => _vertexBuffer;
     public BufferResource VertexPropsBuffer => _vertexPropsBuffer;
     public BufferResource IndexBuffer => _indexBuffer;
@@ -377,6 +382,33 @@ public partial class Geometry : ObservableObject, IDisposable
             BufferDirty &= ~GeometryBufferType.VertexColor;
         }
         return ResultCode.Ok;
+    }
+
+    public bool UploadToGlobalIndexBuffer(uint globalFirstIndex, IContext context)
+    {
+        if (!CanHaveIndexBuffer || _indices.Count == 0)
+        {
+            return false;
+        }
+        unsafe
+        {
+            using var ptr = _indices.GetInternalArray().Pin();
+            var result = context.Upload(
+                IndexBuffer,
+                globalFirstIndex * sizeof(uint),
+                (nint)ptr.Pointer,
+                (uint)(_indices.Count * sizeof(uint))
+            );
+            if (result != ResultCode.Ok)
+            {
+                logger.LogError(
+                    $"Failed to upload index buffer for Geometry {Id} to global buffer: {result}"
+                );
+                return false;
+            }
+            IndexOffset = globalFirstIndex;
+            return true;
+        }
     }
     #endregion
 

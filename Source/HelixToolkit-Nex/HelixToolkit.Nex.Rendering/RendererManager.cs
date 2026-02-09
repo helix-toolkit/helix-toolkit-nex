@@ -1,22 +1,23 @@
+using HelixToolkit.Nex.DependencyInjection;
+using HelixToolkit.Nex.Repository;
+
 namespace HelixToolkit.Nex.Rendering;
 
-public class RendererManager : Initializable
+public class RendererManager(IServiceProvider serviceProvider) : Initializable
 {
     private static readonly ILogger _logger = LogManager.Create<RendererManager>();
     private readonly Dictionary<RenderStages, List<Renderer>> _renderers = [];
+    public IServiceProvider Services { get; } = serviceProvider;
+    public int Width { get; private set; }
+    public int Height { get; private set; }
+
+    public readonly IContext Context = serviceProvider.GetRequiredService<IContext>();
+    public readonly IShaderRepository ShaderRepository =
+        serviceProvider.GetRequiredService<IShaderRepository>();
 
     public override string Name => nameof(RendererManager);
-    public virtual RenderStages[] RenderOrder =>
-        [
-            RenderStages.Begin,
-            RenderStages.Opaque,
-            RenderStages.Transparent,
-            RenderStages.PostEffect,
-            RenderStages.Overlay,
-            RenderStages.UI,
-            RenderStages.Composition,
-            RenderStages.End,
-        ];
+
+    private RenderGraph _renderGraph = new();
 
     public bool AddRenderer(Renderer renderer)
     {
@@ -33,7 +34,8 @@ public class RendererManager : Initializable
         }
         try
         {
-            renderer.Attach(this);
+            renderer.Setup(this);
+            _renderGraph.AddPass(renderer);
         }
         catch (Exception e)
         {
@@ -56,16 +58,31 @@ public class RendererManager : Initializable
         {
             if (list.Remove(renderer))
             {
-                renderer.Detach();
+                _renderGraph.RemovePass(renderer);
+                renderer.TearDown();
             }
         }
     }
 
+    public void CompileGraph()
+    {
+        _renderGraph.Compile();
+    }
+
     public void Render(RenderContext context)
     {
-        foreach (var stage in RenderOrder)
+        // Acquire primary command buffer at the start of the frame
+        var commandBuffer = Context.AcquireCommandBuffer();
+        context.CommandBuffer = commandBuffer;
+
+        try
         {
-            RenderStage(stage, context);
+            _renderGraph.Execute(context);
+        }
+        finally
+        {
+            // Clear the command buffer reference after rendering
+            context.CommandBuffer = null;
         }
     }
 
@@ -83,13 +100,31 @@ public class RendererManager : Initializable
         }
     }
 
+    public void Resize(int width, int height)
+    {
+        if (Width == width && Height == height)
+        {
+            return; // No change in size
+        }
+        Width = width;
+        Height = height;
+        foreach (var kvp in _renderers)
+        {
+            foreach (var renderer in kvp.Value)
+            {
+                renderer.Resize(width, height);
+            }
+        }
+    }
+
     public void Clear()
     {
+        _renderGraph = new();
         foreach (var kvp in _renderers)
         {
             foreach (var renderer in kvp.Value.ToArray())
             {
-                renderer.Detach();
+                renderer.TearDown();
             }
         }
         _renderers.Clear();

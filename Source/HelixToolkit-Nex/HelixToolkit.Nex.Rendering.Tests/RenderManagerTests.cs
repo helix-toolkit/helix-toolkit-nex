@@ -1,5 +1,8 @@
+using HelixToolkit.Nex.DependencyInjection;
+using HelixToolkit.Nex.Graphics;
+using HelixToolkit.Nex.Graphics.Mock;
 using HelixToolkit.Nex.Rendering;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+using HelixToolkit.Nex.Repository;
 
 namespace HelixToolkit.Nex.Tests.Rendering;
 
@@ -12,7 +15,6 @@ public sealed class RenderManagerTests
         public override RenderStages Stage { get; }
         public override string Name { get; }
         public int RenderCount { get; private set; }
-        public RendererManager? AttachedManager { get; private set; }
 
         public FakeRenderer(RenderStages stage, string name)
         {
@@ -20,15 +22,12 @@ public sealed class RenderManagerTests
             Name = name;
         }
 
-        protected override void OnAttach(RendererManager manager)
+        protected override bool OnSetup()
         {
-            AttachedManager = manager;
+            return true;
         }
 
-        protected override void OnDetach()
-        {
-            AttachedManager = null;
-        }
+        protected override void OnTearDown() { }
 
         protected override void OnRender(RenderContext context)
         {
@@ -36,10 +35,37 @@ public sealed class RenderManagerTests
         }
     }
 
+    private static IServiceProvider? _serviceProvider;
+
+    [ClassInitialize]
+    public static void ClassInit(TestContext context)
+    {
+        var services = new ServiceCollection
+        {
+            new ServiceDescriptor(typeof(IContext), typeof(MockContext), ServiceLifetime.Singleton),
+            new ServiceDescriptor(
+                typeof(IShaderRepository),
+                typeof(ShaderRepository),
+                ServiceLifetime.Singleton
+            ),
+        };
+        // Register any necessary services here if needed for renderers
+        _serviceProvider = services.BuildServiceProvider();
+    }
+
+    [ClassCleanup]
+    public static void ClassCleanup()
+    {
+        if (_serviceProvider is IDisposable disposable)
+        {
+            disposable.Dispose();
+        }
+    }
+
     [TestMethod]
     public void CreateAndDestroy()
     {
-        var manager = new RendererManager();
+        var manager = new RendererManager(_serviceProvider!);
 
         var rBegin = new FakeRenderer(RenderStages.Begin, "BeginRenderer");
         var rOpaque = new FakeRenderer(RenderStages.Opaque, "OpaqueRenderer");

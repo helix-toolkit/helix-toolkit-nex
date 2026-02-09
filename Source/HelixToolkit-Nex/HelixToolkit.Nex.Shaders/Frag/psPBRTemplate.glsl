@@ -204,33 +204,35 @@ void nonLitOutputColor(in PBRMaterial material, out vec4 finalColor)
     finalColor = vec4(material.albedo + material.emissive, material.opacity);
 }
 
-// Shading model selection(0: PBR, 1: Non-Lit, 2: Debug tile)
-layout (constant_id = 0) const uint shadingModel = 0; 
+layout (constant_id = 0) const uint materialType = 0; 
 
 // Template function to create final color
-void outputColor(in PBRMaterial material, out vec4 finalColor)
+void outputColor(out vec4 finalColor)
 {
-/*TEMPLATE_OUTPUT_COLOR_IMPL_START*/
-    if (shadingModel == 0u) {
+    if (materialType == 0u) {
+        PBRMaterial material = createPBRMaterial();
         forwardPlusLighting(material, finalColor);
         return;
-    } else if (shadingModel == 1u) {
+    } else if (materialType == 1u) {
+        PBRMaterial material = createPBRMaterial();
         nonLitOutputColor(material, finalColor);
         return;
-    } else if (shadingModel == 2u) {
+    } else if (materialType == 2u) {
         // Default to PBR lighting
         debugTileLighting(finalColor);
+        return;
+    } else if (materialType == 3u) {
+        // Unlit with vertex color
+        finalColor = vec4(fragNormal, 1.0);
         return;
     } else {
         finalColor = vec4(1.0, 0.0, 1.0, 1.0); // Magenta for unsupported shading model
         return;
     }
-/*TEMPLATE_OUTPUT_COLOR_IMPL_END*/
 }
 
 /*TEMPLATE_CUSTOM_MAIN_START*/
 void main() {
-    PBRMaterial material = createPBRMaterial();
     outputColor(material, outColor);
 }
 /*TEMPLATE_CUSTOM_MAIN_END*/

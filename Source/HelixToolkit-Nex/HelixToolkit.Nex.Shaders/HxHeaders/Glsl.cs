@@ -9,6 +9,10 @@ public static class GlslUtils
             throw new ArgumentException("Shader path cannot be null or empty.", nameof(shaderPath));
         }
         shaderPath = shaderPath.Replace('\\', '.').Replace('/', '.');
+        if (!shaderPath.EndsWith(".glsl", StringComparison.OrdinalIgnoreCase))
+        {
+            shaderPath += ".glsl";
+        }
         var assembly = typeof(GlslHeaders).Assembly;
         var assemblyName =
             assembly.GetName().Name

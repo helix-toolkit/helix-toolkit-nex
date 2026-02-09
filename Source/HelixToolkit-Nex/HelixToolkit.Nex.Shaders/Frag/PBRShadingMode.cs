@@ -5,4 +5,5 @@ public enum PBRShadingMode : uint
     PBR = 0,
     Unlit = 1,
     DebugTileLightCount = 2,
+    Normal = 3,
 }

@@ -7,4 +7,9 @@ public static class BuildFlags
     /// Usefully when generating shaders for simple materials or effects that do not require detailed surface information, such as unlit/line/point shaders or basic color shaders.
     /// </summary>
     public const string EXCLUDE_MESH_PROPS = "EXCLUDE_MESH_PROPS";
+
+    /// <summary>
+    /// Used to compile vertex shaders for depth pass rendering that outputs draw index id. This can be used to implement features like object picking or selection by encoding the draw index into the shader output.
+    /// </summary>
+    public const string OUTPUT_DRAW_ID = "OUTPUT_DRAW_ID";
 }
