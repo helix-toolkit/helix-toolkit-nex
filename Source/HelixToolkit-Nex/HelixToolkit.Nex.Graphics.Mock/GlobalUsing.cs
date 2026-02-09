@@ -1,0 +1,15 @@
+global using System.Collections.Concurrent;
+global using HelixToolkit.Nex;
+global using HelixToolkit.Nex.Graphics;
+global using HelixToolkit.Nex.Maths;
+global using BufferHandle = HelixToolkit.Nex.Handle<HelixToolkit.Nex.Graphics.Buffer>;
+global using ComputePipelineHandle = HelixToolkit.Nex.Handle<HelixToolkit.Nex.Graphics.ComputePipeline>;
+global using int32_t = int;
+global using QueryPoolHandle = HelixToolkit.Nex.Handle<HelixToolkit.Nex.Graphics.QueryPool>;
+global using RenderPipelineHandle = HelixToolkit.Nex.Handle<HelixToolkit.Nex.Graphics.RenderPipeline>;
+global using SamplerHandle = HelixToolkit.Nex.Handle<HelixToolkit.Nex.Graphics.Sampler>;
+global using ShaderModuleHandle = HelixToolkit.Nex.Handle<HelixToolkit.Nex.Graphics.ShaderModule>;
+global using size_t = uint;
+global using TextureHandle = HelixToolkit.Nex.Handle<HelixToolkit.Nex.Graphics.Texture>;
+global using uint32_t = uint;
+global using uint64_t = ulong;
