@@ -65,6 +65,8 @@ layout(push_constant) uniform Pc {
     MeshDrawPushConstant value;
 } pc;
 
+layout (constant_id = 0) const uint MATERIAL_TYPE = 0; 
+
 FPConstants fpConst = FPBuffer(pc.value.fpConstAddress).fpConstants;
 
 PBRProperties getPBRMaterial()
@@ -204,24 +206,24 @@ void nonLitOutputColor(in PBRMaterial material, out vec4 finalColor)
     finalColor = vec4(material.albedo + material.emissive, material.opacity);
 }
 
-layout (constant_id = 0) const uint materialType = 0; 
+
 
 // Template function to create final color
 void outputColor(out vec4 finalColor)
 {
-    if (materialType == 0u) {
+    if (MATERIAL_TYPE == 0u) {
         PBRMaterial material = createPBRMaterial();
         forwardPlusLighting(material, finalColor);
         return;
-    } else if (materialType == 1u) {
+    } else if (MATERIAL_TYPE == 1u) {
         PBRMaterial material = createPBRMaterial();
         nonLitOutputColor(material, finalColor);
         return;
-    } else if (materialType == 2u) {
+    } else if (MATERIAL_TYPE == 2u) {
         // Default to PBR lighting
         debugTileLighting(finalColor);
         return;
-    } else if (materialType == 3u) {
+    } else if (MATERIAL_TYPE == 3u) {
         // Unlit with vertex color
         finalColor = vec4(fragNormal, 1.0);
         return;
@@ -233,6 +235,6 @@ void outputColor(out vec4 finalColor)
 
 /*TEMPLATE_CUSTOM_MAIN_START*/
 void main() {
-    outputColor(material, outColor);
+    outputColor(outColor);
 }
 /*TEMPLATE_CUSTOM_MAIN_END*/

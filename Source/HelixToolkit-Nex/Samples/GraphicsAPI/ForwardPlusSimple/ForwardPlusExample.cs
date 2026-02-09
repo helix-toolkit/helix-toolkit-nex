@@ -420,10 +420,7 @@ public class ForwardPlusExample
     /// </summary>
     private void CreateRenderPipelines()
     {
-        var builder = new MaterialShaderBuilder()
-            .WithPBRShading(true)
-            .WithSimpleLighting(false)
-            .ConfigForwardPlus(_config);
+        var builder = new MaterialShaderBuilder().ConfigForwardPlus(_config);
 
         var shaderResult = builder.BuildMaterialPipeline(_context, "ForwardPlus_Render");
 

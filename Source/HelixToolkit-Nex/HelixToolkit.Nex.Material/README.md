@@ -1,508 +1,419 @@
-# HelixToolkit.Nex.Material
-
-**Modern, type-safe material system with automatic shader generation for HelixToolkit.Nex**
-
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![.NET 8](https://img.shields.io/badge/.NET-8.0-purple.svg)](https://dotnet.microsoft.com/)
+# Material Type System
 
 ## Overview
 
-HelixToolkit.Nex.Material provides a powerful material system that bridges the gap between high-level material definitions and low-level shader code. It automatically generates optimized shaders based on material properties, eliminating manual shader writing while maintaining full flexibility for custom materials.
+The Material Type System provides a powerful way to create **uber shaders** that contain multiple material implementations, selectable at runtime through specialization constants. This approach reduces shader compilation overhead while maintaining flexibility.
 
-### Key Features
+## Key Concepts
 
-✨ **Automatic Shader Generation** - Shaders are generated based on material properties  
-🎯 **Type-Safe Material Definitions** - C# structs automatically sync with GLSL  
-🚀 **High Performance** - Shader caching and pipeline reuse  
-🔧 **Extensible** - Easy to create custom material types  
-🎨 **PBR Support** - Built-in physically-based rendering  
-⚡ **Forward+ Rendering** - Modern tile-based light culling  
-🔗 **Bindless Resources** - GPU-driven vertex and texture access  
-🏭 **Material Factory** - Auto-registration and creation by name  
+### Material Type Registry
+
+The `MaterialTypeRegistry` is a global registry that maps material type names to unique IDs and their GLSL implementations. Each registered material type defines:
+
+- **Type ID**: Unique identifier (uint) used in specialization constants
+- **Name**: Human-readable name (e.g., "PBR", "Unlit", "Toon")
+- **Output Color Implementation**: GLSL code for the `outputColor()` function
+- **Material Creation Implementation** (optional): Custom `createPBRMaterial()` logic
+- **Additional Code** (optional): Helper functions and utilities
+
+### Uber Shaders
+
+An **uber shader** contains all registered material type implementations in a single shader. The actual material type is selected at pipeline creation time using a specialization constant (`materialType`, constant ID 0).
+
+**Benefits:**
+- ✅ Compile shaders once, use for multiple material types
+- ✅ Efficient runtime switching between material types
+- ✅ Reduced shader variant explosion
+- ✅ Better pipeline caching
+
+**Trade-offs:**
+- ⚠️ Larger shader code (but GPU drivers optimize out unused branches)
+- ⚠️ Requires specialization constant support
+
+## Built-in Material Types
+
+| Type ID | Name | Description |
+|---------|------|-------------|
+| 0 | PBR | Physically-based rendering with Forward+ lighting |
+| 1 | Unlit | Simple unlit shading (albedo + emissive) |
+| 2 | DebugTileLightCount | Visualize Forward+ tile light counts |
+| 3 | NormalViz | Visualize surface normals |
 
 ## Quick Start
 
-### Installation
-
-Add the project reference to your `.csproj`:
-
-```xml
-<ItemGroup>
-  <ProjectReference Include="..\HelixToolkit.Nex.Material\HelixToolkit.Nex.Material.csproj" />
-</ItemGroup>
-```
-
-### Basic Usage
+### 1. Build an Uber Shader
 
 ```csharp
-using HelixToolkit.Nex.Material;
-using HelixToolkit.Nex.Graphics;
+// Create builder (uber shader is default)
+var builder = new MaterialShaderBuilder()
+    .WithPBRShading(true)
+    .WithUberShader(true);
 
-// 1. Create a PBR material
-var material = new PbrMaterial();
-material.Properties.Variables = new PBRMaterial
+// Build shader modules
+var result = builder.BuildMaterialPipeline(context, "UberShader");
+
+if (!result.Success)
 {
-    Albedo = new Vector3(0.8f, 0.2f, 0.1f),
-    Metallic = 0.5f,
-    Roughness = 0.3f,
-    Ao = 1.0f,
-    Opacity = 1.0f
-};
+    // Handle errors
+    foreach (var error in result.Errors)
+        Console.WriteLine(error);
+    return;
+}
 
-// 2. Initialize pipeline (shaders generated automatically)
-var pipelineDesc = new RenderPipelineDesc
+// result.VertexShader and result.FragmentShader can be reused
+// for multiple pipelines with different material types
+```
+
+### 2. Create Pipelines with Different Material Types
+
+```csharp
+// PBR material pipeline
+var pbrPipelineDesc = new RenderPipelineDesc
 {
     Topology = Topology.Triangle,
     CullMode = CullMode.Back,
+    VertexShader = result.VertexShader,
+    FragementShader = result.FragmentShader,
 };
-pipelineDesc.Colors[0].Format = Format.RGBA_UN8;
+pbrPipelineDesc.Colors[0].Format = Format.RGBA_UN8;
+pbrPipelineDesc.SetMaterialType("PBR"); // Use extension method
 
-material.InitializePipeline(context, pipelineDesc);
+var pbrMaterial = new Material();
+pbrMaterial.CreatePipeline(context, pbrPipelineDesc);
 
-// 3. Use the material
-cmdBuffer.BindRenderPipeline(material.Pipeline);
-cmdBuffer.Draw(vertexCount);
-```
-
-### Textured Material
-
-```csharp
-var material = new PbrMaterial();
-
-// Assign textures - shader automatically enables texture sampling
-material.Properties.BaseColorTexture = albedoTexture;
-material.Properties.NormalTexture = normalTexture;
-material.Properties.MetallicRoughnessTexture = metallicRoughnessTexture;
-material.Properties.BaseColorSampler = sampler;
-
-material.InitializePipeline(context, pipelineDesc);
-```
-
-### Using Material Factory
-
-```csharp
-// Create materials by name
-var pbrMaterial = MaterialFactory.Create("PBR") as PbrMaterial;
-var unlitMaterial = MaterialFactory.Create("Unlit");
-
-// List all registered materials
-foreach (var name in MaterialFactory.GetRegisteredKeys())
+// Unlit material pipeline (reuses same shaders!)
+var unlitPipelineDesc = new RenderPipelineDesc
 {
-    Console.WriteLine($"Available material: {name}");
+    Topology = Topology.Triangle,
+    CullMode = CullMode.Back,
+    VertexShader = result.VertexShader,
+    FragementShader = result.FragmentShader,
+};
+unlitPipelineDesc.Colors[0].Format = Format.RGBA_UN8;
+unlitPipelineDesc.SetMaterialType("Unlit");
+
+var unlitMaterial = new Material();
+unlitMaterial.CreatePipeline(context, unlitPipelineDesc);
+```
+
+### 3. Register Custom Material Types
+
+```csharp
+// Register a toon shading material
+var toonId = MaterialTypeRegistry.Register(
+    name: "Toon",
+    outputColorImpl: @"
+    PBRMaterial material = createPBRMaterial();
+    vec3 normal = material.normal;
+    vec3 viewDir = normalize(fpConst.cameraPosition - fragWorldPos);
+    
+    // Toon shading steps
+    float intensity = max(0.0, dot(normal, -viewDir));
+    vec3 color;
+    if (intensity > 0.95) 
+        color = material.albedo;
+    else if (intensity > 0.5) 
+        color = material.albedo * 0.6;
+    else if (intensity > 0.25) 
+        color = material.albedo * 0.4;
+    else 
+        color = material.albedo * 0.2;
+    
+    finalColor = vec4(color + material.emissive, material.opacity);
+    return;",
+    additionalCode: @"
+    // Optional helper functions
+    vec3 toonStep(vec3 color, float intensity, int levels) {
+        float step = 1.0 / float(levels);
+        float level = floor(intensity / step) * step;
+        return color * level;
+    }"
+);
+
+Console.WriteLine($"Registered Toon material with ID: {toonId}");
+
+// Rebuild uber shader to include new material type
+result = builder.BuildMaterialPipeline(context, "UberShader_WithToon");
+```
+
+## Advanced Usage
+
+### Single Material Type Shader
+
+For optimization, you can compile a shader for only one material type:
+
+```csharp
+var builder = new MaterialShaderBuilder()
+    .WithPBRShading(true)
+    .WithMaterialType("PBR"); // Specify exact type
+
+var result = builder.BuildMaterialPipeline(context, "PBR_Only");
+
+// This shader only contains PBR code, smaller binary
+```
+
+### Custom Material Creation Logic
+
+Override how materials are constructed from properties:
+
+```csharp
+MaterialTypeRegistry.Register(new MaterialTypeRegistration
+{
+    TypeId = 100,
+    Name = "CustomPBR",
+    CreateMaterialImplementation = @"
+    PBRProperties props = getPBRMaterial();
+    PBRMaterial material;
+    
+    // Custom processing
+    material.albedo = pow(props.albedo, vec3(2.2)); // sRGB to linear
+    material.roughness = props.roughness * props.roughness; // Squared
+    material.metallic = props.metallic;
+    material.ao = props.ao;
+    material.emissive = props.emissive;
+    material.opacity = props.opacity;
+    material.ambient = props.ambient;
+    material.normal = normalize(fragNormal);
+    
+    return material;",
+    OutputColorImplementation = @"
+    PBRMaterial material = createPBRMaterial();
+    forwardPlusLighting(material, finalColor);
+    return;"
+});
+```
+
+### Material Type Introspection
+
+```csharp
+// List all registered types
+foreach (var reg in MaterialTypeRegistry.GetAllRegistrations())
+{
+    Console.WriteLine($"{reg.TypeId}: {reg.Name}");
+}
+
+// Get type by name
+var typeId = MaterialTypeRegistry.GetTypeId("PBR");
+
+// Get type by ID
+if (MaterialTypeRegistry.TryGetById(typeId.Value, out var registration))
+{
+    Console.WriteLine($"Found: {registration.Name}");
 }
 ```
 
-## Architecture
-
-### Three-Layer Design
-
-```
-┌─────────────────────────────────────┐
-│     Material Layer (User-Facing)    │
-│  • PbrMaterial, UnlitMaterial       │
-│  • MaterialProperties (Observable)  │
-│  • MaterialFactory (Registration)   │
-└─────────────────────────────────────┘
-               ↓
-┌─────────────────────────────────────┐
-│  Shader Builder Layer (Integration) │
-│  • MaterialShaderBuilder            │
-│  • Automatic code generation        │
-│  • Define management                │
-└─────────────────────────────────────┘
-               ↓
-┌─────────────────────────────────────┐
-│  Shader Library Layer (Low-Level)   │
-│  • ShaderCompiler (Preprocessing)   │
-│  • GlslHeaders (PBR functions)      │
-│  • Caching system                   │
-└─────────────────────────────────────┘
-```
-
-## Core Components
-
-### Material Base Classes
-
-**`Material`** - Abstract base for all materials
-- Provides `Pipeline` property for cached render pipeline
-- Optional `DebugName` for debugging
-
-**`Material<TProperties>`** - Generic material with typed properties
-- Exposes strongly-typed `Properties` instance
-- Properties are observable for change tracking
-
-**`MaterialProperties`** - Base for material property bags
-- Derives from `ObservableObject` for reactive updates
-- Supports cloning and serialization
-
-### Built-in Materials
-
-#### PbrMaterial
-
-Physically-based rendering material with full texture support:
-
-```csharp
-[MaterialName("PBR")]
-public class PbrMaterial : Material<PbrMaterialProperties>
-{
-    public bool InitializePipeline(IContext context, RenderPipelineDesc pipelineDesc);
-    public void InvalidatePipeline();
-}
-```
-
-**Properties:**
-- `Variables` - PBRProperties struct (albedo, metallic, roughness, etc.)
-- `BaseColorTexture`, `NormalTexture`, `MetallicRoughnessTexture`, etc.
-- `BaseColorSampler` - Texture sampler configuration
-- Automatic texture detection and shader variant selection
+## API Reference
 
 ### MaterialShaderBuilder
 
-The central class for building shaders from materials:
+| Method | Description |
+|--------|-------------|
+| `WithUberShader(bool)` | Build uber shader with all material types (default) |
+| `WithMaterialType(string)` | Build shader for specific material type only |
+| `WithMaterialType(uint)` | Build shader for specific material type ID only |
+| `BuildMaterialPipeline(context, name)` | Build vertex and fragment shaders |
 
-```csharp
-var builder = new MaterialShaderBuilder()
-    .WithPBRShading(true)
-    .WithDefine("USE_BASE_COLOR_TEXTURE")
-    .WithCustomCode("vec3 customFunction() { ... }")
-    .ForMaterial(material.Properties);
+### MaterialTypeRegistry
 
-var result = builder.BuildMaterialPipeline(context, "MyMaterial");
-```
+| Method | Description |
+|--------|-------------|
+| `Register(registration)` | Register a material type with full control |
+| `Register(name, outputImpl, ...)` | Register with auto-assigned ID |
+| `TryGetByName(name, out reg)` | Get registration by name |
+| `TryGetById(id, out reg)` | Get registration by ID |
+| `GetTypeId(name)` | Get ID for a type name |
+| `GetTypeName(id)` | Get name for a type ID |
+| `GetAllRegistrations()` | Get all registered types |
 
-**Methods:**
-- `WithPBRShading(bool)` - Enable/disable PBR lighting
-- `WithDefine(string, string?)` - Add preprocessor defines
-- `WithCustomCode(string)` - Inject custom GLSL code
-- `WithCustomMain(string)` - Replace main function
-- `ForMaterial(properties)` - Auto-configure from material
-- `WithBindlessVertices(bool)` - Enable bindless vertex buffers
-- `WithForwardPlus(bool, config)` - Enable Forward+ rendering
-- `BuildFragmentShader()` - Build fragment shader only
-- `BuildMaterialPipeline(context, name)` - Build complete pipeline
+### Extension Methods (RenderPipelineDesc)
 
-### MaterialFactory
+| Method | Description |
+|--------|-------------|
+| `SetMaterialType(string)` | Set material type by name |
+| `SetMaterialType(uint)` | Set material type by ID |
+| `GetMaterialType()` | Get current material type ID |
 
-Automatic registration and creation of materials:
-
-```csharp
-// Auto-registers all materials in assembly
-MaterialFactory.AutoRegisterFromAssembly(Assembly.GetExecutingAssembly());
-
-// Create by name
-var material = MaterialFactory.Create("PBR");
-
-// List registered materials
-var materials = MaterialFactory.GetRegisteredKeys();
-
-// Custom registration
-MaterialFactory.Register("Custom", () => new CustomMaterial());
-```
-
-**Features:**
-- Auto-discovers materials with `[MaterialName]` attribute
-- Falls back to type name (strips "Material" suffix)
-- Thread-safe concurrent dictionary
-- Supports both instance and property creation
-
-## Advanced Features
-
-### Custom Materials
-
-Create your own material types:
-
-```csharp
-[MaterialName("Toon")]
-public class ToonMaterial : Material<ToonMaterialProperties>
-{
-    private RenderPipelineResource _cachedPipeline = RenderPipelineResource.Null;
-
-    public override RenderPipelineResource Pipeline => _cachedPipeline;
-
-    public bool InitializePipeline(IContext context, RenderPipelineDesc pipelineDesc)
-    {
-        var builder = new MaterialShaderBuilder()
-            .WithPBRShading(false)
-            .WithDefine("USE_TOON_SHADING")
-            .WithCustomCode(@"
-                vec3 toonShading(vec3 normal, vec3 lightDir) {
-                    float intensity = dot(normal, lightDir);
-                    if (intensity > 0.95) return vec3(1.0);
-                    else if (intensity > 0.5) return vec3(0.6);
-                    else if (intensity > 0.25) return vec3(0.4);
-                    else return vec3(0.2);
-                }
-            ")
-            .WithCustomMain(@"
-                void main() {
-                    vec3 normal = normalize(fragNormal);
-                    vec3 lightDir = normalize(vec3(-0.5, -1.0, -0.3));
-                    vec3 color = toonShading(normal, lightDir);
-                    outColor = vec4(color, 1.0);
-                }
-            ");
-
-        var result = builder.BuildMaterialPipeline(context, "ToonMaterial");
-        if (result.Success)
-        {
-            pipelineDesc.VertexShader = result.VertexShader;
-            pipelineDesc.FragementShader = result.FragmentShader;
-            _cachedPipeline = context.CreateRenderPipeline(pipelineDesc);
-            return _cachedPipeline.Valid;
-        }
-        return false;
-    }
-}
-```
-
-### Forward+ Rendering
-
-Modern tile-based light culling for efficient multi-light rendering:
-
-```csharp
-var config = new ForwardPlusConfig
-{
-    TileSize = 16,              // 16x16 pixel tiles
-    MaxLightsPerTile = 256,     // Max lights per tile
-    UseComputeCulling = true    // Use compute shader
-};
-
-var builder = new MaterialShaderBuilder()
-    .WithPBRShading(true)
-    .WithForwardPlus(true, config);
-
-// Handles thousands of lights efficiently
-```
-
-**Benefits:**
-- Constant shading cost per pixel
-- Scales to thousands of lights
-- Lower memory than deferred rendering
-- Works with MSAA and transparency
-
-See [FORWARD_PLUS_GUIDE.md](FORWARD_PLUS_GUIDE.md) for details.
-
-### Bindless Resources
-
-GPU-driven resource access using buffer device addresses:
-
-```csharp
-var builder = new MaterialShaderBuilder()
-    .WithBindlessVertices(true)
-    .WithForwardPlus(true);
-
-// No vertex buffer binding needed!
-// Vertex data fetched directly via GPU address
-```
-
-**Benefits:**
-- Reduces CPU overhead
-- Flexible vertex formats
-- Simplifies instancing
-- Better GPU cache utilization
-
-### Dynamic Updates
-
-Handle runtime property changes efficiently:
-
-```csharp
-public void UpdateTexture(TextureResource? newTexture)
-{
-    bool hadTexture = material.Properties.BaseColorTexture.Valid;
-    material.Properties.BaseColorTexture = newTexture ?? TextureResource.Null;
-    bool hasTexture = material.Properties.BaseColorTexture.Valid;
-
-    // Rebuild pipeline only if texture state changed
-    if (hadTexture != hasTexture)
-    {
-        material.InvalidatePipeline();
-        material.InitializePipeline(context, pipelineDesc);
-    }
-}
-```
-
-## Performance Best Practices
+## Best Practices
 
 ### ✅ DO
 
-1. **Cache Pipelines** - Materials automatically cache pipelines
-2. **Batch by Material** - Group draw calls by material type
-3. **Invalidate Sparingly** - Only rebuild when necessary
-4. **Use Texture Arrays** - Better than individual texture bindings
-5. **Enable Shader Caching** - Uses global cache by default
+1. **Use uber shaders for dynamic content** - When you need to switch between material types frequently
+2. **Register material types at startup** - Before building shaders
+3. **Cache shader compilation results** - Reuse `MaterialShaderResult` across multiple pipelines
+4. **Use meaningful type names** - Makes debugging easier
+5. **Provide helper functions** - Use `AdditionalCode` for shared utilities
 
 ### ❌ DON'T
 
-1. **Don't Recreate Materials** - Reuse material instances
-2. **Don't Rebuild Every Frame** - Pipelines are expensive
-3. **Don't Skip Error Checking** - Check `InitializePipeline` results
-4. **Don't Mix Approaches** - Use either manual or automatic shaders
-5. **Don't Ignore Invalidation** - Call when textures change state
+1. **Don't rebuild shaders every frame** - Very expensive
+2. **Don't register duplicate type IDs** - Will throw exception
+3. **Don't modify registry during shader compilation** - Thread safety
+4. **Don't forget to set material type** - Pipeline will use default (ID 0)
+5. **Don't mix uber and single-type approaches** - Pick one strategy
 
-## Common Patterns
+## Performance Considerations
 
-### Material Library
+### Specialization Constants
+
+Specialization constants allow the driver to optimize out unused branches:
+
+```glsl
+// This code:
+if (materialType == 0u) {
+    // PBR code
+} else if (materialType == 1u) {
+    // Unlit code
+}
+
+// Becomes this after specialization (for materialType = 0):
+// PBR code
+```
+
+**Result**: No runtime branching overhead!
+
+### Shader Caching
+
+The shader compiler includes a global cache:
 
 ```csharp
-public static class MaterialLibrary
-{
-    public static PbrMaterial CreateMetal()
-    {
-        var material = new PbrMaterial();
-        material.Properties.Variables = new PBRMaterial
-        {
-            Albedo = new Vector3(0.8f, 0.8f, 0.8f),
-            Metallic = 1.0f,
-            Roughness = 0.2f
-        };
-        return material;
-    }
+// First build - compiles shader
+var result1 = builder.BuildMaterialPipeline(context, "Uber");
 
-    public static PbrMaterial CreatePlastic()
-    {
-        var material = new PbrMaterial();
-        material.Properties.Variables = new PBRMaterial
-        {
-            Albedo = new Vector3(0.2f, 0.8f, 0.2f),
-            Metallic = 0.0f,
-            Roughness = 0.5f
-        };
-        return material;
+// Second build with same source - uses cache
+var result2 = builder.BuildMaterialPipeline(context, "Uber");
+```
+
+### Pipeline State Objects (PSO)
+
+Create PSOs ahead of time to avoid hitches:
+
+```csharp
+// Startup: Pre-create common material pipelines
+var materialTypes = new[] { "PBR", "Unlit", "Toon" };
+var pipelines = new Dictionary<string, Material>();
+
+var uberShader = builder.BuildMaterialPipeline(context, "Uber");
+
+foreach (var type in materialTypes)
+{
+    var desc = new RenderPipelineDesc { ... };
+    desc.SetMaterialType(type);
+    
+    var material = new Material();
+    material.CreatePipeline(context, desc);
+    pipelines[type] = material;
+}
+
+// Runtime: Instant switching
+cmdBuffer.BindRenderPipeline(pipelines["PBR"]);
+```
+
+## Shader Template Structure
+
+The uber shader generation modifies the `psPBRTemplate.glsl` template:
+
+```glsl
+// Template has this structure:
+// 1. Includes and buffers
+// 2. Helper functions (forwardPlusLighting, debugTileLighting, etc.)
+// 3. createPBRMaterial() - Can be overridden per type
+// 4. outputColor() - GENERATED from material types
+// 5. main() - Calls outputColor()
+
+// Generated outputColor() function:
+layout (constant_id = 0) const uint materialType = 0;
+
+void outputColor(out vec4 finalColor)
+{
+    if (materialType == 0u) {
+        // PBR implementation
+        PBRMaterial material = createPBRMaterial();
+        forwardPlusLighting(material, finalColor);
+        return;
+    } else if (materialType == 1u) {
+        // Unlit implementation
+        PBRMaterial material = createPBRMaterial();
+        nonLitOutputColor(material, finalColor);
+        return;
     }
+    // ... more types ...
+    
+    // Fallback
+    finalColor = vec4(1.0, 0.0, 1.0, 1.0); // Magenta
 }
 ```
 
-### Quality Levels
+## Migration Guide
 
+### From Old System
+
+**Before:**
 ```csharp
-public MaterialShaderResult BuildForQuality(MaterialQuality quality)
-{
-    var builder = new MaterialShaderBuilder().WithPBRShading(true);
+// Had to manually manage shader variants
+var pbrBuilder = new MaterialShaderBuilder()
+    .WithDefine("USE_PBR")
+    .WithCustomMain(...);
 
-    switch (quality)
-    {
-        case MaterialQuality.High:
-            builder.WithDefine("USE_BASE_COLOR_TEXTURE");
-            builder.WithDefine("USE_NORMAL_TEXTURE");
-            builder.WithDefine("USE_METALLIC_ROUGHNESS_TEXTURE");
-            break;
-        case MaterialQuality.Medium:
-            builder.WithDefine("USE_BASE_COLOR_TEXTURE");
-            break;
-        case MaterialQuality.Low:
-            // No textures
-            break;
-    }
-
-    return builder.BuildMaterialPipeline(context, $"Material_{quality}");
-}
+var unlitBuilder = new MaterialShaderBuilder()
+    .WithDefine("USE_UNLIT")
+    .WithCustomMain(...);
+    
+// Compile two separate shaders
 ```
 
-## Documentation
+**After:**
+```csharp
+// Single uber shader for all types
+var builder = new MaterialShaderBuilder()
+    .WithUberShader(true);
 
-- **[MATERIAL_SHADER_INTEGRATION.md](MATERIAL_SHADER_INTEGRATION.md)** - Complete integration guide
-- **[FORWARD_PLUS_GUIDE.md](FORWARD_PLUS_GUIDE.md)** - Forward+ rendering details
-- **MaterialShaderIntegrationExamples.cs** - Working code examples
-- **ForwardPlusExample.cs** - Forward+ usage examples
+var result = builder.BuildMaterialPipeline(context, "Uber");
 
-## Dependencies
-
-- **HelixToolkit.Nex.Graphics** - Core graphics abstractions
-- **HelixToolkit.Nex.Maths** - Math types (Vector3, Matrix4x4, etc.)
-- **HelixToolkit.Nex** - ObservableObject for property tracking
-- **HelixToolkit.Nex.Shaders** - Shader compilation and GLSL headers
-- **HelixToolkit.Nex.CodeGen** - Source generators (analyzer only)
+// Create pipelines with different types
+pipelineDesc.SetMaterialType("PBR");
+unlitPipelineDesc.SetMaterialType("Unlit");
+```
 
 ## Examples
 
-### Basic PBR
+See `MaterialTypeExamples.cs` for complete working examples:
 
-```csharp
-var material = new PbrMaterial();
-material.Properties.Variables = new PBRMaterial
-{
-    Albedo = new Vector3(0.8f, 0.2f, 0.1f),
-    Metallic = 0.5f,
-    Roughness = 0.3f
-};
-material.InitializePipeline(context, pipelineDesc);
-```
-
-### Textured PBR
-
-```csharp
-var material = new PbrMaterial();
-material.Properties.BaseColorTexture = albedoTexture;
-material.Properties.NormalTexture = normalTexture;
-material.Properties.BaseColorSampler = sampler;
-material.InitializePipeline(context, pipelineDesc);
-```
-
-### Custom Shader
-
-```csharp
-var builder = new MaterialShaderBuilder()
-    .WithCustomMain(@"
-        void main() {
-            vec3 color = vec3(1.0, 0.0, 0.0);
-            outColor = vec4(color, 1.0);
-        }
-    ");
-var result = builder.BuildMaterialPipeline(context, "CustomMaterial");
-```
+- `Example1_UberShader` - Basic uber shader
+- `Example2_CreatePBRMaterial` - Create specific material from uber shader
+- `Example3_MultipleVariants` - Multiple materials from one shader
+- `Example4_RegisterCustomMaterialType` - Register custom type
+- `Example5_SingleMaterialType` - Optimized single-type shader
+- `Example8_CompleteWorkflow` - End-to-end example
 
 ## Troubleshooting
 
-### Pipeline is Null/Invalid
+### Material appears magenta
+- Material type not registered or ID mismatch
+- Check: `MaterialTypeRegistry.GetTypeId(typeName)`
 
-Check if `InitializePipeline` returned true:
+### Shader compilation fails
+- GLSL syntax error in material implementation
+- Check: `result.Errors` list
+- Verify all required functions are available in template
 
-```csharp
-if (!material.InitializePipeline(context, pipelineDesc))
-{
-    Console.WriteLine("Pipeline creation failed");
-    // Check shader build errors
-}
-```
+### Wrong material type rendered
+- Specialization constant not set
+- Check: `desc.GetMaterialType()` returns expected ID
+- Ensure `SetMaterialType()` called before pipeline creation
 
-### Textures Not Working
+## Future Enhancements
 
-Ensure textures AND sampler are assigned:
+Potential improvements:
 
-```csharp
-material.Properties.BaseColorTexture = texture;
-material.Properties.BaseColorSampler = sampler;  // Required!
-material.InvalidatePipeline();
-material.InitializePipeline(context, pipelineDesc);
-```
+- [ ] Material type validation during registration
+- [ ] Automatic dependency tracking for helper functions
+- [ ] Visual material type editor
+- [ ] Hot-reload support for custom material types
+- [ ] Performance profiling per material type
 
-### Custom Shader Errors
+## See Also
 
-Verify GLSL syntax:
-
-```csharp
-var result = builder.BuildFragmentShader();
-if (!result.Success)
-{
-    foreach (var error in result.Errors)
-        Console.WriteLine(error);
-}
-```
-
-## Contributing
-
-Contributions are welcome! When adding new features:
-
-1. Follow existing naming conventions
-2. Add examples to `MaterialShaderIntegrationExamples.cs`
-3. Register materials with `MaterialFactory`
-4. Document shader injection points
-5. Test with both textured and non-textured variants
-
-## License
-
-MIT License - Same as HelixToolkit.Nex project
-
----
-
-**Part of [HelixToolkit.Nex](https://github.com/helix-toolkit/helix-toolkit-nex)** - Modern 3D graphics toolkit for .NET
+- [MATERIAL_SHADER_INTEGRATION.md](MATERIAL_SHADER_INTEGRATION.md) - Material system overview
+- [FORWARD_PLUS_GUIDE.md](FORWARD_PLUS_GUIDE.md) - Forward+ rendering
+- `MaterialTypeExamples.cs` - Working code examples
+- `psPBRTemplate.glsl` - Shader template structure

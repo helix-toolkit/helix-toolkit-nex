@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text;
 using HelixToolkit.Nex.DependencyInjection;
@@ -25,59 +24,6 @@ public sealed class ShaderModuleCacheEntry : CacheEntry<ShaderModuleResource>
 }
 
 /// <summary>
-/// Statistics for the shader repository cache.
-/// </summary>
-[Obsolete("Use RepositoryStatistics instead.")]
-public sealed class ShaderRepositoryStatistics
-{
-    /// <summary>
-    /// Total number of entries in the cache.
-    /// </summary>
-    public int TotalEntries { get; init; }
-
-    /// <summary>
-    /// Maximum number of entries allowed.
-    /// </summary>
-    public int MaxEntries { get; init; }
-
-    /// <summary>
-    /// Total number of cache hits.
-    /// </summary>
-    public long TotalHits { get; init; }
-
-    /// <summary>
-    /// Total number of cache misses.
-    /// </summary>
-    public long TotalMisses { get; init; }
-
-    /// <summary>
-    /// Cache hit rate as a percentage (0-100).
-    /// </summary>
-    public double HitRate =>
-        TotalHits + TotalMisses > 0 ? (TotalHits * 100.0) / (TotalHits + TotalMisses) : 0;
-
-    /// <summary>
-    /// Total number of accesses across all entries.
-    /// </summary>
-    public long TotalAccessCount { get; init; }
-
-    /// <summary>
-    /// Average access count per entry.
-    /// </summary>
-    public double AverageAccessCount { get; init; }
-
-    /// <summary>
-    /// Timestamp of the oldest entry.
-    /// </summary>
-    public DateTime? OldestEntry { get; init; }
-
-    /// <summary>
-    /// Timestamp of the newest entry.
-    /// </summary>
-    public DateTime? NewestEntry { get; init; }
-}
-
-/// <summary>
 /// Thread-safe repository for caching compiled SPIR-V shader modules.
 /// </summary>
 /// <remarks>
@@ -90,7 +36,8 @@ public sealed class ShaderRepositoryStatistics
 /// </para>
 /// </remarks>
 public sealed class ShaderRepository
-    : Repository<string, ShaderModuleCacheEntry, ShaderModuleResource>, IShaderRepository
+    : Repository<string, ShaderModuleCacheEntry, ShaderModuleResource>,
+        IShaderRepository
 {
     private readonly IContext _context;
 

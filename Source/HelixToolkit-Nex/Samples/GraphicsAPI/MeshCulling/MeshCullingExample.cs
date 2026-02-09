@@ -222,10 +222,9 @@ internal class MeshCullingExample : IDisposable
     private void CreateRenderPipeline()
     {
         // Setup PBR material pipeline (though we use simplified lighting/unlit for this demo)
-        var builder = new MaterialShaderBuilder()
-            .WithPBRShading(true)
-            .WithSimpleLighting(false) // Disable complex lighting for performance in this sample
-            .ConfigForwardPlus(ForwardPlusLightCulling.Config.Default);
+        var builder = new MaterialShaderBuilder().ConfigForwardPlus(
+            ForwardPlusLightCulling.Config.Default
+        );
 
         var shaderResult = builder.BuildMaterialPipeline(_context, "Unlit");
         {
