@@ -58,11 +58,22 @@ public static class SceneSorting
             {
                 if (!node.HasParent)
                 {
-                    transform.UpdateWorldTransform(Matrix4x4.Identity);
+                    if (transform.UpdateWorldTransform(Matrix4x4.Identity, out var world))
+                    {
+                        node.SetWorldTransform(new WorldTransform(world));
+                    }
                 }
                 else
                 {
-                    transform.UpdateWorldTransform(node.Parent!.Transform.WorldTransform);
+                    if (
+                        transform.UpdateWorldTransform(
+                            node.Parent!.WorldTransform.Value,
+                            out var world
+                        )
+                    )
+                    {
+                        node.SetWorldTransform(new WorldTransform(world));
+                    }
                 }
 
                 var level = node.Info.Level;
