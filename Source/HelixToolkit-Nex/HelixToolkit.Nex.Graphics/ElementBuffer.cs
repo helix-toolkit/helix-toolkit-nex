@@ -1,11 +1,33 @@
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
 namespace HelixToolkit.Nex.Graphics;
+
+public struct SafeWriteContext(IntPtr mappedPtr, int remainSizeInBytes)
+{
+    public IntPtr MappedPtr { get; private set; } = mappedPtr;
+    public int RemainSizeInBytes { get; private set; } = remainSizeInBytes;
+
+    public bool Write<T>(ReadOnlySpan<T> data)
+        where T : unmanaged
+    {
+        unsafe
+        {
+            var dataSize = data.Length * sizeof(T);
+            if (dataSize > RemainSizeInBytes)
+            {
+                return false;
+            }
+            unsafe
+            {
+                fixed (T* dataPtr = data)
+                {
+                    NativeHelper.MemoryCopy(MappedPtr, (nint)dataPtr, (uint)dataSize);
+                    MappedPtr += dataSize;
+                    RemainSizeInBytes -= dataSize;
+                }
+            }
+            return true;
+        }
+    }
+}
 
 /// <summary>
 /// Represents a GPU buffer for storing structured element data (SSBO) with automatic resizing capability.
@@ -16,7 +38,7 @@ namespace HelixToolkit.Nex.Graphics;
 /// ElementBuffer is designed to simplify the management of Storage Buffers (SSBO) that contain
 /// collections of unmanaged data. It automatically handles:
 /// <list type="bullet">
-/// <item>Buffer creation and resizing based on capacity requirements</item>
+/// <item>Buffer creation and resizing based on remainSizeInBytes requirements</item>
 /// <item>Different allocation strategies for dynamic vs static buffers</item>
 /// <item>Efficient uploads of FastList data to GPU</item>
 /// </list>
@@ -48,10 +70,10 @@ public sealed class ElementBuffer<T> : IDisposable
     private bool _disposedValue;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="ElementBuffer{T}"/> class with the specified capacity.
+    /// Initializes a new instance of the <see cref="ElementBuffer{T}"/> class with the specified remainSizeInBytes.
     /// </summary>
     /// <param name="context">The graphics context used to create GPU buffers.</param>
-    /// <param name="capacity">The initial capacity (number of elements) of the buffer.</param>
+    /// <param name="capacity">The initial remainSizeInBytes (number of elements) of the buffer.</param>
     /// <param name="isDynamic">
     /// If true, creates a dynamic buffer using HOST_VISIBLE storage for frequent CPU updates via map/unmap.
     /// If false, creates a static buffer using Device storage for optimal GPU performance.
@@ -89,12 +111,12 @@ public sealed class ElementBuffer<T> : IDisposable
     /// </para>
     /// <list type="bullet">
     /// <item>
-    /// <b>Dynamic buffers:</b> If the data size exceeds capacity, a new larger buffer is created
+    /// <b>Dynamic buffers:</b> If the data size exceeds remainSizeInBytes, a new larger buffer is created
     /// with 1.5x the required size (for growth room), and the old buffer is disposed.
     /// Data is uploaded via direct memory mapping for optimal performance.
     /// </item>
     /// <item>
-    /// <b>Static buffers:</b> If the data size exceeds capacity, the buffer is recreated with
+    /// <b>Static buffers:</b> If the data size exceeds remainSizeInBytes, the buffer is recreated with
     /// exactly the required size, and the old buffer is disposed.
     /// Data is uploaded via the context's staging mechanism.
     /// </item>
@@ -133,9 +155,9 @@ public sealed class ElementBuffer<T> : IDisposable
     /// <summary>
     /// Uploads a subset of data to the buffer, resizing the buffer if necessary.
     /// </summary>
-    /// <remarks>If the buffer is dynamic and the required capacity exceeds the current capacity, the buffer
-    /// is resized with additional capacity  to optimize future growth. For static buffers, the buffer is resized to the
-    /// exact required capacity.</remarks>
+    /// <remarks>If the buffer is dynamic and the required remainSizeInBytes exceeds the current remainSizeInBytes, the buffer
+    /// is resized with additional remainSizeInBytes  to optimize future growth. For static buffers, the buffer is resized to the
+    /// exact required remainSizeInBytes.</remarks>
     /// <param name="data">The array of data to upload. Cannot be <see langword="null"/>.</param>
     /// <param name="start">The zero-based index in the <paramref name="data"/> array at which to begin uploading.</param>
     /// <param name="count">The number of elements to upload, starting from <paramref name="start"/>. Must be greater than 0.</param>
@@ -165,7 +187,7 @@ public sealed class ElementBuffer<T> : IDisposable
         {
             if (IsDynamic)
             {
-                // For dynamic buffers, grow with some extra capacity (1.5x)
+                // For dynamic buffers, grow with some extra remainSizeInBytes (1.5x)
                 var newCapacity = MathUtil.Clamp(
                     (int)(requiredCapacity * 1.5f),
                     (int)requiredCapacity,
@@ -193,12 +215,70 @@ public sealed class ElementBuffer<T> : IDisposable
     }
 
     /// <summary>
-    /// Ensures the buffer has at least the specified capacity, resizing if necessary.
+    /// Writes data to a dynamic buffer, resizing the buffer if necessary to accommodate the specified total count.
     /// </summary>
-    /// <param name="minCapacity">The minimum required capacity in number of elements.</param>
+    /// <remarks>This method can only be used with dynamic buffers. If the buffer is not dynamic, the method
+    /// logs an error and returns <see cref="ResultCode.InvalidState"/>. <para> If the specified <paramref
+    /// name="totalCount"/> exceeds the current buffer capacity, the buffer is resized to ensure sufficient space. The
+    /// new capacity is calculated as 1.5 times the required capacity, clamped to a valid range. </para> <para> The
+    /// <paramref name="writeAction"/> is executed within the context of a mapped buffer. If the buffer cannot be
+    /// mapped, the method logs an error and returns <see cref="ResultCode.InvalidState"/>. </para> <para> After the
+    /// write operation, the method flushes the mapped memory to ensure data coherence and updates the buffer's element
+    /// count to <paramref name="totalCount"/>. </para></remarks>
+    /// <param name="totalCount">The total number of elements to write to the buffer. Must be greater than 0.</param>
+    /// <param name="writeAction">An action that performs the write operation. The action is provided with a <see cref="SafeWriteContext"/> that
+    /// contains the mapped pointer and buffer size for writing.</param>
+    /// <returns>A <see cref="ResultCode"/> indicating the outcome of the operation. Returns <see cref="ResultCode.Ok"/> if the
+    /// write operation succeeds, or an error code if the operation fails.</returns>
+    public ResultCode WriteDynamic(int totalCount, Action<SafeWriteContext> writeAction)
+    {
+        if (!IsDynamic)
+        {
+            _logger.LogError("WriteDynamic can only be used with dynamic buffers.");
+            return ResultCode.InvalidState;
+        }
+        if (totalCount <= 0)
+        {
+            return ResultCode.Ok;
+        }
+        var requiredCapacity = totalCount;
+        if (requiredCapacity > Capacity)
+        {
+            // For dynamic buffers, grow with some extra remainSizeInBytes (1.5x)
+            var newCapacity = MathUtil.Clamp(
+                (int)(requiredCapacity * 1.5f),
+                (int)requiredCapacity,
+                int.MaxValue
+            );
+            var result = ResizeBuffer(newCapacity);
+            if (result.HasError())
+            {
+                return result;
+            }
+        }
+        unsafe
+        {
+            nint mappedPtr = Context.GetMappedPtr(Buffer.Handle);
+            if (mappedPtr == nint.Zero)
+            {
+                _logger.LogError("Cannot write data: dynamic buffer is not mapped.");
+                return ResultCode.InvalidState;
+            }
+            writeAction(new SafeWriteContext(mappedPtr, Capacity * sizeof(T)));
+            // Flush mapped memory if not coherent
+            Context.FlushMappedMemory(Buffer.Handle, 0, (uint)(totalCount * sizeof(T)));
+            Count = totalCount;
+            return ResultCode.Ok;
+        }
+    }
+
+    /// <summary>
+    /// Ensures the buffer has at least the specified remainSizeInBytes, resizing if necessary.
+    /// </summary>
+    /// <param name="minCapacity">The minimum required remainSizeInBytes in number of elements.</param>
     /// <returns>
     /// A <see cref="ResultCode"/> indicating the result of the operation.
-    /// Returns <see cref="ResultCode.Ok"/> if capacity is sufficient or resizing succeeded.
+    /// Returns <see cref="ResultCode.Ok"/> if remainSizeInBytes is sufficient or resizing succeeded.
     /// </returns>
     public ResultCode EnsureCapacity(int minCapacity)
     {
@@ -207,13 +287,13 @@ public sealed class ElementBuffer<T> : IDisposable
             return ResultCode.Ok;
         }
 
-        return ResizeBuffer(minCapacity);
+        return ResizeBuffer((int)(minCapacity * 1.5f));
     }
 
     /// <summary>
-    /// Creates or recreates the internal GPU buffer with the specified capacity.
+    /// Creates or recreates the internal GPU buffer with the specified remainSizeInBytes.
     /// </summary>
-    /// <param name="capacity">The capacity in number of elements.</param>
+    /// <param name="capacity">The remainSizeInBytes in number of elements.</param>
     /// <returns>
     /// A <see cref="ResultCode"/> indicating the result of buffer creation.
     /// </returns>
@@ -244,7 +324,7 @@ public sealed class ElementBuffer<T> : IDisposable
             if (result.HasError())
             {
                 _logger.LogError(
-                    "Failed to create ElementBuffer with capacity {CAPACITY}: {REASON}",
+                    "Failed to create ElementBuffer with remainSizeInBytes {CAPACITY}: {REASON}",
                     capacity,
                     result
                 );
@@ -259,9 +339,9 @@ public sealed class ElementBuffer<T> : IDisposable
     }
 
     /// <summary>
-    /// Resizes the buffer by disposing the old buffer and creating a new one with the specified capacity.
+    /// Resizes the buffer by disposing the old buffer and creating a new one with the specified remainSizeInBytes.
     /// </summary>
-    /// <param name="newCapacity">The new capacity in number of elements.</param>
+    /// <param name="newCapacity">The new remainSizeInBytes in number of elements.</param>
     /// <returns>
     /// A <see cref="ResultCode"/> indicating the result of the resize operation.
     /// </returns>
@@ -274,7 +354,7 @@ public sealed class ElementBuffer<T> : IDisposable
             Buffer = BufferResource.Null;
         }
 
-        // Create new buffer with updated capacity
+        // Create new buffer with updated remainSizeInBytes
         return CreateBuffer(newCapacity);
     }
 
@@ -319,7 +399,7 @@ public sealed class ElementBuffer<T> : IDisposable
             if (newCount > Capacity)
             {
                 _logger.LogError(
-                    "Cannot upload data: destination offset {DST_OFFSET} plus count {COUNT} exceeds buffer capacity {CAPACITY}.",
+                    "Cannot upload data: destination offset {DST_OFFSET} plus count {COUNT} exceeds buffer remainSizeInBytes {CAPACITY}.",
                     dstOffset,
                     count,
                     Capacity

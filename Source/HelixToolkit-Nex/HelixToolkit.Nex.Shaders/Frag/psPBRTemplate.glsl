@@ -44,10 +44,6 @@ layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer Ma
     PBRProperties materials[];
 };
 
-layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer ModelMatrixBuffer {
-    mat4 models[];
-};
-
 layout(buffer_reference, std430, buffer_reference_align = 4) readonly buffer DirectionalLightBuffer {
     DirectionalLights value;
 };
@@ -211,19 +207,19 @@ void nonLitOutputColor(in PBRMaterial material, out vec4 finalColor)
 // Template function to create final color
 void outputColor(out vec4 finalColor)
 {
-    if (MATERIAL_TYPE == 0u) {
+    if (MATERIAL_TYPE == 1u) {
         PBRMaterial material = createPBRMaterial();
         forwardPlusLighting(material, finalColor);
         return;
-    } else if (MATERIAL_TYPE == 1u) {
+    } else if (MATERIAL_TYPE == 2u) {
         PBRMaterial material = createPBRMaterial();
         nonLitOutputColor(material, finalColor);
         return;
-    } else if (MATERIAL_TYPE == 2u) {
+    } else if (MATERIAL_TYPE == 3u) {
         // Default to PBR lighting
         debugTileLighting(finalColor);
         return;
-    } else if (MATERIAL_TYPE == 3u) {
+    } else if (MATERIAL_TYPE == 4u) {
         // Unlit with vertex color
         finalColor = vec4(fragNormal, 1.0);
         return;

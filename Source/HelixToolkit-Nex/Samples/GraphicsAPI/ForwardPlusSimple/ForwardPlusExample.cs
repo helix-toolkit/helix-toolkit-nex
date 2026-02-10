@@ -41,7 +41,6 @@ public class ForwardPlusExample
     private BufferResource _directionalLightBuffer = BufferResource.Null;
 
     // Per-object data buffers
-    private BufferResource _modelMatrixBuffer = BufferResource.Null;
     private BufferResource _pbrPropertiesBuffer = BufferResource.Null;
     private BufferResource _fpConstBuffer = BufferResource.Null;
     private BufferResource _meshDrawBuffer = BufferResource.Null;
@@ -91,7 +90,6 @@ public class ForwardPlusExample
     private ForwardPlusLightCulling.Config _config = ForwardPlusLightCulling.Config.Default;
     private FastList<Light> _lights = new();
     private DirectionalLights _dirLights = new();
-    private Matrix4x4[] _modelMatrices = new Matrix4x4[NumLights + 1];
     private readonly PBRProperties[] _pbrProperties = new PBRProperties[NumLights + 1];
     private readonly Geometry _lightMesh;
     private readonly Geometry _mesh;
@@ -169,7 +167,6 @@ public class ForwardPlusExample
 
         // Initialize scene data
         _lights = CreateTestLights(NumLights);
-        _modelMatrices[0] = Matrix4x4.Identity;
         _pbrProperties[0] = new()
         {
             Albedo = new Vector3(1f, 1f, 1f),
@@ -181,15 +178,14 @@ public class ForwardPlusExample
             new()
             {
                 MaterialId = 0,
-                ModelId = 0,
                 VertexBufferAddress = _mesh.VertexBuffer.GpuAddress,
                 VertexPropsBufferAddress = _mesh.VertexPropsBuffer.GpuAddress,
+                Transform = Matrix4x4.Identity,
             }
         );
         // Setup light sphere transforms and emissive materials
         for (int i = 0; i < NumLights; i++)
         {
-            _modelMatrices[i + 1] = Matrix4x4.CreateTranslation(_lights[i].Position);
             _pbrProperties[i + 1] = new()
             {
                 Ao = 1f,
@@ -200,9 +196,9 @@ public class ForwardPlusExample
                 new()
                 {
                     MaterialId = (uint)i + 1,
-                    ModelId = (uint)i + 1,
                     VertexBufferAddress = _lightMesh.VertexBuffer.GpuAddress,
                     VertexPropsBufferAddress = _lightMesh.VertexPropsBuffer.GpuAddress,
+                    Transform = Matrix4x4.CreateTranslation(_lights[i].Position),
                 }
             );
         }
@@ -294,14 +290,6 @@ public class ForwardPlusExample
             BufferUsageBits.Storage,
             StorageType.Device,
             "DirectionalLightBuffer"
-        );
-
-        // Per-object data buffers
-        _modelMatrixBuffer = _context.CreateBuffer(
-            _modelMatrices,
-            BufferUsageBits.Storage,
-            StorageType.Device,
-            "ForwardPlus_ModelMatrices"
         );
 
         _pbrPropertiesBuffer = _context.CreateBuffer(
@@ -574,9 +562,6 @@ public class ForwardPlusExample
         // Reset atomic counter for light index allocation
         cmdBuffer.FillBuffer(_counterBuffer, 0, sizeof(uint), 0);
 
-        // Update model matrices
-        cmdBuffer.UpdateBuffer(_modelMatrixBuffer, _modelMatrices, (uint)_modelMatrices.Length);
-
         // Calculate matrices
         float aspect = (float)screenWidth / screenHeight;
         var view = camera.CreateView();
@@ -600,7 +585,6 @@ public class ForwardPlusExample
                 LightBufferAddress = _lightBuffer.GpuAddress,
                 LightGridBufferAddress = _lightGridBuffer.GpuAddress,
                 LightIndexBufferAddress = _lightIndexBuffer.GpuAddress,
-                ModelMatrixBufferAddress = _modelMatrixBuffer.GpuAddress,
                 MaterialBufferAddress = _pbrPropertiesBuffer.GpuAddress,
                 PerModelParamsBufferAddress = _fpConstBuffer.GpuAddress,
                 MeshDrawBufferAddress = _meshDrawBuffer.GpuAddress,
@@ -639,6 +623,8 @@ public class ForwardPlusExample
                 GlobalCounterBufferAddress = _context.GpuAddress(_counterBuffer),
             }
         );
+
+        cmdBuffer.UpdateBuffer(_meshDrawBuffer, _drawParams);
     }
 
     /// <summary>
@@ -861,7 +847,9 @@ public class ForwardPlusExample
         for (int i = 0; i < NumLights - NumSpotLights; i++)
         {
             _lights.GetInternalArray()[i].Position += new Vector3(_offset, 0, 0);
-            _modelMatrices[i + 1] = Matrix4x4.CreateTranslation(_lights[i].Position);
+            _drawParams.GetInternalArray()[i + 1].Transform = Matrix4x4.CreateTranslation(
+                _lights[i].Position
+            );
         }
     }
 
@@ -883,7 +871,6 @@ public class ForwardPlusExample
         _lightGridBuffer.Dispose();
         _lightIndexBuffer.Dispose();
         _counterBuffer.Dispose();
-        _modelMatrixBuffer.Dispose();
         _pbrPropertiesBuffer.Dispose();
         _fpConstBuffer.Dispose();
         _lightCullingBuffer.Dispose();

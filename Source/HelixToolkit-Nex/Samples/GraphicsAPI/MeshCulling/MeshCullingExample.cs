@@ -43,7 +43,6 @@ internal class MeshCullingExample : IDisposable
     // CPU-side data
     private readonly FastList<PBRProperties> _pBRProperties = [];
     private readonly FastList<uint> _meshIds = [];
-    private readonly FastList<Matrix4x4> _modelMatrices = [];
     private readonly FastList<MeshBoundData> _bounds = [];
 
     // Arrays for data management
@@ -54,7 +53,6 @@ internal class MeshCullingExample : IDisposable
 
     // -- GPU Buffers --
     private BufferResource _cullConstBuffer = BufferResource.Null; // Uniforms for culling
-    private BufferResource _modelMatrixBuffer = BufferResource.Null; // Transforms
     private BufferResource _pbrPropertiesBuffer = BufferResource.Null; // Materials
     private BufferResource _boundsBuffer = BufferResource.Null; // Bounds
     private BufferResource _meshDrawBuffer = BufferResource.Null; // MeshDraw structs
@@ -107,12 +105,6 @@ internal class MeshCullingExample : IDisposable
             BufferUsageBits.Storage,
             StorageType.Device,
             "CullingConstantBuffer"
-        );
-        _modelMatrixBuffer = _context.CreateBuffer(
-            _modelMatrices,
-            BufferUsageBits.Storage,
-            StorageType.Device,
-            "ModelMatrixBuffer"
         );
         _pbrPropertiesBuffer = _context.CreateBuffer(
             _pBRProperties,
@@ -190,8 +182,6 @@ internal class MeshCullingExample : IDisposable
             "DirectionalLightBuffer"
         );
 
-        // Link buffer addresses to the culling constants so the shader can access them
-        _cullConst.ModelMatrixBufferAddress = _modelMatrixBuffer.GpuAddress;
         _cullConst.MeshBoundBufferAddress = _boundsBuffer.GpuAddress;
         _cullConst.DrawCommandBufferAddress = _drawCmdsBuffer.GpuAddress;
         _cullConst.MeshDrawBufferAddress = _meshDrawBuffer.GpuAddress;
@@ -338,7 +328,6 @@ internal class MeshCullingExample : IDisposable
                 InverseViewProjection = invViewProj,
                 CameraPosition = _camera.Position,
                 Time = (float)DateTime.Now.TimeOfDay.TotalSeconds,
-                ModelMatrixBufferAddress = _modelMatrixBuffer.GpuAddress,
                 MaterialBufferAddress = _pbrPropertiesBuffer.GpuAddress,
                 PerModelParamsBufferAddress = _fpConstBuffer.GpuAddress,
                 MeshDrawBufferAddress = _meshDrawBuffer.GpuAddress,
@@ -430,7 +419,6 @@ internal class MeshCullingExample : IDisposable
         // Generate random instances
         _pBRProperties.Resize(_instanceCount);
         _meshIds.Resize(_instanceCount);
-        _modelMatrices.Resize(_instanceCount);
         _drawCommands.Resize(_instanceCount);
         _meshDraws.Resize(_instanceCount);
         var rnd = new Random((int)Stopwatch.GetTimestamp());
@@ -444,10 +432,7 @@ internal class MeshCullingExample : IDisposable
                 (float)(rnd.NextDouble() * 200.0 - 100.0),
                 (float)(rnd.NextDouble() * 200.0 - 100.0)
             );
-            _modelMatrices[i] =
-                Matrix4x4.CreateRotationX(rnd.NextFloat(0, 180) * MathF.PI / 180)
-                * Matrix4x4.CreateRotationY(rnd.NextFloat(0, 180) * MathF.PI / 180)
-                * Matrix4x4.CreateTranslation(position);
+
             _pBRProperties[i] = new PBRProperties()
             {
                 Albedo = new Vector3(
@@ -463,9 +448,12 @@ internal class MeshCullingExample : IDisposable
                 VertexPropsBufferAddress = mesh.VertexPropsBuffer.GpuAddress,
                 VertexColorBufferAddress = mesh.VertexColorBuffer.GpuAddress,
                 MaterialId = (uint)i,
-                ModelId = (uint)i,
                 MeshId = _meshIds[i],
                 MaterialType = (uint)PBRShadingMode.Unlit,
+                Transform =
+                    Matrix4x4.CreateRotationX(rnd.NextFloat(0, 180) * MathF.PI / 180)
+                    * Matrix4x4.CreateRotationY(rnd.NextFloat(0, 180) * MathF.PI / 180)
+                    * Matrix4x4.CreateTranslation(position),
             };
             _drawCommands[i] = new()
             {
@@ -484,10 +472,6 @@ internal class MeshCullingExample : IDisposable
                 (float)(rnd.NextDouble() * 200.0 - 100.0),
                 (float)(rnd.NextDouble() * 200.0 - 100.0)
             );
-            _modelMatrices[i] =
-                Matrix4x4.CreateRotationX(rnd.NextFloat(0, 180) * MathF.PI / 180)
-                * Matrix4x4.CreateRotationY(rnd.NextFloat(0, 180) * MathF.PI / 180)
-                * Matrix4x4.CreateTranslation(position);
             _pBRProperties[i] = new PBRProperties()
             {
                 Albedo = new Vector3(rnd.NextFloat(0, 1), rnd.NextFloat(0, 1), rnd.NextFloat(0, 1)),
@@ -506,9 +490,12 @@ internal class MeshCullingExample : IDisposable
                 VertexPropsBufferAddress = mesh.VertexPropsBuffer.GpuAddress,
                 VertexColorBufferAddress = mesh.VertexColorBuffer.GpuAddress,
                 MaterialId = (uint)i,
-                ModelId = (uint)i,
                 MeshId = _meshIds[i],
                 MaterialType = (uint)PBRShadingMode.PBR,
+                Transform =
+                    Matrix4x4.CreateRotationX(rnd.NextFloat(0, 180) * MathF.PI / 180)
+                    * Matrix4x4.CreateRotationY(rnd.NextFloat(0, 180) * MathF.PI / 180)
+                    * Matrix4x4.CreateTranslation(position),
             };
             _drawCommands[i] = new()
             {
@@ -540,7 +527,6 @@ internal class MeshCullingExample : IDisposable
                 _sphereMesh?.Dispose();
                 // Dispose all GPU buffers
                 _cullConstBuffer.Dispose();
-                _modelMatrixBuffer.Dispose();
                 _pbrPropertiesBuffer.Dispose();
                 _boundsBuffer.Dispose();
                 _fpConstBuffer.Dispose();

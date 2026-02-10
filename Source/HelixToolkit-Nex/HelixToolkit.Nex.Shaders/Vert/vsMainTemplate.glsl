@@ -37,10 +37,6 @@ layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer FP
     FPConstants fpConstants;
 };
 
-layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer ModelMatrixBuffer {
-    mat4 models[];
-};
-
 layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer InstancingBuffer {
     mat4 instancing[];
 };
@@ -67,7 +63,9 @@ uint getMeshDrawId() {
      return cmds.commands[gl_DrawID + pc.value.drawCommandIdxOffset].meshDrawIndex;
 }
 
-MeshDraw meshDraw = MeshDrawBuffer(fpConst.meshDrawBufferAddress).draws[getMeshDrawId()];
+uint meshDrawIndex = getMeshDrawId();
+
+MeshDraw meshDraw = MeshDrawBuffer(fpConst.meshDrawBufferAddress).draws[meshDrawIndex];
 
 mat4 getInstancingMatrix() {
     if (meshDraw.instancingBufferAddress == 0) {
@@ -80,11 +78,6 @@ mat4 getInstancingMatrix() {
         return instancingBuf.instancing[idx];
     }
     return instancingBuf.instancing[gl_InstanceIndex];
-}
-
-mat4 getModelMatrix() {
-    ModelMatrixBuffer modelBuf = ModelMatrixBuffer(fpConst.modelMatrixBufferAddress);
-    return modelBuf.models[meshDraw.modelId];
 }
 
 GpuVertexProps emptyProps;
@@ -114,9 +107,8 @@ vec4 getVertexColor() {
 void calVertexOutput(out vec4 pos, out vec3 wp, out vec3 normal, out vec3 tangent, out vec4 color, out vec2 texCoord) {
 /*TEMPLATE_CALCULATE_VERTEX_OUTPUT_IMPL_START*/
     vec4 position = getVertex();
-    mat4 model = getModelMatrix();
     mat4 instance = getInstancingMatrix();
-    model = instance * model;
+    mat4 model = instance * meshDraw.transform;
 
     vec4 worldPos = model * position;
     wp = worldPos.xyz;

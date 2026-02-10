@@ -18,7 +18,6 @@ struct FPConstants {
     uint64_t lightBufferAddress;
     uint64_t lightGridBufferAddress;
     uint64_t lightIndexBufferAddress;
-    uint64_t modelMatrixBufferAddress;
     uint64_t materialBufferAddress;
     uint64_t perModelParamsBufferAddress;
     uint64_t meshDrawBufferAddress;

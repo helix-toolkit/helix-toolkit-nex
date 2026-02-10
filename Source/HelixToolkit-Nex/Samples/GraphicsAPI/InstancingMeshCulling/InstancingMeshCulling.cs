@@ -41,7 +41,6 @@ internal class InstancingMeshCullingExample : IDisposable
 
     // CPU-side data for instances
     private readonly FastList<PBRProperties> _pBRProperties = [];
-    private readonly FastList<Matrix4x4> _modelMatrices = [];
     private readonly FastList<Matrix4x4> _instanceMatrices = [];
     private readonly FastList<MeshBoundData> _bounds = [];
 
@@ -54,7 +53,6 @@ internal class InstancingMeshCullingExample : IDisposable
     // -- GPU Buffers --
     // Constant Data
     private BufferResource _cullConstBuffer = BufferResource.Null; // Uniforms for culling (View, Proj, Frustum planes)
-    private BufferResource _modelMatrixBuffer = BufferResource.Null; // Base model matrix (identity in this sample)
     private BufferResource _pbrPropertiesBuffer = BufferResource.Null; // Material properties
     private BufferResource _boundsBuffer = BufferResource.Null; // Bounding Boxes/Spheres for all mesh types
     private BufferResource _indexBuffer = BufferResource.Null; // Geometry indices
@@ -114,12 +112,6 @@ internal class InstancingMeshCullingExample : IDisposable
             BufferUsageBits.Storage,
             StorageType.Device,
             "CullingConstantBuffer"
-        );
-        _modelMatrixBuffer = _context.CreateBuffer(
-            _modelMatrices,
-            BufferUsageBits.Storage,
-            StorageType.Device,
-            "ModelMatrixBuffer"
         );
         _pbrPropertiesBuffer = _context.CreateBuffer(
             _pBRProperties,
@@ -206,9 +198,6 @@ internal class InstancingMeshCullingExample : IDisposable
             }
         );
 
-        // Link buffer addresses to the culling constants so the shader can access them.
-        // This 'Bindless' style typically passes GPU pointers (addresses) to the shader via PC or UBO.
-        _cullConst.ModelMatrixBufferAddress = _modelMatrixBuffer.GpuAddress;
         _cullConst.MeshBoundBufferAddress = _boundsBuffer.GpuAddress;
         _cullConst.DrawCommandBufferAddress = _drawCmdsBuffer.GpuAddress;
         _cullConst.MeshDrawBufferAddress = _meshDrawBuffer.GpuAddress;
@@ -353,7 +342,6 @@ internal class InstancingMeshCullingExample : IDisposable
                 InverseViewProjection = invViewProj,
                 CameraPosition = _camera.Position,
                 Time = (float)DateTime.Now.TimeOfDay.TotalSeconds,
-                ModelMatrixBufferAddress = _modelMatrixBuffer.GpuAddress,
                 MaterialBufferAddress = _pbrPropertiesBuffer.GpuAddress,
                 PerModelParamsBufferAddress = _fpConstBuffer.GpuAddress,
                 MeshDrawBufferAddress = _meshDrawBuffer.GpuAddress,
@@ -412,11 +400,9 @@ internal class InstancingMeshCullingExample : IDisposable
 
         // Generate random instances
         _pBRProperties.Resize(1);
-        _modelMatrices.Resize(1);
         _drawCommands.Resize(1);
         _meshDraws.Resize(1);
         var rnd = new Random((int)Stopwatch.GetTimestamp());
-        _modelMatrices[0] = Matrix4x4.Identity;
         _pBRProperties[0] = new PBRProperties()
         {
             Albedo = new Vector3(
@@ -433,7 +419,7 @@ internal class InstancingMeshCullingExample : IDisposable
             VertexPropsBufferAddress = _boxMesh.VertexPropsBuffer.GpuAddress,
             VertexColorBufferAddress = _boxMesh.VertexColorBuffer.GpuAddress,
             MaterialId = 0,
-            ModelId = 0,
+            Transform = Matrix4x4.Identity,
         };
         _drawCommands[0] = new()
         {
@@ -476,7 +462,6 @@ internal class InstancingMeshCullingExample : IDisposable
                 _boxMesh?.Dispose();
                 // Dispose all GPU buffers
                 _cullConstBuffer.Dispose();
-                _modelMatrixBuffer.Dispose();
                 _pbrPropertiesBuffer.Dispose();
                 _boundsBuffer.Dispose();
                 _fpConstBuffer.Dispose();

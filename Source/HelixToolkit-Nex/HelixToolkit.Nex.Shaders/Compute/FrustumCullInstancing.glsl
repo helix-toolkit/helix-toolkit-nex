@@ -1,5 +1,4 @@
 #include "HxHeaders/HeaderCompute.glsl"
-#include "HxHeaders/ModelMatrixStruct.glsl"
 #include "HxHeaders/DrawIndexIndirectCommand.glsl"
 #include "HxHeaders/FrustumCullingCommon.glsl"
 #include "HxHeaders/MeshDraw.glsl"
@@ -83,12 +82,11 @@ void main() {
     bool isVisible = true;
 
     InstancingBuffer instBuf = InstancingBuffer(draw.instancingBufferAddress);
-    ModelMatrixBuffer modelMatrixBuf = ModelMatrixBuffer(cullingConst.value.modelMatrixBufferAddress);
     MeshBoundBuffer meshBoundBuf = MeshBoundBuffer(cullingConst.value.meshBoundBufferAddress);
     MeshBoundData bound = meshBoundBuf.value[draw.meshId];
 
     // Frustum Culling
-    mat4 worldMatrix = instBuf.instances[gID] * modelMatrixBuf.models[draw.modelId];
+    mat4 worldMatrix = instBuf.instances[gID] * draw.transform;
     // 1. Sphere Culling (Cheap, fast reject)
     // Transform local sphere center to world
     // Note: Scale is baked into world matrix rows, so simple mult works for uniform scale
