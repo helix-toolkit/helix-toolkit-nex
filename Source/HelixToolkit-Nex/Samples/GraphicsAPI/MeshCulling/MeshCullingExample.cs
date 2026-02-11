@@ -43,18 +43,18 @@ internal class MeshCullingExample : IDisposable
     // CPU-side data
     private readonly FastList<PBRProperties> _pBRProperties = [];
     private readonly FastList<uint> _meshIds = [];
-    private readonly FastList<MeshBoundData> _bounds = [];
 
     // Arrays for data management
     private readonly int _instanceCount = 10000;
     private readonly FastList<MeshDraw> _meshDraws = [];
     private readonly FastList<Geometry> _meshes = [];
+    private readonly FastList<MeshInfo> _meshInfos = [];
     private readonly FastList<DrawIndexedIndirectCommand> _drawCommands = [];
 
     // -- GPU Buffers --
     private BufferResource _cullConstBuffer = BufferResource.Null; // Uniforms for culling
     private BufferResource _pbrPropertiesBuffer = BufferResource.Null; // Materials
-    private BufferResource _boundsBuffer = BufferResource.Null; // Bounds
+    private BufferResource _meshInfoBuffer = BufferResource.Null; // MeshInfos
     private BufferResource _meshDrawBuffer = BufferResource.Null; // MeshDraw structs
     private BufferResource _indexBuffer = BufferResource.Null; // Geometry indices
 
@@ -112,8 +112,8 @@ internal class MeshCullingExample : IDisposable
             StorageType.Device,
             "PBRPropertiesBuffer"
         );
-        _boundsBuffer = _context.CreateBuffer(
-            _bounds,
+        _meshInfoBuffer = _context.CreateBuffer(
+            _meshInfos,
             BufferUsageBits.Storage,
             StorageType.Device,
             "BoundsBuffer"
@@ -182,7 +182,7 @@ internal class MeshCullingExample : IDisposable
             "DirectionalLightBuffer"
         );
 
-        _cullConst.MeshBoundBufferAddress = _boundsBuffer.GpuAddress;
+        _cullConst.MeshInfoBufferAddress = _meshInfoBuffer.GpuAddress;
         _cullConst.DrawCommandBufferAddress = _drawCmdsBuffer.GpuAddress;
         _cullConst.MeshDrawBufferAddress = _meshDrawBuffer.GpuAddress;
 
@@ -328,6 +328,7 @@ internal class MeshCullingExample : IDisposable
                 InverseViewProjection = invViewProj,
                 CameraPosition = _camera.Position,
                 Time = (float)DateTime.Now.TimeOfDay.TotalSeconds,
+                MeshInfoBufferAddress = _meshInfoBuffer.GpuAddress,
                 MaterialBufferAddress = _pbrPropertiesBuffer.GpuAddress,
                 PerModelParamsBufferAddress = _fpConstBuffer.GpuAddress,
                 MeshDrawBufferAddress = _meshDrawBuffer.GpuAddress,
@@ -396,19 +397,25 @@ internal class MeshCullingExample : IDisposable
         _meshes.Add(_sphereMesh);
         _sphereMesh.FirstIndex = (uint)_boxMesh.Indices.Count;
 
-        // Register bounds for geometry types (Box=0, Sphere=1)
-        _bounds.Add(
-            new MeshBoundData()
+        _meshInfos.Add(
+            new MeshInfo()
             {
+                VertexBufferAddress = _boxMesh.VertexBuffer.GpuAddress,
+                VertexPropsBufferAddress = _boxMesh.VertexPropsBuffer.GpuAddress,
+                VertexColorBufferAddress = _boxMesh.VertexColorBuffer.GpuAddress,
                 BoxMax = _boxMesh.BoundingBoxLocal.Maximum,
                 BoxMin = _boxMesh.BoundingBoxLocal.Minimum,
                 SphereCenter = _boxMesh.BoundingSphereLocal.Center,
                 SphereRadius = _boxMesh.BoundingSphereLocal.Radius,
             }
         );
-        _bounds.Add(
-            new MeshBoundData()
+
+        _meshInfos.Add(
+            new MeshInfo()
             {
+                VertexBufferAddress = _sphereMesh.VertexBuffer.GpuAddress,
+                VertexPropsBufferAddress = _sphereMesh.VertexPropsBuffer.GpuAddress,
+                VertexColorBufferAddress = _sphereMesh.VertexColorBuffer.GpuAddress,
                 BoxMax = _sphereMesh.BoundingBoxLocal.Maximum,
                 BoxMin = _sphereMesh.BoundingBoxLocal.Minimum,
                 SphereCenter = _sphereMesh.BoundingSphereLocal.Center,
@@ -444,9 +451,6 @@ internal class MeshCullingExample : IDisposable
             var mesh = _meshes[(int)_meshIds[i]];
             _meshDraws[i] = new MeshDraw()
             {
-                VertexBufferAddress = mesh.VertexBuffer.GpuAddress,
-                VertexPropsBufferAddress = mesh.VertexPropsBuffer.GpuAddress,
-                VertexColorBufferAddress = mesh.VertexColorBuffer.GpuAddress,
                 MaterialId = (uint)i,
                 MeshId = _meshIds[i],
                 MaterialType = (uint)PBRShadingMode.Unlit,
@@ -486,9 +490,6 @@ internal class MeshCullingExample : IDisposable
             var mesh = _meshes[(int)_meshIds[i]];
             _meshDraws[i] = new MeshDraw()
             {
-                VertexBufferAddress = mesh.VertexBuffer.GpuAddress,
-                VertexPropsBufferAddress = mesh.VertexPropsBuffer.GpuAddress,
-                VertexColorBufferAddress = mesh.VertexColorBuffer.GpuAddress,
                 MaterialId = (uint)i,
                 MeshId = _meshIds[i],
                 MaterialType = (uint)PBRShadingMode.PBR,
@@ -528,7 +529,7 @@ internal class MeshCullingExample : IDisposable
                 // Dispose all GPU buffers
                 _cullConstBuffer.Dispose();
                 _pbrPropertiesBuffer.Dispose();
-                _boundsBuffer.Dispose();
+                _meshInfoBuffer.Dispose();
                 _fpConstBuffer.Dispose();
                 _depthBuffer.Dispose();
                 _meshDrawBuffer.Dispose();

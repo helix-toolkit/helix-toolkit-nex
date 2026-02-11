@@ -15,6 +15,7 @@ struct FPConstants {
     uint maxLightsPerTile;
     uint enabled;
 
+    uint64_t meshInfoBufferAddress;
     uint64_t lightBufferAddress;
     uint64_t lightGridBufferAddress;
     uint64_t lightIndexBufferAddress;

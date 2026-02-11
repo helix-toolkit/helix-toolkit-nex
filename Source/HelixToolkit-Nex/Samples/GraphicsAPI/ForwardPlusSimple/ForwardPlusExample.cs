@@ -39,6 +39,7 @@ public class ForwardPlusExample
     private BufferResource _lightIndexBuffer = BufferResource.Null;
     private BufferResource _counterBuffer = BufferResource.Null;
     private BufferResource _directionalLightBuffer = BufferResource.Null;
+    private BufferResource _meshInfoBuffer = BufferResource.Null;
 
     // Per-object data buffers
     private BufferResource _pbrPropertiesBuffer = BufferResource.Null;
@@ -178,8 +179,7 @@ public class ForwardPlusExample
             new()
             {
                 MaterialId = 0,
-                VertexBufferAddress = _mesh.VertexBuffer.GpuAddress,
-                VertexPropsBufferAddress = _mesh.VertexPropsBuffer.GpuAddress,
+                MeshId = 0,
                 Transform = Matrix4x4.Identity,
             }
         );
@@ -196,8 +196,7 @@ public class ForwardPlusExample
                 new()
                 {
                     MaterialId = (uint)i + 1,
-                    VertexBufferAddress = _lightMesh.VertexBuffer.GpuAddress,
-                    VertexPropsBufferAddress = _lightMesh.VertexPropsBuffer.GpuAddress,
+                    MeshId = 1, // Light mesh
                     Transform = Matrix4x4.CreateTranslation(_lights[i].Position),
                 }
             );
@@ -290,6 +289,27 @@ public class ForwardPlusExample
             BufferUsageBits.Storage,
             StorageType.Device,
             "DirectionalLightBuffer"
+        );
+
+        _meshInfoBuffer = _context.CreateBuffer(
+            new MeshInfo[]
+            {
+                new MeshInfo
+                {
+                    VertexBufferAddress = _mesh.VertexBuffer.GpuAddress,
+                    VertexPropsBufferAddress = _mesh.VertexPropsBuffer.GpuAddress,
+                    VertexColorBufferAddress = _mesh.VertexColorBuffer.GpuAddress,
+                },
+                new MeshInfo
+                {
+                    VertexBufferAddress = _lightMesh.VertexBuffer.GpuAddress,
+                    VertexPropsBufferAddress = _lightMesh.VertexPropsBuffer.GpuAddress,
+                    VertexColorBufferAddress = _lightMesh.VertexColorBuffer.GpuAddress,
+                },
+            },
+            BufferUsageBits.Storage,
+            StorageType.Device,
+            "MeshInfo"
         );
 
         _pbrPropertiesBuffer = _context.CreateBuffer(
@@ -582,6 +602,7 @@ public class ForwardPlusExample
                 InverseViewProjection = invViewProj,
                 CameraPosition = camera.Position,
                 Time = (float)DateTime.Now.TimeOfDay.TotalSeconds,
+                MeshInfoBufferAddress = _meshInfoBuffer.GpuAddress,
                 LightBufferAddress = _lightBuffer.GpuAddress,
                 LightGridBufferAddress = _lightGridBuffer.GpuAddress,
                 LightIndexBufferAddress = _lightIndexBuffer.GpuAddress,
@@ -875,6 +896,7 @@ public class ForwardPlusExample
         _fpConstBuffer.Dispose();
         _lightCullingBuffer.Dispose();
         _directionalLightBuffer.Dispose();
+        _meshInfoBuffer.Dispose();
 
         // Dispose pipelines
         _renderPipelinePBR.Dispose();

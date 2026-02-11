@@ -3,7 +3,7 @@
 #include "HxHeaders/ForwardPlusConstants.glsl"
 #include "HxHeaders/MeshDraw.glsl"
 #include "HxHeaders/DrawIndexIndirectCommand.glsl"
-
+#include "HxHeaders/MeshInfo.glsl"
 
 layout(location = 0) out vec3 fragWorldPos;
 layout(location = 1) out flat uint materialId;
@@ -49,6 +49,10 @@ layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer Me
     MeshDraw draws[];
 };
 
+layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer MeshInfoBuffer {
+    MeshInfo value[];
+};
+
 layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer DrawCmdsBuffer {
     DrawIndexedIndirectCommand commands[];
 };
@@ -67,6 +71,8 @@ uint meshDrawIndex = getMeshDrawId();
 
 MeshDraw meshDraw = MeshDrawBuffer(fpConst.meshDrawBufferAddress).draws[meshDrawIndex];
 
+MeshInfo meshInfo = MeshInfoBuffer(fpConst.meshInfoBufferAddress).value[meshDraw.meshId];
+
 mat4 getInstancingMatrix() {
     if (meshDraw.instancingBufferAddress == 0) {
         return mat4(1.0);
@@ -83,23 +89,26 @@ mat4 getInstancingMatrix() {
 GpuVertexProps emptyProps;
 
 vec4 getVertex() {
-    VertexBuffer vertexBuf = VertexBuffer(meshDraw.vertexBufferAddress);
+    if (meshInfo.vertexBufferAddress == 0) {
+        return vec4(0.0);
+    }
+    VertexBuffer vertexBuf = VertexBuffer(meshInfo.vertexBufferAddress);
     return vec4(vertexBuf.value[gl_VertexIndex].xyz, 1);
 }
 
 GpuVertexProps getVertexProps() {
-    if (meshDraw.vertexPropsBufferAddress == 0) {
+    if (meshInfo.vertexPropsBufferAddress == 0) {
         return emptyProps;
     }
-    VertexPropsBuffer propsBuf = VertexPropsBuffer(meshDraw.vertexPropsBufferAddress);
+    VertexPropsBuffer propsBuf = VertexPropsBuffer(meshInfo.vertexPropsBufferAddress);
     return propsBuf.value[gl_VertexIndex];
 }
 
 vec4 getVertexColor() {
-    if (meshDraw.vertexColorBufferAddress == 0) {
+    if (meshInfo.vertexColorBufferAddress == 0) {
         return vec4(1.0);
     }
-    VertexColorBuffer colorBuf = VertexColorBuffer(meshDraw.vertexColorBufferAddress);
+    VertexColorBuffer colorBuf = VertexColorBuffer(meshInfo.vertexColorBufferAddress);
     return colorBuf.colors[gl_VertexIndex];
 }
 

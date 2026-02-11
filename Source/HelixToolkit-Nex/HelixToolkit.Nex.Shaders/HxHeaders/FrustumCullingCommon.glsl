@@ -1,12 +1,5 @@
-@code_gen
-struct MeshBoundData {
-    vec3 boxMin;        // Local Space
-    float _padding0;
-    vec3 boxMax;        // Local Space
-    float _padding1;
-    vec3 sphereCenter;  // Local Space
-    float sphereRadius; // Local Space
-};
+#include "HxHeaders/MeshInfo.glsl"
+
 // Culling Constants
 @code_gen
 struct CullingConstants {
@@ -27,7 +20,7 @@ struct CullingConstants {
     uint _pad2;
 
     // Buffer Addresses
-    uint64_t meshBoundBufferAddress;     // Input: MeshBoundData[]
+    uint64_t meshInfoBufferAddress;     // Input: MeshInfo[]
     uint64_t modelMatrixBufferAddress;    // Input: Model Matrices
     uint64_t drawCommandBufferAddress;    // Input: DrawIndexedIndirectCommand[]
     uint64_t meshDrawBufferAddress;      // Input: MeshDraw[]

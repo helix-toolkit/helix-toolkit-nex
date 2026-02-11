@@ -15,8 +15,8 @@ layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer Cu
     CullingConstants value;
 };
 
-layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer MeshBoundBuffer {
-    MeshBoundData value[];
+layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer MeshInfoBuffer {
+    MeshInfo value[];
 };
 
 layout(buffer_reference, std430, buffer_reference_align = 16) buffer DrawCommandBuffer {
@@ -82,8 +82,8 @@ void main() {
     bool isVisible = true;
 
     InstancingBuffer instBuf = InstancingBuffer(draw.instancingBufferAddress);
-    MeshBoundBuffer meshBoundBuf = MeshBoundBuffer(cullingConst.value.meshBoundBufferAddress);
-    MeshBoundData bound = meshBoundBuf.value[draw.meshId];
+    MeshInfoBuffer meshInfoBuf = MeshInfoBuffer(cullingConst.value.meshInfoBufferAddress);
+    MeshInfo bound = meshInfoBuf.value[draw.meshId];
 
     // Frustum Culling
     mat4 worldMatrix = instBuf.instances[gID] * draw.transform;

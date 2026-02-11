@@ -15,8 +15,8 @@ layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer Cu
     CullingConstants value;
 };
 
-layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer MeshBoundBuffer {
-    MeshBoundData value[];
+layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer MeshInfoBuffer {
+    MeshInfo value[];
 };
 
 layout(buffer_reference, std430, buffer_reference_align = 16) buffer DrawCommandBuffer {
@@ -72,9 +72,9 @@ void main() {
         return;
     }
 
-    MeshBoundBuffer meshBoundBuf = MeshBoundBuffer(cullingConst.value.meshBoundBufferAddress);
+    MeshInfoBuffer meshInfoBuf = MeshInfoBuffer(cullingConst.value.meshInfoBufferAddress);
 
-    MeshBoundData bound = meshBoundBuf.value[draw.meshId];
+    MeshInfo bound = meshInfoBuf.value[draw.meshId];
     bool isVisible = true;
 
     // Frustum Culling
