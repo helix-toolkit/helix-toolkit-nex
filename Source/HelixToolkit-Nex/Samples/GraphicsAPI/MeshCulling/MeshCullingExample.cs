@@ -168,12 +168,11 @@ internal class MeshCullingExample : IDisposable
         _directionalLightBuffer = _context.CreateBuffer(
             new DirectionalLights()
             {
-                Lights_0 = new Light
+                Lights_0 = new DirectionalLight
                 {
                     Direction = new Vector3(0, -1, 0),
                     Color = Vector3.One,
                     Intensity = 1,
-                    Type = 0,
                 },
                 LightCount = 1,
             },

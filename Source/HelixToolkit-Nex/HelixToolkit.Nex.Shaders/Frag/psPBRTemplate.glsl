@@ -111,7 +111,7 @@ void forwardPlusLighting(in PBRMaterial material, out vec4 outFinalColor)
     if (fpConst.directionalLightsBufferAddress != 0) {
         DirectionalLightBuffer dirLightBuf = DirectionalLightBuffer(fpConst.directionalLightsBufferAddress);
         for (uint i = 0; i < dirLightBuf.value.lightCount; ++i) {
-            Light dirLight = dirLightBuf.value.lights[i];
+            Light dirLight = DirectionLightToLight(dirLightBuf.value.lights[i]);
             vec3 lightContribution = calculatePBRLighting(material, dirLight, fragWorldPos, viewDir);
             finalC += lightContribution;
         }

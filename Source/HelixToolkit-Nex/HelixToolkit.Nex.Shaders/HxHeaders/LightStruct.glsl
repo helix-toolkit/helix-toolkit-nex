@@ -20,7 +20,27 @@ layout(buffer_reference, buffer_reference_align = 16) readonly buffer LightBuffe
 #define MAX_DIRECTIONAL_LIGHTS 3
 
 @code_gen
+struct DirectionalLight {
+    vec3 position;         // Light position (world space)
+    float _padding;        // Padding for alignment
+    vec3 direction;        // Light direction (for spot lights)
+    float _padding1;       // Padding for alignment
+    vec3 color;            // Light color (linear RGB)
+    float intensity;       // Light intensity
+};
+
+@code_gen
 struct DirectionalLights {
-    Light lights[3];
+    DirectionalLight lights[3];
     uint lightCount;
 };
+
+Light DirectionLightToLight(in DirectionalLight dirLight) {
+    Light light;
+    light.position = dirLight.position;
+    light.type = 0u; // Directional
+    light.direction = dirLight.direction;
+    light.color = dirLight.color;
+    light.intensity = dirLight.intensity;
+    return light;
+}

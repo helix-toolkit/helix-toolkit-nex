@@ -773,10 +773,9 @@ public class ForwardPlusExample
         var random = new Random((int)Stopwatch.GetTimestamp());
 
         // Directional light (sun)
-        _dirLights.Lights_0 = new Light
+        _dirLights.Lights_0 = new DirectionalLight
         {
             Position = new Vector3(0, 0, -10),
-            Type = 0, // Directional light
             Direction = Vector3.Normalize(new Vector3(0, 0, 1)),
             Color = new Vector3(1),
             Intensity = 0.01f,
