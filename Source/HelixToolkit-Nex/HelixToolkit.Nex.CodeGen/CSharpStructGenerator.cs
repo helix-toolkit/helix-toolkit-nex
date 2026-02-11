@@ -140,11 +140,14 @@ public class CSharpStructGenerator
                 sb.AppendLine($"    public {csharpType} {fieldName}_{i};");
             }
         }
+        else if (fieldName.Trim().StartsWith("_"))
+        {
+            sb.AppendLine($"    private {csharpType} {fieldName};");
+        }
         else
         {
             sb.AppendLine($"    public {csharpType} {fieldName};");
         }
-
         sb.AppendLine();
     }
 
