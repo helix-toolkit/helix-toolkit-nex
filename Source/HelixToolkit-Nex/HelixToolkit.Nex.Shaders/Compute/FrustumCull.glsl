@@ -1,5 +1,4 @@
 #include "HxHeaders/HeaderCompute.glsl"
-#include "HxHeaders/DrawIndexIndirectCommand.glsl"
 #include "HxHeaders/MeshDraw.glsl"
 #include "HxHeaders/FrustumCullingCommon.glsl"
 // Enable subgroup extensions for efficient output compaction if allowed
@@ -19,20 +18,8 @@ layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer Me
     MeshInfo value[];
 };
 
-layout(buffer_reference, std430, buffer_reference_align = 16) buffer DrawCommandBuffer {
-    DrawIndexedIndirectCommand commands[];
-};
-
-layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer MeshDrawBuffer {
+layout(buffer_reference, std430, buffer_reference_align = 16) buffer MeshDrawBuffer {
     MeshDraw draws[];
-};
-
-layout(buffer_reference, scalar) writeonly buffer VisableDrawCommandsBuffer {
-    DrawIndexedIndirectCommand commands[];
-};
-
-layout(buffer_reference, scalar) buffer DrawCountBuffer {
-    uint count;
 };
 
 // ------------------------------------------------------------------
@@ -61,12 +48,11 @@ void main() {
     if (gID >= cullingConst.value.instanceCount) { // Ensure valid access
         return;
     }
-    DrawCommandBuffer drawCmdBuf = DrawCommandBuffer(cullingConst.value.drawCommandBufferAddress);
-    DrawIndexedIndirectCommand cmd = drawCmdBuf.commands[gID];
+
     // Access Buffers
     MeshDrawBuffer meshDrawBuf = MeshDrawBuffer(cullingConst.value.meshDrawBufferAddress);
     
-    MeshDraw draw = meshDrawBuf.draws[cmd.meshDrawIndex];
+    MeshDraw draw = meshDrawBuf.draws[gID];
     if (draw.instancingBufferAddress != 0) {
         // For instanced draws, we handle seperately.
         return;
@@ -85,7 +71,7 @@ void main() {
     // For non-uniform scale, this approximation might require max scale component
         
     vec3 worldSphereCenter = (worldMatrix * vec4(bound.sphereCenter, 1.0)).xyz;
-        
+
     // Extract max scale from world matrix for radius scaling
     float maxScale = max(max(length(worldMatrix[0].xyz), length(worldMatrix[1].xyz)), length(worldMatrix[2].xyz));
     float worldRadius = bound.sphereRadius * maxScale;
@@ -95,7 +81,7 @@ void main() {
 
     // Transform to View Space for Distance/ScreenSize checks
     vec3 viewSphereCenter = (cullingConst.value.viewMatrix * vec4(worldSphereCenter, 1.0)).xyz;
-
+    
     if (!IsVisibleByDistance(viewSphereCenter, worldRadius, cullingConst.value.maxDrawDistance)) {
         isVisible = false;
     }
@@ -109,7 +95,6 @@ void main() {
         // 2. Box Culling (More accurate for elongated objects)
         vec3 boxCenter = (bound.boxMin + bound.boxMax) * 0.5;
         vec3 boxExtents = (bound.boxMax - bound.boxMin) * 0.5;
-            
         if (!IsBoxVisible(boxCenter, boxExtents, worldMatrix, cullingConst.value.frustumPlanes, pCount)) {
             isVisible = false;
         }
@@ -128,30 +113,5 @@ void main() {
     // ---------------------------------------------------------
 
     // Output visibility
-    if (cullingConst.value.culledDrawCommandBufferAddress == 0 || 
-        cullingConst.value.drawCountBufferAddress == 0) {
-        drawCmdBuf.commands[gID].instanceCount = isVisible ? 1 : 0;
-        return;
-    }
-    // We can use subgroup ops to compact atomic writes
-    uvec4 ballot = subgroupBallot(isVisible);
-    uint count = subgroupBallotBitCount(ballot);
-    if (count > 0) {
-        // Leader (first active thread) allocates space in output buffer
-        uint baseIndex = 0;
-        if (subgroupElect()) {
-            DrawCountBuffer countBuf = DrawCountBuffer(cullingConst.value.drawCountBufferAddress);
-            baseIndex = atomicAdd(countBuf.count, count);
-        }
-        baseIndex = subgroupBroadcastFirst(baseIndex);
-
-        if (isVisible) {
-            uint offset = subgroupBallotExclusiveBitCount(ballot);
-            uint outIndex = baseIndex + offset;
-            
-            VisableDrawCommandsBuffer visBuf = VisableDrawCommandsBuffer(cullingConst.value.culledDrawCommandBufferAddress);
-
-            visBuf.commands[outIndex] = cmd;
-        }
-    }
+    meshDrawBuf.draws[gID].instanceCount = isVisible ? 1 : 0;
 }

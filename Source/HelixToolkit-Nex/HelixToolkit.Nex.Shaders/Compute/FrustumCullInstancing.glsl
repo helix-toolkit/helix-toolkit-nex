@@ -1,5 +1,4 @@
 #include "HxHeaders/HeaderCompute.glsl"
-#include "HxHeaders/DrawIndexIndirectCommand.glsl"
 #include "HxHeaders/FrustumCullingCommon.glsl"
 #include "HxHeaders/MeshDraw.glsl"
 // Enable subgroup extensions for efficient output compaction if allowed
@@ -19,11 +18,7 @@ layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer Me
     MeshInfo value[];
 };
 
-layout(buffer_reference, std430, buffer_reference_align = 16) buffer DrawCommandBuffer {
-    DrawIndexedIndirectCommand commands[];
-};
-
-layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer MeshDrawBuffer {
+layout(buffer_reference, std430, buffer_reference_align = 16) buffer MeshDrawBuffer {
     MeshDraw draws[];
 };
 
@@ -34,9 +29,7 @@ layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer In
 layout(buffer_reference, scalar) writeonly buffer VisableInstanceIndexBuffer {
     uint indices[];
 };
-layout(buffer_reference, scalar) buffer DrawCountBuffer {
-    uint count;
-};
+
 // ------------------------------------------------------------------
 // PUSH CONSTANTS
 // ------------------------------------------------------------------
@@ -72,9 +65,7 @@ void main() {
     }
     // Access Buffers
     MeshDrawBuffer meshDrawBuf = MeshDrawBuffer(cullingConst.value.meshDrawBufferAddress);
-    DrawCommandBuffer drawCmdBuf = DrawCommandBuffer(cullingConst.value.drawCommandBufferAddress);
-    DrawIndexedIndirectCommand cmd = drawCmdBuf.commands[pc.value.drawCommandIdx];   
-    MeshDraw draw = meshDrawBuf.draws[cmd.meshDrawIndex];
+    MeshDraw draw = meshDrawBuf.draws[pc.value.drawCommandIdx];
     if (draw.instancingBufferAddress == 0) {
         return;
     }
@@ -146,7 +137,7 @@ void main() {
         // Leader (first active thread) allocates space in output buffer
         uint baseIndex = 0;
         if (subgroupElect()) {
-            baseIndex =  atomicAdd(drawCmdBuf.commands[pc.value.drawCommandIdx].instanceCount, count);
+            baseIndex =  atomicAdd(meshDrawBuf.draws[pc.value.drawCommandIdx].instanceCount, count);
         }
         baseIndex = subgroupBroadcastFirst(baseIndex);
 
@@ -157,7 +148,6 @@ void main() {
             // If using Visibility Buffer (List of Instances):
             if (draw.instancingIndexBufferAddress != 0) {
                 VisableInstanceIndexBuffer visBuf = VisableInstanceIndexBuffer(draw.instancingIndexBufferAddress);
-                DrawCommandBuffer drawCmdBuf = DrawCommandBuffer(cullingConst.value.drawCommandBufferAddress);
                 visBuf.indices[outIndex] = gID;
             }
         }

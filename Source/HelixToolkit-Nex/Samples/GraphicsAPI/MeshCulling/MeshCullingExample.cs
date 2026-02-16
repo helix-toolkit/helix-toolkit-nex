@@ -49,7 +49,6 @@ internal class MeshCullingExample : IDisposable
     private readonly FastList<MeshDraw> _meshDraws = [];
     private readonly FastList<Geometry> _meshes = [];
     private readonly FastList<MeshInfo> _meshInfos = [];
-    private readonly FastList<DrawIndexedIndirectCommand> _drawCommands = [];
 
     // -- GPU Buffers --
     private BufferResource _cullConstBuffer = BufferResource.Null; // Uniforms for culling
@@ -57,8 +56,6 @@ internal class MeshCullingExample : IDisposable
     private BufferResource _meshInfoBuffer = BufferResource.Null; // MeshInfos
     private BufferResource _meshDrawBuffer = BufferResource.Null; // MeshDraw structs
     private BufferResource _indexBuffer = BufferResource.Null; // Geometry indices
-
-    private BufferResource _drawCmdsBuffer = BufferResource.Null; // Input: All potential draw commands
 
     // Rendering resources
     private BufferResource _fpConstBuffer = BufferResource.Null;
@@ -116,21 +113,14 @@ internal class MeshCullingExample : IDisposable
             _meshInfos,
             BufferUsageBits.Storage,
             StorageType.Device,
-            "BoundsBuffer"
+            "MeshInfoBuffer"
         );
 
         _meshDrawBuffer = _context.CreateBuffer(
             _meshDraws,
-            BufferUsageBits.Storage,
-            StorageType.Device,
-            "MeshDrawBuffer"
-        );
-
-        _drawCmdsBuffer = _context.CreateBuffer(
-            _drawCommands,
             BufferUsageBits.Storage | BufferUsageBits.Indirect,
             StorageType.Device,
-            "CmdBuffer"
+            "MeshDrawBuffer"
         );
 
         var indices = new FastList<uint>(_meshes[0].Indices);
@@ -182,7 +172,6 @@ internal class MeshCullingExample : IDisposable
         );
 
         _cullConst.MeshInfoBufferAddress = _meshInfoBuffer.GpuAddress;
-        _cullConst.DrawCommandBufferAddress = _drawCmdsBuffer.GpuAddress;
         _cullConst.MeshDrawBufferAddress = _meshDrawBuffer.GpuAddress;
 
         // 2.4 Build Pipelines
@@ -259,7 +248,7 @@ internal class MeshCullingExample : IDisposable
         _renderPass.Depth.ClearDepth = 0.0f; // 0.0f for Reverse-Z
         _renderPass.Depth.LoadOp = LoadOp.Clear;
 
-        _renderDependencies.Buffers[0] = _drawCmdsBuffer;
+        _renderDependencies.Buffers[0] = _meshDrawBuffer;
     }
     #endregion
 
@@ -331,7 +320,6 @@ internal class MeshCullingExample : IDisposable
                 MaterialBufferAddress = _pbrPropertiesBuffer.GpuAddress,
                 PerModelParamsBufferAddress = _fpConstBuffer.GpuAddress,
                 MeshDrawBufferAddress = _meshDrawBuffer.GpuAddress,
-                DrawCmdBufferAddress = _drawCmdsBuffer.GpuAddress,
                 DirectionalLightsBufferAddress = _directionalLightBuffer.GpuAddress,
                 LightCount = 0, // No lights in this unlit demo
                 TileSize = 0,
@@ -354,10 +342,10 @@ internal class MeshCullingExample : IDisposable
         );
         cmdBuffer.BindIndexBuffer(_indexBuffer, IndexFormat.UI32);
         cmdBuffer.DrawIndexedIndirect(
-            _drawCmdsBuffer,
+            _meshDrawBuffer,
             0,
             (uint)_instanceCount / 2,
-            DrawIndexedIndirectCommand.SizeInBytes
+            MeshDraw.SizeInBytes
         );
 
         cmdBuffer.BindRenderPipeline(_pbrRenderPipeline);
@@ -369,10 +357,10 @@ internal class MeshCullingExample : IDisposable
             }
         );
         cmdBuffer.DrawIndexedIndirect(
-            _drawCmdsBuffer,
-            (uint)_instanceCount / 2 * DrawIndexedIndirectCommand.SizeInBytes,
+            _meshDrawBuffer,
+            (uint)_instanceCount / 2 * MeshDraw.SizeInBytes,
             (uint)_instanceCount / 2,
-            DrawIndexedIndirectCommand.SizeInBytes
+            MeshDraw.SizeInBytes
         );
         cmdBuffer.EndRendering();
         _context.Submit(cmdBuffer, target);
@@ -425,7 +413,6 @@ internal class MeshCullingExample : IDisposable
         // Generate random instances
         _pBRProperties.Resize(_instanceCount);
         _meshIds.Resize(_instanceCount);
-        _drawCommands.Resize(_instanceCount);
         _meshDraws.Resize(_instanceCount);
         var rnd = new Random((int)Stopwatch.GetTimestamp());
         int i = 0;
@@ -457,13 +444,9 @@ internal class MeshCullingExample : IDisposable
                     Matrix4x4.CreateRotationX(rnd.NextFloat(0, 180) * MathF.PI / 180)
                     * Matrix4x4.CreateRotationY(rnd.NextFloat(0, 180) * MathF.PI / 180)
                     * Matrix4x4.CreateTranslation(position),
-            };
-            _drawCommands[i] = new()
-            {
                 IndexCount = (uint)mesh.Indices.Count,
                 InstanceCount = 1,
                 FirstIndex = mesh.FirstIndex,
-                MeshDrawIndex = (uint)i,
             };
         }
         // Second half: PBR objects
@@ -496,13 +479,9 @@ internal class MeshCullingExample : IDisposable
                     Matrix4x4.CreateRotationX(rnd.NextFloat(0, 180) * MathF.PI / 180)
                     * Matrix4x4.CreateRotationY(rnd.NextFloat(0, 180) * MathF.PI / 180)
                     * Matrix4x4.CreateTranslation(position),
-            };
-            _drawCommands[i] = new()
-            {
                 IndexCount = (uint)mesh.Indices.Count,
                 InstanceCount = 1,
                 FirstIndex = mesh.FirstIndex,
-                MeshDrawIndex = (uint)i,
             };
         }
     }
@@ -532,7 +511,6 @@ internal class MeshCullingExample : IDisposable
                 _fpConstBuffer.Dispose();
                 _depthBuffer.Dispose();
                 _meshDrawBuffer.Dispose();
-                _drawCmdsBuffer.Dispose();
                 _indexBuffer.Dispose();
                 _directionalLightBuffer.Dispose();
 
@@ -565,7 +543,7 @@ public sealed class Camera
     public Vector3 Target;
     public Vector3 Up = Vector3.UnitY;
     public float NearPlane = 0.01f;
-    public float FarPlane = float.PositiveInfinity;
+    public float FarPlane = 1000;
     public float Fov = 45 * MathF.PI / 180;
 
     /// <summary>

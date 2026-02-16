@@ -10,7 +10,8 @@ struct Light {
     vec3 color;            // Light color (linear RGB)
     float intensity;       // Light intensity
     vec2 spotAngles;       // x=inner, y=outer cone angles
-    vec2 _padding;          // Padding for alignment
+    uint _padding0;          // Padding for alignment
+    uint _padding1;
 };
 
 layout(buffer_reference, buffer_reference_align = 16) readonly buffer LightBuffer {
@@ -22,9 +23,9 @@ layout(buffer_reference, buffer_reference_align = 16) readonly buffer LightBuffe
 @code_gen
 struct DirectionalLight {
     vec3 position;         // Light position (world space)
-    float _padding;        // Padding for alignment
+    uint _padding;        // Padding for alignment
     vec3 direction;        // Light direction (for spot lights)
-    float _padding1;       // Padding for alignment
+    uint _padding1;       // Padding for alignment
     vec3 color;            // Light color (linear RGB)
     float intensity;       // Light intensity
 };

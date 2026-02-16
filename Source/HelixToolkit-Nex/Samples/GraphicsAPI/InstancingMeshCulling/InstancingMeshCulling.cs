@@ -49,7 +49,6 @@ internal class InstancingMeshCullingExample : IDisposable
     private readonly FastList<MeshDraw> _meshDraws = [];
     private readonly FastList<Geometry> _meshes = [];
     private readonly FastList<MeshInfo> _meshInfos = [];
-    private readonly FastList<DrawIndexedIndirectCommand> _drawCommands = [];
 
     // -- GPU Buffers --
     // Constant Data
@@ -63,7 +62,6 @@ internal class InstancingMeshCullingExample : IDisposable
 
     // Indirect Draw Data (Modified by GPU)
     private BufferResource _meshDrawBuffer = BufferResource.Null; // Contains MeshDraw structs (pointers to buffers, material IDs)
-    private BufferResource _drawCmdsBuffer = BufferResource.Null; // Indirect Draw Arguments (IndexCount, InstanceCount, etc.)
 
     // Culling Output (Written by CS, Read by VS)
     private BufferResource _culledInstanceIdxBuffer = BufferResource.Null; // List of indices into _instancingBuffer that survived culling
@@ -121,16 +119,6 @@ internal class InstancingMeshCullingExample : IDisposable
             "PBRPropertiesBuffer"
         );
 
-        // This buffer holds the Indirect Command signature.
-        // Usage 'Indirect' allows it to be used as the argument source for DrawIndexedIndirect.
-        // Usage 'Storage' allows the Compute Shader to write the 'InstanceCount' into it.
-        _drawCmdsBuffer = _context.CreateBuffer(
-            _drawCommands,
-            BufferUsageBits.Storage | BufferUsageBits.Indirect,
-            StorageType.Device,
-            "CmdBuffer"
-        );
-
         // 2.2 Create Output Buffers for Culling Results
 
         // This buffer will be filled by the Compute Shader with the indices of visible instances.
@@ -157,7 +145,7 @@ internal class InstancingMeshCullingExample : IDisposable
 
         _meshDrawBuffer = _context.CreateBuffer(
             _meshDraws,
-            BufferUsageBits.Storage,
+            BufferUsageBits.Storage | BufferUsageBits.Indirect,
             StorageType.Device,
             "MeshDrawBuffer"
         );
@@ -201,7 +189,6 @@ internal class InstancingMeshCullingExample : IDisposable
         );
 
         _cullConst.MeshInfoBufferAddress = _meshInfoBuffer.GpuAddress;
-        _cullConst.DrawCommandBufferAddress = _drawCmdsBuffer.GpuAddress;
         _cullConst.MeshDrawBufferAddress = _meshDrawBuffer.GpuAddress;
 
         // 2.4 Build Pipelines
@@ -263,7 +250,7 @@ internal class InstancingMeshCullingExample : IDisposable
         // Dependencies ensure memory barriers are placed correctly.
         // We need to wait for the Compute Shader to finish writing to these buffers before Rendering reads them.
         _renderDependencies.Buffers[0] = _culledInstanceIdxBuffer;
-        _renderDependencies.Buffers[1] = _drawCmdsBuffer;
+        _renderDependencies.Buffers[1] = _meshDrawBuffer;
     }
     #endregion
 
@@ -307,10 +294,7 @@ internal class InstancingMeshCullingExample : IDisposable
         // 3.3 Dispatch Culling Shader (GPU)
         var cmdBuffer = _context!.AcquireCommandBuffer();
         cmdBuffer.UpdateBuffer(_cullConstBuffer, _cullConst);
-
-        // Reset the Draw Indirect Buffer (specifically instance count) before culling.
-        // The Compute Shader will atomic-add to this count.
-        cmdBuffer.UpdateBuffer(_drawCmdsBuffer, _drawCommands);
+        cmdBuffer.UpdateBuffer(_meshDrawBuffer, _meshDraws);
 
         cmdBuffer.BindComputePipeline(_cullingPipeline);
         cmdBuffer.PushConstants(
@@ -367,14 +351,9 @@ internal class InstancingMeshCullingExample : IDisposable
         cmdBuffer.BindIndexBuffer(_indexBuffer, IndexFormat.UI32);
 
         // Indirect Draw:
-        // The GPU reads arguments (InstanceCount, etc.) from '_drawCmdsBuffer'.
+        // The GPU reads arguments (InstanceCount, etc.) from '_meshDrawBuffer'.
         // This count was populated by the Compute Shader in the previous step.
-        cmdBuffer.DrawIndexedIndirect(
-            _drawCmdsBuffer,
-            0,
-            1,
-            DrawIndexedIndirectCommand.SizeInBytes
-        );
+        cmdBuffer.DrawIndexedIndirect(_meshDrawBuffer, 0, 1, MeshDraw.SizeInBytes);
         cmdBuffer.EndRendering();
         _context.Submit(cmdBuffer, target);
     }
@@ -392,7 +371,6 @@ internal class InstancingMeshCullingExample : IDisposable
 
         // Generate random instances
         _pBRProperties.Resize(1);
-        _drawCommands.Resize(1);
         _meshDraws.Resize(1);
         _meshInfos.Resize(1);
         var rnd = new Random((int)Stopwatch.GetTimestamp());
@@ -406,7 +384,14 @@ internal class InstancingMeshCullingExample : IDisposable
             Metallic = (float)rnd.NextDouble(),
             Roughness = (float)rnd.NextDouble(),
         };
-        _meshDraws[0] = new MeshDraw() { MaterialId = 0, Transform = Matrix4x4.Identity };
+        _meshDraws[0] = new MeshDraw()
+        {
+            IndexCount = (uint)_boxMesh.Indices.Count,
+            InstanceCount = 0,
+            FirstIndex = 0,
+            MaterialId = 0,
+            Transform = Matrix4x4.Identity,
+        };
         _meshInfos[0] = new MeshInfo()
         {
             VertexBufferAddress = _boxMesh.VertexBuffer.GpuAddress,
@@ -416,13 +401,6 @@ internal class InstancingMeshCullingExample : IDisposable
             BoxMin = _boxMesh.BoundingBoxLocal.Minimum,
             SphereCenter = _boxMesh.BoundingSphereLocal.Center,
             SphereRadius = _boxMesh.BoundingSphereLocal.Radius,
-        };
-        _drawCommands[0] = new()
-        {
-            IndexCount = (uint)_boxMesh.Indices.Count,
-            InstanceCount = 0,
-            FirstIndex = 0,
-            MeshDrawIndex = 0,
         };
 
         _instanceMatrices.Resize(_instanceCount);
@@ -462,7 +440,6 @@ internal class InstancingMeshCullingExample : IDisposable
                 _fpConstBuffer.Dispose();
                 _depthBuffer.Dispose();
                 _meshDrawBuffer.Dispose();
-                _drawCmdsBuffer.Dispose();
                 _indexBuffer.Dispose();
                 _instancingBuffer.Dispose();
                 _culledInstanceIdxBuffer.Dispose();

@@ -2,7 +2,6 @@
 #include "HxHeaders/VertStruct.glsl"
 #include "HxHeaders/ForwardPlusConstants.glsl"
 #include "HxHeaders/MeshDraw.glsl"
-#include "HxHeaders/DrawIndexIndirectCommand.glsl"
 #include "HxHeaders/MeshInfo.glsl"
 
 layout(location = 0) out vec3 fragWorldPos;
@@ -53,21 +52,9 @@ layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer Me
     MeshInfo value[];
 };
 
-layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer DrawCmdsBuffer {
-    DrawIndexedIndirectCommand commands[];
-};
-
 FPConstants fpConst = FPBuffer(pc.value.fpConstAddress).fpConstants;
 
-uint getMeshDrawId() {
-     if (fpConst.drawCmdBufferAddress == 0) {
-        return pc.value.meshDrawId;
-     }
-     DrawCmdsBuffer cmds = DrawCmdsBuffer(fpConst.drawCmdBufferAddress);
-     return cmds.commands[gl_DrawID + pc.value.drawCommandIdxOffset].meshDrawIndex;
-}
-
-uint meshDrawIndex = getMeshDrawId();
+uint meshDrawIndex = gl_DrawID + pc.value.drawCommandIdxOffset;
 
 MeshDraw meshDraw = MeshDrawBuffer(fpConst.meshDrawBufferAddress).draws[meshDrawIndex];
 

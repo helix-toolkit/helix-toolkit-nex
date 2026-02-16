@@ -16,16 +16,11 @@ struct CullingConstants {
 
     float maxDrawDistance;  // Max distance from camera (0.0 = disabled)
     float minScreenSize;    // Min projected size in NDC/Screen ratio (0.0 = disabled)
-    uint _pad1;
-    uint _pad2;
+    uint _padding0;
+    uint _padding1;
 
-    // Buffer Addresses
     uint64_t meshInfoBufferAddress;     // Input: MeshInfo[]
-    uint64_t modelMatrixBufferAddress;    // Input: Model Matrices
-    uint64_t drawCommandBufferAddress;    // Input: DrawIndexedIndirectCommand[]
     uint64_t meshDrawBufferAddress;      // Input: MeshDraw[]
-    uint64_t culledDrawCommandBufferAddress; // Output: DrawIndexedIndirectCommand[] Compact list of the culled draw commands
-    uint64_t drawCountBufferAddress;      // Output: uint (visible count)
 };
 
 // ------------------------------------------------------------------

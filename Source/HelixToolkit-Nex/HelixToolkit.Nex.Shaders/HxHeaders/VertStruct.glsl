@@ -2,11 +2,12 @@
 @code_gen
 struct GpuVertexProps {
     vec3 normal;
-    float _padding1;
+    uint _padding0;
     vec2 texCoord;
-    vec2 _padding2;
+    uint _padding1;
+    uint _padding2;
     vec3 tangent;
-    float _padding3;
+    uint _padding3;
 };
 
 
