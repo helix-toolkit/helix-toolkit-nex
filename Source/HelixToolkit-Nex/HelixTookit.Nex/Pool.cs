@@ -9,7 +9,7 @@ namespace HelixToolkit.Nex;
 /// This pool uses a free-list algorithm for efficient allocation and deallocation of objects.
 /// Each object is associated with a generation number to prevent the ABA problem and ensure handle validity.
 /// </remarks>
-public sealed class Pool<ObjectType, ImplObjectType> : IEnumerable<ImplObjectType>
+public sealed class Pool<ObjectType, ImplObjectType> : IEnumerable<ImplObjectType>, IDisposable
     where ObjectType : new()
 {
     private const uint32_t ListEndSentinel = 0xFFFFFFFF; // Sentinel value to indicate the end of the list
@@ -38,6 +38,7 @@ public sealed class Pool<ObjectType, ImplObjectType> : IEnumerable<ImplObjectTyp
 
     private uint32_t _gen = 1;
     private uint32_t _freeListHead = ListEndSentinel;
+    private bool _disposedValue;
 
     /// <summary>
     /// Gets the current number of active (non-freed) objects in the pool.
@@ -124,12 +125,33 @@ public sealed class Pool<ObjectType, ImplObjectType> : IEnumerable<ImplObjectTyp
     {
         if (handle.Empty)
         {
-            throw new ArgumentException("Invalid handle for retrieval.");
+            return default;
         }
         int32_t idx = (int32_t)handle.Index;
         return idx < 0 || idx >= _objects.Count || _objects[idx].Gen != handle.Gen
-            ? throw new ArgumentException("Invalid handle for retrieval.")
+            ? default
             : _objects.GetInternalArray()[idx].Obj;
+    }
+
+    /// <summary>
+    /// Retrieves a reference to an object associated with the specified handle.
+    /// </summary>
+    /// <param name="handle">The handle representing the object to retrieve. The handle must not be empty and must refer to a valid object.</param>
+    /// <returns>A reference to the object associated with the specified handle.</returns>
+    /// <exception cref="ArgumentException">Thrown if the <paramref name="handle"/> is empty, refers to an invalid object, or does not match the expected
+    /// generation.</exception>
+    public ref ImplObjectType GetRef(in Handle<ObjectType> handle)
+    {
+        if (handle.Empty)
+        {
+            throw new ArgumentException("Invalid handle for retrieval.");
+        }
+        int32_t idx = (int32_t)handle.Index;
+        if (idx < 0 || idx >= _objects.Count || _objects[idx].Gen != handle.Gen)
+        {
+            throw new ArgumentException("Invalid handle for retrieval.");
+        }
+        return ref _objects.GetInternalArray()[idx].Obj!;
     }
 
     /// <summary>
@@ -203,5 +225,34 @@ public sealed class Pool<ObjectType, ImplObjectType> : IEnumerable<ImplObjectTyp
     System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
     {
         return GetEnumerator();
+    }
+
+    private void Dispose(bool disposing)
+    {
+        if (!_disposedValue)
+        {
+            if (disposing)
+            {
+                Clear();
+            }
+
+            // TODO: free unmanaged resources (unmanaged objects) and override finalizer
+            // TODO: set large fields to null
+            _disposedValue = true;
+        }
+    }
+
+    // // TODO: override finalizer only if 'Dispose(bool disposing)' has code to free unmanaged resources
+    // ~Pool()
+    // {
+    //     // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+    //     Dispose(disposing: false);
+    // }
+
+    public void Dispose()
+    {
+        // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+        Dispose(disposing: true);
+        GC.SuppressFinalize(this);
     }
 }
