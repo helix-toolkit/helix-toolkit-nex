@@ -13,7 +13,8 @@ struct ToneGammaPushConstants {
     float exposure;
     uint tonemapMode; // 0=ACES, 1=Reinhard, 2=Uncharted2
     uint gammaEnabled;
-    vec2 _padding;
+    uint _padding0;
+    uint _padding1;
 };
 
 layout(push_constant) uniform PushConstants {

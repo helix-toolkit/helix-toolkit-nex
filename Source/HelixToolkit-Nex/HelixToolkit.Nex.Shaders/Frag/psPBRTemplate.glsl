@@ -33,7 +33,8 @@ struct PBRProperties {
     uint normalTexIndex;
     uint metallicRoughnessTexIndex;
     uint samplerIndex;
-    vec2 _padding;
+    uint _padding0;
+    uint _padding1;
 };
 
 layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer FPBuffer {
