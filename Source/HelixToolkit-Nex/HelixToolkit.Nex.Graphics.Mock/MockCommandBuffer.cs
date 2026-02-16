@@ -161,9 +161,15 @@ public class MockCommandBuffer : ICommandBuffer
     }
 
     /// <inheritdoc/>
-    public void UpdateBuffer(in BufferHandle buffer, size_t bufferOffset, size_t size, nint data)
+    public ResultCode UpdateBuffer(
+        in BufferHandle buffer,
+        size_t bufferOffset,
+        size_t size,
+        nint data
+    )
     {
         _recordedCommands.Add($"UpdateBuffer(buffer={buffer.Index}, size={size})");
+        return ResultCode.Ok;
     }
 
     /// <inheritdoc/>

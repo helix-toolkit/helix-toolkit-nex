@@ -297,7 +297,7 @@ public class MaterialShaderBuilder
 
         foreach (var reg in registrations)
         {
-            sb.AppendLine($"    if (MATERIAL_TYPE == {reg.TypeId}u) {{");
+            sb.AppendLine($"    if (MATERIAL_TYPE == {(uint)reg.TypeId}u) {{");
             sb.AppendLine($"        // {reg.Name}");
 
             // Indent the implementation

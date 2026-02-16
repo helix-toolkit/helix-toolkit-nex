@@ -181,6 +181,9 @@ public class ForwardPlusExample
                 MaterialId = 0,
                 MeshId = 0,
                 Transform = Matrix4x4.Identity,
+                IndexCount = _mesh.IndexCount,
+                InstanceCount = 1,
+                MaterialType = (uint)ShadingMode,
             }
         );
         // Setup light sphere transforms and emissive materials
@@ -198,6 +201,9 @@ public class ForwardPlusExample
                     MaterialId = (uint)i + 1,
                     MeshId = 1, // Light mesh
                     Transform = Matrix4x4.CreateTranslation(_lights[i].Position),
+                    IndexCount = _lightMesh.IndexCount,
+                    InstanceCount = 1,
+                    MaterialType = (uint)PBRShadingMode.Unlit,
                 }
             );
         }
@@ -328,7 +334,7 @@ public class ForwardPlusExample
 
         _meshDrawBuffer = _context.CreateBuffer(
             _drawParams,
-            BufferUsageBits.Storage,
+            BufferUsageBits.Storage | BufferUsageBits.Indirect,
             StorageType.Device,
             "MeshDrawBuf"
         );
@@ -713,21 +719,38 @@ public class ForwardPlusExample
                 MeshDrawId = 0,
             }
         );
+
         cmdBuffer.BindIndexBuffer(_indexBuffer, IndexFormat.UI32);
-        cmdBuffer.DrawIndexed((uint)_mesh.Indices.Count);
+        cmdBuffer.DrawIndexedIndirect(_meshDrawBuffer, 0, 1, MeshDraw.SizeInBytes);
+        //cmdBuffer.DrawIndexed((uint)_mesh.Indices.Count);
         cmdBuffer.BindRenderPipeline(_renderPipelineUnlit);
-        for (int i = 0; i < _lights.Count; i++)
-        {
-            // Draw light spheres
-            cmdBuffer.PushConstants(
-                new MeshDrawPushConstant()
-                {
-                    FpConstAddress = _fpConstBuffer.GpuAddress,
-                    MeshDrawId = (uint)i + 1,
-                }
-            );
-            cmdBuffer.DrawIndexed((uint)_lightMesh.Indices.Count, 1, (uint)_mesh.Indices.Count);
-        }
+        cmdBuffer.PushConstants(
+            new MeshDrawPushConstant()
+            {
+                FpConstAddress = _fpConstBuffer.GpuAddress,
+                DrawCommandIdxOffset = 1,
+            }
+        );
+
+        cmdBuffer.DrawIndexedIndirect(
+            _meshDrawBuffer,
+            MeshDraw.SizeInBytes,
+            (uint)_lights.Count,
+            MeshDraw.SizeInBytes
+        );
+        //for (int i = 0; i < _lights.Count; i++)
+        //{
+        //    // Draw light spheres
+        //    cmdBuffer.PushConstants(
+        //        new MeshDrawPushConstant()
+        //        {
+        //            FpConstAddress = _fpConstBuffer.GpuAddress,
+        //            MeshDrawId = (uint)i + 1,
+        //            DrawCommandIdxOffset = 1,
+        //        }
+        //    );
+        //    cmdBuffer.DrawIndexed((uint)_lightMesh.Indices.Count, 1, (uint)_mesh.Indices.Count);
+        //}
         cmdBuffer.EndRendering();
     }
 

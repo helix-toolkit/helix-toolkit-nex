@@ -11,7 +11,7 @@ public sealed class MaterialTypeRegistration
     /// <summary>
     /// Unique identifier for this material type. Used as specialization constant value.
     /// </summary>
-    public required uint TypeId { get; init; }
+    public required MaterialTypeId TypeId { get; init; }
 
     /// <summary>
     /// Unique name for this material type (e.g., "PBR", "Unlit", "DebugTiles").
@@ -51,8 +51,8 @@ public static class MaterialTypeRegistry
     private static readonly ConcurrentDictionary<string, MaterialTypeRegistration> _registrations =
         new(StringComparer.OrdinalIgnoreCase);
 
-    private static readonly ConcurrentDictionary<uint, string> _idToName = new();
-    private static uint _nextTypeId = 0;
+    private static readonly ConcurrentDictionary<MaterialTypeId, string> _idToName = new();
+    private static uint _nextTypeId = 1; // Reserve 0 for "undefined" material type
     private static readonly object _lockObj = new();
 
     static MaterialTypeRegistry()
@@ -67,7 +67,7 @@ public static class MaterialTypeRegistry
         Register(
             new MaterialTypeRegistration
             {
-                TypeId = 0,
+                TypeId = PBRShadingMode.PBR,
                 Name = PBRShadingMode.PBR.ToString(),
                 OutputColorImplementation =
                     @"
@@ -81,7 +81,7 @@ public static class MaterialTypeRegistry
         Register(
             new MaterialTypeRegistration
             {
-                TypeId = 1,
+                TypeId = PBRShadingMode.Unlit,
                 Name = PBRShadingMode.Unlit.ToString(),
                 OutputColorImplementation =
                     @"
@@ -95,7 +95,7 @@ public static class MaterialTypeRegistry
         Register(
             new MaterialTypeRegistration
             {
-                TypeId = 2,
+                TypeId = PBRShadingMode.DebugTileLightCount,
                 Name = PBRShadingMode.DebugTileLightCount.ToString(),
                 OutputColorImplementation =
                     @"
@@ -108,7 +108,7 @@ public static class MaterialTypeRegistry
         Register(
             new MaterialTypeRegistration
             {
-                TypeId = 3,
+                TypeId = PBRShadingMode.Normal,
                 Name = PBRShadingMode.Normal.ToString(),
                 OutputColorImplementation =
                     @"

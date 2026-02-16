@@ -1,4 +1,26 @@
+using HelixToolkit.Nex.Shaders.Frag;
+
 namespace HelixToolkit.Nex.Material;
+
+public struct MaterialType { }
+
+public readonly struct MaterialTypeId(uint id) : IComparable<MaterialTypeId>
+{
+    public uint Id { get; } = id;
+
+    public int CompareTo(MaterialTypeId other)
+    {
+        return Id.CompareTo(other.Id);
+    }
+
+    public static implicit operator uint(MaterialTypeId id) => id.Id;
+
+    public static implicit operator MaterialTypeId(uint id) => new(id);
+
+    public static implicit operator MaterialTypeId(int id) => new((uint)id);
+
+    public static implicit operator MaterialTypeId(PBRShadingMode mode) => new((uint)mode);
+}
 
 /// <summary>
 /// Base abstraction for all materials used by the rendering engine.
@@ -6,6 +28,7 @@ namespace HelixToolkit.Nex.Material;
 /// </summary>
 public class Material : IDisposable
 {
+    public readonly MaterialTypeId MaterialId;
     private bool _disposedValue;
 
     /// <summary>
@@ -14,9 +37,22 @@ public class Material : IDisposable
     /// </summary>
     public RenderPipelineResource Pipeline { private set; get; } = RenderPipelineResource.Null;
 
+    public Material(string name)
+    {
+        MaterialId =
+            MaterialTypeRegistry.GetTypeId(name)
+            ?? throw new ArgumentException(name + " is not a registered material type.");
+    }
+
+    public Material()
+    {
+        MaterialId = 0; // Invalid material type
+    }
+
     public virtual bool CreatePipeline(IContext context, in RenderPipelineDesc pipelineDesc)
     {
         Pipeline.Dispose();
+        pipelineDesc.WriteSpecInfo(0, MaterialId);
         // Create the pipeline
         Pipeline = context.CreateRenderPipeline(pipelineDesc);
 
@@ -59,45 +95,5 @@ public class Material : IDisposable
         // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
         Dispose(disposing: true);
         GC.SuppressFinalize(this);
-    }
-}
-
-/// <summary>
-/// Generic material base that exposes strongly-typed material properties.
-/// TProperties must have a public parameterless ctor so the factory / serializers can create it.
-/// </summary>
-/// <typeparam name="TProperties">The concrete MaterialProperties type for this material.</typeparam>
-public abstract class Material<TProperties> : Material
-    where TProperties : MaterialProperties, new()
-{
-    private TProperties? _properties;
-
-    /// <summary>
-    /// Lazily-created properties instance for this material.
-    /// Renderers and editors should mutate values on this object; it raises property change notifications.
-    /// </summary>
-    public TProperties Properties => _properties ??= new TProperties();
-
-    /// <inheritdoc/>
-    public override string? DebugName => Properties.DebugName;
-}
-
-/// <summary>
-/// Base class for material properties. Designed to be lightweight and engine-agnostic.
-/// Contains change-tracking so renderers can react when material data is modified.
-/// </summary>
-public abstract class MaterialProperties : ObservableObject
-{
-    /// <summary>
-    /// Optional debug name.
-    /// </summary>
-    public string? DebugName { get; set; }
-
-    /// <summary>
-    /// Creates a shallow copy of the properties. Override for deeper copy semantics when needed.
-    /// </summary>
-    public virtual MaterialProperties Clone()
-    {
-        return (MaterialProperties)MemberwiseClone();
     }
 }

@@ -5,6 +5,16 @@ public struct SafeWriteContext(IntPtr mappedPtr, int remainSizeInBytes)
     public IntPtr MappedPtr { get; private set; } = mappedPtr;
     public int RemainSizeInBytes { get; private set; } = remainSizeInBytes;
 
+    /// <summary>
+    /// Writes the specified data to the mapped memory region if sufficient space is available.
+    /// </summary>
+    /// <remarks>This method performs a memory copy operation to transfer the data to the mapped memory
+    /// region.  The caller must ensure that the type <typeparamref name="T"/> is unmanaged, as required by the method's
+    /// constraints.</remarks>
+    /// <typeparam name="T">The type of the elements in the data span. Must be an unmanaged type.</typeparam>
+    /// <param name="data">A read-only span containing the data to write.</param>
+    /// <returns><see langword="true"/> if the data was successfully written; otherwise, <see langword="false"/> if there is
+    /// insufficient space in the mapped memory region.</returns>
     public bool Write<T>(ReadOnlySpan<T> data)
         where T : unmanaged
     {
@@ -24,6 +34,82 @@ public struct SafeWriteContext(IntPtr mappedPtr, int remainSizeInBytes)
                     RemainSizeInBytes -= dataSize;
                 }
             }
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// Writes the contents of the specified <see cref="FastList{T}"/> to the current buffer.
+    /// </summary>
+    /// <remarks>This method performs a memory copy operation to transfer the data from the specified list to
+    /// the buffer.  The buffer's remaining size is reduced by the size of the written data. If the size of the data
+    /// exceeds  the available space in the buffer, the method returns <see langword="false"/> and no data is
+    /// written.</remarks>
+    /// <typeparam name="T">The type of elements in the <see cref="FastList{T}"/>. Must be an unmanaged type.</typeparam>
+    /// <param name="data">The <see cref="FastList{T}"/> containing the data to write. The list must not be null.</param>
+    /// <returns><see langword="true"/> if the data was successfully written to the buffer; otherwise, <see langword="false"/> if
+    /// there is insufficient space in the buffer.</returns>
+    public bool Write<T>(FastList<T> data)
+        where T : unmanaged
+    {
+        unsafe
+        {
+            var dataSize = data.Count * sizeof(T);
+            if (dataSize > RemainSizeInBytes)
+            {
+                return false;
+            }
+            unsafe
+            {
+                using var ptr = data.GetInternalArray().Pin();
+                NativeHelper.MemoryCopy(MappedPtr, (nint)ptr.Pointer, (uint)dataSize);
+                MappedPtr += dataSize;
+                RemainSizeInBytes -= dataSize;
+            }
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// Writes the specified data of an unmanaged type to the current memory-mapped region.
+    /// </summary>
+    /// <remarks>This method writes the data to the memory location pointed to by the current pointer  and
+    /// advances the pointer by the size of the data. The remaining size in bytes is also  reduced accordingly. Ensure
+    /// that the memory-mapped region has sufficient space before  calling this method.</remarks>
+    /// <typeparam name="T">The type of the data to write. Must be an unmanaged type.</typeparam>
+    /// <param name="data">The data to write. The value is passed by reference.</param>
+    /// <returns><see langword="true"/> if the data was successfully written to the memory-mapped region;  otherwise, <see
+    /// langword="false"/> if there is insufficient space remaining.</returns>
+    public bool Write<T>(T data)
+        where T : unmanaged
+    {
+        return Write(ref data);
+    }
+
+    /// <summary>
+    /// Writes the specified data of an unmanaged type to the current memory-mapped region.
+    /// </summary>
+    /// <remarks>This method writes the data to the memory location pointed to by the current pointer  and
+    /// advances the pointer by the size of the data. The remaining size in bytes is also  reduced accordingly. Ensure
+    /// that the memory-mapped region has sufficient space before  calling this method.</remarks>
+    /// <typeparam name="T">The type of the data to write. Must be an unmanaged type.</typeparam>
+    /// <param name="data">The data to write. The value is passed by reference.</param>
+    /// <returns><see langword="true"/> if the data was successfully written to the memory-mapped region;  otherwise, <see
+    /// langword="false"/> if there is insufficient space remaining.</returns>
+    public bool Write<T>(ref T data)
+        where T : unmanaged
+    {
+        unsafe
+        {
+            var dataSize = sizeof(T);
+            if (dataSize > RemainSizeInBytes)
+            {
+                return false;
+            }
+            var ptr = (T*)MappedPtr.ToPointer();
+            *ptr = data;
+            MappedPtr += dataSize;
+            RemainSizeInBytes -= dataSize;
             return true;
         }
     }
@@ -458,6 +544,11 @@ public sealed class ElementBuffer<T> : IDisposable
     public static implicit operator BufferHandle(ElementBuffer<T> elementBuffer)
     {
         return elementBuffer.Buffer.Handle;
+    }
+
+    public static implicit operator ulong(ElementBuffer<T> elementBuffer)
+    {
+        return elementBuffer.Buffer.GpuAddress;
     }
 
     private void Dispose(bool disposing)

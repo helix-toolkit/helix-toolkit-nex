@@ -1283,7 +1283,9 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
     {
         if (IsSecondary)
         {
-            _logger.LogError("Cannot execute secondary command buffers from a secondary command buffer.");
+            _logger.LogError(
+                "Cannot execute secondary command buffers from a secondary command buffer."
+            );
             return;
         }
 
@@ -1309,7 +1311,9 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
                 {
                     if (!vkCmdBuffer.IsSecondary)
                     {
-                        _logger.LogWarning($"Command buffer at index {i} is not a secondary buffer. Skipping.");
+                        _logger.LogWarning(
+                            $"Command buffer at index {i} is not a secondary buffer. Skipping."
+                        );
                         continue;
                     }
 
@@ -1317,7 +1321,9 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
                 }
                 else
                 {
-                    _logger.LogWarning($"Command buffer at index {i} is not a Vulkan command buffer. Skipping.");
+                    _logger.LogWarning(
+                        $"Command buffer at index {i} is not a Vulkan command buffer. Skipping."
+                    );
                 }
             }
 
@@ -1682,7 +1688,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
     }
 
     /// <inheritdoc/>
-    public void UpdateBuffer(in BufferHandle buffer, uint bufferOffset, uint size, nint data)
+    public ResultCode UpdateBuffer(in BufferHandle buffer, uint bufferOffset, uint size, nint data)
     {
         HxDebug.Assert(buffer);
         HxDebug.Assert(data != IntPtr.Zero);
@@ -1696,7 +1702,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
         if (buf is null || !buf.Valid)
         {
             _logger.LogError("UpdateBuffer failed. Buffer handle is not valid.");
-            return;
+            return ResultCode.InvalidState;
         }
 
         CmdBuffer.BufferBarrier2(
@@ -1721,6 +1727,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
         }
 
         CmdBuffer.BufferBarrier2(buf, VkPipelineStageFlags2.Transfer, dstStage);
+        return ResultCode.Ok;
     }
 
     /// <inheritdoc/>

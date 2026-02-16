@@ -1,4 +1,5 @@
 using System.Numerics;
+using HelixToolkit.Nex.Shaders.Frag;
 
 namespace HelixToolkit.Nex.Material;
 
@@ -56,10 +57,7 @@ public static class MaterialTypeExamples
         };
         pipelineDesc.Colors[0].Format = Format.RGBA_UN8;
 
-        // Set material type to PBR (ID = 0)
-        pipelineDesc.SetMaterialType("PBR");
-
-        var material = new Material();
+        var material = new Material(PBRShadingMode.PBR.ToString());
         if (material.CreatePipeline(context, pipelineDesc))
         {
             return material;
@@ -84,7 +82,13 @@ public static class MaterialTypeExamples
         }
 
         // Get all registered material types
-        var materialTypes = new[] { "PBR", "Unlit", "DebugTileLightCount", "NormalViz" };
+        var materialTypes = new[]
+        {
+            PBRShadingMode.PBR,
+            PBRShadingMode.Unlit,
+            PBRShadingMode.DebugTileLightCount,
+            PBRShadingMode.Normal,
+        };
 
         foreach (var typeName in materialTypes)
         {
@@ -99,12 +103,12 @@ public static class MaterialTypeExamples
             pipelineDesc.Colors[0].Format = Format.RGBA_UN8;
 
             // Set the material type
-            pipelineDesc.SetMaterialType(typeName);
+            pipelineDesc.SetMaterialType(typeName.ToString());
 
-            var material = new Material();
+            var material = new Material(typeName.ToString());
             if (material.CreatePipeline(context, pipelineDesc))
             {
-                materials[typeName] = material;
+                materials[typeName.ToString()] = material;
             }
         }
 
@@ -263,73 +267,8 @@ float edgeFactor(vec3 bary, float width) {
             DebugName = "Wireframe_Pipeline",
         };
         pipelineDesc.Colors[0].Format = Format.RGBA_UN8;
-        pipelineDesc.SetMaterialType("Wireframe");
 
-        var material = new Material();
+        var material = new Material("Wireframe");
         return material.CreatePipeline(context, pipelineDesc) ? material : null;
-    }
-
-    /// <summary>
-    /// Example 9: Runtime material type switching.
-    /// Shows how to switch between material types efficiently.
-    /// </summary>
-    public static class MaterialSwitcher
-    {
-        private static MaterialShaderResult? _uberShader;
-        private static readonly Dictionary<string, Material> _materialCache = new();
-
-        public static void Initialize(IContext context)
-        {
-            // Build uber shader once
-            var builder = new MaterialShaderBuilder().WithUberShader(true);
-
-            _uberShader = builder.BuildMaterialPipeline(context, "UberShader_Switcher");
-        }
-
-        public static Material? GetMaterial(IContext context, string materialType)
-        {
-            if (_uberShader == null || !_uberShader.Success)
-            {
-                return null;
-            }
-
-            // Check cache
-            if (_materialCache.TryGetValue(materialType, out var cached))
-            {
-                return cached;
-            }
-
-            // Create new material
-            var pipelineDesc = new RenderPipelineDesc
-            {
-                Topology = Topology.Triangle,
-                CullMode = CullMode.Back,
-                VertexShader = _uberShader.VertexShader,
-                FragementShader = _uberShader.FragmentShader,
-                DebugName = $"{materialType}_Cached_Pipeline",
-            };
-            pipelineDesc.Colors[0].Format = Format.RGBA_UN8;
-            pipelineDesc.SetMaterialType(materialType);
-
-            var material = new Material();
-            if (material.CreatePipeline(context, pipelineDesc))
-            {
-                _materialCache[materialType] = material;
-                return material;
-            }
-
-            return null;
-        }
-
-        public static void Cleanup()
-        {
-            foreach (var material in _materialCache.Values)
-            {
-                material.Dispose();
-            }
-            _materialCache.Clear();
-            _uberShader?.Dispose();
-            _uberShader = null;
-        }
     }
 }
