@@ -72,6 +72,7 @@ internal class InstancingMeshCullingExample : IDisposable
 
     // -- Pipelines --
     private ComputePipelineResource _cullingPipeline = ComputePipelineResource.Null; // The Compute Shader that performs the culling
+    private ComputePipelineResource _resetInstanceCountPipeline = ComputePipelineResource.Null; // The Compute Shader to reset instance count in mesh draw buffer.
     private RenderPipelineResource _renderPipeline = RenderPipelineResource.Null; // The Graphics Pipeline for drawing
 
     // -- State & Helpers --
@@ -86,6 +87,7 @@ internal class InstancingMeshCullingExample : IDisposable
     private readonly long _startTimestamp;
     private readonly RenderPass _renderPass = new RenderPass();
     private readonly Framebuffer _frameBuffer = new Framebuffer();
+    private readonly Dependencies _cullDeps = new Dependencies();
     private readonly Dependencies _renderDependencies = new Dependencies();
     #endregion
 
@@ -212,6 +214,21 @@ internal class InstancingMeshCullingExample : IDisposable
             new ComputePipelineDesc { ComputeShader = cullingModule }
         );
         Debug.Assert(_cullingPipeline.Valid);
+
+        var resetShader = GpuFrustumCulling.GenerateComputeShader(
+            GpuFrustumCulling.CullMode.ResetInstanceCount
+        );
+        var resetModule = _context.CreateShaderModuleGlsl(
+            resetShader,
+            ShaderStage.Compute,
+            "ResetDrawInstanceCount"
+        );
+        _resetInstanceCountPipeline = _context.CreateComputePipeline(
+            resetModule,
+            "ResetDrawInstanceCount"
+        );
+        Debug.Assert(_resetInstanceCountPipeline.Valid);
+        _cullDeps.Buffers[0] = _meshDrawBuffer;
     }
 
     private void CreateRenderPipeline()
@@ -294,7 +311,21 @@ internal class InstancingMeshCullingExample : IDisposable
         // 3.3 Dispatch Culling Shader (GPU)
         var cmdBuffer = _context!.AcquireCommandBuffer();
         cmdBuffer.UpdateBuffer(_cullConstBuffer, _cullConst);
-        cmdBuffer.UpdateBuffer(_meshDrawBuffer, _meshDraws);
+
+        cmdBuffer.BindComputePipeline(_resetInstanceCountPipeline);
+        cmdBuffer.PushConstants(
+            new ResetMeshDrawInstanceCountPC
+            {
+                MeshDrawBufferAddress = _meshDrawBuffer.GpuAddress,
+                MeshDrawCount = (uint)_meshDraws.Count,
+            }
+        );
+
+        // Reset all instance count value in mesh draw buffer to 0.
+        cmdBuffer.DispatchThreadGroups(
+            new Dimensions(GpuFrustumCulling.GetGroupSize((uint)_meshDraws.Count), 1, 1),
+            Dependencies.Empty
+        );
 
         cmdBuffer.BindComputePipeline(_cullingPipeline);
         cmdBuffer.PushConstants(
@@ -309,7 +340,7 @@ internal class InstancingMeshCullingExample : IDisposable
         // Run one thread per instance to check visibility
         cmdBuffer.DispatchThreadGroups(
             new Dimensions(GpuFrustumCulling.GetGroupSize((uint)_instanceCount), 1, 1),
-            Dependencies.Empty
+            _cullDeps
         );
 
         // 3.4 Render Visible Objects
