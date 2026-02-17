@@ -94,4 +94,21 @@ public sealed class ComputePipelineDesc()
         }
         WriteSpecInfo(constantId, data);
     }
+
+    /// <summary>
+    /// Creates a new instance of <see cref="ComputePipelineDesc"/> that is a deep copy of the current instance.
+    /// </summary>
+    /// <remarks>The returned instance contains copies of all mutable fields, ensuring that changes to the
+    /// cloned object do not affect the original instance.</remarks>
+    /// <returns>A new <see cref="ComputePipelineDesc"/> instance that is a deep copy of the current instance.</returns>
+    public ComputePipelineDesc Clone()
+    {
+        return new ComputePipelineDesc
+        {
+            ComputeShader = ComputeShader,
+            SpecInfo = new SpecializationConstantDesc { Data = (byte[])SpecInfo.Data.Clone() },
+            EntryPoint = EntryPoint,
+            DebugName = DebugName,
+        };
+    }
 }

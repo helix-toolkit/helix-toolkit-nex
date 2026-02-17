@@ -172,4 +172,67 @@ public sealed class RenderPipelineDesc
         }
         WriteSpecInfo(constantId, data);
     }
+
+    /// <summary>
+    /// Creates a deep copy of the current <see cref="RenderPipelineDesc"/> instance.
+    /// </summary>
+    /// <remarks>The method performs a deep copy of all fields and properties, including arrays and complex
+    /// objects,  ensuring that the cloned instance is independent of the original. This is useful when a separate  copy
+    /// of the render pipeline description is needed without affecting the original instance.</remarks>
+    /// <returns>A new <see cref="RenderPipelineDesc"/> instance that is a deep copy of the current instance.</returns>
+    public RenderPipelineDesc Clone()
+    {
+        var clone = new RenderPipelineDesc
+        {
+            Topology = Topology,
+            VertexInput = VertexInput,
+
+            VertexShader = VertexShader,
+            TessControlShader = TessControlShader,
+            TessEvalShader = TessEvalShader,
+            GeometryShader = GeometryShader,
+            TaskShader = TaskShader,
+            MeshShader = MeshShader,
+            FragementShader = FragementShader,
+        };
+
+        // Deep clone SpecInfo
+        for (uint32_t i = 0; i < SpecializationConstantDesc.SPECIALIZATION_CONSTANTS_MAX; i++)
+        {
+            clone.SpecInfo.Entries[i] = SpecInfo.Entries[i];
+        }
+        clone.SpecInfo.Data = (byte[])SpecInfo.Data.Clone();
+
+        clone.EntryPointVert = EntryPointVert;
+        clone.EntryPointTesc = EntryPointTesc;
+        clone.EntryPointTese = EntryPointTese;
+        clone.EntryPointGeom = EntryPointGeom;
+        clone.EntryPointTask = EntryPointTask;
+        clone.EntryPointMesh = EntryPointMesh;
+        clone.EntryPointFrag = EntryPointFrag;
+
+        // Deep clone Colors array
+        for (uint32_t i = 0; i < Constants.MAX_COLOR_ATTACHMENTS; i++)
+        {
+            clone.Colors[i] = Colors[i];
+        }
+
+        clone.DepthFormat = DepthFormat;
+        clone.StencilFormat = StencilFormat;
+
+        clone.CullMode = CullMode;
+        clone.FrontFaceWinding = FrontFaceWinding;
+        clone.PolygonMode = PolygonMode;
+
+        clone.BackFaceStencil = BackFaceStencil;
+        clone.FrontFaceStencil = FrontFaceStencil;
+
+        clone.SamplesCount = SamplesCount;
+        clone.PatchControlPoints = PatchControlPoints;
+        clone.MinSampleShading = MinSampleShading;
+
+        clone.DebugName = DebugName;
+
+        return clone;
+    }
 }

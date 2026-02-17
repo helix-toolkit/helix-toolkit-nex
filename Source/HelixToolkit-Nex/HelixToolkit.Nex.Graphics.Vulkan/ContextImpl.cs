@@ -238,7 +238,7 @@ internal sealed partial class VulkanContext : Initializable, IContext
             return ResultCode.ArgumentError;
         }
 
-        ComputePipelineState cps = new(this) { Desc = desc };
+        ComputePipelineState cps = new(this, desc);
 
         if (desc.SpecInfo.Data != null && desc.SpecInfo.Data.Length > 0)
         {
@@ -378,7 +378,7 @@ internal sealed partial class VulkanContext : Initializable, IContext
             stageFlags |= VkShaderStageFlags.Fragment;
         }
 
-        RenderPipelineState rps = new(this) { Desc = desc, ShaderStageFlags = stageFlags };
+        RenderPipelineState rps = new(this, desc, stageFlags);
 
         // Iterate and cache vertex input bindings and attributes
         ref var vstate = ref rps.Desc.VertexInput;

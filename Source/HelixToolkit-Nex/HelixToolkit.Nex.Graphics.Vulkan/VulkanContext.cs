@@ -1859,7 +1859,7 @@ internal sealed partial class VulkanContext
         VkPipelineLayout layout = VkPipelineLayout.Null;
         VkPipeline pipeline = VkPipeline.Null;
 
-        ref var desc = ref rps.Desc;
+        var desc = rps.Desc;
 
         uint32_t numColorAttachments = rps.Desc.GetNumColorAttachments();
         unsafe
