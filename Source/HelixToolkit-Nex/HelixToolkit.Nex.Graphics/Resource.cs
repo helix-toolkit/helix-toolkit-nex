@@ -68,12 +68,8 @@ public abstract class Resource<T> : IDisposable
         if (Valid && !_disposedValue)
         {
             Interlocked.Increment(ref _referenceCount);
-            return this;
         }
-        else
-        {
-            throw new ObjectDisposedException(nameof(Resource<T>));
-        }
+        return this;
     }
 
     private bool Dispose(bool disposing)
