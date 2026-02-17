@@ -494,6 +494,34 @@ public static class ContextExtensions
     }
 
     /// <summary>
+    /// Creates a compute pipeline using the specified compute shader and an optional debug name.
+    /// </summary>
+    /// <remarks>This method wraps the creation of a compute pipeline, ensuring that the provided compute
+    /// shader is used. The debug name, if provided, can be used for diagnostic purposes.</remarks>
+    /// <param name="context">The context used to create the compute pipeline. Cannot be <see langword="null"/>.</param>
+    /// <param name="computeShader">The compute shader module to be used in the pipeline. Cannot be <see langword="null"/>.</param>
+    /// <param name="debugName">An optional debug name for the compute pipeline. If <see langword="null"/>, an empty string is used.</param>
+    /// <returns>The created compute pipeline resource.</returns>
+    public static ComputePipelineResource CreateComputePipeline(
+        this IContext context,
+        ShaderModuleResource computeShader,
+        string? debugName = null
+    )
+    {
+        context
+            .CreateComputePipeline(
+                new ComputePipelineDesc
+                {
+                    ComputeShader = computeShader,
+                    DebugName = debugName ?? string.Empty,
+                },
+                out var computePipeline
+            )
+            .CheckResult();
+        return computePipeline;
+    }
+
+    /// <summary>
     /// Creates a render pipeline, throwing an exception on failure.
     /// </summary>
     /// <param name="context">The graphics context.</param>
