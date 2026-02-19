@@ -362,3 +362,556 @@ public class MyShaderRepository : ShaderRepository
         resource.AddReference();
     }
 }
+```
+
+# Resource Management System
+
+## Overview
+
+The Resource Management System provides an efficient way to store and manage **geometries** and **materials** in game engines using an ID-based approach with automatic lifecycle management.
+
+## Architecture
+
+### Key Concepts
+
+**Scene nodes DO NOT store mesh/material data directly.** Instead, they store lightweight **handles** (IDs) that reference resources in centralized pools.
+
+
+Scene Graph (Nodes)              Resource Pools
+─────────────────────           ────────────────────
+Node A                          Geometry Pool
+ └─ MeshRender                  ┌─────────────────┐
+    ├─ GeometryHandle ────────► │ [0] Cube        │
+    │    Index: 0                │ [1] Sphere      │
+    │    Gen: 1                  │ [2] Dragon      │
+    └─ MaterialHandle ─────┐     └─────────────────┘
+         Index: 5          │     
+         Gen: 1            │     Material Pool
+                           │     ┌─────────────────┐
+Node B                     └────►│ [5] MetalPBR    │
+ └─ MeshRender                   │ [6] GlassPBR    │
+    ├─ GeometryHandle ────────► │ [7] WoodPBR     │
+    │    Index: 0 (shared!)      └─────────────────┘
+    └─ MaterialHandle ─────┐
+         Index: 5 (shared!)
+```
+
+### Why Use Handles Instead of Direct References?
+
+#### ✅ Benefits
+
+1. **Memory Efficiency**: Multiple nodes can reference the same resource
+2. **Cache Performance**: Better data locality for rendering systems
+3. **Easy Serialization**: Just save/load IDs instead of full data
+4. **Hot-Reloading**: Swap resources without modifying scene graph
+5. **Resource Sharing**: 100 trees can share 1 mesh + 1 material
+6. **GPU Optimization**: Batch rendering by sorting by resource IDs
+
+#### ⚠️ Trade-offs
+
+- Indirect access (one extra lookup)
+- Need to validate handles before use
+- Must manage resource lifetimes carefully
+
+## Core Components
+
+### 1. GeometryHandle
+
+A lightweight handle to a geometry resource:
+
+```csharp
+public readonly record struct GeometryHandle
+{
+    public uint Index { get; }  // Index in the geometry pool
+    public uint Gen { get; }    // Generation number (prevents ABA problem)
+    public bool Valid { get; }  // True if handle is valid
+}
+```
+
+**Generation Numbers Prevent the ABA Problem:**
+
+```csharp
+// Create geometry
+var handle1 = manager.CreateGeometry(cubeGeometry);
+// Index: 0, Gen: 1
+
+// Destroy it (ID 0 goes back to free list)
+manager.DestroyGeometry(ref handle1);
+
+// Create new geometry (reuses ID 0)
+var handle2 = manager.CreateGeometry(sphereGeometry);
+// Index: 0, Gen: 2  ← Different generation!
+
+// Old handle is now invalid
+var geo = manager.Geometries.Get(handle1);
+// Returns null because Gen doesn't match
+```
+
+### 2. MaterialHandle
+
+Similar to GeometryHandle but for materials:
+
+```csharp
+public readonly record struct MaterialHandle
+{
+    public uint Index { get; }
+    public uint Gen { get; }
+    public bool Valid { get; }
+}
+```
+
+### 3. GeometryPool
+
+Manages geometry resources with automatic ID allocation:
+
+```csharp
+var pool = new GeometryPool();
+
+// Create geometry
+var geometry = new Geometry { Vertices = [...], Indices = [...] };
+var handle = pool.Create(geometry);
+
+// Retrieve geometry
+var retrieved = pool.Get(handle);
+
+// Destroy geometry (ID returns to free list)
+pool.Destroy(ref handle);
+```
+
+**Free-List Algorithm:**
+- Destroyed IDs go into a free list
+- New allocations first try to reuse freed IDs
+- Only allocates new IDs when free list is empty
+- O(1) allocation and deallocation
+
+### 4. MaterialPool
+
+Same as GeometryPool but for materials:
+
+```csharp
+var pool = new MaterialPool();
+
+var material = new PBRMaterial();
+var handle = pool.Create(material);
+var retrieved = pool.Get(handle);
+pool.Destroy(ref handle);
+```
+
+### 5. ResourceManager
+
+High-level API that combines both pools and handles GPU resource creation:
+
+```csharp
+var manager = new ResourceManager(context);
+
+// Create geometry and automatically upload to GPU
+var geoHandle = manager.CreateGeometry(geometry, uploadToGpu: true);
+
+// Create material with pipeline
+var matHandle = manager.CreateMaterial(material, pipelineDesc);
+
+// Update dirty geometry buffers
+manager.UpdateGeometryBuffers(geoHandle);
+
+// Get statistics
+var stats = manager.GetStatistics();
+Console.WriteLine($"Geometries: {stats.GeometryCount}");
+Console.WriteLine($"Materials: {stats.MaterialCount}");
+
+// Clean up
+manager.DestroyGeometry(ref geoHandle);
+manager.DestroyMaterial(ref matHandle);
+```
+
+## Usage Examples
+
+### Example 1: Basic Geometry Creation
+
+```csharp
+var manager = new ResourceManager(context);
+
+// Create a cube geometry
+var cubeGeometry = new Geometry
+{
+    Vertices = [
+        new Vector4(-1, -1, -1, 1), new Vector4(1, -1, -1, 1),
+        new Vector4(1, 1, -1, 1), new Vector4(-1, 1, -1, 1),
+        // ... more vertices
+    ],
+    Indices = [0u, 1u, 2u, 2u, 3u, 0u, /* ... */]
+};
+
+// Create and upload to GPU
+var cubeHandle = manager.CreateGeometry(cubeGeometry, uploadToGpu: true);
+
+// Check GPU buffers were created
+var cube = manager.Geometries.Get(cubeHandle);
+Assert.IsTrue(cube.VertexBuffer.Valid);
+Assert.IsTrue(cube.IndexBuffer.Valid);
+```
+
+### Example 2: Resource Sharing
+
+```csharp
+// Create one tree geometry
+var treeGeometry = new Geometry { /* tree mesh data */ };
+var treeHandle = manager.CreateGeometry(treeGeometry, uploadToGpu: true);
+
+// Create different materials
+var summerMaterial = new PBRMaterial { /* summer colors */ };
+var autumnMaterial = new PBRMaterial { /* autumn colors */ };
+var summerHandle = manager.CreateMaterial(summerMaterial);
+var autumnHandle = manager.CreateMaterial(autumnMaterial);
+
+// Create 50 summer trees (all share same geometry)
+for (int i = 0; i < 50; i++)
+{
+    var node = new Node(world);
+    node.Entity.Add(new MeshRender(treeHandle, summerHandle));
+    // Set position, rotation, etc.
+}
+
+// Create 50 autumn trees (share same geometry, different material)
+for (int i = 0; i < 50; i++)
+{
+    var node = new Node(world);
+    node.Entity.Add(new MeshRender(treeHandle, autumnHandle));
+}
+
+// Memory usage: 1 geometry + 2 materials instead of 100 geometries!
+```
+
+### Example 3: Hot-Swapping Resources
+
+```csharp
+// Create initial setup
+var lowPolyHandle = manager.CreateGeometry(lowPolyMesh, uploadToGpu: true);
+var highPolyHandle = manager.CreateGeometry(highPolyMesh, uploadToGpu: true);
+
+// Scene has many nodes using low-poly mesh
+var nodes = GetAllMeshNodes();
+
+// Switch all nodes to high-poly (instant!)
+foreach (var node in nodes)
+{
+    var meshRender = node.Entity.Get<MeshRender>();
+    node.Entity.Set(new MeshRender(highPolyHandle, meshRender.MaterialHandle));
+}
+
+// No memory allocation, no GPU uploads - just handle swap!
+```
+
+### Example 4: Deferred GPU Upload
+
+```csharp
+// Create many geometries without uploading to GPU
+var handles = new List<GeometryHandle>();
+for (int i = 0; i < 1000; i++)
+{
+    var geo = GenerateProcedural Geometry(i);
+    var handle = manager.CreateGeometry(geo, uploadToGpu: false);
+    handles.Add(handle);
+}
+
+// Later, upload all in batch
+foreach (var handle in handles)
+{
+    manager.UpdateGeometryBuffers(handle);
+}
+
+// Or update all dirty geometries at once
+int updated = manager.UpdateAllDirtyGeometries();
+Console.WriteLine($"Updated {updated} geometries");
+```
+
+### Example 5: Resource Lifetime Management
+
+```csharp
+void LoadLevel(ResourceManager manager)
+{
+    var levelGeometries = new List<GeometryHandle>();
+    var levelMaterials = new List<MaterialHandle>();
+    
+    // Load level resources
+    foreach (var asset in levelAssets)
+    {
+        var geo = LoadGeometry(asset);
+        var geoHandle = manager.CreateGeometry(geo, uploadToGpu: true);
+        levelGeometries.Add(geoHandle);
+        
+        var mat = LoadMaterial(asset);
+        var matHandle = manager.CreateMaterial(mat);
+        levelMaterials.Add(matHandle);
+    }
+    
+    // ... use resources ...
+    
+    // Unload level
+    foreach (var handle in levelGeometries)
+    {
+        var h = handle;
+        manager.DestroyGeometry(ref h);
+    }
+    foreach (var handle in levelMaterials)
+    {
+        var h = handle;
+        manager.DestroyMaterial(ref h);
+    }
+}
+```
+
+## ID Management and Recycling
+
+### How IDs Are Maintained
+
+The system uses a **free-list** algorithm:
+
+```
+Initial state:
+Pool: [empty]
+Free list: HEAD → ∅
+
+Create geometry A:
+Pool: [A]
+Free list: HEAD → ∅
+Handle: (Index: 0, Gen: 1)
+
+Create geometry B:
+Pool: [A, B]
+Free list: HEAD → ∅
+Handle: (Index: 1, Gen: 1)
+
+Destroy geometry A:
+Pool: [freed, B]
+Free list: HEAD → 0 → ∅
+(A's slot is marked with next Gen: 2)
+
+Create geometry C (reuses A's slot):
+Pool: [C, B]
+Free list: HEAD → ∅
+Handle: (Index: 0, Gen: 2)  ← Same index, different generation!
+```
+
+### Generation Numbers Protect Against Use-After-Free
+
+```csharp
+// Create and destroy quickly
+var handle1 = pool.Create(geometryA);  // Index: 0, Gen: 1
+pool.Destroy(ref handle1);
+
+var handle2 = pool.Create(geometryB);  // Index: 0, Gen: 2 (reused slot)
+
+// Try to use old handle
+var result = pool.Get(handle1);  // Returns null! Gen mismatch
+```
+
+## Performance Characteristics
+
+### Time Complexity
+
+| Operation | Complexity | Notes |
+|-----------|-----------|-------|
+| Create | O(1) | Uses free-list |
+| Destroy | O(1) | Adds to free-list |
+| Get | O(1) | Direct array access |
+| Find | O(n) | Linear search |
+
+### Memory Layout
+
+```
+Geometry Pool Entry:
+┌──────────────┬──────────────┬──────────────────┐
+│ Gen (uint)   │ NextFree     │ Geometry*        │
+│ 4 bytes      │ 4 bytes      │ 8 bytes (64-bit) │
+└──────────────┴──────────────┴──────────────────┘
+Total: 16 bytes per entry
+
+Handle:
+┌──────────────┬──────────────┐
+│ Index (uint) │ Gen (uint)   │
+│ 4 bytes      │ 4 bytes      │
+└──────────────┴──────────────┘
+Total: 8 bytes
+```
+
+### Cache Performance
+
+**Good:**
+- Handles are small (8 bytes) - fit more in cache
+- Resource data is contiguous in memory
+- Sorting by handle ID improves GPU batching
+
+**Could Be Better:**
+- Indirect access requires pointer chase
+- Generational index adds validation overhead
+
+## Thread Safety
+
+### Current Implementation
+
+⚠️ **Thread-safe operations (protected by locks):**
+- `Create()` - Can be called from any thread
+- `Destroy()` - Can be called from any thread
+- `Get()` - Can be called from any thread
+
+⚠️ **Not thread-safe:**
+- Modifying geometry/material data after creation
+- Reading while another thread modifies
+
+### Recommended Usage
+
+```csharp
+// ✅ Good: Create on main thread
+var handle = manager.CreateGeometry(geometry);
+
+// ✅ Good: Destroy on main thread
+manager.DestroyGeometry(ref handle);
+
+// ⚠️ Risky: Concurrent modification
+// Thread 1:
+var geo = manager.Geometries.Get(handle);
+geo.Vertices.Add(newVertex);
+
+// Thread 2:
+var geo = manager.Geometries.Get(handle);
+geo.Vertices.Clear();  // ❌ Race condition!
+
+// ✅ Better: Synchronize modifications
+lock (geometryLock)
+{
+    var geo = manager.Geometries.Get(handle);
+    geo.Vertices.Add(newVertex);
+}
+```
+
+## Integration with Rendering
+
+### Mesh Rendering Pipeline
+
+```csharp
+// Setup phase (once)
+var resourceManager = new ResourceManager(context);
+var geometry = LoadCubeGeometry();
+var material = CreatePBRMaterial();
+
+var geoHandle = resourceManager.CreateGeometry(geometry, uploadToGpu: true);
+var matHandle = resourceManager.CreateMaterial(material, pipelineDesc);
+
+// Scene setup
+var node = new Node(world);
+node.Entity.Add(new MeshRender(geoHandle, matHandle));
+
+// Render loop
+foreach (var entity in query.GetEntities())
+{
+    var meshRender = entity.Get<MeshRender>();
+    
+    // Retrieve resources
+    var geo = resourceManager.Geometries.Get(meshRender.GeometryHandle);
+    var mat = resourceManager.Materials.Get(meshRender.MaterialHandle);
+    
+    // Bind and draw
+    cmdBuffer.BindRenderPipeline(mat.Pipeline);
+    cmdBuffer.BindVertexBuffer(0, geo.VertexBuffer);
+    cmdBuffer.BindIndexBuffer(geo.IndexBuffer, IndexFormat.UInt32);
+    cmdBuffer.DrawIndexed(geo.IndexCount);
+}
+```
+
+## Best Practices
+
+### ✅ DO
+
+1. **Create resources at load time** - Avoid creating during rendering
+2. **Share resources** - Use same geometry/material for multiple nodes
+3. **Check handle validity** - Always check `handle.Valid` before use
+4. **Destroy when done** - Free resources to allow ID recycling
+5. **Use statistics** - Monitor resource usage with `GetStatistics()`
+6. **Batch updates** - Use `UpdateAllDirtyGeometries()` for bulk updates
+
+### ❌ DON'T
+
+1. **Don't keep stale handles** - Check validity after destroy
+2. **Don't compare handles directly** - Use `.Index` and `.Gen` explicitly
+3. **Don't assume ID order** - IDs can be reused in any order
+4. **Don't modify resources during rendering** - Can cause GPU sync issues
+5. **Don't leak handles** - Always destroy when done
+
+## Debugging Tips
+
+### Enable Debug Output
+
+```csharp
+var stats = manager.GetStatistics();
+Console.WriteLine($"Active Geometries: {stats.GeometryCount}");
+Console.WriteLine($"Active Materials: {stats.MaterialCount}");
+Console.WriteLine($"Dirty Geometries: {stats.DirtyGeometryCount}");
+```
+
+### Validate Handles
+
+```csharp
+void DrawMesh(GeometryHandle geoHandle, MaterialHandle matHandle)
+{
+    if (!geoHandle.Valid || !matHandle.Valid)
+    {
+        Console.WriteLine("Invalid handle!");
+        return;
+    }
+    
+    var geo = manager.Geometries.Get(geoHandle);
+    if (geo == null)
+    {
+        Console.WriteLine($"Geometry not found: Index={geoHandle.Index}, Gen={geoHandle.Gen}");
+        return;
+    }
+    
+    // ... continue
+}
+```
+
+### Track Resource Leaks
+
+```csharp
+class ResourceTracker
+{
+    private HashSet<GeometryHandle> _trackedGeometries = new();
+    
+    public GeometryHandle TrackGeometry(Geometry geo)
+    {
+        var handle = manager.CreateGeometry(geo);
+        _trackedGeometries.Add(handle);
+        return handle;
+    }
+    
+    public void CheckLeaks()
+    {
+        var activeCount = manager.Geometries.GetAllHandles().Count();
+        var trackedCount = _trackedGeometries.Count;
+        
+        if (activeCount != trackedCount)
+        {
+            Console.WriteLine($"Leak detected! Active: {activeCount}, Tracked: {trackedCount}");
+        }
+    }
+}
+```
+
+## Future Enhancements
+
+Potential improvements:
+
+- [ ] **Reference counting** - Automatic cleanup when no nodes reference resource
+- [ ] **Weak handles** - Handles that don't prevent resource cleanup
+- [ ] **Resource streaming** - Load/unload based on distance/frustum
+- [ ] **Resource aliasing** - Multiple handles to same resource with different configs
+- [ ] **Memory pooling** - Pre-allocate geometry/material memory
+- [ ] **GPU-driven culling** - Sort and batch by resource IDs on GPU
+
+## See Also
+
+- `GeometryPool.cs` - Geometry resource pool implementation
+- `MaterialPool.cs` - Material resource pool implementation
+- `ResourceManager.cs` - High-level resource management API
+- `MeshRender.cs` - Mesh render component using handles
+- `ResourceManagerTests.cs` - Comprehensive test suite

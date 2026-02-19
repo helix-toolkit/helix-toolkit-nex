@@ -2,8 +2,6 @@ using HelixToolkit.Nex.Shaders.Frag;
 
 namespace HelixToolkit.Nex.Material;
 
-public struct MaterialType { }
-
 public readonly struct MaterialTypeId(uint id) : IComparable<MaterialTypeId>
 {
     public uint Id { get; } = id;

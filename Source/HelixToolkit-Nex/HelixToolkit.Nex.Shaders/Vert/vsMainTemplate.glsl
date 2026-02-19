@@ -13,7 +13,7 @@ layout(location = 4) out vec3 fragTangent;
 layout(location = 5) out vec2 fragTexCoord;
 #endif
 #ifdef OUTPUT_DRAW_ID
-layout(location = 6) out flat uint fragEntityId;
+layout(location = 6) out flat uvec2 fragEntityId;
 #endif
 
 layout(push_constant) uniform Pc {
@@ -128,7 +128,7 @@ void main() {
 #endif
     calVertexOutput(gl_Position, fragWorldPos, fragNormal, fragTangent, fragColor, fragTexCoord);
 #ifdef OUTPUT_DRAW_ID
-    fragEntityId = meshDraw.entityId;
+    fragEntityId = uvec2(meshDraw.entityId, meshDraw.entityVer);
 #endif
 }
 

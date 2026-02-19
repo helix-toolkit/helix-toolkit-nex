@@ -7,6 +7,9 @@ public struct NodeInfo
     public Guid Id = Guid.NewGuid();
     public string Name = string.Empty;
     public Node? Node = null;
+    internal bool SelfEnabled = true;
+    internal bool ParentEnabled = true;
+    public bool Enabled => SelfEnabled && ParentEnabled;
 
     public NodeInfo() { }
 
@@ -154,10 +157,4 @@ public readonly struct Children
     {
         return ChildNodes.Remove(child);
     }
-}
-
-public struct NodeEnabled()
-{
-    public bool Enabled = true;
-    public bool ParentEnabled = true;
 }

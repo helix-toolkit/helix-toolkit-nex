@@ -161,6 +161,8 @@ public class CSharpStructGenerator
         var csharpType = MapGlslTypeToCSharp(field.GlslType);
         var fieldName = FormatFieldName(field.Name);
 
+        sb.AppendLine($"    public const uint Max{fieldName}Count = {size};");
+
         // Getter
         sb.AppendLine($"    public {csharpType} Get{fieldName}(int index)");
         sb.AppendLine("    {");
@@ -178,7 +180,21 @@ public class CSharpStructGenerator
         sb.AppendLine();
 
         // Setter
-        sb.AppendLine($"    public void Set{fieldName}(int index, in {csharpType} value)");
+        sb.AppendLine($"    public void Set{fieldName}(int index, {csharpType} value)");
+        sb.AppendLine("    {");
+        sb.AppendLine("        switch (index)");
+        sb.AppendLine("        {");
+        for (int i = 0; i < size; ++i)
+        {
+            sb.AppendLine($"            case {i}: {fieldName}_{i} = value; break;");
+        }
+        sb.AppendLine(
+            $"            default: throw new System.IndexOutOfRangeException($\"Index {{index}} is out of range for array {fieldName} of size {size}.\");"
+        );
+        sb.AppendLine("        }");
+        sb.AppendLine("    }");
+        sb.AppendLine();
+        sb.AppendLine($"    public void Set{fieldName}(int index, ref {csharpType} value)");
         sb.AppendLine("    {");
         sb.AppendLine("        switch (index)");
         sb.AppendLine("        {");

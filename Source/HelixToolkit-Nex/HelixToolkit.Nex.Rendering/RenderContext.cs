@@ -1,41 +1,244 @@
+using HelixToolkit.Nex.Graphics;
+
 namespace HelixToolkit.Nex.Rendering;
 
-public sealed class RenderContext(World world)
+public readonly record struct Range(uint Start, uint Count)
+{
+    public readonly bool Empty => Count == 0;
+
+    public readonly uint End => Start + Count;
+
+    public static readonly Range Zero = new(0, 0);
+}
+
+public readonly struct CameraParams(
+    Matrix4x4 view,
+    Matrix4x4 projection,
+    Matrix4x4 invView,
+    Matrix4x4 invProjection,
+    Vector3 position,
+    Vector3 target,
+    Vector3 up
+)
+{
+    public readonly Matrix4x4 View = view;
+    public readonly Matrix4x4 Projection = projection;
+    public readonly Matrix4x4 InvView = invView;
+    public readonly Matrix4x4 InvProjection = invProjection;
+    public readonly Vector3 Position = position;
+    public readonly Vector3 Target = target;
+    public readonly Vector3 Up = up;
+
+    public static readonly CameraParams Identity = new(
+        Matrix4x4.Identity,
+        Matrix4x4.Identity,
+        Matrix4x4.Identity,
+        Matrix4x4.Identity,
+        Vector3.Zero,
+        Vector3.Zero,
+        Vector3.UnitY
+    );
+};
+
+public interface IRenderContext
+{
+    IRenderDataProvider? Data { get; }
+
+    Size WindowSize { get; }
+
+    float DpiScale { get; }
+
+    CameraParams CameraParams { get; }
+}
+
+public sealed class RenderContext(IServiceProvider services) : IRenderContext, IDisposable
 {
     private static readonly ILogger _logger = LogManager.Create<RenderContext>();
 
-    private readonly Dictionary<uint, System.Range> _materialIdToRange = new();
+    private BufferResource _lightGridBuf = BufferResource.Null;
+    private BufferResource _lightIndexBuf = BufferResource.Null;
+    private bool _windowSizeChanged = true;
 
-    public World World { get; } = world;
+    public readonly IContext Context = services.GetRequiredService<IContext>();
 
-    /// <summary>
-    /// Gets or sets the command buffer for the current frame. 
-    /// Set by the renderer manager at the beginning of each frame.
-    /// </summary>
-    public ICommandBuffer? CommandBuffer { get; internal set; }
+    public readonly ForwardPlusLightCulling.Config FPLightConfig = ForwardPlusLightCulling
+        .Config
+        .Default;
 
-    public System.Range OpaqueObjects { get; private set; }
-
-    public System.Range TransparentObjects { get; private set; }
-
-    public System.Range Points { get; private set; }
-
-    public System.Range Lines { get; private set; }
-
-    public System.Range Billboard { get; private set; }
-
-    public System.Range GetRangeByMaterialId(uint materialId)
+    public struct UseExternalPipelineScope : IDisposable
     {
-        return _materialIdToRange.TryGetValue(materialId, out var range) ? range : default;
+        private readonly RenderContext _context;
+
+        public UseExternalPipelineScope(RenderContext context)
+        {
+            _context = context;
+            _context.UseExternalPipeline = true;
+        }
+
+        public void Dispose()
+        {
+            _context.UseExternalPipeline = false;
+        }
     }
 
-    public void SetOpaqueObjectsRange(ref System.Range range)
+    public IRenderDataProvider? Data { set; get; }
+
+    private Size _windowSize;
+
+    public Size WindowSize
     {
-        OpaqueObjects = range;
+        set
+        {
+            if (_windowSize != value)
+            {
+                _windowSize = value;
+                _logger.LogInformation(
+                    "Window size changed: {Width}x{Height}",
+                    value.Width,
+                    value.Height
+                );
+                _windowSizeChanged = true;
+                TileCountX =
+                    (WindowSize.Width + (int)FPLightConfig.TileSize - 1)
+                    / (int)FPLightConfig.TileSize;
+                TileCountY =
+                    (WindowSize.Height + (int)FPLightConfig.TileSize - 1)
+                    / (int)FPLightConfig.TileSize;
+            }
+        }
+        get => _windowSize;
     }
 
-    public void SetTransparentObjectsRange(ref System.Range range)
+    public int TileCountX { private set; get; }
+
+    public int TileCountY { private set; get; }
+
+    public float DpiScale { set; get; } = 1;
+
+    public CameraParams CameraParams { set; get; } = CameraParams.Identity;
+
+    public BufferResource FPConstantsBuffer { private set; get; } = BufferResource.Null;
+
+    public RenderGraphBuffers SharedBuffers { get; } = new RenderGraphBuffers();
+
+    public bool UseExternalPipeline { get; private set; } = false;
+
+    public UseExternalPipelineScope EnableExternalPipelineScoped() => new(this);
+
+    public bool Initialize()
     {
-        TransparentObjects = range;
+        FPConstantsBuffer = Context.CreateBuffer(
+            new FPConstants(),
+            BufferUsageBits.Storage,
+            StorageType.Device,
+            RenderGraphBufferNames.ForwardPlusConstants
+        );
+
+        return true;
+    }
+
+    public void Update(ICommandBuffer cmd)
+    {
+        if (Data?.Update() == false)
+        {
+            _logger.LogWarning("Failed to update render data.");
+            return;
+        }
+        if (WindowSize == Size.Empty)
+            return;
+        HandleWindowSizeChanged();
+        if (FPConstantsBuffer.Valid)
+        {
+            var fpData = new FPConstants
+            {
+                Time = (float)DateTime.Now.TimeOfDay.TotalSeconds,
+                CameraPosition = CameraParams.InvView.Translation,
+                InverseViewProjection = CameraParams.InvProjection * CameraParams.InvView,
+                ViewProjection = CameraParams.View * CameraParams.Projection,
+                LightCount = Data?.Lights.Count ?? 0,
+                MaxLightsPerTile = FPLightConfig.MaxLightsPerTile,
+                TileSize = FPLightConfig.TileSize,
+                ScreenDimensions = new Vector2(WindowSize.Width, WindowSize.Height),
+                TileCountX = (uint)TileCountX,
+                TileCountY = (uint)TileCountY,
+                MeshInfoBufferAddress = Data?.MeshInfos.GpuAddress ?? 0,
+                LightBufferAddress = Data?.Lights.GpuAddress ?? 0,
+                LightGridBufferAddress = _lightGridBuf.GpuAddress,
+                LightIndexBufferAddress = _lightIndexBuf.GpuAddress,
+                MaterialBufferAddress = Data?.PBRPropertiesBuffer.GpuAddress ?? 0,
+                MeshDrawBufferAddress = Data?.MeshDrawsOpaque.GpuAddress ?? 0,
+                DirectionalLightsBufferAddress = Data?.DirectionalLights.GpuAddress ?? 0,
+            };
+            cmd.UpdateBuffer(FPConstantsBuffer, fpData);
+        }
+    }
+
+    private void HandleWindowSizeChanged()
+    {
+        if (!_windowSizeChanged)
+        {
+            return;
+        }
+        _lightGridBuf.Dispose();
+        _lightIndexBuf.Dispose();
+        var totalTiles = TileCountX * TileCountY;
+        // Light grid buffer: stores light count and index offset per tile
+        _lightGridBuf = Context.CreateBuffer(
+            new BufferDesc
+            {
+                DataSize = (uint)(totalTiles * LightGridTile.SizeInBytes),
+                Usage = BufferUsageBits.Storage,
+                Storage = StorageType.Device,
+            },
+            "ForwardPlus_LightGrid"
+        );
+
+        // Light index list buffer: stores light indices for all tiles
+        _lightIndexBuf = Context.CreateBuffer(
+            new BufferDesc
+            {
+                DataSize = (uint)(totalTiles * FPLightConfig.MaxLightsPerTile * sizeof(uint)),
+                Usage = BufferUsageBits.Storage,
+                Storage = StorageType.Device,
+            },
+            "ForwardPlus_LightIndices"
+        );
+        _windowSizeChanged = false;
+    }
+
+    private bool _disposedValue;
+
+    private void Dispose(bool disposing)
+    {
+        if (!_disposedValue)
+        {
+            if (disposing)
+            {
+                FPConstantsBuffer.Dispose();
+                FPConstantsBuffer = BufferResource.Null;
+                _lightGridBuf.Dispose();
+                _lightGridBuf = BufferResource.Null;
+                _lightIndexBuf.Dispose();
+                _lightIndexBuf = BufferResource.Null;
+            }
+
+            // TODO: free unmanaged resources (unmanaged objects) and override finalizer
+            // TODO: set large fields to null
+            _disposedValue = true;
+        }
+    }
+
+    // // TODO: override finalizer only if 'Dispose(bool disposing)' has code to free unmanaged resources
+    // ~RenderContext()
+    // {
+    //     // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+    //     Dispose(disposing: false);
+    // }
+
+    public void Dispose()
+    {
+        // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+        Dispose(disposing: true);
+        GC.SuppressFinalize(this);
     }
 }

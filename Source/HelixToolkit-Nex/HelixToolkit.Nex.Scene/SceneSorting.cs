@@ -48,6 +48,11 @@ public static class SceneSorting
         }
     }
 
+    public static void Flatten(this Node root, Func<Node, bool>? condition, IList<Node> sortedNodes)
+    {
+        Flatten([root], condition, sortedNodes);
+    }
+
     public static void UpdateTransforms(this IReadOnlyList<Node> sortedNodes)
     {
         for (int i = 0; i < sortedNodes.Count; ++i)

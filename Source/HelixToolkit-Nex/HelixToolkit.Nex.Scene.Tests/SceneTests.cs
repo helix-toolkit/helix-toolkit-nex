@@ -175,7 +175,7 @@ public sealed class SceneTests
         var world = World.Create();
         var node = new Node(world) { Name = "Test Node" };
         node.Enabled = false;
-        Assert.IsFalse(node.Enabled, "Node should be disabled after setting Enabled to false");
+        Assert.IsFalse(node.Enabled, "Node should be disabled after setting SelfEnabled to false");
         node.Dispose();
     }
 
@@ -187,7 +187,7 @@ public sealed class SceneTests
         node.Enabled = false;
         Assert.IsFalse(node.Enabled);
         node.Enabled = true;
-        Assert.IsTrue(node.Enabled, "Node should be enabled after setting Enabled to true");
+        Assert.IsTrue(node.Enabled, "Node should be enabled after setting SelfEnabled to true");
         node.Dispose();
     }
 
@@ -419,7 +419,10 @@ public sealed class SceneTests
 
         parent.RemoveChild(child);
 
-        Assert.IsTrue(child.Enabled, "Child should be enabled after being removed from disabled parent");
+        Assert.IsTrue(
+            child.Enabled,
+            "Child should be enabled after being removed from disabled parent"
+        );
 
         parent.Dispose();
         child.Dispose();

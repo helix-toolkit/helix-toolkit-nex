@@ -71,17 +71,17 @@ public class Node : IDisposable
     {
         get
         {
-            ref var enabled = ref Entity.Get<NodeEnabled>();
-            return enabled.Enabled && enabled.ParentEnabled;
+            ref var info = ref Entity.Get<NodeInfo>();
+            return info.Enabled;
         }
         set
         {
-            ref var enabled = ref Entity.Get<NodeEnabled>();
-            if (enabled.Enabled == value)
+            ref var info = ref Entity.Get<NodeInfo>();
+            if (info.SelfEnabled == value)
             {
                 return;
             }
-            enabled.Enabled = value;
+            info.SelfEnabled = value;
             if (!HasChildren)
             {
                 return;
@@ -96,16 +96,16 @@ public class Node : IDisposable
 
     internal bool ParentEnabled
     {
-        get => Entity.Get<NodeEnabled>().ParentEnabled;
+        get => Entity.Get<NodeInfo>().ParentEnabled;
         set
         {
-            ref var nodeEnabled = ref Entity.Get<NodeEnabled>();
-            if (nodeEnabled.ParentEnabled == value)
+            ref var info = ref Entity.Get<NodeInfo>();
+            if (info.ParentEnabled == value)
             {
                 return;
             }
-            Entity.Get<NodeEnabled>().ParentEnabled = value;
-            if (nodeEnabled.Enabled && HasChildren)
+            Entity.Get<NodeInfo>().ParentEnabled = value;
+            if (info.SelfEnabled && HasChildren)
             {
                 ref var children = ref Entity.Get<Children>();
                 foreach (var child in children.ChildNodes)
@@ -130,8 +130,7 @@ public class Node : IDisposable
                 new Transform(),
                 WorldTransform.Identity,
                 new Parent(),
-                new Children(),
-                new NodeEnabled()
+                new Children()
             );
         VerifyExternalEntity(Entity);
     }

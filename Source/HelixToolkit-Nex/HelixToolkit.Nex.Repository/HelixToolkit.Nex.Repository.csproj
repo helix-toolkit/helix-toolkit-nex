@@ -12,7 +12,9 @@
 
     <ItemGroup>
         <ProjectReference Include="..\HelixTookit.Nex\HelixToolkit.Nex.csproj" />
+        <ProjectReference Include="..\HelixToolkit.Nex.Geometry\HelixToolkit.Nex.Geometries.csproj" />
         <ProjectReference Include="..\HelixToolkit.Nex.Graphics\HelixToolkit.Nex.Graphics.csproj" />
+        <ProjectReference Include="..\HelixToolkit.Nex.Material\HelixToolkit.Nex.Material.csproj" />
     </ItemGroup>
     <ItemGroup>
         <None Update="README.md">

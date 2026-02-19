@@ -29,7 +29,7 @@ public sealed class RenderManagerTests
 
         protected override void OnTearDown() { }
 
-        protected override void OnRender(RenderContext context)
+        protected override void OnRender(RenderContext context, ICommandBuffer cmdBuf)
         {
             RenderCount++;
         }
@@ -66,7 +66,7 @@ public sealed class RenderManagerTests
     public void CreateAndDestroy()
     {
         var manager = new RendererManager(_serviceProvider!);
-
+        var context = _serviceProvider!.GetRequiredService<IContext>();
         var rBegin = new FakeRenderer(RenderStages.Begin, "BeginRenderer");
         var rOpaque = new FakeRenderer(RenderStages.Opaque, "OpaqueRenderer");
         var rUI = new FakeRenderer(RenderStages.UI, "UIRenderer");
@@ -80,16 +80,17 @@ public sealed class RenderManagerTests
         Assert.IsFalse(manager.AddRenderer(rOpaque));
 
         var ctx = new RenderContext(null!);
+        var cmdBuf = context.AcquireCommandBuffer();
 
         // First render - all enabled by default
-        manager.Render(ctx);
+        manager.Render(ctx, cmdBuf);
         Assert.AreEqual(1, rBegin.RenderCount);
         Assert.AreEqual(1, rOpaque.RenderCount);
         Assert.AreEqual(1, rUI.RenderCount);
 
         // Disable one renderer - it should not be called
         rOpaque.Enabled = false;
-        manager.Render(ctx);
+        manager.Render(ctx, cmdBuf);
         Assert.AreEqual(2, rBegin.RenderCount);
         Assert.AreEqual(1, rOpaque.RenderCount); // unchanged
         Assert.AreEqual(2, rUI.RenderCount);
@@ -97,7 +98,7 @@ public sealed class RenderManagerTests
         // Remove a renderer and ensure it no longer receives calls and is detached
         manager.RemoveRenderer(rBegin);
         Assert.IsFalse(rBegin.IsAttached);
-        manager.Render(ctx);
+        manager.Render(ctx, cmdBuf);
         Assert.AreEqual(2, rBegin.RenderCount); // not called after removal
         Assert.AreEqual(1, rOpaque.RenderCount); // still disabled
         Assert.AreEqual(3, rUI.RenderCount);

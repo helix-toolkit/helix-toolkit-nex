@@ -71,10 +71,7 @@ public class GeometryJsonConverter : JsonConverter<Geometry>
                     colors,
                     topology,
                     isDynamic
-                )
-                {
-                    Id = id,
-                };
+                );
                 return geometry;
             }
 
@@ -88,9 +85,6 @@ public class GeometryJsonConverter : JsonConverter<Geometry>
 
             switch (propertyName)
             {
-                case nameof(Geometry.Id):
-                    id = reader.GetGuid();
-                    break;
                 case nameof(Geometry.Topology):
                     topology = JsonSerializer.Deserialize<Topology>(ref reader, effectiveOptions);
                     break;
@@ -135,9 +129,6 @@ public class GeometryJsonConverter : JsonConverter<Geometry>
         var effectiveOptions = GetEffectiveOptions(options);
 
         writer.WriteStartObject();
-
-        writer.WritePropertyName(nameof(Geometry.Id));
-        writer.WriteStringValue(value.Id);
 
         writer.WritePropertyName(nameof(Geometry.Topology));
         JsonSerializer.Serialize(writer, value.Topology, effectiveOptions);

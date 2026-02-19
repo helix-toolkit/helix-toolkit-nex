@@ -18,52 +18,47 @@ public static class RenderContextExtensions
     /// </remarks>
     public static ICommandBuffer CreateSecondaryCommandBuffer(
         this RenderContext context,
-        in RenderPass renderPass)
+        in RenderPass renderPass
+    )
     {
-        if (context.CommandBuffer?.Context == null)
+        if (context.Context == null)
         {
-            throw new InvalidOperationException("RenderContext does not have an active command buffer or context");
+            throw new InvalidOperationException(
+                "RenderContext does not have an active command buffer or context"
+            );
         }
 
-        return context.CommandBuffer.Context.CreateSecondaryCommandBuffer(renderPass);
+        return context.Context.CreateSecondaryCommandBuffer(renderPass);
     }
 
     /// <summary>
-    /// Executes secondary command buffers on the primary command buffer in the render context.
+    /// Executes secondary command buffers on the primary command buffer.
     /// </summary>
-    /// <param name="context">The render context.</param>
+    /// <param name="cmdBuf">The command buffer.</param>
     /// <param name="secondaryBuffers">The secondary buffers to execute.</param>
     public static void ExecuteSecondaryBuffers(
-        this RenderContext context,
-        params ICommandBuffer[] secondaryBuffers)
+        this ICommandBuffer cmdBuf,
+        params ICommandBuffer[] secondaryBuffers
+    )
     {
-        if (context.CommandBuffer == null)
-        {
-            throw new InvalidOperationException("RenderContext does not have an active command buffer");
-        }
-
-        context.CommandBuffer.ExecuteCommands(secondaryBuffers);
+        cmdBuf.ExecuteCommands(secondaryBuffers);
     }
 
     /// <summary>
     /// Records a batch of work items using secondary command buffers and executes them.
     /// </summary>
     /// <typeparam name="T">The type of work items.</typeparam>
-    /// <param name="context">The render context.</param>
+    /// <param name="cmdBuf">The main command buffer.</param>
     /// <param name="renderPass">The render pass for secondary buffer compatibility.</param>
     /// <param name="workItems">The items to process in parallel.</param>
     /// <param name="recordAction">The action to record for each work item.</param>
     public static void RecordAndExecuteParallel<T>(
-        this RenderContext context,
+        this ICommandBuffer cmdBuf,
         in RenderPass renderPass,
         IEnumerable<T> workItems,
-        Action<ICommandBuffer, T> recordAction)
+        Action<ICommandBuffer, T> recordAction
+    )
     {
-        if (context.CommandBuffer == null)
-        {
-            throw new InvalidOperationException("RenderContext does not have an active command buffer");
-        }
-
         var items = workItems.ToArray();
         if (items.Length == 0)
             return;
@@ -74,14 +69,18 @@ public static class RenderContextExtensions
         var localRenderPass = renderPass;
 
         // Record in parallel
-        Parallel.For(0, items.Length, i =>
-        {
-            var secondaryBuffer = context.CreateSecondaryCommandBuffer(localRenderPass);
-            recordAction(secondaryBuffer, items[i]);
-            secondaryBuffers[i] = secondaryBuffer;
-        });
+        Parallel.For(
+            0,
+            items.Length,
+            i =>
+            {
+                var secondaryBuffer = cmdBuf.Context.CreateSecondaryCommandBuffer(localRenderPass);
+                recordAction(secondaryBuffer, items[i]);
+                secondaryBuffers[i] = secondaryBuffer;
+            }
+        );
 
         // Execute all at once
-        context.ExecuteSecondaryBuffers(secondaryBuffers);
+        cmdBuf.ExecuteSecondaryBuffers(secondaryBuffers);
     }
 }

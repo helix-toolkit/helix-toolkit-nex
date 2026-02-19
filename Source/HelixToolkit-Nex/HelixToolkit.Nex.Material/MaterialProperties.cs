@@ -2,8 +2,30 @@ namespace HelixToolkit.Nex.Material;
 
 public struct MaterialPropertyResource { }
 
-public class MaterialProperties : IDisposable
+public enum MaterialPropertyOp
 {
+    Create,
+    Update,
+    Destroy,
+}
+
+public readonly struct MaterialPropsUpdatedEvent : IEvent
+{
+    public uint MaterialTypeId { get; }
+    public uint Index { get; }
+    public MaterialPropertyOp Operation { get; }
+
+    public MaterialPropsUpdatedEvent(uint materialTypeId, uint index, MaterialPropertyOp operation)
+    {
+        MaterialTypeId = materialTypeId;
+        Index = index;
+        Operation = operation;
+    }
+}
+
+public sealed class MaterialProperties : IDisposable
+{
+    private static readonly EventBus _eventBus = EventBus.Instance;
     private readonly Pool<MaterialPropertyResource, PBRProperties>? _pool;
     private readonly Handle<MaterialPropertyResource> _handle =
         Handle<MaterialPropertyResource>.Null;
@@ -16,7 +38,7 @@ public class MaterialProperties : IDisposable
 
     public uint Index => _handle.Index;
 
-    public MaterialProperties(
+    internal MaterialProperties(
         uint materialTypeId,
         Pool<MaterialPropertyResource, PBRProperties> pool
     )
@@ -24,19 +46,36 @@ public class MaterialProperties : IDisposable
         MaterialTypeId = materialTypeId;
         _pool = pool;
         _handle = _pool.Create(new PBRProperties());
+        _eventBus.Publish(
+            new MaterialPropsUpdatedEvent(MaterialTypeId, Index, MaterialPropertyOp.Create)
+        );
+    }
+
+    public void NotifyUpdated()
+    {
+        if (Valid)
+        {
+            _eventBus.Publish(
+                new MaterialPropsUpdatedEvent(MaterialTypeId, Index, MaterialPropertyOp.Update)
+            );
+        }
     }
 
     private MaterialProperties() { }
 
     private bool _disposedValue;
 
-    protected virtual void Dispose(bool disposing)
+    private void Dispose(bool disposing)
     {
         if (!_disposedValue)
         {
             if (disposing)
             {
+                var index = Index;
                 _pool?.Destroy(_handle);
+                _eventBus.Publish(
+                    new MaterialPropsUpdatedEvent(MaterialTypeId, index, MaterialPropertyOp.Destroy)
+                );
             }
 
             // TODO: free unmanaged resources (unmanaged objects) and override finalizer

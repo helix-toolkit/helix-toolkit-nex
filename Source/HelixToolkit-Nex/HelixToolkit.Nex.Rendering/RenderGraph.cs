@@ -2,6 +2,8 @@ namespace HelixToolkit.Nex.Rendering;
 
 public sealed class RenderGraph
 {
+    private static readonly ITracer _tracer = TracerFactory.GetTracer(nameof(RenderGraph));
+
     private sealed class Node
     {
         public Renderer PPass = null!;
@@ -30,6 +32,7 @@ public sealed class RenderGraph
 
     public void Compile()
     {
+        using var t = _tracer.BeginScope(nameof(Compile));
         _resourceProducers.Clear();
         var nodes = new Dictionary<Renderer, Node>();
 
@@ -105,7 +108,7 @@ public sealed class RenderGraph
         IsDirty = false;
     }
 
-    public void Execute(RenderContext context)
+    public void Execute(RenderContext context, ICommandBuffer cmdBuf)
     {
         if (IsDirty)
         {
@@ -116,7 +119,7 @@ public sealed class RenderGraph
         {
             if (pass.Enabled)
             {
-                pass.Render(context);
+                pass.Render(context, cmdBuf);
             }
         }
     }

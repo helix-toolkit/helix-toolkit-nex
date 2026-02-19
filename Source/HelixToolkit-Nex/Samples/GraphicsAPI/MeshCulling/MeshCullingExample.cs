@@ -318,7 +318,6 @@ internal class MeshCullingExample : IDisposable
                 Time = (float)DateTime.Now.TimeOfDay.TotalSeconds,
                 MeshInfoBufferAddress = _meshInfoBuffer.GpuAddress,
                 MaterialBufferAddress = _pbrPropertiesBuffer.GpuAddress,
-                PerModelParamsBufferAddress = _fpConstBuffer.GpuAddress,
                 MeshDrawBufferAddress = _meshDrawBuffer.GpuAddress,
                 DirectionalLightsBufferAddress = _directionalLightBuffer.GpuAddress,
                 LightCount = 0, // No lights in this unlit demo

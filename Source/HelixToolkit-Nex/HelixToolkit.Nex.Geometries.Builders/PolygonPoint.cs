@@ -48,7 +48,7 @@ internal sealed class PolygonPoint : IComparable<PolygonPoint?>
     public PolygonEdge? EdgeTwo { get; set; }
 
     /// <summary>
-    /// The Index of this Point in the original Polygon
+    /// The Id of this Point in the original Polygon
     /// that needs to be triangulated
     /// </summary>
     public int Index { get; set; }
@@ -91,7 +91,7 @@ internal sealed class PolygonPoint : IComparable<PolygonPoint?>
     /// <param name="p">The Point-Data to use</param>
     internal PolygonPoint(Vector2 p)
     {
-        // Set the Point-Data, the Index must be set later
+        // Set the Point-Data, the Id must be set later
         this.mPoint = p;
         this.Index = -1;
     }

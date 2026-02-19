@@ -857,9 +857,7 @@ namespace HelixToolkit.Nex.Maths
             out Vector3 result
         )
         {
-            Vector4 v = Vector4.Transform(new Vector4(coordinate, 1), transform);
-            v /= v.W;
-            result = new Vector3(v.X, v.Y, v.Z);
+            result = Vector3.Transform(coordinate, transform);
 
             //Vector4 vector = new Vector4();
             //vector.X = (coordinate.X * transform.M11) + (coordinate.Y * transform.M21) + (coordinate.Z * transform.M31) + transform.M41;
@@ -886,9 +884,7 @@ namespace HelixToolkit.Nex.Maths
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Vector3 TransformCoordinate(this Vector3 coordinate, ref Matrix transform)
         {
-            Vector4 v = Vector4.Transform(new Vector4(coordinate, 1), transform);
-            v /= v.W;
-            return new Vector3(v.X, v.Y, v.Z);
+            return Vector3.Transform(coordinate, transform);
         }
 
         /// <summary>
@@ -907,9 +903,7 @@ namespace HelixToolkit.Nex.Maths
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Vector3 TransformCoordinate(this Vector3 coordinate, Matrix transform)
         {
-            Vector4 v = Vector4.Transform(new Vector4(coordinate, 1), transform);
-            v /= v.W;
-            return new Vector3(v.X, v.Y, v.Z);
+            return Vector3.Transform(coordinate, transform);
         }
 
         /// <summary>

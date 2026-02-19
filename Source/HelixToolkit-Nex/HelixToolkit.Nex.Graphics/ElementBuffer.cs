@@ -49,7 +49,7 @@ public struct SafeWriteContext(IntPtr mappedPtr, int remainSizeInBytes)
     /// <param name="data">The <see cref="FastList{T}"/> containing the data to write. The list must not be null.</param>
     /// <returns><see langword="true"/> if the data was successfully written to the buffer; otherwise, <see langword="false"/> if
     /// there is insufficient space in the buffer.</returns>
-    public bool Write<T>(FastList<T> data)
+    public ResultCode Write<T>(FastList<T> data)
         where T : unmanaged
     {
         unsafe
@@ -57,7 +57,7 @@ public struct SafeWriteContext(IntPtr mappedPtr, int remainSizeInBytes)
             var dataSize = data.Count * sizeof(T);
             if (dataSize > RemainSizeInBytes)
             {
-                return false;
+                return ResultCode.OutOfMemory;
             }
             unsafe
             {
@@ -66,7 +66,7 @@ public struct SafeWriteContext(IntPtr mappedPtr, int remainSizeInBytes)
                 MappedPtr += dataSize;
                 RemainSizeInBytes -= dataSize;
             }
-            return true;
+            return ResultCode.Ok;
         }
     }
 
@@ -153,6 +153,9 @@ public sealed class ElementBuffer<T> : IDisposable
     public int Count { private set; get; } = 0;
     public bool IsDynamic { get; }
     public BufferUsageBits Usage { get; }
+
+    public string? DebugName { get; }
+
     private bool _disposedValue;
 
     /// <summary>
@@ -168,7 +171,8 @@ public sealed class ElementBuffer<T> : IDisposable
         IContext context,
         int capacity,
         BufferUsageBits usage = BufferUsageBits.Storage,
-        bool isDynamic = false
+        bool isDynamic = false,
+        string? debugName = null
     )
     {
         ArgumentOutOfRangeException.ThrowIfNegative(capacity, nameof(capacity));
@@ -176,6 +180,7 @@ public sealed class ElementBuffer<T> : IDisposable
         Capacity = capacity;
         IsDynamic = isDynamic;
         Usage = usage;
+        DebugName = debugName;
 
         if (capacity > 0)
         {
@@ -387,7 +392,7 @@ public sealed class ElementBuffer<T> : IDisposable
     {
         if (capacity == 0)
         {
-            return ResultCode.ArgumentOutOfRange;
+            return ResultCode.Ok;
         }
 
         unsafe
@@ -401,10 +406,14 @@ public sealed class ElementBuffer<T> : IDisposable
                     storageType,
                     nint.Zero,
                     bufferSize,
-                    GraphicsSettings.EnableDebug ? $"ElementBuffer<{typeof(T).Name}>" : null
+                    GraphicsSettings.EnableDebug
+                        ? $"ElementBuffer<{typeof(T).Name}>:{DebugName ?? string.Empty}"
+                        : null
                 ),
                 out var newBuffer,
-                GraphicsSettings.EnableDebug ? $"ElementBuffer<{typeof(T).Name}>" : null
+                GraphicsSettings.EnableDebug
+                    ? $"ElementBuffer<{typeof(T).Name}>:{DebugName ?? string.Empty}"
+                    : null
             );
 
             if (result.HasError())
@@ -439,7 +448,10 @@ public sealed class ElementBuffer<T> : IDisposable
             Buffer.Dispose();
             Buffer = BufferResource.Null;
         }
-
+        if (newCapacity == 0)
+        {
+            return ResultCode.Ok;
+        }
         // Create new buffer with updated remainSizeInBytes
         return CreateBuffer(newCapacity);
     }
@@ -536,6 +548,12 @@ public sealed class ElementBuffer<T> : IDisposable
         }
     }
 
+    public void Reset()
+    {
+        Count = 0;
+        ResizeBuffer(0);
+    }
+
     public static implicit operator BufferResource(ElementBuffer<T> elementBuffer)
     {
         return elementBuffer.Buffer;
@@ -557,11 +575,7 @@ public sealed class ElementBuffer<T> : IDisposable
         {
             if (disposing)
             {
-                if (!Buffer.Empty)
-                {
-                    Buffer.Dispose();
-                    Buffer = BufferResource.Null;
-                }
+                Reset();
             }
 
             _disposedValue = true;

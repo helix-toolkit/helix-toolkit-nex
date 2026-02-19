@@ -59,16 +59,21 @@ public enum GeometryBufferType
     All = Vertex | VertexProp | Index | VertexColor,
 }
 
+public readonly struct GeometryResourceType { }
+
 [JsonConverter(typeof(Serialization.GeometryJsonConverter))]
 public partial class Geometry : ObservableObject, IDisposable
 {
-    public record GeometryUpdatedEvent(Geometry Source) : IEvent;
-
     private static readonly ILogger logger = LogManager.Create<Geometry>();
     private static readonly ITracer _tracer = TracerFactory.GetTracer(nameof(Geometry));
     private const string TRACE_BUFFER = "Buffer";
     private const string TRACE_BOUNDS = "Bounds";
-    public Guid Id { set; get; } = Guid.NewGuid();
+    internal Handle<GeometryResourceType> Handle { set; get; } = Handle<GeometryResourceType>.Null;
+    internal GeometryManager? Manager { set; get; } = null;
+
+    public bool Attached => Handle.Valid && Manager is not null;
+
+    public uint Id => Handle.Index;
 
     public string Name { set; get; } = string.Empty;
 
@@ -94,7 +99,7 @@ public partial class Geometry : ObservableObject, IDisposable
     private BufferResource _vertexPropsBuffer = BufferResource.Null;
 
     /// <summary>
-    /// Index buffer is only used for dynamic geometry. All static geometry shares single index buffer externally.
+    /// Id buffer is only used for dynamic geometry. All static geometry shares single index buffer externally.
     /// </summary>
     private BufferResource _indexBuffer = BufferResource.Null;
     private BufferResource _vertColorsBuffer = BufferResource.Null;
@@ -164,9 +169,9 @@ public partial class Geometry : ObservableObject, IDisposable
             {
                 BufferDirty |= GeometryBufferType.VertexColor;
             }
-            if (BufferDirty != GeometryBufferType.None)
+            if (BufferDirty != GeometryBufferType.None && Attached)
             {
-                EventBus.PublishAsync(new GeometryUpdatedEvent(this));
+                EventBus.PublishAsync(new GeometryUpdatedEvent(Id, GeometryChangeOp.Updated));
             }
         };
     }
@@ -474,6 +479,11 @@ public partial class Geometry : ObservableObject, IDisposable
                 _vertexPropsBuffer?.Dispose();
                 _indexBuffer?.Dispose();
                 _vertColorsBuffer?.Dispose();
+                _vertexBuffer = BufferResource.Null;
+                _vertexPropsBuffer = BufferResource.Null;
+                _indexBuffer = BufferResource.Null;
+                _vertColorsBuffer = BufferResource.Null;
+                Manager?.Remove(this);
             }
 
             // TODO: free unmanaged resources (unmanaged objects) and override finalizer

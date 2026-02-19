@@ -9,7 +9,11 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\HelixToolkit.Nex.Engine\HelixToolkit.Nex.Engine.csproj" />
+    <ProjectReference Include="..\..\..\HelixToolkit.Nex.Geometries.Builders\HelixToolkit.Nex.Geometries.Builders.csproj" />
+    <ProjectReference Include="..\..\..\HelixToolkit.Nex.Geometry\HelixToolkit.Nex.Geometries.csproj" />
     <ProjectReference Include="..\..\..\HelixToolkit.Nex.Graphics.Vulkan\HelixToolkit.Nex.Graphics.Vulkan.csproj" />
+    <ProjectReference Include="..\..\..\HelixToolkit.Nex.Rendering\HelixToolkit.Nex.Rendering.csproj" />
+    <ProjectReference Include="..\..\..\HelixToolkit.Nex.Shaders\HelixToolkit.Nex.Shaders.csproj" />
     <ProjectReference Include="..\..\Application\Application.csproj" />
   </ItemGroup>
 

@@ -47,12 +47,10 @@ internal class ParallelOpaqueRenderer : Renderer
         base.OnTearDown();
     }
 
-    protected override void OnRender(RenderContext context)
+    protected override void OnRender(RenderContext context, ICommandBuffer cmdBuffer)
     {
-        if (!Enabled || context.CommandBuffer == null)
+        if (!Enabled)
             return;
-
-        var cmd = context.CommandBuffer;
 
         // Get opaque objects to render (example query)
         var opaqueObjects = GetOpaqueRenderables(context);
@@ -61,15 +59,19 @@ internal class ParallelOpaqueRenderer : Renderer
         // Use parallel recording for large object counts
         if (objectCount >= ParallelThreshold)
         {
-            RenderParallel(cmd, context, opaqueObjects);
+            RenderParallel(cmdBuffer, context, opaqueObjects);
         }
         else
         {
-            RenderSequential(cmd, context, opaqueObjects);
+            RenderSequential(cmdBuffer, context, opaqueObjects);
         }
     }
 
-    private void RenderParallel(ICommandBuffer primaryCmd, RenderContext context, IEnumerable<object> objects)
+    private void RenderParallel(
+        ICommandBuffer primaryCmd,
+        RenderContext context,
+        IEnumerable<object> objects
+    )
     {
         _logger.LogDebug("Using parallel command recording for {COUNT} objects", objects.Count());
 
@@ -77,8 +79,8 @@ internal class ParallelOpaqueRenderer : Renderer
         var renderPass = new RenderPass(
             new RenderPass.AttachmentDesc
             {
-                LoadOp = LoadOp.Load,  // Don't clear - we're continuing rendering
-                StoreOp = StoreOp.Store
+                LoadOp = LoadOp.Load, // Don't clear - we're continuing rendering
+                StoreOp = StoreOp.Store,
             }
         );
 
@@ -118,7 +120,11 @@ internal class ParallelOpaqueRenderer : Renderer
         }
     }
 
-    private void RenderSequential(ICommandBuffer cmd, RenderContext context, IEnumerable<object> objects)
+    private void RenderSequential(
+        ICommandBuffer cmd,
+        RenderContext context,
+        IEnumerable<object> objects
+    )
     {
         if (_pipeline.Valid)
         {

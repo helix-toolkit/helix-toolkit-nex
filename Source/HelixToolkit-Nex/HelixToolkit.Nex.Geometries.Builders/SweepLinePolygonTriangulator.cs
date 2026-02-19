@@ -101,7 +101,7 @@ public static class SweepLinePolygonTriangulator
         // we need to reverse the result also to get a correct Triangulation
         if (didReverse)
         {
-            // Transform back every calculated Index
+            // Transform back every calculated Id
             for (var i = 0; i < result.Count; i++)
             {
                 result[i] = count - result[i] - 1;
@@ -116,7 +116,7 @@ public static class SweepLinePolygonTriangulator
     /// Triangulate the y-Monotone Polygons.
     /// </summary>
     /// <param name="monoton">The y-Monotone Polygon to triangle</param>
-    /// <returns>Index-List of Polygon Points (Indices from the original Polygon)</returns>
+    /// <returns>Id-List of Polygon Points (Indices from the original Polygon)</returns>
     private static List<int> TriangulateMonotone(PolygonData monoton)
     {
         // Collection to return

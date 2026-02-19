@@ -49,7 +49,7 @@ public sealed class GeometryBufferCreation
         Assert.AreEqual(
             ResultCode.Ok,
             result,
-            "Index buffer creation failed with error: " + result.ToString()
+            "Id buffer creation failed with error: " + result.ToString()
         );
     }
 
@@ -114,7 +114,7 @@ public sealed class GeometryBufferCreation
         );
         Assert.IsTrue(geometry.VertexBuffer.Valid, "Vertex buffer should be valid");
         Assert.IsTrue(geometry.VertexPropsBuffer.Valid, "VertexProps buffer should be valid");
-        Assert.IsTrue(geometry.IndexBuffer.Valid, "Index buffer should be valid");
+        Assert.IsTrue(geometry.IndexBuffer.Valid, "Id buffer should be valid");
         Assert.IsTrue(geometry.VertexColorBuffer.Valid, "VertexColor buffer should be valid");
     }
 
@@ -318,7 +318,7 @@ public sealed class GeometryBufferCreation
             geometry.VertexBuffer.Valid,
             "VertexProperties buffer should be invalid after disposal"
         );
-        Assert.IsFalse(geometry.IndexBuffer.Valid, "Index buffer should be invalid after disposal");
+        Assert.IsFalse(geometry.IndexBuffer.Valid, "Id buffer should be invalid after disposal");
         Assert.IsFalse(
             geometry.VertexColorBuffer.Valid,
             "VertexColor buffer should be invalid after disposal"
@@ -338,12 +338,12 @@ public sealed class GeometryBufferCreation
         var result1 = geometry.UpdateBuffers(_vkContext!, GeometryBufferType.Vertex);
         Assert.AreEqual(ResultCode.Ok, result1, "VertexProperties buffer update failed");
         Assert.IsTrue(geometry.VertexBuffer.Valid, "VertexProperties buffer should be valid");
-        Assert.IsFalse(geometry.IndexBuffer.Valid, "Index buffer should not be valid yet");
+        Assert.IsFalse(geometry.IndexBuffer.Valid, "Id buffer should not be valid yet");
 
         // Update only index buffer
         var result2 = geometry.UpdateBuffers(_vkContext!, GeometryBufferType.Index);
-        Assert.AreEqual(ResultCode.Ok, result2, "Index buffer update failed");
-        Assert.IsTrue(geometry.IndexBuffer.Valid, "Index buffer should be valid");
+        Assert.AreEqual(ResultCode.Ok, result2, "Id buffer update failed");
+        Assert.IsTrue(geometry.IndexBuffer.Valid, "Id buffer should be valid");
     }
 
     #region BufferDirty Flag Tests
@@ -391,7 +391,7 @@ public sealed class GeometryBufferCreation
         );
         Assert.IsTrue(
             geometry.BufferDirty.HasFlag(GeometryBufferType.Index),
-            "Index buffer should still be marked as dirty"
+            "Id buffer should still be marked as dirty"
         );
         Assert.IsTrue(
             geometry.BufferDirty.HasFlag(GeometryBufferType.VertexColor),
@@ -430,7 +430,7 @@ public sealed class GeometryBufferCreation
         );
         Assert.IsTrue(
             geometry.BufferDirty.HasFlag(GeometryBufferType.Index),
-            "Index buffer should still be marked as dirty"
+            "Id buffer should still be marked as dirty"
         );
         Assert.IsTrue(
             geometry.BufferDirty.HasFlag(GeometryBufferType.VertexColor),
@@ -449,16 +449,16 @@ public sealed class GeometryBufferCreation
         // Initially all buffers are dirty
         Assert.IsTrue(
             geometry.BufferDirty.HasFlag(GeometryBufferType.Index),
-            "Index buffer should be marked as dirty initially"
+            "Id buffer should be marked as dirty initially"
         );
 
         // Update index buffer
         geometry.UpdateBuffers(_vkContext!, GeometryBufferType.Index);
 
-        // Index dirty flag should be cleared
+        // Id dirty flag should be cleared
         Assert.IsFalse(
             geometry.BufferDirty.HasFlag(GeometryBufferType.Index),
-            "Index buffer dirty flag should be cleared after update"
+            "Id buffer dirty flag should be cleared after update"
         );
 
         // Other buffers should still be dirty
@@ -507,7 +507,7 @@ public sealed class GeometryBufferCreation
         );
         Assert.IsTrue(
             geometry.BufferDirty.HasFlag(GeometryBufferType.Index),
-            "Index buffer should still be marked as dirty"
+            "Id buffer should still be marked as dirty"
         );
     }
 
@@ -570,16 +570,16 @@ public sealed class GeometryBufferCreation
         geometry.UpdateBuffers(_vkContext!, GeometryBufferType.All);
         Assert.IsFalse(
             geometry.BufferDirty.HasFlag(GeometryBufferType.Index),
-            "Index buffer dirty flag should be cleared after update"
+            "Id buffer dirty flag should be cleared after update"
         );
 
         // Modify indices
         geometry.Indices = [.. Enumerable.Range(0, 128).Select(i => (uint)i)];
 
-        // Index dirty flag should be set again
+        // Id dirty flag should be set again
         Assert.IsTrue(
             geometry.BufferDirty.HasFlag(GeometryBufferType.Index),
-            "Index buffer dirty flag should be set after indices are modified"
+            "Id buffer dirty flag should be set after indices are modified"
         );
     }
 
@@ -625,19 +625,16 @@ public sealed class GeometryBufferCreation
             geometry.BufferDirty.HasFlag(GeometryBufferType.Vertex),
             "VertexProperties should not be dirty"
         );
-        Assert.IsTrue(
-            geometry.BufferDirty.HasFlag(GeometryBufferType.Index),
-            "Index should be dirty"
-        );
+        Assert.IsTrue(geometry.BufferDirty.HasFlag(GeometryBufferType.Index), "Id should be dirty");
 
-        // Call parameterless UpdateBuffers - should only update dirty buffers (Index in this case)
+        // Call parameterless UpdateBuffers - should only update dirty buffers (Id in this case)
         var result = geometry.UpdateBuffers(_vkContext!);
 
         Assert.AreEqual(ResultCode.Ok, result, "Parameterless update should succeed");
-        Assert.IsTrue(geometry.IndexBuffer.Valid, "Index buffer should now be valid");
+        Assert.IsTrue(geometry.IndexBuffer.Valid, "Id buffer should now be valid");
         Assert.IsFalse(
             geometry.BufferDirty.HasFlag(GeometryBufferType.Index),
-            "Index dirty flag should be cleared after parameterless update"
+            "Id dirty flag should be cleared after parameterless update"
         );
     }
 
@@ -662,7 +659,7 @@ public sealed class GeometryBufferCreation
         );
         Assert.IsFalse(
             geometry.BufferDirty.HasFlag(GeometryBufferType.Index),
-            "Index buffer should not be dirty"
+            "Id buffer should not be dirty"
         );
     }
 
@@ -688,15 +685,12 @@ public sealed class GeometryBufferCreation
 
         // Modify indices
         geometry.Indices = [.. Enumerable.Range(0, 32).Select(i => (uint)i)];
-        Assert.IsTrue(
-            geometry.BufferDirty.HasFlag(GeometryBufferType.Index),
-            "Index should be dirty"
-        );
+        Assert.IsTrue(geometry.BufferDirty.HasFlag(GeometryBufferType.Index), "Id should be dirty");
 
         // Both should be marked as dirty
         Assert.IsTrue(
             geometry.BufferDirty.HasFlag(GeometryBufferType.Vertex | GeometryBufferType.Index),
-            "Both VertexProperties and Index buffers should be dirty"
+            "Both VertexProperties and Id buffers should be dirty"
         );
     }
 

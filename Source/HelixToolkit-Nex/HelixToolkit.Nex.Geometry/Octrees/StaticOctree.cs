@@ -204,8 +204,8 @@ public abstract class StaticOctree<T> : IOctreeBasic
         /// <summary>
         /// Adds the specified parent index.
         /// </summary>
-        /// <param name="parentIndex">Index of the parent.</param>
-        /// <param name="childIndex">Index of the child.</param>
+        /// <param name="parentIndex">Id of the parent.</param>
+        /// <param name="childIndex">Id of the child.</param>
         /// <param name="bound">The bound.</param>
         /// <param name="newParent">The parent out.</param>
         /// <returns></returns>

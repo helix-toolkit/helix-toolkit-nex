@@ -44,7 +44,7 @@ public abstract class Renderer : IDisposable
     /// </summary>
     public virtual IEnumerable<string> GetOutputs() => [];
 
-    public bool Setup(RendererManager manager)
+    internal bool Setup(RendererManager manager)
     {
         if (IsAttached)
         {
@@ -56,54 +56,48 @@ public abstract class Renderer : IDisposable
                 "Renderer is already attached to another RendererManager."
             );
         }
-        using (_tracer.BeginScope($"Attaching renderer: {Name}"))
-        {
-            RenderManager = manager;
-            _isAttached = OnSetup();
-            return IsAttached;
-        }
+        using var scope = _tracer.BeginScope($"Attaching renderer: {Name}");
+        RenderManager = manager;
+        _isAttached = OnSetup();
+        return IsAttached;
     }
 
     protected abstract bool OnSetup();
 
-    public void TearDown()
+    internal void TearDown()
     {
         if (!IsAttached)
         {
             return;
         }
-        using (_tracer.BeginScope($"Detaching renderer: {Name}"))
-        {
-            OnTearDown();
-            RenderManager?.RemoveRenderer(this);
-            RenderManager = null;
-            _isAttached = false;
-        }
+        using var scope = _tracer.BeginScope($"Detaching renderer: {Name}");
+        OnTearDown();
+        RenderManager?.RemoveRenderer(this);
+        RenderManager = null;
+        _isAttached = false;
     }
 
     protected virtual void OnTearDown() { }
 
-    public void Render(RenderContext context)
+    public void Render(RenderContext context, ICommandBuffer cmdBuffer)
     {
-        if (PreRender(context))
+        if (PreRender(context, cmdBuffer))
         {
-            OnRender(context);
+            OnRender(context, cmdBuffer);
         }
     }
 
-    protected virtual bool PreRender(RenderContext context)
+    protected virtual bool PreRender(RenderContext context, ICommandBuffer cmdBuffer)
     {
         return true;
     }
 
-    protected abstract void OnRender(RenderContext context);
+    protected abstract void OnRender(RenderContext context, ICommandBuffer cmdBuffer);
 
     public void Resize(int width, int height)
     {
-        using (_tracer.BeginScope($"Resizing renderer: {Name} to {width}x{height}"))
-        {
-            OnResize(width, height);
-        }
+        using var scope = _tracer.BeginScope($"Resizing renderer: {Name} to {width}x{height}");
+        OnResize(width, height);
     }
 
     protected virtual void OnResize(int width, int height) { }

@@ -214,7 +214,7 @@ public static class MaterialTypeRegistry
     /// <param name="typeId">Material type ID.</param>
     /// <param name="registration">The registration if found.</param>
     /// <returns>True if the material type exists.</returns>
-    public static bool TryGetById(uint typeId, out MaterialTypeRegistration? registration)
+    public static bool TryGetById(MaterialTypeId typeId, out MaterialTypeRegistration? registration)
     {
         registration = null;
         return _idToName.TryGetValue(typeId, out var name)
@@ -245,9 +245,20 @@ public static class MaterialTypeRegistry
     /// </summary>
     /// <param name="typeId">Material type ID.</param>
     /// <returns>The type name, or null if not found.</returns>
-    public static string? GetTypeName(uint typeId)
+    public static string? GetTypeName(MaterialTypeId typeId)
     {
         return _idToName.TryGetValue(typeId, out var name) ? name : null;
+    }
+
+    /// <summary>
+    /// Determines whether the specified <see cref="MaterialTypeId"/> exists in the collection.
+    /// </summary>
+    /// <param name="typeId">The material type identifier to check for existence.</param>
+    /// <returns><see langword="true"/> if the collection contains the specified material type identifier; otherwise, <see
+    /// langword="false"/>.</returns>
+    public static bool HasTypeId(MaterialTypeId typeId)
+    {
+        return _idToName.ContainsKey(typeId);
     }
 
     /// <summary>

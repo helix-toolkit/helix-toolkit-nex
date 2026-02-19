@@ -613,7 +613,6 @@ public class ForwardPlusExample
                 LightGridBufferAddress = _lightGridBuffer.GpuAddress,
                 LightIndexBufferAddress = _lightIndexBuffer.GpuAddress,
                 MaterialBufferAddress = _pbrPropertiesBuffer.GpuAddress,
-                PerModelParamsBufferAddress = _fpConstBuffer.GpuAddress,
                 MeshDrawBufferAddress = _meshDrawBuffer.GpuAddress,
                 DirectionalLightsBufferAddress = _directionalLightBuffer.GpuAddress,
                 LightCount = (uint)_lights.Count,

@@ -3442,10 +3442,10 @@ public sealed class MeshBuilder
                 {
                     // Add intermediate Triangles like for the non-selfintersecting Torus
                     // Skip the first and last Triangles, the "Caps" will be added later
-                    // Determine the Index of the first Point of the first Cross-Section
+                    // Determine the Id of the first Point of the first Cross-Section
                     var firstPointIdx = i * (phiDiv - 2) + 1;
                     firstPointIdx += i > 0 ? 1 : 0;
-                    // Determine the Index of the first Point of the next Cross-Section
+                    // Determine the Id of the first Point of the next Cross-Section
                     var firstPointIdxNextCircle = phiDiv + firstPointIdx - 1;
                     firstPointIdxNextCircle -= i > 0 ? 1 : 0;
                     if (firstPointIdxNextCircle >= this.Positions.Count)

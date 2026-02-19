@@ -360,7 +360,6 @@ internal class InstancingMeshCullingExample : IDisposable
                 CameraPosition = _camera.Position,
                 Time = (float)DateTime.Now.TimeOfDay.TotalSeconds,
                 MaterialBufferAddress = _pbrPropertiesBuffer.GpuAddress,
-                PerModelParamsBufferAddress = _fpConstBuffer.GpuAddress,
                 MeshDrawBufferAddress = _meshDrawBuffer.GpuAddress,
                 MeshInfoBufferAddress = _meshInfoBuffer.GpuAddress,
                 LightCount = 0, // No lights in this unlit demo

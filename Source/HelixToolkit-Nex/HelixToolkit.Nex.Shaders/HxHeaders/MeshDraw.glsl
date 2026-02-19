@@ -10,7 +10,7 @@ struct MeshDraw {
     uint materialId; // The material id this mesh uses, used for fetching material properties.
     uint materialType; // The material type, used for shader permutation.
     uint entityId; // The entity id this mesh belongs to, used for GPU picking.
-    uint _padding0;
+    uint entityVer; // The entity version, used for GPU picking to filter out stale picks.
     uint _padding1;
     uint _padding2;
     uint64_t instancingBufferAddress; // For GPU driven instancing

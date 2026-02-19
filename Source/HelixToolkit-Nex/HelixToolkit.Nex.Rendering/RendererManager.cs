@@ -69,35 +69,9 @@ public class RendererManager(IServiceProvider serviceProvider) : Initializable
         _renderGraph.Compile();
     }
 
-    public void Render(RenderContext context)
+    public void Render(RenderContext context, ICommandBuffer commandBuffer)
     {
-        // Acquire primary command buffer at the start of the frame
-        var commandBuffer = Context.AcquireCommandBuffer();
-        context.CommandBuffer = commandBuffer;
-
-        try
-        {
-            _renderGraph.Execute(context);
-        }
-        finally
-        {
-            // Clear the command buffer reference after rendering
-            context.CommandBuffer = null;
-        }
-    }
-
-    public void RenderStage(RenderStages stage, RenderContext context)
-    {
-        if (_renderers.TryGetValue(stage, out var list))
-        {
-            foreach (var renderer in list)
-            {
-                if (renderer.Enabled)
-                {
-                    renderer.Render(context);
-                }
-            }
-        }
+        _renderGraph.Execute(context, commandBuffer);
     }
 
     public void Resize(int width, int height)
