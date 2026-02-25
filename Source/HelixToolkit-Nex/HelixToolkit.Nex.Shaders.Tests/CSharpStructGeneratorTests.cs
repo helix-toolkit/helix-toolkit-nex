@@ -291,10 +291,14 @@ struct TestStruct {
             );
         }
         Assert.IsTrue(code.Contains("public float GetValues(int index)"));
-        Assert.IsTrue(code.Contains("public void SetValues(int index, in float value)"));
+        Assert.IsTrue(code.Contains("public void SetValues(int index, float value)"));
+        Assert.IsTrue(code.Contains("public void SetValues(int index, ref float value)"));
         Assert.IsTrue(code.Contains("public System.Numerics.Vector3 GetPositions(int index)"));
         Assert.IsTrue(
-            code.Contains("public void SetPositions(int index, in System.Numerics.Vector3 value)")
+            code.Contains("public void SetPositions(int index, System.Numerics.Vector3 value)")
+        );
+        Assert.IsTrue(
+            code.Contains("public void SetPositions(int index, ref System.Numerics.Vector3 value)")
         );
     }
 

@@ -208,8 +208,11 @@ struct TestStruct {
         Assert.Contains("public System.Numerics.Vector4 Planes_3;", code);
 
         Assert.Contains("public System.Numerics.Vector4 GetPlanes(int index)", code);
-        Assert.Contains("public void SetPlanes(int index, in System.Numerics.Vector4 value)", code);
-
+        Assert.Contains("public void SetPlanes(int index, System.Numerics.Vector4 value)", code);
+        Assert.Contains(
+            "public void SetPlanes(int index, ref System.Numerics.Vector4 value)",
+            code
+        );
         Assert.Contains("case 0: Planes_0 = value; break;", code);
         Assert.Contains("case 3: Planes_3 = value; break;", code);
         Assert.Contains("0 => Planes_0,", code);

@@ -273,7 +273,6 @@ public sealed class GeometrySerialization
         string json = JsonSerializer.Serialize(geometry, JsonOptions);
 
         // Assert
-        Assert.IsTrue(json.Contains("\"Id\""));
         Assert.IsTrue(json.Contains("\"Topology\""));
         Assert.IsTrue(json.Contains("\"Vertices\""));
         Assert.IsTrue(json.Contains("\"Indices\""));

@@ -79,7 +79,7 @@ public sealed class RenderManagerTests
         // Duplicate add should return false
         Assert.IsFalse(manager.AddRenderer(rOpaque));
 
-        var ctx = new RenderContext(null!);
+        var ctx = new RenderContext(_serviceProvider!);
         var cmdBuf = context.AcquireCommandBuffer();
 
         // First render - all enabled by default

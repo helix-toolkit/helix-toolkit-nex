@@ -276,29 +276,7 @@ public sealed class ElementBuffer<T> : IDisposable
         // Handle resizing based on IsDynamic flag
         if (requiredCapacity > Capacity)
         {
-            if (IsDynamic)
-            {
-                // For dynamic buffers, grow with some extra remainSizeInBytes (1.5x)
-                var newCapacity = MathUtil.Clamp(
-                    (int)(requiredCapacity * 1.5f),
-                    (int)requiredCapacity,
-                    int.MaxValue
-                );
-                var result = ResizeBuffer(newCapacity);
-                if (result.HasError())
-                {
-                    return result;
-                }
-            }
-            else
-            {
-                // For static buffers, recreate with exact size needed
-                var result = ResizeBuffer(requiredCapacity);
-                if (result.HasError())
-                {
-                    return result;
-                }
-            }
+            EnsureCapacity(requiredCapacity);
         }
 
         // Upload data to buffer
@@ -367,18 +345,19 @@ public sealed class ElementBuffer<T> : IDisposable
     /// Ensures the buffer has at least the specified remainSizeInBytes, resizing if necessary.
     /// </summary>
     /// <param name="minCapacity">The minimum required remainSizeInBytes in number of elements.</param>
+    /// <param name="exact">Use exact capacity size. Otherwise buffer will be resized to 1.5 times of the minCapacity if current capacity is less than minCapcity.</param>
     /// <returns>
     /// A <see cref="ResultCode"/> indicating the result of the operation.
     /// Returns <see cref="ResultCode.Ok"/> if remainSizeInBytes is sufficient or resizing succeeded.
     /// </returns>
-    public ResultCode EnsureCapacity(int minCapacity)
+    public ResultCode EnsureCapacity(int minCapacity, bool exact = false)
     {
         if (minCapacity <= Capacity)
         {
             return ResultCode.Ok;
         }
-
-        return ResizeBuffer((int)(minCapacity * 1.5f));
+        var multiplier = IsDynamic && !exact ? 1.5f : 1.0f;
+        return ResizeBuffer((int)(minCapacity * multiplier));
     }
 
     /// <summary>
@@ -463,7 +442,7 @@ public sealed class ElementBuffer<T> : IDisposable
             _logger.LogError("Cannot upload data: buffer is not initialized.");
             return ResultCode.InvalidState;
         }
-        if (start + count >= data.Length)
+        if (start + count > data.Length)
         {
             _logger.LogError(
                 "Cannot upload data: specified range (start={START}, count={COUNT}) exceeds data array bounds (length={LENGTH}).",
