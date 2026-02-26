@@ -18,7 +18,9 @@ public readonly struct CameraParams(
     Matrix4x4 invProjection,
     Vector3 position,
     Vector3 target,
-    Vector3 up
+    Vector3 up,
+    float nearPlane,
+    float farPlane
 )
 {
     public readonly Matrix4x4 View = view;
@@ -28,6 +30,8 @@ public readonly struct CameraParams(
     public readonly Vector3 Position = position;
     public readonly Vector3 Target = target;
     public readonly Vector3 Up = up;
+    public readonly float NearPlane = nearPlane;
+    public readonly float FarPlane = farPlane;
 
     public static readonly CameraParams Identity = new(
         Matrix4x4.Identity,
@@ -36,7 +40,9 @@ public readonly struct CameraParams(
         Matrix4x4.Identity,
         Vector3.Zero,
         Vector3.Zero,
-        Vector3.UnitY
+        Vector3.UnitY,
+        0,
+        0
     );
 };
 
@@ -119,9 +125,9 @@ public sealed class RenderContext(IServiceProvider services) : IRenderContext, I
 
     public BufferResource FPConstantsBuffer { private set; get; } = BufferResource.Null;
 
-    public RenderGraphBuffers SharedBuffers { get; } = new RenderGraphBuffers();
-
     public bool UseExternalPipeline { get; private set; } = false;
+
+    public TextureHandle FinalOutputTexture { get; set; } = TextureHandle.Null;
 
     public UseExternalPipelineScope EnableExternalPipelineScoped() => new(this);
 
@@ -131,7 +137,7 @@ public sealed class RenderContext(IServiceProvider services) : IRenderContext, I
             new FPConstants(),
             BufferUsageBits.Storage,
             StorageType.Device,
-            RenderGraphBufferNames.ForwardPlusConstants
+            SystemBufferNames.ForwardPlusConstants
         );
 
         return true;

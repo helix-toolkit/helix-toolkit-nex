@@ -10,6 +10,8 @@ using HelixToolkit.Nex.Geometries;
 using HelixToolkit.Nex.Graphics;
 using HelixToolkit.Nex.Material;
 using HelixToolkit.Nex.Rendering;
+using HelixToolkit.Nex.Rendering.PostEffects;
+using HelixToolkit.Nex.Rendering.RenderGraphs;
 using HelixToolkit.Nex.Repository;
 using HelixToolkit.Nex.Scene;
 using HelixToolkit.Nex.Shaders.Frag;
@@ -21,9 +23,7 @@ internal class DepthPrepassTest(IContext context) : IDisposable
     public const SampleTextureMode DebugMode = SampleTextureMode.DebugMeshId;
     private readonly IContext _context = context;
     private IServiceProvider? _serviceProvider;
-    private DepthPassRenderer? _renderer;
-    private SampleTextureRenderer? _textureRenderer;
-    private RendererManager? _rendererManager;
+    private Renderer? _rendererManager;
     private RenderContext? _renderContext;
     private WorldDataProvider? _worldDataProvider;
     private ResourceManager? _resourceManager;
@@ -33,8 +33,7 @@ internal class DepthPrepassTest(IContext context) : IDisposable
         Position = new Vector3(0, 0, -50),
         FarPlane = 1000,
     };
-    private TextureResource _depthTexture = TextureResource.Null;
-    private TextureResource _meshIdTexture = TextureResource.Null;
+    private RenderGraph? _renderGraph;
 
     public void Initialize(int width, int height)
     {
@@ -46,46 +45,21 @@ internal class DepthPrepassTest(IContext context) : IDisposable
             .AddSingleton<IMaterialManager, MaterialManager>()
             .AddSingleton<ResourceManager, ResourceManager>();
         _serviceProvider = services.BuildServiceProvider();
+        _renderGraph = ForwardPlusRenderGraph.Create(_serviceProvider);
         _resourceManager = _serviceProvider.GetRequiredService<ResourceManager>();
-        _rendererManager = new RendererManager(_serviceProvider);
-        _renderer = new DepthPassRenderer();
-        _textureRenderer = new SampleTextureRenderer(DebugMode, _context.GetSwapchainFormat());
-        _rendererManager!.AddRenderer(_renderer);
-        _rendererManager!.AddRenderer(_textureRenderer);
-        _rendererManager.CompileGraph();
+        _rendererManager = new Renderer(_serviceProvider);
+
+        _rendererManager!.AddNode(new DepthPassNode());
+        _rendererManager!.AddNode(new DebugDepthBufferNode());
+        var postEffectNode = new PostEffectsNode();
+        postEffectNode.AddEffect(new ToneMapping());
+        _rendererManager.AddNode(postEffectNode);
+        _rendererManager!.Initialize();
         _renderContext = new RenderContext(_serviceProvider);
         _worldDataProvider = new WorldDataProvider(_serviceProvider);
         _worldDataProvider.Initialize();
         _renderContext.Data = _worldDataProvider;
         _renderContext.Initialize();
-        _depthTexture = _context.CreateTexture(
-            new TextureDesc()
-            {
-                Type = TextureType.Texture2D,
-                Format = Format.Z_F32,
-                Dimensions = new Dimensions((uint)width, (uint)height, 1),
-                NumLayers = 1,
-                NumSamples = 1,
-                Usage = TextureUsageBits.Attachment | TextureUsageBits.Sampled,
-                NumMipLevels = 1,
-                Storage = StorageType.Device,
-            },
-            RenderGraphBufferNames.TextureDepth
-        );
-        _meshIdTexture = _context.CreateTexture(
-            new TextureDesc()
-            {
-                Type = TextureType.Texture2D,
-                Format = Format.RG_F32,
-                Dimensions = new Dimensions((uint)width, (uint)height, 1),
-                NumLayers = 1,
-                NumSamples = 1,
-                Usage = TextureUsageBits.Attachment | TextureUsageBits.Sampled,
-                NumMipLevels = 1,
-                Storage = StorageType.Device,
-            },
-            RenderGraphBufferNames.TextureMeshId
-        );
         InitializeScene();
     }
 
@@ -159,19 +133,13 @@ internal class DepthPrepassTest(IContext context) : IDisposable
         allNodes.UpdateTransforms();
     }
 
-    public void Render(ICommandBuffer command, Handle<Texture> target, int width, int height)
+    public void Render(int width, int height)
     {
         var aspectRatio = (float)width / height;
         _renderContext!.WindowSize = new HelixToolkit.Nex.Maths.Size(width, height);
         _renderContext.CameraParams = _camera.ToCameraParams(aspectRatio);
-        _renderContext.Update(command);
-        _renderContext.SharedBuffers.TextureDepth = _depthTexture;
-        _renderContext.SharedBuffers.TextureMeshId = _meshIdTexture;
-        _renderContext.SharedBuffers.TextureOutput = target;
         _rendererManager!.Resize(width, height);
-        _textureRenderer!.MinValue = _camera.NearPlane;
-        _textureRenderer!.MaxValue = _camera.FarPlane;
-        _rendererManager!.Render(_renderContext!, command);
+        _rendererManager!.Render(_renderContext!, _renderGraph!);
     }
 
     private bool _disposedValue;
@@ -184,8 +152,7 @@ internal class DepthPrepassTest(IContext context) : IDisposable
             {
                 _worldDataProvider?.Dispose();
                 _rendererManager?.Dispose();
-                _depthTexture?.Dispose();
-                _meshIdTexture?.Dispose();
+                _renderGraph?.Dispose();
                 _resourceManager?.Dispose();
                 _context?.Dispose();
             }

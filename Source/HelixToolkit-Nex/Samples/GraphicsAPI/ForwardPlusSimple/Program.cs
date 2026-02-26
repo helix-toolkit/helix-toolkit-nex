@@ -4,7 +4,6 @@ using HelixToolkit.Nex;
 using HelixToolkit.Nex.Examples;
 using HelixToolkit.Nex.Graphics;
 using HelixToolkit.Nex.Graphics.Vulkan;
-using HelixToolkit.Nex.Maths;
 using HelixToolkit.Nex.Sample.Application;
 using Microsoft.Extensions.Logging;
 

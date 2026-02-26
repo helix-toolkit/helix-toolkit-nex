@@ -1,0 +1,12 @@
+namespace HelixToolkit.Nex.Rendering;
+
+public static class SystemBufferNames
+{
+    public const string FinalOutputTexture = "FinalOutputTexture";
+    public const string ForwardPlusConstants = "ForwardPlusConstants";
+    public const string TextureDepthF32 = "TextureDepthF32";
+    public const string TextureMeshId = "TextureMeshId";
+    public const string TextureColorF16 = "TextureColorF16";
+    public const string BufferMeshDrawOpaque = "BufferMeshDrawOpaque";
+    public const string BufferMeshDrawTransparent = "BufferMeshDrawTransparent";
+}

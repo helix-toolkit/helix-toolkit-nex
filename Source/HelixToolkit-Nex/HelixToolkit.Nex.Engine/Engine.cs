@@ -6,7 +6,7 @@ namespace HelixToolkit.Nex.Engine;
 
 public class Engine : Initializable
 {
-    private readonly RendererManager _rendererManager;
+    private readonly Renderer _rendererManager;
     private readonly Initializable[] _initializables;
 
     public IContext Context { get; }
@@ -19,7 +19,7 @@ public class Engine : Initializable
     {
         Config = config;
         Context = Config.Services.GetRequiredService<IContext>();
-        _rendererManager = new RendererManager(Config.Services);
+        _rendererManager = new Renderer(Config.Services);
         _initializables = [_rendererManager];
     }
 

@@ -209,7 +209,7 @@ internal class MeshCullingExample : IDisposable
             var pipelineDesc = new RenderPipelineDesc
             {
                 VertexShader = shaderResult.VertexShader,
-                FragementShader = shaderResult.FragmentShader,
+                FragmentShader = shaderResult.FragmentShader,
                 DebugName = "UnlitPipeline",
                 CullMode = CullMode.Back,
                 FrontFaceWinding = WindingMode.CCW,
@@ -227,7 +227,7 @@ internal class MeshCullingExample : IDisposable
             var pipelineDesc = new RenderPipelineDesc
             {
                 VertexShader = shaderResult.VertexShader,
-                FragementShader = shaderResult.FragmentShader,
+                FragmentShader = shaderResult.FragmentShader,
                 DebugName = "PbrPipeline",
                 CullMode = CullMode.Back,
                 FrontFaceWinding = WindingMode.CCW,

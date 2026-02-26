@@ -185,7 +185,7 @@ public class ImGuiRenderer(IContext context, ImGuiConfig config) : IDisposable
             Context.GetSwapchainColorSpace() == ColorSpace.SRGB_NONLINEAR ? 1u : 0u;
         var desc = new RenderPipelineDesc();
         desc.VertexShader = _vertexShaderModule;
-        desc.FragementShader = _fragShaderModule;
+        desc.FragmentShader = _fragShaderModule;
         desc.WriteSpecInfo(0, nonLinearColorSpace);
         desc.Colors[0].Format = Context.GetFormat(fb.Colors[0].Texture);
         desc.Colors[0].BlendEnabled = true;

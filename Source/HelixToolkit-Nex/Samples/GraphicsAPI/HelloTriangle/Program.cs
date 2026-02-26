@@ -80,7 +80,7 @@ public class Program
             var pipelineDesc = new RenderPipelineDesc
             {
                 VertexShader = vsModule,
-                FragementShader = psModule,
+                FragmentShader = psModule,
                 Topology = Topology.Triangle,
             };
             pipelineDesc.Colors[0].Format = _ctx.GetSwapchainFormat();

@@ -443,7 +443,7 @@ public class ForwardPlusExample
             var pipelineDesc = new RenderPipelineDesc
             {
                 VertexShader = shaderResult.VertexShader,
-                FragementShader = shaderResult.FragmentShader,
+                FragmentShader = shaderResult.FragmentShader,
                 DebugName = "ForwardPlus_RenderPipeline",
                 CullMode = CullMode.Back,
                 FrontFaceWinding = WindingMode.CCW,
@@ -460,7 +460,7 @@ public class ForwardPlusExample
             var pipelineDesc = new RenderPipelineDesc
             {
                 VertexShader = shaderResult.VertexShader,
-                FragementShader = shaderResult.FragmentShader,
+                FragmentShader = shaderResult.FragmentShader,
                 DebugName = "ForwardPlus_UnlitPipeline",
                 CullMode = CullMode.Back,
                 FrontFaceWinding = WindingMode.CCW,
@@ -511,7 +511,7 @@ public class ForwardPlusExample
                     + string.Join("\n", toneGammaShader.Errors)
             );
         }
-        pipelineDesc.FragementShader = _context.CreateShaderModuleGlsl(
+        pipelineDesc.FragmentShader = _context.CreateShaderModuleGlsl(
             toneGammaShader.Source,
             ShaderStage.Fragment,
             "ToneMapping_Fragment"

@@ -52,6 +52,16 @@ public abstract class Camera
         var invView = MatrixHelper.PsudoInvert(ref view);
         var invProj = CreateInverseProjection(aspectRatio);
 
-        return new CameraParams(view, proj, invView, invProj, Position, Target, Up);
+        return new CameraParams(
+            view,
+            proj,
+            invView,
+            invProj,
+            Position,
+            Target,
+            Up,
+            NearPlane,
+            FarPlane
+        );
     }
 }

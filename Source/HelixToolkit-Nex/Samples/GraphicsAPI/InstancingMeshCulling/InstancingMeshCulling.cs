@@ -243,7 +243,7 @@ internal class InstancingMeshCullingExample : IDisposable
         var pipelineDesc = new RenderPipelineDesc
         {
             VertexShader = shaderResult.VertexShader,
-            FragementShader = shaderResult.FragmentShader,
+            FragmentShader = shaderResult.FragmentShader,
             DebugName = "UnlitPipeline",
             CullMode = CullMode.Back,
             FrontFaceWinding = WindingMode.CCW,

@@ -52,7 +52,7 @@ public static class MaterialTypeExamples
             Topology = Topology.Triangle,
             CullMode = CullMode.Back,
             VertexShader = uberShader.VertexShader,
-            FragementShader = uberShader.FragmentShader,
+            FragmentShader = uberShader.FragmentShader,
             DebugName = "PBR_Material_Pipeline",
         };
         pipelineDesc.Colors[0].Format = Format.RGBA_UN8;
@@ -97,7 +97,7 @@ public static class MaterialTypeExamples
                 Topology = Topology.Triangle,
                 CullMode = CullMode.Back,
                 VertexShader = uberShader.VertexShader,
-                FragementShader = uberShader.FragmentShader,
+                FragmentShader = uberShader.FragmentShader,
                 DebugName = $"{typeName}_Pipeline",
             };
             pipelineDesc.Colors[0].Format = Format.RGBA_UN8;
@@ -263,7 +263,7 @@ float edgeFactor(vec3 bary, float width) {
             CullMode = CullMode.None,
             PolygonMode = PolygonMode.Line,
             VertexShader = shaderResult.VertexShader,
-            FragementShader = shaderResult.FragmentShader,
+            FragmentShader = shaderResult.FragmentShader,
             DebugName = "Wireframe_Pipeline",
         };
         pipelineDesc.Colors[0].Format = Format.RGBA_UN8;

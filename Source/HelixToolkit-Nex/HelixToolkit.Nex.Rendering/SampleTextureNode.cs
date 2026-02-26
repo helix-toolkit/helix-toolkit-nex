@@ -2,70 +2,66 @@ using HelixToolkit.Nex.Shaders.Frag;
 
 namespace HelixToolkit.Nex.Rendering;
 
-public sealed class SampleTextureRenderer(SampleTextureMode mode, Format targetFormat) : Renderer
+public sealed class DebugDepthBufferNode(Format targetFormat = Format.RGBA_F16)
+    : SampleTextureNode(SampleTextureMode.DebugDepth, targetFormat)
+{
+    public override string Name => nameof(DebugDepthBufferNode);
+    public override Color4 DebugColor => Color.Red;
+
+    protected override bool BeginRender(
+        RenderContext context,
+        ICommandBuffer cmdBuffer,
+        RenderPass pass,
+        Framebuffer framebuf,
+        Dependencies deps
+    )
+    {
+        MinValue = context.CameraParams.NearPlane;
+        MaxValue = context.CameraParams.FarPlane;
+        return base.BeginRender(context, cmdBuffer, pass, framebuf, deps);
+    }
+}
+
+public sealed class DebugMeshIdNode(Format targetFormat = Format.RGBA_F16)
+    : SampleTextureNode(SampleTextureMode.DebugMeshId, targetFormat)
+{
+    public override string Name => nameof(DebugDepthBufferNode);
+    public override Color4 DebugColor => Color.Red;
+}
+
+public abstract class SampleTextureNode(SampleTextureMode mode, Format targetFormat) : RenderNode
 {
     private readonly SampleTextureMode _mode = mode;
     private readonly Format _targetFormat = targetFormat;
-    private readonly Framebuffer _framebuffer = new();
-    private readonly Dependencies _dependencies = new();
-    private readonly RenderPass _renderPass = new();
     private RenderPipelineResource _pipeline = RenderPipelineResource.Null;
     private SamplerResource _sampler = SamplerResource.Null;
-
-    public override RenderStages Stage => RenderStages.End;
-
-    public override string Name => nameof(SampleTextureRenderer);
-
-    public override IEnumerable<string> GetInputs()
-    {
-        yield return RenderGraphBufferNames.TextureMeshId;
-        yield return RenderGraphBufferNames.TextureDepth;
-    }
-
-    public override IEnumerable<string> GetOutputs()
-    {
-        yield return RenderGraphBufferNames.TextureOutput;
-    }
 
     public float MinValue { set; get; } = 0.0f;
     public float MaxValue { set; get; } = 1.0f;
 
-    protected override void OnRender(RenderContext context, ICommandBuffer cmdBuffer)
+    protected override void OnRender(
+        RenderContext context,
+        ICommandBuffer cmdBuffer,
+        Dependencies deps
+    )
     {
-        _framebuffer.Colors[0].Texture = context.SharedBuffers.TextureOutput;
-        switch (_mode)
-        {
-            case SampleTextureMode.DebugMeshId:
-                _dependencies.Textures[0] = context.SharedBuffers.TextureMeshId;
-                break;
-            case SampleTextureMode.DebugDepth:
-                _dependencies.Textures[0] = context.SharedBuffers.TextureDepth;
-                break;
-        }
-
-        cmdBuffer.BeginRendering(_renderPass, _framebuffer, _dependencies);
-        cmdBuffer.PushDebugGroupLabel("DebugTexture", Color.Red);
+        Debug.Assert(_pipeline.Valid, "_pipeline is not valid.");
         cmdBuffer.BindRenderPipeline(_pipeline);
         cmdBuffer.BindDepthState(DepthState.Disabled);
         cmdBuffer.PushConstants(
             new SampleTexturePushConstants()
             {
                 SamplerId = _sampler.Index,
-                TextureId = _dependencies.Textures[0].Index,
+                TextureId = deps.Textures[0].Index,
                 MinValue = MinValue,
                 MaxValue = MaxValue,
             }
         );
         cmdBuffer.Draw(3); // Full-screen triangle
-        cmdBuffer.PopDebugGroupLabel();
-        cmdBuffer.EndRendering();
     }
 
     protected override bool OnSetup()
     {
-        _renderPass.Colors[0].ClearColor = Color.Black;
-        _renderPass.Colors[0].LoadOp = LoadOp.Clear;
-        _renderPass.Colors[0].StoreOp = StoreOp.Store;
         _sampler = Context!.CreateSampler(SamplerStateDesc.PointClamp);
         return CreatePipeline();
     }
@@ -111,7 +107,7 @@ public sealed class SampleTextureRenderer(SampleTextureMode mode, Format targetF
         var pipelineDesc = new RenderPipelineDesc
         {
             VertexShader = vs,
-            FragementShader = fs,
+            FragmentShader = fs,
             DebugName = "TextureCopy",
             FrontFaceWinding = WindingMode.CCW,
         };
@@ -123,10 +119,10 @@ public sealed class SampleTextureRenderer(SampleTextureMode mode, Format targetF
         return _pipeline.Valid;
     }
 
-    protected override void OnTearDown()
+    protected override void OnTeardown()
     {
         _sampler.Dispose();
         _pipeline.Dispose();
-        base.OnTearDown();
+        base.OnTeardown();
     }
 }

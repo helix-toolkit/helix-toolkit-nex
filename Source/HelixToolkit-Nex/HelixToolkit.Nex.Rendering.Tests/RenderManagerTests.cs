@@ -10,7 +10,7 @@ namespace HelixToolkit.Nex.Tests.Rendering;
 public sealed class RenderManagerTests
 {
     // Simple fake renderer used for tests.
-    private sealed class FakeRenderer : Renderer
+    private sealed class FakeRenderer : RenderNode
     {
         public override RenderStages Stage { get; }
         public override string Name { get; }
@@ -27,7 +27,7 @@ public sealed class RenderManagerTests
             return true;
         }
 
-        protected override void OnTearDown() { }
+        protected override void OnTeardown() { }
 
         protected override void OnRender(RenderContext context, ICommandBuffer cmdBuf)
         {
@@ -65,19 +65,19 @@ public sealed class RenderManagerTests
     [TestMethod]
     public void CreateAndDestroy()
     {
-        var manager = new RendererManager(_serviceProvider!);
+        var manager = new Renderer(_serviceProvider!);
         var context = _serviceProvider!.GetRequiredService<IContext>();
         var rBegin = new FakeRenderer(RenderStages.Begin, "BeginRenderer");
         var rOpaque = new FakeRenderer(RenderStages.Opaque, "OpaqueRenderer");
         var rUI = new FakeRenderer(RenderStages.UI, "UIRenderer");
 
-        // Add renderers
-        Assert.IsTrue(manager.AddRenderer(rBegin));
-        Assert.IsTrue(manager.AddRenderer(rOpaque));
-        Assert.IsTrue(manager.AddRenderer(rUI));
+        // AddPass renderers
+        Assert.IsTrue(manager.AddNode(rBegin));
+        Assert.IsTrue(manager.AddNode(rOpaque));
+        Assert.IsTrue(manager.AddNode(rUI));
 
         // Duplicate add should return false
-        Assert.IsFalse(manager.AddRenderer(rOpaque));
+        Assert.IsFalse(manager.AddNode(rOpaque));
 
         var ctx = new RenderContext(_serviceProvider!);
         var cmdBuf = context.AcquireCommandBuffer();
@@ -95,8 +95,8 @@ public sealed class RenderManagerTests
         Assert.AreEqual(1, rOpaque.RenderCount); // unchanged
         Assert.AreEqual(2, rUI.RenderCount);
 
-        // Remove a renderer and ensure it no longer receives calls and is detached
-        manager.RemoveRenderer(rBegin);
+        // RemovePass a renderer and ensure it no longer receives calls and is detached
+        manager.RemoveNode(rBegin);
         Assert.IsFalse(rBegin.IsAttached);
         manager.Render(ctx, cmdBuf);
         Assert.AreEqual(2, rBegin.RenderCount); // not called after removal

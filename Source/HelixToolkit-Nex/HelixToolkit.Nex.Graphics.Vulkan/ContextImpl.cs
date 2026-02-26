@@ -373,7 +373,7 @@ internal sealed partial class VulkanContext : Initializable, IContext
             stageFlags |= VkShaderStageFlags.Geometry;
         }
 
-        if (desc.FragementShader.Valid)
+        if (desc.FragmentShader.Valid)
         {
             stageFlags |= VkShaderStageFlags.Fragment;
         }

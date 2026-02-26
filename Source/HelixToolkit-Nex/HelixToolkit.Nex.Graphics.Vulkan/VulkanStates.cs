@@ -183,7 +183,7 @@ internal sealed class RenderPipelineState : IDisposable
         Desc.GeometryShader?.AddReference();
         Desc.TessControlShader?.AddReference();
         Desc.TessEvalShader?.AddReference();
-        Desc.FragementShader?.AddReference();
+        Desc.FragmentShader?.AddReference();
         Desc.MeshShader?.AddReference();
         Desc.TaskShader?.AddReference();
     }
@@ -200,7 +200,7 @@ internal sealed class RenderPipelineState : IDisposable
                 Desc.GeometryShader?.Dispose();
                 Desc.TessControlShader?.Dispose();
                 Desc.TessEvalShader?.Dispose();
-                Desc.FragementShader?.Dispose();
+                Desc.FragmentShader?.Dispose();
                 Desc.MeshShader?.Dispose();
                 Desc.TaskShader?.Dispose();
                 Context?.DeferredTask(

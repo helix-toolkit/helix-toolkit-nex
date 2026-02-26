@@ -55,7 +55,7 @@ public sealed class RenderPipelineDesc
     public ShaderModuleResource GeometryShader = ShaderModuleResource.Null;
     public ShaderModuleResource TaskShader = ShaderModuleResource.Null;
     public ShaderModuleResource MeshShader = ShaderModuleResource.Null;
-    public ShaderModuleResource FragementShader = ShaderModuleResource.Null;
+    public ShaderModuleResource FragmentShader = ShaderModuleResource.Null;
 
     public SpecializationConstantDesc SpecInfo = new();
 
@@ -193,7 +193,7 @@ public sealed class RenderPipelineDesc
             GeometryShader = GeometryShader,
             TaskShader = TaskShader,
             MeshShader = MeshShader,
-            FragementShader = FragementShader,
+            FragmentShader = FragmentShader,
         };
 
         // Deep clone SpecInfo

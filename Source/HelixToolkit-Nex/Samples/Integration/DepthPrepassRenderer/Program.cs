@@ -42,10 +42,7 @@ internal class App : Application
 
     protected override void OnTick()
     {
-        var cmdBuffer = _ctx!.AcquireCommandBuffer();
-        var target = _ctx.GetCurrentSwapchainTexture();
-        _example?.Render(cmdBuffer, target, MainWindow.Size.Width, MainWindow.Size.Height);
-        _ctx.Submit(cmdBuffer, target);
+        _example?.Render(MainWindow.Size.Width, MainWindow.Size.Height);
     }
 
     protected override void OnDisposing()

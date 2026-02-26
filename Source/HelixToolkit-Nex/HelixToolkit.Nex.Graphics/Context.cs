@@ -88,6 +88,50 @@ public interface IContext : IInitializable
     );
 
     /// <summary>
+    /// Creates a two-dimensional texture resource with the specified format, dimensions, usage, and storage options.
+    /// </summary>
+    /// <param name="format">The pixel format to use for the texture.</param>
+    /// <param name="width">The width of the texture, in pixels. Must be greater than 0.</param>
+    /// <param name="height">The height of the texture, in pixels. Must be greater than 0.</param>
+    /// <param name="usage">A bitmask specifying how the texture will be used (e.g., sampling, rendering, etc.).</param>
+    /// <param name="storage">The storage type that determines how the texture data is allocated and managed.</param>
+    /// <param name="numLayers">The number of array layers in the texture. Must be at least 1. Defaults to 1.</param>
+    /// <param name="numSamples">The number of samples per pixel for multisampling. Must be at least 1. Defaults to 1 (no multisampling).</param>
+    /// <param name="numMipLevels">The number of mipmap levels for the texture. Must be at least 1. Defaults to 1 (no mipmaps).</param>
+    /// <param name="debugName">An optional name for debugging purposes. Can be <see langword="null"/>.</param>
+    /// <returns>A <see cref="TextureResource"/> representing the created 2D texture.</returns>
+    TextureResource CreateTexture2D(
+        Format format,
+        uint width,
+        uint height,
+        TextureUsageBits usage,
+        StorageType storage,
+        uint numLayers = 1,
+        uint numSamples = 1,
+        uint numMipLevels = 1,
+        string? debugName = null
+    )
+    {
+        CreateTexture(
+                new TextureDesc
+                {
+                    Type = TextureType.Texture2D,
+                    Format = format,
+                    Dimensions = new Dimensions(width, height, 1),
+                    NumLayers = numLayers,
+                    NumSamples = numSamples,
+                    NumMipLevels = numMipLevels,
+                    Usage = usage,
+                    Storage = storage,
+                },
+                out var texture,
+                debugName
+            )
+            .CheckResult();
+        return texture;
+    }
+
+    /// <summary>
     /// Creates a texture view from an existing texture.
     /// </summary>
     /// <param name="texture">The base texture handle.</param>

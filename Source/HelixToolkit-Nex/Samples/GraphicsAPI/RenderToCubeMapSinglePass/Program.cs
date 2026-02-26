@@ -238,7 +238,7 @@ internal class App : Application
             var renderToCubeMapPipelineDesc = new RenderPipelineDesc
             {
                 VertexShader = genCubeMapVsModule,
-                FragementShader = genCubeMapFsModule,
+                FragmentShader = genCubeMapFsModule,
                 DebugName = "Pipeline: Gen Cube Map",
             };
             for (int i = 0; i < 6; i++)
@@ -279,7 +279,7 @@ internal class App : Application
             var pipelineDesc = new RenderPipelineDesc
             {
                 VertexShader = vsModule,
-                FragementShader = fsModule,
+                FragmentShader = fsModule,
                 DebugName = "Pipeline: Render Box",
             };
             pipelineDesc.Colors[0].Format = _ctx.GetSwapchainFormat();

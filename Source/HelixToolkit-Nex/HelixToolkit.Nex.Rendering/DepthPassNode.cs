@@ -1,35 +1,20 @@
 namespace HelixToolkit.Nex.Rendering;
 
-public sealed class DepthPassRenderer(
+public sealed class DepthPassNode(
     Format depthFormat = Format.Z_F32,
     Format meshIdFormat = Format.RG_F32
-) : Renderer
+) : RenderNode
 {
-    private static readonly ILogger _logger = LogManager.Create<DepthPassRenderer>();
-    private readonly RenderPass _renderPass = new();
-    private readonly Framebuffer _framebuffer = new();
-    private readonly Dependencies _dependencies = new();
-
-    public RenderPipelineResource Pipeline { private set; get; } = RenderPipelineResource.Null;
+    private static readonly ILogger _logger = LogManager.Create<DepthPassNode>();
+    private RenderPipelineResource _pipeline = RenderPipelineResource.Null;
 
     public Format DepthFormat => depthFormat;
 
     public Format MeshIdFormat => meshIdFormat;
 
-    public override RenderStages Stage => RenderStages.Begin;
+    public override string Name => nameof(DepthPassNode);
 
-    public override string Name => nameof(DepthPassRenderer);
-
-    public override IEnumerable<string> GetOutputs()
-    {
-        yield return RenderGraphBufferNames.TextureDepth;
-        yield return RenderGraphBufferNames.TextureMeshId;
-    }
-
-    public override IEnumerable<string> GetInputs()
-    {
-        yield return RenderGraphBufferNames.MeshDrawsOpaque;
-    }
+    public override Color4 DebugColor => Color.Blue;
 
     protected override bool OnSetup()
     {
@@ -37,45 +22,31 @@ public sealed class DepthPassRenderer(
         return CreatePipeline();
     }
 
-    protected override void OnTearDown()
+    protected override void OnTeardown()
     {
-        Pipeline.Dispose();
-        base.OnTearDown();
+        _pipeline.Dispose();
+        base.OnTeardown();
     }
 
-    protected override void OnRender(RenderContext renderContext, ICommandBuffer cmdBuffer)
+    protected override void OnRender(
+        RenderContext renderContext,
+        ICommandBuffer cmdBuffer,
+        Dependencies deps
+    )
     {
         if (renderContext.Data is null)
         {
             _logger.LogWarning("Render context data is null, skipping depth pass.");
             return;
         }
+        Debug.Assert(_pipeline.Valid, "_pipeline is not valid.");
         if (renderContext.Data.MeshDrawsOpaque.Count > 0)
         {
-            HxDebug.Assert(renderContext.SharedBuffers.TextureDepth, "Missing Depth Buffer.");
-            HxDebug.Assert(
-                renderContext.SharedBuffers.TextureMeshId,
-                "Missing Mesh Id Texture Buffer."
-            );
-            _framebuffer.DepthStencil.Texture = renderContext.SharedBuffers.TextureDepth;
-            _renderPass.Depth.ClearDepth = 0.0f;
-            _renderPass.Depth.LoadOp = LoadOp.Clear;
-            _renderPass.Depth.StoreOp = StoreOp.Store;
-
-            _framebuffer.Colors[0].Texture = renderContext.SharedBuffers.TextureMeshId;
-            _renderPass.Colors[0].ClearColor = new(0, 0, 0, 0);
-            _renderPass.Colors[0].LoadOp = LoadOp.Clear;
-            _renderPass.Colors[0].StoreOp = StoreOp.Store;
-            cmdBuffer.PushDebugGroupLabel("Depth Pass", Color.Blue);
-            _dependencies.Buffers[0] = renderContext.Data.MeshDrawsOpaque.Buffer;
-            using var pipelineScope = renderContext.EnableExternalPipelineScoped();
-            cmdBuffer.BeginRendering(_renderPass, _framebuffer, _dependencies);
-            cmdBuffer.BindRenderPipeline(Pipeline);
+            using var _ = renderContext.EnableExternalPipelineScoped();
+            cmdBuffer.BindRenderPipeline(_pipeline);
             cmdBuffer.BindDepthState(DepthState.DefaultReversedZ);
             cmdBuffer.PushConstants(renderContext.FPConstantsBuffer.GpuAddress, 0);
             cmdBuffer.RenderOpaque(renderContext);
-            cmdBuffer.EndRendering();
-            cmdBuffer.PopDebugGroupLabel();
         }
     }
 
@@ -83,6 +54,9 @@ public sealed class DepthPassRenderer(
     {
         if (Context is null || RenderManager is null)
         {
+            _logger.LogError(
+                "Render context or render manager is null, cannot create depth pass pipeline."
+            );
             return false;
         }
         var shaderCompiler = new ShaderCompiler();
@@ -120,7 +94,7 @@ public sealed class DepthPassRenderer(
         var pipelineDesc = new RenderPipelineDesc
         {
             VertexShader = vs,
-            FragementShader = fs,
+            FragmentShader = fs,
             DebugName = "DepthPass",
             CullMode = CullMode.Back,
             FrontFaceWinding = WindingMode.CCW,
@@ -133,7 +107,7 @@ public sealed class DepthPassRenderer(
             BlendEnabled = false,
         };
 
-        Pipeline = Context.CreateRenderPipeline(pipelineDesc);
-        return Pipeline.Valid;
+        _pipeline = Context.CreateRenderPipeline(pipelineDesc);
+        return _pipeline.Valid;
     }
 }

@@ -192,7 +192,7 @@ internal class ShaderToyRenderer : IDisposable
         var pipelineDesc = new RenderPipelineDesc()
         {
             VertexShader = _vertexShader,
-            FragementShader = _fragmentShader,
+            FragmentShader = _fragmentShader,
             DebugName = "ShaderRenderer: Pipeline",
             Topology = Topology.TriangleStrip,
         };

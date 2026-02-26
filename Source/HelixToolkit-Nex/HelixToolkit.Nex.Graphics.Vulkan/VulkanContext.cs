@@ -1925,8 +1925,8 @@ internal sealed partial class VulkanContext
             var geomModule = desc.GeometryShader
                 ? ShaderModulesPool.Get(desc.GeometryShader.Handle)
                 : ShaderModuleState.Null;
-            var fragModule = desc.FragementShader
-                ? ShaderModulesPool.Get(desc.FragementShader.Handle)
+            var fragModule = desc.FragmentShader
+                ? ShaderModulesPool.Get(desc.FragmentShader.Handle)
                 : ShaderModuleState.Null;
             var taskModule = desc.TaskShader
                 ? ShaderModulesPool.Get(desc.TaskShader.Handle)
