@@ -10,8 +10,10 @@ using HelixToolkit.Nex.Geometries;
 using HelixToolkit.Nex.Graphics;
 using HelixToolkit.Nex.Material;
 using HelixToolkit.Nex.Rendering;
+using HelixToolkit.Nex.Rendering.Components;
 using HelixToolkit.Nex.Rendering.PostEffects;
 using HelixToolkit.Nex.Rendering.RenderGraphs;
+using HelixToolkit.Nex.Rendering.RenderNodes;
 using HelixToolkit.Nex.Repository;
 using HelixToolkit.Nex.Scene;
 using HelixToolkit.Nex.Shaders.Frag;
@@ -119,7 +121,9 @@ internal class DepthPrepassTest(IContext context) : IDisposable
         var instancingNode = new Node(_worldDataProvider.World, "InstancingNode");
         var pbrPropsInstancing = materialPropertyPool.Create(PBRShadingMode.PBR);
         pbrPropsInstancing.Properties.Albedo = new Vector3(1, 0, 1);
-        instancingNode.Entity.Add(new MeshComponent(cube, pbrPropsInstancing, instancing));
+        instancingNode.Entity.Add(
+            new MeshComponent(cube, pbrPropsInstancing, instancing, cullable: false)
+        );
         _root.AddChild(instancingNode);
 
         var allNodes = new FastList<Node>(NumSpheres + 1);

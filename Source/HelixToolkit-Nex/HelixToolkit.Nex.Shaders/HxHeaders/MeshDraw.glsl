@@ -11,7 +11,7 @@ struct MeshDraw {
     uint materialType; // The material type, used for shader permutation.
     uint entityId; // The entity id this mesh belongs to, used for GPU picking.
     uint entityVer; // The entity version, used for GPU picking to filter out stale picks.
-    uint _padding1;
+    uint cullable; // Whether this mesh is cullable, used for frustum culling.
     uint _padding2;
     uint64_t instancingBufferAddress; // For GPU driven instancing
     uint64_t instancingIndexBufferAddress; // Used to get the instancing matrix from instancing buffer.

@@ -1,3 +1,5 @@
+using HelixToolkit.Nex.Rendering.RenderNodes;
+
 namespace HelixToolkit.Nex.Rendering.PostEffects;
 
 public sealed class ToneMapping : PostEffect

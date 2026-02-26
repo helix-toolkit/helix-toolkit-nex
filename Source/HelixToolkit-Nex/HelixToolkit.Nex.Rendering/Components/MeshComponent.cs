@@ -1,4 +1,4 @@
-namespace HelixToolkit.Nex.Rendering;
+namespace HelixToolkit.Nex.Rendering.Components;
 
 /// <summary>
 /// Represents a mesh render component that associates a geometry with a material.
@@ -39,6 +39,11 @@ public readonly struct MeshComponent
     public bool IsTransparent { get; }
 
     /// <summary>
+    /// Gets a value indicating whether the object can be excluded from rendering based on culling logic.
+    /// </summary>
+    public bool Cullable { get; }
+
+    /// <summary>
     /// Initializes a new instance of the <see cref="MeshComponent"/> struct.
     /// </summary>
     /// <param name="geometry">Geometry resource.</param>
@@ -47,13 +52,15 @@ public readonly struct MeshComponent
         Geometry? geometry = null,
         MaterialProperties? materialProperties = null,
         Instancing? instancing = null,
-        bool isTransparent = false
+        bool isTransparent = false,
+        bool cullable = true
     )
     {
         Geometry = geometry;
         MaterialProperties = materialProperties;
         Instancing = instancing;
         IsTransparent = isTransparent;
+        Cullable = cullable;
     }
 
     /// <summary>
@@ -94,5 +101,10 @@ public readonly struct MeshComponent
     public readonly MeshComponent SetTransparent(bool isTransparent)
     {
         return new MeshComponent(Geometry, MaterialProperties, Instancing, isTransparent);
+    }
+
+    public readonly MeshComponent SetCullable(bool cullable)
+    {
+        return new MeshComponent(Geometry, MaterialProperties, Instancing, IsTransparent, cullable);
     }
 }

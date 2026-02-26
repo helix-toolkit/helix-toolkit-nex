@@ -1,3 +1,4 @@
+using HelixToolkit.Nex.Rendering.Components;
 using Range = HelixToolkit.Nex.Rendering.Range;
 
 namespace HelixToolkit.Nex.Engine.Data;
@@ -194,42 +195,44 @@ internal class MeshDrawData : Initializable, IMeshDrawData
                 {
                     continue;
                 }
-                ref var meshRender = ref chunk.Get<MeshComponent>(id);
-                if (!meshRender.Valid)
+                ref var meshRenderComp = ref chunk.Get<MeshComponent>(id);
+                if (!meshRenderComp.Valid)
                 {
                     continue;
                 }
-                if (meshRender.IsTransparent ^ _isTransparent)
+                if (meshRenderComp.IsTransparent ^ _isTransparent)
                 {
                     continue;
                 }
                 ref var transform = ref chunk.Get<WorldTransform>(id);
-                var materialType = meshRender.MaterialProperties!.MaterialTypeId;
-                meshRender.Instancing?.UpdateBuffer(_context);
+                var materialType = meshRenderComp.MaterialProperties!.MaterialTypeId;
+                meshRenderComp.Instancing?.UpdateBuffer(_context);
                 var meshDraw = new MeshDraw()
                 {
-                    MeshId = meshRender.Geometry!.Id,
-                    MaterialId = meshRender.MaterialProperties!.Index,
+                    MeshId = meshRenderComp.Geometry!.Id,
+                    MaterialId = meshRenderComp.MaterialProperties!.Index,
                     MaterialType = materialType,
                     EntityId = (uint)entity.Id,
                     EntityVer = (uint)entity.Version,
                     Transform = transform.Value,
-                    InstancingBufferAddress = meshRender.Instancing is not null
-                        ? meshRender.Instancing.Buffer!.Buffer.GpuAddress
+                    InstancingBufferAddress = meshRenderComp.Instancing is not null
+                        ? meshRenderComp.Instancing.Buffer!.Buffer.GpuAddress
                         : 0,
-                    InstancingIndexBufferAddress = meshRender.Instancing is not null
-                        ? meshRender.Instancing.CulledIndicesBuffer!.Buffer.GpuAddress
-                        : 0,
-                    FirstIndex = meshRender.Geometry!.FirstIndex,
-                    IndexCount = meshRender.Geometry!.IndexCount,
-                    InstanceCount = meshRender.Instancing is not null
-                        ? (uint)meshRender.Instancing.Transforms.Count
+                    InstancingIndexBufferAddress =
+                        meshRenderComp.Cullable && meshRenderComp.Instancing is not null
+                            ? meshRenderComp.Instancing.CulledIndicesBuffer!.Buffer.GpuAddress
+                            : 0,
+                    FirstIndex = meshRenderComp.Geometry!.FirstIndex,
+                    IndexCount = meshRenderComp.Geometry!.IndexCount,
+                    InstanceCount = meshRenderComp.Instancing is not null
+                        ? (uint)meshRenderComp.Instancing.Transforms.Count
                         : 1u,
+                    Cullable = meshRenderComp.Cullable ? 1u : 0u,
                 };
                 _materialTypes.Add(materialType);
-                if (meshRender.Instancing is not null)
+                if (meshRenderComp.Instancing is not null)
                 {
-                    if (meshRender.Geometry.IsDynamic)
+                    if (meshRenderComp.Geometry.IsDynamic)
                     {
                         _meshDrawSortingDynamicInstancing.Add(ref meshDraw);
                     }
@@ -240,7 +243,7 @@ internal class MeshDrawData : Initializable, IMeshDrawData
                 }
                 else
                 {
-                    if (meshRender.Geometry.IsDynamic)
+                    if (meshRenderComp.Geometry.IsDynamic)
                     {
                         _meshDrawSortingDynamic.Add(ref meshDraw);
                     }

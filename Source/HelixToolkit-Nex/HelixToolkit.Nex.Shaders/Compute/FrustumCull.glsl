@@ -53,8 +53,15 @@ void main() {
     MeshDrawBuffer meshDrawBuf = MeshDrawBuffer(cullingConst.value.meshDrawBufferAddress);
     
     MeshDraw draw = meshDrawBuf.draws[gID];
+
     if (draw.instancingBufferAddress != 0) {
         // For instanced draws, we handle seperately.
+        return;
+    }
+
+    if (draw.cullable == 0) {
+        // If not cullable, we can skip culling and set instance count to 1 (or keep as is)
+        meshDrawBuf.draws[gID].instanceCount = 1;
         return;
     }
 

@@ -1,6 +1,6 @@
 using HelixToolkit.Nex.Shaders.Frag;
 
-namespace HelixToolkit.Nex.Rendering;
+namespace HelixToolkit.Nex.Rendering.RenderNodes;
 
 public sealed class DebugDepthBufferNode(Format targetFormat = Format.RGBA_F16)
     : SampleTextureNode(SampleTextureMode.DebugDepth, targetFormat)

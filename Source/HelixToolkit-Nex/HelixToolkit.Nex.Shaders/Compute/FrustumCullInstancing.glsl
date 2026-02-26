@@ -63,10 +63,16 @@ void main() {
     if (gID >= pc.value.instanceCount) {
         return;
     }
+
     // Access Buffers
     MeshDrawBuffer meshDrawBuf = MeshDrawBuffer(cullingConst.value.meshDrawBufferAddress);
     MeshDraw draw = meshDrawBuf.draws[pc.value.drawCommandIdx];
     if (draw.instancingBufferAddress == 0) {
+        return;
+    }
+
+    if (draw.cullable == 0) {
+        // If not cullable, we can skip culling.
         return;
     }
 

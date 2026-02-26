@@ -65,7 +65,7 @@ mat4 getInstancingMatrix() {
         return mat4(1.0);
     }
     InstancingBuffer instancingBuf = InstancingBuffer(meshDraw.instancingBufferAddress);
-    if (meshDraw.instancingIndexBufferAddress != 0) {
+    if (meshDraw.cullable != 0 && meshDraw.instancingIndexBufferAddress != 0) {
         InstancingIndexBuffer instancingIdx = InstancingIndexBuffer(meshDraw.instancingIndexBufferAddress);
         uint idx = instancingIdx.value[gl_InstanceIndex];
         return instancingBuf.instancing[idx];

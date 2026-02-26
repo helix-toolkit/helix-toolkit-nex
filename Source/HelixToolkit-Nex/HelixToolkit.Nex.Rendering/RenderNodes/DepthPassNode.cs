@@ -1,4 +1,4 @@
-namespace HelixToolkit.Nex.Rendering;
+namespace HelixToolkit.Nex.Rendering.RenderNodes;
 
 public sealed class DepthPassNode(
     Format depthFormat = Format.Z_F32,
