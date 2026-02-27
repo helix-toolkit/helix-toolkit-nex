@@ -42,7 +42,6 @@ void main() {
 
         // To visualize as 0-1 (0 = near, 1 = far):
         float visualDepth = (linearDepth - near) / (far - near);
-        float display = pow(visualDepth, 0.5);
-        outColor = vec4(display, display, display, 1.0);
+        outColor = vec4(visualDepth, visualDepth, visualDepth, 1.0);
     }
 }

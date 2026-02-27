@@ -436,6 +436,7 @@ internal class MeshCullingExample : IDisposable
             var mesh = _meshes[(int)_meshIds[i]];
             _meshDraws[i] = new MeshDraw()
             {
+                Cullable = 1,
                 MaterialId = (uint)i,
                 MeshId = _meshIds[i],
                 MaterialType = (uint)PBRShadingMode.Unlit,
@@ -471,6 +472,7 @@ internal class MeshCullingExample : IDisposable
             var mesh = _meshes[(int)_meshIds[i]];
             _meshDraws[i] = new MeshDraw()
             {
+                Cullable = 1,
                 MaterialId = (uint)i,
                 MeshId = _meshIds[i],
                 MaterialType = (uint)PBRShadingMode.PBR,
