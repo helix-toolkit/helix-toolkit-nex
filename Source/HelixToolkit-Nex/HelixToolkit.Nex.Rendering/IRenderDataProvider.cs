@@ -57,12 +57,23 @@ public interface IMeshDrawData : IRenderData
     Range GetRangeStaticMesh(MaterialTypeId id);
 
     /// <summary>
+    /// Gets the range of all static mesh draws.
+    /// </summary>
+    /// <returns>A <see cref="Range"/>structure representing the range of static mesh draws inside the draw buffer.</returns>
+    Range RangeStaticMesh { get; }
+
+    /// <summary>
     /// Gets the range of static mesh instancing supported for the specified material type in draw command buffer.
     /// </summary>
     /// <param name="id">The material type for which to retrieve the supported static mesh instancing range.</param>
-    /// <returns>A <see cref="Range"/> representing the minimum and maximum number of instances supported for the given material
-    /// type.</returns>
+    /// <returns>A <see cref="Range"/> representing the range of static instancing mesh draws for the specified material type inside the draw buffer</returns>
     Range GetRangeStaticMeshInstancing(MaterialTypeId id);
+
+    /// <summary>
+    /// Gets the range of static mesh instancing draws.
+    /// </summary>
+    /// <returns>A <see cref="Range"/> structure representing the range of static mesh instancing draws inside the draw buffer.</returns>
+    Range RangeStaticMeshInstancing { get; }
 
     /// <summary>
     /// Returns the valid value range for the specified <see cref="MaterialType"/> when using a dynamic mesh in draw command buffer.
@@ -73,6 +84,12 @@ public interface IMeshDrawData : IRenderData
     Range GetRangeDynamicMesh(MaterialTypeId id);
 
     /// <summary>
+    /// Gets the current range of the dynamic mesh draws.
+    /// </summary>
+    /// <returns>A <see cref="Range"/> structure representing the range of dynamic mesh draws inside the draw buffer.</returns>
+    Range RangeDynamicMesh { get; }
+
+    /// <summary>
     /// Gets the valid range of dynamic mesh instancing supported for the specified material type in draw command buffer.
     /// </summary>
     /// <remarks>Use this method to determine the supported instancing limits before creating or configuring
@@ -81,6 +98,12 @@ public interface IMeshDrawData : IRenderData
     /// <returns>A <see cref="Range"/> representing the minimum and maximum number of dynamic mesh instances allowed for the
     /// given material type.</returns>
     Range GetRangeDynamicMeshInstancing(MaterialTypeId id);
+
+    /// <summary>
+    /// Gets the range of indices used for dynamic mesh instancing.
+    /// </summary>
+    /// <returns>A <see cref="Range"/> structure representing the range of dynamic mesh instancing draws inside the draw buffer.</returns>
+    Range RangeDynamicMeshInstancing { get; }
 }
 
 public interface IRenderDataProvider

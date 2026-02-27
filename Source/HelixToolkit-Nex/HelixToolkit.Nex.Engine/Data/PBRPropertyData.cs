@@ -32,7 +32,7 @@ internal sealed class PBRPropertyData : Initializable, IRenderData
         _sub = _eventBus.Subscribe<MaterialPropsUpdatedEvent>(
             (e) =>
             {
-                _logger.LogDebug(
+                _logger.LogTrace(
                     "Material Props is changed. Index: {INDEX}; Op: {OP};",
                     e.Index,
                     e.Operation

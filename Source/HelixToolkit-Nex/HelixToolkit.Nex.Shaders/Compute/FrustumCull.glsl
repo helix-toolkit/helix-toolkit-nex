@@ -51,8 +51,10 @@ void main() {
 
     // Access Buffers
     MeshDrawBuffer meshDrawBuf = MeshDrawBuffer(cullingConst.value.meshDrawBufferAddress);
+
+    uint drawIdx = gID + cullingConst.value.meshDrawIdxOffset;
     
-    MeshDraw draw = meshDrawBuf.draws[gID];
+    MeshDraw draw = meshDrawBuf.draws[drawIdx];
 
     if (draw.instancingBufferAddress != 0) {
         // For instanced draws, we handle seperately.
@@ -61,7 +63,7 @@ void main() {
 
     if (draw.cullable == 0) {
         // If not cullable, we can skip culling and set instance count to 1 (or keep as is)
-        meshDrawBuf.draws[gID].instanceCount = 1;
+        meshDrawBuf.draws[drawIdx].instanceCount = 1;
         return;
     }
 
@@ -120,5 +122,5 @@ void main() {
     // ---------------------------------------------------------
 
     // Output visibility
-    meshDrawBuf.draws[gID].instanceCount = isVisible ? 1 : 0;
+    meshDrawBuf.draws[drawIdx].instanceCount = isVisible ? 1 : 0;
 }

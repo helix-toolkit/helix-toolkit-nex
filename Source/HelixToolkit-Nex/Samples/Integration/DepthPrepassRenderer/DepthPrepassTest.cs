@@ -11,6 +11,7 @@ using HelixToolkit.Nex.Graphics;
 using HelixToolkit.Nex.Material;
 using HelixToolkit.Nex.Rendering;
 using HelixToolkit.Nex.Rendering.Components;
+using HelixToolkit.Nex.Rendering.ComputeNodes;
 using HelixToolkit.Nex.Rendering.PostEffects;
 using HelixToolkit.Nex.Rendering.RenderGraphs;
 using HelixToolkit.Nex.Rendering.RenderNodes;
@@ -20,7 +21,7 @@ using HelixToolkit.Nex.Shaders.Frag;
 
 internal class DepthPrepassTest(IContext context) : IDisposable
 {
-    public const int NumSpheres = 100;
+    public const int NumSpheresPerAxis = 30; // Total spheres will be NumSpheresPerAxis^3
     public const int NumCubes = 1000;
     public const SampleTextureMode DebugMode = SampleTextureMode.DebugMeshId;
     private readonly IContext _context = context;
@@ -32,9 +33,13 @@ internal class DepthPrepassTest(IContext context) : IDisposable
     private Node? _root;
     private readonly Camera _camera = new PerspectiveCamera()
     {
-        Position = new Vector3(0, 0, -50),
-        FarPlane = 1000,
+        Position = new Vector3(0, 0, -20),
+        FarPlane = 100,
     };
+    private Vector3 _initialCameraPosition = new(0, 0, -20);
+
+    private readonly long _startTimestamp = Stopwatch.GetTimestamp();
+
     private RenderGraph? _renderGraph;
 
     public void Initialize(int width, int height)
@@ -47,12 +52,13 @@ internal class DepthPrepassTest(IContext context) : IDisposable
             .AddSingleton<IMaterialManager, MaterialManager>()
             .AddSingleton<ResourceManager, ResourceManager>();
         _serviceProvider = services.BuildServiceProvider();
-        _renderGraph = ForwardPlusRenderGraph.Create(_serviceProvider);
+        _renderGraph = DepthPrepassRenderGraph.Create(_serviceProvider);
         _resourceManager = _serviceProvider.GetRequiredService<ResourceManager>();
         _rendererManager = new Renderer(_serviceProvider);
 
         _rendererManager!.AddNode(new DepthPassNode());
         _rendererManager!.AddNode(new DebugDepthBufferNode());
+        _rendererManager!.AddNode(new FrustumCullNode());
         var postEffectNode = new PostEffectsNode();
         postEffectNode.AddEffect(new ToneMapping());
         _rendererManager.AddNode(postEffectNode);
@@ -80,28 +86,38 @@ internal class DepthPrepassTest(IContext context) : IDisposable
         succ = geometryManager.Add(cube, out var cubeId);
         Debug.Assert(succ, "Failed to add geometry");
 
+        meshbuilder = new MeshBuilder(true, true, true);
+        meshbuilder.AddTetrahedron(Vector3.Zero, Vector3.UnitX, Vector3.UnitY, 2);
+        var tetrahron = meshbuilder.ToMesh().ToGeometry();
+        succ = geometryManager.Add(tetrahron, out var tetrahedronId);
+
         _root = new Node(_worldDataProvider!.World, "Root");
-        for (int i = 0; i < NumSpheres; ++i)
+        for (int i = 0; i < NumSpheresPerAxis; ++i)
         {
-            var node = new Node(_worldDataProvider.World, $"Sphere_{i}");
-            node.Transform = new Transform
+            for (int j = 0; j < NumSpheresPerAxis; ++j)
             {
-                Translation = new Vector3(
-                    Random.Shared.NextSingle() * 100 - 50,
-                    Random.Shared.NextSingle() * 100 - 50,
-                    Random.Shared.NextSingle() * 100 - 50
-                ),
-                Scale = Vector3.One * (Random.Shared.NextSingle() * 0.5f + 0.1f),
-            };
-            var pbrProps = materialPropertyPool.Create(PBRShadingMode.PBR);
-            pbrProps.Properties.Albedo = new Vector3(
-                Random.Shared.NextSingle(),
-                Random.Shared.NextSingle(),
-                Random.Shared.NextSingle()
-            );
-            pbrProps.NotifyUpdated();
-            node.Entity.Add(new MeshComponent(sphere, pbrProps));
-            _root.AddChild(node);
+                for (int z = 0; z < NumSpheresPerAxis; ++z)
+                {
+                    var node = new Node(_worldDataProvider.World, $"Sphere_{i}");
+                    node.Transform = new Transform
+                    {
+                        Translation = new Vector3(
+                            i * NumSpheresPerAxis - NumSpheresPerAxis * 2,
+                            j * NumSpheresPerAxis - NumSpheresPerAxis * 2,
+                            z * NumSpheresPerAxis - NumSpheresPerAxis * 2
+                        ),
+                    };
+                    var pbrProps = materialPropertyPool.Create(PBRShadingMode.PBR);
+                    pbrProps.Properties.Albedo = new Vector3(
+                        Random.Shared.NextSingle(),
+                        Random.Shared.NextSingle(),
+                        Random.Shared.NextSingle()
+                    );
+                    pbrProps.NotifyUpdated();
+                    node.Entity.Add(new MeshComponent(z % 2 == 0 ? sphere : tetrahron, pbrProps));
+                    _root.AddChild(node);
+                }
+            }
         }
         var instancing = new Instancing(false);
         for (int i = 0; i < NumCubes; ++i)
@@ -121,12 +137,10 @@ internal class DepthPrepassTest(IContext context) : IDisposable
         var instancingNode = new Node(_worldDataProvider.World, "InstancingNode");
         var pbrPropsInstancing = materialPropertyPool.Create(PBRShadingMode.PBR);
         pbrPropsInstancing.Properties.Albedo = new Vector3(1, 0, 1);
-        instancingNode.Entity.Add(
-            new MeshComponent(cube, pbrPropsInstancing, instancing, cullable: false)
-        );
+        instancingNode.Entity.Add(new MeshComponent(cube, pbrPropsInstancing, instancing));
         _root.AddChild(instancingNode);
 
-        var allNodes = new FastList<Node>(NumSpheres + 1);
+        var allNodes = new FastList<Node>(NumSpheresPerAxis ^ 3 + 1);
         _root.Flatten(
             (node) =>
             {
@@ -141,9 +155,21 @@ internal class DepthPrepassTest(IContext context) : IDisposable
     {
         var aspectRatio = (float)width / height;
         _renderContext!.WindowSize = new HelixToolkit.Nex.Maths.Size(width, height);
+        RotateCamera();
         _renderContext.CameraParams = _camera.ToCameraParams(aspectRatio);
         _rendererManager!.Resize(width, height);
         _rendererManager!.Render(_renderContext!, _renderGraph!);
+    }
+
+    private void RotateCamera()
+    {
+        var totalTime = (float)(
+            (Stopwatch.GetTimestamp() - _startTimestamp) / (double)Stopwatch.Frequency
+        );
+        float speed = 0.1f;
+        var rotation = Matrix4x4.CreateRotationY(totalTime * speed);
+        _camera.Position = Vector3.Transform(_initialCameraPosition, rotation);
+        _camera.Target = Vector3.Zero;
     }
 
     private bool _disposedValue;

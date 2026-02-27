@@ -373,7 +373,15 @@ public sealed class ElementBuffer<T> : IDisposable
         {
             return ResultCode.Ok;
         }
-
+        if (Buffer)
+        {
+            _logger.LogWarning(
+                "Creating buffer with capacity {CAPACITY} while an existing buffer is still valid. The old buffer will be disposed.",
+                capacity
+            );
+            Buffer.Dispose();
+            Buffer = BufferResource.Null;
+        }
         unsafe
         {
             uint bufferSize = (uint)capacity * (uint)sizeof(T);
@@ -386,12 +394,12 @@ public sealed class ElementBuffer<T> : IDisposable
                     nint.Zero,
                     bufferSize,
                     GraphicsSettings.EnableDebug
-                        ? $"ElementBuffer<{typeof(T).Name}>:{DebugName ?? string.Empty}"
+                        ? $"ElementBuf<{typeof(T).Name}>:{DebugName ?? string.Empty}"
                         : null
                 ),
                 out var newBuffer,
                 GraphicsSettings.EnableDebug
-                    ? $"ElementBuffer<{typeof(T).Name}>:{DebugName ?? string.Empty}"
+                    ? $"ElementBuf<{typeof(T).Name}>:{DebugName ?? string.Empty}"
                     : null
             );
 

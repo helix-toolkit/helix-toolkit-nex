@@ -15,6 +15,8 @@ internal class MeshDrawData : Initializable, IMeshDrawData
 
         public readonly Dictionary<MaterialTypeId, Range> MeshDrawRanges = new(InitialBufferSize);
 
+        public Range FullRange { private set; get; } = Range.Zero;
+
         public void Add(ref MeshDraw meshDraw)
         {
             var materialType = meshDraw.MaterialType;
@@ -29,6 +31,15 @@ internal class MeshDrawData : Initializable, IMeshDrawData
         public void AddRange(MaterialTypeId materialType, in Range range)
         {
             MeshDrawRanges[materialType] = range;
+            if (FullRange.Empty)
+            {
+                FullRange = range;
+            }
+            else
+            {
+                var end = Math.Max(FullRange.End, range.End);
+                FullRange = new Range(FullRange.Start, end - FullRange.Start);
+            }
         }
 
         public Range GetRange(MaterialTypeId materialType)
@@ -44,6 +55,7 @@ internal class MeshDrawData : Initializable, IMeshDrawData
         {
             MeshDrawByMaterialType.Clear();
             MeshDrawRanges.Clear();
+            FullRange = Range.Zero;
         }
 
         public void Sort()
@@ -58,11 +70,6 @@ internal class MeshDrawData : Initializable, IMeshDrawData
                     Comparer<MeshDraw>.Create(
                         (a, b) =>
                         {
-                            int cmp = a.MaterialId.CompareTo(b.MaterialId);
-                            if (cmp != 0)
-                            {
-                                return cmp;
-                            }
                             return a.MeshId.CompareTo(b.MeshId);
                         }
                     )
@@ -113,13 +120,21 @@ internal class MeshDrawData : Initializable, IMeshDrawData
     public bool HasStaticInstancingMesh =>
         _meshDrawSortingStaticInstancing.MeshDrawRanges.Count > 0;
 
+    public Range RangeStaticMesh => _meshDrawSortingStatic.FullRange;
+
+    public Range RangeStaticMeshInstancing => _meshDrawSortingStaticInstancing.FullRange;
+
+    public Range RangeDynamicMesh => _meshDrawSortingDynamic.FullRange;
+
+    public Range RangeDynamicMeshInstancing => _meshDrawSortingDynamicInstancing.FullRange;
+
     public MeshDrawData(IServiceProvider services, World world, bool isTransparent)
     {
         Services = services;
         _context = services.GetRequiredService<IContext>();
         _isTransparent = isTransparent;
         World = world;
-        Name = $"{nameof(MeshDrawData)}_{World.Id}";
+        Name = $"{nameof(MeshDrawData)}_{(isTransparent ? "Transparent" : "Opaque")}_{World.Id}";
         World.SubscribeComponentSet<MeshComponent>(OnMeshRenderChanged);
         World.SubscribeComponentAdded<MeshComponent>(OnMeshRenderChanged);
         World.SubscribeComponentRemoved<MeshComponent>(OnMeshRenderChanged);
@@ -158,7 +173,7 @@ internal class MeshDrawData : Initializable, IMeshDrawData
             InitialBufferSize,
             BufferUsageBits.Storage | BufferUsageBits.Indirect,
             true,
-            "MeshDrawData"
+            Name
         );
         return ResultCode.Ok;
     }
@@ -183,6 +198,10 @@ internal class MeshDrawData : Initializable, IMeshDrawData
         using var t = _tracer.BeginScope(nameof(Update));
         bool success = true;
         _meshDraws.Clear();
+        _meshDrawSortingStatic.Clear();
+        _meshDrawSortingStaticInstancing.Clear();
+        _meshDrawSortingDynamic.Clear();
+        _meshDrawSortingDynamicInstancing.Clear();
         var count = 0;
         var query = World.Query(in _meshDrawQuery);
         foreach (ref var chunk in query.GetChunkIterator())
@@ -255,85 +274,52 @@ internal class MeshDrawData : Initializable, IMeshDrawData
                 ++count;
             }
         }
-
-        _buffer.WriteDynamic(
-            count,
-            ctx =>
-            {
-                Range range = default;
-                foreach (var kv in _meshDrawSortingStatic.MeshDrawByMaterialType)
-                {
-                    var list = kv.Value.GetInternalArray();
-                    for (var i = 0; i < kv.Value.Count; ++i)
-                    {
-                        if (!ctx.Write(ref list[i]))
-                        {
-                            _logger.LogError("Failed to write mesh draw data into buffer.");
-                            success = false;
-                            return;
-                        }
-                    }
-                    range = new Range(range.End, (uint)kv.Value.Count);
-                    _meshDrawSortingStatic.AddRange(kv.Key, in range);
-                }
-                range = new Range(0, range.End);
-                var start = range.End;
-
-                foreach (var kv in _meshDrawSortingStaticInstancing.MeshDrawByMaterialType)
-                {
-                    var list = kv.Value.GetInternalArray();
-                    for (var i = 0; i < kv.Value.Count; ++i)
-                    {
-                        if (!ctx.Write(ref list[i]))
-                        {
-                            _logger.LogError("Failed to write mesh draw data into buffer.");
-                            success = false;
-                            return;
-                        }
-                    }
-                    range = new Range(range.End, (uint)kv.Value.Count);
-                    _meshDrawSortingStaticInstancing.AddRange(kv.Key, in range);
-                }
-
-                range = new Range(start, range.End);
-                start = range.End;
-
-                foreach (var kv in _meshDrawSortingDynamic.MeshDrawByMaterialType)
-                {
-                    var list = kv.Value.GetInternalArray();
-                    for (var i = 0; i < kv.Value.Count; ++i)
-                    {
-                        if (!ctx.Write(ref list[i]))
-                        {
-                            _logger.LogError("Failed to write mesh draw data into buffer.");
-                            success = false;
-                            return;
-                        }
-                    }
-                    range = new Range(range.End, (uint)kv.Value.Count);
-                    _meshDrawSortingDynamic.AddRange(kv.Key, in range);
-                }
-
-                range = new Range(start, range.End - start);
-                start = range.End;
-                foreach (var kv in _meshDrawSortingDynamicInstancing.MeshDrawByMaterialType)
-                {
-                    var list = kv.Value.GetInternalArray();
-                    for (var i = 0; i < kv.Value.Count; ++i)
-                    {
-                        if (!ctx.Write(ref list[i]))
-                        {
-                            _logger.LogError("Failed to write mesh draw data into buffer.");
-                            success = false;
-                            return;
-                        }
-                    }
-                    range = new Range(range.End, (uint)kv.Value.Count);
-                    _meshDrawSortingDynamicInstancing.AddRange(kv.Key, in range);
-                }
-            }
-        );
+        FinalizeMeshDraws();
+        _buffer.Upload(_meshDraws);
         _lastBufferUpdateTicks = _lastDataUpdateTicks;
         return success;
+    }
+
+    private void FinalizeMeshDraws()
+    {
+        Range range = default;
+        foreach (var kv in _meshDrawSortingStatic.MeshDrawByMaterialType)
+        {
+            _meshDrawSortingStatic.Sort();
+            range = new Range(range.End, (uint)kv.Value.Count);
+            _meshDrawSortingStatic.AddRange(kv.Key, in range);
+            _meshDraws.AddRange(kv.Value);
+        }
+        range = new Range(0, range.End);
+        var start = range.End;
+
+        foreach (var kv in _meshDrawSortingStaticInstancing.MeshDrawByMaterialType)
+        {
+            _meshDrawSortingStaticInstancing.Sort();
+            range = new Range(range.End, (uint)kv.Value.Count);
+            _meshDrawSortingStaticInstancing.AddRange(kv.Key, in range);
+            _meshDraws.AddRange(kv.Value);
+        }
+
+        range = new Range(start, range.End);
+        start = range.End;
+
+        foreach (var kv in _meshDrawSortingDynamic.MeshDrawByMaterialType)
+        {
+            _meshDrawSortingStaticInstancing.Sort();
+            range = new Range(range.End, (uint)kv.Value.Count);
+            _meshDrawSortingDynamic.AddRange(kv.Key, in range);
+            _meshDraws.AddRange(kv.Value);
+        }
+
+        range = new Range(start, range.End - start);
+        start = range.End;
+        foreach (var kv in _meshDrawSortingDynamicInstancing.MeshDrawByMaterialType)
+        {
+            _meshDrawSortingStaticInstancing.Sort();
+            range = new Range(range.End, (uint)kv.Value.Count);
+            _meshDrawSortingDynamicInstancing.AddRange(kv.Key, in range);
+            _meshDraws.AddRange(kv.Value);
+        }
     }
 }

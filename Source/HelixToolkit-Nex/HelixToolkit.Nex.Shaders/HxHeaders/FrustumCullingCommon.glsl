@@ -16,7 +16,7 @@ struct CullingConstants {
 
     float maxDrawDistance;  // Max distance from camera (0.0 = disabled)
     float minScreenSize;    // Min projected size in NDC/Screen ratio (0.0 = disabled)
-    uint _padding0;
+    uint meshDrawIdxOffset; // Offset in MeshDraw buffer for this culling batch (if processing in chunks)
     uint _padding1;
 
     uint64_t meshInfoBufferAddress;     // Input: MeshInfo[]

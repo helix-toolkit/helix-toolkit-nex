@@ -102,8 +102,9 @@ public abstract class RenderNode : IDisposable
         Dependencies deps
     )
     {
-        cmdBuffer.BeginRendering(pass, framebuf, deps);
         cmdBuffer.PushDebugGroupLabel(Name, DebugColor);
+        cmdBuffer.BeginRendering(pass, framebuf, deps);
+
         return true;
     }
 
@@ -115,8 +116,8 @@ public abstract class RenderNode : IDisposable
 
     protected virtual void EndRender(RenderContext context, ICommandBuffer cmdBuffer)
     {
-        cmdBuffer.PopDebugGroupLabel();
         cmdBuffer.EndRendering();
+        cmdBuffer.PopDebugGroupLabel();
     }
 
     public void Resize(int width, int height)
@@ -161,4 +162,26 @@ public abstract class RenderNode : IDisposable
         GC.SuppressFinalize(this);
     }
     #endregion
+}
+
+public abstract class ComputeNode : RenderNode
+{
+    protected override bool BeginRender(
+        RenderContext context,
+        ICommandBuffer cmdBuffer,
+        RenderPass pass,
+        Framebuffer framebuf,
+        Dependencies deps
+    )
+    {
+        // Compute nodes do not begin a render pass.
+        cmdBuffer.PushDebugGroupLabel(Name, DebugColor);
+        return true;
+    }
+
+    protected override void EndRender(RenderContext context, ICommandBuffer cmdBuffer)
+    {
+        cmdBuffer.PopDebugGroupLabel();
+        // Compute nodes do not end a render pass.
+    }
 }

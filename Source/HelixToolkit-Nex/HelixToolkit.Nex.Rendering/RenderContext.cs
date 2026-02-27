@@ -1,5 +1,3 @@
-using HelixToolkit.Nex.Graphics;
-
 namespace HelixToolkit.Nex.Rendering;
 
 public readonly record struct Range(uint Start, uint Count)
@@ -46,18 +44,7 @@ public readonly struct CameraParams(
     );
 };
 
-public interface IRenderContext
-{
-    IRenderDataProvider? Data { get; }
-
-    Size WindowSize { get; }
-
-    float DpiScale { get; }
-
-    CameraParams CameraParams { get; }
-}
-
-public sealed class RenderContext(IServiceProvider services) : IRenderContext, IDisposable
+public sealed class RenderContext(IServiceProvider services) : Initializable
 {
     private static readonly ILogger _logger = LogManager.Create<RenderContext>();
 
@@ -131,17 +118,9 @@ public sealed class RenderContext(IServiceProvider services) : IRenderContext, I
 
     public UseExternalPipelineScope EnableExternalPipelineScoped() => new(this);
 
-    public bool Initialize()
-    {
-        FPConstantsBuffer = Context.CreateBuffer(
-            new FPConstants(),
-            BufferUsageBits.Storage,
-            StorageType.Device,
-            SystemBufferNames.ForwardPlusConstants
-        );
+    public RenderStatistics Statistics { get; } = new();
 
-        return true;
-    }
+    public override string Name => throw new NotImplementedException();
 
     public void Update(ICommandBuffer cmd)
     {
@@ -179,6 +158,28 @@ public sealed class RenderContext(IServiceProvider services) : IRenderContext, I
         }
     }
 
+    protected override ResultCode OnInitializing()
+    {
+        FPConstantsBuffer = Context.CreateBuffer(
+            new FPConstants(),
+            BufferUsageBits.Storage,
+            StorageType.Device,
+            SystemBufferNames.ForwardPlusConstants
+        );
+        return ResultCode.Ok;
+    }
+
+    protected override ResultCode OnTearingDown()
+    {
+        FPConstantsBuffer.Dispose();
+        FPConstantsBuffer = BufferResource.Null;
+        _lightGridBuf.Dispose();
+        _lightGridBuf = BufferResource.Null;
+        _lightIndexBuf.Dispose();
+        _lightIndexBuf = BufferResource.Null;
+        return ResultCode.Ok;
+    }
+
     private void HandleWindowSizeChanged()
     {
         if (!_windowSizeChanged)
@@ -210,41 +211,5 @@ public sealed class RenderContext(IServiceProvider services) : IRenderContext, I
             "ForwardPlus_LightIndices"
         );
         _windowSizeChanged = false;
-    }
-
-    private bool _disposedValue;
-
-    private void Dispose(bool disposing)
-    {
-        if (!_disposedValue)
-        {
-            if (disposing)
-            {
-                FPConstantsBuffer.Dispose();
-                FPConstantsBuffer = BufferResource.Null;
-                _lightGridBuf.Dispose();
-                _lightGridBuf = BufferResource.Null;
-                _lightIndexBuf.Dispose();
-                _lightIndexBuf = BufferResource.Null;
-            }
-
-            // TODO: free unmanaged resources (unmanaged objects) and override finalizer
-            // TODO: set large fields to null
-            _disposedValue = true;
-        }
-    }
-
-    // // TODO: override finalizer only if 'Dispose(bool disposing)' has code to free unmanaged resources
-    // ~RenderContext()
-    // {
-    //     // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-    //     Dispose(disposing: false);
-    // }
-
-    public void Dispose()
-    {
-        // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-        Dispose(disposing: true);
-        GC.SuppressFinalize(this);
     }
 }
