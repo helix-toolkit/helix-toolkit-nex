@@ -8,7 +8,7 @@ public enum ResourceType
 
 public readonly record struct RenderResource(string Name, ResourceType Type);
 
-public sealed record ResourceBuildParams(IContext Context, int ScreenWidth, int ScreenHeight);
+public sealed record ResourceBuildParams(RenderContext Context);
 
 public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializable
 {
@@ -19,14 +19,7 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
         string passName,
         IList<RenderResource> inputs,
         IList<RenderResource> outputs,
-        Action<
-            RenderPass,
-            Framebuffer,
-            Dependencies,
-            RenderContext,
-            IReadOnlyDictionary<string, BufferHandle>,
-            IReadOnlyDictionary<string, TextureHandle>
-        > onSetup
+        Action<RenderResources> onSetup
     )
     {
         public readonly RenderPass Pass = new();
@@ -35,14 +28,7 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
         public readonly string PassName = passName;
         public readonly IList<RenderResource> Inputs = inputs;
         public readonly IList<RenderResource> Outputs = outputs;
-        public readonly Action<
-            RenderPass,
-            Framebuffer,
-            Dependencies,
-            RenderContext,
-            IReadOnlyDictionary<string, BufferHandle>,
-            IReadOnlyDictionary<string, TextureHandle>
-        > OnSetup = onSetup;
+        public readonly Action<RenderResources> OnSetupRenderParams = onSetup;
     }
 
     private readonly IServiceProvider _services = serviceProvider;
@@ -51,8 +37,9 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
     private readonly List<GraphNode> _sortedPasses = [];
     private readonly Dictionary<string, BufferResource> _bufferResources = [];
     private readonly Dictionary<string, TextureResource> _textureResources = [];
-    public Dictionary<string, BufferHandle> Buffers { private set; get; } = [];
-    public Dictionary<string, TextureHandle> Textures { private set; get; } = [];
+    public Dictionary<string, BufferHandle> Buffers { get; } = [];
+    public Dictionary<string, TextureHandle> Textures { get; } = [];
+
     private int _screenWidth = 0;
     private int _screenHeight = 0;
 
@@ -74,6 +61,12 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
         Func<ResourceBuildParams, TextureResource>? buildFunc
     )
     {
+        if (_textureBuilders.ContainsKey(name))
+        {
+            throw new InvalidOperationException(
+                $"A texture with the name '{name}' already exists in the render graph."
+            );
+        }
         _textureBuilders[name] = buildFunc;
         if (_textureResources.TryGetValue(name, out var texture))
         {
@@ -90,6 +83,12 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
 
     public RenderGraph AddBuffer(string name, Func<ResourceBuildParams, BufferResource>? buildFunc)
     {
+        if (_bufferBuilders.ContainsKey(name))
+        {
+            throw new InvalidOperationException(
+                $"A buffer with the name '{name}' already exists in the render graph."
+            );
+        }
         _bufferBuilders[name] = buildFunc;
         if (_bufferResources.TryGetValue(name, out var buffer))
         {
@@ -103,14 +102,7 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
         string passName,
         IList<RenderResource> inputs,
         IList<RenderResource> outputs,
-        Action<
-            RenderPass,
-            Framebuffer,
-            Dependencies,
-            RenderContext,
-            IReadOnlyDictionary<string, BufferHandle>,
-            IReadOnlyDictionary<string, TextureHandle>
-        > onSetup
+        Action<RenderResources> onSetup
     )
     {
         if (_passes.ContainsKey(passName))
@@ -138,6 +130,7 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
         using var t = _tracer.BeginScope(nameof(Compile));
         _resourceProducers.Clear();
         _sortedPasses.Clear();
+
         // 1. Identify producers for each resource
         foreach (var pass in _passes)
         {
@@ -161,26 +154,35 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
             adjacencyList[pass] = [];
         }
 
-        // Build edges: if pass B depends on output from pass A, then A -> B
+        // Build edges: if pass B depends on output from pass A, then A -> B.
+        // Track added edges to avoid counting duplicate edges from the same producer
+        // when a consumer lists the same resource-name more than once in its inputs.
+        var addedEdges = new HashSet<(GraphNode, GraphNode)>();
         foreach (var pass in _passes.Values)
         {
             foreach (var input in pass.Inputs)
             {
-                if (_resourceProducers.TryGetValue(input.Name, out var producers))
+                if (!_resourceProducers.TryGetValue(input.Name, out var producers))
                 {
-                    // AddPass edge from producer to consumer
-                    foreach (var producer in producers)
-                        adjacencyList[producer].Add(pass);
-                    inDegree[pass]++;
+                    // No internal producer — treat as an external resource (e.g. swapchain).
+                    continue;
                 }
-                // If no producer found, assume it's an external resource (e.g., swapchain image)
+
+                foreach (var producer in producers)
+                {
+                    // Only add each producer→consumer edge once.
+                    if (addedEdges.Add((producer, pass)))
+                    {
+                        adjacencyList[producer].Add(pass);
+                        inDegree[pass]++;
+                    }
+                }
             }
         }
 
         // 3. Perform Kahn's algorithm for topological sort
         var queue = new Queue<GraphNode>();
 
-        // Start with nodes that have no dependencies
         foreach (var kvp in inDegree)
         {
             if (kvp.Value == 0)
@@ -194,7 +196,6 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
             var current = queue.Dequeue();
             _sortedPasses.Add(current);
 
-            // Process all dependent passes
             foreach (var dependent in adjacencyList[current])
             {
                 inDegree[dependent]--;
@@ -233,9 +234,9 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
         {
             _screenWidth = context.WindowSize.Width;
             _screenHeight = context.WindowSize.Height;
-            CreateAllResources(context.Context);
+            CreateAllResources(context);
         }
-        SetupResourcesForPass(context);
+        SetupResourcesForPass(context, cmdBuf);
         foreach (var pass in _sortedPasses)
         {
             if (!nodes.TryGetValue(pass.PassName, out var node))
@@ -244,13 +245,24 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
                     "No render node found for pass '{PASS}'. Skipping this pass.",
                     pass.PassName
                 );
-                continue; // No Node for this pass, skip it
+                continue;
             }
             if (!node.Enabled)
             {
-                continue; // Node is disabled, skip it
+                continue;
             }
-            node.Render(context, cmdBuf, pass.Pass, pass.Framebuffer, pass.Dependencies);
+
+            node.Render(
+                new RenderResources(
+                    context,
+                    cmdBuf,
+                    pass.Pass,
+                    pass.Framebuffer,
+                    pass.Dependencies,
+                    Textures,
+                    Buffers
+                )
+            );
         }
     }
 
@@ -266,60 +278,68 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
         return ResultCode.Ok;
     }
 
-    private void CreateAllResources(IContext context)
+    private void CreateAllResources(RenderContext context)
     {
         DisposeResources();
-        var resourceParams = new ResourceBuildParams(context, _screenWidth, _screenHeight);
+        var resourceParams = new ResourceBuildParams(context);
+        Buffers.Clear();
+        Textures.Clear();
         foreach (var builder in _bufferBuilders)
         {
             if (builder.Value == null)
             {
-                _bufferResources[builder.Key] = BufferResource.Null;
+                Buffers[builder.Key] = BufferHandle.Null;
                 continue;
             }
-            var resource = builder.Value(resourceParams);
-            _bufferResources[builder.Key] = resource;
+            var buf = builder.Value(resourceParams);
+            _bufferResources[builder.Key] = buf;
+            Buffers[builder.Key] = buf;
         }
         foreach (var builder in _textureBuilders)
         {
             if (builder.Value == null)
             {
-                _textureResources[builder.Key] = TextureResource.Null;
+                Textures[builder.Key] = TextureHandle.Null;
                 continue;
             }
-            var resource = builder.Value(resourceParams);
-            _textureResources[builder.Key] = resource;
+            var buf = builder.Value(resourceParams);
+            _textureResources[builder.Key] = buf;
+            Textures[builder.Key] = buf;
         }
-
-        Buffers = _bufferResources.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Handle);
-        Textures = _textureResources.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Handle);
     }
 
-    private void SetupResourcesForPass(RenderContext context)
+    private void SetupResourcesForPass(RenderContext context, ICommandBuffer cmdBuf)
     {
-        Textures[SystemBufferNames.FinalOutputTexture] = context.FinalOutputTexture;
-        Buffers[SystemBufferNames.ForwardPlusConstants] = context.FPConstantsBuffer;
-        Buffers[SystemBufferNames.BufferMeshDrawOpaque] =
-            context.Data?.MeshDrawsOpaque.Buffer ?? BufferHandle.Null;
-        Buffers[SystemBufferNames.BufferMeshDrawTransparent] =
-            context.Data?.MeshDrawsTransparent.Buffer ?? BufferHandle.Null;
+        // Inject well-known system resources that have no GPU-side builder —
+        // only for entries that this graph actually declared, so sub-graphs that
+        // don't need a resource won't crash with a KeyNotFoundException.
+        if (Textures.ContainsKey(SystemBufferNames.FinalOutputTexture))
         {
-            Debug.Assert(Textures[SystemBufferNames.FinalOutputTexture].Valid);
-            Debug.Assert(Buffers[SystemBufferNames.ForwardPlusConstants].Valid);
-            Debug.Assert(
-                Buffers[SystemBufferNames.BufferMeshDrawOpaque].Valid
-                    || Buffers[SystemBufferNames.BufferMeshDrawTransparent].Valid
-            );
+            Textures[SystemBufferNames.FinalOutputTexture] = context.FinalOutputTexture;
         }
+        if (Buffers.ContainsKey(SystemBufferNames.BufferMeshDrawOpaque))
+        {
+            Buffers[SystemBufferNames.BufferMeshDrawOpaque] =
+                context.Data?.MeshDrawsOpaque.Buffer ?? BufferResource.Null;
+        }
+        if (Buffers.ContainsKey(SystemBufferNames.BufferMeshDrawTransparent))
+        {
+            Buffers[SystemBufferNames.BufferMeshDrawTransparent] =
+                context.Data?.MeshDrawsTransparent.Buffer ?? BufferResource.Null;
+        }
+
         foreach (var pass in _sortedPasses)
         {
-            pass.OnSetup(
-                pass.Pass,
-                pass.Framebuffer,
-                pass.Dependencies,
-                context,
-                Buffers,
-                Textures
+            pass.OnSetupRenderParams(
+                new RenderResources(
+                    context,
+                    cmdBuf,
+                    pass.Pass,
+                    pass.Framebuffer,
+                    pass.Dependencies,
+                    Textures,
+                    Buffers
+                )
             );
         }
     }

@@ -47,28 +47,27 @@ public sealed class FrustumCullNode : ComputeNode
         base.OnTeardown();
     }
 
-    protected override void OnRender(
-        RenderContext context,
-        ICommandBuffer cmdBuffer,
-        Dependencies deps
-    )
+    protected override void OnRender(in RenderResources res)
     {
-        if (context.Data is null)
+        if (res.Context.Data is null)
         {
             return;
         }
-        if (context.Data.MeshDrawsOpaque.Count == 0 && context.Data.MeshDrawsTransparent.Count == 0)
+        if (
+            res.Context.Data.MeshDrawsOpaque.Count == 0
+            && res.Context.Data.MeshDrawsTransparent.Count == 0
+        )
         {
             return;
         }
-        var viewProj = context.CameraParams.View * context.CameraParams.Projection; // Ensure camera matrices are up to date.
-        var frustum = BoundingFrustum.FromViewProjectInversedZ(viewProj);
+        var context = res.Context;
+        var frustum = BoundingFrustum.FromViewProjectInversedZ(context.CameraParams.ViewProjection);
 
         // Update Culling Constants
         _cullConst.CullingEnabled = Enabled ? 1u : 0u;
 
         _cullConst.ViewMatrix = context.CameraParams.View;
-        _cullConst.ViewProjectionMatrix = viewProj;
+        _cullConst.ViewProjectionMatrix = context.CameraParams.ViewProjection;
         _cullConst.ProjectionMatrix = context.CameraParams.Projection;
         _cullConst.PlaneCount = frustum.Far.Normal == Vector3.Zero ? 5u : 6u;
 
@@ -83,8 +82,8 @@ public sealed class FrustumCullNode : ComputeNode
         _cullConst.MaxDrawDistance = MaxDrawDistance;
         _cullConst.MinScreenSize = MinScreenSize;
         _cullConst.MeshInfoBufferAddress = context.Data.MeshInfos.GpuAddress;
-        Cull(context, cmdBuffer, context.Data.MeshDrawsOpaque);
-        Cull(context, cmdBuffer, context.Data.MeshDrawsTransparent);
+        Cull(context, res.CmdBuffer, context.Data.MeshDrawsOpaque);
+        Cull(context, res.CmdBuffer, context.Data.MeshDrawsTransparent);
     }
 
     private void Cull(RenderContext context, ICommandBuffer cmdBuffer, IMeshDrawData data)

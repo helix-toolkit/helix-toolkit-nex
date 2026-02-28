@@ -8,17 +8,11 @@ public sealed class DebugDepthBufferNode(Format targetFormat = Format.RGBA_F16)
     public override string Name => nameof(DebugDepthBufferNode);
     public override Color4 DebugColor => Color.Red;
 
-    protected override bool BeginRender(
-        RenderContext context,
-        ICommandBuffer cmdBuffer,
-        RenderPass pass,
-        Framebuffer framebuf,
-        Dependencies deps
-    )
+    protected override bool BeginRender(in RenderResources res)
     {
-        MinValue = context.CameraParams.NearPlane;
-        MaxValue = context.CameraParams.FarPlane;
-        return base.BeginRender(context, cmdBuffer, pass, framebuf, deps);
+        MinValue = res.Context.CameraParams.NearPlane;
+        MaxValue = res.Context.CameraParams.FarPlane;
+        return base.BeginRender(in res);
     }
 }
 
@@ -39,13 +33,11 @@ public abstract class SampleTextureNode(SampleTextureMode mode, Format targetFor
     public float MinValue { set; get; } = 0.0f;
     public float MaxValue { set; get; } = 1.0f;
 
-    protected override void OnRender(
-        RenderContext context,
-        ICommandBuffer cmdBuffer,
-        Dependencies deps
-    )
+    protected override void OnRender(in RenderResources res)
     {
-        Debug.Assert(_pipeline.Valid, "_pipeline is not valid.");
+        Debug.Assert(_pipeline.Valid, "Pipeline is not valid.");
+        var cmdBuffer = res.CmdBuffer;
+        var deps = res.Deps;
         cmdBuffer.BindRenderPipeline(_pipeline);
         cmdBuffer.BindDepthState(DepthState.Disabled);
         cmdBuffer.PushConstants(

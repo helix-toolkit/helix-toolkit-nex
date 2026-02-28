@@ -37,7 +37,7 @@ struct LightCullingConstants {
     uint64_t lightBufferAddress;
     uint64_t lightGridBufferAddress;
     uint64_t lightIndexBufferAddress;
-    uint64_t globalCounterBufferAddress;
+    uint64_t _padding;
 };
 
 layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer LightCullingConst {

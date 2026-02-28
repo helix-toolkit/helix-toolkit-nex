@@ -10,8 +10,11 @@ public sealed class ToneMapping : PostEffect
 
     public override string Name => nameof(ToneMapping);
 
-    public override void Apply(RenderContext context, ICommandBuffer cmdBuffer, Dependencies deps)
+    public override void Apply(in RenderResources res)
     {
+        Debug.Assert(_toneGammePipeline.Valid, "Tone mapping pipeline is not valid.");
+        var cmdBuffer = res.CmdBuffer;
+        var deps = res.Deps;
         cmdBuffer.BindRenderPipeline(_toneGammePipeline);
         cmdBuffer.BindDepthState(DepthState.Disabled);
         cmdBuffer.PushConstants(
@@ -19,7 +22,7 @@ public sealed class ToneMapping : PostEffect
             {
                 Enabled = 1,
                 Exposure = 1f,
-                HdrTextureId = deps.Textures[0].Index,
+                HdrTextureId = res.Textures[SystemBufferNames.TextureColorF16].Index,
                 SamplerId = _toneMappingSampler.Index,
                 TonemapMode = (uint)ToneMappingMode.Uncharted2,
             }

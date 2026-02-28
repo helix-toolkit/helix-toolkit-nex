@@ -30,6 +30,8 @@ public readonly struct CameraParams(
     public readonly Vector3 Up = up;
     public readonly float NearPlane = nearPlane;
     public readonly float FarPlane = farPlane;
+    public readonly Matrix4x4 ViewProjection = view * projection;
+    public readonly Matrix4x4 InvViewProjection = invProjection * invView;
 
     public static readonly CameraParams Identity = new(
         Matrix4x4.Identity,
@@ -48,17 +50,13 @@ public sealed class RenderContext(IServiceProvider services) : Initializable
 {
     private static readonly ILogger _logger = LogManager.Create<RenderContext>();
 
-    private BufferResource _lightGridBuf = BufferResource.Null;
-    private BufferResource _lightIndexBuf = BufferResource.Null;
-    private bool _windowSizeChanged = true;
-
     public readonly IContext Context = services.GetRequiredService<IContext>();
 
     public readonly ForwardPlusLightCulling.Config FPLightConfig = ForwardPlusLightCulling
         .Config
         .Default;
 
-    public struct UseExternalPipelineScope : IDisposable
+    public readonly struct UseExternalPipelineScope : IDisposable
     {
         private readonly RenderContext _context;
 
@@ -90,7 +88,6 @@ public sealed class RenderContext(IServiceProvider services) : Initializable
                     value.Width,
                     value.Height
                 );
-                _windowSizeChanged = true;
                 TileCountX =
                     (WindowSize.Width + (int)FPLightConfig.TileSize - 1)
                     / (int)FPLightConfig.TileSize;
@@ -110,8 +107,6 @@ public sealed class RenderContext(IServiceProvider services) : Initializable
 
     public CameraParams CameraParams { set; get; } = CameraParams.Identity;
 
-    public BufferResource FPConstantsBuffer { private set; get; } = BufferResource.Null;
-
     public bool UseExternalPipeline { get; private set; } = false;
 
     public TextureHandle FinalOutputTexture { get; set; } = TextureHandle.Null;
@@ -120,96 +115,25 @@ public sealed class RenderContext(IServiceProvider services) : Initializable
 
     public RenderStatistics Statistics { get; } = new();
 
-    public override string Name => throw new NotImplementedException();
+    public override string Name => nameof(RenderContext);
 
     public void Update(ICommandBuffer cmd)
     {
+        Statistics.ResetPerFrame();
         if (Data?.Update() == false)
         {
             _logger.LogWarning("Failed to update render data.");
             return;
         }
-        if (WindowSize == Size.Empty)
-            return;
-        HandleWindowSizeChanged();
-        if (FPConstantsBuffer.Valid)
-        {
-            var fpData = new FPConstants
-            {
-                Time = (float)DateTime.Now.TimeOfDay.TotalSeconds,
-                CameraPosition = CameraParams.InvView.Translation,
-                InverseViewProjection = CameraParams.InvProjection * CameraParams.InvView,
-                ViewProjection = CameraParams.View * CameraParams.Projection,
-                LightCount = Data?.Lights.Count ?? 0,
-                MaxLightsPerTile = FPLightConfig.MaxLightsPerTile,
-                TileSize = FPLightConfig.TileSize,
-                ScreenDimensions = new Vector2(WindowSize.Width, WindowSize.Height),
-                TileCountX = (uint)TileCountX,
-                TileCountY = (uint)TileCountY,
-                MeshInfoBufferAddress = Data?.MeshInfos.GpuAddress ?? 0,
-                LightBufferAddress = Data?.Lights.GpuAddress ?? 0,
-                LightGridBufferAddress = _lightGridBuf.GpuAddress,
-                LightIndexBufferAddress = _lightIndexBuf.GpuAddress,
-                MaterialBufferAddress = Data?.PBRPropertiesBuffer.GpuAddress ?? 0,
-                MeshDrawBufferAddress = Data?.MeshDrawsOpaque.GpuAddress ?? 0,
-                DirectionalLightsBufferAddress = Data?.DirectionalLights.GpuAddress ?? 0,
-            };
-            cmd.UpdateBuffer(FPConstantsBuffer, fpData);
-        }
     }
 
     protected override ResultCode OnInitializing()
     {
-        FPConstantsBuffer = Context.CreateBuffer(
-            new FPConstants(),
-            BufferUsageBits.Storage,
-            StorageType.Device,
-            SystemBufferNames.ForwardPlusConstants
-        );
         return ResultCode.Ok;
     }
 
     protected override ResultCode OnTearingDown()
     {
-        FPConstantsBuffer.Dispose();
-        FPConstantsBuffer = BufferResource.Null;
-        _lightGridBuf.Dispose();
-        _lightGridBuf = BufferResource.Null;
-        _lightIndexBuf.Dispose();
-        _lightIndexBuf = BufferResource.Null;
         return ResultCode.Ok;
-    }
-
-    private void HandleWindowSizeChanged()
-    {
-        if (!_windowSizeChanged)
-        {
-            return;
-        }
-        _lightGridBuf.Dispose();
-        _lightIndexBuf.Dispose();
-        var totalTiles = TileCountX * TileCountY;
-        // Light grid buffer: stores light count and index offset per tile
-        _lightGridBuf = Context.CreateBuffer(
-            new BufferDesc
-            {
-                DataSize = (uint)(totalTiles * LightGridTile.SizeInBytes),
-                Usage = BufferUsageBits.Storage,
-                Storage = StorageType.Device,
-            },
-            "ForwardPlus_LightGrid"
-        );
-
-        // Light index list buffer: stores light indices for all tiles
-        _lightIndexBuf = Context.CreateBuffer(
-            new BufferDesc
-            {
-                DataSize = (uint)(totalTiles * FPLightConfig.MaxLightsPerTile * sizeof(uint)),
-                Usage = BufferUsageBits.Storage,
-                Storage = StorageType.Device,
-            },
-            "ForwardPlus_LightIndices"
-        );
-        _windowSizeChanged = false;
     }
 }

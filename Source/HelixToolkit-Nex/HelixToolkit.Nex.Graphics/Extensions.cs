@@ -119,4 +119,15 @@ public static class Extensions
     {
         return context.GetFormat(tex);
     }
+
+    /// <summary>
+    /// Retrieves the GPU virtual address associated with the specified buffer handle within the given graphics context.
+    /// </summary>
+    /// <param name="buffer">The buffer handle for which to obtain the GPU address. Must be valid within the specified context.</param>
+    /// <param name="context">The graphics context that manages the buffer. Cannot be <see langword="null"/>.</param>
+    /// <returns>The GPU virtual address of the buffer as an unsigned 64-bit integer.</returns>
+    public static ulong GpuAddress(this BufferHandle buffer, IContext context)
+    {
+        return context.GpuAddress(buffer);
+    }
 }

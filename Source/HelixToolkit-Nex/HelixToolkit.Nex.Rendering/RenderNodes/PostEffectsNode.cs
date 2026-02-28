@@ -4,7 +4,7 @@ public abstract class PostEffect() : Initializable
 {
     public IContext? Context { internal set; get; }
     public bool Enabled { get; set; } = true;
-    public abstract void Apply(RenderContext context, ICommandBuffer cmdBuffer, Dependencies deps);
+    public abstract void Apply(in RenderResources res);
 }
 
 public sealed class PostEffectsNode : RenderNode
@@ -19,11 +19,7 @@ public sealed class PostEffectsNode : RenderNode
         _effects.Add(effect);
     }
 
-    protected override void OnRender(
-        RenderContext context,
-        ICommandBuffer cmdBuffer,
-        Dependencies deps
-    )
+    protected override void OnRender(in RenderResources res)
     {
         foreach (var effect in _effects)
         {
@@ -31,7 +27,7 @@ public sealed class PostEffectsNode : RenderNode
             {
                 continue;
             }
-            effect.Apply(context, cmdBuffer, deps);
+            effect.Apply(in res);
         }
     }
 

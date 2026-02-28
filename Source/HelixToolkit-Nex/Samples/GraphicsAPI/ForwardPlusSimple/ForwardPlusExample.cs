@@ -37,7 +37,6 @@ public class ForwardPlusExample
     private BufferResource _lightCullingBuffer = BufferResource.Null;
     private BufferResource _lightGridBuffer = BufferResource.Null;
     private BufferResource _lightIndexBuffer = BufferResource.Null;
-    private BufferResource _counterBuffer = BufferResource.Null;
     private BufferResource _directionalLightBuffer = BufferResource.Null;
     private BufferResource _meshInfoBuffer = BufferResource.Null;
 
@@ -277,17 +276,6 @@ public class ForwardPlusExample
                 Storage = StorageType.Device,
             },
             "ForwardPlus_LightIndices"
-        );
-
-        // Atomic counter for light index allocation
-        _counterBuffer = _context.CreateBuffer(
-            new BufferDesc
-            {
-                DataSize = sizeof(uint),
-                Usage = BufferUsageBits.Storage,
-                Storage = StorageType.Device,
-            },
-            "ForwardPlus_Counter"
         );
 
         _directionalLightBuffer = _context.CreateBuffer(
@@ -585,9 +573,6 @@ public class ForwardPlusExample
         MoveLights((float)DateTime.Now.TimeOfDay.TotalSeconds);
         cmdBuffer.UpdateBuffer(_lightBuffer, _lights);
 
-        // Reset atomic counter for light index allocation
-        cmdBuffer.FillBuffer(_counterBuffer, 0, sizeof(uint), 0);
-
         // Calculate matrices
         float aspect = (float)screenWidth / screenHeight;
         var view = camera.CreateView();
@@ -646,7 +631,6 @@ public class ForwardPlusExample
                 LightBufferAddress = _context.GpuAddress(_lightBuffer),
                 LightGridBufferAddress = _context.GpuAddress(_lightGridBuffer),
                 LightIndexBufferAddress = _context.GpuAddress(_lightIndexBuffer),
-                GlobalCounterBufferAddress = _context.GpuAddress(_counterBuffer),
             }
         );
 
@@ -912,7 +896,6 @@ public class ForwardPlusExample
         _lightBuffer.Dispose();
         _lightGridBuffer.Dispose();
         _lightIndexBuffer.Dispose();
-        _counterBuffer.Dispose();
         _pbrPropertiesBuffer.Dispose();
         _fpConstBuffer.Dispose();
         _lightCullingBuffer.Dispose();

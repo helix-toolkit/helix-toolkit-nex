@@ -1,14 +1,13 @@
 namespace HelixToolkit.Nex.Rendering;
 
-public static class RenderExtensions
+public static class RenderHelper
 {
-    private static readonly ILogger _logger = LogManager.Create("RenderExtensions");
+    private static readonly ILogger _logger = LogManager.Create("RenderHelper");
 
     /// <summary>
     /// Renders all opaque objects in the specified <see cref="RenderContext"/> using the provided command buffer.
     /// </summary>
-    /// <param name="cmdBuf">The command buffer used to record rendering commands.</param>
-    /// <param name="context">The rendering context that provides scene and camera information. Must not be null and must contain valid data.</param>
+    /// <param name="res">The render resources.</param>
     /// <param name="renderStatic"><see langword="true"/> to render static opaque objects; otherwise, <see langword="false"/>. Defaults to <see
     /// langword="true"/>.</param>
     /// <param name="renderDynamic"><see langword="true"/> to render dynamic opaque objects; otherwise, <see langword="false"/>. Defaults to <see
@@ -17,24 +16,23 @@ public static class RenderExtensions
     /// Defaults to <see langword="true"/>.</param>
     /// <returns>The total number of opaque draw calls issued. Returns 0 if the context contains no data or if no objects are
     /// rendered.</returns>
-    public static int RenderOpaque(
-        this ICommandBuffer cmdBuf,
-        RenderContext context,
+    public static uint RenderOpaque(
+        in RenderResources res,
         bool renderStatic = true,
         bool renderDynamic = true,
         bool renderInstancing = true
     )
     {
-        if (context.Data is null)
+        if (res.Context.Data is null)
             return 0;
-        int drawCount = 0;
+        uint drawCount = 0;
         if (renderStatic)
         {
-            drawCount += cmdBuf.RenderOpaqueStatic(context, renderInstancing);
+            drawCount += RenderOpaqueStatic(in res, renderInstancing);
         }
         if (renderDynamic)
         {
-            drawCount += cmdBuf.RenderOpaqueDynamic(context, renderInstancing);
+            drawCount += RenderOpaqueDynamic(in res, renderInstancing);
         }
         return drawCount;
     }
@@ -44,19 +42,14 @@ public static class RenderExtensions
     /// </summary>
     /// <remarks>This method renders only opaque static meshes. Transparent or dynamic meshes are not
     /// affected.</remarks>
-    /// <param name="cmdBuf">The command buffer used to record rendering commands.</param>
-    /// <param name="context">The render context containing scene and mesh data to be rendered.</param>
+    /// <param name="res">The render resources.</param>
     /// <param name="renderInstancing"><see langword="true"/> to enable hardware instancing for supported meshes; otherwise, <see langword="false"/>.</param>
     /// <returns>The number of opaque static mesh draw calls issued. Returns 0 if there are no opaque static meshes to render.</returns>
-    public static int RenderOpaqueStatic(
-        this ICommandBuffer cmdBuf,
-        RenderContext context,
-        bool renderInstancing = true
-    )
+    public static uint RenderOpaqueStatic(in RenderResources res, bool renderInstancing = true)
     {
-        if (context.Data is null)
+        if (res.Context.Data is null)
             return 0;
-        return cmdBuf.RenderStatic(context, context.Data.MeshDrawsOpaque, renderInstancing);
+        return RenderStatic(in res, res.Context.Data.MeshDrawsOpaque, renderInstancing);
     }
 
     /// <summary>
@@ -65,24 +58,26 @@ public static class RenderExtensions
     /// <remarks>This method iterates over all material types in the provided mesh draw data and issues
     /// indirect indexed draw calls for each non-empty range. The method binds the appropriate render pipeline for each
     /// material type unless the context is configured to use an external pipeline.</remarks>
-    /// <param name="cmdBuf">The command buffer used to record rendering commands.</param>
-    /// <param name="context">The render context that provides pipeline and buffer information for rendering.</param>
+    /// <param name="res">The render resources.</param>
     /// <param name="meshDrawData">The mesh draw data containing geometry and material information to render.</param>
     /// <param name="renderInstancing"><see langword="true"/> to enable instanced rendering; <see langword="false"/> to render without instancing.
     /// Instancing can improve performance when rendering multiple copies of the same mesh.</param>
     /// <returns>The total number of draw calls issued. Returns 0 if there is no mesh data to render.</returns>
-    public static int RenderStatic(
-        this ICommandBuffer cmdBuf,
-        RenderContext context,
+    public static uint RenderStatic(
+        in RenderResources res,
         IMeshDrawData meshDrawData,
         bool renderInstancing = true
     )
     {
-        if (context.Data is null)
+        if (res.Context.Data is null)
         {
             return 0;
         }
-        int drawCount = 0;
+        uint drawCount = 0;
+        var cmdBuf = res.CmdBuffer;
+        var context = res.Context;
+        var fpConstAddress = res.Buffers[SystemBufferNames.ForwardPlusConstants]
+            .GpuAddress(context.Context);
         cmdBuf.BindIndexBuffer(context.Data.StaticMeshIndexData.Buffer, IndexFormat.UI32);
         if (meshDrawData.HasStaticMesh)
         {
@@ -99,7 +94,7 @@ public static class RenderExtensions
                 cmdBuf.PushConstants(
                     new MeshDrawPushConstant
                     {
-                        FpConstAddress = context.FPConstantsBuffer.GpuAddress,
+                        FpConstAddress = fpConstAddress,
                         DrawCommandIdxOffset = range.Start,
                     }
                 );
@@ -109,7 +104,7 @@ public static class RenderExtensions
                     range.Count,
                     meshDrawData.Stride
                 );
-                drawCount += (int)range.Count;
+                drawCount += range.Count;
             }
         }
 
@@ -128,7 +123,7 @@ public static class RenderExtensions
                 cmdBuf.PushConstants(
                     new MeshDrawPushConstant
                     {
-                        FpConstAddress = context.FPConstantsBuffer.GpuAddress,
+                        FpConstAddress = fpConstAddress,
                         DrawCommandIdxOffset = range.Start,
                     }
                 );
@@ -138,7 +133,7 @@ public static class RenderExtensions
                     range.Count,
                     meshDrawData.Stride
                 );
-                drawCount += (int)range.Count;
+                drawCount += range.Count;
             }
         }
         return drawCount;
@@ -147,21 +142,16 @@ public static class RenderExtensions
     /// <summary>
     /// Renders all opaque dynamic mesh draws in the specified render context using the command buffer.
     /// </summary>
-    /// <param name="cmdBuf">The command buffer used to record rendering commands.</param>
-    /// <param name="context">The render context containing scene and draw data. Must not be null and must have valid mesh draw data.</param>
+    /// <param name="res">The render resources.</param>
     /// <param name="renderInstancing"><see langword="true"/> to enable hardware instancing for supported mesh draws; otherwise, <see
     /// langword="false"/> to render without instancing.</param>
     /// <returns>The number of opaque dynamic mesh draws rendered. Returns 0 if there is no mesh draw data in the context.</returns>
-    public static int RenderOpaqueDynamic(
-        this ICommandBuffer cmdBuf,
-        RenderContext context,
-        bool renderInstancing = true
-    )
+    public static uint RenderOpaqueDynamic(in RenderResources res, bool renderInstancing = true)
     {
-        if (context.Data is null)
+        if (res.Context.Data is null)
             return 0;
 
-        return cmdBuf.RenderDynamic(context, context.Data.MeshDrawsOpaque, renderInstancing);
+        return RenderDynamic(in res, res.Context.Data.MeshDrawsOpaque, renderInstancing);
     }
 
     /// <summary>
@@ -170,26 +160,27 @@ public static class RenderExtensions
     /// <remarks>This method iterates over all material types in <paramref name="meshDrawData"/> and issues
     /// draw commands for each valid mesh render entry. If <paramref name="context"/> is configured to use an external
     /// pipeline, pipeline binding is skipped.</remarks>
-    /// <param name="cmdBuf">The command buffer to which rendering commands are recorded. Must not be <c>null</c>.</param>
-    /// <param name="context">The rendering context that provides pipeline and buffer information. Must not be <c>null</c> and must have valid
-    /// <c>Data</c>.</param>
+    /// <param name="res">The render resources.</param>
     /// <param name="meshDrawData">The mesh draw data containing geometry and material information to render. Must not be <c>null</c>.</param>
     /// <param name="renderInstancing"><see langword="true"/> to enable instanced rendering where supported; otherwise, <see langword="false"/> to
     /// render without instancing. The default is <see langword="true"/>.</param>
     /// <returns>The number of mesh draw commands rendered. Returns 0 if the context's data is <c>null</c> or if there are no
     /// drawable meshes.</returns>
-    public static int RenderDynamic(
-        this ICommandBuffer cmdBuf,
-        RenderContext context,
+    public static uint RenderDynamic(
+        in RenderResources res,
         IMeshDrawData meshDrawData,
         bool renderInstancing = true
     )
     {
-        if (context.Data is null)
+        if (res.Context.Data is null)
         {
             return 0;
         }
-        int drawCount = 0;
+        uint drawCount = 0;
+        var cmdBuf = res.CmdBuffer;
+        var context = res.Context;
+        var fpConstAddress = res.Buffers[SystemBufferNames.ForwardPlusConstants]
+            .GpuAddress(context.Context);
         if (meshDrawData.HasDynamicMesh)
         {
             foreach (var materialType in meshDrawData.MaterialTypes)
@@ -221,7 +212,7 @@ public static class RenderExtensions
                     cmdBuf.PushConstants(
                         new MeshDrawPushConstant
                         {
-                            FpConstAddress = context.FPConstantsBuffer.GpuAddress,
+                            FpConstAddress = fpConstAddress,
                             DrawCommandIdxOffset = range.Start,
                             MeshDrawId = i,
                         }
@@ -252,7 +243,7 @@ public static class RenderExtensions
                 cmdBuf.PushConstants(
                     new MeshDrawPushConstant
                     {
-                        FpConstAddress = context.FPConstantsBuffer.GpuAddress,
+                        FpConstAddress = fpConstAddress,
                         DrawCommandIdxOffset = range.Start,
                     }
                 );
@@ -262,7 +253,7 @@ public static class RenderExtensions
                     range.Count,
                     meshDrawData.Stride
                 );
-                drawCount += (int)range.Count;
+                drawCount += range.Count;
             }
         }
         return drawCount;

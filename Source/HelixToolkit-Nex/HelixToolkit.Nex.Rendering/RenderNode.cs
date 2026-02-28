@@ -1,5 +1,15 @@
 namespace HelixToolkit.Nex.Rendering;
 
+public readonly record struct RenderResources(
+    RenderContext Context,
+    ICommandBuffer CmdBuffer,
+    RenderPass Pass,
+    Framebuffer Framebuf,
+    Dependencies Deps,
+    IReadOnlyDictionary<string, TextureHandle> Textures,
+    IReadOnlyDictionary<string, BufferHandle> Buffers
+);
+
 public abstract class RenderNode : IDisposable
 {
     protected Renderer? RenderManager { private set; get; }
@@ -74,50 +84,34 @@ public abstract class RenderNode : IDisposable
 
     protected virtual void OnTeardown() { }
 
-    public void Render(
-        RenderContext context,
-        ICommandBuffer cmdBuffer,
-        RenderPass pass,
-        Framebuffer framebuf,
-        Dependencies deps
-    )
+    public void Render(in RenderResources res)
     {
         if (!IsAttached)
         {
             return;
         }
         using var scope = _tracer.BeginScope(nameof(Render));
-        if (BeginRender(context, cmdBuffer, pass, framebuf, deps))
+        if (BeginRender(in res))
         {
-            OnRender(context, cmdBuffer, deps);
-            EndRender(context, cmdBuffer);
+            OnRender(in res);
+            EndRender(in res);
         }
     }
 
-    protected virtual bool BeginRender(
-        RenderContext context,
-        ICommandBuffer cmdBuffer,
-        RenderPass pass,
-        Framebuffer framebuf,
-        Dependencies deps
-    )
+    protected virtual bool BeginRender(in RenderResources res)
     {
-        cmdBuffer.PushDebugGroupLabel(Name, DebugColor);
-        cmdBuffer.BeginRendering(pass, framebuf, deps);
+        res.CmdBuffer.PushDebugGroupLabel(Name, DebugColor);
+        res.CmdBuffer.BeginRendering(res.Pass, res.Framebuf, res.Deps);
 
         return true;
     }
 
-    protected abstract void OnRender(
-        RenderContext context,
-        ICommandBuffer cmdBuffer,
-        Dependencies deps
-    );
+    protected abstract void OnRender(in RenderResources res);
 
-    protected virtual void EndRender(RenderContext context, ICommandBuffer cmdBuffer)
+    protected virtual void EndRender(in RenderResources res)
     {
-        cmdBuffer.EndRendering();
-        cmdBuffer.PopDebugGroupLabel();
+        res.CmdBuffer.EndRendering();
+        res.CmdBuffer.PopDebugGroupLabel();
     }
 
     public void Resize(int width, int height)
@@ -166,22 +160,16 @@ public abstract class RenderNode : IDisposable
 
 public abstract class ComputeNode : RenderNode
 {
-    protected override bool BeginRender(
-        RenderContext context,
-        ICommandBuffer cmdBuffer,
-        RenderPass pass,
-        Framebuffer framebuf,
-        Dependencies deps
-    )
+    protected override bool BeginRender(in RenderResources res)
     {
         // Compute nodes do not begin a render pass.
-        cmdBuffer.PushDebugGroupLabel(Name, DebugColor);
+        res.CmdBuffer.PushDebugGroupLabel(Name, DebugColor);
         return true;
     }
 
-    protected override void EndRender(RenderContext context, ICommandBuffer cmdBuffer)
+    protected override void EndRender(in RenderResources res)
     {
-        cmdBuffer.PopDebugGroupLabel();
+        res.CmdBuffer.PopDebugGroupLabel();
         // Compute nodes do not end a render pass.
     }
 }

@@ -9,4 +9,6 @@ public static class SystemBufferNames
     public const string TextureColorF16 = "TextureColorF16";
     public const string BufferMeshDrawOpaque = "BufferMeshDrawOpaque";
     public const string BufferMeshDrawTransparent = "BufferMeshDrawTransparent";
+    public const string BufferLightGrid = "BufferLightGrid";
+    public const string BufferLightIndex = "BufferLightIndex";
 }

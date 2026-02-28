@@ -28,25 +28,42 @@ public sealed class DepthPassNode(
         base.OnTeardown();
     }
 
-    protected override void OnRender(
-        RenderContext renderContext,
-        ICommandBuffer cmdBuffer,
-        Dependencies deps
-    )
+    protected override bool BeginRender(in RenderResources res)
     {
-        if (renderContext.Data is null)
+        var context = res.Context;
+        var fpBuffer = res.Buffers[SystemBufferNames.ForwardPlusConstants];
+        if (!fpBuffer.Valid)
+        {
+            return false;
+        }
+        var fpData = new FPConstants
+        {
+            Time = (float)DateTime.Now.TimeOfDay.TotalSeconds,
+            CameraPosition = context.CameraParams.Position,
+            InverseViewProjection = context.CameraParams.InvViewProjection,
+            ViewProjection = context.CameraParams.ViewProjection,
+            ScreenDimensions = new Vector2(context.WindowSize.Width, context.WindowSize.Height),
+            MeshInfoBufferAddress = context.Data?.MeshInfos.GpuAddress ?? 0,
+            MeshDrawBufferAddress = context.Data?.MeshDrawsOpaque.GpuAddress ?? 0,
+        };
+        res.CmdBuffer.UpdateBuffer(fpBuffer, fpData);
+        return base.BeginRender(in res);
+    }
+
+    protected override void OnRender(in RenderResources res)
+    {
+        if (res.Context.Data is null)
         {
             _logger.LogWarning("Render context data is null, skipping depth pass.");
             return;
         }
         Debug.Assert(_pipeline.Valid, "_pipeline is not valid.");
-        if (renderContext.Data.MeshDrawsOpaque.Count > 0)
+        if (res.Context.Data.MeshDrawsOpaque.Count > 0)
         {
-            using var _ = renderContext.EnableExternalPipelineScoped();
-            cmdBuffer.BindRenderPipeline(_pipeline);
-            cmdBuffer.BindDepthState(DepthState.DefaultReversedZ);
-            cmdBuffer.PushConstants(renderContext.FPConstantsBuffer.GpuAddress, 0);
-            cmdBuffer.RenderOpaque(renderContext);
+            using var _ = res.Context.EnableExternalPipelineScoped();
+            res.CmdBuffer.BindRenderPipeline(_pipeline);
+            res.CmdBuffer.BindDepthState(DepthState.DefaultReversedZ);
+            res.Context.Statistics.DrawCalls += RenderHelper.RenderOpaque(in res);
         }
     }
 
