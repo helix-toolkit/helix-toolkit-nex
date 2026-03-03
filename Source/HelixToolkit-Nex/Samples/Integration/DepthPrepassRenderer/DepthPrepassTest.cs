@@ -44,6 +44,7 @@ internal class DepthPrepassTest(IContext context) : IDisposable
 
     public void Initialize(int width, int height)
     {
+        RenderSettings.LogFPSInDebug = true;
         var services = new ServiceCollection { new ServiceDescriptor(typeof(IContext), _context) };
         services
             .AddSingleton<IGeometryManager, GeometryManager>()
@@ -157,6 +158,7 @@ internal class DepthPrepassTest(IContext context) : IDisposable
         _renderContext!.WindowSize = new HelixToolkit.Nex.Maths.Size(width, height);
         RotateCamera();
         _renderContext.CameraParams = _camera.ToCameraParams(aspectRatio);
+        _renderContext.FinalOutputTexture = _context.GetCurrentSwapchainTexture();
         _rendererManager!.Resize(width, height);
         _rendererManager!.Render(_renderContext!, _renderGraph!);
     }

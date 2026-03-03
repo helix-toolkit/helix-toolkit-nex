@@ -86,10 +86,10 @@ public class Renderer(IServiceProvider serviceProvider) : Initializable
     public void Render(RenderContext context, RenderGraph graph)
     {
         var cmdBuf = context.Context.AcquireCommandBuffer();
-        context.FinalOutputTexture = context.Context.GetCurrentSwapchainTexture();
         context.Update(cmdBuf);
         graph.Execute(context, cmdBuf, _renderers);
         context.Context.Submit(cmdBuf, context.FinalOutputTexture);
+        context.Statistics.AddFrameTimeStamp();
     }
 
     protected override ResultCode OnInitializing()
