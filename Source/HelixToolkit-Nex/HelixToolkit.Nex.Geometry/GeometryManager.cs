@@ -111,11 +111,17 @@ public sealed class GeometryManager(IServiceProvider services) : IGeometryManage
 
     public void Clear()
     {
-        lock (_lock)
+        var list = _indexCountDict.Keys.ToList();
+        foreach (var key in list)
         {
-            _pool.Clear();
-            _indexCountDict.Clear();
+            Remove(key);
         }
+        Debug.Assert(_pool.Count == 0, "Pool should be empty after Clear.");
+        Debug.Assert(
+            TotalStaticIndexCount == 0,
+            "TotalStaticIndexCount should be zero after Clear."
+        );
+        Debug.Assert(_indexCountDict.Count == 0, "_indexCountDict should be empty after Clear.");
     }
 
     public IEnumerable<Geometry> GetAll()

@@ -1,6 +1,6 @@
 namespace HelixToolkit.Nex.Engine.Data;
 
-internal class StaticMeshIndexData : Initializable, IRenderData
+public sealed class StaticMeshIndexData : Initializable, IStaticMeshIndexData
 {
     public const int InitialBufferSize = 1024 * 10;
     private static readonly EventBus _eventBus = EventBus.Instance;
@@ -25,10 +25,10 @@ internal class StaticMeshIndexData : Initializable, IRenderData
 
     public override string Name => nameof(StaticMeshIndexData);
 
-    public StaticMeshIndexData(IServiceProvider services)
+    public StaticMeshIndexData(ResourceManager resourceManager)
     {
-        _context = services.GetRequiredService<IContext>();
-        _resourceManager = services.GetRequiredService<ResourceManager>();
+        _context = resourceManager.Context;
+        _resourceManager = resourceManager;
         _sub = _eventBus.Subscribe<GeometryUpdatedEvent>(
             (e) =>
             {

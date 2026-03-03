@@ -6,6 +6,7 @@ using HelixToolkit.Nex;
 using HelixToolkit.Nex.DependencyInjection;
 using HelixToolkit.Nex.Engine;
 using HelixToolkit.Nex.Engine.Cameras;
+using HelixToolkit.Nex.Engine.Data;
 using HelixToolkit.Nex.Geometries;
 using HelixToolkit.Nex.Graphics;
 using HelixToolkit.Nex.Material;
@@ -29,7 +30,7 @@ internal class DepthPrepassTest(IContext context) : IDisposable
     private Renderer? _rendererManager;
     private RenderContext? _renderContext;
     private WorldDataProvider? _worldDataProvider;
-    private ResourceManager? _resourceManager;
+    private IResourceManager? _resourceManager;
     private Node? _root;
     private readonly Camera _camera = new PerspectiveCamera()
     {
@@ -46,15 +47,11 @@ internal class DepthPrepassTest(IContext context) : IDisposable
     {
         RenderSettings.LogFPSInDebug = true;
         var services = new ServiceCollection { new ServiceDescriptor(typeof(IContext), _context) };
-        services
-            .AddSingleton<IGeometryManager, GeometryManager>()
-            .AddSingleton<IShaderRepository, ShaderRepository>()
-            .AddSingleton<IMaterialPropertyManager, MaterialPropertyManager>()
-            .AddSingleton<IMaterialManager, MaterialManager>()
-            .AddSingleton<ResourceManager, ResourceManager>();
+        services.AddSingleton<IResourceManager, ResourceManager>();
+
         _serviceProvider = services.BuildServiceProvider();
         _renderGraph = DepthPrepassRenderGraph.Create(_serviceProvider);
-        _resourceManager = _serviceProvider.GetRequiredService<ResourceManager>();
+        _resourceManager = _serviceProvider.GetRequiredService<IResourceManager>();
         _rendererManager = new Renderer(_serviceProvider);
 
         _rendererManager!.AddNode(new DepthPassNode());
@@ -74,8 +71,8 @@ internal class DepthPrepassTest(IContext context) : IDisposable
 
     private void InitializeScene()
     {
-        var geometryManager = _serviceProvider!.GetRequiredService<IGeometryManager>();
-        var materialPropertyPool = _serviceProvider!.GetRequiredService<IMaterialPropertyManager>();
+        var geometryManager = _resourceManager!.Geometries;
+        var materialPropertyPool = _resourceManager!.MaterialProperties;
         var meshbuilder = new MeshBuilder(true, true, true);
         meshbuilder.AddSphere(Vector3.Zero);
         var sphere = meshbuilder.ToMesh().ToGeometry();

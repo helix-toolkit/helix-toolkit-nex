@@ -51,23 +51,42 @@ public class ServiceProvider : IServiceProvider, IDisposable, IServiceScopeFacto
             {
                 return _root.GetService(serviceType);
             }
-            return _singletons.GetOrAdd(serviceType, t => CreateInstance(descriptor));
+            var srv = _singletons.GetOrAdd(serviceType, t => CreateInstance(descriptor));
+            if (srv is Initializable initializable)
+            {
+                initializable.Initialize();
+            }
+            return srv;
         }
 
         if (descriptor.Lifetime == ServiceLifetime.Scoped)
         {
+            object? srv = null;
             if (!_isScope)
             {
                 // If we are root (not a scope), we treat scoped as singleton or we could throw.
                 // Microsoft DI treats scoped services resolved from root as singletons effectively,
                 // but typically validates scopes. For simplicity here, if resolved from root, we'll store in root's scoped dictionary so they act like singletons/root-scoped.
-                return _scopedInstances.GetOrAdd(serviceType, t => CreateInstance(descriptor));
+                srv = _scopedInstances.GetOrAdd(serviceType, t => CreateInstance(descriptor));
             }
-            return _scopedInstances.GetOrAdd(serviceType, t => CreateInstance(descriptor));
+            else
+            {
+                srv = _scopedInstances.GetOrAdd(serviceType, t => CreateInstance(descriptor));
+            }
+            if (srv is Initializable initializableScoped)
+            {
+                initializableScoped.Initialize();
+            }
+            return srv;
         }
 
         // Transient
-        return CreateInstance(descriptor);
+        var instance = CreateInstance(descriptor);
+        if (instance is Initializable initializableTransient)
+        {
+            initializableTransient.Initialize();
+        }
+        return instance;
     }
 
     public T? GetService<T>()

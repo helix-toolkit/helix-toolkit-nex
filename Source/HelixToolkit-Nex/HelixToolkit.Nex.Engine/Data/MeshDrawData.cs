@@ -93,10 +93,9 @@ internal class MeshDrawData : Initializable, IMeshDrawData
     private readonly MeshDrawSorting _meshDrawSortingDynamicInstancing = new();
     private readonly HashSet<MaterialTypeId> _materialTypes = new(InitialBufferSize);
     private readonly bool _isTransparent;
-    private readonly IContext _context;
 
+    public IContext Context { get; }
     public World World { get; }
-    public IServiceProvider Services { get; }
     public IReadOnlyList<MeshDraw> DrawCommands => _meshDraws;
     private long _lastBufferUpdateTicks = 0;
     private long _lastDataUpdateTicks = Stopwatch.GetTimestamp();
@@ -128,10 +127,9 @@ internal class MeshDrawData : Initializable, IMeshDrawData
 
     public Range RangeDynamicMeshInstancing => _meshDrawSortingDynamicInstancing.FullRange;
 
-    public MeshDrawData(IServiceProvider services, World world, bool isTransparent)
+    public MeshDrawData(IContext context, World world, bool isTransparent)
     {
-        Services = services;
-        _context = services.GetRequiredService<IContext>();
+        Context = context;
         _isTransparent = isTransparent;
         World = world;
         Name = $"{nameof(MeshDrawData)}_{(isTransparent ? "Transparent" : "Opaque")}_{World.Id}";
@@ -169,7 +167,7 @@ internal class MeshDrawData : Initializable, IMeshDrawData
     protected override ResultCode OnInitializing()
     {
         _buffer = new ElementBuffer<MeshDraw>(
-            _context,
+            Context,
             InitialBufferSize,
             BufferUsageBits.Storage | BufferUsageBits.Indirect,
             true,
@@ -225,7 +223,7 @@ internal class MeshDrawData : Initializable, IMeshDrawData
                 }
                 ref var transform = ref chunk.Get<WorldTransform>(id);
                 var materialType = meshRenderComp.MaterialProperties!.MaterialTypeId;
-                meshRenderComp.Instancing?.UpdateBuffer(_context);
+                meshRenderComp.Instancing?.UpdateBuffer(Context);
                 var meshDraw = new MeshDraw()
                 {
                     MeshId = meshRenderComp.Geometry!.Id,

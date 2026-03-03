@@ -6,7 +6,7 @@ internal class LightData : Initializable, IRenderData
     private static readonly ILogger _logger = LogManager.Create<LightData>();
     private static readonly QueryDescription _lightQuery = new QueryDescription().WithAll<Light>();
 
-    private readonly IContext _context;
+    public IContext Context { get; }
     public World World { get; }
 
     private ElementBuffer<Light>? _lightBuffer;
@@ -23,9 +23,9 @@ internal class LightData : Initializable, IRenderData
 
     public override string Name { get; }
 
-    public LightData(IServiceProvider services, World world)
+    public LightData(IContext context, World world)
     {
-        _context = services.GetRequiredService<IContext>();
+        Context = context;
         World = world;
         Name = $"{nameof(LightData)}_{World.Id}";
         world.SubscribeComponentAdded<Light>(OnLightChanged);
@@ -36,7 +36,7 @@ internal class LightData : Initializable, IRenderData
     protected override ResultCode OnInitializing()
     {
         _lightBuffer = new ElementBuffer<Light>(
-            _context,
+            Context,
             InitialBufferSize,
             BufferUsageBits.Storage,
             true,

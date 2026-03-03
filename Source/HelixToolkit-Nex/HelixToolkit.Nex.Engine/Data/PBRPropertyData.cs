@@ -1,6 +1,6 @@
 namespace HelixToolkit.Nex.Engine.Data;
 
-internal sealed class PBRPropertyData : Initializable, IRenderData
+public sealed class PBRPropertyData : Initializable, IPBRPropertyData
 {
     public const int InitialBufferSize = 64;
     private static readonly EventBus _eventBus = EventBus.Instance;
@@ -25,10 +25,10 @@ internal sealed class PBRPropertyData : Initializable, IRenderData
 
     public override string Name { get; } = nameof(PBRPropertyData);
 
-    public PBRPropertyData(IServiceProvider services)
+    public PBRPropertyData(ResourceManager resourceManager)
     {
-        _context = services.GetRequiredService<IContext>();
-        _resourceManager = services.GetRequiredService<ResourceManager>();
+        _context = resourceManager.Context;
+        _resourceManager = resourceManager;
         _sub = _eventBus.Subscribe<MaterialPropsUpdatedEvent>(
             (e) =>
             {

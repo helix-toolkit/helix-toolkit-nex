@@ -9,6 +9,16 @@ public interface IRenderData : IInitializable
     bool Update();
 }
 
+public interface IPBRPropertyData : IRenderData
+{
+    // Additional properties or methods specific to PBR material properties can be defined here.
+}
+
+public interface IStaticMeshIndexData : IRenderData
+{
+    // Additional properties or methods specific to static mesh index data can be defined here.
+}
+
 public interface IMeshDrawData : IRenderData
 {
     /// <summary>
@@ -109,6 +119,11 @@ public interface IMeshDrawData : IRenderData
 public interface IRenderDataProvider
 {
     /// <summary>
+    /// Gets the shared resource manager.
+    /// </summary>
+    IResourceManager ResourceManager { get; }
+
+    /// <summary>
     /// Gets the collection of range light (point light, spot light) sources used for rendering the scene.
     /// </summary>
     IRenderData Lights { get; }
@@ -136,12 +151,12 @@ public interface IRenderDataProvider
     /// <summary>
     /// Gets the shared index buffer used for rendering static mesh geometry.
     /// </summary>
-    IRenderData StaticMeshIndexData { get; }
+    IStaticMeshIndexData StaticMeshIndexData { get; }
 
     /// <summary>
     /// Gets the buffer containing all physically based rendering (PBR) material properties for use in rendering operations.
     /// </summary>
-    IRenderData PBRPropertiesBuffer { get; }
+    IPBRPropertyData PBRPropertiesBuffer { get; }
 
     /// <summary>
     /// Gets the render pipeline handle associated with the specified material type.

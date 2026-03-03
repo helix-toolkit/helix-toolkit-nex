@@ -1,4 +1,4 @@
-using HelixToolkit.Nex.DependencyInjection;
+using HelixToolkit.Nex.Engine.Data;
 
 namespace HelixToolkit.Nex.Repository;
 
@@ -24,34 +24,66 @@ namespace HelixToolkit.Nex.Repository;
 /// - Simple serialization (just save IDs)
 /// </para>
 /// </remarks>
-public sealed class ResourceManager(IServiceProvider services) : IDisposable
+public sealed class ResourceManager : Initializable, IResourceManager
 {
-    public IMaterialManager Materials { get; } = services.GetRequiredService<IMaterialManager>();
+    private readonly FastList<IRenderData> _renderDatas = [];
+    public IContext Context { get; }
+    public IMaterialManager Materials { get; }
 
     /// <summary>
     /// Gets the geometry pool for managing geometry resources.
     /// </summary>
-    public IGeometryManager Geometries { get; } = services.GetRequiredService<IGeometryManager>();
+    public IGeometryManager Geometries { get; }
 
     /// <summary>
     /// Gets the material pool for managing material resources.
     /// </summary>
-    public IMaterialPropertyManager MaterialProperties { get; } =
-        services.GetRequiredService<IMaterialPropertyManager>();
+    public IMaterialPropertyManager MaterialProperties { get; }
 
     /// <summary>
     /// Gets the repository used to manage and retrieve shader resources.
     /// </summary>
-    public IShaderRepository ShaderRepository { get; } =
-        services.GetRequiredService<IShaderRepository>();
+    public IShaderRepository ShaderRepository { get; }
+
+    /// <summary>
+    /// Gets the global index data buffer associated with the static mesh.
+    /// </summary>
+    public IStaticMeshIndexData StaticMeshIndexData { get; }
+
+    /// <summary>
+    /// Gets the PBR property buffer data.
+    /// </summary>
+    public IPBRPropertyData PBRPropertyData { get; }
+
+    /// <summary>
+    /// Gets the mesh info data buffer.
+    /// </summary>
+    public IRenderData MeshInfoData { get; }
+
+    public override string Name => nameof(ResourceManager);
+
+    public ResourceManager(IServiceProvider services)
+    {
+        Context = services.GetRequiredService<IContext>();
+        Materials = services.GetService<IMaterialManager>() ?? new MaterialManager(services);
+        Geometries = services.GetService<IGeometryManager>() ?? new GeometryManager(services);
+        MaterialProperties =
+            services.GetService<IMaterialPropertyManager>() ?? new MaterialPropertyManager();
+        ShaderRepository =
+            services.GetService<IShaderRepository>() ?? new ShaderRepository(services);
+        StaticMeshIndexData = new StaticMeshIndexData(this);
+        PBRPropertyData = new PBRPropertyData(this);
+        MeshInfoData = new MeshInfoData(this);
+        _renderDatas.Add(PBRPropertyData);
+        _renderDatas.Add(StaticMeshIndexData);
+        _renderDatas.Add(MeshInfoData);
+    }
 
     /// <summary>
     /// Gets statistics about resource usage.
     /// </summary>
     public ResourceStatistics GetStatistics()
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
-
         return new ResourceStatistics
         {
             GeometryCount = Geometries.Count,
@@ -64,32 +96,47 @@ public sealed class ResourceManager(IServiceProvider services) : IDisposable
         };
     }
 
-    /// <summary>
-    /// Clears all resources and frees their GPU data.
-    /// </summary>
-    public void Clear()
+    protected override ResultCode OnInitializing()
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
+        foreach (var renderData in _renderDatas)
+        {
+            var result = renderData.Initialize();
+            if (result != ResultCode.Ok)
+            {
+                return result;
+            }
+        }
+        return ResultCode.Ok;
+    }
 
+    protected override ResultCode OnTearingDown()
+    {
+        foreach (var renderData in _renderDatas)
+        {
+            renderData.Dispose();
+        }
         Geometries.Clear();
         MaterialProperties.Clear();
         Materials.Clear();
+        return ResultCode.Ok;
     }
 
-    #region IDisposable Support
-    private bool _disposed;
-
-    public void Dispose()
+    public bool Update()
     {
-        if (_disposed)
+        // Update all geometries with dirty buffers
+        foreach (var geometry in Geometries.GetAll())
         {
-            return;
+            if (geometry.BufferDirty != GeometryBufferType.None)
+            {
+                geometry.UpdateBuffers(Context);
+            }
         }
-
-        Clear();
-        _disposed = true;
+        foreach (var renderData in _renderDatas)
+        {
+            renderData.Update();
+        }
+        return true;
     }
-    #endregion
 }
 
 /// <summary>

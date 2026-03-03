@@ -6,13 +6,14 @@ internal sealed class MeshInfoData : Initializable, IRenderData
     private static readonly EventBus _eventBus = EventBus.Instance;
     private static readonly ILogger _logger = LogManager.Create<MeshInfoData>();
     private static readonly ITracer _tracer = TracerFactory.GetTracer(nameof(MeshInfoData));
-    private readonly IContext _context;
-    private readonly ResourceManager _resourceManager;
+    private readonly IResourceManager _resourceManager;
     private ElementBuffer<MeshInfo>? _buffer;
 
     private long _lastBufferUpdateTicks = 0;
     private long _lastDataUpdateTicks = Stopwatch.GetTimestamp();
     private readonly IEventSubscription _sub;
+
+    public IContext Context => _resourceManager.Context;
 
     public BufferHandle Buffer => _buffer is null ? BufferHandle.Null : _buffer.Buffer;
 
@@ -23,10 +24,9 @@ internal sealed class MeshInfoData : Initializable, IRenderData
 
     public override string Name { get; } = nameof(MeshInfoData);
 
-    public MeshInfoData(IServiceProvider services)
+    public MeshInfoData(IResourceManager resourceManager)
     {
-        _resourceManager = services.GetRequiredService<ResourceManager>();
-        _context = services.GetRequiredService<IContext>();
+        _resourceManager = resourceManager;
         _sub = _eventBus.Subscribe<GeometryUpdatedEvent>(
             (e) =>
             {
@@ -81,7 +81,7 @@ internal sealed class MeshInfoData : Initializable, IRenderData
     protected override ResultCode OnInitializing()
     {
         _buffer = new ElementBuffer<MeshInfo>(
-            _context,
+            Context,
             InitialBufferSize,
             BufferUsageBits.Storage,
             true,

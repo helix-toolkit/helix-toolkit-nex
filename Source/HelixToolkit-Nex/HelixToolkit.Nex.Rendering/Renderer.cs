@@ -10,9 +10,11 @@ public class Renderer(IServiceProvider serviceProvider) : Initializable
     public int Width { get; private set; }
     public int Height { get; private set; }
 
-    public readonly IContext Context = serviceProvider.GetRequiredService<IContext>();
-    public readonly IShaderRepository ShaderRepository =
-        serviceProvider.GetRequiredService<IShaderRepository>();
+    public IResourceManager ResourceManager { get; } =
+        serviceProvider.GetRequiredService<IResourceManager>();
+
+    public IContext Context => ResourceManager.Context;
+    public IShaderRepository ShaderRepository => ResourceManager.ShaderRepository;
 
     public override string Name => nameof(Renderer);
 

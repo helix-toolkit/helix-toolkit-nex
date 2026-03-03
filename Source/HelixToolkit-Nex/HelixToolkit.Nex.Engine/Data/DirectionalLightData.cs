@@ -8,7 +8,7 @@ internal class DirectionalLightData : Initializable, IRenderData
 
     public World World { get; }
 
-    private readonly IContext _context;
+    public IContext Context { get; }
     private long _lastBufferUpdateTicks = 0;
     private long _lastDataUpdateTicks = 0;
 
@@ -22,9 +22,9 @@ internal class DirectionalLightData : Initializable, IRenderData
 
     public override string Name { get; }
 
-    public DirectionalLightData(IServiceProvider services, World world)
+    public DirectionalLightData(IContext context, World world)
     {
-        _context = services.GetRequiredService<IContext>();
+        Context = context;
         World = world;
         Name = $"{nameof(DirectionalLightData)}_{World.Id}";
         world.SubscribeComponentAdded<DirectionalLight>(OnLightChanged);
@@ -34,7 +34,7 @@ internal class DirectionalLightData : Initializable, IRenderData
 
     protected override ResultCode OnInitializing()
     {
-        var result = _context
+        var result = Context
             .CreateBuffer(
                 new DirectionalLights(),
                 BufferUsageBits.Storage,
@@ -82,7 +82,7 @@ internal class DirectionalLightData : Initializable, IRenderData
                 break;
             }
         }
-        _context.Upload(Buffer, 0, lights);
+        Context.Upload(Buffer, 0, lights);
         _lastBufferUpdateTicks = _lastDataUpdateTicks;
         return true;
     }
