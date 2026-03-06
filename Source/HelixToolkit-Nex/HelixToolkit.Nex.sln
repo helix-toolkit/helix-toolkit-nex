@@ -87,6 +87,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DepthPrepassRenderer", "Sam
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LightCulling", "Samples\Integration\LightCulling\LightCulling.csproj", "{F3F39A27-C422-41D7-8ABD-01D2B65B021B}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SceneSamples", "Samples\SceneSamples\SceneSamples.csproj", "{58435956-B2F8-4A59-83ED-C188B0FCA331}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -225,6 +227,10 @@ Global
 		{F3F39A27-C422-41D7-8ABD-01D2B65B021B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F3F39A27-C422-41D7-8ABD-01D2B65B021B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F3F39A27-C422-41D7-8ABD-01D2B65B021B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{58435956-B2F8-4A59-83ED-C188B0FCA331}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{58435956-B2F8-4A59-83ED-C188B0FCA331}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{58435956-B2F8-4A59-83ED-C188B0FCA331}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{58435956-B2F8-4A59-83ED-C188B0FCA331}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -242,6 +248,7 @@ Global
 		{7E2B8F9A-97A5-4434-B291-EE9DDEC474DC} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 		{B4925620-4183-446B-BCF3-3A580FD51D24} = {7E2B8F9A-97A5-4434-B291-EE9DDEC474DC}
 		{F3F39A27-C422-41D7-8ABD-01D2B65B021B} = {7E2B8F9A-97A5-4434-B291-EE9DDEC474DC}
+		{58435956-B2F8-4A59-83ED-C188B0FCA331} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {E5E7411B-7281-4FBB-8D21-475B6670439C}
