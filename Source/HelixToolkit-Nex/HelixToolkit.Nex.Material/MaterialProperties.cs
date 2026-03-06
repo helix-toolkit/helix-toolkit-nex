@@ -29,6 +29,11 @@ public sealed class MaterialProperties : IDisposable
     private readonly Pool<MaterialPropertyResource, PBRProperties>? _pool;
     private readonly Handle<MaterialPropertyResource> _handle =
         Handle<MaterialPropertyResource>.Null;
+    private static readonly PBRProperties _defaultProperties = new()
+    {
+        Albedo = new(1, 1, 1),
+        Opacity = 1,
+    };
 
     public readonly uint MaterialTypeId = 0;
 
@@ -45,7 +50,7 @@ public sealed class MaterialProperties : IDisposable
     {
         MaterialTypeId = materialTypeId;
         _pool = pool;
-        _handle = _pool.Create(new PBRProperties());
+        _handle = _pool.Create(_defaultProperties);
         _eventBus.Publish(
             new MaterialPropsUpdatedEvent(MaterialTypeId, Index, MaterialPropertyOp.Create)
         );

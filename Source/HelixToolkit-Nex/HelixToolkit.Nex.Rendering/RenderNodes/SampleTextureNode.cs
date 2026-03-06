@@ -14,6 +14,23 @@ public sealed class DebugDepthBufferNode(Format targetFormat = Format.RGBA_F16)
         MaxValue = res.Context.CameraParams.FarPlane;
         return base.BeginRender(in res);
     }
+
+    public override void AddToGraph(RenderGraph graph)
+    {
+        graph.AddPass(
+            nameof(DebugDepthBufferNode),
+            inputs: [new(SystemBufferNames.TextureDepthF32, ResourceType.Texture)],
+            outputs: [new(SystemBufferNames.TextureColorF16, ResourceType.Texture)],
+            onSetup: (res) =>
+            {
+                res.Framebuf.Colors[0].Texture = res.Textures[SystemBufferNames.TextureColorF16];
+                res.Pass.Colors[0].ClearColor = Color.Coral;
+                res.Pass.Colors[0].LoadOp = LoadOp.Clear;
+                res.Pass.Colors[0].StoreOp = StoreOp.Store;
+                res.Deps.Textures[0] = res.Textures[SystemBufferNames.TextureDepthF32];
+            }
+        );
+    }
 }
 
 public sealed class DebugMeshIdNode(Format targetFormat = Format.RGBA_F16)
@@ -21,6 +38,23 @@ public sealed class DebugMeshIdNode(Format targetFormat = Format.RGBA_F16)
 {
     public override string Name => nameof(DebugDepthBufferNode);
     public override Color4 DebugColor => Color.Red;
+
+    public override void AddToGraph(RenderGraph graph)
+    {
+        graph.AddPass(
+            nameof(DebugMeshIdNode),
+            inputs: [new(SystemBufferNames.TextureMeshId, ResourceType.Texture)],
+            outputs: [new(SystemBufferNames.TextureColorF16, ResourceType.Texture)],
+            onSetup: (res) =>
+            {
+                res.Framebuf.Colors[0].Texture = res.Textures[SystemBufferNames.TextureColorF16];
+                res.Pass.Colors[0].ClearColor = Color.Black;
+                res.Pass.Colors[0].LoadOp = LoadOp.Clear;
+                res.Pass.Colors[0].StoreOp = StoreOp.Store;
+                res.Deps.Textures[0] = res.Textures[SystemBufferNames.TextureMeshId];
+            }
+        );
+    }
 }
 
 public abstract class SampleTextureNode(SampleTextureMode mode, Format targetFormat) : RenderNode

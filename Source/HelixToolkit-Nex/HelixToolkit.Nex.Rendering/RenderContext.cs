@@ -117,14 +117,34 @@ public sealed class RenderContext(IServiceProvider services) : Initializable
 
     public override string Name => nameof(RenderContext);
 
-    public void Update(ICommandBuffer cmd)
+    /// <summary>
+    /// Gets the time value in seconds.
+    /// </summary>
+    public float Time => Stopwatch.GetTimestamp() / (float)Stopwatch.Frequency;
+
+    /// <summary>
+    /// Initiates the rendering process for a new frame.
+    /// </summary>
+    /// <remarks>This method updates the rendering data and logs a warning if the update fails. Ensure that
+    /// the <c>Data</c> object is properly initialized before calling this method.</remarks>
+    public void BeginFrame()
     {
-        Statistics.ResetPerFrame();
+        Statistics.BeginFrame();
         if (Data?.Update() == false)
         {
             _logger.LogWarning("Failed to update render data.");
             return;
         }
+    }
+
+    /// <summary>
+    /// Marks the end of the current frame and updates the frame statistics.
+    /// </summary>
+    /// <remarks>This method should be called at the end of each frame to ensure that frame statistics are
+    /// correctly updated. It is typically used in rendering loops or similar iterative processes.</remarks>
+    public void EndFrame()
+    {
+        Statistics.EndFrame();
     }
 
     protected override ResultCode OnInitializing()

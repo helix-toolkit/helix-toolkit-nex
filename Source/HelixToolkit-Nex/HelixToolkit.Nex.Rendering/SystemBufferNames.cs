@@ -4,6 +4,7 @@ public static class SystemBufferNames
 {
     public const string FinalOutputTexture = "FinalOutputTexture";
     public const string ForwardPlusConstants = "ForwardPlusConstants";
+
     public const string TextureDepthF32 = "TextureDepthF32";
     public const string TextureMeshId = "TextureMeshId";
     public const string TextureColorF16 = "TextureColorF16";
@@ -11,4 +12,6 @@ public static class SystemBufferNames
     public const string BufferMeshDrawTransparent = "BufferMeshDrawTransparent";
     public const string BufferLightGrid = "BufferLightGrid";
     public const string BufferLightIndex = "BufferLightIndex";
+    public const string BufferDirectionalLight = "BufferDirectionalLight";
+    public const string BufferLights = "BufferLights";
 }

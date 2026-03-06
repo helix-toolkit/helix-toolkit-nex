@@ -63,7 +63,7 @@ public sealed class FrustumCullNode : ComputeNode
         var context = res.Context;
         var frustum = BoundingFrustum.FromViewProjectInversedZ(context.CameraParams.ViewProjection);
 
-        // Update Culling Constants
+        // BeginFrame Culling Constants
         _cullConst.CullingEnabled = Enabled ? 1u : 0u;
 
         _cullConst.ViewMatrix = context.CameraParams.View;
@@ -274,5 +274,22 @@ public sealed class FrustumCullNode : ComputeNode
             resetModule,
             "ResetDrawInstanceCount"
         );
+    }
+
+    public override void AddToGraph(RenderGraph graph)
+    {
+        graph
+            .AddBuffer(SystemBufferNames.BufferMeshDrawOpaque, null)
+            .AddBuffer(SystemBufferNames.BufferMeshDrawTransparent, null)
+            .AddPass(
+                nameof(FrustumCullNode),
+                inputs: [],
+                outputs:
+                [
+                    new(SystemBufferNames.BufferMeshDrawOpaque, ResourceType.Buffer),
+                    new(SystemBufferNames.BufferMeshDrawTransparent, ResourceType.Buffer),
+                ],
+                onSetup: (_) => { }
+            );
     }
 }

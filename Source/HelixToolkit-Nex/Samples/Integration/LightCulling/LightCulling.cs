@@ -8,6 +8,7 @@ using HelixToolkit.Nex.Engine;
 using HelixToolkit.Nex.Engine.Cameras;
 using HelixToolkit.Nex.Geometries;
 using HelixToolkit.Nex.Graphics;
+using HelixToolkit.Nex.Material;
 using HelixToolkit.Nex.Rendering;
 using HelixToolkit.Nex.Rendering.Components;
 using HelixToolkit.Nex.Rendering.ComputeNodes;
@@ -15,11 +16,12 @@ using HelixToolkit.Nex.Rendering.PostEffects;
 using HelixToolkit.Nex.Rendering.RenderNodes;
 using HelixToolkit.Nex.Repository;
 using HelixToolkit.Nex.Scene;
+using HelixToolkit.Nex.Shaders;
 using HelixToolkit.Nex.Shaders.Frag;
 
-internal class DepthPrepassTest(IContext context) : IDisposable
+internal class LightCullingTest(IContext context) : IDisposable
 {
-    public const int NumSpheresPerAxis = 30; // Total spheres will be NumSpheresPerAxis^3
+    public const int NumSpheresPerAxis = 20; // Total spheres will be NumSpheresPerAxis^3
     public const int NumCubes = 1000;
     public const SampleTextureMode DebugMode = SampleTextureMode.DebugMeshId;
     private readonly IContext _context = context;
@@ -48,11 +50,25 @@ internal class DepthPrepassTest(IContext context) : IDisposable
 
         _serviceProvider = services.BuildServiceProvider();
         _resourceManager = _serviceProvider.GetRequiredService<IResourceManager>();
+        MaterialTypeRegistry.Register(
+            "TimeBased",
+            """
+            float time = getTime();
+            PBRMaterial material = createPBRMaterial();
+            vec3 albedo = material.albedo;
+            albedo.r = fract(albedo.r + time);
+            albedo.g = fract(albedo.g + time * 1.1);
+            albedo.b = fract(albedo.b + time * 1.2);
+            return vec4(albedo, 1);
+            """
+        );
+        _resourceManager.Materials.CreatePBRMaterialsFromRegistry();
         _rendererManager = new Renderer(_serviceProvider);
         _rendererManager.AddNode(new PrepareNode());
         _rendererManager.AddNode(new DepthPassNode());
-        _rendererManager.AddNode(new DebugDepthBufferNode());
         _rendererManager.AddNode(new FrustumCullNode());
+        _rendererManager.AddNode(new ForwardPlusOpaqueNode());
+        _rendererManager.AddNode(new ForwardPlusLightCullingNode());
         var postEffectNode = new PostEffectsNode();
         postEffectNode.AddEffect(new ToneMapping());
         _rendererManager.AddNode(postEffectNode);
@@ -89,7 +105,13 @@ internal class DepthPrepassTest(IContext context) : IDisposable
         meshbuilder.AddTetrahedron(Vector3.Zero, Vector3.UnitX, Vector3.UnitY, 2);
         var tetrahron = meshbuilder.ToMesh().ToGeometry();
         succ = geometryManager.Add(tetrahron, out var tetrahedronId);
-
+        var shadingModes = new[]
+        {
+            PBRShadingMode.Unlit.ToString(),
+            PBRShadingMode.PBR.ToString(),
+            PBRShadingMode.Normal.ToString(),
+            "TimeBased",
+        };
         _root = new Node(_worldDataProvider!.World, "Root");
         for (int i = 0; i < NumSpheresPerAxis; ++i)
         {
@@ -106,7 +128,9 @@ internal class DepthPrepassTest(IContext context) : IDisposable
                             z * NumSpheresPerAxis - NumSpheresPerAxis * 2
                         ),
                     };
-                    var pbrProps = materialPropertyPool.Create(PBRShadingMode.PBR);
+                    var pbrProps = materialPropertyPool.Create(
+                        shadingModes[z % shadingModes.Length]
+                    );
                     pbrProps.Properties.Albedo = new Vector3(
                         Random.Shared.NextSingle(),
                         Random.Shared.NextSingle(),
@@ -134,10 +158,21 @@ internal class DepthPrepassTest(IContext context) : IDisposable
         }
         instancing.UpdateBuffer(_context);
         var instancingNode = new Node(_worldDataProvider.World, "InstancingNode");
-        var pbrPropsInstancing = materialPropertyPool.Create(PBRShadingMode.PBR);
+        var pbrPropsInstancing = materialPropertyPool.Create(PBRShadingMode.Unlit);
         pbrPropsInstancing.Properties.Albedo = new Vector3(1, 0, 1);
         instancingNode.Entity.Add(new MeshComponent(cube, pbrPropsInstancing, instancing));
         _root.AddChild(instancingNode);
+
+        var directionalLight = new Node(_worldDataProvider.World, "DirectionalLight");
+        directionalLight.Entity.Add(
+            new DirectionalLight
+            {
+                Color = Vector3.One,
+                Intensity = 1,
+                Direction = Vector3.Normalize(new Vector3(1, -1, -1)),
+            }
+        );
+        _root.AddChild(directionalLight);
 
         var allNodes = new FastList<Node>(NumSpheresPerAxis ^ 3 + 1);
         _root.Flatten(

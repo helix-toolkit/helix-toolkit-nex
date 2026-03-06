@@ -53,6 +53,87 @@ public static class RenderHelper
     }
 
     /// <summary>
+    /// Renders all opaque dynamic mesh draws in the specified render context using the command buffer.
+    /// </summary>
+    /// <param name="res">The render resources.</param>
+    /// <param name="renderInstancing"><see langword="true"/> to enable hardware instancing for supported mesh draws; otherwise, <see
+    /// langword="false"/> to render without instancing.</param>
+    /// <returns>The number of opaque dynamic mesh draws rendered. Returns 0 if there is no mesh draw data in the context.</returns>
+    public static uint RenderOpaqueDynamic(in RenderResources res, bool renderInstancing = true)
+    {
+        if (res.Context.Data is null)
+            return 0;
+
+        return RenderDynamic(in res, res.Context.Data.MeshDrawsOpaque, renderInstancing);
+    }
+
+    /// <summary>
+    /// Renders all transparent objects in the specified <see cref="RenderContext"/> using the provided command buffer.
+    /// </summary>
+    /// <param name="res">The render resources.</param>
+    /// <param name="renderStatic"><see langword="true"/> to render static opaque objects; otherwise, <see langword="false"/>. Defaults to <see
+    /// langword="true"/>.</param>
+    /// <param name="renderDynamic"><see langword="true"/> to render dynamic opaque objects; otherwise, <see langword="false"/>. Defaults to <see
+    /// langword="true"/>.</param>
+    /// <param name="renderInstancing"><see langword="true"/> to enable GPU instancing for supported objects; otherwise, <see langword="false"/>.
+    /// Defaults to <see langword="true"/>.</param>
+    /// <returns>The total number of opaque draw calls issued. Returns 0 if the context contains no data or if no objects are
+    /// rendered.</returns>
+    public static uint RenderTransparent(
+        in RenderResources res,
+        bool renderStatic = true,
+        bool renderDynamic = true,
+        bool renderInstancing = true
+    )
+    {
+        if (res.Context.Data is null)
+            return 0;
+        uint drawCount = 0;
+        if (renderStatic)
+        {
+            drawCount += RenderTransparentStatic(in res, renderInstancing);
+        }
+        if (renderDynamic)
+        {
+            drawCount += RenderTransparentDynamic(in res, renderInstancing);
+        }
+        return drawCount;
+    }
+
+    /// <summary>
+    /// Renders all transparent static meshes in the specified render context using the command buffer.
+    /// </summary>
+    /// <remarks>This method renders only transparent static meshes. Transparent or dynamic meshes are not
+    /// affected.</remarks>
+    /// <param name="res">The render resources.</param>
+    /// <param name="renderInstancing"><see langword="true"/> to enable hardware instancing for supported meshes; otherwise, <see langword="false"/>.</param>
+    /// <returns>The number of transparent static mesh draw calls issued. Returns 0 if there are no transparent static meshes to render.</returns>
+    public static uint RenderTransparentStatic(in RenderResources res, bool renderInstancing = true)
+    {
+        if (res.Context.Data is null)
+            return 0;
+        return RenderStatic(in res, res.Context.Data.MeshDrawsTransparent, renderInstancing);
+    }
+
+    /// <summary>
+    /// Renders all transparent dynamic mesh draws in the specified render context using the command buffer.
+    /// </summary>
+    /// <param name="res">The render resources.</param>
+    /// <param name="renderInstancing"><see langword="true"/> to enable hardware instancing for supported mesh draws; otherwise, <see
+    /// langword="false"/> to render without instancing.</param>
+    /// <returns>The number of transparent dynamic mesh draws rendered. Returns 0 if there is no mesh draw data in the context.</returns>
+    public static uint RenderTransparentDynamic(
+        in RenderResources res,
+        bool renderInstancing = true
+    )
+    {
+        if (res.Context.Data is null)
+            return 0;
+
+        return RenderDynamic(in res, res.Context.Data.MeshDrawsOpaque, renderInstancing);
+    }
+
+    /// <summary>
     /// Renders static mesh draw data using the specified command buffer and render context.
     /// </summary>
     /// <remarks>This method iterates over all material types in the provided mesh draw data and issues
@@ -89,6 +170,10 @@ public static class RenderHelper
                 if (!context.UseExternalPipeline)
                 {
                     var pipeline = context.Data.GetMaterialPipeline(materialType);
+                    Debug.Assert(
+                        pipeline.Valid,
+                        $"Pipeline handle is invalid for material type {materialType}"
+                    );
                     cmdBuf.BindRenderPipeline(pipeline);
                 }
                 cmdBuf.PushConstants(
@@ -137,21 +222,6 @@ public static class RenderHelper
             }
         }
         return drawCount;
-    }
-
-    /// <summary>
-    /// Renders all opaque dynamic mesh draws in the specified render context using the command buffer.
-    /// </summary>
-    /// <param name="res">The render resources.</param>
-    /// <param name="renderInstancing"><see langword="true"/> to enable hardware instancing for supported mesh draws; otherwise, <see
-    /// langword="false"/> to render without instancing.</param>
-    /// <returns>The number of opaque dynamic mesh draws rendered. Returns 0 if there is no mesh draw data in the context.</returns>
-    public static uint RenderOpaqueDynamic(in RenderResources res, bool renderInstancing = true)
-    {
-        if (res.Context.Data is null)
-            return 0;
-
-        return RenderDynamic(in res, res.Context.Data.MeshDrawsOpaque, renderInstancing);
     }
 
     /// <summary>

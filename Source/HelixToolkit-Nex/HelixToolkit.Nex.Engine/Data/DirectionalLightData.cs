@@ -10,7 +10,7 @@ internal class DirectionalLightData : Initializable, IRenderData
 
     public IContext Context { get; }
     private long _lastBufferUpdateTicks = 0;
-    private long _lastDataUpdateTicks = 0;
+    private long _lastDataUpdateTicks = Stopwatch.GetTimestamp();
 
     private BufferResource _buffer = BufferResource.Null;
     public BufferHandle Buffer => _buffer;
@@ -82,6 +82,8 @@ internal class DirectionalLightData : Initializable, IRenderData
                 break;
             }
         }
+        lights.LightCount = (uint)count;
+        Count = (uint)count;
         Context.Upload(Buffer, 0, lights);
         _lastBufferUpdateTicks = _lastDataUpdateTicks;
         return true;

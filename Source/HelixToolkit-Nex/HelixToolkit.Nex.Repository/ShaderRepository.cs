@@ -1,7 +1,5 @@
 using System.Security.Cryptography;
 using System.Text;
-using HelixToolkit.Nex.DependencyInjection;
-using HelixToolkit.Nex.Graphics;
 // Import global types from HelixToolkit.Nex.Graphics
 using size_t = uint;
 
@@ -44,17 +42,13 @@ public sealed class ShaderRepository
     /// <summary>
     /// Initializes a new instance of the <see cref="ShaderRepository"/> class.
     /// </summary>
-    /// <param name="services">Service provider</param>
+    /// <param name="context">Graphics Context</param>
     /// <param name="maxEntries">Maximum number of shader modules to cache (0 = unlimited). Defaults is 0.</param>
     /// <param name="expirationTime">Time before a cached entry expires. Defaults to no expiration.</param>
-    public ShaderRepository(
-        IServiceProvider services,
-        int maxEntries = 0,
-        TimeSpan? expirationTime = null
-    )
+    public ShaderRepository(IContext context, int maxEntries = 0, TimeSpan? expirationTime = null)
         : base(maxEntries, expirationTime)
     {
-        _context = services.GetRequiredService<IContext>();
+        _context = context;
     }
 
     /// <summary>

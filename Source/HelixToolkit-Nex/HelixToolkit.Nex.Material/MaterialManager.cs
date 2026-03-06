@@ -1,13 +1,15 @@
 using System.Collections.Concurrent;
-using HelixToolkit.Nex.DependencyInjection;
 
 namespace HelixToolkit.Nex.Material;
 
-public sealed class MaterialManager(IServiceProvider services) : IMaterialManager
+public class MaterialManager(IContext context, IMaterialPropertyManager propertyManager)
+    : IMaterialManager
 {
     private readonly ConcurrentDictionary<MaterialTypeId, Material> _materials = new();
 
-    public IContext Context { get; } = services.GetRequiredService<IContext>();
+    public IContext Context { get; } = context;
+
+    public IMaterialPropertyManager MaterialPropertyManager { get; } = propertyManager;
 
     public int Count => _materials.Count;
 
@@ -27,10 +29,33 @@ public sealed class MaterialManager(IServiceProvider services) : IMaterialManage
             material.Dispose();
             throw new InvalidOperationException("Failed to add material to repository");
         }
-        return new MaterialPropertyCreator(
-            material.MaterialId,
-            services.GetRequiredService<IMaterialPropertyManager>()
-        );
+        return new MaterialPropertyCreator(material.MaterialId, MaterialPropertyManager);
+    }
+
+    public virtual int CreatePBRMaterialsFromRegistry()
+    {
+        var builder = new MaterialShaderBuilder();
+        using var result = builder
+            .WithForwardPlus(true)
+            .WithUberShader()
+            .BuildMaterialPipeline(Context, "UberShader");
+
+        foreach (var material in MaterialTypeRegistry.GetAllRegistrations())
+        {
+            var materialPipelineDesc = new RenderPipelineDesc
+            {
+                VertexShader = result.VertexShader,
+                FragmentShader = result.FragmentShader,
+                Topology = Topology.Triangle,
+                CullMode = CullMode.Back,
+                DepthFormat = Format.Z_F32,
+                PolygonMode = PolygonMode.Fill,
+                DebugName = material.Name,
+            };
+            materialPipelineDesc.Colors[0] = ColorAttachment.CreateAlphaBlend(Format.RGBA_F16);
+            CreateMaterial(material.Name, materialPipelineDesc);
+        }
+        return MaterialTypeRegistry.GetAllRegistrations().Count;
     }
 
     public void DestroyMaterial(MaterialTypeId id)

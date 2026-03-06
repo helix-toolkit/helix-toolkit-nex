@@ -45,7 +45,7 @@ public interface IResourceManager : IInitializable
     IRenderData MeshInfoData { get; }
 
     /// <summary>
-    /// Update the resource manager, performing necessary updates to GPU resources based on changes in the underlying data.
+    /// BeginFrame the resource manager, performing necessary updates to GPU resources based on changes in the underlying data.
     /// </summary>
     /// <returns></returns>
     bool Update();

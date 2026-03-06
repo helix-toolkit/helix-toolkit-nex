@@ -1,5 +1,3 @@
-using HelixToolkit.Nex.DependencyInjection;
-
 namespace HelixToolkit.Nex.Geometries;
 
 /// <summary>
@@ -14,11 +12,11 @@ namespace HelixToolkit.Nex.Geometries;
 /// <item>Thread-safe operations</item>
 /// </list>
 /// </remarks>
-public sealed class GeometryManager(IServiceProvider services) : IGeometryManager
+public sealed class GeometryManager(IContext context) : IGeometryManager
 {
     private static readonly ILogger _logger = LogManager.Create<GeometryManager>();
     private static readonly EventBus _eventBus = EventBus.Instance;
-    private readonly IContext _context = services.GetRequiredService<IContext>();
+    private readonly IContext _context = context;
     private readonly Pool<GeometryResourceType, Geometry> _pool = new();
     private readonly Dictionary<Geometry, int> _indexCountDict = []; // Tracks index counts for static geometries to manage TotalStaticIndexCount
     private readonly object _lock = new();

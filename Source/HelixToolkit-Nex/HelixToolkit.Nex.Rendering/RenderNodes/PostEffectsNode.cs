@@ -50,4 +50,21 @@ public sealed class PostEffectsNode : RenderNode
         }
         base.OnTeardown();
     }
+
+    public override void AddToGraph(RenderGraph graph)
+    {
+        graph.AddPass(
+            nameof(PostEffectsNode),
+            inputs: [new(SystemBufferNames.TextureColorF16, ResourceType.Texture)],
+            outputs: [new(SystemBufferNames.FinalOutputTexture, ResourceType.Texture)],
+            onSetup: (res) =>
+            {
+                res.Framebuf.Colors[0].Texture = res.Textures[SystemBufferNames.FinalOutputTexture];
+                res.Pass.Colors[0].ClearColor = Color.Transparent;
+                res.Pass.Colors[0].LoadOp = LoadOp.Clear;
+                res.Pass.Colors[0].StoreOp = StoreOp.Store;
+                res.Deps.Textures[0] = res.Textures[SystemBufferNames.TextureColorF16];
+            }
+        );
+    }
 }

@@ -39,7 +39,7 @@ public sealed class ForwardPlusLightCullingNode : ComputeNode
             _cullingConstants,
             BufferUsageBits.Storage,
             StorageType.Device,
-            "ForwardPlus_LightCullingConstants"
+            "FP_LightCull"
         );
         _depthSampler = Context.CreateSampler(SamplerStateDesc.PointClamp);
 
@@ -61,9 +61,14 @@ public sealed class ForwardPlusLightCullingNode : ComputeNode
             _logger.LogWarning("Render context data is null, skipping light culling pass.");
             return;
         }
-
         Debug.Assert(_pipeline.Valid, "_pipeline is not valid.");
         var renderContext = res.Context;
+
+        if (renderContext.Data.Lights.Count == 0)
+        {
+            // No lights, no need to dispatch the compute shader
+            return;
+        }
         var tileCountX = (uint)renderContext.TileCountX;
         var tileCountY = (uint)renderContext.TileCountY;
 
@@ -78,7 +83,7 @@ public sealed class ForwardPlusLightCullingNode : ComputeNode
         _cullingConstants.LightCount = (uint)(renderContext.Data.Lights.Count);
         _cullingConstants.ZNear = renderContext.CameraParams.NearPlane;
         _cullingConstants.ZFar = renderContext.CameraParams.FarPlane;
-        _cullingConstants.DepthTextureIndex = res.Deps.Textures[0].Index;
+        _cullingConstants.DepthTextureIndex = res.Textures[SystemBufferNames.TextureDepthF32].Index;
         _cullingConstants.MaxLightsPerTile = renderContext.FPLightConfig.MaxLightsPerTile;
         _cullingConstants.LightBufferAddress = renderContext.Data.Lights.GpuAddress;
         _cullingConstants.SamplerIndex = _depthSampler.Index;
@@ -107,7 +112,7 @@ public sealed class ForwardPlusLightCullingNode : ComputeNode
         using var shaderModule = Context.CreateShaderModuleGlsl(
             shaderSource,
             ShaderStage.Compute,
-            "ForwardPlus_LightCulling"
+            "FP_LightCull"
         );
 
         _pipeline = Context.CreateComputePipeline(
@@ -116,5 +121,60 @@ public sealed class ForwardPlusLightCullingNode : ComputeNode
 
         Debug.Assert(_pipeline.Valid, "Failed to create Forward+ light culling compute pipeline.");
         return _pipeline.Valid;
+    }
+
+    public override void AddToGraph(RenderGraph graph)
+    {
+        graph
+            .AddBuffer(SystemBufferNames.BufferLights, null)
+            .AddBuffer(
+                SystemBufferNames.BufferLightGrid,
+                p =>
+                {
+                    var totalTiles = p.Context.TileCountX * p.Context.TileCountY;
+                    // Light grid buffer: stores light count and index offset per tile
+                    return p.Context.Context.CreateBuffer(
+                        new BufferDesc
+                        {
+                            DataSize = (uint)(totalTiles * LightGridTile.SizeInBytes),
+                            Usage = BufferUsageBits.Storage,
+                            Storage = StorageType.Device,
+                        },
+                        "FP_LightGrid"
+                    );
+                }
+            )
+            .AddBuffer(
+                SystemBufferNames.BufferLightIndex,
+                p =>
+                {
+                    var totalTiles = p.Context.TileCountX * p.Context.TileCountY;
+                    // Light index list buffer: stores light indices for all tiles
+                    return p.Context.Context.CreateBuffer(
+                        new BufferDesc
+                        {
+                            DataSize = (uint)(
+                                totalTiles * p.Context.FPLightConfig.MaxLightsPerTile * sizeof(uint)
+                            ),
+                            Usage = BufferUsageBits.Storage,
+                            Storage = StorageType.Device,
+                        },
+                        "FP_LightIndices"
+                    );
+                }
+            )
+            .AddPass(
+                nameof(ForwardPlusLightCullingNode),
+                inputs: [new(SystemBufferNames.TextureDepthF32, ResourceType.Texture)],
+                outputs:
+                [
+                    new(SystemBufferNames.BufferLightGrid, ResourceType.Buffer),
+                    new(SystemBufferNames.BufferLightIndex, ResourceType.Buffer),
+                ],
+                onSetup: (res) =>
+                {
+                    res.Deps.Textures[0] = res.Textures[SystemBufferNames.TextureDepthF32];
+                }
+            );
     }
 }

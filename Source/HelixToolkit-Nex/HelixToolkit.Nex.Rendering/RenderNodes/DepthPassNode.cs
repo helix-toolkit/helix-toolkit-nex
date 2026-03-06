@@ -38,7 +38,7 @@ public sealed class DepthPassNode(
         }
         var fpData = new FPConstants
         {
-            Time = (float)DateTime.Now.TimeOfDay.TotalSeconds,
+            Time = res.Context.Time,
             CameraPosition = context.CameraParams.Position,
             InverseViewProjection = context.CameraParams.InvViewProjection,
             ViewProjection = context.CameraParams.ViewProjection,
@@ -126,5 +126,36 @@ public sealed class DepthPassNode(
 
         _pipeline = Context.CreateRenderPipeline(pipelineDesc);
         return _pipeline.Valid;
+    }
+
+    public override void AddToGraph(RenderGraph graph)
+    {
+        graph.AddPass(
+            nameof(DepthPassNode),
+            inputs:
+            [
+                new(SystemBufferNames.ForwardPlusConstants, ResourceType.Buffer),
+                new(SystemBufferNames.BufferMeshDrawOpaque, ResourceType.Buffer),
+            ],
+            outputs:
+            [
+                new(SystemBufferNames.TextureMeshId, ResourceType.Texture),
+                new(SystemBufferNames.TextureDepthF32, ResourceType.Texture),
+            ],
+            onSetup: (res) =>
+            {
+                res.Framebuf.DepthStencil.Texture = res.Textures[SystemBufferNames.TextureDepthF32];
+                res.Pass.Depth.ClearDepth = 0.0f;
+                res.Pass.Depth.LoadOp = LoadOp.Clear;
+                res.Pass.Depth.StoreOp = StoreOp.Store;
+
+                res.Framebuf.Colors[0].Texture = res.Textures[SystemBufferNames.TextureMeshId];
+                res.Pass.Colors[0].ClearColor = new(0, 0, 0, 0);
+                res.Pass.Colors[0].LoadOp = LoadOp.Clear;
+                res.Pass.Colors[0].StoreOp = StoreOp.Store;
+
+                res.Deps.Buffers[0] = res.Buffers[SystemBufferNames.BufferMeshDrawOpaque];
+            }
+        );
     }
 }

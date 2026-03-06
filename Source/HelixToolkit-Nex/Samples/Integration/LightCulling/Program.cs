@@ -13,10 +13,10 @@ app.Run();
 
 internal class App : Application
 {
-    public override string Name => "MeshCull DepthPrepass Test";
+    public override string Name => "ForwardPlus Test";
     private static readonly ILogger logger = LogManager.Create<App>();
     private IContext? _ctx;
-    private DepthPrepassTest? _example;
+    private LightCullingTest? _example;
 
     protected override void Initialize()
     {
@@ -35,7 +35,7 @@ internal class App : Application
         var windowSize = MainWindow.Size;
         _ctx.RecreateSwapchain(windowSize.Width, windowSize.Height);
 
-        _example = new DepthPrepassTest(_ctx);
+        _example = new LightCullingTest(_ctx);
 
         _example.Initialize(windowSize.Width, windowSize.Height);
     }

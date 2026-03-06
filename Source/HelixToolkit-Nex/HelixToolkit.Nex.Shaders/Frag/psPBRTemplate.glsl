@@ -66,16 +66,37 @@ layout (constant_id = 0) const uint MATERIAL_TYPE = 0;
 
 FPConstants fpConst = FPBuffer(pc.value.fpConstAddress).fpConstants;
 
+// Utility Functions
 PBRProperties getPBRMaterial()
 {
     MaterialBuffer materialBuf = MaterialBuffer(fpConst.materialBufferAddress);
     return materialBuf.materials[materialId];
 }
 
+float getTime() {
+    return fpConst.time;
+}
+
+mat4 getViewProjection() {
+    return fpConst.viewProjection;
+}
+
+mat4 getInvViewProjection() {
+    return fpConst.inverseViewProjection;
+}
+
+vec3 getCameraPosition() {
+    return fpConst.cameraPosition;
+}
+
+vec2 getScreenSize() {
+    return fpConst.screenDimensions;
+}
+
 // Custom code injection point
 // TEMPLATE_CUSTOM_CODE
 
-void forwardPlusLighting(in PBRMaterial material, out vec4 outFinalColor)
+vec4 forwardPlusLighting(in PBRMaterial material)
 {
     // Forward+ tiled lighting
     vec3 viewDir = normalize(fpConst.cameraPosition - fragWorldPos);
@@ -119,10 +140,10 @@ void forwardPlusLighting(in PBRMaterial material, out vec4 outFinalColor)
     }
     finalC += material.emissive;
 
-    outFinalColor = vec4(finalC, material.opacity);
+    return vec4(finalC, material.opacity);
 }
 
-void debugTileLighting(out vec4 outFinalColor)
+vec4 debugTileLighting()
 {
     // Calculate tile coordinates
     uvec2 tileCoord = uvec2(gl_FragCoord.xy) / uvec2(fpConst.tileSize);
@@ -136,7 +157,7 @@ void debugTileLighting(out vec4 outFinalColor)
     // Visualize number of lights in the tile
     float lightCountNormalized = float(tile.lightCount) / float(fpConst.maxLightsPerTile);
     if (tile.lightCount == 0) {
-        outFinalColor = vec4(0.0, 0.0, 0.0, 1.0);
+        return vec4(0.0, 0.0, 0.0, 1.0);
     } else {
         // Gradient: Blue -> Green -> Red
         vec3 blue = vec3(0.0, 0.0, 1.0);
@@ -149,7 +170,7 @@ void debugTileLighting(out vec4 outFinalColor)
         } else {
             color = mix(green, red, (lightCountNormalized - 0.5) * 2.0);
         }
-        outFinalColor = vec4(color, 1.0);
+        return vec4(color, 1.0);
     }
     //outFinalColor = vec4(float(tileCoord.x) / fpConst.tileCountX, float(tileCoord.y) / fpConst.tileCountY, lightCountNormalized, 1.0);
 }
@@ -198,40 +219,38 @@ PBRMaterial createPBRMaterial()
 /*TEMPLATE_CREATE_PBR_MATERIAL_IMPL_END*/
 }
 
-void nonLitOutputColor(in PBRMaterial material, out vec4 finalColor)
+vec4 nonLitOutputColor(in PBRMaterial material)
 {
-    finalColor = vec4(material.albedo + material.emissive, material.opacity);
+    return vec4(material.albedo + material.emissive, material.opacity);
 }
 
 
-
 // Template function to create final color
-void outputColor(out vec4 finalColor)
+vec4 outputColor()
 {
     if (MATERIAL_TYPE == 1u) {
         PBRMaterial material = createPBRMaterial();
-        forwardPlusLighting(material, finalColor);
-        return;
-    } else if (MATERIAL_TYPE == 2u) {
+        return forwardPlusLighting(material);
+    }
+    if (MATERIAL_TYPE == 2u) {
         PBRMaterial material = createPBRMaterial();
-        nonLitOutputColor(material, finalColor);
-        return;
-    } else if (MATERIAL_TYPE == 3u) {
+        return nonLitOutputColor(material);
+    }
+    if (MATERIAL_TYPE == 3u) {
         // Default to PBR lighting
-        debugTileLighting(finalColor);
-        return;
-    } else if (MATERIAL_TYPE == 4u) {
+        return debugTileLighting();
+    }
+    if (MATERIAL_TYPE == 4u) {
         // Unlit with vertex color
-        finalColor = vec4(fragNormal, 1.0);
-        return;
-    } else {
-        finalColor = vec4(1.0, 0.0, 1.0, 1.0); // Magenta for unsupported shading model
-        return;
+        return vec4(fragNormal, 1.0);
+    }
+    {
+        return vec4(1.0, 0.0, 1.0, 1.0); // Magenta for unsupported shading model
     }
 }
 
 /*TEMPLATE_CUSTOM_MAIN_START*/
 void main() {
-    outputColor(outColor);
+    outColor = outputColor();
 }
 /*TEMPLATE_CUSTOM_MAIN_END*/

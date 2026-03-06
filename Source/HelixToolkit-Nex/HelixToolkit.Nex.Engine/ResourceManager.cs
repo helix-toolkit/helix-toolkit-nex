@@ -65,12 +65,14 @@ public sealed class ResourceManager : Initializable, IResourceManager
     public ResourceManager(IServiceProvider services)
     {
         Context = services.GetRequiredService<IContext>();
-        Materials = services.GetService<IMaterialManager>() ?? new MaterialManager(services);
-        Geometries = services.GetService<IGeometryManager>() ?? new GeometryManager(services);
         MaterialProperties =
             services.GetService<IMaterialPropertyManager>() ?? new MaterialPropertyManager();
+        Materials =
+            services.GetService<IMaterialManager>()
+            ?? new MaterialManager(Context, MaterialProperties);
+        Geometries = services.GetService<IGeometryManager>() ?? new GeometryManager(Context);
         ShaderRepository =
-            services.GetService<IShaderRepository>() ?? new ShaderRepository(services);
+            services.GetService<IShaderRepository>() ?? new ShaderRepository(Context);
         StaticMeshIndexData = new StaticMeshIndexData(this);
         PBRPropertyData = new PBRPropertyData(this);
         MeshInfoData = new MeshInfoData(this);
@@ -123,7 +125,7 @@ public sealed class ResourceManager : Initializable, IResourceManager
 
     public bool Update()
     {
-        // Update all geometries with dirty buffers
+        // BeginFrame all geometries with dirty buffers
         foreach (var geometry in Geometries.GetAll())
         {
             if (geometry.BufferDirty != GeometryBufferType.None)

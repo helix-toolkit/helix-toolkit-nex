@@ -32,6 +32,14 @@ public interface IMaterialManager : IDisposable
     MaterialPropertyCreator CreateMaterial(string name, RenderPipelineDesc pipelineDesc);
 
     /// <summary>
+    /// Creates physically-based rendering (PBR) materials from the registry.
+    /// </summary>
+    /// <remarks>This method initializes and registers PBR materials based on <see cref="MaterialTypeRegistry"/>. It should
+    /// be called during the setup phase to ensure all registered materials are available for rendering.</remarks>
+    /// <returns>Number of materials has been created.</returns>
+    int CreatePBRMaterialsFromRegistry();
+
+    /// <summary>
     /// Destroys a material resource and frees its GPU pipeline.
     /// </summary>
     /// <param name="handle">Reference to the handle to destroy.</param>

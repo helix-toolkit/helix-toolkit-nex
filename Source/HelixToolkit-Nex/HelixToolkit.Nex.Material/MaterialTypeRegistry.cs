@@ -72,8 +72,8 @@ public static class MaterialTypeRegistry
                 OutputColorImplementation =
                     @"
     PBRMaterial material = createPBRMaterial();
-    forwardPlusLighting(material, finalColor);
-    return;",
+    return forwardPlusLighting(material);
+    ",
             }
         );
 
@@ -86,8 +86,8 @@ public static class MaterialTypeRegistry
                 OutputColorImplementation =
                     @"
     PBRMaterial material = createPBRMaterial();
-    nonLitOutputColor(material, finalColor);
-    return;",
+    return nonLitOutputColor(material);
+    ",
             }
         );
 
@@ -99,8 +99,8 @@ public static class MaterialTypeRegistry
                 Name = PBRShadingMode.DebugTileLightCount.ToString(),
                 OutputColorImplementation =
                     @"
-    debugTileLighting(finalColor);
-    return;",
+    return debugTileLighting();
+    ",
             }
         );
 
@@ -112,8 +112,8 @@ public static class MaterialTypeRegistry
                 Name = PBRShadingMode.Normal.ToString(),
                 OutputColorImplementation =
                     @"
-    finalColor = vec4(fragNormal, 1.0);
-    return;",
+    return vec4(fragNormal, 1.0);
+    ",
             }
         );
     }

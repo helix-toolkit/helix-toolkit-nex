@@ -12,7 +12,7 @@ internal class LightData : Initializable, IRenderData
     private ElementBuffer<Light>? _lightBuffer;
 
     private long _lastBufferUpdateTicks = 0;
-    private long _lastDataUpdateTicks = 0;
+    private long _lastDataUpdateTicks = Stopwatch.GetTimestamp();
 
     public BufferHandle Buffer => _lightBuffer is null ? BufferHandle.Null : _lightBuffer.Buffer;
 

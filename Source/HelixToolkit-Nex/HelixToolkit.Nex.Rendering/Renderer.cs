@@ -18,6 +18,10 @@ public class Renderer(IServiceProvider serviceProvider) : Initializable
 
     public override string Name => nameof(Renderer);
 
+    public IEnumerable<RenderNode> RenderNodes => _renderers.Values;
+
+    public IReadOnlyDictionary<string, RenderNode> RenderNodeMap => _renderers;
+
     public bool AddNode(RenderNode renderer)
     {
         ArgumentNullException.ThrowIfNull(renderer);
@@ -88,10 +92,10 @@ public class Renderer(IServiceProvider serviceProvider) : Initializable
     public void Render(RenderContext context, RenderGraph graph)
     {
         var cmdBuf = context.Context.AcquireCommandBuffer();
-        context.Update(cmdBuf);
+        context.BeginFrame();
         graph.Execute(context, cmdBuf, _renderers);
         context.Context.Submit(cmdBuf, context.FinalOutputTexture);
-        context.Statistics.AddFrameTimeStamp();
+        context.EndFrame();
     }
 
     protected override ResultCode OnInitializing()

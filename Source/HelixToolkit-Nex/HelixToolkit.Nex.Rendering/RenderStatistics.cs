@@ -7,9 +7,11 @@ public sealed class RenderStatistics
 
     public uint DrawCalls { get; internal set; }
 
-    public long LastRenderTime { get; internal set; } = 0;
+    public float RenderBeginTime { get; internal set; } = 0;
 
-    public long LastUpdateTime { get; internal set; } = 0;
+    public float RenderEndTime { get; internal set; } = 0;
+
+    public float LastUpdateTime { get; internal set; } = 0;
 
     public uint UpdateDurationSecond { set; get; } = 1;
 
@@ -18,13 +20,20 @@ public sealed class RenderStatistics
     public float FramesPerSecond =>
         AverageRenderDurationMs > 0 ? 1000f / AverageRenderDurationMs : 0;
 
-    public void ResetPerFrame()
+    public void BeginFrame()
     {
+        RenderBeginTime = Stopwatch.GetTimestamp() / (float)Stopwatch.Frequency;
         DrawCalls = 0;
         Update();
     }
 
-    public void AddFrameTimeStamp()
+    public void EndFrame()
+    {
+        AddFrameTimeStamp();
+        RenderEndTime = Stopwatch.GetTimestamp() / (float)Stopwatch.Frequency;
+    }
+
+    private void AddFrameTimeStamp()
     {
         _frameTimestamps.Push(Stopwatch.GetTimestamp());
     }

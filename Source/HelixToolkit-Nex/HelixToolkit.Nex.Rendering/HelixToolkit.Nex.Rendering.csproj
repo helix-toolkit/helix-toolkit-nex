@@ -25,4 +25,7 @@
             <PackagePath>\</PackagePath>
         </None>
     </ItemGroup>
+    <ItemGroup>
+      <Folder Include="RenderGraphs\" />
+    </ItemGroup>
 </Project>

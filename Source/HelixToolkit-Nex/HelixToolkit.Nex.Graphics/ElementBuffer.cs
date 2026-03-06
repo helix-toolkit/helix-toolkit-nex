@@ -430,7 +430,7 @@ public sealed class ElementBuffer<T> : IDisposable
     private ResultCode ResizeBuffer(int newCapacity)
     {
         // Dispose old buffer
-        if (!Buffer.Empty)
+        if (!Buffer.Empty && Capacity < newCapacity)
         {
             Buffer.Dispose();
             Buffer = BufferResource.Null;

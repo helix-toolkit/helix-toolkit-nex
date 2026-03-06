@@ -292,7 +292,7 @@ public class MaterialShaderBuilder
 
         var sb = new StringBuilder();
         sb.AppendLine("// Template function to create final color");
-        sb.AppendLine("void outputColor(out vec4 finalColor)");
+        sb.AppendLine("vec4 outputColor()");
         sb.AppendLine("{");
 
         foreach (var reg in registrations)
@@ -314,12 +314,12 @@ public class MaterialShaderBuilder
         }
 
         // Default fallback
-        sb.AppendLine("    // Fallback for unknown material types");
-        sb.AppendLine("    finalColor = vec4(1.0, 0.0, 1.0, 1.0); // Magenta");
+        sb.AppendLine("  // Fallback for unknown material types");
+        sb.AppendLine("  return vec4(1.0, 0.0, 1.0, 1.0); // Magenta");
         sb.AppendLine("}");
 
         // Replace the existing outputColor function
-        int outputColorStart = template.IndexOf("void outputColor(out vec4 finalColor)");
+        int outputColorStart = template.IndexOf("vec4 outputColor()");
         if (outputColorStart < 0)
         {
             // Append before main if not found
@@ -375,7 +375,7 @@ public class MaterialShaderBuilder
 
         var sb = new StringBuilder();
         sb.AppendLine($"// Material type: {registration.Name} (ID: {typeId})");
-        sb.AppendLine("void outputColor(out vec4 finalColor)");
+        sb.AppendLine("vec4 outputColor()");
         sb.AppendLine("{");
 
         // Add the implementation
@@ -391,7 +391,7 @@ public class MaterialShaderBuilder
         sb.AppendLine("}");
 
         // Replace the existing outputColor function (same logic as uber shader)
-        int outputColorStart = template.IndexOf("void outputColor(out vec4 finalColor)");
+        int outputColorStart = template.IndexOf("vec4 outputColor()");
         if (outputColorStart < 0)
         {
             int mainStart = template.IndexOf("/*TEMPLATE_CUSTOM_MAIN_START*/");

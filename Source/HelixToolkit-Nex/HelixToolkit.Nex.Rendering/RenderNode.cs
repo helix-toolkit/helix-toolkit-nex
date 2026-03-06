@@ -1,3 +1,5 @@
+using System.Reflection.Emit;
+
 namespace HelixToolkit.Nex.Rendering;
 
 public readonly record struct RenderResources(
@@ -121,6 +123,8 @@ public abstract class RenderNode : IDisposable
     }
 
     protected virtual void OnResize(int width, int height) { }
+
+    public abstract void AddToGraph(RenderGraph graph);
 
     #region IDisposable Support
     private bool _disposedValue;

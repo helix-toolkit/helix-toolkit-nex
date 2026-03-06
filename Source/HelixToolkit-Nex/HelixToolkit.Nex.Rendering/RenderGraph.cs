@@ -15,7 +15,7 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
     private static readonly ITracer _tracer = TracerFactory.GetTracer(nameof(RenderGraph));
     private static readonly ILogger _logger = LogManager.Create<RenderGraph>();
 
-    private sealed class GraphNode(
+    public sealed class GraphNode(
         string passName,
         IList<RenderResource> inputs,
         IList<RenderResource> outputs,
@@ -39,6 +39,8 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
     private readonly Dictionary<string, TextureResource> _textureResources = [];
     public Dictionary<string, BufferHandle> Buffers { get; } = [];
     public Dictionary<string, TextureHandle> Textures { get; } = [];
+
+    public IReadOnlyList<GraphNode> SortedPasses => _sortedPasses;
 
     private int _screenWidth = 0;
     private int _screenHeight = 0;
@@ -83,7 +85,7 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
 
     public RenderGraph AddBuffer(string name, Func<ResourceBuildParams, BufferResource>? buildFunc)
     {
-        if (_bufferBuilders.ContainsKey(name))
+        if (_bufferBuilders.TryGetValue(name, out var func) && func != null)
         {
             throw new InvalidOperationException(
                 $"A buffer with the name '{name}' already exists in the render graph."
@@ -327,7 +329,16 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
             Buffers[SystemBufferNames.BufferMeshDrawTransparent] =
                 context.Data?.MeshDrawsTransparent.Buffer ?? BufferResource.Null;
         }
-
+        if (Buffers.ContainsKey(SystemBufferNames.BufferDirectionalLight))
+        {
+            Buffers[SystemBufferNames.BufferDirectionalLight] =
+                context.Data?.DirectionalLights.Buffer ?? BufferResource.Null;
+        }
+        if (Buffers.ContainsKey(SystemBufferNames.BufferLights))
+        {
+            Buffers[SystemBufferNames.BufferLights] =
+                context.Data?.Lights.Buffer ?? BufferResource.Null;
+        }
         foreach (var pass in _sortedPasses)
         {
             pass.OnSetupRenderParams(
