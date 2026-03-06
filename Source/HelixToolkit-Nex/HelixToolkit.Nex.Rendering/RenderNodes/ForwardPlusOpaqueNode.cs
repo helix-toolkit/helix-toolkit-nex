@@ -7,6 +7,8 @@ public sealed class ForwardPlusOpaqueNode : RenderNode
 
     public override Color4 DebugColor => Color.Green;
 
+    public bool UseLightCulling { set; get; } = true;
+
     protected override bool BeginRender(in RenderResources res)
     {
         var context = res.Context;
@@ -22,7 +24,7 @@ public sealed class ForwardPlusOpaqueNode : RenderNode
         }
         var fpData = new FPConstants
         {
-            Enabled = 1,
+            Enabled = UseLightCulling ? 1u : 0,
             Time = res.Context.Time,
             CameraPosition = context.CameraParams.Position,
             InverseViewProjection = context.CameraParams.InvViewProjection,

@@ -18,7 +18,8 @@ public class PrepareNode : RenderNode
                         BufferUsageBits.Storage,
                         StorageType.Device,
                         "FPConstants"
-                    )
+                    ),
+                dependsOnScreenSize: false
             )
             .AddTexture(
                 SystemBufferNames.TextureColorF16,
