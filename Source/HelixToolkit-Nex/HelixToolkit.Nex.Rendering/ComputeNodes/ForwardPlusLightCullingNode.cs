@@ -27,6 +27,10 @@ public sealed class ForwardPlusLightCullingNode : ComputeNode
     public override string Name => nameof(ForwardPlusLightCullingNode);
     public override Color4 DebugColor => Color.Gold;
 
+    public bool EnableAABBCulling { get; set; } = true;
+
+    public bool EnableDepthMaskCulling { get; set; } = true;
+
     protected override bool OnSetup()
     {
         if (Context is null)
@@ -91,7 +95,8 @@ public sealed class ForwardPlusLightCullingNode : ComputeNode
             .GpuAddress(renderContext.Context);
         _cullingConstants.LightIndexBufferAddress = res.Buffers[SystemBufferNames.BufferLightIndex]
             .GpuAddress(renderContext.Context);
-
+        _cullingConstants.EnableAABBCulling = EnableAABBCulling ? 1u : 0u;
+        _cullingConstants.EnableDepthMaskCulling = EnableDepthMaskCulling ? 1u : 0u;
         res.CmdBuffer.UpdateBuffer(_cullingConstantsBuffer, _cullingConstants);
         res.CmdBuffer.BindComputePipeline(_pipeline);
         res.CmdBuffer.PushConstants(_cullingConstantsBuffer.GpuAddress);

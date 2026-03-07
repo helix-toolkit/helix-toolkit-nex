@@ -23,7 +23,7 @@ public sealed class FrustumCullNode : ComputeNode
     /// <summary>
     /// Minimum screen size (in percentage of screen height) for an object to be rendered. Objects smaller than this threshold will be culled.
     /// </summary>
-    public float MinScreenSize { get; set; } = 0.005f;
+    public float MinScreenSize { get; set; } = 0.001f;
 
     protected override bool OnSetup()
     {
