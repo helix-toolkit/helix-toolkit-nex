@@ -22,16 +22,16 @@ namespace SceneSamples;
 /// <see cref="IMaterialManager.CreatePBRMaterialsFromRegistry"/>, then call <see cref="Build"/>
 /// to populate the ECS world with scene nodes.
 /// </remarks>
-public class MinecraftScene : IScene
+public class MinecraftLargeScene : IScene
 {
     // -----------------------------------------------------------------------
     // World configuration constants
     // -----------------------------------------------------------------------
-    public int WorldSizeX { get; } = 32; // blocks along X
-    public int WorldSizeZ { get; } = 32; // blocks along Z
-    public int MaxTerrainHeight { get; } = 8; // maximum terrain height in blocks
-    public int MinTerrainHeight { get; } = 3; // minimum terrain base height
-    public const int NumPointLights = 60; // scattered point lights for Forward+
+    public int WorldSizeX { get; } = 256; // blocks along X
+    public int WorldSizeZ { get; } = 256; // blocks along Z
+    public int MaxTerrainHeight { get; } = 16; // maximum terrain height in blocks
+    public int MinTerrainHeight { get; } = 4; // minimum terrain base height
+    public const int NumPointLights = 500; // scattered point lights for Forward+
 
     // -----------------------------------------------------------------------
     // Block type – each value maps to an index in BlockMaterialDefs
@@ -48,6 +48,19 @@ public class MinecraftScene : IScene
         GoldOre = 7,
         Lava = 8,
         Water = 9,
+        Snow = 10,
+        Sandstone = 11,
+    }
+
+    // -----------------------------------------------------------------------
+    // Biome type – drives surface block selection and height scaling
+    // -----------------------------------------------------------------------
+    public enum BiomeType
+    {
+        Plains = 0, // grass / dirt / gravel
+        Desert = 1, // sand / sandstone, flat terrain
+        Snowy = 2, // snow cap, tall peaks, ice over water
+        Swamp = 3, // mud (dirt) surface, low + wet, mossy gravel
     }
 
     // -----------------------------------------------------------------------
@@ -71,6 +84,8 @@ public class MinecraftScene : IScene
         ("GoldOre", new Vector3(0.45f, 0.45f, 0.45f), 0.8f, 0.3f, 1.0f), // Gold Ore
         ("Lava", new Vector3(1.0f, 0.35f, 0.05f), 0.0f, 1.0f, 1.0f), // Lava
         ("Water", new Vector3(0.05f, 0.35f, 0.85f), 0.0f, 0.1f, 1.0f), // Water
+        ("Snow", new Vector3(0.92f, 0.95f, 1.00f), 0.0f, 0.85f, 1.0f), // Snow
+        ("PBR", new Vector3(0.82f, 0.72f, 0.48f), 0.0f, 0.95f, 1.0f), // Sandstone
     };
 
     // -----------------------------------------------------------------------
@@ -127,6 +142,17 @@ public class MinecraftScene : IScene
             float wave = 0.5 + 0.5 * sin(getTime() * 3.0 + fragWorldPos.x * 0.8 + fragWorldPos.z * 0.6);
             material.albedo = mix(material.albedo, vec3(0.1, 1, 1.0), wave);
             material.emissive = material.albedo * 0.15;
+            return forwardPlusLighting(material) + vec4(material.emissive, 0.0);
+            """
+        );
+
+        // Snow: bright diffuse white with a subtle sparkle specular
+        MaterialTypeRegistry.Register(
+            "Snow",
+            """
+            PBRMaterial material = createPBRMaterial();
+            float sparkle = pow(max(dot(fragNormal, normalize(getCameraPosition() - fragWorldPos)), 0.0), 16.0);
+            material.emissive = vec3(0.9, 0.95, 1.0) * sparkle * 0.3;
             return forwardPlusLighting(material) + vec4(material.emissive, 0.0);
             """
         );
@@ -188,6 +214,7 @@ public class MinecraftScene : IScene
         // ------------------------------------------------------------------
         // Generate terrain heightmap and populate per-block-type instance transforms
         // ------------------------------------------------------------------
+        var biomeMap = GenerateBiomeMap(WorldSizeX, WorldSizeZ);
         int[,] heightMap = GenerateHeightMap(WorldSizeX, WorldSizeZ);
 
         for (int x = 0; x < WorldSizeX; x++)
@@ -195,9 +222,10 @@ public class MinecraftScene : IScene
             for (int z = 0; z < WorldSizeZ; z++)
             {
                 int terrainHeight = heightMap[x, z];
+                BiomeType biome = biomeMap[x, z];
                 for (int y = 0; y <= terrainHeight; y++)
                 {
-                    int blockIdx = (int)GetBlockType(x, y, z, terrainHeight, heightMap);
+                    int blockIdx = (int)GetBlockType(x, y, z, terrainHeight, heightMap, biome);
                     instancings[blockIdx]
                         .Transforms.Add(Matrix4x4.CreateTranslation(new Vector3(x, y, z)));
                 }
@@ -307,10 +335,14 @@ public class MinecraftScene : IScene
 
     /// <summary>
     /// Generates a 2D heightmap using layered sine/cosine waves for natural terrain variation.
+    /// Heights are additionally shaped by the biome: deserts are flattened, snowy biomes
+    /// amplified, swamps clamped low.
     /// </summary>
     public int[,] GenerateHeightMap(int sizeX, int sizeZ)
     {
+        var biomeMap = GenerateBiomeMap(sizeX, sizeZ);
         var map = new int[sizeX, sizeZ];
+
         for (int x = 0; x < sizeX; x++)
         {
             for (int z = 0; z < sizeZ; z++)
@@ -318,6 +350,7 @@ public class MinecraftScene : IScene
                 float fx = x / (float)sizeX;
                 float fz = z / (float)sizeZ;
 
+                // Three octaves of sinusoidal noise for the base elevation
                 float n =
                     0.50f * MathF.Sin(fx * MathF.PI * 2.5f + 0.3f) * MathF.Cos(fz * MathF.PI * 2.0f)
                     + 0.25f
@@ -329,6 +362,16 @@ public class MinecraftScene : IScene
 
                 // Normalise from ~[-0.9, 0.9] to [0, 1]
                 float normalized = Math.Clamp((n + 0.9f) / 1.8f, 0f, 1f);
+
+                // Biome-specific height shaping
+                normalized = biomeMap[x, z] switch
+                {
+                    BiomeType.Desert => normalized * 0.45f, // flat desert
+                    BiomeType.Snowy => 0.35f + normalized * 0.65f, // tall snowy peaks
+                    BiomeType.Swamp => normalized * 0.30f, // low, wet swamp
+                    _ => normalized, // plains: unchanged
+                };
+
                 map[x, z] =
                     MinTerrainHeight + (int)(normalized * (MaxTerrainHeight - MinTerrainHeight));
             }
@@ -337,43 +380,128 @@ public class MinecraftScene : IScene
     }
 
     /// <summary>
-    /// Returns the <see cref="BlockType"/> for the voxel at <c>(x, y, z)</c> given the terrain height.
+    /// Generates a 2D biome map using an independent low-frequency noise field so that
+    /// biome boundaries are gradual and completely independent of terrain elevation.
     /// </summary>
-    public BlockType GetBlockType(int x, int y, int z, int terrainHeight, int[,] heightMap)
+    public static BiomeType[,] GenerateBiomeMap(int sizeX, int sizeZ)
+    {
+        var map = new BiomeType[sizeX, sizeZ];
+        for (int x = 0; x < sizeX; x++)
+        {
+            for (int z = 0; z < sizeZ; z++)
+            {
+                float fx = x / (float)sizeX;
+                float fz = z / (float)sizeZ;
+
+                // Two independent low-frequency channels – temperature (T) and humidity (H)
+                float T =
+                    0.60f
+                        * MathF.Sin(fx * MathF.PI * 1.3f + 0.7f)
+                        * MathF.Cos(fz * MathF.PI * 1.1f + 0.4f)
+                    + 0.40f
+                        * MathF.Sin(fx * MathF.PI * 2.7f + 1.9f)
+                        * MathF.Cos(fz * MathF.PI * 2.3f + 1.2f);
+
+                float H =
+                    0.60f
+                        * MathF.Sin(fx * MathF.PI * 1.7f + 2.3f)
+                        * MathF.Cos(fz * MathF.PI * 1.5f + 0.9f)
+                    + 0.40f
+                        * MathF.Sin(fx * MathF.PI * 3.1f + 0.5f)
+                        * MathF.Cos(fz * MathF.PI * 2.9f + 1.7f);
+
+                // Map both channels to [0, 1]
+                float t = Math.Clamp((T + 1f) * 0.5f, 0f, 1f); // 0 = cold, 1 = hot
+                float h = Math.Clamp((H + 1f) * 0.5f, 0f, 1f); // 0 = dry,  1 = wet
+
+                map[x, z] = (t, h) switch
+                {
+                    ( > 0.55f, _) => BiomeType.Desert, // hot            → desert
+                    ( < 0.30f, _) => BiomeType.Snowy, // cold           → snowy
+                    (_, > 0.60f) => BiomeType.Swamp, // mild + wet     → swamp
+                    _ => BiomeType.Plains, // mild + dry/mid → plains
+                };
+            }
+        }
+        return map;
+    }
+
+    /// <summary>
+    /// Returns the <see cref="BlockType"/> for the voxel at <c>(x, y, z)</c> given the terrain
+    /// height and the biome at that column.
+    /// </summary>
+    public BlockType GetBlockType(
+        int x,
+        int y,
+        int z,
+        int terrainHeight,
+        int[,] heightMap,
+        BiomeType biome
+    )
     {
         int depth = terrainHeight - y; // 0 = surface, increases downward
 
+        // ── Bedrock ──────────────────────────────────────────────────────
         if (y == 0)
             return BlockType.Bedrock;
 
-        // Lava pools at y == 1 underneath tall terrain columns
-        if (y == 1 && terrainHeight >= MinTerrainHeight + 3)
+        // ── Lava pockets at y==1 under tall columns ──────────────────────
+        if (y == 1 && terrainHeight >= MinTerrainHeight + 4)
             return BlockType.Lava;
 
-        // Water covers the surface of very flat, low-lying areas
+        // ── Water / ice at very low surface columns ───────────────────────
         if (depth == 0 && terrainHeight <= MinTerrainHeight)
-            return BlockType.Water;
+            return biome == BiomeType.Snowy ? BlockType.Snow : BlockType.Water;
 
-        // Sparse gold ore veins deep underground
-        if (depth >= 3 && (x * 7 + z * 13 + y * 3) % 17 == 0)
+        // ── Sparse gold ore deep underground (all biomes) ─────────────────
+        if (depth >= 4 && (x * 7 + z * 13 + y * 3) % 17 == 0)
             return BlockType.GoldOre;
 
-        if (depth >= 3)
+        // ── Deep sub-surface: stone (all biomes) ─────────────────────────
+        if (depth >= 4)
             return BlockType.Stone;
 
-        if (depth == 2)
-            return (x + z) % 5 == 0 ? BlockType.Gravel : BlockType.Stone;
+        // ── Shallow sub-surface (depth 1-3): biome variations ────────────
+        if (depth >= 2)
+        {
+            return biome switch
+            {
+                BiomeType.Desert => BlockType.Sandstone,
+                BiomeType.Swamp => (x * 3 + z * 7 + y) % 4 == 0 ? BlockType.Gravel : BlockType.Dirt,
+                _ => (x + z) % 5 == 0 ? BlockType.Gravel : BlockType.Stone,
+            };
+        }
 
         if (depth == 1)
-            return BlockType.Dirt;
+        {
+            return biome switch
+            {
+                BiomeType.Desert => BlockType.Sand,
+                BiomeType.Snowy => BlockType.Dirt,
+                BiomeType.Swamp => BlockType.Dirt,
+                _ => BlockType.Dirt,
+            };
+        }
 
-        // Surface: wood on peaks, sand on low flat ground, grass everywhere else
-        if (terrainHeight >= MinTerrainHeight + (MaxTerrainHeight - MinTerrainHeight) - 1)
-            return BlockType.Wood;
-
-        if (terrainHeight <= MinTerrainHeight + 1)
-            return BlockType.Sand;
-
-        return BlockType.Grass;
+        // ── Surface block (depth == 0) ────────────────────────────────────
+        return biome switch
+        {
+            BiomeType.Desert => BlockType.Sand,
+            BiomeType.Snowy => terrainHeight
+            >= MinTerrainHeight + (MaxTerrainHeight - MinTerrainHeight) / 2
+                ? BlockType.Snow
+                : BlockType.Stone,
+            BiomeType.Swamp => (x * 5 + z * 11) % 6 == 0 ? BlockType.Gravel : BlockType.Grass,
+            _ => terrainHeight >= MinTerrainHeight + (MaxTerrainHeight - MinTerrainHeight) - 1
+                ? BlockType.Wood // mountain peak (wood trunk tops)
+                : BlockType.Grass,
+        };
     }
+
+    /// <summary>
+    /// Overload kept for API compatibility — delegates to the biome-aware overload
+    /// using a Plains biome.
+    /// </summary>
+    public BlockType GetBlockType(int x, int y, int z, int terrainHeight, int[,] heightMap) =>
+        GetBlockType(x, y, z, terrainHeight, heightMap, BiomeType.Plains);
 }

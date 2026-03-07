@@ -1,7 +1,5 @@
-// See https://aka.ms/new-console-template for more information
 using System.Diagnostics;
 using System.Numerics;
-using HelixToolkit.Nex;
 using HelixToolkit.Nex.DependencyInjection;
 using HelixToolkit.Nex.Engine;
 using HelixToolkit.Nex.Engine.Cameras;
@@ -15,7 +13,7 @@ using HelixToolkit.Nex.Scene;
 using HelixToolkit.Nex.Shaders.Frag;
 using SceneSamples;
 
-internal class LightCullingTest(IContext context) : IDisposable
+internal class LightCullingTest(IContext context, bool largeScene = true) : IDisposable
 {
     public const SampleTextureMode DebugMode = SampleTextureMode.DebugMeshId;
 
@@ -26,29 +24,23 @@ internal class LightCullingTest(IContext context) : IDisposable
     private WorldDataProvider? _worldDataProvider;
     private IResourceManager? _resourceManager;
     private Node? _root;
+    private IScene _scene = largeScene ? new MinecraftLargeScene() : new MinecraftScene();
 
     // Camera orbits above the center of the Minecraft world
-    private readonly Camera _camera = new PerspectiveCamera()
-    {
-        Position = new Vector3(
-            MinecraftScene.WorldSizeX / 2f,
-            80,
-            -MinecraftScene.WorldSizeZ / 2f - 20
-        ),
-        Target = new Vector3(MinecraftScene.WorldSizeX / 2f, 0, MinecraftScene.WorldSizeZ / 2f),
-        FarPlane = 1000,
-    };
-    private readonly Vector3 _initialCameraPosition = new(
-        MinecraftScene.WorldSizeX / 4f,
-        80,
-        -MinecraftScene.WorldSizeZ / 4f - 20
-    );
-
+    private Camera _camera = new PerspectiveCamera();
+    private Vector3 _initialCameraPosition = new();
     private readonly long _startTimestamp = Stopwatch.GetTimestamp();
     private RenderGraph? _renderGraph;
 
     public void Initialize(int width, int height)
     {
+        _camera = new PerspectiveCamera()
+        {
+            Position = new Vector3(_scene.WorldSizeX / 2f, 80, -_scene.WorldSizeZ / 2f - 20),
+            Target = new Vector3(_scene.WorldSizeX / 2f, 0, _scene.WorldSizeZ / 2f),
+            FarPlane = 1000,
+        };
+        _initialCameraPosition = new(_scene.WorldSizeX / 4f, 80, -_scene.WorldSizeZ / 4f - 20);
         RenderSettings.LogFPSInDebug = true;
         var services = new ServiceCollection { new ServiceDescriptor(typeof(IContext), _context) };
         services.AddSingleton<IResourceManager, ResourceManager>();
@@ -57,14 +49,14 @@ internal class LightCullingTest(IContext context) : IDisposable
         _resourceManager = _serviceProvider.GetRequiredService<IResourceManager>();
 
         // Register Minecraft block material types before the material registry is built
-        MinecraftScene.RegisterMaterials();
+        _scene.RegisterMaterials();
 
         _resourceManager.Materials.CreatePBRMaterialsFromRegistry();
         _rendererManager = new Renderer(_serviceProvider);
         _rendererManager.AddNode(new PrepareNode());
         _rendererManager.AddNode(new DepthPassNode());
         _rendererManager.AddNode(new FrustumCullNode());
-        _rendererManager.AddNode(new ForwardPlusOpaqueNode());
+        _rendererManager.AddNode(new ForwardPlusOpaqueNode() { UseLightCulling = true });
         _rendererManager.AddNode(new ForwardPlusLightCullingNode());
         var postEffectNode = new PostEffectsNode();
         postEffectNode.AddEffect(new ToneMapping());
@@ -82,7 +74,7 @@ internal class LightCullingTest(IContext context) : IDisposable
         _renderContext.Initialize();
 
         // Delegate all scene construction to MinecraftScene
-        _root = MinecraftScene.Build(_context, _resourceManager, _worldDataProvider);
+        _root = _scene.Build(_context, _resourceManager, _worldDataProvider);
     }
 
     public void Render(int width, int height)
@@ -98,19 +90,15 @@ internal class LightCullingTest(IContext context) : IDisposable
 
     private void RotateCamera()
     {
-        float zoom = 0.5f;
+        float zoom = 0.8f;
         var totalTime = (float)(
             (Stopwatch.GetTimestamp() - _startTimestamp) / (double)Stopwatch.Frequency
         );
-        var worldCenter = new Vector3(
-            MinecraftScene.WorldSizeX / 2f,
-            0,
-            MinecraftScene.WorldSizeZ / 2f
-        );
+        var worldCenter = new Vector3(_scene.WorldSizeX / 2f, 0, _scene.WorldSizeZ / 2f);
         var rotation = Matrix4x4.CreateRotationY(totalTime * 0.05f);
         _camera.Position =
             Vector3.Transform(_initialCameraPosition - worldCenter, rotation) + worldCenter;
-        _camera.Target = worldCenter + new Vector3(0, MinecraftScene.MaxTerrainHeight / 2f, 0);
+        _camera.Target = worldCenter + new Vector3(0, _scene.MaxTerrainHeight / 2f, 0);
         _camera.Position = Vector3.Lerp(_camera.Position, worldCenter, zoom);
     }
 
