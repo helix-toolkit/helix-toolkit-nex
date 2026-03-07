@@ -83,12 +83,7 @@ public class RenderGraphTests
     public void Compile_SinglePass_WithOutputs_IsIncluded()
     {
         var graph = new RenderGraph(BuildServices());
-        AddPass(
-            graph,
-            "Producer",
-            [],
-            [new RenderResource("TexA", ResourceType.Texture)]
-        );
+        AddPass(graph, "Producer", [], [new RenderResource("TexA", ResourceType.Texture)]);
 
         var names = GetSortedPassNames(graph);
 
@@ -105,18 +100,8 @@ public class RenderGraphTests
     public void Compile_TwoPasses_ProducerBeforeConsumer()
     {
         var graph = new RenderGraph(BuildServices());
-        AddPass(
-            graph,
-            "Consumer",
-            [new RenderResource("TexA", ResourceType.Texture)],
-            []
-        );
-        AddPass(
-            graph,
-            "Producer",
-            [],
-            [new RenderResource("TexA", ResourceType.Texture)]
-        );
+        AddPass(graph, "Consumer", [new RenderResource("TexA", ResourceType.Texture)], []);
+        AddPass(graph, "Producer", [], [new RenderResource("TexA", ResourceType.Texture)]);
 
         var names = GetSortedPassNames(graph);
 
@@ -133,18 +118,8 @@ public class RenderGraphTests
     {
         var graph = new RenderGraph(BuildServices());
         // Add in natural order — sort must still be correct regardless.
-        AddPass(
-            graph,
-            "Producer",
-            [],
-            [new RenderResource("TexA", ResourceType.Texture)]
-        );
-        AddPass(
-            graph,
-            "Consumer",
-            [new RenderResource("TexA", ResourceType.Texture)],
-            []
-        );
+        AddPass(graph, "Producer", [], [new RenderResource("TexA", ResourceType.Texture)]);
+        AddPass(graph, "Consumer", [new RenderResource("TexA", ResourceType.Texture)], []);
 
         var names = GetSortedPassNames(graph);
 
@@ -163,12 +138,7 @@ public class RenderGraphTests
         // PassA -> PassB -> PassC
         var graph = new RenderGraph(BuildServices());
         AddPass(graph, "PassC", [new RenderResource("TexB", ResourceType.Texture)], []);
-        AddPass(
-            graph,
-            "PassA",
-            [],
-            [new RenderResource("TexA", ResourceType.Texture)]
-        );
+        AddPass(graph, "PassA", [], [new RenderResource("TexA", ResourceType.Texture)]);
         AddPass(
             graph,
             "PassB",
@@ -246,18 +216,8 @@ public class RenderGraphTests
     public void Compile_TwoIndependentPasses_BothPresent()
     {
         var graph = new RenderGraph(BuildServices());
-        AddPass(
-            graph,
-            "PassX",
-            [],
-            [new RenderResource("BufX", ResourceType.Buffer)]
-        );
-        AddPass(
-            graph,
-            "PassY",
-            [],
-            [new RenderResource("BufY", ResourceType.Buffer)]
-        );
+        AddPass(graph, "PassX", [], [new RenderResource("BufX", ResourceType.Buffer)]);
+        AddPass(graph, "PassY", [], [new RenderResource("BufY", ResourceType.Buffer)]);
 
         var names = GetSortedPassNames(graph);
 
@@ -276,12 +236,7 @@ public class RenderGraphTests
     {
         // "SwapchainTex" has no producer pass — it is an external resource.
         var graph = new RenderGraph(BuildServices());
-        AddPass(
-            graph,
-            "Presenter",
-            [new RenderResource("SwapchainTex", ResourceType.Texture)],
-            []
-        );
+        AddPass(graph, "Presenter", [new RenderResource("SwapchainTex", ResourceType.Texture)], []);
 
         var names = GetSortedPassNames(graph);
 
@@ -295,12 +250,7 @@ public class RenderGraphTests
     {
         // PrepPass outputs TexDepth, FinalPass needs TexDepth + external Swapchain.
         var graph = new RenderGraph(BuildServices());
-        AddPass(
-            graph,
-            "PrepPass",
-            [],
-            [new RenderResource("TexDepth", ResourceType.Texture)]
-        );
+        AddPass(graph, "PrepPass", [], [new RenderResource("TexDepth", ResourceType.Texture)]);
         AddPass(
             graph,
             "FinalPass",
@@ -326,18 +276,8 @@ public class RenderGraphTests
     public void Compile_BufferDependency_ProducerBeforeConsumer()
     {
         var graph = new RenderGraph(BuildServices());
-        AddPass(
-            graph,
-            "WriteBuffer",
-            [],
-            [new RenderResource("LightGrid", ResourceType.Buffer)]
-        );
-        AddPass(
-            graph,
-            "ReadBuffer",
-            [new RenderResource("LightGrid", ResourceType.Buffer)],
-            []
-        );
+        AddPass(graph, "WriteBuffer", [], [new RenderResource("LightGrid", ResourceType.Buffer)]);
+        AddPass(graph, "ReadBuffer", [new RenderResource("LightGrid", ResourceType.Buffer)], []);
 
         var names = GetSortedPassNames(graph);
 
@@ -488,22 +428,64 @@ public class RenderGraphTests
 
     [TestMethod]
     [TestCategory("RenderGraph")]
-    [ExpectedException(typeof(InvalidOperationException))]
-    public void AddTexture_DuplicateName_ThrowsInvalidOperationException()
+    public void AddTexture_DuplicateName_NoThrows()
     {
         var graph = new RenderGraph(BuildServices());
         graph.AddTexture("TexA", null);
-        graph.AddTexture("TexA", null); // must throw
+        graph.AddTexture("TexA", null); // must not throw
+    }
+
+    [TestMethod]
+    [TestCategory("RenderGraph")]
+    public void AddBuffer_DuplicateName_NoThrows()
+    {
+        var graph = new RenderGraph(BuildServices());
+        graph.AddBuffer("BufA", null);
+        graph.AddBuffer("BufA", null); // must not throw
     }
 
     [TestMethod]
     [TestCategory("RenderGraph")]
     [ExpectedException(typeof(InvalidOperationException))]
-    public void AddBuffer_DuplicateName_ThrowsInvalidOperationException()
+    public void AddTexture_DuplicateName_ThrowsInvalidOperation()
     {
         var graph = new RenderGraph(BuildServices());
-        graph.AddBuffer("BufA", null);
-        graph.AddBuffer("BufA", null); // must throw
+        graph.AddTexture(
+            "TexA",
+            (res) =>
+            {
+                return Graphics.TextureResource.Null;
+            }
+        );
+        graph.AddTexture(
+            "TexA",
+            (res) =>
+            {
+                return Graphics.TextureResource.Null;
+            }
+        ); // must throw
+    }
+
+    [TestMethod]
+    [TestCategory("RenderGraph")]
+    [ExpectedException(typeof(InvalidOperationException))]
+    public void AddBuffer_DuplicateName_ThrowsInvalidOperation()
+    {
+        var graph = new RenderGraph(BuildServices());
+        graph.AddBuffer(
+            "BufA",
+            (res) =>
+            {
+                return Graphics.BufferResource.Null;
+            }
+        );
+        graph.AddBuffer(
+            "BufA",
+            (res) =>
+            {
+                return Graphics.BufferResource.Null;
+            }
+        ); // must throw
     }
 
     // -----------------------------------------------------------------------
@@ -532,24 +514,14 @@ public class RenderGraphTests
         // Before removal: PrepPass -> OpaquePass -> PostPass
         // Remove OpaquePass; PrepPass and PostPass are now independent roots.
         var graph = new RenderGraph(BuildServices());
-        AddPass(
-            graph,
-            "PrepPass",
-            [],
-            [new RenderResource("TexA", ResourceType.Texture)]
-        );
+        AddPass(graph, "PrepPass", [], [new RenderResource("TexA", ResourceType.Texture)]);
         AddPass(
             graph,
             "OpaquePass",
             [new RenderResource("TexA", ResourceType.Texture)],
             [new RenderResource("TexB", ResourceType.Texture)]
         );
-        AddPass(
-            graph,
-            "PostPass",
-            [new RenderResource("TexB", ResourceType.Texture)],
-            []
-        );
+        AddPass(graph, "PostPass", [new RenderResource("TexB", ResourceType.Texture)], []);
 
         graph.RemovePass("OpaquePass");
         var names = GetSortedPassNames(graph);
@@ -569,12 +541,7 @@ public class RenderGraphTests
     public void Compile_CalledMultipleTimes_ProducesConsistentOrder()
     {
         var graph = new RenderGraph(BuildServices());
-        AddPass(
-            graph,
-            "Depth",
-            [],
-            [new RenderResource("TexDepth", ResourceType.Texture)]
-        );
+        AddPass(graph, "Depth", [], [new RenderResource("TexDepth", ResourceType.Texture)]);
         AddPass(
             graph,
             "LightCull",
@@ -700,12 +667,7 @@ public class RenderGraphTests
         // A consumer lists the same resource name twice in its inputs.
         // The graph must not count the edge twice (which would corrupt in-degree).
         var graph = new RenderGraph(BuildServices());
-        AddPass(
-            graph,
-            "Producer",
-            [],
-            [new RenderResource("TexShared", ResourceType.Texture)]
-        );
+        AddPass(graph, "Producer", [], [new RenderResource("TexShared", ResourceType.Texture)]);
         AddPass(
             graph,
             "Consumer",
@@ -733,24 +695,9 @@ public class RenderGraphTests
         // ProducerA and ProducerB both write "TexShared".
         // Consumer reads "TexShared" — it must come after both producers.
         var graph = new RenderGraph(BuildServices());
-        AddPass(
-            graph,
-            "ProducerA",
-            [],
-            [new RenderResource("TexShared", ResourceType.Texture)]
-        );
-        AddPass(
-            graph,
-            "ProducerB",
-            [],
-            [new RenderResource("TexShared", ResourceType.Texture)]
-        );
-        AddPass(
-            graph,
-            "Consumer",
-            [new RenderResource("TexShared", ResourceType.Texture)],
-            []
-        );
+        AddPass(graph, "ProducerA", [], [new RenderResource("TexShared", ResourceType.Texture)]);
+        AddPass(graph, "ProducerB", [], [new RenderResource("TexShared", ResourceType.Texture)]);
+        AddPass(graph, "Consumer", [new RenderResource("TexShared", ResourceType.Texture)], []);
 
         var names = GetSortedPassNames(graph);
 
@@ -791,12 +738,7 @@ public class RenderGraphTests
         var graph = new RenderGraph(BuildServices());
 
         graph.Apply(g =>
-            AddPass(
-                g,
-                "ConfiguredPass",
-                [],
-                [new RenderResource("TexOut", ResourceType.Texture)]
-            )
+            AddPass(g, "ConfiguredPass", [], [new RenderResource("TexOut", ResourceType.Texture)])
         );
 
         var names = GetSortedPassNames(graph);
@@ -811,20 +753,10 @@ public class RenderGraphTests
 
         graph
             .Apply(g =>
-                AddPass(
-                    g,
-                    "Stage1",
-                    [],
-                    [new RenderResource("Tex1", ResourceType.Texture)]
-                )
+                AddPass(g, "Stage1", [], [new RenderResource("Tex1", ResourceType.Texture)])
             )
             .Apply(g =>
-                AddPass(
-                    g,
-                    "Stage2",
-                    [new RenderResource("Tex1", ResourceType.Texture)],
-                    []
-                )
+                AddPass(g, "Stage2", [new RenderResource("Tex1", ResourceType.Texture)], [])
             );
 
         var names = GetSortedPassNames(graph);

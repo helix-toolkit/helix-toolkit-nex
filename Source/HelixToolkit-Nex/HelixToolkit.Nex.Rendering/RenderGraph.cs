@@ -70,14 +70,14 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
     /// required.</param>
     /// <param name="dependsOnScreenSize">Indicates whether the texture's size should depend on the screen size. The default is <see langword="true"/>.</param>
     /// <returns>The current instance of the <see cref="RenderGraph"/> to allow for method chaining.</returns>
-    /// <exception cref="InvalidOperationException">Thrown if a texture with the specified <paramref name="name"/> already exists in the render graph.</exception>
+    /// <exception cref="InvalidOperationException">Thrown if a texture with the specified <paramref name="name"/> and its creation function already exists in the render graph.</exception>
     public RenderGraph AddTexture(
         string name,
         Func<ResourceBuildParams, TextureResource>? buildFunc,
         bool dependsOnScreenSize = true
     )
     {
-        if (_textureBuilders.ContainsKey(name))
+        if (_textureBuilders.TryGetValue(name, out var func) && func != null)
         {
             throw new InvalidOperationException(
                 $"A texture with the name '{name}' already exists in the render graph."
@@ -107,7 +107,7 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
     /// function is required.</param>
     /// <param name="dependsOnScreenSize">Indicates whether the buffer's size depends on the screen size. The default is <see langword="true"/>.</param>
     /// <returns>The current instance of <see cref="RenderGraph"/> to allow for method chaining.</returns>
-    /// <exception cref="InvalidOperationException">Thrown if a buffer with the specified <paramref name="name"/> already exists in the render graph.</exception>
+    /// <exception cref="InvalidOperationException">Thrown if a buffer with the specified <paramref name="name"/> and its creation function already exists in the render graph.</exception>
     public RenderGraph AddBuffer(
         string name,
         Func<ResourceBuildParams, BufferResource>? buildFunc,
