@@ -17,4 +17,8 @@
     <ProjectReference Include="..\..\Application\Application.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Screenshots\" />
+  </ItemGroup>
+
 </Project>
