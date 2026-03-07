@@ -421,6 +421,7 @@ internal class InstancingMeshCullingExample : IDisposable
             FirstIndex = 0,
             MaterialId = 0,
             Transform = Matrix4x4.Identity,
+            Cullable = 1,
         };
         _meshInfos[0] = new MeshInfo()
         {
