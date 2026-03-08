@@ -17,7 +17,7 @@ public interface IMaterialPropertyManager : IDisposable
     int Count { get; }
 
     /// <summary>
-    /// Creates an new material property resource with the specified material name.
+    /// Creates a new material property resource with the specified material name.
     /// </summary>
     /// <param name="materialName">Name of the material</param>
     /// <returns>A handle to the material resource.</returns>

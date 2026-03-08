@@ -44,7 +44,7 @@ public sealed class MaterialPropertyManager : IMaterialPropertyManager
     public MaterialProperties Create(MaterialTypeId materialTypeId)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        if (!MaterialTypeRegistry.HasTypeId(materialTypeId.Id))
+        if (!MaterialTypeRegistry.HasTypeId(materialTypeId))
         {
             throw new ArgumentException(
                 $"Material type ID '{materialTypeId.Id}' is not registered.",

@@ -131,6 +131,8 @@ public sealed class ForwardPlusLightCullingNode : ComputeNode
     public override void AddToGraph(RenderGraph graph)
     {
         graph
+            // BufferLights is created and managed elsewhere (e.g., by the RenderContext); register it
+            // here for dependency tracking only, so no local factory is supplied.
             .AddBuffer(SystemBufferNames.BufferLights, null)
             .AddBuffer(
                 SystemBufferNames.BufferLightGrid,

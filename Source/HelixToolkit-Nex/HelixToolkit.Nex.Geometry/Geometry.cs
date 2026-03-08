@@ -388,33 +388,6 @@ public partial class Geometry : ObservableObject, IDisposable
         }
         return ResultCode.Ok;
     }
-
-    public bool UploadToGlobalIndexBuffer(uint globalFirstIndex, IContext context)
-    {
-        if (!CanHaveIndexBuffer || _indices.Count == 0)
-        {
-            return false;
-        }
-        unsafe
-        {
-            using var ptr = _indices.GetInternalArray().Pin();
-            var result = context.Upload(
-                IndexBuffer,
-                globalFirstIndex * sizeof(uint),
-                (nint)ptr.Pointer,
-                (uint)(_indices.Count * sizeof(uint))
-            );
-            if (result != ResultCode.Ok)
-            {
-                logger.LogError(
-                    $"Failed to upload index buffer for Geometry {Id} to global buffer: {result}"
-                );
-                return false;
-            }
-            IndexOffset = globalFirstIndex;
-            return true;
-        }
-    }
     #endregion
 
     #region Create Bounding Box

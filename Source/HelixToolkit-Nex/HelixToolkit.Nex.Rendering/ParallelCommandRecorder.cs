@@ -33,7 +33,8 @@ public class ParallelCommandRecorder : IDisposable
     public ICommandBuffer[] RecordParallel<T>(
         in RenderPass renderPass,
         IEnumerable<T> workItems,
-        Action<ICommandBuffer, T> recordAction)
+        Action<ICommandBuffer, T> recordAction
+    )
     {
         var items = workItems.ToArray();
         var secondaryBuffers = new ICommandBuffer[items.Length];
@@ -43,28 +44,39 @@ public class ParallelCommandRecorder : IDisposable
         var localRenderPass = renderPass;
 
         // Record commands in parallel
-        Parallel.For(0, items.Length, i =>
-        {
-            try
+        Parallel.For(
+            0,
+            items.Length,
+            i =>
             {
-                var secondaryBuffer = _context.CreateSecondaryCommandBuffer(localRenderPass);
-                _secondaryBuffers.Add(secondaryBuffer);
+                try
+                {
+                    var secondaryBuffer = _context.CreateSecondaryCommandBuffer(localRenderPass);
+                    _secondaryBuffers.Add(secondaryBuffer);
 
-                // Record commands for this work item
-                recordAction(secondaryBuffer, items[i]);
+                    // Record commands for this work item
+                    recordAction(secondaryBuffer, items[i]);
 
-                secondaryBuffers[i] = secondaryBuffer;
+                    secondaryBuffers[i] = secondaryBuffer;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(
+                        ex,
+                        "Error recording secondary command buffer for work item {INDEX}",
+                        i
+                    );
+                    exceptions.Add(ex);
+                }
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error recording secondary command buffer for work item {INDEX}", i);
-                exceptions.Add(ex);
-            }
-        });
+        );
 
         if (!exceptions.IsEmpty)
         {
-            throw new AggregateException("Errors occurred during parallel command recording", exceptions);
+            throw new AggregateException(
+                "Errors occurred during parallel command recording",
+                exceptions
+            );
         }
 
         return secondaryBuffers;
@@ -83,40 +95,50 @@ public class ParallelCommandRecorder : IDisposable
         in RenderPass renderPass,
         IEnumerable<T> workItems,
         Action<ICommandBuffer, T> recordAction,
-        int maxDegreeOfParallelism)
+        int maxDegreeOfParallelism
+    )
     {
         var items = workItems.ToArray();
         var secondaryBuffers = new ICommandBuffer[items.Length];
         var exceptions = new ConcurrentBag<Exception>();
 
-        var options = new ParallelOptions
-        {
-            MaxDegreeOfParallelism = maxDegreeOfParallelism
-        };
+        var options = new ParallelOptions { MaxDegreeOfParallelism = maxDegreeOfParallelism };
 
         // Copy to local variable to avoid capture of 'in' parameter
         var localRenderPass = renderPass;
 
-        Parallel.For(0, items.Length, options, i =>
-        {
-            try
+        Parallel.For(
+            0,
+            items.Length,
+            options,
+            i =>
             {
-                var secondaryBuffer = _context.CreateSecondaryCommandBuffer(localRenderPass);
-                _secondaryBuffers.Add(secondaryBuffer);
+                try
+                {
+                    var secondaryBuffer = _context.CreateSecondaryCommandBuffer(localRenderPass);
+                    _secondaryBuffers.Add(secondaryBuffer);
 
-                recordAction(secondaryBuffer, items[i]);
-                secondaryBuffers[i] = secondaryBuffer;
+                    recordAction(secondaryBuffer, items[i]);
+                    secondaryBuffers[i] = secondaryBuffer;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(
+                        ex,
+                        "Error recording secondary command buffer for work item {INDEX}",
+                        i
+                    );
+                    exceptions.Add(ex);
+                }
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error recording secondary command buffer for work item {INDEX}", i);
-                exceptions.Add(ex);
-            }
-        });
+        );
 
         if (!exceptions.IsEmpty)
         {
-            throw new AggregateException("Errors occurred during parallel command recording", exceptions);
+            throw new AggregateException(
+                "Errors occurred during parallel command recording",
+                exceptions
+            );
         }
 
         return secondaryBuffers;
@@ -135,7 +157,8 @@ public class ParallelCommandRecorder : IDisposable
         in RenderPass renderPass,
         IEnumerable<T> workItems,
         int batchSize,
-        Action<ICommandBuffer, IEnumerable<T>> recordBatchAction)
+        Action<ICommandBuffer, IEnumerable<T>> recordBatchAction
+    )
     {
         var items = workItems.ToArray();
         var batchCount = (items.Length + batchSize - 1) / batchSize;
@@ -145,30 +168,41 @@ public class ParallelCommandRecorder : IDisposable
         // Copy to local variable to avoid capture of 'in' parameter
         var localRenderPass = renderPass;
 
-        Parallel.For(0, batchCount, i =>
-        {
-            try
+        Parallel.For(
+            0,
+            batchCount,
+            i =>
             {
-                var start = i * batchSize;
-                var count = Math.Min(batchSize, items.Length - start);
-                var batch = items.Skip(start).Take(count);
+                try
+                {
+                    var start = i * batchSize;
+                    var count = Math.Min(batchSize, items.Length - start);
+                    var batch = new ArraySegment<T>(items, start, count);
 
-                var secondaryBuffer = _context.CreateSecondaryCommandBuffer(localRenderPass);
-                _secondaryBuffers.Add(secondaryBuffer);
+                    var secondaryBuffer = _context.CreateSecondaryCommandBuffer(localRenderPass);
+                    _secondaryBuffers.Add(secondaryBuffer);
 
-                recordBatchAction(secondaryBuffer, batch);
-                secondaryBuffers[i] = secondaryBuffer;
+                    recordBatchAction(secondaryBuffer, batch);
+                    secondaryBuffers[i] = secondaryBuffer;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(
+                        ex,
+                        "Error recording secondary command buffer for batch {INDEX}",
+                        i
+                    );
+                    exceptions.Add(ex);
+                }
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error recording secondary command buffer for batch {INDEX}", i);
-                exceptions.Add(ex);
-            }
-        });
+        );
 
         if (!exceptions.IsEmpty)
         {
-            throw new AggregateException("Errors occurred during batched command recording", exceptions);
+            throw new AggregateException(
+                "Errors occurred during batched command recording",
+                exceptions
+            );
         }
 
         return secondaryBuffers;

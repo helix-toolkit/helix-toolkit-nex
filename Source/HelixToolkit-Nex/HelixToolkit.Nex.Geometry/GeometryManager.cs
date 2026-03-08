@@ -109,17 +109,27 @@ public sealed class GeometryManager(IContext context) : IGeometryManager
 
     public void Clear()
     {
-        var list = _indexCountDict.Keys.ToList();
-        foreach (var key in list)
+        lock (_lock)
         {
-            Remove(key);
+            // Take a snapshot of all geometries currently in the pool (static and dynamic).
+            var list = _pool
+                .Objects.Select(entry => entry.Obj)
+                .Where(geometry => geometry is not null)
+                .ToList();
+            foreach (var geometry in list)
+            {
+                Remove(geometry!);
+            }
+            Debug.Assert(_pool.Count == 0, "Pool should be empty after Clear.");
+            Debug.Assert(
+                TotalStaticIndexCount == 0,
+                "TotalStaticIndexCount should be zero after Clear."
+            );
+            Debug.Assert(
+                _indexCountDict.Count == 0,
+                "_indexCountDict should be empty after Clear."
+            );
         }
-        Debug.Assert(_pool.Count == 0, "Pool should be empty after Clear.");
-        Debug.Assert(
-            TotalStaticIndexCount == 0,
-            "TotalStaticIndexCount should be zero after Clear."
-        );
-        Debug.Assert(_indexCountDict.Count == 0, "_indexCountDict should be empty after Clear.");
     }
 
     public IEnumerable<Geometry> GetAll()

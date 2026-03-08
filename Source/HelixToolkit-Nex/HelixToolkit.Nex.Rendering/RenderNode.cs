@@ -1,5 +1,3 @@
-using System.Reflection.Emit;
-
 namespace HelixToolkit.Nex.Rendering;
 
 public readonly record struct RenderResources(
@@ -77,11 +75,12 @@ public abstract class RenderNode : IDisposable
         {
             return;
         }
+        // Mark as detached before calling into teardown logic to prevent re-entrant calls.
+        _isAttached = false;
         using var scope = _tracer.BeginScope($"Detaching renderer: {Name}");
         OnTeardown();
         RenderManager?.RemoveNode(this);
         RenderManager = null;
-        _isAttached = false;
     }
 
     protected virtual void OnTeardown() { }
