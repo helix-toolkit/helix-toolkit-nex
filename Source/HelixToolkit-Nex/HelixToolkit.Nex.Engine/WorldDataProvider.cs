@@ -11,6 +11,7 @@ public sealed class WorldDataProvider : IRenderDataProvider, IDisposable
     private readonly DirectionalLightData _directionalLightData;
     private readonly MeshDrawData _meshDrawDataOpaque;
     private readonly MeshDrawData _meshDrawDataTransparent;
+    private readonly Entity _preserve;
 
     public readonly World World = World.Create();
     public IResourceManager ResourceManager { get; }
@@ -33,6 +34,7 @@ public sealed class WorldDataProvider : IRenderDataProvider, IDisposable
 
     public WorldDataProvider(IServiceProvider services)
     {
+        _preserve = World.Create<int>(); // Make sure entity 0 is not used, as it is reserved for "null" in some cases.
         ResourceManager = services.GetRequiredService<IResourceManager>();
         _lightData = new LightData(Context, World);
         _directionalLightData = new DirectionalLightData(Context, World);

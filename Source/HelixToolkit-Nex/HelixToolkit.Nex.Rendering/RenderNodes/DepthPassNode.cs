@@ -31,7 +31,7 @@ public sealed class DepthPassNode(
     protected override bool BeginRender(in RenderResources res)
     {
         var context = res.Context;
-        var fpBuffer = res.Buffers[SystemBufferNames.ForwardPlusConstants];
+        var fpBuffer = res.Buffers[SystemBufferNames.BufferForwardPlusConstants];
         if (!fpBuffer.Valid)
         {
             return false;
@@ -134,12 +134,12 @@ public sealed class DepthPassNode(
             nameof(DepthPassNode),
             inputs:
             [
-                new(SystemBufferNames.ForwardPlusConstants, ResourceType.Buffer),
+                new(SystemBufferNames.BufferForwardPlusConstants, ResourceType.Buffer),
                 new(SystemBufferNames.BufferMeshDrawOpaque, ResourceType.Buffer),
             ],
             outputs:
             [
-                new(SystemBufferNames.TextureMeshId, ResourceType.Texture),
+                new(SystemBufferNames.TextureEntityId, ResourceType.Texture),
                 new(SystemBufferNames.TextureDepthF32, ResourceType.Texture),
             ],
             onSetup: (res) =>
@@ -149,7 +149,7 @@ public sealed class DepthPassNode(
                 res.Pass.Depth.LoadOp = LoadOp.Clear;
                 res.Pass.Depth.StoreOp = StoreOp.Store;
 
-                res.Framebuf.Colors[0].Texture = res.Textures[SystemBufferNames.TextureMeshId];
+                res.Framebuf.Colors[0].Texture = res.Textures[SystemBufferNames.TextureEntityId];
                 res.Pass.Colors[0].ClearColor = new(0, 0, 0, 0);
                 res.Pass.Colors[0].LoadOp = LoadOp.Clear;
                 res.Pass.Colors[0].StoreOp = StoreOp.Store;

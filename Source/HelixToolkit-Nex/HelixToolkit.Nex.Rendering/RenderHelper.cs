@@ -157,7 +157,7 @@ public static class RenderHelper
         uint drawCount = 0;
         var cmdBuf = res.CmdBuffer;
         var context = res.Context;
-        var fpConstAddress = res.Buffers[SystemBufferNames.ForwardPlusConstants]
+        var fpConstAddress = res.Buffers[SystemBufferNames.BufferForwardPlusConstants]
             .GpuAddress(context.Context);
         cmdBuf.BindIndexBuffer(context.Data.StaticMeshIndexData.Buffer, IndexFormat.UI32);
         if (meshDrawData.HasStaticMesh)
@@ -249,7 +249,7 @@ public static class RenderHelper
         uint drawCount = 0;
         var cmdBuf = res.CmdBuffer;
         var context = res.Context;
-        var fpConstAddress = res.Buffers[SystemBufferNames.ForwardPlusConstants]
+        var fpConstAddress = res.Buffers[SystemBufferNames.BufferForwardPlusConstants]
             .GpuAddress(context.Context);
         if (meshDrawData.HasDynamicMesh)
         {

@@ -11,13 +11,13 @@ public class PrepareNode : RenderNode
     {
         graph
             .AddBuffer(
-                SystemBufferNames.ForwardPlusConstants,
+                SystemBufferNames.BufferForwardPlusConstants,
                 p =>
                     p.Context.Context.CreateBuffer(
                         new FPConstants(),
                         BufferUsageBits.Storage,
                         StorageType.Device,
-                        "FPConstants"
+                        SystemBufferNames.BufferForwardPlusConstants
                     ),
                 dependsOnScreenSize: false
             )
@@ -30,7 +30,7 @@ public class PrepareNode : RenderNode
                         (uint)p.Context.WindowSize.Height,
                         TextureUsageBits.Sampled | TextureUsageBits.Attachment,
                         StorageType.Device,
-                        debugName: "ColorF16"
+                        debugName: SystemBufferNames.TextureColorF16
                     )
             )
             .AddTexture(
@@ -42,11 +42,11 @@ public class PrepareNode : RenderNode
                         (uint)p.Context.WindowSize.Height,
                         TextureUsageBits.Sampled | TextureUsageBits.Attachment,
                         StorageType.Device,
-                        debugName: "DepthF32"
+                        debugName: SystemBufferNames.TextureDepthF32
                     )
             )
             .AddTexture(
-                SystemBufferNames.TextureMeshId,
+                SystemBufferNames.TextureEntityId,
                 p =>
                     p.Context.Context.CreateTexture2D(
                         Format.RG_F32,
@@ -54,7 +54,7 @@ public class PrepareNode : RenderNode
                         (uint)p.Context.WindowSize.Height,
                         TextureUsageBits.Sampled | TextureUsageBits.Attachment,
                         StorageType.Device,
-                        debugName: "MeshId"
+                        debugName: SystemBufferNames.TextureEntityId
                     )
             )
             .AddFinalOutputTexture()
@@ -62,9 +62,9 @@ public class PrepareNode : RenderNode
                 nameof(PrepareNode),
                 [],
                 [
-                    new(SystemBufferNames.ForwardPlusConstants, ResourceType.Buffer),
+                    new(SystemBufferNames.BufferForwardPlusConstants, ResourceType.Buffer),
                     new(SystemBufferNames.TextureDepthF32, ResourceType.Texture),
-                    new(SystemBufferNames.TextureMeshId, ResourceType.Texture),
+                    new(SystemBufferNames.TextureEntityId, ResourceType.Texture),
                     new(SystemBufferNames.TextureColorF16, ResourceType.Texture),
                 ],
                 res => { }

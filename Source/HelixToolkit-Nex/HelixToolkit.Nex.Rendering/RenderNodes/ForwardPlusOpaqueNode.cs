@@ -17,7 +17,7 @@ public sealed class ForwardPlusOpaqueNode : RenderNode
             _logger.LogWarning("Render context data is null, skipping forward+ opaque pass.");
             return false;
         }
-        var fpBuffer = res.Buffers[SystemBufferNames.ForwardPlusConstants];
+        var fpBuffer = res.Buffers[SystemBufferNames.BufferForwardPlusConstants];
         if (!fpBuffer.Valid)
         {
             return false;
@@ -94,7 +94,7 @@ public sealed class ForwardPlusOpaqueNode : RenderNode
                 [
                     new(SystemBufferNames.BufferMeshDrawOpaque, ResourceType.Buffer),
                     new(SystemBufferNames.TextureDepthF32, ResourceType.Texture),
-                    new(SystemBufferNames.ForwardPlusConstants, ResourceType.Buffer),
+                    new(SystemBufferNames.BufferForwardPlusConstants, ResourceType.Buffer),
                     new(SystemBufferNames.BufferLightGrid, ResourceType.Buffer),
                     new(SystemBufferNames.BufferLightIndex, ResourceType.Buffer),
                 ],
@@ -114,7 +114,7 @@ public sealed class ForwardPlusOpaqueNode : RenderNode
                     res.Pass.Colors[0].StoreOp = StoreOp.Store;
                     res.Deps.Textures[0] = res.Textures[SystemBufferNames.TextureDepthF32];
                     res.Deps.Buffers[0] = res.Buffers[SystemBufferNames.BufferMeshDrawOpaque];
-                    res.Deps.Buffers[1] = res.Buffers[SystemBufferNames.ForwardPlusConstants];
+                    res.Deps.Buffers[1] = res.Buffers[SystemBufferNames.BufferForwardPlusConstants];
                     res.Deps.Buffers[2] = res.Buffers[SystemBufferNames.BufferLightGrid];
                     res.Deps.Buffers[3] = res.Buffers[SystemBufferNames.BufferLightIndex];
                 }

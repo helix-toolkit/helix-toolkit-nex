@@ -43,7 +43,7 @@ public sealed class DebugMeshIdNode(Format targetFormat = Format.RGBA_F16)
     {
         graph.AddPass(
             nameof(DebugMeshIdNode),
-            inputs: [new(SystemBufferNames.TextureMeshId, ResourceType.Texture)],
+            inputs: [new(SystemBufferNames.TextureEntityId, ResourceType.Texture)],
             outputs: [new(SystemBufferNames.TextureColorF16, ResourceType.Texture)],
             onSetup: (res) =>
             {
@@ -51,7 +51,7 @@ public sealed class DebugMeshIdNode(Format targetFormat = Format.RGBA_F16)
                 res.Pass.Colors[0].ClearColor = Color.Black;
                 res.Pass.Colors[0].LoadOp = LoadOp.Clear;
                 res.Pass.Colors[0].StoreOp = StoreOp.Store;
-                res.Deps.Textures[0] = res.Textures[SystemBufferNames.TextureMeshId];
+                res.Deps.Textures[0] = res.Textures[SystemBufferNames.TextureEntityId];
             }
         );
     }

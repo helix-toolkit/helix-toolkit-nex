@@ -26,7 +26,13 @@ public partial class Instancing : ObservableObject, IDisposable
     {
         if (!_dirty)
             return ResultCode.Ok;
-
+        if (_transforms.Count > Limits.MaxInstanceCount)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(Transforms),
+                $"Instance count {_transforms.Count} exceeds the maximum allowed {Limits.MaxInstanceCount}."
+            );
+        }
         Buffer ??= new ElementBuffer<Matrix4x4>(
             context,
             _transforms.Count,

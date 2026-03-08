@@ -593,9 +593,12 @@ public class RenderGraphTests
             "Prepare",
             [],
             [
-                new RenderResource(SystemBufferNames.ForwardPlusConstants, ResourceType.Buffer),
+                new RenderResource(
+                    SystemBufferNames.BufferForwardPlusConstants,
+                    ResourceType.Buffer
+                ),
                 new RenderResource(SystemBufferNames.TextureDepthF32, ResourceType.Texture),
-                new RenderResource(SystemBufferNames.TextureMeshId, ResourceType.Texture),
+                new RenderResource(SystemBufferNames.TextureEntityId, ResourceType.Texture),
                 new RenderResource(SystemBufferNames.TextureColorF16, ResourceType.Texture),
             ]
         );
@@ -603,12 +606,15 @@ public class RenderGraphTests
             graph,
             "DepthPass",
             [
-                new RenderResource(SystemBufferNames.ForwardPlusConstants, ResourceType.Buffer),
+                new RenderResource(
+                    SystemBufferNames.BufferForwardPlusConstants,
+                    ResourceType.Buffer
+                ),
                 new RenderResource(SystemBufferNames.BufferMeshDrawOpaque, ResourceType.Buffer),
             ],
             [
                 new RenderResource(SystemBufferNames.TextureDepthF32, ResourceType.Texture),
-                new RenderResource(SystemBufferNames.TextureMeshId, ResourceType.Texture),
+                new RenderResource(SystemBufferNames.TextureEntityId, ResourceType.Texture),
             ]
         );
         AddPass(
@@ -625,7 +631,10 @@ public class RenderGraphTests
             "Opaque",
             [
                 new RenderResource(SystemBufferNames.TextureDepthF32, ResourceType.Texture),
-                new RenderResource(SystemBufferNames.ForwardPlusConstants, ResourceType.Buffer),
+                new RenderResource(
+                    SystemBufferNames.BufferForwardPlusConstants,
+                    ResourceType.Buffer
+                ),
                 new RenderResource(SystemBufferNames.BufferLightGrid, ResourceType.Buffer),
             ],
             [new RenderResource(SystemBufferNames.TextureColorF16, ResourceType.Texture)]

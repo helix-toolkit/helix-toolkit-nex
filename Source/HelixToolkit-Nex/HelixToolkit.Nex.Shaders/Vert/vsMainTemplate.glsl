@@ -13,7 +13,7 @@ layout(location = 4) out vec3 fragTangent;
 layout(location = 5) out vec2 fragTexCoord;
 #endif
 #ifdef OUTPUT_DRAW_ID
-layout(location = 6) out flat uvec2 fragEntityId;
+layout(location = 6) out flat vec2 fragEntityId;
 #endif
 
 layout(push_constant) uniform Pc {
@@ -60,17 +60,23 @@ MeshDraw meshDraw = MeshDrawBuffer(fpConst.meshDrawBufferAddress).draws[meshDraw
 
 MeshInfo meshInfo = MeshInfoBuffer(fpConst.meshInfoBufferAddress).value[meshDraw.meshId];
 
-mat4 getInstancingMatrix() {
+uint getInstancingIndex() {
+    if (meshDraw.instancingBufferAddress == 0) {
+        return 0;
+    }
+    if (meshDraw.cullable != 0 && meshDraw.instancingIndexBufferAddress != 0) {
+        InstancingIndexBuffer instancingIdx = InstancingIndexBuffer(meshDraw.instancingIndexBufferAddress);
+        return instancingIdx.value[gl_InstanceIndex];
+    }
+    return gl_InstanceIndex;
+}
+
+mat4 getInstancingMatrix(uint index) {
     if (meshDraw.instancingBufferAddress == 0) {
         return mat4(1.0);
     }
     InstancingBuffer instancingBuf = InstancingBuffer(meshDraw.instancingBufferAddress);
-    if (meshDraw.cullable != 0 && meshDraw.instancingIndexBufferAddress != 0) {
-        InstancingIndexBuffer instancingIdx = InstancingIndexBuffer(meshDraw.instancingIndexBufferAddress);
-        uint idx = instancingIdx.value[gl_InstanceIndex];
-        return instancingBuf.instancing[idx];
-    }
-    return instancingBuf.instancing[gl_InstanceIndex];
+    return instancingBuf.instancing[index];
 }
 
 GpuVertexProps emptyProps;
@@ -100,10 +106,10 @@ vec4 getVertexColor() {
 }
 
 // Template function to calculate vertex output
-void calVertexOutput(out vec4 pos, out vec3 wp, out vec3 normal, out vec3 tangent, out vec4 color, out vec2 texCoord) {
+void calVertexOutput(in uint index, out vec4 pos, out vec3 wp, out vec3 normal, out vec3 tangent, out vec4 color, out vec2 texCoord) {
 /*TEMPLATE_CALCULATE_VERTEX_OUTPUT_IMPL_START*/
     vec4 position = getVertex();
-    mat4 instance = getInstancingMatrix();
+    mat4 instance = getInstancingMatrix(index);
     mat4 model = instance * meshDraw.transform;
 
     vec4 worldPos = model * position;
@@ -119,6 +125,21 @@ void calVertexOutput(out vec4 pos, out vec3 wp, out vec3 normal, out vec3 tangen
 /*TEMPLATE_CALCULATE_VERTEX_OUTPUT_IMPL_END*/
 }
 
+vec2 packEntityIdAndIndex(uint entityId, uint entityVer, uint instanceIndex) {
+    uint id = entityId & 0xFFFFFFu;            // 24 bits, Max 16,777,215
+    uint inst = instanceIndex & 0xFFFFFu;      // 20 bits, Max 1,048,575
+    uint ver = entityVer & 0xFFFFFu;       // 20 bits, Max 1,048,575
+
+    // Pack R: [8 bits Instance Low] [24 bits ID]
+    uint packedR = id | (inst << 24u);
+
+    // Pack G: [20 bits Version] [12 bits Instance High]
+    // We take the remaining 12 bits of the instance index (shifted right by 8)
+    uint packedG = (inst >> 8u) | (ver << 12u);
+
+    return vec2(uintBitsToFloat(packedR), uintBitsToFloat(packedG));
+}
+
 void main() {
     materialId = meshDraw.materialId;
 #ifdef EXCLUDE_MESH_PROPS
@@ -126,9 +147,10 @@ void main() {
     vec3 fragTangent;
     vec2 fragTexCoord;
 #endif
-    calVertexOutput(gl_Position, fragWorldPos, fragNormal, fragTangent, fragColor, fragTexCoord);
+    uint idx = getInstancingIndex();
+    calVertexOutput(idx, gl_Position, fragWorldPos, fragNormal, fragTangent, fragColor, fragTexCoord);
 #ifdef OUTPUT_DRAW_ID
-    fragEntityId = uvec2(meshDraw.entityId, meshDraw.entityVer);
+    fragEntityId = packEntityIdAndIndex(meshDraw.entityId, meshDraw.entityVer, idx);
 #endif
 }
 
