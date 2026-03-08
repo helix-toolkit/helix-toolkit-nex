@@ -58,6 +58,7 @@ internal sealed class MeshInfoData : Initializable, IRenderData
                     if (objects[i].Obj is null)
                     {
                         ctx.Write(ref empty);
+                        continue;
                     }
                     var meshInfo = new MeshInfo
                     {

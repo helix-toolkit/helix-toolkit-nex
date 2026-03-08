@@ -150,7 +150,9 @@ internal sealed class VulkanImmediateCommands : IDisposable
             // Need to allocate a new secondary buffer
             if (_secondaryBuffers.Count >= KMaxSecondaryCommandBuffers)
             {
-                _logger.LogWarning("Maximum number of secondary command buffers reached. Waiting...");
+                _logger.LogWarning(
+                    "Maximum number of secondary command buffers reached. Waiting..."
+                );
                 // Wait for some to become available
                 foreach (var buf in _secondaryBuffers)
                 {
@@ -207,7 +209,8 @@ internal sealed class VulkanImmediateCommands : IDisposable
         VkCommandBufferBeginInfo bi = new()
         {
             sType = VK.VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-            flags = VK.VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT
+            flags =
+                VK.VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT
                 | VK.VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT,
             pInheritanceInfo = &inheritanceInfo,
         };
@@ -225,9 +228,11 @@ internal sealed class VulkanImmediateCommands : IDisposable
         {
             throw new InvalidOperationException("Buffer is not a secondary command buffer");
         }
-
-        VK.vkEndCommandBuffer(wrapper.Instance).CheckResult();
-        wrapper.IsEncoding = false;
+        lock (_secondaryBuffersLock)
+        {
+            VK.vkEndCommandBuffer(wrapper.Instance).CheckResult();
+            wrapper.IsEncoding = false;
+        }
     }
 
     /// <summary>

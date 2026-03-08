@@ -49,7 +49,7 @@ public sealed class GeometryBufferCreation
         Assert.AreEqual(
             ResultCode.Ok,
             result,
-            "Id buffer creation failed with error: " + result.ToString()
+            "Index buffer creation failed with error: " + result.ToString()
         );
     }
 

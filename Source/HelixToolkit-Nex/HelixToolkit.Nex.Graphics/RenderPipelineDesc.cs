@@ -147,7 +147,11 @@ public sealed class RenderPipelineDesc
             Offset = offset,
             Size = (uint32_t)data.Length,
         };
-        SpecInfo.Data = SpecInfo.Data.Concat(data).ToArray();
+        var oldLength = SpecInfo.Data.Length;
+        var newData = new byte[oldLength + data.Length];
+        Array.Copy(SpecInfo.Data, 0, newData, 0, oldLength);
+        Array.Copy(data, 0, newData, oldLength, data.Length);
+        SpecInfo.Data = newData;
     }
 
     /// <summary>

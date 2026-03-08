@@ -99,7 +99,7 @@ public partial class Geometry : ObservableObject, IDisposable
     private BufferResource _vertexPropsBuffer = BufferResource.Null;
 
     /// <summary>
-    /// Id buffer is only used for dynamic geometry. All static geometry shares single index buffer externally.
+    /// Index buffer is only used for dynamic geometry. All static geometry shares single index buffer externally.
     /// </summary>
     private BufferResource _indexBuffer = BufferResource.Null;
     private BufferResource _vertColorsBuffer = BufferResource.Null;

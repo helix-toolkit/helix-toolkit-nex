@@ -1,7 +1,7 @@
 namespace HelixToolkit.Nex;
 
 /// <summary>
-/// A lock-free, single-producer / single-consumer (SPSC) ring buffer with a fixed capacity for unmanged data types.
+/// A lock-free, single-producer / single-consumer (SPSC) ring buffer with a fixed capacity.
 /// </summary>
 /// <remarks>
 /// <para>

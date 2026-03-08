@@ -7,6 +7,8 @@ namespace HelixToolkit.Nex.Rendering;
 /// </summary>
 public static class RenderContextExtensions
 {
+    private static readonly ILogger _logger = LogManager.Create("RenderContextExtensions");
+
     /// <summary>
     /// Creates a secondary command buffer compatible with the specified render pass.
     /// </summary>
@@ -74,9 +76,17 @@ public static class RenderContextExtensions
             items.Length,
             i =>
             {
-                var secondaryBuffer = cmdBuf.Context.CreateSecondaryCommandBuffer(localRenderPass);
-                recordAction(secondaryBuffer, items[i]);
-                secondaryBuffers[i] = secondaryBuffer;
+                try
+                { // Create a secondary command buffer for this item}
+                    var secondaryBuffer = cmdBuf.Context.CreateSecondaryCommandBuffer(localRenderPass);
+                    recordAction(secondaryBuffer, items[i]);
+                    secondaryBuffers[i] = secondaryBuffer;
+                }
+                catch (Exception ex)
+                {
+                    // Handle exceptions from recording
+                    _logger.LogError($"Error recording command buffer for item {i}: {ex}");
+                }
             }
         );
 

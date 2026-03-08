@@ -5,17 +5,17 @@ namespace HelixToolkit.Nex.Rendering.PostEffects;
 public sealed class ToneMapping : PostEffect
 {
     private static readonly ILogger _logger = LogManager.Create<ToneMapping>();
-    private RenderPipelineResource _toneGammePipeline = RenderPipelineResource.Null;
+    private RenderPipelineResource _toneGammaPipeline = RenderPipelineResource.Null;
     private SamplerResource _toneMappingSampler = SamplerResource.Null;
 
     public override string Name => nameof(ToneMapping);
 
     public override void Apply(in RenderResources res)
     {
-        Debug.Assert(_toneGammePipeline.Valid, "Tone mapping pipeline is not valid.");
+        Debug.Assert(_toneGammaPipeline.Valid, "Tone mapping pipeline is not valid.");
         var cmdBuffer = res.CmdBuffer;
         var deps = res.Deps;
-        cmdBuffer.BindRenderPipeline(_toneGammePipeline);
+        cmdBuffer.BindRenderPipeline(_toneGammaPipeline);
         cmdBuffer.BindDepthState(DepthState.Disabled);
         cmdBuffer.PushConstants(
             new ToneGammaPushConstants()
@@ -40,7 +40,7 @@ public sealed class ToneMapping : PostEffect
         CreateToneMappingPipeline();
         var samplerDesc = SamplerStateDesc.PointRepeat;
         _toneMappingSampler = Context.CreateSampler(samplerDesc);
-        if (!_toneMappingSampler.Valid || !_toneGammePipeline.Valid)
+        if (!_toneMappingSampler.Valid || !_toneGammaPipeline.Valid)
         {
             return ResultCode.RuntimeError;
         }
@@ -49,7 +49,7 @@ public sealed class ToneMapping : PostEffect
 
     protected override ResultCode OnTearingDown()
     {
-        _toneGammePipeline.Dispose();
+        _toneGammaPipeline.Dispose();
         _toneMappingSampler.Dispose();
         return ResultCode.Ok;
     }
@@ -106,8 +106,8 @@ public sealed class ToneMapping : PostEffect
         );
         pipelineDesc.VertexShader = vertexShader;
         pipelineDesc.FragmentShader = fragmentShader;
-        _toneGammePipeline = Context.CreateRenderPipeline(pipelineDesc);
-        Debug.Assert(_toneGammePipeline.Valid);
+        _toneGammaPipeline = Context.CreateRenderPipeline(pipelineDesc);
+        Debug.Assert(_toneGammaPipeline.Valid);
         return ResultCode.Ok;
     }
 }
