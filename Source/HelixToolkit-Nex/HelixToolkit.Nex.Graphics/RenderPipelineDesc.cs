@@ -1,42 +1,6 @@
 namespace HelixToolkit.Nex.Graphics;
 
 /// <summary>
-/// Specialization constant entry. Used to define each constant entry. More information can be found in the Vulkan specification.
-/// <see href="https://docs.vulkan.org/samples/latest/samples/performance/specialization_constants/README.html"/>
-/// </summary>
-public struct SpecializationConstantEntry()
-{
-    public uint32_t ConstantId;
-    public uint32_t Offset; // offset within ShaderSpecializationConstantDesc::data
-    public size_t Size;
-};
-
-/// <summary>
-/// Specialization constant description. This structure is used to pass specialization data to the shader.
-/// <see href="https://docs.vulkan.org/samples/latest/samples/performance/specialization_constants/README.html"/>
-/// </summary>
-public struct SpecializationConstantDesc()
-{
-    public const uint8_t SPECIALIZATION_CONSTANTS_MAX = 16;
-
-    public readonly SpecializationConstantEntry[] Entries = new SpecializationConstantEntry[
-        SPECIALIZATION_CONSTANTS_MAX
-    ];
-
-    public byte[] Data = [];
-
-    public readonly uint32_t NumSpecializationConstants()
-    {
-        for (uint32_t i = 0; i < SPECIALIZATION_CONSTANTS_MAX; i++)
-        {
-            if (Entries[i].Size == 0)
-                return i;
-        }
-        return SPECIALIZATION_CONSTANTS_MAX;
-    }
-};
-
-/// <summary>
 /// Represents the configuration and state for a render pipeline in a graphics application.
 /// </summary>
 /// <remarks>This structure encapsulates various settings and resources required to define a render pipeline,
@@ -122,36 +86,7 @@ public sealed class RenderPipelineDesc
     /// <exception cref="InvalidOperationException">Thrown if the maximum number of specialization constants has been exceeded.</exception>
     public void WriteSpecInfo(uint32_t constantId, byte[] data)
     {
-        if (
-            SpecInfo.NumSpecializationConstants()
-            >= SpecializationConstantDesc.SPECIALIZATION_CONSTANTS_MAX
-        )
-        {
-            throw new InvalidOperationException(
-                "Maximum number of specialization constants exceeded."
-            );
-        }
-        for (uint32_t i = 0; i < SpecInfo.NumSpecializationConstants(); i++)
-        {
-            if (SpecInfo.Entries[i].ConstantId == constantId)
-            {
-                throw new InvalidOperationException(
-                    $"Specialization constant with ID {constantId} already exists."
-                );
-            }
-        }
-        uint32_t offset = (uint32_t)SpecInfo.Data.Length;
-        SpecInfo.Entries[SpecInfo.NumSpecializationConstants()] = new SpecializationConstantEntry
-        {
-            ConstantId = constantId,
-            Offset = offset,
-            Size = (uint32_t)data.Length,
-        };
-        var oldLength = SpecInfo.Data.Length;
-        var newData = new byte[oldLength + data.Length];
-        Array.Copy(SpecInfo.Data, 0, newData, 0, oldLength);
-        Array.Copy(data, 0, newData, oldLength, data.Length);
-        SpecInfo.Data = newData;
+        SpecInfo.WriteSpecInfo(constantId, data);
     }
 
     /// <summary>
@@ -166,15 +101,7 @@ public sealed class RenderPipelineDesc
     public void WriteSpecInfo<T>(uint32_t constantId, T value)
         where T : unmanaged
     {
-        var data = new byte[NativeHelper.SizeOf<T>()];
-        unsafe
-        {
-            fixed (byte* pData = data)
-            {
-                *(T*)pData = value;
-            }
-        }
-        WriteSpecInfo(constantId, data);
+        SpecInfo.WriteSpecInfo(constantId, value);
     }
 
     /// <summary>

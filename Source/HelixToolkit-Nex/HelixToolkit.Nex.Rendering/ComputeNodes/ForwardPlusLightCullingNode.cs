@@ -177,9 +177,7 @@ public sealed class ForwardPlusLightCullingNode : ComputeNode
                     new(SystemBufferNames.BufferLightIndex, ResourceType.Buffer),
                 ],
                 onSetup: (res) =>
-                {
-                    res.Deps.Textures[0] = res.Textures[SystemBufferNames.TextureDepthF32];
-                }
+                    res.Deps.Textures[0] = res.Textures[SystemBufferNames.TextureDepthF32]
             );
     }
 }

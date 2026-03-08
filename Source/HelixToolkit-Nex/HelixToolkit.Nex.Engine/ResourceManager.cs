@@ -1,6 +1,6 @@
 using HelixToolkit.Nex.Engine.Data;
 
-namespace HelixToolkit.Nex.Repository;
+namespace HelixToolkit.Nex.Engine;
 
 /// <summary>
 /// Manages all rendering resources including geometries and materials for the engine.

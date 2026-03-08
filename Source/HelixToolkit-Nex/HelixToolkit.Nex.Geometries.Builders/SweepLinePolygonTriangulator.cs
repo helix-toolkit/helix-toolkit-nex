@@ -116,7 +116,7 @@ public static class SweepLinePolygonTriangulator
     /// Triangulate the y-Monotone Polygons.
     /// </summary>
     /// <param name="monoton">The y-Monotone Polygon to triangle</param>
-    /// <returns>Id-List of Polygon Points (Indices from the original Polygon)</returns>
+    /// <returns>Index-List of Polygon Points (Indices from the original Polygon)</returns>
     private static List<int> TriangulateMonotone(PolygonData monoton)
     {
         // Collection to return

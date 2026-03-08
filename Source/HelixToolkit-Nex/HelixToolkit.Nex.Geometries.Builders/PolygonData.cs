@@ -39,7 +39,7 @@ internal sealed class PolygonData
                 Points[i].Index = i;
             }
         }
-        // If there were Indices specified, use them to set the PolygonPoint's Id Property
+        // If there were Indices specified, use them to set the PolygonPoint's Index Property
         else
         {
             for (var i = 0; i < Points.Count; i++)
