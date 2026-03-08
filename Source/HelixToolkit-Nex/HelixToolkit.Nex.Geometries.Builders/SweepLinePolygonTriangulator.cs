@@ -101,7 +101,7 @@ public static class SweepLinePolygonTriangulator
         // we need to reverse the result also to get a correct Triangulation
         if (didReverse)
         {
-            // Transform back every calculated Id
+            // Transform back every calculated Index
             for (var i = 0; i < result.Count; i++)
             {
                 result[i] = count - result[i] - 1;

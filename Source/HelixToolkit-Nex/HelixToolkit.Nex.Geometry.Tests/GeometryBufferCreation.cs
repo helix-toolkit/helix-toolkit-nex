@@ -114,7 +114,7 @@ public sealed class GeometryBufferCreation
         );
         Assert.IsTrue(geometry.VertexBuffer.Valid, "Vertex buffer should be valid");
         Assert.IsTrue(geometry.VertexPropsBuffer.Valid, "VertexProps buffer should be valid");
-        Assert.IsTrue(geometry.IndexBuffer.Valid, "Id buffer should be valid");
+        Assert.IsTrue(geometry.IndexBuffer.Valid, "Index buffer should be valid");
         Assert.IsTrue(geometry.VertexColorBuffer.Valid, "VertexColor buffer should be valid");
     }
 

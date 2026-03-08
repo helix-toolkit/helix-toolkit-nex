@@ -69,7 +69,11 @@ public sealed class ComputePipelineDesc()
             Offset = offset,
             Size = (uint32_t)data.Length,
         };
-        SpecInfo.Data = SpecInfo.Data.Concat(data).ToArray();
+        var oldData = SpecInfo.Data;
+        var newData = new byte[oldData.Length + data.Length];
+        Array.Copy(oldData, 0, newData, 0, oldData.Length);
+        Array.Copy(data, 0, newData, oldData.Length, data.Length);
+        SpecInfo.Data = newData;
     }
 
     /// <summary>
@@ -103,12 +107,17 @@ public sealed class ComputePipelineDesc()
     /// <returns>A new <see cref="ComputePipelineDesc"/> instance that is a deep copy of the current instance.</returns>
     public ComputePipelineDesc Clone()
     {
-        return new ComputePipelineDesc
+        var clone = new ComputePipelineDesc
         {
             ComputeShader = ComputeShader,
             SpecInfo = new SpecializationConstantDesc { Data = (byte[])SpecInfo.Data.Clone() },
             EntryPoint = EntryPoint,
             DebugName = DebugName,
         };
+        for (uint32_t i = 0; i < SpecInfo.NumSpecializationConstants(); i++)
+        {
+            clone.SpecInfo.Entries[i] = SpecInfo.Entries[i];
+        }
+        return clone;
     }
 }

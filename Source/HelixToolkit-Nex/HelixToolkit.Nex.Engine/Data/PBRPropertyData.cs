@@ -17,7 +17,7 @@ public sealed class PBRPropertyData : Initializable, IPBRPropertyData
 
     public BufferHandle Buffer => _buffer is null ? BufferHandle.Null : _buffer.Buffer;
 
-    public uint Stride { get; } = Light.SizeInBytes;
+    public uint Stride { get; } = PBRProperties.SizeInBytes;
 
     public uint Count => _buffer is null ? 0 : (uint)_buffer.Count;
 

@@ -18,7 +18,7 @@ public sealed class StaticMeshIndexData : Initializable, IStaticMeshIndexData
 
     public BufferHandle Buffer => _buffer is null ? BufferHandle.Null : _buffer.Buffer;
 
-    public uint Stride { get; } = MeshInfo.SizeInBytes;
+    public uint Stride { get; } = sizeof(uint);
 
     public uint Count => _buffer is null ? 0 : (uint)_buffer.Count;
     public ulong GpuAddress => _buffer is null ? 0 : _buffer.Buffer.GpuAddress;
