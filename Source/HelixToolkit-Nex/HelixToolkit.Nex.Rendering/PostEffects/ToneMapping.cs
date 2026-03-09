@@ -10,11 +10,12 @@ public sealed class ToneMapping : PostEffect
 
     public override string Name => nameof(ToneMapping);
 
+    public ToneMappingMode Mode { set; get; } = ToneMappingMode.Uncharted2;
+
     public override void Apply(in RenderResources res)
     {
         Debug.Assert(_toneGammaPipeline.Valid, "Tone mapping pipeline is not valid.");
         var cmdBuffer = res.CmdBuffer;
-        var deps = res.Deps;
         cmdBuffer.BindRenderPipeline(_toneGammaPipeline);
         cmdBuffer.BindDepthState(DepthState.Disabled);
         cmdBuffer.PushConstants(
@@ -24,7 +25,7 @@ public sealed class ToneMapping : PostEffect
                 Exposure = 1f,
                 HdrTextureId = res.Textures[SystemBufferNames.TextureColorF16].Index,
                 SamplerId = _toneMappingSampler.Index,
-                TonemapMode = (uint)ToneMappingMode.Uncharted2,
+                TonemapMode = (uint)Mode,
             }
         );
         cmdBuffer.Draw(3); // Full-screen triangle
