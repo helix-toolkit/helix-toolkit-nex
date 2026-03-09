@@ -64,7 +64,7 @@ public sealed class ForwardPlusOpaqueNode : RenderNode
     {
         if (res.Context.Data is null)
         {
-            _logger.LogWarning("Render context data is null, skipping depth pass.");
+            _logger.LogWarning("Render context data is null, skipping forward+ opaque.");
             return;
         }
         if (res.Context.Data.MeshDrawsOpaque.Count > 0)

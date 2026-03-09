@@ -151,7 +151,7 @@ internal sealed class VulkanImmediateCommands : IDisposable
             if (_secondaryBuffers.Count >= KMaxSecondaryCommandBuffers)
             {
                 _logger.LogWarning(
-                    "Maximum number of secondary command buffers reached. Waiting..."
+                    "Maximum number of secondary command buffers reached. Attempting reuse.."
                 );
                 // Wait for some to become available
                 foreach (var buf in _secondaryBuffers)

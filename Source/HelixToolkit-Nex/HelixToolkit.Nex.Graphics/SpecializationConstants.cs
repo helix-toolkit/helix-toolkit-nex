@@ -37,13 +37,14 @@ public struct SpecializationConstantDesc()
 
     public void WriteSpecInfo(uint32_t constantId, byte[] data)
     {
-        if (NumSpecializationConstants() >= SpecializationConstantDesc.SPECIALIZATION_CONSTANTS_MAX)
+        var count = NumSpecializationConstants();
+        if (count >= SPECIALIZATION_CONSTANTS_MAX)
         {
             throw new InvalidOperationException(
                 "Maximum number of specialization constants exceeded."
             );
         }
-        for (uint32_t i = 0; i < NumSpecializationConstants(); i++)
+        for (uint32_t i = 0; i < count; i++)
         {
             if (Entries[i].ConstantId == constantId)
             {
@@ -53,7 +54,7 @@ public struct SpecializationConstantDesc()
             }
         }
         var offset = (uint32_t)Data.Length;
-        Entries[NumSpecializationConstants()] = new SpecializationConstantEntry
+        Entries[count] = new SpecializationConstantEntry
         {
             ConstantId = constantId,
             Offset = offset,

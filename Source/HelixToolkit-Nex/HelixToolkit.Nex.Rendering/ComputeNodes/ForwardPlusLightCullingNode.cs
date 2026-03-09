@@ -172,7 +172,11 @@ public sealed class ForwardPlusLightCullingNode : ComputeNode
             )
             .AddPass(
                 nameof(ForwardPlusLightCullingNode),
-                inputs: [new(SystemBufferNames.TextureDepthF32, ResourceType.Texture)],
+                inputs:
+                [
+                    new(SystemBufferNames.TextureDepthF32, ResourceType.Texture),
+                    new(SystemBufferNames.BufferLights, ResourceType.Buffer),
+                ],
                 outputs:
                 [
                     new(SystemBufferNames.BufferLightGrid, ResourceType.Buffer),
