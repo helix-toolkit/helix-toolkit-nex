@@ -19,14 +19,7 @@ internal class App : Application
     private LightCullingTest? _example;
 
     public App()
-        : base(
-            new ApplicationConfig()
-            {
-                WindowResizable = true,
-                WindowWidth = 818,
-                WindowHeight = 577,
-            }
-        )
+        : base(new ApplicationConfig() { WindowResizable = true })
     {
         // You can set additional application settings here if needed
     }

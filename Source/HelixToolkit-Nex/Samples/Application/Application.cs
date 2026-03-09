@@ -10,8 +10,8 @@ public record ApplicationConfig
     public bool WindowResizable { get; set; } = false;
     public bool FullScreen { get; set; } = false;
 
-    public int WindowWidth { get; set; } = 1280;
-    public int WindowHeight { get; set; } = 720;
+    public int WindowWidth { get; set; } = 1311;
+    public int WindowHeight { get; set; } = 1001;
 }
 
 public abstract class Application : IDisposable
