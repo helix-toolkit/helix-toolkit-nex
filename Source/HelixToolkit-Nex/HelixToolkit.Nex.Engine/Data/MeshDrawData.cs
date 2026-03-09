@@ -40,7 +40,7 @@ internal class MeshDrawData : Initializable, IMeshDrawData
             else
             {
                 var end = Math.Max(FullRange.End, range.End);
-                FullRange = new Range(FullRange.Start, end - FullRange.Start);
+                FullRange = new DrawRange(FullRange.Start, end - FullRange.Start);
             }
         }
 
@@ -286,38 +286,38 @@ internal class MeshDrawData : Initializable, IMeshDrawData
         foreach (var kv in _meshDrawSortingStatic.MeshDrawByMaterialType)
         {
             _meshDrawSortingStatic.Sort();
-            range = new Range(range.End, (uint)kv.Value.Count);
+            range = new DrawRange(range.End, (uint)kv.Value.Count);
             _meshDrawSortingStatic.AddRange(kv.Key, in range);
             _meshDraws.AddRange(kv.Value);
         }
-        range = new Range(0, range.End);
+        range = new DrawRange(0, range.End);
         var start = range.End;
 
         foreach (var kv in _meshDrawSortingStaticInstancing.MeshDrawByMaterialType)
         {
             _meshDrawSortingStaticInstancing.Sort();
-            range = new Range(range.End, (uint)kv.Value.Count);
+            range = new DrawRange(range.End, (uint)kv.Value.Count);
             _meshDrawSortingStaticInstancing.AddRange(kv.Key, in range);
             _meshDraws.AddRange(kv.Value);
         }
 
-        range = new Range(start, range.End);
+        range = new DrawRange(start, range.End);
         start = range.End;
 
         foreach (var kv in _meshDrawSortingDynamic.MeshDrawByMaterialType)
         {
             _meshDrawSortingStaticInstancing.Sort();
-            range = new Range(range.End, (uint)kv.Value.Count);
+            range = new DrawRange(range.End, (uint)kv.Value.Count);
             _meshDrawSortingDynamic.AddRange(kv.Key, in range);
             _meshDraws.AddRange(kv.Value);
         }
 
-        range = new Range(start, range.End - start);
+        range = new DrawRange(start, range.End - start);
         start = range.End;
         foreach (var kv in _meshDrawSortingDynamicInstancing.MeshDrawByMaterialType)
         {
             _meshDrawSortingStaticInstancing.Sort();
-            range = new Range(range.End, (uint)kv.Value.Count);
+            range = new DrawRange(range.End, (uint)kv.Value.Count);
             _meshDrawSortingDynamicInstancing.AddRange(kv.Key, in range);
             _meshDraws.AddRange(kv.Value);
         }
