@@ -1,12 +1,12 @@
 namespace HelixToolkit.Nex.Rendering;
 
-public readonly record struct Range(uint Start, uint Count)
+public readonly record struct DrawRange(uint Start, uint Count)
 {
     public readonly bool Empty => Count == 0;
 
     public readonly uint End => Start + Count;
 
-    public static readonly Range Zero = new(0, 0);
+    public static readonly DrawRange Zero = new(0, 0);
 }
 
 public readonly struct CameraParams(

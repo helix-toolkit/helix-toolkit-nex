@@ -29,7 +29,6 @@ public sealed class RingBuffer<T>
     private struct Positions()
     {
         public ulong Head = 0;
-        private unsafe fixed byte _data[64 - sizeof(ulong)]; // Padding to prevent false sharing between head and tail.
         public ulong Tail = 0;
     }
 

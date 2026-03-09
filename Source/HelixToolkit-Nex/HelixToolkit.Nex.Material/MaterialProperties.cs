@@ -9,18 +9,15 @@ public enum MaterialPropertyOp
     Destroy,
 }
 
-public readonly struct MaterialPropsUpdatedEvent : IEvent
+public readonly struct MaterialPropsUpdatedEvent(
+    MaterialTypeId materialTypeId,
+    uint index,
+    MaterialPropertyOp operation
+) : IEvent
 {
-    public uint MaterialTypeId { get; }
-    public uint Index { get; }
-    public MaterialPropertyOp Operation { get; }
-
-    public MaterialPropsUpdatedEvent(uint materialTypeId, uint index, MaterialPropertyOp operation)
-    {
-        MaterialTypeId = materialTypeId;
-        Index = index;
-        Operation = operation;
-    }
+    public MaterialTypeId MaterialTypeId { get; } = materialTypeId;
+    public uint Index { get; } = index;
+    public MaterialPropertyOp Operation { get; } = operation;
 }
 
 public sealed class MaterialProperties : IDisposable
@@ -35,7 +32,7 @@ public sealed class MaterialProperties : IDisposable
         Opacity = 1,
     };
 
-    public readonly uint MaterialTypeId = 0;
+    public readonly MaterialTypeId MaterialTypeId = 0;
 
     public ref PBRProperties Properties => ref _pool!.GetRef(_handle)!;
 
@@ -44,7 +41,7 @@ public sealed class MaterialProperties : IDisposable
     public uint Index => _handle.Index;
 
     internal MaterialProperties(
-        uint materialTypeId,
+        MaterialTypeId materialTypeId,
         Pool<MaterialPropertyResource, PBRProperties> pool
     )
     {

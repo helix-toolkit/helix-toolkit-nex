@@ -43,16 +43,16 @@ public sealed class ForwardPlusOpaqueNode : RenderNode
                     : 0,
             LightBufferAddress = context.Data.Lights.GpuAddress,
             LightGridBufferAddress =
-                context.Data?.Lights.Count > 0
+                context.Data.Lights.Count > 0
                     ? res.Buffers[SystemBufferNames.BufferLightGrid].GpuAddress(context.Context)
                     : 0,
             LightIndexBufferAddress =
-                context.Data?.Lights.Count > 0
+                context.Data.Lights.Count > 0
                     ? res.Buffers[SystemBufferNames.BufferLightIndex].GpuAddress(context.Context)
                     : 0,
             TileCountX = (uint)context.TileCountX,
             TileCountY = (uint)context.TileCountY,
-            LightCount = (uint)context.Data!.Lights.Count,
+            LightCount = (uint)context.Data.Lights.Count,
             TileSize = context.FPLightConfig.TileSize,
             MaxLightsPerTile = context.FPLightConfig.MaxLightsPerTile,
         };

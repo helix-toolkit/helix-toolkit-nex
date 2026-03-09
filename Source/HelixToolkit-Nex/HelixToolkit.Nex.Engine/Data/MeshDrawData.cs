@@ -1,5 +1,5 @@
 using HelixToolkit.Nex.Rendering.Components;
-using Range = HelixToolkit.Nex.Rendering.Range;
+using DrawRange = HelixToolkit.Nex.Rendering.DrawRange;
 
 namespace HelixToolkit.Nex.Engine.Data;
 
@@ -13,9 +13,11 @@ internal class MeshDrawData : Initializable, IMeshDrawData
             InitialBufferSize
         );
 
-        public readonly Dictionary<MaterialTypeId, Range> MeshDrawRanges = new(InitialBufferSize);
+        public readonly Dictionary<MaterialTypeId, DrawRange> MeshDrawRanges = new(
+            InitialBufferSize
+        );
 
-        public Range FullRange { private set; get; } = Range.Zero;
+        public DrawRange FullRange { private set; get; } = DrawRange.Zero;
 
         public void Add(ref MeshDraw meshDraw)
         {
@@ -28,7 +30,7 @@ internal class MeshDrawData : Initializable, IMeshDrawData
             list.Add(meshDraw);
         }
 
-        public void AddRange(MaterialTypeId materialType, in Range range)
+        public void AddRange(MaterialTypeId materialType, in DrawRange range)
         {
             MeshDrawRanges[materialType] = range;
             if (FullRange.Empty)
@@ -42,20 +44,20 @@ internal class MeshDrawData : Initializable, IMeshDrawData
             }
         }
 
-        public Range GetRange(MaterialTypeId materialType)
+        public DrawRange GetRange(MaterialTypeId materialType)
         {
             if (MeshDrawRanges.TryGetValue(materialType, out var range))
             {
                 return range;
             }
-            return Range.Zero;
+            return DrawRange.Zero;
         }
 
         public void Clear()
         {
             MeshDrawByMaterialType.Clear();
             MeshDrawRanges.Clear();
-            FullRange = Range.Zero;
+            FullRange = DrawRange.Zero;
         }
 
         public void Sort()
@@ -119,13 +121,13 @@ internal class MeshDrawData : Initializable, IMeshDrawData
     public bool HasStaticInstancingMesh =>
         _meshDrawSortingStaticInstancing.MeshDrawRanges.Count > 0;
 
-    public Range RangeStaticMesh => _meshDrawSortingStatic.FullRange;
+    public DrawRange RangeStaticMesh => _meshDrawSortingStatic.FullRange;
 
-    public Range RangeStaticMeshInstancing => _meshDrawSortingStaticInstancing.FullRange;
+    public DrawRange RangeStaticMeshInstancing => _meshDrawSortingStaticInstancing.FullRange;
 
-    public Range RangeDynamicMesh => _meshDrawSortingDynamic.FullRange;
+    public DrawRange RangeDynamicMesh => _meshDrawSortingDynamic.FullRange;
 
-    public Range RangeDynamicMeshInstancing => _meshDrawSortingDynamicInstancing.FullRange;
+    public DrawRange RangeDynamicMeshInstancing => _meshDrawSortingDynamicInstancing.FullRange;
 
     public MeshDrawData(IContext context, World world, bool isTransparent)
     {
@@ -144,22 +146,22 @@ internal class MeshDrawData : Initializable, IMeshDrawData
         _lastDataUpdateTicks = Stopwatch.GetTimestamp();
     }
 
-    public Range GetRangeDynamicMesh(MaterialTypeId materialType)
+    public DrawRange GetRangeDynamicMesh(MaterialTypeId materialType)
     {
         return _meshDrawSortingDynamic.GetRange(materialType);
     }
 
-    public Range GetRangeDynamicMeshInstancing(MaterialTypeId materialType)
+    public DrawRange GetRangeDynamicMeshInstancing(MaterialTypeId materialType)
     {
         return _meshDrawSortingDynamicInstancing.GetRange(materialType);
     }
 
-    public Range GetRangeStaticMesh(MaterialTypeId materialType)
+    public DrawRange GetRangeStaticMesh(MaterialTypeId materialType)
     {
         return _meshDrawSortingStatic.GetRange(materialType);
     }
 
-    public Range GetRangeStaticMeshInstancing(MaterialTypeId materialType)
+    public DrawRange GetRangeStaticMeshInstancing(MaterialTypeId materialType)
     {
         return _meshDrawSortingStaticInstancing.GetRange(materialType);
     }
@@ -280,7 +282,7 @@ internal class MeshDrawData : Initializable, IMeshDrawData
 
     private void FinalizeMeshDraws()
     {
-        Range range = default;
+        DrawRange range = default;
         foreach (var kv in _meshDrawSortingStatic.MeshDrawByMaterialType)
         {
             _meshDrawSortingStatic.Sort();

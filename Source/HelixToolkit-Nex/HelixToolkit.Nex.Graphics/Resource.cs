@@ -55,7 +55,7 @@ public abstract class Resource<T> : IDisposable
 
     public static implicit operator bool(Resource<T> holder)
     {
-        return holder.Valid;
+        return holder is not null && holder.Valid;
     }
 
     #region Reference Counter and Disposable Pattern
