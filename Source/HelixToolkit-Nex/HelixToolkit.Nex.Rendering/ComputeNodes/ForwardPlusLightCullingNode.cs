@@ -147,7 +147,7 @@ public sealed class ForwardPlusLightCullingNode : ComputeNode
                             Usage = BufferUsageBits.Storage,
                             Storage = StorageType.Device,
                         },
-                        "FP_LightGrid"
+                        SystemBufferNames.BufferLightGrid
                     );
                 }
             )
@@ -166,7 +166,7 @@ public sealed class ForwardPlusLightCullingNode : ComputeNode
                             Usage = BufferUsageBits.Storage,
                             Storage = StorageType.Device,
                         },
-                        "FP_LightIndices"
+                        SystemBufferNames.BufferLightIndex
                     );
                 }
             )

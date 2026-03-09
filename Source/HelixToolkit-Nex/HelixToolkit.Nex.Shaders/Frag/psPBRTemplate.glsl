@@ -111,8 +111,14 @@ vec4 forwardPlusLighting(in PBRMaterial material)
             }
         } else {
             // Calculate tile coordinates
-            uvec2 tileCoord = uvec2(gl_FragCoord.xy) / uvec2(fpConst.tileSize);
-            tileCoord.y = (fpConst.tileCountY - 1u) - tileCoord.y; // Flip Y to match top-left origin
+            // The compute shader flips pixelCoord.y (1.0 - y) before sampling depth,
+            // so tile row 0 processes the bottom of the screen.
+            // We must flip the fragment's pixel Y in the same pixel space before
+            // dividing by tile size. This avoids the asymmetry that arises when
+            // screenDimensions is not a multiple of tileSize (the partial tile row
+            // must stay on the same screen edge in both shaders).
+            uvec2 flippedPixel = uvec2(gl_FragCoord.x, fpConst.screenDimensions.y - 1.0 - gl_FragCoord.y);
+            uvec2 tileCoord = flippedPixel / uvec2(fpConst.tileSize);
             tileCoord = min(tileCoord, uvec2(fpConst.tileCountX - 1, fpConst.tileCountY - 1));
             uint tileIndex = tileCoord.y * fpConst.tileCountX + tileCoord.x;
 
@@ -145,9 +151,9 @@ vec4 forwardPlusLighting(in PBRMaterial material)
 
 vec4 debugTileLighting()
 {
-    // Calculate tile coordinates
-    uvec2 tileCoord = uvec2(gl_FragCoord.xy) / uvec2(fpConst.tileSize);
-    tileCoord.y = (fpConst.tileCountY - 1u) - tileCoord.y;
+    // Calculate tile coordinates — flip in pixel space to match compute shader
+    uvec2 flippedPixel = uvec2(gl_FragCoord.x, fpConst.screenDimensions.y - 1.0 - gl_FragCoord.y);
+    uvec2 tileCoord = flippedPixel / uvec2(fpConst.tileSize);
     tileCoord = min(tileCoord, uvec2(fpConst.tileCountX - 1, fpConst.tileCountY - 1));
     uint tileIndex = tileCoord.y * fpConst.tileCountX + tileCoord.x;
     // Get light list for this tile
@@ -172,7 +178,6 @@ vec4 debugTileLighting()
         }
         return vec4(color, 1.0);
     }
-    //outFinalColor = vec4(float(tileCoord.x) / fpConst.tileCountX, float(tileCoord.y) / fpConst.tileCountY, lightCountNormalized, 1.0);
 }
 
 // Template function to create final PBR material properties
