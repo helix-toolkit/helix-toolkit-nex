@@ -631,57 +631,57 @@ public sealed class SamplerStateDesc()
     /// <summary>
     /// Minification filter mode. Defaults to Linear.
     /// </summary>
-    public SamplerFilter MinFilter = SamplerFilter.Linear;
+    public SamplerFilter MinFilter { get; init; } = SamplerFilter.Linear;
 
     /// <summary>
     /// Magnification filter mode. Defaults to Linear.
     /// </summary>
-    public SamplerFilter MagFilter = SamplerFilter.Linear;
+    public SamplerFilter MagFilter { get; init; } = SamplerFilter.Linear;
 
     /// <summary>
     /// Mipmap filter mode. Defaults to Disabled.
     /// </summary>
-    public SamplerMip MipMap = SamplerMip.Disabled;
+    public SamplerMip MipMap { get; init; } = SamplerMip.Disabled;
 
     /// <summary>
     /// Texture wrap mode for U coordinate. Defaults to Repeat.
     /// </summary>
-    public SamplerWrap WrapU = SamplerWrap.Repeat;
+    public SamplerWrap WrapU { get; init; } = SamplerWrap.Repeat;
 
     /// <summary>
     /// Texture wrap mode for V coordinate. Defaults to Repeat.
     /// </summary>
-    public SamplerWrap WrapV = SamplerWrap.Repeat;
+    public SamplerWrap WrapV { get; init; } = SamplerWrap.Repeat;
 
     /// <summary>
     /// Texture wrap mode for W coordinate. Defaults to Repeat.
     /// </summary>
-    public SamplerWrap WrapW = SamplerWrap.Repeat;
+    public SamplerWrap WrapW { get; init; } = SamplerWrap.Repeat;
 
     /// <summary>
     /// Comparison operation for depth comparison samplers. Defaults to LessEqual.
     /// </summary>
-    public CompareOp DepthCompareOp = CompareOp.LessEqual;
+    public CompareOp DepthCompareOp { get; init; } = CompareOp.LessEqual;
 
     /// <summary>
     /// Minimum mipmap level to use.
     /// </summary>
-    public uint8_t MipLodMin;
+    public uint8_t MipLodMin { get; init; }
 
     /// <summary>
     /// Maximum mipmap level to use. Defaults to 15.
     /// </summary>
-    public uint8_t MipLodMax = 15;
+    public uint8_t MipLodMax { get; init; } = 15;
 
     /// <summary>
     /// Maximum anisotropic filtering samples. Defaults to 1 (no anisotropic filtering).
     /// </summary>
-    public uint8_t MaxAnisotropic = 1;
+    public uint8_t MaxAnisotropic { get; init; } = 1;
 
     /// <summary>
     /// Whether depth comparison is enabled. Defaults to false.
     /// </summary>
-    public bool DepthCompareEnabled = false;
+    public bool DepthCompareEnabled { get; init; } = false;
 
     /// <summary>
     /// Optional debug name for the sampler.

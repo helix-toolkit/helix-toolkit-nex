@@ -24,7 +24,7 @@ internal class DepthPrepassTest(IContext context) : IDisposable
     public const SampleTextureMode DebugMode = SampleTextureMode.DebugMeshId;
     private readonly IContext _context = context;
     private IServiceProvider? _serviceProvider;
-    private Renderer? _rendererManager;
+    private Renderer? _renderer;
     private RenderContext? _renderContext;
     private WorldDataProvider? _worldDataProvider;
     private IResourceManager? _resourceManager;
@@ -48,17 +48,17 @@ internal class DepthPrepassTest(IContext context) : IDisposable
 
         _serviceProvider = services.BuildServiceProvider();
         _resourceManager = _serviceProvider.GetRequiredService<IResourceManager>();
-        _rendererManager = new Renderer(_serviceProvider);
-        _rendererManager.AddNode(new PrepareNode());
-        _rendererManager.AddNode(new DepthPassNode());
-        _rendererManager.AddNode(new DebugDepthBufferNode());
-        _rendererManager.AddNode(new FrustumCullNode());
+        _renderer = new Renderer(_serviceProvider);
+        _renderer.AddNode(new PrepareNode());
+        _renderer.AddNode(new DepthPassNode());
+        _renderer.AddNode(new DebugDepthBufferNode());
+        _renderer.AddNode(new FrustumCullNode());
         var postEffectNode = new PostEffectsNode();
         postEffectNode.AddEffect(new ToneMapping());
-        _rendererManager.AddNode(postEffectNode);
-        _rendererManager!.Initialize();
+        _renderer.AddNode(postEffectNode);
+        _renderer!.Initialize();
         _renderGraph = new RenderGraph(_serviceProvider);
-        foreach (var node in _rendererManager.RenderNodes)
+        foreach (var node in _renderer.RenderNodes)
         {
             node.AddToGraph(_renderGraph);
         }
@@ -157,8 +157,7 @@ internal class DepthPrepassTest(IContext context) : IDisposable
         RotateCamera();
         _renderContext.CameraParams = _camera.ToCameraParams(aspectRatio);
         _renderContext.FinalOutputTexture = _context.GetCurrentSwapchainTexture();
-        _rendererManager!.Resize(width, height);
-        _rendererManager!.Render(_renderContext!, _renderGraph!);
+        _renderer!.Render(_renderContext!, _renderGraph!);
     }
 
     private void RotateCamera()
@@ -181,7 +180,7 @@ internal class DepthPrepassTest(IContext context) : IDisposable
             if (disposing)
             {
                 _worldDataProvider?.Dispose();
-                _rendererManager?.Dispose();
+                _renderer?.Dispose();
                 _renderGraph?.Dispose();
                 _resourceManager?.Dispose();
                 _context?.Dispose();

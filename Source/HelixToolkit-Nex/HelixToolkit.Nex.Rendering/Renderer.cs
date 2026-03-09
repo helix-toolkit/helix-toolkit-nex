@@ -66,20 +66,6 @@ public class Renderer(IServiceProvider serviceProvider) : Initializable
         _renderers.Remove(renderer.Name);
     }
 
-    public void Resize(int width, int height)
-    {
-        if (Width == width && Height == height)
-        {
-            return; // No change in size
-        }
-        Width = width;
-        Height = height;
-        foreach (var kvp in _renderers)
-        {
-            kvp.Value.Resize(width, height);
-        }
-    }
-
     public void Clear()
     {
         foreach (var kvp in _renderers)

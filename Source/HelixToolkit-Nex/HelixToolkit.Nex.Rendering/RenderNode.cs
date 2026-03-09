@@ -19,7 +19,7 @@ public abstract class RenderNode : IDisposable
     public virtual string Description { get; } = "";
 
     /// <summary>
-    /// Gets or sets a value indicating whether the renderer is enabled.
+    /// Gets or sets a value indicating whether this render node is enabled.
     /// </summary>
     public bool Enabled { get; set; } = true;
 
@@ -27,27 +27,12 @@ public abstract class RenderNode : IDisposable
 
     private bool _isAttached = false;
 
-    private readonly ITracer _tracer;
+    private ITracer? _tracer;
 
     /// <summary>
-    /// Gets a value indicating whether the object is currently attached to a render renderer.
+    /// Gets a value indicating whether the render node is currently attached to a renderer.
     /// </summary>
     public bool IsAttached => Renderer != null && _isAttached;
-
-    /// <summary>
-    /// Gets the width of the rendered content.
-    /// </summary>
-    public int Width => Renderer?.Width ?? 0;
-
-    /// <summary>
-    /// Gets the height of the rendered content.
-    /// </summary>
-    public int Height => Renderer?.Height ?? 0;
-
-    public RenderNode()
-    {
-        _tracer = TracerFactory.GetTracer($"{nameof(RenderNode)}[{Name}]");
-    }
 
     internal bool Setup(Renderer renderer)
     {
@@ -58,9 +43,10 @@ public abstract class RenderNode : IDisposable
                 return IsAttached;
             }
             throw new InvalidOperationException(
-                "RenderNode is already attached to another RenderGraphManager."
+                "RenderNode is already attached to another Renderer."
             );
         }
+        _tracer = TracerFactory.GetTracer($"{nameof(RenderNode)}[{Name}]");
         using var scope = _tracer.BeginScope($"Attaching renderer: {Name}");
         Renderer = renderer;
         _isAttached = OnSetup();
@@ -77,7 +63,7 @@ public abstract class RenderNode : IDisposable
         }
         // Mark as detached before calling into teardown logic to prevent re-entrant calls.
         _isAttached = false;
-        using var scope = _tracer.BeginScope($"Detaching renderer: {Name}");
+        using var scope = _tracer?.BeginScope($"Detaching renderer: {Name}");
         OnTeardown();
         Renderer?.RemoveNode(this);
         Renderer = null;
@@ -91,7 +77,7 @@ public abstract class RenderNode : IDisposable
         {
             return;
         }
-        using var scope = _tracer.BeginScope(nameof(Render));
+        using var scope = _tracer?.BeginScope(nameof(Render));
         if (BeginRender(in res))
         {
             OnRender(in res);
@@ -114,14 +100,6 @@ public abstract class RenderNode : IDisposable
         res.CmdBuffer.EndRendering();
         res.CmdBuffer.PopDebugGroupLabel();
     }
-
-    public void Resize(int width, int height)
-    {
-        using var scope = _tracer.BeginScope($"Resizing renderer: {Name} to {width}x{height}");
-        OnResize(width, height);
-    }
-
-    protected virtual void OnResize(int width, int height) { }
 
     public abstract void AddToGraph(RenderGraph graph);
 

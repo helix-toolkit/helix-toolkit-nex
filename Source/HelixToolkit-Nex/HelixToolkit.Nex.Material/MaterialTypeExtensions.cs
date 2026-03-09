@@ -50,6 +50,7 @@ public static class MaterialTypeExtensions
         );
         if (
             entry.ConstantId == MATERIAL_TYPE_CONSTANT_ID
+            && entry.Size > 0
             && desc.SpecInfo.Data.Length >= entry.Offset + sizeof(uint)
         )
         {
