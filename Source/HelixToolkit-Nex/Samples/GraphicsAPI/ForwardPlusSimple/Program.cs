@@ -49,6 +49,12 @@ internal class App : Application
         _ctx.Submit(cmdBuffer, target);
     }
 
+    protected override void HandleResize(int width, int height)
+    {
+        _ctx?.RecreateSwapchain(width, height);
+        base.HandleResize(width, height);
+    }
+
     protected override void OnDisposing()
     {
         _example?.Dispose();

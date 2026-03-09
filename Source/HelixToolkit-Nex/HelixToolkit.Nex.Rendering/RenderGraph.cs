@@ -403,7 +403,7 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
         {
             if (builder.Value == null)
             {
-                _bufferResources[builder.Key]?.Dispose();
+                _textureResources[builder.Key]?.Dispose();
                 Textures[builder.Key] = TextureHandle.Null;
                 continue;
             }

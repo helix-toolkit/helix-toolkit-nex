@@ -43,6 +43,7 @@ public sealed class DepthPassNode(
             InverseViewProjection = context.CameraParams.InvViewProjection,
             ViewProjection = context.CameraParams.ViewProjection,
             ScreenDimensions = new Vector2(context.WindowSize.Width, context.WindowSize.Height),
+            DpiScale = context.DpiScale,
             MeshInfoBufferAddress = context.Data?.MeshInfos.GpuAddress ?? 0,
             MeshDrawBufferAddress = context.Data?.MeshDrawsOpaque.GpuAddress ?? 0,
         };

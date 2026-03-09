@@ -18,6 +18,19 @@ internal class App : Application
     private IContext? _ctx;
     private LightCullingTest? _example;
 
+    public App()
+        : base(
+            new ApplicationConfig()
+            {
+                WindowResizable = true,
+                WindowWidth = 818,
+                WindowHeight = 577,
+            }
+        )
+    {
+        // You can set additional application settings here if needed
+    }
+
     protected override void Initialize()
     {
         base.Initialize();
@@ -38,6 +51,17 @@ internal class App : Application
         _example = new LightCullingTest(_ctx);
 
         _example.Initialize(windowSize.Width, windowSize.Height);
+    }
+
+    protected override void HandleResize(int width, int height)
+    {
+        _ctx?.RecreateSwapchain(width, height);
+        base.HandleResize(width, height);
+    }
+
+    protected override void OnDisplayScaleChanged(float scale)
+    {
+        base.OnDisplayScaleChanged(scale);
     }
 
     protected override void OnTick()

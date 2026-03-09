@@ -215,7 +215,7 @@ public class ImGuiRenderer(IContext context, ImGuiConfig config) : IDisposable
                 _logger.LogError($"Font file not found: {fontPath}");
                 return;
             }
-            io.Fonts.AddFontFromFileTTF(fontPath, _config.FontSizeInPixel);
+            io.Fonts.AddFontFromFileTTF(fontPath, _config.FontSizeInPixel * DisplayScale);
         }
         if (!io.Fonts.Build())
         {
@@ -223,6 +223,7 @@ public class ImGuiRenderer(IContext context, ImGuiConfig config) : IDisposable
         }
         else
         {
+            FontTexture?.Dispose();
             unsafe
             {
                 // Get the font texture and upload it to the GPU.
@@ -255,7 +256,7 @@ public class ImGuiRenderer(IContext context, ImGuiConfig config) : IDisposable
         var dim = Context.GetDimensions(fb.Colors[0].Texture);
         Gui.SetCurrentContext(ImGuiContext);
         var io = Gui.GetIO();
-        io.DisplaySize = new Vector2(dim.Width / DisplayScale, dim.Height / DisplayScale);
+        io.DisplaySize = new Vector2(dim.Width, dim.Height);
         io.DisplayFramebufferScale = new Vector2(DisplayScale);
         Gui.NewFrame();
         return true;
