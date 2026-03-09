@@ -74,6 +74,13 @@ public sealed class RenderContext(IServiceProvider services) : Initializable
 
     public IRenderDataProvider? Data { set; get; }
 
+    /// <summary>
+    /// Gets or sets the resource set that holds GPU resources (textures and buffers)
+    /// for the current render graph execution. The resource set is owned by the
+    /// <see cref="RenderContext"/> and disposed when the context is torn down.
+    /// </summary>
+    public RenderGraphResourceSet? ResourceSet { set; get; }
+
     private Size _windowSize;
 
     public Size WindowSize
@@ -154,6 +161,8 @@ public sealed class RenderContext(IServiceProvider services) : Initializable
 
     protected override ResultCode OnTearingDown()
     {
+        ResourceSet?.Dispose();
+        ResourceSet = null;
         return ResultCode.Ok;
     }
 }

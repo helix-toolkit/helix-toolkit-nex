@@ -68,6 +68,7 @@ internal class LightCullingTest(IContext context, bool largeScene = true) : IDis
             node.AddToGraph(_renderGraph);
         }
         _renderContext = new RenderContext(_serviceProvider);
+        _renderContext.ResourceSet = new RenderGraphResourceSet();
         _worldDataProvider = new WorldDataProvider(_serviceProvider);
         _worldDataProvider.Initialize();
         _renderContext.Data = _worldDataProvider;

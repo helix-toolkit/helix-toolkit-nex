@@ -1,11 +1,5 @@
 namespace HelixToolkit.Nex.Rendering;
 
-public enum ResourceType
-{
-    Texture,
-    Buffer,
-}
-
 public readonly record struct RenderResource(string Name, ResourceType Type);
 
 public sealed record ResourceBuildParams(RenderContext Context);
@@ -35,28 +29,8 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
     private readonly Dictionary<string, GraphNode> _passes = [];
     private readonly Dictionary<string, List<GraphNode>> _resourceProducers = [];
     private readonly List<GraphNode> _sortedPasses = [];
-    private readonly Dictionary<string, BufferResource> _bufferResources = [];
-    private readonly Dictionary<string, TextureResource> _textureResources = [];
-    public Dictionary<string, BufferHandle> Buffers { get; } = [];
-    public Dictionary<string, TextureHandle> Textures { get; } = [];
 
     public IReadOnlyList<GraphNode> SortedPasses => _sortedPasses;
-
-    private int _screenWidth = 0;
-    private int _screenHeight = 0;
-
-    private readonly record struct BuildBufferFunction(
-        Func<ResourceBuildParams, BufferResource> Func,
-        bool DependsOnScreenSize
-    );
-
-    private readonly record struct BuildTextureFunction(
-        Func<ResourceBuildParams, TextureResource> Func,
-        bool DependsOnScreenSize
-    );
-
-    private readonly Dictionary<string, BuildBufferFunction?> _bufferBuilders = [];
-    private readonly Dictionary<string, BuildTextureFunction?> _textureBuilders = [];
 
     public bool IsDirty { private set; get; } = true;
 
@@ -64,6 +38,8 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
 
     /// <summary>
     /// Adds a texture to the render graph with the specified name and build function.
+    /// The texture builder is registered on the <see cref="RenderContext.ResourceSet"/>
+    /// during <see cref="Execute"/>.
     /// </summary>
     /// <param name="name">The unique name of the texture to add. Must not already exist in the render graph.</param>
     /// <param name="buildFunc">A function that defines how to build the texture resource. Can be <see langword="null"/> if no custom build is
@@ -77,18 +53,18 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
         bool dependsOnScreenSize = true
     )
     {
-        if (_textureBuilders.TryGetValue(name, out var func) && func != null)
+        if (
+            buildFunc is not null
+            && _textureRegistrations.TryGetValue(name, out var existing)
+            && existing.BuildFunc is not null
+        )
         {
             throw new InvalidOperationException(
                 $"A texture with the name '{name}' already exists in the render graph."
             );
         }
-        _textureBuilders[name] = buildFunc is not null ? new(buildFunc, dependsOnScreenSize) : null;
-        if (_textureResources.TryGetValue(name, out var texture))
-        {
-            texture.Dispose();
-        }
-        _textureResources[name] = TextureResource.Null;
+        _textureRegistrations[name] = new TextureRegistration(buildFunc, dependsOnScreenSize);
+        IsDirty = true;
         return this;
     }
 
@@ -99,9 +75,9 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
 
     /// <summary>
     /// Adds a buffer to the render graph with the specified name and build function.
+    /// The buffer builder is registered on the <see cref="RenderContext.ResourceSet"/>
+    /// during <see cref="Execute"/>.
     /// </summary>
-    /// <remarks>If a buffer with the specified name already exists, it will be disposed and replaced with a
-    /// new buffer resource.</remarks>
     /// <param name="name">The unique name of the buffer to add. Must not already exist in the render graph.</param>
     /// <param name="buildFunc">A function that defines how to build the buffer resource. Can be <see langword="null"/> if no specific build
     /// function is required.</param>
@@ -114,18 +90,18 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
         bool dependsOnScreenSize = true
     )
     {
-        if (_bufferBuilders.TryGetValue(name, out var func) && func != null)
+        if (
+            buildFunc is not null
+            && _bufferRegistrations.TryGetValue(name, out var existing)
+            && existing.BuildFunc is not null
+        )
         {
             throw new InvalidOperationException(
                 $"A buffer with the name '{name}' already exists in the render graph."
             );
         }
-        _bufferBuilders[name] = buildFunc is not null ? new(buildFunc, dependsOnScreenSize) : null;
-        if (_bufferResources.TryGetValue(name, out var buffer))
-        {
-            buffer.Dispose();
-        }
-        _bufferResources[name] = BufferResource.Null;
+        _bufferRegistrations[name] = new BufferRegistration(buildFunc, dependsOnScreenSize);
+        IsDirty = true;
         return this;
     }
 
@@ -160,9 +136,6 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
     /// <summary>
     /// Removes a render pass by its name and resets the internal state of the render graph.
     /// </summary>
-    /// <remarks>After removing the specified pass, the method clears the resource producers and sorted
-    /// passes, marking the render graph as dirty. This indicates that the graph needs to be re-evaluated before the
-    /// next rendering operation.</remarks>
     /// <param name="passName">The name of the render pass to remove. Cannot be null or empty.</param>
     /// <returns>The current instance of <see cref="RenderGraph"/> for method chaining.</returns>
     public RenderGraph RemovePass(string passName)
@@ -178,12 +151,7 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
     /// Compiles the render graph by identifying resource producers, building a dependency graph,  and performing a
     /// topological sort of the passes.
     /// </summary>
-    /// <remarks>This method processes the render passes to determine the order in which they should be
-    /// executed  based on their dependencies. It identifies producers for each resource, constructs a dependency
-    /// graph, and uses Kahn's algorithm to sort the passes topologically. If a circular dependency is  detected, an
-    /// <see cref="InvalidOperationException"/> is thrown.</remarks>
-    /// <exception cref="InvalidOperationException">Thrown if a circular dependency is detected in the render graph, indicating that the passes  cannot be sorted
-    /// topologically.</exception>
+    /// <exception cref="InvalidOperationException">Thrown if a circular dependency is detected in the render graph.</exception>
     public void Compile()
     {
         using var t = _tracer.BeginScope(nameof(Compile));
@@ -214,8 +182,6 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
         }
 
         // Build edges: if pass B depends on output from pass A, then A -> B.
-        // Track added edges to avoid counting duplicate edges from the same producer
-        // when a consumer lists the same resource-name more than once in its inputs.
         var addedEdges = new HashSet<(GraphNode, GraphNode)>();
         foreach (var pass in _passes.Values)
         {
@@ -285,20 +251,22 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
         IReadOnlyDictionary<string, RenderNode> nodes
     )
     {
-        if (IsDirty)
+        var resourceSet =
+            context.ResourceSet
+            ?? throw new InvalidOperationException(
+                "RenderContext.ResourceSet must be set before executing the render graph."
+            );
+
+        var wasDirty = IsDirty;
+        if (wasDirty)
         {
-            _screenWidth = context.WindowSize.Width;
-            _screenHeight = context.WindowSize.Height;
             Compile();
-            CreateAllResources(context);
+            ApplyRegistrations(resourceSet);
         }
-        if (context.WindowSize.Width != _screenWidth || context.WindowSize.Height != _screenHeight)
-        {
-            _screenWidth = context.WindowSize.Width;
-            _screenHeight = context.WindowSize.Height;
-            OnScreenSizeChanged(context);
-        }
-        SetupResourcesForPass(context, cmdBuf);
+
+        resourceSet.EnsureResources(context, wasDirty);
+
+        SetupResourcesForPass(context, cmdBuf, resourceSet);
         foreach (var pass in _sortedPasses)
         {
             if (!nodes.TryGetValue(pass.PassName, out var node))
@@ -321,8 +289,8 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
                     pass.Pass,
                     pass.Framebuffer,
                     pass.Dependencies,
-                    Textures,
-                    Buffers
+                    resourceSet.Textures,
+                    resourceSet.Buffers
                 )
             );
         }
@@ -336,116 +304,49 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
 
     protected override ResultCode OnTearingDown()
     {
-        DisposeResources();
         return ResultCode.Ok;
     }
 
-    private void CreateAllResources(RenderContext context)
+    // -----------------------------------------------------------------------
+    // Resource registration storage (deferred until Execute)
+    // -----------------------------------------------------------------------
+
+    private readonly record struct TextureRegistration(
+        Func<ResourceBuildParams, TextureResource>? BuildFunc,
+        bool DependsOnScreenSize
+    );
+
+    private readonly record struct BufferRegistration(
+        Func<ResourceBuildParams, BufferResource>? BuildFunc,
+        bool DependsOnScreenSize
+    );
+
+    private readonly Dictionary<string, TextureRegistration> _textureRegistrations = [];
+    private readonly Dictionary<string, BufferRegistration> _bufferRegistrations = [];
+
+    /// <summary>
+    /// Forwards all texture/buffer registrations into the given resource set.
+    /// Called once after <see cref="Compile"/> when the graph was dirty.
+    /// </summary>
+    private void ApplyRegistrations(RenderGraphResourceSet resourceSet)
     {
-        _logger.LogInformation(
-            "Creating all render graph resources for screen size {WIDTH}x{HEIGHT}.",
-            context.WindowSize.Width,
-            context.WindowSize.Height
-        );
-        DisposeResources();
-        var resourceParams = new ResourceBuildParams(context);
-        Buffers.Clear();
-        Textures.Clear();
-        foreach (var builder in _bufferBuilders)
+        foreach (var kvp in _textureRegistrations)
         {
-            if (builder.Value == null)
-            {
-                Buffers[builder.Key] = BufferHandle.Null;
-                continue;
-            }
-            var buf = builder.Value.Value.Func(resourceParams);
-            _bufferResources[builder.Key] = buf;
-            Buffers[builder.Key] = buf;
+            resourceSet.AddTexture(kvp.Key, kvp.Value.BuildFunc, kvp.Value.DependsOnScreenSize);
         }
-        foreach (var builder in _textureBuilders)
+        foreach (var kvp in _bufferRegistrations)
         {
-            if (builder.Value == null)
-            {
-                Textures[builder.Key] = TextureHandle.Null;
-                continue;
-            }
-            var buf = builder.Value.Value.Func(resourceParams);
-            _textureResources[builder.Key] = buf;
-            Textures[builder.Key] = buf;
+            resourceSet.AddBuffer(kvp.Key, kvp.Value.BuildFunc, kvp.Value.DependsOnScreenSize);
         }
     }
 
-    private void OnScreenSizeChanged(RenderContext context)
+    private void SetupResourcesForPass(
+        RenderContext context,
+        ICommandBuffer cmdBuf,
+        RenderGraphResourceSet resourceSet
+    )
     {
-        _logger.LogInformation(
-            "Screen size changed to {WIDTH}x{HEIGHT}. Recreating dependent resources.",
-            context.WindowSize.Width,
-            context.WindowSize.Height
-        );
-        var resourceParams = new ResourceBuildParams(context);
-        foreach (var builder in _bufferBuilders)
-        {
-            if (builder.Value == null)
-            {
-                _bufferResources[builder.Key]?.Dispose();
-                Buffers[builder.Key] = BufferHandle.Null;
-                continue;
-            }
-            if (builder.Value.Value.DependsOnScreenSize)
-            {
-                _bufferResources[builder.Key]?.Dispose();
-                var buf = builder.Value.Value.Func(resourceParams);
-                _bufferResources[builder.Key] = buf;
-                Buffers[builder.Key] = buf;
-            }
-        }
-        foreach (var builder in _textureBuilders)
-        {
-            if (builder.Value == null)
-            {
-                _textureResources[builder.Key]?.Dispose();
-                Textures[builder.Key] = TextureHandle.Null;
-                continue;
-            }
-            if (builder.Value.Value.DependsOnScreenSize)
-            {
-                _textureResources[builder.Key]?.Dispose();
-                var buf = builder.Value.Value.Func(resourceParams);
-                _textureResources[builder.Key] = buf;
-                Textures[builder.Key] = buf;
-            }
-        }
-    }
-
-    private void SetupResourcesForPass(RenderContext context, ICommandBuffer cmdBuf)
-    {
-        // Inject well-known system resources that have no GPU-side builder —
-        // only for entries that this graph actually declared, so sub-graphs that
-        // don't need a resource won't crash with a KeyNotFoundException.
-        if (Textures.ContainsKey(SystemBufferNames.FinalOutputTexture))
-        {
-            Textures[SystemBufferNames.FinalOutputTexture] = context.FinalOutputTexture;
-        }
-        if (Buffers.ContainsKey(SystemBufferNames.BufferMeshDrawOpaque))
-        {
-            Buffers[SystemBufferNames.BufferMeshDrawOpaque] =
-                context.Data?.MeshDrawsOpaque.Buffer ?? BufferResource.Null;
-        }
-        if (Buffers.ContainsKey(SystemBufferNames.BufferMeshDrawTransparent))
-        {
-            Buffers[SystemBufferNames.BufferMeshDrawTransparent] =
-                context.Data?.MeshDrawsTransparent.Buffer ?? BufferResource.Null;
-        }
-        if (Buffers.ContainsKey(SystemBufferNames.BufferDirectionalLight))
-        {
-            Buffers[SystemBufferNames.BufferDirectionalLight] =
-                context.Data?.DirectionalLights.Buffer ?? BufferResource.Null;
-        }
-        if (Buffers.ContainsKey(SystemBufferNames.BufferLights))
-        {
-            Buffers[SystemBufferNames.BufferLights] =
-                context.Data?.Lights.Buffer ?? BufferResource.Null;
-        }
+        resourceSet.SetupSystemResources(context);
         foreach (var pass in _sortedPasses)
         {
             pass.OnSetupRenderParams(
@@ -455,22 +356,10 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
                     pass.Pass,
                     pass.Framebuffer,
                     pass.Dependencies,
-                    Textures,
-                    Buffers
+                    resourceSet.Textures,
+                    resourceSet.Buffers
                 )
             );
-        }
-    }
-
-    private void DisposeResources()
-    {
-        foreach (var handle in _bufferResources.Values)
-        {
-            handle.Dispose();
-        }
-        foreach (var handle in _textureResources.Values)
-        {
-            handle.Dispose();
         }
     }
 }
