@@ -139,7 +139,7 @@ internal sealed class VulkanImmediateCommands : IDisposable
             // Try to reuse an available secondary buffer
             foreach (var buf in _secondaryBuffers)
             {
-                if (buf.Instance == VkCommandBuffer.Null && !buf.IsEncoding)
+                if (buf.Instance.IsNotNull && !buf.IsEncoding)
                 {
                     buf.IsEncoding = true;
                     BeginSecondaryBuffer(buf, renderPass);
@@ -156,7 +156,7 @@ internal sealed class VulkanImmediateCommands : IDisposable
                 // Wait for some to become available
                 foreach (var buf in _secondaryBuffers)
                 {
-                    if (buf.Instance == VkCommandBuffer.Null && !buf.IsEncoding)
+                    if (buf.Instance.IsNotNull && !buf.IsEncoding)
                     {
                         buf.IsEncoding = true;
                         BeginSecondaryBuffer(buf, renderPass);
@@ -248,7 +248,7 @@ internal sealed class VulkanImmediateCommands : IDisposable
 
         lock (_secondaryBuffersLock)
         {
-            if (wrapper.Instance != VkCommandBuffer.Null)
+            if (wrapper.Instance.IsNotNull)
             {
                 unsafe
                 {
@@ -690,6 +690,8 @@ internal sealed class VulkanImmediateCommands : IDisposable
                     {
                         var cmdBuf = buf.CmdBufAllocated;
                         VK.vkFreeCommandBuffers(_device, _secondaryCommandPool, 1, &cmdBuf);
+                        buf.Instance = VkCommandBuffer.Null;
+                        buf.CmdBufAllocated = VkCommandBuffer.Null;
                     }
                     _secondaryBuffers.Clear();
 
