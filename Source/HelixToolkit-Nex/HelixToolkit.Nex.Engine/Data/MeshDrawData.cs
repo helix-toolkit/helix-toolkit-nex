@@ -239,7 +239,7 @@ internal class MeshDrawData : Initializable, IMeshDrawData
                         meshRenderComp.Cullable && meshRenderComp.Instancing is not null
                             ? meshRenderComp.Instancing.CulledIndicesBuffer!.Buffer.GpuAddress
                             : 0,
-                    FirstIndex = meshRenderComp.Geometry!.FirstIndex,
+                    FirstIndex = meshRenderComp.Geometry!.IndexOffset,
                     IndexCount = meshRenderComp.Geometry!.IndexCount,
                     InstanceCount = meshRenderComp.Instancing is not null
                         ? (uint)meshRenderComp.Instancing.Transforms.Count

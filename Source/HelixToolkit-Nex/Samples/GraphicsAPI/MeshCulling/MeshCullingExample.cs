@@ -381,7 +381,7 @@ internal class MeshCullingExample : IDisposable
         _sphereMesh = meshBuilder.ToMesh().ToGeometry();
         _sphereMesh.UpdateBuffers(_context);
         _meshes.Add(_sphereMesh);
-        _sphereMesh.FirstIndex = (uint)_boxMesh.Indices.Count;
+        _sphereMesh.IndexOffset = (uint)_boxMesh.Indices.Count;
 
         _meshInfos.Add(
             new MeshInfo()
@@ -446,7 +446,7 @@ internal class MeshCullingExample : IDisposable
                     * Matrix4x4.CreateTranslation(position),
                 IndexCount = (uint)mesh.Indices.Count,
                 InstanceCount = 1,
-                FirstIndex = mesh.FirstIndex,
+                FirstIndex = mesh.IndexOffset,
             };
         }
         // Second half: PBR objects
@@ -482,7 +482,7 @@ internal class MeshCullingExample : IDisposable
                     * Matrix4x4.CreateTranslation(position),
                 IndexCount = (uint)mesh.Indices.Count,
                 InstanceCount = 1,
-                FirstIndex = mesh.FirstIndex,
+                FirstIndex = mesh.IndexOffset,
             };
         }
     }

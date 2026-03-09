@@ -51,12 +51,18 @@ public sealed class MaterialPropertyManager : IMaterialPropertyManager
                 nameof(materialTypeId)
             );
         }
-        return new MaterialProperties(materialTypeId, _pool);
+        lock (_lock)
+        {
+            return new MaterialProperties(materialTypeId, _pool);
+        }
     }
 
     public void Clear()
     {
-        _pool.Clear();
+        lock (_lock)
+        {
+            _pool.Clear();
+        }
     }
 
     public IReadOnlyList<PoolEntry> Objects => _pool.Objects;

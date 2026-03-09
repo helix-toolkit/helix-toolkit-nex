@@ -104,8 +104,6 @@ public partial class Geometry : ObservableObject, IDisposable
     private BufferResource _indexBuffer = BufferResource.Null;
     private BufferResource _vertColorsBuffer = BufferResource.Null;
 
-    public uint IndexOffset { private set; get; } = 0;
-
     public uint IndexCount => (uint)_indices.Count;
 
     public BufferResource VertexBuffer => _vertexBuffer;
@@ -131,9 +129,9 @@ public partial class Geometry : ObservableObject, IDisposable
     public bool IsBoundDirty { set; get; } = true;
 
     /// <summary>
-    /// Used to indicate the first index in shared index buffer. For dynamic geometry, it should always be 0.
+    /// Used to indicate the index offset in shared index buffer. For dynamic geometry, it should always be 0.
     /// </summary>
-    public uint FirstIndex { set; get; } = 0;
+    public uint IndexOffset { set; get; } = 0;
 
     /// <summary>
     /// Gets or sets the bounding box of the object in local space coordinates.

@@ -18,7 +18,7 @@ public sealed class DepthPassNode(
 
     protected override bool OnSetup()
     {
-        Debug.Assert(Context is not null && RenderManager is not null);
+        Debug.Assert(Context is not null && Renderer is not null);
         return CreatePipeline();
     }
 
@@ -69,7 +69,7 @@ public sealed class DepthPassNode(
 
     private bool CreatePipeline()
     {
-        if (Context is null || RenderManager is null)
+        if (Context is null || Renderer is null)
         {
             _logger.LogError(
                 "Render context or render manager is null, cannot create depth pass pipeline."
@@ -86,7 +86,7 @@ public sealed class DepthPassNode(
                 $"Failed to compile vertex shader: {result.Errors}"
             );
         }
-        using var vs = RenderManager.ShaderRepository.GetOrCreateFromGlsl(
+        using var vs = Renderer.ShaderRepository.GetOrCreateFromGlsl(
             ShaderStage.Vertex,
             result.Source!,
             [new ShaderDefine(BuildFlags.OUTPUT_DRAW_ID, BuildFlags.EXCLUDE_MESH_PROPS)],
@@ -101,7 +101,7 @@ public sealed class DepthPassNode(
                 $"Failed to compile fragment shader: {result.Errors}"
             );
         }
-        using var fs = RenderManager.ShaderRepository.GetOrCreateFromGlsl(
+        using var fs = Renderer.ShaderRepository.GetOrCreateFromGlsl(
             ShaderStage.Fragment,
             result.Source!,
             [],

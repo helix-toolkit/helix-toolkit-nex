@@ -12,7 +12,7 @@ public readonly record struct RenderResources(
 
 public abstract class RenderNode : IDisposable
 {
-    protected Renderer? RenderManager { private set; get; }
+    protected Renderer? Renderer { private set; get; }
 
     public abstract string Name { get; }
     public abstract Color4 DebugColor { get; }
@@ -23,37 +23,37 @@ public abstract class RenderNode : IDisposable
     /// </summary>
     public bool Enabled { get; set; } = true;
 
-    public IContext? Context => RenderManager?.Context;
+    public IContext? Context => Renderer?.Context;
 
     private bool _isAttached = false;
 
     private readonly ITracer _tracer;
 
     /// <summary>
-    /// Gets a value indicating whether the object is currently attached to a render manager.
+    /// Gets a value indicating whether the object is currently attached to a render renderer.
     /// </summary>
-    public bool IsAttached => RenderManager != null && _isAttached;
+    public bool IsAttached => Renderer != null && _isAttached;
 
     /// <summary>
     /// Gets the width of the rendered content.
     /// </summary>
-    public int Width => RenderManager?.Width ?? 0;
+    public int Width => Renderer?.Width ?? 0;
 
     /// <summary>
     /// Gets the height of the rendered content.
     /// </summary>
-    public int Height => RenderManager?.Height ?? 0;
+    public int Height => Renderer?.Height ?? 0;
 
     public RenderNode()
     {
         _tracer = TracerFactory.GetTracer($"{nameof(RenderNode)}[{Name}]");
     }
 
-    internal bool Setup(Renderer manager)
+    internal bool Setup(Renderer renderer)
     {
         if (IsAttached)
         {
-            if (RenderManager == manager)
+            if (Renderer == renderer)
             {
                 return IsAttached;
             }
@@ -62,7 +62,7 @@ public abstract class RenderNode : IDisposable
             );
         }
         using var scope = _tracer.BeginScope($"Attaching renderer: {Name}");
-        RenderManager = manager;
+        Renderer = renderer;
         _isAttached = OnSetup();
         return IsAttached;
     }
@@ -79,8 +79,8 @@ public abstract class RenderNode : IDisposable
         _isAttached = false;
         using var scope = _tracer.BeginScope($"Detaching renderer: {Name}");
         OnTeardown();
-        RenderManager?.RemoveNode(this);
-        RenderManager = null;
+        Renderer?.RemoveNode(this);
+        Renderer = null;
     }
 
     protected virtual void OnTeardown() { }

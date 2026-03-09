@@ -94,7 +94,7 @@ public abstract class SampleTextureNode(SampleTextureMode mode, Format targetFor
 
     private bool CreatePipeline()
     {
-        if (Context is null || RenderManager is null)
+        if (Context is null || Renderer is null)
         {
             return false;
         }
@@ -108,7 +108,7 @@ public abstract class SampleTextureNode(SampleTextureMode mode, Format targetFor
                 $"Failed to compile vertex shader: {result.Errors}"
             );
         }
-        using var vs = RenderManager.ShaderRepository.GetOrCreateFromGlsl(
+        using var vs = Renderer.ShaderRepository.GetOrCreateFromGlsl(
             ShaderStage.Vertex,
             result.Source!,
             [],
@@ -123,7 +123,7 @@ public abstract class SampleTextureNode(SampleTextureMode mode, Format targetFor
                 $"Failed to compile fragment shader: {result.Errors}"
             );
         }
-        using var fs = RenderManager.ShaderRepository.GetOrCreateFromGlsl(
+        using var fs = Renderer.ShaderRepository.GetOrCreateFromGlsl(
             ShaderStage.Fragment,
             result.Source!,
             [],

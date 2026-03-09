@@ -99,7 +99,7 @@ public sealed class GeometryManager(IContext context) : IGeometryManager
                         );
                         return false;
                     }
-                    geometry.FirstIndex = currentOffset;
+                    geometry.IndexOffset = currentOffset;
                     currentOffset += geometry.IndexCount;
                 }
             }
