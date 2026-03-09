@@ -74,7 +74,7 @@ public sealed class GeometryManager(IContext context) : IGeometryManager
         if (sender is Geometry geometry)
         {
             // Handle property changes if needed, e.g., mark geometry as dirty for rendering
-            _logger.LogInformation("Geometry property changed: {PropertyName}", e.PropertyName);
+            _logger.LogDebug("Geometry property changed: {PropertyName}", e.PropertyName);
             _eventBus.Publish(new GeometryUpdatedEvent(geometry.Id, GeometryChangeOp.Updated));
         }
     }
