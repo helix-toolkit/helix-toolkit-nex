@@ -15,13 +15,14 @@ struct FPConstants {
     uint maxLightsPerTile;
     uint enabled;
 
+    float dpiScale;
+    uint _padding;
+
+    uint64_t meshInfoBufferAddress;
     uint64_t lightBufferAddress;
     uint64_t lightGridBufferAddress;
     uint64_t lightIndexBufferAddress;
-    uint64_t modelMatrixBufferAddress;
     uint64_t materialBufferAddress;
-    uint64_t perModelParamsBufferAddress;
     uint64_t meshDrawBufferAddress;
-    uint64_t drawCmdBufferAddress;
     uint64_t directionalLightsBufferAddress;
 };

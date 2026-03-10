@@ -1,6 +1,4 @@
 #include "HxHeaders/HeaderCompute.glsl"
-#include "HxHeaders/ModelMatrixStruct.glsl"
-#include "HxHeaders/DrawIndexIndirectCommand.glsl"
 #include "HxHeaders/FrustumCullingCommon.glsl"
 #include "HxHeaders/MeshDraw.glsl"
 // Enable subgroup extensions for efficient output compaction if allowed
@@ -16,15 +14,11 @@ layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer Cu
     CullingConstants value;
 };
 
-layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer MeshBoundBuffer {
-    MeshBoundData value[];
+layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer MeshInfoBuffer {
+    MeshInfo value[];
 };
 
-layout(buffer_reference, std430, buffer_reference_align = 16) buffer DrawCommandBuffer {
-    DrawIndexedIndirectCommand commands[];
-};
-
-layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer MeshDrawBuffer {
+layout(buffer_reference, std430, buffer_reference_align = 16) buffer MeshDrawBuffer {
     MeshDraw draws[];
 };
 
@@ -35,9 +29,7 @@ layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer In
 layout(buffer_reference, scalar) writeonly buffer VisableInstanceIndexBuffer {
     uint indices[];
 };
-layout(buffer_reference, scalar) buffer DrawCountBuffer {
-    uint count;
-};
+
 // ------------------------------------------------------------------
 // PUSH CONSTANTS
 // ------------------------------------------------------------------
@@ -71,24 +63,27 @@ void main() {
     if (gID >= pc.value.instanceCount) {
         return;
     }
+
     // Access Buffers
     MeshDrawBuffer meshDrawBuf = MeshDrawBuffer(cullingConst.value.meshDrawBufferAddress);
-    DrawCommandBuffer drawCmdBuf = DrawCommandBuffer(cullingConst.value.drawCommandBufferAddress);
-    DrawIndexedIndirectCommand cmd = drawCmdBuf.commands[pc.value.drawCommandIdx];   
-    MeshDraw draw = meshDrawBuf.draws[cmd.meshDrawIndex];
+    MeshDraw draw = meshDrawBuf.draws[pc.value.drawCommandIdx];
     if (draw.instancingBufferAddress == 0) {
+        return;
+    }
+
+    if (draw.cullable == 0) {
+        // If not cullable, we can skip culling.
         return;
     }
 
     bool isVisible = true;
 
     InstancingBuffer instBuf = InstancingBuffer(draw.instancingBufferAddress);
-    ModelMatrixBuffer modelMatrixBuf = ModelMatrixBuffer(cullingConst.value.modelMatrixBufferAddress);
-    MeshBoundBuffer meshBoundBuf = MeshBoundBuffer(cullingConst.value.meshBoundBufferAddress);
-    MeshBoundData bound = meshBoundBuf.value[draw.meshId];
+    MeshInfoBuffer meshInfoBuf = MeshInfoBuffer(cullingConst.value.meshInfoBufferAddress);
+    MeshInfo bound = meshInfoBuf.value[draw.meshId];
 
     // Frustum Culling
-    mat4 worldMatrix = instBuf.instances[gID] * modelMatrixBuf.models[draw.modelId];
+    mat4 worldMatrix = instBuf.instances[gID] * draw.transform;
     // 1. Sphere Culling (Cheap, fast reject)
     // Transform local sphere center to world
     // Note: Scale is baked into world matrix rows, so simple mult works for uniform scale
@@ -148,7 +143,7 @@ void main() {
         // Leader (first active thread) allocates space in output buffer
         uint baseIndex = 0;
         if (subgroupElect()) {
-            baseIndex =  atomicAdd(drawCmdBuf.commands[pc.value.drawCommandIdx].instanceCount, count);
+            baseIndex =  atomicAdd(meshDrawBuf.draws[pc.value.drawCommandIdx].instanceCount, count);
         }
         baseIndex = subgroupBroadcastFirst(baseIndex);
 
@@ -159,7 +154,6 @@ void main() {
             // If using Visibility Buffer (List of Instances):
             if (draw.instancingIndexBufferAddress != 0) {
                 VisableInstanceIndexBuffer visBuf = VisableInstanceIndexBuffer(draw.instancingIndexBufferAddress);
-                DrawCommandBuffer drawCmdBuf = DrawCommandBuffer(cullingConst.value.drawCommandBufferAddress);
                 visBuf.indices[outIndex] = gID;
             }
         }

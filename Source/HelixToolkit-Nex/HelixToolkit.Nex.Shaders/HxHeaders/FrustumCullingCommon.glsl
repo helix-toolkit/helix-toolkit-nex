@@ -1,12 +1,5 @@
-@code_gen
-struct MeshBoundData {
-    vec3 boxMin;        // Local Space
-    float _padding0;
-    vec3 boxMax;        // Local Space
-    float _padding1;
-    vec3 sphereCenter;  // Local Space
-    float sphereRadius; // Local Space
-};
+#include "HxHeaders/MeshInfo.glsl"
+
 // Culling Constants
 @code_gen
 struct CullingConstants {
@@ -23,16 +16,11 @@ struct CullingConstants {
 
     float maxDrawDistance;  // Max distance from camera (0.0 = disabled)
     float minScreenSize;    // Min projected size in NDC/Screen ratio (0.0 = disabled)
-    uint _pad1;
-    uint _pad2;
+    uint meshDrawIdxOffset; // Offset in MeshDraw buffer for this culling batch (if processing in chunks)
+    uint _padding1;
 
-    // Buffer Addresses
-    uint64_t meshBoundBufferAddress;     // Input: MeshBoundData[]
-    uint64_t modelMatrixBufferAddress;    // Input: Model Matrices
-    uint64_t drawCommandBufferAddress;    // Input: DrawIndexedIndirectCommand[]
+    uint64_t meshInfoBufferAddress;     // Input: MeshInfo[]
     uint64_t meshDrawBufferAddress;      // Input: MeshDraw[]
-    uint64_t culledDrawCommandBufferAddress; // Output: DrawIndexedIndirectCommand[] Compact list of the culled draw commands
-    uint64_t drawCountBufferAddress;      // Output: uint (visible count)
 };
 
 // ------------------------------------------------------------------

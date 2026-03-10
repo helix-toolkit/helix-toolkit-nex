@@ -7,6 +7,9 @@ public struct NodeInfo
     public Guid Id = Guid.NewGuid();
     public string Name = string.Empty;
     public Node? Node = null;
+    internal bool SelfEnabled = true;
+    internal bool ParentEnabled = true;
+    public bool Enabled => SelfEnabled && ParentEnabled;
 
     public NodeInfo() { }
 
@@ -71,8 +74,6 @@ public struct Transform()
         readonly get => _rotation;
     }
 
-    public Matrix4x4 WorldTransform { private set; get; } = Matrix4x4.Identity;
-
     private Matrix4x4 _value = Matrix4x4.Identity;
     public Matrix4x4 Value
     {
@@ -91,14 +92,21 @@ public struct Transform()
         }
     }
 
-    public void UpdateWorldTransform(in Matrix4x4 parent)
+    public bool UpdateWorldTransform(Matrix4x4 parent, out Matrix4x4 worldTransform)
+    {
+        return UpdateWorldTransform(ref parent, out worldTransform);
+    }
+
+    public bool UpdateWorldTransform(ref Matrix4x4 parent, out Matrix4x4 worldTransform)
     {
         if (!IsWorldDirty)
         {
-            return; // No change in world transform
+            worldTransform = Matrix4x4.Identity;
+            return false; // No change in world transform
         }
-        WorldTransform = parent * Value;
+        worldTransform = parent * Value;
         _isWorldDirty = false;
+        return true;
     }
 
     public override string ToString()
@@ -110,6 +118,15 @@ public struct Transform()
     {
         _isWorldDirty = true;
     }
+}
+
+public readonly struct WorldTransform(Matrix4x4 value)
+{
+    public readonly Matrix4x4 Value = value;
+
+    public static implicit operator Matrix4x4(in WorldTransform wt) => wt.Value;
+
+    public static readonly WorldTransform Identity = new(Matrix4x4.Identity);
 }
 
 public struct Parent()

@@ -4,7 +4,6 @@ using HelixToolkit.Nex;
 using HelixToolkit.Nex.Examples;
 using HelixToolkit.Nex.Graphics;
 using HelixToolkit.Nex.Graphics.Vulkan;
-using HelixToolkit.Nex.Maths;
 using HelixToolkit.Nex.Sample.Application;
 using Microsoft.Extensions.Logging;
 
@@ -48,6 +47,12 @@ internal class App : Application
         var target = _ctx.GetCurrentSwapchainTexture();
         _example?.Render(cmdBuffer, target, _camera, MainWindow.Size.Width, MainWindow.Size.Height);
         _ctx.Submit(cmdBuffer, target);
+    }
+
+    protected override void HandleResize(int width, int height)
+    {
+        _ctx?.RecreateSwapchain(width, height);
+        base.HandleResize(width, height);
     }
 
     protected override void OnDisposing()

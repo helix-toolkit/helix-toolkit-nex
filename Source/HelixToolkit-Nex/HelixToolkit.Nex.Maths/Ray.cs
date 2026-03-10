@@ -133,7 +133,13 @@ namespace HelixToolkit.Nex.Maths
         /// <returns>Whether the two objects intersected.</returns>
         public bool Intersects(ref Vector3 vertex1, ref Vector3 vertex2, ref Vector3 vertex3)
         {
-            return Collision.RayIntersectsTriangle(ref this, ref vertex1, ref vertex2, ref vertex3, out float _);
+            return Collision.RayIntersectsTriangle(
+                ref this,
+                ref vertex1,
+                ref vertex2,
+                ref vertex3,
+                out float _
+            );
         }
 
         /// <summary>
@@ -145,9 +151,20 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="distance">When the method completes, contains the distance of the intersection,
         /// or 0 if there was no intersection.</param>
         /// <returns>Whether the two objects intersected.</returns>
-        public bool Intersects(ref Vector3 vertex1, ref Vector3 vertex2, ref Vector3 vertex3, out float distance)
+        public bool Intersects(
+            ref Vector3 vertex1,
+            ref Vector3 vertex2,
+            ref Vector3 vertex3,
+            out float distance
+        )
         {
-            return Collision.RayIntersectsTriangle(ref this, ref vertex1, ref vertex2, ref vertex3, out distance);
+            return Collision.RayIntersectsTriangle(
+                ref this,
+                ref vertex1,
+                ref vertex2,
+                ref vertex3,
+                out distance
+            );
         }
 
         /// <summary>
@@ -159,9 +176,20 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="point">When the method completes, contains the point of intersection,
         /// or <see cref="Vector3.Zero"/> if there was no intersection.</param>
         /// <returns>Whether the two objects intersected.</returns>
-        public bool Intersects(ref Vector3 vertex1, ref Vector3 vertex2, ref Vector3 vertex3, out Vector3 point)
+        public bool Intersects(
+            ref Vector3 vertex1,
+            ref Vector3 vertex2,
+            ref Vector3 vertex3,
+            out Vector3 point
+        )
         {
-            return Collision.RayIntersectsTriangle(ref this, ref vertex1, ref vertex2, ref vertex3, out point);
+            return Collision.RayIntersectsTriangle(
+                ref this,
+                ref vertex1,
+                ref vertex2,
+                ref vertex3,
+                out point
+            );
         }
 
         /// <summary>
@@ -251,6 +279,7 @@ namespace HelixToolkit.Nex.Maths
         {
             return Collision.RayIntersectsSphere(ref this, ref sphere, out point);
         }
+
         /// <summary>
         /// Planes the intersection.
         /// </summary>
@@ -258,7 +287,11 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="planeNormal">The plane normal.</param>
         /// <param name="intersect">The point intersection</param>
         /// <returns></returns>
-        public bool PlaneIntersection(Vector3 planePosition, Vector3 planeNormal, out Vector3 intersect)
+        public bool PlaneIntersection(
+            Vector3 planePosition,
+            Vector3 planeNormal,
+            out Vector3 intersect
+        )
         {
             Plane plane = PlaneHelper.Create(planePosition, planeNormal);
             return Collision.RayIntersectsPlane(ref this, ref plane, out intersect);
@@ -287,8 +320,11 @@ namespace HelixToolkit.Nex.Maths
         public Vector3 GetNearest(Vector3 point)
         {
             return this.Position
-                   + (Vector3.Dot(point - this.Position, this.Direction)
-                   / this.Direction.LengthSquared() * this.Direction);
+                + (
+                    Vector3.Dot(point - this.Position, this.Direction)
+                    / this.Direction.LengthSquared()
+                    * this.Direction
+                );
         }
 
         /// <summary>
@@ -317,21 +353,94 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="x">X coordinate on 2d screen.</param>
         /// <param name="y">Y coordinate on 2d screen.</param>
         /// <param name="viewport"><see cref="ViewportF"/>.</param>
-        /// <param name="worldViewProjection">Transformation <see cref="Matrix"/>.</param>
+        /// <param name="inverseViewProjection">Inversed view-projection matrix</param>
         /// <returns>Resulting <see cref="Ray"/>.</returns>
-        public static Ray GetPickRay(int x, int y, ViewportF viewport, Matrix worldViewProjection)
+        public static Ray GetPickRay(int x, int y, ViewportF viewport, Matrix inverseViewProjection)
         {
-            Vector3 nearPoint = new(x, y, 0);
-            Vector3 farPoint = new(x, y, 1);
+            Vector3 nearPoint = new(x, y, 1);
+            Vector3 farPoint = new(x, y, 0);
 
-            nearPoint = Vector3Helper.Unproject(nearPoint, viewport.X, viewport.Y, viewport.Width, viewport.Height, viewport.MinDepth,
-                                        viewport.MaxDepth, worldViewProjection);
-            farPoint = Vector3Helper.Unproject(farPoint, viewport.X, viewport.Y, viewport.Width, viewport.Height, viewport.MinDepth,
-                                        viewport.MaxDepth, worldViewProjection);
+            nearPoint = Vector3Helper.Unproject(
+                nearPoint,
+                viewport.X,
+                viewport.Y,
+                viewport.Width,
+                viewport.Height,
+                viewport.MinDepth,
+                viewport.MaxDepth,
+                inverseViewProjection
+            );
+            farPoint = Vector3Helper.Unproject(
+                farPoint,
+                viewport.X,
+                viewport.Y,
+                viewport.Width,
+                viewport.Height,
+                viewport.MinDepth,
+                viewport.MaxDepth,
+                inverseViewProjection
+            );
 
             Vector3 direction = Vector3.Normalize(farPoint - nearPoint);
 
             return new Ray(nearPoint, direction);
+        }
+
+        /// <summary>
+        /// Calculates the shortest distance between this ray and a line segment defined by two points (t0 and t1).
+        /// </summary>
+        /// <param name="ray"></param>
+        /// <param name="t0"></param>
+        /// <param name="t1"></param>
+        /// <param name="sp"></param>
+        /// <param name="tp"></param>
+        /// <param name="sc"></param>
+        /// <param name="tc"></param>
+        /// <returns></returns>
+        public float GetRayToLineDistance(
+            Vector3 t0,
+            Vector3 t1,
+            out Vector3 sp,
+            out Vector3 tp,
+            out float sc,
+            out float tc
+        )
+        {
+            return GetRayToLineDistance(ref t0, ref t1, out sp, out tp, out sc, out tc);
+        }
+
+        /// <summary>
+        /// Calculates the shortest distance between this ray and a line segment defined by two points (t0 and t1).
+        /// </summary>
+        /// <param name="t0"></param>
+        /// <param name="t1"></param>
+        /// <param name="sp"></param>
+        /// <param name="tp"></param>
+        /// <param name="sc"></param>
+        /// <param name="tc"></param>
+        /// <returns></returns>
+        public float GetRayToLineDistance(
+            ref Vector3 t0,
+            ref Vector3 t1,
+            out Vector3 sp,
+            out Vector3 tp,
+            out float sc,
+            out float tc
+        )
+        {
+            var s0 = Position;
+            var s1 = Position + Direction;
+            return MathUtil.GetLineToLineDistance(
+                ref s0,
+                ref s1,
+                ref t0,
+                ref t1,
+                out sp,
+                out tp,
+                out sc,
+                out tc,
+                true
+            );
         }
 
         /// <summary>
@@ -366,7 +475,12 @@ namespace HelixToolkit.Nex.Maths
         /// </returns>
         public override readonly string ToString()
         {
-            return string.Format(CultureInfo.CurrentCulture, "Position:{0} Direction:{1}", Position.ToString(), Direction.ToString());
+            return string.Format(
+                CultureInfo.CurrentCulture,
+                "Position:{0} Direction:{1}",
+                Position.ToString(),
+                Direction.ToString()
+            );
         }
 
         /// <summary>
@@ -378,8 +492,12 @@ namespace HelixToolkit.Nex.Maths
         /// </returns>
         public readonly string ToString(string format)
         {
-            return string.Format(CultureInfo.CurrentCulture, "Position:{0} Direction:{1}", Position.ToString(format, CultureInfo.CurrentCulture),
-                Direction.ToString(format, CultureInfo.CurrentCulture));
+            return string.Format(
+                CultureInfo.CurrentCulture,
+                "Position:{0} Direction:{1}",
+                Position.ToString(format, CultureInfo.CurrentCulture),
+                Direction.ToString(format, CultureInfo.CurrentCulture)
+            );
         }
 
         /// <summary>
@@ -391,7 +509,12 @@ namespace HelixToolkit.Nex.Maths
         /// </returns>
         public readonly string ToString(IFormatProvider formatProvider)
         {
-            return string.Format(formatProvider, "Position:{0} Direction:{1}", Position.ToString(), Direction.ToString());
+            return string.Format(
+                formatProvider,
+                "Position:{0} Direction:{1}",
+                Position.ToString(),
+                Direction.ToString()
+            );
         }
 
         /// <summary>
@@ -404,15 +527,19 @@ namespace HelixToolkit.Nex.Maths
         /// </returns>
         public readonly string ToString(string? format, IFormatProvider? formatProvider)
         {
-            return string.Format(formatProvider, "Position:{0} Direction:{1}", Position.ToString(format, formatProvider),
-                Direction.ToString(format, formatProvider));
+            return string.Format(
+                formatProvider,
+                "Position:{0} Direction:{1}",
+                Position.ToString(format, formatProvider),
+                Direction.ToString(format, formatProvider)
+            );
         }
 
         /// <summary>
         /// Returns a hash code for this instance.
         /// </summary>
         /// <returns>
-        /// A hash code for this instance, suitable for use in hashing algorithms and data structures like a hash table. 
+        /// A hash code for this instance, suitable for use in hashing algorithms and data structures like a hash table.
         /// </returns>
         public override readonly int GetHashCode()
         {

@@ -22,9 +22,14 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
     public IContext Context => _ctx;
 
     /// <summary>
-    /// Gets the wrapper for the underlying Vulkan command buffer.
+    /// Gets a value indicating whether this is a secondary command buffer.
     /// </summary>
-    public readonly VulkanImmediateCommands.CommandBufferWrapper Wrapper =
+    public bool IsSecondary { get; internal set; } = false;
+
+    /// <summary>
+    /// Gets or sets the wrapper for the underlying Vulkan command buffer.
+    /// </summary>
+    public VulkanImmediateCommands.CommandBufferWrapper Wrapper { get; internal set; } =
         context.Immediate!.Acquire();
 
     /// <summary>
@@ -512,12 +517,11 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
 
             BindViewport(viewport);
             BindScissorRect(scissor);
-            BindDepthState(new DepthState());
+            BindDepthState(
+                fb.DepthStencil.Texture ? DepthState.DefaultReversedZ : DepthState.Disabled
+            );
 
             _ctx.CheckAndUpdateDescriptorSets();
-
-            VK.vkCmdSetDepthCompareOp(Wrapper.Instance, VkCompareOp.Always);
-            VK.vkCmdSetDepthBiasEnable(Wrapper.Instance, VK_BOOL.False);
 
             VK.vkCmdBeginRendering(Wrapper.Instance, &renderingInfo);
         }
@@ -580,6 +584,19 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
         }
 #endif
         VK.vkCmdSetDepthCompareOp(Wrapper.Instance, op);
+        VK.vkCmdSetDepthBiasEnable(
+            Wrapper.Instance,
+            desc.IsDepthBiasEnabled ? VK_BOOL.True : VK_BOOL.False
+        );
+        if (desc.IsDepthBiasEnabled)
+        {
+            VK.vkCmdSetDepthBias(
+                Wrapper.Instance,
+                desc.DepthBiasConstantFactor,
+                desc.DepthBiasClamp,
+                desc.DepthBiasSlopeFactor
+            );
+        }
     }
 
     /// <inheritdoc/>
@@ -1262,6 +1279,62 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
     }
 
     /// <inheritdoc/>
+    public void ExecuteCommands(params ICommandBuffer[] secondaryBuffers)
+    {
+        if (IsSecondary)
+        {
+            _logger.LogError(
+                "Cannot execute secondary command buffers from a secondary command buffer."
+            );
+            return;
+        }
+
+        if (!IsRendering)
+        {
+            _logger.LogError("ExecuteCommands must be called within an active render pass.");
+            return;
+        }
+
+        if (secondaryBuffers == null || secondaryBuffers.Length == 0)
+        {
+            return;
+        }
+
+        unsafe
+        {
+            var vkBuffers = stackalloc VkCommandBuffer[secondaryBuffers.Length];
+            int validCount = 0;
+
+            for (int i = 0; i < secondaryBuffers.Length; i++)
+            {
+                if (secondaryBuffers[i] is CommandBuffer vkCmdBuffer)
+                {
+                    if (!vkCmdBuffer.IsSecondary)
+                    {
+                        _logger.LogWarning(
+                            $"Command buffer at index {i} is not a secondary buffer. Skipping."
+                        );
+                        continue;
+                    }
+
+                    vkBuffers[validCount++] = vkCmdBuffer.CmdBuffer;
+                }
+                else
+                {
+                    _logger.LogWarning(
+                        $"Command buffer at index {i} is not a Vulkan command buffer. Skipping."
+                    );
+                }
+            }
+
+            if (validCount > 0)
+            {
+                VK.vkCmdExecuteCommands(CmdBuffer, (uint)validCount, vkBuffers);
+            }
+        }
+    }
+
+    /// <inheritdoc/>
     public void NextSubpass()
     {
         HxDebug.Assert(IsRendering);
@@ -1615,7 +1688,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
     }
 
     /// <inheritdoc/>
-    public void UpdateBuffer(in BufferHandle buffer, uint bufferOffset, uint size, nint data)
+    public ResultCode UpdateBuffer(in BufferHandle buffer, uint bufferOffset, uint size, nint data)
     {
         HxDebug.Assert(buffer);
         HxDebug.Assert(data != IntPtr.Zero);
@@ -1629,7 +1702,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
         if (buf is null || !buf.Valid)
         {
             _logger.LogError("UpdateBuffer failed. Buffer handle is not valid.");
-            return;
+            return ResultCode.InvalidState;
         }
 
         CmdBuffer.BufferBarrier2(
@@ -1654,6 +1727,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
         }
 
         CmdBuffer.BufferBarrier2(buf, VkPipelineStageFlags2.Transfer, dstStage);
+        return ResultCode.Ok;
     }
 
     /// <inheritdoc/>

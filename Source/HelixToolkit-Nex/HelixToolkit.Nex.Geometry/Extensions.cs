@@ -127,4 +127,10 @@ public static class Extensions
             data[i] = Vector3.Normalize(data[i]);
         }
     }
+
+    public static void AddLineIndices(this Geometry geometry, uint i0, uint i1)
+    {
+        geometry.Indices.Add(i0);
+        geometry.Indices.Add(i1);
+    }
 }

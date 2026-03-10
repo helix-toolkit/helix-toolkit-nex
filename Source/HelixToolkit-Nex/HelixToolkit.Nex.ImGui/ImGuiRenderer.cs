@@ -181,16 +181,12 @@ public class ImGuiRenderer(IContext context, ImGuiConfig config) : IDisposable
 
     private unsafe bool CreatePipeline(Framebuffer fb)
     {
-        uint nonLinearColorSpace =
+        var nonLinearColorSpace =
             Context.GetSwapchainColorSpace() == ColorSpace.SRGB_NONLINEAR ? 1u : 0u;
         var desc = new RenderPipelineDesc();
         desc.VertexShader = _vertexShaderModule;
-        desc.FragementShader = _fragShaderModule;
-        desc.SpecInfo.Entries[0].ConstantId = 0;
-        desc.SpecInfo.Entries[0].Size = sizeof(uint);
-        desc.SpecInfo.Data = new byte[sizeof(uint)];
-        using var pData = desc.SpecInfo.Data.Pin();
-        NativeHelper.Write((nint)pData.Pointer, ref nonLinearColorSpace);
+        desc.FragmentShader = _fragShaderModule;
+        desc.WriteSpecInfo(0, nonLinearColorSpace);
         desc.Colors[0].Format = Context.GetFormat(fb.Colors[0].Texture);
         desc.Colors[0].BlendEnabled = true;
         desc.Colors[0].SrcRGBBlendFactor = BlendFactor.SrcAlpha;
@@ -219,7 +215,7 @@ public class ImGuiRenderer(IContext context, ImGuiConfig config) : IDisposable
                 _logger.LogError($"Font file not found: {fontPath}");
                 return;
             }
-            io.Fonts.AddFontFromFileTTF(fontPath, _config.FontSizeInPixel);
+            io.Fonts.AddFontFromFileTTF(fontPath, _config.FontSizeInPixel * DisplayScale);
         }
         if (!io.Fonts.Build())
         {
@@ -227,6 +223,7 @@ public class ImGuiRenderer(IContext context, ImGuiConfig config) : IDisposable
         }
         else
         {
+            FontTexture?.Dispose();
             unsafe
             {
                 // Get the font texture and upload it to the GPU.
@@ -259,7 +256,7 @@ public class ImGuiRenderer(IContext context, ImGuiConfig config) : IDisposable
         var dim = Context.GetDimensions(fb.Colors[0].Texture);
         Gui.SetCurrentContext(ImGuiContext);
         var io = Gui.GetIO();
-        io.DisplaySize = new Vector2(dim.Width / DisplayScale, dim.Height / DisplayScale);
+        io.DisplaySize = new Vector2(dim.Width, dim.Height);
         io.DisplayFramebufferScale = new Vector2(DisplayScale);
         Gui.NewFrame();
         return true;

@@ -46,8 +46,7 @@ internal sealed class VulkanStagingDevice : IDisposable
             buffer.BufferSubData(dstOffset, size, data);
             return ResultCode.Ok;
         }
-
-        var stagingBuffer = _ctx.BuffersPool.Get(this._stagingBuffer);
+        var stagingBuffer = _ctx.BuffersPool.Get(this._stagingBuffer.Handle);
 
         HxDebug.Assert(stagingBuffer);
 
@@ -60,8 +59,20 @@ internal sealed class VulkanStagingDevice : IDisposable
         while (size > 0)
         {
             // get next staging buffer free offset
-            MemoryRegionDesc desc = GetNextFreeOffset(size);
+            MemoryRegionDesc desc = GetNextFreeOffset(size, out var bufferChanged);
             uint32_t chunkSize = Math.Min(size, desc.Size);
+
+            if (bufferChanged)
+            {
+                stagingBuffer = _ctx.BuffersPool.Get(this._stagingBuffer.Handle);
+                HxDebug.Assert(stagingBuffer);
+
+                if (!stagingBuffer)
+                {
+                    _logger.LogError("Staging buffer is not valid, cannot upload data.");
+                    return ResultCode.InvalidState;
+                }
+            }
 
             // copy data into staging buffer
             stagingBuffer!.BufferSubData(desc.Offset, chunkSize, data);
@@ -186,26 +197,26 @@ internal sealed class VulkanStagingDevice : IDisposable
             height = height <= 1 ? 1 : height >> 1;
         }
         uint32_t storageSize = layerStorageSize * numLayers;
-        EnsureStagingBufferSize(storageSize);
+        EnsureStagingBufferSize(storageSize, out _);
 
         HxDebug.Assert(
             storageSize <= _stagingBufferSize,
             $"Required storage size ({storageSize} is larger than maximum supported staging buffer size ({_stagingBufferSize})."
         );
 
-        var desc = GetNextFreeOffset(storageSize);
+        var desc = GetNextFreeOffset(storageSize, out _);
         // No support for copying image in multiple smaller chunk sizes. If we get smaller buffer size than storageSize, we will wait for GPU idle
         // and get bigger chunk.
         if (desc.Size < storageSize)
         {
             WaitAndReset();
-            desc = GetNextFreeOffset(storageSize);
+            desc = GetNextFreeOffset(storageSize, out _);
         }
         HxDebug.Assert(desc.Size >= storageSize);
 
         var cmdBuf = _ctx.Immediate!.Acquire();
 
-        var stagingBuffer = _ctx.BuffersPool.Get(this._stagingBuffer);
+        var stagingBuffer = _ctx.BuffersPool.Get(this._stagingBuffer.Handle);
 
         HxDebug.Assert(stagingBuffer, "Staging buffer is not valid, cannot upload image data.");
 
@@ -402,7 +413,7 @@ internal sealed class VulkanStagingDevice : IDisposable
         uint32_t storageSize =
             extent.width * extent.height * extent.depth * format.GetBytesPerPixel();
 
-        EnsureStagingBufferSize(storageSize);
+        EnsureStagingBufferSize(storageSize, out _);
 
         HxDebug.Assert(
             storageSize <= _stagingBufferSize,
@@ -410,19 +421,19 @@ internal sealed class VulkanStagingDevice : IDisposable
         );
 
         // get next staging buffer free offset
-        MemoryRegionDesc desc = GetNextFreeOffset(storageSize);
+        MemoryRegionDesc desc = GetNextFreeOffset(storageSize, out _);
 
         // No support for copying image in multiple smaller chunk sizes.
         // If we get smaller buffer size than storageSize, we will wait for GPU idle and get a bigger chunk.
         if (desc.Size < storageSize)
         {
             WaitAndReset();
-            desc = GetNextFreeOffset(storageSize);
+            desc = GetNextFreeOffset(storageSize, out _);
         }
 
         HxDebug.Assert(desc.Size >= storageSize);
 
-        var stagingBuffer = _ctx.BuffersPool.Get(this._stagingBuffer);
+        var stagingBuffer = _ctx.BuffersPool.Get(this._stagingBuffer.Handle);
 
         HxDebug.Assert(stagingBuffer, "Staging buffer is not valid, cannot upload image data.");
         if (!stagingBuffer)
@@ -507,21 +518,21 @@ internal sealed class VulkanStagingDevice : IDisposable
     )
     {
         HxDebug.Assert(outDataSize + offset <= buffer.BufferSize);
-        EnsureStagingBufferSize(outDataSize);
+        EnsureStagingBufferSize(outDataSize, out _);
         HxDebug.Assert(outDataSize <= _stagingBufferSize);
         // get next staging buffer free offset
-        MemoryRegionDesc desc = GetNextFreeOffset(outDataSize);
+        MemoryRegionDesc desc = GetNextFreeOffset(outDataSize, out _);
         // No support for copying image in multiple smaller chunk sizes.
         // If we get smaller buffer size than storageSize, we will wait for GPU idle and get a bigger chunk.
         if (desc.Size < outDataSize)
         {
             WaitAndReset();
-            desc = GetNextFreeOffset(outDataSize);
+            desc = GetNextFreeOffset(outDataSize, out _);
         }
 
         HxDebug.Assert(desc.Size >= outDataSize);
 
-        var stagingBuffer = _ctx.BuffersPool.Get(this._stagingBuffer);
+        var stagingBuffer = _ctx.BuffersPool.Get(this._stagingBuffer.Handle);
 
         HxDebug.Assert(stagingBuffer, "Staging buffer is not valid, cannot upload image data.");
         if (!stagingBuffer)
@@ -597,24 +608,24 @@ internal sealed class VulkanStagingDevice : IDisposable
         uint32_t storageSize =
             extent.width * extent.height * extent.depth * format.GetBytesPerPixel();
 
-        EnsureStagingBufferSize(storageSize);
+        EnsureStagingBufferSize(storageSize, out _);
 
         HxDebug.Assert(storageSize <= _stagingBufferSize);
 
         // get next staging buffer free offset
-        MemoryRegionDesc desc = GetNextFreeOffset(storageSize);
+        MemoryRegionDesc desc = GetNextFreeOffset(storageSize, out _);
 
         // No support for copying image in multiple smaller chunk sizes.
         // If we get smaller buffer size than storageSize, we will wait for GPU idle and get a bigger chunk.
         if (desc.Size < storageSize)
         {
             WaitAndReset();
-            desc = GetNextFreeOffset(storageSize);
+            desc = GetNextFreeOffset(storageSize, out _);
         }
 
         HxDebug.Assert(desc.Size >= storageSize);
 
-        var stagingBuffer = _ctx.BuffersPool.Get(this._stagingBuffer);
+        var stagingBuffer = _ctx.BuffersPool.Get(this._stagingBuffer.Handle);
 
         HxDebug.Assert(stagingBuffer, "Staging buffer is not valid, cannot upload image data.");
         if (!stagingBuffer)
@@ -712,11 +723,11 @@ internal sealed class VulkanStagingDevice : IDisposable
         return ResultCode.Ok;
     }
 
-    public MemoryRegionDesc GetNextFreeOffset(uint32_t size)
+    public MemoryRegionDesc GetNextFreeOffset(uint32_t size, out bool bufferChanged)
     {
         uint32_t requestedAlignedSize = Alignment.GetAlignedSize(size, KStagingBufferAlignment);
 
-        EnsureStagingBufferSize(requestedAlignedSize);
+        EnsureStagingBufferSize(requestedAlignedSize, out bufferChanged);
 
         HxDebug.Assert(_regions.Count > 0);
 
@@ -725,7 +736,6 @@ internal sealed class VulkanStagingDevice : IDisposable
         int bestNextRegion = _regions.Count;
         uint32_t unusedSize = 0;
         uint32_t unusedOffset = 0;
-
         for (int i = 0; i < _regions.Count; ++i)
         {
             ref var region = ref _regions.GetInternalArray()[i];
@@ -804,8 +814,9 @@ internal sealed class VulkanStagingDevice : IDisposable
         return new MemoryRegionDesc { Offset = 0, Size = _stagingBufferSize - unusedSize };
     }
 
-    public void EnsureStagingBufferSize(uint32_t sizeNeeded)
+    public void EnsureStagingBufferSize(uint32_t sizeNeeded, out bool bufferChanged)
     {
+        bufferChanged = false;
         uint32_t alignedSize = Math.Max(
             Alignment.GetAlignedSize(sizeNeeded, KStagingBufferAlignment),
             KMinBufferSize
@@ -827,6 +838,7 @@ internal sealed class VulkanStagingDevice : IDisposable
         WaitAndReset();
 
         // deallocate the previous staging buffer
+        _stagingBuffer.Dispose();
         _stagingBuffer = BufferResource.Null;
 
         // if the combined size of the new staging buffer and the existing one is larger than the limit imposed by some architectures on buffers
@@ -860,6 +872,7 @@ internal sealed class VulkanStagingDevice : IDisposable
 
         _regions.Clear();
         _regions.Add(new MemoryRegionDesc() { Offset = 0, Size = _stagingBufferSize });
+        bufferChanged = true;
     }
 
     public void WaitAndReset()

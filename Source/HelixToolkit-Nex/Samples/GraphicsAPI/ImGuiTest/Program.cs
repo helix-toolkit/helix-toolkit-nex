@@ -33,6 +33,9 @@ internal class App : Application
 
     public override string Name => "ImGui Test Application";
 
+    public App()
+        : base(new ApplicationConfig() { WindowResizable = true }) { }
+
     protected override void Initialize()
     {
         _ctx = VulkanBuilder.Create(
@@ -98,12 +101,12 @@ internal class App : Application
         }
     }
 
-    protected override void OnDisplayScaleChanged(float scaleX, float scaleY)
+    protected override void OnDisplayScaleChanged(float scale)
     {
-        if (_guiRenderer != null && scaleX != 0)
+        if (_guiRenderer != null && scale != 0)
         {
             // Update the ImGui guiRenderer with the new display scale.
-            _guiRenderer.DisplayScale = scaleX;
+            _guiRenderer.DisplayScale = scale;
         }
     }
 
@@ -114,7 +117,7 @@ internal class App : Application
             return; // Renderer not initialized, cannot set cursor position.
         }
         var io = ImGui.GetIO();
-        io.AddMousePosEvent(x, y);
+        io.AddMousePosEvent(x / _guiRenderer.DisplayScale, y / _guiRenderer.DisplayScale);
     }
 
     protected override void OnMouseButtonDown(SDL_Button button)
@@ -228,6 +231,12 @@ internal class App : Application
         _guiRenderer.EndFrame(cmdBuf);
         cmdBuf.EndRendering();
         _ctx.Submit(cmdBuf, tex);
+    }
+
+    protected override void HandleResize(int width, int height)
+    {
+        _ctx?.RecreateSwapchain(width, height);
+        base.HandleResize(width, height);
     }
 
     protected override void OnDisposing()

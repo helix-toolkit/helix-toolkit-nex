@@ -59,16 +59,21 @@ public enum GeometryBufferType
     All = Vertex | VertexProp | Index | VertexColor,
 }
 
+public readonly struct GeometryResourceType { }
+
 [JsonConverter(typeof(Serialization.GeometryJsonConverter))]
 public partial class Geometry : ObservableObject, IDisposable
 {
-    public record GeometryUpdatedEvent(Geometry Source) : IEvent;
-
     private static readonly ILogger logger = LogManager.Create<Geometry>();
     private static readonly ITracer _tracer = TracerFactory.GetTracer(nameof(Geometry));
     private const string TRACE_BUFFER = "Buffer";
     private const string TRACE_BOUNDS = "Bounds";
-    public Guid Id { set; get; } = Guid.NewGuid();
+    internal Handle<GeometryResourceType> Handle { set; get; } = Handle<GeometryResourceType>.Null;
+    internal GeometryManager? Manager { set; get; } = null;
+
+    public bool Attached => Handle.Valid && Manager is not null;
+
+    public uint Id => Handle.Index;
 
     public string Name { set; get; } = string.Empty;
 
@@ -98,6 +103,9 @@ public partial class Geometry : ObservableObject, IDisposable
     /// </summary>
     private BufferResource _indexBuffer = BufferResource.Null;
     private BufferResource _vertColorsBuffer = BufferResource.Null;
+
+    public uint IndexCount => (uint)_indices.Count;
+
     public BufferResource VertexBuffer => _vertexBuffer;
     public BufferResource VertexPropsBuffer => _vertexPropsBuffer;
     public BufferResource IndexBuffer => _indexBuffer;
@@ -121,9 +129,9 @@ public partial class Geometry : ObservableObject, IDisposable
     public bool IsBoundDirty { set; get; } = true;
 
     /// <summary>
-    /// Used to indicate the first index in shared index buffer. For dynamic geometry, it should always be 0.
+    /// Used to indicate the index offset in shared index buffer. For dynamic geometry, it should always be 0.
     /// </summary>
-    public uint FirstIndex { set; get; } = 0;
+    public uint IndexOffset { set; get; } = 0;
 
     /// <summary>
     /// Gets or sets the bounding box of the object in local space coordinates.
@@ -159,9 +167,9 @@ public partial class Geometry : ObservableObject, IDisposable
             {
                 BufferDirty |= GeometryBufferType.VertexColor;
             }
-            if (BufferDirty != GeometryBufferType.None)
+            if (BufferDirty != GeometryBufferType.None && Attached)
             {
-                EventBus.PublishAsync(new GeometryUpdatedEvent(this));
+                EventBus.PublishAsync(new GeometryUpdatedEvent(Id, GeometryChangeOp.Updated));
             }
         };
     }
@@ -442,6 +450,11 @@ public partial class Geometry : ObservableObject, IDisposable
                 _vertexPropsBuffer?.Dispose();
                 _indexBuffer?.Dispose();
                 _vertColorsBuffer?.Dispose();
+                _vertexBuffer = BufferResource.Null;
+                _vertexPropsBuffer = BufferResource.Null;
+                _indexBuffer = BufferResource.Null;
+                _vertColorsBuffer = BufferResource.Null;
+                Manager?.Remove(this);
             }
 
             // TODO: free unmanaged resources (unmanaged objects) and override finalizer

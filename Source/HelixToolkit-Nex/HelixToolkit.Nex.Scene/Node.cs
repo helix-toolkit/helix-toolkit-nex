@@ -34,6 +34,7 @@ public class Node : IDisposable
                     return; // No change in level
                 }
                 info.Level = 0;
+                ParentEnabled = true; // Reset parent enabled state when detaching from parent
             }
             else
             {
@@ -45,6 +46,7 @@ public class Node : IDisposable
                     return; // No change in level
                 }
                 Entity.Get<NodeInfo>().Level = value.Info.Level + 1;
+                ParentEnabled = value.Enabled; // Inherit enabled state from new parent
             }
             UpdateChildrenLevels();
         }
@@ -65,14 +67,71 @@ public class Node : IDisposable
 
     public bool IsRoot => Info.Level == 0;
 
+    public bool Enabled
+    {
+        get
+        {
+            ref var info = ref Entity.Get<NodeInfo>();
+            return info.Enabled;
+        }
+        set
+        {
+            ref var info = ref Entity.Get<NodeInfo>();
+            if (info.SelfEnabled == value)
+            {
+                return;
+            }
+            info.SelfEnabled = value;
+            if (!HasChildren)
+            {
+                return;
+            }
+            ref var children = ref Entity.Get<Children>();
+            foreach (var child in children.ChildNodes)
+            {
+                child.ParentEnabled = value;
+            }
+        }
+    }
+
+    internal bool ParentEnabled
+    {
+        get => Entity.Get<NodeInfo>().ParentEnabled;
+        set
+        {
+            ref var info = ref Entity.Get<NodeInfo>();
+            if (info.ParentEnabled == value)
+            {
+                return;
+            }
+            Entity.Get<NodeInfo>().ParentEnabled = value;
+            if (info.SelfEnabled && HasChildren)
+            {
+                ref var children = ref Entity.Get<Children>();
+                foreach (var child in children.ChildNodes)
+                {
+                    child.ParentEnabled = value;
+                }
+            }
+        }
+    }
+
     public ref Transform Transform => ref World.Get<Transform>(Entity);
+
+    public ref WorldTransform WorldTransform => ref World.Get<WorldTransform>(Entity);
 
     public Node(in World world, in Entity? entity = null)
     {
         World = world ?? throw new ArgumentNullException(nameof(world));
         Entity =
             entity
-            ?? world.Create(new NodeInfo(this), new Transform(), new Parent(), new Children());
+            ?? world.Create(
+                new NodeInfo(this),
+                new Transform(),
+                WorldTransform.Identity,
+                new Parent(),
+                new Children()
+            );
         VerifyExternalEntity(Entity);
     }
 
@@ -118,6 +177,11 @@ public class Node : IDisposable
         children.ChildNodes.RemoveAt(index);
         node.Parent = null;
         return true;
+    }
+
+    public void SetWorldTransform(in WorldTransform transform)
+    {
+        Entity.Set(in transform);
     }
 
     public override string ToString()

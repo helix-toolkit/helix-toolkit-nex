@@ -6,6 +6,8 @@ using HelixToolkit.Nex.Graphics;
 using HelixToolkit.Nex.Material;
 using HelixToolkit.Nex.Maths;
 using HelixToolkit.Nex.Shaders;
+using HelixToolkit.Nex.Shaders.Frag;
+using SDL3;
 
 namespace InstancingMeshCulling;
 
@@ -40,30 +42,26 @@ internal class InstancingMeshCullingExample : IDisposable
 
     // CPU-side data for instances
     private readonly FastList<PBRProperties> _pBRProperties = [];
-    private readonly FastList<Matrix4x4> _modelMatrices = [];
     private readonly FastList<Matrix4x4> _instanceMatrices = [];
-    private readonly FastList<MeshBoundData> _bounds = [];
 
     // Arrays for data management
     private readonly int _instanceCount = 10000;
     private readonly FastList<MeshDraw> _meshDraws = [];
     private readonly FastList<Geometry> _meshes = [];
-    private readonly FastList<DrawIndexedIndirectCommand> _drawCommands = [];
+    private readonly FastList<MeshInfo> _meshInfos = [];
 
     // -- GPU Buffers --
     // Constant Data
     private BufferResource _cullConstBuffer = BufferResource.Null; // Uniforms for culling (View, Proj, Frustum planes)
-    private BufferResource _modelMatrixBuffer = BufferResource.Null; // Base model matrix (identity in this sample)
     private BufferResource _pbrPropertiesBuffer = BufferResource.Null; // Material properties
-    private BufferResource _boundsBuffer = BufferResource.Null; // Bounding Boxes/Spheres for all mesh types
     private BufferResource _indexBuffer = BufferResource.Null; // Geometry indices
+    private BufferResource _meshInfoBuffer = BufferResource.Null;
 
     // Instance Data
     private BufferResource _instancingBuffer = BufferResource.Null; // Stores the local-to-world matrix for every instance (Visible or not)
 
     // Indirect Draw Data (Modified by GPU)
     private BufferResource _meshDrawBuffer = BufferResource.Null; // Contains MeshDraw structs (pointers to buffers, material IDs)
-    private BufferResource _drawCmdsBuffer = BufferResource.Null; // Indirect Draw Arguments (IndexCount, InstanceCount, etc.)
 
     // Culling Output (Written by CS, Read by VS)
     private BufferResource _culledInstanceIdxBuffer = BufferResource.Null; // List of indices into _instancingBuffer that survived culling
@@ -74,6 +72,7 @@ internal class InstancingMeshCullingExample : IDisposable
 
     // -- Pipelines --
     private ComputePipelineResource _cullingPipeline = ComputePipelineResource.Null; // The Compute Shader that performs the culling
+    private ComputePipelineResource _resetInstanceCountPipeline = ComputePipelineResource.Null; // The Compute Shader to reset instance count in mesh draw buffer.
     private RenderPipelineResource _renderPipeline = RenderPipelineResource.Null; // The Graphics Pipeline for drawing
 
     // -- State & Helpers --
@@ -88,6 +87,7 @@ internal class InstancingMeshCullingExample : IDisposable
     private readonly long _startTimestamp;
     private readonly RenderPass _renderPass = new RenderPass();
     private readonly Framebuffer _frameBuffer = new Framebuffer();
+    private readonly Dependencies _cullDeps = new Dependencies();
     private readonly Dependencies _renderDependencies = new Dependencies();
     #endregion
 
@@ -114,33 +114,11 @@ internal class InstancingMeshCullingExample : IDisposable
             StorageType.Device,
             "CullingConstantBuffer"
         );
-        _modelMatrixBuffer = _context.CreateBuffer(
-            _modelMatrices,
-            BufferUsageBits.Storage,
-            StorageType.Device,
-            "ModelMatrixBuffer"
-        );
         _pbrPropertiesBuffer = _context.CreateBuffer(
             _pBRProperties,
             BufferUsageBits.Storage,
             StorageType.Device,
             "PBRPropertiesBuffer"
-        );
-        _boundsBuffer = _context.CreateBuffer(
-            _bounds,
-            BufferUsageBits.Storage,
-            StorageType.Device,
-            "BoundsBuffer"
-        );
-
-        // This buffer holds the Indirect Command signature.
-        // Usage 'Indirect' allows it to be used as the argument source for DrawIndexedIndirect.
-        // Usage 'Storage' allows the Compute Shader to write the 'InstanceCount' into it.
-        _drawCmdsBuffer = _context.CreateBuffer(
-            _drawCommands,
-            BufferUsageBits.Storage | BufferUsageBits.Indirect,
-            StorageType.Device,
-            "CmdBuffer"
         );
 
         // 2.2 Create Output Buffers for Culling Results
@@ -169,9 +147,16 @@ internal class InstancingMeshCullingExample : IDisposable
 
         _meshDrawBuffer = _context.CreateBuffer(
             _meshDraws,
-            BufferUsageBits.Storage,
+            BufferUsageBits.Storage | BufferUsageBits.Indirect,
             StorageType.Device,
             "MeshDrawBuffer"
+        );
+
+        _meshInfoBuffer = _context.CreateBuffer(
+            _meshInfos,
+            BufferUsageBits.Storage,
+            StorageType.Device,
+            "MeshInfoBuffer"
         );
 
         var indices = new FastList<uint>(_boxMesh!.Indices);
@@ -205,11 +190,7 @@ internal class InstancingMeshCullingExample : IDisposable
             }
         );
 
-        // Link buffer addresses to the culling constants so the shader can access them.
-        // This 'Bindless' style typically passes GPU pointers (addresses) to the shader via PC or UBO.
-        _cullConst.ModelMatrixBufferAddress = _modelMatrixBuffer.GpuAddress;
-        _cullConst.MeshBoundBufferAddress = _boundsBuffer.GpuAddress;
-        _cullConst.DrawCommandBufferAddress = _drawCmdsBuffer.GpuAddress;
+        _cullConst.MeshInfoBufferAddress = _meshInfoBuffer.GpuAddress;
         _cullConst.MeshDrawBufferAddress = _meshDrawBuffer.GpuAddress;
 
         // 2.4 Build Pipelines
@@ -233,22 +214,36 @@ internal class InstancingMeshCullingExample : IDisposable
             new ComputePipelineDesc { ComputeShader = cullingModule }
         );
         Debug.Assert(_cullingPipeline.Valid);
+
+        var resetShader = GpuFrustumCulling.GenerateComputeShader(
+            GpuFrustumCulling.CullMode.ResetInstanceCount
+        );
+        var resetModule = _context.CreateShaderModuleGlsl(
+            resetShader,
+            ShaderStage.Compute,
+            "ResetDrawInstanceCount"
+        );
+        _resetInstanceCountPipeline = _context.CreateComputePipeline(
+            resetModule,
+            "ResetDrawInstanceCount"
+        );
+        Debug.Assert(_resetInstanceCountPipeline.Valid);
+        _cullDeps.Buffers[0] = _meshDrawBuffer;
     }
 
     private void CreateRenderPipeline()
     {
         // Setup PBR material pipeline (using simplified lighting/unlit for this demo for clarity).
-        var builder = new MaterialShaderBuilder()
-            .WithPBRShading(true)
-            .WithSimpleLighting(false) // Disable complex lighting for performance in this sample
-            .ConfigForwardPlus(ForwardPlusLightCulling.Config.Default);
+        var builder = new MaterialShaderBuilder().ConfigForwardPlus(
+            ForwardPlusLightCulling.Config.Default
+        );
 
         var shaderResult = builder.BuildMaterialPipeline(_context, "Unlit");
 
         var pipelineDesc = new RenderPipelineDesc
         {
             VertexShader = shaderResult.VertexShader,
-            FragementShader = shaderResult.FragmentShader,
+            FragmentShader = shaderResult.FragmentShader,
             DebugName = "UnlitPipeline",
             CullMode = CullMode.Back,
             FrontFaceWinding = WindingMode.CCW,
@@ -257,16 +252,7 @@ internal class InstancingMeshCullingExample : IDisposable
         // Configure blending and depth formats
         pipelineDesc.Colors[0].Format = Format.BGRA_SRGB8;
         pipelineDesc.DepthFormat = Format.Z_F32;
-
-        // Specialization constants setup (Shader feature flags)
-        pipelineDesc.SpecInfo.Entries[0].ConstantId = 0;
-        pipelineDesc.SpecInfo.Entries[0].Size = sizeof(uint);
-        pipelineDesc.SpecInfo.Data = new byte[sizeof(uint)];
-        using var pData = pipelineDesc.SpecInfo.Data.Pin();
-        unsafe
-        {
-            NativeHelper.Write((nint)pData.Pointer, 1u);
-        }
+        pipelineDesc.WriteSpecInfo(0, PBRShadingMode.Unlit);
 
         _renderPipeline = _context.CreateRenderPipeline(pipelineDesc);
         Debug.Assert(_renderPipeline.Valid);
@@ -281,7 +267,7 @@ internal class InstancingMeshCullingExample : IDisposable
         // Dependencies ensure memory barriers are placed correctly.
         // We need to wait for the Compute Shader to finish writing to these buffers before Rendering reads them.
         _renderDependencies.Buffers[0] = _culledInstanceIdxBuffer;
-        _renderDependencies.Buffers[1] = _drawCmdsBuffer;
+        _renderDependencies.Buffers[1] = _meshDrawBuffer;
     }
     #endregion
 
@@ -326,9 +312,20 @@ internal class InstancingMeshCullingExample : IDisposable
         var cmdBuffer = _context!.AcquireCommandBuffer();
         cmdBuffer.UpdateBuffer(_cullConstBuffer, _cullConst);
 
-        // Reset the Draw Indirect Buffer (specifically instance count) before culling.
-        // The Compute Shader will atomic-add to this count.
-        cmdBuffer.UpdateBuffer(_drawCmdsBuffer, _drawCommands);
+        cmdBuffer.BindComputePipeline(_resetInstanceCountPipeline);
+        cmdBuffer.PushConstants(
+            new ResetMeshDrawInstanceCountPC
+            {
+                MeshDrawBufferAddress = _meshDrawBuffer.GpuAddress,
+                MeshDrawCount = (uint)_meshDraws.Count,
+            }
+        );
+
+        // Reset all instance count value in mesh draw buffer to 0.
+        cmdBuffer.DispatchThreadGroups(
+            new Dimensions(GpuFrustumCulling.GetGroupSize((uint)_meshDraws.Count), 1, 1),
+            Dependencies.Empty
+        );
 
         cmdBuffer.BindComputePipeline(_cullingPipeline);
         cmdBuffer.PushConstants(
@@ -343,7 +340,7 @@ internal class InstancingMeshCullingExample : IDisposable
         // Run one thread per instance to check visibility
         cmdBuffer.DispatchThreadGroups(
             new Dimensions(GpuFrustumCulling.GetGroupSize((uint)_instanceCount), 1, 1),
-            Dependencies.Empty
+            _cullDeps
         );
 
         // 3.4 Render Visible Objects
@@ -362,10 +359,9 @@ internal class InstancingMeshCullingExample : IDisposable
                 InverseViewProjection = invViewProj,
                 CameraPosition = _camera.Position,
                 Time = (float)DateTime.Now.TimeOfDay.TotalSeconds,
-                ModelMatrixBufferAddress = _modelMatrixBuffer.GpuAddress,
                 MaterialBufferAddress = _pbrPropertiesBuffer.GpuAddress,
-                PerModelParamsBufferAddress = _fpConstBuffer.GpuAddress,
                 MeshDrawBufferAddress = _meshDrawBuffer.GpuAddress,
+                MeshInfoBufferAddress = _meshInfoBuffer.GpuAddress,
                 LightCount = 0, // No lights in this unlit demo
                 TileSize = 0,
                 ScreenDimensions = new Vector2(width, height),
@@ -385,14 +381,9 @@ internal class InstancingMeshCullingExample : IDisposable
         cmdBuffer.BindIndexBuffer(_indexBuffer, IndexFormat.UI32);
 
         // Indirect Draw:
-        // The GPU reads arguments (InstanceCount, etc.) from '_drawCmdsBuffer'.
+        // The GPU reads arguments (InstanceCount, etc.) from '_meshDrawBuffer'.
         // This count was populated by the Compute Shader in the previous step.
-        cmdBuffer.DrawIndexedIndirect(
-            _drawCmdsBuffer,
-            0,
-            1,
-            DrawIndexedIndirectCommand.SizeInBytes
-        );
+        cmdBuffer.DrawIndexedIndirect(_meshDrawBuffer, 0, 1, MeshDraw.SizeInBytes);
         cmdBuffer.EndRendering();
         _context.Submit(cmdBuffer, target);
     }
@@ -408,24 +399,11 @@ internal class InstancingMeshCullingExample : IDisposable
         _boxMesh.UpdateBuffers(_context);
         _meshes.Add(_boxMesh);
 
-        // Register bounds for geometry types (Box=0, Sphere=1)
-        _bounds.Add(
-            new MeshBoundData()
-            {
-                BoxMax = _boxMesh.BoundingBoxLocal.Maximum,
-                BoxMin = _boxMesh.BoundingBoxLocal.Minimum,
-                SphereCenter = _boxMesh.BoundingSphereLocal.Center,
-                SphereRadius = _boxMesh.BoundingSphereLocal.Radius,
-            }
-        );
-
         // Generate random instances
         _pBRProperties.Resize(1);
-        _modelMatrices.Resize(1);
-        _drawCommands.Resize(1);
         _meshDraws.Resize(1);
+        _meshInfos.Resize(1);
         var rnd = new Random((int)Stopwatch.GetTimestamp());
-        _modelMatrices[0] = Matrix4x4.Identity;
         _pBRProperties[0] = new PBRProperties()
         {
             Albedo = new Vector3(
@@ -438,18 +416,22 @@ internal class InstancingMeshCullingExample : IDisposable
         };
         _meshDraws[0] = new MeshDraw()
         {
-            VertexBufferAddress = _boxMesh.VertexBuffer.GpuAddress,
-            VertexPropsBufferAddress = _boxMesh.VertexPropsBuffer.GpuAddress,
-            VertexColorBufferAddress = _boxMesh.VertexColorBuffer.GpuAddress,
-            MaterialId = 0,
-            ModelId = 0,
-        };
-        _drawCommands[0] = new()
-        {
             IndexCount = (uint)_boxMesh.Indices.Count,
             InstanceCount = 0,
             FirstIndex = 0,
-            MeshDrawIndex = 0,
+            MaterialId = 0,
+            Transform = Matrix4x4.Identity,
+            Cullable = 1,
+        };
+        _meshInfos[0] = new MeshInfo()
+        {
+            VertexBufferAddress = _boxMesh.VertexBuffer.GpuAddress,
+            VertexPropsBufferAddress = _boxMesh.VertexPropsBuffer.GpuAddress,
+            VertexColorBufferAddress = _boxMesh.VertexColorBuffer.GpuAddress,
+            BoxMax = _boxMesh.BoundingBoxLocal.Maximum,
+            BoxMin = _boxMesh.BoundingBoxLocal.Minimum,
+            SphereCenter = _boxMesh.BoundingSphereLocal.Center,
+            SphereRadius = _boxMesh.BoundingSphereLocal.Radius,
         };
 
         _instanceMatrices.Resize(_instanceCount);
@@ -485,16 +467,14 @@ internal class InstancingMeshCullingExample : IDisposable
                 _boxMesh?.Dispose();
                 // Dispose all GPU buffers
                 _cullConstBuffer.Dispose();
-                _modelMatrixBuffer.Dispose();
                 _pbrPropertiesBuffer.Dispose();
-                _boundsBuffer.Dispose();
                 _fpConstBuffer.Dispose();
                 _depthBuffer.Dispose();
                 _meshDrawBuffer.Dispose();
-                _drawCmdsBuffer.Dispose();
                 _indexBuffer.Dispose();
                 _instancingBuffer.Dispose();
                 _culledInstanceIdxBuffer.Dispose();
+                _meshInfoBuffer.Dispose();
 
                 // Dispose pipelines
                 _cullingPipeline.Dispose();

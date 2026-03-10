@@ -626,73 +626,99 @@ public enum BlendFactor : uint8_t
 /// <summary>
 /// Describes the configuration for a texture sampler.
 /// </summary>
-public struct SamplerStateDesc()
+public sealed class SamplerStateDesc()
 {
     /// <summary>
     /// Minification filter mode. Defaults to Linear.
     /// </summary>
-    public SamplerFilter MinFilter = SamplerFilter.Linear;
+    public SamplerFilter MinFilter { get; init; } = SamplerFilter.Linear;
 
     /// <summary>
     /// Magnification filter mode. Defaults to Linear.
     /// </summary>
-    public SamplerFilter MagFilter = SamplerFilter.Linear;
+    public SamplerFilter MagFilter { get; init; } = SamplerFilter.Linear;
 
     /// <summary>
     /// Mipmap filter mode. Defaults to Disabled.
     /// </summary>
-    public SamplerMip MipMap = SamplerMip.Disabled;
+    public SamplerMip MipMap { get; init; } = SamplerMip.Disabled;
 
     /// <summary>
     /// Texture wrap mode for U coordinate. Defaults to Repeat.
     /// </summary>
-    public SamplerWrap WrapU = SamplerWrap.Repeat;
+    public SamplerWrap WrapU { get; init; } = SamplerWrap.Repeat;
 
     /// <summary>
     /// Texture wrap mode for V coordinate. Defaults to Repeat.
     /// </summary>
-    public SamplerWrap WrapV = SamplerWrap.Repeat;
+    public SamplerWrap WrapV { get; init; } = SamplerWrap.Repeat;
 
     /// <summary>
     /// Texture wrap mode for W coordinate. Defaults to Repeat.
     /// </summary>
-    public SamplerWrap WrapW = SamplerWrap.Repeat;
+    public SamplerWrap WrapW { get; init; } = SamplerWrap.Repeat;
 
     /// <summary>
     /// Comparison operation for depth comparison samplers. Defaults to LessEqual.
     /// </summary>
-    public CompareOp DepthCompareOp = CompareOp.LessEqual;
+    public CompareOp DepthCompareOp { get; init; } = CompareOp.LessEqual;
 
     /// <summary>
     /// Minimum mipmap level to use.
     /// </summary>
-    public uint8_t MipLodMin;
+    public uint8_t MipLodMin { get; init; }
 
     /// <summary>
     /// Maximum mipmap level to use. Defaults to 15.
     /// </summary>
-    public uint8_t MipLodMax = 15;
+    public uint8_t MipLodMax { get; init; } = 15;
 
     /// <summary>
     /// Maximum anisotropic filtering samples. Defaults to 1 (no anisotropic filtering).
     /// </summary>
-    public uint8_t MaxAnisotropic = 1;
+    public uint8_t MaxAnisotropic { get; init; } = 1;
 
     /// <summary>
     /// Whether depth comparison is enabled. Defaults to false.
     /// </summary>
-    public bool DepthCompareEnabled = false;
+    public bool DepthCompareEnabled { get; init; } = false;
 
     /// <summary>
     /// Optional debug name for the sampler.
     /// </summary>
     public string DebugName = string.Empty;
+
+    public static readonly SamplerStateDesc LinearRepeat = new() { DebugName = "LinearRepeat" };
+    public static readonly SamplerStateDesc LinearClamp = new()
+    {
+        WrapU = SamplerWrap.Clamp,
+        WrapV = SamplerWrap.Clamp,
+        WrapW = SamplerWrap.Clamp,
+        DebugName = "LinearClamp",
+    };
+
+    public static readonly SamplerStateDesc PointRepeat = new()
+    {
+        MinFilter = SamplerFilter.Nearest,
+        MagFilter = SamplerFilter.Nearest,
+        DebugName = "PointRepeat",
+    };
+
+    public static readonly SamplerStateDesc PointClamp = new()
+    {
+        MinFilter = SamplerFilter.Nearest,
+        MagFilter = SamplerFilter.Nearest,
+        WrapU = SamplerWrap.Clamp,
+        WrapV = SamplerWrap.Clamp,
+        WrapW = SamplerWrap.Clamp,
+        DebugName = "PointClamp",
+    };
 }
 
 /// <summary>
 /// Describes stencil test and operation configuration.
 /// </summary>
-public struct StencilState()
+public sealed class StencilState()
 {
     /// <summary>
     /// Operation to perform when stencil test fails. Defaults to Keep.
@@ -723,12 +749,14 @@ public struct StencilState()
     /// Bitmask for writing stencil values. Defaults to 0xFFFFFFFF (all bits).
     /// </summary>
     public uint32_t WriteMask = 0xFFFFFFFF;
+
+    public static readonly StencilState Disabled = new();
 }
 
 /// <summary>
 /// Describes depth test configuration.
 /// </summary>
-public struct DepthState()
+public sealed class DepthState()
 {
     /// <summary>
     /// Comparison operation for depth testing. Defaults to AlwaysPass.
@@ -739,6 +767,29 @@ public struct DepthState()
     /// Whether depth writes are enabled. Defaults to false.
     /// </summary>
     public bool IsDepthWriteEnabled = false;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether depth bias is enabled.
+    /// </summary>
+    public bool IsDepthBiasEnabled = false;
+
+    /// <summary>
+    /// Gets or sets the constant factor applied to the depth bias.
+    /// </summary>
+    public float DepthBiasConstantFactor = 0;
+
+    /// <summary>
+    /// Gets or sets the maximum depth bias value that can be applied to a rendering operation.
+    /// </summary>
+    public float DepthBiasClamp = 0;
+
+    /// <summary>
+    /// Specifies the scalar factor applied to the depth bias of a fragment based on the slope of the polygon.
+    /// </summary>
+    /// <remarks>This value is used to adjust the depth bias dynamically based on the slope of the polygon
+    /// being rendered. A higher value increases the bias for steeper slopes, which can help reduce z-fighting artifacts
+    /// in certain scenarios.</remarks>
+    public float DepthBiasSlopeFactor = 0;
 
     /// <summary>
     /// Represents the default depth state configuration. (Inversed Z)
@@ -931,6 +982,41 @@ public struct ColorAttachment()
     /// Destination blend factor for alpha channel. Defaults to Zero.
     /// </summary>
     public BlendFactor DstAlphaBlendFactor = BlendFactor.Zero;
+
+    public static ColorAttachment CreateAlphaBlend(Format format)
+    {
+        return new ColorAttachment
+        {
+            Format = format,
+            BlendEnabled = true,
+            RgbBlendOp = BlendOp.Add,
+            AlphaBlendOp = BlendOp.Add,
+            SrcRGBBlendFactor = BlendFactor.SrcAlpha,
+            SrcAlphaBlendFactor = BlendFactor.SrcAlpha,
+            DstRGBBlendFactor = BlendFactor.OneMinusSrcAlpha,
+            DstAlphaBlendFactor = BlendFactor.OneMinusSrcAlpha,
+        };
+    }
+
+    public static ColorAttachment CreateAdditiveBlend(Format format)
+    {
+        return new ColorAttachment
+        {
+            Format = format,
+            BlendEnabled = true,
+            RgbBlendOp = BlendOp.Add,
+            AlphaBlendOp = BlendOp.Add,
+            SrcRGBBlendFactor = BlendFactor.SrcAlpha,
+            SrcAlphaBlendFactor = BlendFactor.SrcAlpha,
+            DstRGBBlendFactor = BlendFactor.One,
+            DstAlphaBlendFactor = BlendFactor.One,
+        };
+    }
+
+    public static ColorAttachment CreateOpaque(Format format)
+    {
+        return new ColorAttachment { Format = format, BlendEnabled = false };
+    }
 }
 
 /// <summary>

@@ -7,12 +7,12 @@ namespace HelixToolkit.Nex.Graphics;
 /// A compute pipeline is used for GPU compute operations. It specifies the compute shader,
 /// entry point, and optional specialization constants that control shader behavior at pipeline creation time.
 /// </remarks>
-public struct ComputePipelineDesc()
+public sealed class ComputePipelineDesc()
 {
     /// <summary>
     /// The handle to the compute shader module to use in this pipeline.
     /// </summary>
-    public ShaderModuleHandle ComputeShader;
+    public ShaderModuleResource ComputeShader = ShaderModuleResource.Null;
 
     /// <summary>
     /// Specialization constants that allow compile-time configuration of the shader.
@@ -32,4 +32,55 @@ public struct ComputePipelineDesc()
     /// Optional debug name for the pipeline, used in debugging and profiling tools.
     /// </summary>
     public string DebugName = string.Empty;
+
+    /// <summary>
+    /// Adds a specialization constant entry to the current specialization info.
+    /// </summary>
+    /// <remarks>This method appends the provided specialization constant data to the internal data buffer and
+    /// updates the specialization constant entries accordingly. The maximum number of specialization constants is
+    /// defined by <see cref="SpecializationConstantDesc.SPECIALIZATION_CONSTANTS_MAX"/>.</remarks>
+    /// <param name="constantId">The unique identifier of the specialization constant.</param>
+    /// <param name="data">The data associated with the specialization constant. Cannot be null.</param>
+    /// <exception cref="InvalidOperationException">Thrown if the maximum number of specialization constants has been exceeded.</exception>
+    public void WriteSpecInfo(uint32_t constantId, byte[] data)
+    {
+        SpecInfo.WriteSpecInfo(constantId, data);
+    }
+
+    /// <summary>
+    /// Writes specification information for a given constant identifier and value.
+    /// </summary>
+    /// <remarks>This method serializes the provided value into a byte array and writes it along with the
+    /// specified constant identifier. The type parameter <typeparamref name="T"/> must be unmanaged, ensuring that the
+    /// value can be safely converted to raw memory.</remarks>
+    /// <typeparam name="T">The type of the value to write. Must be an unmanaged type.</typeparam>
+    /// <param name="constantId">The identifier of the constant associated with the specification information.</param>
+    /// <param name="value">The value to write, represented as an unmanaged type.</param>
+    public void WriteSpecInfo<T>(uint32_t constantId, T value)
+        where T : unmanaged
+    {
+        SpecInfo.WriteSpecInfo(constantId, value);
+    }
+
+    /// <summary>
+    /// Creates a new instance of <see cref="ComputePipelineDesc"/> that is a deep copy of the current instance.
+    /// </summary>
+    /// <remarks>The returned instance contains copies of all mutable fields, ensuring that changes to the
+    /// cloned object do not affect the original instance.</remarks>
+    /// <returns>A new <see cref="ComputePipelineDesc"/> instance that is a deep copy of the current instance.</returns>
+    public ComputePipelineDesc Clone()
+    {
+        var clone = new ComputePipelineDesc
+        {
+            ComputeShader = ComputeShader,
+            SpecInfo = new SpecializationConstantDesc { Data = (byte[])SpecInfo.Data.Clone() },
+            EntryPoint = EntryPoint,
+            DebugName = DebugName,
+        };
+        for (uint32_t i = 0; i < SpecInfo.NumSpecializationConstants(); i++)
+        {
+            clone.SpecInfo.Entries[i] = SpecInfo.Entries[i];
+        }
+        return clone;
+    }
 }

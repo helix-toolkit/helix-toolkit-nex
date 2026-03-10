@@ -1,0 +1,145 @@
+//#define DEBUG
+
+namespace HelixToolkit.Nex.Geometries.Octrees;
+
+/// <summary>
+///
+/// </summary>
+public class StaticInstancingModelOctree : StaticOctree<KeyValuePair<int, BoundingBox>>
+{
+    protected readonly IList<Matrix> InstanceMatrix;
+    protected readonly BoundingBox GeometryBound;
+    private Matrix _currModelMatrix = Matrix.Identity;
+    private BoundingBox _maxBound = BoundingBox.Empty;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="StaticInstancingModelOctree"/> class.
+    /// </summary>
+    /// <param name="instanceMatrix">The instance matrix.</param>
+    /// <param name="geometryBound">The geometry bound.</param>
+    /// <param name="parameter">The parameter.</param>
+    public StaticInstancingModelOctree(
+        IList<Matrix> instanceMatrix,
+        BoundingBox geometryBound,
+        OctreeBuildParameter parameter
+    )
+        : base(parameter)
+    {
+        InstanceMatrix = instanceMatrix;
+        GeometryBound = geometryBound;
+    }
+
+    /// <summary>
+    /// Gets the bounding box from item.
+    /// </summary>
+    /// <param name="item">The item.</param>
+    /// <returns></returns>
+    protected override BoundingBox GetBoundingBoxFromItem(ref KeyValuePair<int, BoundingBox> item)
+    {
+        return item.Value;
+    }
+
+    /// <summary>
+    /// Gets the maximum bound.
+    /// </summary>
+    /// <returns></returns>
+    protected override BoundingBox GetMaxBound()
+    {
+        return _maxBound;
+    }
+
+    /// <summary>
+    /// Gets the objects.
+    /// </summary>
+    /// <returns></returns>
+    protected override KeyValuePair<int, BoundingBox>[] GetObjects()
+    {
+        _maxBound = GeometryBound.Transform(InstanceMatrix[0]);
+        var bounds = new KeyValuePair<int, BoundingBox>[InstanceMatrix.Count];
+        for (var i = 0; i < InstanceMatrix.Count; ++i)
+        {
+            var b = GeometryBound.Transform(_currModelMatrix * InstanceMatrix[i]);
+            bounds[i] = new KeyValuePair<int, BoundingBox>(i, b);
+            _maxBound = BoundingBox.Merge(_maxBound, b);
+        }
+        return bounds;
+    }
+
+    /// <summary>
+    /// Hits the test current node exclude child.
+    /// </summary>
+    /// <param name="octant">The octant.</param>
+    /// <param name="context">The context.</param>
+    /// <param name="model">The model.</param>
+    /// <param name="geometry"></param>
+    /// <param name="modelMatrix">The model matrix.</param>
+    /// <param name="rayModel">The ray model.</param>
+    /// <param name="returnMultiple"></param>
+    /// <param name="hits">The hits.</param>
+    /// <param name="isIntersect">if set to <c>true</c> [is intersect].</param>
+    /// <param name="hitThickness">The hit thickness.</param>
+    /// <returns></returns>
+    protected override bool HitTestCurrentNodeExcludeChild(
+        ref Octant octant,
+        HitTestContext context,
+        Entity model,
+        Geometry geometry,
+        Matrix modelMatrix,
+        ref Ray rayModel,
+        bool returnMultiple,
+        ref List<HitTestResult> hits,
+        ref bool isIntersect,
+        float hitThickness
+    )
+    {
+        isIntersect = false;
+        if (Objects is null || !octant.IsBuilt)
+        {
+            return false;
+        }
+        if (_currModelMatrix != modelMatrix)
+        {
+            _currModelMatrix = modelMatrix;
+            TreeBuilt = false;
+            BuildTree();
+        }
+        var isHit = false;
+        var bound = octant.Bound;
+        var rayWS = context.RayWS;
+        if (rayWS.Intersects(ref bound))
+        {
+            isIntersect = true;
+            for (var i = octant.Start; i < octant.End; ++i)
+            {
+                var b = Objects[i].Value;
+                if (b.Intersects(ref rayWS))
+                {
+                    var result = new HitTestResult() { Tag = Objects[i].Key };
+                    hits.Add(result);
+                    isHit = true;
+                }
+            }
+        }
+        return isHit;
+    }
+
+    /// <summary>
+    /// Finds the nearest point by sphere exclude child.
+    /// </summary>
+    /// <param name="octant">The octant.</param>
+    /// <param name="context">The context.</param>
+    /// <param name="sphere">The sphere.</param>
+    /// <param name="points">The points.</param>
+    /// <param name="isIntersect">if set to <c>true</c> [is intersect].</param>
+    /// <returns></returns>
+    protected override bool FindNearestPointBySphereExcludeChild(
+        ref Octant octant,
+        HitTestContext context,
+        ref BoundingSphere sphere,
+        ref List<HitTestResult> points,
+        ref bool isIntersect
+    )
+    {
+        return false;
+    }
+}

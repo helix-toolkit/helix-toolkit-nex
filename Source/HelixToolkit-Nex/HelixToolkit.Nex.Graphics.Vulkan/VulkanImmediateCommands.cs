@@ -5,6 +5,7 @@ internal sealed class VulkanImmediateCommands : IDisposable
     // the maximum number of command buffers which can similtaneously exist in the system; when we run out of buffers, we stall and wait until
     // an existing buffer becomes available
     private const uint32_t KMaxCommandBuffers = 64;
+    private const uint32_t KMaxSecondaryCommandBuffers = 256;
     private static readonly ILogger _logger = LogManager.Create<VulkanImmediateCommands>();
 
     public sealed class CommandBufferWrapper()
@@ -15,16 +16,21 @@ internal sealed class VulkanImmediateCommands : IDisposable
         public VkFence Fence = VkFence.Null;
         public VkSemaphore Semaphore = VkSemaphore.Null;
         public bool IsEncoding = false;
+        public bool IsSecondary = false;
     };
 
     private readonly VkDevice _device = VkDevice.Null;
     private readonly VkQueue _queue = VkQueue.Null;
     private readonly VkCommandPool _commandPool = VkCommandPool.Null;
+    private readonly VkCommandPool _secondaryCommandPool = VkCommandPool.Null;
     private readonly uint32_t _queueFamilyIndex = 0;
     private readonly bool _hasExtDeviceFault = false;
     private readonly string _debugName = string.Empty;
 
     private readonly CommandBufferWrapper[] _buffers = new CommandBufferWrapper[KMaxCommandBuffers];
+    private readonly List<CommandBufferWrapper> _secondaryBuffers = new();
+    private readonly object _secondaryBuffersLock = new();
+
     private SubmitHandle _lastSubmitHandle = SubmitHandle.Null;
     private SubmitHandle _nextSubmitHandle = SubmitHandle.Null;
     private VkSemaphoreSubmitInfo _lastSubmitSemaphore = new()
@@ -56,6 +62,7 @@ internal sealed class VulkanImmediateCommands : IDisposable
 
         VK.vkGetDeviceQueue(device, queueFamilyIndex, 0, out _queue);
 
+        // Create primary command pool
         VkCommandPoolCreateInfo ci = new()
         {
             flags =
@@ -67,12 +74,25 @@ internal sealed class VulkanImmediateCommands : IDisposable
         {
             VK.vkCreateCommandPool(device, ci, null, out _commandPool).CheckResult();
         }
+
+        // Create secondary command pool (thread-safe)
+        ci.flags = VK.VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+        unsafe
+        {
+            VK.vkCreateCommandPool(device, ci, null, out _secondaryCommandPool).CheckResult();
+        }
+
         if (GraphicsSettings.EnableDebug && !string.IsNullOrEmpty(this._debugName))
         {
             device.SetDebugObjectName(
                 VK.VK_OBJECT_TYPE_COMMAND_POOL,
                 (nuint)_commandPool.Handle,
                 $"[Vk.ImmediateCmdPool]: {debugName}"
+            );
+            device.SetDebugObjectName(
+                VK.VK_OBJECT_TYPE_COMMAND_POOL,
+                (nuint)_secondaryCommandPool.Handle,
+                $"[Vk.SecondaryCmdPool]: {debugName}"
             );
         }
 
@@ -102,6 +122,140 @@ internal sealed class VulkanImmediateCommands : IDisposable
                 VK.vkAllocateCommandBuffers(device, &ai, &cmdBuf);
                 buf.CmdBufAllocated = cmdBuf;
                 buf.Handle.BufferIndex = i;
+                buf.IsSecondary = false;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Creates a secondary command buffer for parallel recording.
+    /// </summary>
+    /// <param name="renderPass">The render pass this secondary buffer will be compatible with.</param>
+    /// <returns>A secondary command buffer wrapper.</returns>
+    public CommandBufferWrapper CreateSecondaryBuffer(in RenderPass renderPass)
+    {
+        lock (_secondaryBuffersLock)
+        {
+            // Try to reuse an available secondary buffer
+            foreach (var buf in _secondaryBuffers)
+            {
+                if (buf.Instance.IsNotNull && !buf.IsEncoding)
+                {
+                    buf.IsEncoding = true;
+                    BeginSecondaryBuffer(buf, renderPass);
+                    return buf;
+                }
+            }
+
+            // Need to allocate a new secondary buffer
+            if (_secondaryBuffers.Count >= KMaxSecondaryCommandBuffers)
+            {
+                _logger.LogWarning(
+                    "Maximum number of secondary command buffers reached. Attempting reuse.."
+                );
+                // Wait for some to become available
+                foreach (var buf in _secondaryBuffers)
+                {
+                    if (buf.Instance.IsNotNull && !buf.IsEncoding)
+                    {
+                        buf.IsEncoding = true;
+                        BeginSecondaryBuffer(buf, renderPass);
+                        return buf;
+                    }
+                }
+                throw new InvalidOperationException("No secondary command buffers available");
+            }
+
+            // Allocate new secondary command buffer
+            var newBuffer = new CommandBufferWrapper { IsSecondary = true };
+            unsafe
+            {
+                VkCommandBufferAllocateInfo ai = new()
+                {
+                    commandPool = _secondaryCommandPool,
+                    level = VK.VK_COMMAND_BUFFER_LEVEL_SECONDARY,
+                    commandBufferCount = 1,
+                };
+
+                VkCommandBuffer cmdBuf = VkCommandBuffer.Null;
+                VK.vkAllocateCommandBuffers(_device, &ai, &cmdBuf);
+                newBuffer.CmdBufAllocated = cmdBuf;
+                newBuffer.Instance = cmdBuf;
+            }
+
+            _secondaryBuffers.Add(newBuffer);
+            newBuffer.IsEncoding = true;
+            BeginSecondaryBuffer(newBuffer, renderPass);
+            return newBuffer;
+        }
+    }
+
+    private unsafe void BeginSecondaryBuffer(CommandBufferWrapper buf, in RenderPass renderPass)
+    {
+        // For now, we'll use a simplified inheritance info
+        // In a full implementation, you'd need to pass the actual render pass and framebuffer
+        VkCommandBufferInheritanceInfo inheritanceInfo = new()
+        {
+            sType = VK.VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO,
+            pNext = null,
+            renderPass = VkRenderPass.Null, // Dynamic rendering doesn't use render pass objects
+            subpass = 0,
+            framebuffer = VkFramebuffer.Null,
+            occlusionQueryEnable = VkBool32.False,
+            queryFlags = 0,
+            pipelineStatistics = 0,
+        };
+
+        VkCommandBufferBeginInfo bi = new()
+        {
+            sType = VK.VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+            flags =
+                VK.VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT
+                | VK.VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT,
+            pInheritanceInfo = &inheritanceInfo,
+        };
+
+        VK.vkBeginCommandBuffer(buf.Instance, &bi).CheckResult();
+    }
+
+    /// <summary>
+    /// Finalizes a secondary command buffer for execution.
+    /// </summary>
+    /// <param name="wrapper">The secondary buffer wrapper to finalize.</param>
+    public void FinalizeSecondaryBuffer(CommandBufferWrapper wrapper)
+    {
+        if (!wrapper.IsSecondary)
+        {
+            throw new InvalidOperationException("Buffer is not a secondary command buffer");
+        }
+        lock (_secondaryBuffersLock)
+        {
+            VK.vkEndCommandBuffer(wrapper.Instance).CheckResult();
+            wrapper.IsEncoding = false;
+        }
+    }
+
+    /// <summary>
+    /// Recycles a secondary command buffer for reuse.
+    /// </summary>
+    /// <param name="wrapper">The secondary buffer wrapper to recycle.</param>
+    public void RecycleSecondaryBuffer(CommandBufferWrapper wrapper)
+    {
+        if (!wrapper.IsSecondary)
+        {
+            return;
+        }
+
+        lock (_secondaryBuffersLock)
+        {
+            if (wrapper.Instance.IsNotNull)
+            {
+                unsafe
+                {
+                    VK.vkResetCommandBuffer(wrapper.Instance, new VkCommandBufferResetFlags())
+                        .CheckResult();
+                }
+                wrapper.Instance = wrapper.CmdBufAllocated;
             }
         }
     }
@@ -531,7 +685,18 @@ internal sealed class VulkanImmediateCommands : IDisposable
                         buf.CmdBufAllocated = VkCommandBuffer.Null;
                     }
 
+                    // Clean up secondary buffers
+                    foreach (var buf in _secondaryBuffers)
+                    {
+                        var cmdBuf = buf.CmdBufAllocated;
+                        VK.vkFreeCommandBuffers(_device, _secondaryCommandPool, 1, &cmdBuf);
+                        buf.Instance = VkCommandBuffer.Null;
+                        buf.CmdBufAllocated = VkCommandBuffer.Null;
+                    }
+                    _secondaryBuffers.Clear();
+
                     VK.vkDestroyCommandPool(_device, _commandPool, null);
+                    VK.vkDestroyCommandPool(_device, _secondaryCommandPool, null);
                 }
             }
             // TODO: free unmanaged resources (unmanaged objects) and override finalizer

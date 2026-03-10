@@ -20,6 +20,7 @@ struct PBRMaterial {
     vec3 normal;           // World-space normal (normalized)
     vec3 emissive;         // Emissive color
     float opacity;         // Opacity/alpha [0..1]
+    float _padding;         // Padding test
 };
 ";
         var parser = new GlslStructParser();
@@ -32,7 +33,7 @@ struct PBRMaterial {
 
         var pbrMaterial = structs[0];
         Assert.Equal("PBRMaterial", pbrMaterial.Name);
-        Assert.Equal(7, pbrMaterial.Fields.Count);
+        Assert.Equal(8, pbrMaterial.Fields.Count);
 
         Assert.Equal("albedo", pbrMaterial.Fields[0].Name);
         Assert.Equal("vec3", pbrMaterial.Fields[0].GlslType);
@@ -114,6 +115,7 @@ struct TestStruct {
                     new GlslField("vec3", "albedo", null, "Base color"),
                     new GlslField("float", "metallic", null, "Metallic factor"),
                     new GlslField("float", "roughness", null, null),
+                    new GlslField("float", "_padding", null, null),
                 }
             ),
         };
@@ -125,8 +127,9 @@ struct TestStruct {
         // Assert
         Assert.Contains("struct PBRMaterial", code);
         Assert.Contains("System.Numerics.Vector3 Albedo", code);
-        Assert.Contains("float Metallic", code);
-        Assert.Contains("float Roughness", code);
+        Assert.Contains("public float Metallic", code);
+        Assert.Contains("public float Roughness", code);
+        Assert.Contains("private float _padding", code);
         Assert.Contains("[StructLayout(LayoutKind.Sequential, Pack = 16)]", code);
         Assert.Contains("namespace HelixToolkit.Nex.Shaders", code);
         Assert.Contains(
@@ -205,8 +208,11 @@ struct TestStruct {
         Assert.Contains("public System.Numerics.Vector4 Planes_3;", code);
 
         Assert.Contains("public System.Numerics.Vector4 GetPlanes(int index)", code);
-        Assert.Contains("public void SetPlanes(int index, in System.Numerics.Vector4 value)", code);
-
+        Assert.Contains("public void SetPlanes(int index, System.Numerics.Vector4 value)", code);
+        Assert.Contains(
+            "public void SetPlanes(int index, ref System.Numerics.Vector4 value)",
+            code
+        );
         Assert.Contains("case 0: Planes_0 = value; break;", code);
         Assert.Contains("case 3: Planes_3 = value; break;", code);
         Assert.Contains("0 => Planes_0,", code);

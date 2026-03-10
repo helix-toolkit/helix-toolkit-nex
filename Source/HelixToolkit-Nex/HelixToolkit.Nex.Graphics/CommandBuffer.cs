@@ -18,6 +18,28 @@ namespace HelixToolkit.Nex.Graphics;
 public interface ICommandBuffer
 {
     /// <summary>
+    /// Gets the graphics context that owns this command buffer.
+    /// </summary>
+    IContext Context { get; }
+
+    /// <summary>
+    /// Gets a value indicating whether this command buffer is a secondary command buffer.
+    /// Secondary command buffers can be recorded in parallel and executed by a primary command buffer.
+    /// </summary>
+    bool IsSecondary { get; }
+
+    /// <summary>
+    /// Executes secondary command buffers within this primary command buffer.
+    /// This method can only be called on primary command buffers during an active render pass.
+    /// </summary>
+    /// <param name="secondaryBuffers">The array of secondary command buffers to execute.</param>
+    /// <remarks>
+    /// Secondary command buffers must be recorded before being executed.
+    /// All secondary buffers must be compatible with the current render pass.
+    /// </remarks>
+    void ExecuteCommands(params ICommandBuffer[] secondaryBuffers);
+
+    /// <summary>
     /// Transitions a texture to a shader read-only state, making it accessible for sampling in shaders.
     /// </summary>
     /// <param name="surface">The texture handle to transition.</param>
@@ -177,10 +199,11 @@ public interface ICommandBuffer
     /// <param name="bufferOffset">Byte offset into the buffer where the update begins.</param>
     /// <param name="size">Number of bytes to update.</param>
     /// <param name="data">Pointer to the source data to copy into the buffer.</param>
+    /// <returns></returns>
     /// <remarks>
     /// The data pointer must remain valid until the command buffer is submitted.
     /// </remarks>
-    void UpdateBuffer(in BufferHandle buffer, size_t bufferOffset, size_t size, nint data);
+    ResultCode UpdateBuffer(in BufferHandle buffer, size_t bufferOffset, size_t size, nint data);
 
     /// <summary>
     /// Updates a buffer with data of a specific unmanaged type.
@@ -189,14 +212,15 @@ public interface ICommandBuffer
     /// <param name="buffer">The handle to the buffer to update.</param>
     /// <param name="data">Reference to the data to copy into the buffer.</param>
     /// <param name="bufferOffset">Byte offset into the buffer where the update begins. Default is 0.</param>
-    void UpdateBuffer<T>(in BufferHandle buffer, in T data, size_t bufferOffset = 0)
+    /// <returns></returns>
+    ResultCode UpdateBuffer<T>(in BufferHandle buffer, in T data, size_t bufferOffset = 0)
         where T : unmanaged
     {
         unsafe
         {
             fixed (T* ptr = &data)
             {
-                UpdateBuffer(buffer, bufferOffset, (size_t)sizeof(T), (nint)ptr);
+                return UpdateBuffer(buffer, bufferOffset, (size_t)sizeof(T), (nint)ptr);
             }
         }
     }
@@ -214,13 +238,24 @@ public interface ICommandBuffer
     /// <param name="count">The number of elements from <paramref name="data"/> to copy to the buffer. Must be less than or equal to the
     /// length of <paramref name="data"/>.</param>
     /// <param name="bufferOffset">The offset, in bytes, within the buffer at which to begin writing data. Defaults to 0.</param>
-    void UpdateBuffer<T>(in BufferHandle buffer, in T[] data, size_t count, size_t bufferOffset = 0)
+    /// <returns></returns>
+    ResultCode UpdateBuffer<T>(
+        in BufferHandle buffer,
+        in T[] data,
+        size_t count,
+        size_t bufferOffset = 0
+    )
         where T : unmanaged
     {
         unsafe
         {
             using var dataPtr = data.Pin();
-            UpdateBuffer(buffer, bufferOffset, (size_t)(sizeof(T) * count), (nint)dataPtr.Pointer);
+            return UpdateBuffer(
+                buffer,
+                bufferOffset,
+                (size_t)(sizeof(T) * count),
+                (nint)dataPtr.Pointer
+            );
         }
     }
 
@@ -234,13 +269,14 @@ public interface ICommandBuffer
     /// <param name="buffer">A handle to the buffer to update. Must refer to a valid, writable buffer.</param>
     /// <param name="data">A list containing the data to write to the buffer. The data is copied starting from the beginning of the list.</param>
     /// <param name="bufferOffset">The offset, in bytes, within the buffer at which to begin writing data. Defaults to 0.</param>
-    void UpdateBuffer<T>(in BufferHandle buffer, in FastList<T> data, size_t bufferOffset = 0)
+    /// <returns></returns>
+    ResultCode UpdateBuffer<T>(in BufferHandle buffer, in FastList<T> data, size_t bufferOffset = 0)
         where T : unmanaged
     {
         unsafe
         {
             using var dataPtr = data.GetInternalArray().Pin();
-            UpdateBuffer(
+            return UpdateBuffer(
                 buffer,
                 bufferOffset,
                 (size_t)(sizeof(T) * data.Count),

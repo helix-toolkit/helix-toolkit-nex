@@ -7,9 +7,6 @@
         <IncludeSymbols>True</IncludeSymbols>
         <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
         <PackageReadmeFile>README.md</PackageReadmeFile>
-        <!-- Enable source generator diagnostics and emit generated files -->
-        <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
-        <CompilerGeneratedFilesOutputPath>$(BaseIntermediateOutputPath)\Generated</CompilerGeneratedFilesOutputPath>
     </PropertyGroup>
 
     <ItemGroup>
@@ -20,12 +17,6 @@
         <!-- Add reference to HelixToolkit.Nex for ObservableObject and ObservableAttribute -->
         <ProjectReference Include="..\HelixTookit.Nex\HelixToolkit.Nex.csproj" />
 
-        <!-- Add the source generator as an analyzer -->
-        <ProjectReference
-            Include="..\HelixToolkit.Nex.CodeGen\HelixToolkit.Nex.CodeGen.csproj"
-            OutputItemType="Analyzer"
-            ReferenceOutputAssembly="false"
-        />
         <ProjectReference Include="..\HelixToolkit.Nex.Shaders\HelixToolkit.Nex.Shaders.csproj" />
     </ItemGroup>
 

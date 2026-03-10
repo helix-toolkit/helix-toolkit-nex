@@ -1,6 +1,4 @@
 #include "HxHeaders/HeaderCompute.glsl"
-#include "HxHeaders/ModelMatrixStruct.glsl"
-#include "HxHeaders/DrawIndexIndirectCommand.glsl"
 #include "HxHeaders/MeshDraw.glsl"
 #include "HxHeaders/FrustumCullingCommon.glsl"
 // Enable subgroup extensions for efficient output compaction if allowed
@@ -16,24 +14,12 @@ layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer Cu
     CullingConstants value;
 };
 
-layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer MeshBoundBuffer {
-    MeshBoundData value[];
+layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer MeshInfoBuffer {
+    MeshInfo value[];
 };
 
-layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer DrawCommandBuffer {
-    DrawIndexedIndirectCommand commands[];
-};
-
-layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer MeshDrawBuffer {
+layout(buffer_reference, std430, buffer_reference_align = 16) buffer MeshDrawBuffer {
     MeshDraw draws[];
-};
-
-layout(buffer_reference, scalar) writeonly buffer VisableDrawCommandsBuffer {
-    DrawIndexedIndirectCommand commands[];
-};
-
-layout(buffer_reference, scalar) buffer DrawCountBuffer {
-    uint count;
 };
 
 // ------------------------------------------------------------------
@@ -62,36 +48,39 @@ void main() {
     if (gID >= cullingConst.value.instanceCount) { // Ensure valid access
         return;
     }
-    DrawCommandBuffer drawCmdBuf = DrawCommandBuffer(cullingConst.value.drawCommandBufferAddress);
-    DrawIndexedIndirectCommand cmd = drawCmdBuf.commands[gID];
-    if (cmd.instanceCount == 0) {
-        // Skip zero-instance draws
-        return;
-    }
+
     // Access Buffers
     MeshDrawBuffer meshDrawBuf = MeshDrawBuffer(cullingConst.value.meshDrawBufferAddress);
+
+    uint drawIdx = gID + cullingConst.value.meshDrawIdxOffset;
     
-    MeshDraw draw = meshDrawBuf.draws[cmd.meshDrawIndex];
+    MeshDraw draw = meshDrawBuf.draws[drawIdx];
+
     if (draw.instancingBufferAddress != 0) {
         // For instanced draws, we handle seperately.
         return;
     }
 
-    ModelMatrixBuffer modelMatrixBuf = ModelMatrixBuffer(cullingConst.value.modelMatrixBufferAddress);
-    MeshBoundBuffer meshBoundBuf = MeshBoundBuffer(cullingConst.value.meshBoundBufferAddress);
+    if (draw.cullable == 0) {
+        // If not cullable, we can skip culling and set instance count to 1 (or keep as is)
+        meshDrawBuf.draws[drawIdx].instanceCount = 1;
+        return;
+    }
 
-    MeshBoundData bound = meshBoundBuf.value[draw.meshId];
+    MeshInfoBuffer meshInfoBuf = MeshInfoBuffer(cullingConst.value.meshInfoBufferAddress);
+
+    MeshInfo bound = meshInfoBuf.value[draw.meshId];
     bool isVisible = true;
 
     // Frustum Culling
-    mat4 worldMatrix = modelMatrixBuf.models[draw.modelId];
+    mat4 worldMatrix = draw.transform;
     // 1. Sphere Culling (Cheap, fast reject)
     // Transform local sphere center to world
     // Note: Scale is baked into world matrix rows, so simple mult works for uniform scale
     // For non-uniform scale, this approximation might require max scale component
         
     vec3 worldSphereCenter = (worldMatrix * vec4(bound.sphereCenter, 1.0)).xyz;
-        
+
     // Extract max scale from world matrix for radius scaling
     float maxScale = max(max(length(worldMatrix[0].xyz), length(worldMatrix[1].xyz)), length(worldMatrix[2].xyz));
     float worldRadius = bound.sphereRadius * maxScale;
@@ -101,7 +90,7 @@ void main() {
 
     // Transform to View Space for Distance/ScreenSize checks
     vec3 viewSphereCenter = (cullingConst.value.viewMatrix * vec4(worldSphereCenter, 1.0)).xyz;
-
+    
     if (!IsVisibleByDistance(viewSphereCenter, worldRadius, cullingConst.value.maxDrawDistance)) {
         isVisible = false;
     }
@@ -115,7 +104,6 @@ void main() {
         // 2. Box Culling (More accurate for elongated objects)
         vec3 boxCenter = (bound.boxMin + bound.boxMax) * 0.5;
         vec3 boxExtents = (bound.boxMax - bound.boxMin) * 0.5;
-            
         if (!IsBoxVisible(boxCenter, boxExtents, worldMatrix, cullingConst.value.frustumPlanes, pCount)) {
             isVisible = false;
         }
@@ -134,33 +122,5 @@ void main() {
     // ---------------------------------------------------------
 
     // Output visibility
-    // We can use subgroup ops to compact atomic writes
-    
-    uvec4 ballot = subgroupBallot(isVisible);
-    uint count = subgroupBallotBitCount(ballot);
-    if (count > 0) {
-        // Ensure we have valid buffers before writing
-        if (cullingConst.value.culledDrawCommandBufferAddress == 0 || 
-            cullingConst.value.drawCommandBufferAddress == 0 || 
-            cullingConst.value.drawCountBufferAddress == 0) {
-            return;
-        }
-
-        // Leader (first active thread) allocates space in output buffer
-        uint baseIndex = 0;
-        if (subgroupElect()) {
-            DrawCountBuffer countBuf = DrawCountBuffer(cullingConst.value.drawCountBufferAddress);
-            baseIndex = atomicAdd(countBuf.count, count);
-        }
-        baseIndex = subgroupBroadcastFirst(baseIndex);
-
-        if (isVisible) {
-            uint offset = subgroupBallotExclusiveBitCount(ballot);
-            uint outIndex = baseIndex + offset;
-            
-            VisableDrawCommandsBuffer visBuf = VisableDrawCommandsBuffer(cullingConst.value.culledDrawCommandBufferAddress);
-
-            visBuf.commands[outIndex] = cmd;
-        }
-    }
+    meshDrawBuf.draws[drawIdx].instanceCount = isVisible ? 1 : 0;
 }

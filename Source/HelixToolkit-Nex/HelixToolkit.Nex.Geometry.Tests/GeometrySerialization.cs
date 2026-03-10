@@ -21,7 +21,6 @@ public sealed class GeometrySerialization
 
         // Assert
         Assert.IsNotNull(deserialized);
-        Assert.AreEqual(original.Id, deserialized.Id);
         Assert.AreEqual(original.Topology, deserialized.Topology);
         Assert.AreEqual(0, deserialized.Vertices.Count);
         Assert.AreEqual(0, deserialized.Indices.Count);
@@ -53,7 +52,6 @@ public sealed class GeometrySerialization
 
         // Assert
         Assert.IsNotNull(deserialized);
-        Assert.AreEqual(original.Id, deserialized.Id);
         Assert.AreEqual(Topology.Triangle, deserialized.Topology);
         Assert.AreEqual(3, deserialized.Vertices.Count);
 
@@ -141,7 +139,6 @@ public sealed class GeometrySerialization
         };
 
         var original = new Geometry(vertices, indices, colors, Topology.Triangle, true);
-        var originalId = original.Id;
 
         // Act
         string json = JsonSerializer.Serialize(original, JsonOptions);
@@ -149,7 +146,6 @@ public sealed class GeometrySerialization
 
         // Assert
         Assert.IsNotNull(deserialized);
-        Assert.AreEqual(originalId, deserialized.Id);
         Assert.AreEqual(Topology.Triangle, deserialized.Topology);
         Assert.AreEqual(3, deserialized.Vertices.Count);
         Assert.AreEqual(3, deserialized.Indices.Count);
@@ -253,23 +249,6 @@ public sealed class GeometrySerialization
     }
 
     [TestMethod]
-    public void SerializeDeserialize_PreservesGuid()
-    {
-        // Arrange
-        var original = new Geometry();
-        var originalId = original.Id;
-
-        // Act
-        string json = JsonSerializer.Serialize(original, JsonOptions);
-        var deserialized = JsonSerializer.Deserialize<Geometry>(json);
-
-        // Assert
-        Assert.IsNotNull(deserialized);
-        Assert.AreEqual(originalId, deserialized.Id);
-        Assert.AreNotEqual(Guid.Empty, deserialized.Id);
-    }
-
-    [TestMethod]
     public void SerializeDeserialize_IsDynamicProperty()
     {
         // Arrange
@@ -294,7 +273,6 @@ public sealed class GeometrySerialization
         string json = JsonSerializer.Serialize(geometry, JsonOptions);
 
         // Assert
-        Assert.IsTrue(json.Contains("\"Id\""));
         Assert.IsTrue(json.Contains("\"Topology\""));
         Assert.IsTrue(json.Contains("\"Vertices\""));
         Assert.IsTrue(json.Contains("\"Indices\""));

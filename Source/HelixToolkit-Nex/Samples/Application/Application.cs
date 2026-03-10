@@ -5,6 +5,15 @@ using static SDL3.SDL3;
 
 namespace HelixToolkit.Nex.Sample.Application;
 
+public record ApplicationConfig
+{
+    public bool WindowResizable { get; set; } = false;
+    public bool FullScreen { get; set; } = false;
+
+    public int WindowWidth { get; set; } = 1311;
+    public int WindowHeight { get; set; } = 1001;
+}
+
 public abstract class Application : IDisposable
 {
     private static readonly ILogger _logger = LogManager.Create<Application>();
@@ -12,7 +21,7 @@ public abstract class Application : IDisposable
     private readonly bool _closeRequested = false;
     private bool _disposedValue;
 
-    protected unsafe Application()
+    protected Application(ApplicationConfig? config = null)
     {
         if (!SDL_Init(SDL_InitFlags.Video))
         {
@@ -25,9 +34,19 @@ public abstract class Application : IDisposable
         {
             throw new PlatformNotSupportedException("SDL: Failed to init vulkan");
         }
+        config ??= new ApplicationConfig();
+        var flags = WindowFlags.None;
+        if (config.WindowResizable)
+        {
+            flags |= WindowFlags.Resizable;
+        }
+        if (config.FullScreen)
+        {
+            flags = WindowFlags.Fullscreen;
+        }
 
         // Create main window.
-        MainWindow = new Window(Name, 1280, 720);
+        MainWindow = new Window(Name, config.WindowWidth, config.WindowHeight, flags);
     }
 
     public abstract string Name { get; }
@@ -120,12 +139,13 @@ public abstract class Application : IDisposable
                 OnMouseLeave();
                 break;
             case SDL_EventType.WindowDisplayScaleChanged:
-                OnDisplayScaleChanged(evt.window.data1 / 100.0f, evt.window.data2 / 100.0f);
+                var scale = SDL_GetWindowDisplayScale(MainWindow.Instance);
+                OnDisplayScaleChanged(scale);
                 break;
         }
     }
 
-    protected virtual void OnDisplayScaleChanged(float scaleX, float scaleY) { }
+    protected virtual void OnDisplayScaleChanged(float scale) { }
 
     protected virtual void HandleResize(int width, int height) { }
 

@@ -61,7 +61,7 @@ public class Image
         using var pDownloadedColors = downloadedColors.Pin(); // Pin the array to prevent garbage collection
         result = _vkContext
             ?.Download(
-                image,
+                image.Handle,
                 new TextureRangeDesc() { Dimensions = imageDesc.Dimensions },
                 (nint)pDownloadedColors.Pointer,
                 size

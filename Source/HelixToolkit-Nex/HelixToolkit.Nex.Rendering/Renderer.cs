@@ -1,101 +1,108 @@
+using HelixToolkit.Nex.Repository;
+
 namespace HelixToolkit.Nex.Rendering;
 
-public abstract class Renderer : IDisposable
+public class Renderer(IServiceProvider serviceProvider) : Initializable
 {
-    protected RendererManager? RenderManager { private set; get; }
+    private static readonly ILogger _logger = LogManager.Create<Renderer>();
+    private readonly Dictionary<string, RenderNode> _renderers = [];
+    public IServiceProvider Services { get; } = serviceProvider;
+    public int Width { get; private set; }
+    public int Height { get; private set; }
 
-    public abstract RenderStages Stage { get; }
-    public abstract string Name { get; }
-    public virtual string Description { get; } = "";
+    public IResourceManager ResourceManager { get; } =
+        serviceProvider.GetRequiredService<IResourceManager>();
 
-    /// <summary>
-    /// Gets or sets a value indicating whether the renderer is enabled.
-    /// </summary>
-    public bool Enabled { get; set; } = true;
+    public IContext Context => ResourceManager.Context;
+    public IShaderRepository ShaderRepository => ResourceManager.ShaderRepository;
 
-    /// <summary>
-    /// Gets a value indicating whether the object is currently attached to a render manager.
-    /// </summary>
-    public bool IsAttached => RenderManager != null;
+    public override string Name => nameof(Renderer);
 
-    public void Attach(RendererManager manager)
+    public IEnumerable<RenderNode> RenderNodes => _renderers.Values;
+
+    public IReadOnlyDictionary<string, RenderNode> RenderNodeMap => _renderers;
+
+    public bool AddNode(RenderNode renderer)
     {
-        if (IsAttached)
+        ArgumentNullException.ThrowIfNull(renderer);
+        if (_renderers.ContainsKey(renderer.Name))
         {
-            if (RenderManager == manager)
-            {
-                return;
-            }
-            throw new InvalidOperationException(
-                "Renderer is already attached to another RendererManager."
+            _logger.LogWarning(
+                "A renderer with the name '{RendererName}' already exists. Skipping addition.",
+                renderer.Name
+            );
+            return false;
+        }
+        _renderers[renderer.Name] = renderer;
+        if (!IsInitialized)
+        {
+            return true;
+        }
+        if (renderer.Setup(this))
+        {
+            return true;
+        }
+        _logger.LogError(
+            "Failed to set up renderer '{RendererName}'. Renderer was not added.",
+            renderer.Name
+        );
+        return false;
+    }
+
+    public void RemoveNode(RenderNode renderer)
+    {
+        ArgumentNullException.ThrowIfNull(renderer);
+        if (_renderers.TryGetValue(renderer.Name, out var node))
+        {
+            node.TearDown();
+        }
+        else
+        {
+            _logger.LogWarning(
+                "No renderers found with the name '{RendererName}'. No action taken.",
+                renderer.Name
             );
         }
-        RenderManager = manager;
-        OnAttach(manager);
+        _renderers.Remove(renderer.Name);
     }
 
-    protected virtual void OnAttach(RendererManager manager) { }
-
-    public void Detach()
+    public void Clear()
     {
-        if (!IsAttached)
+        foreach (var kvp in _renderers)
         {
-            return;
+            kvp.Value.TearDown();
         }
-        OnDetach();
-        RenderManager?.RemoveRenderer(this);
-        RenderManager = null;
+        _renderers.Clear();
     }
 
-    protected virtual void OnDetach() { }
-
-    public void Render(RenderContext context)
+    public void Render(RenderContext context, RenderGraph graph)
     {
-        if (PreRender(context))
+        var cmdBuf = context.Context.AcquireCommandBuffer();
+        context.BeginFrame();
+        graph.Execute(context, cmdBuf, _renderers);
+        context.Context.Submit(cmdBuf, context.FinalOutputTexture);
+        context.EndFrame();
+    }
+
+    protected override ResultCode OnInitializing()
+    {
+        foreach (var kvp in _renderers)
         {
-            OnRender(context);
-        }
-    }
-
-    protected virtual bool PreRender(RenderContext context)
-    {
-        return true;
-    }
-
-    protected abstract void OnRender(RenderContext context);
-
-    #region IDisposable Support
-    private bool _disposedValue;
-
-    public bool IsDisposed => _disposedValue;
-
-    protected virtual void Dispose(bool disposing)
-    {
-        if (!_disposedValue)
-        {
-            if (disposing)
+            if (!kvp.Value.Setup(this))
             {
-                Detach();
+                _logger.LogError(
+                    "Failed to set up renderer '{RendererName}' during initialization.",
+                    kvp.Key
+                );
+                return ResultCode.RuntimeError;
             }
-
-            // TODO: free unmanaged resources (unmanaged objects) and override finalizer
-            // TODO: set large fields to null
-            _disposedValue = true;
         }
+        return ResultCode.Ok;
     }
 
-    // // TODO: override finalizer only if 'Dispose(bool disposing)' has code to free unmanaged resources
-    // ~Renderer()
-    // {
-    //     // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-    //     Dispose(disposing: false);
-    // }
-
-    public void Dispose()
+    protected override ResultCode OnTearingDown()
     {
-        // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-        Dispose(disposing: true);
-        GC.SuppressFinalize(this);
+        Clear();
+        return ResultCode.Ok;
     }
-    #endregion
 }

@@ -16,25 +16,18 @@ public class MaterialShaderBuilder
     // New fields for template injection
     private readonly Dictionary<string, string> _templateReplacements = [];
 
-    private bool _usePBR = true;
-    private bool _simpleLighting = false;
     private ForwardPlusLightCulling.Config _forwardPlusConfig = ForwardPlusLightCulling
         .Config
         .Default;
     private string? _customFragmentMain;
 
+    // Material type selection
+    private uint? _materialTypeId;
+    private bool _buildUberShader = true;
+
     public MaterialShaderBuilder()
     {
         _compiler = GlslHeaders.CreateCompiler();
-    }
-
-    /// <summary>
-    /// Enable or disable PBR shading (enabled by default).
-    /// </summary>
-    public MaterialShaderBuilder WithPBRShading(bool enable = true)
-    {
-        _usePBR = enable;
-        return this;
     }
 
     /// <summary>
@@ -60,12 +53,6 @@ public class MaterialShaderBuilder
         {
             return ConfigForwardPlus(config);
         }
-        return this;
-    }
-
-    public MaterialShaderBuilder WithSimpleLighting(bool enable = true)
-    {
-        _simpleLighting = enable;
         return this;
     }
 
@@ -103,6 +90,51 @@ public class MaterialShaderBuilder
     public MaterialShaderBuilder WithTemplateReplacement(string key, string value)
     {
         _templateReplacements[key] = value;
+        return this;
+    }
+
+    /// <summary>
+    /// Select a specific material type by ID.
+    /// When specified, only this material type will be compiled (not an uber shader).
+    /// </summary>
+    /// <param name="typeId">Material type ID from MaterialTypeRegistry.</param>
+    public MaterialShaderBuilder WithMaterialType(uint typeId)
+    {
+        _materialTypeId = typeId;
+        _buildUberShader = false;
+        return this;
+    }
+
+    /// <summary>
+    /// Select a specific material type by name.
+    /// When specified, only this material type will be compiled (not an uber shader).
+    /// </summary>
+    /// <param name="typeName">Material type name from MaterialTypeRegistry.</param>
+    public MaterialShaderBuilder WithMaterialType(string typeName)
+    {
+        var typeId = MaterialTypeRegistry.GetTypeId(typeName);
+        if (typeId == null)
+        {
+            throw new ArgumentException(
+                $"Material type '{typeName}' is not registered.",
+                nameof(typeName)
+            );
+        }
+        return WithMaterialType(typeId.Value);
+    }
+
+    /// <summary>
+    /// Build an uber shader containing all registered material types.
+    /// Material type is selected at runtime via specialization constant.
+    /// This is the default mode.
+    /// </summary>
+    public MaterialShaderBuilder WithUberShader(bool enable = true)
+    {
+        _buildUberShader = enable;
+        if (enable)
+        {
+            _materialTypeId = null;
+        }
         return this;
     }
 
@@ -188,27 +220,29 @@ public class MaterialShaderBuilder
             sbCustom.AppendLine();
         }
 
-        // If user supplied a custom main, we append it to custom code and
-        // rely on template modification or overrides if needed.
-        // However, the current template system expects 'main' to be present in the template.
-        // If user wants custom main, they might need to use a different base or defines.
-        // For now, let's treat CustomMain as injecting code or replacing logic if provided via template mechanism.
-        if (!string.IsNullOrEmpty(_customFragmentMain))
+        // Apply custom code injection
+        template = template.Replace("// TEMPLATE_CUSTOM_CODE", sbCustom.ToString());
+
+        // Generate outputColor function based on mode
+        if (_buildUberShader)
         {
-            // This logic needs to be adapted if strict replacement is required.
-            // But for now, let's assume simple injection or the user uses the new template replacement system.
-            sbCustom.AppendLine(_customFragmentMain);
+            // Build uber shader with all registered material types
+            template = GenerateUberOutputColorFunction(template);
+        }
+        else if (_materialTypeId.HasValue)
+        {
+            // Build single material type
+            template = GenerateSingleMaterialOutputColorFunction(template, _materialTypeId.Value);
+        }
+        else
+        {
+            // Legacy mode - keep existing outputColor function
+            // No changes needed
         }
 
         // Apply template replacements
-        template = template.Replace("// TEMPLATE_CUSTOM_CODE", sbCustom.ToString());
-
         foreach (var replacement in _templateReplacements)
         {
-            // Simple replace of entire block markers
-            // Example: /*TEMPLATE_CREATE_PBR_MATERIAL_IMPL_START*/ ... /*TEMPLATE_CREATE_PBR_MATERIAL_IMPL_END*/
-            // replaced by user code.
-
             string startMarker = $"/*{replacement.Key}_START*/";
             string endMarker = $"/*{replacement.Key}_END*/";
 
@@ -217,10 +251,6 @@ public class MaterialShaderBuilder
 
             if (startIndex >= 0 && endIndex > startIndex)
             {
-                // Replace the content including markers
-                // Or just content between? Usually replacing content between allows keeping markers if needed,
-                // but replacing everything is cleaner.
-                // Let's replace the whole block including markers to fully override.
                 string before = template.Substring(0, startIndex);
                 string after = template.Substring(endIndex + endMarker.Length);
                 template = before + replacement.Value + after;
@@ -229,6 +259,177 @@ public class MaterialShaderBuilder
             {
                 // Fallback: try simple string substitution if it's a direct placeholder
                 template = template.Replace(replacement.Key, replacement.Value);
+            }
+        }
+
+        // Handle custom main function
+        if (!string.IsNullOrEmpty(_customFragmentMain))
+        {
+            // Replace the main function
+            string startMarker = "/*TEMPLATE_CUSTOM_MAIN_START*/";
+            string endMarker = "/*TEMPLATE_CUSTOM_MAIN_END*/";
+
+            int startIndex = template.IndexOf(startMarker);
+            int endIndex = template.IndexOf(endMarker);
+
+            if (startIndex >= 0 && endIndex > startIndex)
+            {
+                string before = template.Substring(0, startIndex);
+                string after = template.Substring(endIndex + endMarker.Length);
+                template = before + _customFragmentMain + after;
+            }
+        }
+
+        return template;
+    }
+
+    private string GenerateUberOutputColorFunction(string template)
+    {
+        var registrations = MaterialTypeRegistry
+            .GetAllRegistrations()
+            .OrderBy(r => r.TypeId)
+            .ToList();
+
+        var sb = new StringBuilder();
+        sb.AppendLine("// Template function to create final color");
+        sb.AppendLine("vec4 outputColor()");
+        sb.AppendLine("{");
+
+        foreach (var reg in registrations)
+        {
+            sb.AppendLine($"    if (MATERIAL_TYPE == {(uint)reg.TypeId}u) {{");
+            sb.AppendLine($"        // {reg.Name}");
+
+            // Indent the implementation
+            var lines = reg.OutputColorImplementation.Split('\n');
+            foreach (var line in lines)
+            {
+                if (!string.IsNullOrWhiteSpace(line))
+                {
+                    sb.AppendLine($"    {line}");
+                }
+            }
+
+            sb.AppendLine("    }");
+        }
+
+        // Default fallback
+        sb.AppendLine("  // Fallback for unknown material types");
+        sb.AppendLine("  return vec4(1.0, 0.0, 1.0, 1.0); // Magenta");
+        sb.AppendLine("}");
+
+        // Replace the existing outputColor function
+        int outputColorStart = template.IndexOf("vec4 outputColor()");
+        if (outputColorStart < 0)
+        {
+            // Append before main if not found
+            int mainStart = template.IndexOf("/*TEMPLATE_CUSTOM_MAIN_START*/");
+            if (mainStart >= 0)
+            {
+                template = template.Insert(mainStart, sb.ToString() + "\n");
+            }
+        }
+        else
+        {
+            // Find the end of the function
+            int braceCount = 0;
+            int i = outputColorStart;
+            bool foundStart = false;
+
+            while (i < template.Length)
+            {
+                if (template[i] == '{')
+                {
+                    braceCount++;
+                    foundStart = true;
+                }
+                else if (template[i] == '}')
+                {
+                    braceCount--;
+                    if (foundStart && braceCount == 0)
+                    {
+                        i++; // Include the closing brace
+                        break;
+                    }
+                }
+                i++;
+            }
+
+            if (i < template.Length)
+            {
+                string before = template.Substring(0, outputColorStart);
+                string after = template.Substring(i);
+                template = before + sb.ToString() + after;
+            }
+        }
+
+        return template;
+    }
+
+    private string GenerateSingleMaterialOutputColorFunction(string template, uint typeId)
+    {
+        if (!MaterialTypeRegistry.TryGetById(typeId, out var registration) || registration == null)
+        {
+            throw new InvalidOperationException($"Material type ID {typeId} is not registered.");
+        }
+
+        var sb = new StringBuilder();
+        sb.AppendLine($"// Material type: {registration.Name} (ID: {typeId})");
+        sb.AppendLine("vec4 outputColor()");
+        sb.AppendLine("{");
+
+        // Add the implementation
+        var lines = registration.OutputColorImplementation.Split('\n');
+        foreach (var line in lines)
+        {
+            if (!string.IsNullOrWhiteSpace(line))
+            {
+                sb.AppendLine($"    {line}");
+            }
+        }
+
+        sb.AppendLine("}");
+
+        // Replace the existing outputColor function (same logic as uber shader)
+        int outputColorStart = template.IndexOf("vec4 outputColor()");
+        if (outputColorStart < 0)
+        {
+            int mainStart = template.IndexOf("/*TEMPLATE_CUSTOM_MAIN_START*/");
+            if (mainStart >= 0)
+            {
+                template = template.Insert(mainStart, sb.ToString() + "\n");
+            }
+        }
+        else
+        {
+            int braceCount = 0;
+            int i = outputColorStart;
+            bool foundStart = false;
+
+            while (i < template.Length)
+            {
+                if (template[i] == '{')
+                {
+                    braceCount++;
+                    foundStart = true;
+                }
+                else if (template[i] == '}')
+                {
+                    braceCount--;
+                    if (foundStart && braceCount == 0)
+                    {
+                        i++;
+                        break;
+                    }
+                }
+                i++;
+            }
+
+            if (i < template.Length)
+            {
+                string before = template.Substring(0, outputColorStart);
+                string after = template.Substring(i);
+                template = before + sb.ToString() + after;
             }
         }
 

@@ -1,25 +1,25 @@
+using HelixToolkit.Nex.DependencyInjection;
+using HelixToolkit.Nex.Graphics;
 using HelixToolkit.Nex.Rendering;
 
 namespace HelixToolkit.Nex.Engine;
 
 public class Engine : Initializable
 {
-    private readonly RendererManager _rendererManager = new();
+    private readonly Renderer _rendererManager;
     private readonly Initializable[] _initializables;
 
-    public Graphics.IContext Context { get; }
+    public IContext Context { get; }
 
-    public EngineConfig Config { get; private set; } = new EngineConfig();
+    public EngineConfig Config { get; }
 
     public override string Name => nameof(Engine);
 
-    public Engine(Graphics.IContext context, EngineConfig? config = null)
+    public Engine(EngineConfig config)
     {
-        Context = context;
-        if (config != null)
-        {
-            Config = config;
-        }
+        Config = config;
+        Context = Config.Services.GetRequiredService<IContext>();
+        _rendererManager = new Renderer(Config.Services);
         _initializables = [_rendererManager];
     }
 

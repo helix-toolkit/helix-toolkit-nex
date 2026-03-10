@@ -211,6 +211,21 @@ internal sealed partial class VulkanContext : Initializable, IContext
         return _currentCommandBuffer;
     }
 
+    public ICommandBuffer CreateSecondaryCommandBuffer(in RenderPass renderPassInfo)
+    {
+        HxDebug.Assert(Immediate != null, "Immediate commands not initialized");
+
+        if (Immediate == null)
+        {
+            throw new InvalidOperationException("Graphics context not properly initialized");
+        }
+
+        var wrapper = Immediate.CreateSecondaryBuffer(renderPassInfo);
+        var secondaryBuffer = new CommandBuffer(this) { IsSecondary = true, Wrapper = wrapper };
+
+        return secondaryBuffer;
+    }
+
     public ResultCode CreateComputePipeline(
         in ComputePipelineDesc desc,
         out ComputePipelineResource computePipeline
@@ -223,7 +238,7 @@ internal sealed partial class VulkanContext : Initializable, IContext
             return ResultCode.ArgumentError;
         }
 
-        ComputePipelineState cps = new(this) { Desc = desc };
+        ComputePipelineState cps = new(this, desc);
 
         if (desc.SpecInfo.Data != null && desc.SpecInfo.Data.Length > 0)
         {
@@ -358,12 +373,12 @@ internal sealed partial class VulkanContext : Initializable, IContext
             stageFlags |= VkShaderStageFlags.Geometry;
         }
 
-        if (desc.FragementShader.Valid)
+        if (desc.FragmentShader.Valid)
         {
             stageFlags |= VkShaderStageFlags.Fragment;
         }
 
-        RenderPipelineState rps = new(this) { Desc = desc, ShaderStageFlags = stageFlags };
+        RenderPipelineState rps = new(this, desc, stageFlags);
 
         // Iterate and cache vertex input bindings and attributes
         ref var vstate = ref rps.Desc.VertexInput;
@@ -981,7 +996,8 @@ internal sealed partial class VulkanContext : Initializable, IContext
             usageFlags |=
                 VK.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
                 | VK.VK_BUFFER_USAGE_TRANSFER_DST_BIT
-                | VK.VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+                | VK.VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
+                | VK.VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
         }
 
         if (desc.Usage.HasFlag(BufferUsageBits.Indirect))

@@ -66,8 +66,8 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="b">The right value to compare.</param>
         /// <returns><c>true</c> if a almost equal to b, <c>false</c> otherwise</returns>
         /// <remarks>
-        /// The code is using the technique described by Bruce Dawson in 
-        /// <a href="http://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/">Comparing Floating point numbers 2012 edition</a>. 
+        /// The code is using the technique described by Bruce Dawson in
+        /// <a href="http://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/">Comparing Floating point numbers 2012 edition</a>.
         /// </remarks>
         public unsafe static bool NearEqual(float a, float b)
         {
@@ -373,7 +373,10 @@ namespace HelixToolkit.Nex.Maths
         {
             if (min > max)
             {
-                throw new ArgumentException(string.Format("min {0} should be less than or equal to max {1}", min, max), nameof(min));
+                throw new ArgumentException(
+                    string.Format("min {0} should be less than or equal to max {1}", min, max),
+                    nameof(min)
+                );
             }
 
             // Code from http://stackoverflow.com/a/707426/1356325
@@ -408,11 +411,16 @@ namespace HelixToolkit.Nex.Maths
 
             if (mind > maxd)
             {
-                throw new ArgumentException(string.Format("min {0} should be less than or equal to max {1}", min, max), nameof(min));
+                throw new ArgumentException(
+                    string.Format("min {0} should be less than or equal to max {1}", min, max),
+                    nameof(min)
+                );
             }
 
             double range_size = maxd - mind;
-            return (float)(mind + (valued - mind) - (range_size * Math.Floor((valued - mind) / range_size)));
+            return (float)(
+                mind + (valued - mind) - (range_size * Math.Floor((valued - mind) / range_size))
+            );
         }
 
         /// <summary>
@@ -427,7 +435,15 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="sigmaX">Curve sigma X.</param>
         /// <param name="sigmaY">Curve sigma Y.</param>
         /// <returns>The result of Gaussian function.</returns>
-        public static float Gauss(float amplitude, float x, float y, float centerX, float centerY, float sigmaX, float sigmaY)
+        public static float Gauss(
+            float amplitude,
+            float x,
+            float y,
+            float centerX,
+            float centerY,
+            float sigmaX,
+            float sigmaY
+        )
         {
             return (float)Gauss((double)amplitude, x, y, centerX, centerY, sigmaX, sigmaY);
         }
@@ -444,7 +460,15 @@ namespace HelixToolkit.Nex.Maths
         /// <param name="sigmaX">Curve sigma X.</param>
         /// <param name="sigmaY">Curve sigma Y.</param>
         /// <returns>The result of Gaussian function.</returns>
-        public static double Gauss(double amplitude, double x, double y, double centerX, double centerY, double sigmaX, double sigmaY)
+        public static double Gauss(
+            double amplitude,
+            double x,
+            double y,
+            double centerX,
+            double centerY,
+            double sigmaX,
+            double sigmaY
+        )
         {
             double cx = x - centerX;
             double cy = y - centerY;
@@ -453,6 +477,188 @@ namespace HelixToolkit.Nex.Maths
             double componentY = cy * cy / (2 * sigmaY * sigmaY);
 
             return amplitude * Math.Exp(-(componentX + componentY));
+        }
+
+        /// <summary>
+        /// Source: http://geomalgorithms.com/a07-_distance.html
+        /// ~2341920 tests per second</summary>
+        /// <param name="s0"></param>
+        /// <param name="s1"></param>
+        /// <param name="t0"></param>
+        /// <param name="t1"></param>
+        /// <param name="sp"></param>
+        /// <param name="tp"></param>
+        /// <param name="sc"></param>
+        /// <param name="tc"></param>
+        /// <param name="sIsRay"></param>
+        /// <returns></returns>
+        public static float GetLineToLineDistance(
+            ref Vector3 s0,
+            ref Vector3 s1,
+            ref Vector3 t0,
+            ref Vector3 t1,
+            out Vector3 sp,
+            out Vector3 tp,
+            out float sc,
+            out float tc,
+            bool sIsRay = false
+        )
+        {
+            var u = s1 - s0;
+            var v = t1 - t0;
+            var w = s0 - t0;
+
+            var a = Vector3.Dot(u, u); // always >= 0
+            var b = Vector3.Dot(u, v);
+            var c = Vector3.Dot(v, v); // always >= 0
+            var d = Vector3.Dot(u, w);
+            var e = Vector3.Dot(v, w);
+            var D = a * c - b * b; // always >= 0
+            float sN,
+                sD = D; // sc = sN / sD, default sD = D >= 0
+            float tN,
+                tD = D; // tc = tN / tD, default tD = D >= 0
+
+            // compute the line parameters of the two closest points
+            if (D < float.Epsilon)
+            {
+                // the lines are almost parallel
+                sN = 0.0f; // force using point P0 on segment S1
+                sD = 1.0f; // to prevent possible division by 0.0 later
+                tN = e;
+                tD = c;
+            }
+            else
+            {
+                // get the closest points on the infinite lines
+                sN = (b * e - c * d);
+                tN = (a * e - b * d);
+
+                if (!sIsRay)
+                {
+                    if (sN < 0.0f)
+                    {
+                        // sc < 0 => the s=0 edge is visible
+                        sN = 0.0f;
+                        tN = e;
+                        tD = c;
+                    }
+                    else if (sN > sD)
+                    {
+                        // sc > 1  => the s=1 edge is visible
+                        sN = sD;
+                        tN = e + b;
+                        tD = c;
+                    }
+                }
+            }
+
+            if (tN < 0.0f)
+            {
+                // tc < 0 => the t=0 edge is visible
+                tN = 0.0f;
+                // recompute sc for this edge
+                if (-d < 0.0f)
+                {
+                    sN = 0.0f;
+                }
+                else if (-d > a)
+                {
+                    sN = sD;
+                }
+                else
+                {
+                    sN = -d;
+                    sD = a;
+                }
+            }
+            else if (tN > tD)
+            {
+                // tc > 1  => the t=1 edge is visible
+                tN = tD;
+                // recompute sc for this edge
+                if ((-d + b) < 0.0f)
+                {
+                    sN = 0;
+                }
+                else if ((-d + b) > a)
+                {
+                    sN = sD;
+                }
+                else
+                {
+                    sN = (-d + b);
+                    sD = a;
+                }
+            }
+
+            // finally do the division to get sc and tc
+            sc = (Math.Abs(sN) < float.Epsilon ? 0.0f : sN / sD);
+            tc = (Math.Abs(tN) < float.Epsilon ? 0.0f : tN / tD);
+
+            // get the difference of the two closest points
+            sp = s0 + (sc * u);
+            tp = t0 + (tc * v);
+            var tv = sp - tp;
+
+            return tv.Length(); // return the closest distance
+        }
+
+        /// <summary>
+        /// ~7874015 tests per second, 3.36 times faster than GetRayToLineDistance()
+        /// </summary>
+        /// <param name="pt"></param>
+        /// <param name="p0"></param>
+        /// <param name="p1"></param>
+        /// <param name="closest"></param>
+        /// <param name="t"></param>
+        /// <returns></returns>
+        public static float GetPointToLineDistance2D(
+            ref Vector3 pt,
+            ref Vector3 p0,
+            ref Vector3 p1,
+            out Vector3 closest,
+            out float t
+        )
+        {
+            var dx = p1.X - p0.X;
+            var dy = p1.Y - p0.Y;
+            if (Math.Abs(dx) < float.Epsilon && Math.Abs(dy) < float.Epsilon)
+            {
+                // The points are too close together.
+                closest = p0;
+                dx = pt.X - p0.X;
+                dy = pt.Y - p0.Y;
+                t = 0f;
+                return (float)Math.Sqrt(dx * dx + dy * dy);
+            }
+
+            // Calculate scale factor t of intersection.
+            t = ((pt.X - p0.X) * dx + (pt.Y - p0.Y) * dy) / (dx * dx + dy * dy);
+
+            // Test, if t inside line bounds.
+            if (t < 0)
+            {
+                closest = new Vector3(p0.X, p0.Y, p0.Z);
+                t = 0f;
+                dx = pt.X - p0.X;
+                dy = pt.Y - p0.Y;
+            }
+            else if (t > 1)
+            {
+                closest = new Vector3(p1.X, p1.Y, p1.Z);
+                t = 1f;
+                dx = pt.X - p1.X;
+                dy = pt.Y - p1.Y;
+            }
+            else
+            {
+                closest = new Vector3(p0.X + t * dx, p0.Y + t * dy, pt.Z);
+                dx = pt.X - closest.X;
+                dy = pt.Y - closest.Y;
+            }
+
+            return (float)Math.Sqrt(dx * dx + dy * dy);
         }
     }
 }

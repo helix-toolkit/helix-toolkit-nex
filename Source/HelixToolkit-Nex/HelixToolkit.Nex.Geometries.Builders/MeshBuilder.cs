@@ -4911,10 +4911,10 @@ public sealed class MeshBuilder
     public void Reset()
     {
         Positions = [];
-        Normals = null;
-        TextureCoordinates = null;
-        Tangents = null;
-        BiTangents = null;
+        Normals = Normals is not null ? [] : null;
+        TextureCoordinates = TextureCoordinates is not null ? [] : null;
+        Tangents = Tangents is not null ? [] : null;
+        BiTangents = BiTangents is not null ? [] : null;
         TriangleIndices = [];
     }
     #endregion Helper Functions

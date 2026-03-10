@@ -12,8 +12,9 @@ struct ToneGammaPushConstants {
     uint samplerId;
     float exposure;
     uint tonemapMode; // 0=ACES, 1=Reinhard, 2=Uncharted2
-    uint gamma;
-    vec2 _padding;
+    uint gammaEnabled;
+    uint _padding0;
+    uint _padding1;
 };
 
 layout(push_constant) uniform PushConstants {
@@ -45,7 +46,7 @@ void main() {
     // Sample HDR texture
     vec4 hdrColor = textureBindless2D(pc.value.hdrTextureId, pc.value.samplerId, inTexCoord);
     if (pc.value.enabled == 0u) {
-        // Tone mapping disabled, output white
+        // Tone mapping disabled, output original color.
         outColor = hdrColor;
         return;
     }
@@ -67,7 +68,7 @@ void main() {
         vec3 whiteScale = 1.0 / Uncharted2ToneMap(vec3(11.2));
         mapped = curr * whiteScale;
     }
-    if (pc.value.gamma != 0u) {
+    if (pc.value.gammaEnabled != 0u) {
         // Gamma correction (linear to sRGB)
         mapped = pow(mapped, vec3(1.0 / 2.2));
     }

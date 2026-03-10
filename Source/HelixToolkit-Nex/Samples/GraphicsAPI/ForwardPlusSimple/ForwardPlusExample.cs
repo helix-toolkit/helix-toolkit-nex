@@ -37,11 +37,10 @@ public class ForwardPlusExample
     private BufferResource _lightCullingBuffer = BufferResource.Null;
     private BufferResource _lightGridBuffer = BufferResource.Null;
     private BufferResource _lightIndexBuffer = BufferResource.Null;
-    private BufferResource _counterBuffer = BufferResource.Null;
     private BufferResource _directionalLightBuffer = BufferResource.Null;
+    private BufferResource _meshInfoBuffer = BufferResource.Null;
 
     // Per-object data buffers
-    private BufferResource _modelMatrixBuffer = BufferResource.Null;
     private BufferResource _pbrPropertiesBuffer = BufferResource.Null;
     private BufferResource _fpConstBuffer = BufferResource.Null;
     private BufferResource _meshDrawBuffer = BufferResource.Null;
@@ -91,7 +90,6 @@ public class ForwardPlusExample
     private ForwardPlusLightCulling.Config _config = ForwardPlusLightCulling.Config.Default;
     private FastList<Light> _lights = new();
     private DirectionalLights _dirLights = new();
-    private Matrix4x4[] _modelMatrices = new Matrix4x4[NumLights + 1];
     private readonly PBRProperties[] _pbrProperties = new PBRProperties[NumLights + 1];
     private readonly Geometry _lightMesh;
     private readonly Geometry _mesh;
@@ -169,7 +167,6 @@ public class ForwardPlusExample
 
         // Initialize scene data
         _lights = CreateTestLights(NumLights);
-        _modelMatrices[0] = Matrix4x4.Identity;
         _pbrProperties[0] = new()
         {
             Albedo = new Vector3(1f, 1f, 1f),
@@ -181,15 +178,16 @@ public class ForwardPlusExample
             new()
             {
                 MaterialId = 0,
-                ModelId = 0,
-                VertexBufferAddress = _mesh.VertexBuffer.GpuAddress,
-                VertexPropsBufferAddress = _mesh.VertexPropsBuffer.GpuAddress,
+                MeshId = 0,
+                Transform = Matrix4x4.Identity,
+                IndexCount = _mesh.IndexCount,
+                InstanceCount = 1,
+                MaterialType = (uint)ShadingMode,
             }
         );
         // Setup light sphere transforms and emissive materials
         for (int i = 0; i < NumLights; i++)
         {
-            _modelMatrices[i + 1] = Matrix4x4.CreateTranslation(_lights[i].Position);
             _pbrProperties[i + 1] = new()
             {
                 Ao = 1f,
@@ -200,9 +198,11 @@ public class ForwardPlusExample
                 new()
                 {
                     MaterialId = (uint)i + 1,
-                    ModelId = (uint)i + 1,
-                    VertexBufferAddress = _lightMesh.VertexBuffer.GpuAddress,
-                    VertexPropsBufferAddress = _lightMesh.VertexPropsBuffer.GpuAddress,
+                    MeshId = 1, // Light mesh
+                    Transform = Matrix4x4.CreateTranslation(_lights[i].Position),
+                    IndexCount = _lightMesh.IndexCount,
+                    InstanceCount = 1,
+                    MaterialType = (uint)PBRShadingMode.Unlit,
                 }
             );
         }
@@ -278,17 +278,6 @@ public class ForwardPlusExample
             "ForwardPlus_LightIndices"
         );
 
-        // Atomic counter for light index allocation
-        _counterBuffer = _context.CreateBuffer(
-            new BufferDesc
-            {
-                DataSize = sizeof(uint),
-                Usage = BufferUsageBits.Storage,
-                Storage = StorageType.Device,
-            },
-            "ForwardPlus_Counter"
-        );
-
         _directionalLightBuffer = _context.CreateBuffer(
             _dirLights,
             BufferUsageBits.Storage,
@@ -296,12 +285,25 @@ public class ForwardPlusExample
             "DirectionalLightBuffer"
         );
 
-        // Per-object data buffers
-        _modelMatrixBuffer = _context.CreateBuffer(
-            _modelMatrices,
+        _meshInfoBuffer = _context.CreateBuffer(
+            new MeshInfo[]
+            {
+                new MeshInfo
+                {
+                    VertexBufferAddress = _mesh.VertexBuffer.GpuAddress,
+                    VertexPropsBufferAddress = _mesh.VertexPropsBuffer.GpuAddress,
+                    VertexColorBufferAddress = _mesh.VertexColorBuffer.GpuAddress,
+                },
+                new MeshInfo
+                {
+                    VertexBufferAddress = _lightMesh.VertexBuffer.GpuAddress,
+                    VertexPropsBufferAddress = _lightMesh.VertexPropsBuffer.GpuAddress,
+                    VertexColorBufferAddress = _lightMesh.VertexColorBuffer.GpuAddress,
+                },
+            },
             BufferUsageBits.Storage,
             StorageType.Device,
-            "ForwardPlus_ModelMatrices"
+            "MeshInfo"
         );
 
         _pbrPropertiesBuffer = _context.CreateBuffer(
@@ -320,7 +322,7 @@ public class ForwardPlusExample
 
         _meshDrawBuffer = _context.CreateBuffer(
             _drawParams,
-            BufferUsageBits.Storage,
+            BufferUsageBits.Storage | BufferUsageBits.Indirect,
             StorageType.Device,
             "MeshDrawBuf"
         );
@@ -420,10 +422,7 @@ public class ForwardPlusExample
     /// </summary>
     private void CreateRenderPipelines()
     {
-        var builder = new MaterialShaderBuilder()
-            .WithPBRShading(true)
-            .WithSimpleLighting(false)
-            .ConfigForwardPlus(_config);
+        var builder = new MaterialShaderBuilder().ConfigForwardPlus(_config);
 
         var shaderResult = builder.BuildMaterialPipeline(_context, "ForwardPlus_Render");
 
@@ -432,21 +431,14 @@ public class ForwardPlusExample
             var pipelineDesc = new RenderPipelineDesc
             {
                 VertexShader = shaderResult.VertexShader,
-                FragementShader = shaderResult.FragmentShader,
+                FragmentShader = shaderResult.FragmentShader,
                 DebugName = "ForwardPlus_RenderPipeline",
                 CullMode = CullMode.Back,
                 FrontFaceWinding = WindingMode.CCW,
             };
             pipelineDesc.Colors[0].Format = Format.RGBA_F16;
             pipelineDesc.DepthFormat = Format.Z_F32;
-            pipelineDesc.SpecInfo.Entries[0].ConstantId = 0;
-            pipelineDesc.SpecInfo.Entries[0].Size = sizeof(uint);
-            pipelineDesc.SpecInfo.Data = new byte[sizeof(uint)];
-            using var pData = pipelineDesc.SpecInfo.Data.Pin();
-            unsafe
-            {
-                NativeHelper.Write((nint)pData.Pointer, ShadingMode);
-            }
+            pipelineDesc.WriteSpecInfo(0, ShadingMode);
             _renderPipelinePBR = _context.CreateRenderPipeline(pipelineDesc);
             Debug.Assert(_renderPipelinePBR.Valid);
         }
@@ -456,21 +448,14 @@ public class ForwardPlusExample
             var pipelineDesc = new RenderPipelineDesc
             {
                 VertexShader = shaderResult.VertexShader,
-                FragementShader = shaderResult.FragmentShader,
+                FragmentShader = shaderResult.FragmentShader,
                 DebugName = "ForwardPlus_UnlitPipeline",
                 CullMode = CullMode.Back,
                 FrontFaceWinding = WindingMode.CCW,
             };
             pipelineDesc.Colors[0].Format = Format.RGBA_F16;
             pipelineDesc.DepthFormat = Format.Z_F32;
-            pipelineDesc.SpecInfo.Entries[0].ConstantId = 0;
-            pipelineDesc.SpecInfo.Entries[0].Size = sizeof(uint);
-            pipelineDesc.SpecInfo.Data = new byte[sizeof(uint)];
-            using var pData = pipelineDesc.SpecInfo.Data.Pin();
-            unsafe
-            {
-                NativeHelper.Write((nint)pData.Pointer, PBRShadingMode.Unlit);
-            }
+            pipelineDesc.WriteSpecInfo(0, PBRShadingMode.Unlit);
             _renderPipelineUnlit = _context.CreateRenderPipeline(pipelineDesc);
             Debug.Assert(_renderPipelineUnlit.Valid);
         }
@@ -514,7 +499,7 @@ public class ForwardPlusExample
                     + string.Join("\n", toneGammaShader.Errors)
             );
         }
-        pipelineDesc.FragementShader = _context.CreateShaderModuleGlsl(
+        pipelineDesc.FragmentShader = _context.CreateShaderModuleGlsl(
             toneGammaShader.Source,
             ShaderStage.Fragment,
             "ToneMapping_Fragment"
@@ -588,12 +573,6 @@ public class ForwardPlusExample
         MoveLights((float)DateTime.Now.TimeOfDay.TotalSeconds);
         cmdBuffer.UpdateBuffer(_lightBuffer, _lights);
 
-        // Reset atomic counter for light index allocation
-        cmdBuffer.FillBuffer(_counterBuffer, 0, sizeof(uint), 0);
-
-        // Update model matrices
-        cmdBuffer.UpdateBuffer(_modelMatrixBuffer, _modelMatrices, (uint)_modelMatrices.Length);
-
         // Calculate matrices
         float aspect = (float)screenWidth / screenHeight;
         var view = camera.CreateView();
@@ -614,12 +593,11 @@ public class ForwardPlusExample
                 InverseViewProjection = invViewProj,
                 CameraPosition = camera.Position,
                 Time = (float)DateTime.Now.TimeOfDay.TotalSeconds,
+                MeshInfoBufferAddress = _meshInfoBuffer.GpuAddress,
                 LightBufferAddress = _lightBuffer.GpuAddress,
                 LightGridBufferAddress = _lightGridBuffer.GpuAddress,
                 LightIndexBufferAddress = _lightIndexBuffer.GpuAddress,
-                ModelMatrixBufferAddress = _modelMatrixBuffer.GpuAddress,
                 MaterialBufferAddress = _pbrPropertiesBuffer.GpuAddress,
-                PerModelParamsBufferAddress = _fpConstBuffer.GpuAddress,
                 MeshDrawBufferAddress = _meshDrawBuffer.GpuAddress,
                 DirectionalLightsBufferAddress = _directionalLightBuffer.GpuAddress,
                 LightCount = (uint)_lights.Count,
@@ -653,9 +631,10 @@ public class ForwardPlusExample
                 LightBufferAddress = _context.GpuAddress(_lightBuffer),
                 LightGridBufferAddress = _context.GpuAddress(_lightGridBuffer),
                 LightIndexBufferAddress = _context.GpuAddress(_lightIndexBuffer),
-                GlobalCounterBufferAddress = _context.GpuAddress(_counterBuffer),
             }
         );
+
+        cmdBuffer.UpdateBuffer(_meshDrawBuffer, _drawParams);
     }
 
     /// <summary>
@@ -723,21 +702,38 @@ public class ForwardPlusExample
                 MeshDrawId = 0,
             }
         );
+
         cmdBuffer.BindIndexBuffer(_indexBuffer, IndexFormat.UI32);
-        cmdBuffer.DrawIndexed((uint)_mesh.Indices.Count);
+        cmdBuffer.DrawIndexedIndirect(_meshDrawBuffer, 0, 1, MeshDraw.SizeInBytes);
+        //cmdBuffer.DrawIndexed((uint)_mesh.Indices.Count);
         cmdBuffer.BindRenderPipeline(_renderPipelineUnlit);
-        for (int i = 0; i < _lights.Count; i++)
-        {
-            // Draw light spheres
-            cmdBuffer.PushConstants(
-                new MeshDrawPushConstant()
-                {
-                    FpConstAddress = _fpConstBuffer.GpuAddress,
-                    MeshDrawId = (uint)i + 1,
-                }
-            );
-            cmdBuffer.DrawIndexed((uint)_lightMesh.Indices.Count, 1, (uint)_mesh.Indices.Count);
-        }
+        cmdBuffer.PushConstants(
+            new MeshDrawPushConstant()
+            {
+                FpConstAddress = _fpConstBuffer.GpuAddress,
+                DrawCommandIdxOffset = 1,
+            }
+        );
+
+        cmdBuffer.DrawIndexedIndirect(
+            _meshDrawBuffer,
+            MeshDraw.SizeInBytes,
+            (uint)_lights.Count,
+            MeshDraw.SizeInBytes
+        );
+        //for (int i = 0; i < _lights.Count; i++)
+        //{
+        //    // Draw light spheres
+        //    cmdBuffer.PushConstants(
+        //        new MeshDrawPushConstant()
+        //        {
+        //            FpConstAddress = _fpConstBuffer.GpuAddress,
+        //            MeshDrawId = (uint)i + 1,
+        //            DrawCommandIdxOffset = 1,
+        //        }
+        //    );
+        //    cmdBuffer.DrawIndexed((uint)_lightMesh.Indices.Count, 1, (uint)_mesh.Indices.Count);
+        //}
         cmdBuffer.EndRendering();
     }
 
@@ -757,11 +753,11 @@ public class ForwardPlusExample
         cmdBuffer.PushConstants(
             new ToneGammaPushConstants()
             {
-                Enabled = 0,
+                Enabled = 1,
                 Exposure = 1f,
                 HdrTextureId = _f16Framebuffer.Index,
                 SamplerId = _toneMappingSampler.Index,
-                TonemapMode = 0,
+                TonemapMode = (uint)ToneMappingMode.Uncharted2,
             }
         );
         cmdBuffer.Draw(3); // Full-screen triangle
@@ -783,10 +779,9 @@ public class ForwardPlusExample
         var random = new Random((int)Stopwatch.GetTimestamp());
 
         // Directional light (sun)
-        _dirLights.Lights_0 = new Light
+        _dirLights.Lights_0 = new DirectionalLight
         {
             Position = new Vector3(0, 0, -10),
-            Type = 0, // Directional light
             Direction = Vector3.Normalize(new Vector3(0, 0, 1)),
             Color = new Vector3(1),
             Intensity = 0.01f,
@@ -878,7 +873,9 @@ public class ForwardPlusExample
         for (int i = 0; i < NumLights - NumSpotLights; i++)
         {
             _lights.GetInternalArray()[i].Position += new Vector3(_offset, 0, 0);
-            _modelMatrices[i + 1] = Matrix4x4.CreateTranslation(_lights[i].Position);
+            _drawParams.GetInternalArray()[i + 1].Transform = Matrix4x4.CreateTranslation(
+                _lights[i].Position
+            );
         }
     }
 
@@ -899,12 +896,11 @@ public class ForwardPlusExample
         _lightBuffer.Dispose();
         _lightGridBuffer.Dispose();
         _lightIndexBuffer.Dispose();
-        _counterBuffer.Dispose();
-        _modelMatrixBuffer.Dispose();
         _pbrPropertiesBuffer.Dispose();
         _fpConstBuffer.Dispose();
         _lightCullingBuffer.Dispose();
         _directionalLightBuffer.Dispose();
+        _meshInfoBuffer.Dispose();
 
         // Dispose pipelines
         _renderPipelinePBR.Dispose();

@@ -5,13 +5,14 @@
 #include "HxHeaders/ForwardPlusTile.glsl"
 #include "HxHeaders/MeshDraw.glsl"
 
-layout(location = 0) in flat uint vertexIndex;
-layout(location = 1) in vec3 fragPosition;
-layout(location = 2) in vec3 fragNormal;
-layout(location = 3) in vec2 fragTexCoord;
+layout(location = 0) in vec3 fragWorldPos;
+layout(location = 1) in flat uint materialId;
+layout(location = 2) in vec4 fragColor;
+#ifndef EXCLUDE_MESH_PROPS
+layout(location = 3) in vec3 fragNormal;
 layout(location = 4) in vec3 fragTangent;
-layout(location = 5) in vec4 fragColor;
-layout(location = 6) in flat uint materialId;
+layout(location = 5) in vec2 fragTexCoord;
+#endif
 
 // Ensure FragCoord (0,0) is Top-Left to match Compute Shader tile generation
 // layout(origin_upper_left) in vec4 gl_FragCoord;
@@ -32,7 +33,8 @@ struct PBRProperties {
     uint normalTexIndex;
     uint metallicRoughnessTexIndex;
     uint samplerIndex;
-    vec2 _padding;
+    uint _padding0;
+    uint _padding1;
 };
 
 layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer FPBuffer {
@@ -41,10 +43,6 @@ layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer FP
 
 layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer MaterialBuffer {
     PBRProperties materials[];
-};
-
-layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer ModelMatrixBuffer {
-    mat4 models[];
 };
 
 layout(buffer_reference, std430, buffer_reference_align = 4) readonly buffer DirectionalLightBuffer {
@@ -64,34 +62,63 @@ layout(push_constant) uniform Pc {
     MeshDrawPushConstant value;
 } pc;
 
+layout (constant_id = 0) const uint MATERIAL_TYPE = 0; 
+
 FPConstants fpConst = FPBuffer(pc.value.fpConstAddress).fpConstants;
 
+// Utility Functions
 PBRProperties getPBRMaterial()
 {
     MaterialBuffer materialBuf = MaterialBuffer(fpConst.materialBufferAddress);
     return materialBuf.materials[materialId];
 }
 
+float getTime() {
+    return fpConst.time;
+}
+
+mat4 getViewProjection() {
+    return fpConst.viewProjection;
+}
+
+mat4 getInvViewProjection() {
+    return fpConst.inverseViewProjection;
+}
+
+vec3 getCameraPosition() {
+    return fpConst.cameraPosition;
+}
+
+vec2 getScreenSize() {
+    return fpConst.screenDimensions;
+}
+
 // Custom code injection point
 // TEMPLATE_CUSTOM_CODE
 
-void forwardPlusLighting(in PBRMaterial material, out vec4 outFinalColor)
+vec4 forwardPlusLighting(in PBRMaterial material)
 {
     // Forward+ tiled lighting
-    vec3 viewDir = normalize(fpConst.cameraPosition - fragPosition);
+    vec3 viewDir = normalize(fpConst.cameraPosition - fragWorldPos);
     vec3 finalC = material.ambient * material.albedo * material.ao;
-    LightBuffer lightBuf = LightBuffer(fpConst.lightBufferAddress);
-    if (fpConst.lightCount > 0) {
+    if (fpConst.lightCount > 0 && fpConst.lightBufferAddress != 0) {
+        LightBuffer lightBuf = LightBuffer(fpConst.lightBufferAddress);
         if (fpConst.enabled == 0) {
             for (uint i = 0; i < fpConst.lightCount; ++i) {
                 Light light = lightBuf.lights[i];
-                vec3 lightContribution = calculatePBRLighting(material, light, fragPosition, viewDir);
+                vec3 lightContribution = calculatePBRLighting(material, light, fragWorldPos, viewDir);
                 finalC += lightContribution;
             }
         } else {
             // Calculate tile coordinates
-            uvec2 tileCoord = uvec2(gl_FragCoord.xy) / uvec2(fpConst.tileSize);
-            tileCoord.y = (fpConst.tileCountY - 1u) - tileCoord.y; // Flip Y to match top-left origin
+            // The compute shader flips pixelCoord.y (1.0 - y) before sampling depth,
+            // so tile row 0 processes the bottom of the screen.
+            // We must flip the fragment's pixel Y in the same pixel space before
+            // dividing by tile size. This avoids the asymmetry that arises when
+            // screenDimensions is not a multiple of tileSize (the partial tile row
+            // must stay on the same screen edge in both shaders).
+            uvec2 flippedPixel = uvec2(gl_FragCoord.x, fpConst.screenDimensions.y - 1.0 - gl_FragCoord.y);
+            uvec2 tileCoord = flippedPixel / uvec2(fpConst.tileSize);
             tileCoord = min(tileCoord, uvec2(fpConst.tileCountX - 1, fpConst.tileCountY - 1));
             uint tileIndex = tileCoord.y * fpConst.tileCountX + tileCoord.x;
 
@@ -103,30 +130,30 @@ void forwardPlusLighting(in PBRMaterial material, out vec4 outFinalColor)
             for (uint i = 0; i < tile.lightCount; ++i) {
                 uint lightIndex = lightIndices.indices[tile.lightIndexOffset + i];
                 Light light = lightBuf.lights[lightIndex];
-                vec3 lightContribution = calculatePBRLighting(material, light, fragPosition, viewDir);
+                vec3 lightContribution = calculatePBRLighting(material, light, fragWorldPos, viewDir);
                finalC += lightContribution;
             }
         }
     }
 
-    if (fpConst.directionalLightsBufferAddress != 0u) {
+    if (fpConst.directionalLightsBufferAddress != 0) {
         DirectionalLightBuffer dirLightBuf = DirectionalLightBuffer(fpConst.directionalLightsBufferAddress);
-        for (uint i = 0u; i < dirLightBuf.value.lightCount; ++i) {
-            Light dirLight = dirLightBuf.value.lights[i];
-            vec3 lightContribution = calculatePBRLighting(material, dirLight, fragPosition, viewDir);
+        for (uint i = 0; i < dirLightBuf.value.lightCount; ++i) {
+            Light dirLight = DirectionLightToLight(dirLightBuf.value.lights[i]);
+            vec3 lightContribution = calculatePBRLighting(material, dirLight, fragWorldPos, viewDir);
             finalC += lightContribution;
         }
     }
     finalC += material.emissive;
 
-    outFinalColor = vec4(finalC, material.opacity);
+    return vec4(finalC, material.opacity);
 }
 
-void debugTileLighting(out vec4 outFinalColor)
+vec4 debugTileLighting()
 {
-    // Calculate tile coordinates
-    uvec2 tileCoord = uvec2(gl_FragCoord.xy) / uvec2(fpConst.tileSize);
-    tileCoord.y = (fpConst.tileCountY - 1u) - tileCoord.y;
+    // Calculate tile coordinates — flip in pixel space to match compute shader
+    uvec2 flippedPixel = uvec2(gl_FragCoord.x, fpConst.screenDimensions.y - 1.0 - gl_FragCoord.y);
+    uvec2 tileCoord = flippedPixel / uvec2(fpConst.tileSize);
     tileCoord = min(tileCoord, uvec2(fpConst.tileCountX - 1, fpConst.tileCountY - 1));
     uint tileIndex = tileCoord.y * fpConst.tileCountX + tileCoord.x;
     // Get light list for this tile
@@ -136,7 +163,7 @@ void debugTileLighting(out vec4 outFinalColor)
     // Visualize number of lights in the tile
     float lightCountNormalized = float(tile.lightCount) / float(fpConst.maxLightsPerTile);
     if (tile.lightCount == 0) {
-        outFinalColor = vec4(0.0, 0.0, 0.0, 1.0);
+        return vec4(0.0, 0.0, 0.0, 1.0);
     } else {
         // Gradient: Blue -> Green -> Red
         vec3 blue = vec3(0.0, 0.0, 1.0);
@@ -149,9 +176,8 @@ void debugTileLighting(out vec4 outFinalColor)
         } else {
             color = mix(green, red, (lightCountNormalized - 0.5) * 2.0);
         }
-        outFinalColor = vec4(color, 1.0);
+        return vec4(color, 1.0);
     }
-    //outFinalColor = vec4(float(tileCoord.x) / fpConst.tileCountX, float(tileCoord.y) / fpConst.tileCountY, lightCountNormalized, 1.0);
 }
 
 // Template function to create final PBR material properties
@@ -168,19 +194,17 @@ PBRMaterial createPBRMaterial()
     material.emissive = props.emissive;
     material.opacity = props.opacity;
     material.ambient = props.ambient;
+#ifndef EXCLUDE_MESH_PROPS
     if (props.albedoTexIndex > 0)
     {
         material.albedo = material.albedo * texture(sampler2D(kTextures2D[props.albedoTexIndex], kSamplers[props.samplerIndex]), fragTexCoord).rgb;
     }
-    material.albedo = mix(material.albedo, fragColor.rgb, props.vertexColorMix);
-
     if (props.metallicRoughnessTexIndex > 0)
     {
         vec2 metallicRoughness = texture(sampler2D(kTextures2D[props.metallicRoughnessTexIndex], kSamplers[props.samplerIndex]), fragTexCoord).bg;
         material.metallic = metallicRoughness.r;
         material.roughness = metallicRoughness.g;
     }
-
     material.normal = normalize(fragNormal);
     if (props.normalTexIndex > 0) {
         vec3 normalMap = texture(sampler2D(kTextures2D[props.normalTexIndex], kSamplers[props.samplerIndex]), fragTexCoord).xyz * 2.0 - 1.0;
@@ -190,43 +214,48 @@ PBRMaterial createPBRMaterial()
         mat3 TBN = mat3(T, B, N);
         material.normal = normalize(TBN * normalMap);
     }
-
+#else
+    {
+        material.normal = normalize(cross(dFdy(fragWorldPos), dFdx(fragWorldPos)));
+    }
+#endif
+    material.albedo = mix(material.albedo, fragColor.rgb, props.vertexColorMix);
     return material;
 /*TEMPLATE_CREATE_PBR_MATERIAL_IMPL_END*/
 }
 
-void nonLitOutputColor(in PBRMaterial material, out vec4 finalColor)
+vec4 nonLitOutputColor(in PBRMaterial material)
 {
-    finalColor = vec4(material.albedo + material.emissive, material.opacity);
+    return vec4(material.albedo + material.emissive, material.opacity);
 }
 
-// Shading model selection(0: PBR, 1: Non-Lit, 2: Debug tile)
-layout (constant_id = 0) const uint shadingModel = 0; 
 
 // Template function to create final color
-void outputColor(in PBRMaterial material, out vec4 finalColor)
+vec4 outputColor()
 {
-/*TEMPLATE_OUTPUT_COLOR_IMPL_START*/
-    if (shadingModel == 0u) {
-        forwardPlusLighting(material, finalColor);
-        return;
-    } else if (shadingModel == 1u) {
-        nonLitOutputColor(material, finalColor);
-        return;
-    } else if (shadingModel == 2u) {
-        // Default to PBR lighting
-        debugTileLighting(finalColor);
-        return;
-    } else {
-        finalColor = vec4(1.0, 0.0, 1.0, 1.0); // Magenta for unsupported shading model
-        return;
+    if (MATERIAL_TYPE == 1u) {
+        PBRMaterial material = createPBRMaterial();
+        return forwardPlusLighting(material);
     }
-/*TEMPLATE_OUTPUT_COLOR_IMPL_END*/
+    if (MATERIAL_TYPE == 2u) {
+        PBRMaterial material = createPBRMaterial();
+        return nonLitOutputColor(material);
+    }
+    if (MATERIAL_TYPE == 3u) {
+        // Default to PBR lighting
+        return debugTileLighting();
+    }
+    if (MATERIAL_TYPE == 4u) {
+        // Unlit with vertex color
+        return vec4(fragNormal, 1.0);
+    }
+    {
+        return vec4(1.0, 0.0, 1.0, 1.0); // Magenta for unsupported shading model
+    }
 }
 
 /*TEMPLATE_CUSTOM_MAIN_START*/
 void main() {
-    PBRMaterial material = createPBRMaterial();
-    outputColor(material, outColor);
+    outColor = outputColor();
 }
 /*TEMPLATE_CUSTOM_MAIN_END*/

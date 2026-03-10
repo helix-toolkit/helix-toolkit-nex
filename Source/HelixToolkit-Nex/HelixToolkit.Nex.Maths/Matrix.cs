@@ -2959,22 +2959,5 @@ namespace HelixToolkit.Nex.Maths
         {
             return PsudoInvert(ref viewMatrix);
         }
-
-        /// <summary>
-        /// Return inverted matrix if the operation succeeded.
-        /// Otherwise, return <see cref="Matrix4x4.Identity"/>
-        /// </summary>
-        /// <param name="matrix"></param>
-        /// <returns></returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static Matrix4x4 Inverted(this Matrix4x4 matrix)
-        {
-            if (Matrix4x4.Invert(matrix, out Matrix4x4 result))
-            {
-                return result;
-            }
-            logger.LogError("Matrix inversion has failed");
-            return new Matrix4x4();
-        }
     }
 }

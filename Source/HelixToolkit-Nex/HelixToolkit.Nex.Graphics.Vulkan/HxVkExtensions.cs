@@ -777,6 +777,7 @@ internal static class HxVkExtensions
             LoadOp.Load => VkAttachmentLoadOp.Load,
             LoadOp.Clear => VkAttachmentLoadOp.Clear,
             LoadOp.DontCare => VkAttachmentLoadOp.DontCare,
+            LoadOp.None => VkAttachmentLoadOp.None,
             _ => throw new NotSupportedException($"Load operation {op} is not supported."),
         };
     }
@@ -787,6 +788,7 @@ internal static class HxVkExtensions
         {
             StoreOp.Store => VkAttachmentStoreOp.Store,
             StoreOp.DontCare => VkAttachmentStoreOp.DontCare,
+            StoreOp.None => VkAttachmentStoreOp.None,
             _ => throw new NotSupportedException($"Store operation {op} is not supported."),
         };
     }

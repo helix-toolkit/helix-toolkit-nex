@@ -7,7 +7,7 @@ namespace HelixToolkit.Nex.Shaders;
 /// <summary>
 /// Cache entry for compiled shaders
 /// </summary>
-public class ShaderCacheEntry
+public sealed class ShaderCacheEntry
 {
     /// <summary>
     /// The processed shader source code
@@ -38,7 +38,7 @@ public class ShaderCacheEntry
 /// <summary>
 /// Thread-safe shader cache that stores processed shader sources
 /// </summary>
-public class ShaderCache
+public sealed class ShaderCache
 {
     private readonly ConcurrentDictionary<string, ShaderCacheEntry> _cache = new();
     private readonly int _maxEntries;

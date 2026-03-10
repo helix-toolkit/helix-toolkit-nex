@@ -95,7 +95,7 @@ public sealed class SceneSortingTests
                 n.Transform.IsWorldDirty,
                 $"Node {n.Name} should not have dirty world transform after update."
             );
-            Assert.AreEqual(transform, n.Transform.WorldTransform);
+            Assert.AreEqual(transform, n.WorldTransform.Value);
         }
 
         for (int i = 0; i < root.ChildCount; ++i)
@@ -114,7 +114,7 @@ public sealed class SceneSortingTests
                 n.Transform.IsWorldDirty,
                 $"Node {n.Name} should not have dirty world transform after update."
             );
-            Assert.AreEqual(transform, n.Transform.WorldTransform);
+            Assert.AreEqual(transform, n.WorldTransform.Value);
         }
     }
 }

@@ -48,10 +48,10 @@ internal sealed class ShaderModuleState(VkDevice? device) : IDisposable
     }
 }
 
-internal sealed class ComputePipelineState(VulkanContext? context) : IDisposable
+internal sealed class ComputePipelineState : IDisposable
 {
-    public readonly VulkanContext? Context = context;
-    public ComputePipelineDesc Desc = new();
+    public readonly VulkanContext? Context;
+    public readonly ComputePipelineDesc Desc;
 
     // non-owning, the last seen VkDescriptorSetLayout from VulkanContext::vkDSL_ (invalidate all VkPipeline objects on new layout)
     public VkDescriptorSetLayout LastVkDescriptorSetLayout = VkDescriptorSetLayout.Null;
@@ -62,12 +62,19 @@ internal sealed class ComputePipelineState(VulkanContext? context) : IDisposable
     public byte[] SpecConstantDataStorage = [];
     private bool _disposedValue;
 
+    public ComputePipelineState(VulkanContext? context, ComputePipelineDesc desc)
+    {
+        Context = context;
+        Desc = desc.Clone();
+        Desc.ComputeShader?.AddReference();
+    }
+
     public bool Valid =>
         Pipeline != VkPipeline.Null
         && PipelineLayout != VkPipelineLayout.Null
         && Context is not null;
 
-    public static readonly ComputePipelineState Null = new(null);
+    public static readonly ComputePipelineState Null = new(null, new());
 
     public static implicit operator bool(ComputePipelineState? state) =>
         state is not null && state.Valid;
@@ -80,6 +87,7 @@ internal sealed class ComputePipelineState(VulkanContext? context) : IDisposable
             {
                 SpecConstantDataStorage = [];
                 Desc.SpecInfo.Data = [];
+                Desc.ComputeShader?.Dispose();
 
                 Context?.DeferredTask(
                     () =>
@@ -118,7 +126,7 @@ internal sealed class ComputePipelineState(VulkanContext? context) : IDisposable
 internal sealed class RenderPipelineState : IDisposable
 {
     public readonly VulkanContext? Context;
-    public RenderPipelineDesc Desc = new();
+    public readonly RenderPipelineDesc Desc;
 
     public uint32_t NumBindings = 0;
     public uint32_t NumAttributes = 0;
@@ -131,7 +139,7 @@ internal sealed class RenderPipelineState : IDisposable
     // objects)
     public VkDescriptorSetLayout LastVkDescriptorSetLayout = VkDescriptorSetLayout.Null;
 
-    public VkShaderStageFlags ShaderStageFlags = 0;
+    public readonly VkShaderStageFlags ShaderStageFlags = 0;
     public VkPipelineLayout PipelineLayout = VkPipelineLayout.Null;
     public VkPipeline Pipeline = VkPipeline.Null;
 
@@ -145,14 +153,23 @@ internal sealed class RenderPipelineState : IDisposable
         && PipelineLayout != VkPipelineLayout.Null
         && Context is not null;
 
-    public static readonly RenderPipelineState Null = new(null);
+    public static readonly RenderPipelineState Null = new(
+        null,
+        new RenderPipelineDesc(),
+        VkShaderStageFlags.None
+    );
 
     public static implicit operator bool(RenderPipelineState? state) =>
         state is not null && state.Valid;
 
-    public RenderPipelineState(VulkanContext? context)
+    public RenderPipelineState(
+        VulkanContext? context,
+        RenderPipelineDesc desc,
+        VkShaderStageFlags stageFlags
+    )
     {
         Context = context;
+        ShaderStageFlags = stageFlags;
         for (int i = 0; i < VertexInput.MAX_VERTEX_BINDINGS; i++)
         {
             VkBindings[i] = new VkVertexInputBindingDescription();
@@ -161,6 +178,14 @@ internal sealed class RenderPipelineState : IDisposable
         {
             VkAttributes[i] = new VkVertexInputAttributeDescription();
         }
+        Desc = desc.Clone();
+        Desc.VertexShader?.AddReference();
+        Desc.GeometryShader?.AddReference();
+        Desc.TessControlShader?.AddReference();
+        Desc.TessEvalShader?.AddReference();
+        Desc.FragmentShader?.AddReference();
+        Desc.MeshShader?.AddReference();
+        Desc.TaskShader?.AddReference();
     }
 
     private void Dispose(bool disposing)
@@ -171,6 +196,13 @@ internal sealed class RenderPipelineState : IDisposable
             {
                 SpecConstantDataStorage = [];
                 Desc.SpecInfo.Data = [];
+                Desc.VertexShader?.Dispose();
+                Desc.GeometryShader?.Dispose();
+                Desc.TessControlShader?.Dispose();
+                Desc.TessEvalShader?.Dispose();
+                Desc.FragmentShader?.Dispose();
+                Desc.MeshShader?.Dispose();
+                Desc.TaskShader?.Dispose();
                 Context?.DeferredTask(
                     () =>
                     {

@@ -37,7 +37,7 @@ struct LightCullingConstants {
     uint64_t lightBufferAddress;
     uint64_t lightGridBufferAddress;
     uint64_t lightIndexBufferAddress;
-    uint64_t globalCounterBufferAddress;
+    uint64_t _padding;
 };
 
 layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer LightCullingConst {
@@ -126,7 +126,7 @@ bool sqSphereAABBIntersect(in vec3 center, float radius, in AABB tile) {
 // ------------------------------------------------------------------
 void main() {
     vec2 pixelCoord = (vec2(gl_GlobalInvocationID.xy) + vec2(0.5)) / cullingConst.value.screenDimensions;
-    pixelCoord.y = 1.0 - pixelCoord.y; // Flip Y for texture lookup if needed
+    pixelCoord.y = 1.0 - pixelCoord.y; // Flip Y for texture lookup
     ivec2 tileID = ivec2(gl_WorkGroupID.xy);
     uint threadIdx = gl_LocalInvocationIndex;
 
@@ -143,6 +143,10 @@ void main() {
     if (threadIdx < 4) {
         vec2 tilePixelsMin = vec2(tileID * TILE_SIZE);
         vec2 tilePixelsMax = vec2((tileID + 1) * TILE_SIZE);
+
+        // Clamp tile pixel bounds to actual screen dimensions so that
+        // edge tiles don't produce an oversized frustum.
+        tilePixelsMax = min(tilePixelsMax, cullingConst.value.screenDimensions);
         
         // Corners in View Space at Z = -1.0
         vec3 tl = screenToView(vec2(tilePixelsMin.x, tilePixelsMax.y), 1);
@@ -206,7 +210,7 @@ void main() {
              // minDepth is smaller value (closer to 0.0).
              float normalizedDepth = (depth - minDepth) / range;
              uint bitIndex = uint(min(normalizedDepth * 32.0, 31.0));
-             
+              
              // Atomically OR the bit into the mask
              atomicOr(sharedDepthMask, 1u << bitIndex);
         } else {
@@ -227,6 +231,9 @@ void main() {
 
         vec2 tilePixelsMin = vec2(tileID * TILE_SIZE);
         vec2 tilePixelsMax = vec2((tileID + 1) * TILE_SIZE);
+
+        // Clamp tile pixel bounds to actual screen dimensions for AABB construction
+        tilePixelsMax = min(tilePixelsMax, cullingConst.value.screenDimensions);
 
         // Get View Space XY bounds at near and far planes determined by tile depth range
         vec3 p0 = screenToView(tilePixelsMin, viewZNear);
@@ -255,93 +262,92 @@ void main() {
         Light light = lightBuffer.lights[i];
         
         bool visible = false;
-        if (light.type == 0) {
-            continue; // Skip Directional Light (0)
-        }
-        // Convert Range Light Position (World) to Frustum Space (View)
-        vec3 lightPosView = (cullingConst.value.viewMatrix * vec4(light.position, 1.0)).xyz;
+        if (light.type != 0) { // Skip Directional Light (0)
+            // Convert Range Light Position (World) to Frustum Space (View)
+            vec3 lightPosView = (cullingConst.value.viewMatrix * vec4(light.position, 1.0)).xyz;
 
-        // Cull lights against tile frustum
-        bool insideFrustum = frustumSphereIntersect(lightPosView, light.range, sharedFrustumPlanes);
+            // Cull lights against tile frustum
+            bool insideFrustum = frustumSphereIntersect(lightPosView, light.range, sharedFrustumPlanes);
 
-        // Test against Tile AABB (Depth bounds)
-        if (insideFrustum && (cullingConst.value.enableAABBCulling == 0 || sqSphereAABBIntersect(lightPosView, light.range, sharedTileAABB))) {
+            // Test against Tile AABB (Depth bounds)
+            if (insideFrustum && (cullingConst.value.enableAABBCulling == 0 || sqSphereAABBIntersect(lightPosView, light.range, sharedTileAABB))) {
 
-            // 3.5 Segmented Bitmask Test
-            // Transform light's depth range (view space Z) back to depth buffer space [0, 1]
-            // and check intersection with the depth mask.
-                
-            bool maskVisible = true;
-            if (cullingConst.value.enableDepthMaskCulling > 0) {
-                // Light bounds in view space Z: (lightPosView.z - radius, lightPosView.z + radius)
-                // Note: ViewSpace Z is negative looking down -Z.
-                float lightZNear = lightPosView.z + light.range; // Closer to camera (larger negative / less negative) -> larger depth value? No.
-                float lightZFar = lightPosView.z - light.range;  // Farther from camera
-                
-                // Reversed-Z Depth Buffer:
-                // ViewZNear (e.g. -1.0) -> Depth 1.0 (Near Plane)
-                // ViewZFar (e.g. -100.0) -> Depth 0.0 (Far Plane)
-                // Equation: depth = -P32/z - P22
-                
-                // We need to find the depth values corresponding to the light's Z extent AND CLAMP them to the tile's min/max depth.
-                float d1 = viewZToDepth(lightZNear);
-                float d2 = viewZToDepth(lightZFar);
-                
-                float lightDepthMin = min(d1, d2);
-                float lightDepthMax = max(d1, d2);
-                
-                // Intersect light depth range with tile depth range
-                float tMin = uintBitsToFloat(sharedMinDepth);
-                float tMax = uintBitsToFloat(sharedMaxDepth);
-                
-                // If light range is completely outside tile range, it should have been culled by AABB/Frustum tests,
-                // but let's be safe and clamp to tile bounds for bitmask generation.
-                float intersectionMin = max(lightDepthMin, tMin);
-                float intersectionMax = min(lightDepthMax, tMax);
-                
-                if (intersectionMin <= intersectionMax) {
-                    float range = tMax - tMin;
-                        if (range > 1e-6) {
-                        // Determine bit range [bitMin, bitMax] covered by the light
-                        uint bitMin = uint(clamp((intersectionMin - tMin) / range * 32.0, 0.0, 31.0));
-                        uint bitMax = uint(clamp((intersectionMax - tMin) / range * 32.0, 0.0, 31.0));
-                        
-                        // Create a mask for the light's range
-                        // E.g. bitMin=2, bitMax=4. We want bits 2, 3, 4 set.
-                        // Method: ((1 << (max - min + 1)) - 1) << min
-                        // Handle 32-bit shift case (which is UB in GLSL if shift >= 32)
-                        uint numBits = bitMax - bitMin + 1;
-                        uint lightMask = (numBits == 32) ? 0xFFFFFFFF : ((1u << numBits) - 1u) << bitMin;
-                        
-                        if ((sharedDepthMask & lightMask) == 0u) {
-                            maskVisible = false;
+                // 3.5 Segmented Bitmask Test
+                // Transform light's depth range (view space Z) back to depth buffer space [0, 1]
+                // and check intersection with the depth mask.
+                    
+                bool maskVisible = true;
+                if (cullingConst.value.enableDepthMaskCulling > 0) {
+                    // Light bounds in view space Z: (lightPosView.z - radius, lightPosView.z + radius)
+                    // Note: ViewSpace Z is negative looking down -Z.
+                    float lightZNear = lightPosView.z + light.range; // Closer to camera (larger negative / less negative) -> larger depth value? No.
+                    float lightZFar = lightPosView.z - light.range;  // Farther from camera
+                    
+                    // Reversed-Z Depth Buffer:
+                    // ViewZNear (e.g. -1.0) -> Depth 1.0 (Near Plane)
+                    // ViewZFar (e.g. -100.0) -> Depth 0.0 (Far Plane)
+                    // Equation: depth = -P32/z - P22
+                    
+                    // We need to find the depth values corresponding to the light's Z extent AND CLAMP them to the tile's min/max depth.
+                    float d1 = viewZToDepth(lightZNear);
+                    float d2 = viewZToDepth(lightZFar);
+                    
+                    float lightDepthMin = min(d1, d2);
+                    float lightDepthMax = max(d1, d2);
+                    
+                    // Intersect light depth range with tile depth range
+                    float tMin = uintBitsToFloat(sharedMinDepth);
+                    float tMax = uintBitsToFloat(sharedMaxDepth);
+                    
+                    // If light range is completely outside tile range, it should have been culled by AABB/Frustum tests,
+                    // but let's be safe and clamp to tile bounds for bitmask generation.
+                    float intersectionMin = max(lightDepthMin, tMin);
+                    float intersectionMax = min(lightDepthMax, tMax);
+                    
+                    if (intersectionMin <= intersectionMax) {
+                        float range = tMax - tMin;
+                            if (range > 1e-6) {
+                            // Determine bit range [bitMin, bitMax] covered by the light
+                            uint bitMin = uint(clamp((intersectionMin - tMin) / range * 32.0, 0.0, 31.0));
+                            uint bitMax = uint(clamp((intersectionMax - tMin) / range * 32.0, 0.0, 31.0));
+                            
+                            // Create a mask for the light's range
+                            // E.g. bitMin=2, bitMax=4. We want bits 2, 3, 4 set.
+                            // Method: ((1 << (max - min + 1)) - 1) << min
+                            // Handle 32-bit shift case (which is UB in GLSL if shift >= 32)
+                            uint numBits = bitMax - bitMin + 1;
+                            uint lightMask = (numBits == 32) ? 0xFFFFFFFF : ((1u << numBits) - 1u) << bitMin;
+                            
+                            if ((sharedDepthMask & lightMask) == 0u) {
+                                maskVisible = false;
+                            }
                         }
                     }
                 }
-            }
-                
-            if (maskVisible) {
-                visible = true;
+                    
+                if (maskVisible) {
+                    visible = true;
 
-                if (light.type == 2) { // Spot Light
-                    vec3 aabbCenter = (sharedTileAABB.minBounds + sharedTileAABB.maxBounds) * 0.5;
-                    float tileRadius = length(sharedTileAABB.maxBounds - aabbCenter);
-                        
-                    vec3 lightDirView = normalize(mat3(cullingConst.value.viewMatrix) * light.direction);
-                    vec3 V = aabbCenter - lightPosView;
-                    float d2 = dot(V, V);
-                    float d = sqrt(d2);
-                        
-                    if (d > tileRadius) {
-                        float cosTheta = dot(V / d, lightDirView);
-                        float cosPhi = light.spotAngles.y; // Outer cone cosine
+                    if (light.type == 2) { // Spot Light
+                        vec3 aabbCenter = (sharedTileAABB.minBounds + sharedTileAABB.maxBounds) * 0.5;
+                        float tileRadius = length(sharedTileAABB.maxBounds - aabbCenter);
                             
-                        float sinPhi = sqrt(max(0.0, 1.0 - cosPhi * cosPhi));
-                        float sinAlpha = tileRadius / d;
-                        float cosAlpha = sqrt(max(0.0, 1.0 - sinAlpha * sinAlpha));
+                        vec3 lightDirView = normalize(mat3(cullingConst.value.viewMatrix) * light.direction);
+                        vec3 V = aabbCenter - lightPosView;
+                        float d2 = dot(V, V);
+                        float d = sqrt(d2);
                             
-                        if (cosTheta < (cosPhi * cosAlpha - sinPhi * sinAlpha)) {
-                            visible = false;
+                        if (d > tileRadius) {
+                            float cosTheta = dot(V / d, lightDirView);
+                            float cosPhi = light.spotAngles.y; // Outer cone cosine
+                                
+                            float sinPhi = sqrt(max(0.0, 1.0 - cosPhi * cosPhi));
+                            float sinAlpha = tileRadius / d;
+                            float cosAlpha = sqrt(max(0.0, 1.0 - sinAlpha * sinAlpha));
+                                
+                            if (cosTheta < (cosPhi * cosAlpha - sinPhi * sinAlpha)) {
+                                visible = false;
+                            }
                         }
                     }
                 }
