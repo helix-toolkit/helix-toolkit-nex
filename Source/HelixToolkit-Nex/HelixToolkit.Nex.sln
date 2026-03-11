@@ -89,6 +89,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LightCulling", "Samples\Int
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SceneSamples", "Samples\SceneSamples\SceneSamples.csproj", "{58435956-B2F8-4A59-83ED-C188B0FCA331}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HelixToolkit.Nex.ECS", "HelixToolkit.Nex.EntityComponentSystem\HelixToolkit.Nex.ECS.csproj", "{F2AFA75F-1067-E5BD-D6CD-5D185E09E2A3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HelixToolkit.Nex.ECS.Tests", "HelixToolkit.Nex.EntityComponentSystem.Tests\HelixToolkit.Nex.ECS.Tests.csproj", "{1042BD5B-80DF-AE2C-3F41-6FA5F01D983B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -231,6 +235,14 @@ Global
 		{58435956-B2F8-4A59-83ED-C188B0FCA331}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{58435956-B2F8-4A59-83ED-C188B0FCA331}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{58435956-B2F8-4A59-83ED-C188B0FCA331}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F2AFA75F-1067-E5BD-D6CD-5D185E09E2A3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F2AFA75F-1067-E5BD-D6CD-5D185E09E2A3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F2AFA75F-1067-E5BD-D6CD-5D185E09E2A3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F2AFA75F-1067-E5BD-D6CD-5D185E09E2A3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1042BD5B-80DF-AE2C-3F41-6FA5F01D983B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1042BD5B-80DF-AE2C-3F41-6FA5F01D983B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1042BD5B-80DF-AE2C-3F41-6FA5F01D983B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1042BD5B-80DF-AE2C-3F41-6FA5F01D983B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -78,6 +78,7 @@ public sealed class ForwardPlusLightCullingNode : ComputeNode
 
         _cullingConstants.ViewMatrix = renderContext.CameraParams.View;
         _cullingConstants.Projection = renderContext.CameraParams.Projection;
+        _cullingConstants.InverseProjection = renderContext.CameraParams.InvProjection;
         _cullingConstants.ScreenDimensions = new Vector2(
             renderContext.WindowSize.Width,
             renderContext.WindowSize.Height

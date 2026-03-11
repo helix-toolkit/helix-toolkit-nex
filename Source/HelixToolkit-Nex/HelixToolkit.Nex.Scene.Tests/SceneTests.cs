@@ -1,5 +1,3 @@
-using Arch.Core;
-using Arch.Core.Extensions;
 using HelixToolkit.Nex.Scene;
 
 namespace HelixToolkit.Nex.Tests.Scene;
@@ -10,7 +8,7 @@ public sealed class SceneTests
     [TestMethod]
     public void CreateScene()
     {
-        var world = World.Create();
+        using var world = World.CreateWorld();
         var root = new Node(world) { Name = "Root Node" };
         Assert.IsNotNull(root);
         Assert.AreEqual("Root Node", root.Name);
@@ -30,7 +28,7 @@ public sealed class SceneTests
     [TestMethod]
     public void AddChildToNode()
     {
-        var world = World.Create();
+        using var world = World.CreateWorld();
         var root = new Node(world) { Name = "Root Node" };
         var child = new Node(world) { Name = "Child Node" };
         root.AddChild(child);
@@ -54,7 +52,7 @@ public sealed class SceneTests
     [TestMethod]
     public void RemoveChildToNode()
     {
-        var world = World.Create();
+        using var world = World.CreateWorld();
         var root = new Node(world) { Name = "Root Node" };
         var child = new Node(world) { Name = "Child Node" };
         root.AddChild(child);
@@ -74,7 +72,7 @@ public sealed class SceneTests
     [TestMethod]
     public void AddMultiLayerChildren()
     {
-        var world = World.Create();
+        using var world = World.CreateWorld();
         var root = new Node(world) { Name = "Root Node" };
         var child1 = new Node(world) { Name = "Child Node 1" };
         var child2 = new Node(world) { Name = "Child Node 2" };
@@ -132,7 +130,7 @@ public sealed class SceneTests
     [TestMethod]
     public void RemoveMultiLayerChildren()
     {
-        var world = World.Create();
+        using var world = World.CreateWorld();
         var root = new Node(world) { Name = "Root Node" };
         var child1 = new Node(world) { Name = "Child Node 1" };
         var child2 = new Node(world) { Name = "Child Node 2" };
@@ -163,7 +161,7 @@ public sealed class SceneTests
     [TestMethod]
     public void NodeEnabledByDefault()
     {
-        var world = World.Create();
+        using var world = World.CreateWorld();
         var node = new Node(world) { Name = "Test Node" };
         Assert.IsTrue(node.Enabled, "Node should be enabled by default");
         node.Dispose();
@@ -172,7 +170,7 @@ public sealed class SceneTests
     [TestMethod]
     public void DisableNode()
     {
-        var world = World.Create();
+        using var world = World.CreateWorld();
         var node = new Node(world) { Name = "Test Node" };
         node.Enabled = false;
         Assert.IsFalse(node.Enabled, "Node should be disabled after setting SelfEnabled to false");
@@ -182,7 +180,7 @@ public sealed class SceneTests
     [TestMethod]
     public void EnableNode()
     {
-        var world = World.Create();
+        using var world = World.CreateWorld();
         var node = new Node(world) { Name = "Test Node" };
         node.Enabled = false;
         Assert.IsFalse(node.Enabled);
@@ -194,7 +192,7 @@ public sealed class SceneTests
     [TestMethod]
     public void DisableParentDisablesChild()
     {
-        var world = World.Create();
+        using var world = World.CreateWorld();
         var parent = new Node(world) { Name = "Parent Node" };
         var child = new Node(world) { Name = "Child Node" };
         parent.AddChild(child);
@@ -213,7 +211,7 @@ public sealed class SceneTests
     [TestMethod]
     public void EnableParentEnablesChild()
     {
-        var world = World.Create();
+        using var world = World.CreateWorld();
         var parent = new Node(world) { Name = "Parent Node" };
         var child = new Node(world) { Name = "Child Node" };
         parent.AddChild(child);
@@ -233,7 +231,7 @@ public sealed class SceneTests
     [TestMethod]
     public void DisableChildDoesNotAffectParent()
     {
-        var world = World.Create();
+        using var world = World.CreateWorld();
         var parent = new Node(world) { Name = "Parent Node" };
         var child = new Node(world) { Name = "Child Node" };
         parent.AddChild(child);
@@ -249,7 +247,7 @@ public sealed class SceneTests
     [TestMethod]
     public void DisabledChildRemainsDisabledWhenParentReEnabled()
     {
-        var world = World.Create();
+        using var world = World.CreateWorld();
         var parent = new Node(world) { Name = "Parent Node" };
         var child = new Node(world) { Name = "Child Node" };
         parent.AddChild(child);
@@ -269,7 +267,7 @@ public sealed class SceneTests
     [TestMethod]
     public void DisableParentAffectsMultipleChildren()
     {
-        var world = World.Create();
+        using var world = World.CreateWorld();
         var parent = new Node(world) { Name = "Parent Node" };
         var child1 = new Node(world) { Name = "Child Node 1" };
         var child2 = new Node(world) { Name = "Child Node 2" };
@@ -295,7 +293,7 @@ public sealed class SceneTests
     [TestMethod]
     public void DisableParentPropagatesThroughHierarchy()
     {
-        var world = World.Create();
+        using var world = World.CreateWorld();
         var root = new Node(world) { Name = "Root Node" };
         var child1 = new Node(world) { Name = "Child Node 1" };
         var child2 = new Node(world) { Name = "Child Node 2" };
@@ -331,7 +329,7 @@ public sealed class SceneTests
     [TestMethod]
     public void DisableMiddleLevelNodeAffectsDescendantsOnly()
     {
-        var world = World.Create();
+        using var world = World.CreateWorld();
         var root = new Node(world) { Name = "Root Node" };
         var child1 = new Node(world) { Name = "Child Node 1" };
         var child2 = new Node(world) { Name = "Child Node 2" };
@@ -357,7 +355,7 @@ public sealed class SceneTests
     [TestMethod]
     public void EnableHierarchyRespectsSelfDisabledNodes()
     {
-        var world = World.Create();
+        using var world = World.CreateWorld();
         var root = new Node(world) { Name = "Root Node" };
         var child1 = new Node(world) { Name = "Child Node 1" };
         var child2 = new Node(world) { Name = "Child Node 2" };
@@ -391,7 +389,7 @@ public sealed class SceneTests
     [TestMethod]
     public void AddChildToDisabledParent()
     {
-        var world = World.Create();
+        using var world = World.CreateWorld();
         var parent = new Node(world) { Name = "Parent Node" };
         parent.Enabled = false;
 
@@ -409,7 +407,7 @@ public sealed class SceneTests
     [TestMethod]
     public void RemoveChildFromDisabledParentRestoresChildState()
     {
-        var world = World.Create();
+        using var world = World.CreateWorld();
         var parent = new Node(world) { Name = "Parent Node" };
         var child = new Node(world) { Name = "Child Node" };
         parent.AddChild(child);

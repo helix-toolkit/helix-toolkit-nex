@@ -1,6 +1,6 @@
 namespace HelixToolkit.Nex.Scene;
 
-public struct NodeInfo
+public struct NodeInfo : ISortable<NodeInfo>
 {
     public int Level = 0;
     public int Version = 1;
@@ -21,6 +21,11 @@ public struct NodeInfo
     public override readonly string ToString()
     {
         return $"NodeInfo: {Id}, Name: {Name}, Level: {Level}, Version: {Version}";
+    }
+
+    public readonly bool Compare(ref NodeInfo obj)
+    {
+        return Level < obj.Level;
     }
 }
 

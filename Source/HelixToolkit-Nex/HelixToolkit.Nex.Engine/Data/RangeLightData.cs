@@ -1,10 +1,13 @@
+using HelixToolkit.Nex.Engine.Components;
+
 namespace HelixToolkit.Nex.Engine.Data;
 
-internal class LightData : Initializable, IRenderData
+internal class RangeLightData : Initializable, IRenderData
 {
     public const int InitialBufferSize = 16;
-    private static readonly ILogger _logger = LogManager.Create<LightData>();
-    private static readonly QueryDescription _lightQuery = new QueryDescription().WithAll<Light>();
+    private static readonly ILogger _logger = LogManager.Create<RangeLightData>();
+
+    private EntityCollection? _entities;
 
     public IContext Context { get; }
     public World World { get; }
@@ -23,18 +26,23 @@ internal class LightData : Initializable, IRenderData
 
     public override string Name { get; }
 
-    public LightData(IContext context, World world)
+    public RangeLightData(IContext context, World world)
     {
         Context = context;
         World = world;
-        Name = $"{nameof(LightData)}_{World.Id}";
-        world.SubscribeComponentAdded<Light>(OnLightChanged);
-        world.SubscribeComponentRemoved<Light>(OnLightChanged);
-        world.SubscribeComponentSet<Light>(OnLightChanged);
+        Name = $"{nameof(RangeLightData)}_{World.Id}";
     }
 
     protected override ResultCode OnInitializing()
     {
+        _entities = World
+            .CreateCollection()
+            .Has<RangeLightComponent>()
+            .Has<WorldTransform>()
+            .Build();
+        _entities.EntityAdded += OnLightChanged;
+        _entities.EntityRemoved += OnLightChanged;
+        _entities.EntityChanged += OnLightChanged;
         _lightBuffer = new ElementBuffer<Light>(
             Context,
             InitialBufferSize,
@@ -47,8 +55,8 @@ internal class LightData : Initializable, IRenderData
 
     protected override ResultCode OnTearingDown()
     {
-        _lightBuffer?.Dispose();
-        _lightBuffer = null;
+        Disposer.DisposeAndRemove(ref _entities);
+        Disposer.DisposeAndRemove(ref _lightBuffer);
         return ResultCode.Ok;
     }
 
@@ -62,26 +70,29 @@ internal class LightData : Initializable, IRenderData
         {
             return true;
         }
-
-        var count = World.CountEntities(_lightQuery);
-        if (count == 0)
+        if (_entities is null)
+        {
+            return false;
+        }
+        if (_entities.Count == 0)
         {
             _lightBuffer?.Reset();
             return true;
         }
-        var q = World.Query(_lightQuery);
         _lightBuffer
             ?.WriteDynamic(
-                count,
+                _entities.Count,
                 (ctx) =>
                 {
-                    foreach (ref var chunk in q.GetChunkIterator())
+                    foreach (var entity in _entities)
                     {
-                        foreach (var entity in chunk)
-                        {
-                            ref var light = ref chunk.Get<Light>(entity);
-                            ctx.Write(ref light);
-                        }
+                        ref var lightComp = ref entity.Get<RangeLightComponent>();
+                        ref var transform = ref entity.Get<WorldTransform>();
+                        var light = lightComp.Light;
+                        light.Direction = Vector3.TransformNormal(light.Direction, transform.Value);
+                        light.Position = Vector3.Transform(light.Position, transform.Value);
+                        Debug.Assert(light.Type != 0);
+                        ctx.Write(ref light);
                     }
                 }
             )
@@ -90,9 +101,9 @@ internal class LightData : Initializable, IRenderData
         return true;
     }
 
-    private void OnLightChanged(in Entity entity, ref Light light)
+    private void OnLightChanged(object? sender, int e)
     {
-        _logger.LogDebug("Light changed. {LIGHT}", light);
+        _logger.LogTrace("Light changed. {ID}", e);
         _lastDataUpdateTicks = Stopwatch.GetTimestamp();
     }
 }

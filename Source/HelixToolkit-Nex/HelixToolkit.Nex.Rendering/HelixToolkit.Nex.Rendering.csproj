@@ -9,10 +9,8 @@
         <PackageReadmeFile>README.md</PackageReadmeFile>
     </PropertyGroup>
     <ItemGroup>
-        <PackageReference Include="Arch" Version="2.1.0" />
-    </ItemGroup>
-    <ItemGroup>
         <ProjectReference Include="..\HelixTookit.Nex\HelixToolkit.Nex.csproj" />
+        <ProjectReference Include="..\HelixToolkit.Nex.EntityComponentSystem\HelixToolkit.Nex.ECS.csproj" />
         <ProjectReference Include="..\HelixToolkit.Nex.Graphics\HelixToolkit.Nex.Graphics.csproj" />
         <ProjectReference Include="..\HelixToolkit.Nex.Material\HelixToolkit.Nex.Material.csproj" />
         <ProjectReference Include="..\HelixToolkit.Nex.Maths\HelixToolkit.Nex.Maths.csproj" />
@@ -26,6 +24,11 @@
         </None>
     </ItemGroup>
     <ItemGroup>
-      <Folder Include="RenderGraphs\" />
+        <Folder Include="RenderGraphs\" />
+    </ItemGroup>
+    <ItemGroup>
+        <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
+            <_Parameter1>HelixToolkit.Nex.Engine</_Parameter1>
+        </AssemblyAttribute>
     </ItemGroup>
 </Project>

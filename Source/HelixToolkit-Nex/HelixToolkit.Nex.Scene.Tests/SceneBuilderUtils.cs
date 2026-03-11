@@ -1,11 +1,17 @@
-using Arch.Core;
+global using HelixToolkit.Nex.ECS;
 using HelixToolkit.Nex.Scene;
 
 namespace HelixToolkit.Nex.Tests.Scene;
 
 internal class SceneBuilderUtils
 {
-    public static int AddChildRecursively(Node parent, int level, int maxLevel, int childCount, World world)
+    public static int AddChildRecursively(
+        Node parent,
+        int level,
+        int maxLevel,
+        int childCount,
+        World world
+    )
     {
         if (level >= maxLevel)
         {
@@ -14,10 +20,7 @@ internal class SceneBuilderUtils
         int count = 0;
         for (int i = 0; i < childCount; ++i)
         {
-            var child = new Node(world)
-            {
-                Name = $"Child Node {level}.{i}"
-            };
+            var child = new Node(world) { Name = $"Child Node {level}.{i}" };
             parent.AddChild(child);
             ++count;
             count += AddChildRecursively(child, level + 1, maxLevel, childCount, world);

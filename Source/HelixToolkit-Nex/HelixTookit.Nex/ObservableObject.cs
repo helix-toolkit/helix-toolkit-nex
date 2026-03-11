@@ -45,7 +45,6 @@ public sealed class ObservableAttribute : Attribute
 
 public abstract class ObservableObject : INotifyPropertyChanged
 {
-    public static EventBus EventBus => EventBus.Instance;
     private bool _disablePropertyChangedEvent = false;
     public bool DisablePropertyChangedEvent
     {

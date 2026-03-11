@@ -82,11 +82,7 @@ internal class MeshDrawData : Initializable, IMeshDrawData
 
     private static readonly ITracer _tracer = TracerFactory.GetTracer(nameof(MeshDrawData));
     private static readonly ILogger _logger = LogManager.Create<MeshDrawData>();
-    private static readonly QueryDescription _meshDrawQuery = new QueryDescription().WithAll<
-        NodeInfo,
-        MeshComponent,
-        Transform
-    >();
+
     private ElementBuffer<MeshDraw>? _buffer = null;
     private readonly FastList<MeshDraw> _meshDraws = new(InitialBufferSize);
     private readonly MeshDrawSorting _meshDrawSortingStatic = new();
@@ -94,7 +90,9 @@ internal class MeshDrawData : Initializable, IMeshDrawData
     private readonly MeshDrawSorting _meshDrawSortingDynamic = new();
     private readonly MeshDrawSorting _meshDrawSortingDynamicInstancing = new();
     private readonly HashSet<MaterialTypeId> _materialTypes = new(InitialBufferSize);
+    private readonly Dictionary<uint, int> _entityToDrawIdx = new(1024 * 10);
     private readonly bool _isTransparent;
+    private EntityCollection? _entities;
 
     public IContext Context { get; }
     public World World { get; }
@@ -135,15 +133,6 @@ internal class MeshDrawData : Initializable, IMeshDrawData
         _isTransparent = isTransparent;
         World = world;
         Name = $"{nameof(MeshDrawData)}_{(isTransparent ? "Transparent" : "Opaque")}_{World.Id}";
-        World.SubscribeComponentSet<MeshComponent>(OnMeshRenderChanged);
-        World.SubscribeComponentAdded<MeshComponent>(OnMeshRenderChanged);
-        World.SubscribeComponentRemoved<MeshComponent>(OnMeshRenderChanged);
-    }
-
-    private void OnMeshRenderChanged(in Entity entity, ref MeshComponent comp)
-    {
-        _logger.LogDebug("MeshComponent is changed. {MESH_RENDER}", comp);
-        _lastDataUpdateTicks = Stopwatch.GetTimestamp();
     }
 
     public DrawRange GetRangeDynamicMesh(MaterialTypeId materialType)
@@ -168,6 +157,15 @@ internal class MeshDrawData : Initializable, IMeshDrawData
 
     protected override ResultCode OnInitializing()
     {
+        _entities = World
+            .CreateCollection()
+            .Has<NodeInfo>()
+            .Has<MeshComponent>()
+            .Has<WorldTransform>()
+            .Build();
+        _entities.EntityChanged += OnEntityChanged;
+        _entities.EntityAdded += OnEntityChanged;
+        _entities.EntityRemoved += OnEntityChanged;
         _buffer = new ElementBuffer<MeshDraw>(
             Context,
             InitialBufferSize,
@@ -180,8 +178,8 @@ internal class MeshDrawData : Initializable, IMeshDrawData
 
     protected override ResultCode OnTearingDown()
     {
-        _buffer?.Dispose();
-        _buffer = null;
+        Disposer.DisposeAndRemove(ref _entities);
+        Disposer.DisposeAndRemove(ref _buffer);
         return ResultCode.Ok;
     }
 
@@ -195,6 +193,10 @@ internal class MeshDrawData : Initializable, IMeshDrawData
         {
             return true;
         }
+        if (_entities is null)
+        {
+            return false;
+        }
         using var t = _tracer.BeginScope(nameof(Update));
         bool success = true;
         _meshDraws.Clear();
@@ -203,76 +205,71 @@ internal class MeshDrawData : Initializable, IMeshDrawData
         _meshDrawSortingDynamic.Clear();
         _meshDrawSortingDynamicInstancing.Clear();
         var count = 0;
-        var query = World.Query(in _meshDrawQuery);
-        foreach (ref var chunk in query.GetChunkIterator())
+        foreach (var entity in _entities)
         {
-            foreach (var id in chunk)
+            ref var nodeInfo = ref entity.Get<NodeInfo>();
+            if (!nodeInfo.Enabled)
             {
-                ref var entity = ref chunk.Entity(id);
-                ref var nodeInfo = ref chunk.Get<NodeInfo>(id);
-                if (!nodeInfo.Enabled)
-                {
-                    continue;
-                }
-                ref var meshRenderComp = ref chunk.Get<MeshComponent>(id);
-                if (!meshRenderComp.Valid)
-                {
-                    continue;
-                }
-                if (meshRenderComp.IsTransparent ^ _isTransparent)
-                {
-                    continue;
-                }
-                ref var transform = ref chunk.Get<WorldTransform>(id);
-                var materialType = meshRenderComp.MaterialProperties!.MaterialTypeId;
-                meshRenderComp.Instancing?.UpdateBuffer(Context);
-                var meshDraw = new MeshDraw()
-                {
-                    MeshId = meshRenderComp.Geometry!.Id,
-                    MaterialId = meshRenderComp.MaterialProperties!.Index,
-                    MaterialType = materialType,
-                    EntityId = (uint)entity.Id,
-                    EntityVer = (uint)entity.Version,
-                    Transform = transform.Value,
-                    InstancingBufferAddress = meshRenderComp.Instancing is not null
-                        ? meshRenderComp.Instancing.Buffer!.Buffer.GpuAddress
+                continue;
+            }
+            ref var meshRenderComp = ref entity.Get<MeshComponent>();
+            if (!meshRenderComp.Valid)
+            {
+                continue;
+            }
+            if (meshRenderComp.IsTransparent ^ _isTransparent)
+            {
+                continue;
+            }
+            ref var transform = ref entity.Get<WorldTransform>();
+            var materialType = meshRenderComp.MaterialProperties!.MaterialTypeId;
+            meshRenderComp.Instancing?.UpdateBuffer(Context);
+            var meshDraw = new MeshDraw()
+            {
+                MeshId = meshRenderComp.Geometry!.Id,
+                MaterialId = meshRenderComp.MaterialProperties!.Index,
+                MaterialType = materialType,
+                EntityId = (uint)entity.Id,
+                EntityVer = entity.Gen,
+                Transform = transform.Value,
+                InstancingBufferAddress = meshRenderComp.Instancing is not null
+                    ? meshRenderComp.Instancing.Buffer!.Buffer.GpuAddress
+                    : 0,
+                InstancingIndexBufferAddress =
+                    meshRenderComp.Cullable && meshRenderComp.Instancing is not null
+                        ? meshRenderComp.Instancing.CulledIndicesBuffer!.Buffer.GpuAddress
                         : 0,
-                    InstancingIndexBufferAddress =
-                        meshRenderComp.Cullable && meshRenderComp.Instancing is not null
-                            ? meshRenderComp.Instancing.CulledIndicesBuffer!.Buffer.GpuAddress
-                            : 0,
-                    FirstIndex = meshRenderComp.Geometry!.IndexOffset,
-                    IndexCount = meshRenderComp.Geometry!.IndexCount,
-                    InstanceCount = meshRenderComp.Instancing is not null
-                        ? (uint)meshRenderComp.Instancing.Transforms.Count
-                        : 1u,
-                    Cullable = meshRenderComp.Cullable ? 1u : 0u,
-                };
-                _materialTypes.Add(materialType);
-                if (meshRenderComp.Instancing is not null)
+                FirstIndex = meshRenderComp.Geometry!.IndexOffset,
+                IndexCount = meshRenderComp.Geometry!.IndexCount,
+                InstanceCount = meshRenderComp.Instancing is not null
+                    ? (uint)meshRenderComp.Instancing.Transforms.Count
+                    : 1u,
+                Cullable = meshRenderComp.Cullable ? 1u : 0u,
+            };
+            _materialTypes.Add(materialType);
+            if (meshRenderComp.Instancing is not null)
+            {
+                if (meshRenderComp.Geometry.IsDynamic)
                 {
-                    if (meshRenderComp.Geometry.IsDynamic)
-                    {
-                        _meshDrawSortingDynamicInstancing.Add(ref meshDraw);
-                    }
-                    else
-                    {
-                        _meshDrawSortingStaticInstancing.Add(ref meshDraw);
-                    }
+                    _meshDrawSortingDynamicInstancing.Add(ref meshDraw);
                 }
                 else
                 {
-                    if (meshRenderComp.Geometry.IsDynamic)
-                    {
-                        _meshDrawSortingDynamic.Add(ref meshDraw);
-                    }
-                    else
-                    {
-                        _meshDrawSortingStatic.Add(ref meshDraw);
-                    }
+                    _meshDrawSortingStaticInstancing.Add(ref meshDraw);
                 }
-                ++count;
             }
+            else
+            {
+                if (meshRenderComp.Geometry.IsDynamic)
+                {
+                    _meshDrawSortingDynamic.Add(ref meshDraw);
+                }
+                else
+                {
+                    _meshDrawSortingStatic.Add(ref meshDraw);
+                }
+            }
+            ++count;
         }
         FinalizeMeshDraws();
         _buffer.Upload(_meshDraws);
@@ -282,6 +279,7 @@ internal class MeshDrawData : Initializable, IMeshDrawData
 
     private void FinalizeMeshDraws()
     {
+        _entityToDrawIdx.Clear();
         DrawRange range = default;
         foreach (var kv in _meshDrawSortingStatic.MeshDrawByMaterialType)
         {
@@ -321,5 +319,18 @@ internal class MeshDrawData : Initializable, IMeshDrawData
             _meshDrawSortingDynamicInstancing.AddRange(kv.Key, in range);
             _meshDraws.AddRange(kv.Value);
         }
+
+        for (int i = 0; i < _meshDraws.Count; ++i)
+        {
+            ref var draw = ref _meshDraws.At(i);
+            var entity = World.GetEntity((int)draw.EntityId, (ushort)draw.EntityVer);
+            ref var comp = ref entity.Get<MeshComponent>();
+            comp.DrawIndex = i;
+        }
+    }
+
+    private void OnEntityChanged(object? sender, int e)
+    {
+        _lastDataUpdateTicks = Stopwatch.GetTimestamp();
     }
 }

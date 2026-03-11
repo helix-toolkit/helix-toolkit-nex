@@ -40,6 +40,74 @@ public sealed class MaterialProperties : IDisposable
 
     public uint Index => _handle.Index;
 
+    public Color Albedo
+    {
+        set => Properties.Albedo = value.ToVector3();
+        get => new Color(Properties.Albedo);
+    }
+
+    public float Opacity
+    {
+        set => Properties.Opacity = value;
+        get => Properties.Opacity;
+    }
+
+    public float Metallic
+    {
+        set => Properties.Metallic = value;
+        get => Properties.Metallic;
+    }
+    public Color Emissive
+    {
+        set => Properties.Emissive = value.ToVector3();
+        get => new Color(Properties.Emissive);
+    }
+    public float Roughness
+    {
+        set => Properties.Roughness = value;
+        get => Properties.Roughness;
+    }
+    public Color Ambient
+    {
+        set => Properties.Ambient = value.ToVector3();
+        get => new Color(Properties.Ambient);
+    }
+    public float Ao
+    {
+        set => Properties.Ao = value;
+        get => Properties.Ao;
+    }
+
+    public float VertexColorMix
+    {
+        set => Properties.VertexColorMix = value;
+        get => Properties.VertexColorMix;
+    }
+
+    public uint AlbedoTexIndex
+    {
+        set => Properties.AlbedoTexIndex = value;
+        get => Properties.AlbedoTexIndex;
+    }
+
+    public uint NormalTexIndex
+    {
+        set => Properties.NormalTexIndex = value;
+        get => Properties.NormalTexIndex;
+    }
+
+    public uint MetallicRoughnessTexIndex
+    {
+        set => Properties.MetallicRoughnessTexIndex = value;
+        get => Properties.MetallicRoughnessTexIndex;
+    }
+
+    public uint SamplerIndex
+    {
+        set => Properties.SamplerIndex = value;
+        get => Properties.SamplerIndex;
+    }
+
     internal MaterialProperties(
         MaterialTypeId materialTypeId,
         Pool<MaterialPropertyResource, PBRProperties> pool
