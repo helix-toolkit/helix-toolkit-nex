@@ -14,7 +14,7 @@ namespace HelixToolkit.Nex.Rendering.Components;
 /// </list>
 /// The actual geometry and material data are stored in resource pools managed by the engine.
 /// </remarks>
-public readonly struct MeshComponent
+public struct MeshComponent
 {
     /// <summary>
     /// Handle to the geometry resource in the geometry pool.
@@ -42,6 +42,11 @@ public readonly struct MeshComponent
     /// Gets a value indicating whether the object can be excluded from rendering based on culling logic.
     /// </summary>
     public bool Cullable { get; }
+
+    /// <summary>
+    /// Gets or sets the index of the current draw operation.
+    /// </summary>
+    public int DrawIndex { internal set; get; }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="MeshComponent"/> struct.

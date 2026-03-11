@@ -16,6 +16,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\HelixTookit.Nex\HelixToolkit.Nex.csproj" />
+        <ProjectReference Include="..\HelixToolkit.Nex.EntityComponentSystem\HelixToolkit.Nex.ECS.csproj" />
         <ProjectReference Include="..\HelixToolkit.Nex.Graphics\HelixToolkit.Nex.Graphics.csproj" />
         <ProjectReference Include="..\HelixToolkit.Nex.Maths\HelixToolkit.Nex.Maths.csproj" />
         <!-- Add the source generator as an analyzer -->
@@ -28,7 +29,6 @@
 
     <ItemGroup>
         <PackageReference Include="System.Text.Json" Version="10.0.1" />
-        <PackageReference Include="Arch" Version="2.1.0" />
     </ItemGroup>
 
     <ItemGroup>

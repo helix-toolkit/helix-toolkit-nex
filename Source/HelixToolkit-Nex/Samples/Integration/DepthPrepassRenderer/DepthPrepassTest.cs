@@ -1,7 +1,6 @@
 // See https://aka.ms/new-console-template for more information
 using System.Diagnostics;
 using System.Numerics;
-using Arch.Core.Extensions;
 using HelixToolkit.Nex;
 using HelixToolkit.Nex.DependencyInjection;
 using HelixToolkit.Nex.Engine;
@@ -114,7 +113,7 @@ internal class DepthPrepassTest(IContext context) : IDisposable
                         Random.Shared.NextSingle()
                     );
                     pbrProps.NotifyUpdated();
-                    node.Entity.Add(new MeshComponent(z % 2 == 0 ? sphere : tetrahron, pbrProps));
+                    node.Entity.Set(new MeshComponent(z % 2 == 0 ? sphere : tetrahron, pbrProps));
                     _root.AddChild(node);
                 }
             }
@@ -137,7 +136,7 @@ internal class DepthPrepassTest(IContext context) : IDisposable
         var instancingNode = new Node(_worldDataProvider.World, "InstancingNode");
         var pbrPropsInstancing = materialPropertyPool.Create(PBRShadingMode.PBR);
         pbrPropsInstancing.Properties.Albedo = new Vector3(1, 0, 1);
-        instancingNode.Entity.Add(new MeshComponent(cube, pbrPropsInstancing, instancing));
+        instancingNode.Entity.Set(new MeshComponent(cube, pbrPropsInstancing, instancing));
         _root.AddChild(instancingNode);
 
         var allNodes = new FastList<Node>(NumSpheresPerAxis ^ 3 + 1);

@@ -1,19 +1,21 @@
+using HelixToolkit.Nex.Engine.Components;
+
 namespace HelixToolkit.Nex.Engine.Data;
 
 internal class DirectionalLightData : Initializable, IRenderData
 {
     private static readonly ILogger _logger = LogManager.Create<DirectionalLightData>();
-    private static readonly QueryDescription _lightQuery =
-        new QueryDescription().WithAll<DirectionalLight>();
+
+    private long _lastBufferUpdateTicks = 0;
+    private long _lastDataUpdateTicks = Stopwatch.GetTimestamp();
+    private EntityCollection? _entities;
 
     public World World { get; }
 
     public IContext Context { get; }
-    private long _lastBufferUpdateTicks = 0;
-    private long _lastDataUpdateTicks = Stopwatch.GetTimestamp();
 
-    private BufferResource _buffer = BufferResource.Null;
-    public BufferHandle Buffer => _buffer;
+    private BufferResource? _buffer;
+    public BufferHandle Buffer => _buffer ?? BufferHandle.Null;
 
     public uint Stride { get; } = DirectionalLight.SizeInBytes;
 
@@ -27,13 +29,18 @@ internal class DirectionalLightData : Initializable, IRenderData
         Context = context;
         World = world;
         Name = $"{nameof(DirectionalLightData)}_{World.Id}";
-        world.SubscribeComponentAdded<DirectionalLight>(OnLightChanged);
-        world.SubscribeComponentRemoved<DirectionalLight>(OnLightChanged);
-        world.SubscribeComponentSet<DirectionalLight>(OnLightChanged);
     }
 
     protected override ResultCode OnInitializing()
     {
+        _entities = World
+            .CreateCollection()
+            .Has<DirectionalLightComponent>()
+            .Has<WorldTransform>()
+            .Build();
+        _entities.EntityChanged += OnLightChanged;
+        _entities.EntityAdded += OnLightChanged;
+        _entities.EntityRemoved += OnLightChanged;
         var result = Context
             .CreateBuffer(
                 new DirectionalLights(),
@@ -48,7 +55,8 @@ internal class DirectionalLightData : Initializable, IRenderData
 
     protected override ResultCode OnTearingDown()
     {
-        _buffer.Dispose();
+        Disposer.DisposeAndRemove(ref _buffer);
+        Disposer.DisposeAndRemove(ref _entities);
         return ResultCode.Ok;
     }
 
@@ -62,36 +70,32 @@ internal class DirectionalLightData : Initializable, IRenderData
         {
             return true;
         }
-
-        var lights = new DirectionalLights();
-        var q = World.Query(_lightQuery);
-        int count = 0;
-        foreach (ref var chunk in q.GetChunkIterator())
+        if (_entities is null)
         {
-            foreach (var entity in chunk)
-            {
-                ref var light = ref chunk.Get<DirectionalLight>(entity);
-                lights.SetLights(count++, ref light);
-                if (count >= DirectionalLights.MaxLightsCount)
-                {
-                    break;
-                }
-            }
-            if (count >= DirectionalLights.MaxLightsCount)
+            return false;
+        }
+        var lights = new DirectionalLights { LightCount = 0 };
+        foreach (var entity in _entities)
+        {
+            ref var lightComp = ref entity.Get<DirectionalLightComponent>();
+            ref var transform = ref entity.Get<WorldTransform>();
+            var light = lightComp.Light;
+            light.Direction = Vector3.TransformNormal(light.Direction, transform.Value);
+            lights.SetLights((int)lights.LightCount++, light);
+            if (lights.LightCount >= DirectionalLights.MaxLightsCount)
             {
                 break;
             }
         }
-        lights.LightCount = (uint)count;
-        Count = (uint)count;
+        Count = lights.LightCount;
         Context.Upload(Buffer, 0, lights);
         _lastBufferUpdateTicks = _lastDataUpdateTicks;
         return true;
     }
 
-    private void OnLightChanged(in Entity entity, ref DirectionalLight light)
+    private void OnLightChanged(object? source, int entityId)
     {
-        _logger.LogDebug("Directional light is changed. {LIGHT}", light);
+        _logger.LogTrace("Directional Light is changed. {ID}", entityId);
         _lastDataUpdateTicks = Stopwatch.GetTimestamp();
     }
 }

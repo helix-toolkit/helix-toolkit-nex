@@ -169,7 +169,9 @@ public partial class Geometry : ObservableObject, IDisposable
             }
             if (BufferDirty != GeometryBufferType.None && Attached)
             {
-                EventBus.PublishAsync(new GeometryUpdatedEvent(Id, GeometryChangeOp.Updated));
+                EventBus.Instance.PublishAsync(
+                    new GeometryUpdatedEvent(Id, GeometryChangeOp.Updated)
+                );
             }
         };
     }

@@ -15,12 +15,12 @@ public static class Utils
         uint r,
         uint g,
         out int entityId,
-        out int entityVersion,
+        out ushort entityVersion,
         out uint instanceIndex
     )
     {
         entityId = (int)(r & 0xFFFFFF);
-        instanceIndex = (r >> 24) | ((g & 0xFFF) << 8);
-        entityVersion = (int)(g >> 12);
+        instanceIndex = (r >> 24) | ((g & 0xFFFF) << 8);
+        entityVersion = (ushort)(g >> 16);
     }
 }

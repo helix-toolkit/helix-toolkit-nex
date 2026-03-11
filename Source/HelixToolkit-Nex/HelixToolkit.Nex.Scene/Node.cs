@@ -20,7 +20,7 @@ public class Node : IDisposable
         get
         {
             var entity = Entity.Get<Parent>().ParentEntity;
-            return entity != Entity.Null ? entity.Get<NodeInfo>().Node : null;
+            return entity.Valid ? entity.Get<NodeInfo>().Node : null;
         }
         set
         {
@@ -63,7 +63,7 @@ public class Node : IDisposable
 
     public bool HasChildren => Children != null && Children.Count != 0;
 
-    public bool Alive => World.IsAlive(Entity);
+    public bool Alive => World.HasEntity(Entity);
 
     public bool IsRoot => Info.Level == 0;
 
@@ -116,22 +116,19 @@ public class Node : IDisposable
         }
     }
 
-    public ref Transform Transform => ref World.Get<Transform>(Entity);
+    public ref Transform Transform => ref Entity.Get<Transform>();
 
-    public ref WorldTransform WorldTransform => ref World.Get<WorldTransform>(Entity);
+    public ref WorldTransform WorldTransform => ref Entity.Get<WorldTransform>();
 
     public Node(in World world, in Entity? entity = null)
     {
         World = world ?? throw new ArgumentNullException(nameof(world));
-        Entity =
-            entity
-            ?? world.Create(
-                new NodeInfo(this),
-                new Transform(),
-                WorldTransform.Identity,
-                new Parent(),
-                new Children()
-            );
+        Entity = entity ?? world.CreateEntity();
+        Entity.Set(new NodeInfo(this));
+        Entity.Set(new Transform());
+        Entity.Set(WorldTransform.Identity);
+        Entity.Set(new Parent());
+        Entity.Set(new Children());
         VerifyExternalEntity(Entity);
     }
 
@@ -181,7 +178,7 @@ public class Node : IDisposable
 
     public void SetWorldTransform(in WorldTransform transform)
     {
-        Entity.Set(in transform);
+        Entity.Set(transform);
     }
 
     public override string ToString()
@@ -238,8 +235,7 @@ public class Node : IDisposable
                 {
                     Parent?.RemoveChild(this);
                 }
-                World.Destroy(Entity);
-                Entity = Entity.Null;
+                Entity.Dispose();
             }
 
             // TODO: free unmanaged resources (unmanaged objects) and override finalizer

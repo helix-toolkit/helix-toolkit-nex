@@ -1,11 +1,12 @@
 using System.Diagnostics;
 using System.Numerics;
-using Arch.Core.Extensions;
 using HelixToolkit.Nex;
 using HelixToolkit.Nex.Engine;
+using HelixToolkit.Nex.Engine.Components;
 using HelixToolkit.Nex.Geometries;
 using HelixToolkit.Nex.Graphics;
 using HelixToolkit.Nex.Material;
+using HelixToolkit.Nex.Maths;
 using HelixToolkit.Nex.Rendering;
 using HelixToolkit.Nex.Rendering.Components;
 using HelixToolkit.Nex.Scene;
@@ -76,15 +77,15 @@ public class MinecraftScene : IScene
     // -----------------------------------------------------------------------
     // Point-light colors that cycle across all spawned lights
     // -----------------------------------------------------------------------
-    private static readonly Vector3[] LightColors = new Vector3[]
-    {
-        new Vector3(1.0f, 0.6f, 0.2f), // warm orange (torchlight)
-        new Vector3(0.3f, 0.6f, 1.0f), // cool blue
-        new Vector3(0.2f, 1.0f, 0.4f), // green
-        new Vector3(1.0f, 0.2f, 0.2f), // red
-        new Vector3(1.0f, 1.0f, 0.3f), // yellow
-        new Vector3(0.8f, 0.2f, 1.0f), // purple
-    };
+    private static readonly Color[] _lightColors =
+    [
+        new Color(1.0f, 0.6f, 0.2f), // warm orange (torchlight)
+        new Color(0.3f, 0.6f, 1.0f), // cool blue
+        new Color(0.2f, 1.0f, 0.4f), // green
+        new Color(1.0f, 0.2f, 0.2f), // red
+        new Color(1.0f, 1.0f, 0.3f), // yellow
+        new Color(0.8f, 0.2f, 1.0f), // purple
+    ];
 
     // -----------------------------------------------------------------------
     // Public API
@@ -214,7 +215,7 @@ public class MinecraftScene : IScene
 
             instancings[b].UpdateBuffer(context);
             var blockNode = new Node(worldDataProvider.World, $"Block_{(BlockType)b}");
-            blockNode.Entity.Add(new MeshComponent(cube, matProps[b], instancings[b]));
+            blockNode.Entity.Set(new MeshComponent(cube, matProps[b], instancings[b]));
             root.AddChild(blockNode);
         }
 
@@ -223,13 +224,13 @@ public class MinecraftScene : IScene
         // so spheres of the same colour share a single draw call via instancing
         // ------------------------------------------------------------------
         var lightSphereInstancings =
-            new Dictionary<Vector3, (MaterialProperties Mat, Instancing Inst)>();
-        foreach (var color in LightColors)
+            new Dictionary<Color, (MaterialProperties Mat, Instancing Inst)>();
+        foreach (var color in _lightColors)
         {
             var mat = materialPool.Create("Unlit");
-            mat.Properties.Albedo = color;
-            mat.Properties.Emissive = color * 2.0f; // bright self-illuminated glow
-            mat.Properties.Opacity = 1.0f;
+            mat.Albedo = color;
+            mat.Emissive = color * 2.0f; // bright self-illuminated glow
+            mat.Opacity = 1.0f;
             mat.NotifyUpdated();
             lightSphereInstancings[color] = (mat, new Instancing(false));
         }
@@ -244,15 +245,14 @@ public class MinecraftScene : IScene
             int lz = rand.Next(0, WorldSizeZ);
             float ly = heightMap[lx, lz] + 2.5f;
             var pos = new Vector3(lx, ly, lz);
-            var col = LightColors[i % LightColors.Length];
+            var col = _lightColors[i % _lightColors.Length];
 
             var lightNode = new Node(worldDataProvider.World, $"PointLight_{i}");
             lightNode.Transform = new Transform { Translation = pos };
-            lightNode.Entity.Add(
-                new Light
+            lightNode.Entity.Set(
+                new RangeLightComponent(RangeLightType.Point)
                 {
-                    Position = pos,
-                    Type = 1, // point light
+                    Position = Vector3.Zero, // Use node's world transform for light position
                     Color = col,
                     Intensity = 3.0f,
                     Range = 3.0f,
@@ -273,7 +273,7 @@ public class MinecraftScene : IScene
 
             inst.UpdateBuffer(context);
             var sphereNode = new Node(worldDataProvider.World, $"LightSpheres_{color}");
-            sphereNode.Entity.Add(new MeshComponent(lightSphere, mat, inst));
+            sphereNode.Entity.Set(new MeshComponent(lightSphere, mat, inst));
             root.AddChild(sphereNode);
         }
 
@@ -281,10 +281,10 @@ public class MinecraftScene : IScene
         // Sun-like directional light
         // ------------------------------------------------------------------
         var sunNode = new Node(worldDataProvider.World, "Sun");
-        sunNode.Entity.Add(
-            new DirectionalLight
+        sunNode.Entity.Set(
+            new DirectionalLightComponent
             {
-                Color = new Vector3(1.0f, 0.95f, 0.8f),
+                Color = new Color(1.0f, 0.95f, 0.8f),
                 Intensity = 0.05f,
                 Direction = Vector3.Normalize(new Vector3(0.4f, -1.0f, 0.5f)),
             }

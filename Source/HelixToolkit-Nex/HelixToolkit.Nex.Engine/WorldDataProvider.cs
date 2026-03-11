@@ -7,13 +7,12 @@ public sealed class WorldDataProvider : IRenderDataProvider, IDisposable
     private static readonly ILogger _logger = LogManager.Create<WorldDataProvider>();
     private static readonly ITracer _tracer = TracerFactory.GetTracer(nameof(WorldDataProvider));
     private readonly FastList<IRenderData> _renderDataList = [];
-    private readonly LightData _lightData;
+    private readonly RangeLightData _lightData;
     private readonly DirectionalLightData _directionalLightData;
     private readonly MeshDrawData _meshDrawDataOpaque;
     private readonly MeshDrawData _meshDrawDataTransparent;
-    private readonly Entity _preserve;
 
-    public readonly World World = World.Create();
+    public readonly World World = World.CreateWorld();
     public IResourceManager ResourceManager { get; }
 
     public IContext Context => ResourceManager.Context;
@@ -34,9 +33,8 @@ public sealed class WorldDataProvider : IRenderDataProvider, IDisposable
 
     public WorldDataProvider(IServiceProvider services)
     {
-        _preserve = World.Create<int>(); // Make sure entity 0 is not used, as it is reserved for "null" in some cases.
         ResourceManager = services.GetRequiredService<IResourceManager>();
-        _lightData = new LightData(Context, World);
+        _lightData = new RangeLightData(Context, World);
         _directionalLightData = new DirectionalLightData(Context, World);
         _meshDrawDataOpaque = new MeshDrawData(Context, World, false);
         _meshDrawDataTransparent = new MeshDrawData(Context, World, true);

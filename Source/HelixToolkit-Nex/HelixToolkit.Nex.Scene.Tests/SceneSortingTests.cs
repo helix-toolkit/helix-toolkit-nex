@@ -1,5 +1,4 @@
 using System.Numerics;
-using Arch.Core;
 using HelixToolkit.Nex.Scene;
 
 namespace HelixToolkit.Nex.Tests.Scene;
@@ -12,7 +11,7 @@ public sealed class SceneSortingTests
     [DataRow(1024)]
     public void FlattenSceneSingleChildren(int nodeCount)
     {
-        var world = World.Create();
+        using var world = World.CreateWorld();
         var root = new Node(world) { Name = "Root Node" };
         {
             var node = root;
@@ -46,7 +45,7 @@ public sealed class SceneSortingTests
     [DataRow(3, 10)]
     public void FlattenSceneMultiple(int childCount, int level)
     {
-        var world = World.Create();
+        using var world = World.CreateWorld();
         var root = new Node(world) { Name = "Root Node" };
         var total = SceneBuilderUtils.AddChildRecursively(root, 0, level, childCount, world) + 1;
 
@@ -75,9 +74,57 @@ public sealed class SceneSortingTests
     [DataRow(4, 4)]
     public void TransformUpdate(int childCount, int level)
     {
-        var world = World.Create();
+        using var world = World.CreateWorld();
         var root = new Node(world) { Name = "Root Node" };
         var total = SceneBuilderUtils.AddChildRecursively(root, 0, level, childCount, world) + 1;
+
+        var sortedNodes = new List<Node>(total);
+        Node[] nodes = [root];
+        nodes.Flatten(null, sortedNodes);
+        sortedNodes.UpdateTransforms();
+
+        root.Transform.Scale = new Vector3(1, 2, 3);
+        sortedNodes.UpdateTransforms();
+        var transform = Matrix4x4.CreateScale(1, 2, 3);
+
+        for (int i = 0; i < sortedNodes.Count; ++i)
+        {
+            var n = sortedNodes[i];
+            Assert.IsFalse(
+                n.Transform.IsWorldDirty,
+                $"Node {n.Name} should not have dirty world transform after update."
+            );
+            Assert.AreEqual(transform, n.WorldTransform.Value);
+        }
+
+        for (int i = 0; i < root.ChildCount; ++i)
+        {
+            var child = root.Children![i];
+            child.Transform.Scale = new Vector3(2, 3, 4);
+            child.Transform.Translation = new Vector3(4, 5, 6);
+        }
+        sortedNodes.UpdateTransforms();
+
+        transform *= Matrix4x4.CreateScale(2, 3, 4) * Matrix4x4.CreateTranslation(4, 5, 6);
+        for (int i = 1; i < sortedNodes.Count; ++i)
+        {
+            var n = sortedNodes[i];
+            Assert.IsFalse(
+                n.Transform.IsWorldDirty,
+                $"Node {n.Name} should not have dirty world transform after update."
+            );
+            Assert.AreEqual(transform, n.WorldTransform.Value);
+        }
+    }
+
+    [DataTestMethod]
+    [DataRow(4, 4)]
+    public void TransformUpdateWithComponentSorting(int childCount, int level)
+    {
+        using var world = World.CreateWorld();
+        var root = new Node(world) { Name = "Root Node" };
+        var total = SceneBuilderUtils.AddChildRecursively(root, 0, level, childCount, world) + 1;
+        world.SortComponent<NodeInfo>();
 
         var sortedNodes = new List<Node>(total);
         Node[] nodes = [root];

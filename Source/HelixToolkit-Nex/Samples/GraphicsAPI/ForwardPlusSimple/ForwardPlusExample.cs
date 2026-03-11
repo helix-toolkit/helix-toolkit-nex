@@ -781,7 +781,6 @@ public class ForwardPlusExample
         // Directional light (sun)
         _dirLights.Lights_0 = new DirectionalLight
         {
-            Position = new Vector3(0, 0, -10),
             Direction = Vector3.Normalize(new Vector3(0, 0, 1)),
             Color = new Vector3(1),
             Intensity = 0.01f,
