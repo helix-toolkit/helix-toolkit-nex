@@ -22,8 +22,12 @@ public class Node : IDisposable
             var entity = Entity.Get<Parent>().ParentEntity;
             return entity.Valid ? entity.Get<NodeInfo>().Node : null;
         }
-        set
+        private set
         {
+            if (value == Parent)
+            {
+                return;
+            }
             if (value is null)
             {
                 Entity.Set(new Parent(Entity.Null));
@@ -47,6 +51,8 @@ public class Node : IDisposable
                 Info.Level = value.Info.Level + 1;
                 ParentEnabled = value.Enabled; // Inherit enabled state from new parent
             }
+            Entity.Get<Transform>().MarkWorldDirty();
+            NotifySceneChanged();
             UpdateChildrenLevels();
         }
     }
@@ -83,7 +89,7 @@ public class Node : IDisposable
                 return;
             }
             info.SelfEnabled = value;
-            Entity.NotifyComponentChanged<NodeInfo>();
+            NotifySceneChanged();
             if (!HasChildren)
             {
                 return;
@@ -181,6 +187,21 @@ public class Node : IDisposable
     public void SetWorldTransform(in WorldTransform transform)
     {
         Entity.Set(transform);
+    }
+
+    public void NotifyComponentChanged<T>()
+    {
+        Entity.NotifyComponentChanged<T>();
+    }
+
+    public void NotifyTransformChanged()
+    {
+        NotifyComponentChanged<Transform>();
+    }
+
+    public void NotifySceneChanged()
+    {
+        NotifyComponentChanged<NodeInfo>();
     }
 
     public override string ToString()

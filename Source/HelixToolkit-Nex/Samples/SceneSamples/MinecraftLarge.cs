@@ -16,13 +16,14 @@ namespace SceneSamples;
 /// <summary>
 /// Builds a Minecraft-style voxel world scene using instanced cubes with distinct PBR block
 /// materials, procedurally generated terrain, scattered point lights, and a directional sun light.
-/// Includes animated animals that wander across the terrain surface.
+/// Includes animated animals that wander across the terrain surface, and animated spot lights that
+/// sweep their beams across the terrain to test dynamic light handling.
 /// </summary>
 /// <remarks>
 /// Call <see cref="RegisterMaterials"/> once before calling
 /// <see cref="IMaterialManager.CreatePBRMaterialsFromRegistry"/>, then call <see cref="Build"/>
 /// to populate the ECS world with scene nodes.
-/// Call <see cref="UpdateAnimals"/> each frame to animate the animals.
+/// Call <see cref="Tick"/> each frame to animate animals and spot lights.
 /// </remarks>
 public class MinecraftLargeScene : IScene
 {
@@ -34,6 +35,16 @@ public class MinecraftLargeScene : IScene
     public int MaxTerrainHeight { get; } = 16; // maximum terrain height in blocks
     public int MinTerrainHeight { get; } = 4; // minimum terrain base height
     public const int NumPointLights = 500; // scattered point lights for Forward+
+
+    // -----------------------------------------------------------------------
+    // Spot-light configuration
+    // -----------------------------------------------------------------------
+    public const int NumSpotLights = 8; // sweeping spot lights above the terrain
+    private const float SpotInnerDeg = 10f; // inner cone half-angle (degrees)
+    private const float SpotOuterDeg = 15f; // outer cone half-angle (degrees)
+    private const float SpotRange = 80f; // world-unit reach
+    private const float SpotIntensity = 100f;
+    private const float SpotHeight = 20f; // height above terrain surface
 
     // -----------------------------------------------------------------------
     // Animal configuration
@@ -99,6 +110,19 @@ public class MinecraftLargeScene : IScene
     }
 
     // -----------------------------------------------------------------------
+    // Per-spot-light runtime state
+    // -----------------------------------------------------------------------
+    private class SpotLightState
+    {
+        public Node Node = null!; // single node: carries RangeLightComponent + MeshComponent
+        public Vector3 BasePosition; // fixed world-space anchor (x, height, z)
+        public float SwingPhase; // current sweep phase (radians)
+        public float SwingSpeed; // radians per second
+        public float SwingAmplitude; // max swing angle from vertical (radians)
+        public Vector3 SwingAxis; // horizontal axis the beam swings around
+    }
+
+    // -----------------------------------------------------------------------
     // Per-block material definition: shading-mode name, albedo, metallic, roughness, ao
     // -----------------------------------------------------------------------
     private static readonly (
@@ -154,9 +178,25 @@ public class MinecraftLargeScene : IScene
     ];
 
     // -----------------------------------------------------------------------
-    // Animal runtime data (populated in Build, updated in UpdateAnimals)
+    // Spot-light colors (one per light; wraps if NumSpotLights > array length)
+    // -----------------------------------------------------------------------
+    private static readonly Color[] _spotLightColors =
+    [
+        new Color(1.0f, 0.95f, 0.8f), // warm white
+        new Color(0.3f, 0.8f, 1.0f), // sky blue
+        new Color(1.0f, 0.3f, 0.3f), // red
+        new Color(0.3f, 1.0f, 0.4f), // green
+        new Color(1.0f, 0.9f, 0.2f), // yellow
+        new Color(0.9f, 0.3f, 1.0f), // purple
+        new Color(0.2f, 1.0f, 0.9f), // cyan
+        new Color(1.0f, 0.55f, 0.1f), // orange
+    ];
+
+    // -----------------------------------------------------------------------
+    // Runtime data (populated in Build, updated in Tick)
     // -----------------------------------------------------------------------
     private readonly List<AnimalState> _animals = [];
+    private readonly List<SpotLightState> _spotLights = [];
     private int[,]? _heightMap;
     private readonly Random _animalRng = new(123);
 
@@ -165,8 +205,8 @@ public class MinecraftLargeScene : IScene
     // -----------------------------------------------------------------------
 
     /// <summary>
-    /// Registers the custom GLSL material types (Lava, GoldOre, Water) required by the scene.
-    /// Must be called before <see cref="IMaterialManager.CreatePBRMaterialsFromRegistry"/>.
+    /// Registers the custom GLSL material types (Lava, GoldOre, Water, Snow) required by the
+    /// scene. Must be called before <see cref="IMaterialManager.CreatePBRMaterialsFromRegistry"/>.
     /// </summary>
     public void RegisterMaterials()
     {
@@ -219,18 +259,14 @@ public class MinecraftLargeScene : IScene
 
     /// <summary>
     /// Builds the Minecraft world and returns the root <see cref="Node"/> containing all blocks,
-    /// point lights, animals, and the directional sun.
+    /// point lights, spot lights, animals, and the directional sun.
     /// </summary>
-    /// <param name="context">Graphics context used to upload instancing buffers to the GPU.</param>
-    /// <param name="resourceManager">Provides geometry and material property pools.</param>
-    /// <param name="worldDataProvider">ECS world used to create scene nodes.</param>
     public Node Build(
         IContext context,
         IResourceManager resourceManager,
         WorldDataProvider worldDataProvider
     )
     {
-        // _context field removed – no longer needed for animal instancing
         var geometryManager = resourceManager.Geometries;
         var materialPool = resourceManager.MaterialProperties;
 
@@ -316,7 +352,7 @@ public class MinecraftLargeScene : IScene
         {
             var mat = materialPool.Create("Unlit");
             mat.Albedo = color;
-            mat.Emissive = color * 2.0f; // bright self-illuminated glow
+            mat.Emissive = color * 2.0f;
             mat.Opacity = 1.0f;
             mat.NotifyUpdated();
             lightSphereInstancings[color] = (mat, new Instancing(false));
@@ -339,7 +375,7 @@ public class MinecraftLargeScene : IScene
             lightNode.Entity.Set(
                 new RangeLightComponent(RangeLightType.Point)
                 {
-                    Position = Vector3.Zero, // local position is zero since it's defined in the node's world transform
+                    Position = Vector3.Zero,
                     Color = col,
                     Intensity = 3.0f,
                     Range = 4.0f,
@@ -370,6 +406,11 @@ public class MinecraftLargeScene : IScene
         BuildAnimals(context, geometryManager, materialPool, worldDataProvider, root);
 
         // ------------------------------------------------------------------
+        // Build spot lights: elevated positions, sweeping beams, cone visualisers
+        // ------------------------------------------------------------------
+        BuildSpotLights(context, geometryManager, materialPool, worldDataProvider, root, rand);
+
+        // ------------------------------------------------------------------
         // Sun-like directional light
         // ------------------------------------------------------------------
         var sunNode = new Node(worldDataProvider.World, "Sun");
@@ -382,14 +423,6 @@ public class MinecraftLargeScene : IScene
             }
         );
         root.AddChild(sunNode);
-
-        // ------------------------------------------------------------------
-        // Flatten hierarchy and synchronise world transforms
-        // ------------------------------------------------------------------
-        var allNodes = new FastList<Node>();
-        root.Flatten(node => node.Enabled, allNodes);
-        allNodes.UpdateTransforms();
-
         return root;
     }
 
@@ -410,14 +443,12 @@ public class MinecraftLargeScene : IScene
         Node root
     )
     {
-        // Build one shared mesh per animal type using voxel-style boxes
         var animalMeshes = new Geometry[4];
         animalMeshes[(int)AnimalType.Cow] = BuildCowMesh(geometryManager);
         animalMeshes[(int)AnimalType.Pig] = BuildPigMesh(geometryManager);
         animalMeshes[(int)AnimalType.Chicken] = BuildChickenMesh(geometryManager);
         animalMeshes[(int)AnimalType.Sheep] = BuildSheepMesh(geometryManager);
 
-        // Create one shared material per animal type
         var animalMatProps = new MaterialProperties[4];
         for (int a = 0; a < 4; a++)
         {
@@ -432,7 +463,6 @@ public class MinecraftLargeScene : IScene
             animalMatProps[a] = props;
         }
 
-        // Spawn animals on suitable terrain (not water, not lava)
         var spawnCounts = new[] { NumCows, NumPigs, NumChickens, NumSheep };
         var animalTypes = new[]
         {
@@ -441,7 +471,7 @@ public class MinecraftLargeScene : IScene
             AnimalType.Chicken,
             AnimalType.Sheep,
         };
-        var animalSpeeds = new[] { 1.2f, 1.5f, 2.0f, 1.0f }; // blocks per second
+        var animalSpeeds = new[] { 1.2f, 1.5f, 2.0f, 1.0f };
 
         _animals.Clear();
 
@@ -449,7 +479,6 @@ public class MinecraftLargeScene : IScene
         {
             for (int i = 0; i < spawnCounts[a]; i++)
             {
-                // Find a valid spawn position (avoid water/lava surface blocks)
                 int attempts = 0;
                 int sx,
                     sz;
@@ -465,14 +494,12 @@ public class MinecraftLargeScene : IScene
                 float heading = (float)(_animalRng.NextDouble() * MathF.PI * 2);
                 float speed = animalSpeeds[a] * (0.7f + (float)_animalRng.NextDouble() * 0.6f);
 
-                // One dedicated node per animal — Transform drives position + facing
                 var animalNode = new Node(worldDataProvider.World, $"Animal_{animalTypes[a]}_{i}");
                 animalNode.Transform.Translation = spawnPos;
                 animalNode.Transform.Rotation = Quaternion.CreateFromAxisAngle(
                     Vector3.UnitY,
                     heading
                 );
-                // Mesh component with no Instancing — the node's WorldTransform is used directly
                 animalNode.Entity.Set(new MeshComponent(animalMeshes[a], animalMatProps[a]));
                 root.AddChild(animalNode);
 
@@ -492,17 +519,178 @@ public class MinecraftLargeScene : IScene
         }
     }
 
+    // -----------------------------------------------------------------------
+    // Spot-light building
+    // -----------------------------------------------------------------------
+
+    /// <summary>
+    /// Creates <see cref="NumSpotLights"/> spot lights placed at evenly-spaced positions above the
+    /// terrain, each paired with a small emissive cone mesh so the source is visible. All lights
+    /// are given random sweep parameters; their beams are animated each frame via
+    /// <see cref="UpdateSpotLights"/>.
+    /// </summary>
+    private void BuildSpotLights(
+        IContext context,
+        IGeometryManager geometryManager,
+        IMaterialPropertyManager materialPool,
+        WorldDataProvider worldDataProvider,
+        Node root,
+        Random rand
+    )
+    {
+        float cosInner = MathF.Cos(new AngleSingle(SpotInnerDeg, AngleType.Degree).Radians);
+        float cosOuter = MathF.Cos(new AngleSingle(SpotOuterDeg, AngleType.Degree).Radians);
+        var spotAngles = new Vector2(cosInner, cosOuter);
+
+        var mb = new MeshBuilder(true, true, true);
+        mb.AddCone(Vector3.Zero, -Vector3.UnitY, 0f, 0.8f, 2.5f, false, true, 12);
+        var coneMesh = mb.ToMesh().ToGeometry();
+        bool ok = geometryManager.Add(coneMesh, out _);
+        Debug.Assert(ok, "Failed to add spot-light cone geometry");
+
+        _spotLights.Clear();
+
+        float stepX = WorldSizeX / (float)(NumSpotLights + 1);
+
+        for (int i = 0; i < NumSpotLights; i++)
+        {
+            float worldX = stepX * (i + 1);
+            float worldZ = WorldSizeZ * 0.5f + (float)(rand.NextDouble() - 0.5) * WorldSizeZ * 0.3f;
+            int ix = Math.Clamp((int)worldX, 0, WorldSizeX - 1);
+            int iz = Math.Clamp((int)worldZ, 0, WorldSizeZ - 1);
+            float worldY = (_heightMap?[ix, iz] ?? MinTerrainHeight) + SpotHeight;
+            var basePos = new Vector3(worldX, worldY, worldZ);
+
+            var col = _spotLightColors[i % _spotLightColors.Length];
+
+            var coneMat = materialPool.Create("Unlit");
+            coneMat.Albedo = col;
+            coneMat.Emissive = col * 2.0f;
+            coneMat.Opacity = 1.0f;
+            coneMat.NotifyUpdated();
+
+            var lightNode = new Node(worldDataProvider.World, $"SpotLight_{i}");
+            lightNode.Transform = new Transform { Translation = basePos };
+
+            // Direction is stored in local space (-Y = straight down).
+            // The engine applies the node's world transform via TransformNormal,
+            // so the actual world-space beam direction is driven entirely by the node rotation.
+            lightNode.Entity.Set(
+                new RangeLightComponent(RangeLightType.Spot)
+                {
+                    Position = Vector3.Zero,
+                    Direction = -Vector3.UnitY, // local-space: straight down
+                    Color = col,
+                    Intensity = SpotIntensity,
+                    Range = SpotRange,
+                    SpotAngles = spotAngles,
+                }
+            );
+            lightNode.Entity.Set(new MeshComponent(coneMesh, coneMat));
+
+            root.AddChild(lightNode);
+
+            float axisAngle = (float)(rand.NextDouble() * MathF.PI * 2);
+            var swingAxis = new Vector3(MathF.Cos(axisAngle), 0f, MathF.Sin(axisAngle));
+
+            _spotLights.Add(
+                new SpotLightState
+                {
+                    Node = lightNode,
+                    BasePosition = basePos,
+                    SwingPhase = (float)(rand.NextDouble() * MathF.PI * 2),
+                    SwingSpeed = 0.4f + (float)rand.NextDouble() * 0.8f,
+                    SwingAmplitude = new AngleSingle(
+                        20f + (float)rand.NextDouble() * 35f,
+                        AngleType.Degree
+                    ).Radians,
+                    SwingAxis = swingAxis,
+                }
+            );
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Frame update
+    // -----------------------------------------------------------------------
+
     public void Tick(float deltaTime)
     {
         UpdateAnimals(deltaTime);
+        UpdateSpotLights(deltaTime);
+    }
+
+    // -----------------------------------------------------------------------
+    // Spot-light animation
+    // -----------------------------------------------------------------------
+
+    /// <summary>
+    /// Advances the sweep phase of every spot light and writes the new direction directly into
+    /// each light's <see cref="RangeLightComponent"/>, plus rotates the matching cone mesh.
+    /// </summary>
+    private void UpdateSpotLights(float deltaTime)
+    {
+        if (_spotLights.Count == 0)
+            return;
+
+        foreach (var sl in _spotLights)
+        {
+            sl.SwingPhase += sl.SwingSpeed * deltaTime;
+
+            // Desired world-space beam direction: starts straight down, swept by SwingAxis
+            float sweep = MathF.Sin(sl.SwingPhase) * sl.SwingAmplitude;
+            var sweepRot = Quaternion.CreateFromAxisAngle(sl.SwingAxis, sweep);
+            var worldDir = Vector3.Normalize(Vector3.Transform(-Vector3.UnitY, sweepRot));
+
+            // Build a rotation that maps local -Y to worldDir.
+            // RotationFromTo(from, to) = rotation taking 'from' onto 'to'.
+            // We want: rotation * (-UnitY) == worldDir, so from=-UnitY, to=worldDir.
+            var nodeRotation = RotationFromTo(-Vector3.UnitY, worldDir);
+
+            ref var t = ref sl.Node.Transform;
+            t.Translation = sl.BasePosition;
+            t.Rotation = nodeRotation;
+
+            // A single transform notification is enough: the engine re-derives the
+            // world-space direction as TransformNormal(localDir=-UnitY, worldMatrix).
+            sl.Node.NotifyTransformChanged();
+        }
     }
 
     /// <summary>
-    /// Updates all animals each frame by writing directly to each animal's
-    /// <see cref="Node.Transform"/> and then re-computing world transforms.
-    /// No GPU instancing buffers are touched.
+    /// Returns the shortest-arc quaternion that rotates <paramref name="from"/> onto
+    /// <paramref name="to"/>. Both vectors are assumed to be unit length.
     /// </summary>
-    /// <param name="deltaTime">Elapsed time in seconds since the last frame.</param>
+    private static Quaternion RotationFromTo(Vector3 from, Vector3 to)
+    {
+        float dot = Vector3.Dot(from, to);
+
+        // Vectors already aligned
+        if (dot >= 1.0f - 1e-6f)
+            return Quaternion.Identity;
+
+        // Vectors are opposite: pick an arbitrary perpendicular axis
+        if (dot <= -1.0f + 1e-6f)
+        {
+            Vector3 perp = MathF.Abs(from.X) < 0.9f ? Vector3.UnitX : Vector3.UnitZ;
+            return Quaternion.CreateFromAxisAngle(
+                Vector3.Normalize(Vector3.Cross(from, perp)),
+                MathF.PI
+            );
+        }
+
+        Vector3 axis = Vector3.Cross(from, to);
+        return Quaternion.Normalize(new Quaternion(axis.X, axis.Y, axis.Z, 1.0f + dot));
+    }
+
+    // -----------------------------------------------------------------------
+    // Animal animation
+    // -----------------------------------------------------------------------
+
+    /// <summary>
+    /// Updates all animals each frame by writing directly to each animal's
+    /// <see cref="Node.Transform"/>.
+    /// </summary>
     public void UpdateAnimals(float deltaTime)
     {
         if (_heightMap == null || _animals.Count == 0)
@@ -510,7 +698,6 @@ public class MinecraftLargeScene : IScene
 
         foreach (var animal in _animals)
         {
-            // ── Wander AI ──────────────────────────────────────────────
             animal.WanderTimer -= deltaTime;
             if (animal.WanderTimer <= 0)
             {
@@ -518,14 +705,11 @@ public class MinecraftLargeScene : IScene
                 animal.WanderTimer = (float)(_animalRng.NextDouble() * 4.0 + 1.5);
             }
 
-            // ── Candidate movement ─────────────────────────────────────
             float dx = MathF.Cos(animal.Heading) * animal.Speed * deltaTime;
             float dz = MathF.Sin(animal.Heading) * animal.Speed * deltaTime;
-
             float newX = Math.Clamp(animal.Position.X + dx, 1f, WorldSizeX - 2f);
             float newZ = Math.Clamp(animal.Position.Z + dz, 1f, WorldSizeZ - 2f);
 
-            // Bounce off world boundary
             if (newX <= 1f || newX >= WorldSizeX - 2f || newZ <= 1f || newZ >= WorldSizeZ - 2f)
             {
                 animal.Heading += MathF.PI;
@@ -535,15 +719,6 @@ public class MinecraftLargeScene : IScene
             int ix = Math.Clamp((int)newX, 0, WorldSizeX - 1);
             int iz = Math.Clamp((int)newZ, 0, WorldSizeZ - 1);
 
-            // Stay away from water / lava
-            //if (IsWaterOrLavaAt(ix, iz))
-            //{
-            //    animal.Heading += MathF.PI * 0.75f;
-            //    animal.WanderTimer = 0.3f;
-            //    continue;
-            //}
-
-            // ── Terrain-following Y with walk bob ──────────────────────
             float targetY = _heightMap[ix, iz] + 3f;
             float newY =
                 animal.Position.Y + (targetY - animal.Position.Y) * Math.Min(1f, deltaTime * 5f);
@@ -553,11 +728,10 @@ public class MinecraftLargeScene : IScene
 
             animal.Position = new Vector3(newX, newY + bob, newZ);
 
-            // ── Write directly to the node's Transform ─────────────────
             ref var t = ref animal.Node.Transform;
             t.Translation = animal.Position;
             t.Rotation = Quaternion.CreateFromAxisAngle(Vector3.UnitY, animal.Heading);
-            animal.Node.Entity.NotifyComponentChanged<Transform>();
+            animal.Node.NotifyTransformChanged();
         }
     }
 
@@ -565,91 +739,60 @@ public class MinecraftLargeScene : IScene
     // Animal mesh builders (Minecraft-style blocky animals)
     // -----------------------------------------------------------------------
 
-    /// <summary>
-    /// Builds a cow mesh: large rectangular body, head, 4 legs.
-    /// All geometry is centered at origin so instancing transforms position it.
-    /// </summary>
     private static Geometry BuildCowMesh(IGeometryManager geometryManager)
     {
         var mb = new MeshBuilder(true, true, true);
-        // Body (wide, long box)
         mb.AddBox(new Vector3(0, 0.5f, 0), 0.8f, 0.7f, 1.4f);
-        // Head
         mb.AddBox(new Vector3(0, 0.7f, 0.85f), 0.5f, 0.5f, 0.4f);
-        // Legs (4 thin boxes)
         mb.AddBox(new Vector3(-0.25f, 0.0f, 0.4f), 0.2f, 0.5f, 0.2f);
         mb.AddBox(new Vector3(0.25f, 0.0f, 0.4f), 0.2f, 0.5f, 0.2f);
         mb.AddBox(new Vector3(-0.25f, 0.0f, -0.4f), 0.2f, 0.5f, 0.2f);
         mb.AddBox(new Vector3(0.25f, 0.0f, -0.4f), 0.2f, 0.5f, 0.2f);
         var geo = mb.ToMesh().ToGeometry();
-        bool ok = geometryManager.Add(geo, out _);
-        Debug.Assert(ok, "Failed to add cow geometry");
+        Debug.Assert(geometryManager.Add(geo, out _), "Failed to add cow geometry");
         return geo;
     }
 
-    /// <summary>
-    /// Builds a pig mesh: stout rounded body, snout, 4 short legs.
-    /// </summary>
     private static Geometry BuildPigMesh(IGeometryManager geometryManager)
     {
         var mb = new MeshBuilder(true, true, true);
-        // Body (shorter and rounder than cow)
         mb.AddBox(new Vector3(0, 0.35f, 0), 0.6f, 0.5f, 0.9f);
-        // Head / snout
         mb.AddBox(new Vector3(0, 0.45f, 0.55f), 0.45f, 0.4f, 0.35f);
-        mb.AddBox(new Vector3(0, 0.4f, 0.78f), 0.2f, 0.15f, 0.12f); // snout
-        // Legs (short)
+        mb.AddBox(new Vector3(0, 0.4f, 0.78f), 0.2f, 0.15f, 0.12f);
         mb.AddBox(new Vector3(-0.18f, 0.0f, 0.25f), 0.15f, 0.3f, 0.15f);
         mb.AddBox(new Vector3(0.18f, 0.0f, 0.25f), 0.15f, 0.3f, 0.15f);
         mb.AddBox(new Vector3(-0.18f, 0.0f, -0.25f), 0.15f, 0.3f, 0.15f);
         mb.AddBox(new Vector3(0.18f, 0.0f, -0.25f), 0.15f, 0.3f, 0.15f);
         var geo = mb.ToMesh().ToGeometry();
-        bool ok = geometryManager.Add(geo, out _);
-        Debug.Assert(ok, "Failed to add pig geometry");
+        Debug.Assert(geometryManager.Add(geo, out _), "Failed to add pig geometry");
         return geo;
     }
 
-    /// <summary>
-    /// Builds a chicken mesh: small body, head, 2 thin legs.
-    /// </summary>
     private static Geometry BuildChickenMesh(IGeometryManager geometryManager)
     {
         var mb = new MeshBuilder(true, true, true);
-        // Body (small, round-ish)
         mb.AddBox(new Vector3(0, 0.25f, 0), 0.3f, 0.3f, 0.4f);
-        // Head (smaller box on top)
         mb.AddBox(new Vector3(0, 0.5f, 0.2f), 0.2f, 0.2f, 0.2f);
-        // Beak
         mb.AddBox(new Vector3(0, 0.48f, 0.35f), 0.08f, 0.06f, 0.1f);
-        // Legs (2 thin sticks)
         mb.AddBox(new Vector3(-0.06f, 0.0f, 0.0f), 0.05f, 0.2f, 0.05f);
         mb.AddBox(new Vector3(0.06f, 0.0f, 0.0f), 0.05f, 0.2f, 0.05f);
-        // Tail feathers
         mb.AddBox(new Vector3(0, 0.35f, -0.25f), 0.15f, 0.2f, 0.1f);
         var geo = mb.ToMesh().ToGeometry();
-        bool ok = geometryManager.Add(geo, out _);
-        Debug.Assert(ok, "Failed to add chicken geometry");
+        Debug.Assert(geometryManager.Add(geo, out _), "Failed to add chicken geometry");
         return geo;
     }
 
-    /// <summary>
-    /// Builds a sheep mesh: woolly body (bigger box), head, 4 legs.
-    /// </summary>
     private static Geometry BuildSheepMesh(IGeometryManager geometryManager)
     {
         var mb = new MeshBuilder(true, true, true);
-        // Woolly body (larger than actual body to simulate wool)
         mb.AddBox(new Vector3(0, 0.5f, 0), 0.75f, 0.65f, 1.1f);
-        // Head (smaller, darker)
         mb.AddBox(new Vector3(0, 0.6f, 0.65f), 0.35f, 0.35f, 0.3f);
-        // Legs
         mb.AddBox(new Vector3(-0.22f, 0.0f, 0.3f), 0.15f, 0.45f, 0.15f);
         mb.AddBox(new Vector3(0.22f, 0.0f, 0.3f), 0.15f, 0.45f, 0.15f);
         mb.AddBox(new Vector3(-0.22f, 0.0f, -0.3f), 0.15f, 0.45f, 0.15f);
         mb.AddBox(new Vector3(0.22f, 0.0f, -0.3f), 0.15f, 0.45f, 0.15f);
         var geo = mb.ToMesh().ToGeometry();
-        bool ok = geometryManager.Add(geo, out _);
-        Debug.Assert(ok, "Failed to add sheep geometry");
+        Debug.Assert(geometryManager.Add(geo, out _), "Failed to add sheep geometry");
         return geo;
     }
 
@@ -657,9 +800,6 @@ public class MinecraftLargeScene : IScene
     // Animal helpers
     // -----------------------------------------------------------------------
 
-    /// <summary>
-    /// Checks whether the surface block at (x, z) is water or lava (not suitable for animals).
-    /// </summary>
     private bool IsWaterOrLavaAt(int x, int z)
     {
         if (_heightMap == null)
@@ -676,8 +816,6 @@ public class MinecraftLargeScene : IScene
 
     /// <summary>
     /// Generates a 2D heightmap using layered sine/cosine waves for natural terrain variation.
-    /// Heights are additionally shaped by the biome: deserts are flattened, snowy biomes
-    /// amplified, swamps clamped low.
     /// </summary>
     public int[,] GenerateHeightMap(int sizeX, int sizeZ)
     {
@@ -691,7 +829,6 @@ public class MinecraftLargeScene : IScene
                 float fx = x / (float)sizeX;
                 float fz = z / (float)sizeZ;
 
-                // Three octaves of sinusoidal noise for the base elevation
                 float n =
                     0.50f * MathF.Sin(fx * MathF.PI * 2.5f + 0.3f) * MathF.Cos(fz * MathF.PI * 2.0f)
                     + 0.25f
@@ -701,16 +838,14 @@ public class MinecraftLargeScene : IScene
                         * MathF.Sin(fx * MathF.PI * 10.0f)
                         * MathF.Cos(fz * MathF.PI * 9.0f + 1.3f);
 
-                // Normalise from ~[-0.9, 0.9] to [0, 1]
                 float normalized = Math.Clamp((n + 0.9f) / 1.8f, 0f, 1f);
 
-                // Biome-specific height shaping
                 normalized = biomeMap[x, z] switch
                 {
-                    BiomeType.Desert => normalized * 0.45f, // flat desert
-                    BiomeType.Snowy => 0.35f + normalized * 0.65f, // tall snowy peaks
-                    BiomeType.Swamp => normalized * 0.30f, // low, wet swamp
-                    _ => normalized, // plains: unchanged
+                    BiomeType.Desert => normalized * 0.45f,
+                    BiomeType.Snowy => 0.35f + normalized * 0.65f,
+                    BiomeType.Swamp => normalized * 0.30f,
+                    _ => normalized,
                 };
 
                 map[x, z] =
@@ -721,8 +856,7 @@ public class MinecraftLargeScene : IScene
     }
 
     /// <summary>
-    /// Generates a 2D biome map using an independent low-frequency noise field so that
-    /// biome boundaries are gradual and completely independent of terrain elevation.
+    /// Generates a 2D biome map using an independent low-frequency noise field.
     /// </summary>
     public static BiomeType[,] GenerateBiomeMap(int sizeX, int sizeZ)
     {
@@ -734,7 +868,6 @@ public class MinecraftLargeScene : IScene
                 float fx = x / (float)sizeX;
                 float fz = z / (float)sizeZ;
 
-                // Two independent low-frequency channels – temperature (T) and humidity (H)
                 float T =
                     0.60f
                         * MathF.Sin(fx * MathF.PI * 1.3f + 0.7f)
@@ -751,16 +884,15 @@ public class MinecraftLargeScene : IScene
                         * MathF.Sin(fx * MathF.PI * 3.1f + 0.5f)
                         * MathF.Cos(fz * MathF.PI * 2.9f + 1.7f);
 
-                // Map both channels to [0, 1]
-                float t = Math.Clamp((T + 1f) * 0.5f, 0f, 1f); // 0 = cold, 1 = hot
-                float h = Math.Clamp((H + 1f) * 0.5f, 0f, 1f); // 0 = dry,  1 = wet
+                float t = Math.Clamp((T + 1f) * 0.5f, 0f, 1f);
+                float h = Math.Clamp((H + 1f) * 0.5f, 0f, 1f);
 
                 map[x, z] = (t, h) switch
                 {
-                    ( > 0.55f, _) => BiomeType.Desert, // hot            → desert
-                    ( < 0.30f, _) => BiomeType.Snowy, // cold           → snowy
-                    (_, > 0.60f) => BiomeType.Swamp, // mild + wet     → swamp
-                    _ => BiomeType.Plains, // mild + dry/mid → plains
+                    ( > 0.55f, _) => BiomeType.Desert,
+                    ( < 0.30f, _) => BiomeType.Snowy,
+                    (_, > 0.60f) => BiomeType.Swamp,
+                    _ => BiomeType.Plains,
                 };
             }
         }
@@ -768,8 +900,7 @@ public class MinecraftLargeScene : IScene
     }
 
     /// <summary>
-    /// Returns the <see cref="BlockType"/> for the voxel at <c>(x, y, z)</c> given the terrain
-    /// height and the biome at that column.
+    /// Returns the <see cref="BlockType"/> for the voxel at <c>(x, y, z)</c>.
     /// </summary>
     public BlockType GetBlockType(
         int x,
@@ -780,29 +911,23 @@ public class MinecraftLargeScene : IScene
         BiomeType biome
     )
     {
-        int depth = terrainHeight - y; // 0 = surface, increases downward
+        int depth = terrainHeight - y;
 
-        // ── Bedrock ──────────────────────────────────────────────────────
         if (y == 0)
             return BlockType.Bedrock;
 
-        // ── Lava pockets at y==1 under tall columns ──────────────────────
         if (y == 1 && terrainHeight >= MinTerrainHeight + 4)
             return BlockType.Lava;
 
-        // ── Water / ice at very low surface columns ───────────────────────
         if (depth == 0 && terrainHeight <= MinTerrainHeight)
             return biome == BiomeType.Snowy ? BlockType.Snow : BlockType.Water;
 
-        // ── Sparse gold ore deep underground (all biomes) ─────────────────
         if (depth >= 4 && (x * 7 + z * 13 + y * 3) % 17 == 0)
             return BlockType.GoldOre;
 
-        // ── Deep sub-surface: stone (all biomes) ─────────────────────────
         if (depth >= 4)
             return BlockType.Stone;
 
-        // ── Shallow sub-surface (depth 1-3): biome variations ────────────
         if (depth >= 2)
         {
             return biome switch
@@ -818,13 +943,11 @@ public class MinecraftLargeScene : IScene
             return biome switch
             {
                 BiomeType.Desert => BlockType.Sand,
-                BiomeType.Snowy => BlockType.Dirt,
-                BiomeType.Swamp => BlockType.Dirt,
                 _ => BlockType.Dirt,
             };
         }
 
-        // ── Surface block (depth == 0) ────────────────────────────────────
+        // Surface (depth == 0)
         return biome switch
         {
             BiomeType.Desert => BlockType.Sand,
@@ -834,15 +957,12 @@ public class MinecraftLargeScene : IScene
                 : BlockType.Stone,
             BiomeType.Swamp => (x * 5 + z * 11) % 6 == 0 ? BlockType.Gravel : BlockType.Grass,
             _ => terrainHeight >= MinTerrainHeight + (MaxTerrainHeight - MinTerrainHeight) - 1
-                ? BlockType.Wood // mountain peak (wood trunk tops)
+                ? BlockType.Wood
                 : BlockType.Grass,
         };
     }
 
-    /// <summary>
-    /// Overload kept for API compatibility — delegates to the biome-aware overload
-    /// using a Plains biome.
-    /// </summary>
+    /// <summary>Overload for API compatibility — uses Plains biome.</summary>
     public BlockType GetBlockType(int x, int y, int z, int terrainHeight, int[,] heightMap) =>
         GetBlockType(x, y, z, terrainHeight, heightMap, BiomeType.Plains);
 }
