@@ -54,8 +54,13 @@ internal static class ComponentSorting
                         var v = storage[i];
                         storage[i] = storage[i - interval];
                         storage[i - interval] = v;
+
+                        var em = entityMapping[i];
+                        entityMapping[i] = entityMapping[i - interval];
+                        entityMapping[i - interval] = em;
+
                         mapping.GetInternalArray()[entityMapping[i].Entity].ComponentIndex = i;
-                        mapping.GetInternalArray()[i - interval].ComponentIndex = i - interval;
+                        mapping.GetInternalArray()[entityMapping[i - interval].Entity].ComponentIndex = i - interval;
                     }
                 }
             }
