@@ -376,4 +376,6 @@ public class MinecraftScene : IScene
 
         return BlockType.Grass;
     }
+
+    public void Tick(float deltaTime) { }
 }

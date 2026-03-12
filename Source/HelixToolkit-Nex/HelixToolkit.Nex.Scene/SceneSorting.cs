@@ -81,14 +81,58 @@ public static class SceneSorting
                     }
                 }
 
-                var level = node.Info.Level;
+                var level = node.Level;
                 for (int j = i + 1; j < sortedNodes.Count; ++j)
                 {
-                    if (sortedNodes[j].Info.Level <= level)
+                    if (sortedNodes[j].Level <= level)
                     {
                         break; // Stop updating when we reach a node at the same or higher level
                     }
                     sortedNodes[j].Transform.MarkWorldDirty();
+                }
+            }
+        }
+    }
+
+    public static void SortSceneNodes(this World world)
+    {
+        world.SortComponent<NodeInfo>();
+    }
+
+    public static void UpdateTransforms(this World world)
+    {
+        var infos = world.GetComponents<NodeInfo>();
+        var level = 0;
+        foreach (var info in infos)
+        {
+            var node = info.Node;
+            if (node == null)
+            {
+                continue;
+            }
+            Debug.Assert(level <= node.Level);
+            level = node.Level;
+            ref var transform = ref node.Transform;
+            if (transform.IsLocalDirty || transform.IsWorldDirty)
+            {
+                if (!node.HasParent)
+                {
+                    if (transform.UpdateWorldTransform(Matrix4x4.Identity, out var worldTransform))
+                    {
+                        node.SetWorldTransform(new WorldTransform(worldTransform));
+                    }
+                }
+                else
+                {
+                    if (
+                        transform.UpdateWorldTransform(
+                            node.Parent!.WorldTransform.Value,
+                            out var worldTransform
+                        )
+                    )
+                    {
+                        node.SetWorldTransform(new WorldTransform(worldTransform));
+                    }
                 }
             }
         }

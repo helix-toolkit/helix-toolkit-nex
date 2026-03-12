@@ -26,26 +26,25 @@ public class Node : IDisposable
         {
             if (value is null)
             {
-                Entity.Get<Parent>().ParentEntity = Entity.Null;
+                Entity.Set(new Parent(Entity.Null));
                 Debug.Assert(!HasParent);
-                ref var info = ref Entity.Get<NodeInfo>();
-                if (info.Level == 0)
+                if (Info.Level == 0)
                 {
                     return; // No change in level
                 }
-                info.Level = 0;
+                Info.Level = 0;
                 ParentEnabled = true; // Reset parent enabled state when detaching from parent
             }
             else
             {
-                Entity.Get<Parent>().ParentEntity = value.Entity;
+                Entity.Set(new Parent(value.Entity));
                 Debug.Assert(HasParent);
                 ref var info = ref Entity.Get<NodeInfo>();
-                if (info.Level == value.Info.Level + 1)
+                if (Info.Level == value.Info.Level + 1)
                 {
                     return; // No change in level
                 }
-                Entity.Get<NodeInfo>().Level = value.Info.Level + 1;
+                Info.Level = value.Info.Level + 1;
                 ParentEnabled = value.Enabled; // Inherit enabled state from new parent
             }
             UpdateChildrenLevels();
@@ -67,6 +66,8 @@ public class Node : IDisposable
 
     public bool IsRoot => Info.Level == 0;
 
+    public int Level => Info.Level;
+
     public bool Enabled
     {
         get
@@ -82,6 +83,7 @@ public class Node : IDisposable
                 return;
             }
             info.SelfEnabled = value;
+            Entity.NotifyComponentChanged<NodeInfo>();
             if (!HasChildren)
             {
                 return;
@@ -193,7 +195,7 @@ public class Node : IDisposable
         ref var children = ref Entity.Get<Children>();
         foreach (var child in children.ChildNodes)
         {
-            child.Entity.Get<NodeInfo>().Level = Info.Level + 1;
+            child.Info.Level = Info.Level + 1;
             child.UpdateChildrenLevels();
         }
     }

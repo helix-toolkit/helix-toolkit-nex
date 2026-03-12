@@ -21,7 +21,7 @@ public sealed class EntityCollection : IEnumerable<Entity>, IDisposable
 
     public event EventHandler<int>? EntityAdded;
     public event EventHandler<int>? EntityRemoved;
-    public event EventHandler<int>? EntityChanged;
+    public event EventHandler<EntityChangedEvent>? EntityChanged;
 
     internal EntityCollection(RuleBuilder builder)
     {
@@ -84,13 +84,13 @@ public sealed class EntityCollection : IEnumerable<Entity>, IDisposable
         AddEntity(id);
     }
 
-    private void Builder__EntityChanged(object? sender, int id)
+    private void Builder__EntityChanged(object? sender, EntityChangedEvent msg)
     {
-        if (!_entities.Contains(id))
+        if (!_entities.Contains(msg.EntityId))
         {
             return;
         }
-        EntityChanged?.Invoke(this, id);
+        EntityChanged?.Invoke(this, msg);
     }
 
     #region Enumerable

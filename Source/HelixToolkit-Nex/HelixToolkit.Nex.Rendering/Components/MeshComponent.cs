@@ -14,7 +14,7 @@ namespace HelixToolkit.Nex.Rendering.Components;
 /// </list>
 /// The actual geometry and material data are stored in resource pools managed by the engine.
 /// </remarks>
-public struct MeshComponent
+public struct MeshComponent : IIndexable
 {
     /// <summary>
     /// Handle to the geometry resource in the geometry pool.
@@ -34,11 +34,6 @@ public struct MeshComponent
     public readonly Instancing? Instancing;
 
     /// <summary>
-    /// Gets a value indicating whether the object is transparent.
-    /// </summary>
-    public bool IsTransparent { get; }
-
-    /// <summary>
     /// Gets a value indicating whether the object can be excluded from rendering based on culling logic.
     /// </summary>
     public bool Cullable { get; }
@@ -46,7 +41,7 @@ public struct MeshComponent
     /// <summary>
     /// Gets or sets the index of the current draw operation.
     /// </summary>
-    public int DrawIndex { internal set; get; }
+    public int Index { internal set; get; } = -1;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="MeshComponent"/> struct.
@@ -57,14 +52,12 @@ public struct MeshComponent
         Geometry? geometry = null,
         MaterialProperties? materialProperties = null,
         Instancing? instancing = null,
-        bool isTransparent = false,
         bool cullable = true
     )
     {
         Geometry = geometry;
         MaterialProperties = materialProperties;
         Instancing = instancing;
-        IsTransparent = isTransparent;
         Cullable = cullable;
     }
 
@@ -85,31 +78,64 @@ public struct MeshComponent
     public override string ToString()
     {
         return $"GeometryId: {Geometry?.Id}; MaterialType: {MaterialProperties?.MaterialTypeId}; MaterialIndex: {MaterialProperties?.Index}; "
-            + $"IsInstancing: {Instancing is not null}; IsTransparent: {IsTransparent}";
+            + $"IsInstancing: {Instancing is not null}; Cullable: {Cullable};";
     }
 
     public readonly MeshComponent SetGeometry(in Geometry geometry)
     {
-        return new MeshComponent(geometry, MaterialProperties);
+        return new MeshComponent(geometry, MaterialProperties, Instancing, Cullable)
+        {
+            Index = Index,
+        };
     }
 
     public readonly MeshComponent SetMaterial(in MaterialProperties properties)
     {
-        return new MeshComponent(Geometry, properties);
+        return new MeshComponent(Geometry, properties, Instancing, Cullable) { Index = Index };
     }
 
     public readonly MeshComponent SetInstancing(in Instancing instancing)
     {
-        return new MeshComponent(Geometry, MaterialProperties, instancing, IsTransparent);
-    }
-
-    public readonly MeshComponent SetTransparent(bool isTransparent)
-    {
-        return new MeshComponent(Geometry, MaterialProperties, Instancing, isTransparent);
+        return new MeshComponent(Geometry, MaterialProperties, instancing, Cullable)
+        {
+            Index = Index,
+        };
     }
 
     public readonly MeshComponent SetCullable(bool cullable)
     {
-        return new MeshComponent(Geometry, MaterialProperties, Instancing, IsTransparent, cullable);
+        return new MeshComponent(Geometry, MaterialProperties, Instancing, cullable)
+        {
+            Index = Index,
+        };
+    }
+
+    public readonly MeshDrawType GetDrawType()
+    {
+        return new(Geometry is not null && Geometry.IsDynamic, Instancing is not null);
     }
 }
+
+public readonly struct MeshDrawType
+{
+    public readonly uint Type;
+
+    public MeshDrawType(bool isDynamic, bool isInstancing)
+    {
+        if (isDynamic)
+        {
+            Type |= 1;
+        }
+        if (isInstancing)
+        {
+            Type |= 1 << 2;
+        }
+    }
+
+    public static implicit operator uint(MeshDrawType other)
+    {
+        return other.Type;
+    }
+}
+
+public readonly struct TransparentComponent { }

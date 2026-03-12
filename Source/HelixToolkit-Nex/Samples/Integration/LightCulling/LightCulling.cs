@@ -30,6 +30,7 @@ internal class LightCullingTest(IContext context, bool largeScene = true) : IDis
     private Camera _camera = new PerspectiveCamera();
     private Vector3 _initialCameraPosition = new();
     private readonly long _startTimestamp = Stopwatch.GetTimestamp();
+    private long _lastTimestamp = 0;
     private RenderGraph? _renderGraph;
 
     public void Initialize(int width, int height)
@@ -80,6 +81,13 @@ internal class LightCullingTest(IContext context, bool largeScene = true) : IDis
 
     public void Render(int width, int height)
     {
+        if (_lastTimestamp == 0)
+        {
+            _lastTimestamp = Stopwatch.GetTimestamp();
+        }
+        float delta = (float)(Stopwatch.GetTimestamp() - _lastTimestamp) / Stopwatch.Frequency;
+        _lastTimestamp = Stopwatch.GetTimestamp();
+        _scene.Tick(delta);
         var aspectRatio = (float)width / height;
         _renderContext!.WindowSize = new HelixToolkit.Nex.Maths.Size(width, height);
         RotateCamera();

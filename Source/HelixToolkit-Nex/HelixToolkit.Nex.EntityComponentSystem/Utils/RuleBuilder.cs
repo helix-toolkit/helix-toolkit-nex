@@ -2,6 +2,8 @@ using static HelixToolkit.Nex.ECS.ComponentTypeSet;
 
 namespace HelixToolkit.Nex.ECS.Utils;
 
+public readonly record struct EntityChangedEvent(int EntityId, ComponentTypeId Type);
+
 public sealed class RuleBuilder : IDisposable
 {
     private enum OpType
@@ -41,7 +43,7 @@ public sealed class RuleBuilder : IDisposable
 
     public event EventHandler<int>? EntityAdded;
     public event EventHandler<int>? EntityRemoved;
-    public event EventHandler<int>? EntityChanged;
+    public event EventHandler<EntityChangedEvent>? EntityChanged;
 
     internal RuleBuilder(World world)
     {
@@ -138,7 +140,7 @@ public sealed class RuleBuilder : IDisposable
             case ComponentOperations.Changed:
                 if (_withFilters.HasType(id) && Evaluate(World.GetEntity(msg.EntityId)))
                 {
-                    EntityChanged?.Invoke(this, msg.EntityId);
+                    EntityChanged?.Invoke(this, new(msg.EntityId, msg.ComponentTypeId));
                 }
                 break;
         }

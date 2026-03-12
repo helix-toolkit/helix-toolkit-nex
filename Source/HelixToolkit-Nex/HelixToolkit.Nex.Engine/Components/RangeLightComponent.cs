@@ -1,3 +1,5 @@
+using HelixToolkit.Nex.Rendering.Components;
+
 namespace HelixToolkit.Nex.Engine.Components;
 
 public enum RangeLightType : uint
@@ -6,7 +8,7 @@ public enum RangeLightType : uint
     Spot = 2,
 }
 
-public sealed class RangeLightComponent(RangeLightType type)
+public sealed class RangeLightComponent(RangeLightType type) : IIndexable
 {
     internal Light Light = new() { Type = (uint)type };
 
@@ -77,4 +79,6 @@ public sealed class RangeLightComponent(RangeLightType type)
         }
         get { return Light.SpotAngles; }
     }
+
+    public int Index { internal set; get; } = -1;
 }

@@ -1,7 +1,6 @@
 namespace HelixToolkit.Nex.ECS;
 
-[StructLayout(LayoutKind.Sequential, Pack = 4)]
-internal readonly struct ComponentTypeId(in UInt128 bitMap)
+public readonly struct ComponentTypeId(in UInt128 bitMap) : IEquatable<ComponentTypeId>
 {
     public readonly UInt128 BitMap = bitMap;
     private static UInt128 _currBitMap = 1;
@@ -24,6 +23,22 @@ internal readonly struct ComponentTypeId(in UInt128 bitMap)
             return new ComponentTypeId(_currBitMap);
         }
     }
+
+    public readonly bool Equals(ComponentTypeId other)
+    {
+        return BitMap == other.BitMap;
+    }
+
+    public static bool operator ==(ComponentTypeId a, ComponentTypeId b) => a.BitMap == b.BitMap;
+
+    public static bool operator !=(ComponentTypeId a, ComponentTypeId b) => a.BitMap != b.BitMap;
+
+    public override bool Equals(object? obj)
+    {
+        return obj is ComponentTypeId id && Equals(id);
+    }
+
+    public override int GetHashCode() => BitMap.GetHashCode();
 }
 
 internal struct ComponentTypeSet()
