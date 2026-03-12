@@ -202,7 +202,9 @@ public class FastList<T> : IList<T>, IReadOnlyList<T>, ICollection<T>, IEnumerab
 
     public ref T At(int index)
     {
-        return ref Items[index];
+        if (index < Count)
+            return ref Items[index];
+        throw new ArgumentOutOfRangeException($"Index {index} is out of range of {Count}");
     }
 
     bool ICollection<T>.IsReadOnly => false;

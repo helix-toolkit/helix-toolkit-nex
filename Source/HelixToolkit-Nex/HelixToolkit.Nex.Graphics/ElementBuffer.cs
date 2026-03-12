@@ -1,9 +1,11 @@
 namespace HelixToolkit.Nex.Graphics;
 
-public struct SafeWriteContext(IntPtr mappedPtr, int remainSizeInBytes)
+public struct SafeWriteContext(IntPtr mappedPtr, int totalSizeInBytes)
 {
+    public readonly IntPtr BasePtr = mappedPtr;
+    public readonly int TotalSizeInBytes = totalSizeInBytes;
     public IntPtr MappedPtr { get; private set; } = mappedPtr;
-    public int RemainSizeInBytes { get; private set; } = remainSizeInBytes;
+    public int RemainSizeInBytes { get; private set; } = totalSizeInBytes;
 
     /// <summary>
     /// Writes the specified data to the mapped memory region if sufficient space is available.
@@ -110,6 +112,34 @@ public struct SafeWriteContext(IntPtr mappedPtr, int remainSizeInBytes)
             *ptr = data;
             MappedPtr += dataSize;
             RemainSizeInBytes -= dataSize;
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// Writes an element of type <typeparamref name="T"/> to a specified index in the buffer.
+    /// </summary>
+    /// <remarks>The method writes the element to the buffer at the specified index, provided there is enough
+    /// space. The buffer must have sufficient capacity to accommodate the element at the given index; otherwise, the
+    /// method returns <see langword="false"/>.</remarks>
+    /// <typeparam name="T">The type of the element to write, which must be unmanaged.</typeparam>
+    /// <param name="data">The element to write to the buffer.</param>
+    /// <param name="index">The zero-based index at which to write the element.</param>
+    /// <returns><see langword="true"/> if the element was successfully written to the buffer; otherwise, <see
+    /// langword="false"/>.</returns>
+    public bool WriteElement<T>(ref T data, int index)
+        where T : unmanaged
+    {
+        unsafe
+        {
+            var dataSize = sizeof(T);
+            var offset = index * dataSize;
+            if (offset + dataSize > TotalSizeInBytes)
+            {
+                return false;
+            }
+            var ptr = (T*)((byte*)BasePtr.ToPointer() + offset);
+            *ptr = data;
             return true;
         }
     }

@@ -105,19 +105,7 @@ public struct Entity : IDisposable, IEquatable<Entity>
         {
             return ResultCode.Invalid;
         }
-        var added = false;
-        var ret = World?.SetComponent<T>(this, ref component, out added) ?? ResultCode.Invalid;
-        if (ret == ResultCode.Ok)
-        {
-            ECSEventBus.Send(
-                WorldId,
-                new ComponentChangedEvent<T>(
-                    Id,
-                    added ? ComponentOperations.Added : ComponentOperations.Changed
-                )
-            );
-        }
-        return ret;
+        return World?.SetComponent<T>(this, ref component, out _) ?? ResultCode.Invalid;
     }
 
     /// <summary>
@@ -195,15 +183,18 @@ public struct Entity : IDisposable, IEquatable<Entity>
     /// <returns></returns>
     public readonly ResultCode Remove<T>(bool keepSorted = false)
     {
-        var ret = World?.RemoveComponent<T>(this, keepSorted) ?? ResultCode.Invalid;
-        if (ret == ResultCode.Ok)
-        {
-            ECSEventBus.Send(
-                WorldId,
-                new ComponentChangedEvent<T>(Id, ComponentOperations.Removed)
-            );
-        }
-        return ret;
+        return World?.RemoveComponent<T>(this, keepSorted) ?? ResultCode.Invalid;
+    }
+
+    /// <summary>
+    /// Notifies that a component of type <typeparamref name="T"/> has changed.
+    /// </summary>
+    /// <remarks>This method sends a <see cref="ComponentChangedEvent{T}"/> to the event bus if the component
+    /// of type <typeparamref name="T"/> exists.</remarks>
+    /// <typeparam name="T">The type of the component that has changed.</typeparam>
+    public readonly void NotifyComponentChanged<T>()
+    {
+        World?.NotifyComponentChanged<T>(this);
     }
     #endregion
 

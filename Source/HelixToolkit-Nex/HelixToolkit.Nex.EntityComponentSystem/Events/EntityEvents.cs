@@ -6,17 +6,22 @@ internal readonly struct EntityEnableEvent(in int entityId, bool enable)
     public readonly bool Enabled = enable;
 }
 
-internal enum ComponentOperations
+public enum ComponentOperations
 {
     Added,
     Changed,
     Removed,
 }
 
-internal readonly struct ComponentChangedEvent<T>(in int entityId, ComponentOperations operation)
+public readonly struct ComponentChangedEvent<T>(
+    in int entityId,
+    ComponentOperations operation,
+    ComponentTypeId id
+)
 {
     public readonly int EntityId = entityId;
     public readonly ComponentOperations Operation = operation;
+    public readonly ComponentTypeId ComponentTypeId = id;
 }
 
 internal readonly struct EntityDisposingEvent(in int entityId, in Generation generation)

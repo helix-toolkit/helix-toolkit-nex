@@ -11,6 +11,7 @@ public sealed class WorldDataProvider : IRenderDataProvider, IDisposable
     private readonly DirectionalLightData _directionalLightData;
     private readonly MeshDrawData _meshDrawDataOpaque;
     private readonly MeshDrawData _meshDrawDataTransparent;
+    private readonly SceneState _sceneState;
 
     public readonly World World = World.CreateWorld();
     public IResourceManager ResourceManager { get; }
@@ -38,6 +39,7 @@ public sealed class WorldDataProvider : IRenderDataProvider, IDisposable
         _directionalLightData = new DirectionalLightData(Context, World);
         _meshDrawDataOpaque = new MeshDrawData(Context, World, false);
         _meshDrawDataTransparent = new MeshDrawData(Context, World, true);
+        _sceneState = new SceneState(World);
         _renderDataList.Add(_lightData);
         _renderDataList.Add(_directionalLightData);
         _renderDataList.Add(_meshDrawDataOpaque);
@@ -47,6 +49,7 @@ public sealed class WorldDataProvider : IRenderDataProvider, IDisposable
     public bool Initialize()
     {
         using var t = _tracer.BeginScope(nameof(Initialize));
+        _sceneState.Initialize();
         foreach (var item in _renderDataList)
         {
             if (item.Initialize().CheckResult() != ResultCode.Ok)
@@ -61,6 +64,7 @@ public sealed class WorldDataProvider : IRenderDataProvider, IDisposable
     {
         using var t = _tracer.BeginScope(nameof(Update));
         ResourceManager.Update();
+        _sceneState.Update();
         foreach (var item in _renderDataList)
         {
             if (!item.Update())
@@ -90,11 +94,12 @@ public sealed class WorldDataProvider : IRenderDataProvider, IDisposable
         {
             if (disposing)
             {
-                World.Dispose();
+                _sceneState.Dispose();
                 foreach (var data in _renderDataList)
                 {
                     data.Dispose();
                 }
+                World.Dispose();
             }
 
             // TODO: free unmanaged resources (unmanaged objects) and override finalizer

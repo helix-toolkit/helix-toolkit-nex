@@ -10,18 +10,19 @@ using HelixToolkit.Nex.Maths;
 using HelixToolkit.Nex.Rendering;
 using HelixToolkit.Nex.Rendering.Components;
 using HelixToolkit.Nex.Scene;
-using HelixToolkit.Nex.Shaders;
 
 namespace SceneSamples;
 
 /// <summary>
 /// Builds a Minecraft-style voxel world scene using instanced cubes with distinct PBR block
 /// materials, procedurally generated terrain, scattered point lights, and a directional sun light.
+/// Includes animated animals that wander across the terrain surface.
 /// </summary>
 /// <remarks>
 /// Call <see cref="RegisterMaterials"/> once before calling
 /// <see cref="IMaterialManager.CreatePBRMaterialsFromRegistry"/>, then call <see cref="Build"/>
 /// to populate the ECS world with scene nodes.
+/// Call <see cref="UpdateAnimals"/> each frame to animate the animals.
 /// </remarks>
 public class MinecraftLargeScene : IScene
 {
@@ -33,6 +34,14 @@ public class MinecraftLargeScene : IScene
     public int MaxTerrainHeight { get; } = 16; // maximum terrain height in blocks
     public int MinTerrainHeight { get; } = 4; // minimum terrain base height
     public const int NumPointLights = 500; // scattered point lights for Forward+
+
+    // -----------------------------------------------------------------------
+    // Animal configuration
+    // -----------------------------------------------------------------------
+    public const int NumCows = 40;
+    public const int NumPigs = 50;
+    public const int NumChickens = 60;
+    public const int NumSheep = 45;
 
     // -----------------------------------------------------------------------
     // Block type – each value maps to an index in BlockMaterialDefs
@@ -65,6 +74,31 @@ public class MinecraftLargeScene : IScene
     }
 
     // -----------------------------------------------------------------------
+    // Animal type
+    // -----------------------------------------------------------------------
+    public enum AnimalType
+    {
+        Cow = 0,
+        Pig = 1,
+        Chicken = 2,
+        Sheep = 3,
+    }
+
+    // -----------------------------------------------------------------------
+    // Per-animal runtime state for wandering AI
+    // -----------------------------------------------------------------------
+    private class AnimalState
+    {
+        public AnimalType Type;
+        public Node Node = null!; // scene node that owns this animal's mesh
+        public Vector3 Position;
+        public float Heading; // radians, 0 = +X direction
+        public float Speed;
+        public float WanderTimer; // seconds until next direction change
+        public float BobPhase; // for walk bobbing animation
+    }
+
+    // -----------------------------------------------------------------------
     // Per-block material definition: shading-mode name, albedo, metallic, roughness, ao
     // -----------------------------------------------------------------------
     private static readonly (
@@ -90,6 +124,23 @@ public class MinecraftLargeScene : IScene
     };
 
     // -----------------------------------------------------------------------
+    // Per-animal material definition: name, albedo, metallic, roughness, ao
+    // -----------------------------------------------------------------------
+    private static readonly (
+        string Name,
+        Vector3 Albedo,
+        float Metallic,
+        float Roughness,
+        float Ao
+    )[] AnimalMaterialDefs = new (string, Vector3, float, float, float)[]
+    {
+        ("PBR", new Vector3(0.35f, 0.20f, 0.10f), 0.0f, 0.95f, 1.0f), // Cow (brown)
+        ("PBR", new Vector3(0.90f, 0.70f, 0.60f), 0.0f, 0.95f, 1.0f), // Pig (pink)
+        ("PBR", new Vector3(0.95f, 0.95f, 0.90f), 0.0f, 0.95f, 1.0f), // Chicken (white)
+        ("PBR", new Vector3(0.88f, 0.88f, 0.85f), 0.0f, 0.90f, 1.0f), // Sheep (light grey wool)
+    };
+
+    // -----------------------------------------------------------------------
     // Point-light colors that cycle across all spawned lights
     // -----------------------------------------------------------------------
     private static readonly Color[] _lightColors =
@@ -101,6 +152,13 @@ public class MinecraftLargeScene : IScene
         new Color(1.0f, 1.0f, 0.3f), // yellow
         new Color(0.8f, 0.2f, 1.0f), // purple
     ];
+
+    // -----------------------------------------------------------------------
+    // Animal runtime data (populated in Build, updated in UpdateAnimals)
+    // -----------------------------------------------------------------------
+    private readonly List<AnimalState> _animals = [];
+    private int[,]? _heightMap;
+    private readonly Random _animalRng = new(123);
 
     // -----------------------------------------------------------------------
     // Public API
@@ -161,7 +219,7 @@ public class MinecraftLargeScene : IScene
 
     /// <summary>
     /// Builds the Minecraft world and returns the root <see cref="Node"/> containing all blocks,
-    /// point lights, and the directional sun.
+    /// point lights, animals, and the directional sun.
     /// </summary>
     /// <param name="context">Graphics context used to upload instancing buffers to the GPU.</param>
     /// <param name="resourceManager">Provides geometry and material property pools.</param>
@@ -172,6 +230,7 @@ public class MinecraftLargeScene : IScene
         WorldDataProvider worldDataProvider
     )
     {
+        // _context field removed – no longer needed for animal instancing
         var geometryManager = resourceManager.Geometries;
         var materialPool = resourceManager.MaterialProperties;
 
@@ -216,17 +275,17 @@ public class MinecraftLargeScene : IScene
         // Generate terrain heightmap and populate per-block-type instance transforms
         // ------------------------------------------------------------------
         var biomeMap = GenerateBiomeMap(WorldSizeX, WorldSizeZ);
-        int[,] heightMap = GenerateHeightMap(WorldSizeX, WorldSizeZ);
+        _heightMap = GenerateHeightMap(WorldSizeX, WorldSizeZ);
 
         for (int x = 0; x < WorldSizeX; x++)
         {
             for (int z = 0; z < WorldSizeZ; z++)
             {
-                int terrainHeight = heightMap[x, z];
+                int terrainHeight = _heightMap[x, z];
                 BiomeType biome = biomeMap[x, z];
                 for (int y = 0; y <= terrainHeight; y++)
                 {
-                    int blockIdx = (int)GetBlockType(x, y, z, terrainHeight, heightMap, biome);
+                    int blockIdx = (int)GetBlockType(x, y, z, terrainHeight, _heightMap, biome);
                     instancings[blockIdx]
                         .Transforms.Add(Matrix4x4.CreateTranslation(new Vector3(x, y, z)));
                 }
@@ -271,7 +330,7 @@ public class MinecraftLargeScene : IScene
         {
             int lx = rand.Next(0, WorldSizeX);
             int lz = rand.Next(0, WorldSizeZ);
-            float ly = heightMap[lx, lz] + 2.5f;
+            float ly = _heightMap[lx, lz] + 2.5f;
             var pos = new Vector3(lx, ly, lz);
             var col = _lightColors[i % _lightColors.Length];
 
@@ -283,7 +342,7 @@ public class MinecraftLargeScene : IScene
                     Position = Vector3.Zero, // local position is zero since it's defined in the node's world transform
                     Color = col,
                     Intensity = 3.0f,
-                    Range = 3.0f,
+                    Range = 4.0f,
                     Direction = Vector3.Zero,
                 }
             );
@@ -306,6 +365,11 @@ public class MinecraftLargeScene : IScene
         }
 
         // ------------------------------------------------------------------
+        // Build animals: create meshes, materials, spawn on terrain
+        // ------------------------------------------------------------------
+        BuildAnimals(context, geometryManager, materialPool, worldDataProvider, root);
+
+        // ------------------------------------------------------------------
         // Sun-like directional light
         // ------------------------------------------------------------------
         var sunNode = new Node(worldDataProvider.World, "Sun");
@@ -313,7 +377,7 @@ public class MinecraftLargeScene : IScene
             new DirectionalLightComponent()
             {
                 Color = new Color(1.0f, 0.95f, 0.8f),
-                Intensity = 0.05f,
+                Intensity = 0.1f,
                 Direction = Vector3.Normalize(new Vector3(0.4f, -1.0f, 0.5f)),
             }
         );
@@ -327,6 +391,283 @@ public class MinecraftLargeScene : IScene
         allNodes.UpdateTransforms();
 
         return root;
+    }
+
+    // -----------------------------------------------------------------------
+    // Animal building
+    // -----------------------------------------------------------------------
+
+    /// <summary>
+    /// Creates animal meshes, materials, spawns animals on the terrain, and adds scene nodes.
+    /// Each animal is its own <see cref="Node"/> — movement is driven by
+    /// <see cref="Node.Transform"/> rather than GPU instancing.
+    /// </summary>
+    private void BuildAnimals(
+        IContext context,
+        IGeometryManager geometryManager,
+        IMaterialPropertyManager materialPool,
+        WorldDataProvider worldDataProvider,
+        Node root
+    )
+    {
+        // Build one shared mesh per animal type using voxel-style boxes
+        var animalMeshes = new Geometry[4];
+        animalMeshes[(int)AnimalType.Cow] = BuildCowMesh(geometryManager);
+        animalMeshes[(int)AnimalType.Pig] = BuildPigMesh(geometryManager);
+        animalMeshes[(int)AnimalType.Chicken] = BuildChickenMesh(geometryManager);
+        animalMeshes[(int)AnimalType.Sheep] = BuildSheepMesh(geometryManager);
+
+        // Create one shared material per animal type
+        var animalMatProps = new MaterialProperties[4];
+        for (int a = 0; a < 4; a++)
+        {
+            var (name, albedo, metallic, roughness, ao) = AnimalMaterialDefs[a];
+            var props = materialPool.Create(name);
+            props.Properties.Albedo = albedo;
+            props.Properties.Metallic = metallic;
+            props.Properties.Roughness = roughness;
+            props.Properties.Ao = ao;
+            props.Properties.Opacity = 1.0f;
+            props.NotifyUpdated();
+            animalMatProps[a] = props;
+        }
+
+        // Spawn animals on suitable terrain (not water, not lava)
+        var spawnCounts = new[] { NumCows, NumPigs, NumChickens, NumSheep };
+        var animalTypes = new[]
+        {
+            AnimalType.Cow,
+            AnimalType.Pig,
+            AnimalType.Chicken,
+            AnimalType.Sheep,
+        };
+        var animalSpeeds = new[] { 1.2f, 1.5f, 2.0f, 1.0f }; // blocks per second
+
+        _animals.Clear();
+
+        for (int a = 0; a < 4; a++)
+        {
+            for (int i = 0; i < spawnCounts[a]; i++)
+            {
+                // Find a valid spawn position (avoid water/lava surface blocks)
+                int attempts = 0;
+                int sx,
+                    sz;
+                do
+                {
+                    sx = _animalRng.Next(2, WorldSizeX - 2);
+                    sz = _animalRng.Next(2, WorldSizeZ - 2);
+                    attempts++;
+                } while (attempts < 100 && IsWaterOrLavaAt(sx, sz));
+
+                float spawnY = _heightMap![sx, sz] + 1f;
+                var spawnPos = new Vector3(sx, spawnY, sz);
+                float heading = (float)(_animalRng.NextDouble() * MathF.PI * 2);
+                float speed = animalSpeeds[a] * (0.7f + (float)_animalRng.NextDouble() * 0.6f);
+
+                // One dedicated node per animal — Transform drives position + facing
+                var animalNode = new Node(worldDataProvider.World, $"Animal_{animalTypes[a]}_{i}");
+                animalNode.Transform.Translation = spawnPos;
+                animalNode.Transform.Rotation = Quaternion.CreateFromAxisAngle(
+                    Vector3.UnitY,
+                    heading
+                );
+                // Mesh component with no Instancing — the node's WorldTransform is used directly
+                animalNode.Entity.Set(new MeshComponent(animalMeshes[a], animalMatProps[a]));
+                root.AddChild(animalNode);
+
+                _animals.Add(
+                    new AnimalState
+                    {
+                        Type = animalTypes[a],
+                        Node = animalNode,
+                        Position = spawnPos,
+                        Heading = heading,
+                        Speed = speed,
+                        WanderTimer = (float)(_animalRng.NextDouble() * 3.0 + 1.0),
+                        BobPhase = (float)(_animalRng.NextDouble() * MathF.PI * 2),
+                    }
+                );
+            }
+        }
+    }
+
+    public void Tick(float deltaTime)
+    {
+        UpdateAnimals(deltaTime);
+    }
+
+    /// <summary>
+    /// Updates all animals each frame by writing directly to each animal's
+    /// <see cref="Node.Transform"/> and then re-computing world transforms.
+    /// No GPU instancing buffers are touched.
+    /// </summary>
+    /// <param name="deltaTime">Elapsed time in seconds since the last frame.</param>
+    public void UpdateAnimals(float deltaTime)
+    {
+        if (_heightMap == null || _animals.Count == 0)
+            return;
+
+        foreach (var animal in _animals)
+        {
+            // ── Wander AI ──────────────────────────────────────────────
+            animal.WanderTimer -= deltaTime;
+            if (animal.WanderTimer <= 0)
+            {
+                animal.Heading += (float)(_animalRng.NextDouble() - 0.5) * MathF.PI * 1.5f;
+                animal.WanderTimer = (float)(_animalRng.NextDouble() * 4.0 + 1.5);
+            }
+
+            // ── Candidate movement ─────────────────────────────────────
+            float dx = MathF.Cos(animal.Heading) * animal.Speed * deltaTime;
+            float dz = MathF.Sin(animal.Heading) * animal.Speed * deltaTime;
+
+            float newX = Math.Clamp(animal.Position.X + dx, 1f, WorldSizeX - 2f);
+            float newZ = Math.Clamp(animal.Position.Z + dz, 1f, WorldSizeZ - 2f);
+
+            // Bounce off world boundary
+            if (newX <= 1f || newX >= WorldSizeX - 2f || newZ <= 1f || newZ >= WorldSizeZ - 2f)
+            {
+                animal.Heading += MathF.PI;
+                animal.WanderTimer = 0.5f;
+            }
+
+            int ix = Math.Clamp((int)newX, 0, WorldSizeX - 1);
+            int iz = Math.Clamp((int)newZ, 0, WorldSizeZ - 1);
+
+            // Stay away from water / lava
+            //if (IsWaterOrLavaAt(ix, iz))
+            //{
+            //    animal.Heading += MathF.PI * 0.75f;
+            //    animal.WanderTimer = 0.3f;
+            //    continue;
+            //}
+
+            // ── Terrain-following Y with walk bob ──────────────────────
+            float targetY = _heightMap[ix, iz] + 3f;
+            float newY =
+                animal.Position.Y + (targetY - animal.Position.Y) * Math.Min(1f, deltaTime * 5f);
+
+            animal.BobPhase += deltaTime * animal.Speed * 8f;
+            float bob = MathF.Sin(animal.BobPhase) * 0.05f;
+
+            animal.Position = new Vector3(newX, newY + bob, newZ);
+
+            // ── Write directly to the node's Transform ─────────────────
+            ref var t = ref animal.Node.Transform;
+            t.Translation = animal.Position;
+            t.Rotation = Quaternion.CreateFromAxisAngle(Vector3.UnitY, animal.Heading);
+            animal.Node.Entity.NotifyComponentChanged<Transform>();
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Animal mesh builders (Minecraft-style blocky animals)
+    // -----------------------------------------------------------------------
+
+    /// <summary>
+    /// Builds a cow mesh: large rectangular body, head, 4 legs.
+    /// All geometry is centered at origin so instancing transforms position it.
+    /// </summary>
+    private static Geometry BuildCowMesh(IGeometryManager geometryManager)
+    {
+        var mb = new MeshBuilder(true, true, true);
+        // Body (wide, long box)
+        mb.AddBox(new Vector3(0, 0.5f, 0), 0.8f, 0.7f, 1.4f);
+        // Head
+        mb.AddBox(new Vector3(0, 0.7f, 0.85f), 0.5f, 0.5f, 0.4f);
+        // Legs (4 thin boxes)
+        mb.AddBox(new Vector3(-0.25f, 0.0f, 0.4f), 0.2f, 0.5f, 0.2f);
+        mb.AddBox(new Vector3(0.25f, 0.0f, 0.4f), 0.2f, 0.5f, 0.2f);
+        mb.AddBox(new Vector3(-0.25f, 0.0f, -0.4f), 0.2f, 0.5f, 0.2f);
+        mb.AddBox(new Vector3(0.25f, 0.0f, -0.4f), 0.2f, 0.5f, 0.2f);
+        var geo = mb.ToMesh().ToGeometry();
+        bool ok = geometryManager.Add(geo, out _);
+        Debug.Assert(ok, "Failed to add cow geometry");
+        return geo;
+    }
+
+    /// <summary>
+    /// Builds a pig mesh: stout rounded body, snout, 4 short legs.
+    /// </summary>
+    private static Geometry BuildPigMesh(IGeometryManager geometryManager)
+    {
+        var mb = new MeshBuilder(true, true, true);
+        // Body (shorter and rounder than cow)
+        mb.AddBox(new Vector3(0, 0.35f, 0), 0.6f, 0.5f, 0.9f);
+        // Head / snout
+        mb.AddBox(new Vector3(0, 0.45f, 0.55f), 0.45f, 0.4f, 0.35f);
+        mb.AddBox(new Vector3(0, 0.4f, 0.78f), 0.2f, 0.15f, 0.12f); // snout
+        // Legs (short)
+        mb.AddBox(new Vector3(-0.18f, 0.0f, 0.25f), 0.15f, 0.3f, 0.15f);
+        mb.AddBox(new Vector3(0.18f, 0.0f, 0.25f), 0.15f, 0.3f, 0.15f);
+        mb.AddBox(new Vector3(-0.18f, 0.0f, -0.25f), 0.15f, 0.3f, 0.15f);
+        mb.AddBox(new Vector3(0.18f, 0.0f, -0.25f), 0.15f, 0.3f, 0.15f);
+        var geo = mb.ToMesh().ToGeometry();
+        bool ok = geometryManager.Add(geo, out _);
+        Debug.Assert(ok, "Failed to add pig geometry");
+        return geo;
+    }
+
+    /// <summary>
+    /// Builds a chicken mesh: small body, head, 2 thin legs.
+    /// </summary>
+    private static Geometry BuildChickenMesh(IGeometryManager geometryManager)
+    {
+        var mb = new MeshBuilder(true, true, true);
+        // Body (small, round-ish)
+        mb.AddBox(new Vector3(0, 0.25f, 0), 0.3f, 0.3f, 0.4f);
+        // Head (smaller box on top)
+        mb.AddBox(new Vector3(0, 0.5f, 0.2f), 0.2f, 0.2f, 0.2f);
+        // Beak
+        mb.AddBox(new Vector3(0, 0.48f, 0.35f), 0.08f, 0.06f, 0.1f);
+        // Legs (2 thin sticks)
+        mb.AddBox(new Vector3(-0.06f, 0.0f, 0.0f), 0.05f, 0.2f, 0.05f);
+        mb.AddBox(new Vector3(0.06f, 0.0f, 0.0f), 0.05f, 0.2f, 0.05f);
+        // Tail feathers
+        mb.AddBox(new Vector3(0, 0.35f, -0.25f), 0.15f, 0.2f, 0.1f);
+        var geo = mb.ToMesh().ToGeometry();
+        bool ok = geometryManager.Add(geo, out _);
+        Debug.Assert(ok, "Failed to add chicken geometry");
+        return geo;
+    }
+
+    /// <summary>
+    /// Builds a sheep mesh: woolly body (bigger box), head, 4 legs.
+    /// </summary>
+    private static Geometry BuildSheepMesh(IGeometryManager geometryManager)
+    {
+        var mb = new MeshBuilder(true, true, true);
+        // Woolly body (larger than actual body to simulate wool)
+        mb.AddBox(new Vector3(0, 0.5f, 0), 0.75f, 0.65f, 1.1f);
+        // Head (smaller, darker)
+        mb.AddBox(new Vector3(0, 0.6f, 0.65f), 0.35f, 0.35f, 0.3f);
+        // Legs
+        mb.AddBox(new Vector3(-0.22f, 0.0f, 0.3f), 0.15f, 0.45f, 0.15f);
+        mb.AddBox(new Vector3(0.22f, 0.0f, 0.3f), 0.15f, 0.45f, 0.15f);
+        mb.AddBox(new Vector3(-0.22f, 0.0f, -0.3f), 0.15f, 0.45f, 0.15f);
+        mb.AddBox(new Vector3(0.22f, 0.0f, -0.3f), 0.15f, 0.45f, 0.15f);
+        var geo = mb.ToMesh().ToGeometry();
+        bool ok = geometryManager.Add(geo, out _);
+        Debug.Assert(ok, "Failed to add sheep geometry");
+        return geo;
+    }
+
+    // -----------------------------------------------------------------------
+    // Animal helpers
+    // -----------------------------------------------------------------------
+
+    /// <summary>
+    /// Checks whether the surface block at (x, z) is water or lava (not suitable for animals).
+    /// </summary>
+    private bool IsWaterOrLavaAt(int x, int z)
+    {
+        if (_heightMap == null)
+            return true;
+        int h = _heightMap[x, z];
+        var biomeMap = GenerateBiomeMap(WorldSizeX, WorldSizeZ);
+        var blockType = GetBlockType(x, h, z, h, _heightMap, biomeMap[x, z]);
+        return blockType == BlockType.Water || blockType == BlockType.Lava;
     }
 
     // -----------------------------------------------------------------------

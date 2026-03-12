@@ -1,3 +1,4 @@
+using HelixToolkit.Nex.ECS.Utils;
 using HelixToolkit.Nex.Rendering.Components;
 using DrawRange = HelixToolkit.Nex.Rendering.DrawRange;
 
@@ -93,12 +94,15 @@ internal class MeshDrawData : Initializable, IMeshDrawData
     private readonly Dictionary<uint, int> _entityToDrawIdx = new(1024 * 10);
     private readonly bool _isTransparent;
     private EntityCollection? _entities;
+    private readonly HashSet<int> _updatedEntities = [];
+    private readonly FastList<int> _updatedIndices = [];
 
     public IContext Context { get; }
     public World World { get; }
     public IReadOnlyList<MeshDraw> DrawCommands => _meshDraws;
     private long _lastBufferUpdateTicks = 0;
     private long _lastDataUpdateTicks = Stopwatch.GetTimestamp();
+    private bool _needRebuilt = true;
     public IEnumerable<MaterialTypeId> MaterialTypes => _materialTypes;
 
     public BufferHandle Buffer => _buffer is not null ? _buffer.Buffer : BufferHandle.Null;
@@ -157,15 +161,24 @@ internal class MeshDrawData : Initializable, IMeshDrawData
 
     protected override ResultCode OnInitializing()
     {
-        _entities = World
+        _needRebuilt = true;
+        var filter = World
             .CreateCollection()
             .Has<NodeInfo>()
             .Has<MeshComponent>()
-            .Has<WorldTransform>()
-            .Build();
+            .Has<WorldTransform>();
+        if (_isTransparent)
+        {
+            filter.Has<TransparentComponent>();
+        }
+        else
+        {
+            filter.NotHas<TransparentComponent>();
+        }
+        _entities = filter.Build();
         _entities.EntityChanged += OnEntityChanged;
-        _entities.EntityAdded += OnEntityChanged;
-        _entities.EntityRemoved += OnEntityChanged;
+        _entities.EntityAdded += OnAddOrRemovedChanged;
+        _entities.EntityRemoved += OnAddOrRemovedChanged;
         _buffer = new ElementBuffer<MeshDraw>(
             Context,
             InitialBufferSize,
@@ -189,16 +202,38 @@ internal class MeshDrawData : Initializable, IMeshDrawData
         {
             return false;
         }
-        if (_lastDataUpdateTicks <= _lastBufferUpdateTicks)
+        if (_lastDataUpdateTicks <= _lastBufferUpdateTicks && !_needRebuilt)
         {
             return true;
         }
+
+        using var t = _tracer.BeginScope(nameof(Update));
+        var success = true;
+        if (_needRebuilt)
+        {
+            _updatedEntities.Clear();
+            success = Rebuild();
+        }
+        else
+        {
+            success = UpdateChanges();
+        }
+        _lastBufferUpdateTicks = _lastDataUpdateTicks;
+        return success;
+    }
+
+    private bool Rebuild()
+    {
         if (_entities is null)
         {
             return false;
         }
-        using var t = _tracer.BeginScope(nameof(Update));
-        bool success = true;
+        _logger.LogTrace(
+            "{NAME}: Rebuilding MeshDrawData with entity count: {COUNT}",
+            Name,
+            _entities.Count
+        );
+        _updatedEntities.Clear();
         _meshDraws.Clear();
         _meshDrawSortingStatic.Clear();
         _meshDrawSortingStaticInstancing.Clear();
@@ -214,10 +249,6 @@ internal class MeshDrawData : Initializable, IMeshDrawData
             }
             ref var meshRenderComp = ref entity.Get<MeshComponent>();
             if (!meshRenderComp.Valid)
-            {
-                continue;
-            }
-            if (meshRenderComp.IsTransparent ^ _isTransparent)
             {
                 continue;
             }
@@ -245,6 +276,7 @@ internal class MeshDrawData : Initializable, IMeshDrawData
                     ? (uint)meshRenderComp.Instancing.Transforms.Count
                     : 1u,
                 Cullable = meshRenderComp.Cullable ? 1u : 0u,
+                DrawType = meshRenderComp.GetDrawType(),
             };
             _materialTypes.Add(materialType);
             if (meshRenderComp.Instancing is not null)
@@ -272,9 +304,9 @@ internal class MeshDrawData : Initializable, IMeshDrawData
             ++count;
         }
         FinalizeMeshDraws();
-        _buffer.Upload(_meshDraws);
-        _lastBufferUpdateTicks = _lastDataUpdateTicks;
-        return success;
+        _buffer?.Upload(_meshDraws);
+        _needRebuilt = false;
+        return true;
     }
 
     private void FinalizeMeshDraws()
@@ -325,12 +357,129 @@ internal class MeshDrawData : Initializable, IMeshDrawData
             ref var draw = ref _meshDraws.At(i);
             var entity = World.GetEntity((int)draw.EntityId, (ushort)draw.EntityVer);
             ref var comp = ref entity.Get<MeshComponent>();
-            comp.DrawIndex = i;
+            comp.Index = i;
         }
     }
 
-    private void OnEntityChanged(object? sender, int e)
+    private bool UpdateChanges()
     {
+        _logger.LogTrace(
+            "{NAME}: Updating MeshDrawData with changed entity count: {COUNT}",
+            Name,
+            _updatedEntities.Count
+        );
+        _updatedIndices.Clear();
+        foreach (var entityId in _updatedEntities)
+        {
+            var entity = World.GetEntity(entityId);
+            ref var meshRenderComp = ref entity.Get<MeshComponent>();
+            if (!meshRenderComp.Valid || meshRenderComp.Index < 0)
+            {
+                return false;
+            }
+            ref var transform = ref entity.Get<WorldTransform>();
+            var materialType = meshRenderComp.MaterialProperties!.MaterialTypeId;
+            _meshDraws.At(meshRenderComp.Index) = new MeshDraw()
+            {
+                MeshId = meshRenderComp.Geometry!.Id,
+                MaterialId = meshRenderComp.MaterialProperties!.Index,
+                MaterialType = materialType,
+                EntityId = (uint)entity.Id,
+                EntityVer = entity.Gen,
+                Transform = transform.Value,
+                InstancingBufferAddress = meshRenderComp.Instancing is not null
+                    ? meshRenderComp.Instancing.Buffer!.Buffer.GpuAddress
+                    : 0,
+                InstancingIndexBufferAddress =
+                    meshRenderComp.Cullable && meshRenderComp.Instancing is not null
+                        ? meshRenderComp.Instancing.CulledIndicesBuffer!.Buffer.GpuAddress
+                        : 0,
+                FirstIndex = meshRenderComp.Geometry!.IndexOffset,
+                IndexCount = meshRenderComp.Geometry!.IndexCount,
+                InstanceCount = meshRenderComp.Instancing is not null
+                    ? (uint)meshRenderComp.Instancing.Transforms.Count
+                    : 1u,
+                Cullable = meshRenderComp.Cullable ? 1u : 0u,
+                DrawType = meshRenderComp.GetDrawType(),
+            };
+            _updatedIndices.Add(meshRenderComp.Index);
+        }
+        _updatedEntities.Clear();
+        _buffer?.WriteDynamic(
+            _meshDraws.Count,
+            ctx =>
+            {
+                foreach (var idx in _updatedIndices)
+                {
+                    ref var draw = ref _meshDraws.At(idx);
+                    ctx.WriteElement(ref draw, idx);
+                }
+            }
+        );
+        return true;
+    }
+
+    private void OnEntityChanged(object? sender, EntityChangedEvent e)
+    {
+        _lastDataUpdateTicks = Stopwatch.GetTimestamp();
+        if (!_needRebuilt)
+        {
+            var entity = World.GetEntity(e.EntityId);
+            if (e.Type == World.GetComponentTypeId<WorldTransform>())
+            {
+                _updatedEntities.Add(e.EntityId);
+                return;
+            }
+            else if (e.Type == World.GetComponentTypeId<MeshComponent>())
+            {
+                ref var comp = ref entity.Get<MeshComponent>();
+                if (CanUpdate(ref comp))
+                {
+                    _updatedEntities.Add(e.EntityId);
+                }
+                else
+                {
+                    comp.Index = -1;
+                    _needRebuilt = true;
+                }
+                return;
+            }
+            else if (e.Type == World.GetComponentTypeId<NodeInfo>())
+            {
+                _needRebuilt = true;
+            }
+        }
+    }
+
+    private bool CanUpdate(ref MeshComponent comp)
+    {
+        if (_meshDraws.Count <= comp.Index)
+        {
+            return false;
+        }
+        if (!comp.Valid || comp.Index < 0)
+        {
+            return false;
+        }
+        ref var draw = ref _meshDraws.At(comp.Index);
+        if (
+            comp.MaterialProperties is null
+            || draw.MaterialType != comp.MaterialProperties.MaterialTypeId
+        )
+        {
+            return false;
+        }
+        var drawType = comp.GetDrawType();
+        if (drawType != draw.DrawType)
+        {
+            return false;
+        }
+        return true;
+    }
+
+    private void OnAddOrRemovedChanged(object? sender, int e)
+    {
+        _needRebuilt = true;
         _lastDataUpdateTicks = Stopwatch.GetTimestamp();
     }
 }

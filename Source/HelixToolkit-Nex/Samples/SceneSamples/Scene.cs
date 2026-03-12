@@ -17,4 +17,6 @@ public interface IScene
         IResourceManager resourceManager,
         WorldDataProvider worldDataProvider
     );
+
+    void Tick(float deltaTime);
 }

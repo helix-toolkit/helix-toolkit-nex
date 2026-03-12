@@ -1,8 +1,7 @@
 namespace HelixToolkit.Nex.Scene;
 
-public struct NodeInfo : ISortable<NodeInfo>
+public sealed class NodeInfo : ISortable<NodeInfo>
 {
-    public int Level = 0;
     public int Version = 1;
     public Guid Id = Guid.NewGuid();
     public string Name = string.Empty;
@@ -11,6 +10,8 @@ public struct NodeInfo : ISortable<NodeInfo>
     internal bool ParentEnabled = true;
     public bool Enabled => SelfEnabled && ParentEnabled;
 
+    public int Level { internal set; get; } = 0;
+
     public NodeInfo() { }
 
     public NodeInfo(Node node)
@@ -18,12 +19,12 @@ public struct NodeInfo : ISortable<NodeInfo>
         Node = node;
     }
 
-    public override readonly string ToString()
+    public override string ToString()
     {
-        return $"NodeInfo: {Id}, Name: {Name}, Level: {Level}, Version: {Version}";
+        return $"NodeInfo: {Id}, Name: {Name}, Version: {Version}";
     }
 
-    public readonly bool Compare(ref NodeInfo obj)
+    public bool Compare(ref NodeInfo obj)
     {
         return Level < obj.Level;
     }
@@ -134,9 +135,9 @@ public readonly struct WorldTransform(Matrix4x4 value)
     public static readonly WorldTransform Identity = new(Matrix4x4.Identity);
 }
 
-public struct Parent()
+public readonly struct Parent(Entity parent)
 {
-    public Entity ParentEntity = Entity.Null;
+    public Entity ParentEntity { get; } = parent;
 }
 
 public readonly struct Children

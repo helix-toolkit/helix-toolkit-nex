@@ -335,6 +335,14 @@ public sealed class World : IEnumerable<Entity>, IDisposable
                 return ResultCode.Invalid;
             }
             state.ComponentTypes.AddType(ComponentManager<T>.TypeId);
+            ECSEventBus.Send(
+                Id,
+                new ComponentChangedEvent<T>(
+                    entity.Id,
+                    added ? ComponentOperations.Added : ComponentOperations.Changed,
+                    GetComponentTypeId<T>()
+                )
+            );
         }
         return ret;
     }
@@ -399,9 +407,10 @@ public sealed class World : IEnumerable<Entity>, IDisposable
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public ResultCode RemoveComponent<T>(Entity entity, bool keepSorted = false)
     {
+        ResultCode ret;
         lock (_lock)
         {
-            var ret = ValidateEntity(ref entity)
+            ret = ValidateEntity(ref entity)
                 ? ComponentManager<T>.GetManager(Id)?.Remove(entity.Id, keepSorted)
                     ?? ResultCode.NotFound
                 : ResultCode.Invalid;
@@ -414,8 +423,19 @@ public sealed class World : IEnumerable<Entity>, IDisposable
                 }
                 state.ComponentTypes.RemoveType(ComponentManager<T>.TypeId);
             }
-            return ret;
         }
+        if (ret == ResultCode.Ok)
+        {
+            ECSEventBus.Send(
+                Id,
+                new ComponentChangedEvent<T>(
+                    entity.Id,
+                    ComponentOperations.Removed,
+                    GetComponentTypeId<T>()
+                )
+            );
+        }
+        return ret;
     }
 
     /// <summary>
@@ -443,6 +463,38 @@ public sealed class World : IEnumerable<Entity>, IDisposable
     internal ComponentManager<T>? GetComponentManager<T>()
     {
         return ComponentManager<T>.GetOrCreateManager(GetWorldInternal, Id);
+    }
+
+    /// <summary>
+    /// Get the unique component type id.
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    /// <returns></returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public ComponentTypeId GetComponentTypeId<T>()
+    {
+        return ComponentManager<T>.TypeId;
+    }
+
+    /// <summary>
+    /// Manually notify the world that a component of specific type has been changed for an entity.
+    /// This is only needed when you manually modify the component data and want to trigger systems that are dependent on component change events.
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    /// <param name="entity"></param>
+    public void NotifyComponentChanged<T>(Entity entity)
+    {
+        if (!entity.Has<T>())
+        {
+            return;
+        }
+        Send(
+            new ComponentChangedEvent<T>(
+                entity.Id,
+                ComponentOperations.Changed,
+                GetComponentTypeId<T>()
+            )
+        );
     }
     #endregion
 

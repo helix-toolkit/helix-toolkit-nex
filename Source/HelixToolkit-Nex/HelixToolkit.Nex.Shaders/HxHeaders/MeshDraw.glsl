@@ -12,7 +12,7 @@ struct MeshDraw {
     uint entityId; // The entity id this mesh belongs to, used for GPU picking.
     uint entityVer; // The entity version, used for GPU picking to filter out stale picks.
     uint cullable; // Whether this mesh is cullable, used for frustum culling.
-    uint _padding2;
+    uint drawType; // Encoded information about mesh draw type. [0x1] IsDynamic. [0x2] IsInstancing.
     uint64_t instancingBufferAddress; // For GPU driven instancing
     uint64_t instancingIndexBufferAddress; // Used to get the instancing matrix from instancing buffer.
     mat4 transform; // World transform of the model.
