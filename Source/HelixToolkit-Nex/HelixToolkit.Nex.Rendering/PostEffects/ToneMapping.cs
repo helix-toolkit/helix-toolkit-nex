@@ -14,13 +14,12 @@ public sealed class ToneMapping : PostEffect
 
     public override Color DebugColor => Color.Aquamarine;
 
-    public override void Apply(in RenderResources res)
+    public override void Apply(in RenderResources res, ref string readSlot, ref string writeSlot)
     {
         Debug.Assert(_toneGammaPipeline.Valid, "Tone mapping pipeline is not valid.");
         var cmdBuffer = res.CmdBuffer;
-        res.Context.SwapColorPingPongBuffers();
-        res.Deps.Textures[0] = res.Textures[SystemBufferNames.TextureColorF16Sample];
-        res.Framebuf.Colors[0].Texture = res.Textures[SystemBufferNames.TextureColorF16Target];
+        res.Deps.Textures[0] = res.Textures[readSlot];
+        res.Framebuf.Colors[0].Texture = res.Textures[writeSlot];
         cmdBuffer.BeginRendering(res.Pass, res.Framebuf, res.Deps);
         cmdBuffer.BindRenderPipeline(_toneGammaPipeline);
         cmdBuffer.BindDepthState(DepthState.Disabled);
@@ -29,7 +28,7 @@ public sealed class ToneMapping : PostEffect
             {
                 Enabled = 1,
                 Exposure = 1f,
-                HdrTextureId = res.Textures[SystemBufferNames.TextureColorF16Sample].Index,
+                HdrTextureId = res.Textures[readSlot].Index,
                 SamplerId = _toneMappingSampler.Index,
                 TonemapMode = (uint)Mode,
             }

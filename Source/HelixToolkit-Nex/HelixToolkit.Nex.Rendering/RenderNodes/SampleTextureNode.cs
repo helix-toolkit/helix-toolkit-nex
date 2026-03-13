@@ -5,7 +5,7 @@ namespace HelixToolkit.Nex.Rendering.RenderNodes;
 public sealed class RenderToFinalNode(Format outputFormat)
     : SampleTextureNode(SampleTextureMode.SAMPLE_ONLY, outputFormat)
 {
-    public override string Name => nameof(DebugDepthBufferNode);
+    public override string Name => nameof(RenderToFinalNode);
     public override Color4 DebugColor => Color.Yellow;
 
     protected override bool BeginRender(in RenderResources res)
@@ -18,8 +18,11 @@ public sealed class RenderToFinalNode(Format outputFormat)
     public override void AddToGraph(RenderGraph graph)
     {
         graph.AddPass(
-            nameof(DebugDepthBufferNode),
-            inputs: [new(SystemBufferNames.TextureColorF16Sample, ResourceType.Texture)],
+            nameof(RenderToFinalNode),
+            // TextureColorF16Current is the stable alias written by PostEffectsNode at the end
+            // of its render loop. It always points to whichever ping-pong buffer holds the
+            // final color result, regardless of how many effects ran.
+            inputs: [new(SystemBufferNames.TextureColorF16Current, ResourceType.Texture)],
             outputs: [new(SystemBufferNames.FinalOutputTexture, ResourceType.Texture)],
             onSetup: (res) =>
             {
@@ -27,8 +30,9 @@ public sealed class RenderToFinalNode(Format outputFormat)
                 res.Pass.Colors[0].ClearColor = Color.Transparent;
                 res.Pass.Colors[0].LoadOp = LoadOp.Load;
                 res.Pass.Colors[0].StoreOp = StoreOp.Store;
-                res.Deps.Textures[0] = res.Textures[SystemBufferNames.TextureColorF16Sample];
-            }
+                res.Deps.Textures[0] = res.Textures[SystemBufferNames.TextureColorF16Current];
+            },
+            after: [nameof(PostEffectsNode)]
         );
     }
 }
@@ -51,13 +55,13 @@ public sealed class DebugDepthBufferNode()
         graph.AddPass(
             nameof(DebugDepthBufferNode),
             inputs: [new(SystemBufferNames.TextureDepthF32, ResourceType.Texture)],
-            outputs: [new(SystemBufferNames.TextureColorF16Target, ResourceType.Texture)],
+            outputs: [new(SystemBufferNames.TextureColorF16Current, ResourceType.Texture)],
             onSetup: (res) =>
             {
                 res.Framebuf.Colors[0].Texture = res.Textures[
-                    SystemBufferNames.TextureColorF16Target
+                    SystemBufferNames.TextureColorF16Current
                 ];
-                res.Pass.Colors[0].ClearColor = Color.Coral;
+                res.Pass.Colors[0].ClearColor = Color.Transparent;
                 res.Pass.Colors[0].LoadOp = LoadOp.Clear;
                 res.Pass.Colors[0].StoreOp = StoreOp.Store;
                 res.Deps.Textures[0] = res.Textures[SystemBufferNames.TextureDepthF32];
@@ -77,11 +81,11 @@ public sealed class DebugMeshIdNode()
         graph.AddPass(
             nameof(DebugMeshIdNode),
             inputs: [new(SystemBufferNames.TextureEntityId, ResourceType.Texture)],
-            outputs: [new(SystemBufferNames.TextureColorF16Target, ResourceType.Texture)],
+            outputs: [new(SystemBufferNames.TextureColorF16Current, ResourceType.Texture)],
             onSetup: (res) =>
             {
                 res.Framebuf.Colors[0].Texture = res.Textures[
-                    SystemBufferNames.TextureColorF16Target
+                    SystemBufferNames.TextureColorF16Current
                 ];
                 res.Pass.Colors[0].ClearColor = Color.Black;
                 res.Pass.Colors[0].LoadOp = LoadOp.Clear;

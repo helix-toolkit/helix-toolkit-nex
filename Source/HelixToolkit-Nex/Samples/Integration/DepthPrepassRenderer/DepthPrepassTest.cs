@@ -15,6 +15,7 @@ using HelixToolkit.Nex.Rendering.RenderNodes;
 using HelixToolkit.Nex.Repository;
 using HelixToolkit.Nex.Scene;
 using HelixToolkit.Nex.Shaders.Frag;
+using SDL3;
 
 internal class DepthPrepassTest(IContext context) : IDisposable
 {
@@ -52,9 +53,7 @@ internal class DepthPrepassTest(IContext context) : IDisposable
         _renderer.AddNode(new DepthPassNode());
         _renderer.AddNode(new DebugDepthBufferNode());
         _renderer.AddNode(new FrustumCullNode());
-        var postEffectNode = new PostEffectsNode();
-        postEffectNode.AddEffect(new ToneMapping());
-        _renderer.AddNode(postEffectNode);
+        _renderer.AddNode(new RenderToFinalNode(_context.GetSwapchainFormat()));
         _renderer!.Initialize();
         _renderGraph = new RenderGraph(_serviceProvider);
         foreach (var node in _renderer.RenderNodes)

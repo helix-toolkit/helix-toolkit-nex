@@ -154,19 +154,6 @@ public sealed class RenderContext(IServiceProvider services) : Initializable
         Statistics.EndFrame();
     }
 
-    public void SwapColorPingPongBuffers()
-    {
-        if (ResourceSet is null)
-        {
-            throw new InvalidOperationException("Resource set is null.");
-        }
-        var temp = ResourceSet.Textures[SystemBufferNames.TextureColorF16Target];
-        ResourceSet.Textures[SystemBufferNames.TextureColorF16Target] = ResourceSet.Textures[
-            SystemBufferNames.TextureColorF16Sample
-        ];
-        ResourceSet.Textures[SystemBufferNames.TextureColorF16Sample] = temp;
-    }
-
     protected override ResultCode OnInitializing()
     {
         return ResultCode.Ok;

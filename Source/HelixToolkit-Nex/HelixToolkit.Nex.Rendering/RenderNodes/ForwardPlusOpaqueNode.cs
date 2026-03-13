@@ -99,7 +99,7 @@ public sealed class ForwardPlusOpaqueNode : RenderNode
                     new(SystemBufferNames.BufferLightGrid, ResourceType.Buffer),
                     new(SystemBufferNames.BufferLightIndex, ResourceType.Buffer),
                 ],
-                outputs: [new(SystemBufferNames.TextureColorF16Target, ResourceType.Texture)],
+                outputs: [new(SystemBufferNames.TextureColorF16A, ResourceType.Texture)],
                 onSetup: (res) =>
                 {
                     res.Framebuf.DepthStencil.Texture = res.Textures[
@@ -109,7 +109,7 @@ public sealed class ForwardPlusOpaqueNode : RenderNode
                     res.Pass.Depth.StoreOp = StoreOp.DontCare;
 
                     res.Framebuf.Colors[0].Texture = res.Textures[
-                        SystemBufferNames.TextureColorF16Target
+                        SystemBufferNames.TextureColorF16A
                     ];
                     res.Pass.Colors[0].LoadOp = LoadOp.Load;
                     res.Pass.Colors[0].StoreOp = StoreOp.Store;
