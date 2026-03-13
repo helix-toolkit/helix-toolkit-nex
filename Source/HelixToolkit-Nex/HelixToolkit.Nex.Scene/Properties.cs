@@ -1,33 +1,45 @@
 namespace HelixToolkit.Nex.Scene;
 
-public sealed class NodeInfo : ISortable<NodeInfo>
+public struct NodeInfo : ISortable<NodeInfo>
 {
-    public int Version = 1;
-    public Guid Id = Guid.NewGuid();
-    public string Name = string.Empty;
-    public Node? Node = null;
-    internal bool SelfEnabled = true;
-    internal bool ParentEnabled = true;
+    public int Version;
+    public readonly int EntityId;
+    public int Level { internal set; get; }
+    internal bool SelfEnabled;
+    internal bool ParentEnabled;
     public bool Enabled => SelfEnabled && ParentEnabled;
 
-    public int Level { internal set; get; } = 0;
-
-    public NodeInfo() { }
-
-    public NodeInfo(Node node)
+    public NodeInfo(int entityId = 0)
     {
-        Node = node;
+        Version = 1;
+        EntityId = entityId;
+        SelfEnabled = true;
+        ParentEnabled = true;
+        Level = 0;
     }
 
     public override string ToString()
     {
-        return $"NodeInfo: {Id}, Name: {Name}, Version: {Version}";
+        return $"NodeInfo: {EntityId}, Version: {Version}";
     }
 
     public bool Compare(ref NodeInfo obj)
     {
         return Level < obj.Level;
     }
+}
+
+/// <summary>
+/// Optional display name for a node. Stored in a separate component so that
+/// <see cref="NodeInfo"/> remains a fully blittable value type — sort swaps
+/// on the NodeInfo storage array incur no GC write barriers.
+/// </summary>
+public struct NodeName(string name)
+{
+    public string Value = name;
+
+    public NodeName()
+        : this(string.Empty) { }
 }
 
 public struct Transform()

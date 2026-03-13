@@ -101,37 +101,36 @@ public static class SceneSorting
 
     public static void UpdateTransforms(this World world)
     {
-        var infos = world.GetComponents<NodeInfo>();
+        // Iterate entities in NodeInfo component-storage order (sorted by Level after SortSceneNodes).
+        // Resolve each Entity → Node via the registry; no Node back-ref lives in the struct anymore.
         var level = 0;
-        foreach (var info in infos)
+        var nodes = world.GetComponents<NodeInfo>();
+        for (int i = 0; i < nodes.Count; ++i)
         {
-            var node = info.Node;
-            if (node == null)
+            ref var node = ref nodes[i];
+            var entity = world.GetEntity(node.EntityId);
+            if (!entity.Valid)
             {
                 continue;
             }
+            ref var transform = ref entity.Get<Transform>();
             Debug.Assert(level <= node.Level);
             level = node.Level;
-            ref var transform = ref node.Transform;
             if (transform.IsLocalDirty || transform.IsWorldDirty)
             {
-                if (!node.HasParent)
+                if (!entity.TryGet<Parent>(out var parent) || !parent.ParentEntity.Valid)
                 {
                     if (transform.UpdateWorldTransform(Matrix4x4.Identity, out var worldTransform))
                     {
-                        node.SetWorldTransform(new WorldTransform(worldTransform));
+                        entity.Set(new WorldTransform(worldTransform));
                     }
                 }
                 else
                 {
-                    if (
-                        transform.UpdateWorldTransform(
-                            node.Parent!.WorldTransform.Value,
-                            out var worldTransform
-                        )
-                    )
+                    ref var parentWorld = ref parent.ParentEntity.Get<WorldTransform>();
+                    if (transform.UpdateWorldTransform(parentWorld.Value, out var worldTransform))
                     {
-                        node.SetWorldTransform(new WorldTransform(worldTransform));
+                        entity.Set(new WorldTransform(worldTransform));
                     }
                 }
             }
