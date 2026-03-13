@@ -22,15 +22,27 @@ public class PrepareNode : RenderNode
                 dependsOnScreenSize: false
             )
             .AddTexture(
-                SystemBufferNames.TextureColorF16,
+                SystemBufferNames.TextureColorF16Target,
                 p =>
                     p.Context.Context.CreateTexture2D(
-                        Format.RGBA_F16,
+                        RenderSettings.IntermediateTargetFormat,
                         (uint)p.Context.WindowSize.Width,
                         (uint)p.Context.WindowSize.Height,
                         TextureUsageBits.Sampled | TextureUsageBits.Attachment,
                         StorageType.Device,
-                        debugName: SystemBufferNames.TextureColorF16
+                        debugName: "TexColorF16A"
+                    )
+            )
+            .AddTexture(
+                SystemBufferNames.TextureColorF16Sample,
+                p =>
+                    p.Context.Context.CreateTexture2D(
+                        RenderSettings.IntermediateTargetFormat,
+                        (uint)p.Context.WindowSize.Width,
+                        (uint)p.Context.WindowSize.Height,
+                        TextureUsageBits.Sampled | TextureUsageBits.Attachment,
+                        StorageType.Device,
+                        debugName: "TexColorF16B"
                     )
             )
             .AddTexture(
@@ -65,7 +77,8 @@ public class PrepareNode : RenderNode
                     new(SystemBufferNames.BufferForwardPlusConstants, ResourceType.Buffer),
                     new(SystemBufferNames.TextureDepthF32, ResourceType.Texture),
                     new(SystemBufferNames.TextureEntityId, ResourceType.Texture),
-                    new(SystemBufferNames.TextureColorF16, ResourceType.Texture),
+                    new(SystemBufferNames.TextureColorF16Target, ResourceType.Texture),
+                    new(SystemBufferNames.TextureColorF16Sample, ResourceType.Texture),
                 ],
                 res => { }
             );
@@ -74,7 +87,12 @@ public class PrepareNode : RenderNode
     protected override void OnRender(in RenderResources res)
     {
         res.CmdBuffer.ClearColorImage(
-            res.Textures[SystemBufferNames.TextureColorF16],
+            res.Textures[SystemBufferNames.TextureColorF16Target],
+            BackgroundColor,
+            new TextureLayers()
+        );
+        res.CmdBuffer.ClearColorImage(
+            res.Textures[SystemBufferNames.TextureColorF16Sample],
             BackgroundColor,
             new TextureLayers()
         );

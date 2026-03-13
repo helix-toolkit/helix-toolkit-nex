@@ -599,7 +599,7 @@ public class RenderGraphTests
                 ),
                 new RenderResource(SystemBufferNames.TextureDepthF32, ResourceType.Texture),
                 new RenderResource(SystemBufferNames.TextureEntityId, ResourceType.Texture),
-                new RenderResource(SystemBufferNames.TextureColorF16, ResourceType.Texture),
+                new RenderResource(SystemBufferNames.TextureColorF16Target, ResourceType.Texture),
             ]
         );
         AddPass(
@@ -637,12 +637,12 @@ public class RenderGraphTests
                 ),
                 new RenderResource(SystemBufferNames.BufferLightGrid, ResourceType.Buffer),
             ],
-            [new RenderResource(SystemBufferNames.TextureColorF16, ResourceType.Texture)]
+            [new RenderResource(SystemBufferNames.TextureColorF16Target, ResourceType.Texture)]
         );
         AddPass(
             graph,
             "ToneMap",
-            [new RenderResource(SystemBufferNames.TextureColorF16, ResourceType.Texture)],
+            [new RenderResource(SystemBufferNames.TextureColorF16Target, ResourceType.Texture)],
             [new RenderResource(SystemBufferNames.FinalOutputTexture, ResourceType.Texture)]
         );
 

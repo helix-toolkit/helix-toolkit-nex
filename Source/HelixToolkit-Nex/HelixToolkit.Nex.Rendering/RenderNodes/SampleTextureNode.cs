@@ -2,8 +2,39 @@ using HelixToolkit.Nex.Shaders.Frag;
 
 namespace HelixToolkit.Nex.Rendering.RenderNodes;
 
-public sealed class DebugDepthBufferNode(Format targetFormat = Format.RGBA_F16)
-    : SampleTextureNode(SampleTextureMode.DebugDepth, targetFormat)
+public sealed class RenderToFinalNode(Format outputFormat)
+    : SampleTextureNode(SampleTextureMode.SAMPLE_ONLY, outputFormat)
+{
+    public override string Name => nameof(DebugDepthBufferNode);
+    public override Color4 DebugColor => Color.Yellow;
+
+    protected override bool BeginRender(in RenderResources res)
+    {
+        MinValue = res.Context.CameraParams.NearPlane;
+        MaxValue = res.Context.CameraParams.FarPlane;
+        return base.BeginRender(in res);
+    }
+
+    public override void AddToGraph(RenderGraph graph)
+    {
+        graph.AddPass(
+            nameof(DebugDepthBufferNode),
+            inputs: [new(SystemBufferNames.TextureColorF16Sample, ResourceType.Texture)],
+            outputs: [new(SystemBufferNames.FinalOutputTexture, ResourceType.Texture)],
+            onSetup: (res) =>
+            {
+                res.Framebuf.Colors[0].Texture = res.Textures[SystemBufferNames.FinalOutputTexture];
+                res.Pass.Colors[0].ClearColor = Color.Transparent;
+                res.Pass.Colors[0].LoadOp = LoadOp.Load;
+                res.Pass.Colors[0].StoreOp = StoreOp.Store;
+                res.Deps.Textures[0] = res.Textures[SystemBufferNames.TextureColorF16Sample];
+            }
+        );
+    }
+}
+
+public sealed class DebugDepthBufferNode()
+    : SampleTextureNode(SampleTextureMode.DebugDepth, RenderSettings.IntermediateTargetFormat)
 {
     public override string Name => nameof(DebugDepthBufferNode);
     public override Color4 DebugColor => Color.Red;
@@ -20,10 +51,12 @@ public sealed class DebugDepthBufferNode(Format targetFormat = Format.RGBA_F16)
         graph.AddPass(
             nameof(DebugDepthBufferNode),
             inputs: [new(SystemBufferNames.TextureDepthF32, ResourceType.Texture)],
-            outputs: [new(SystemBufferNames.TextureColorF16, ResourceType.Texture)],
+            outputs: [new(SystemBufferNames.TextureColorF16Target, ResourceType.Texture)],
             onSetup: (res) =>
             {
-                res.Framebuf.Colors[0].Texture = res.Textures[SystemBufferNames.TextureColorF16];
+                res.Framebuf.Colors[0].Texture = res.Textures[
+                    SystemBufferNames.TextureColorF16Target
+                ];
                 res.Pass.Colors[0].ClearColor = Color.Coral;
                 res.Pass.Colors[0].LoadOp = LoadOp.Clear;
                 res.Pass.Colors[0].StoreOp = StoreOp.Store;
@@ -33,8 +66,8 @@ public sealed class DebugDepthBufferNode(Format targetFormat = Format.RGBA_F16)
     }
 }
 
-public sealed class DebugMeshIdNode(Format targetFormat = Format.RGBA_F16)
-    : SampleTextureNode(SampleTextureMode.DebugMeshId, targetFormat)
+public sealed class DebugMeshIdNode()
+    : SampleTextureNode(SampleTextureMode.DebugMeshId, RenderSettings.IntermediateTargetFormat)
 {
     public override string Name => nameof(DebugDepthBufferNode);
     public override Color4 DebugColor => Color.Red;
@@ -44,10 +77,12 @@ public sealed class DebugMeshIdNode(Format targetFormat = Format.RGBA_F16)
         graph.AddPass(
             nameof(DebugMeshIdNode),
             inputs: [new(SystemBufferNames.TextureEntityId, ResourceType.Texture)],
-            outputs: [new(SystemBufferNames.TextureColorF16, ResourceType.Texture)],
+            outputs: [new(SystemBufferNames.TextureColorF16Target, ResourceType.Texture)],
             onSetup: (res) =>
             {
-                res.Framebuf.Colors[0].Texture = res.Textures[SystemBufferNames.TextureColorF16];
+                res.Framebuf.Colors[0].Texture = res.Textures[
+                    SystemBufferNames.TextureColorF16Target
+                ];
                 res.Pass.Colors[0].ClearColor = Color.Black;
                 res.Pass.Colors[0].LoadOp = LoadOp.Clear;
                 res.Pass.Colors[0].StoreOp = StoreOp.Store;
@@ -59,6 +94,7 @@ public sealed class DebugMeshIdNode(Format targetFormat = Format.RGBA_F16)
 
 public abstract class SampleTextureNode(SampleTextureMode mode, Format targetFormat) : RenderNode
 {
+    private static readonly ILogger _logger = LogManager.Create<SampleTextureNode>();
     private readonly SampleTextureMode _mode = mode;
     private readonly Format _targetFormat = targetFormat;
     private RenderPipelineResource _pipeline = RenderPipelineResource.Null;
@@ -98,6 +134,11 @@ public abstract class SampleTextureNode(SampleTextureMode mode, Format targetFor
         {
             return false;
         }
+        _logger.LogInformation(
+            "Creating pipeline for {Mode} with target format {Format}",
+            _mode,
+            _targetFormat
+        );
         var shaderCompiler = new ShaderCompiler();
         var result = shaderCompiler.CompileVertexShader(
             GlslUtils.GetEmbeddedGlslShader("Vert.vsFullScreenQuad")

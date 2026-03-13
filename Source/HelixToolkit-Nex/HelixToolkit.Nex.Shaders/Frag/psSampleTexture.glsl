@@ -1,8 +1,9 @@
 #include "HxHeaders/HeaderFrag.glsl"
 
 // Fragment shader to sample texture.
-#define DEBUG_MESH_ID 0
-#define DEBUG_DEPTH 1
+#define SAMPLE_ONLY 0
+#define DEBUG_MESH_ID 1
+#define DEBUG_DEPTH 2
 
 layout(location = 0) in vec2 inTexCoord;
 layout(location = 0) out vec4 outColor;
@@ -23,6 +24,9 @@ layout(push_constant) uniform PushConstants {
 
 
 void main() {
+    if (SAMPLE_MODE == SAMPLE_ONLY) {
+        outColor = textureBindless2D(pc.value.textureId, pc.value.samplerId, inTexCoord);
+    }
     if (SAMPLE_MODE == DEBUG_MESH_ID) {
         vec2 entity = textureBindless2D(pc.value.textureId, pc.value.samplerId, inTexCoord).rg;
         // Convert uint to RGB color representation

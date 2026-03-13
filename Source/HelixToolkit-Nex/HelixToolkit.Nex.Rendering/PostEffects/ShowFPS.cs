@@ -2,38 +2,29 @@ using HelixToolkit.Nex.Rendering.RenderNodes;
 
 namespace HelixToolkit.Nex.Rendering.PostEffects;
 
-public sealed class ToneMapping : PostEffect
+public sealed class ShowFPS : PostEffect
 {
-    private static readonly ILogger _logger = LogManager.Create<ToneMapping>();
-    private RenderPipelineResource _toneGammaPipeline = RenderPipelineResource.Null;
-    private SamplerResource _toneMappingSampler = SamplerResource.Null;
+    private static readonly ILogger _logger = LogManager.Create<ShowFPS>();
+    private RenderPipelineResource _pipeline = RenderPipelineResource.Null;
 
-    public override string Name => nameof(ToneMapping);
+    public override string Name => nameof(ShowFPS);
+    public override Color DebugColor => Color.SandyBrown;
 
-    public ToneMappingMode Mode { set; get; } = ToneMappingMode.ACESFilm;
-
-    public override Color DebugColor => Color.Aquamarine;
+    public float Scale = 0.05f;
 
     public override void Apply(in RenderResources res)
     {
-        Debug.Assert(_toneGammaPipeline.Valid, "Tone mapping pipeline is not valid.");
+        Debug.Assert(_pipeline.Valid, "Tone mapping pipeline is not valid.");
         var cmdBuffer = res.CmdBuffer;
-        res.Context.SwapColorPingPongBuffers();
         res.Deps.Textures[0] = res.Textures[SystemBufferNames.TextureColorF16Sample];
         res.Framebuf.Colors[0].Texture = res.Textures[SystemBufferNames.TextureColorF16Target];
         cmdBuffer.BeginRendering(res.Pass, res.Framebuf, res.Deps);
-        cmdBuffer.BindRenderPipeline(_toneGammaPipeline);
+        cmdBuffer.BindRenderPipeline(_pipeline);
         cmdBuffer.BindDepthState(DepthState.Disabled);
-        cmdBuffer.PushConstants(
-            new ToneGammaPushConstants()
-            {
-                Enabled = 1,
-                Exposure = 1f,
-                HdrTextureId = res.Textures[SystemBufferNames.TextureColorF16Sample].Index,
-                SamplerId = _toneMappingSampler.Index,
-                TonemapMode = (uint)Mode,
-            }
-        );
+        var width = res.Context.WindowSize.Width * Scale;
+        var height = res.Context.WindowSize.Height * Scale;
+        cmdBuffer.BindViewport(new ViewportF(0, 0, width, height));
+        cmdBuffer.PushConstants((int)res.Context.Statistics.FramesPerSecond);
         cmdBuffer.Draw(3); // Full-screen triangle
         cmdBuffer.EndRendering();
     }
@@ -45,24 +36,17 @@ public sealed class ToneMapping : PostEffect
             _logger.LogError("Render context is null during tone mapping initialization.");
             return ResultCode.InvalidState;
         }
-        CreateToneMappingPipeline();
-        var samplerDesc = SamplerStateDesc.PointRepeat;
-        _toneMappingSampler = Context.CreateSampler(samplerDesc);
-        if (!_toneMappingSampler.Valid || !_toneGammaPipeline.Valid)
-        {
-            return ResultCode.RuntimeError;
-        }
+        CreatePipeline();
         return ResultCode.Ok;
     }
 
     protected override ResultCode OnTearingDown()
     {
-        _toneGammaPipeline.Dispose();
-        _toneMappingSampler.Dispose();
+        _pipeline.Dispose();
         return ResultCode.Ok;
     }
 
-    private ResultCode CreateToneMappingPipeline()
+    private ResultCode CreatePipeline()
     {
         if (Context is null)
         {
@@ -71,17 +55,14 @@ public sealed class ToneMapping : PostEffect
         }
         var pipelineDesc = new RenderPipelineDesc
         {
-            DebugName = "ToneMapping",
+            DebugName = "FPS",
             CullMode = CullMode.Back,
             FrontFaceWinding = WindingMode.CCW,
         };
         var shaderCompiler = new ShaderCompiler();
-        pipelineDesc.Colors[0] = ColorAttachment.CreateOpaque(
-            RenderSettings.IntermediateTargetFormat
-        );
 
         var toneGammaShader = shaderCompiler.CompileFragmentShader(
-            GlslUtils.GetEmbeddedGlslShader("Frag/psToneGamma.glsl")
+            GlslUtils.GetEmbeddedGlslShader("Frag/psFPS.glsl")
         );
         if (!toneGammaShader.Success || toneGammaShader.Source == null)
         {
@@ -94,7 +75,7 @@ public sealed class ToneMapping : PostEffect
         using var fragmentShader = Context.CreateShaderModuleGlsl(
             toneGammaShader.Source,
             ShaderStage.Fragment,
-            "ToneMapping_Fragment"
+            "FPS_Fragment"
         );
 
         var vsQuad = shaderCompiler.CompileVertexShader(
@@ -116,8 +97,11 @@ public sealed class ToneMapping : PostEffect
         );
         pipelineDesc.VertexShader = vertexShader;
         pipelineDesc.FragmentShader = fragmentShader;
-        _toneGammaPipeline = Context.CreateRenderPipeline(pipelineDesc);
-        Debug.Assert(_toneGammaPipeline.Valid);
+        pipelineDesc.Colors[0] = ColorAttachment.CreateAlphaBlend(
+            RenderSettings.IntermediateTargetFormat
+        );
+        _pipeline = Context.CreateRenderPipeline(pipelineDesc);
+        Debug.Assert(_pipeline.Valid);
         return ResultCode.Ok;
     }
 }
