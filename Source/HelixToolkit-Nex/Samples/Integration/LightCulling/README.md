@@ -4,4 +4,4 @@
 - Render graph based rendering architecture
 - ECS based scene management system
 - 
-![Image](Screenshots/LightCulling.jpg)
+![Image](Screenshots/LargeScene.gif)
