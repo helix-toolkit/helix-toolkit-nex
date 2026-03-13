@@ -599,7 +599,7 @@ public class RenderGraphTests
                 ),
                 new RenderResource(SystemBufferNames.TextureDepthF32, ResourceType.Texture),
                 new RenderResource(SystemBufferNames.TextureEntityId, ResourceType.Texture),
-                new RenderResource(SystemBufferNames.TextureColorF16Target, ResourceType.Texture),
+                new RenderResource(SystemBufferNames.TextureColorF16A, ResourceType.Texture),
             ]
         );
         AddPass(
@@ -637,12 +637,12 @@ public class RenderGraphTests
                 ),
                 new RenderResource(SystemBufferNames.BufferLightGrid, ResourceType.Buffer),
             ],
-            [new RenderResource(SystemBufferNames.TextureColorF16Target, ResourceType.Texture)]
+            [new RenderResource(SystemBufferNames.TextureColorF16A, ResourceType.Texture)]
         );
         AddPass(
             graph,
             "ToneMap",
-            [new RenderResource(SystemBufferNames.TextureColorF16Target, ResourceType.Texture)],
+            [new RenderResource(SystemBufferNames.TextureColorF16A, ResourceType.Texture)],
             [new RenderResource(SystemBufferNames.FinalOutputTexture, ResourceType.Texture)]
         );
 
@@ -772,5 +772,111 @@ public class RenderGraphTests
 
         Assert.AreEqual(2, names.Count);
         Assert.IsTrue(Precedes(names, "Stage1", "Stage2"));
+    }
+
+    // -----------------------------------------------------------------------
+    // Explicit ordering via 'after' parameter
+    // -----------------------------------------------------------------------
+
+    [TestMethod]
+    [TestCategory("RenderGraph")]
+    public void Compile_ExplicitAfter_EnforcesOrderWithNoSharedResource()
+    {
+        // PassB has no resource dependency on PassA, but declares after: ["PassA"].
+        var graph = new RenderGraph(BuildServices());
+        AddPass(graph, "PassA", [], []);
+        graph.AddPass("PassB", [], [], _ => { }, after: ["PassA"]);
+
+        var names = GetSortedPassNames(graph);
+
+        Assert.AreEqual(2, names.Count);
+        Assert.IsTrue(Precedes(names, "PassA", "PassB"), "PassA must precede PassB via 'after'");
+    }
+
+    [TestMethod]
+    [TestCategory("RenderGraph")]
+    public void Compile_ExplicitAfter_MultiplePassesWithSamePingPongResource_CorrectOrder()
+    {
+        // Three passes all read TextureColorF16Target and write TextureColorF16Sample
+        // (or vice versa). Without 'after', the sort order between them is undefined.
+        // With 'after', the declared chain A -> B -> C is enforced.
+        var graph = new RenderGraph(BuildServices());
+        AddPass(graph, "Producer", [], [new RenderResource("TexColor", ResourceType.Texture)]);
+        graph.AddPass(
+            "EffectA",
+            [new RenderResource("TexColor", ResourceType.Texture)],
+            [new RenderResource("TexPing", ResourceType.Texture)],
+            _ => { }
+        );
+        graph.AddPass(
+            "EffectB",
+            [new RenderResource("TexColor", ResourceType.Texture)],
+            [new RenderResource("TexPing", ResourceType.Texture)],
+            _ => { },
+            after: ["EffectA"]
+        );
+        graph.AddPass(
+            "EffectC",
+            [new RenderResource("TexColor", ResourceType.Texture)],
+            [new RenderResource("TexPing", ResourceType.Texture)],
+            _ => { },
+            after: ["EffectB"]
+        );
+
+        var names = GetSortedPassNames(graph);
+
+        Assert.AreEqual(4, names.Count);
+        Assert.IsTrue(Precedes(names, "Producer", "EffectA"), "Producer -> EffectA");
+        Assert.IsTrue(Precedes(names, "EffectA", "EffectB"), "EffectA -> EffectB via 'after'");
+        Assert.IsTrue(Precedes(names, "EffectB", "EffectC"), "EffectB -> EffectC via 'after'");
+    }
+
+    [TestMethod]
+    [TestCategory("RenderGraph")]
+    public void Compile_ExplicitAfter_RedundantWithResourceEdge_NoDuplicateInDegree()
+    {
+        // PassB already depends on PassA via a resource edge AND declares after: ["PassA"].
+        // The dedup set must prevent double-counting the in-degree.
+        var graph = new RenderGraph(BuildServices());
+        AddPass(graph, "PassA", [], [new RenderResource("TexA", ResourceType.Texture)]);
+        graph.AddPass(
+            "PassB",
+            [new RenderResource("TexA", ResourceType.Texture)],
+            [],
+            _ => { },
+            after: ["PassA"]
+        );
+
+        var names = GetSortedPassNames(graph);
+
+        Assert.AreEqual(2, names.Count);
+        Assert.IsTrue(Precedes(names, "PassA", "PassB"));
+    }
+
+    [TestMethod]
+    [TestCategory("RenderGraph")]
+    public void Compile_ExplicitAfter_UnknownPassName_DoesNotThrow_GraphStillCompiles()
+    {
+        // Referencing a non-existent pass in 'after' should log a warning and be ignored.
+        var graph = new RenderGraph(BuildServices());
+        graph.AddPass("PassA", [], [], _ => { }, after: ["NonExistentPass"]);
+
+        var names = GetSortedPassNames(graph);
+
+        Assert.AreEqual(1, names.Count);
+        Assert.AreEqual("PassA", names[0]);
+    }
+
+    [TestMethod]
+    [TestCategory("RenderGraph")]
+    [ExpectedException(typeof(InvalidOperationException))]
+    public void Compile_ExplicitAfter_CreatesCycle_ThrowsInvalidOperationException()
+    {
+        // PassA after PassB, PassB after PassA — explicit cycle.
+        var graph = new RenderGraph(BuildServices());
+        graph.AddPass("PassA", [], [], _ => { }, after: ["PassB"]);
+        graph.AddPass("PassB", [], [], _ => { }, after: ["PassA"]);
+
+        graph.Compile(); // must throw
     }
 }

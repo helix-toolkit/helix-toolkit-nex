@@ -12,12 +12,13 @@ public sealed class ShowFPS : PostEffect
 
     public float Scale = 0.05f;
 
-    public override void Apply(in RenderResources res)
+    public override void Apply(in RenderResources res, ref string readSlot, ref string writeSlot)
     {
         Debug.Assert(_pipeline.Valid, "Tone mapping pipeline is not valid.");
         var cmdBuffer = res.CmdBuffer;
-        res.Deps.Textures[0] = res.Textures[SystemBufferNames.TextureColorF16Sample];
-        res.Framebuf.Colors[0].Texture = res.Textures[SystemBufferNames.TextureColorF16Target];
+        (readSlot, writeSlot) = (writeSlot, readSlot); // Manually swap so FPS writes onto the correct texture.
+        res.Deps.Textures[0] = res.Textures[writeSlot];
+        res.Framebuf.Colors[0].Texture = res.Textures[writeSlot];
         cmdBuffer.BeginRendering(res.Pass, res.Framebuf, res.Deps);
         cmdBuffer.BindRenderPipeline(_pipeline);
         cmdBuffer.BindDepthState(DepthState.Disabled);
