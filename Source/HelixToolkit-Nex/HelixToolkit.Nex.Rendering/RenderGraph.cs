@@ -29,6 +29,7 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
     private readonly Dictionary<string, GraphNode> _passes = [];
     private readonly Dictionary<string, List<GraphNode>> _resourceProducers = [];
     private readonly List<GraphNode> _sortedPasses = [];
+    private bool _resourceDirty = true;
 
     public IReadOnlyList<GraphNode> SortedPasses => _sortedPasses;
 
@@ -243,6 +244,7 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
         }
 
         IsDirty = false;
+        _resourceDirty = true;
     }
 
     public void Execute(
@@ -261,12 +263,16 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
         if (wasDirty)
         {
             Compile();
+        }
+        if (_resourceDirty)
+        {
             ApplyRegistrations(resourceSet);
         }
 
         resourceSet.EnsureResources(context, wasDirty);
 
-        SetupResourcesForPass(context, cmdBuf, resourceSet);
+        resourceSet.SetupSystemResources(context);
+
         foreach (var pass in _sortedPasses)
         {
             if (!nodes.TryGetValue(pass.PassName, out var node))
@@ -281,7 +287,7 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
             {
                 continue;
             }
-
+            SetupResourcesForPass(context, cmdBuf, resourceSet, pass);
             node.Render(
                 new RenderResources(
                     context,
@@ -338,28 +344,26 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
         {
             resourceSet.AddBuffer(kvp.Key, kvp.Value.BuildFunc, kvp.Value.DependsOnScreenSize);
         }
+        _resourceDirty = false;
     }
 
     private void SetupResourcesForPass(
         RenderContext context,
         ICommandBuffer cmdBuf,
-        RenderGraphResourceSet resourceSet
+        RenderGraphResourceSet resourceSet,
+        GraphNode pass
     )
     {
-        resourceSet.SetupSystemResources(context);
-        foreach (var pass in _sortedPasses)
-        {
-            pass.OnSetupRenderParams(
-                new RenderResources(
-                    context,
-                    cmdBuf,
-                    pass.Pass,
-                    pass.Framebuffer,
-                    pass.Dependencies,
-                    resourceSet.Textures,
-                    resourceSet.Buffers
-                )
-            );
-        }
+        pass.OnSetupRenderParams(
+            new RenderResources(
+                context,
+                cmdBuf,
+                pass.Pass,
+                pass.Framebuffer,
+                pass.Dependencies,
+                resourceSet.Textures,
+                resourceSet.Buffers
+            )
+        );
     }
 }

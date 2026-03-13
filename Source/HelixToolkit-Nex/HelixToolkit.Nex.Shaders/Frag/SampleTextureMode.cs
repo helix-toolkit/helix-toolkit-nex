@@ -2,6 +2,7 @@ namespace HelixToolkit.Nex.Shaders.Frag;
 
 public enum SampleTextureMode : uint
 {
-    DebugMeshId = 0,
-    DebugDepth = 1,
+    SAMPLE_ONLY = 0,
+    DebugMeshId = 1,
+    DebugDepth = 2,
 }

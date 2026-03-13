@@ -12,6 +12,7 @@ using HelixToolkit.Nex.Repository;
 using HelixToolkit.Nex.Scene;
 using HelixToolkit.Nex.Shaders.Frag;
 using SceneSamples;
+using Vortice.SPIRV;
 
 internal class LightCullingTest(IContext context, bool largeScene = true) : IDisposable
 {
@@ -61,13 +62,16 @@ internal class LightCullingTest(IContext context, bool largeScene = true) : IDis
         _renderer.AddNode(new ForwardPlusLightCullingNode());
         var postEffectNode = new PostEffectsNode();
         postEffectNode.AddEffect(new ToneMapping());
+        postEffectNode.AddEffect(new ShowFPS());
         _renderer.AddNode(postEffectNode);
+        _renderer.AddNode(new RenderToFinalNode(_context.GetSwapchainFormat()));
         _renderer!.Initialize();
         _renderGraph = new RenderGraph(_serviceProvider);
         foreach (var node in _renderer.RenderNodes)
         {
             node.AddToGraph(_renderGraph);
         }
+        _renderGraph.Compile();
         _renderContext = new RenderContext(_serviceProvider);
         _renderContext.ResourceSet = new RenderGraphResourceSet();
         _worldDataProvider = new WorldDataProvider(_serviceProvider);
