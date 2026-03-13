@@ -24,7 +24,7 @@ Currently in development.
 
 ## Rendering Samples
 
-![Image](Source/HelixToolkit-Nex/Samples/Integration/LightCulling/Screenshots/LightCulling.jpg)
+![Image](Source/HelixToolkit-Nex/Samples/Integration/LightCulling/Screenshots/LargeScene.gif)
 
 ## Contributing
 
