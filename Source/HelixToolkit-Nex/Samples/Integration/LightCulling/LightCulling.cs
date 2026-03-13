@@ -34,6 +34,12 @@ internal class LightCullingTest(IContext context, bool largeScene = true) : IDis
     private long _lastTimestamp = 0;
     private RenderGraph? _renderGraph;
 
+    // Flight parameters
+    private const float FlyHeight = 30f;        // height above terrain base
+    private const float FlySpeed = 0.08f;       // radians/sec for the lemniscate parameter
+    private const float FlyRadius = 80f;        // half-width of the figure-eight
+    private const float PitchDown = -0.18f;     // constant nose-down pitch (radians)
+
     public void Initialize(int width, int height)
     {
         _camera = new PerspectiveCamera()
@@ -102,16 +108,43 @@ internal class LightCullingTest(IContext context, bool largeScene = true) : IDis
 
     private void RotateCamera()
     {
-        float zoom = 0.8f;
-        var totalTime = (float)(
+        var worldCenter = new Vector3(_scene.WorldSizeX / 2f, 0f, _scene.WorldSizeZ / 2f);
+
+        float t = (float)(
             (Stopwatch.GetTimestamp() - _startTimestamp) / (double)Stopwatch.Frequency
+        ) * FlySpeed;
+
+        // Lemniscate of Bernoulli in the XZ plane, centred on the world
+        // x(t) = R·cos(t) / (1 + sin²(t))
+        // z(t) = R·sin(t)·cos(t) / (1 + sin²(t))
+        float sinT = MathF.Sin(t);
+        float cosT = MathF.Cos(t);
+        float denom = 1f + sinT * sinT;
+        float lx = FlyRadius * cosT / denom;
+        float lz = FlyRadius * sinT * cosT / denom;
+
+        // Analytical derivative for look-ahead direction
+        float denom2 = denom * denom;
+        float dlx = (-FlyRadius * sinT * denom - FlyRadius * cosT * 2f * sinT * cosT) / denom2;
+        float dlz = (FlyRadius * (cosT * cosT - sinT * sinT) * denom
+                     - FlyRadius * sinT * cosT * 2f * sinT * cosT) / denom2;
+
+        _camera.Position = worldCenter + new Vector3(lx, FlyHeight, lz);
+
+        // Horizontal forward direction from path tangent
+        var forward = new Vector3(dlx, 0f, dlz);
+        if (forward.LengthSquared() < 1e-6f)
+            forward = Vector3.UnitX;
+        forward = Vector3.Normalize(forward);
+
+        // Apply a fixed nose-down pitch and aim the target ahead
+        var pitchedForward = Vector3.Normalize(
+            forward + new Vector3(0f, MathF.Sin(PitchDown), 0f)
         );
-        var worldCenter = new Vector3(_scene.WorldSizeX / 2f, 0, _scene.WorldSizeZ / 2f);
-        var rotation = Matrix4x4.CreateRotationY(totalTime * 0.05f);
-        _camera.Position =
-            Vector3.Transform(_initialCameraPosition - worldCenter, rotation) + worldCenter;
-        _camera.Target = worldCenter + new Vector3(0, _scene.MaxTerrainHeight / 2f, 0);
-        _camera.Position = Vector3.Lerp(_camera.Position, worldCenter, zoom);
+        _camera.Target = _camera.Position + pitchedForward * 10f;
+
+        // Keep up vector locked to world Y — no banking
+        _camera.Up = Vector3.UnitY;
     }
 
     private bool _disposedValue;
