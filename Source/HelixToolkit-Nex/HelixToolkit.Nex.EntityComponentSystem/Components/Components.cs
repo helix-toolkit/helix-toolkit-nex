@@ -66,13 +66,57 @@ public readonly ref struct Components<T>
         return _storage.GetHashCode();
     }
 
-    public IEnumerator<T> GetEnumerator()
+    public MappingEnumerator GetEnumerator()
     {
-        return _storage.GetEnumerator();
+        return new MappingEnumerator(_mapping, _storage);
     }
 
     public T[] GetInternalArray()
     {
         return _storage.GetInternalArray();
+    }
+
+    /// <summary>
+    /// Enumerates components in storage using the mapping's ComponentIndex,
+    /// skipping invalid (unassigned) mapping entries.
+    /// </summary>
+    public struct MappingEnumerator
+    {
+        private readonly FastList<ComponentManager<T>.ComponentMappingKey> _mapping;
+        private readonly FastList<T> _storage;
+        private int _index;
+
+        internal MappingEnumerator(
+            FastList<ComponentManager<T>.ComponentMappingKey> mapping,
+            FastList<T> storage
+        )
+        {
+            _mapping = mapping;
+            _storage = storage;
+            _index = -1;
+        }
+
+        public ref T Current
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => ref _storage.GetInternalArray()[_mapping.GetInternalArray()[_index].ComponentIndex];
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool MoveNext()
+        {
+            var mappingArray = _mapping.GetInternalArray();
+            var mappingCount = _mapping.Count;
+            var storageCount = _storage.Count;
+            while (++_index < mappingCount)
+            {
+                ref var key = ref mappingArray[_index];
+                if (key.Valid && key.ComponentIndex >= 0 && key.ComponentIndex < storageCount)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
     }
 }

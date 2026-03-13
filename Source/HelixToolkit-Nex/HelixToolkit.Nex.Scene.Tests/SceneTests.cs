@@ -101,8 +101,8 @@ public sealed class SceneTests
         Assert.IsTrue(root.Children is not null && root.Children.Count == 2);
         Assert.IsTrue(child1.Children is not null && child1.Children.Count == 1);
         Assert.IsTrue(child2.Children is not null && child2.Children.Count == 1);
-        Assert.IsTrue(grandChild1.Children is not null && grandChild1.Children.Count == 0);
-        Assert.IsTrue(grandChild2.Children is not null && grandChild2.Children.Count == 0);
+        Assert.IsTrue(grandChild1.Children is null);
+        Assert.IsTrue(grandChild2.Children is null);
 
         root.Dispose();
         Assert.IsFalse(

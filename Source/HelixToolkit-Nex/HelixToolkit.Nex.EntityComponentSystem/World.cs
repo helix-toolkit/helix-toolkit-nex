@@ -511,6 +511,24 @@ public sealed class World : IEnumerable<Entity>, IDisposable
     }
     #endregion
 
+    /// <summary>
+    /// Enumerates all entities that have a component of type <typeparamref name="T"/>,
+    /// in the same storage order as <see cref="GetComponents{T}"/>.
+    /// </summary>
+    public IEnumerable<Entity> GetComponentEntities<T>()
+    {
+        var manager = GetComponentManager<T>();
+        if (manager == null)
+        {
+            yield break;
+        }
+        foreach (var entity in manager.GetEntities())
+        {
+            if (entity.Valid)
+                yield return entity;
+        }
+    }
+
     #region Event Handling
     private void RegisterEvents()
     {

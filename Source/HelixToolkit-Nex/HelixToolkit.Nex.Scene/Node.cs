@@ -1,7 +1,76 @@
+using System.Collections.Concurrent;
+
 namespace HelixToolkit.Nex.Scene;
 
 public class Node : IDisposable
 {
+    // Registry design rationale:
+    //
+    // The ECS (World, ComponentManager) is single-threaded per world — none of
+    // its hot-path accessors (HasEntity, Get<T>, etc.) use locks. Building nodes
+    // across multiple worlds from different threads is therefore safe as long as
+    // each world is only accessed from one thread at a time, which matches the
+    // ECS contract.
+    //
+    // A single global ConcurrentDictionary keyed by (worldId, entityId) would:
+    //   - Pay a memory fence on every FindNode call (hot path: Parent getter,
+    //     HasParent, UpdateTransforms)
+    //   - Provide false safety — the surrounding ECS operations are not
+    //     concurrent-safe anyway
+    //
+    // Instead we use a two-level structure:
+    //   outer: static Dictionary<byte, Dictionary<int, Node>>
+    //            worldId → per-world registry
+    //   inner: plain Dictionary<int, Node>  (entityId → Node)
+    //
+    // The outer dictionary is only mutated when a world's first/last node is
+    // registered (rare). A lightweight lock guards only that mutation.
+    // The inner dictionary is accessed exclusively on the owning world's thread,
+    // so it needs no synchronization at all.
+
+    private static readonly Dictionary<byte, Dictionary<int, Node>> _worldRegistries = [];
+    private static readonly object _registryLock = new();
+
+    private static Dictionary<int, Node> GetOrCreateWorldRegistry(byte worldId)
+    {
+        // Fast path — world registry already exists (no lock needed for read
+        // because world creation itself is serialized by World.CreateWorld).
+        if (_worldRegistries.TryGetValue(worldId, out var registry))
+        {
+            return registry;
+        }
+        lock (_registryLock)
+        {
+            if (!_worldRegistries.TryGetValue(worldId, out registry))
+            {
+                registry = new Dictionary<int, Node>();
+                _worldRegistries[worldId] = registry;
+            }
+            return registry;
+        }
+    }
+
+    private static void RemoveWorldRegistry(byte worldId)
+    {
+        lock (_registryLock)
+        {
+            _worldRegistries.Remove(worldId);
+        }
+    }
+
+    // Called only from within this world's thread — no lock required.
+    internal static Node? FindNode(byte worldId, int entityId)
+    {
+        if (_worldRegistries.TryGetValue(worldId, out var registry))
+        {
+            registry.TryGetValue(entityId, out var node);
+            return node;
+        }
+        return null;
+    }
+
+    // -------------------------------------------------------------------------
+
     public World World { get; }
     public Entity Entity { private set; get; }
 
@@ -9,47 +78,59 @@ public class Node : IDisposable
 
     public string Name
     {
-        get => Info.Name;
-        set => Entity.Get<NodeInfo>().Name = value;
+        get => Entity.TryGet<NodeName>(out var nodeName) ? nodeName.Value : string.Empty;
+        set
+        {
+            if (Entity.Has<NodeName>())
+            {
+                ref var nodeName = ref Entity.Get<NodeName>();
+                nodeName.Value = value;
+            }
+            else
+            {
+                Entity.Set(new NodeName(value));
+            }
+        }
     }
-
-    public Guid Id => Info.Id;
 
     public Node? Parent
     {
         get
         {
-            var entity = Entity.Get<Parent>().ParentEntity;
-            return entity.Valid ? entity.Get<NodeInfo>().Node : null;
+            var parentEntity = Entity.Get<Parent>().ParentEntity;
+            return parentEntity.Valid ? FindNode(World.Id, parentEntity.Id) : null;
         }
         private set
         {
-            if (value == Parent)
+            var currentParent = Parent;
+            if (value == currentParent)
             {
                 return;
             }
+
             if (value is null)
             {
                 Entity.Set(new Parent(Entity.Null));
                 Debug.Assert(!HasParent);
-                if (Info.Level == 0)
+                ref var info = ref Entity.Get<NodeInfo>();
+                if (info.Level == 0)
                 {
-                    return; // No change in level
+                    return;
                 }
-                Info.Level = 0;
-                ParentEnabled = true; // Reset parent enabled state when detaching from parent
+                info.Level = 0;
+                ParentEnabled = true;
             }
             else
             {
                 Entity.Set(new Parent(value.Entity));
                 Debug.Assert(HasParent);
                 ref var info = ref Entity.Get<NodeInfo>();
-                if (Info.Level == value.Info.Level + 1)
+                if (info.Level == value.Info.Level + 1)
                 {
-                    return; // No change in level
+                    return;
                 }
-                Info.Level = value.Info.Level + 1;
-                ParentEnabled = value.Enabled; // Inherit enabled state from new parent
+                info.Level = value.Info.Level + 1;
+                ParentEnabled = value.Enabled;
             }
             Entity.Get<Transform>().MarkWorldDirty();
             NotifySceneChanged();
@@ -57,7 +138,14 @@ public class Node : IDisposable
         }
     }
 
-    public bool HasParent => Parent != null;
+    public bool HasParent
+    {
+        get
+        {
+            var parentEntity = Entity.Get<Parent>().ParentEntity;
+            return parentEntity.Valid;
+        }
+    }
 
     public IReadOnlyList<Node>? Children
     {
@@ -66,13 +154,16 @@ public class Node : IDisposable
 
     public int ChildCount => Children?.Count ?? 0;
 
-    public bool HasChildren => Children != null && Children.Count != 0;
+    public bool HasChildren
+    {
+        get { return Entity.TryGet<Children>(out var children) && children.ChildNodes.Count != 0; }
+    }
 
     public bool Alive => World.HasEntity(Entity);
 
-    public bool IsRoot => Info.Level == 0;
+    public bool IsRoot => Entity.Get<NodeInfo>().Level == 0;
 
-    public int Level => Info.Level;
+    public int Level => Entity.Get<NodeInfo>().Level;
 
     public bool Enabled
     {
@@ -90,11 +181,10 @@ public class Node : IDisposable
             }
             info.SelfEnabled = value;
             NotifySceneChanged();
-            if (!HasChildren)
+            if (!Entity.TryGet<Children>(out var children) || children.ChildNodes.Count == 0)
             {
                 return;
             }
-            ref var children = ref Entity.Get<Children>();
             foreach (var child in children.ChildNodes)
             {
                 child.ParentEnabled = value;
@@ -112,10 +202,9 @@ public class Node : IDisposable
             {
                 return;
             }
-            Entity.Get<NodeInfo>().ParentEnabled = value;
-            if (info.SelfEnabled && HasChildren)
+            info.ParentEnabled = value;
+            if (Entity.TryGet<Children>(out var children) && children.ChildNodes.Count != 0)
             {
-                ref var children = ref Entity.Get<Children>();
                 foreach (var child in children.ChildNodes)
                 {
                     child.ParentEnabled = value;
@@ -128,22 +217,44 @@ public class Node : IDisposable
 
     public ref WorldTransform WorldTransform => ref Entity.Get<WorldTransform>();
 
-    public Node(in World world, in Entity? entity = null)
+    public Node(World world, Entity? entity = null)
     {
         World = world ?? throw new ArgumentNullException(nameof(world));
         Entity = entity ?? world.CreateEntity();
-        Entity.Set(new NodeInfo(this));
+
+        if (entity.HasValue)
+        {
+            VerifyExternalEntity(Entity);
+        }
+
+        Entity.Set(new NodeInfo(Entity.Id));
         Entity.Set(new Transform());
         Entity.Set(WorldTransform.Identity);
         Entity.Set(new Parent());
-        Entity.Set(new Children());
-        VerifyExternalEntity(Entity);
+
+        // Register in the per-world lookup. GetOrCreateWorldRegistry is only
+        // called once per world (subsequent calls hit the fast non-locking path).
+        GetOrCreateWorldRegistry(world.Id)[Entity.Id] = this;
+
+        // Clean up the per-world registry when the world is disposed.
+        world.Disposing += OnWorldDisposing;
     }
 
-    public Node(in World world, string name)
+    public Node(World world, string name)
         : this(world)
     {
         Name = name;
+    }
+
+    private void OnWorldDisposing(object? sender, EventArgs e)
+    {
+        // The world is going away — drop the entire inner dictionary rather than
+        // removing entries one by one as each node is disposed.
+        if (sender is World w)
+        {
+            w.Disposing -= OnWorldDisposing;
+            RemoveWorldRegistry(w.Id);
+        }
     }
 
     public void AddChild(Node node)
@@ -153,6 +264,10 @@ public class Node : IDisposable
             throw new InvalidOperationException(
                 $"Node [{node}] already belongs to a parent [{node.Parent}]"
             );
+        }
+        if (!Entity.Has<Children>())
+        {
+            Entity.Set(new Children());
         }
         ref var children = ref Entity.Get<Children>();
         children.Add(node);
@@ -179,7 +294,7 @@ public class Node : IDisposable
         }
         ref var children = ref Entity.Get<Children>();
         var node = children.ChildNodes[index];
-        children.ChildNodes.RemoveAt(index);
+        children.Remove(node);
         node.Parent = null;
         return true;
     }
@@ -206,33 +321,32 @@ public class Node : IDisposable
 
     public override string ToString()
     {
-        return $"Node: {Info}";
+        return $"Node: [{Name}] {Info}";
     }
 
     private void UpdateChildrenLevels()
     {
-        if (!HasChildren)
+        if (!Entity.TryGet<Children>(out var children) || children.ChildNodes.Count == 0)
             return;
-        ref var children = ref Entity.Get<Children>();
+        int myLevel = Entity.Get<NodeInfo>().Level;
         foreach (var child in children.ChildNodes)
         {
-            child.Info.Level = Info.Level + 1;
+            ref var childInfo = ref child.Entity.Get<NodeInfo>();
+            childInfo.Level = myLevel + 1;
             child.UpdateChildrenLevels();
         }
     }
 
     private static void VerifyExternalEntity(in Entity entity)
     {
-        if (
-            entity.Has<NodeInfo>()
-            && entity.Has<Transform>()
-            && entity.Has<Parent>()
-            && entity.Has<Children>()
-        )
+        if (entity.Has<NodeInfo>() && entity.Has<Transform>() && entity.Has<Parent>())
         {
             return;
         }
-        throw new ArgumentException("Entity does not have a NodeInfo component.", nameof(entity));
+        throw new ArgumentException(
+            "External entity must have NodeInfo, Transform, and Parent components.",
+            nameof(entity)
+        );
     }
 
     #region IDisposable Support
@@ -246,37 +360,35 @@ public class Node : IDisposable
             {
                 if (HasChildren)
                 {
-                    // Remove all children before destroying the node
                     ref var children = ref Entity.Get<Children>();
                     foreach (var child in children.ChildNodes.ToArray())
                     {
                         child.Dispose();
                     }
                 }
-                // Remove the node from its parent if it has one
                 if (HasParent)
                 {
                     Parent?.RemoveChild(this);
                 }
+
+                World.Disposing -= OnWorldDisposing;
+
+                // Remove only this node's entry. The world-level registry is
+                // dropped wholesale in OnWorldDisposing when the world itself
+                // is disposed, so individual removes are skipped in that case.
+                if (_worldRegistries.TryGetValue(World.Id, out var registry))
+                {
+                    registry.Remove(Entity.Id);
+                }
+
                 Entity.Dispose();
             }
-
-            // TODO: free unmanaged resources (unmanaged objects) and override finalizer
-            // TODO: set large fields to null
             _disposedValue = true;
         }
     }
 
-    // // TODO: override finalizer only if 'Dispose(bool disposing)' has code to free unmanaged resources
-    // ~Node()
-    // {
-    //     // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-    //     Dispose(disposing: false);
-    // }
-
     public void Dispose()
     {
-        // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
         Dispose(disposing: true);
         GC.SuppressFinalize(this);
     }
