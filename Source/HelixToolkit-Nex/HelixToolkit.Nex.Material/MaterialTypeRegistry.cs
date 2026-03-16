@@ -132,9 +132,11 @@ public static class MaterialTypeRegistry
                 Name = PBRShadingMode.PBR.ToString(),
                 OutputColorImplementation =
                     @"
-    PBRMaterial material = createPBRMaterial();
-    return forwardPlusLighting(material);
-    ",
+                    PBRMaterial material = createPBRMaterial();
+                    vec4 color = forwardPlusLighting(material);
+                    color.rgb += material.emissive; // Add emissive after lighting
+                    return color;
+                    ",
             }
         );
 
@@ -146,9 +148,9 @@ public static class MaterialTypeRegistry
                 Name = PBRShadingMode.Unlit.ToString(),
                 OutputColorImplementation =
                     @"
-    PBRMaterial material = createPBRMaterial();
-    return nonLitOutputColor(material);
-    ",
+                    PBRMaterial material = createPBRMaterial();
+                    return nonLitOutputColor(material);
+                    ",
             }
         );
 
@@ -160,8 +162,8 @@ public static class MaterialTypeRegistry
                 Name = PBRShadingMode.DebugTileLightCount.ToString(),
                 OutputColorImplementation =
                     @"
-    return debugTileLighting();
-    ",
+                    return debugTileLighting();
+                    ",
             }
         );
 
@@ -173,8 +175,22 @@ public static class MaterialTypeRegistry
                 Name = PBRShadingMode.Normal.ToString(),
                 OutputColorImplementation =
                     @"
-    return vec4(fragNormal, 1.0);
-    ",
+                    return vec4(fragNormal, 1.0);
+                    ",
+            }
+        );
+        Register(
+            new MaterialTypeRegistration
+            {
+                TypeId = PBRShadingMode.Flat,
+                Name = PBRShadingMode.Flat.ToString(),
+                OutputColorImplementation =
+                    @"
+                    PBRMaterial material = createPBRMaterialFlatNormal();
+                    vec4 color = forwardPlusLighting(material);
+                    color.rgb += material.emissive; // Add emissive after lighting
+                    return color;
+                    ",
             }
         );
     }
