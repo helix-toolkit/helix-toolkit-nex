@@ -159,12 +159,12 @@ public interface IRenderDataProvider
     IPBRPropertyData PBRPropertiesBuffer { get; }
 
     /// <summary>
-    /// Gets the render pipeline handle associated with the specified material type.
+    /// Retrieves a PBRMaterial based on the specified material type identifier.
     /// </summary>
-    /// <param name="materialType">The type of material for which to retrieve the render pipeline handle.</param>
-    /// <returns>A <see cref="RenderPipelineHandle"/> representing the render pipeline configured for the given <paramref
-    /// name="materialType"/>.</returns>
-    RenderPipelineHandle GetMaterialPipeline(MaterialTypeId materialType);
+    /// <param name="materialType">The identifier of the material type to retrieve.</param>
+    /// <returns>A <see cref="PBRMaterial"/> object corresponding to the specified material type,  or <see langword="null"/> if
+    /// the material type is not found.</returns>
+    PBRMaterial? GetMaterial(MaterialTypeId materialType);
 
     /// <summary>
     /// Initializes the current entity using the specified context.

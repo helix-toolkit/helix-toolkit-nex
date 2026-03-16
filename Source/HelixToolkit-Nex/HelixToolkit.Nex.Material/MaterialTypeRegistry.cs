@@ -40,6 +40,67 @@ public sealed class MaterialTypeRegistration
     /// Optional additional GLSL code to inject (helper functions, etc.)
     /// </summary>
     public string? AdditionalCode { get; init; }
+
+    /// <summary>
+    /// Optional GLSL code declaring the custom properties struct and its
+    /// <c>buffer_reference</c> block for this material type.
+    /// <para>
+    /// When provided, this block is injected into the shader at the
+    /// <c>// TEMPLATE_CUSTOM_STRUCTS</c> injection point so the
+    /// <see cref="OutputColorImplementation"/> can cast
+    /// <c>getCustomBufferAddress()</c> to the declared buffer reference and
+    /// read per-material custom data.
+    /// </para>
+    /// <example>
+    /// <code>
+    /// struct MyCustomProps {
+    ///     vec4 tintColor;
+    ///     float intensity;
+    ///     float _pad0, _pad1, _pad2;
+    /// };
+    ///
+    /// layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer MyCustomBuffer {
+    ///     MyCustomProps props;
+    /// };
+    /// </code>
+    /// </example>
+    /// </summary>
+    public string? CustomBufferGlsl { get; init; }
+
+    /// <summary>
+    /// Describes the custom GPU buffer layout for this material type so the C# side can
+    /// manage uploads correctly.  This is optional metadata — the shader only needs
+    /// <see cref="CustomBufferGlsl"/>; this description helps tooling and the
+    /// <see cref="ICustomMaterialBuffer"/> implementation document expected alignment and size.
+    /// </summary>
+    public CustomBufferDescription? CustomBuffer { get; init; }
+
+    public Func<string, PBRMaterial> BuilderFunction { get; init; } =
+        (name) => new PBRMaterial(name);
+}
+
+/// <summary>
+/// Describes the expected GPU layout of a custom material buffer declared via
+/// <see cref="MaterialTypeRegistration.CustomBufferGlsl"/>.
+/// </summary>
+public sealed class CustomBufferDescription
+{
+    /// <summary>
+    /// Human-readable name used for GPU debug labels (e.g., "ToonMaterialBuffer").
+    /// </summary>
+    public required string DebugName { get; init; }
+
+    /// <summary>
+    /// Expected size of one element in bytes.  Must match the <c>std430</c> layout
+    /// of the GLSL struct declared in <see cref="MaterialTypeRegistration.CustomBufferGlsl"/>.
+    /// </summary>
+    public required uint ElementSizeBytes { get; init; }
+
+    /// <summary>
+    /// Required buffer alignment in bytes (must be a power of two, typically 16).
+    /// Matches the <c>buffer_reference_align</c> value in the GLSL declaration.
+    /// </summary>
+    public uint AlignmentBytes { get; init; } = 16;
 }
 
 /// <summary>

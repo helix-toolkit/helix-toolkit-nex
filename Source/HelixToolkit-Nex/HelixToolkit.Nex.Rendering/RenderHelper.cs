@@ -167,19 +167,25 @@ public static class RenderHelper
                 var range = meshDrawData.GetRangeStaticMesh(materialType);
                 if (range.Empty)
                     continue;
+                ulong customMaterialBufferAddress = 0;
                 if (!context.UseExternalPipeline)
                 {
-                    var pipeline = context.Data.GetMaterialPipeline(materialType);
-                    Debug.Assert(
-                        pipeline.Valid,
-                        $"Pipeline handle is invalid for material type {materialType}"
-                    );
-                    cmdBuf.BindRenderPipeline(pipeline);
+                    var mat = context.Data.GetMaterial(materialType);
+                    if (mat == null || !mat.Bind(cmdBuf))
+                    {
+                        _logger.LogError(
+                            "Failed to bind material of type {MaterialType} for rendering",
+                            materialType
+                        );
+                        continue;
+                    }
+                    customMaterialBufferAddress = mat.CustomBufferAddress;
                 }
                 cmdBuf.PushConstants(
                     new MeshDrawPushConstant
                     {
                         FpConstAddress = fpConstAddress,
+                        CustomMaterialBufferAddress = customMaterialBufferAddress,
                         DrawCommandIdxOffset = range.Start,
                     }
                 );
@@ -200,15 +206,25 @@ public static class RenderHelper
                 var range = meshDrawData.GetRangeStaticMeshInstancing(materialType);
                 if (range.Empty)
                     continue;
+                ulong customMaterialBufferAddress = 0;
                 if (!context.UseExternalPipeline)
                 {
-                    var pipeline = context.Data.GetMaterialPipeline(materialType);
-                    cmdBuf.BindRenderPipeline(pipeline);
+                    var mat = context.Data.GetMaterial(materialType);
+                    if (mat == null || !mat.Bind(cmdBuf))
+                    {
+                        _logger.LogError(
+                            "Failed to bind material of type {MaterialType} for rendering",
+                            materialType
+                        );
+                        continue;
+                    }
+                    customMaterialBufferAddress = mat.CustomBufferAddress;
                 }
                 cmdBuf.PushConstants(
                     new MeshDrawPushConstant
                     {
                         FpConstAddress = fpConstAddress,
+                        CustomMaterialBufferAddress = customMaterialBufferAddress,
                         DrawCommandIdxOffset = range.Start,
                     }
                 );
@@ -258,10 +274,19 @@ public static class RenderHelper
                 var range = meshDrawData.GetRangeDynamicMesh(materialType);
                 if (range.Empty)
                     continue;
+                ulong customMaterialBufferAddress = 0;
                 if (!context.UseExternalPipeline)
                 {
-                    var pipeline = context.Data.GetMaterialPipeline(materialType);
-                    cmdBuf.BindRenderPipeline(pipeline);
+                    var mat = context.Data.GetMaterial(materialType);
+                    if (mat == null || !mat.Bind(cmdBuf))
+                    {
+                        _logger.LogError(
+                            "Failed to bind material of type {MaterialType} for rendering",
+                            materialType
+                        );
+                        continue;
+                    }
+                    customMaterialBufferAddress = mat.CustomBufferAddress;
                 }
 
                 for (var i = range.Start; i < range.Start + range.Count; i++)
@@ -283,6 +308,7 @@ public static class RenderHelper
                         new MeshDrawPushConstant
                         {
                             FpConstAddress = fpConstAddress,
+                            CustomMaterialBufferAddress = customMaterialBufferAddress,
                             DrawCommandIdxOffset = range.Start,
                             MeshDrawId = i,
                         }
@@ -305,15 +331,25 @@ public static class RenderHelper
                 var range = meshDrawData.GetRangeDynamicMeshInstancing(materialType);
                 if (range.Empty)
                     continue;
+                ulong customMaterialBufferAddress = 0;
                 if (!context.UseExternalPipeline)
                 {
-                    var pipeline = context.Data.GetMaterialPipeline(materialType);
-                    cmdBuf.BindRenderPipeline(pipeline);
+                    var mat = context.Data.GetMaterial(materialType);
+                    if (mat == null || !mat.Bind(cmdBuf))
+                    {
+                        _logger.LogError(
+                            "Failed to bind material of type {MaterialType} for rendering",
+                            materialType
+                        );
+                        continue;
+                    }
+                    customMaterialBufferAddress = mat.CustomBufferAddress;
                 }
                 cmdBuf.PushConstants(
                     new MeshDrawPushConstant
                     {
                         FpConstAddress = fpConstAddress,
+                        CustomMaterialBufferAddress = customMaterialBufferAddress,
                         DrawCommandIdxOffset = range.Start,
                     }
                 );

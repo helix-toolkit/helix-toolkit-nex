@@ -5,7 +5,9 @@ namespace HelixToolkit.Nex.Material;
 public class MaterialManager(IContext context, IMaterialPropertyManager propertyManager)
     : IMaterialManager
 {
-    private readonly ConcurrentDictionary<MaterialTypeId, Material> _materials = new();
+    private readonly ConcurrentDictionary<MaterialTypeId, PBRMaterial> _materials = new();
+    private readonly ConcurrentDictionary<string, MaterialTypeId> _nameToId = new();
+    private MaterialShaderResult? _uberShaderResult = null;
 
     public IContext Context { get; } = context;
 
@@ -13,14 +15,36 @@ public class MaterialManager(IContext context, IMaterialPropertyManager property
 
     public int Count => _materials.Count;
 
-    public MaterialPropertyCreator CreateMaterial(string name, RenderPipelineDesc pipelineDesc)
+    public RenderPipelineDesc CreateDefaultUberPipelineDesc(string? debugName)
+    {
+        _uberShaderResult ??= new MaterialShaderBuilder()
+            .WithForwardPlus(true)
+            .WithUberShader()
+            .BuildMaterialPipeline(Context, "UberShader");
+        var desc = new RenderPipelineDesc
+        {
+            VertexShader = _uberShaderResult.VertexShader,
+            FragmentShader = _uberShaderResult.FragmentShader,
+            Topology = Topology.Triangle,
+            CullMode = CullMode.Back,
+            DepthFormat = RenderSettings.DepthBufferFormat,
+            PolygonMode = PolygonMode.Fill,
+            DebugName = debugName ?? string.Empty,
+        };
+        desc.Colors[0] = ColorAttachment.CreateAlphaBlend(RenderSettings.IntermediateTargetFormat);
+        return desc;
+    }
+
+    public MaterialPropertyCreator CreateMaterial(
+        string name,
+        Func<string, PBRMaterial> builderFunc
+    )
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentNullException.ThrowIfNullOrEmpty(name);
+        var material = builderFunc(name);
 
-        var material = new Material(name);
-
-        if (!material.CreatePipeline(Context, pipelineDesc))
+        if (!material.Initialize(Context, CreateDefaultUberPipelineDesc(name)))
         {
             throw new InvalidOperationException("Failed to create material pipeline");
         }
@@ -29,31 +53,15 @@ public class MaterialManager(IContext context, IMaterialPropertyManager property
             material.Dispose();
             throw new InvalidOperationException("Failed to add material to repository");
         }
+        _nameToId.TryAdd(name, material.MaterialId);
         return new MaterialPropertyCreator(material.MaterialId, MaterialPropertyManager);
     }
 
-    public virtual int CreatePBRMaterialsFromRegistry()
+    public int CreatePBRMaterialsFromRegistry()
     {
-        var builder = new MaterialShaderBuilder();
-        using var result = builder
-            .WithForwardPlus(true)
-            .WithUberShader()
-            .BuildMaterialPipeline(Context, "UberShader");
-
         foreach (var material in MaterialTypeRegistry.GetAllRegistrations())
         {
-            var materialPipelineDesc = new RenderPipelineDesc
-            {
-                VertexShader = result.VertexShader,
-                FragmentShader = result.FragmentShader,
-                Topology = Topology.Triangle,
-                CullMode = CullMode.Back,
-                DepthFormat = Format.Z_F32,
-                PolygonMode = PolygonMode.Fill,
-                DebugName = material.Name,
-            };
-            materialPipelineDesc.Colors[0] = ColorAttachment.CreateAlphaBlend(Format.RGBA_F16);
-            CreateMaterial(material.Name, materialPipelineDesc);
+            CreateMaterial(material.Name, material.BuilderFunction);
         }
         return MaterialTypeRegistry.GetAllRegistrations().Count;
     }
@@ -62,11 +70,22 @@ public class MaterialManager(IContext context, IMaterialPropertyManager property
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
 
-        if (_materials.TryGetValue(id, out var material))
+        if (_materials.TryRemove(id, out var material))
         {
+            _nameToId.TryRemove(material.Name, out _);
             material.Dispose();
-            _materials.TryRemove(id, out _);
         }
+    }
+
+    public bool TryGetMaterialByName(string name, out PBRMaterial? material)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        if (_nameToId.TryGetValue(name, out var id))
+        {
+            return _materials.TryGetValue(id, out material);
+        }
+        material = null;
+        return false;
     }
 
     public RenderPipelineHandle GetMaterialPipeline(MaterialTypeId materialType)
@@ -74,6 +93,11 @@ public class MaterialManager(IContext context, IMaterialPropertyManager property
         return _materials.TryGetValue(materialType, out var material)
             ? material.Pipeline
             : RenderPipelineHandle.Null;
+    }
+
+    public PBRMaterial? GetMaterial(MaterialTypeId materialType)
+    {
+        return _materials.TryGetValue(materialType, out var material) ? material : null;
     }
 
     public void Clear()
@@ -97,6 +121,7 @@ public class MaterialManager(IContext context, IMaterialPropertyManager property
             if (disposing)
             {
                 Clear();
+                _uberShaderResult?.Dispose();
             }
 
             // TODO: free unmanaged resources (unmanaged objects) and override finalizer

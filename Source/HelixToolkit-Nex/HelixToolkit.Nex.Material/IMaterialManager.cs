@@ -24,12 +24,28 @@ public interface IMaterialManager : IDisposable
     RenderPipelineHandle GetMaterialPipeline(MaterialTypeId materialType);
 
     /// <summary>
-    /// Creates a material resource and optionally creates its GPU pipeline.
+    /// Retrieves the PBR material associated with the specified material type identifier.
     /// </summary>
-    /// <param name="name">Name of the material in material type registry.</param>
-    /// <param name="pipelineDesc">Pipeline description for creating the material's GPU pipeline.</param>
-    /// <returns>A material property creator to create material property object for newly created material.</returns>
-    MaterialPropertyCreator CreateMaterial(string name, RenderPipelineDesc pipelineDesc);
+    /// <param name="materialType">The identifier of the material type for which to retrieve the PBR material.</param>
+    /// <returns>The <see cref="PBRMaterial"/> associated with the specified material type identifier,  or <see langword="null"/>
+    /// if no material is found for the given identifier.</returns>
+    PBRMaterial? GetMaterial(MaterialTypeId materialType);
+
+    /// <summary>
+    /// Creates a new material using the specified name and builder function.
+    /// </summary>
+    /// <param name="name">The name of the material to be created. Cannot be null or empty.</param>
+    /// <param name="builderFunc">A function that takes material name and returns a <param name="Material"/> instance.
+    /// This function is responsible for constructing the material based on the provided name and pipeline description.</param>
+    /// <returns>A <see cref="MaterialPropertyCreator"/> that can be used to further configure the created material.</returns>
+    MaterialPropertyCreator CreateMaterial(string name, Func<string, PBRMaterial> builderFunc);
+
+    /// <summary>
+    /// Creates a default render pipeline description with optional debugging information.
+    /// </summary>
+    /// <param name="debugName">An optional name for debugging purposes. Can be <see langword="null"/> if no debug name is required.</param>
+    /// <returns>A <see cref="RenderPipelineDesc"/> object representing the default configuration for a render pipeline.</returns>
+    RenderPipelineDesc CreateDefaultUberPipelineDesc(string? debugName);
 
     /// <summary>
     /// Creates physically-based rendering (PBR) materials from the registry.

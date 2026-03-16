@@ -223,6 +223,9 @@ public class MaterialShaderBuilder
         // Apply custom code injection
         template = template.Replace("// TEMPLATE_CUSTOM_CODE", sbCustom.ToString());
 
+        // Inject custom buffer struct declarations from all registered material types
+        template = InjectCustomBufferStructs(template);
+
         // Generate outputColor function based on mode
         if (_buildUberShader)
         {
@@ -462,6 +465,53 @@ public class MaterialShaderBuilder
         }
 
         return template;
+    }
+
+    /// <summary>
+    /// Collects <see cref="MaterialTypeRegistration.CustomBufferGlsl"/> from every
+    /// registration that will be included in this shader build and injects the
+    /// combined declarations at the <c>// TEMPLATE_CUSTOM_STRUCTS</c> marker.
+    /// Duplicate declarations (same type name registered twice) are deduplicated by
+    /// comparing the trimmed GLSL strings.
+    /// </summary>
+    private string InjectCustomBufferStructs(string template)
+    {
+        IEnumerable<MaterialTypeRegistration> registrations;
+
+        if (_buildUberShader)
+        {
+            registrations = MaterialTypeRegistry.GetAllRegistrations();
+        }
+        else if (_materialTypeId.HasValue
+            && MaterialTypeRegistry.TryGetById(_materialTypeId.Value, out var single)
+            && single != null)
+        {
+            registrations = [single];
+        }
+        else
+        {
+            registrations = [];
+        }
+
+        var sb = new StringBuilder();
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (var reg in registrations.OrderBy(r => r.TypeId))
+        {
+            if (string.IsNullOrWhiteSpace(reg.CustomBufferGlsl))
+                continue;
+
+            var trimmed = reg.CustomBufferGlsl.Trim();
+            if (!seen.Add(trimmed))
+                continue;
+
+            sb.AppendLine($"// Custom buffer structs for material type: {reg.Name}");
+            sb.AppendLine(trimmed);
+            sb.AppendLine();
+        }
+
+        var injection = sb.ToString();
+        return template.Replace("// TEMPLATE_CUSTOM_STRUCTS", injection);
     }
 
     private string LoadTemplate(string templateName)
