@@ -75,9 +75,9 @@ public sealed class WorldDataProvider : IRenderDataProvider, IDisposable
         return true;
     }
 
-    public RenderPipelineHandle GetMaterialPipeline(MaterialTypeId materialType)
+    public PBRMaterial? GetMaterial(MaterialTypeId materialType)
     {
-        return ResourceManager.Materials.GetMaterialPipeline(materialType);
+        return ResourceManager.Materials.GetMaterial(materialType);
     }
 
     public Geometry? GetGeometry(uint geometryId)

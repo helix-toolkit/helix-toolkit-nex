@@ -64,7 +64,15 @@ layout(push_constant) uniform Pc {
 
 layout (constant_id = 0) const uint MATERIAL_TYPE = 0; 
 
+// TEMPLATE_CUSTOM_STRUCTS
+
 FPConstants fpConst = FPBuffer(pc.value.fpConstAddress).fpConstants;
+
+// Returns the GPU address of the custom material buffer for this material type.
+// Returns 0 if no custom buffer is bound.
+uint64_t getCustomMaterialBufferAddress() {
+    return pc.value.customMaterialBufferAddress;
+}
 
 // Utility Functions
 PBRProperties getPBRMaterial()
