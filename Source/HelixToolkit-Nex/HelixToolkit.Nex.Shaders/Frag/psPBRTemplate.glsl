@@ -152,7 +152,6 @@ vec4 forwardPlusLighting(in PBRMaterial material)
             finalC += lightContribution;
         }
     }
-    finalC += material.emissive;
 
     return vec4(finalC, material.opacity);
 }
@@ -232,6 +231,35 @@ PBRMaterial createPBRMaterial()
 /*TEMPLATE_CREATE_PBR_MATERIAL_IMPL_END*/
 }
 
+// Template function to create final PBR material properties with flat normal
+PBRMaterial createPBRMaterialFlatNormal()
+{
+    PBRProperties props = getPBRMaterial();
+    PBRMaterial material;
+    material.albedo = props.albedo;
+    material.roughness = props.roughness;
+    material.metallic = props.metallic;
+    material.ao = props.ao;
+    material.emissive = props.emissive;
+    material.opacity = props.opacity;
+    material.ambient = props.ambient;
+#ifndef EXCLUDE_MESH_PROPS
+    if (props.albedoTexIndex > 0)
+    {
+        material.albedo = material.albedo * texture(sampler2D(kTextures2D[props.albedoTexIndex], kSamplers[props.samplerIndex]), fragTexCoord).rgb;
+    }
+    if (props.metallicRoughnessTexIndex > 0)
+    {
+        vec2 metallicRoughness = texture(sampler2D(kTextures2D[props.metallicRoughnessTexIndex], kSamplers[props.samplerIndex]), fragTexCoord).bg;
+        material.metallic = metallicRoughness.r;
+        material.roughness = metallicRoughness.g;
+    }
+#endif
+    material.normal = normalize(cross(dFdy(fragWorldPos), dFdx(fragWorldPos)));
+    material.albedo = mix(material.albedo, fragColor.rgb, props.vertexColorMix);
+    return material;
+}
+
 vec4 nonLitOutputColor(in PBRMaterial material)
 {
     return vec4(material.albedo + material.emissive, material.opacity);
@@ -243,7 +271,9 @@ vec4 outputColor()
 {
     if (MATERIAL_TYPE == 1u) {
         PBRMaterial material = createPBRMaterial();
-        return forwardPlusLighting(material);
+        vec4 color = forwardPlusLighting(material);
+        color.rgb += material.emissive; // Add emissive after lighting
+        return color;
     }
     if (MATERIAL_TYPE == 2u) {
         PBRMaterial material = createPBRMaterial();
@@ -256,6 +286,12 @@ vec4 outputColor()
     if (MATERIAL_TYPE == 4u) {
         // Unlit with vertex color
         return vec4(fragNormal, 1.0);
+    }
+    if (MATERIAL_TYPE == 5u) {
+        PBRMaterial material = createPBRMaterialFlatNormal();
+        vec4 color = forwardPlusLighting(material);
+        color.rgb += material.emissive; // Add emissive after lighting
+        return color;
     }
     {
         return vec4(1.0, 0.0, 1.0, 1.0); // Magenta for unsupported shading model
