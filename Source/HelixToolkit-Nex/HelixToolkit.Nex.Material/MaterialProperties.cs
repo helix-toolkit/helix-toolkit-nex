@@ -42,69 +42,168 @@ public sealed class MaterialProperties : IDisposable
 
     public Color Albedo
     {
-        set => Properties.Albedo = value.ToVector3();
-        get => new Color(Properties.Albedo);
+        set
+        {
+            var newValue = value.ToVector3();
+            if (Properties.Albedo == newValue)
+            {
+                return;
+            }
+            Properties.Albedo = newValue;
+            NotifyUpdated();
+        }
+        get => new(Properties.Albedo);
     }
 
     public float Opacity
     {
-        set => Properties.Opacity = value;
+        set
+        {
+            if (Properties.Opacity == value)
+            {
+                return;
+            }
+            Properties.Opacity = value;
+            NotifyUpdated();
+        }
         get => Properties.Opacity;
     }
 
     public float Metallic
     {
-        set => Properties.Metallic = value;
+        set
+        {
+            if (Properties.Metallic == value)
+            {
+                return;
+            }
+            Properties.Metallic = value;
+            NotifyUpdated();
+        }
         get => Properties.Metallic;
     }
     public Color Emissive
     {
-        set => Properties.Emissive = value.ToVector3();
-        get => new Color(Properties.Emissive);
+        set
+        {
+            var newValue = value.ToVector3();
+            if (Properties.Emissive == newValue)
+            {
+                return;
+            }
+            Properties.Emissive = value.ToVector3();
+            NotifyUpdated();
+        }
+        get => new(Properties.Emissive);
     }
     public float Roughness
     {
-        set => Properties.Roughness = value;
+        set
+        {
+            if (Properties.Roughness == value)
+            {
+                return;
+            }
+            Properties.Roughness = value;
+            NotifyUpdated();
+        }
         get => Properties.Roughness;
     }
     public Color Ambient
     {
-        set => Properties.Ambient = value.ToVector3();
-        get => new Color(Properties.Ambient);
+        set
+        {
+            var newValue = value.ToVector3();
+            if (Properties.Ambient == newValue)
+            {
+                return;
+            }
+            Properties.Ambient = value.ToVector3();
+            NotifyUpdated();
+        }
+        get => new(Properties.Ambient);
     }
     public float Ao
     {
-        set => Properties.Ao = value;
+        set
+        {
+            if (Properties.Ao == value)
+            {
+                return;
+            }
+            Properties.Ao = value;
+            NotifyUpdated();
+        }
         get => Properties.Ao;
     }
 
     public float VertexColorMix
     {
-        set => Properties.VertexColorMix = value;
+        set
+        {
+            if (Properties.VertexColorMix == value)
+            {
+                return;
+            }
+            Properties.VertexColorMix = value;
+            NotifyUpdated();
+        }
         get => Properties.VertexColorMix;
     }
 
     public uint AlbedoTexIndex
     {
-        set => Properties.AlbedoTexIndex = value;
+        set
+        {
+            if (Properties.AlbedoTexIndex == value)
+            {
+                return;
+            }
+            Properties.AlbedoTexIndex = value;
+            NotifyUpdated();
+        }
         get => Properties.AlbedoTexIndex;
     }
 
     public uint NormalTexIndex
     {
-        set => Properties.NormalTexIndex = value;
+        set
+        {
+            if (Properties.NormalTexIndex == value)
+            {
+                return;
+            }
+            Properties.NormalTexIndex = value;
+            NotifyUpdated();
+        }
         get => Properties.NormalTexIndex;
     }
 
     public uint MetallicRoughnessTexIndex
     {
-        set => Properties.MetallicRoughnessTexIndex = value;
+        set
+        {
+            if (Properties.MetallicRoughnessTexIndex == value)
+            {
+                return;
+            }
+            Properties.MetallicRoughnessTexIndex = value;
+            NotifyUpdated();
+        }
         get => Properties.MetallicRoughnessTexIndex;
     }
 
     public uint SamplerIndex
     {
-        set => Properties.SamplerIndex = value;
+        set
+        {
+            if (Properties.SamplerIndex == value)
+            {
+                return;
+            }
+            Properties.SamplerIndex = value;
+            NotifyUpdated();
+        }
         get => Properties.SamplerIndex;
     }
 

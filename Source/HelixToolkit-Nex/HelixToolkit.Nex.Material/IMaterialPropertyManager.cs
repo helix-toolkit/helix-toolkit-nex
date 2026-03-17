@@ -47,4 +47,12 @@ public interface IMaterialPropertyManager : IDisposable
     void Clear();
 
     IReadOnlyList<PoolEntry> Objects { get; }
+
+    /// <summary>
+    /// Retrieves a reference to the <see cref="MaterialProperties"/> instance at the specified index.
+    /// </summary>
+    /// <param name="index">The zero-based index of the <see cref="MaterialProperties"/> to retrieve. Must be within the valid range of the
+    /// collection.</param>
+    /// <returns>A reference to the <see cref="MaterialProperties"/> at the specified index.</returns>
+    ref PBRProperties Get(int index);
 }

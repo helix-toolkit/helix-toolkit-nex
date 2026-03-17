@@ -39,6 +39,11 @@ public struct MeshComponent : IIndexable
     public bool Cullable { get; }
 
     /// <summary>
+    /// Gets a value indicating whether the object can be interacted with or selected.
+    /// </summary>
+    public bool Hitable { get; }
+
+    /// <summary>
     /// Gets or sets the index of the current draw operation.
     /// </summary>
     public int Index { internal set; get; } = -1;
@@ -52,13 +57,15 @@ public struct MeshComponent : IIndexable
         Geometry? geometry = null,
         MaterialProperties? materialProperties = null,
         Instancing? instancing = null,
-        bool cullable = true
+        bool cullable = true,
+        bool hitable = true
     )
     {
         Geometry = geometry;
         MaterialProperties = materialProperties;
         Instancing = instancing;
         Cullable = cullable;
+        Hitable = hitable;
     }
 
     /// <summary>
@@ -83,7 +90,7 @@ public struct MeshComponent : IIndexable
 
     public readonly MeshComponent SetGeometry(in Geometry geometry)
     {
-        return new MeshComponent(geometry, MaterialProperties, Instancing, Cullable)
+        return new MeshComponent(geometry, MaterialProperties, Instancing, Cullable, Hitable)
         {
             Index = Index,
         };
@@ -91,12 +98,15 @@ public struct MeshComponent : IIndexable
 
     public readonly MeshComponent SetMaterial(in MaterialProperties properties)
     {
-        return new MeshComponent(Geometry, properties, Instancing, Cullable) { Index = Index };
+        return new MeshComponent(Geometry, properties, Instancing, Cullable, Hitable)
+        {
+            Index = Index,
+        };
     }
 
     public readonly MeshComponent SetInstancing(in Instancing instancing)
     {
-        return new MeshComponent(Geometry, MaterialProperties, instancing, Cullable)
+        return new MeshComponent(Geometry, MaterialProperties, instancing, Cullable, Hitable)
         {
             Index = Index,
         };
@@ -104,7 +114,15 @@ public struct MeshComponent : IIndexable
 
     public readonly MeshComponent SetCullable(bool cullable)
     {
-        return new MeshComponent(Geometry, MaterialProperties, Instancing, cullable)
+        return new MeshComponent(Geometry, MaterialProperties, Instancing, cullable, Hitable)
+        {
+            Index = Index,
+        };
+    }
+
+    public readonly MeshComponent SetHitable(bool hitable)
+    {
+        return new MeshComponent(Geometry, MaterialProperties, Instancing, Cullable, hitable)
         {
             Index = Index,
         };

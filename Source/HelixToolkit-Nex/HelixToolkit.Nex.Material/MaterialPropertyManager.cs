@@ -67,6 +67,19 @@ public sealed class MaterialPropertyManager : IMaterialPropertyManager
 
     public IReadOnlyList<PoolEntry> Objects => _pool.Objects;
 
+    public ref PBRProperties Get(int index)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        if (_pool.Objects.Count <= index || index < 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(index),
+                $"Index {index} is out of range. Valid range is 0 to {_pool.Objects.Count - 1}."
+            );
+        }
+        return ref _pool.GetRef(index);
+    }
+
     #region IDisposable Support
 
     private bool _disposed;

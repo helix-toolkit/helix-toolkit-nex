@@ -13,10 +13,12 @@
         <ProjectReference Include="..\HelixToolkit.Nex.Geometry\HelixToolkit.Nex.Geometries.csproj" />
         <ProjectReference Include="..\HelixToolkit.Nex.Graphics\HelixToolkit.Nex.Graphics.csproj" />
         <ProjectReference Include="..\HelixToolkit.Nex.Maths\HelixToolkit.Nex.Maths.csproj" />
-
-        <!-- Add reference to HelixToolkit.Nex for ObservableObject and ObservableAttribute -->
         <ProjectReference Include="..\HelixTookit.Nex\HelixToolkit.Nex.csproj" />
-
+        <ProjectReference
+            Include="..\HelixToolkit.Nex.CodeGen\HelixToolkit.Nex.CodeGen.csproj"
+            OutputItemType="Analyzer"
+            ReferenceOutputAssembly="false"
+        />
         <ProjectReference Include="..\HelixToolkit.Nex.Shaders\HelixToolkit.Nex.Shaders.csproj" />
     </ItemGroup>
 

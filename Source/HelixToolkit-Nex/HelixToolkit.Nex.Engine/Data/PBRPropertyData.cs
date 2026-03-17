@@ -14,6 +14,8 @@ public sealed class PBRPropertyData : Initializable, IPBRPropertyData
     private long _lastBufferUpdateTicks = 0;
     private long _lastDataUpdateTicks = Stopwatch.GetTimestamp();
     private readonly IEventSubscription _sub;
+    private readonly HashSet<uint> _updatedProps = [];
+    private bool _needFullUpdate = true;
 
     public BufferHandle Buffer => _buffer is null ? BufferHandle.Null : _buffer.Buffer;
 
@@ -38,6 +40,17 @@ public sealed class PBRPropertyData : Initializable, IPBRPropertyData
                     e.Operation
                 );
                 _lastDataUpdateTicks = Stopwatch.GetTimestamp();
+                if (e.Operation == MaterialPropertyOp.Create)
+                {
+                    _needFullUpdate = true;
+                }
+                if (!_needFullUpdate)
+                {
+                    if (e.Operation == MaterialPropertyOp.Update)
+                    {
+                        _updatedProps.Add(e.Index);
+                    }
+                }
             }
         );
     }
@@ -74,17 +87,58 @@ public sealed class PBRPropertyData : Initializable, IPBRPropertyData
         }
         using var t = _tracer.BeginScope(nameof(Update));
         var objects = _resourceManager.MaterialProperties.Objects;
-        _buffer.WriteDynamic(
-            objects.Count,
-            ctx =>
-            {
-                for (var i = 0; i < objects.Count; ++i)
+        if (_needFullUpdate)
+        {
+            _buffer.WriteDynamic(
+                objects.Count,
+                ctx =>
                 {
-                    ctx.Write(objects[i].Obj);
+                    for (var i = 0; i < objects.Count; ++i)
+                    {
+                        ctx.Write(objects[i].Obj);
+                    }
                 }
+            );
+            _needFullUpdate = false;
+        }
+        else
+        {
+            if (
+                _buffer.WriteDynamic(
+                    objects.Count,
+                    ctx =>
+                    {
+                        foreach (var index in _updatedProps)
+                        {
+                            if (index < objects.Count)
+                            {
+                                if (
+                                    !ctx.WriteElement(
+                                        ref _resourceManager.MaterialProperties.Get((int)index),
+                                        (int)index
+                                    )
+                                )
+                                {
+                                    _logger.LogError(
+                                        "Failed to write material property at index {INDEX}",
+                                        index
+                                    );
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                ) != ResultCode.Ok
+            )
+            {
+                _needFullUpdate = true;
             }
-        );
-        _lastBufferUpdateTicks = _lastDataUpdateTicks;
+        }
+        _updatedProps.Clear();
+        if (!_needFullUpdate)
+        {
+            _lastBufferUpdateTicks = _lastDataUpdateTicks;
+        }
         return true;
     }
 }

@@ -1,4 +1,5 @@
 // See https://aka.ms/new-console-template for more information
+using System.Data;
 using System.Numerics;
 using HelixToolkit.Nex;
 using HelixToolkit.Nex.Examples;
@@ -7,6 +8,7 @@ using HelixToolkit.Nex.Graphics.Vulkan;
 using HelixToolkit.Nex.Maths;
 using HelixToolkit.Nex.Sample.Application;
 using Microsoft.Extensions.Logging;
+using SDL3;
 
 using var app = new App();
 app.Run();
@@ -17,6 +19,8 @@ internal class App : Application
     private static readonly ILogger logger = LogManager.Create<App>();
     private IContext? _ctx;
     private LightCullingTest? _example;
+    private int _mouseX,
+        _mouseY;
 
     public App()
         : base(new ApplicationConfig() { WindowResizable = true })
@@ -60,6 +64,20 @@ internal class App : Application
     protected override void OnTick()
     {
         _example?.Render(MainWindow.Size.Width, MainWindow.Size.Height);
+    }
+
+    protected override void OnMouseMove(int x, int y, int xrel, int yrel)
+    {
+        _mouseX = x;
+        _mouseY = y;
+    }
+
+    protected override void OnMouseButtonUp(SDL_Button button)
+    {
+        if (button == SDL_Button.Left)
+        {
+            _example?.Pick(_mouseX, _mouseY);
+        }
     }
 
     protected override void OnDisposing()
