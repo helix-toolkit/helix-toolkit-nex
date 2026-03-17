@@ -23,4 +23,54 @@ public static class Utils
         instanceIndex = (r >> 24) | ((g & 0xFFFF) << 8);
         entityVersion = (ushort)(g >> 16);
     }
+
+    public static bool TryPick(
+        this IContext context,
+        TextureHandle meshIdTexture,
+        uint textureWidth,
+        uint textureHeight,
+        int x,
+        int y,
+        out int entityId,
+        out ushort entityVersion,
+        out uint instanceIndex
+    )
+    {
+        entityId = 0;
+        entityVersion = 0;
+        instanceIndex = 0;
+        if (x < 0 || y < 0 || x >= textureWidth || y >= textureHeight)
+        {
+            return false;
+        }
+        unsafe
+        {
+            var data = stackalloc uint[2];
+            var ret = context
+                .Download(
+                    meshIdTexture,
+                    new TextureRangeDesc()
+                    {
+                        Dimensions = new Dimensions(1, 1, 1),
+                        Offset = new Offset3D(x, y),
+                    },
+                    (nint)data,
+                    sizeof(ulong)
+                )
+                .CheckResult();
+            if (ret == ResultCode.Ok)
+            {
+                UnpackEntityId(
+                    data[0],
+                    data[1],
+                    out entityId,
+                    out entityVersion,
+                    out instanceIndex
+                );
+                return true;
+            }
+        }
+
+        return false;
+    }
 }

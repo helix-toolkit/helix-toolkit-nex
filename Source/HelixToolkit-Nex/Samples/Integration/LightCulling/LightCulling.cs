@@ -5,16 +5,20 @@ using HelixToolkit.Nex.DependencyInjection;
 using HelixToolkit.Nex.Engine;
 using HelixToolkit.Nex.Engine.Cameras;
 using HelixToolkit.Nex.Graphics;
+using HelixToolkit.Nex.Maths;
 using HelixToolkit.Nex.Rendering;
+using HelixToolkit.Nex.Rendering.Components;
 using HelixToolkit.Nex.Rendering.ComputeNodes;
 using HelixToolkit.Nex.Rendering.PostEffects;
 using HelixToolkit.Nex.Rendering.RenderNodes;
 using HelixToolkit.Nex.Scene;
 using HelixToolkit.Nex.Shaders.Frag;
+using Microsoft.Extensions.Logging;
 using SceneSamples;
 
 internal class LightCullingTest(IContext context, bool largeScene = true) : IDisposable
 {
+    private static readonly ILogger _logger = LogManager.Create<LightCullingTest>();
     public const SampleTextureMode DebugMode = SampleTextureMode.DebugMeshId;
 
     private readonly IContext _context = context;
@@ -145,6 +149,22 @@ internal class LightCullingTest(IContext context, bool largeScene = true) : IDis
 
         // Keep up vector locked to world Y — no banking
         _camera.Up = Vector3.UnitY;
+    }
+
+    public void Pick(int x, int y)
+    {
+        _context.TryPick(
+            _renderContext!.ResourceSet!.Textures[SystemBufferNames.TextureEntityId],
+            (uint)_renderContext.WindowSize.Width,
+            (uint)_renderContext.WindowSize.Height,
+            x,
+            y,
+            out var entityId,
+            out var entityVar,
+            out var instanceIdx
+        );
+        var entity = _worldDataProvider!.World.GetEntity((int)entityId, entityVar);
+        _logger.LogInformation($"Picked entity {entity} (instance {instanceIdx})");
     }
 
     private bool _disposedValue;

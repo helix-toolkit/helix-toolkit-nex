@@ -7,6 +7,9 @@
 #extension GL_EXT_shader_explicit_arithmetic_types_int64   : require
 
 vec2 packEntityIdAndIndex(uint entityId, uint entityVer, uint instanceIndex) {
+    if (entityId == 0) {
+        return vec2(0.0); // Return zero for invalid entity ID
+    }
     uint id = entityId & 0xFFFFFFu;            // 24 bits, Max 16,777,215
     uint inst = instanceIndex & 0xFFFFFFu;      // 24 bits, Max 16,777,215
     uint ver = entityVer & 0xFFFFu;       // 16 bits, Max 65,535

@@ -242,6 +242,7 @@ internal class MeshDrawData : Initializable, IMeshDrawData
         var count = 0;
         foreach (var entity in _entities)
         {
+            Debug.Assert(entity.Id != 0);
             ref var nodeInfo = ref entity.Get<NodeInfo>();
             if (!nodeInfo.Enabled)
             {
@@ -260,8 +261,8 @@ internal class MeshDrawData : Initializable, IMeshDrawData
                 MeshId = meshRenderComp.Geometry!.Id,
                 MaterialId = meshRenderComp.MaterialProperties!.Index,
                 MaterialType = materialType,
-                EntityId = (uint)entity.Id,
-                EntityVer = entity.Gen,
+                EntityId = meshRenderComp.Hitable ? (uint)entity.Id : 0u,
+                EntityVer = meshRenderComp.Hitable ? entity.Gen : 0u,
                 Transform = transform.Value,
                 InstancingBufferAddress = meshRenderComp.Instancing is not null
                     ? meshRenderComp.Instancing.Buffer!.Buffer.GpuAddress
@@ -371,6 +372,7 @@ internal class MeshDrawData : Initializable, IMeshDrawData
         _updatedIndices.Clear();
         foreach (var entityId in _updatedEntities)
         {
+            Debug.Assert(entityId != 0);
             var entity = World.GetEntity(entityId);
             ref var meshRenderComp = ref entity.Get<MeshComponent>();
             if (!meshRenderComp.Valid || meshRenderComp.Index < 0)
@@ -384,8 +386,8 @@ internal class MeshDrawData : Initializable, IMeshDrawData
                 MeshId = meshRenderComp.Geometry!.Id,
                 MaterialId = meshRenderComp.MaterialProperties!.Index,
                 MaterialType = materialType,
-                EntityId = (uint)entity.Id,
-                EntityVer = entity.Gen,
+                EntityId = meshRenderComp.Hitable ? (uint)entity.Id : 0u,
+                EntityVer = meshRenderComp.Hitable ? entity.Gen : 0u,
                 Transform = transform.Value,
                 InstancingBufferAddress = meshRenderComp.Instancing is not null
                     ? meshRenderComp.Instancing.Buffer!.Buffer.GpuAddress

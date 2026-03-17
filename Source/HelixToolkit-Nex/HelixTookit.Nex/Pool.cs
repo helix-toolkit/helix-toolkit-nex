@@ -222,6 +222,15 @@ public sealed class Pool<ObjectType, ImplObjectType> : IEnumerable<ImplObjectTyp
         }
     }
 
+    public ref ImplObjectType GetRef(int index)
+    {
+        if (index < 0 || index >= _objects.Count)
+        {
+            throw new ArgumentOutOfRangeException(nameof(index), "Index out of range.");
+        }
+        return ref _objects.GetInternalArray()[index].Obj!;
+    }
+
     System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
     {
         return GetEnumerator();

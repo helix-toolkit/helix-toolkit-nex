@@ -1,19 +1,18 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    </PropertyGroup>
 
-  <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-  </PropertyGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\HelixToolkit.Nex.Geometry\HelixToolkit.Nex.Geometries.csproj" />
-    <ProjectReference Include="..\HelixToolkit.Nex.Graphics\HelixToolkit.Nex.Graphics.csproj" />
-    <ProjectReference Include="..\HelixToolkit.Nex.Material\HelixToolkit.Nex.Material.csproj" />
-    <ProjectReference Include="..\HelixToolkit.Nex.Rendering\HelixToolkit.Nex.Rendering.csproj" />
-    <ProjectReference Include="..\HelixToolkit.Nex.Repository\HelixToolkit.Nex.Repository.csproj" />
-    <ProjectReference Include="..\HelixToolkit.Nex.Scene\HelixToolkit.Nex.Scene.csproj" />
-    <ProjectReference Include="..\HelixToolkit.Nex.Shaders\HelixToolkit.Nex.Shaders.csproj" />
-  </ItemGroup>
-
+    <ItemGroup>
+        <ProjectReference Include="..\HelixToolkit.Nex.Geometry\HelixToolkit.Nex.Geometries.csproj" />
+        <ProjectReference Include="..\HelixToolkit.Nex.Graphics\HelixToolkit.Nex.Graphics.csproj" />
+        <ProjectReference Include="..\HelixToolkit.Nex.Material\HelixToolkit.Nex.Material.csproj" />
+        <ProjectReference Include="..\HelixToolkit.Nex.Rendering\HelixToolkit.Nex.Rendering.csproj" />
+        <ProjectReference Include="..\HelixToolkit.Nex.Repository\HelixToolkit.Nex.Repository.csproj" />
+        <ProjectReference Include="..\HelixToolkit.Nex.Scene\HelixToolkit.Nex.Scene.csproj" />
+        <ProjectReference Include="..\HelixToolkit.Nex.Shaders\HelixToolkit.Nex.Shaders.csproj" />
+    </ItemGroup>
 </Project>
