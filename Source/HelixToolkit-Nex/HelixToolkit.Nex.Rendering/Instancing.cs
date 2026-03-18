@@ -1,12 +1,55 @@
+using System.ComponentModel;
+
 namespace HelixToolkit.Nex.Geometries;
+
+public static class InstanceTransformExts
+{
+    public static readonly InstanceTransform Identity = new()
+    {
+        Quaternion = Quaternion.Identity.ToVector4(),
+        Scale = 1,
+        Translation = Vector3.Zero,
+    };
+
+    public static InstanceTransform SetRotation(
+        this InstanceTransform transform,
+        Quaternion rotation
+    )
+    {
+        transform.Quaternion = rotation.ToVector4();
+        return transform;
+    }
+
+    public static InstanceTransform SetScale(this InstanceTransform transform, float scale)
+    {
+        transform.Scale = scale;
+        return transform;
+    }
+
+    public static InstanceTransform SetTranslation(
+        this InstanceTransform transform,
+        Vector3 translation
+    )
+    {
+        transform.Translation = translation;
+        return transform;
+    }
+}
 
 public partial class Instancing : ObservableObject, IDisposable
 {
+    public static readonly InstanceTransform Identity = new()
+    {
+        Quaternion = Quaternion.Identity.ToVector4(),
+        Scale = 1,
+        Translation = Vector3.Zero,
+    };
+
     [Observable]
-    private FastList<Matrix4x4> _transforms = [];
+    private FastList<InstanceTransform> _transforms = [];
 
     private bool _dirty = true;
-    public ElementBuffer<Matrix4x4>? Buffer { private set; get; }
+    public ElementBuffer<InstanceTransform>? Buffer { private set; get; }
     public ElementBuffer<uint>? CulledIndicesBuffer { private set; get; }
 
     public bool IsDynamic { get; }
@@ -22,6 +65,11 @@ public partial class Instancing : ObservableObject, IDisposable
         _dirty = true;
     }
 
+    public void MarkDirty()
+    {
+        _dirty = true;
+    }
+
     public ResultCode UpdateBuffer(IContext context)
     {
         if (!_dirty)
@@ -33,7 +81,7 @@ public partial class Instancing : ObservableObject, IDisposable
                 $"Instance count {_transforms.Count} exceeds the maximum allowed {Limits.MaxInstanceCount}."
             );
         }
-        Buffer ??= new ElementBuffer<Matrix4x4>(
+        Buffer ??= new ElementBuffer<InstanceTransform>(
             context,
             _transforms.Count,
             BufferUsageBits.Storage,

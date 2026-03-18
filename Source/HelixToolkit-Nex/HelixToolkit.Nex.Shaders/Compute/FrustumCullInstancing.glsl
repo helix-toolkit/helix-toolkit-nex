@@ -1,6 +1,8 @@
 #include "HxHeaders/HeaderCompute.glsl"
 #include "HxHeaders/FrustumCullingCommon.glsl"
 #include "HxHeaders/MeshDraw.glsl"
+#include "HxHeaders/Instancing.glsl"
+
 // Enable subgroup extensions for efficient output compaction if allowed
 #extension GL_KHR_shader_subgroup_basic : enable
 #extension GL_KHR_shader_subgroup_ballot : enable
@@ -23,7 +25,7 @@ layout(buffer_reference, std430, buffer_reference_align = 16) buffer MeshDrawBuf
 };
 
 layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer InstancingBuffer {
-    mat4 instances[];
+    InstanceTransform instances[];
 };
 
 layout(buffer_reference, scalar) writeonly buffer VisableInstanceIndexBuffer {
@@ -83,7 +85,7 @@ void main() {
     MeshInfo bound = meshInfoBuf.value[draw.meshId];
 
     // Frustum Culling
-    mat4 worldMatrix = instBuf.instances[gID] * draw.transform;
+    mat4 worldMatrix = instanceTransfromToMat4(instBuf.instances[gID]) * draw.transform;
     // 1. Sphere Culling (Cheap, fast reject)
     // Transform local sphere center to world
     // Note: Scale is baked into world matrix rows, so simple mult works for uniform scale

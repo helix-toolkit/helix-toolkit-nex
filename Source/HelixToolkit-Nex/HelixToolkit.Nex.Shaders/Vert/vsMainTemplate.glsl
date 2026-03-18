@@ -3,6 +3,7 @@
 #include "HxHeaders/ForwardPlusConstants.glsl"
 #include "HxHeaders/MeshDraw.glsl"
 #include "HxHeaders/MeshInfo.glsl"
+#include "HxHeaders/Instancing.glsl"
 
 layout(location = 0) out vec3 fragWorldPos;
 layout(location = 1) out flat uint materialId;
@@ -37,7 +38,7 @@ layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer FP
 };
 
 layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer InstancingBuffer {
-    mat4 instancing[];
+    InstanceTransform instancing[];
 };
 
 layout(buffer_reference, std430, buffer_reference_align = 4) readonly buffer InstancingIndexBuffer {
@@ -71,9 +72,10 @@ uint getInstancingIndex() {
     return gl_InstanceIndex;
 }
 
-mat4 getInstancingMatrix(uint index) {
+InstanceTransform instIdentity = InstanceTransform(vec4(0.0, 0.0, 0.0, 1.0), vec3(0.0), 1.0);
+InstanceTransform getInstancingMatrix(uint index) {
     if (meshDraw.instancingBufferAddress == 0) {
-        return mat4(1.0);
+        return instIdentity;
     }
     InstancingBuffer instancingBuf = InstancingBuffer(meshDraw.instancingBufferAddress);
     return instancingBuf.instancing[index];
@@ -109,16 +111,21 @@ vec4 getVertexColor() {
 void calVertexOutput(in uint index, out vec4 pos, out vec3 wp, out vec3 normal, out vec3 tangent, out vec4 color, out vec2 texCoord) {
 /*TEMPLATE_CALCULATE_VERTEX_OUTPUT_IMPL_START*/
     vec4 position = getVertex();
-    mat4 instance = getInstancingMatrix(index);
-    mat4 model = instance * meshDraw.transform;
+    InstanceTransform instance = getInstancingMatrix(index);
+    mat3 instanceRot = quatToMat3(instance.quaternion);
 
-    vec4 worldPos = model * position;
+    vec4 worldPos = meshDraw.transform * position;
+    worldPos = vec4(transformCoord(worldPos.xyz, instanceRot, instance.scale, instance.translation), 1);
+
     wp = worldPos.xyz;
     pos = fpConst.viewProjection * worldPos;
 #ifndef EXCLUDE_MESH_PROPS
     GpuVertexProps vertProps = getVertexProps();
-    normal = mat3(model) * vertProps.normal;
-    tangent = mat3(model) * vertProps.tangent;
+    normal = mat3(meshDraw.transform) * vertProps.normal;
+    normal = normalize(instanceRot * normal);
+    tangent = mat3(meshDraw.transform) * vertProps.tangent;
+    tangent = normalize(instanceRot * tangent);
+
     texCoord = vertProps.texCoord;
 #endif
     color = getVertexColor();

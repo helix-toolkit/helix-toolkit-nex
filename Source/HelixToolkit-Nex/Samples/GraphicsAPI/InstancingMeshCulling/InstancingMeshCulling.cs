@@ -42,7 +42,7 @@ internal class InstancingMeshCullingExample : IDisposable
 
     // CPU-side data for instances
     private readonly FastList<PBRProperties> _pBRProperties = [];
-    private readonly FastList<Matrix4x4> _instanceMatrices = [];
+    private readonly FastList<InstanceTransform> _instanceMatrices = [];
 
     // Arrays for data management
     private readonly int _instanceCount = 10000;
@@ -438,13 +438,22 @@ internal class InstancingMeshCullingExample : IDisposable
 
         for (int i = 0; i < _instanceCount; ++i)
         {
-            _instanceMatrices[i] = Matrix4x4.CreateTranslation(
-                new Vector3(
+            _instanceMatrices[i] = new InstanceTransform()
+            {
+                Quaternion = Quaternion
+                    .CreateFromYawPitchRoll(
+                        (float)rnd.NextDouble() * MathF.PI,
+                        (float)rnd.NextDouble() * MathF.PI,
+                        (float)rnd.NextDouble() * MathF.PI
+                    )
+                    .ToVector4(),
+                Scale = 1,
+                Translation = new Vector3(
                     (float)(rnd.NextDouble() * 200.0 - 100.0),
                     (float)(rnd.NextDouble() * 200.0 - 100.0),
                     (float)(rnd.NextDouble() * 200.0 - 100.0)
-                )
-            );
+                ),
+            };
         }
     }
 

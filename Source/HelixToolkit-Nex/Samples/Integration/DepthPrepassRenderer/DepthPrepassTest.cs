@@ -7,6 +7,7 @@ using HelixToolkit.Nex.Engine;
 using HelixToolkit.Nex.Engine.Cameras;
 using HelixToolkit.Nex.Geometries;
 using HelixToolkit.Nex.Graphics;
+using HelixToolkit.Nex.Maths;
 using HelixToolkit.Nex.Rendering;
 using HelixToolkit.Nex.Rendering.Components;
 using HelixToolkit.Nex.Rendering.ComputeNodes;
@@ -121,14 +122,22 @@ internal class DepthPrepassTest(IContext context) : IDisposable
         for (int i = 0; i < NumCubes; ++i)
         {
             instancing.Transforms.Add(
-                Matrix4x4.CreateScale(Random.Shared.NextSingle() * 0.5f + 0.1f)
-                    * Matrix4x4.CreateTranslation(
-                        new Vector3(
-                            Random.Shared.NextSingle() * 100 - 50,
-                            Random.Shared.NextSingle() * 100 - 50,
-                            Random.Shared.NextSingle() * 100 - 50
+                new HelixToolkit.Nex.Shaders.InstanceTransform()
+                {
+                    Quaternion = Quaternion
+                        .CreateFromYawPitchRoll(
+                            Random.Shared.NextSingle() * MathF.PI,
+                            Random.Shared.NextSingle() * MathF.PI,
+                            Random.Shared.NextSingle() * MathF.PI
                         )
-                    )
+                        .ToVector4(),
+                    Scale = Random.Shared.NextSingle() * 0.5f + 0.1f,
+                    Translation = new Vector3(
+                        Random.Shared.NextSingle() * 100 - 50,
+                        Random.Shared.NextSingle() * 100 - 50,
+                        Random.Shared.NextSingle() * 100 - 50
+                    ),
+                }
             );
         }
         instancing.UpdateBuffer(_context);
