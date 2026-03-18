@@ -2,10 +2,13 @@ using System.Diagnostics;
 using System.Numerics;
 using HelixToolkit.Nex;
 using HelixToolkit.Nex.DependencyInjection;
+using HelixToolkit.Nex.ECS;
 using HelixToolkit.Nex.Engine;
 using HelixToolkit.Nex.Engine.Cameras;
 using HelixToolkit.Nex.Graphics;
+using HelixToolkit.Nex.Maths;
 using HelixToolkit.Nex.Rendering;
+using HelixToolkit.Nex.Rendering.Components;
 using HelixToolkit.Nex.Rendering.ComputeNodes;
 using HelixToolkit.Nex.Rendering.PostEffects;
 using HelixToolkit.Nex.Rendering.RenderNodes;
@@ -34,6 +37,7 @@ internal class LightCullingTest(IContext context, bool largeScene = true) : IDis
     private readonly long _startTimestamp = Stopwatch.GetTimestamp();
     private long _lastTimestamp = 0;
     private RenderGraph? _renderGraph;
+    private Entity _selectedEntity = Entity.Null;
 
     // Flight parameters
     private const float FlyHeight = 30f; // height above terrain base
@@ -70,6 +74,7 @@ internal class LightCullingTest(IContext context, bool largeScene = true) : IDis
         var postEffectNode = new PostEffectsNode();
         postEffectNode.AddEffect(new Bloom());
         postEffectNode.AddEffect(new ToneMapping());
+        postEffectNode.AddEffect(new BorderHighlightPostEffect());
         postEffectNode.AddEffect(new ShowFPS());
         _renderer.AddNode(postEffectNode);
         _renderer.AddNode(new RenderToFinalNode(_context.GetSwapchainFormat()));
@@ -152,6 +157,10 @@ internal class LightCullingTest(IContext context, bool largeScene = true) : IDis
 
     public void Pick(int x, int y)
     {
+        if (_selectedEntity.Valid)
+        {
+            _selectedEntity.Remove<BorderHighlightComponent>();
+        }
         _context.TryPick(
             _renderContext!.ResourceSet!.Textures[SystemBufferNames.TextureEntityId],
             (uint)_renderContext.WindowSize.Width,
@@ -162,8 +171,9 @@ internal class LightCullingTest(IContext context, bool largeScene = true) : IDis
             out var entityVar,
             out var instanceIdx
         );
-        var entity = _worldDataProvider!.World.GetEntity((int)entityId, entityVar);
-        _logger.LogInformation($"Picked entity {entity} (instance {instanceIdx})");
+        _selectedEntity = _worldDataProvider!.World.GetEntity((int)entityId, entityVar);
+        _logger.LogInformation($"Picked entity {_selectedEntity} (instance {instanceIdx})");
+        _selectedEntity.Set(BorderHighlightComponent.Default);
     }
 
     private bool _disposedValue;

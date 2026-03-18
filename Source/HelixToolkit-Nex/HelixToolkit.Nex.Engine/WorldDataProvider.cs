@@ -13,7 +13,7 @@ public sealed class WorldDataProvider : IRenderDataProvider, IDisposable
     private readonly MeshDrawData _meshDrawDataTransparent;
     private readonly SceneState _sceneState;
 
-    public readonly World World = World.CreateWorld();
+    public World World { get; } = World.CreateWorld();
     public IResourceManager ResourceManager { get; }
 
     public IContext Context => ResourceManager.Context;

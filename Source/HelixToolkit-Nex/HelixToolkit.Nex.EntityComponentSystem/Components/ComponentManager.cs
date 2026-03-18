@@ -60,7 +60,9 @@ internal static class ComponentSorting
                         entityMapping[i - interval] = em;
 
                         mapping.GetInternalArray()[entityMapping[i].Entity].ComponentIndex = i;
-                        mapping.GetInternalArray()[entityMapping[i - interval].Entity].ComponentIndex = i - interval;
+                        mapping
+                            .GetInternalArray()[entityMapping[i - interval].Entity]
+                            .ComponentIndex = i - interval;
                     }
                 }
             }
@@ -240,14 +242,13 @@ internal class ComponentManager<T> : IDisposable
         private readonly World _world;
         private readonly FastList<ComponentMappingKey> _mapping;
 
-        private int _index;
+        private int _index = -1;
 
         public EntityEnumerator(ComponentManager<T> componentManager)
         {
             var w = _getWorldFunc?.Invoke(componentManager.WorldId);
             _world = w ?? throw new InvalidOperationException($"Unable to get world.");
             _mapping = componentManager.CompMapping;
-            _index = -1;
         }
 
         #region IEnumerator
@@ -260,7 +261,7 @@ internal class ComponentManager<T> : IDisposable
         {
             while (++_index < _mapping.Count)
             {
-                if (_mapping[_index].ComponentIndex >= 0)
+                if (_mapping[_index].Valid)
                 {
                     return true;
                 }

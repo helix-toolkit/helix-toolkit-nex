@@ -313,15 +313,17 @@ public sealed class Bloom : PostEffect
             );
             return ResultCode.CompileError;
         }
-
-        using var vs = Context.CreateShaderModuleGlsl(
-            vsResult.Source,
+        using var vs = Renderer!.ShaderRepository.GetOrCreateFromGlsl(
             ShaderStage.Vertex,
+            vsResult.Source,
+            [],
             "FullScreenQuad_Vertex"
         );
-        using var fs = Context.CreateShaderModuleGlsl(
-            fsResult.Source,
+
+        using var fs = Renderer!.ShaderRepository.GetOrCreateFromGlsl(
             ShaderStage.Fragment,
+            fsResult.Source,
+            [],
             "Bloom_Fragment"
         );
 
