@@ -5,9 +5,7 @@ using HelixToolkit.Nex.DependencyInjection;
 using HelixToolkit.Nex.Engine;
 using HelixToolkit.Nex.Engine.Cameras;
 using HelixToolkit.Nex.Graphics;
-using HelixToolkit.Nex.Maths;
 using HelixToolkit.Nex.Rendering;
-using HelixToolkit.Nex.Rendering.Components;
 using HelixToolkit.Nex.Rendering.ComputeNodes;
 using HelixToolkit.Nex.Rendering.PostEffects;
 using HelixToolkit.Nex.Rendering.RenderNodes;
@@ -70,6 +68,7 @@ internal class LightCullingTest(IContext context, bool largeScene = true) : IDis
         _renderer.AddNode(new ForwardPlusOpaqueNode() { UseLightCulling = true });
         _renderer.AddNode(new ForwardPlusLightCullingNode());
         var postEffectNode = new PostEffectsNode();
+        postEffectNode.AddEffect(new Bloom());
         postEffectNode.AddEffect(new ToneMapping());
         postEffectNode.AddEffect(new ShowFPS());
         _renderer.AddNode(postEffectNode);
