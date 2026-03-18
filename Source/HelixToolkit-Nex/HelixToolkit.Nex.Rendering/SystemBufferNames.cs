@@ -24,6 +24,22 @@ public static class SystemBufferNames
     public const string BufferLightIndex = "BufLightIndex";
     public const string BufferDirectionalLight = "BufDirLight";
     public const string BufferLights = "BufLights";
+
+    /// <summary>
+    /// Intermediate texture A used by the <see cref="PostEffects.Bloom"/> effect for the
+    /// brightness-extract output and the final blurred result.
+    /// Allocated at a reduced resolution determined by <c>Bloom.DownsampleFactor</c>
+    /// (default: quarter of screen size).
+    /// </summary>
+    public const string TextureBloomA = "TexBloomA";
+
+    /// <summary>
+    /// Intermediate texture B used by the <see cref="PostEffects.Bloom"/> effect as the
+    /// horizontal-blur target during the ping-pong blur passes.
+    /// Allocated at a reduced resolution determined by <c>Bloom.DownsampleFactor</c>
+    /// (default: quarter of screen size).
+    /// </summary>
+    public const string TextureBloomB = "TexBloomB";
 }
 
 /// <summary>

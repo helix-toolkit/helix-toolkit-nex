@@ -13,6 +13,15 @@ public abstract class PostEffect() : Initializable
     public int Priority { get; set; } = 0;
 
     /// <summary>
+    /// Called from <see cref="PostEffectsNode.AddToGraph"/> before the graph is compiled.
+    /// Override to register textures or buffers that the effect owns into the shared
+    /// <see cref="RenderGraph"/> so they are allocated and resized by the resource set,
+    /// just like resources owned by any other <see cref="RenderNode"/>.
+    /// </summary>
+    /// <param name="graph">The render graph that is being built.</param>
+    public virtual void RegisterResources(RenderGraph graph) { }
+
+    /// <summary>
     /// Applies this post-effect.
     /// </summary>
     /// <param name="res">Render resources for the current frame.</param>
@@ -116,6 +125,14 @@ public sealed class PostEffectsNode : RenderNode
 
     public override void AddToGraph(RenderGraph graph)
     {
+        // Give each effect the opportunity to register its own graph-managed resources
+        // before the graph is compiled, so allocations and screen-size rebuilds are handled
+        // centrally by the resource set — just like resources from any other RenderNode.
+        foreach (var effect in _effects)
+        {
+            effect.RegisterResources(graph);
+        }
+
         // Register the ping-pong group if it hasn't been added yet (PrepareNode owns the textures).
         graph.AddPingPongGroup(
             PingPongGroups.ColorF16,
