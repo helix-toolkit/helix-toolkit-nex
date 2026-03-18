@@ -40,6 +40,15 @@ public static class SystemBufferNames
     /// (default: quarter of screen size).
     /// </summary>
     public const string TextureBloomB = "TexBloomB";
+
+    /// <summary>
+    /// Single-channel (R8) silhouette mask written by
+    /// <see cref="PostEffects.BorderHighlightPostEffect"/> during its first pass.
+    /// White pixels mark pixels covered by a highlighted mesh; black pixels are
+    /// background.  The effect's composite pass reads this texture to detect and
+    /// draw the outline.
+    /// </summary>
+    public const string TextureHighlightMask = "TexHighlightMask";
 }
 
 /// <summary>

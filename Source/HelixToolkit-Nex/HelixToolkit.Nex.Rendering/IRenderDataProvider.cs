@@ -1,3 +1,5 @@
+using HelixToolkit.Nex.ECS;
+
 namespace HelixToolkit.Nex.Rendering;
 
 public interface IRenderData : IInitializable
@@ -118,6 +120,8 @@ public interface IMeshDrawData : IRenderData
 
 public interface IRenderDataProvider
 {
+    World World { get; }
+
     /// <summary>
     /// Gets the shared resource manager.
     /// </summary>

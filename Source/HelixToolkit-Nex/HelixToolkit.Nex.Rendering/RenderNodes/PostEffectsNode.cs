@@ -5,6 +5,8 @@ public abstract class PostEffect() : Initializable
     public IContext? Context { internal set; get; }
     public bool Enabled { get; set; } = true;
 
+    public Renderer? Renderer { internal set; get; }
+
     public abstract Color DebugColor { get; }
 
     /// <summary>
@@ -108,6 +110,7 @@ public sealed class PostEffectsNode : RenderNode
         foreach (var effect in _effects)
         {
             effect.Context = Context;
+            effect.Renderer = Renderer;
             effect.Initialize().CheckResult();
         }
         return true;
