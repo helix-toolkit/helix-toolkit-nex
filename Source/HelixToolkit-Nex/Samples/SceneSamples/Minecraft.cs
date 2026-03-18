@@ -200,7 +200,9 @@ public class MinecraftScene : IScene
                 {
                     int blockIdx = (int)GetBlockType(x, y, z, terrainHeight, heightMap);
                     instancings[blockIdx]
-                        .Transforms.Add(Matrix4x4.CreateTranslation(new Vector3(x, y, z)));
+                        .Transforms.Add(
+                            InstanceTransformExts.Identity.SetTranslation(new Vector3(x, y, z))
+                        );
                 }
             }
         }
@@ -262,7 +264,8 @@ public class MinecraftScene : IScene
             root.AddChild(lightNode);
 
             // Accumulate a sphere instance at this position for the matching colour group
-            lightSphereInstancings[col].Inst.Transforms.Add(Matrix4x4.CreateTranslation(pos));
+            lightSphereInstancings[col]
+                .Inst.Transforms.Add(InstanceTransformExts.Identity.SetTranslation(pos));
         }
 
         // Upload sphere instancing buffers and add one node per colour group
