@@ -75,6 +75,7 @@ internal class LightCullingTest(IContext context, bool largeScene = true) : IDis
         postEffectNode.AddEffect(new Bloom());
         postEffectNode.AddEffect(new ToneMapping());
         postEffectNode.AddEffect(new BorderHighlightPostEffect());
+        postEffectNode.AddEffect(new WireframePostEffect());
         postEffectNode.AddEffect(new ShowFPS());
         _renderer.AddNode(postEffectNode);
         _renderer.AddNode(new RenderToFinalNode(_context.GetSwapchainFormat()));
@@ -160,6 +161,7 @@ internal class LightCullingTest(IContext context, bool largeScene = true) : IDis
         if (_selectedEntity.Valid)
         {
             _selectedEntity.Remove<BorderHighlightComponent>();
+            _selectedEntity.Remove<WireframeComponent>();
         }
         _context.TryPick(
             _renderContext!.ResourceSet!.Textures[SystemBufferNames.TextureEntityId],
@@ -174,6 +176,7 @@ internal class LightCullingTest(IContext context, bool largeScene = true) : IDis
         _selectedEntity = _worldDataProvider!.World.GetEntity((int)entityId, entityVar);
         _logger.LogInformation($"Picked entity {_selectedEntity} (instance {instanceIdx})");
         _selectedEntity.Set(BorderHighlightComponent.Default);
+        _selectedEntity.Set(new WireframeComponent() { Color = new Color4(1f, 0f, 0f, 1f) });
     }
 
     private bool _disposedValue;
