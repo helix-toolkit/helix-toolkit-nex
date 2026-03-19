@@ -258,27 +258,17 @@ public sealed class BorderHighlightPostEffect : PostEffect
         // Use external-pipeline scope so RenderHelper skips per-material pipeline binding.
         using var _ = context.EnableExternalPipelineScoped();
 
-        // Static meshes use an index buffer; bind it once.
-        if (meshDraws.HasStaticMesh || meshDraws.HasStaticInstancingMesh)
-        {
-            cmdBuffer.BindIndexBuffer(data.StaticMeshIndexData.Buffer, IndexFormat.UI32);
-        }
-
         var fpConstAddress = fpConstBuf.GpuAddress(context.Context);
 
         foreach (var entry in entries)
         {
             var drawCmd = meshDraws.DrawCommands[(int)entry.DrawIndex];
-            bool isStatic = (drawCmd.DrawType & 1u) == 0u; // bit 0 = IsDynamic
-            bool isInstancing = (drawCmd.DrawType & (1u << 2)) != 0u;
-
-            if (!isStatic && isInstancing)
+            var isDynamic = drawCmd.IsDynamic();
+            if (!isDynamic)
             {
-                // Dynamic instancing — not yet supported for highlight; skip.
-                continue;
+                cmdBuffer.BindIndexBuffer(data.StaticMeshIndexData.Buffer, IndexFormat.UI32);
             }
-
-            if (!isStatic)
+            else
             {
                 // Dynamic mesh — bind its own index buffer.
                 var geom = data.GetGeometry(drawCmd.MeshId);

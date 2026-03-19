@@ -21,6 +21,11 @@ Currently in development.
 - ECS based scene management system. (In Progress)
 - Engine architecture design. (In Progress)
   - Render Graph based rendering architecture. (Done)
+  - Bloom post-processing effect. (Done)
+  - Object border highlighting effect. (Done) 
+  - Wireframe rendering. (Done)
+  - Tone mapping post-processing effect. (Done)
+  - GPU Object level picking. (Done)
 
 ## Rendering Samples
 

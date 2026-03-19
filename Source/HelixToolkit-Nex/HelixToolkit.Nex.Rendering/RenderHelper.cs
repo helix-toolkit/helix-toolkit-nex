@@ -364,4 +364,14 @@ public static class RenderHelper
         }
         return drawCount;
     }
+
+    public static bool IsDynamic(this MeshDraw meshDraw)
+    {
+        return (meshDraw.DrawType & 0x1u) != 0u;
+    }
+
+    public static bool IsInstancing(this MeshDraw meshDraw)
+    {
+        return (meshDraw.DrawType & 0x2u) != 0u;
+    }
 }
