@@ -274,14 +274,14 @@ public class MinecraftLargeScene : IScene
         var meshBuilder = new MeshBuilder(true, true, true);
         meshBuilder.AddCube();
         var cube = meshBuilder.ToMesh().ToGeometry();
-        bool succ = geometryManager.Add(cube, out _);
+        bool succ = geometryManager.AddAsync(cube, out _);
         Debug.Assert(succ, "Failed to add cube geometry");
 
         // Small sphere mesh used to visualise each point light source
         meshBuilder = new MeshBuilder(true, true, true);
         meshBuilder.AddSphere(Vector3.Zero, 0.3f, 12, 12);
         var lightSphere = meshBuilder.ToMesh().ToGeometry();
-        succ = geometryManager.Add(lightSphere, out _);
+        succ = geometryManager.AddAsync(lightSphere, out _);
         Debug.Assert(succ, "Failed to add light sphere geometry");
 
         var root = new Node(worldDataProvider.World, "MinecraftRoot");
@@ -548,7 +548,7 @@ public class MinecraftLargeScene : IScene
         var mb = new MeshBuilder(true, true, true);
         mb.AddCone(Vector3.Zero, -Vector3.UnitY, 0f, 0.8f, 2.5f, false, true, 12);
         var coneMesh = mb.ToMesh().ToGeometry();
-        bool ok = geometryManager.Add(coneMesh, out _);
+        bool ok = geometryManager.AddAsync(coneMesh, out _);
         Debug.Assert(ok, "Failed to add spot-light cone geometry");
 
         _spotLights.Clear();
@@ -752,7 +752,7 @@ public class MinecraftLargeScene : IScene
         mb.AddBox(new Vector3(-0.25f, 0.0f, -0.4f), 0.2f, 0.5f, 0.2f);
         mb.AddBox(new Vector3(0.25f, 0.0f, -0.4f), 0.2f, 0.5f, 0.2f);
         var geo = mb.ToMesh().ToGeometry();
-        Debug.Assert(geometryManager.Add(geo, out _), "Failed to add cow geometry");
+        Debug.Assert(geometryManager.AddAsync(geo, out _), "Failed to add cow geometry");
         return geo;
     }
 
@@ -767,7 +767,7 @@ public class MinecraftLargeScene : IScene
         mb.AddBox(new Vector3(-0.18f, 0.0f, -0.25f), 0.15f, 0.3f, 0.15f);
         mb.AddBox(new Vector3(0.18f, 0.0f, -0.25f), 0.15f, 0.3f, 0.15f);
         var geo = mb.ToMesh().ToGeometry();
-        Debug.Assert(geometryManager.Add(geo, out _), "Failed to add pig geometry");
+        Debug.Assert(geometryManager.AddAsync(geo, out _), "Failed to add pig geometry");
         return geo;
     }
 
@@ -781,7 +781,7 @@ public class MinecraftLargeScene : IScene
         mb.AddBox(new Vector3(0.06f, 0.0f, 0.0f), 0.05f, 0.2f, 0.05f);
         mb.AddBox(new Vector3(0, 0.35f, -0.25f), 0.15f, 0.2f, 0.1f);
         var geo = mb.ToMesh().ToGeometry();
-        Debug.Assert(geometryManager.Add(geo, out _), "Failed to add chicken geometry");
+        Debug.Assert(geometryManager.AddAsync(geo, out _), "Failed to add chicken geometry");
         return geo;
     }
 
@@ -795,7 +795,7 @@ public class MinecraftLargeScene : IScene
         mb.AddBox(new Vector3(-0.22f, 0.0f, -0.3f), 0.15f, 0.45f, 0.15f);
         mb.AddBox(new Vector3(0.22f, 0.0f, -0.3f), 0.15f, 0.45f, 0.15f);
         var geo = mb.ToMesh().ToGeometry();
-        Debug.Assert(geometryManager.Add(geo, out _), "Failed to add sheep geometry");
+        Debug.Assert(geometryManager.AddAsync(geo, out _), "Failed to add sheep geometry");
         return geo;
     }
 

@@ -130,8 +130,9 @@ public sealed class ResourceManager : Initializable, IResourceManager
         {
             if (geometry.BufferDirty != GeometryBufferType.None)
             {
-                geometry.UpdateBuffers(Context);
+                geometry.UpdateBuffersAsync(Context);
             }
+            geometry.TryCompletePendingBufferUpdate();
         }
         foreach (var renderData in _renderDatas)
         {

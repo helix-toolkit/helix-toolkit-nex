@@ -1,5 +1,3 @@
-using Vortice.Vulkan;
-
 namespace HelixToolkit.Nex.Graphics.Vulkan;
 
 public sealed class VulkanContextConfig()
@@ -90,6 +88,7 @@ internal sealed partial class VulkanContext
     private VulkanSwapchain? _swapchain = null;
     private VulkanStagingDevice? _stagingDevice = null;
     private VulkanImmediateCommands? _immediate = null;
+    private VulkanTransferQueue? _transferQueue = null;
     private VkDescriptorSetLayout _vkDesSetLayout = VkDescriptorSetLayout.Null;
     private VkDescriptorSetLayout _dslInputAttachments = VkDescriptorSetLayout.Null;
     private VkDescriptorPool _vkDesPool = VkDescriptorPool.Null;
@@ -738,6 +737,11 @@ internal sealed partial class VulkanContext
             _vkPhysicalDevice,
             VkQueueFlags.Compute
         );
+        DeviceQueues.TransferQueueFamilyIndex = HxVkUtils.FindQueueFamilyIndex(
+            _vkPhysicalDevice,
+            VkQueueFlags.Transfer
+        );
+
         if (DeviceQueues.GraphicsQueueFamilyIndex == DeviceQueues.INVALID)
         {
             _logger.LogError("VK_QUEUE_GRAPHICS_BIT is not supported");
@@ -751,7 +755,7 @@ internal sealed partial class VulkanContext
         var availableDeviceExtensions = VK.vkEnumerateDeviceExtensionProperties(_vkPhysicalDevice);
 
         //var supportPresent = vkGetPhysicalDeviceWin32PresentationSupportKHR(PhysicalDevice, queueFamilies.graphicsFamily);
-        VkDeviceQueueCreateInfo* queueCreateInfos = stackalloc VkDeviceQueueCreateInfo[2];
+        VkDeviceQueueCreateInfo* queueCreateInfos = stackalloc VkDeviceQueueCreateInfo[3];
         float queuePriority = 1f;
         queueCreateInfos[0] = new VkDeviceQueueCreateInfo
         {
@@ -763,10 +767,36 @@ internal sealed partial class VulkanContext
         {
             queueFamilyIndex = DeviceQueues.ComputeQueueFamilyIndex,
             queueCount = 1,
-            pQueuePriorities = &queuePriority, // Priority for the graphics queue
+            pQueuePriorities = &queuePriority, // Priority for the compute queue
         };
-        uint32_t numQueues =
-            queueCreateInfos[0].queueFamilyIndex == queueCreateInfos[1].queueFamilyIndex ? 1u : 2u;
+        queueCreateInfos[2] = new VkDeviceQueueCreateInfo
+        {
+            queueFamilyIndex = DeviceQueues.TransferQueueFamilyIndex,
+            queueCount = 1,
+            pQueuePriorities = &queuePriority, // Priority for the transfer queue
+        };
+
+        // Deduplicate queue families - Vulkan requires unique queue family indices
+        HashSet<uint32_t> uniqueQueueFamilies =
+        [
+            queueCreateInfos[0].queueFamilyIndex,
+            queueCreateInfos[1].queueFamilyIndex,
+        ];
+        if (DeviceQueues.TransferQueueFamilyIndex != DeviceQueues.INVALID)
+        {
+            uniqueQueueFamilies.Add(queueCreateInfos[2].queueFamilyIndex);
+        }
+        // Rebuild queueCreateInfos with only unique families
+        uint32_t numQueues = 0;
+        foreach (var familyIndex in uniqueQueueFamilies)
+        {
+            queueCreateInfos[numQueues++] = new VkDeviceQueueCreateInfo
+            {
+                queueFamilyIndex = familyIndex,
+                queueCount = 1,
+                pQueuePriorities = &queuePriority,
+            };
+        }
 
         {
             // Get features and properties of the physical device and create the logical device
@@ -851,6 +881,17 @@ internal sealed partial class VulkanContext
             out GraphicsQueue.ComputeQueue
         );
 
+        // Get the transfer queue if a dedicated one is available
+        if (DeviceQueues.TransferQueueFamilyIndex != DeviceQueues.INVALID)
+        {
+            VK.vkGetDeviceQueue(
+                _vkDevice,
+                DeviceQueues.TransferQueueFamilyIndex,
+                0,
+                out DeviceQueues.TransferQueue
+            );
+        }
+
         if (GraphicsSettings.EnableDebug)
         {
             _vkDevice.SetDebugObjectName(
@@ -890,6 +931,9 @@ internal sealed partial class VulkanContext
         }
 
         _stagingDevice = new VulkanStagingDevice(this);
+
+        // Create async transfer queue for background uploads
+        _transferQueue = new VulkanTransferQueue(this);
 
         // default texture
         {
@@ -1463,7 +1507,6 @@ internal sealed partial class VulkanContext
         {
             if (Swapchain is not null && Swapchain.Valid)
             {
-                // destroy the old swapchain first
                 VK.vkDeviceWaitIdle(_vkDevice).CheckResult();
                 Disposer.DisposeAndRemove(ref _swapchain);
                 VK.vkDestroySemaphore(_vkDevice, TimelineSemaphore, null);
@@ -2296,8 +2339,8 @@ internal sealed partial class VulkanContext
         unsafe
         {
             VK.vkDeviceWaitIdle(_vkDevice).CheckResult();
+            Disposer.DisposeAndRemove(ref _transferQueue);
             Disposer.DisposeAndRemove(ref _stagingDevice);
-            Disposer.DisposeAndRemove(ref _swapchain);
             _dummyTexture?.Dispose();
             _defaultSampler?.Dispose();
 

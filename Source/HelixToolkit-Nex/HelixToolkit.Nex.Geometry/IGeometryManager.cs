@@ -42,6 +42,15 @@ public interface IGeometryManager : IDisposable
     bool Add(Geometry geometry, out uint id);
 
     /// <summary>
+    /// Asynchronously adds the specified geometry to the collection and assigns it a unique identifier.
+    /// </summary>
+    /// <param name="geometry">The geometry object to add. Cannot be <see langword="null"/>.</param>
+    /// <param name="id">When this method returns, contains the unique identifier assigned to the added geometry, if the operation
+    /// succeeds.</param>
+    /// <returns><see langword="true"/> if the geometry was successfully added; otherwise, <see langword="false"/>.</returns>
+    bool AddAsync(Geometry geometry, out uint id);
+
+    /// <summary>
     /// Remove geometry from Geometry Manager. You can also call geometry.Dispose() to remove geometry from Geometry Manager.
     /// </summary>
     /// <param name="geometry"></param>
