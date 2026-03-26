@@ -104,12 +104,23 @@ public partial class Geometry : ObservableObject, IDisposable
     private BufferResource _indexBuffer = BufferResource.Null;
     private BufferResource _vertColorsBuffer = BufferResource.Null;
 
+    /// <summary>
+    /// Pending buffer state for async uploads. Holds new buffers that are being uploaded
+    /// while the old buffers remain active for rendering.
+    /// </summary>
+    private PendingBufferUpdate? _pendingBufferUpdate;
+
     public uint IndexCount => (uint)_indices.Count;
 
     public BufferResource VertexBuffer => _vertexBuffer;
     public BufferResource VertexPropsBuffer => _vertexPropsBuffer;
     public BufferResource IndexBuffer => _indexBuffer;
     public BufferResource VertexColorBuffer => _vertColorsBuffer;
+
+    /// <summary>
+    /// Gets a value indicating whether there is a pending async buffer update in progress.
+    /// </summary>
+    public bool HasPendingBufferUpdate => _pendingBufferUpdate is not null;
     #endregion
 
     public GeometryBufferType BufferDirty { set; get; } = GeometryBufferType.All;
@@ -388,6 +399,387 @@ public partial class Geometry : ObservableObject, IDisposable
         }
         return ResultCode.Ok;
     }
+
+    /// <summary>
+    /// Asynchronously updates the geometry buffers using the transfer queue for GPU uploads.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This method uses a double-buffering strategy: new GPU buffers are created and data uploads
+    /// are scheduled via <see cref="IContext.UploadAsync"/>, while the existing buffers remain
+    /// active for rendering. Once all uploads are complete, call <see cref="TryCompletePendingBufferUpdate"/>
+    /// or <see cref="ApplyPendingBuffers"/> to atomically swap the new buffers in and dispose the old ones.
+    /// </para>
+    /// <para>
+    /// For dynamic (HostVisible) geometry, this method falls back to the synchronous <see cref="UpdateBuffers"/>
+    /// path since mapped memory writes don't benefit from async transfer.
+    /// </para>
+    /// <para>
+    /// If a previous async update is still pending, it will be cancelled (its buffers disposed) and replaced
+    /// by this new update.
+    /// </para>
+    /// </remarks>
+    /// <param name="context">The graphics context used to create and manage the buffers. Must not be <c>null</c>.</param>
+    /// <param name="types">A bitwise combination of <see cref="GeometryBufferType"/> values indicating which buffers to update.</param>
+    /// <returns>A <see cref="ResultCode"/> indicating whether buffer creation and upload scheduling succeeded.</returns>
+    public ResultCode UpdateBuffersAsync(IContext context, GeometryBufferType types)
+    {
+        // Dynamic buffers use mapped memory — no benefit from async transfer
+        if (IsDynamic)
+        {
+            return UpdateBuffers(context, types);
+        }
+
+        using var scope = _tracer.BeginScope(nameof(UpdateBuffersAsync), TRACE_BUFFER);
+
+        // Cancel any previous pending update
+        _pendingBufferUpdate?.Dispose();
+        _pendingBufferUpdate = null;
+
+        const StorageType storageType = StorageType.Device;
+
+        var pending = new PendingBufferUpdate();
+        var hasAnyUpload = false;
+
+        if (types.HasFlag(GeometryBufferType.Vertex) && _vertices.Count > 0)
+        {
+            unsafe
+            {
+                uint dataSize = (uint)(_vertices.Count * sizeof(Vertex));
+                string? debugName = GraphicsSettings.EnableDebug
+                    ? $"{nameof(Geometry)}_{Id}_VertexBuffer"
+                    : null;
+
+                var result = context.CreateBuffer(
+                    new BufferDesc(
+                        BufferUsageBits.Vertex | BufferUsageBits.Storage,
+                        storageType,
+                        nint.Zero,
+                        dataSize
+                    ),
+                    out var newBuffer,
+                    debugName: debugName
+                );
+                if (result != ResultCode.Ok)
+                {
+                    logger.LogError(
+                        "Failed to create vertex buffer for Geometry {ID}: {RESULT}",
+                        Id,
+                        result
+                    );
+                    pending.Dispose();
+                    return result;
+                }
+
+                using var ptr = _vertices.GetInternalArray().Pin();
+                var upload = context.UploadAsync(newBuffer.Handle, 0, (nint)ptr.Pointer, dataSize);
+                pending.VertexBuffer = newBuffer;
+                pending.UploadHandles.Add(upload);
+                hasAnyUpload = true;
+            }
+            pending.Types |= GeometryBufferType.Vertex;
+        }
+        else if (types.HasFlag(GeometryBufferType.Vertex))
+        {
+            // No vertices — mark for clearing on apply
+            pending.Types |= GeometryBufferType.Vertex;
+        }
+
+        if (
+            types.HasFlag(GeometryBufferType.VertexProp)
+            && _vertexProps.Count > 0
+            && _vertexProps.Count == _vertices.Count
+        )
+        {
+            unsafe
+            {
+                uint dataSize = (uint)(_vertexProps.Count * VertexProperties.SizeInBytes);
+                string? debugName = GraphicsSettings.EnableDebug
+                    ? $"{nameof(Geometry)}_{Id}_VertexPropsBuffer"
+                    : null;
+
+                var result = context.CreateBuffer(
+                    new BufferDesc(
+                        BufferUsageBits.Vertex | BufferUsageBits.Storage,
+                        storageType,
+                        nint.Zero,
+                        dataSize
+                    ),
+                    out var newBuffer,
+                    debugName: debugName
+                );
+                if (result != ResultCode.Ok)
+                {
+                    logger.LogError(
+                        "Failed to create vertex props buffer for Geometry {ID}: {RESULT}",
+                        Id,
+                        result
+                    );
+                    pending.Dispose();
+                    return result;
+                }
+
+                using var ptr = _vertexProps.GetInternalArray().Pin();
+                var upload = context.UploadAsync(newBuffer.Handle, 0, (nint)ptr.Pointer, dataSize);
+                pending.VertexPropsBuffer = newBuffer;
+                pending.UploadHandles.Add(upload);
+                hasAnyUpload = true;
+            }
+            pending.Types |= GeometryBufferType.VertexProp;
+        }
+        else if (types.HasFlag(GeometryBufferType.VertexProp))
+        {
+            pending.Types |= GeometryBufferType.VertexProp;
+        }
+
+        if (
+            types.HasFlag(GeometryBufferType.Index)
+            && CanHaveIndexBuffer
+            && IsDynamic
+            && _indices.Count > 0
+        )
+        {
+            unsafe
+            {
+                uint dataSize = (uint)(_indices.Count * sizeof(uint));
+                string? debugName = GraphicsSettings.EnableDebug
+                    ? $"{nameof(Geometry)}_{Id}_IndexBuffer"
+                    : null;
+
+                var result = context.CreateBuffer(
+                    new BufferDesc(BufferUsageBits.Index, storageType, nint.Zero, dataSize),
+                    out var newBuffer,
+                    debugName: debugName
+                );
+                if (result != ResultCode.Ok)
+                {
+                    logger.LogError(
+                        "Failed to create index buffer for Geometry {ID}: {RESULT}",
+                        Id,
+                        result
+                    );
+                    pending.Dispose();
+                    return result;
+                }
+
+                using var ptr = _indices.GetInternalArray().Pin();
+                var upload = context.UploadAsync(newBuffer.Handle, 0, (nint)ptr.Pointer, dataSize);
+                pending.IndexBuffer = newBuffer;
+                pending.UploadHandles.Add(upload);
+                hasAnyUpload = true;
+            }
+            pending.Types |= GeometryBufferType.Index;
+        }
+        else if (types.HasFlag(GeometryBufferType.Index))
+        {
+            pending.Types |= GeometryBufferType.Index;
+        }
+
+        if (
+            types.HasFlag(GeometryBufferType.VertexColor)
+            && _vertexColors.Count > 0
+            && _vertexColors.Count == _vertices.Count
+        )
+        {
+            unsafe
+            {
+                uint dataSize = (uint)(_vertexColors.Count * sizeof(Vector4));
+                string? debugName = GraphicsSettings.EnableDebug
+                    ? $"{nameof(Geometry)}_{Id}_VertexColorBuffer"
+                    : null;
+
+                var result = context.CreateBuffer(
+                    new BufferDesc(BufferUsageBits.Vertex, StorageType.Device, nint.Zero, dataSize),
+                    out var newBuffer,
+                    debugName: debugName
+                );
+                if (result != ResultCode.Ok)
+                {
+                    logger.LogError(
+                        "Failed to create vertex color buffer for Geometry {ID}: {RESULT}",
+                        Id,
+                        result
+                    );
+                    pending.Dispose();
+                    return result;
+                }
+
+                using var ptr = _vertexColors.GetInternalArray().Pin();
+                var upload = context.UploadAsync(newBuffer.Handle, 0, (nint)ptr.Pointer, dataSize);
+                pending.VertexColorBuffer = newBuffer;
+                pending.UploadHandles.Add(upload);
+                hasAnyUpload = true;
+            }
+            pending.Types |= GeometryBufferType.VertexColor;
+        }
+        else if (types.HasFlag(GeometryBufferType.VertexColor))
+        {
+            pending.Types |= GeometryBufferType.VertexColor;
+        }
+
+        if (!hasAnyUpload)
+        {
+            // All requested buffer types had no data — apply immediately
+            ApplyPendingBuffersInternal(pending);
+            pending.Dispose();
+            return ResultCode.Ok;
+        }
+
+        _pendingBufferUpdate = pending;
+        BufferDirty = GeometryBufferType.None; // Clear dirty flag since we have a pending update that will apply the changes
+        return ResultCode.Ok;
+    }
+
+    /// <summary>
+    /// Asynchronously updates all dirty geometry buffers using the transfer queue.
+    /// </summary>
+    /// <param name="context">The graphics context used to create and manage the buffers.</param>
+    /// <returns>A <see cref="ResultCode"/> indicating whether buffer creation and upload scheduling succeeded.</returns>
+    public ResultCode UpdateBuffersAsync(IContext context)
+    {
+        return UpdateBuffersAsync(context, BufferDirty);
+    }
+
+    /// <summary>
+    /// Checks if the pending async buffer update has completed, and if so, swaps in the new buffers.
+    /// </summary>
+    /// <remarks>
+    /// Call this method each frame (or at a suitable point) to check if the async uploads have finished.
+    /// When complete, the old buffers are disposed and the new buffers become active.
+    /// This is a non-blocking operation.
+    /// </remarks>
+    /// <returns><c>true</c> if there was a pending update and it has been applied;
+    /// <c>false</c> if there is no pending update or it is still in progress.</returns>
+    public bool TryCompletePendingBufferUpdate()
+    {
+        if (_pendingBufferUpdate is null)
+        {
+            return false;
+        }
+
+        if (!_pendingBufferUpdate.IsCompleted)
+        {
+            return false;
+        }
+
+        ApplyPendingBuffers();
+        return true;
+    }
+
+    /// <summary>
+    /// Applies the pending buffer update, swapping in new buffers and disposing old ones.
+    /// </summary>
+    /// <remarks>
+    /// This method should only be called after verifying that all uploads are complete
+    /// (e.g., via <see cref="TryCompletePendingBufferUpdate"/> or by awaiting the upload tasks).
+    /// If called while uploads are still in progress, the buffers may contain incomplete data.
+    /// </remarks>
+    public void ApplyPendingBuffers()
+    {
+        if (_pendingBufferUpdate is null)
+        {
+            return;
+        }
+
+        var pending = _pendingBufferUpdate;
+        _pendingBufferUpdate = null;
+
+        // Log any upload failures
+        foreach (var handle in pending.UploadHandles)
+        {
+            if (handle.Result != ResultCode.Ok)
+            {
+                logger.LogError(
+                    "Async buffer upload failed for Geometry {ID}: {RESULT}",
+                    Id,
+                    handle.Result
+                );
+            }
+        }
+
+        ApplyPendingBuffersInternal(pending);
+    }
+
+    private void ApplyPendingBuffersInternal(PendingBufferUpdate pending)
+    {
+        if (pending.Types.HasFlag(GeometryBufferType.Vertex))
+        {
+            _vertexBuffer?.Dispose();
+            _vertexBuffer = pending.VertexBuffer ?? BufferResource.Null;
+            pending.VertexBuffer = null; // Ownership transferred
+            BufferDirty &= ~GeometryBufferType.Vertex;
+        }
+
+        if (pending.Types.HasFlag(GeometryBufferType.VertexProp))
+        {
+            _vertexPropsBuffer?.Dispose();
+            _vertexPropsBuffer = pending.VertexPropsBuffer ?? BufferResource.Null;
+            pending.VertexPropsBuffer = null;
+            BufferDirty &= ~GeometryBufferType.VertexProp;
+        }
+
+        if (pending.Types.HasFlag(GeometryBufferType.Index))
+        {
+            _indexBuffer?.Dispose();
+            _indexBuffer = pending.IndexBuffer ?? BufferResource.Null;
+            pending.IndexBuffer = null;
+            BufferDirty &= ~GeometryBufferType.Index;
+        }
+
+        if (pending.Types.HasFlag(GeometryBufferType.VertexColor))
+        {
+            _vertColorsBuffer?.Dispose();
+            _vertColorsBuffer = pending.VertexColorBuffer ?? BufferResource.Null;
+            pending.VertexColorBuffer = null;
+            BufferDirty &= ~GeometryBufferType.VertexColor;
+        }
+        EventBus.Instance.PublishAsync(new GeometryUpdatedEvent(Id, GeometryChangeOp.Updated));
+    }
+
+    /// <summary>
+    /// Holds the state for a pending async buffer upload operation.
+    /// New buffers are staged here until uploads complete, then swapped into the geometry.
+    /// </summary>
+    private sealed class PendingBufferUpdate : IDisposable
+    {
+        public GeometryBufferType Types;
+        public BufferResource? VertexBuffer;
+        public BufferResource? VertexPropsBuffer;
+        public BufferResource? IndexBuffer;
+        public BufferResource? VertexColorBuffer;
+        public readonly List<AsyncUploadHandle> UploadHandles = [];
+
+        /// <summary>
+        /// Gets a value indicating whether all async uploads have completed.
+        /// </summary>
+        public bool IsCompleted
+        {
+            get
+            {
+                foreach (var handle in UploadHandles)
+                {
+                    if (!handle.IsCompleted)
+                        return false;
+                }
+                return true;
+            }
+        }
+
+        /// <summary>
+        /// Disposes any buffers that were not transferred to the geometry (e.g., on cancellation or error).
+        /// </summary>
+        public void Dispose()
+        {
+            VertexBuffer?.Dispose();
+            VertexBuffer = null;
+            VertexPropsBuffer?.Dispose();
+            VertexPropsBuffer = null;
+            IndexBuffer?.Dispose();
+            IndexBuffer = null;
+            VertexColorBuffer?.Dispose();
+            VertexColorBuffer = null;
+        }
+    }
     #endregion
 
     #region Create Bounding Box
@@ -448,6 +840,8 @@ public partial class Geometry : ObservableObject, IDisposable
         {
             if (disposing)
             {
+                _pendingBufferUpdate?.Dispose();
+                _pendingBufferUpdate = null;
                 _vertexBuffer?.Dispose();
                 _vertexPropsBuffer?.Dispose();
                 _indexBuffer?.Dispose();

@@ -3,6 +3,61 @@ namespace HelixToolkit.Nex.Graphics.Vulkan;
 internal sealed partial class VulkanContext : Initializable, IContext
 {
     #region IContext implementation
+
+    public bool HasDedicatedTransferQueue => DeviceQueues.HasDedicatedTransferQueue;
+
+    public AsyncUploadHandle UploadAsync(
+        in BufferHandle handle,
+        size_t offset,
+        nint data,
+        size_t size
+    )
+    {
+        if (data.IsNull() || size == 0)
+        {
+            var h = new AsyncUploadHandle();
+            h.Complete(data.IsNull() ? ResultCode.ArgumentNull : ResultCode.Ok);
+            return h;
+        }
+
+        if (_transferQueue is null)
+        {
+            // Fallback to synchronous upload
+            var result = Upload(handle, offset, data, size);
+            var h = new AsyncUploadHandle();
+            h.Complete(result);
+            return h;
+        }
+
+        return _transferQueue.EnqueueBufferUpload(handle, (uint)offset, data, (uint)size);
+    }
+
+    public AsyncUploadHandle UploadAsync(
+        in TextureHandle handle,
+        in TextureRangeDesc range,
+        nint data,
+        size_t dataSize
+    )
+    {
+        if (data.IsNull() || dataSize == 0)
+        {
+            var h = new AsyncUploadHandle();
+            h.Complete(data.IsNull() ? ResultCode.ArgumentNull : ResultCode.Ok);
+            return h;
+        }
+
+        if (_transferQueue is null)
+        {
+            // Fallback to synchronous upload
+            var result = Upload(handle, range, data, dataSize);
+            var h = new AsyncUploadHandle();
+            h.Complete(result);
+            return h;
+        }
+
+        return _transferQueue.EnqueueTextureUpload(handle, range, data, (uint)dataSize);
+    }
+
     public ResultCode Upload(in BufferHandle handle, size_t offset, nint data, size_t size)
     {
         if (data.IsNull())

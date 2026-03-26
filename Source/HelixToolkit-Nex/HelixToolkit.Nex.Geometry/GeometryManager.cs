@@ -32,6 +32,16 @@ public sealed class GeometryManager(IContext context) : IGeometryManager
 
     public bool Add(Geometry geometry, out uint id)
     {
+        return Add(geometry, false, out id);
+    }
+
+    public bool AddAsync(Geometry geometry, out uint id)
+    {
+        return Add(geometry, true, out id);
+    }
+
+    public bool Add(Geometry geometry, bool async, out uint id)
+    {
         id = 0;
         if (geometry.Handle.Valid || geometry.Manager is not null)
         {
@@ -46,7 +56,14 @@ public sealed class GeometryManager(IContext context) : IGeometryManager
                 geometry.Handle = handle;
                 geometry.Manager = this;
                 geometry.PropertyChanged += Geometry_PropertyChanged;
-                geometry.UpdateBuffers(_context);
+                if (async)
+                {
+                    geometry.UpdateBuffersAsync(_context).CheckResult();
+                }
+                else
+                {
+                    geometry.UpdateBuffers(_context).CheckResult();
+                }
                 geometry.UpdateBounds();
                 if (!geometry.IsDynamic)
                 {

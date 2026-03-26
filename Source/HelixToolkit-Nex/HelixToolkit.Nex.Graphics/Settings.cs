@@ -38,4 +38,12 @@ public static class GraphicsSettings
     /// Mesh shaders are a modern GPU feature that may not be available on all hardware.
     /// </remarks>
     public static bool SupportMeshShader { get; set; } = false;
+
+    /// <summary>
+    /// Gets or sets the priority level for the upload thread.
+    /// </summary>
+    /// <remarks>Adjusting the thread priority can impact the performance of upload operations relative to
+    /// other threads. Use higher priorities for time-sensitive uploads and lower priorities to reduce interference with
+    /// other tasks.</remarks>
+    public static ThreadPriority UploadThreadPriority { get; set; } = ThreadPriority.AboveNormal;
 }
