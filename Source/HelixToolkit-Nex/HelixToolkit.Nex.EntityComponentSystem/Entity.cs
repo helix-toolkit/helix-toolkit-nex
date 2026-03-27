@@ -196,6 +196,19 @@ public struct Entity : IDisposable, IEquatable<Entity>
     {
         World?.NotifyComponentChanged<T>(this);
     }
+
+    /// <summary>
+    /// Notifies the system that a component of the specified type has changed for the current entity.
+    /// </summary>
+    /// <remarks>This method informs the associated <see cref="World"/> instance, if available, about the
+    /// change in the specified component. Ensure that the <see cref="World"/> property is not null before calling this
+    /// method.</remarks>
+    /// <typeparam name="T">The type of the component that has changed.</typeparam>
+    /// <param name="component">The component instance that has changed.</param>
+    public readonly void NotifyComponentChanged<T>(T component)
+    {
+        World?.NotifyComponentChanged<T>(this);
+    }
     #endregion
 
     #region Operator

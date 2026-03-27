@@ -792,6 +792,23 @@ public sealed class DepthState()
     public float DepthBiasSlopeFactor = 0;
 
     /// <summary>
+    /// Creates a new <see cref="DepthState"/> instance that is a copy of the current instance.
+    /// </summary>
+    /// <returns>A new <see cref="DepthState"/> object with the same property values as the current instance.</returns>
+    public DepthState Clone()
+    {
+        return new DepthState
+        {
+            CompareOp = this.CompareOp,
+            IsDepthWriteEnabled = this.IsDepthWriteEnabled,
+            IsDepthBiasEnabled = this.IsDepthBiasEnabled,
+            DepthBiasConstantFactor = this.DepthBiasConstantFactor,
+            DepthBiasClamp = this.DepthBiasClamp,
+            DepthBiasSlopeFactor = this.DepthBiasSlopeFactor,
+        };
+    }
+
+    /// <summary>
     /// Represents the default depth state configuration. (Inversed Z)
     /// </summary>
     /// <remarks>The default configuration sets the depth comparison operation to <see

@@ -78,18 +78,18 @@ public abstract class RenderNode : IDisposable
             return;
         }
         using var scope = _tracer?.BeginScope(nameof(Render));
+        res.CmdBuffer.PushDebugGroupLabel(Name, DebugColor);
         if (BeginRender(in res))
         {
             OnRender(in res);
             EndRender(in res);
         }
+        res.CmdBuffer.PopDebugGroupLabel();
     }
 
     protected virtual bool BeginRender(in RenderResources res)
     {
-        res.CmdBuffer.PushDebugGroupLabel(Name, DebugColor);
         res.CmdBuffer.BeginRendering(res.Pass, res.Framebuf, res.Deps);
-
         return true;
     }
 
@@ -98,7 +98,6 @@ public abstract class RenderNode : IDisposable
     protected virtual void EndRender(in RenderResources res)
     {
         res.CmdBuffer.EndRendering();
-        res.CmdBuffer.PopDebugGroupLabel();
     }
 
     public abstract void AddToGraph(RenderGraph graph);

@@ -62,7 +62,7 @@ public sealed class DebugDepthBufferNode()
                     SystemBufferNames.TextureColorF16Current
                 ];
                 res.Pass.Colors[0].ClearColor = Color.Transparent;
-                res.Pass.Colors[0].LoadOp = LoadOp.Clear;
+                res.Pass.Colors[0].LoadOp = LoadOp.DontCare;
                 res.Pass.Colors[0].StoreOp = StoreOp.Store;
                 res.Deps.Textures[0] = res.Textures[SystemBufferNames.TextureDepthF32];
             }
@@ -88,7 +88,7 @@ public sealed class DebugMeshIdNode()
                     SystemBufferNames.TextureColorF16Current
                 ];
                 res.Pass.Colors[0].ClearColor = Color.Black;
-                res.Pass.Colors[0].LoadOp = LoadOp.Clear;
+                res.Pass.Colors[0].LoadOp = LoadOp.DontCare;
                 res.Pass.Colors[0].StoreOp = StoreOp.Store;
                 res.Deps.Textures[0] = res.Textures[SystemBufferNames.TextureEntityId];
             }

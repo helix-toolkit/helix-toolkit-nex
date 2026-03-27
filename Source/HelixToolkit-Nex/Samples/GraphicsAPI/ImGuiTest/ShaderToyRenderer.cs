@@ -209,8 +209,8 @@ internal class ShaderToyRenderer : IDisposable
     public void Render(ICommandBuffer cmdBuf, uint type, Vector2 size, TextureResource target)
     {
         _fb.Colors[0].Texture = target;
-        cmdBuf.BeginRendering(_pass, _fb, Dependencies.Empty);
         cmdBuf.PushDebugGroupLabel("ShaderRenderer: Render", HxColor.Blue);
+        cmdBuf.BeginRendering(_pass, _fb, Dependencies.Empty);
         cmdBuf.BindDepthState(new());
         cmdBuf.BindViewport(
             new()
@@ -241,8 +241,8 @@ internal class ShaderToyRenderer : IDisposable
         };
         cmdBuf.PushConstants(pc);
         cmdBuf.Draw(4);
-        cmdBuf.PopDebugGroupLabel();
         cmdBuf.EndRendering();
+        cmdBuf.PopDebugGroupLabel();
     }
 
     private bool _disposedValue;

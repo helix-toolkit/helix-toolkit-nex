@@ -12,7 +12,7 @@ public sealed class ShowFPS : PostEffect
 
     public float Scale = 0.05f;
 
-    public override void Apply(in RenderResources res, ref string readSlot, ref string writeSlot)
+    public override bool Apply(in RenderResources res, ref string readSlot, ref string writeSlot)
     {
         Debug.Assert(_pipeline.Valid, "Tone mapping pipeline is not valid.");
         var cmdBuffer = res.CmdBuffer;
@@ -28,6 +28,7 @@ public sealed class ShowFPS : PostEffect
         cmdBuffer.PushConstants((int)res.Context.Statistics.FramesPerSecond);
         cmdBuffer.Draw(3); // Full-screen triangle
         cmdBuffer.EndRendering();
+        return true;
     }
 
     protected override ResultCode OnInitializing()
