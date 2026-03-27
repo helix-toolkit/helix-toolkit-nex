@@ -18,7 +18,7 @@ public struct DirectionalLightComponent()
     }
 
     /// <summary>Light color (linear RGB)</summary>
-    public Color Color
+    public Color4 Color
     {
         set
         {
@@ -27,7 +27,7 @@ public struct DirectionalLightComponent()
                 Light.Color = value.ToVector3();
             }
         }
-        get { return new Color(Light.Color); }
+        get { return new Color4(Light.Color); }
     }
 
     /// <summary>Light intensity</summary>

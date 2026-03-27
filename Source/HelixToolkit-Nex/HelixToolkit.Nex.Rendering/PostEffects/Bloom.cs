@@ -103,7 +103,7 @@ public sealed class Bloom : PostEffect
     // PostEffect interface
     // -----------------------------------------------------------------------
 
-    public override void Apply(in RenderResources res, ref string readSlot, ref string writeSlot)
+    public override bool Apply(in RenderResources res, ref string readSlot, ref string writeSlot)
     {
         Debug.Assert(_brightnessPipeline.Valid, "Bloom pipeline is not valid.");
 
@@ -195,6 +195,7 @@ public sealed class Bloom : PostEffect
             },
             input2Handle: bloomA
         );
+        return true;
     }
 
     protected override ResultCode OnInitializing()

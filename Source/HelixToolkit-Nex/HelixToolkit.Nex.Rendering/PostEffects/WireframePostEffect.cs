@@ -26,40 +26,72 @@ public sealed class WireframePostEffect : PostEffect
     private readonly Dependencies _deps = new();
     private readonly Framebuffer _frameBuffer = new();
     private readonly RenderPass _pass = new();
+    private readonly DepthState _depthState = DepthState.DefaultReversedZ.Clone();
 
     private readonly List<WireframeEntry> _entries = [];
 
     public override string Name => nameof(WireframePostEffect);
     public override Color DebugColor => Color.Chartreuse;
 
+    /// <summary>
+    /// Gets or sets the constant depth bias factor applied to fragment depth values.
+    /// </summary>
+    /// <remarks>This property is typically used to reduce z-fighting artifacts in rendering by adjusting the
+    /// depth values of fragments.  The effect of this property depends on the depth bias settings of the rendering
+    /// pipeline.</remarks>
+    public float DepthBiasConstant
+    {
+        get => _depthState.DepthBiasConstantFactor;
+        set => _depthState.DepthBiasConstantFactor = value;
+    }
+
+    /// <summary>
+    /// Gets or sets the slope scale factor used to apply a depth bias to fragments.
+    /// </summary>
+    /// <remarks>Depth bias is typically used to reduce artifacts such as z-fighting in rendering. Adjust this
+    /// value carefully to achieve the desired visual effect.</remarks>
+    public float DepthBiasSlope
+    {
+        get => _depthState.DepthBiasSlopeFactor;
+        set => _depthState.DepthBiasSlopeFactor = value;
+    }
+
+    public WireframePostEffect()
+    {
+        _depthState.IsDepthBiasEnabled = true;
+        DepthBiasConstant = 1f;
+        DepthBiasSlope = 1f;
+    }
+
     // -----------------------------------------------------------------------
     // PostEffect interface
     // -----------------------------------------------------------------------
 
-    public override void Apply(in RenderResources res, ref string readSlot, ref string writeSlot)
+    public override bool Apply(in RenderResources res, ref string readSlot, ref string writeSlot)
     {
         Debug.Assert(_wireframePipeline.Valid, "Wireframe pipeline is not valid.");
 
         var data = res.Context.Data;
         if (data is null)
         {
-            return;
+            return false;
         }
 
         var world = data.World;
         if (world is null || !world.HasAnyComponent<WireframeComponent>())
         {
             // Nothing to draw wireframe for — skip.
-            return;
+            return false;
         }
 
         GatherWireframeDraws(world, data);
         if (_entries.Count == 0)
         {
-            return;
+            return false;
         }
-
+        (readSlot, writeSlot) = (writeSlot, readSlot); // Swap slots so we write into the current texture.
         DrawWireframe(in res, res.CmdBuffer, data, ref readSlot, ref writeSlot, _entries);
+        return true;
     }
 
     protected override ResultCode OnInitializing()
@@ -69,7 +101,6 @@ public sealed class WireframePostEffect : PostEffect
             _logger.LogError("Render context is null during wireframe initialisation.");
             return ResultCode.InvalidState;
         }
-
         return CreatePipelines();
     }
 
@@ -136,7 +167,6 @@ public sealed class WireframePostEffect : PostEffect
         List<WireframeEntry> entries
     )
     {
-        (readSlot, writeSlot) = (writeSlot, readSlot); // Swap slots so we write into the current texture.
         var context = res.Context;
         var meshDraws = data.MeshDrawsOpaque;
         var fpConstBuf = res.Buffers[SystemBufferNames.BufferForwardPlusConstants];
@@ -156,7 +186,7 @@ public sealed class WireframePostEffect : PostEffect
 
         cmdBuffer.BeginRendering(_pass, _frameBuffer, _deps);
         cmdBuffer.BindRenderPipeline(_wireframePipeline);
-        cmdBuffer.BindDepthState(DepthState.DefaultReversedZ);
+        cmdBuffer.BindDepthState(_depthState);
 
         // Use external-pipeline scope so RenderHelper skips per-material pipeline binding.
         using var _ = context.EnableExternalPipelineScoped();

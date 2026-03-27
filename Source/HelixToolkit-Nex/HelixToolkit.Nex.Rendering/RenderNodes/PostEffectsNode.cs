@@ -35,7 +35,10 @@ public abstract class PostEffect() : Initializable
     /// The resource-set key of the texture to write to (render target).
     /// Resolved at compile time by the render graph's ping-pong slot assignment.
     /// </param>
-    public abstract void Apply(in RenderResources res, ref string readSlot, ref string writeSlot);
+    /// <returns>
+    /// Whether the effect applied successfully.
+    /// </returns>
+    public abstract bool Apply(in RenderResources res, ref string readSlot, ref string writeSlot);
 }
 
 public sealed class PostEffectsNode : RenderNode
@@ -58,14 +61,10 @@ public sealed class PostEffectsNode : RenderNode
 
     protected override bool BeginRender(in RenderResources res)
     {
-        res.CmdBuffer.PushDebugGroupLabel(Name, DebugColor);
         return true;
     }
 
-    protected override void EndRender(in RenderResources res)
-    {
-        res.CmdBuffer.PopDebugGroupLabel();
-    }
+    protected override void EndRender(in RenderResources res) { }
 
     protected override void OnRender(in RenderResources res)
     {
@@ -86,11 +85,12 @@ public sealed class PostEffectsNode : RenderNode
                 continue;
             }
             res.CmdBuffer.PushDebugGroupLabel(effect.Name, effect.DebugColor);
-            effect.Apply(in res, ref read, ref write);
+            if (effect.Apply(in res, ref read, ref write))
+            {
+                // Flip for next effect: what was just written becomes the next read source.
+                (read, write) = (write, read);
+            }
             res.CmdBuffer.PopDebugGroupLabel();
-
-            // Flip for next effect: what was just written becomes the next read source.
-            (read, write) = (write, read);
         }
 
         // `read` now holds the slot that was last written (the flip above moved it there).

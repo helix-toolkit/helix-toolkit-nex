@@ -72,9 +72,8 @@ public class ImGuiRenderer(IContext context, ImGuiConfig config) : IDisposable
 
         void main()
         {
-            vec4 c = in_color * textureBindless2D(pc.textureId, pc.samplerId, in_uv);
-            // Render UI in linear color space to sRGB framebuffer.
-            out_color = kNonLinearColorSpace ? vec4(pow(c.rgb, vec3(2.2)), c.a) : c;
+            vec4 c = kNonLinearColorSpace ? vec4(pow(in_color.rgb, vec3(2.2)), in_color.a) : in_color;
+            out_color = c * textureBindless2D(pc.textureId, pc.samplerId, in_uv);
         }
         """;
 
@@ -125,7 +124,7 @@ public class ImGuiRenderer(IContext context, ImGuiConfig config) : IDisposable
 
     public nint ImGuiContext { get; private set; } = 0;
 
-    public bool Initialize()
+    public bool Initialize(Format targetFormat)
     {
         ImGuiContext = Gui.CreateContext();
         var io = Gui.GetIO();
@@ -176,10 +175,14 @@ public class ImGuiRenderer(IContext context, ImGuiConfig config) : IDisposable
                 return false;
             }
         }
+        using var vert = _vertexShaderModule;
+        using var frag = _fragShaderModule;
+        CreatePipeline(targetFormat);
+
         return true;
     }
 
-    private unsafe bool CreatePipeline(Framebuffer fb)
+    private unsafe bool CreatePipeline(Format targetFormat)
     {
         var nonLinearColorSpace =
             Context.GetSwapchainColorSpace() == ColorSpace.SRGB_NONLINEAR ? 1u : 0u;
@@ -187,13 +190,10 @@ public class ImGuiRenderer(IContext context, ImGuiConfig config) : IDisposable
         desc.VertexShader = _vertexShaderModule;
         desc.FragmentShader = _fragShaderModule;
         desc.WriteSpecInfo(0, nonLinearColorSpace);
-        desc.Colors[0].Format = Context.GetFormat(fb.Colors[0].Texture);
+        desc.Colors[0].Format = targetFormat;
         desc.Colors[0].BlendEnabled = true;
         desc.Colors[0].SrcRGBBlendFactor = BlendFactor.SrcAlpha;
         desc.Colors[0].DstRGBBlendFactor = BlendFactor.OneMinusSrcAlpha;
-        desc.DepthFormat = fb.DepthStencil.Texture
-            ? Context.GetFormat(fb.DepthStencil.Texture)
-            : Format.Invalid;
         desc.CullMode = CullMode.None;
         desc.DebugName = nameof(ImGuiRenderer);
         var ret = Context.CreateRenderPipeline(desc, out _pipeline);
@@ -243,29 +243,35 @@ public class ImGuiRenderer(IContext context, ImGuiConfig config) : IDisposable
         }
     }
 
-    public bool BeginFrame(Framebuffer fb)
+    public bool BeginFrame(Vector2 windowSize)
     {
-        if (_pipeline == RenderPipelineResource.Null)
-        {
-            if (!CreatePipeline(fb))
-            {
-                _logger.LogError("Failed to create ImGui render pipeline.");
-                return false;
-            }
-        }
-        var dim = Context.GetDimensions(fb.Colors[0].Texture);
         Gui.SetCurrentContext(ImGuiContext);
         var io = Gui.GetIO();
-        io.DisplaySize = new Vector2(dim.Width, dim.Height);
+        io.DisplaySize = windowSize;
         io.DisplayFramebufferScale = new Vector2(DisplayScale);
         Gui.NewFrame();
         return true;
     }
 
-    public bool EndFrame(ICommandBuffer cmdBuf)
+    public bool EndFrame()
     {
         Gui.EndFrame();
         Gui.Render();
+        return true;
+    }
+
+    public bool Render(ICommandBuffer cmdBuf, RenderPass pass, Framebuffer frame, Dependencies dp)
+    {
+        cmdBuf.PushDebugGroupLabel("ImGui", new Maths.Color4(1, 0, 0, 1));
+        cmdBuf.BeginRendering(pass, frame, dp);
+        var ret = OnRender(cmdBuf);
+        cmdBuf.EndRendering();
+        cmdBuf.PopDebugGroupLabel();
+        return ret;
+    }
+
+    private bool OnRender(ICommandBuffer cmdBuf)
+    {
         var drawData = Gui.GetDrawData();
         var size = drawData.DisplaySize * drawData.FramebufferScale;
         if (size.X <= 0 || size.Y <= 0)
@@ -363,7 +369,7 @@ public class ImGuiRenderer(IContext context, ImGuiConfig config) : IDisposable
             }
         }
 
-        cmdBuf.PushDebugGroupLabel("ImGui", new Maths.Color4(1, 0, 0, 1));
+        cmdBuf.PushDebugGroupLabel("ImGuiRender", new Maths.Color4(1, 0, 0, 1));
         cmdBuf.BindDepthState(new());
         cmdBuf.BindViewport(new() { Width = (uint)size.X, Height = (uint)size.Y });
         float L = drawData.DisplayPos.X;

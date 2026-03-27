@@ -113,16 +113,10 @@ public class PrepareNode : RenderNode
 
     protected override bool BeginRender(in RenderResources res)
     {
-        // Compute nodes do not begin a render pass.
-        res.CmdBuffer.PushDebugGroupLabel(Name, DebugColor);
         return true;
     }
 
-    protected override void EndRender(in RenderResources res)
-    {
-        res.CmdBuffer.PopDebugGroupLabel();
-        // Compute nodes do not end a render pass.
-    }
+    protected override void EndRender(in RenderResources res) { }
 
     protected override bool OnSetup()
     {

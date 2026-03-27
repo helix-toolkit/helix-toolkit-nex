@@ -14,7 +14,7 @@ public sealed class ToneMapping : PostEffect
 
     public override Color DebugColor => Color.Aquamarine;
 
-    public override void Apply(in RenderResources res, ref string readSlot, ref string writeSlot)
+    public override bool Apply(in RenderResources res, ref string readSlot, ref string writeSlot)
     {
         Debug.Assert(_toneGammaPipeline.Valid, "Tone mapping pipeline is not valid.");
         var cmdBuffer = res.CmdBuffer;
@@ -35,6 +35,7 @@ public sealed class ToneMapping : PostEffect
         );
         cmdBuffer.Draw(3); // Full-screen triangle
         cmdBuffer.EndRendering();
+        return true;
     }
 
     protected override ResultCode OnInitializing()

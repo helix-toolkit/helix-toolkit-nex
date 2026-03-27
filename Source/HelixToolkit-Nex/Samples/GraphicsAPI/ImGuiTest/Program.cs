@@ -53,7 +53,7 @@ internal class App : Application
         var windowSize = MainWindow.Size;
         _ctx.RecreateSwapchain(windowSize.Width, windowSize.Height);
         _guiRenderer = new ImGuiRenderer(_ctx, new ImGuiConfig());
-        _guiRenderer.Initialize();
+        _guiRenderer.Initialize(_ctx.GetSwapchainFormat());
         _pass.Colors[0].ClearColor = new Color4(0.1f, 0.1f, 0.1f, 1.0f);
         _pass.Colors[0].LoadOp = LoadOp.Clear;
         _pass.Colors[0].StoreOp = StoreOp.Store;
@@ -180,9 +180,7 @@ internal class App : Application
         _framebuffer.Colors[0].Texture = tex;
         var cmdBuf = _ctx.AcquireCommandBuffer();
         _shaderToyRenderer?.Render(cmdBuf, _toySelection, new Vector2(512, 512), _frameTexture);
-
-        cmdBuf.BeginRendering(_pass, _framebuffer, _dp);
-        _guiRenderer.BeginFrame(_framebuffer);
+        _guiRenderer.BeginFrame(MainWindow.Size);
         ImGui.ShowDemoWindow();
         ImGui.Begin("Hello, ImGui!");
         ImGui.Text("This is a simple ImGui test application.");
@@ -228,8 +226,8 @@ internal class App : Application
             new Vector2(1, 1)
         );
         ImGui.End();
-        _guiRenderer.EndFrame(cmdBuf);
-        cmdBuf.EndRendering();
+        _guiRenderer.EndFrame();
+        _guiRenderer.Render(cmdBuf, _pass, _framebuffer, _dp);
         _ctx.Submit(cmdBuf, tex);
     }
 

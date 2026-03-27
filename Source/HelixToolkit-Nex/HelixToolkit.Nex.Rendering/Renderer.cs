@@ -77,11 +77,38 @@ public class Renderer(IServiceProvider serviceProvider) : Initializable
 
     public void Render(RenderContext context, RenderGraph graph)
     {
+        if (context.WindowSize.Width <= 1 || context.WindowSize.Height <= 1)
+        {
+            _logger.LogDebug(
+                "Window size is too small for rendering (Width: {Width}, Height: {Height}). Skipping render.",
+                context.WindowSize.Width,
+                context.WindowSize.Height
+            );
+            return;
+        }
         var cmdBuf = context.Context.AcquireCommandBuffer();
         context.BeginFrame();
         graph.Execute(context, cmdBuf, _renderers);
         context.Context.Submit(cmdBuf, context.FinalOutputTexture);
         context.EndFrame();
+    }
+
+    /// <summary>
+    /// Executes the render graph into an offscreen target without presenting to the swapchain.
+    /// The caller receives the <see cref="ICommandBuffer"/> so it can record additional work
+    /// (e.g. an ImGui composite pass) before submitting.
+    /// </summary>
+    /// <param name="context">The render context for this frame.</param>
+    /// <param name="graph">The compiled render graph to execute.</param>
+    /// <returns>The command buffer with recorded render graph commands. The caller must
+    /// call <see cref="IContext.Submit"/> when all additional recording is complete.</returns>
+    public ICommandBuffer RenderOffscreen(RenderContext context, RenderGraph graph)
+    {
+        var cmdBuf = context.Context.AcquireCommandBuffer();
+        context.BeginFrame();
+        graph.Execute(context, cmdBuf, _renderers);
+        context.EndFrame();
+        return cmdBuf;
     }
 
     protected override ResultCode OnInitializing()

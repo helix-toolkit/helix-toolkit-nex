@@ -50,10 +50,10 @@ public sealed class RangeLightComponent(RangeLightType type) : IIndexable
         get { return Light.Range; }
     }
 
-    public Color Color
+    public Color4 Color
     {
         set { Light.Color = value.ToVector3(); }
-        get { return new Color(Light.Color); }
+        get { return new Color4(Light.Color); }
     }
 
     public float Intensity

@@ -89,7 +89,7 @@ public sealed class BorderHighlightPostEffect : PostEffect
     // PostEffect interface
     // -----------------------------------------------------------------------
 
-    public override void Apply(in RenderResources res, ref string readSlot, ref string writeSlot)
+    public override bool Apply(in RenderResources res, ref string readSlot, ref string writeSlot)
     {
         Debug.Assert(_maskPipeline.Valid, "Highlight mask pipeline is not valid.");
         Debug.Assert(_compositePipeline.Valid, "Highlight composite pipeline is not valid.");
@@ -97,14 +97,14 @@ public sealed class BorderHighlightPostEffect : PostEffect
         var data = res.Context.Data;
         if (data is null)
         {
-            return;
+            return false;
         }
 
         var world = data.World;
         if (world is null || !world.HasAnyComponent<BorderHighlightComponent>())
         {
             // Nothing to highlight — skip both passes to avoid unnecessary work.
-            return;
+            return false;
         }
         var cmdBuffer = res.CmdBuffer;
         var maskTex = res.Textures[SystemBufferNames.TextureHighlightMask];
@@ -119,7 +119,7 @@ public sealed class BorderHighlightPostEffect : PostEffect
         GatherHighlightedDraws(world, data);
         if (_entries.Count == 0)
         {
-            return;
+            return false;
         }
 
         // Compute texel dimensions for the mask texture (used in the composite pass).
@@ -151,6 +151,7 @@ public sealed class BorderHighlightPostEffect : PostEffect
             ref writeSlot,
             _entries
         );
+        return true;
     }
 
     protected override ResultCode OnInitializing()
