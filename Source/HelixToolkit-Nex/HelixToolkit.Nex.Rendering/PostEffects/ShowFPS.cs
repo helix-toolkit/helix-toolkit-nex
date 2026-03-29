@@ -5,12 +5,15 @@ namespace HelixToolkit.Nex.Rendering.PostEffects;
 public sealed class ShowFPS : PostEffect
 {
     private static readonly ILogger _logger = LogManager.Create<ShowFPS>();
+    private const float AspectRatio = 3f; // Max digits to show is 3, so do a 3 / 1 aspect ratio.
+
     private RenderPipelineResource _pipeline = RenderPipelineResource.Null;
 
     public override string Name => nameof(ShowFPS);
     public override Color DebugColor => Color.SandyBrown;
 
     public float Scale = 0.05f;
+    public float MinSize { set; get; } = 64;
 
     public override bool Apply(in RenderResources res, ref string readSlot, ref string writeSlot)
     {
@@ -24,7 +27,8 @@ public sealed class ShowFPS : PostEffect
         cmdBuffer.BindDepthState(DepthState.Disabled);
         var width = res.Context.WindowSize.Width * Scale;
         var height = res.Context.WindowSize.Height * Scale;
-        cmdBuffer.BindViewport(new ViewportF(0, 0, width, height));
+        var max = MathF.Max(MinSize, MathF.Max(width, height));
+        cmdBuffer.BindViewport(new ViewportF(0, 0, max, max / AspectRatio));
         cmdBuffer.PushConstants((int)res.Context.Statistics.FramesPerSecond);
         cmdBuffer.Draw(3); // Full-screen triangle
         cmdBuffer.EndRendering();
