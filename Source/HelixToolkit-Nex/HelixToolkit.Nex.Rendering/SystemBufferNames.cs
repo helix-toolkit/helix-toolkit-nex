@@ -49,6 +49,19 @@ public static class SystemBufferNames
     /// draw the outline.
     /// </summary>
     public const string TextureHighlightMask = "TexHighlightMask";
+
+    /// <summary>
+    /// Two-channel (RG8) edge mask written by the SMAA edge-detection pass.
+    /// R = horizontal edge, G = vertical edge.  Allocated at full screen resolution.
+    /// </summary>
+    public const string TextureSmaaEdges = "TexSmaaEdges";
+
+    /// <summary>
+    /// Four-channel (RGBA8) blending-weight texture written by the SMAA
+    /// blending-weight pass.  Stores per-pixel MLAA blend weights in the
+    /// (left, right, top, bottom) layout.  Allocated at full screen resolution.
+    /// </summary>
+    public const string TextureSmaaWeights = "TexSmaaWeights";
 }
 
 /// <summary>

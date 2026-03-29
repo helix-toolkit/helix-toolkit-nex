@@ -67,7 +67,7 @@ internal partial class Editor : IDisposable
     {
         _camera = new PerspectiveCamera()
         {
-            Position = new Vector3(_scene.WorldSizeX / 2f, 80, -_scene.WorldSizeZ / 2f - 20),
+            Position = new Vector3(_scene.WorldSizeX / 2f, 60, -_scene.WorldSizeZ / 2f - 20),
             Target = new Vector3(_scene.WorldSizeX / 2f, 0, _scene.WorldSizeZ / 2f),
             FarPlane = 1000,
         };
@@ -90,10 +90,13 @@ internal partial class Editor : IDisposable
         _renderer.AddNode(new ForwardPlusOpaqueNode() { UseLightCulling = true });
         _renderer.AddNode(new ForwardPlusLightCullingNode());
         var postEffectNode = new PostEffectsNode();
+
+        postEffectNode.AddEffect(new Smaa());
         postEffectNode.AddEffect(new Bloom());
-        postEffectNode.AddEffect(new ToneMapping());
         postEffectNode.AddEffect(new BorderHighlightPostEffect());
         postEffectNode.AddEffect(new WireframePostEffect());
+        postEffectNode.AddEffect(new ToneMapping());
+
         postEffectNode.AddEffect(new ShowFPS());
         _renderer.AddNode(postEffectNode);
         _renderer!.Initialize();
