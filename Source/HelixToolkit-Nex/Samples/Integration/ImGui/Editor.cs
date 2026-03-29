@@ -32,7 +32,7 @@ internal partial class Editor : IDisposable
     private RenderGraph? _renderGraph;
     private ImGuiRenderer? _imGuiRenderer;
     private Node? _root;
-    private IScene _scene = new MinecraftLargeScene();
+    private IScene _scene = new MinecraftScene();
 
     private Camera _camera = new PerspectiveCamera();
     private readonly long _startTimestamp = Stopwatch.GetTimestamp();
@@ -150,7 +150,7 @@ internal partial class Editor : IDisposable
         var aspectRatio = _viewportSize.IsEmpty
             ? (float)width / height
             : (float)_viewportSize.Width / _viewportSize.Height;
-        RotateCamera();
+
         _renderContext.CameraParams = _camera.ToCameraParams(aspectRatio);
         // FinalOutputTexture is not used by the offscreen graph, but the resource set
         // still expects it to be non-null for system resource setup.
@@ -172,50 +172,18 @@ internal partial class Editor : IDisposable
         _imGuiRenderer.BeginFrame(new Vector2(width, height));
 
         // --- ImGui UI ---
-        Gui.DockSpaceOverViewport();
         DrawMainMenuBar();
-        Draw3DViewport(offscreenTexHandle);
-        DrawScenePanel();
-        DrawPropertiesPanel();
+        DrawLayout(
+            offscreenTexHandle,
+            width / _imGuiRenderer.DisplayScale,
+            height / _imGuiRenderer.DisplayScale
+        );
 
         _imGuiRenderer.EndFrame();
         _imGuiRenderer.Render(cmdBuf, _imGuiPass, _imGuiFramebuffer, _imGuiDeps);
 
         // --- Submit & present ---
         _context.Submit(cmdBuf, swapchainTex);
-    }
-
-    private void RotateCamera()
-    {
-        var worldCenter = new Vector3(_scene.WorldSizeX / 2f, 0f, _scene.WorldSizeZ / 2f);
-        float t =
-            (float)((Stopwatch.GetTimestamp() - _startTimestamp) / (double)Stopwatch.Frequency)
-            * FlySpeed;
-
-        float sinT = MathF.Sin(t);
-        float cosT = MathF.Cos(t);
-        float denom = 1f + sinT * sinT;
-        float lx = FlyRadius * cosT / denom;
-        float lz = FlyRadius * sinT * cosT / denom;
-
-        float denom2 = denom * denom;
-        float dlx = (-FlyRadius * sinT * denom - FlyRadius * cosT * 2f * sinT * cosT) / denom2;
-        float dlz =
-            (
-                FlyRadius * (cosT * cosT - sinT * sinT) * denom
-                - FlyRadius * sinT * cosT * 2f * sinT * cosT
-            ) / denom2;
-
-        _camera.Position = worldCenter + new Vector3(lx, FlyHeight, lz);
-
-        var forward = new Vector3(dlx, 0f, dlz);
-        if (forward.LengthSquared() < 1e-6f)
-            forward = Vector3.UnitX;
-        forward = Vector3.Normalize(forward);
-
-        var pitchedForward = Vector3.Normalize(forward + new Vector3(0f, MathF.Sin(PitchDown), 0f));
-        _camera.Target = _camera.Position + pitchedForward * 10f;
-        _camera.Up = Vector3.UnitY;
     }
 
     public void Pick(int x, int y)

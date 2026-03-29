@@ -16,6 +16,12 @@ namespace ImGuiTest;
 /// </summary>
 internal partial class Editor
 {
+    // Width of the scene-tree panel on the left.
+    private const float ScenePanelWidth = 260f;
+
+    // Width of the properties panel on the right.
+    private const float PropertiesPanelWidth = 300f;
+
     private void DrawMainMenuBar()
     {
         if (Gui.BeginMainMenuBar())
@@ -39,19 +45,57 @@ internal partial class Editor
         }
     }
 
-    private void Draw3DViewport(TextureHandle offscreenTex)
+    /// <summary>
+    /// Draws the full three-column editor layout:
+    ///   [Scene panel] | [3D Viewport] | [Properties panel]
+    /// All panels are anchored below the main menu bar and sized to fill the display.
+    /// </summary>
+    private void DrawLayout(TextureHandle offscreenTex, float displayWidth, float displayHeight)
     {
-        Gui.Begin("Viewport");
-        var size = Gui.GetContentRegionAvail();
-        Gui.Text($"Viewport size: {size.X}x{size.Y}");
-        size = Gui.GetContentRegionAvail();
-        if (size.X > 0 && size.Y > 0)
+        // Menu bar height is reported by ImGui after BeginMainMenuBar.
+        float menuBarHeight = Gui.GetFrameHeight();
+        float panelY = menuBarHeight;
+        float panelHeight = displayHeight - menuBarHeight;
+
+        float viewportWidth = displayWidth - ScenePanelWidth - PropertiesPanelWidth;
+
+        DrawScenePanel(new Vector2(0f, panelY), new Vector2(ScenePanelWidth, panelHeight));
+        Draw3DViewport(
+            offscreenTex,
+            new Vector2(ScenePanelWidth, panelY),
+            new Vector2(viewportWidth, panelHeight)
+        );
+        DrawPropertiesPanel(
+            new Vector2(ScenePanelWidth + viewportWidth, panelY),
+            new Vector2(PropertiesPanelWidth, panelHeight)
+        );
+    }
+
+    private void Draw3DViewport(TextureHandle offscreenTex, Vector2 pos, Vector2 size)
+    {
+        var windowFlags =
+            ImGuiWindowFlags.NoResize
+            | ImGuiWindowFlags.NoMove
+            | ImGuiWindowFlags.NoCollapse
+            | ImGuiWindowFlags.NoBringToFrontOnFocus
+            | ImGuiWindowFlags.NoTitleBar
+            | ImGuiWindowFlags.NoScrollbar
+            | ImGuiWindowFlags.NoScrollWithMouse;
+
+        Gui.SetNextWindowPos(pos);
+        Gui.SetNextWindowSize(size);
+        Gui.PushStyleVar(ImGuiStyleVar.WindowPadding, Vector2.Zero);
+        Gui.Begin("##Viewport", windowFlags);
+        Gui.PopStyleVar();
+
+        var contentSize = Gui.GetContentRegionAvail();
+        if (contentSize.X > 0 && contentSize.Y > 0)
         {
             // Update the viewport size so the next frame's render graph allocates
             // offscreen textures at this resolution.
-            _viewportSize = new Size((int)size.X, (int)size.Y);
+            _viewportSize = new Size((int)contentSize.X, (int)contentSize.Y);
             var canvas_pos = Gui.GetCursorScreenPos();
-            Gui.Image((nint)offscreenTex.Index, size, new Vector2(0, 0), new Vector2(1, 1));
+            Gui.Image((nint)offscreenTex.Index, contentSize, new Vector2(0, 0), new Vector2(1, 1));
             if (Gui.IsItemHovered() && Gui.IsMouseClicked(ImGuiMouseButton.Left))
             {
                 var mouse_pos = Gui.GetMousePos();
@@ -67,12 +111,22 @@ internal partial class Editor
                 Pick((int)relative_pos.X, (int)relative_pos.Y);
             }
         }
+
         Gui.End();
     }
 
-    private void DrawScenePanel()
+    private void DrawScenePanel(Vector2 pos, Vector2 size)
     {
-        Gui.Begin("Scene");
+        var windowFlags =
+            ImGuiWindowFlags.NoResize
+            | ImGuiWindowFlags.NoMove
+            | ImGuiWindowFlags.NoCollapse
+            | ImGuiWindowFlags.NoBringToFrontOnFocus;
+
+        Gui.SetNextWindowPos(pos);
+        Gui.SetNextWindowSize(size);
+        Gui.Begin("Scene##Panel", windowFlags);
+
         Gui.Text("Scene Hierarchy");
         Gui.Separator();
 
@@ -155,9 +209,18 @@ internal partial class Editor
         }
     }
 
-    private void DrawPropertiesPanel()
+    private void DrawPropertiesPanel(Vector2 pos, Vector2 size)
     {
-        Gui.Begin("Properties");
+        var windowFlags =
+            ImGuiWindowFlags.NoResize
+            | ImGuiWindowFlags.NoMove
+            | ImGuiWindowFlags.NoCollapse
+            | ImGuiWindowFlags.NoBringToFrontOnFocus;
+
+        Gui.SetNextWindowPos(pos);
+        Gui.SetNextWindowSize(size);
+        Gui.Begin("Properties##Panel", windowFlags);
+
         if (!_selectedEntity.Valid)
         {
             Gui.TextDisabled("Select an entity to inspect.");
@@ -184,9 +247,9 @@ internal partial class Editor
             if (Gui.CollapsingHeader("Transform", ImGuiTreeNodeFlags.DefaultOpen))
             {
                 ref var transform = ref _selectedEntity.Get<Transform>();
-                var pos = transform.Translation;
+                var pos2 = transform.Translation;
                 var scale = transform.Scale;
-                Gui.InputFloat3("Position", ref pos);
+                Gui.InputFloat3("Position", ref pos2);
                 Gui.InputFloat3("Scale", ref scale);
             }
         }
@@ -226,7 +289,17 @@ internal partial class Editor
         {
             if (Gui.CollapsingHeader("Directional Light"))
             {
-                Gui.Text($"Intensity: {dirLight.Intensity:F2}");
+                if (
+                    Gui.SliderFloat(
+                        $"Intensity: {dirLight.Intensity:F2}",
+                        ref dirLight.Light.Intensity,
+                        0,
+                        1
+                    )
+                )
+                {
+                    _selectedEntity.Set(dirLight);
+                }
                 var dir = dirLight.Direction;
                 Gui.InputFloat3("Direction", ref dir);
                 var color = dirLight.Color.ToVector3();

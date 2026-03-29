@@ -19,12 +19,18 @@ namespace HelixToolkit.Nex.Material;
 /// </remarks>
 public sealed class MaterialPropertyManager : IMaterialPropertyManager
 {
+    private static PBRProperties _defaultProperties = MaterialProperties.DefaultProperties;
     private readonly Pool<MaterialPropertyResource, PBRProperties> _pool = new();
     private readonly object _lock = new();
 
     public int Count => _pool.Count;
 
     public MaterialProperties Create(string materialName)
+    {
+        return Create(materialName, ref _defaultProperties);
+    }
+
+    public MaterialProperties Create(string materialName, ref PBRProperties properties)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentNullException.ThrowIfNullOrEmpty(materialName);
@@ -37,11 +43,16 @@ public sealed class MaterialPropertyManager : IMaterialPropertyManager
         }
         lock (_lock)
         {
-            return new MaterialProperties(registration!.TypeId, _pool);
+            return new MaterialProperties(registration!.TypeId, ref properties, _pool);
         }
     }
 
     public MaterialProperties Create(MaterialTypeId materialTypeId)
+    {
+        return Create(materialTypeId, ref _defaultProperties);
+    }
+
+    public MaterialProperties Create(MaterialTypeId materialTypeId, ref PBRProperties properties)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         if (!MaterialTypeRegistry.HasTypeId(materialTypeId))
@@ -53,7 +64,7 @@ public sealed class MaterialPropertyManager : IMaterialPropertyManager
         }
         lock (_lock)
         {
-            return new MaterialProperties(materialTypeId, _pool);
+            return new MaterialProperties(materialTypeId, ref properties, _pool);
         }
     }
 
@@ -67,7 +78,7 @@ public sealed class MaterialPropertyManager : IMaterialPropertyManager
 
     public IReadOnlyList<PoolEntry> Objects => _pool.Objects;
 
-    public ref PBRProperties Get(int index)
+    public ref PBRProperties At(int index)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         if (_pool.Objects.Count <= index || index < 0)
