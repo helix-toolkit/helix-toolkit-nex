@@ -10,7 +10,6 @@ using HelixToolkit.Nex.Maths;
 using HelixToolkit.Nex.Rendering;
 using HelixToolkit.Nex.Rendering.Components;
 using HelixToolkit.Nex.Scene;
-using HelixToolkit.Nex.Shaders;
 
 namespace SceneSamples;
 
@@ -166,6 +165,19 @@ public class MinecraftScene : IScene
         var root = new Node(worldDataProvider.World, "MinecraftRoot");
 
         // ------------------------------------------------------------------
+        // Category nodes
+        // ------------------------------------------------------------------
+        var blocksNode = new Node(worldDataProvider.World, "Blocks");
+        var pointLightsNode = new Node(worldDataProvider.World, "PointLights");
+        var lightSpheresNode = new Node(worldDataProvider.World, "LightSpheres");
+        var sunNode = new Node(worldDataProvider.World, "Sun");
+
+        root.AddChild(blocksNode);
+        root.AddChild(pointLightsNode);
+        root.AddChild(lightSpheresNode);
+        root.AddChild(sunNode);
+
+        // ------------------------------------------------------------------
         // Create one MaterialProperties + one Instancing per block type
         // ------------------------------------------------------------------
         int blockCount = BlockMaterialDefs.Length;
@@ -181,7 +193,6 @@ public class MinecraftScene : IScene
             props.Properties.Roughness = roughness;
             props.Properties.Ao = ao;
             props.Properties.Opacity = 1.0f;
-            props.NotifyUpdated();
             matProps[b] = props;
             instancings[b] = new Instancing(false);
         }
@@ -218,7 +229,7 @@ public class MinecraftScene : IScene
             instancings[b].UpdateBuffer(context);
             var blockNode = new Node(worldDataProvider.World, $"Block_{(BlockType)b}");
             blockNode.Entity.Set(new MeshComponent(cube, matProps[b], instancings[b]));
-            root.AddChild(blockNode);
+            blocksNode.AddChild(blockNode);
         }
 
         // ------------------------------------------------------------------
@@ -233,7 +244,6 @@ public class MinecraftScene : IScene
             mat.Albedo = color;
             mat.Emissive = color * 2.0f; // bright self-illuminated glow
             mat.Opacity = 1.0f;
-            mat.NotifyUpdated();
             lightSphereInstancings[color] = (mat, new Instancing(false));
         }
 
@@ -261,7 +271,7 @@ public class MinecraftScene : IScene
                     Direction = Vector3.Zero,
                 }
             );
-            root.AddChild(lightNode);
+            pointLightsNode.AddChild(lightNode);
 
             // Accumulate a sphere instance at this position for the matching colour group
             lightSphereInstancings[col]
@@ -277,13 +287,12 @@ public class MinecraftScene : IScene
             inst.UpdateBuffer(context);
             var sphereNode = new Node(worldDataProvider.World, $"LightSpheres_{color}");
             sphereNode.Entity.Set(new MeshComponent(lightSphere, mat, inst));
-            root.AddChild(sphereNode);
+            lightSpheresNode.AddChild(sphereNode);
         }
 
         // ------------------------------------------------------------------
         // Sun-like directional light
         // ------------------------------------------------------------------
-        var sunNode = new Node(worldDataProvider.World, "Sun");
         sunNode.Entity.Set(
             new DirectionalLightComponent
             {
@@ -292,7 +301,6 @@ public class MinecraftScene : IScene
                 Direction = Vector3.Normalize(new Vector3(0.4f, -1.0f, 0.5f)),
             }
         );
-        root.AddChild(sunNode);
 
         // ------------------------------------------------------------------
         // Flatten hierarchy and synchronise world transforms

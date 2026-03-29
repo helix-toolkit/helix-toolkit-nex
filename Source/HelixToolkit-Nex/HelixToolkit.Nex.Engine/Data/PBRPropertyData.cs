@@ -114,7 +114,7 @@ public sealed class PBRPropertyData : Initializable, IPBRPropertyData
                             {
                                 if (
                                     !ctx.WriteElement(
-                                        ref _resourceManager.MaterialProperties.Get((int)index),
+                                        ref _resourceManager.MaterialProperties.At((int)index),
                                         (int)index
                                     )
                                 )

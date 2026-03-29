@@ -25,7 +25,14 @@ internal class App : Application
         _mouseY;
 
     public App()
-        : base(new ApplicationConfig() { WindowResizable = true })
+        : base(
+            new ApplicationConfig()
+            {
+                WindowResizable = true,
+                WindowWidth = 1280,
+                WindowHeight = 1080,
+            }
+        )
     {
         // You can set additional application settings here if needed
     }

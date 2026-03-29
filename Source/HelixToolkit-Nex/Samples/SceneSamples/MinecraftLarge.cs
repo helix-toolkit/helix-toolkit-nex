@@ -287,6 +287,23 @@ public class MinecraftLargeScene : IScene
         var root = new Node(worldDataProvider.World, "MinecraftRoot");
 
         // ------------------------------------------------------------------
+        // Category nodes
+        // ------------------------------------------------------------------
+        var blocksNode = new Node(worldDataProvider.World, "Blocks");
+        var pointLightsNode = new Node(worldDataProvider.World, "PointLights");
+        var lightSpheresNode = new Node(worldDataProvider.World, "LightSpheres");
+        var animalsNode = new Node(worldDataProvider.World, "Animals");
+        var spotLightsNode = new Node(worldDataProvider.World, "SpotLights");
+        var sunNode = new Node(worldDataProvider.World, "Sun");
+
+        root.AddChild(blocksNode);
+        root.AddChild(pointLightsNode);
+        root.AddChild(lightSpheresNode);
+        root.AddChild(animalsNode);
+        root.AddChild(spotLightsNode);
+        root.AddChild(sunNode);
+
+        // ------------------------------------------------------------------
         // Create one MaterialProperties + one Instancing per block type
         // ------------------------------------------------------------------
         int blockCount = BlockMaterialDefs.Length;
@@ -302,7 +319,6 @@ public class MinecraftLargeScene : IScene
             props.Properties.Roughness = roughness;
             props.Properties.Ao = ao;
             props.Properties.Opacity = 1.0f;
-            props.NotifyUpdated();
             matProps[b] = props;
             instancings[b] = new Instancing(false);
         }
@@ -341,7 +357,7 @@ public class MinecraftLargeScene : IScene
             instancings[b].UpdateBuffer(context);
             var blockNode = new Node(worldDataProvider.World, $"Block_{(BlockType)b}");
             blockNode.Entity.Set(new MeshComponent(cube, matProps[b], instancings[b]));
-            root.AddChild(blockNode);
+            blocksNode.AddChild(blockNode);
         }
 
         // ------------------------------------------------------------------
@@ -356,7 +372,6 @@ public class MinecraftLargeScene : IScene
             mat.Albedo = color;
             mat.Emissive = color * 2.0f;
             mat.Opacity = 1.0f;
-            mat.NotifyUpdated();
             lightSphereInstancings[color] = (mat, new Instancing(false));
         }
 
@@ -384,7 +399,7 @@ public class MinecraftLargeScene : IScene
                     Direction = Vector3.Zero,
                 }
             );
-            root.AddChild(lightNode);
+            pointLightsNode.AddChild(lightNode);
 
             // Accumulate a sphere instance at this position for the matching colour group
             lightSphereInstancings[col]
@@ -400,23 +415,29 @@ public class MinecraftLargeScene : IScene
             inst.UpdateBuffer(context);
             var sphereNode = new Node(worldDataProvider.World, $"LightSpheres_{color}");
             sphereNode.Entity.Set(new MeshComponent(lightSphere, mat, inst));
-            root.AddChild(sphereNode);
+            lightSpheresNode.AddChild(sphereNode);
         }
 
         // ------------------------------------------------------------------
         // Build animals: create meshes, materials, spawn on terrain
         // ------------------------------------------------------------------
-        BuildAnimals(context, geometryManager, materialPool, worldDataProvider, root);
+        BuildAnimals(context, geometryManager, materialPool, worldDataProvider, animalsNode);
 
         // ------------------------------------------------------------------
         // Build spot lights: elevated positions, sweeping beams, cone visualisers
         // ------------------------------------------------------------------
-        BuildSpotLights(context, geometryManager, materialPool, worldDataProvider, root, rand);
+        BuildSpotLights(
+            context,
+            geometryManager,
+            materialPool,
+            worldDataProvider,
+            spotLightsNode,
+            rand
+        );
 
         // ------------------------------------------------------------------
         // Sun-like directional light
         // ------------------------------------------------------------------
-        var sunNode = new Node(worldDataProvider.World, "Sun");
         sunNode.Entity.Set(
             new DirectionalLightComponent()
             {
@@ -425,7 +446,6 @@ public class MinecraftLargeScene : IScene
                 Direction = Vector3.Normalize(new Vector3(0.4f, -1.0f, 0.5f)),
             }
         );
-        root.AddChild(sunNode);
         return root;
     }
 
@@ -462,9 +482,20 @@ public class MinecraftLargeScene : IScene
             props.Properties.Roughness = roughness;
             props.Properties.Ao = ao;
             props.Properties.Opacity = 1.0f;
-            props.NotifyUpdated();
             animalMatProps[a] = props;
         }
+
+        // ------------------------------------------------------------------
+        // Per-animal-type sub-category nodes
+        // ------------------------------------------------------------------
+        var animalTypeNodes = new Node[4];
+        animalTypeNodes[(int)AnimalType.Cow] = new Node(worldDataProvider.World, "Cows");
+        animalTypeNodes[(int)AnimalType.Pig] = new Node(worldDataProvider.World, "Pigs");
+        animalTypeNodes[(int)AnimalType.Chicken] = new Node(worldDataProvider.World, "Chickens");
+        animalTypeNodes[(int)AnimalType.Sheep] = new Node(worldDataProvider.World, "Sheep");
+
+        foreach (var typeNode in animalTypeNodes)
+            root.AddChild(typeNode);
 
         var spawnCounts = new[] { NumCows, NumPigs, NumChickens, NumSheep };
         var animalTypes = new[]
@@ -504,7 +535,7 @@ public class MinecraftLargeScene : IScene
                     heading
                 );
                 animalNode.Entity.Set(new MeshComponent(animalMeshes[a], animalMatProps[a]));
-                root.AddChild(animalNode);
+                animalTypeNodes[a].AddChild(animalNode);
 
                 _animals.Add(
                     new AnimalState
@@ -570,7 +601,6 @@ public class MinecraftLargeScene : IScene
             coneMat.Albedo = col;
             coneMat.Emissive = col * 2.0f;
             coneMat.Opacity = 1.0f;
-            coneMat.NotifyUpdated();
 
             var lightNode = new Node(worldDataProvider.World, $"SpotLight_{i}");
             lightNode.Transform = new Transform { Translation = basePos };
