@@ -15,4 +15,8 @@
         <ProjectReference Include="..\HelixToolkit.Nex.Scene\HelixToolkit.Nex.Scene.csproj" />
         <ProjectReference Include="..\HelixToolkit.Nex.Shaders\HelixToolkit.Nex.Shaders.csproj" />
     </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="CameraControllers\" />
+    </ItemGroup>
 </Project>
