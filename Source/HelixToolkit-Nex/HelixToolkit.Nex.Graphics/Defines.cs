@@ -914,11 +914,6 @@ public enum StoreOp : uint8_t
     Store,
 
     /// <summary>
-    /// Resolve multisampled attachment to single-sampled.
-    /// </summary>
-    MsaaResolve,
-
-    /// <summary>
     /// No store operation (attachment not used).
     /// </summary>
     None,

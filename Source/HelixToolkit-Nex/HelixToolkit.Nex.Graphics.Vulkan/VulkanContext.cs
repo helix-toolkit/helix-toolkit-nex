@@ -1409,7 +1409,7 @@ internal sealed partial class VulkanContext
         {
             format = vkFormat,
             ycbcrModel = VK.VK_SAMPLER_YCBCR_MODEL_CONVERSION_YCBCR_709,
-            ycbcrRange = VK.VK_SAMPLER_YCBCR_RANGE_ITU_FULL,
+            ycbcrRange = VK.VK_SAMPLER_YCBCR_RANGE_ITU_NARROW,
             components = new VkComponentMapping(
                 VK.VK_COMPONENT_SWIZZLE_IDENTITY,
                 VK.VK_COMPONENT_SWIZZLE_IDENTITY,
