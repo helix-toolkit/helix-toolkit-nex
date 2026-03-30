@@ -3,7 +3,9 @@ using HelixToolkit.Nex.ECS;
 using HelixToolkit.Nex.Engine.Components;
 using HelixToolkit.Nex.Maths;
 using HelixToolkit.Nex.Rendering.Components;
+using HelixToolkit.Nex.Rendering.PostEffects;
 using HelixToolkit.Nex.Scene;
+using HelixToolkit.Nex.Shaders;
 using ImGuiNET;
 using Microsoft.Extensions.Logging;
 using Gui = ImGuiNET.ImGui;
@@ -47,7 +49,7 @@ internal partial class Editor
 
     /// <summary>
     /// Draws the full three-column editor layout:
-    ///   [Scene panel] | [3D Viewport] | [Properties panel]
+    ///   [Scene panel] | [3D Viewport] | [Properties panel (top) + Post Effects panel (bottom)]
     /// All panels are anchored below the main menu bar and sized to fill the display.
     /// </summary>
     private void DrawLayout(TextureHandle offscreenTex, float displayWidth, float displayHeight)
@@ -59,6 +61,8 @@ internal partial class Editor
 
         float viewportWidth = displayWidth - ScenePanelWidth - PropertiesPanelWidth;
 
+        float halfHeight = panelHeight / 2f;
+
         DrawScenePanel(new Vector2(0f, panelY), new Vector2(ScenePanelWidth, panelHeight));
         Draw3DViewport(
             offscreenTex,
@@ -67,7 +71,11 @@ internal partial class Editor
         );
         DrawPropertiesPanel(
             new Vector2(ScenePanelWidth + viewportWidth, panelY),
-            new Vector2(PropertiesPanelWidth, panelHeight)
+            new Vector2(PropertiesPanelWidth, halfHeight)
+        );
+        DrawPostEffectsPanel(
+            new Vector2(ScenePanelWidth + viewportWidth, panelY + halfHeight),
+            new Vector2(PropertiesPanelWidth, halfHeight)
         );
     }
 
@@ -309,6 +317,151 @@ internal partial class Editor
                     _selectedEntity.Set(dirLight);
                 }
             }
+        }
+
+        Gui.End();
+    }
+
+    private void DrawPostEffectsPanel(Vector2 pos, Vector2 size)
+    {
+        var windowFlags =
+            ImGuiWindowFlags.NoResize
+            | ImGuiWindowFlags.NoMove
+            | ImGuiWindowFlags.NoCollapse
+            | ImGuiWindowFlags.NoBringToFrontOnFocus;
+
+        Gui.SetNextWindowPos(pos);
+        Gui.SetNextWindowSize(size);
+        Gui.Begin("Post Effects##Panel", windowFlags);
+
+        Gui.Text("Post Effects");
+        Gui.Separator();
+
+        // --- FXAA ---
+        if (Gui.CollapsingHeader("FXAA"))
+        {
+            bool fxaaEnabled = _fxaa.Enabled;
+            if (Gui.Checkbox("Enabled##FXAA", ref fxaaEnabled))
+                _fxaa.Enabled = fxaaEnabled;
+
+            var mode = (int)_fxaa.DebugMode;
+            if (Gui.Combo("Debug Mode##FXAA", ref mode, "Off\0EdgeMask\0BlendHeatMap\0"))
+                _fxaa.DebugMode = (FxaaDebugMode)mode;
+
+            int fxaaQuality = (int)_fxaa.Quality;
+            if (Gui.Combo("Quality##FXAA", ref fxaaQuality, "Low\0Medium\0High\0Ultra\0"))
+                _fxaa.Quality = (FxaaQuality)fxaaQuality;
+
+            float contrast = _fxaa.ContrastThreshold;
+            if (Gui.SliderFloat("Contrast Threshold##FXAA", ref contrast, 0.001f, 0.5f))
+                _fxaa.ContrastThreshold = contrast;
+
+            float relative = _fxaa.RelativeThreshold;
+            if (Gui.SliderFloat("Relative Threshold##FXAA", ref relative, 0.001f, 0.5f))
+                _fxaa.RelativeThreshold = relative;
+
+            float subpixel = _fxaa.SubpixelBlending;
+            if (Gui.SliderFloat("Subpixel Blending##FXAA", ref subpixel, 0f, 1f))
+                _fxaa.SubpixelBlending = subpixel;
+        }
+
+        // --- SMAA ---
+        if (Gui.CollapsingHeader("SMAA"))
+        {
+            bool smaaEnabled = _smaa.Enabled;
+            if (Gui.Checkbox("Enabled##SMAA", ref smaaEnabled))
+                _smaa.Enabled = smaaEnabled;
+
+            int smaaQuality = (int)_smaa.Quality;
+            if (Gui.Combo("Quality##SMAA", ref smaaQuality, "Low\0Medium\0High\0Ultra\0"))
+                _smaa.Quality = (SmaaQuality)smaaQuality;
+
+            float edge = _smaa.EdgeThreshold;
+            if (Gui.SliderFloat("Edge Threshold##SMAA", ref edge, 0.001f, 0.5f))
+                _smaa.EdgeThreshold = edge;
+        }
+
+        // --- Bloom ---
+        if (Gui.CollapsingHeader("Bloom"))
+        {
+            bool bloomEnabled = _bloom.Enabled;
+            if (Gui.Checkbox("Enabled##Bloom", ref bloomEnabled))
+                _bloom.Enabled = bloomEnabled;
+
+            float threshold = _bloom.Threshold;
+            if (Gui.SliderFloat("Threshold##Bloom", ref threshold, 0f, 2f))
+                _bloom.Threshold = threshold;
+
+            float intensity = _bloom.Intensity;
+            if (Gui.SliderFloat("Intensity##Bloom", ref intensity, 0f, 10f))
+                _bloom.Intensity = intensity;
+
+            int blurPasses = _bloom.BlurPasses;
+            if (Gui.SliderInt("Blur Passes##Bloom", ref blurPasses, 1, 8))
+                _bloom.BlurPasses = blurPasses;
+
+            int downsample = _bloom.DownsampleFactor;
+            if (
+                Gui.Combo(
+                    "Downsample##Bloom",
+                    ref downsample,
+                    "1x\0Half (2)\0Quarter (4)\0Eighth (8)\0",
+                    4
+                )
+            )
+                _bloom.DownsampleFactor =
+                    downsample == 0 ? 1
+                    : downsample == 1 ? 2
+                    : downsample == 2 ? 4
+                    : 8;
+        }
+
+        // --- Tone Mapping ---
+        if (Gui.CollapsingHeader("Tone Mapping"))
+        {
+            bool tmEnabled = _toneMapping.Enabled;
+            if (Gui.Checkbox("Enabled##ToneMapping", ref tmEnabled))
+                _toneMapping.Enabled = tmEnabled;
+
+            int tmMode = (int)_toneMapping.Mode;
+            if (Gui.Combo("Mode##ToneMapping", ref tmMode, "ACES Film\0Reinhard\0Uncharted 2\0"))
+                _toneMapping.Mode = (ToneMappingMode)tmMode;
+        }
+
+        // --- Border Highlight ---
+        if (Gui.CollapsingHeader("Border Highlight"))
+        {
+            bool bhEnabled = _borderHighlight.Enabled;
+            if (Gui.Checkbox("Enabled##BorderHighlight", ref bhEnabled))
+                _borderHighlight.Enabled = bhEnabled;
+        }
+
+        // --- Wireframe ---
+        if (Gui.CollapsingHeader("Wireframe"))
+        {
+            bool wfEnabled = _wireframe.Enabled;
+            if (Gui.Checkbox("Enabled##Wireframe", ref wfEnabled))
+                _wireframe.Enabled = wfEnabled;
+
+            float depthBiasConst = _wireframe.DepthBiasConstant;
+            if (Gui.SliderFloat("Depth Bias Const##WF", ref depthBiasConst, -10f, 10f))
+                _wireframe.DepthBiasConstant = depthBiasConst;
+
+            float depthBiasSlope = _wireframe.DepthBiasSlope;
+            if (Gui.SliderFloat("Depth Bias Slope##WF", ref depthBiasSlope, -10f, 10f))
+                _wireframe.DepthBiasSlope = depthBiasSlope;
+        }
+
+        // --- Show FPS ---
+        if (Gui.CollapsingHeader("Show FPS"))
+        {
+            bool fpsEnabled = _showFPS.Enabled;
+            if (Gui.Checkbox("Enabled##ShowFPS", ref fpsEnabled))
+                _showFPS.Enabled = fpsEnabled;
+
+            float fpsScale = _showFPS.Scale;
+            if (Gui.SliderFloat("Scale##ShowFPS", ref fpsScale, 0.01f, 0.2f))
+                _showFPS.Scale = fpsScale;
         }
 
         Gui.End();

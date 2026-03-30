@@ -15,7 +15,6 @@ using HelixToolkit.Nex.Rendering.RenderNodes;
 using HelixToolkit.Nex.Scene;
 using Microsoft.Extensions.Logging;
 using SceneSamples;
-using Gui = ImGuiNET.ImGui;
 
 namespace ImGuiTest;
 
@@ -44,11 +43,14 @@ internal partial class Editor : IDisposable
     private readonly RenderPass _imGuiPass = new();
     private readonly Dependencies _imGuiDeps = new();
 
-    // Flight parameters
-    private const float FlyHeight = 30f;
-    private const float FlySpeed = 0.08f;
-    private const float FlyRadius = 80f;
-    private const float PitchDown = -0.18f;
+    // Post Effects
+    private readonly Fxaa _fxaa = new() { Enabled = false };
+    private readonly Smaa _smaa = new();
+    private readonly Bloom _bloom = new();
+    private readonly BorderHighlightPostEffect _borderHighlight = new();
+    private readonly WireframePostEffect _wireframe = new();
+    private readonly ToneMapping _toneMapping = new();
+    private readonly ShowFPS _showFPS = new();
 
     /// <summary>
     /// Tracks the ImGui 3D viewport content region size from the previous frame.
@@ -91,13 +93,14 @@ internal partial class Editor : IDisposable
         _renderer.AddNode(new ForwardPlusLightCullingNode());
         var postEffectNode = new PostEffectsNode();
 
-        postEffectNode.AddEffect(new Smaa());
-        postEffectNode.AddEffect(new Bloom());
-        postEffectNode.AddEffect(new BorderHighlightPostEffect());
-        postEffectNode.AddEffect(new WireframePostEffect());
-        postEffectNode.AddEffect(new ToneMapping());
+        postEffectNode.AddEffect(_fxaa);
+        postEffectNode.AddEffect(_smaa);
+        postEffectNode.AddEffect(_bloom);
+        postEffectNode.AddEffect(_borderHighlight);
+        postEffectNode.AddEffect(_wireframe);
+        postEffectNode.AddEffect(_toneMapping);
+        postEffectNode.AddEffect(_showFPS);
 
-        postEffectNode.AddEffect(new ShowFPS());
         _renderer.AddNode(postEffectNode);
         _renderer!.Initialize();
 
