@@ -4,6 +4,41 @@ using HelixToolkit.Nex.Shaders.Frag;
 namespace HelixToolkit.Nex.Rendering.PostEffects;
 
 /// <summary>
+/// Named quality presets for the <see cref="Smaa"/> post-processing effect.
+/// Each level maps to a recommended luminance-contrast <c>edgeThreshold</c> value
+/// from the standard SMAA quality ladder.
+/// </summary>
+public enum SmaaQuality
+{
+    /// <summary>
+    /// Fastest — only the most prominent edges are detected.
+    /// Best for very low-end hardware or when fill-rate is the primary constraint.
+    /// EdgeThreshold = 0.15
+    /// </summary>
+    Low = 0,
+
+    /// <summary>
+    /// Balanced quality / performance trade-off (SMAA "medium" preset).
+    /// Suitable for the majority of real-time use cases.
+    /// EdgeThreshold = 0.1
+    /// </summary>
+    Medium = 1,
+
+    /// <summary>
+    /// High quality — finer edges are detected at increased fill-rate cost.
+    /// EdgeThreshold = 0.05
+    /// </summary>
+    High = 2,
+
+    /// <summary>
+    /// Maximum quality — detects the subtlest luminance edges.
+    /// Equivalent to the SMAA "ultra" preset.
+    /// EdgeThreshold = 0.02
+    /// </summary>
+    Ultra = 3,
+}
+
+/// <summary>
 /// SMAA (Subpixel Morphological Anti-Aliasing) post-processing effect.
 ///
 /// Implements a three-stage morphological anti-aliasing pipeline:
@@ -41,6 +76,15 @@ public sealed class Smaa : PostEffect
 {
     private static readonly ILogger _logger = LogManager.Create<Smaa>();
 
+    // Preset edge-threshold table, indexed by SmaaQuality.
+    private static readonly float[] _presets =
+    [
+        0.15f, // Low
+        0.10f, // Medium
+        0.05f, // High
+        0.02f, // Ultra
+    ];
+
     // One pipeline per SmaaMode specialization constant.
     private RenderPipelineResource _edgePipeline = RenderPipelineResource.Null;
     private RenderPipelineResource _weightPipeline = RenderPipelineResource.Null;
@@ -54,16 +98,42 @@ public sealed class Smaa : PostEffect
     private readonly Framebuffer _fb = new();
     private readonly RenderPass _pass = new();
 
+    // Backing field for EdgeThreshold.
+    private float _edgeThreshold = _presets[(int)SmaaQuality.Medium];
+
     // -----------------------------------------------------------------------
     // Public settings
     // -----------------------------------------------------------------------
 
     /// <summary>
+    /// Selects a named quality preset that sets <see cref="EdgeThreshold"/> to the
+    /// recommended value for that level. Assigning a new preset overwrites any
+    /// previous manual override of <see cref="EdgeThreshold"/>.
+    /// Defaults to <see cref="SmaaQuality.Medium"/>.
+    /// </summary>
+    public SmaaQuality Quality
+    {
+        get => _quality;
+        set
+        {
+            _quality = value;
+            _edgeThreshold = _presets[(int)value];
+        }
+    }
+    private SmaaQuality _quality = SmaaQuality.Medium;
+
+    /// <summary>
     /// Luminance-contrast threshold above which a pixel is classified as an edge.
     /// Lower values detect more edges (sharper AA, more fill-rate cost).
-    /// Defaults to <c>0.1</c> which is the standard SMAA "medium" quality preset.
+    /// Setting this property does not change <see cref="Quality"/>; it acts as a
+    /// fine-grained override on top of the last applied preset.
+    /// Defaults to <c>0.1</c> (the <see cref="SmaaQuality.Medium"/> preset value).
     /// </summary>
-    public float EdgeThreshold { get; set; } = 0.1f;
+    public float EdgeThreshold
+    {
+        get => _edgeThreshold;
+        set => _edgeThreshold = value;
+    }
 
     public override string Name => nameof(Smaa);
     public override Color DebugColor => Color.LightGreen;
