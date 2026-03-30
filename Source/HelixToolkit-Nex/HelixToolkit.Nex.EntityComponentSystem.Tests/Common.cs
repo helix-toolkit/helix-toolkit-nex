@@ -251,3 +251,13 @@ internal struct S44
 {
     public float Value;
 }
+
+/// <summary>
+/// Tag component (empty struct with no instance fields) for testing.
+/// </summary>
+internal struct TagA { }
+
+/// <summary>
+/// Another tag component for testing.
+/// </summary>
+internal struct TagB { }

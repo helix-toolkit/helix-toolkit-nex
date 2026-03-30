@@ -120,6 +120,19 @@ public struct Entity : IDisposable, IEquatable<Entity>
     }
 
     /// <summary>
+    /// Adds a tag component (an empty struct with no instance fields) to this entity.
+    /// Tag components carry no data and are used purely as markers/flags.
+    /// No underlying data storage is allocated for tag components.
+    /// </summary>
+    /// <typeparam name="T">The tag component type (must be an empty struct).</typeparam>
+    /// <returns></returns>
+    public readonly ResultCode Tag<T>() where T : struct
+    {
+        T tag = default;
+        return World?.SetComponent<T>(this, ref tag, out _) ?? ResultCode.Invalid;
+    }
+
+    /// <summary>
     /// Determines whether this instance has component.
     /// </summary>
     /// <typeparam name="T"></typeparam>
