@@ -538,8 +538,11 @@ internal sealed class VulkanSwapchain : IDisposable
                     {
                         HxDebug.Assert(false);
                     }
-                    _getNextImage = false;
-                    _ctx.Immediate!.WaitSemaphore(acquireSemaphore);
+                    if (r == VkResult.Success || r == VkResult.SuboptimalKHR)
+                    {
+                        _getNextImage = false;
+                        _ctx.Immediate!.WaitSemaphore(acquireSemaphore);
+                    }
                 }
             }
         }

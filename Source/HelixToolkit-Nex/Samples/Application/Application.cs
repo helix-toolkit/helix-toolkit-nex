@@ -63,7 +63,7 @@ public abstract class Application : IDisposable
         MainWindow.Show();
 
         bool running = true;
-
+        bool paused = false;
         while (running && !_closeRequested)
         {
             SDL_Event evt;
@@ -82,6 +82,20 @@ public abstract class Application : IDisposable
                 {
                     running = false;
                     break;
+                }
+                else if (
+                    evt.type == SDL_EventType.WindowHidden
+                    || evt.type == SDL_EventType.WindowMinimized
+                )
+                {
+                    _logger.LogInformation($"Window Event: {evt.window.type} - Pausing updates");
+                    // Optionally, you could set a flag here to pause updates/rendering when the window is hidden or minimized.
+                    paused = true;
+                }
+                else if (evt.type == SDL_EventType.WindowRestored)
+                {
+                    _logger.LogInformation($"Window Event: {evt.window.type} - Resuming updates");
+                    paused = false;
                 }
                 else if (
                     evt.type >= SDL_EventType.WindowFirst
@@ -119,7 +133,10 @@ public abstract class Application : IDisposable
 
             if (!running)
                 break;
-
+            if (paused)
+            {
+                continue;
+            }
             OnTick();
         }
     }
