@@ -366,9 +366,13 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
 
             colorAttachments[i].clearValue.color = descColor.ClearColor.ToVk();
             // handle MSAA
-            if (descColor.StoreOp == StoreOp.MsaaResolve)
+            if (attachment.ResolveTexture)
             {
                 HxDebug.Assert(samples != VkSampleCountFlags.None);
+                HxDebug.Assert(
+                    colorAttachments[i].storeOp == VkAttachmentStoreOp.DontCare,
+                    "Multisampled attachments should have store op DONT_CARE."
+                );
                 HxDebug.Assert(
                     !attachment.ResolveTexture.Empty,
                     "Framebuffer attachment should contain a resolve texture"
@@ -440,13 +444,17 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
                 },
             };
             // handle depth MSAA
-            if (descDepth.StoreOp == StoreOp.MsaaResolve)
+            if (Framebuffer.DepthStencil.ResolveTexture)
             {
                 HxDebug.Assert(depthTexture.SampleCount == samples);
                 ref readonly var attachment = ref fb.DepthStencil;
                 HxDebug.Assert(
                     !attachment.ResolveTexture.Empty,
                     "Framebuffer depth attachment should contain a resolve texture"
+                );
+                HxDebug.Assert(
+                    depthAttachment.storeOp == VkAttachmentStoreOp.DontCare,
+                    "Multisampled attachments should have store op DONT_CARE."
                 );
                 var depthResolveTexture = _ctx.TexturesPool.Get(attachment.ResolveTexture);
                 HxDebug.Assert(
