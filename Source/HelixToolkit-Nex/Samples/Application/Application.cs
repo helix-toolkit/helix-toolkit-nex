@@ -125,6 +125,14 @@ public abstract class Application : IDisposable
                 {
                     OnMouseWheel((int)evt.wheel.x, (int)evt.wheel.y);
                 }
+                else if (evt.type == SDL_EventType.KeyDown)
+                {
+                    OnKeyDown(evt.key.scancode, evt.key.repeat);
+                }
+                else if (evt.type == SDL_EventType.KeyUp)
+                {
+                    OnKeyUp(evt.key.scancode);
+                }
                 else
                 {
                     _logger.LogInformation($"Window Event: {evt.type}");
@@ -177,6 +185,10 @@ public abstract class Application : IDisposable
     protected virtual void OnMouseButtonUp(SDL_Button button) { }
 
     protected virtual void OnMouseWheel(int deltaX, int deltaY) { }
+
+    protected virtual void OnKeyDown(SDL_Scancode scancode, bool repeat) { }
+
+    protected virtual void OnKeyUp(SDL_Scancode scancode) { }
 
     protected VkSurfaceKHR CreateSurface(VkInstance instance)
     {
