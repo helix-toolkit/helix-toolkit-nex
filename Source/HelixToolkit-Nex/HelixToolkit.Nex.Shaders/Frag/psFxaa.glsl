@@ -116,15 +116,16 @@ void main() {
     float gradient1 = abs(luma1 - lumaC);
     float gradient2 = abs(luma2 - lumaC);
     bool  steepest1 = (gradient1 >= gradient2);
+    float gradientScaled = max(gradient1, gradient2) * 0.25;
     float stepSize  = isHorizontal ? ts.y : ts.x;
 
     // Step toward the steeper side.
     float lumaLocalAvg;
-    if (!steepest1) {
+    if (steepest1) {
         stepSize     = -stepSize;
-        lumaLocalAvg = 0.5 * (luma2 + lumaC);
-    } else {
         lumaLocalAvg = 0.5 * (luma1 + lumaC);
+    } else {
+        lumaLocalAvg = 0.5 * (luma2 + lumaC);
     }
 
     // Move to the edge midpoint.
@@ -146,8 +147,8 @@ void main() {
     float lumaEnd1 = SampleLuma(uv1) - lumaLocalAvg;
     float lumaEnd2 = SampleLuma(uv2) - lumaLocalAvg;
 
-    bool reached1 = abs(lumaEnd1) >= gradient1 * 0.25;
-    bool reached2 = abs(lumaEnd2) >= gradient1 * 0.25;
+    bool reached1 = abs(lumaEnd1) >= gradientScaled;
+    bool reached2 = abs(lumaEnd2) >= gradientScaled;
     bool reachedBoth = reached1 && reached2;
 
     if (!reached1) uv1 -= offset;
@@ -165,8 +166,8 @@ void main() {
             lumaEnd2 = SampleLuma(uv2) - lumaLocalAvg;
         }
 
-        reached1    = abs(lumaEnd1) >= gradient1 * 0.25;
-        reached2    = abs(lumaEnd2) >= gradient1 * 0.25;
+        reached1    = abs(lumaEnd1) >= gradientScaled;
+        reached2    = abs(lumaEnd2) >= gradientScaled;
         reachedBoth = reached1 && reached2;
 
         if (!reached1) uv1 -= offset;
@@ -189,14 +190,13 @@ void main() {
 
     float pixelOffset = -distFinal / edgeLen + 0.5;
 
-    // Accept the span-based blend when lumaC and the nearer endpoint sit on the
-    // SAME side of lumaLocalAvg.  Both lumaC_lt_avg and (lumaEnd < 0.0) express
-    // "is this value below lumaLocalAvg", so they must agree (==) for the blend
-    // to be in the smoothing direction.  The previous != inverted the gate,
-    // rejecting every valid pixel.
+    // Accept the span-based blend when lumaC and the nearer endpoint sit on
+    // OPPOSITE sides of lumaLocalAvg.  When both are on the same side, the
+    // search overshot the actual edge, so we fall back to sub-pixel blending
+    // only.  Standard FXAA 3.11 uses != here.
     bool lumaC_lt_avg = lumaC < lumaLocalAvg;
     float nearLumaEnd = isDir1 ? lumaEnd1 : lumaEnd2;
-    bool correctVar   = (nearLumaEnd < 0.0) == lumaC_lt_avg;
+    bool correctVar   = (nearLumaEnd < 0.0) != lumaC_lt_avg;
 
     float finalOffset = correctVar ? max(pixelBlend, pixelOffset) : pixelBlend;
 
