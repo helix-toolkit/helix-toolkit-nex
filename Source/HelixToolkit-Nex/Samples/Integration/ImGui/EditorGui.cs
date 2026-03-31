@@ -1,5 +1,6 @@
 using System.Numerics;
 using HelixToolkit.Nex.ECS;
+using HelixToolkit.Nex.Engine.CameraControllers;
 using HelixToolkit.Nex.Engine.Components;
 using HelixToolkit.Nex.Maths;
 using HelixToolkit.Nex.Rendering.Components;
@@ -49,7 +50,7 @@ internal partial class Editor
 
     /// <summary>
     /// Draws the full three-column editor layout:
-    ///   [Scene panel] | [3D Viewport] | [Properties panel (top) + Post Effects panel (bottom)]
+    ///   [Scene panel] | [3D Viewport] | [Properties panel (top) + Post Effects panel (mid) + Camera panel (bottom)]
     /// All panels are anchored below the main menu bar and sized to fill the display.
     /// </summary>
     private void DrawLayout(TextureHandle offscreenTex, float displayWidth, float displayHeight)
@@ -61,7 +62,7 @@ internal partial class Editor
 
         float viewportWidth = displayWidth - ScenePanelWidth - PropertiesPanelWidth;
 
-        float halfHeight = panelHeight / 2f;
+        float thirdHeight = panelHeight / 3f;
 
         DrawScenePanel(new Vector2(0f, panelY), new Vector2(ScenePanelWidth, panelHeight));
         Draw3DViewport(
@@ -71,11 +72,15 @@ internal partial class Editor
         );
         DrawPropertiesPanel(
             new Vector2(ScenePanelWidth + viewportWidth, panelY),
-            new Vector2(PropertiesPanelWidth, halfHeight)
+            new Vector2(PropertiesPanelWidth, thirdHeight)
         );
         DrawPostEffectsPanel(
-            new Vector2(ScenePanelWidth + viewportWidth, panelY + halfHeight),
-            new Vector2(PropertiesPanelWidth, halfHeight)
+            new Vector2(ScenePanelWidth + viewportWidth, panelY + thirdHeight),
+            new Vector2(PropertiesPanelWidth, thirdHeight)
+        );
+        DrawCameraPanel(
+            new Vector2(ScenePanelWidth + viewportWidth, panelY + thirdHeight * 2f),
+            new Vector2(PropertiesPanelWidth, thirdHeight)
         );
     }
 
@@ -104,19 +109,59 @@ internal partial class Editor
             _viewportSize = new Size((int)contentSize.X, (int)contentSize.Y);
             var canvas_pos = Gui.GetCursorScreenPos();
             Gui.Image((nint)offscreenTex.Index, contentSize, new Vector2(0, 0), new Vector2(1, 1));
-            if (Gui.IsItemHovered() && Gui.IsMouseClicked(ImGuiMouseButton.Left))
+
+            bool hovered = Gui.IsItemHovered();
+
+            if (hovered)
             {
                 var mouse_pos = Gui.GetMousePos();
                 var relative_pos = new Vector2(
                     mouse_pos.X - canvas_pos.X,
                     mouse_pos.Y - canvas_pos.Y
                 );
-                _logger.LogInformation(
-                    "Mouse clicked at viewport coords: {X}, {Y}",
-                    relative_pos.X,
-                    relative_pos.Y
-                );
-                Pick((int)relative_pos.X, (int)relative_pos.Y);
+
+                // Left-click: picking
+                if (Gui.IsMouseClicked(ImGuiMouseButton.Left))
+                {
+                    _logger.LogInformation(
+                        "Mouse clicked at viewport coords: {X}, {Y}",
+                        relative_pos.X,
+                        relative_pos.Y
+                    );
+                    Pick((int)relative_pos.X, (int)relative_pos.Y);
+                }
+
+                // Right-click: begin rotate
+                if (Gui.IsMouseClicked(ImGuiMouseButton.Right))
+                {
+                    OnViewportMouseDown(1, relative_pos.X, relative_pos.Y);
+                }
+
+                // Middle-click: begin pan
+                if (Gui.IsMouseClicked(ImGuiMouseButton.Middle))
+                {
+                    OnViewportMouseDown(2, relative_pos.X, relative_pos.Y);
+                }
+
+                // Mouse drag: forward to camera controller
+                OnViewportMouseMove(relative_pos.X, relative_pos.Y);
+
+                // Scroll wheel: zoom
+                var io = Gui.GetIO();
+                if (MathF.Abs(io.MouseWheel) > 0.001f)
+                {
+                    OnViewportMouseWheel(io.MouseWheel);
+                }
+            }
+
+            // Release tracking on mouse-up (even if not hovered, to avoid stuck drags)
+            if (Gui.IsMouseReleased(ImGuiMouseButton.Right))
+            {
+                OnViewportMouseUp(1);
+            }
+            if (Gui.IsMouseReleased(ImGuiMouseButton.Middle))
+            {
+                OnViewportMouseUp(2);
             }
         }
 
@@ -484,5 +529,135 @@ internal partial class Editor
             _selectedEntity.Set(BorderHighlightComponent.Default);
             _selectedEntity.Set(new WireframeComponent() { Color = new Color4(1f, 0f, 0f, 1f) });
         }
+    }
+
+    private void DrawCameraPanel(Vector2 pos, Vector2 size)
+    {
+        var windowFlags =
+            ImGuiWindowFlags.NoResize
+            | ImGuiWindowFlags.NoMove
+            | ImGuiWindowFlags.NoCollapse
+            | ImGuiWindowFlags.NoBringToFrontOnFocus;
+
+        Gui.SetNextWindowPos(pos);
+        Gui.SetNextWindowSize(size);
+        Gui.Begin("Camera##Panel", windowFlags);
+
+        Gui.Text("Camera Controller");
+        Gui.Separator();
+
+        // --- Controller type selector ---
+        int mode = (int)CameraMode;
+        if (Gui.Combo("Mode##Camera", ref mode, "Orbit\0Turntable\0First Person\0"))
+        {
+            CameraMode = (CameraControllerMode)mode;
+        }
+
+        Gui.Spacing();
+
+        // --- Camera position / target display ---
+        var camPos = _camera.Position;
+        var camTarget = _camera.Target;
+        Gui.Text($"Position: ({camPos.X:F1}, {camPos.Y:F1}, {camPos.Z:F1})");
+        Gui.Text($"Target:   ({camTarget.X:F1}, {camTarget.Y:F1}, {camTarget.Z:F1})");
+
+        Gui.Separator();
+
+        // --- Per-mode settings ---
+        switch (CameraMode)
+        {
+            case CameraControllerMode.Orbit:
+                DrawOrbitSettings();
+                break;
+            case CameraControllerMode.Turntable:
+                DrawTurntableSettings();
+                break;
+            case CameraControllerMode.FirstPerson:
+                DrawFirstPersonSettings();
+                break;
+        }
+
+        Gui.Spacing();
+        if (Gui.Button("Reset Camera"))
+        {
+            _activeController?.Reset();
+        }
+
+        Gui.End();
+    }
+
+    private void DrawOrbitSettings()
+    {
+        if (_orbitController is null)
+            return;
+
+        float rotSens = _orbitController.RotationSensitivity;
+        if (Gui.SliderFloat("Rotation Sens##Orbit", ref rotSens, 0.001f, 0.02f))
+            _orbitController.RotationSensitivity = rotSens;
+
+        float panSens = _orbitController.PanSensitivity;
+        if (Gui.SliderFloat("Pan Sens##Orbit", ref panSens, 0.001f, 0.05f))
+            _orbitController.PanSensitivity = panSens;
+
+        float zoomSens = _orbitController.ZoomSensitivity;
+        if (Gui.SliderFloat("Zoom Sens##Orbit", ref zoomSens, 0.01f, 0.5f))
+            _orbitController.ZoomSensitivity = zoomSens;
+
+        bool invertY = _orbitController.InvertY;
+        if (Gui.Checkbox("Invert Y##Orbit", ref invertY))
+            _orbitController.InvertY = invertY;
+    }
+
+    private void DrawTurntableSettings()
+    {
+        if (_turntableController is null)
+            return;
+
+        float rotSens = _turntableController.RotationSensitivity;
+        if (Gui.SliderFloat("Rotation Sens##Turntable", ref rotSens, 0.001f, 0.02f))
+            _turntableController.RotationSensitivity = rotSens;
+
+        float panSens = _turntableController.PanSensitivity;
+        if (Gui.SliderFloat("Pan Sens##Turntable", ref panSens, 0.001f, 0.05f))
+            _turntableController.PanSensitivity = panSens;
+
+        float zoomSens = _turntableController.ZoomSensitivity;
+        if (Gui.SliderFloat("Zoom Sens##Turntable", ref zoomSens, 0.01f, 0.5f))
+            _turntableController.ZoomSensitivity = zoomSens;
+
+        float inertia = _turntableController.InertiaDamping;
+        if (Gui.SliderFloat("Inertia##Turntable", ref inertia, 0f, 0.98f))
+            _turntableController.InertiaDamping = inertia;
+
+        bool invertY = _turntableController.InvertY;
+        if (Gui.Checkbox("Invert Y##Turntable", ref invertY))
+            _turntableController.InvertY = invertY;
+    }
+
+    private void DrawFirstPersonSettings()
+    {
+        if (_firstPersonController is null)
+            return;
+
+        Gui.TextWrapped(
+            "Right-drag to look. WASD to move, Space/Ctrl for up/down, Shift to sprint."
+        );
+        Gui.Spacing();
+
+        float lookSens = _firstPersonController.LookSensitivity;
+        if (Gui.SliderFloat("Look Sens##FP", ref lookSens, 0.001f, 0.01f))
+            _firstPersonController.LookSensitivity = lookSens;
+
+        float moveSpeed = _firstPersonController.MoveSpeed;
+        if (Gui.SliderFloat("Move Speed##FP", ref moveSpeed, 1f, 100f))
+            _firstPersonController.MoveSpeed = moveSpeed;
+
+        float sprintMul = _firstPersonController.SprintMultiplier;
+        if (Gui.SliderFloat("Sprint Multiplier##FP", ref sprintMul, 1f, 10f))
+            _firstPersonController.SprintMultiplier = sprintMul;
+
+        bool invertY = _firstPersonController.InvertY;
+        if (Gui.Checkbox("Invert Y##FP", ref invertY))
+            _firstPersonController.InvertY = invertY;
     }
 }

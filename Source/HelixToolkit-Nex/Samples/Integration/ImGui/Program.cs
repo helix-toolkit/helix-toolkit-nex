@@ -24,6 +24,15 @@ internal class App : Application
     private int _mouseX,
         _mouseY;
 
+    // Keyboard state for first-person camera
+    private bool _keyW,
+        _keyS,
+        _keyA,
+        _keyD,
+        _keySpace,
+        _keyCtrl,
+        _keyShift;
+
     public App()
         : base(
             new ApplicationConfig()
@@ -79,6 +88,10 @@ internal class App : Application
             Vector2.Zero,
             new Vector2(MainWindow.Size.Width, MainWindow.Size.Height)
         );
+
+        // Forward keyboard state to the editor for first-person camera
+        _example?.OnKeyboardInput(_keyW, _keyS, _keyA, _keyD, _keySpace, _keyCtrl, _keyShift);
+
         _example?.Render(MainWindow.Size.Width, MainWindow.Size.Height);
     }
 
@@ -132,6 +145,100 @@ internal class App : Application
     {
         var io = ImGui.GetIO();
         io.AddMouseWheelEvent(deltaX, deltaY);
+    }
+
+    protected override void OnKeyDown(SDL_Scancode scancode, bool repeat)
+    {
+        // Forward to ImGui
+        var io = ImGui.GetIO();
+        io.AddKeyEvent(SdlScancodeToImGuiKey(scancode), true);
+
+        // Don't forward to camera if ImGui is capturing keyboard
+        if (io.WantCaptureKeyboard)
+            return;
+
+        switch (scancode)
+        {
+            case SDL_Scancode.W:
+                _keyW = true;
+                break;
+            case SDL_Scancode.S:
+                _keyS = true;
+                break;
+            case SDL_Scancode.A:
+                _keyA = true;
+                break;
+            case SDL_Scancode.D:
+                _keyD = true;
+                break;
+            case SDL_Scancode.Space:
+                _keySpace = true;
+                break;
+            case SDL_Scancode.LeftControl or SDL_Scancode.RightControl:
+                _keyCtrl = true;
+                break;
+            case SDL_Scancode.LeftShift or SDL_Scancode.RightShift:
+                _keyShift = true;
+                break;
+        }
+    }
+
+    protected override void OnKeyUp(SDL_Scancode scancode)
+    {
+        // Forward to ImGui
+        var io = ImGui.GetIO();
+        io.AddKeyEvent(SdlScancodeToImGuiKey(scancode), false);
+
+        switch (scancode)
+        {
+            case SDL_Scancode.W:
+                _keyW = false;
+                break;
+            case SDL_Scancode.S:
+                _keyS = false;
+                break;
+            case SDL_Scancode.A:
+                _keyA = false;
+                break;
+            case SDL_Scancode.D:
+                _keyD = false;
+                break;
+            case SDL_Scancode.Space:
+                _keySpace = false;
+                break;
+            case SDL_Scancode.LeftControl or SDL_Scancode.RightControl:
+                _keyCtrl = false;
+                break;
+            case SDL_Scancode.LeftShift or SDL_Scancode.RightShift:
+                _keyShift = false;
+                break;
+        }
+    }
+
+    private static ImGuiKey SdlScancodeToImGuiKey(SDL_Scancode scancode)
+    {
+        return scancode switch
+        {
+            SDL_Scancode.W => ImGuiKey.W,
+            SDL_Scancode.A => ImGuiKey.A,
+            SDL_Scancode.S => ImGuiKey.S,
+            SDL_Scancode.D => ImGuiKey.D,
+            SDL_Scancode.Space => ImGuiKey.Space,
+            SDL_Scancode.LeftControl => ImGuiKey.LeftCtrl,
+            SDL_Scancode.RightControl => ImGuiKey.RightCtrl,
+            SDL_Scancode.LeftShift => ImGuiKey.LeftShift,
+            SDL_Scancode.RightShift => ImGuiKey.RightShift,
+            SDL_Scancode.Escape => ImGuiKey.Escape,
+            SDL_Scancode.Tab => ImGuiKey.Tab,
+            SDL_Scancode.Return => ImGuiKey.Enter,
+            SDL_Scancode.Backspace => ImGuiKey.Backspace,
+            SDL_Scancode.Delete => ImGuiKey.Delete,
+            SDL_Scancode.Left => ImGuiKey.LeftArrow,
+            SDL_Scancode.Right => ImGuiKey.RightArrow,
+            SDL_Scancode.Up => ImGuiKey.UpArrow,
+            SDL_Scancode.Down => ImGuiKey.DownArrow,
+            _ => ImGuiKey.None,
+        };
     }
 
     protected override void OnDisposing()
