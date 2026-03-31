@@ -50,25 +50,19 @@ float luminance(vec3 c) {
 // Computes the absolute luminance contrast between the current pixel and its
 // left/top neighbours.  Any edge whose contrast exceeds edgeThreshold is kept;
 // both components are written to the RG channels of the edge mask texture.
+//
+// Convention:
+//   R = 1  ⟹  there is an edge on the LEFT  side of this pixel  (between this pixel and its left  neighbour)
+//   G = 1  ⟹  there is an edge on the TOP   side of this pixel  (between this pixel and its top   neighbour)
 void EdgeDetection() {
     vec2 ts = vec2(pc.value.texelWidth, pc.value.texelHeight);
 
-    float lumC  = luminance(textureBindless2D(pc.value.colorTextureId, pc.value.colorSamplerId, inTexCoord              ).rgb);
-    float lumL  = luminance(textureBindless2D(pc.value.colorTextureId, pc.value.colorSamplerId, inTexCoord + vec2(-ts.x, 0.0)).rgb);
-    float lumT  = luminance(textureBindless2D(pc.value.colorTextureId, pc.value.colorSamplerId, inTexCoord + vec2( 0.0,-ts.y)).rgb);
-    float lumR  = luminance(textureBindless2D(pc.value.colorTextureId, pc.value.colorSamplerId, inTexCoord + vec2( ts.x, 0.0)).rgb);
-    float lumB  = luminance(textureBindless2D(pc.value.colorTextureId, pc.value.colorSamplerId, inTexCoord + vec2( 0.0, ts.y)).rgb);
+    float lumC = luminance(textureBindless2D(pc.value.colorTextureId, pc.value.colorSamplerId, inTexCoord).rgb);
+    float lumL = luminance(textureBindless2D(pc.value.colorTextureId, pc.value.colorSamplerId, inTexCoord + vec2(-ts.x, 0.0)).rgb);
+    float lumT = luminance(textureBindless2D(pc.value.colorTextureId, pc.value.colorSamplerId, inTexCoord + vec2( 0.0,-ts.y)).rgb);
 
-    // Local contrast = difference between the maximum and minimum luminance
-    // in the 3×3 neighbourhood. This suppresses detections in flat areas.
-    float localMax = max(max(lumL, lumT), max(lumR, max(lumB, lumC)));
-    float localMin = min(min(lumL, lumT), min(lumR, min(lumB, lumC)));
-    float localContrast = localMax - localMin;
-
-    float threshold = max(pc.value.edgeThreshold, localContrast * 0.2);
-
-    float edgeH = step(threshold, abs(lumC - lumL));
-    float edgeV = step(threshold, abs(lumC - lumT));
+    float edgeH = step(pc.value.edgeThreshold, abs(lumC - lumL));
+    float edgeV = step(pc.value.edgeThreshold, abs(lumC - lumT));
 
     outColor = vec4(edgeH, edgeV, 0.0, 1.0);
 }
@@ -79,106 +73,141 @@ void EdgeDetection() {
 // For each pixel that was marked as an edge we search along the edge direction
 // for the ends of the line feature, then compute a fractional blending weight
 // based on a simple trapezoid area approximation (simplified MLAA).
+//
+// Weight layout in the output RGBA texture:
+//   R (.x) = weight for blending LEFT   (vertical   edge on left side of this pixel)
+//   G (.y) = weight for blending RIGHT  (always 0 – reserved; the right neighbour's .x carries this)
+//   B (.z) = weight for blending UP     (horizontal edge on top  side of this pixel)
+//   A (.w) = weight for blending DOWN   (always 0 – reserved; the bottom neighbour's .z carries this)
 void BlendingWeights() {
-    vec2 ts     = vec2(pc.value.texelWidth, pc.value.texelHeight);
-    vec2 edges  = textureBindless2D(pc.value.edgeTextureId, pc.value.edgeSamplerId, inTexCoord).rg;
+    vec2 ts    = vec2(pc.value.texelWidth, pc.value.texelHeight);
+    vec2 edges = textureBindless2D(pc.value.edgeTextureId, pc.value.edgeSamplerId, inTexCoord).rg;
 
     // Maximum search distance in pixels (quality / performance trade-off).
     const int MAX_SEARCH = 8;
 
     float weightL = 0.0;
-    float weightR = 0.0;
     float weightT = 0.0;
-    float weightB = 0.0;
 
-    // --- Horizontal edge (stored in G channel of the edge above this pixel) ---
+    // --- Horizontal edge (G channel: edge on top side of this pixel) ----------
+    // The edge lies between this pixel and the one directly above.  We search
+    // left/right along the row of G-edges to find how long the edge segment is,
+    // then derive a weight that is strongest at the centre of the segment and
+    // fades toward the endpoints (triangle-area approximation).
     if (edges.g > 0.5) {
-        // Search left and right along the horizontal edge.
         int searchL = 0;
         int searchR = 0;
         for (int i = 1; i <= MAX_SEARCH; ++i) {
-            vec2 edgeL = textureBindless2D(pc.value.edgeTextureId, pc.value.edgeSamplerId,
-                                           inTexCoord + vec2(-float(i) * ts.x, 0.0)).rg;
-            if (edgeL.g < 0.5) break;
+            float e = textureBindless2D(pc.value.edgeTextureId, pc.value.edgeSamplerId,
+                                        inTexCoord + vec2(-float(i) * ts.x, 0.0)).g;
+            if (e < 0.5) break;
             searchL = i;
         }
         for (int i = 1; i <= MAX_SEARCH; ++i) {
-            vec2 edgeR = textureBindless2D(pc.value.edgeTextureId, pc.value.edgeSamplerId,
-                                           inTexCoord + vec2( float(i) * ts.x, 0.0)).rg;
-            if (edgeR.g < 0.5) break;
+            float e = textureBindless2D(pc.value.edgeTextureId, pc.value.edgeSamplerId,
+                                        inTexCoord + vec2( float(i) * ts.x, 0.0)).g;
+            if (e < 0.5) break;
             searchR = i;
         }
-        float spanH = float(searchL + searchR) + 1.0;
-        // Triangle area: weight peaks at the centre of the span, tails at the ends.
-        float posInSpan = (float(searchL) + 0.5) / spanH;
-        float w = 1.0 - abs(posInSpan * 2.0 - 1.0);
-        weightT = w * 0.5;
-        weightB = w * 0.5;
+        float span      = float(searchL + searchR) + 1.0;
+        float posInSpan  = (float(searchL) + 0.5) / span;
+        weightT = 0.5 * (1.0 - abs(posInSpan * 2.0 - 1.0));
     }
 
-    // --- Vertical edge (stored in R channel) ---
+    // --- Vertical edge (R channel: edge on left side of this pixel) -----------
+    // The edge lies between this pixel and the one directly to the left.  We
+    // search up/down along the column of R-edges.
     if (edges.r > 0.5) {
-        // Search up and down along the vertical edge.
         int searchU = 0;
         int searchD = 0;
         for (int i = 1; i <= MAX_SEARCH; ++i) {
-            vec2 edgeU = textureBindless2D(pc.value.edgeTextureId, pc.value.edgeSamplerId,
-                                           inTexCoord + vec2(0.0, -float(i) * ts.y)).rg;
-            if (edgeU.r < 0.5) break;
+            float e = textureBindless2D(pc.value.edgeTextureId, pc.value.edgeSamplerId,
+                                        inTexCoord + vec2(0.0, -float(i) * ts.y)).r;
+            if (e < 0.5) break;
             searchU = i;
         }
         for (int i = 1; i <= MAX_SEARCH; ++i) {
-            vec2 edgeD = textureBindless2D(pc.value.edgeTextureId, pc.value.edgeSamplerId,
-                                           inTexCoord + vec2(0.0,  float(i) * ts.y)).rg;
-            if (edgeD.r < 0.5) break;
+            float e = textureBindless2D(pc.value.edgeTextureId, pc.value.edgeSamplerId,
+                                        inTexCoord + vec2(0.0,  float(i) * ts.y)).r;
+            if (e < 0.5) break;
             searchD = i;
         }
-        float spanV = float(searchU + searchD) + 1.0;
-        float posInSpan = (float(searchU) + 0.5) / spanV;
-        float w = 1.0 - abs(posInSpan * 2.0 - 1.0);
-        weightL = w * 0.5;
-        weightR = w * 0.5;
+        float span      = float(searchU + searchD) + 1.0;
+        float posInSpan  = (float(searchU) + 0.5) / span;
+        weightL = 0.5 * (1.0 - abs(posInSpan * 2.0 - 1.0));
     }
 
-    outColor = vec4(weightL, weightR, weightT, weightB);
+    outColor = vec4(weightL, 0.0, weightT, 0.0);
 }
 
 // --------------------------------------------------------------------------
 // Stage 2 – Neighbourhood Blending
 // --------------------------------------------------------------------------
-// Fetches the precomputed blending weights for the current pixel and its
-// direct neighbours, then reconstructs the anti-aliased colour by linearly
-// blending the original colour with the neighbours according to those weights.
+// Uses the precomputed blending weights to shift the sampling position along
+// the dominant edge direction, producing a single sub-pixel blend instead of
+// a multi-tap weighted average.  This avoids the double-line artefact that
+// occurs when both sides of an edge are independently averaged.
+//
+// For each pixel we gather four weights:
+//   wL = this   pixel's leftward  weight  (weights[P].x)
+//   wR = right  pixel's leftward  weight  (weights[P+(1,0)].x)  – contributes as our rightward pull
+//   wT = this   pixel's upward    weight  (weights[P].z)
+//   wB = bottom pixel's upward    weight  (weights[P+(0,1)].z)  – contributes as our downward pull
+//
+// We choose the dominant axis (horizontal vs vertical) based on which pair
+// has the larger total weight, compute a signed sub-pixel offset, and perform
+// a single texture fetch at the shifted position.
 void NeighbourhoodBlend() {
     vec2 ts = vec2(pc.value.texelWidth, pc.value.texelHeight);
 
-    // Weights stored as (left, right, top, bottom) for the current pixel.
-    vec4  weightsC = textureBindless2D(pc.value.weightTextureId, pc.value.weightSamplerId, inTexCoord);
-    // Also read the neighbouring weight textures: the right neighbour's left-
-    // weight contributes here, and the bottom neighbour's top-weight contributes.
-    vec4  weightsR = textureBindless2D(pc.value.weightTextureId, pc.value.weightSamplerId, inTexCoord + vec2( ts.x, 0.0));
-    vec4  weightsB = textureBindless2D(pc.value.weightTextureId, pc.value.weightSamplerId, inTexCoord + vec2( 0.0, ts.y));
+    // Gather the four relevant weights.
+    vec4 wC = textureBindless2D(pc.value.weightTextureId, pc.value.weightSamplerId, inTexCoord);
+    vec4 wR = textureBindless2D(pc.value.weightTextureId, pc.value.weightSamplerId, inTexCoord + vec2( ts.x, 0.0));
+    vec4 wB = textureBindless2D(pc.value.weightTextureId, pc.value.weightSamplerId, inTexCoord + vec2( 0.0, ts.y));
 
-    float wLeft  = weightsC.x;   // current pixel blends leftward
-    float wRight = weightsR.x;   // right neighbour blends into us
-    float wTop   = weightsC.z;   // current pixel blends upward
-    float wBot   = weightsB.z;   // bottom neighbour blends into us
+    float wLeft  = wC.x;   // blend toward left
+    float wRight = wR.x;   // right neighbour blends toward us (= our rightward pull)
+    float wTop   = wC.z;   // blend toward top
+    float wBot   = wB.z;   // bottom neighbour blends toward us (= our downward pull)
 
-    vec3 colorC = textureBindless2D(pc.value.colorTextureId, pc.value.colorSamplerId, inTexCoord              ).rgb;
-    vec3 colorL = textureBindless2D(pc.value.colorTextureId, pc.value.colorSamplerId, inTexCoord + vec2(-ts.x,  0.0)).rgb;
-    vec3 colorR = textureBindless2D(pc.value.colorTextureId, pc.value.colorSamplerId, inTexCoord + vec2( ts.x,  0.0)).rgb;
-    vec3 colorT = textureBindless2D(pc.value.colorTextureId, pc.value.colorSamplerId, inTexCoord + vec2( 0.0, -ts.y)).rgb;
-    vec3 colorB = textureBindless2D(pc.value.colorTextureId, pc.value.colorSamplerId, inTexCoord + vec2( 0.0,  ts.y)).rgb;
+    // Horizontal contribution (left/right weights → shift along X).
+    float hWeight = wLeft + wRight;
+    // Vertical contribution (top/bottom weights → shift along Y).
+    float vWeight = wTop + wBot;
 
-    // Normalise so the total contribution sums to 1.
-    float totalW = 1.0 - wLeft - wRight - wTop - wBot;
-    vec3 result  = colorC * max(totalW, 0.0)
-                 + colorL * wLeft
-                 + colorR * wRight
-                 + colorT * wTop
-                 + colorB * wBot;
+    // If no blending is needed, output the original colour directly.
+    if (hWeight + vWeight < 1e-5) {
+        outColor = vec4(textureBindless2D(pc.value.colorTextureId, pc.value.colorSamplerId, inTexCoord).rgb, 1.0);
+        return;
+    }
 
-    outColor = vec4(result, 1.0);
+    // Choose the dominant direction and compute a signed sub-pixel offset.
+    vec2 offset = vec2(0.0);
+    float blendFactor = 0.0;
+
+    if (hWeight >= vWeight) {
+        // Horizontal blending: shift the sample along X.
+        // wRight pulls us rightward (+X), wLeft pulls us leftward (−X).
+        float signedW = wRight - wLeft;
+        offset = vec2(sign(signedW) * ts.x, 0.0);
+        blendFactor = hWeight;
+    } else {
+        // Vertical blending: shift the sample along Y.
+        // wBot pulls us downward (+Y), wTop pulls us upward (−Y).
+        float signedW = wBot - wTop;
+        offset = vec2(0.0, sign(signedW) * ts.y);
+        blendFactor = vWeight;
+    }
+
+    // Clamp the blend factor to [0, 1] for safety.
+    blendFactor = clamp(blendFactor, 0.0, 1.0);
+
+    // Fetch the original colour and the colour at the shifted position,
+    // then linearly interpolate.
+    vec3 colorC = textureBindless2D(pc.value.colorTextureId, pc.value.colorSamplerId, inTexCoord).rgb;
+    vec3 colorN = textureBindless2D(pc.value.colorTextureId, pc.value.colorSamplerId, inTexCoord + offset).rgb;
+
+    outColor = vec4(mix(colorC, colorN, blendFactor), 1.0);
 }
 
 // --------------------------------------------------------------------------
