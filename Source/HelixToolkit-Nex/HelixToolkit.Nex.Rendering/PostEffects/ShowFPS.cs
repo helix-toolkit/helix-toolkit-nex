@@ -14,6 +14,7 @@ public sealed class ShowFPS : PostEffect
 
     public float Scale = 0.05f;
     public float MinSize { set; get; } = 64;
+    public override uint Priority => (uint)PostEffectPriority.Other;
 
     public override bool Apply(in RenderResources res, ref string readSlot, ref string writeSlot)
     {

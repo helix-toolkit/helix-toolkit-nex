@@ -166,16 +166,32 @@ public class Engine : Initializable
     /// causing a recompile on the next <see cref="Render"/> call.
     /// </para>
     /// </summary>
+    /// <param name="name">The render node name if different from <see cref="RenderNode.Name"/></param>
     /// <param name="node">The render node to add.</param>
     /// <returns><c>true</c> if the node was added successfully.</returns>
-    public bool AddNode(RenderNode node)
+    public bool AddNode(string name, RenderNode node)
     {
-        if (!_renderer.AddNode(node))
+        if (!_renderer.AddNode(name, node))
         {
             return false;
         }
         node.AddToGraph(_renderGraph);
         return true;
+    }
+
+    /// <summary>
+    /// Adds a <see cref="RenderNode"/> to the renderer and registers its passes in the render graph.
+    /// <para>
+    /// Must be called <b>before</b> <see cref="Initializable.Initialize"/>. Nodes added after
+    /// initialization will be set up immediately but will also mark the render graph dirty,
+    /// causing a recompile on the next <see cref="Render"/> call.
+    /// </para>
+    /// </summary>
+    /// <param name="node">The render node to add.</param>
+    /// <returns><c>true</c> if the node was added successfully.</returns>
+    public bool AddNode(RenderNode node)
+    {
+        return AddNode(node.Name, node);
     }
 
     /// <summary>
@@ -186,6 +202,18 @@ public class Engine : Initializable
     {
         _renderer.RemoveNode(node);
         _renderGraph.RemovePass(node.Name);
+    }
+
+    /// <summary>
+    /// Attempts to retrieve a render node by its name.
+    /// </summary>
+    /// <param name="name">The name of the render node to retrieve. Cannot be <see langword="null"/> or empty.</param>
+    /// <param name="node">When this method returns, contains the <see cref="RenderNode"/> associated with the specified name, if the
+    /// render node is found; otherwise, <see langword="null"/>.</param>
+    /// <returns><see langword="true"/> if a render node with the specified name is found; otherwise, <see langword="false"/>.</returns>
+    public bool TryGetRenderNode(string name, out RenderNode? node)
+    {
+        return _renderer.TryGetRenderNode(name, out node);
     }
 
     /// <summary>

@@ -13,6 +13,7 @@ public sealed class ToneMapping : PostEffect
     public ToneMappingMode Mode { set; get; } = ToneMappingMode.ACESFilm;
 
     public override Color DebugColor => Color.Aquamarine;
+    public override uint Priority => (uint)PostEffectPriority.ToneMapping;
 
     public override bool Apply(in RenderResources res, ref string readSlot, ref string writeSlot)
     {

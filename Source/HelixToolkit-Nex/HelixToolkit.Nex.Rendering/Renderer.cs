@@ -24,6 +24,11 @@ public class Renderer(IServiceProvider serviceProvider) : Initializable
 
     public bool AddNode(RenderNode renderer)
     {
+        return AddNode(renderer.Name, renderer);
+    }
+
+    public bool AddNode(string name, RenderNode renderer)
+    {
         ArgumentNullException.ThrowIfNull(renderer);
         if (_renderers.ContainsKey(renderer.Name))
         {
@@ -64,6 +69,11 @@ public class Renderer(IServiceProvider serviceProvider) : Initializable
             );
         }
         _renderers.Remove(renderer.Name);
+    }
+
+    public bool TryGetRenderNode(string name, out RenderNode? node)
+    {
+        return _renderers.TryGetValue(name, out node);
     }
 
     public void Clear()

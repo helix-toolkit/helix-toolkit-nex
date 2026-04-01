@@ -59,7 +59,7 @@ public sealed class EngineBuilder
     private readonly IContext _context;
     private readonly List<RenderNode> _nodes = [];
     private readonly List<Action<IServiceCollection>> _serviceConfigurators = [];
-    private PostEffectsNode? _postEffectsNode;
+    private PostEffectsNode _postEffectsNode = new();
     private bool _addRenderToFinal;
     private bool _createPBRMaterials;
     private Action<IResourceManager>? _onResourceManagerReady;
@@ -115,7 +115,6 @@ public sealed class EngineBuilder
     public EngineBuilder WithPostEffects(Action<PostEffectsNode> configure)
     {
         ArgumentNullException.ThrowIfNull(configure);
-        _postEffectsNode ??= new PostEffectsNode();
         configure(_postEffectsNode);
         return this;
     }
@@ -169,6 +168,7 @@ public sealed class EngineBuilder
     ///     .AddNode(new FrustumCullNode())
     ///     .AddNode(new ForwardPlusLightCullingNode())
     ///     .AddNode(new ForwardPlusOpaqueNode())
+    ///     .AddNode(new PostEffectsNode())
     ///     .AddRenderToFinal()
     ///     .CreatePBRMaterials();
     /// </code>
@@ -233,10 +233,8 @@ public sealed class EngineBuilder
         {
             engine.AddNode(node);
         }
-        if (_postEffectsNode is not null)
-        {
-            engine.AddNode(_postEffectsNode);
-        }
+        engine.AddNode(_postEffectsNode);
+        _postEffectsNode = new();
         if (_addRenderToFinal)
         {
             engine.AddNode(new RenderToFinalNode(_context.GetSwapchainFormat()));

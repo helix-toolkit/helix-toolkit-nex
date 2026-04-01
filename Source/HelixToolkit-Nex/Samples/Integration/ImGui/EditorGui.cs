@@ -9,6 +9,8 @@ using HelixToolkit.Nex.Scene;
 using HelixToolkit.Nex.Shaders;
 using ImGuiNET;
 using Microsoft.Extensions.Logging;
+using static HelixToolkit.Nex.Rendering.PostEffects.BorderHighlightPostEffect;
+using static HelixToolkit.Nex.Rendering.PostEffects.WireframePostEffect;
 using Gui = ImGuiNET.ImGui;
 using TextureHandle = HelixToolkit.Nex.Handle<HelixToolkit.Nex.Graphics.Texture>;
 

@@ -54,6 +54,7 @@ public sealed class Bloom : PostEffect
 
     public override string Name => nameof(Bloom);
     public override Color DebugColor => Color.HotPink;
+    public override uint Priority => (uint)PostEffectPriority.Bloom;
 
     // -----------------------------------------------------------------------
     // Resource registration (graph-time)
