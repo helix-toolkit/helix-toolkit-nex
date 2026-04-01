@@ -17,11 +17,13 @@ public sealed class SceneState(World world) : Initializable
     {
         if (SceneGraphDirty)
         {
+            using var scope = _tracer.BeginScope("SortSceneNodes");
             World.SortSceneNodes();
             SceneGraphDirty = false;
         }
         if (TransformDirty)
         {
+            using var scope = _tracer.BeginScope("UpdateTransforms");
             World.UpdateTransforms();
             TransformDirty = false;
         }
