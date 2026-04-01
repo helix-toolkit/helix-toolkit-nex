@@ -1,5 +1,14 @@
 namespace HelixToolkit.Nex.Rendering.RenderNodes;
 
+public enum PostEffectPriority : uint
+{
+    AntiAliasing = 10,
+    Bloom = 20,
+    Highlight = 30,
+    ToneMapping = 40,
+    Other = 50,
+}
+
 public abstract class PostEffect() : Initializable
 {
     public IContext? Context { internal set; get; }
@@ -12,7 +21,7 @@ public abstract class PostEffect() : Initializable
     /// <summary>
     /// Gets or sets the priority level of the effect. Effects with lower priority values are executed before those with higher values.
     /// </summary>
-    public int Priority { get; set; } = 0;
+    public abstract uint Priority { get; }
 
     /// <summary>
     /// Called from <see cref="PostEffectsNode.AddToGraph"/> before the graph is compiled.
@@ -44,6 +53,7 @@ public abstract class PostEffect() : Initializable
 public sealed class PostEffectsNode : RenderNode
 {
     private readonly List<PostEffect> _effects = [];
+    private readonly Dictionary<string, PostEffect> _effectMap = [];
     private bool _changed = true;
 
     // Resolved by AddToGraph and stored so OnRender can alternate slots across effects.
@@ -53,10 +63,58 @@ public sealed class PostEffectsNode : RenderNode
     public override string Name => nameof(PostEffectsNode);
     public override Color4 DebugColor => Color.Aqua;
 
+    /// <summary>
+    /// Adds a post-processing effect to the collection.
+    /// </summary>
+    /// <remarks>If the effect is added successfully and the system is currently attached, the effect is
+    /// initialized immediately.</remarks>
+    /// <param name="effect">The <see cref="PostEffect"/> to add. The effect must have a unique name.</param>
+    /// <exception cref="ArgumentException">Thrown if a post-effect with the same name as <paramref name="effect"/> already exists in the collection.</exception>
     public void AddEffect(PostEffect effect)
     {
+        if (_effectMap.ContainsKey(effect.Name))
+        {
+            throw new ArgumentException(
+                $"A post-effect with the name '{effect.Name}' has already been added."
+            );
+        }
+        _effectMap[effect.Name] = effect;
         _effects.Add(effect);
         _changed = true;
+        if (IsAttached)
+        {
+            effect.Initialize().CheckResult();
+        }
+    }
+
+    /// <summary>
+    /// Removes the effect with the specified name from the collection.
+    /// </summary>
+    /// <remarks>If an effect with the specified name exists, it is removed from the collection, and any
+    /// associated resources are released.  The method has no effect if the specified name does not exist in the
+    /// collection.</remarks>
+    /// <param name="name">The name of the effect to remove. This value cannot be <see langword="null"/> or empty.</param>
+    public void RemoveEffect(string name)
+    {
+        if (_effectMap.TryGetValue(name, out var effect))
+        {
+            effect.Teardown();
+            _effectMap.Remove(name);
+            _effects.Remove(effect);
+            _changed = true;
+        }
+    }
+
+    /// <summary>
+    /// Attempts to retrieve a post-processing effect by its name.
+    /// </summary>
+    /// <param name="name">The name of the post-processing effect to retrieve. This parameter is case-sensitive.</param>
+    /// <param name="effect">When this method returns, contains the <see cref="PostEffect"/> associated with the specified name, if the name
+    /// exists in the collection; otherwise, <see langword="null"/>. This parameter is passed uninitialized.</param>
+    /// <returns><see langword="true"/> if the effect with the specified name exists; otherwise, <see langword="false"/>.</returns>
+    public bool TryGetEffect(string name, out PostEffect? effect)
+    {
+        return _effectMap.TryGetValue(name, out effect);
     }
 
     protected override bool BeginRender(in RenderResources res)

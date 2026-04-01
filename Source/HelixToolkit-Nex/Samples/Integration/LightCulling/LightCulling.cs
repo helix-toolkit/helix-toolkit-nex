@@ -16,6 +16,8 @@ using HelixToolkit.Nex.Scene;
 using HelixToolkit.Nex.Shaders.Frag;
 using Microsoft.Extensions.Logging;
 using SceneSamples;
+using static HelixToolkit.Nex.Rendering.PostEffects.BorderHighlightPostEffect;
+using static HelixToolkit.Nex.Rendering.PostEffects.WireframePostEffect;
 
 internal class LightCullingTest(IContext context, bool largeScene = true) : IDisposable
 {
@@ -72,8 +74,8 @@ internal class LightCullingTest(IContext context, bool largeScene = true) : IDis
         _renderer.AddNode(new ForwardPlusOpaqueNode() { UseLightCulling = true });
         _renderer.AddNode(new ForwardPlusLightCullingNode());
         var postEffectNode = new PostEffectsNode();
-        postEffectNode.AddEffect(new Smaa());          // 1. AA first – clean geometry edges on raw scene colour
-        postEffectNode.AddEffect(new Bloom());         // 2. Bloom on the already-anti-aliased signal
+        postEffectNode.AddEffect(new Smaa()); // 1. AA first – clean geometry edges on raw scene colour
+        postEffectNode.AddEffect(new Bloom()); // 2. Bloom on the already-anti-aliased signal
         postEffectNode.AddEffect(new ToneMapping());
         postEffectNode.AddEffect(new BorderHighlightPostEffect());
         postEffectNode.AddEffect(new WireframePostEffect());

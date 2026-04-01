@@ -18,6 +18,30 @@ namespace HelixToolkit.Nex.Rendering.PostEffects;
 /// </summary>
 public sealed class WireframePostEffect : PostEffect
 {
+    /// <summary>
+    /// Marks a mesh entity for wireframe rendering.
+    /// When present on an entity that also has a <see cref="MeshComponent"/>,
+    /// the <c>WireframePostEffect</c> will draw the mesh's edges as coloured lines
+    /// overlaid on the scene colour during the post-processing stage.
+    /// </summary>
+    public struct WireframeComponent
+    {
+        /// <summary>
+        /// The colour of the wireframe lines.
+        /// </summary>
+        public Color4 Color;
+
+        public WireframeComponent(Color4 color)
+        {
+            Color = color;
+        }
+
+        /// <summary>
+        /// A default green wireframe.
+        /// </summary>
+        public static readonly WireframeComponent Default = new(new Color4(0, 1, 0, 1));
+    }
+
     private static readonly ILogger _logger = LogManager.Create<WireframePostEffect>();
 
     // Wireframe draw pipeline: standard mesh VS + flat-colour FS with PolygonMode.Line.
@@ -32,6 +56,8 @@ public sealed class WireframePostEffect : PostEffect
 
     public override string Name => nameof(WireframePostEffect);
     public override Color DebugColor => Color.Chartreuse;
+
+    public override uint Priority => (uint)PostEffectPriority.Highlight;
 
     /// <summary>
     /// Gets or sets the constant depth bias factor applied to fragment depth values.

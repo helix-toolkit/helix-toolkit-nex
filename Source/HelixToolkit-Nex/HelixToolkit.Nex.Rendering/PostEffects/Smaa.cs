@@ -137,6 +137,7 @@ public sealed class Smaa : PostEffect
 
     public override string Name => nameof(Smaa);
     public override Color DebugColor => Color.LightGreen;
+    public override uint Priority => (uint)PostEffectPriority.AntiAliasing;
 
     // -----------------------------------------------------------------------
     // Resource registration (graph-time)

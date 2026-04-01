@@ -177,6 +177,7 @@ public sealed class Fxaa : PostEffect
 
     public override string Name => nameof(Fxaa);
     public override Color DebugColor => Color.Cyan;
+    public override uint Priority => (uint)PostEffectPriority.AntiAliasing;
 
     // -----------------------------------------------------------------------
     // PostEffect interface
