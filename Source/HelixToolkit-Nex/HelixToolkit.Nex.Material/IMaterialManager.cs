@@ -19,9 +19,10 @@ public interface IMaterialManager : IDisposable
     /// Gets the render pipeline handle associated with the specified material type.
     /// </summary>
     /// <param name="materialType">The type of material for which to retrieve the render pipeline handle.</param>
+    /// <param name="type">The pass type for which to retrieve the render pipeline handle (e.g., opaque, transparent).</param>
     /// <returns>A <see cref="RenderPipelineHandle"/> representing the render pipeline configured for the given <paramref
     /// name="materialType"/>.</returns>
-    RenderPipelineHandle GetMaterialPipeline(MaterialTypeId materialType);
+    RenderPipelineHandle GetMaterialPipeline(MaterialTypeId materialType, MaterialPassType type);
 
     /// <summary>
     /// Retrieves the PBR material associated with the specified material type identifier.
@@ -39,13 +40,6 @@ public interface IMaterialManager : IDisposable
     /// This function is responsible for constructing the material based on the provided name and pipeline description.</param>
     /// <returns>A <see cref="MaterialPropertyCreator"/> that can be used to further configure the created material.</returns>
     MaterialPropertyCreator CreateMaterial(string name, Func<string, PBRMaterial> builderFunc);
-
-    /// <summary>
-    /// Creates a default render pipeline description with optional debugging information.
-    /// </summary>
-    /// <param name="debugName">An optional name for debugging purposes. Can be <see langword="null"/> if no debug name is required.</param>
-    /// <returns>A <see cref="RenderPipelineDesc"/> object representing the default configuration for a render pipeline.</returns>
-    RenderPipelineDesc CreateDefaultUberPipelineDesc(string? debugName);
 
     /// <summary>
     /// Creates physically-based rendering (PBR) materials from the registry.

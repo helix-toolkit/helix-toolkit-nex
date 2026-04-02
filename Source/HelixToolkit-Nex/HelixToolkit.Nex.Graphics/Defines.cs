@@ -1029,6 +1029,46 @@ public struct ColorAttachment()
     {
         return new ColorAttachment { Format = format, BlendEnabled = false };
     }
+
+    /// <summary>
+    /// Creates a color attachment configured for the WBOIT accumulation buffer.
+    /// Blend: <c>Src=One, Dst=One</c> (additive) for both RGB and alpha channels.
+    /// The fragment shader outputs <c>vec4(color.rgb * alpha * w, alpha * w)</c>.
+    /// </summary>
+    public static ColorAttachment CreateWboitAccumulation(Format format)
+    {
+        return new ColorAttachment
+        {
+            Format = format,
+            BlendEnabled = true,
+            RgbBlendOp = BlendOp.Add,
+            AlphaBlendOp = BlendOp.Add,
+            SrcRGBBlendFactor = BlendFactor.One,
+            SrcAlphaBlendFactor = BlendFactor.One,
+            DstRGBBlendFactor = BlendFactor.One,
+            DstAlphaBlendFactor = BlendFactor.One,
+        };
+    }
+
+    /// <summary>
+    /// Creates a color attachment configured for the WBOIT revealage buffer.
+    /// Blend: <c>Src=Zero, Dst=OneMinusSrcColor</c>. The buffer is cleared to 1.0 and
+    /// each fragment multiplies the existing value by <c>(1 - alpha)</c>.
+    /// </summary>
+    public static ColorAttachment CreateWboitRevealage(Format format)
+    {
+        return new ColorAttachment
+        {
+            Format = format,
+            BlendEnabled = true,
+            RgbBlendOp = BlendOp.Add,
+            AlphaBlendOp = BlendOp.Add,
+            SrcRGBBlendFactor = BlendFactor.Zero,
+            SrcAlphaBlendFactor = BlendFactor.Zero,
+            DstRGBBlendFactor = BlendFactor.OneMinusSrcColor,
+            DstAlphaBlendFactor = BlendFactor.OneMinusSrcColor,
+        };
+    }
 }
 
 /// <summary>

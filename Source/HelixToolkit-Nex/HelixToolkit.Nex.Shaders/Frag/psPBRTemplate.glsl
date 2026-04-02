@@ -16,8 +16,12 @@ layout(location = 5) in vec2 fragTexCoord;
 
 // Ensure FragCoord (0,0) is Top-Left to match Compute Shader tile generation
 // layout(origin_upper_left) in vec4 gl_FragCoord;
-
+#ifdef TRANSPARENT_PASS
+layout(location = 0) out vec4 outAccum;
+layout(location = 1) out float outRevealage;
+#else
 layout(location = 0) out vec4 outColor;
+#endif
 
 @code_gen
 struct PBRProperties {
@@ -300,6 +304,29 @@ vec4 outputColor()
 
 /*TEMPLATE_CUSTOM_MAIN_START*/
 void main() {
-    outColor = outputColor();
+    vec4 color = outputColor();
+#ifdef TRANSPARENT_PASS
+    // Weighted Blended OIT (McGuire & Bavoil 2013)
+    // Weight function uses alpha and view-space depth for depth-sensitive ordering.
+    float alpha = color.a;
+    if (alpha < 1e-4) {
+        discard; // Skip fully transparent fragments to avoid polluting the buffers.
+    }
+    // gl_FragCoord.z is in [0, 1] (reversed-Z: 1 = near, 0 = far).
+    // Convert to a linear-ish metric for the weight function.
+    float z = gl_FragCoord.z;
+    float w = clamp(
+        pow(min(1.0, alpha * 10.0) + 0.01, 3.0) * 1e8
+        * pow(1e-5 + abs(1.0 - z) / 200.0, -3.0),
+        1e-2, 3e3
+    );
+    // RT0 (accum): additive blend (ONE / ONE). Store premultiplied weighted color and weighted alpha.
+    outAccum = vec4(color.rgb * alpha * w, alpha * w);
+    // RT1 (revealage): blend is ZERO / ONE_MINUS_SRC_COLOR, buffer cleared to 1.
+    // Output alpha so the blend hardware computes: dst = dst * (1 - alpha).
+    outRevealage = alpha;
+#else
+    outColor = color;
+#endif
 }
 /*TEMPLATE_CUSTOM_MAIN_END*/

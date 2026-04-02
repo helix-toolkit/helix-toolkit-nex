@@ -1,3 +1,4 @@
+using System.Reflection.Metadata.Ecma335;
 using HelixToolkit.Nex.Shaders.Frag;
 
 namespace HelixToolkit.Nex.Material;
@@ -20,6 +21,13 @@ public readonly struct MaterialTypeId(uint id) : IComparable<MaterialTypeId>
     public static implicit operator MaterialTypeId(PBRShadingMode mode) => new((uint)mode);
 }
 
+public enum MaterialPassType : int
+{
+    Opaque = 0,
+    Transparent = 1,
+    Count = 2,
+}
+
 /// <summary>
 /// Base abstraction for all materials used by the rendering engine.
 /// Concrete material types should inherit from <see cref="Material{TProperties}"/> to expose typed properties.
@@ -33,10 +41,10 @@ public class PBRMaterial : IDisposable
     private bool _disposedValue;
 
     /// <summary>
-    /// Optional per-material pipeline resource. Renderers may use this to cache a pipeline
-    /// produced for this material (shaders, states, etc.). DefaultReversedZ is <see cref="RenderPipelineResource.Null"/>.
+    /// Gets the render pipeline resource set.
     /// </summary>
-    public RenderPipelineResource Pipeline { private set; get; } = RenderPipelineResource.Null;
+    public RenderPipelineResource[] Pipelines { get; } =
+    [.. Enumerable.Repeat(RenderPipelineResource.Null, (int)MaterialPassType.Count)];
 
     public virtual ulong CustomBufferAddress { get; } = 0;
 
@@ -46,6 +54,10 @@ public class PBRMaterial : IDisposable
         MaterialId =
             MaterialTypeRegistry.GetTypeId(name)
             ?? throw new ArgumentException(name + " is not a registered material type.");
+        for (var i = 0; i < Pipelines.Length; i++)
+        {
+            Pipelines[i] = RenderPipelineResource.Null;
+        }
     }
 
     public PBRMaterial()
@@ -53,7 +65,7 @@ public class PBRMaterial : IDisposable
         MaterialId = 0; // Invalid material type
     }
 
-    internal bool Initialize(IContext context, in RenderPipelineDesc pipelineDesc)
+    internal bool Initialize(IContext context, IList<RenderPipelineDesc> pipelineDesc)
     {
         if (_initialized)
         {
@@ -67,27 +79,32 @@ public class PBRMaterial : IDisposable
         return false;
     }
 
-    protected virtual bool OnCreate(IContext context, in RenderPipelineDesc pipelineDesc)
+    protected virtual bool OnCreate(IContext context, IList<RenderPipelineDesc> pipelineDescSets)
     {
-        pipelineDesc.WriteSpecInfo(0, MaterialId);
-        // Create the pipeline
-        Pipeline = context.CreateRenderPipeline(pipelineDesc);
+        for (var i = 0; i < pipelineDescSets.Count; i++)
+        {
+            pipelineDescSets[i].WriteSpecInfo(0, MaterialId);
+            // Create the pipeline
+            Pipelines[i].Dispose();
+            Pipelines[i] = context.CreateRenderPipeline(pipelineDescSets[i]);
+        }
 
-        return Pipeline.Valid;
+        return Pipelines.Take(pipelineDescSets.Count).All(pipeline => pipeline.Valid);
     }
 
-    public bool Bind(ICommandBuffer cmdBuf)
+    public bool Bind(ICommandBuffer cmdBuf, MaterialPassType passType)
     {
-        return OnBind(cmdBuf);
+        return OnBind(cmdBuf, passType);
     }
 
-    protected virtual bool OnBind(ICommandBuffer cmdBuf)
+    protected virtual bool OnBind(ICommandBuffer cmdBuf, MaterialPassType passType)
     {
-        if (!Pipeline.Valid)
+        var pipeline = Pipelines[(int)passType];
+        if (!pipeline.Valid)
         {
             return false;
         }
-        cmdBuf.BindRenderPipeline(Pipeline);
+        cmdBuf.BindRenderPipeline(pipeline);
         return true;
     }
 
@@ -109,7 +126,8 @@ public class PBRMaterial : IDisposable
             {
                 _initialized = false;
                 OnDisposing();
-                Pipeline.Dispose();
+                foreach (var pipeline in Pipelines)
+                    pipeline.Dispose();
             }
 
             // TODO: free unmanaged resources (unmanaged objects) and override finalizer

@@ -112,7 +112,12 @@ public static class RenderHelper
     {
         if (res.Context.Data is null)
             return 0;
-        return RenderStatic(in res, res.Context.Data.MeshDrawsTransparent, renderInstancing);
+        return RenderStatic(
+            in res,
+            res.Context.Data.MeshDrawsTransparent,
+            renderInstancing,
+            MaterialPassType.Transparent
+        );
     }
 
     /// <summary>
@@ -130,7 +135,12 @@ public static class RenderHelper
         if (res.Context.Data is null)
             return 0;
 
-        return RenderDynamic(in res, res.Context.Data.MeshDrawsOpaque, renderInstancing);
+        return RenderDynamic(
+            in res,
+            res.Context.Data.MeshDrawsTransparent,
+            renderInstancing,
+            MaterialPassType.Transparent
+        );
     }
 
     /// <summary>
@@ -143,11 +153,13 @@ public static class RenderHelper
     /// <param name="meshDrawData">The mesh draw data containing geometry and material information to render.</param>
     /// <param name="renderInstancing"><see langword="true"/> to enable instanced rendering; <see langword="false"/> to render without instancing.
     /// Instancing can improve performance when rendering multiple copies of the same mesh.</param>
+    /// <param name="passType"/> specifies the material pass type to use when binding materials. </param>
     /// <returns>The total number of draw calls issued. Returns 0 if there is no mesh data to render.</returns>
     public static uint RenderStatic(
         in RenderResources res,
         IMeshDrawData meshDrawData,
-        bool renderInstancing = true
+        bool renderInstancing = true,
+        MaterialPassType passType = MaterialPassType.Opaque
     )
     {
         if (res.Context.Data is null)
@@ -171,7 +183,7 @@ public static class RenderHelper
                 if (!context.UseExternalPipeline)
                 {
                     var mat = context.Data.GetMaterial(materialType);
-                    if (mat == null || !mat.Bind(cmdBuf))
+                    if (mat == null || !mat.Bind(cmdBuf, passType))
                     {
                         _logger.LogError(
                             "Failed to bind material of type {MaterialType} for rendering",
@@ -210,7 +222,7 @@ public static class RenderHelper
                 if (!context.UseExternalPipeline)
                 {
                     var mat = context.Data.GetMaterial(materialType);
-                    if (mat == null || !mat.Bind(cmdBuf))
+                    if (mat == null || !mat.Bind(cmdBuf, passType))
                     {
                         _logger.LogError(
                             "Failed to bind material of type {MaterialType} for rendering",
@@ -250,12 +262,14 @@ public static class RenderHelper
     /// <param name="meshDrawData">The mesh draw data containing geometry and material information to render. Must not be <c>null</c>.</param>
     /// <param name="renderInstancing"><see langword="true"/> to enable instanced rendering where supported; otherwise, <see langword="false"/> to
     /// render without instancing. The default is <see langword="true"/>.</param>
+    /// <param name="passType"/> specifies the material pass type to use when binding materials. </param>
     /// <returns>The number of mesh draw commands rendered. Returns 0 if the context's data is <c>null</c> or if there are no
     /// drawable meshes.</returns>
     public static uint RenderDynamic(
         in RenderResources res,
         IMeshDrawData meshDrawData,
-        bool renderInstancing = true
+        bool renderInstancing = true,
+        MaterialPassType passType = MaterialPassType.Opaque
     )
     {
         if (res.Context.Data is null)
@@ -278,7 +292,7 @@ public static class RenderHelper
                 if (!context.UseExternalPipeline)
                 {
                     var mat = context.Data.GetMaterial(materialType);
-                    if (mat == null || !mat.Bind(cmdBuf))
+                    if (mat == null || !mat.Bind(cmdBuf, passType))
                     {
                         _logger.LogError(
                             "Failed to bind material of type {MaterialType} for rendering",
@@ -335,7 +349,7 @@ public static class RenderHelper
                 if (!context.UseExternalPipeline)
                 {
                     var mat = context.Data.GetMaterial(materialType);
-                    if (mat == null || !mat.Bind(cmdBuf))
+                    if (mat == null || !mat.Bind(cmdBuf, passType))
                     {
                         _logger.LogError(
                             "Failed to bind material of type {MaterialType} for rendering",
