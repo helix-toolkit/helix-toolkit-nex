@@ -5,7 +5,7 @@ public class CustomBufferPBRMaterial<T> : PBRMaterial
 {
     private CustomMaterialBuffer<T>? _buffer;
 
-    protected override bool OnCreate(IContext context, in RenderPipelineDesc pipelineDesc)
+    protected override bool OnCreate(IContext context, IList<RenderPipelineDesc> pipelineDesc)
     {
         _buffer = new CustomMaterialBuffer<T>(context);
         return base.OnCreate(context, pipelineDesc);

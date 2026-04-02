@@ -20,6 +20,18 @@ public static class SystemBufferNames
 
     public const string BufferMeshDrawOpaque = "BufMeshDrawOpaque";
     public const string BufferMeshDrawTransparent = "BufMeshDrawTrans";
+
+    /// <summary>
+    /// RGBA16F accumulation texture for Weighted Blended Order-Independent Transparency (WBOIT).
+    /// Stores premultiplied-alpha weighted color: <c>vec4(color.rgb * w, alpha * w)</c>.
+    /// </summary>
+    public const string TextureWboitAccum = "TexWboitAccum";
+
+    /// <summary>
+    /// R16F revealage texture for Weighted Blended Order-Independent Transparency (WBOIT).
+    /// Initialized to 1 and multiplicatively reduced by each transparent fragment's <c>(1 - alpha)</c>.
+    /// </summary>
+    public const string TextureWboitRevealage = "TexWboitReveal";
     public const string BufferLightGrid = "BufLightGrid";
     public const string BufferLightIndex = "BufLightIndex";
     public const string BufferDirectionalLight = "BufDirLight";

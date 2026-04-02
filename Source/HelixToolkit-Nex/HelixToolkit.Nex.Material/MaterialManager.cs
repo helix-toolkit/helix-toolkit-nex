@@ -7,7 +7,9 @@ public class MaterialManager(IContext context, IMaterialPropertyManager property
 {
     private readonly ConcurrentDictionary<MaterialTypeId, PBRMaterial> _materials = new();
     private readonly ConcurrentDictionary<string, MaterialTypeId> _nameToId = new();
-    private MaterialShaderResult? _uberShaderResult = null;
+    private readonly MaterialShaderResult?[] _uberShaderResults = new MaterialShaderResult?[
+        (int)MaterialPassType.Count
+    ];
 
     public IContext Context { get; } = context;
 
@@ -15,24 +17,61 @@ public class MaterialManager(IContext context, IMaterialPropertyManager property
 
     public int Count => _materials.Count;
 
-    public RenderPipelineDesc CreateDefaultUberPipelineDesc(string? debugName)
+    private IList<RenderPipelineDesc> CreateDefaultUberPipelineDesc(string? debugName)
     {
-        _uberShaderResult ??= new MaterialShaderBuilder()
-            .WithForwardPlus(true)
-            .WithUberShader()
-            .BuildMaterialPipeline(Context, "UberShader");
-        var desc = new RenderPipelineDesc
+        var descSets = new RenderPipelineDesc[(int)MaterialPassType.Count];
+
         {
-            VertexShader = _uberShaderResult.VertexShader,
-            FragmentShader = _uberShaderResult.FragmentShader,
-            Topology = Topology.Triangle,
-            CullMode = CullMode.Back,
-            DepthFormat = RenderSettings.DepthBufferFormat,
-            PolygonMode = PolygonMode.Fill,
-            DebugName = debugName ?? string.Empty,
-        };
-        desc.Colors[0] = ColorAttachment.CreateAlphaBlend(RenderSettings.IntermediateTargetFormat);
-        return desc;
+            var idx = (int)MaterialPassType.Opaque;
+            _uberShaderResults[idx] ??= new MaterialShaderBuilder()
+                .WithForwardPlus(true)
+                .WithUberShader()
+                .BuildMaterialPipeline(Context, "UberShader");
+            var desc = new RenderPipelineDesc
+            {
+                VertexShader = _uberShaderResults[idx]!.VertexShader,
+                FragmentShader = _uberShaderResults[idx]!.FragmentShader,
+                Topology = Topology.Triangle,
+                CullMode = CullMode.Back,
+                DepthFormat = RenderSettings.DepthBufferFormat,
+                PolygonMode = PolygonMode.Fill,
+                DebugName = debugName ?? string.Empty,
+            };
+            desc.Colors[0] = ColorAttachment.CreateAlphaBlend(
+                RenderSettings.IntermediateTargetFormat
+            );
+
+            descSets[(int)MaterialPassType.Opaque] = desc;
+        }
+
+        {
+            var idx = (int)MaterialPassType.Transparent;
+            _uberShaderResults[idx] ??= new MaterialShaderBuilder()
+                .WithForwardPlus(true)
+                .WithUberShader()
+                .WithDefine("TRANSPARENT_PASS")
+                .BuildMaterialPipeline(Context, "UberShader");
+            var desc = new RenderPipelineDesc
+            {
+                VertexShader = _uberShaderResults[idx]!.VertexShader,
+                FragmentShader = _uberShaderResults[idx]!.FragmentShader,
+                Topology = Topology.Triangle,
+                CullMode = CullMode.Back,
+                DepthFormat = RenderSettings.DepthBufferFormat,
+                PolygonMode = PolygonMode.Fill,
+                DebugName = debugName ?? string.Empty,
+            };
+            // WBOIT accumulation (RGBA16F): additive blend (ONE / ONE).
+            // Each fragment writes vec4(color.rgb * alpha * w, alpha * w) and all
+            // contributions are summed together.
+            desc.Colors[0] = ColorAttachment.CreateWboitAccumulation(Format.RGBA_F16);
+            // WBOIT revealage (R16F): multiplicative blend (ZERO / ONE_MINUS_SRC_COLOR).
+            // Buffer is cleared to 1.0; each fragment outputs alpha, and the hardware
+            // computes dst = dst * (1 - alpha), yielding the product of all (1 - alpha_i).
+            desc.Colors[1] = ColorAttachment.CreateWboitRevealage(Format.R_F16);
+            descSets[(int)MaterialPassType.Transparent] = desc;
+        }
+        return descSets;
     }
 
     public MaterialPropertyCreator CreateMaterial(
@@ -88,10 +127,13 @@ public class MaterialManager(IContext context, IMaterialPropertyManager property
         return false;
     }
 
-    public RenderPipelineHandle GetMaterialPipeline(MaterialTypeId materialType)
+    public RenderPipelineHandle GetMaterialPipeline(
+        MaterialTypeId materialType,
+        MaterialPassType type
+    )
     {
         return _materials.TryGetValue(materialType, out var material)
-            ? material.Pipeline
+            ? material.Pipelines[(int)type]
             : RenderPipelineHandle.Null;
     }
 
@@ -121,7 +163,8 @@ public class MaterialManager(IContext context, IMaterialPropertyManager property
             if (disposing)
             {
                 Clear();
-                _uberShaderResult?.Dispose();
+                for (var i = 0; i < _uberShaderResults.Length; i++)
+                    _uberShaderResults[i]?.Dispose();
             }
 
             // TODO: free unmanaged resources (unmanaged objects) and override finalizer
