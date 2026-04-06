@@ -1,14 +1,12 @@
 using System.Diagnostics;
 using System.Numerics;
 using HelixToolkit.Nex;
-using HelixToolkit.Nex.DependencyInjection;
 using HelixToolkit.Nex.ECS;
 using HelixToolkit.Nex.Engine;
 using HelixToolkit.Nex.Engine.Cameras;
 using HelixToolkit.Nex.Graphics;
 using HelixToolkit.Nex.Maths;
 using HelixToolkit.Nex.Rendering;
-using HelixToolkit.Nex.Rendering.Components;
 using HelixToolkit.Nex.Rendering.ComputeNodes;
 using HelixToolkit.Nex.Rendering.PostEffects;
 using HelixToolkit.Nex.Rendering.RenderNodes;
@@ -25,11 +23,9 @@ internal class LightCullingTest(IContext context, bool largeScene = true) : IDis
     public const SampleTextureMode DebugMode = SampleTextureMode.DebugMeshId;
 
     private readonly IContext _context = context;
-    private IServiceProvider? _serviceProvider;
-    private Renderer? _renderer;
+    private Engine? _engine;
     private RenderContext? _renderContext;
     private WorldDataProvider? _worldDataProvider;
-    private IResourceManager? _resourceManager;
     private Node? _root;
     private IScene _scene = largeScene ? new MinecraftLargeScene() : new MinecraftScene();
 
@@ -38,7 +34,6 @@ internal class LightCullingTest(IContext context, bool largeScene = true) : IDis
     private Vector3 _initialCameraPosition = new();
     private readonly long _startTimestamp = Stopwatch.GetTimestamp();
     private long _lastTimestamp = 0;
-    private RenderGraph? _renderGraph;
     private Entity _selectedEntity = Entity.Null;
 
     // Flight parameters
@@ -57,47 +52,40 @@ internal class LightCullingTest(IContext context, bool largeScene = true) : IDis
         };
         _initialCameraPosition = new(_scene.WorldSizeX / 4f, 80, -_scene.WorldSizeZ / 4f - 20);
         RenderSettings.LogFPSInDebug = true;
-        var services = new ServiceCollection { new ServiceDescriptor(typeof(IContext), _context) };
-        services.AddSingleton<IResourceManager, ResourceManager>();
-
-        _serviceProvider = services.BuildServiceProvider();
-        _resourceManager = _serviceProvider.GetRequiredService<IResourceManager>();
 
         // Register Minecraft block material types before the material registry is built
         _scene.RegisterMaterials();
 
-        _resourceManager.Materials.CreatePBRMaterialsFromRegistry();
-        _renderer = new Renderer(_serviceProvider);
-        _renderer.AddNode(new PrepareNode());
-        _renderer.AddNode(new DepthPassNode());
-        _renderer.AddNode(new FrustumCullNode());
-        _renderer.AddNode(new ForwardPlusOpaqueNode() { UseLightCulling = true });
-        _renderer.AddNode(new ForwardPlusLightCullingNode());
-        var postEffectNode = new PostEffectsNode();
-        postEffectNode.AddEffect(new Smaa()); // 1. AA first – clean geometry edges on raw scene colour
-        postEffectNode.AddEffect(new Bloom()); // 2. Bloom on the already-anti-aliased signal
-        postEffectNode.AddEffect(new ToneMapping());
-        postEffectNode.AddEffect(new BorderHighlightPostEffect());
-        postEffectNode.AddEffect(new WireframePostEffect());
-        postEffectNode.AddEffect(new ShowFPS());
-        _renderer.AddNode(postEffectNode);
-        _renderer.AddNode(new RenderToFinalNode(_context.GetSwapchainFormat()));
-        _renderer!.Initialize();
-        _renderGraph = new RenderGraph(_serviceProvider);
-        foreach (var node in _renderer.RenderNodes)
-        {
-            node.AddToGraph(_renderGraph);
-        }
-        _renderGraph.Compile();
-        _renderContext = new RenderContext(_serviceProvider);
-        _renderContext.ResourceSet = new RenderGraphResourceSet();
-        _worldDataProvider = new WorldDataProvider(_serviceProvider);
-        _worldDataProvider.Initialize();
-        _renderContext.Data = _worldDataProvider;
+        // --- Build engine via EngineBuilder ---
+        _engine = EngineBuilder
+            .Create(_context)
+            .AddNode(new PrepareNode())
+            .AddNode(new DepthPassNode())
+            .AddNode(new FrustumCullNode())
+            .AddNode(new ForwardPlusOpaqueNode() { UseLightCulling = true })
+            .AddNode(new ForwardPlusLightCullingNode())
+            .WithPostEffects(effects =>
+            {
+                effects.AddEffect(new Smaa()); // 1. AA first – clean geometry edges on raw scene colour
+                effects.AddEffect(new Bloom()); // 2. Bloom on the already-anti-aliased signal
+                effects.AddEffect(new ToneMapping());
+                effects.AddEffect(new BorderHighlightPostEffect());
+                effects.AddEffect(new WireframePostEffect());
+                effects.AddEffect(new ShowFPS());
+            })
+            .AddRenderToFinal()
+            .CreatePBRMaterials()
+            .Build();
+
+        // --- Per-viewport state and scene data ---
+        _renderContext = _engine.CreateRenderContext();
         _renderContext.Initialize();
 
+        _worldDataProvider = _engine.CreateWorldDataProvider();
+        _worldDataProvider.Initialize();
+
         // Delegate all scene construction to MinecraftScene
-        _root = _scene.Build(_context, _resourceManager, _worldDataProvider);
+        _root = _scene.Build(_context, _engine.ResourceManager, _worldDataProvider);
     }
 
     public void Render(int width, int height)
@@ -113,8 +101,7 @@ internal class LightCullingTest(IContext context, bool largeScene = true) : IDis
         _renderContext!.WindowSize = new HelixToolkit.Nex.Maths.Size(width, height);
         RotateCamera();
         _renderContext.CameraParams = _camera.ToCameraParams(aspectRatio);
-        _renderContext.FinalOutputTexture = _context.GetCurrentSwapchainTexture();
-        _renderer!.Render(_renderContext!, _renderGraph!);
+        _engine!.Render(_renderContext, _worldDataProvider!);
     }
 
     private void RotateCamera()
@@ -191,9 +178,8 @@ internal class LightCullingTest(IContext context, bool largeScene = true) : IDis
             if (disposing)
             {
                 _worldDataProvider?.Dispose();
-                _renderer?.Dispose();
-                _renderGraph?.Dispose();
-                _resourceManager?.Dispose();
+                _renderContext?.Teardown();
+                _engine?.Dispose();
                 _context?.Dispose();
             }
 
