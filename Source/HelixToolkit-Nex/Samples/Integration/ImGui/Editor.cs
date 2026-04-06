@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using System.Numerics;
 using HelixToolkit.Nex;
-using HelixToolkit.Nex.DependencyInjection;
 using HelixToolkit.Nex.ECS;
 using HelixToolkit.Nex.Engine;
 using HelixToolkit.Nex.Engine.CameraControllers;
@@ -34,12 +33,9 @@ internal partial class Editor : IDisposable
     private static readonly ILogger _logger = LogManager.Create<Editor>();
 
     private readonly IContext _context;
-    private IServiceProvider? _serviceProvider;
-    private Renderer? _renderer;
+    private Engine? _engine;
     private RenderContext? _renderContext;
     private WorldDataProvider? _worldDataProvider;
-    private IResourceManager? _resourceManager;
-    private RenderGraph? _renderGraph;
     private ImGuiRenderer? _imGuiRenderer;
     private Node? _root;
     private IScene _scene = new MinecraftScene();
@@ -104,51 +100,39 @@ internal partial class Editor : IDisposable
 
         RenderSettings.LogFPSInDebug = true;
 
-        // --- Service setup ---
-        var services = new ServiceCollection { new ServiceDescriptor(typeof(IContext), _context) };
-        services.AddSingleton<IResourceManager, ResourceManager>();
-        _serviceProvider = services.BuildServiceProvider();
-        _resourceManager = _serviceProvider.GetRequiredService<IResourceManager>();
-
+        // Register Minecraft block material types before the material registry is built
         _scene.RegisterMaterials();
-        _resourceManager.Materials.CreatePBRMaterialsFromRegistry();
 
-        // --- 3D render graph (offscreen — no swapchain write) ---
-        _renderer = new Renderer(_serviceProvider);
-        _renderer.AddNode(new PrepareNode());
-        _renderer.AddNode(new DepthPassNode());
-        _renderer.AddNode(new FrustumCullNode());
-        _renderer.AddNode(new ForwardPlusOpaqueNode() { UseLightCulling = true });
-        _renderer.AddNode(new ForwardPlusLightCullingNode());
-        var postEffectNode = new PostEffectsNode();
+        // --- Build engine via EngineBuilder (offscreen — no swapchain write) ---
+        _engine = EngineBuilder
+            .Create(_context)
+            .AddNode(new PrepareNode())
+            .AddNode(new DepthPassNode())
+            .AddNode(new FrustumCullNode())
+            .AddNode(new ForwardPlusOpaqueNode() { UseLightCulling = true })
+            .AddNode(new ForwardPlusLightCullingNode())
+            .WithPostEffects(effects =>
+            {
+                effects.AddEffect(_fxaa);
+                effects.AddEffect(_smaa);
+                effects.AddEffect(_bloom);
+                effects.AddEffect(_borderHighlight);
+                effects.AddEffect(_wireframe);
+                effects.AddEffect(_toneMapping);
+                effects.AddEffect(_showFPS);
+            })
+            .CreatePBRMaterials()
+            .Build();
 
-        postEffectNode.AddEffect(_fxaa);
-        postEffectNode.AddEffect(_smaa);
-        postEffectNode.AddEffect(_bloom);
-        postEffectNode.AddEffect(_borderHighlight);
-        postEffectNode.AddEffect(_wireframe);
-        postEffectNode.AddEffect(_toneMapping);
-        postEffectNode.AddEffect(_showFPS);
-
-        _renderer.AddNode(postEffectNode);
-        _renderer!.Initialize();
-
-        _renderGraph = new RenderGraph(_serviceProvider);
-        foreach (var node in _renderer.RenderNodes)
-        {
-            node.AddToGraph(_renderGraph);
-        }
-        _renderGraph.Compile();
-
-        _renderContext = new RenderContext(_serviceProvider);
-        _renderContext.ResourceSet = new RenderGraphResourceSet();
-        _worldDataProvider = new WorldDataProvider(_serviceProvider);
-        _worldDataProvider.Initialize();
-        _renderContext.Data = _worldDataProvider;
+        // --- Per-viewport state and scene data ---
+        _renderContext = _engine.CreateRenderContext();
         _renderContext.Initialize();
 
+        _worldDataProvider = _engine.CreateWorldDataProvider();
+        _worldDataProvider.Initialize();
+
         // Build the 3D scene
-        _root = _scene.Build(_context, _resourceManager, _worldDataProvider);
+        _root = _scene.Build(_context, _engine.ResourceManager, _worldDataProvider);
 
         // --- ImGui setup ---
         _imGuiRenderer = new ImGuiRenderer(_context, new ImGuiConfig());
@@ -162,7 +146,7 @@ internal partial class Editor : IDisposable
 
     public void Render(int width, int height)
     {
-        if (_renderer is null || _renderContext is null || _renderGraph is null)
+        if (_engine is null || _renderContext is null)
             return;
         if (_imGuiRenderer is null)
             return;
@@ -195,7 +179,7 @@ internal partial class Editor : IDisposable
         _renderContext.FinalOutputTexture = _context.GetCurrentSwapchainTexture();
 
         // --- Step 1: Execute 3D render graph (offscreen) ---
-        var cmdBuf = _renderer.RenderOffscreen(_renderContext, _renderGraph);
+        var cmdBuf = _engine.RenderOffscreen(_renderContext, _worldDataProvider!);
 
         // Retrieve the offscreen texture that the graph produced
         var offscreenTexHandle = _renderContext.ResourceSet!.Textures[
@@ -259,9 +243,8 @@ internal partial class Editor : IDisposable
             {
                 _imGuiRenderer?.Dispose();
                 _worldDataProvider?.Dispose();
-                _renderer?.Dispose();
-                _renderGraph?.Dispose();
-                _resourceManager?.Dispose();
+                _renderContext?.Teardown();
+                _engine?.Dispose();
             }
 
             _disposedValue = true;
