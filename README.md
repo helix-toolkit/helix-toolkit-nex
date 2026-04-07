@@ -21,8 +21,10 @@ Currently in development.
 - ECS based scene management system. (In Progress)
 - Engine architecture design. (In Progress)
   - Render Graph based rendering architecture. (Done)
+  - WB Order independent transparency rendering. (Done)
   - PostEffects:
     - SMAA anti-aliasing. (Done)
+    - FXAA anti-aliasing. (Done)
     - Bloom post-processing effect. (Done)
     - Object border highlighting effect. (Done) 
     - Wireframe rendering. (Done)
@@ -32,6 +34,8 @@ Currently in development.
 ## Rendering Samples
 
 ![Image](Source/HelixToolkit-Nex/Samples/Integration/LightCulling/Screenshots/LargeScene.gif)
+
+![Image](Source/HelixToolkit-Nex/Samples/Integration/ImGui/Screenshots/Sample.jpg)
 
 ## Contributing
 
