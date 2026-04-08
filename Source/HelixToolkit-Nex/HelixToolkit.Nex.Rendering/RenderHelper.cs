@@ -28,43 +28,23 @@ public static class RenderHelper
         uint drawCount = 0;
         if (renderStatic)
         {
-            drawCount += RenderOpaqueStatic(in res, renderInstancing);
+            drawCount += RenderStatic(
+                in res,
+                res.Context.Data.MeshDrawsOpaque,
+                renderInstancing,
+                MaterialPassType.Opaque
+            );
         }
         if (renderDynamic)
         {
-            drawCount += RenderOpaqueDynamic(in res, renderInstancing);
+            drawCount += RenderDynamic(
+                in res,
+                res.Context.Data.MeshDrawsOpaque,
+                renderInstancing,
+                MaterialPassType.Opaque
+            );
         }
         return drawCount;
-    }
-
-    /// <summary>
-    /// Renders all opaque static meshes in the specified render context using the command buffer.
-    /// </summary>
-    /// <remarks>This method renders only opaque static meshes. Transparent or dynamic meshes are not
-    /// affected.</remarks>
-    /// <param name="res">The render resources.</param>
-    /// <param name="renderInstancing"><see langword="true"/> to enable hardware instancing for supported meshes; otherwise, <see langword="false"/>.</param>
-    /// <returns>The number of opaque static mesh draw calls issued. Returns 0 if there are no opaque static meshes to render.</returns>
-    public static uint RenderOpaqueStatic(in RenderResources res, bool renderInstancing = true)
-    {
-        if (res.Context.Data is null)
-            return 0;
-        return RenderStatic(in res, res.Context.Data.MeshDrawsOpaque, renderInstancing);
-    }
-
-    /// <summary>
-    /// Renders all opaque dynamic mesh draws in the specified render context using the command buffer.
-    /// </summary>
-    /// <param name="res">The render resources.</param>
-    /// <param name="renderInstancing"><see langword="true"/> to enable hardware instancing for supported mesh draws; otherwise, <see
-    /// langword="false"/> to render without instancing.</param>
-    /// <returns>The number of opaque dynamic mesh draws rendered. Returns 0 if there is no mesh draw data in the context.</returns>
-    public static uint RenderOpaqueDynamic(in RenderResources res, bool renderInstancing = true)
-    {
-        if (res.Context.Data is null)
-            return 0;
-
-        return RenderDynamic(in res, res.Context.Data.MeshDrawsOpaque, renderInstancing);
     }
 
     /// <summary>
@@ -91,56 +71,23 @@ public static class RenderHelper
         uint drawCount = 0;
         if (renderStatic)
         {
-            drawCount += RenderTransparentStatic(in res, renderInstancing);
+            drawCount += RenderStatic(
+                in res,
+                res.Context.Data.MeshDrawsTransparent,
+                renderInstancing,
+                MaterialPassType.Transparent
+            );
         }
         if (renderDynamic)
         {
-            drawCount += RenderTransparentDynamic(in res, renderInstancing);
+            drawCount += RenderDynamic(
+                in res,
+                res.Context.Data.MeshDrawsTransparent,
+                renderInstancing,
+                MaterialPassType.Transparent
+            );
         }
         return drawCount;
-    }
-
-    /// <summary>
-    /// Renders all transparent static meshes in the specified render context using the command buffer.
-    /// </summary>
-    /// <remarks>This method renders only transparent static meshes. Transparent or dynamic meshes are not
-    /// affected.</remarks>
-    /// <param name="res">The render resources.</param>
-    /// <param name="renderInstancing"><see langword="true"/> to enable hardware instancing for supported meshes; otherwise, <see langword="false"/>.</param>
-    /// <returns>The number of transparent static mesh draw calls issued. Returns 0 if there are no transparent static meshes to render.</returns>
-    public static uint RenderTransparentStatic(in RenderResources res, bool renderInstancing = true)
-    {
-        if (res.Context.Data is null)
-            return 0;
-        return RenderStatic(
-            in res,
-            res.Context.Data.MeshDrawsTransparent,
-            renderInstancing,
-            MaterialPassType.Transparent
-        );
-    }
-
-    /// <summary>
-    /// Renders all transparent dynamic mesh draws in the specified render context using the command buffer.
-    /// </summary>
-    /// <param name="res">The render resources.</param>
-    /// <param name="renderInstancing"><see langword="true"/> to enable hardware instancing for supported mesh draws; otherwise, <see
-    /// langword="false"/> to render without instancing.</param>
-    /// <returns>The number of transparent dynamic mesh draws rendered. Returns 0 if there is no mesh draw data in the context.</returns>
-    public static uint RenderTransparentDynamic(
-        in RenderResources res,
-        bool renderInstancing = true
-    )
-    {
-        if (res.Context.Data is null)
-            return 0;
-
-        return RenderDynamic(
-            in res,
-            res.Context.Data.MeshDrawsTransparent,
-            renderInstancing,
-            MaterialPassType.Transparent
-        );
     }
 
     /// <summary>
@@ -359,21 +306,38 @@ public static class RenderHelper
                     }
                     customMaterialBufferAddress = mat.CustomBufferAddress;
                 }
-                cmdBuf.PushConstants(
-                    new MeshDrawPushConstant
+                for (var i = range.Start; i < range.Start + range.Count; i++)
+                {
+                    var meshId = meshDrawData.DrawCommands[(int)i].MeshId;
+                    var geometry = context.Data.GetGeometry(meshId);
+                    if (geometry is null)
                     {
-                        FpConstAddress = fpConstAddress,
-                        CustomMaterialBufferAddress = customMaterialBufferAddress,
-                        DrawCommandIdxOffset = range.Start,
+                        _logger.LogTrace(
+                            "MeshDrawData contains invalid MeshId {MeshId} at index {Id}",
+                            meshId,
+                            i
+                        );
+                        continue;
                     }
-                );
-                cmdBuf.DrawIndexedIndirect(
-                    meshDrawData.Buffer,
-                    range.Start * meshDrawData.Stride,
-                    range.Count,
-                    meshDrawData.Stride
-                );
-                drawCount += range.Count;
+                    cmdBuf.BindIndexBuffer(geometry.IndexBuffer, IndexFormat.UI32);
+
+                    cmdBuf.PushConstants(
+                        new MeshDrawPushConstant
+                        {
+                            FpConstAddress = fpConstAddress,
+                            CustomMaterialBufferAddress = customMaterialBufferAddress,
+                            DrawCommandIdxOffset = range.Start,
+                            MeshDrawId = i,
+                        }
+                    );
+                    cmdBuf.DrawIndexedIndirect(
+                        meshDrawData.Buffer,
+                        i * meshDrawData.Stride,
+                        1,
+                        meshDrawData.Stride
+                    );
+                    drawCount++;
+                }
             }
         }
         return drawCount;
