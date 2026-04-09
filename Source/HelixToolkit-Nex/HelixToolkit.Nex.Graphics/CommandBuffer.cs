@@ -1,3 +1,5 @@
+using System.Runtime.CompilerServices;
+
 namespace HelixToolkit.Nex.Graphics;
 
 /// <summary>
@@ -171,6 +173,7 @@ public interface ICommandBuffer
     /// <typeparam name="T">The unmanaged type of the constant data.</typeparam>
     /// <param name="data">Reference to the constant data to push.</param>
     /// <param name="offset">Offset within the push constant block where data should be written. Default is 0.</param>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     void PushConstants<T>(in T data, size_t offset = 0)
         where T : unmanaged
     {
@@ -213,6 +216,7 @@ public interface ICommandBuffer
     /// <param name="data">Reference to the data to copy into the buffer.</param>
     /// <param name="bufferOffset">Byte offset into the buffer where the update begins. Default is 0.</param>
     /// <returns></returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     ResultCode UpdateBuffer<T>(in BufferHandle buffer, in T data, size_t bufferOffset = 0)
         where T : unmanaged
     {

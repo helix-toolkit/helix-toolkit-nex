@@ -118,6 +118,48 @@ public interface IMeshDrawData : IRenderData
     DrawRange RangeDynamicMeshInstancing { get; }
 }
 
+/// <summary>
+/// Provides access to collected point cloud data for GPU rendering.
+/// <para>
+/// The data provider collects all <c>PointCloudComponent</c> entities each frame,
+/// packs their <c>PointData</c> into a contiguous GPU buffer, and tracks per-entity
+/// dispatch information so the compute shader can stamp the correct entity ID.
+/// </para>
+/// </summary>
+public interface IPointCloudData : IRenderData
+{
+    /// <summary>
+    /// Gets the total number of points across all collected point cloud entities.
+    /// </summary>
+    uint TotalPointCount { get; }
+
+    /// <summary>
+    /// Gets the per-entity dispatch records describing each point cloud's offset,
+    /// count, entity identity, and per-point entity flag.
+    /// </summary>
+    FastList<PointCloudDispatch> Dispatches { get; }
+}
+
+/// <summary>
+/// Describes a single point cloud entity's contribution to the combined GPU point buffer.
+/// Used by <see cref="IPointCloudData"/> to drive per-entity compute dispatches.
+/// </summary>
+/// <param name="BufferOffset">Offset (in number of points) into the combined GPU buffer.</param>
+/// <param name="PointCount">Number of points for this entity.</param>
+/// <param name="EntityId">Entity ID for GPU picking (0 if not hitable).</param>
+/// <param name="EntityVer">Entity version for GPU picking.</param>
+/// <param name="TextureIndex">Texture Index</param>
+/// <param name="SamplerIndex">Sampler Index</param>
+public readonly record struct PointCloudDispatch(
+    uint BufferOffset,
+    uint PointCount,
+    uint EntityId,
+    uint EntityVer,
+    uint TextureIndex,
+    uint SamplerIndex,
+    uint FixedSize
+);
+
 public interface IRenderDataProvider
 {
     World World { get; }
@@ -161,6 +203,12 @@ public interface IRenderDataProvider
     /// Gets the buffer containing all physically based rendering (PBR) material properties for use in rendering operations.
     /// </summary>
     IPBRPropertyData PBRPropertiesBuffer { get; }
+
+    /// <summary>
+    /// Gets the point cloud data collected from all <c>PointCloudComponent</c> entities.
+    /// Returns <see langword="null"/> if no point cloud data provider is registered.
+    /// </summary>
+    IPointCloudData? PointCloudData { get; }
 
     /// <summary>
     /// Retrieves a PBRMaterial based on the specified material type identifier.

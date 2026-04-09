@@ -97,6 +97,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ImGui", "Samples\Integratio
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Transparent", "Samples\Integration\Transparent\Transparent.csproj", "{F927051F-F92E-46E9-BC5C-F2B68F6D4CBD}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Points", "Samples\Integration\Points\Points.csproj", "{B9E851D4-1641-4DEC-98B3-0BF91D7810B2}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -255,6 +257,10 @@ Global
 		{F927051F-F92E-46E9-BC5C-F2B68F6D4CBD}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F927051F-F92E-46E9-BC5C-F2B68F6D4CBD}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F927051F-F92E-46E9-BC5C-F2B68F6D4CBD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B9E851D4-1641-4DEC-98B3-0BF91D7810B2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B9E851D4-1641-4DEC-98B3-0BF91D7810B2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B9E851D4-1641-4DEC-98B3-0BF91D7810B2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B9E851D4-1641-4DEC-98B3-0BF91D7810B2}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -275,6 +281,7 @@ Global
 		{58435956-B2F8-4A59-83ED-C188B0FCA331} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 		{C9D59B0F-FFDC-49CC-A540-F5531DA4FEC3} = {7E2B8F9A-97A5-4434-B291-EE9DDEC474DC}
 		{F927051F-F92E-46E9-BC5C-F2B68F6D4CBD} = {7E2B8F9A-97A5-4434-B291-EE9DDEC474DC}
+		{B9E851D4-1641-4DEC-98B3-0BF91D7810B2} = {7E2B8F9A-97A5-4434-B291-EE9DDEC474DC}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {E5E7411B-7281-4FBB-8D21-475B6670439C}

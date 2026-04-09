@@ -11,6 +11,7 @@ public sealed class WorldDataProvider : IRenderDataProvider, IDisposable
     private readonly DirectionalLightData _directionalLightData;
     private readonly MeshDrawData _meshDrawDataOpaque;
     private readonly MeshDrawData _meshDrawDataTransparent;
+    private readonly PointCloudData _pointCloudData;
     private readonly SceneState _sceneState;
 
     public World World { get; } = World.CreateWorld();
@@ -30,6 +31,8 @@ public sealed class WorldDataProvider : IRenderDataProvider, IDisposable
 
     public IStaticMeshIndexData StaticMeshIndexData => ResourceManager.StaticMeshIndexData;
 
+    public IPointCloudData? PointCloudData => _pointCloudData;
+
     public IRenderData MeshInfos => ResourceManager.MeshInfoData;
 
     public WorldDataProvider(IServiceProvider services)
@@ -39,11 +42,13 @@ public sealed class WorldDataProvider : IRenderDataProvider, IDisposable
         _directionalLightData = new DirectionalLightData(Context, World);
         _meshDrawDataOpaque = new MeshDrawData(Context, World, false);
         _meshDrawDataTransparent = new MeshDrawData(Context, World, true);
+        _pointCloudData = new PointCloudData(Context, World);
         _sceneState = new SceneState(World);
         _renderDataList.Add(_lightData);
         _renderDataList.Add(_directionalLightData);
         _renderDataList.Add(_meshDrawDataOpaque);
         _renderDataList.Add(_meshDrawDataTransparent);
+        _renderDataList.Add(_pointCloudData);
     }
 
     public bool Initialize()

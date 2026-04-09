@@ -168,6 +168,7 @@ public sealed class EngineBuilder
     ///     .AddNode(new FrustumCullNode())
     ///     .AddNode(new ForwardPlusLightCullingNode())
     ///     .AddNode(new ForwardPlusOpaqueNode())
+    ///     .AddNode(new PointRenderNode())
     ///     .AddNode(new PostEffectsNode())
     ///     .AddRenderToFinal()
     ///     .CreatePBRMaterials();
@@ -183,6 +184,7 @@ public sealed class EngineBuilder
         AddNode(new FrustumCullNode());
         AddNode(new ForwardPlusLightCullingNode());
         AddNode(new ForwardPlusOpaqueNode());
+        AddNode(new PointRenderNode());
         _addRenderToFinal = renderToSwapchain;
         _createPBRMaterials = true;
         return this;
