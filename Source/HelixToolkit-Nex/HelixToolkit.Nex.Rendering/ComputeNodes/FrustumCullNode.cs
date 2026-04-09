@@ -9,6 +9,7 @@ public sealed class FrustumCullNode : ComputeNode
     private ComputePipelineResource _resetInstanceCountPipeline = ComputePipelineResource.Null;
     private BufferResource _cullBuffer = BufferResource.Null;
     private CullingConstants _cullConst;
+    private Dependencies _cullDeps = new();
     private Dependencies _instancingCullDeps = new();
 
     public override string Name => nameof(FrustumCullNode);
@@ -35,6 +36,8 @@ public sealed class FrustumCullNode : ComputeNode
             StorageType.Device,
             "FrustumCulling"
         );
+        _cullDeps.Buffers[0] = _cullBuffer;
+        _instancingCullDeps.Buffers[0] = _cullBuffer;
         return true;
     }
 
@@ -115,7 +118,7 @@ public sealed class FrustumCullNode : ComputeNode
             // Cull all static meshes in one dispatch. Each thread checks one mesh's visibility.
             cmdBuffer.DispatchThreadGroups(
                 new Dimensions(GpuFrustumCulling.GetGroupSize(_cullConst.InstanceCount), 1, 1),
-                Dependencies.Empty
+                _cullDeps
             );
         }
 
@@ -130,7 +133,7 @@ public sealed class FrustumCullNode : ComputeNode
             // Cull all static meshes in one dispatch. Each thread checks one mesh's visibility.
             cmdBuffer.DispatchThreadGroups(
                 new Dimensions(GpuFrustumCulling.GetGroupSize(_cullConst.InstanceCount), 1, 1),
-                Dependencies.Empty
+                _cullDeps
             );
         }
     }
@@ -192,7 +195,7 @@ public sealed class FrustumCullNode : ComputeNode
         cmdBuffer.BindComputePipeline(_instancingCullingPipeline);
         FrustumCullInstancingPC pc = new() { CullingConstAddress = _cullBuffer.GpuAddress };
         var range = data.RangeStaticMeshInstancing;
-        _instancingCullDeps.Buffers[0] = data.Buffer;
+        _instancingCullDeps.Buffers[1] = data.Buffer;
         if (range.Count > 0)
         {
             for (var i = range.Start; i < range.End; i++)

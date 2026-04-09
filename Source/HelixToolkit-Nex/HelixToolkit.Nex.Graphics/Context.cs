@@ -1,3 +1,5 @@
+using System.Runtime.CompilerServices;
+
 namespace HelixToolkit.Nex.Graphics;
 
 /// <summary>
@@ -688,6 +690,7 @@ public static class ContextExtensions
     /// <param name="debugName">An optional name for the buffer resource, used for debugging purposes. Can be <see langword="null"/>.</param>
     /// <returns>A <see cref="ResultCode"/> indicating the result of the buffer creation operation. Returns <see
     /// cref="ResultCode.Success"/> if the buffer was created successfully; otherwise, returns an error code.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static ResultCode CreateBuffer<T>(
         this IContext context,
         T data,
@@ -718,6 +721,7 @@ public static class ContextExtensions
     /// <param name="storage">The type of storage to use for the buffer, such as device-local or host-visible memory.</param>
     /// <param name="debugName">An optional name for the buffer resource, used for debugging purposes. Can be <see langword="null"/>.</param>
     /// <returns>A <see cref="BufferResource"/> representing the newly created buffer initialized with <paramref name="data"/>.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static BufferResource CreateBuffer<T>(
         this IContext context,
         T data,
