@@ -816,12 +816,13 @@ internal sealed class VulkanImage : IDisposable
                 var vkDevice = _ctx!.VkDevice;
                 if (ImageView.IsNotNull)
                 {
+                    var view = ImageView;
                     _ctx!.DeferredTask(
                         () =>
                         {
                             unsafe
                             {
-                                VK.vkDestroyImageView(vkDevice, ImageView, null);
+                                VK.vkDestroyImageView(vkDevice, view, null);
                             }
                         },
                         SubmitHandle.Null
@@ -830,12 +831,13 @@ internal sealed class VulkanImage : IDisposable
 
                 if (ImageViewStorage.IsNotNull)
                 {
+                    var storage = ImageViewStorage;
                     _ctx!.DeferredTask(
                         () =>
                         {
                             unsafe
                             {
-                                VK.vkDestroyImageView(vkDevice, ImageViewStorage, null);
+                                VK.vkDestroyImageView(vkDevice, storage, null);
                             }
                         },
                         SubmitHandle.Null
@@ -846,7 +848,7 @@ internal sealed class VulkanImage : IDisposable
                 {
                     for (size_t j = 0; j < ImageViewForFramebuffer[0].Length; j++)
                     {
-                        VkImageView v = ImageViewForFramebuffer[i][j];
+                        var v = ImageViewForFramebuffer[i][j];
                         if (v.IsNotNull)
                         {
                             _ctx!.DeferredTask(
@@ -864,7 +866,7 @@ internal sealed class VulkanImage : IDisposable
                     }
                     for (size_t j = 0; j < 1; j++)
                     {
-                        VkImageView v = ImageViewForFramebufferMultiview[i];
+                        var v = ImageViewForFramebufferMultiview[i];
                         if (v.IsNotNull)
                         {
                             _ctx!.DeferredTask(
@@ -893,10 +895,11 @@ internal sealed class VulkanImage : IDisposable
                     {
                         Vma.vmaUnmapMemory(_ctx!.VmaAllocator, _vmaAllocation);
                     }
+                    var image = _vkImage;
                     _ctx!.DeferredTask(
                         () =>
                         {
-                            Vma.vmaDestroyImage(_ctx!.VmaAllocator, _vkImage, _vmaAllocation);
+                            Vma.vmaDestroyImage(_ctx!.VmaAllocator, image, _vmaAllocation);
                         },
                         SubmitHandle.Null
                     );
@@ -908,23 +911,26 @@ internal sealed class VulkanImage : IDisposable
                         VK.vkUnmapMemory(vkDevice, _memory[0]);
                     }
                     var image = _vkImage;
+                    var mem0 = _memory[0];
+                    var mem1 = _memory[1];
+                    var mem2 = _memory[2];
                     _ctx!.DeferredTask(
                         () =>
                         {
                             unsafe
                             {
-                                VK.vkDestroyImage(vkDevice, _vkImage, null);
-                                if (_memory[0].IsNotNull)
+                                VK.vkDestroyImage(vkDevice, image, null);
+                                if (mem0.IsNotNull)
                                 {
-                                    VK.vkFreeMemory(vkDevice, _memory[0], null);
+                                    VK.vkFreeMemory(vkDevice, mem0, null);
                                 }
-                                if (_memory[1].IsNotNull)
+                                if (mem1.IsNotNull)
                                 {
-                                    VK.vkFreeMemory(vkDevice, _memory[1], null);
+                                    VK.vkFreeMemory(vkDevice, mem1, null);
                                 }
-                                if (_memory[2].IsNotNull)
+                                if (mem2.IsNotNull)
                                 {
-                                    VK.vkFreeMemory(vkDevice, _memory[2], null);
+                                    VK.vkFreeMemory(vkDevice, mem2, null);
                                 }
                             }
                         },
