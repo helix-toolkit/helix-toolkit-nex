@@ -1,4 +1,5 @@
 using HelixToolkit.Nex.ECS;
+using HelixToolkit.Nex.Rendering.Components;
 
 namespace HelixToolkit.Nex.Rendering;
 
@@ -118,6 +119,61 @@ public interface IMeshDrawData : IRenderData
     DrawRange RangeDynamicMeshInstancing { get; }
 }
 
+public sealed class PointCloudDataEntry : IDisposable
+{
+    public MaterialTypeId MaterialId { get; }
+    public FastList<Entity> Entities { get; } = [];
+    public ElementBuffer<PointDrawData> DrawDataBuffer { get; }
+    public BufferResource DrawArgsBuffer { get; }
+
+    public int PointCount { get; private set; }
+
+    public PointCloudDataEntry(IContext context, int initialCapacity, MaterialTypeId id)
+    {
+        MaterialId = id;
+        DrawDataBuffer = new ElementBuffer<PointDrawData>(
+            context,
+            initialCapacity,
+            BufferUsageBits.Storage,
+            debugName: $"PointDrawData_{id}"
+        );
+
+        DrawArgsBuffer = context.CreateBuffer(
+            new BufferDesc
+            {
+                DataSize = PointDrawIndirectArgs.SizeInBytes,
+                Usage = BufferUsageBits.Storage | BufferUsageBits.Indirect,
+                Storage = StorageType.Device,
+                DebugName = $"PointDrawArgs_{id}",
+            }
+        );
+    }
+
+    public void AddEntity(Entity entity)
+    {
+        Entities.Add(entity);
+        ref var comp = ref entity.Get<PointCloudComponent>();
+        PointCount += comp.PointCount;
+    }
+
+    public void Clear()
+    {
+        Entities.Clear();
+        PointCount = 0;
+    }
+
+    public void EnsureCapacity()
+    {
+        DrawDataBuffer.EnsureCapacity(PointCount);
+    }
+
+    public void Dispose()
+    {
+        DrawDataBuffer.Dispose();
+        DrawArgsBuffer.Dispose();
+    }
+}
+
 /// <summary>
 /// Provides access to collected point cloud data for GPU rendering.
 /// <para>
@@ -129,36 +185,16 @@ public interface IMeshDrawData : IRenderData
 public interface IPointCloudData : IRenderData
 {
     /// <summary>
-    /// Gets the total number of points across all collected point cloud entities.
+    /// Gets the dictionary which contains per-entity dispatch records describing each point cloud's offset,
+    /// count, entity identity, and per-point entity flag by their material id as key.
     /// </summary>
-    uint TotalPointCount { get; }
+    IReadOnlyDictionary<MaterialTypeId, PointCloudDataEntry> Data { get; }
 
     /// <summary>
-    /// Gets the per-entity dispatch records describing each point cloud's offset,
-    /// count, entity identity, and per-point entity flag.
+    /// Gets the total number of points in the collection.
     /// </summary>
-    FastList<PointCloudDispatch> Dispatches { get; }
+    uint PointCount { get; }
 }
-
-/// <summary>
-/// Describes a single point cloud entity's contribution to the combined GPU point buffer.
-/// Used by <see cref="IPointCloudData"/> to drive per-entity compute dispatches.
-/// </summary>
-/// <param name="BufferOffset">Offset (in number of points) into the combined GPU buffer.</param>
-/// <param name="PointCount">Number of points for this entity.</param>
-/// <param name="EntityId">Entity ID for GPU picking (0 if not hitable).</param>
-/// <param name="EntityVer">Entity version for GPU picking.</param>
-/// <param name="TextureIndex">Texture Index</param>
-/// <param name="SamplerIndex">Sampler Index</param>
-public readonly record struct PointCloudDispatch(
-    uint BufferOffset,
-    uint PointCount,
-    uint EntityId,
-    uint EntityVer,
-    uint TextureIndex,
-    uint SamplerIndex,
-    uint FixedSize
-);
 
 public interface IRenderDataProvider
 {

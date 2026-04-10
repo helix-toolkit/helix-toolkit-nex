@@ -126,7 +126,8 @@ public struct Entity : IDisposable, IEquatable<Entity>
     /// </summary>
     /// <typeparam name="T">The tag component type (must be an empty struct).</typeparam>
     /// <returns></returns>
-    public readonly ResultCode Tag<T>() where T : struct
+    public readonly ResultCode Tag<T>()
+        where T : struct
     {
         T tag = default;
         return World?.SetComponent<T>(this, ref tag, out _) ?? ResultCode.Invalid;
@@ -155,6 +156,25 @@ public struct Entity : IDisposable, IEquatable<Entity>
     public readonly ref T Get<T>()
     {
         return ref World!.GetComponentManager<T>()!.Get(Id);
+    }
+
+    /// <summary>
+    /// Updates the component of type <typeparamref name="T"/> associated with the current entity.
+    /// </summary>
+    /// <remarks>This method applies the provided <paramref name="updateFunc"/> to the component of type
+    /// <typeparamref name="T"/> if the entity has such a component. If the entity does not have the specified
+    /// component, the method does nothing.</remarks>
+    /// <typeparam name="T">The type of the component to update.</typeparam>
+    /// <param name="updateFunc">A function that takes the current component of type <typeparamref name="T"/> as input and returns the updated
+    /// component.</param>
+    public void Update<T>(Func<T, T> updateFunc)
+    {
+        if (World?.HasComponent<T>(this) ?? false)
+        {
+            ref var component = ref Get<T>();
+            var updatedComponent = updateFunc(component);
+            Set(ref updatedComponent);
+        }
     }
 
     /// <summary>

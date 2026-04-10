@@ -20,12 +20,52 @@ layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer FP
     FPConstants fpConstants;
 };
 
+vec2 getUV() {
+    return v_uv;
+}
+
+vec4 getColor() {
+    return v_color;
+}
+
+float getPointSize() {
+    return v_screenSize;
+}
+
+uint getTextureId() {
+    return v_textureIndex;
+}
+
+uint getSamplerId() {
+    return v_samplerIndex;
+}
+
+FPConstants fpConst = FPBuffer(pc.value.fpConstAddress).fpConstants;
+
+float getTime() {
+    return fpConst.time;
+}
+
+mat4 getViewProjection() {
+    return fpConst.viewProjection;
+}
+
+mat4 getInvViewProjection() {
+    return fpConst.inverseViewProjection;
+}
+
+vec3 getCameraPosition() {
+    return fpConst.cameraPosition;
+}
+
+vec2 getScreenSize() {
+    return fpConst.screenDimensions;
+}
+
+layout (constant_id = 0) const uint MATERIAL_TYPE = 0; 
 // --- User-overridable functions ---
 
-// Returns the point color. Override this in a custom shader to sample textures, apply lighting, etc.
-// Default implementation: circle SDF with optional texture sampling.
-/*TEMPLATE_POINT_COLOR_START*/
-vec4 getPointColor() {
+vec4 getCircularSDFColor() {
     float dist = dot(v_uv, v_uv);
     if (dist > 1.0) discard;
 
@@ -44,14 +84,19 @@ vec4 getPointColor() {
     color.a *= alpha;
     return color;
 }
-/*TEMPLATE_POINT_COLOR_END*/
+// Returns the point color. Override this in a custom shader to sample textures, apply lighting, etc.
+// Default implementation: circle SDF with optional texture sampling.
+vec4 outputColor() {
+    return getCircularSDFColor();
+}
 
 // --- Main ---
-
+/*TEMPLATE_CUSTOM_MAIN_START*/
 void main() {
-    vec4 color = getPointColor();
+    vec4 color = outputColor();
     if (color.a < 1e-4) discard;
 
     outColor    = color;
     outEntityId = v_entityId;
 }
+/*TEMPLATE_CUSTOM_MAIN_END*/

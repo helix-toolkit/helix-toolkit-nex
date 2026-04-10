@@ -7,7 +7,7 @@ namespace HelixToolkit.Nex.Material;
 /// Integrates the Material system with the Shader library for easy custom material creation.
 /// Supports bindless vertex buffers, light buffers, and Forward+ rendering.
 /// </summary>
-public class MaterialShaderBuilder
+public class PBRMaterialShaderBuilder
 {
     private readonly ShaderCompiler _compiler;
     private readonly Dictionary<string, string> _defines = [];
@@ -25,7 +25,7 @@ public class MaterialShaderBuilder
     private uint? _materialTypeId;
     private bool _buildUberShader = true;
 
-    public MaterialShaderBuilder()
+    public PBRMaterialShaderBuilder()
     {
         _compiler = GlslHeaders.CreateCompiler();
     }
@@ -33,7 +33,7 @@ public class MaterialShaderBuilder
     /// <summary>
     /// Enable Forward+ rendering with tile-based light culling.
     /// </summary>
-    public MaterialShaderBuilder ConfigForwardPlus(ForwardPlusLightCulling.Config? config = null)
+    public PBRMaterialShaderBuilder ConfigForwardPlus(ForwardPlusLightCulling.Config? config = null)
     {
         _forwardPlusConfig = config ?? ForwardPlusLightCulling.Config.Default;
         WithDefine("TILE_SIZE", _forwardPlusConfig.TileSize.ToString());
@@ -42,7 +42,7 @@ public class MaterialShaderBuilder
     }
 
     // Legacy alias to fix build
-    public MaterialShaderBuilder WithForwardPlus(
+    public PBRMaterialShaderBuilder WithForwardPlus(
         bool enable,
         ForwardPlusLightCulling.Config? config = null
     )
@@ -59,7 +59,7 @@ public class MaterialShaderBuilder
     /// <summary>
     /// Add a preprocessor define.
     /// </summary>
-    public MaterialShaderBuilder WithDefine(string name, string? value = null)
+    public PBRMaterialShaderBuilder WithDefine(string name, string? value = null)
     {
         _defines[name] = value ?? string.Empty;
         return this;
@@ -68,7 +68,7 @@ public class MaterialShaderBuilder
     /// <summary>
     /// Add custom GLSL code to be included in the shader.
     /// </summary>
-    public MaterialShaderBuilder WithCustomCode(string glslCode)
+    public PBRMaterialShaderBuilder WithCustomCode(string glslCode)
     {
         _customCode.Add(glslCode);
         return this;
@@ -78,7 +78,7 @@ public class MaterialShaderBuilder
     /// Set a custom fragment shader main function.
     /// If not set, a default PBR main will be generated.
     /// </summary>
-    public MaterialShaderBuilder WithCustomMain(string fragmentMain)
+    public PBRMaterialShaderBuilder WithCustomMain(string fragmentMain)
     {
         _customFragmentMain = fragmentMain;
         return this;
@@ -87,7 +87,7 @@ public class MaterialShaderBuilder
     /// <summary>
     /// Set a custom template replacement (e.g. for overriding template functions)
     /// </summary>
-    public MaterialShaderBuilder WithTemplateReplacement(string key, string value)
+    public PBRMaterialShaderBuilder WithTemplateReplacement(string key, string value)
     {
         _templateReplacements[key] = value;
         return this;
@@ -98,7 +98,7 @@ public class MaterialShaderBuilder
     /// When specified, only this material type will be compiled (not an uber shader).
     /// </summary>
     /// <param name="typeId">Material type ID from MaterialTypeRegistry.</param>
-    public MaterialShaderBuilder WithMaterialType(uint typeId)
+    public PBRMaterialShaderBuilder WithMaterialType(uint typeId)
     {
         _materialTypeId = typeId;
         _buildUberShader = false;
@@ -110,9 +110,9 @@ public class MaterialShaderBuilder
     /// When specified, only this material type will be compiled (not an uber shader).
     /// </summary>
     /// <param name="typeName">Material type name from MaterialTypeRegistry.</param>
-    public MaterialShaderBuilder WithMaterialType(string typeName)
+    public PBRMaterialShaderBuilder WithMaterialType(string typeName)
     {
-        var typeId = MaterialTypeRegistry.GetTypeId(typeName);
+        var typeId = PBRMaterialTypeRegistry.GetTypeId(typeName);
         if (typeId == null)
         {
             throw new ArgumentException(
@@ -128,7 +128,7 @@ public class MaterialShaderBuilder
     /// Material type is selected at runtime via specialization constant.
     /// This is the default mode.
     /// </summary>
-    public MaterialShaderBuilder WithUberShader(bool enable = true)
+    public PBRMaterialShaderBuilder WithUberShader(bool enable = true)
     {
         _buildUberShader = enable;
         if (enable)
@@ -288,90 +288,15 @@ public class MaterialShaderBuilder
 
     private string GenerateUberOutputColorFunction(string template)
     {
-        var registrations = MaterialTypeRegistry
-            .GetAllRegistrations()
-            .OrderBy(r => r.TypeId)
-            .ToList();
-
-        var sb = new StringBuilder();
-        sb.AppendLine("// Template function to create final color");
-        sb.AppendLine("vec4 outputColor()");
-        sb.AppendLine("{");
-
-        foreach (var reg in registrations)
-        {
-            sb.AppendLine($"    if (MATERIAL_TYPE == {(uint)reg.TypeId}u) {{");
-            sb.AppendLine($"        // {reg.Name}");
-
-            // Indent the implementation
-            var lines = reg.OutputColorImplementation.Split('\n');
-            foreach (var line in lines)
-            {
-                if (!string.IsNullOrWhiteSpace(line))
-                {
-                    sb.AppendLine($"    {line}");
-                }
-            }
-
-            sb.AppendLine("    }");
-        }
-
-        // Default fallback
-        sb.AppendLine("  // Fallback for unknown material types");
-        sb.AppendLine("  return vec4(1.0, 0.0, 1.0, 1.0); // Magenta");
-        sb.AppendLine("}");
-
-        // Replace the existing outputColor function
-        int outputColorStart = template.IndexOf("vec4 outputColor()");
-        if (outputColorStart < 0)
-        {
-            // Append before main if not found
-            int mainStart = template.IndexOf("/*TEMPLATE_CUSTOM_MAIN_START*/");
-            if (mainStart >= 0)
-            {
-                template = template.Insert(mainStart, sb.ToString() + "\n");
-            }
-        }
-        else
-        {
-            // Find the end of the function
-            int braceCount = 0;
-            int i = outputColorStart;
-            bool foundStart = false;
-
-            while (i < template.Length)
-            {
-                if (template[i] == '{')
-                {
-                    braceCount++;
-                    foundStart = true;
-                }
-                else if (template[i] == '}')
-                {
-                    braceCount--;
-                    if (foundStart && braceCount == 0)
-                    {
-                        i++; // Include the closing brace
-                        break;
-                    }
-                }
-                i++;
-            }
-
-            if (i < template.Length)
-            {
-                string before = template.Substring(0, outputColorStart);
-                string after = template.Substring(i);
-                template = before + sb.ToString() + after;
-            }
-        }
-
-        return template;
+        return PBRMaterialTypeRegistry.GetAllRegistrations().BuildColorOutputImpl(template);
     }
 
     private string GenerateSingleMaterialOutputColorFunction(string template, uint typeId)
     {
-        if (!MaterialTypeRegistry.TryGetById(typeId, out var registration) || registration == null)
+        if (
+            !PBRMaterialTypeRegistry.TryGetById(typeId, out var registration)
+            || registration == null
+        )
         {
             throw new InvalidOperationException($"Material type ID {typeId} is not registered.");
         }
@@ -480,11 +405,13 @@ public class MaterialShaderBuilder
 
         if (_buildUberShader)
         {
-            registrations = MaterialTypeRegistry.GetAllRegistrations();
+            registrations = PBRMaterialTypeRegistry.GetAllRegistrations();
         }
-        else if (_materialTypeId.HasValue
-            && MaterialTypeRegistry.TryGetById(_materialTypeId.Value, out var single)
-            && single != null)
+        else if (
+            _materialTypeId.HasValue
+            && PBRMaterialTypeRegistry.TryGetById(_materialTypeId.Value, out var single)
+            && single != null
+        )
         {
             registrations = [single];
         }
@@ -516,7 +443,7 @@ public class MaterialShaderBuilder
 
     private string LoadTemplate(string templateName)
     {
-        var assembly = typeof(MaterialShaderBuilder).Assembly; // Actually it's in Shaders assembly?
+        var assembly = typeof(PBRMaterialShaderBuilder).Assembly; // Actually it's in Shaders assembly?
         // No, based on file context, templates are in HelixToolkit.Nex.Shaders project.
         // We need to access them from there.
 

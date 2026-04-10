@@ -64,7 +64,7 @@ internal partial class TransparentDemo : IDisposable
     private readonly List<TransparentObjectInfo> _transparentObjects = [];
 
     // Opaque floor
-    private MaterialProperties? _floorMaterial;
+    private PBRMaterialProperties? _floorMaterial;
     private Node? _floorNode;
 
     public ImGuiRenderer? ImGui => _imGuiRenderer;
@@ -89,6 +89,7 @@ internal partial class TransparentDemo : IDisposable
         // --- Build engine with OIT support via EngineBuilder ---
         _engine = EngineBuilder
             .Create(_context)
+            .WithDefaultNodes()
             .AddNode(new PrepareNode())
             .AddNode(new DepthPassNode())
             .AddNode(new FrustumCullNode())
@@ -105,7 +106,6 @@ internal partial class TransparentDemo : IDisposable
                 effects.AddEffect(_toneMapping);
                 effects.AddEffect(_showFPS);
             })
-            .CreatePBRMaterials()
             .Build();
 
         // --- Per-viewport state and scene data ---
@@ -130,7 +130,7 @@ internal partial class TransparentDemo : IDisposable
     private void BuildScene()
     {
         var geometryManager = _engine!.ResourceManager.Geometries;
-        var materialPool = _engine.ResourceManager.MaterialProperties;
+        var materialPool = _engine.ResourceManager.PBRPropertyManager;
 
         _root = new Node(_worldDataProvider!.World, "Root");
 
@@ -267,7 +267,7 @@ internal partial class TransparentDemo : IDisposable
     private void CreateTransparentObject(
         string name,
         Geometry geometry,
-        IMaterialPropertyManager materialPool,
+        IPBRMaterialPropertyManager materialPool,
         Vector3 position,
         Vector3 albedo,
         float opacity
@@ -455,7 +455,7 @@ internal class TransparentObjectInfo
 {
     public required string Name { get; init; }
     public required Node Node { get; init; }
-    public required MaterialProperties MaterialProperties { get; init; }
+    public required PBRMaterialProperties MaterialProperties { get; init; }
     public float Opacity { get; set; }
     public Vector3 Albedo { get; set; }
 }

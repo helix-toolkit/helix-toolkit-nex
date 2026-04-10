@@ -106,11 +106,7 @@ internal partial class Editor : IDisposable
         // --- Build engine via EngineBuilder (offscreen — no swapchain write) ---
         _engine = EngineBuilder
             .Create(_context)
-            .AddNode(new PrepareNode())
-            .AddNode(new DepthPassNode())
-            .AddNode(new FrustumCullNode())
-            .AddNode(new ForwardPlusOpaqueNode() { UseLightCulling = true })
-            .AddNode(new ForwardPlusLightCullingNode())
+            .WithDefaultNodes()
             .WithPostEffects(effects =>
             {
                 effects.AddEffect(_fxaa);
@@ -121,7 +117,6 @@ internal partial class Editor : IDisposable
                 effects.AddEffect(_toneMapping);
                 effects.AddEffect(_showFPS);
             })
-            .CreatePBRMaterials()
             .Build();
 
         // --- Per-viewport state and scene data ---

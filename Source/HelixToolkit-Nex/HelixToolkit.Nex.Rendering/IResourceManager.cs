@@ -12,7 +12,12 @@ public interface IResourceManager : IInitializable
     /// <summary>
     /// Gets the material manager used to access and manage materials within the system.
     /// </summary>
-    IMaterialManager Materials { get; }
+    IPBRMaterialManager PBRMaterialManager { get; }
+
+    /// <summary>
+    /// Gets the manager responsible for handling point materials in the system.
+    /// </summary>
+    IPointMaterialManager PointMaterialManager { get; }
 
     /// <summary>
     /// Gets the geometry pool for managing geometry resources.
@@ -22,7 +27,7 @@ public interface IResourceManager : IInitializable
     /// <summary>
     /// Gets the material pool for managing material resources.
     /// </summary>
-    IMaterialPropertyManager MaterialProperties { get; }
+    IPBRMaterialPropertyManager PBRPropertyManager { get; }
 
     /// <summary>
     /// Gets the repository used to manage and retrieve shader resources.

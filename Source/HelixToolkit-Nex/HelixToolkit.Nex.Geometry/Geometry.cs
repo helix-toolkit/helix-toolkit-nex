@@ -1,3 +1,4 @@
+using HelixToolkit.Nex.Graphics;
 using HelixToolkit.Nex.Trace;
 
 namespace HelixToolkit.Nex.Geometries;
@@ -95,14 +96,14 @@ public partial class Geometry : ObservableObject, IDisposable
     private FastList<Vector4> _vertexColors = [];
 
     #region Buffers
-    private BufferResource _vertexBuffer = BufferResource.Null;
-    private BufferResource _vertexPropsBuffer = BufferResource.Null;
+    private ElementBuffer<Vector4>? _vertexBuffer;
+    private ElementBuffer<VertexProperties>? _vertexPropsBuffer;
 
     /// <summary>
     /// Index buffer is only used for dynamic geometry. All static geometry shares single index buffer externally.
     /// </summary>
-    private BufferResource _indexBuffer = BufferResource.Null;
-    private BufferResource _vertColorsBuffer = BufferResource.Null;
+    private ElementBuffer<uint>? _indexBuffer;
+    private ElementBuffer<Vector4>? _vertColorsBuffer;
 
     /// <summary>
     /// Pending buffer state for async uploads. Holds new buffers that are being uploaded
@@ -112,10 +113,10 @@ public partial class Geometry : ObservableObject, IDisposable
 
     public uint IndexCount => (uint)_indices.Count;
 
-    public BufferResource VertexBuffer => _vertexBuffer;
-    public BufferResource VertexPropsBuffer => _vertexPropsBuffer;
-    public BufferResource IndexBuffer => _indexBuffer;
-    public BufferResource VertexColorBuffer => _vertColorsBuffer;
+    public BufferResource VertexBuffer => _vertexBuffer?.Buffer ?? BufferResource.Null;
+    public BufferResource VertexPropsBuffer => _vertexPropsBuffer?.Buffer ?? BufferResource.Null;
+    public BufferResource IndexBuffer => _indexBuffer?.Buffer ?? BufferResource.Null;
+    public BufferResource VertexColorBuffer => _vertColorsBuffer?.Buffer ?? BufferResource.Null;
 
     /// <summary>
     /// Gets a value indicating whether there is a pending async buffer update in progress.
@@ -123,7 +124,19 @@ public partial class Geometry : ObservableObject, IDisposable
     public bool HasPendingBufferUpdate => _pendingBufferUpdate is not null;
     #endregion
 
-    public GeometryBufferType BufferDirty { set; get; } = GeometryBufferType.All;
+    private GeometryBufferType _bufferDirty = GeometryBufferType.All;
+    public GeometryBufferType BufferDirty
+    {
+        set
+        {
+            _bufferDirty = value;
+            if (value.HasFlag(GeometryBufferType.Vertex))
+            {
+                IsBoundDirty = true;
+            }
+        }
+        get => _bufferDirty;
+    }
 
     public bool CanHaveIndexBuffer =>
         Topology is not Topology.Point and not Topology.TriangleStrip and not Topology.LineStrip;
@@ -158,7 +171,6 @@ public partial class Geometry : ObservableObject, IDisposable
     {
         Topology = topology;
         IsDynamic = isDynamic;
-
         PropertyChanged += (s, e) =>
         {
             if (e.PropertyName is nameof(Vertices))
@@ -275,126 +287,93 @@ public partial class Geometry : ObservableObject, IDisposable
         var storageType = IsDynamic ? StorageType.HostVisible : StorageType.Device;
         if (types.HasFlag(GeometryBufferType.Vertex))
         {
-            _vertexBuffer?.Dispose();
-            if (_vertices.Count > 0)
+            if (_vertices.Count == 0)
             {
-                unsafe
-                {
-                    using var ptr = _vertices.GetInternalArray().Pin();
-                    var result = context.CreateBuffer(
-                        new BufferDesc(
-                            BufferUsageBits.Vertex | BufferUsageBits.Storage,
-                            storageType,
-                            (nint)ptr.Pointer,
-                            (uint)(_vertices.Count * sizeof(Vertex))
-                        ),
-                        out _vertexBuffer,
-                        debugName: GraphicsSettings.EnableDebug
-                            ? $"{nameof(Geometry)}_{Id}_VertexBuffer"
-                            : null
-                    );
-                    if (result != ResultCode.Ok)
-                    {
-                        logger.LogError(
-                            $"Failed to create vertex property buffer for Geometry {Id}: {result}"
-                        );
-                        return result;
-                    }
-                }
+                Disposer.DisposeAndRemove(ref _vertexBuffer);
             }
+            else
+            {
+                _vertexBuffer ??= new ElementBuffer<Vector4>(
+                    context,
+                    _vertices.Count,
+                    BufferUsageBits.Vertex | BufferUsageBits.Storage,
+                    IsDynamic,
+                    debugName: $"Geo_{Id}_Vert"
+                );
+                _vertexBuffer.Upload(_vertices);
+            }
+
             BufferDirty &= ~GeometryBufferType.Vertex;
         }
         if (types.HasFlag(GeometryBufferType.VertexProp))
         {
-            _vertexPropsBuffer?.Dispose();
-            if (_vertexProps.Count > 0 && _vertexProps.Count == _vertices.Count)
+            if (_vertexProps.Count == 0)
             {
-                unsafe
-                {
-                    using var ptr = _vertexProps.GetInternalArray().Pin();
-                    var result = context.CreateBuffer(
-                        new BufferDesc(
-                            BufferUsageBits.Vertex | BufferUsageBits.Storage,
-                            storageType,
-                            (nint)ptr.Pointer,
-                            (uint)(_vertexProps.Count * VertexProperties.SizeInBytes)
-                        ),
-                        out _vertexPropsBuffer,
-                        debugName: GraphicsSettings.EnableDebug
-                            ? $"{nameof(Geometry)}_{Id}_VertexPropsBuffer"
-                            : null
-                    );
-                    if (result != ResultCode.Ok)
-                    {
-                        logger.LogError(
-                            $"Failed to create vertex buffer for Geometry {Id}: {result}"
-                        );
-                        return result;
-                    }
-                }
+                Disposer.DisposeAndRemove(ref _vertexPropsBuffer);
             }
+            else
+            {
+                if (_vertexProps.Count != _vertices.Count)
+                {
+                    HxDebug.Assert(false, "Vertex properties count must match vertex count");
+                }
+                _vertexPropsBuffer ??= new ElementBuffer<VertexProperties>(
+                    context,
+                    _vertexProps.Count,
+                    BufferUsageBits.Vertex | BufferUsageBits.Storage,
+                    IsDynamic,
+                    debugName: $"Geo_{Id}_VertProps"
+                );
+                _vertexPropsBuffer.Upload(_vertexProps);
+            }
+
             BufferDirty &= ~GeometryBufferType.VertexProp;
         }
         if (types.HasFlag(GeometryBufferType.Index))
         {
-            _indexBuffer?.Dispose();
-            if (CanHaveIndexBuffer && IsDynamic && _indices.Count > 0)
+            if (_indices.Count == 0)
             {
-                unsafe
+                Disposer.DisposeAndRemove(ref _indexBuffer);
+            }
+            else
+            {
+                if (CanHaveIndexBuffer && IsDynamic && _indices.Count > 0)
                 {
-                    using var ptr = _indices.GetInternalArray().Pin();
-                    var result = context.CreateBuffer(
-                        new BufferDesc(
-                            BufferUsageBits.Index,
-                            storageType,
-                            (nint)ptr.Pointer,
-                            (uint)(_indices.Count * sizeof(uint))
-                        ),
-                        out _indexBuffer,
-                        debugName: GraphicsSettings.EnableDebug
-                            ? $"{nameof(Geometry)}_{Id}_IndexBuffer"
-                            : null
+                    _indexBuffer ??= new ElementBuffer<uint>(
+                        context,
+                        _indices.Count,
+                        BufferUsageBits.Index | BufferUsageBits.Storage,
+                        IsDynamic,
+                        debugName: $"Geo_{Id}_Index"
                     );
-                    if (result != ResultCode.Ok)
-                    {
-                        logger.LogError(
-                            $"Failed to create index buffer for Geometry {Id}: {result}"
-                        );
-                        return result;
-                    }
+                    _indexBuffer.Upload(_indices);
                 }
             }
+
             BufferDirty &= ~GeometryBufferType.Index;
         }
         if (types.HasFlag(GeometryBufferType.VertexColor))
         {
-            _vertColorsBuffer?.Dispose();
-            if (_vertexColors.Count > 0 && _vertexColors.Count == _vertices.Count)
+            if (_vertexColors.Count == 0)
             {
-                unsafe
-                {
-                    using var ptr = _vertexColors.GetInternalArray().Pin();
-                    var result = context.CreateBuffer(
-                        new BufferDesc(
-                            BufferUsageBits.Vertex,
-                            StorageType.Device,
-                            (nint)ptr.Pointer,
-                            (uint)(_vertexColors.Count * sizeof(Vector4))
-                        ),
-                        out _vertColorsBuffer,
-                        debugName: GraphicsSettings.EnableDebug
-                            ? $"{nameof(Geometry)}_{Id}_BiNormalBuffer"
-                            : null
-                    );
-                    if (result != ResultCode.Ok)
-                    {
-                        logger.LogError(
-                            $"Failed to create bi-normal buffer for Geometry {Id}: {result}"
-                        );
-                        return result;
-                    }
-                }
+                Disposer.DisposeAndRemove(ref _vertColorsBuffer);
             }
+            else
+            {
+                if (_vertexColors.Count != _vertices.Count)
+                {
+                    HxDebug.Assert(false, "Vertex colors count must match vertex count");
+                }
+                _vertColorsBuffer ??= new ElementBuffer<Vector4>(
+                    context,
+                    _vertexColors.Count,
+                    BufferUsageBits.Vertex | BufferUsageBits.Storage,
+                    IsDynamic,
+                    debugName: $"Geo_{Id}_VertColor"
+                );
+                _vertColorsBuffer.Upload(_vertexColors);
+            }
+
             BufferDirty &= ~GeometryBufferType.VertexColor;
         }
         return ResultCode.Ok;
@@ -429,204 +408,121 @@ public partial class Geometry : ObservableObject, IDisposable
         {
             return UpdateBuffers(context, types);
         }
+        if (_pendingBufferUpdate != null)
+        {
+            return ResultCode.InvalidState;
+        }
 
         using var scope = _tracer.BeginScope(nameof(UpdateBuffersAsync), TRACE_BUFFER);
-
-        // Cancel any previous pending update
-        _pendingBufferUpdate?.Dispose();
-        _pendingBufferUpdate = null;
-
-        const StorageType storageType = StorageType.Device;
 
         var pending = new PendingBufferUpdate();
         var hasAnyUpload = false;
 
-        if (types.HasFlag(GeometryBufferType.Vertex) && _vertices.Count > 0)
+        if (types.HasFlag(GeometryBufferType.Vertex))
         {
-            unsafe
+            if (_vertices.Count == 0)
             {
-                uint dataSize = (uint)(_vertices.Count * sizeof(Vertex));
-                string? debugName = GraphicsSettings.EnableDebug
-                    ? $"{nameof(Geometry)}_{Id}_VertexBuffer"
-                    : null;
-
-                var result = context.CreateBuffer(
-                    new BufferDesc(
-                        BufferUsageBits.Vertex | BufferUsageBits.Storage,
-                        storageType,
-                        nint.Zero,
-                        dataSize
-                    ),
-                    out var newBuffer,
-                    debugName: debugName
-                );
-                if (result != ResultCode.Ok)
-                {
-                    logger.LogError(
-                        "Failed to create vertex buffer for Geometry {ID}: {RESULT}",
-                        Id,
-                        result
-                    );
-                    pending.Dispose();
-                    return result;
-                }
-
-                using var ptr = _vertices.GetInternalArray().Pin();
-                var upload = context.UploadAsync(newBuffer.Handle, 0, (nint)ptr.Pointer, dataSize);
-                pending.VertexBuffer = newBuffer;
-                pending.UploadHandles.Add(upload);
-                hasAnyUpload = true;
+                Disposer.DisposeAndRemove(ref _vertexBuffer);
             }
-            pending.Types |= GeometryBufferType.Vertex;
-        }
-        else if (types.HasFlag(GeometryBufferType.Vertex))
-        {
-            // No vertices — mark for clearing on apply
-            pending.Types |= GeometryBufferType.Vertex;
-        }
-
-        if (
-            types.HasFlag(GeometryBufferType.VertexProp)
-            && _vertexProps.Count > 0
-            && _vertexProps.Count == _vertices.Count
-        )
-        {
-            unsafe
+            else
             {
-                uint dataSize = (uint)(_vertexProps.Count * VertexProperties.SizeInBytes);
-                string? debugName = GraphicsSettings.EnableDebug
-                    ? $"{nameof(Geometry)}_{Id}_VertexPropsBuffer"
-                    : null;
-
-                var result = context.CreateBuffer(
-                    new BufferDesc(
-                        BufferUsageBits.Vertex | BufferUsageBits.Storage,
-                        storageType,
-                        nint.Zero,
-                        dataSize
-                    ),
-                    out var newBuffer,
-                    debugName: debugName
+                _vertexBuffer ??= new ElementBuffer<Vector4>(
+                    context,
+                    _vertices.Count,
+                    BufferUsageBits.Vertex | BufferUsageBits.Storage,
+                    IsDynamic,
+                    debugName: $"Geo_{Id}_Vert"
                 );
-                if (result != ResultCode.Ok)
-                {
-                    logger.LogError(
-                        "Failed to create vertex props buffer for Geometry {ID}: {RESULT}",
-                        Id,
-                        result
-                    );
-                    pending.Dispose();
-                    return result;
-                }
-
-                using var ptr = _vertexProps.GetInternalArray().Pin();
-                var upload = context.UploadAsync(newBuffer.Handle, 0, (nint)ptr.Pointer, dataSize);
-                pending.VertexPropsBuffer = newBuffer;
-                pending.UploadHandles.Add(upload);
+                pending.UploadHandles.Add(_vertexBuffer.UploadAsync(_vertices));
                 hasAnyUpload = true;
+
+                pending.Types |= GeometryBufferType.Vertex;
             }
-            pending.Types |= GeometryBufferType.VertexProp;
-        }
-        else if (types.HasFlag(GeometryBufferType.VertexProp))
-        {
-            pending.Types |= GeometryBufferType.VertexProp;
+            BufferDirty &= ~GeometryBufferType.Vertex;
         }
 
-        if (
-            types.HasFlag(GeometryBufferType.Index)
-            && CanHaveIndexBuffer
-            && IsDynamic
-            && _indices.Count > 0
-        )
+        if (types.HasFlag(GeometryBufferType.VertexProp))
         {
-            unsafe
+            if (_vertexProps.Count == 0)
             {
-                uint dataSize = (uint)(_indices.Count * sizeof(uint));
-                string? debugName = GraphicsSettings.EnableDebug
-                    ? $"{nameof(Geometry)}_{Id}_IndexBuffer"
-                    : null;
-
-                var result = context.CreateBuffer(
-                    new BufferDesc(BufferUsageBits.Index, storageType, nint.Zero, dataSize),
-                    out var newBuffer,
-                    debugName: debugName
-                );
-                if (result != ResultCode.Ok)
-                {
-                    logger.LogError(
-                        "Failed to create index buffer for Geometry {ID}: {RESULT}",
-                        Id,
-                        result
-                    );
-                    pending.Dispose();
-                    return result;
-                }
-
-                using var ptr = _indices.GetInternalArray().Pin();
-                var upload = context.UploadAsync(newBuffer.Handle, 0, (nint)ptr.Pointer, dataSize);
-                pending.IndexBuffer = newBuffer;
-                pending.UploadHandles.Add(upload);
-                hasAnyUpload = true;
+                Disposer.DisposeAndRemove(ref _vertexPropsBuffer);
             }
-            pending.Types |= GeometryBufferType.Index;
-        }
-        else if (types.HasFlag(GeometryBufferType.Index))
-        {
-            pending.Types |= GeometryBufferType.Index;
-        }
-
-        if (
-            types.HasFlag(GeometryBufferType.VertexColor)
-            && _vertexColors.Count > 0
-            && _vertexColors.Count == _vertices.Count
-        )
-        {
-            unsafe
+            else
             {
-                uint dataSize = (uint)(_vertexColors.Count * sizeof(Vector4));
-                string? debugName = GraphicsSettings.EnableDebug
-                    ? $"{nameof(Geometry)}_{Id}_VertexColorBuffer"
-                    : null;
-
-                var result = context.CreateBuffer(
-                    new BufferDesc(BufferUsageBits.Vertex, StorageType.Device, nint.Zero, dataSize),
-                    out var newBuffer,
-                    debugName: debugName
-                );
-                if (result != ResultCode.Ok)
+                if (_vertexColors.Count != _vertices.Count)
                 {
-                    logger.LogError(
-                        "Failed to create vertex color buffer for Geometry {ID}: {RESULT}",
-                        Id,
-                        result
-                    );
-                    pending.Dispose();
-                    return result;
+                    HxDebug.Assert(false, "Vertex colors count must match vertex count");
                 }
-
-                using var ptr = _vertexColors.GetInternalArray().Pin();
-                var upload = context.UploadAsync(newBuffer.Handle, 0, (nint)ptr.Pointer, dataSize);
-                pending.VertexColorBuffer = newBuffer;
-                pending.UploadHandles.Add(upload);
+                _vertexPropsBuffer ??= new ElementBuffer<VertexProperties>(
+                    context,
+                    _vertexProps.Count,
+                    BufferUsageBits.Vertex | BufferUsageBits.Storage,
+                    IsDynamic,
+                    debugName: $"Geo_{Id}_VertProps"
+                );
+                pending.UploadHandles.Add(_vertexPropsBuffer.UploadAsync(_vertexProps));
                 hasAnyUpload = true;
+                pending.Types |= GeometryBufferType.VertexProp;
             }
-            pending.Types |= GeometryBufferType.VertexColor;
+            BufferDirty &= ~GeometryBufferType.VertexProp;
         }
-        else if (types.HasFlag(GeometryBufferType.VertexColor))
+
+        if (types.HasFlag(GeometryBufferType.Index) && CanHaveIndexBuffer && IsDynamic)
         {
-            pending.Types |= GeometryBufferType.VertexColor;
+            if (_indices.Count == 0)
+            {
+                Disposer.DisposeAndRemove(ref _indexBuffer);
+            }
+            else
+            {
+                _indexBuffer ??= new ElementBuffer<uint>(
+                    context,
+                    _indices.Count,
+                    BufferUsageBits.Index | BufferUsageBits.Storage,
+                    IsDynamic,
+                    debugName: $"Geo_{Id}_Index"
+                );
+                pending.UploadHandles.Add(_indexBuffer.UploadAsync(_indices));
+                hasAnyUpload = true;
+                pending.Types |= GeometryBufferType.Index;
+            }
+            BufferDirty &= ~GeometryBufferType.Index;
+        }
+
+        if (types.HasFlag(GeometryBufferType.VertexColor))
+        {
+            if (_vertexColors.Count == 0)
+            {
+                Disposer.DisposeAndRemove(ref _vertColorsBuffer);
+            }
+            else
+            {
+                if (_vertexColors.Count != _vertices.Count)
+                {
+                    HxDebug.Assert(false, "Vertex colors count must match vertex count");
+                }
+                _vertColorsBuffer ??= new ElementBuffer<Vector4>(
+                    context,
+                    _vertexColors.Count,
+                    BufferUsageBits.Vertex | BufferUsageBits.Storage,
+                    IsDynamic,
+                    debugName: $"Geo_{Id}_VertColor"
+                );
+                pending.UploadHandles.Add(_vertColorsBuffer.UploadAsync(_vertexColors));
+                hasAnyUpload = true;
+                pending.Types |= GeometryBufferType.VertexColor;
+            }
+            BufferDirty &= ~GeometryBufferType.VertexColor;
         }
 
         if (!hasAnyUpload)
         {
             // All requested buffer types had no data — apply immediately
             ApplyPendingBuffersInternal(pending);
-            pending.Dispose();
             return ResultCode.Ok;
         }
 
         _pendingBufferUpdate = pending;
-        BufferDirty = GeometryBufferType.None; // Clear dirty flag since we have a pending update that will apply the changes
         return ResultCode.Ok;
     }
 
@@ -704,33 +600,21 @@ public partial class Geometry : ObservableObject, IDisposable
     {
         if (pending.Types.HasFlag(GeometryBufferType.Vertex))
         {
-            _vertexBuffer?.Dispose();
-            _vertexBuffer = pending.VertexBuffer ?? BufferResource.Null;
-            pending.VertexBuffer = null; // Ownership transferred
             BufferDirty &= ~GeometryBufferType.Vertex;
         }
 
         if (pending.Types.HasFlag(GeometryBufferType.VertexProp))
         {
-            _vertexPropsBuffer?.Dispose();
-            _vertexPropsBuffer = pending.VertexPropsBuffer ?? BufferResource.Null;
-            pending.VertexPropsBuffer = null;
             BufferDirty &= ~GeometryBufferType.VertexProp;
         }
 
         if (pending.Types.HasFlag(GeometryBufferType.Index))
         {
-            _indexBuffer?.Dispose();
-            _indexBuffer = pending.IndexBuffer ?? BufferResource.Null;
-            pending.IndexBuffer = null;
             BufferDirty &= ~GeometryBufferType.Index;
         }
 
         if (pending.Types.HasFlag(GeometryBufferType.VertexColor))
         {
-            _vertColorsBuffer?.Dispose();
-            _vertColorsBuffer = pending.VertexColorBuffer ?? BufferResource.Null;
-            pending.VertexColorBuffer = null;
             BufferDirty &= ~GeometryBufferType.VertexColor;
         }
         EventBus.Instance.PublishAsync(new GeometryUpdatedEvent(Id, GeometryChangeOp.Updated));
@@ -740,13 +624,9 @@ public partial class Geometry : ObservableObject, IDisposable
     /// Holds the state for a pending async buffer upload operation.
     /// New buffers are staged here until uploads complete, then swapped into the geometry.
     /// </summary>
-    private sealed class PendingBufferUpdate : IDisposable
+    private sealed class PendingBufferUpdate
     {
         public GeometryBufferType Types;
-        public BufferResource? VertexBuffer;
-        public BufferResource? VertexPropsBuffer;
-        public BufferResource? IndexBuffer;
-        public BufferResource? VertexColorBuffer;
         public readonly List<AsyncUploadHandle> UploadHandles = [];
 
         /// <summary>
@@ -763,21 +643,6 @@ public partial class Geometry : ObservableObject, IDisposable
                 }
                 return true;
             }
-        }
-
-        /// <summary>
-        /// Disposes any buffers that were not transferred to the geometry (e.g., on cancellation or error).
-        /// </summary>
-        public void Dispose()
-        {
-            VertexBuffer?.Dispose();
-            VertexBuffer = null;
-            VertexPropsBuffer?.Dispose();
-            VertexPropsBuffer = null;
-            IndexBuffer?.Dispose();
-            IndexBuffer = null;
-            VertexColorBuffer?.Dispose();
-            VertexColorBuffer = null;
         }
     }
     #endregion
@@ -829,6 +694,17 @@ public partial class Geometry : ObservableObject, IDisposable
         CreateBoundingSphere();
         IsBoundDirty = false;
     }
+
+    /// <summary>
+    /// Marks the specified geometry buffer type as dirty, indicating that it requires updating.
+    /// </summary>
+    /// <remarks>If the specified buffer type is <see cref="GeometryBufferType.Vertex"/>, the binding state is
+    /// also marked as dirty.</remarks>
+    /// <param name="type">The type of geometry buffer to mark as dirty.</param>
+    public void MarkDirty(GeometryBufferType type)
+    {
+        BufferDirty |= type;
+    }
     #endregion
 
     #region Dispose Support
@@ -840,16 +716,11 @@ public partial class Geometry : ObservableObject, IDisposable
         {
             if (disposing)
             {
-                _pendingBufferUpdate?.Dispose();
                 _pendingBufferUpdate = null;
-                _vertexBuffer?.Dispose();
-                _vertexPropsBuffer?.Dispose();
-                _indexBuffer?.Dispose();
-                _vertColorsBuffer?.Dispose();
-                _vertexBuffer = BufferResource.Null;
-                _vertexPropsBuffer = BufferResource.Null;
-                _indexBuffer = BufferResource.Null;
-                _vertColorsBuffer = BufferResource.Null;
+                Disposer.DisposeAndRemove(ref _vertexBuffer);
+                Disposer.DisposeAndRemove(ref _vertexPropsBuffer);
+                Disposer.DisposeAndRemove(ref _indexBuffer);
+                Disposer.DisposeAndRemove(ref _vertColorsBuffer);
                 Manager?.Remove(this);
             }
 

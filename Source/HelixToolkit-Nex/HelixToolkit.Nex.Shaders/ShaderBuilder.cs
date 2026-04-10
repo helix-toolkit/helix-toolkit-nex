@@ -7,7 +7,7 @@ namespace HelixToolkit.Nex.Shaders;
 /// <summary>
 /// Configuration options for shader building
 /// </summary>
-public class ShaderBuildOptions
+public sealed class ShaderBuildOptions
 {
     /// <summary>
     /// Custom include directories (not yet implemented for embedded resources)
@@ -44,7 +44,7 @@ public class ShaderBuildOptions
 /// <summary>
 /// Result of a shader build operation
 /// </summary>
-public class ShaderBuildResult
+public sealed class ShaderBuildResult
 {
     /// <summary>
     /// Whether the build was successful
@@ -75,7 +75,7 @@ public class ShaderBuildResult
 /// <summary>
 /// Shader builder that processes shader source code and automatically includes necessary headers
 /// </summary>
-public class ShaderBuilder
+internal sealed class ShaderBuilder
 {
     private static readonly ILogger _logger = LogManager.Create<ShaderBuilder>();
     private readonly ShaderStage _stage;

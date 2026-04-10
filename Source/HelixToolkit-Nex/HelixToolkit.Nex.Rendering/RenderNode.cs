@@ -6,8 +6,8 @@ public readonly record struct RenderResources(
     RenderPass Pass,
     Framebuffer Framebuf,
     Dependencies Deps,
-    IReadOnlyDictionary<string, TextureHandle> Textures,
-    IReadOnlyDictionary<string, BufferHandle> Buffers
+    Dictionary<string, TextureHandle> Textures,
+    Dictionary<string, BufferHandle> Buffers
 );
 
 public abstract class RenderNode : IDisposable

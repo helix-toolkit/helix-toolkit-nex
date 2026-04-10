@@ -20,7 +20,7 @@ public readonly struct MaterialPropsUpdatedEvent(
     public MaterialPropertyOp Operation { get; } = operation;
 }
 
-public sealed class MaterialProperties : IDisposable
+public sealed class PBRMaterialProperties : IDisposable
 {
     private static readonly EventBus _eventBus = EventBus.Instance;
     private readonly Pool<MaterialPropertyResource, PBRProperties>? _pool;
@@ -207,7 +207,7 @@ public sealed class MaterialProperties : IDisposable
         get => Properties.SamplerIndex;
     }
 
-    internal MaterialProperties(
+    internal PBRMaterialProperties(
         MaterialTypeId materialTypeId,
         ref PBRProperties properties,
         Pool<MaterialPropertyResource, PBRProperties> pool
@@ -231,7 +231,7 @@ public sealed class MaterialProperties : IDisposable
         }
     }
 
-    private MaterialProperties() { }
+    private PBRMaterialProperties() { }
 
     private bool _disposedValue;
 
@@ -268,5 +268,5 @@ public sealed class MaterialProperties : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    public static readonly MaterialProperties Null = new();
+    public static readonly PBRMaterialProperties Null = new();
 }

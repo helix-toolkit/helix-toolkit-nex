@@ -7,7 +7,7 @@ namespace HelixToolkit.Nex.Engine;
 /// Fluent builder for creating and configuring an <see cref="Engine"/> instance.
 /// <para>
 /// Eliminates the boilerplate of manually wiring services, render nodes, post-effects,
-/// and lifecycle calls. Common presets are available via <see cref="UseForwardPlusDefaults"/>
+/// and lifecycle calls. Common presets are available via <see cref="WithDefaultNodes"/>
 /// and <see cref="UseDepthPrepassDefaults"/>.
 /// </para>
 /// <para>
@@ -61,7 +61,6 @@ public sealed class EngineBuilder
     private readonly List<Action<IServiceCollection>> _serviceConfigurators = [];
     private PostEffectsNode _postEffectsNode = new();
     private bool _addRenderToFinal;
-    private bool _createPBRMaterials;
     private Action<IResourceManager>? _onResourceManagerReady;
 
     private EngineBuilder(IContext context)
@@ -132,17 +131,6 @@ public sealed class EngineBuilder
     }
 
     /// <summary>
-    /// Calls <see cref="IMaterialManager.CreatePBRMaterialsFromRegistry"/> during
-    /// <see cref="Build"/> after the <see cref="IResourceManager"/> is created.
-    /// </summary>
-    /// <returns>This builder for method chaining.</returns>
-    public EngineBuilder CreatePBRMaterials()
-    {
-        _createPBRMaterials = true;
-        return this;
-    }
-
-    /// <summary>
     /// Provides a callback to configure the <see cref="IResourceManager"/> after it
     /// is created but before the engine is initialized (e.g., register custom materials,
     /// load textures).
@@ -166,27 +154,30 @@ public sealed class EngineBuilder
     ///     .AddNode(new PrepareNode())
     ///     .AddNode(new DepthPassNode())
     ///     .AddNode(new FrustumCullNode())
+    ///     .AddNode(new PointCullNode())
     ///     .AddNode(new ForwardPlusLightCullingNode())
     ///     .AddNode(new ForwardPlusOpaqueNode())
     ///     .AddNode(new PointRenderNode())
     ///     .AddNode(new PostEffectsNode())
-    ///     .AddRenderToFinal()
-    ///     .CreatePBRMaterials();
+    ///     .AddNode(new ForwardPlusTransparentNode())
+    ///     .AddNode(new WBOITCompositeNode())
     /// </code>
     /// </para>
     /// </summary>
     /// <param name="renderToSwapchain">Whether engine renders onto swapchain. Set it to false if engine should render onto an external texture.</param>
     /// <returns>This builder for method chaining.</returns>
-    public EngineBuilder UseForwardPlusDefaults(bool renderToSwapchain = true)
+    public EngineBuilder WithDefaultNodes(bool renderToSwapchain = true)
     {
         AddNode(new PrepareNode());
         AddNode(new DepthPassNode());
         AddNode(new FrustumCullNode());
+        AddNode(new PointCullNode());
         AddNode(new ForwardPlusLightCullingNode());
         AddNode(new ForwardPlusOpaqueNode());
         AddNode(new PointRenderNode());
+        AddNode(new ForwardPlusTransparentNode());
+        AddNode(new WBOITCompositeNode());
         _addRenderToFinal = renderToSwapchain;
-        _createPBRMaterials = true;
         return this;
     }
 
@@ -224,10 +215,8 @@ public sealed class EngineBuilder
         var config = new EngineConfig(serviceProvider);
         var engine = new Engine(config);
 
-        if (_createPBRMaterials)
-        {
-            engine.ResourceManager.Materials.CreatePBRMaterialsFromRegistry();
-        }
+        engine.ResourceManager.PBRMaterialManager.CreatePBRMaterialsFromRegistry();
+        engine.ResourceManager.PointMaterialManager.CreatePipelinesFromRegistry();
         _onResourceManagerReady?.Invoke(engine.ResourceManager);
 
         // --- Add render nodes ---

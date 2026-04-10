@@ -1,16 +1,9 @@
 namespace HelixToolkit.Nex.Rendering.RenderNodes;
 
-public sealed class DepthPassNode(
-    Format depthFormat = Format.Z_F32,
-    Format meshIdFormat = Format.RG_F32
-) : RenderNode
+public sealed class DepthPassNode() : RenderNode
 {
     private static readonly ILogger _logger = LogManager.Create<DepthPassNode>();
     private RenderPipelineResource _pipeline = RenderPipelineResource.Null;
-
-    public Format DepthFormat => depthFormat;
-
-    public Format MeshIdFormat => meshIdFormat;
 
     public override string Name => nameof(DepthPassNode);
 
@@ -122,12 +115,12 @@ public sealed class DepthPassNode(
             DebugName = "DepthPass",
             CullMode = CullMode.Back,
             FrontFaceWinding = WindingMode.CCW,
-            DepthFormat = DepthFormat,
+            DepthFormat = RenderSettings.DepthBufferFormat,
             Topology = Topology.Triangle,
         };
         pipelineDesc.Colors[0] = new ColorAttachment()
         {
-            Format = meshIdFormat,
+            Format = RenderSettings.MeshIdTexFormat,
             BlendEnabled = false,
         };
 

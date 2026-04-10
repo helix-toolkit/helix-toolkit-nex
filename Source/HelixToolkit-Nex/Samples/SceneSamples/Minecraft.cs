@@ -19,7 +19,7 @@ namespace SceneSamples;
 /// </summary>
 /// <remarks>
 /// Call <see cref="RegisterMaterials"/> once before calling
-/// <see cref="IMaterialManager.CreatePBRMaterialsFromRegistry"/>, then call <see cref="Build"/>
+/// <see cref="IPBRMaterialManager.CreatePBRMaterialsFromRegistry"/>, then call <see cref="Build"/>
 /// to populate the ECS world with scene nodes.
 /// </remarks>
 public class MinecraftScene : IScene
@@ -92,12 +92,12 @@ public class MinecraftScene : IScene
 
     /// <summary>
     /// Registers the custom GLSL material types (Lava, GoldOre, Water) required by the scene.
-    /// Must be called before <see cref="IMaterialManager.CreatePBRMaterialsFromRegistry"/>.
+    /// Must be called before <see cref="IPBRMaterialManager.CreatePBRMaterialsFromRegistry"/>.
     /// </summary>
     public void RegisterMaterials()
     {
         // Lava: pulsing emissive orange-red glow
-        MaterialTypeRegistry.Register(
+        PBRMaterialTypeRegistry.Register(
             "Lava",
             """
             PBRMaterial material = createPBRMaterial();
@@ -109,7 +109,7 @@ public class MinecraftScene : IScene
         );
 
         // Gold ore: metallic PBR with a view-angle sparkle emissive highlight
-        MaterialTypeRegistry.Register(
+        PBRMaterialTypeRegistry.Register(
             "GoldOre",
             """
             PBRMaterial material = createPBRMaterial();
@@ -120,7 +120,7 @@ public class MinecraftScene : IScene
         );
 
         // Water: time-based wave shimmer blended with PBR lighting
-        MaterialTypeRegistry.Register(
+        PBRMaterialTypeRegistry.Register(
             "Water",
             """
             PBRMaterial material = createPBRMaterial();
@@ -146,7 +146,7 @@ public class MinecraftScene : IScene
     )
     {
         var geometryManager = resourceManager.Geometries;
-        var materialPool = resourceManager.MaterialProperties;
+        var materialPool = resourceManager.PBRPropertyManager;
 
         // Single 1×1×1 cube mesh shared by all block types via GPU instancing
         var meshBuilder = new MeshBuilder(true, true, true);
@@ -182,7 +182,7 @@ public class MinecraftScene : IScene
         // ------------------------------------------------------------------
         int blockCount = BlockMaterialDefs.Length;
         var instancings = new Instancing[blockCount];
-        var matProps = new MaterialProperties[blockCount];
+        var matProps = new PBRMaterialProperties[blockCount];
 
         for (int b = 0; b < blockCount; b++)
         {
@@ -237,7 +237,7 @@ public class MinecraftScene : IScene
         // so spheres of the same colour share a single draw call via instancing
         // ------------------------------------------------------------------
         var lightSphereInstancings =
-            new Dictionary<Color, (MaterialProperties Mat, Instancing Inst)>();
+            new Dictionary<Color, (PBRMaterialProperties Mat, Instancing Inst)>();
         foreach (var color in _lightColors)
         {
             var mat = materialPool.Create("Unlit");
