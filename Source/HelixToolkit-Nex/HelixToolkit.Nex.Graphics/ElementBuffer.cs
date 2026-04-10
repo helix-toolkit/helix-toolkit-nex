@@ -204,6 +204,36 @@ public sealed class ElementBuffer<T> : IDisposable
         bool isDynamic = false,
         string? debugName = null
     )
+        : this(context, capacity, usage, isDynamic, debugName, null) { }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ElementBuffer{T}"/> class with the specified context, data, and
+    /// configuration options.
+    /// </summary>
+    /// <param name="context">The graphics or computation context in which the buffer will be used. This cannot be <see langword="null"/>.</param>
+    /// <param name="data">The initial data to populate the buffer. The buffer size is determined by the number of elements in this
+    /// collection.</param>
+    /// <param name="usage">Specifies the intended usage pattern of the buffer, such as <see cref="BufferUsageBits.Storage"/> or <see
+    /// cref="BufferUsageBits.DynamicDraw"/>. The default is <see cref="BufferUsageBits.Storage"/>.</param>
+    /// <param name="isDynamic">Indicates whether the buffer is dynamic, allowing for frequent updates. The default is <see langword="false"/>.</param>
+    /// <param name="debugName">An optional name for debugging purposes. This can be <see langword="null"/>.</param>
+    public ElementBuffer(
+        IContext context,
+        FastList<T> data,
+        BufferUsageBits usage = BufferUsageBits.Storage,
+        bool isDynamic = false,
+        string? debugName = null
+    )
+        : this(context, data.Count, usage, isDynamic, debugName, data.GetInternalArray()) { }
+
+    internal ElementBuffer(
+        IContext context,
+        int capacity,
+        BufferUsageBits usage = BufferUsageBits.Storage,
+        bool isDynamic = false,
+        string? debugName = null,
+        T[]? data = null
+    )
     {
         ArgumentOutOfRangeException.ThrowIfNegative(capacity, nameof(capacity));
         Context = context;
@@ -214,7 +244,18 @@ public sealed class ElementBuffer<T> : IDisposable
 
         if (capacity > 0)
         {
-            CreateBuffer(capacity);
+            if (data is null)
+            {
+                CreateBuffer(capacity);
+            }
+            else
+            {
+                HxDebug.Assert(
+                    data.Length >= capacity,
+                    "Data array length must be greater than or equal to the specified capacity."
+                );
+                CreateBuffer(capacity, data);
+            }
         }
     }
 
@@ -390,14 +431,24 @@ public sealed class ElementBuffer<T> : IDisposable
         return ResizeBuffer((int)(minCapacity * multiplier));
     }
 
+    private ResultCode CreateBuffer(int capacity, T[] data)
+    {
+        unsafe
+        {
+            using var ptr = data.Pin();
+            return CreateBuffer(capacity, (nint)ptr.Pointer);
+        }
+    }
+
     /// <summary>
     /// Creates or recreates the internal GPU buffer with the specified remainSizeInBytes.
     /// </summary>
     /// <param name="capacity">The remainSizeInBytes in number of elements.</param>
+    /// <param name="dataPtr">Optional data pointer.</param>
     /// <returns>
     /// A <see cref="ResultCode"/> indicating the result of buffer creation.
     /// </returns>
-    private ResultCode CreateBuffer(int capacity)
+    private ResultCode CreateBuffer(int capacity, nint dataPtr = 0)
     {
         if (capacity == 0)
         {
@@ -421,7 +472,7 @@ public sealed class ElementBuffer<T> : IDisposable
                 new BufferDesc(
                     BufferUsageBits.Storage | Usage,
                     storageType,
-                    nint.Zero,
+                    dataPtr,
                     bufferSize,
                     GraphicsSettings.EnableDebug
                         ? $"ElementBuf<{typeof(T).Name}>:{DebugName ?? string.Empty}"
