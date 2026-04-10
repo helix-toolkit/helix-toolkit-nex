@@ -1,17 +1,17 @@
 namespace HelixToolkit.Nex.Material;
 
-public readonly struct MaterialPropertyCreator(MaterialTypeId id, IMaterialPropertyManager pool)
+public readonly struct MaterialPropertyCreator(MaterialTypeId id, IPBRMaterialPropertyManager pool)
 {
     public readonly MaterialTypeId MaterialTypeId = id;
-    private readonly IMaterialPropertyManager _pool = pool;
+    private readonly IPBRMaterialPropertyManager _pool = pool;
 
-    public MaterialProperties Create()
+    public PBRMaterialProperties Create()
     {
         return _pool.Create(MaterialTypeId);
     }
 }
 
-public interface IMaterialManager : IDisposable
+public interface IPBRMaterialManager : IDisposable
 {
     int Count { get; }
 
@@ -44,7 +44,7 @@ public interface IMaterialManager : IDisposable
     /// <summary>
     /// Creates physically-based rendering (PBR) materials from the registry.
     /// </summary>
-    /// <remarks>This method initializes and registers PBR materials based on <see cref="MaterialTypeRegistry"/>. It should
+    /// <remarks>This method initializes and registers PBR materials based on <see cref="PBRMaterialTypeRegistry"/>. It should
     /// be called during the setup phase to ensure all registered materials are available for rendering.</remarks>
     /// <returns>Number of materials has been created.</returns>
     int CreatePBRMaterialsFromRegistry();

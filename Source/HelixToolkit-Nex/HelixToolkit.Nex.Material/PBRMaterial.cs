@@ -52,7 +52,7 @@ public class PBRMaterial : IDisposable
     {
         Name = name;
         MaterialId =
-            MaterialTypeRegistry.GetTypeId(name)
+            PBRMaterialTypeRegistry.GetTypeId(name)
             ?? throw new ArgumentException(name + " is not a registered material type.");
         for (var i = 0; i < Pipelines.Length; i++)
         {

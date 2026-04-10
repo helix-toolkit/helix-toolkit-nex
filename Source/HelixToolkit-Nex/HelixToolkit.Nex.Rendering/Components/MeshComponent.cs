@@ -26,7 +26,7 @@ public struct MeshComponent : IIndexable
     /// </summary>
     /// <remarks>This field is read-only and provides access to the material's physical or structural
     /// characteristics.</remarks>
-    public readonly MaterialProperties? MaterialProperties;
+    public readonly PBRMaterialProperties? MaterialProperties;
 
     /// <summary>
     /// Gets the instancing mode for the associated object, if specified.
@@ -55,7 +55,7 @@ public struct MeshComponent : IIndexable
     /// <param name="materialProperties">Material property resource.</param>
     public MeshComponent(
         Geometry? geometry = null,
-        MaterialProperties? materialProperties = null,
+        PBRMaterialProperties? materialProperties = null,
         Instancing? instancing = null,
         bool cullable = true,
         bool hitable = true
@@ -96,7 +96,7 @@ public struct MeshComponent : IIndexable
         };
     }
 
-    public readonly MeshComponent SetMaterial(in MaterialProperties properties)
+    public readonly MeshComponent SetMaterial(in PBRMaterialProperties properties)
     {
         return new MeshComponent(Geometry, properties, Instancing, Cullable, Hitable)
         {

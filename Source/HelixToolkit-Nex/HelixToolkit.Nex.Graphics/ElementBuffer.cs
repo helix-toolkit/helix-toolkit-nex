@@ -355,6 +355,75 @@ public sealed class ElementBuffer<T> : IDisposable
     }
 
     /// <summary>
+    /// Asynchronously uploads data to the buffer.
+    /// </summary>
+    /// <remarks>If the buffer's capacity is insufficient to accommodate <paramref name="count"/>, the buffer
+    /// will be resized automatically.</remarks>
+    /// <param name="data">The array of data to upload. The length of the array must be at least <paramref name="count"/>.</param>
+    /// <param name="count">The number of elements to upload from the <paramref name="data"/> array. Must be greater than zero and less than
+    /// or equal to the capacity of the buffer.</param>
+    /// <param name="dstOffset">The offset, in elements, within the destination buffer where the upload begins. Defaults to 0.</param>
+    /// <returns>An <see cref="AsyncUploadHandle"/> representing the asynchronous upload operation.</returns>
+    public AsyncUploadHandle UploadAsync(T[] data, int count, int dstOffset = 0)
+    {
+        // Handle resizing based on IsDynamic flag
+        if (count > Capacity)
+        {
+            EnsureCapacity(count);
+        }
+
+        return Context.UploadAsync(Buffer.Handle, (uint)dstOffset, data, (uint)count);
+    }
+
+    /// <summary>
+    /// Asynchronously uploads the specified data to the buffer at the given destination offset.
+    /// </summary>
+    /// <remarks>If the required capacity exceeds the current buffer capacity and the buffer is dynamic,  the
+    /// buffer will be resized to accommodate the data. Ensure that the buffer's capacity  is sufficient for the upload
+    /// if resizing is not desired.</remarks>
+    /// <param name="data">The data to upload, represented as a <see cref="FastList{T}"/>.</param>
+    /// <param name="dstOffset">The destination offset, in elements, where the data will be written. Defaults to 0.</param>
+    /// <returns>An <see cref="AsyncUploadHandle"/> that represents the asynchronous upload operation.</returns>
+    public AsyncUploadHandle UploadAsync(FastList<T> data, int dstOffset = 0)
+    {
+        if (IsDynamic)
+        { // For dynamic buffers, use mapped memory for direct CPU writes
+            unsafe
+            {
+                nint mappedPtr = Context.GetMappedPtr(Buffer.Handle);
+                if (mappedPtr == nint.Zero)
+                {
+                    _logger.LogError("Cannot upload data: dynamic buffer is not mapped.");
+                    return AsyncUploadHandle.CreateCompleted(ResultCode.InvalidState);
+                }
+                mappedPtr += dstOffset * sizeof(T);
+                using var pinnedData = data.GetInternalArray().Pin();
+                var srcPtr = (nint)pinnedData.Pointer;
+                NativeHelper.MemoryCopy(mappedPtr, srcPtr, (uint)(data.Count * sizeof(T)));
+                // Flush mapped memory if not coherent
+                Context.FlushMappedMemory(
+                    Buffer.Handle,
+                    (uint)(dstOffset * sizeof(T)),
+                    (uint)(data.Count * sizeof(T))
+                );
+                return AsyncUploadHandle.CreateCompleted(ResultCode.Ok);
+            }
+        }
+        var requiredCapacity = data.Count;
+        // Handle resizing based on IsDynamic flag
+        if (requiredCapacity > Capacity)
+        {
+            EnsureCapacity(requiredCapacity);
+        }
+        return Context.UploadAsync(
+            Buffer.Handle,
+            (uint)dstOffset,
+            data.GetInternalArray(),
+            (uint)requiredCapacity
+        );
+    }
+
+    /// <summary>
     /// Writes data to a dynamic buffer, resizing the buffer if necessary to accommodate the specified total count.
     /// </summary>
     /// <remarks>This method can only be used with dynamic buffers. If the buffer is not dynamic, the method

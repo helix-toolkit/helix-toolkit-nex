@@ -6,7 +6,7 @@ namespace HelixToolkit.Nex.Material;
 /// <summary>
 /// Represents a registered material type with its unique ID and shader implementation.
 /// </summary>
-public sealed class MaterialTypeRegistration
+public sealed class MaterialTypeRegistration : IMaterialRegistration
 {
     /// <summary>
     /// Unique identifier for this material type. Used as specialization constant value.
@@ -23,6 +23,9 @@ public sealed class MaterialTypeRegistration
     /// If null, uses the default template implementation.
     /// </summary>
     public string? CreateMaterialImplementation { get; init; }
+
+    /// <inheritdoc/>
+    public string? GetColorOutputImplCode() => OutputColorImplementation;
 
     /// <summary>
     /// GLSL implementation for the outputColor() case.
@@ -107,7 +110,7 @@ public sealed class CustomBufferDescription
 /// Global registry for material types. Maps material type names to unique IDs
 /// and their shader implementations for uber shader generation.
 /// </summary>
-public static class MaterialTypeRegistry
+public static class PBRMaterialTypeRegistry
 {
     private static readonly ConcurrentDictionary<string, MaterialTypeRegistration> _registrations =
         new(StringComparer.OrdinalIgnoreCase);
@@ -116,7 +119,7 @@ public static class MaterialTypeRegistry
     private static uint _nextTypeId = 1; // Reserve 0 for "undefined" material type
     private static readonly object _lockObj = new();
 
-    static MaterialTypeRegistry()
+    static PBRMaterialTypeRegistry()
     {
         // Register built-in material types
         RegisterBuiltInTypes();

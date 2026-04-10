@@ -2,8 +2,8 @@ using System.Collections.Concurrent;
 
 namespace HelixToolkit.Nex.Material;
 
-public class MaterialManager(IContext context, IMaterialPropertyManager propertyManager)
-    : IMaterialManager
+public class PBRMaterialManager(IContext context, IPBRMaterialPropertyManager propertyManager)
+    : IPBRMaterialManager
 {
     private readonly ConcurrentDictionary<MaterialTypeId, PBRMaterial> _materials = new();
     private readonly ConcurrentDictionary<string, MaterialTypeId> _nameToId = new();
@@ -13,7 +13,7 @@ public class MaterialManager(IContext context, IMaterialPropertyManager property
 
     public IContext Context { get; } = context;
 
-    public IMaterialPropertyManager MaterialPropertyManager { get; } = propertyManager;
+    public IPBRMaterialPropertyManager MaterialPropertyManager { get; } = propertyManager;
 
     public int Count => _materials.Count;
 
@@ -23,7 +23,7 @@ public class MaterialManager(IContext context, IMaterialPropertyManager property
 
         {
             var idx = (int)MaterialPassType.Opaque;
-            _uberShaderResults[idx] ??= new MaterialShaderBuilder()
+            _uberShaderResults[idx] ??= new PBRMaterialShaderBuilder()
                 .WithForwardPlus(true)
                 .WithUberShader()
                 .BuildMaterialPipeline(Context, "UberShader");
@@ -46,7 +46,7 @@ public class MaterialManager(IContext context, IMaterialPropertyManager property
 
         {
             var idx = (int)MaterialPassType.Transparent;
-            _uberShaderResults[idx] ??= new MaterialShaderBuilder()
+            _uberShaderResults[idx] ??= new PBRMaterialShaderBuilder()
                 .WithForwardPlus(true)
                 .WithUberShader()
                 .WithDefine("TRANSPARENT_PASS")
@@ -98,11 +98,11 @@ public class MaterialManager(IContext context, IMaterialPropertyManager property
 
     public int CreatePBRMaterialsFromRegistry()
     {
-        foreach (var material in MaterialTypeRegistry.GetAllRegistrations())
+        foreach (var material in PBRMaterialTypeRegistry.GetAllRegistrations())
         {
             CreateMaterial(material.Name, material.BuilderFunction);
         }
-        return MaterialTypeRegistry.GetAllRegistrations().Count;
+        return PBRMaterialTypeRegistry.GetAllRegistrations().Count;
     }
 
     public void DestroyMaterial(MaterialTypeId id)

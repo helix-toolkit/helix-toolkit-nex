@@ -3,7 +3,7 @@ namespace HelixToolkit.Nex.Shaders;
 /// <summary>
 /// High-level API for building shaders with automatic header inclusion
 /// </summary>
-public class ShaderCompiler
+public sealed class ShaderCompiler
 {
     private static readonly Lazy<ShaderCache> _globalCache = new(() =>
         new ShaderCache(maxEntries: 200)

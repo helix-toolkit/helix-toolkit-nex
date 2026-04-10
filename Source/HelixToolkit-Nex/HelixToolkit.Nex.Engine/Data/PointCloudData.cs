@@ -9,44 +9,33 @@ namespace HelixToolkit.Nex.Engine.Data;
 /// dispatch information so the <c>PointRenderNode</c> compute shader can frustum-cull
 /// and stamp the correct entity ID on each point.
 /// </summary>
-internal sealed class PointCloudData : Initializable, IPointCloudData
+internal sealed class PointCloudData(IContext context, World world) : Initializable, IPointCloudData
 {
     private static readonly ITracer _tracer = TracerFactory.GetTracer(nameof(PointCloudData));
     private static readonly ILogger _logger = LogManager.Create<PointCloudData>();
 
-    /// <summary>
-    /// Ring buffer that maintains one <see cref="ElementBuffer{T}"/> per in-flight
-    /// frame so the GPU can safely read from the previous frame's buffer while
-    /// the CPU writes into the current one — zero stalls.
-    /// </summary>
-    private ElementBuffer<PointData>? _ringBuffer;
+    private readonly Dictionary<MaterialTypeId, PointCloudDataEntry> _pointsByMaterial = [];
     private EntityCollection? _entities;
-    private readonly FastList<PointCloudDispatch> _dispatches = new(16);
     private long _lastBufferUpdateTicks;
     private long _lastDataUpdateTicks = Stopwatch.GetTimestamp();
     private bool _needRebuilt = true;
-    private uint _totalPointCount;
 
-    public IContext Context { get; }
-    public World World { get; }
+    public IContext Context { get; } = context;
+    public World World { get; } = world;
 
     public override string Name { get; } = nameof(PointCloudData);
 
-    // --- IRenderData ---
-    public BufferHandle Buffer => _ringBuffer is not null ? _ringBuffer.Buffer : BufferHandle.Null;
-    public ulong GpuAddress => _ringBuffer is null ? 0 : _ringBuffer.Buffer.GpuAddress;
-    public uint Stride => PointData.SizeInBytes;
-    public uint Count => _ringBuffer is not null ? (uint)_ringBuffer.Count : 0;
+    public IReadOnlyDictionary<MaterialTypeId, PointCloudDataEntry> Data => _pointsByMaterial;
 
-    // --- IPointCloudData ---
-    public uint TotalPointCount => _totalPointCount;
-    public FastList<PointCloudDispatch> Dispatches => _dispatches;
+    public BufferHandle Buffer => BufferHandle.Null; // Not used directly; the render node accesses the vertex buffer directly.
 
-    public PointCloudData(IContext context, World world)
-    {
-        Context = context;
-        World = world;
-    }
+    public ulong GpuAddress => 0; // Not used directly; the render node accesses the vertex buffer directly.
+
+    public uint Stride => 0;
+
+    public uint Count { private set; get; } = 0;
+
+    public uint PointCount { private set; get; } = 0;
 
     protected override ResultCode OnInitializing()
     {
@@ -60,33 +49,22 @@ internal sealed class PointCloudData : Initializable, IPointCloudData
         _entities.EntityChanged += OnEntityChanged;
         _entities.EntityAdded += OnAddOrRemovedChanged;
         _entities.EntityRemoved += OnAddOrRemovedChanged;
-
-        // Use a ring of buffers (one per swapchain image) to avoid GPU/CPU contention.
-        // While the GPU reads from frame N-1 the CPU writes into frame N.
-        int ringSize = Math.Max((int)Context.GetNumSwapchainImages(), 2);
-        _ringBuffer = new ElementBuffer<PointData>(
-            Context,
-            capacity: 1024,
-            BufferUsageBits.Storage,
-            debugName: Name,
-            isDynamic: true
-        );
         return ResultCode.Ok;
     }
 
     protected override ResultCode OnTearingDown()
     {
+        foreach (var entry in _pointsByMaterial.Values)
+        {
+            entry.Dispose();
+        }
+        _pointsByMaterial.Clear();
         Disposer.DisposeAndRemove(ref _entities);
-        Disposer.DisposeAndRemove(ref _ringBuffer);
         return ResultCode.Ok;
     }
 
     public bool Update()
     {
-        if (_ringBuffer is null)
-        {
-            return false;
-        }
         // Rotate to the next buffer slot so the GPU can keep reading the
         // previous frame's data while we overwrite this one.
 
@@ -95,7 +73,6 @@ internal sealed class PointCloudData : Initializable, IPointCloudData
             return true;
         }
         using var t = _tracer.BeginScope(nameof(Update));
-        //_ringBuffer.Advance();
         Rebuild();
         _lastBufferUpdateTicks = _lastDataUpdateTicks;
         return true;
@@ -107,16 +84,18 @@ internal sealed class PointCloudData : Initializable, IPointCloudData
     /// </summary>
     private void Rebuild()
     {
-        if (_entities is null || _ringBuffer is null)
+        if (_entities is null)
         {
             return;
         }
+        using var t = _tracer.BeginScope(nameof(Rebuild));
+        foreach (var entry in _pointsByMaterial.Values)
+        {
+            entry.Clear();
+        }
+        PointCount = 0;
+        Count = 0;
 
-        _dispatches.Clear();
-        _totalPointCount = 0;
-
-        // First pass: count total points to ensure capacity
-        uint totalPoints = 0;
         foreach (var entity in _entities)
         {
             ref var nodeInfo = ref entity.Get<NodeInfo>();
@@ -125,65 +104,16 @@ internal sealed class PointCloudData : Initializable, IPointCloudData
             ref var pc = ref entity.Get<PointCloudComponent>();
             if (!pc.Valid)
                 continue;
-            totalPoints += (uint)pc.PointCount;
-        }
+            PointCount += (uint)pc.PointCount;
 
-        if (totalPoints == 0)
-        {
-            _totalPointCount = 0;
-            _needRebuilt = false;
-            return;
-        }
-
-        _ringBuffer.EnsureCapacity((int)totalPoints);
-
-        // Second pass: write points and record dispatches into the current ring slot
-        uint offset = 0;
-        _ringBuffer.WriteDynamic(
-            (int)totalPoints,
-            ctx =>
+            if (!_pointsByMaterial.TryGetValue(pc.PointMaterialId, out var entry))
             {
-                foreach (var entity in _entities)
-                {
-                    ref var nodeInfo = ref entity.Get<NodeInfo>();
-                    if (!nodeInfo.Enabled)
-                        continue;
-                    ref var pc = ref entity.Get<PointCloudComponent>();
-                    if (!pc.Valid)
-                        continue;
-
-                    var count = (uint)pc.PointCount;
-
-                    // If not using per-point entity, stamp the entity ID on each point
-                    // The compute shader handles this via push constants; we just
-                    // write the raw points. If UsePerPointEntity is true, the points
-                    // already have their own entityId/entityVer.
-                    ctx.Write(
-                        new ReadOnlySpan<PointData>(pc.Points!.GetInternalArray(), 0, pc.PointCount)
-                    );
-
-                    _dispatches.Add(
-                        new PointCloudDispatch(
-                            BufferOffset: offset,
-                            PointCount: count,
-                            EntityId: pc.Hitable ? (uint)entity.Id : 0u,
-                            EntityVer: pc.Hitable ? entity.Gen : 0u,
-                            TextureIndex: pc.TextureIndex,
-                            SamplerIndex: pc.SamplerIndex,
-                            FixedSize: pc.FixedSize ? 1u : 0u
-                        )
-                    );
-
-                    // Update the component's tracking fields
-                    pc.Index = _dispatches.Count - 1;
-                    pc.BufferOffset = offset;
-
-                    offset += count;
-                }
+                entry = new PointCloudDataEntry(Context, 256, pc.PointMaterialId);
+                _pointsByMaterial[pc.PointMaterialId] = entry;
             }
-        );
-
-        _totalPointCount = offset;
+            entry.AddEntity(entity);
+            ++Count;
+        }
         _needRebuilt = false;
     }
 

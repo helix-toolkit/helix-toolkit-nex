@@ -234,7 +234,7 @@ internal class InstancingMeshCullingExample : IDisposable
     private void CreateRenderPipeline()
     {
         // Setup PBR material pipeline (using simplified lighting/unlit for this demo for clarity).
-        var builder = new MaterialShaderBuilder().ConfigForwardPlus(
+        var builder = new PBRMaterialShaderBuilder().ConfigForwardPlus(
             ForwardPlusLightCulling.Config.Default
         );
 

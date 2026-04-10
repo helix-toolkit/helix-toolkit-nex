@@ -82,7 +82,7 @@ public sealed class WorldDataProvider : IRenderDataProvider, IDisposable
 
     public PBRMaterial? GetMaterial(MaterialTypeId materialType)
     {
-        return ResourceManager.Materials.GetMaterial(materialType);
+        return ResourceManager.PBRMaterialManager.GetMaterial(materialType);
     }
 
     public Geometry? GetGeometry(uint geometryId)

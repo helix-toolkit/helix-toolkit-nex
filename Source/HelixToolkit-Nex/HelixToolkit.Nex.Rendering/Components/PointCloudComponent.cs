@@ -9,34 +9,25 @@ namespace HelixToolkit.Nex.Rendering.Components;
 /// </para>
 /// </summary>
 public struct PointCloudComponent(
-    FastList<PointData>? points = null,
+    Geometry geometry,
+    Color4 color,
     bool hitable = true,
-    bool usePerPointEntity = false,
     uint textureIndex = 0,
     uint samplerIndex = 0,
-    bool fixedSize = false
-) : IIndexable
+    bool fixedSize = false,
+    MaterialTypeId pointMaterialId = default,
+    float size = 1.0f
+)
 {
     /// <summary>
-    /// The CPU-side point data array. Each element maps to a <c>PointData</c> GPU struct.
-    /// Set this and call <see cref="MarkDirty"/> (or re-assign the component) to trigger
-    /// an upload.
+    /// Gets points to be rendered as a point cloud. The geometry must contain a vertex
     /// </summary>
-    public FastList<PointData>? Points = points;
+    public readonly Geometry Geometry => geometry;
 
     /// <summary>
-    /// Number of valid points in the <see cref="Points"/> array.
-    /// Must be &lt;= <c>Points.Length</c>.
+    /// Number of valid points in the <see cref="Geometry.Vertices"/>.
     /// </summary>
-    public readonly int PointCount => Points?.Count ?? 0;
-
-    /// <summary>
-    /// When <see langword="true"/>, each point's <c>EntityId</c> / <c>EntityVer</c> fields
-    /// in <see cref="PointData"/> are used for picking. When <see langword="false"/> (default),
-    /// the owning entity's ID and version are stamped on all points, and the point index is
-    /// encoded as the instance index for per-point identification.
-    /// </summary>
-    public bool UsePerPointEntity = usePerPointEntity;
+    public readonly int PointCount => geometry.Vertices.Count;
 
     /// <summary>
     /// Whether the object can be selected via GPU picking.
@@ -51,21 +42,30 @@ public struct PointCloudComponent(
     public bool FixedSize = fixedSize;
 
     /// <summary>
-    /// Gets or sets the index assigned by the point data provider.
-    /// Used internally to track position in the collected buffer.
+    /// The point material type ID that determines which fragment shader pipeline is used
+    /// for rendering this point cloud. Defaults to <see cref="PointMaterialId.Default"/>
+    /// (circle SDF). Register custom materials via <see cref="PointMaterialRegistry"/>.
     /// </summary>
-    public int Index { internal set; get; } = -1;
+    public MaterialTypeId PointMaterialId = pointMaterialId;
 
     /// <summary>
-    /// The offset (in number of points) into the combined GPU point buffer where this
-    /// entity's points begin. Set by the data provider during collection.
+    /// Represents the size for each point in the cloud. The interpretation of this value depends on the <see cref="FixedSize"/> field:
     /// </summary>
-    public uint BufferOffset { internal set; get; } = 0;
+    /// <remarks>The value of this field determines the dimensions or scale of the object.  Ensure that the
+    /// value is non-negative to avoid unexpected behavior.</remarks>
+    public float Size = size;
+
+    /// <summary>
+    /// Represents the color of all points in the cloud if <see cref="Geometry.VertexColors"/> is not provided.
+    /// </summary>
+    /// <remarks>The <see cref="Color4"/> structure typically includes RGBA (red, green, blue, alpha)
+    /// components. This field can be used to define or modify the color of the object.</remarks>
+    public Color4 Color = color;
 
     /// <summary>
     /// Gets a value indicating whether this component has valid point data.
     /// </summary>
-    public readonly bool Valid => Points is not null && PointCount > 0;
+    public readonly bool Valid => PointCount > 0;
 
     /// <summary>
     /// Gets or sets the index of the texture used in the rendering process.
@@ -79,6 +79,6 @@ public struct PointCloudComponent(
 
     public override readonly string ToString()
     {
-        return $"PointCloud: Count={PointCount}; Hitable={Hitable}; UsePerPointEntity={UsePerPointEntity}; FixedSize={FixedSize}";
+        return $"PointCloud: Count={PointCount}; Hitable={Hitable}; FixedSize={FixedSize}; MaterialId={PointMaterialId.Id}";
     }
 }

@@ -86,7 +86,7 @@ public sealed class PBRPropertyData : Initializable, IPBRPropertyData
             return true;
         }
         using var t = _tracer.BeginScope(nameof(Update));
-        var objects = _resourceManager.MaterialProperties.Objects;
+        var objects = _resourceManager.PBRPropertyManager.Objects;
         if (_needFullUpdate)
         {
             _buffer.WriteDynamic(
@@ -114,7 +114,7 @@ public sealed class PBRPropertyData : Initializable, IPBRPropertyData
                             {
                                 if (
                                     !ctx.WriteElement(
-                                        ref _resourceManager.MaterialProperties.At((int)index),
+                                        ref _resourceManager.PBRPropertyManager.At((int)index),
                                         (int)index
                                     )
                                 )

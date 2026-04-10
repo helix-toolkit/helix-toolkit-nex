@@ -24,7 +24,7 @@ public static class MaterialTypeExtensions
     /// <exception cref="ArgumentException">Thrown if the material type is not registered.</exception>
     public static void SetMaterialType(this RenderPipelineDesc desc, string materialTypeName)
     {
-        var typeId = MaterialTypeRegistry.GetTypeId(materialTypeName);
+        var typeId = PBRMaterialTypeRegistry.GetTypeId(materialTypeName);
         if (typeId == null)
         {
             throw new ArgumentException(

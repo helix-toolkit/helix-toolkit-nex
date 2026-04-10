@@ -6,6 +6,7 @@ using HelixToolkit.Nex.Engine;
 using HelixToolkit.Nex.Engine.CameraControllers;
 using HelixToolkit.Nex.Engine.Cameras;
 using HelixToolkit.Nex.Engine.Components;
+using HelixToolkit.Nex.Geometries;
 using HelixToolkit.Nex.Graphics;
 using HelixToolkit.Nex.ImGui;
 using HelixToolkit.Nex.Maths;
@@ -68,7 +69,7 @@ internal sealed class PointsDemo : IDisposable
     private readonly BorderHighlightPostEffect _borderHighlight = new();
     private readonly ShowFPS _showFPS = new();
 
-    private PointRenderNode? _pointRenderNode;
+    private PointCullNode? _pointCullNode;
 
     public ImGuiRenderer? ImGui => _imGuiRenderer;
 
@@ -94,11 +95,7 @@ internal sealed class PointsDemo : IDisposable
         RenderSettings.LogFPSInDebug = true;
 
         // Build the engine with the point rendering node
-        _pointRenderNode = new PointRenderNode
-        {
-            MaxPoints = 500_000,
-            MinScreenSize = _minScreenSize,
-        };
+        _pointCullNode = new PointCullNode { MaxPoints = 500_000, MinScreenSize = _minScreenSize };
 
         _engine = EngineBuilder
             .Create(_context)
@@ -107,7 +104,8 @@ internal sealed class PointsDemo : IDisposable
             .AddNode(new FrustumCullNode())
             .AddNode(new ForwardPlusLightCullingNode())
             .AddNode(new ForwardPlusOpaqueNode())
-            .AddNode(_pointRenderNode)
+            .AddNode(_pointCullNode)
+            .AddNode(new PointRenderNode())
             .WithPostEffects(effects =>
             {
                 effects.AddEffect(_smaa);
@@ -115,7 +113,6 @@ internal sealed class PointsDemo : IDisposable
                 effects.AddEffect(_borderHighlight);
                 effects.AddEffect(_showFPS);
             })
-            .CreatePBRMaterials()
             .Build();
 
         _renderContext = _engine.CreateRenderContext();
@@ -190,37 +187,46 @@ internal sealed class PointsDemo : IDisposable
         );
     }
 
-    private void AddPointCloud(string name, FastList<PointData> points, Color4 tint)
+    private void AddPointCloud(string name, Geometry geo, Color4 tint)
     {
         var world = _worldDataProvider!.World;
         var node = new Node(world) { Name = name };
         _root!.AddChild(node);
 
         // Apply tint to all points
-        for (int i = 0; i < points.Count; i++)
+        for (int i = 0; i < geo.VertexColors.Count; i++)
         {
-            points.At(i).Color = new Vector4(
-                points[i].Color.X * tint.Red,
-                points[i].Color.Y * tint.Green,
-                points[i].Color.Z * tint.Blue,
-                points[i].Color.W * tint.Alpha
+            geo.VertexColors[i] = new Vector4(
+                geo.VertexColors[i].X * tint.Red,
+                geo.VertexColors[i].Y * tint.Green,
+                geo.VertexColors[i].Z * tint.Blue,
+                geo.VertexColors[i].W * tint.Alpha
             );
         }
 
         node.Entity.Set(
-            new PointCloudComponent(points: points, hitable: true, fixedSize: _fixedSize)
+            new PointCloudComponent(
+                geo,
+                Color.White,
+                hitable: true,
+                fixedSize: _fixedSize,
+                size: _globalPointSize
+            )
         );
 
-        _pointClouds.Add(new PointCloudEntry(name, node, points, tint));
+        _pointClouds.Add(new PointCloudEntry(name, node, geo, tint));
+        _engine!.ResourceManager.Geometries.Add(geo, out _);
     }
 
     // ------------------------------------------------------------------
     // Point generators
     // ------------------------------------------------------------------
 
-    private FastList<PointData> GenerateSphere(int count, float radius, Vector3 center)
+    private Geometry GenerateSphere(int count, float radius, Vector3 center)
     {
-        var pts = new FastList<PointData>(count);
+        var geo = new Geometry();
+        geo.Vertices.Capacity = count;
+        geo.VertexColors.Capacity = count;
         var rng = new Random(42);
         for (int i = 0; i < count; i++)
         {
@@ -237,48 +243,34 @@ internal sealed class PointsDemo : IDisposable
 
             p = Vector3.Normalize(p) * radius;
             float brightness = 0.5f + 0.5f * (p.Y / radius); // gradient by height
-            pts.Add(
-                new PointData
-                {
-                    Position = center + p,
-                    Size = _globalPointSize,
-                    Color = new Vector4(brightness, brightness, 1f, 1f),
-                }
-            );
+            geo.Vertices.Add((center + p).ToVector4(1));
+            geo.VertexColors.Add(new Vector4(brightness, brightness, 1f, 1f));
         }
-        return pts;
+        return geo;
     }
 
-    private FastList<PointData> GenerateHelix(
-        int count,
-        float radius,
-        float height,
-        int turns,
-        Vector3 center
-    )
+    private Geometry GenerateHelix(int count, float radius, float height, int turns, Vector3 center)
     {
-        var pts = new FastList<PointData>(count);
+        var geo = new Geometry();
+        geo.Vertices.Capacity = count;
+        geo.VertexColors.Capacity = count;
         for (int i = 0; i < count; i++)
         {
             float t = (float)i / count;
             float angle = t * turns * MathF.PI * 2f;
             float y = t * height - height * 0.5f;
             float r = radius * (0.5f + 0.5f * MathF.Sin(t * MathF.PI)); // taper at ends
-            pts.Add(
-                new PointData
-                {
-                    Position = center + new Vector3(MathF.Cos(angle) * r, y, MathF.Sin(angle) * r),
-                    Size = _globalPointSize,
-                    Color = new Vector4(t, 0.5f, 1f - t, 1f),
-                }
+            geo.Vertices.Add(
+                (center + new Vector3(MathF.Cos(angle) * r, y, MathF.Sin(angle) * r)).ToVector4(1)
             );
+            geo.VertexColors.Add(new Vector4(t, 0.5f, 1f - t, 1f));
         }
-        return pts;
+        return geo;
     }
 
-    private FastList<PointData> GenerateRandomCluster(int count, float extent, Vector3 center)
+    private Geometry GenerateRandomCluster(int count, float extent, Vector3 center)
     {
-        var pts = new FastList<PointData>(count);
+        var geo = new Geometry();
         var rng = new Random(123);
         for (int i = 0; i < count; i++)
         {
@@ -287,32 +279,27 @@ internal sealed class PointsDemo : IDisposable
                 (float)(rng.NextDouble() + rng.NextDouble() + rng.NextDouble()) / 3f * 2f - 1f;
             var p = new Vector3(Gauss(), Gauss(), Gauss()) * extent;
             float d = p.Length() / extent;
-            pts.Add(
-                new PointData
-                {
-                    Position = center + p,
-                    Size = _globalPointSize * (0.5f + (float)rng.NextDouble()),
-                    Color = new Vector4(0.5f + d * 0.5f, 1f - d, 0.3f, 1f),
-                }
-            );
+            geo.Vertices.Add((center + p).ToVector4(1));
+            geo.VertexColors.Add(new Vector4(0.5f + d * 0.5f, 1f - d, 0.3f, 1f));
         }
-        return pts;
+        return geo;
     }
 
-    private FastList<PointData> GenerateWave(
+    private Geometry GenerateWave(
         int countSqrt,
         float width,
         float depth,
         float time,
         Vector3 center,
-        FastList<PointData>? cache = null
+        Geometry? cache = null
     )
     {
         int count = countSqrt;
         // Generate as a grid, sqrt(count) x sqrt(count)
         int side = (int)MathF.Sqrt(count);
-        var pts = cache ?? new FastList<PointData>(side * side);
-        pts.Resize(side * side);
+        var geo = cache ?? new Geometry(isDynamic: true);
+        geo.Vertices.Resize(side * side);
+        geo.VertexColors.Resize(side * side);
         for (int iz = 0; iz < side; iz++)
         {
             for (int ix = 0; ix < side; ix++)
@@ -324,15 +311,14 @@ internal sealed class PointsDemo : IDisposable
                 float dist = MathF.Sqrt(x * x + z * z);
                 float y = MathF.Sin(dist * 2f - time * 3f) * 1.5f * MathF.Exp(-dist * 0.15f);
                 float hue = (MathF.Sin(dist * 0.5f - time) + 1f) * 0.5f;
-                pts[iz * side + ix] = new PointData
-                {
-                    Position = center + new Vector3(x, y, z),
-                    Size = _globalPointSize,
-                    Color = new Vector4(hue, 0.6f + 0.4f * (1f - hue), 1f - hue * 0.5f, 1f),
-                };
+                geo.Vertices[iz * side + ix] = ((center + new Vector3(x, y, z)).ToVector4(1));
+                geo.VertexColors[iz * side + ix] = (
+                    new Vector4(hue, 0.6f + 0.4f * (1f - hue), 1f - hue * 0.5f, 1f)
+                );
             }
         }
-        return pts;
+        geo.MarkDirty(GeometryBufferType.Vertex | GeometryBufferType.VertexColor);
+        return geo;
     }
 
     // ------------------------------------------------------------------
@@ -359,8 +345,8 @@ internal sealed class PointsDemo : IDisposable
         UpdateWave();
 
         // Update min screen size on the render node
-        if (_pointRenderNode is not null)
-            _pointRenderNode.MinScreenSize = _minScreenSize;
+        if (_pointCullNode is not null)
+            _pointCullNode.MinScreenSize = _minScreenSize;
 
         // Render context setup
         if (!_viewportSize.IsEmpty)
@@ -403,7 +389,7 @@ internal sealed class PointsDemo : IDisposable
             return;
         var entry = _pointClouds[3];
         var newPts = GenerateWave(
-            entry.Points.Count,
+            entry.Points.Vertices.Count,
             10f,
             10f,
             _animTime,
@@ -411,21 +397,18 @@ internal sealed class PointsDemo : IDisposable
             entry.Points
         );
         // Apply tint
-        for (int i = 0; i < newPts.Count; i++)
+        for (int i = 0; i < newPts.Vertices.Count; i++)
         {
-            newPts.At(i).Color = new Vector4(
-                newPts[i].Color.X * entry.Tint.Red,
-                newPts[i].Color.Y * entry.Tint.Green,
-                newPts[i].Color.Z * entry.Tint.Blue,
-                newPts[i].Color.W * entry.Tint.Alpha
+            newPts.VertexColors[i] = new Vector4(
+                newPts.VertexColors[i].X * entry.Tint.Red,
+                newPts.VertexColors[i].Y * entry.Tint.Green,
+                newPts.VertexColors[i].Z * entry.Tint.Blue,
+                newPts.VertexColors[i].W * entry.Tint.Alpha
             );
-            newPts.At(i).Size = _globalPointSize;
         }
         entry.Points = newPts;
         // Update the ECS component
-        entry.Node.Entity.Set(
-            new PointCloudComponent(points: newPts, hitable: true, fixedSize: _fixedSize)
-        );
+        entry.Node.Entity.NotifyComponentChanged<PointCloudComponent>();
     }
 
     // ------------------------------------------------------------------
@@ -645,7 +628,7 @@ internal sealed class PointsDemo : IDisposable
 
                 if (open)
                 {
-                    Gui.Text($"Points: {entry.Points.Count}");
+                    Gui.Text($"Points: {entry.Points.Vertices.Count}");
                     var tint = new Vector3(entry.Tint.Red, entry.Tint.Green, entry.Tint.Blue);
                     if (Gui.ColorEdit3("Tint", ref tint))
                     {
@@ -688,15 +671,15 @@ internal sealed class PointsDemo : IDisposable
             int totalPoints = 0;
             foreach (var pc in _pointClouds)
                 if (pc.Node.Enabled)
-                    totalPoints += pc.Points.Count;
+                    totalPoints += pc.Points.Vertices.Count;
             Gui.Text($"Total active points: {totalPoints:N0}");
             Gui.Text($"Point cloud entities: {_pointClouds.Count}");
 
             var data = _worldDataProvider?.PointCloudData;
             if (data is not null)
             {
-                Gui.Text($"GPU buffer points: {data.TotalPointCount:N0}");
-                Gui.Text($"Dispatches: {data.Dispatches.Count}");
+                Gui.Text($"GPU buffer points: {data.PointCount:N0}");
+                Gui.Text($"Entity count: {data.Count}");
             }
         }
 
@@ -707,12 +690,12 @@ internal sealed class PointsDemo : IDisposable
     {
         foreach (var entry in _pointClouds)
         {
-            for (int i = 0; i < entry.Points.Count; i++)
-                entry.Points.At(i).Size = _globalPointSize;
-
-            entry.Node.Entity.Set(
-                new PointCloudComponent(points: entry.Points, hitable: true, fixedSize: _fixedSize)
-            );
+            entry.Node.Entity.Update<PointCloudComponent>(x =>
+            {
+                x.FixedSize = _fixedSize;
+                x.Size = _globalPointSize;
+                return x;
+            });
         }
     }
 
@@ -720,9 +703,9 @@ internal sealed class PointsDemo : IDisposable
     {
         // Regenerate original colors and apply new tint
         // For simplicity, just modulate existing alpha-premultiplied colors
-        for (int i = 0; i < entry.Points.Count; i++)
+        for (int i = 0; i < entry.Points.VertexColors.Count; i++)
         {
-            ref var c = ref entry.Points.At(i).Color;
+            ref var c = ref entry.Points.VertexColors.At(i);
             // Normalize to "white" then re-tint (approximate)
             float lum = MathF.Max(0.01f, MathF.Max(c.X, MathF.Max(c.Y, c.Z)));
             c = new Vector4(
@@ -732,9 +715,7 @@ internal sealed class PointsDemo : IDisposable
                 c.W
             );
         }
-        entry.Node.Entity.Set(
-            new PointCloudComponent(points: entry.Points, hitable: true, fixedSize: _fixedSize)
-        );
+        entry.Points.MarkDirty(GeometryBufferType.VertexColor);
     }
 
     // ------------------------------------------------------------------
@@ -782,10 +763,10 @@ internal sealed class PointCloudEntry
 {
     public string Name { get; }
     public Node Node { get; }
-    public FastList<PointData> Points { get; set; }
+    public Geometry Points { get; set; }
     public Color4 Tint { get; set; }
 
-    public PointCloudEntry(string name, Node node, FastList<PointData> points, Color4 tint)
+    public PointCloudEntry(string name, Node node, Geometry points, Color4 tint)
     {
         Name = name;
         Node = node;

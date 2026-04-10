@@ -17,24 +17,24 @@ namespace HelixToolkit.Nex.Material;
 /// <item>Thread-safe operations</item>
 /// </list>
 /// </remarks>
-public sealed class MaterialPropertyManager : IMaterialPropertyManager
+public sealed class PBRMaterialPropertyManager : IPBRMaterialPropertyManager
 {
-    private static PBRProperties _defaultProperties = MaterialProperties.DefaultProperties;
+    private static PBRProperties _defaultProperties = PBRMaterialProperties.DefaultProperties;
     private readonly Pool<MaterialPropertyResource, PBRProperties> _pool = new();
     private readonly object _lock = new();
 
     public int Count => _pool.Count;
 
-    public MaterialProperties Create(string materialName)
+    public PBRMaterialProperties Create(string materialName)
     {
         return Create(materialName, ref _defaultProperties);
     }
 
-    public MaterialProperties Create(string materialName, ref PBRProperties properties)
+    public PBRMaterialProperties Create(string materialName, ref PBRProperties properties)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentNullException.ThrowIfNullOrEmpty(materialName);
-        if (!MaterialTypeRegistry.TryGetByName(materialName, out var registration))
+        if (!PBRMaterialTypeRegistry.TryGetByName(materialName, out var registration))
         {
             throw new ArgumentException(
                 $"Material type '{materialName}' is not registered.",
@@ -43,19 +43,19 @@ public sealed class MaterialPropertyManager : IMaterialPropertyManager
         }
         lock (_lock)
         {
-            return new MaterialProperties(registration!.TypeId, ref properties, _pool);
+            return new PBRMaterialProperties(registration!.TypeId, ref properties, _pool);
         }
     }
 
-    public MaterialProperties Create(MaterialTypeId materialTypeId)
+    public PBRMaterialProperties Create(MaterialTypeId materialTypeId)
     {
         return Create(materialTypeId, ref _defaultProperties);
     }
 
-    public MaterialProperties Create(MaterialTypeId materialTypeId, ref PBRProperties properties)
+    public PBRMaterialProperties Create(MaterialTypeId materialTypeId, ref PBRProperties properties)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        if (!MaterialTypeRegistry.HasTypeId(materialTypeId))
+        if (!PBRMaterialTypeRegistry.HasTypeId(materialTypeId))
         {
             throw new ArgumentException(
                 $"Material type ID '{materialTypeId.Id}' is not registered.",
@@ -64,7 +64,7 @@ public sealed class MaterialPropertyManager : IMaterialPropertyManager
         }
         lock (_lock)
         {
-            return new MaterialProperties(materialTypeId, ref properties, _pool);
+            return new PBRMaterialProperties(materialTypeId, ref properties, _pool);
         }
     }
 

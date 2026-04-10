@@ -1,14 +1,6 @@
 /// Shared GPU structs for the point rendering pipeline.
 /// The @code_gen annotation generates matching C# structs via the source generator.
 
-/// Per-point input data uploaded by the CPU.
-@code_gen
-struct PointData {
-    vec3  position;       // World-space position
-    float size;           // World-space diameter (or screen-space if flag set)
-    vec4  color;          // RGBA color
-};
-
 /// Per-visible-point data written by the compute shader and read by the vertex shader.
 @code_gen
 struct PointDrawData {
@@ -32,8 +24,6 @@ struct PointDrawIndirectArgs {
 /// Push constants for the point expansion compute shader.
 @code_gen
 struct PointExpandArgs {
-    uint64_t drawDataAddress;        // GPU address of PointDrawData output buffer
-    uint64_t indirectArgsAddress;    // GPU address of PointDrawIndirectArgs buffer
     mat4     viewProjection;         // View * Projection matrix
     vec3     cameraPosition;         // Camera world-space position
     float    minScreenSize;          // Minimum screen size in pixels to render
@@ -45,16 +35,22 @@ struct PointExpandArgs {
 
 @code_gen
 struct PointExpandPC {
-    uint64_t argsAddress;       // GPU address of PointExpandArgs buffer
-    uint64_t pointDataAddress;       // GPU address of PointData input buffer
+    uint64_t argsAddress;            // GPU address of PointExpandArgs buffer
+    uint64_t pointPosAddress;        // GPU address of point position input buffer
+    uint64_t pointColorAddress;      // GPU address of point color input buffer
+    uint64_t drawDataAddress;        // GPU address of PointDrawData output buffer
+    uint64_t indirectArgsAddress;    // GPU address of PointDrawIndirectArgs buffer
     uint     pointCount;             // Total number of input points
+    uint     fixedSize;              // Whether point size is fixed in screen space (ignore perspective and use size as pixels)
     uint     entityId;               // Entity ID for all points in this dispatch
     uint     entityVer;              // Entity version for all points in this dispatch
-    uint     fixedSize;              // Whether point size is fixed in screen space (ignore perspective and use size as pixels)
     uint     textureIndex;           // Bindless texture index (0 = no texture)
     uint     samplerIndex;           // Bindless sampler index
+    vec4     color;                  // Uniform color for all points (overridden by per-point color if pointColorAddress is non-zero)
+    float    size;                   // Uniform size for all points (in world units if fixedSize=0, or pixels if fixedSize=1)
     uint     _padding0;
     uint     _padding1;
+    uint     _padding2;
 };
 
 /// Push constants for the point render vertex/fragment shaders.
@@ -62,8 +58,4 @@ struct PointExpandPC {
 struct PointRenderPC {
     uint64_t drawDataAddress;        // GPU address of PointDrawData buffer
     uint64_t fpConstAddress;         // GPU address of FPConstants buffer (for lighting shaders)
-    uint     pointShadingMode;       // Specialization: 0 = circle SDF, 1 = textured, etc.
-    uint     _padding0;            
-    uint     _padding1;
-    uint     _padding2;
 };

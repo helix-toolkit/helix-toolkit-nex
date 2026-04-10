@@ -24,12 +24,12 @@ public class ForwardPlusTransparentNode : RenderNode
     public bool UseLightCulling { set; get; } = true;
 
     /// <summary>
-    /// When <see langword="true"/>, transparent geometry is rendered using Weighted Blended
+    /// When <see langword="true"/> (default), transparent geometry is rendered using Weighted Blended
     /// Order-Independent Transparency (McGuire &amp; Bavoil 2013). A <see cref="WBOITCompositeNode"/>
     /// must be present in the render graph to resolve the result.
-    /// When <see langword="false"/> (default), the classic non-sorted alpha-blend path is used.
+    /// When <see langword="false"/> the classic non-sorted alpha-blend path is used.
     /// </summary>
-    public bool UseWBOIT { set; get; } = false;
+    public bool UseWBOIT { set; get; } = true;
 
     protected override bool BeginRender(in RenderResources res)
     {
@@ -153,7 +153,8 @@ public class ForwardPlusTransparentNode : RenderNode
                 res.Deps.Buffers[1] = res.Buffers[SystemBufferNames.BufferForwardPlusConstants];
                 res.Deps.Buffers[2] = res.Buffers[SystemBufferNames.BufferLightGrid];
                 res.Deps.Buffers[3] = res.Buffers[SystemBufferNames.BufferLightIndex];
-            }
+            },
+            after: [nameof(ForwardPlusOpaqueNode), nameof(PointRenderNode)]
         );
     }
 
@@ -234,7 +235,8 @@ public class ForwardPlusTransparentNode : RenderNode
                 res.Deps.Buffers[1] = res.Buffers[SystemBufferNames.BufferForwardPlusConstants];
                 res.Deps.Buffers[2] = res.Buffers[SystemBufferNames.BufferLightGrid];
                 res.Deps.Buffers[3] = res.Buffers[SystemBufferNames.BufferLightIndex];
-            }
+            },
+            after: [nameof(ForwardPlusOpaqueNode), nameof(PointRenderNode)]
         );
     }
 }

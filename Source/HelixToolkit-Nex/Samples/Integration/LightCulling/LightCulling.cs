@@ -59,11 +59,7 @@ internal class LightCullingTest(IContext context, bool largeScene = true) : IDis
         // --- Build engine via EngineBuilder ---
         _engine = EngineBuilder
             .Create(_context)
-            .AddNode(new PrepareNode())
-            .AddNode(new DepthPassNode())
-            .AddNode(new FrustumCullNode())
-            .AddNode(new ForwardPlusOpaqueNode() { UseLightCulling = true })
-            .AddNode(new ForwardPlusLightCullingNode())
+            .WithDefaultNodes()
             .WithPostEffects(effects =>
             {
                 effects.AddEffect(new Smaa()); // 1. AA first – clean geometry edges on raw scene colour
@@ -74,7 +70,6 @@ internal class LightCullingTest(IContext context, bool largeScene = true) : IDis
                 effects.AddEffect(new ShowFPS());
             })
             .AddRenderToFinal()
-            .CreatePBRMaterials()
             .Build();
 
         // --- Per-viewport state and scene data ---

@@ -73,7 +73,7 @@ internal class DepthPrepassTest(IContext context) : IDisposable
     private void InitializeScene()
     {
         var geometryManager = _resourceManager!.Geometries;
-        var materialPropertyPool = _resourceManager!.MaterialProperties;
+        var materialPropertyPool = _resourceManager!.PBRPropertyManager;
         var meshbuilder = new MeshBuilder(true, true, true);
         meshbuilder.AddSphere(Vector3.Zero);
         var sphere = meshbuilder.ToMesh().ToGeometry();

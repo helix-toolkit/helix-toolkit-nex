@@ -6,7 +6,9 @@ namespace HelixToolkit.Nex.Graphics;
 /// </summary>
 public sealed class AsyncUploadHandle
 {
-    private readonly TaskCompletionSource<ResultCode> _tcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly TaskCompletionSource<ResultCode> _tcs = new(
+        TaskCreationOptions.RunContinuationsAsynchronously
+    );
     private volatile bool _completed;
 
     /// <summary>
@@ -40,7 +42,7 @@ public sealed class AsyncUploadHandle
         _tcs.TrySetResult(result);
     }
 
-    private static AsyncUploadHandle CreateCompleted(ResultCode result)
+    public static AsyncUploadHandle CreateCompleted(ResultCode result)
     {
         var handle = new AsyncUploadHandle();
         handle.Complete(result);

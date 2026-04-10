@@ -28,36 +28,27 @@ public sealed class ResourceManager : Initializable, IResourceManager
 {
     private readonly FastList<IRenderData> _renderDatas = [];
     public IContext Context { get; }
-    public IMaterialManager Materials { get; }
+    public IPBRMaterialManager PBRMaterialManager { get; }
 
-    /// <summary>
-    /// Gets the geometry pool for managing geometry resources.
-    /// </summary>
+    /// <inheritdoc />
     public IGeometryManager Geometries { get; }
 
-    /// <summary>
-    /// Gets the material pool for managing material resources.
-    /// </summary>
-    public IMaterialPropertyManager MaterialProperties { get; }
+    /// <inheritdoc />
+    public IPBRMaterialPropertyManager PBRPropertyManager { get; }
 
-    /// <summary>
-    /// Gets the repository used to manage and retrieve shader resources.
-    /// </summary>
+    /// <inheritdoc />
+    public IPointMaterialManager PointMaterialManager { get; }
+
+    /// <inheritdoc />>
     public IShaderRepository ShaderRepository { get; }
 
-    /// <summary>
-    /// Gets the global index data buffer associated with the static mesh.
-    /// </summary>
+    /// <inheritdoc />
     public IStaticMeshIndexData StaticMeshIndexData { get; }
 
-    /// <summary>
-    /// Gets the PBR property buffer data.
-    /// </summary>
+    /// <inheritdoc />
     public IPBRPropertyData PBRPropertyData { get; }
 
-    /// <summary>
-    /// Gets the mesh info data buffer.
-    /// </summary>
+    /// <inheritdoc />
     public IRenderData MeshInfoData { get; }
 
     public override string Name => nameof(ResourceManager);
@@ -65,14 +56,17 @@ public sealed class ResourceManager : Initializable, IResourceManager
     public ResourceManager(IServiceProvider services)
     {
         Context = services.GetRequiredService<IContext>();
-        MaterialProperties =
-            services.GetService<IMaterialPropertyManager>() ?? new MaterialPropertyManager();
-        Materials =
-            services.GetService<IMaterialManager>()
-            ?? new MaterialManager(Context, MaterialProperties);
+        PBRPropertyManager =
+            services.GetService<IPBRMaterialPropertyManager>() ?? new PBRMaterialPropertyManager();
+        PBRMaterialManager =
+            services.GetService<IPBRMaterialManager>()
+            ?? new PBRMaterialManager(Context, PBRPropertyManager);
         Geometries = services.GetService<IGeometryManager>() ?? new GeometryManager(Context);
         ShaderRepository =
             services.GetService<IShaderRepository>() ?? new ShaderRepository(Context);
+        PointMaterialManager =
+            services.GetService<IPointMaterialManager>()
+            ?? new PointMaterialManager(Context, ShaderRepository);
         StaticMeshIndexData = new StaticMeshIndexData(this);
         PBRPropertyData = new PBRPropertyData(this);
         MeshInfoData = new MeshInfoData(this);
@@ -89,8 +83,8 @@ public sealed class ResourceManager : Initializable, IResourceManager
         return new ResourceStatistics
         {
             GeometryCount = Geometries.Count,
-            MaterialCount = Materials.Count,
-            MaterialPropertyCount = MaterialProperties.Count,
+            MaterialCount = PBRMaterialManager.Count,
+            MaterialPropertyCount = PBRPropertyManager.Count,
             ShaderCount = ShaderRepository.Count,
             DirtyGeometryCount = Geometries
                 .GetAll()
@@ -118,8 +112,8 @@ public sealed class ResourceManager : Initializable, IResourceManager
             renderData.Dispose();
         }
         Geometries.Clear();
-        MaterialProperties.Clear();
-        Materials.Clear();
+        PBRPropertyManager.Clear();
+        PBRMaterialManager.Clear();
         return ResultCode.Ok;
     }
 
@@ -130,7 +124,7 @@ public sealed class ResourceManager : Initializable, IResourceManager
         {
             if (geometry.BufferDirty != GeometryBufferType.None)
             {
-                geometry.UpdateBuffersAsync(Context);
+                geometry.UpdateBuffers(Context);
             }
             geometry.TryCompletePendingBufferUpdate();
         }
