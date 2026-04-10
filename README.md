@@ -6,7 +6,7 @@
 
 HelixToolkit Nex is the experimental graphics engine from HelixToolkit. It offers a unified graphics interface designed to support multiple backend implementations, with an initial focus on Vulkan.
 
-The graphics interface and Vulkan backend are largely inspired by [LightWeightVk](https://github.com/corporateshark/lightweightvk).
+The graphics interface and Vulkan backend are inspired by [LightWeightVk](https://github.com/corporateshark/lightweightvk).
 
 Currently in development.
 
@@ -30,12 +30,15 @@ Currently in development.
     - Wireframe rendering. (Done)
     - Tone mapping post-processing effect. (Done)
   - GPU Object level picking. (Done)
+  - Point Cloud rendering. (In Progress)
 
 ## Rendering Samples
 
 ![Image](Source/HelixToolkit-Nex/Samples/Integration/LightCulling/Screenshots/LargeScene.gif)
 
 ![Image](Source/HelixToolkit-Nex/Samples/Integration/ImGui/Screenshots/Sample.jpg)
+
+![Image](Source/HelixToolkit-Nex/Samples/Integration/Points/Screenshots/Points.gif)
 
 ## Contributing
 
