@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.Collections.Concurrent;
 using Vortice.Vulkan;
 
@@ -58,21 +59,72 @@ internal sealed class VulkanTransferQueue : IDisposable
         public bool InUse;
     }
 
-    private abstract record UploadRequest(AsyncUploadHandle Handle);
+    private abstract class UploadRequest(AsyncUploadHandle handle)
+    {
+        public AsyncUploadHandle Handle { get; } = handle;
 
-    private sealed record BufferUploadRequest(
-        AsyncUploadHandle Handle,
-        BufferHandle DestBuffer,
-        uint Offset,
-        byte[] Data
-    ) : UploadRequest(Handle);
+        public abstract MemoryHandle Pin();
 
-    private sealed record TextureUploadRequest(
-        AsyncUploadHandle Handle,
-        TextureHandle DestTexture,
-        TextureRangeDesc Range,
-        byte[] Data
-    ) : UploadRequest(Handle);
+        public abstract size_t DataSize { get; }
+    }
+
+    private abstract class BufferUploadRequest(
+        AsyncUploadHandle handle,
+        BufferHandle destBuffer,
+        uint offset
+    ) : UploadRequest(handle)
+    {
+        public BufferHandle DestBuffer { get; } = destBuffer;
+        public uint Offset { get; } = offset;
+    }
+
+    private sealed class BufferUploadRequest<T>(
+        AsyncUploadHandle handle,
+        BufferHandle destBuffer,
+        uint offset,
+        T[] data,
+        size_t count
+    ) : BufferUploadRequest(handle, destBuffer, offset)
+        where T : unmanaged
+    {
+        public T[] Data { get; } = data;
+        public size_t Count { get; } = count;
+        public override uint DataSize => Count * NativeHelper.SizeOf<T>();
+
+        public override MemoryHandle Pin()
+        {
+            return Data.Pin();
+        }
+    }
+
+    private abstract class TextureUploadRequest(
+        AsyncUploadHandle handle,
+        TextureHandle destTexture,
+        TextureRangeDesc range
+    ) : UploadRequest(handle)
+    {
+        public TextureHandle DestTexture { get; } = destTexture;
+        public TextureRangeDesc Range { get; } = range;
+    }
+
+    private sealed class TextureUploadRequest<T>(
+        AsyncUploadHandle handle,
+        TextureHandle destTexture,
+        TextureRangeDesc range,
+        T[] data,
+        size_t count
+    ) : TextureUploadRequest(handle, destTexture, range)
+        where T : unmanaged
+    {
+        public T[] Data { get; } = data;
+        public size_t Count { get; } = count;
+        public override uint DataSize => Count * NativeHelper.SizeOf<T>();
+
+        public override MemoryHandle Pin()
+        {
+            return Data.Pin();
+        }
+    }
 
     public VulkanTransferQueue(VulkanContext ctx)
     {
@@ -160,28 +212,20 @@ internal sealed class VulkanTransferQueue : IDisposable
     /// Enqueues an asynchronous buffer upload.
     /// Data is copied immediately so the caller's memory can be freed.
     /// </summary>
-    public AsyncUploadHandle EnqueueBufferUpload(
+    public AsyncUploadHandle EnqueueBufferUpload<T>(
         in BufferHandle destBuffer,
         uint offset,
-        nint data,
-        uint size
+        T[] data,
+        size_t count
     )
+        where T : unmanaged
     {
-        if (size == 0)
+        if (count == 0)
             return AsyncUploadHandle.CompletedOk;
-
-        // Copy data immediately so caller can free their memory
-        var dataCopy = new byte[size];
-        unsafe
-        {
-            fixed (byte* dst = dataCopy)
-            {
-                NativeHelper.MemoryCopy((nint)dst, data, size);
-            }
-        }
-
+        if (data.Length < count)
+            throw new ArgumentException("Data array length is less than count", nameof(data));
         var handle = new AsyncUploadHandle();
-        _uploadQueue.Add(new BufferUploadRequest(handle, destBuffer, offset, dataCopy));
+        _uploadQueue.Add(new BufferUploadRequest<T>(handle, destBuffer, offset, data, count));
         return handle;
     }
 
@@ -189,28 +233,21 @@ internal sealed class VulkanTransferQueue : IDisposable
     /// Enqueues an asynchronous texture upload.
     /// Data is copied immediately so the caller's memory can be freed.
     /// </summary>
-    public AsyncUploadHandle EnqueueTextureUpload(
+    public AsyncUploadHandle EnqueueTextureUpload<T>(
         in TextureHandle destTexture,
         in TextureRangeDesc range,
-        nint data,
-        uint dataSize
+        T[] data,
+        size_t count
     )
+        where T : unmanaged
     {
-        if (dataSize == 0)
+        if (data.Length < count)
+            throw new ArgumentException("Data array length is less than count", nameof(data));
+        if (count == 0)
             return AsyncUploadHandle.CompletedOk;
 
-        // Copy data immediately so caller can free their memory
-        var dataCopy = new byte[dataSize];
-        unsafe
-        {
-            fixed (byte* dst = dataCopy)
-            {
-                NativeHelper.MemoryCopy((nint)dst, data, dataSize);
-            }
-        }
-
         var handle = new AsyncUploadHandle();
-        _uploadQueue.Add(new TextureUploadRequest(handle, destTexture, range, dataCopy));
+        _uploadQueue.Add(new TextureUploadRequest<T>(handle, destTexture, range, data, count));
         return handle;
     }
 
@@ -272,11 +309,11 @@ internal sealed class VulkanTransferQueue : IDisposable
     {
         switch (request)
         {
-            case BufferUploadRequest bufReq:
-                ProcessBufferUpload(bufReq);
+            case BufferUploadRequest req:
+                ProcessBufferUpload(req);
                 break;
-            case TextureUploadRequest texReq:
-                ProcessTextureUpload(texReq);
+            case TextureUploadRequest req:
+                ProcessTextureUpload(req);
                 break;
         }
     }
@@ -300,7 +337,7 @@ internal sealed class VulkanTransferQueue : IDisposable
             return;
         }
 
-        uint dataSize = (uint)request.Data.Length;
+        var dataSize = request.DataSize;
 
         // Ensure staging buffer has enough space
         uint stagingOffset;
@@ -319,10 +356,8 @@ internal sealed class VulkanTransferQueue : IDisposable
         // Copy data to staging buffer
         unsafe
         {
-            fixed (byte* src = request.Data)
-            {
-                stagingBuf.BufferSubData(stagingOffset, dataSize, (nint)src);
-            }
+            using var src = request.Pin();
+            stagingBuf.BufferSubData(stagingOffset, dataSize, (nint)src.Pointer);
         }
 
         // Record transfer command
@@ -443,15 +478,13 @@ internal sealed class VulkanTransferQueue : IDisposable
         // Now do the actual upload using the staging device
         unsafe
         {
-            fixed (byte* src = request.Data)
-            {
-                result = _ctx.Upload(
-                    request.DestTexture,
-                    request.Range,
-                    (nint)src,
-                    (uint)request.Data.Length
-                );
-            }
+            using var src = request.Pin();
+            result = _ctx.Upload(
+                request.DestTexture,
+                request.Range,
+                (nint)src.Pointer,
+                request.DataSize
+            );
         }
 
         request.Handle.Complete(result);

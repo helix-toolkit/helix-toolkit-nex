@@ -6,56 +6,89 @@ internal sealed partial class VulkanContext : Initializable, IContext
 
     public bool HasDedicatedTransferQueue => DeviceQueues.HasDedicatedTransferQueue;
 
-    public AsyncUploadHandle UploadAsync(
+    public AsyncUploadHandle UploadAsync<T>(
         in BufferHandle handle,
         size_t offset,
-        nint data,
-        size_t size
+        T[] data,
+        size_t count
     )
+        where T : unmanaged
     {
-        if (data.IsNull() || size == 0)
+        if (data.Length < count)
         {
             var h = new AsyncUploadHandle();
-            h.Complete(data.IsNull() ? ResultCode.ArgumentNull : ResultCode.Ok);
+            h.Complete(ResultCode.ArgumentOutOfRange);
+            return h;
+        }
+
+        if (count == 0)
+        {
+            var h = new AsyncUploadHandle();
+            h.Complete(ResultCode.Ok);
             return h;
         }
 
         if (_transferQueue is null)
         {
             // Fallback to synchronous upload
-            var result = Upload(handle, offset, data, size);
-            var h = new AsyncUploadHandle();
-            h.Complete(result);
-            return h;
+            unsafe
+            {
+                using var ptr = data.Pin();
+                var result = Upload(
+                    handle,
+                    offset,
+                    (nint)ptr.Pointer,
+                    count * NativeHelper.SizeOf<T>()
+                );
+                var h = new AsyncUploadHandle();
+                h.Complete(result);
+                return h;
+            }
         }
 
-        return _transferQueue.EnqueueBufferUpload(handle, (uint)offset, data, (uint)size);
+        return _transferQueue.EnqueueBufferUpload(handle, offset, data, count);
     }
 
-    public AsyncUploadHandle UploadAsync(
+    public AsyncUploadHandle UploadAsync<T>(
         in TextureHandle handle,
         in TextureRangeDesc range,
-        nint data,
-        size_t dataSize
+        T[] data,
+        size_t count
     )
+        where T : unmanaged
     {
-        if (data.IsNull() || dataSize == 0)
+        if (data.Length < count)
         {
             var h = new AsyncUploadHandle();
-            h.Complete(data.IsNull() ? ResultCode.ArgumentNull : ResultCode.Ok);
+            h.Complete(ResultCode.ArgumentOutOfRange);
+            return h;
+        }
+        if (count == 0)
+        {
+            var h = new AsyncUploadHandle();
+            h.Complete(ResultCode.Ok);
             return h;
         }
 
         if (_transferQueue is null)
         {
             // Fallback to synchronous upload
-            var result = Upload(handle, range, data, dataSize);
-            var h = new AsyncUploadHandle();
-            h.Complete(result);
-            return h;
+            unsafe
+            {
+                using var ptr = data.Pin();
+                var result = Upload(
+                    handle,
+                    range,
+                    (nint)ptr.Pointer,
+                    count * NativeHelper.SizeOf<T>()
+                );
+                var h = new AsyncUploadHandle();
+                h.Complete(result);
+                return h;
+            }
         }
 
-        return _transferQueue.EnqueueTextureUpload(handle, range, data, (uint)dataSize);
+        return _transferQueue.EnqueueTextureUpload(handle, range, data, count);
     }
 
     public ResultCode Upload(in BufferHandle handle, size_t offset, nint data, size_t size)

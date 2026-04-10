@@ -479,16 +479,53 @@ public interface IContext : IInitializable
     /// </remarks>
     /// <param name="handle">The buffer handle to upload data to.</param>
     /// <param name="offset">Byte offset within the buffer.</param>
-    /// <param name="data">Pointer to the source data.</param>
-    /// <param name="size">Size of the data in bytes.</param>
+    /// <param name="data">Data array.</param>
+    /// <param name="count">Data count in data array.</param>
     /// <returns>An <see cref="AsyncUploadHandle"/> that tracks the upload's completion.</returns>
-    AsyncUploadHandle UploadAsync(in BufferHandle handle, size_t offset, nint data, size_t size)
+    AsyncUploadHandle UploadAsync<T>(in BufferHandle handle, size_t offset, T[] data, size_t count)
+        where T : unmanaged
     {
         // Default implementation: synchronous fallback
-        var result = Upload(handle, offset, data, size);
-        var h = new AsyncUploadHandle();
-        h.Complete(result);
-        return h;
+        unsafe
+        {
+            using var ptr = data.Pin();
+            var result = Upload(
+                handle,
+                offset,
+                (nint)ptr.Pointer,
+                count * NativeHelper.SizeOf<T>()
+            );
+            var h = new AsyncUploadHandle();
+            h.Complete(result);
+            return h;
+        }
+    }
+
+    /// <summary>
+    /// Asynchronously uploads data to a buffer on a background thread using the transfer queue.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This method copies the data into an internal staging buffer and schedules a GPU transfer
+    /// command on a dedicated transfer queue (if available) or the graphics queue. The caller's
+    /// data can be freed immediately after this method returns.
+    /// </para>
+    /// <para>
+    /// The returned <see cref="AsyncUploadHandle"/> can be polled via <see cref="AsyncUploadHandle.IsCompleted"/>
+    /// or awaited via <see cref="AsyncUploadHandle.Task"/>.
+    /// </para>
+    /// <para>
+    /// <b>Important:</b> The buffer must not be used for rendering until the upload is complete.
+    /// </para>
+    /// </remarks>
+    /// <param name="handle">The buffer handle to upload data to.</param>
+    /// <param name="offset">Byte offset within the buffer.</param>
+    /// <param name="data">Data in <see cref="FastList{T}"/>.</param>
+    /// <returns>An <see cref="AsyncUploadHandle"/> that tracks the upload's completion.</returns>
+    AsyncUploadHandle UploadAsync<T>(in BufferHandle handle, size_t offset, FastList<T> data)
+        where T : unmanaged
+    {
+        return UploadAsync(handle, offset, data.GetInternalArray(), (size_t)data.Count);
     }
 
     /// <summary>
@@ -510,21 +547,26 @@ public interface IContext : IInitializable
     /// </remarks>
     /// <param name="handle">The texture handle to upload data to.</param>
     /// <param name="range">The texture range to upload to.</param>
-    /// <param name="data">Pointer to the source data formatted as per KTX specification.</param>
-    /// <param name="dataSize">Size of the data in bytes.</param>
+    /// <param name="data">Data array.</param>
+    /// <param name="count">data count in data array</param>
     /// <returns>An <see cref="AsyncUploadHandle"/> that tracks the upload's completion.</returns>
-    AsyncUploadHandle UploadAsync(
+    AsyncUploadHandle UploadAsync<T>(
         in TextureHandle handle,
         in TextureRangeDesc range,
-        nint data,
-        size_t dataSize
+        T[] data,
+        size_t count
     )
+        where T : unmanaged
     {
         // Default implementation: synchronous fallback
-        var result = Upload(handle, range, data, dataSize);
-        var h = new AsyncUploadHandle();
-        h.Complete(result);
-        return h;
+        unsafe
+        {
+            using var ptr = data.Pin();
+            var result = Upload(handle, range, (nint)ptr.Pointer, count * NativeHelper.SizeOf<T>());
+            var h = new AsyncUploadHandle();
+            h.Complete(result);
+            return h;
+        }
     }
 }
 
@@ -977,103 +1019,5 @@ public static class ContextExtensions
     public static SubmitHandle Submit(this IContext context, in ICommandBuffer commandBuffer)
     {
         return context.Submit(commandBuffer, TextureHandle.Null);
-    }
-
-    /// <summary>
-    /// Asynchronously uploads an unmanaged value to a buffer.
-    /// </summary>
-    /// <typeparam name="T">The unmanaged type of the data.</typeparam>
-    /// <param name="context">The graphics context.</param>
-    /// <param name="handle">The buffer handle.</param>
-    /// <param name="offset">Byte offset within the buffer.</param>
-    /// <param name="data">The data to upload.</param>
-    /// <returns>An <see cref="AsyncUploadHandle"/> tracking the upload.</returns>
-    public static AsyncUploadHandle UploadAsync<T>(
-        this IContext context,
-        in BufferHandle handle,
-        size_t offset,
-        in T data
-    )
-        where T : unmanaged
-    {
-        unsafe
-        {
-            var size = (size_t)sizeof(T);
-            fixed (T* ptr = &data)
-            {
-                return context.UploadAsync(handle, offset, (nint)ptr, size);
-            }
-        }
-    }
-
-    /// <summary>
-    /// Asynchronously creates a buffer and uploads array data to it.
-    /// </summary>
-    /// <typeparam name="T">The unmanaged type of array elements.</typeparam>
-    /// <param name="context">The graphics context.</param>
-    /// <param name="data">The array of data to upload.</param>
-    /// <param name="count">Data count to upload.</param>
-    /// <param name="usage">Buffer usage flags.</param>
-    /// <param name="storage">Storage type for the buffer.</param>
-    /// <param name="debugName">Optional debug name for the buffer.</param>
-    /// <returns>A tuple of the created buffer and the async upload handle.</returns>
-    public static (BufferResource buffer, AsyncUploadHandle upload) CreateBufferAsync<T>(
-        this IContext context,
-        T[] data,
-        int count,
-        BufferUsageBits usage,
-        StorageType storage,
-        string? debugName = null
-    )
-        where T : unmanaged
-    {
-        ArgumentNullException.ThrowIfNull(data);
-        if (count > data.Length)
-            throw new ArgumentOutOfRangeException(nameof(count), "Count exceeds array length.");
-        unsafe
-        {
-            // Create the buffer without initial data
-            uint bufferSize = (uint)(count * sizeof(T));
-            context
-                .CreateBuffer(
-                    new BufferDesc(usage, storage, nint.Zero, bufferSize, debugName),
-                    out var buffer,
-                    debugName
-                )
-                .CheckResult();
-
-            // Schedule async upload
-            using var pinnedData = data.Pin();
-            var upload = context.UploadAsync(
-                buffer.Handle,
-                0,
-                (nint)pinnedData.Pointer,
-                bufferSize
-            );
-
-            return (buffer, upload);
-        }
-    }
-
-    /// <summary>
-    /// Asynchronously creates a buffer and uploads array data to it.
-    /// </summary>
-    /// <typeparam name="T">The unmanaged type of array elements.</typeparam>
-    /// <param name="context">The graphics context.</param>
-    /// <param name="data">The array of data to upload.</param>
-    /// <param name="usage">Buffer usage flags.</param>
-    /// <param name="storage">Storage type for the buffer.</param>
-    /// <param name="debugName">Optional debug name for the buffer.</param>
-    /// <returns>A tuple of the created buffer and the async upload handle.</returns>
-    public static (BufferResource buffer, AsyncUploadHandle upload) CreateBufferAsync<T>(
-        this IContext context,
-        T[] data,
-        BufferUsageBits usage,
-        StorageType storage,
-        string? debugName = null
-    )
-        where T : unmanaged
-    {
-        return CreateBufferAsync(context, data, data.Length, usage, storage, debugName);
     }
 }
