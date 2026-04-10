@@ -325,10 +325,11 @@ internal sealed class VulkanBuffer : IDisposable
                     {
                         Vma.vmaUnmapMemory(_ctx!.VmaAllocator, _vmaAllocation);
                     }
+                    var buf = _vkBuffer;
                     _ctx!.DeferredTask(
                         () =>
                         {
-                            Vma.vmaDestroyBuffer(_ctx!.VmaAllocator, _vkBuffer, _vmaAllocation);
+                            Vma.vmaDestroyBuffer(_ctx!.VmaAllocator, buf, _vmaAllocation);
                         },
                         SubmitHandle.Null
                     );
@@ -339,14 +340,15 @@ internal sealed class VulkanBuffer : IDisposable
                     {
                         VK.vkUnmapMemory(_ctx!.VkDevice, _vkMemory);
                     }
-
+                    var buf = _vkBuffer;
+                    var mem = _vkMemory;
                     _ctx!.DeferredTask(
                         () =>
                         {
                             unsafe
                             {
-                                VK.vkDestroyBuffer(_ctx!.VkDevice, _vkBuffer, null);
-                                VK.vkFreeMemory(_ctx!.VkDevice, _vkMemory, null);
+                                VK.vkDestroyBuffer(_ctx!.VkDevice, buf, null);
+                                VK.vkFreeMemory(_ctx!.VkDevice, mem, null);
                             }
                         },
                         SubmitHandle.Null

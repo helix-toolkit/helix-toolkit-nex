@@ -53,7 +53,7 @@ internal sealed partial class VulkanContext
     private readonly FastList<VkSurfaceFormatKHR> _deviceSurfaceFormats = [];
     private VkSurfaceCapabilitiesKHR _deviceSurfaceCaps = new();
     private readonly FastList<VkPresentModeKHR> _devicePresentModes = [];
-    private readonly FastList<DeferredTask> _deferredTasks = [];
+    private readonly Queue<DeferredTask> _deferredTasks = [];
 
     private struct YcbcrConversionData
     {
@@ -1044,16 +1044,20 @@ internal sealed partial class VulkanContext
         {
             return;
         }
-        var count = _deferredTasks.Count;
-        for (int i = 0; i < count; ++i)
+        lock (_deferredTasks)
         {
-            ref readonly var task = ref _deferredTasks.GetInternalArray()[i];
-            if (Immediate!.IsReady(task.Handle, true))
+            var count = _deferredTasks.Count;
+            for (int i = 0; i < count; ++i)
             {
+                var task = _deferredTasks.Peek();
+                if (!Immediate!.IsReady(task.Handle, true))
+                {
+                    break;
+                }
                 task.Action();
+                _deferredTasks.Dequeue();
             }
         }
-        _deferredTasks.RemoveRange(0, count);
     }
 
     public void GenerateMipmap(in TextureHandle handle)
@@ -1161,21 +1165,23 @@ internal sealed partial class VulkanContext
 
         if (VkDesSetLayout.IsNotNull)
         {
+            var layout = VkDesSetLayout;
             DeferredTask(() =>
             {
                 unsafe
                 {
-                    VK.vkDestroyDescriptorSetLayout(_vkDevice, VkDesSetLayout, null);
+                    VK.vkDestroyDescriptorSetLayout(_vkDevice, layout, null);
                 }
             });
         }
         if (VkDesPool.IsNotNull)
         {
+            var pool = VkDesPool;
             DeferredTask(() =>
             {
                 unsafe
                 {
-                    VK.vkDestroyDescriptorPool(_vkDevice, VkDesPool, null);
+                    VK.vkDestroyDescriptorPool(_vkDevice, pool, null);
                 }
             });
         }
@@ -1492,7 +1498,7 @@ internal sealed partial class VulkanContext
         }
         lock (_deferredTasks)
         {
-            _deferredTasks.Add(new DeferredTask(action, handle));
+            _deferredTasks.Enqueue(new DeferredTask(action, handle));
         }
     }
 
@@ -2226,22 +2232,24 @@ internal sealed partial class VulkanContext
 
         if (cps.LastVkDescriptorSetLayout != VkDesSetLayout)
         {
+            var pipeline = cps.Pipeline;
             DeferredTask(
                 () =>
                 {
                     unsafe
                     {
-                        VK.vkDestroyPipeline(VkDevice, cps.Pipeline, null);
+                        VK.vkDestroyPipeline(VkDevice, pipeline, null);
                     }
                 },
                 SubmitHandle.Null
             );
+            var layout = cps.PipelineLayout;
             DeferredTask(
                 () =>
                 {
                     unsafe
                     {
-                        VK.vkDestroyPipelineLayout(VkDevice, cps.PipelineLayout, null);
+                        VK.vkDestroyPipelineLayout(VkDevice, layout, null);
                     }
                 },
                 SubmitHandle.Null
