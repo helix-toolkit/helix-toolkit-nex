@@ -123,6 +123,7 @@ public sealed class PointCloudDataEntry : IDisposable
 {
     private bool _disposed;
     public bool IsDisposed => _disposed;
+    public bool Valid => !_disposed && Entities.Count > 0;
     public MaterialTypeId MaterialId { get; }
     public FastList<Entity> Entities { get; } = [];
     public ElementBuffer<PointDrawData> DrawDataBuffer { get; }

@@ -41,6 +41,12 @@ public sealed class PointMaterialRegistration : IMaterialRegistration
     /// (helper functions, buffer references, etc.).
     /// </summary>
     public string? AdditionalCode { get; init; }
+
+    /// <summary>
+    /// Gets the blend configuration for the color attachment. If null, the default blend state (opaque) is used.
+    /// No need to set <see cref="ColorAttachment.Format"/>. The pipeline will use the format of the render target's color attachment.
+    /// </summary>
+    public ColorAttachment? BlendConfig { get; init; } = null;
 }
 
 /// <summary>

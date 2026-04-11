@@ -152,10 +152,20 @@ public sealed class PointMaterialManager(IContext context, IShaderRepository sha
             DepthFormat = RenderSettings.DepthBufferFormat,
         };
 
-        // Color 0: scene color (pre-multiplied alpha blend)
-        pipelineDesc.Colors[0] = ColorAttachment.CreateAlphaBlend(
-            RenderSettings.IntermediateTargetFormat
-        );
+        // Color 0: scene color — premultiplied-alpha blend.
+        // The fragment shader outputs (rgb * a, a), so source factor is One
+        // (not SrcAlpha) to avoid double-multiplication.
+        if (registration.BlendConfig.HasValue)
+        {
+            pipelineDesc.Colors[0] = registration.BlendConfig.Value;
+            pipelineDesc.Colors[0].Format = RenderSettings.IntermediateTargetFormat;
+        }
+        else
+        {
+            pipelineDesc.Colors[0] = ColorAttachment.CreateOpaque(
+                RenderSettings.IntermediateTargetFormat
+            );
+        }
 
         // Color 1: entity ID (no blend — closest fragment wins via depth test)
         pipelineDesc.Colors[1] = new ColorAttachment

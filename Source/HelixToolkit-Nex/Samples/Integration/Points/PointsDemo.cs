@@ -9,6 +9,7 @@ using HelixToolkit.Nex.Engine.Components;
 using HelixToolkit.Nex.Geometries;
 using HelixToolkit.Nex.Graphics;
 using HelixToolkit.Nex.ImGui;
+using HelixToolkit.Nex.Material;
 using HelixToolkit.Nex.Maths;
 using HelixToolkit.Nex.Rendering;
 using HelixToolkit.Nex.Rendering.Components;
@@ -63,6 +64,10 @@ internal sealed class PointsDemo : IDisposable
     private float _animTime;
     private bool _fixedSize = false;
 
+    // Custom point material types registered by this demo
+    private readonly List<(string Name, MaterialTypeId Id)> _materialTypes = [];
+    private string[] _materialTypeNames = [];
+
     // Post effects
     private readonly Smaa _smaa = new();
     private readonly ToneMapping _toneMapping = new();
@@ -93,6 +98,9 @@ internal sealed class PointsDemo : IDisposable
         _orbitController = new OrbitCameraController(_camera);
 
         RenderSettings.LogFPSInDebug = true;
+
+        // Register custom point material shaders before building the engine
+        RegisterCustomPointMaterials();
 
         // Build the engine with the point rendering node
         _pointCullNode = new PointCullNode { MaxPoints = 500_000, MinScreenSize = _minScreenSize };
@@ -134,6 +142,135 @@ internal sealed class PointsDemo : IDisposable
     }
 
     // ------------------------------------------------------------------
+    // Custom point material registration
+    // ------------------------------------------------------------------
+
+    /// <summary>
+    /// Registers several custom point material shaders to demonstrate the
+    /// <see cref="PointMaterialRegistry"/> extensibility.
+    /// </summary>
+    private void RegisterCustomPointMaterials()
+    {
+        // Collect the built-in default first
+        _materialTypes.Add(("Default (Circle SDF)", default));
+
+        // 1. Square — no SDF, simple axis-aligned square
+        var squareId = PointMaterialRegistry.Register(
+            name: "Square",
+            getPointColorImpl: """
+                // Flat square – no distance discard, just vertex color
+                vec4 color = getColor();
+                if (v_textureIndex > 0u) {
+                    vec2 texUv = getUV() * 0.5 + 0.5;
+                    color *= textureBindless2D(getTextureId(), getSamplerId(), texUv);
+                }
+                return color;
+            """
+        );
+        _materialTypes.Add(("Square", squareId));
+
+        // 2. Diamond — rotated square clipped to a diamond shape, hue shifts over time
+        var diamondId = PointMaterialRegistry.Register(
+            name: "Diamond",
+            getPointColorImpl: """
+                vec2 uv = abs(getUV());
+                float d = uv.x + uv.y;
+                if (d > 1.0) discard;
+
+                float timeSec = getTime();
+                float edgeWidth = 2.0 / max(getPointSize(), 1.0);
+                float alpha = 1.0 - smoothstep(1.0 - edgeWidth, 1.0, d);
+                vec4 color = getColor();
+                // Cycle hue over time: rotate RGB channels
+                float shift = fract(timeSec * 0.15);
+                color.rgb = mix(color.rgb, color.gbr, shift);
+                color.a *= alpha;
+                return color;
+            """
+        );
+        _materialTypes.Add(("Diamond", diamondId));
+
+        // 3. Ring — hollow circle with time-animated thickness
+        var ringId = PointMaterialRegistry.Register(
+            name: "Ring",
+            getPointColorImpl: """
+                float dist = length(getUV());
+                if (dist > 1.0) discard;
+
+                float timeSec = getTime();
+                // Animate thickness between 0.15 and 0.35
+                float thickness = 0.25 + 0.10 * sin(timeSec * 2.0);
+                float inner = 1.0 - thickness;
+                if (dist < inner) discard;
+
+                float edgeWidth = 2.0 / max(getPointSize(), 1.0);
+                float alpha = smoothstep(inner - edgeWidth, inner, dist)
+                            * (1.0 - smoothstep(1.0 - edgeWidth, 1.0, dist));
+                vec4 color = getColor();
+                // Tint toward bright cyan at peak thickness
+                float blend = 0.5 + 0.5 * sin(timeSec * 2.0);
+                color.rgb = mix(color.rgb, vec3(0.2, 0.9, 1.0), blend * 0.4);
+                color.a *= alpha;
+                return color;
+            """
+        );
+        _materialTypes.Add(("Ring", ringId));
+
+        // 4. Pulsing — animated pulse using getTime()
+        var pulsingId = PointMaterialRegistry.Register(
+            name: "Pulsing",
+            getPointColorImpl: """
+                float dist = dot(getUV(), getUV());
+                if (dist > 1.0) discard;
+
+                float timeSec = getTime();
+                float pulse = 0.5 + 0.5 * sin(timeSec * 4.0 + dist * 6.0);
+                float edgeWidth = 2.0 / max(getPointSize(), 1.0);
+                float alpha = 1.0 - smoothstep(1.0 - edgeWidth, 1.0, dist);
+
+                vec4 color = getColor();
+                color.rgb *= (0.5 + 0.5 * pulse);
+                color.a *= alpha;
+                return color;
+            """
+        );
+        _materialTypes.Add(("Pulsing", pulsingId));
+
+        // 5. Gradient Disc — radial gradient with time-animated center color
+        var gradientDiscId = PointMaterialRegistry.Register(
+            name: "GradientDisc",
+            getPointColorImpl: """
+                float dist = length(getUV());
+                if (dist > 1.0) discard;
+
+                float timeSec = getTime();
+                // Cycle center color through warm tones over time
+                vec4 centerColor = vec4(
+                    0.8 + 0.2 * sin(timeSec * 1.5),
+                    0.6 + 0.4 * sin(timeSec * 1.0 + 1.0),
+                    0.3 + 0.3 * sin(timeSec * 0.7 + 2.0),
+                    1.0
+                );
+                vec4 edgeColor = getColor();
+                vec4 color = mix(centerColor, edgeColor, dist);
+
+                float edgeWidth = 2.0 / max(getPointSize(), 1.0);
+                color.a *= 1.0 - smoothstep(1.0 - edgeWidth, 1.0, dist);
+                return color;
+            """
+        );
+        _materialTypes.Add(("GradientDisc", gradientDiscId));
+
+        // Build the name array for the ImGui combo
+        _materialTypeNames = _materialTypes.Select(m => m.Name).ToArray();
+
+        _logger.LogInformation(
+            "Registered {Count} custom point material types.",
+            _materialTypes.Count - 1
+        );
+    }
+
+    // ------------------------------------------------------------------
     // Scene building helpers
     // ------------------------------------------------------------------
 
@@ -158,36 +295,44 @@ internal sealed class PointsDemo : IDisposable
         );
         _root.AddChild(lightNode);
 
-        // 1. Sphere point cloud
+        // 1. Sphere point cloud — default circle SDF
         AddPointCloud(
             "Sphere",
             GenerateSphere(5_000, 5f, Vector3.Zero),
             new Color4(0.2f, 0.7f, 1.0f, 1.0f)
         );
 
-        // 2. Helix point cloud
+        // 2. Helix point cloud — Diamond shader
         AddPointCloud(
             "Helix",
             GenerateHelix(3_000, 4f, 10f, 3, new Vector3(15, 0, 0)),
-            new Color4(1.0f, 0.4f, 0.2f, 1.0f)
+            new Color4(1.0f, 0.4f, 0.2f, 1.0f),
+            PointMaterialRegistry.GetTypeId("Diamond") ?? default
         );
 
-        // 3. Random cluster
+        // 3. Random cluster — Ring shader
         AddPointCloud(
             "Random Cluster",
             GenerateRandomCluster(8_000, 6f, new Vector3(-15, 3, 0)),
-            new Color4(0.3f, 1.0f, 0.3f, 1.0f)
+            new Color4(0.3f, 1.0f, 0.3f, 1.0f),
+            PointMaterialRegistry.GetTypeId("Ring") ?? default
         );
 
-        // 4. Animated wave (points will be updated each frame)
+        // 4. Animated wave — Pulsing shader
         AddPointCloud(
             "Animated Wave",
             GenerateWave(4_000, 10f, 10f, 0f, new Vector3(0, -5, 15)),
-            new Color4(1.0f, 0.9f, 0.2f, 1.0f)
+            new Color4(1.0f, 0.9f, 0.2f, 1.0f),
+            PointMaterialRegistry.GetTypeId("Pulsing") ?? default
         );
     }
 
-    private void AddPointCloud(string name, Geometry geo, Color4 tint)
+    private void AddPointCloud(
+        string name,
+        Geometry geo,
+        Color4 tint,
+        MaterialTypeId materialId = default
+    )
     {
         var world = _worldDataProvider!.World;
         var node = new Node(world) { Name = name };
@@ -216,11 +361,12 @@ internal sealed class PointsDemo : IDisposable
                 Color.White,
                 hitable: true,
                 fixedSize: _fixedSize,
+                pointMaterialId: materialId,
                 size: _globalPointSize
             )
         );
 
-        _pointClouds.Add(new PointCloudEntry(name, node, geo, tint, originalColors));
+        _pointClouds.Add(new PointCloudEntry(name, node, geo, tint, originalColors, materialId));
         _engine!.ResourceManager.Geometries.Add(geo, out _);
     }
 
@@ -656,6 +802,27 @@ internal sealed class PointsDemo : IDisposable
                         entry.Tint = new Color4(tint.X, tint.Y, tint.Z, 1f);
                         ApplyTint(entry);
                     }
+
+                    // Material type combo
+                    int currentMat = FindMaterialIndex(entry.MaterialId);
+                    if (
+                        Gui.Combo(
+                            "Material",
+                            ref currentMat,
+                            _materialTypeNames,
+                            _materialTypeNames.Length
+                        )
+                    )
+                    {
+                        var newMatId = _materialTypes[currentMat].Id;
+                        entry.MaterialId = newMatId;
+                        entry.Node.Entity.Update<PointCloudComponent>(x =>
+                        {
+                            x.PointMaterialId = newMatId;
+                            return x;
+                        });
+                    }
+
                     Gui.TreePop();
                 }
                 Gui.PopID();
@@ -718,6 +885,16 @@ internal sealed class PointsDemo : IDisposable
                 return x;
             });
         }
+    }
+
+    private int FindMaterialIndex(MaterialTypeId id)
+    {
+        for (int i = 0; i < _materialTypes.Count; i++)
+        {
+            if (_materialTypes[i].Id == id)
+                return i;
+        }
+        return 0; // fallback to default
     }
 
     private void ApplyTint(PointCloudEntry entry)
@@ -785,6 +962,11 @@ internal sealed class PointCloudEntry
     public Color4 Tint { get; set; }
 
     /// <summary>
+    /// The current point material type assigned to this cloud.
+    /// </summary>
+    public MaterialTypeId MaterialId { get; set; }
+
+    /// <summary>
     /// Stores the untinted (original) vertex colors so that tint can be
     /// re-applied non-destructively any number of times.
     /// </summary>
@@ -795,7 +977,8 @@ internal sealed class PointCloudEntry
         Node node,
         Geometry points,
         Color4 tint,
-        List<Vector4> originalColors
+        List<Vector4> originalColors,
+        MaterialTypeId materialId = default
     )
     {
         Name = name;
@@ -803,5 +986,6 @@ internal sealed class PointCloudEntry
         Points = points;
         Tint = tint;
         OriginalColors = originalColors;
+        MaterialId = materialId;
     }
 }
