@@ -79,7 +79,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
     /// </summary>
     /// <param name="handle">The texture handle.</param>
     /// <param name="dstStage">The destination pipeline stage (currently unused).</param>
-    private void UseComputeTexture(TextureHandle handle, VkPipelineStageFlags2 dstStage)
+    private void UseComputeTexture(in TextureHandle handle, VkPipelineStageFlags2 dstStage)
     {
         HxDebug.Assert(handle);
         var tex = _ctx.TexturesPool.Get(handle);
@@ -122,11 +122,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
     }
 
     /// <inheritdoc/>
-    public unsafe void BeginRendering(
-        in RenderPass renderPass,
-        in Framebuffer fb,
-        in Dependencies deps
-    )
+    public unsafe void BeginRendering(RenderPass renderPass, Framebuffer fb, Dependencies deps)
     {
         HxDebug.Assert(!IsRendering);
 
@@ -536,7 +532,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
     }
 
     /// <inheritdoc/>
-    public void BindComputePipeline(ComputePipelineHandle handle)
+    public void BindComputePipeline(in ComputePipelineHandle handle)
     {
         if (handle.Empty)
         {
@@ -568,7 +564,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
     }
 
     /// <inheritdoc/>
-    public void BindDepthState(in DepthState desc)
+    public void BindDepthState(DepthState desc)
     {
         var op = desc.CompareOp.ToVk();
         VK.vkCmdSetDepthWriteEnable(
@@ -701,7 +697,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
     }
 
     /// <inheritdoc/>
-    public void BindScissorRect(in ScissorRect rect)
+    public void BindScissorRect(ScissorRect rect)
     {
         VkRect2D scissor = new(
             new VkOffset2D((int32_t)rect.X, (int32_t)rect.Y),
@@ -741,7 +737,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
     }
 
     /// <inheritdoc/>
-    public void BindViewport(in ViewportF viewport)
+    public void BindViewport(ViewportF viewport)
     {
         // https://www.saschawillems.de/blog/2019/03/29/flipping-the-vulkan-viewport/
         VkViewport vp = new()
@@ -760,7 +756,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
     }
 
     /// <inheritdoc/>
-    public void ClearColorImage(in TextureHandle tex, in Color4 value, in TextureLayers layers)
+    public void ClearColorImage(in TextureHandle tex, Color4 value, TextureLayers layers)
     {
         unsafe
         {
@@ -847,11 +843,11 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
     public void CopyImage(
         in TextureHandle src,
         in TextureHandle dst,
-        in Dimensions extent,
-        in Offset3D srcOffset,
-        in Offset3D dstOffset,
-        in TextureLayers srcLayers,
-        in TextureLayers dstLayers
+        Dimensions extent,
+        Offset3D srcOffset,
+        Offset3D dstOffset,
+        TextureLayers srcLayers,
+        TextureLayers dstLayers
     )
     {
         var imgSrc = _ctx.TexturesPool.Get(src);
@@ -1063,7 +1059,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
     }
 
     /// <inheritdoc/>
-    public void DispatchThreadGroups(in Dimensions threadgroupCount, in Dependencies deps)
+    public void DispatchThreadGroups(Dimensions threadgroupCount, Dependencies deps)
     {
         HxDebug.Assert(!IsRendering);
 
@@ -1163,9 +1159,9 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
 
     /// <inheritdoc/>
     public void DrawIndexedIndirectCount(
-        BufferHandle indirectBuffer,
+        in BufferHandle indirectBuffer,
         uint indirectBufferOffset,
-        BufferHandle countBuffer,
+        in BufferHandle countBuffer,
         uint countBufferOffset,
         uint maxDrawCount,
         uint stride
@@ -1214,7 +1210,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
     }
 
     /// <inheritdoc/>
-    public void DrawMeshTasks(in Dimensions threadgroupCount)
+    public void DrawMeshTasks(Dimensions threadgroupCount)
     {
         VK.vkCmdDrawMeshTasksEXT(
             CmdBuffer,
@@ -1522,7 +1518,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
     }
 
     /// <inheritdoc/>
-    public void InsertDebugEventLabel(string label, in Color4 color)
+    public void InsertDebugEventLabel(string label, Color4 color)
     {
         HxDebug.Assert(!string.IsNullOrEmpty(label));
 
@@ -1592,7 +1588,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
     }
 
     /// <inheritdoc/>
-    public void PushDebugGroupLabel(string label, in Color4 color)
+    public void PushDebugGroupLabel(string label, Color4 color)
     {
         HxDebug.Assert(!string.IsNullOrEmpty(label));
 
@@ -1621,7 +1617,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
     }
 
     /// <inheritdoc/>
-    public void SetBlendColor(in Color4 color)
+    public void SetBlendColor(Color4 color)
     {
         VK.vkCmdSetBlendConstants(CmdBuffer, color);
     }
@@ -1639,7 +1635,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
     }
 
     /// <inheritdoc/>
-    public void TransitionToShaderReadOnly(TextureHandle handle)
+    public void TransitionToShaderReadOnly(in TextureHandle handle)
     {
         var img = _ctx.TexturesPool.Get(handle);
 
@@ -1672,7 +1668,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
     }
 
     /// <inheritdoc/>
-    public void TransitionToRenderingLocalRead(TextureHandle handle)
+    public void TransitionToRenderingLocalRead(in TextureHandle handle)
     {
         var img = _ctx.TexturesPool.Get(handle);
         HxDebug.Assert(img is not null && !img.IsSwapchainImage);

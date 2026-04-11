@@ -56,7 +56,7 @@ public sealed class ForwardPlusOpaqueNode : RenderNode
             TileSize = context.FPLightConfig.TileSize,
             MaxLightsPerTile = context.FPLightConfig.MaxLightsPerTile,
         };
-        res.CmdBuffer.UpdateBuffer(fpBuffer, fpData);
+        res.CmdBuffer.UpdateBuffer(fpBuffer, ref fpData);
         return base.BeginRender(in res);
     }
 

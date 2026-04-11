@@ -89,7 +89,7 @@ internal class DirectionalLightData : Initializable, IRenderData
             }
         }
         Count = lights.LightCount;
-        Context.Upload(Buffer, 0, lights);
+        Context.Upload(Buffer, 0, ref lights);
         _lastBufferUpdateTicks = _lastDataUpdateTicks;
         return true;
     }

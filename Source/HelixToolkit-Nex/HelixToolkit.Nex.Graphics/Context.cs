@@ -39,7 +39,7 @@ public interface IContext : IInitializable
     /// </list>
     /// The secondary buffer must be compatible with the render pass it will be executed in.
     /// </remarks>
-    ICommandBuffer CreateSecondaryCommandBuffer(in RenderPass renderPassInfo);
+    ICommandBuffer CreateSecondaryCommandBuffer(RenderPass renderPassInfo);
 
     /// <summary>
     /// Submits a command buffer for execution on the GPU.
@@ -62,11 +62,7 @@ public interface IContext : IInitializable
     /// <param name="buffer">Receives the created buffer resource.</param>
     /// <param name="debugName">Optional debug name for the buffer.</param>
     /// <returns>A <see cref="ResultCode"/> indicating success or failure.</returns>
-    ResultCode CreateBuffer(
-        in BufferDesc desc,
-        out BufferResource buffer,
-        string? debugName = null
-    );
+    ResultCode CreateBuffer(BufferDesc desc, out BufferResource buffer, string? debugName = null);
 
     /// <summary>
     /// Creates a sampler state object.
@@ -74,7 +70,7 @@ public interface IContext : IInitializable
     /// <param name="desc">The sampler state description.</param>
     /// <param name="sampler">Receives the created sampler resource.</param>
     /// <returns>A <see cref="ResultCode"/> indicating success or failure.</returns>
-    ResultCode CreateSampler(in SamplerStateDesc desc, out SamplerResource sampler);
+    ResultCode CreateSampler(SamplerStateDesc desc, out SamplerResource sampler);
 
     /// <summary>
     /// Creates a texture resource.
@@ -84,7 +80,7 @@ public interface IContext : IInitializable
     /// <param name="debugName">Optional debug name for the texture.</param>
     /// <returns>A <see cref="ResultCode"/> indicating success or failure.</returns>
     ResultCode CreateTexture(
-        in TextureDesc desc,
+        TextureDesc desc,
         out TextureResource texture,
         string? debugName = null
     );
@@ -143,7 +139,7 @@ public interface IContext : IInitializable
     /// <returns>A <see cref="ResultCode"/> indicating success or failure.</returns>
     ResultCode CreateTextureView(
         in TextureHandle texture,
-        in TextureViewDesc desc,
+        TextureViewDesc desc,
         out TextureResource textureView,
         string? debugName = null
     );
@@ -155,7 +151,7 @@ public interface IContext : IInitializable
     /// <param name="computePipeline">Receives the created compute pipeline resource.</param>
     /// <returns>A <see cref="ResultCode"/> indicating success or failure.</returns>
     ResultCode CreateComputePipeline(
-        in ComputePipelineDesc desc,
+        ComputePipelineDesc desc,
         out ComputePipelineResource computePipeline
     );
 
@@ -166,7 +162,7 @@ public interface IContext : IInitializable
     /// <param name="renderPipeline">Receives the created render pipeline resource.</param>
     /// <returns>A <see cref="ResultCode"/> indicating success or failure.</returns>
     ResultCode CreateRenderPipeline(
-        in RenderPipelineDesc desc,
+        RenderPipelineDesc desc,
         out RenderPipelineResource renderPipeline
     );
 
@@ -176,7 +172,7 @@ public interface IContext : IInitializable
     /// <param name="desc">The shader module description.</param>
     /// <param name="shaderModule">Receives the created shader module resource.</param>
     /// <returns>A <see cref="ResultCode"/> indicating success or failure.</returns>
-    ResultCode CreateShaderModule(in ShaderModuleDesc desc, out ShaderModuleResource shaderModule);
+    ResultCode CreateShaderModule(ShaderModuleDesc desc, out ShaderModuleResource shaderModule);
 
     /// <summary>
     /// Creates a query pool for GPU timestamp or performance queries.
@@ -195,43 +191,43 @@ public interface IContext : IInitializable
     /// Destroys a compute pipeline handle.
     /// </summary>
     /// <param name="handle">The handle to destroy.</param>
-    void Destroy(ComputePipelineHandle handle);
+    void Destroy(in ComputePipelineHandle handle);
 
     /// <summary>
     /// Destroys a render pipeline handle.
     /// </summary>
     /// <param name="handle">The handle to destroy.</param>
-    void Destroy(RenderPipelineHandle handle);
+    void Destroy(in RenderPipelineHandle handle);
 
     /// <summary>
     /// Destroys a shader module handle.
     /// </summary>
     /// <param name="handle">The handle to destroy.</param>
-    void Destroy(ShaderModuleHandle handle);
+    void Destroy(in ShaderModuleHandle handle);
 
     /// <summary>
     /// Destroys a sampler handle.
     /// </summary>
     /// <param name="handle">The handle to destroy.</param>
-    void Destroy(SamplerHandle handle);
+    void Destroy(in SamplerHandle handle);
 
     /// <summary>
     /// Destroys a buffer handle.
     /// </summary>
     /// <param name="handle">The handle to destroy.</param>
-    void Destroy(BufferHandle handle);
+    void Destroy(in BufferHandle handle);
 
     /// <summary>
     /// Destroys a texture handle.
     /// </summary>
     /// <param name="handle">The handle to destroy.</param>
-    void Destroy(TextureHandle handle);
+    void Destroy(in TextureHandle handle);
 
     /// <summary>
     /// Destroys a query pool handle.
     /// </summary>
     /// <param name="handle">The handle to destroy.</param>
-    void Destroy(QueryPoolHandle handle);
+    void Destroy(in QueryPoolHandle handle);
 
     /// <summary>
     /// Uploads data to a buffer.
@@ -251,7 +247,21 @@ public interface IContext : IInitializable
     /// <param name="offset">Byte offset within the buffer.</param>
     /// <param name="data">Reference to the data to upload.</param>
     /// <returns>A <see cref="ResultCode"/> indicating success or failure.</returns>
-    ResultCode Upload<T>(in BufferHandle handle, size_t offset, in T data)
+    ResultCode Upload<T>(in BufferHandle handle, size_t offset, T data)
+        where T : unmanaged
+    {
+        return Upload(handle, offset, ref data);
+    }
+
+    /// <summary>
+    /// Uploads data of a specific unmanaged type to a buffer.
+    /// </summary>
+    /// <typeparam name="T">The unmanaged type of the data.</typeparam>
+    /// <param name="handle">The buffer handle.</param>
+    /// <param name="offset">Byte offset within the buffer.</param>
+    /// <param name="data">Reference to the data to upload.</param>
+    /// <returns>A <see cref="ResultCode"/> indicating success or failure.</returns>
+    ResultCode Upload<T>(in BufferHandle handle, size_t offset, ref T data)
         where T : unmanaged
     {
         unsafe
@@ -337,12 +347,7 @@ public interface IContext : IInitializable
     /// <remarks>
     /// Data layout follows the KTX specification: https://registry.khronos.org/KTX/specs/1.0/ktxspec.v1.html
     /// </remarks>
-    ResultCode Upload(
-        in TextureHandle handle,
-        in TextureRangeDesc range,
-        nint data,
-        size_t dataSize
-    );
+    ResultCode Upload(in TextureHandle handle, TextureRangeDesc range, nint data, size_t dataSize);
 
     /// <summary>
     /// Downloads data from a texture.
@@ -354,7 +359,7 @@ public interface IContext : IInitializable
     /// <returns>A <see cref="ResultCode"/> indicating success or failure.</returns>
     ResultCode Download(
         in TextureHandle handle,
-        in TextureRangeDesc range,
+        TextureRangeDesc range,
         nint outData,
         size_t dataSize
     );
@@ -552,7 +557,7 @@ public interface IContext : IInitializable
     /// <returns>An <see cref="AsyncUploadHandle"/> that tracks the upload's completion.</returns>
     AsyncUploadHandle UploadAsync<T>(
         in TextureHandle handle,
-        in TextureRangeDesc range,
+        TextureRangeDesc range,
         T[] data,
         size_t count
     )
@@ -652,7 +657,7 @@ public static class ContextExtensions
     /// <exception cref="InvalidOperationException">Thrown if pipeline creation fails.</exception>
     public static ComputePipelineResource CreateComputePipeline(
         this IContext context,
-        in ComputePipelineDesc desc
+        ComputePipelineDesc desc
     )
     {
         context.CreateComputePipeline(desc, out var computePipeline).CheckResult();
@@ -696,7 +701,7 @@ public static class ContextExtensions
     /// <exception cref="InvalidOperationException">Thrown if pipeline creation fails.</exception>
     public static RenderPipelineResource CreateRenderPipeline(
         this IContext context,
-        in RenderPipelineDesc desc
+        RenderPipelineDesc desc
     )
     {
         context.CreateRenderPipeline(desc, out var renderPipeline).CheckResult();
@@ -710,7 +715,7 @@ public static class ContextExtensions
     /// <param name="desc">The sampler state description.</param>
     /// <returns>The created sampler resource.</returns>
     /// <exception cref="InvalidOperationException">Thrown if sampler creation fails.</exception>
-    public static SamplerResource CreateSampler(this IContext context, in SamplerStateDesc desc)
+    public static SamplerResource CreateSampler(this IContext context, SamplerStateDesc desc)
     {
         context.CreateSampler(desc, out var sampler).CheckResult();
         return sampler;
@@ -984,7 +989,7 @@ public static class ContextExtensions
     /// <exception cref="InvalidOperationException">Thrown if buffer creation fails.</exception>
     public static BufferResource CreateBuffer(
         this IContext context,
-        in BufferDesc desc,
+        BufferDesc desc,
         string? debugName = null
     )
     {
@@ -1002,7 +1007,7 @@ public static class ContextExtensions
     /// <exception cref="InvalidOperationException">Thrown if texture creation fails.</exception>
     public static TextureResource CreateTexture(
         this IContext context,
-        in TextureDesc desc,
+        TextureDesc desc,
         string? debugName = null
     )
     {
@@ -1016,7 +1021,7 @@ public static class ContextExtensions
     /// <param name="context">The graphics context.</param>
     /// <param name="commandBuffer">The command buffer to submit.</param>
     /// <returns>A <see cref="SubmitHandle"/> that can be used to wait for completion.</returns>
-    public static SubmitHandle Submit(this IContext context, in ICommandBuffer commandBuffer)
+    public static SubmitHandle Submit(this IContext context, ICommandBuffer commandBuffer)
     {
         return context.Submit(commandBuffer, TextureHandle.Null);
     }

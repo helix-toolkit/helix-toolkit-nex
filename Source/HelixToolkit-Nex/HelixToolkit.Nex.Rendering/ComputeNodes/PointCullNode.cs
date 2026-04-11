@@ -110,7 +110,7 @@ public sealed class PointCullNode : ComputeNode
             FovY = fovY,
             MinScreenSize = MinScreenSize,
         };
-        res.CmdBuffer.UpdateBuffer(_pointExpandArgsBuffer, expandPC);
+        res.CmdBuffer.UpdateBuffer(_pointExpandArgsBuffer, ref expandPC);
         res.Deps.Buffers[0] = _pointExpandArgsBuffer;
 
         foreach (var entry in points.Data.Values)
@@ -124,7 +124,7 @@ public sealed class PointCullNode : ComputeNode
                 FirstVertex = 0,
                 FirstInstance = 0,
             };
-            res.CmdBuffer.UpdateBuffer(entry.DrawArgsBuffer, args);
+            res.CmdBuffer.UpdateBuffer(entry.DrawArgsBuffer, ref args);
             res.Deps.Buffers[1] = entry.DrawArgsBuffer;
             foreach (var entity in entry.Entities)
             {

@@ -102,9 +102,7 @@ public class CustomMaterialBuffer<T> : ICustomMaterialBuffer
 
     /// <inheritdoc/>
     public ulong GpuAddress =>
-        _buffer is { Valid: true }
-            ? (ulong)_context.GpuAddress(_buffer.Handle)
-            : 0UL;
+        _buffer is { Valid: true } ? (ulong)_context.GpuAddress(_buffer.Handle) : 0UL;
 
     /// <inheritdoc/>
     public bool IsValid => _buffer is { Valid: true };
@@ -125,8 +123,9 @@ public class CustomMaterialBuffer<T> : ICustomMaterialBuffer
     )
     {
         _context = context;
-        _debugName =
-            string.IsNullOrEmpty(debugName) ? $"CustomMaterial_{typeof(T).Name}" : debugName;
+        _debugName = string.IsNullOrEmpty(debugName)
+            ? $"CustomMaterial_{typeof(T).Name}"
+            : debugName;
 
         _properties = initialProperties ?? default;
 
@@ -162,7 +161,7 @@ public class CustomMaterialBuffer<T> : ICustomMaterialBuffer
         if (!_dirty)
             return true;
 
-        var result = _context.Upload(_buffer.Handle, 0, in _properties);
+        var result = _context.Upload(_buffer.Handle, 0, _properties);
         if (result == ResultCode.Ok)
         {
             _dirty = false;
