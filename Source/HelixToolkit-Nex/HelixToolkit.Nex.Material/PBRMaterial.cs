@@ -1,4 +1,3 @@
-using System.Reflection.Metadata.Ecma335;
 using HelixToolkit.Nex.Shaders.Frag;
 
 namespace HelixToolkit.Nex.Material;
@@ -19,6 +18,8 @@ public readonly struct MaterialTypeId(uint id) : IComparable<MaterialTypeId>
     public static implicit operator MaterialTypeId(int id) => new((uint)id);
 
     public static implicit operator MaterialTypeId(PBRShadingMode mode) => new((uint)mode);
+
+    public override string ToString() => $"MatId_{Id}";
 }
 
 public enum MaterialPassType : int

@@ -544,12 +544,12 @@ public sealed class ElementBuffer<T> : IDisposable
                     dataPtr,
                     bufferSize,
                     GraphicsSettings.EnableDebug
-                        ? $"ElementBuf<{typeof(T).Name}>:{DebugName ?? string.Empty}"
+                        ? $"Elem<{typeof(T).Name}>:{DebugName ?? string.Empty}"
                         : null
                 ),
                 out var newBuffer,
                 GraphicsSettings.EnableDebug
-                    ? $"ElementBuf<{typeof(T).Name}>:{DebugName ?? string.Empty}"
+                    ? $"Elem<{typeof(T).Name}>:{DebugName ?? string.Empty}"
                     : null
             );
 
