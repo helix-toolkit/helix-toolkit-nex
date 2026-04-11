@@ -45,7 +45,7 @@ public interface ICommandBuffer
     /// Transitions a texture to a shader read-only state, making it accessible for sampling in shaders.
     /// </summary>
     /// <param name="surface">The texture handle to transition.</param>
-    void TransitionToShaderReadOnly(TextureHandle handle);
+    void TransitionToShaderReadOnly(in TextureHandle handle);
 
     /// <summary>
     /// Transitions the specified texture to a state suitable for local read operations during rendering.
@@ -53,7 +53,7 @@ public interface ICommandBuffer
     /// <remarks>This method prepares the texture for read-only access in the rendering pipeline. Ensure that
     /// the texture      is not being written to by other operations when calling this method.</remarks>
     /// <param name="surface">The texture handle representing the surface to transition. Cannot be null.</param>
-    void TransitionToRenderingLocalRead(TextureHandle handle);
+    void TransitionToRenderingLocalRead(in TextureHandle handle);
 
     /// <summary>
     /// Begins a debug group with a label and color for debugging and profiling tools.
@@ -64,14 +64,14 @@ public interface ICommandBuffer
     /// Debug groups can be nested. Each call to <see cref="PushDebugGroupLabel"/> must be matched with
     /// a corresponding <see cref="PopDebugGroupLabel"/> call.
     /// </remarks>
-    void PushDebugGroupLabel(string label, in Color4 color);
+    void PushDebugGroupLabel(string label, Color4 color);
 
     /// <summary>
     /// Inserts a single debug event marker at the current position in the command buffer.
     /// </summary>
     /// <param name="label">The label text for the debug event.</param>
     /// <param name="color">The color associated with this debug event in debugging tools.</param>
-    void InsertDebugEventLabel(string label, in Color4 color);
+    void InsertDebugEventLabel(string label, Color4 color);
 
     /// <summary>
     /// Ends the current debug group started by <see cref="PushDebugGroupLabel"/>.
@@ -82,14 +82,14 @@ public interface ICommandBuffer
     /// Binds a compute pipeline for subsequent compute dispatch operations.
     /// </summary>
     /// <param name="handle">The handle to the compute pipeline to bind.</param>
-    void BindComputePipeline(ComputePipelineHandle handle);
+    void BindComputePipeline(in ComputePipelineHandle handle);
 
     /// <summary>
     /// Dispatches compute work in thread groups.
     /// </summary>
     /// <param name="threadgroupCount">The number of thread groups to dispatch in each dimension (X, Y, Z).</param>
     /// <param name="deps">Dependencies that must be satisfied before this dispatch executes.</param>
-    void DispatchThreadGroups(in Dimensions threadgroupCount, in Dependencies deps);
+    void DispatchThreadGroups(Dimensions threadgroupCount, Dependencies deps);
 
     /// <summary>
     /// Begins a rendering pass with the specified render pass configuration and framebuffer.
@@ -100,7 +100,7 @@ public interface ICommandBuffer
     /// <remarks>
     /// Must be paired with a corresponding <see cref="EndRendering"/> call.
     /// </remarks>
-    void BeginRendering(in RenderPass renderPass, in Framebuffer desc, in Dependencies deps);
+    void BeginRendering(RenderPass renderPass, Framebuffer desc, Dependencies deps);
 
     /// <summary>
     /// Ends the current rendering pass started by <see cref="BeginRendering"/>.
@@ -116,13 +116,13 @@ public interface ICommandBuffer
     /// Binds a viewport for subsequent rendering operations.
     /// </summary>
     /// <param name="viewport">The viewport to bind, defining the visible rendering area.</param>
-    void BindViewport(in ViewportF viewport);
+    void BindViewport(ViewportF viewport);
 
     /// <summary>
     /// Binds a scissor rectangle to clip rendering output.
     /// </summary>
     /// <param name="rect">The scissor rectangle to bind. Pixels outside this rectangle are discarded.</param>
-    void BindScissorRect(in ScissorRect rect);
+    void BindScissorRect(ScissorRect rect);
 
     /// <summary>
     /// Binds a render pipeline for subsequent draw operations.
@@ -134,7 +134,7 @@ public interface ICommandBuffer
     /// Sets the depth state for subsequent rendering operations.
     /// </summary>
     /// <param name="state">The depth state configuration, including depth testing and writing settings.</param>
-    void BindDepthState(in DepthState state);
+    void BindDepthState(DepthState state);
 
     /// <summary>
     /// Binds a vertex buffer to a specific binding index.
@@ -174,7 +174,24 @@ public interface ICommandBuffer
     /// <param name="data">Reference to the constant data to push.</param>
     /// <param name="offset">Offset within the push constant block where data should be written. Default is 0.</param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    void PushConstants<T>(in T data, size_t offset = 0)
+    void PushConstants<T>(T data, size_t offset = 0)
+        where T : unmanaged
+    {
+        unsafe
+        {
+            var ptr = &data;
+            PushConstants((nint)ptr, (size_t)sizeof(T), offset);
+        }
+    }
+
+    /// <summary>
+    /// Pushes constant data of a specific unmanaged type to the pipeline for use in shaders.
+    /// </summary>
+    /// <typeparam name="T">The unmanaged type of the constant data.</typeparam>
+    /// <param name="data">Reference to the constant data to push.</param>
+    /// <param name="offset">Offset within the push constant block where data should be written. Default is 0.</param>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    void PushConstants<T>(ref T data, size_t offset = 0)
         where T : unmanaged
     {
         unsafe
@@ -217,7 +234,7 @@ public interface ICommandBuffer
     /// <param name="bufferOffset">Byte offset into the buffer where the update begins. Default is 0.</param>
     /// <returns></returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    ResultCode UpdateBuffer<T>(in BufferHandle buffer, in T data, size_t bufferOffset = 0)
+    ResultCode UpdateBuffer<T>(in BufferHandle buffer, ref T data, size_t bufferOffset = 0)
         where T : unmanaged
     {
         unsafe
@@ -227,6 +244,21 @@ public interface ICommandBuffer
                 return UpdateBuffer(buffer, bufferOffset, (size_t)sizeof(T), (nint)ptr);
             }
         }
+    }
+
+    /// <summary>
+    /// Updates a buffer with data of a specific unmanaged type.
+    /// </summary>
+    /// <typeparam name="T">The unmanaged type of the data to update.</typeparam>
+    /// <param name="buffer">The handle to the buffer to update.</param>
+    /// <param name="data">Reference to the data to copy into the buffer.</param>
+    /// <param name="bufferOffset">Byte offset into the buffer where the update begins. Default is 0.</param>
+    /// <returns></returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    ResultCode UpdateBuffer<T>(in BufferHandle buffer, T data, size_t bufferOffset = 0)
+        where T : unmanaged
+    {
+        return UpdateBuffer(buffer, ref data, bufferOffset);
     }
 
     /// <summary>
@@ -245,7 +277,7 @@ public interface ICommandBuffer
     /// <returns></returns>
     ResultCode UpdateBuffer<T>(
         in BufferHandle buffer,
-        in T[] data,
+        T[] data,
         size_t count,
         size_t bufferOffset = 0
     )
@@ -274,7 +306,7 @@ public interface ICommandBuffer
     /// <param name="data">A list containing the data to write to the buffer. The data is copied starting from the beginning of the list.</param>
     /// <param name="bufferOffset">The offset, in bytes, within the buffer at which to begin writing data. Defaults to 0.</param>
     /// <returns></returns>
-    ResultCode UpdateBuffer<T>(in BufferHandle buffer, in FastList<T> data, size_t bufferOffset = 0)
+    ResultCode UpdateBuffer<T>(in BufferHandle buffer, FastList<T> data, size_t bufferOffset = 0)
         where T : unmanaged
     {
         unsafe
@@ -376,9 +408,9 @@ public interface ICommandBuffer
     /// <param name="maxDrawCount">Maximum number of draw calls that can be executed.</param>
     /// <param name="stride">Byte stride between consecutive draw parameter structures. If 0, assumes tightly packed. Default is 0.</param>
     void DrawIndexedIndirectCount(
-        BufferHandle indirectBuffer,
+        in BufferHandle indirectBuffer,
         size_t indirectBufferOffset,
-        BufferHandle countBuffer,
+        in BufferHandle countBuffer,
         size_t countBufferOffset,
         size_t maxDrawCount,
         size_t stride = 0
@@ -388,7 +420,7 @@ public interface ICommandBuffer
     /// Dispatches mesh shader tasks for mesh shading pipeline.
     /// </summary>
     /// <param name="threadgroupCount">The number of task shader thread groups to dispatch in each dimension (X, Y, Z).</param>
-    void DrawMeshTasks(in Dimensions threadgroupCount);
+    void DrawMeshTasks(Dimensions threadgroupCount);
 
     /// <summary>
     /// Dispatches mesh shader tasks with parameters sourced from a buffer (indirect mesh drawing).
@@ -426,7 +458,7 @@ public interface ICommandBuffer
     /// Sets the blend constant color used in blending operations.
     /// </summary>
     /// <param name="color">The blend constant color to set.</param>
-    void SetBlendColor(in Color4 color);
+    void SetBlendColor(Color4 color);
 
     /// <summary>
     /// Sets the depth bias parameters for depth value adjustment during rasterization.
@@ -463,7 +495,7 @@ public interface ICommandBuffer
     /// <param name="tex">The handle to the texture to clear.</param>
     /// <param name="value">The color value to clear the texture to.</param>
     /// <param name="layers">The texture layers (mip levels, array layers) to clear.</param>
-    void ClearColorImage(in TextureHandle tex, in Color4 value, in TextureLayers layers);
+    void ClearColorImage(in TextureHandle tex, Color4 value, TextureLayers layers);
 
     /// <summary>
     /// Copies a region from one texture to another.
@@ -478,11 +510,11 @@ public interface ICommandBuffer
     void CopyImage(
         in TextureHandle src,
         in TextureHandle dst,
-        in Dimensions extent,
-        in Offset3D srcOffset,
-        in Offset3D dstOffset,
-        in TextureLayers srcLayers,
-        in TextureLayers dstLayers
+        Dimensions extent,
+        Offset3D srcOffset,
+        Offset3D dstOffset,
+        TextureLayers srcLayers,
+        TextureLayers dstLayers
     );
 
     /// <summary>

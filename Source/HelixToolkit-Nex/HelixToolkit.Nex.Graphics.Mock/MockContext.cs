@@ -160,7 +160,7 @@ public class MockContext : IContext
         return cmdBuffer;
     }
 
-    public ICommandBuffer CreateSecondaryCommandBuffer(in RenderPass renderPassInfo)
+    public ICommandBuffer CreateSecondaryCommandBuffer(RenderPass renderPassInfo)
     {
         var cmdBuffer = new MockCommandBuffer(this, isPrimary: false);
         AcquiredCommandBuffers.Add(cmdBuffer);
@@ -188,7 +188,7 @@ public class MockContext : IContext
     }
 
     public ResultCode CreateBuffer(
-        in BufferDesc desc,
+        BufferDesc desc,
         out BufferResource buffer,
         string? debugName = null
     )
@@ -217,7 +217,7 @@ public class MockContext : IContext
         return ResultCode.Ok;
     }
 
-    public ResultCode CreateSampler(in SamplerStateDesc desc, out SamplerResource sampler)
+    public ResultCode CreateSampler(SamplerStateDesc desc, out SamplerResource sampler)
     {
         var handle = AllocateHandle<Sampler>();
         var mockData = new MockSamplerData { Desc = desc };
@@ -227,7 +227,7 @@ public class MockContext : IContext
     }
 
     public ResultCode CreateTexture(
-        in TextureDesc desc,
+        TextureDesc desc,
         out TextureResource texture,
         string? debugName = null
     )
@@ -241,7 +241,7 @@ public class MockContext : IContext
 
     public ResultCode CreateTextureView(
         in TextureHandle texture,
-        in TextureViewDesc desc,
+        TextureViewDesc desc,
         out TextureResource textureView,
         string? debugName = null
     )
@@ -266,7 +266,7 @@ public class MockContext : IContext
     }
 
     public ResultCode CreateComputePipeline(
-        in ComputePipelineDesc desc,
+        ComputePipelineDesc desc,
         out ComputePipelineResource computePipeline
     )
     {
@@ -278,7 +278,7 @@ public class MockContext : IContext
     }
 
     public ResultCode CreateRenderPipeline(
-        in RenderPipelineDesc desc,
+        RenderPipelineDesc desc,
         out RenderPipelineResource renderPipeline
     )
     {
@@ -290,7 +290,7 @@ public class MockContext : IContext
     }
 
     public ResultCode CreateShaderModule(
-        in ShaderModuleDesc desc,
+        ShaderModuleDesc desc,
         out ShaderModuleResource shaderModule
     )
     {
@@ -319,37 +319,37 @@ public class MockContext : IContext
         return ResultCode.Ok;
     }
 
-    public void Destroy(ComputePipelineHandle handle)
+    public void Destroy(in ComputePipelineHandle handle)
     {
         _computePipelines.TryRemove(handle, out _);
     }
 
-    public void Destroy(RenderPipelineHandle handle)
+    public void Destroy(in RenderPipelineHandle handle)
     {
         _renderPipelines.TryRemove(handle, out _);
     }
 
-    public void Destroy(ShaderModuleHandle handle)
+    public void Destroy(in ShaderModuleHandle handle)
     {
         _shaderModules.TryRemove(handle, out _);
     }
 
-    public void Destroy(SamplerHandle handle)
+    public void Destroy(in SamplerHandle handle)
     {
         _samplers.TryRemove(handle, out _);
     }
 
-    public void Destroy(BufferHandle handle)
+    public void Destroy(in BufferHandle handle)
     {
         _buffers.TryRemove(handle, out _);
     }
 
-    public void Destroy(TextureHandle handle)
+    public void Destroy(in TextureHandle handle)
     {
         _textures.TryRemove(handle, out _);
     }
 
-    public void Destroy(QueryPoolHandle handle)
+    public void Destroy(in QueryPoolHandle handle)
     {
         _queryPools.TryRemove(handle, out _);
     }
@@ -424,7 +424,7 @@ public class MockContext : IContext
 
     public ResultCode Upload(
         in TextureHandle handle,
-        in TextureRangeDesc range,
+        TextureRangeDesc range,
         nint data,
         size_t dataSize
     )
@@ -439,7 +439,7 @@ public class MockContext : IContext
 
     public ResultCode Download(
         in TextureHandle handle,
-        in TextureRangeDesc range,
+        TextureRangeDesc range,
         nint outData,
         size_t dataSize
     )

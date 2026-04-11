@@ -51,7 +51,7 @@ internal sealed partial class VulkanContext : Initializable, IContext
 
     public AsyncUploadHandle UploadAsync<T>(
         in TextureHandle handle,
-        in TextureRangeDesc range,
+        TextureRangeDesc range,
         T[] data,
         size_t count
     )
@@ -130,7 +130,7 @@ internal sealed partial class VulkanContext : Initializable, IContext
 
     public ResultCode Upload(
         in TextureHandle handle,
-        in TextureRangeDesc range,
+        TextureRangeDesc range,
         nint data,
         size_t dataSize
     )
@@ -235,7 +235,7 @@ internal sealed partial class VulkanContext : Initializable, IContext
 
     public ResultCode Download(
         in TextureHandle handle,
-        in TextureRangeDesc range,
+        TextureRangeDesc range,
         nint outData,
         size_t dataSize
     )
@@ -299,7 +299,7 @@ internal sealed partial class VulkanContext : Initializable, IContext
         return _currentCommandBuffer;
     }
 
-    public ICommandBuffer CreateSecondaryCommandBuffer(in RenderPass renderPassInfo)
+    public ICommandBuffer CreateSecondaryCommandBuffer(RenderPass renderPassInfo)
     {
         HxDebug.Assert(Immediate != null, "Immediate commands not initialized");
 
@@ -315,7 +315,7 @@ internal sealed partial class VulkanContext : Initializable, IContext
     }
 
     public ResultCode CreateComputePipeline(
-        in ComputePipelineDesc desc,
+        ComputePipelineDesc desc,
         out ComputePipelineResource computePipeline
     )
     {
@@ -387,7 +387,7 @@ internal sealed partial class VulkanContext : Initializable, IContext
     }
 
     public ResultCode CreateRenderPipeline(
-        in RenderPipelineDesc desc,
+        RenderPipelineDesc desc,
         out RenderPipelineResource renderPipeline
     )
     {
@@ -523,7 +523,7 @@ internal sealed partial class VulkanContext : Initializable, IContext
         return ResultCode.Ok;
     }
 
-    public ResultCode CreateSampler(in SamplerStateDesc desc, out SamplerResource sampler)
+    public ResultCode CreateSampler(SamplerStateDesc desc, out SamplerResource sampler)
     {
         sampler = SamplerResource.Null;
 
@@ -544,7 +544,7 @@ internal sealed partial class VulkanContext : Initializable, IContext
     }
 
     public ResultCode CreateShaderModule(
-        in ShaderModuleDesc desc,
+        ShaderModuleDesc desc,
         out ShaderModuleResource shaderModule
     )
     {
@@ -594,7 +594,7 @@ internal sealed partial class VulkanContext : Initializable, IContext
     }
 
     public ResultCode CreateTexture(
-        in TextureDesc requestedDesc,
+        TextureDesc requestedDesc,
         out TextureResource texture,
         string? debugName
     )
@@ -903,7 +903,7 @@ internal sealed partial class VulkanContext : Initializable, IContext
 
     public ResultCode CreateTextureView(
         in TextureHandle texture,
-        in TextureViewDesc desc,
+        TextureViewDesc desc,
         out TextureResource textureView,
         string? debugName
     )
@@ -1035,7 +1035,7 @@ internal sealed partial class VulkanContext : Initializable, IContext
     }
 
     public ResultCode CreateBuffer(
-        in BufferDesc requestedDesc,
+        BufferDesc requestedDesc,
         out BufferResource buffer,
         string? debugName
     )
@@ -1388,38 +1388,38 @@ internal sealed partial class VulkanContext : Initializable, IContext
         Immediate!.Wait(handle);
     }
 
-    public void Destroy(ComputePipelineHandle handle)
+    public void Destroy(in ComputePipelineHandle handle)
     {
         ComputePipelinesPool.Destroy(handle);
     }
 
-    public void Destroy(RenderPipelineHandle handle)
+    public void Destroy(in RenderPipelineHandle handle)
     {
         RenderPipelinesPool.Destroy(handle);
     }
 
-    public void Destroy(ShaderModuleHandle handle)
+    public void Destroy(in ShaderModuleHandle handle)
     {
         ShaderModulesPool.Destroy(handle);
     }
 
-    public void Destroy(SamplerHandle handle)
+    public void Destroy(in SamplerHandle handle)
     {
         SamplersPool.Destroy(handle);
     }
 
-    public void Destroy(BufferHandle handle)
+    public void Destroy(in BufferHandle handle)
     {
         BuffersPool.Destroy(handle);
     }
 
-    public void Destroy(TextureHandle handle)
+    public void Destroy(in TextureHandle handle)
     {
         TexturesPool.Destroy(handle);
         AwaitingCreation = true; // make the validation layers happy
     }
 
-    public void Destroy(QueryPoolHandle handle)
+    public void Destroy(in QueryPoolHandle handle)
     {
         QueriesPool.Destroy(handle);
     }

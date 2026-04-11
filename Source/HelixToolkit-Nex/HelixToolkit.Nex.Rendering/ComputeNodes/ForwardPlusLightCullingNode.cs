@@ -98,7 +98,7 @@ public sealed class ForwardPlusLightCullingNode : ComputeNode
             .GpuAddress(renderContext.Context);
         _cullingConstants.EnableAABBCulling = EnableAABBCulling ? 1u : 0u;
         _cullingConstants.EnableDepthMaskCulling = EnableDepthMaskCulling ? 1u : 0u;
-        res.CmdBuffer.UpdateBuffer(_cullingConstantsBuffer, _cullingConstants);
+        res.CmdBuffer.UpdateBuffer(_cullingConstantsBuffer, ref _cullingConstants);
         res.CmdBuffer.BindComputePipeline(_pipeline);
         res.CmdBuffer.PushConstants(_cullingConstantsBuffer.GpuAddress);
         res.CmdBuffer.DispatchThreadGroups(new Dimensions(tileCountX, tileCountY, 1), res.Deps);

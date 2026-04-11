@@ -113,7 +113,7 @@ public sealed class FrustumCullNode : ComputeNode
         {
             _cullConst.InstanceCount = range.Count;
             _cullConst.MeshDrawIdxOffset = range.Start;
-            cmdBuffer.UpdateBuffer(_cullBuffer, _cullConst);
+            cmdBuffer.UpdateBuffer(_cullBuffer, ref _cullConst);
 
             // Cull all static meshes in one dispatch. Each thread checks one mesh's visibility.
             cmdBuffer.DispatchThreadGroups(
@@ -128,7 +128,7 @@ public sealed class FrustumCullNode : ComputeNode
         {
             _cullConst.InstanceCount = range.Count;
             _cullConst.MeshDrawIdxOffset = range.Start;
-            cmdBuffer.UpdateBuffer(_cullBuffer, _cullConst);
+            cmdBuffer.UpdateBuffer(_cullBuffer, ref _cullConst);
 
             // Cull all static meshes in one dispatch. Each thread checks one mesh's visibility.
             cmdBuffer.DispatchThreadGroups(
@@ -191,7 +191,7 @@ public sealed class FrustumCullNode : ComputeNode
     { // For instancing meshes
         _cullConst.MeshDrawBufferAddress = data.GpuAddress;
         _cullConst.InstanceCount = 1; // Each draw command has one instance, so instance count is 1.
-        cmdBuffer.UpdateBuffer(_cullBuffer, _cullConst);
+        cmdBuffer.UpdateBuffer(_cullBuffer, ref _cullConst);
         cmdBuffer.BindComputePipeline(_instancingCullingPipeline);
         FrustumCullInstancingPC pc = new() { CullingConstAddress = _cullBuffer.GpuAddress };
         var range = data.RangeStaticMeshInstancing;

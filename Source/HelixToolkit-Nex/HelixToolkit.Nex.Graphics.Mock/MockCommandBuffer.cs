@@ -43,25 +43,25 @@ public class MockCommandBuffer : ICommandBuffer
     }
 
     /// <inheritdoc/>
-    public void TransitionToShaderReadOnly(TextureHandle handle)
+    public void TransitionToShaderReadOnly(in TextureHandle handle)
     {
         _recordedCommands.Add($"TransitionToShaderReadOnly({handle.Index})");
     }
 
     /// <inheritdoc/>
-    public void TransitionToRenderingLocalRead(TextureHandle handle)
+    public void TransitionToRenderingLocalRead(in TextureHandle handle)
     {
         _recordedCommands.Add($"TransitionToRenderingLocalRead({handle.Index})");
     }
 
     /// <inheritdoc/>
-    public void PushDebugGroupLabel(string label, in Color4 color)
+    public void PushDebugGroupLabel(string label, Color4 color)
     {
         _recordedCommands.Add($"PushDebugGroupLabel({label})");
     }
 
     /// <inheritdoc/>
-    public void InsertDebugEventLabel(string label, in Color4 color)
+    public void InsertDebugEventLabel(string label, Color4 color)
     {
         _recordedCommands.Add($"InsertDebugEventLabel({label})");
     }
@@ -73,13 +73,13 @@ public class MockCommandBuffer : ICommandBuffer
     }
 
     /// <inheritdoc/>
-    public void BindComputePipeline(ComputePipelineHandle handle)
+    public void BindComputePipeline(in ComputePipelineHandle handle)
     {
         _recordedCommands.Add($"BindComputePipeline({handle.Index})");
     }
 
     /// <inheritdoc/>
-    public void DispatchThreadGroups(in Dimensions threadgroupCount, in Dependencies deps)
+    public void DispatchThreadGroups(Dimensions threadgroupCount, Dependencies deps)
     {
         _recordedCommands.Add(
             $"DispatchThreadGroups({threadgroupCount.Width}, {threadgroupCount.Height}, {threadgroupCount.Depth})"
@@ -87,7 +87,7 @@ public class MockCommandBuffer : ICommandBuffer
     }
 
     /// <inheritdoc/>
-    public void BeginRendering(in RenderPass renderPass, in Framebuffer desc, in Dependencies deps)
+    public void BeginRendering(RenderPass renderPass, Framebuffer desc, Dependencies deps)
     {
         _isRendering = true;
         _recordedCommands.Add(
@@ -109,13 +109,13 @@ public class MockCommandBuffer : ICommandBuffer
     }
 
     /// <inheritdoc/>
-    public void BindViewport(in ViewportF viewport)
+    public void BindViewport(ViewportF viewport)
     {
         _recordedCommands.Add($"BindViewport({viewport.Width}x{viewport.Height})");
     }
 
     /// <inheritdoc/>
-    public void BindScissorRect(in ScissorRect rect)
+    public void BindScissorRect(ScissorRect rect)
     {
         _recordedCommands.Add($"BindScissorRect({rect.Width}x{rect.Height})");
     }
@@ -127,7 +127,7 @@ public class MockCommandBuffer : ICommandBuffer
     }
 
     /// <inheritdoc/>
-    public void BindDepthState(in DepthState state)
+    public void BindDepthState(DepthState state)
     {
         _recordedCommands.Add($"BindDepthState(writeEnabled={state.IsDepthWriteEnabled})");
     }
@@ -233,9 +233,9 @@ public class MockCommandBuffer : ICommandBuffer
 
     /// <inheritdoc/>
     public void DrawIndexedIndirectCount(
-        BufferHandle indirectBuffer,
+        in BufferHandle indirectBuffer,
         size_t indirectBufferOffset,
-        BufferHandle countBuffer,
+        in BufferHandle countBuffer,
         size_t countBufferOffset,
         size_t maxDrawCount,
         size_t stride = 0
@@ -245,7 +245,7 @@ public class MockCommandBuffer : ICommandBuffer
     }
 
     /// <inheritdoc/>
-    public void DrawMeshTasks(in Dimensions threadgroupCount)
+    public void DrawMeshTasks(Dimensions threadgroupCount)
     {
         _recordedCommands.Add(
             $"DrawMeshTasks({threadgroupCount.Width}, {threadgroupCount.Height}, {threadgroupCount.Depth})"
@@ -279,7 +279,7 @@ public class MockCommandBuffer : ICommandBuffer
     }
 
     /// <inheritdoc/>
-    public void SetBlendColor(in Color4 color)
+    public void SetBlendColor(Color4 color)
     {
         _recordedCommands.Add(
             $"SetBlendColor({color.Red}, {color.Green}, {color.Blue}, {color.Alpha})"
@@ -313,7 +313,7 @@ public class MockCommandBuffer : ICommandBuffer
     }
 
     /// <inheritdoc/>
-    public void ClearColorImage(in TextureHandle tex, in Color4 value, in TextureLayers layers)
+    public void ClearColorImage(in TextureHandle tex, Color4 value, TextureLayers layers)
     {
         _recordedCommands.Add($"ClearColorImage(texture={tex.Index})");
     }
@@ -322,11 +322,11 @@ public class MockCommandBuffer : ICommandBuffer
     public void CopyImage(
         in TextureHandle src,
         in TextureHandle dst,
-        in Dimensions extent,
-        in Offset3D srcOffset,
-        in Offset3D dstOffset,
-        in TextureLayers srcLayers,
-        in TextureLayers dstLayers
+        Dimensions extent,
+        Offset3D srcOffset,
+        Offset3D dstOffset,
+        TextureLayers srcLayers,
+        TextureLayers dstLayers
     )
     {
         _recordedCommands.Add($"CopyImage(src={src.Index}, dst={dst.Index})");

@@ -54,7 +54,7 @@ public class Buffer
         );
         Assert.IsNotNull(buffer, "Buffer should not be null after creation.");
         Assert.IsTrue(buffer.Valid, "Buffer should be valid after creation.");
-        result = _vkContext?.Upload(buffer.Handle, 0, in data).CheckResult(); // Upload the data to the buffer
+        result = _vkContext?.Upload(buffer.Handle, 0, ref data).CheckResult(); // Upload the data to the buffer
         Assert.IsTrue(
             result == ResultCode.Ok,
             "Data upload to storage buffer failed with error: " + result.ToString()
@@ -94,7 +94,7 @@ public class Buffer
         );
         Assert.IsNotNull(buffer, "Uniform buffer should not be null after creation.");
         Assert.IsTrue(buffer.Valid, "Uniform buffer should be valid after creation.");
-        result = _vkContext?.Upload(buffer.Handle, 0, in data).CheckResult(); // Upload the data to the buffer
+        result = _vkContext?.Upload(buffer.Handle, 0, ref data).CheckResult(); // Upload the data to the buffer
         Assert.IsTrue(
             result == ResultCode.Ok,
             "Data upload to uniform buffer failed with error: " + result.ToString()
