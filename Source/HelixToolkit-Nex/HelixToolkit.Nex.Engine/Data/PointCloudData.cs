@@ -35,7 +35,7 @@ internal sealed class PointCloudData(IContext context, World world) : Initializa
 
     public uint Count { private set; get; } = 0;
 
-    public uint PointCount { private set; get; } = 0;
+    public uint TotalPointCount { private set; get; } = 0;
 
     protected override ResultCode OnInitializing()
     {
@@ -93,7 +93,7 @@ internal sealed class PointCloudData(IContext context, World world) : Initializa
         {
             entry.Clear();
         }
-        PointCount = 0;
+        TotalPointCount = 0;
         Count = 0;
 
         foreach (var entity in _entities)
@@ -104,15 +104,26 @@ internal sealed class PointCloudData(IContext context, World world) : Initializa
             ref var pc = ref entity.Get<PointCloudComponent>();
             if (!pc.Valid)
                 continue;
-            PointCount += (uint)pc.PointCount;
+            TotalPointCount += (uint)pc.PointCount;
 
-            if (!_pointsByMaterial.TryGetValue(pc.PointMaterialId, out var entry))
+            if (
+                !_pointsByMaterial.TryGetValue(pc.PointMaterialId, out var entry)
+                || entry.IsDisposed
+            )
             {
-                entry = new PointCloudDataEntry(Context, 256, pc.PointMaterialId);
+                entry = new PointCloudDataEntry(Context, pc.PointCount, pc.PointMaterialId);
                 _pointsByMaterial[pc.PointMaterialId] = entry;
             }
             entry.AddEntity(entity);
             ++Count;
+        }
+
+        foreach (var entry in _pointsByMaterial.Values)
+        {
+            if (entry.PointCount == 0)
+            {
+                entry.Dispose();
+            }
         }
         _needRebuilt = false;
     }
