@@ -138,7 +138,7 @@ public sealed class PointCloudDataEntry : IDisposable
             context,
             initialCapacity,
             BufferUsageBits.Storage,
-            debugName: $"PointDrawData_{id}"
+            debugName: $"{id}"
         );
 
         DrawArgsBuffer = context.CreateBuffer(

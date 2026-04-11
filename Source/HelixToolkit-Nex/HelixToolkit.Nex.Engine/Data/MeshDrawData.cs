@@ -136,7 +136,7 @@ internal class MeshDrawData : Initializable, IMeshDrawData
         Context = context;
         _isTransparent = isTransparent;
         World = world;
-        Name = $"{nameof(MeshDrawData)}_{(isTransparent ? "Transparent" : "Opaque")}_{World.Id}";
+        Name = $"{(isTransparent ? "Transparent" : "Opaque")}_{World.Id}";
     }
 
     public DrawRange GetRangeDynamicMesh(MaterialTypeId materialType)
