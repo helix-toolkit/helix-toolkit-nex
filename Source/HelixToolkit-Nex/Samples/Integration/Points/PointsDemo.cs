@@ -193,14 +193,20 @@ internal sealed class PointsDemo : IDisposable
         var node = new Node(world) { Name = name };
         _root!.AddChild(node);
 
+        // Snapshot the original (untinted) colors
+        var originalColors = new List<Vector4>(geo.VertexColors.Count);
+        for (int i = 0; i < geo.VertexColors.Count; i++)
+            originalColors.Add(geo.VertexColors[i]);
+
         // Apply tint to all points
         for (int i = 0; i < geo.VertexColors.Count; i++)
         {
+            var c = originalColors[i];
             geo.VertexColors[i] = new Vector4(
-                geo.VertexColors[i].X * tint.Red,
-                geo.VertexColors[i].Y * tint.Green,
-                geo.VertexColors[i].Z * tint.Blue,
-                geo.VertexColors[i].W * tint.Alpha
+                c.X * tint.Red,
+                c.Y * tint.Green,
+                c.Z * tint.Blue,
+                c.W * tint.Alpha
             );
         }
 
@@ -214,7 +220,7 @@ internal sealed class PointsDemo : IDisposable
             )
         );
 
-        _pointClouds.Add(new PointCloudEntry(name, node, geo, tint));
+        _pointClouds.Add(new PointCloudEntry(name, node, geo, tint, originalColors));
         _engine!.ResourceManager.Geometries.Add(geo, out _);
     }
 
@@ -396,19 +402,34 @@ internal sealed class PointsDemo : IDisposable
             new Vector3(0, -5, 15),
             entry.Points
         );
-        // Apply tint
-        for (int i = 0; i < newPts.Vertices.Count; i++)
+
+        // Update the stored original colors from the freshly generated wave
+        var origColors = entry.OriginalColors;
+        if (origColors.Count != newPts.VertexColors.Count)
         {
+            origColors.Clear();
+            origColors.Capacity = newPts.VertexColors.Count;
+            for (int i = 0; i < newPts.VertexColors.Count; i++)
+                origColors.Add(newPts.VertexColors[i]);
+        }
+        else
+        {
+            for (int i = 0; i < newPts.VertexColors.Count; i++)
+                origColors[i] = newPts.VertexColors[i];
+        }
+
+        // Apply tint from the original colors
+        for (int i = 0; i < newPts.VertexColors.Count; i++)
+        {
+            var orig = origColors[i];
             newPts.VertexColors[i] = new Vector4(
-                newPts.VertexColors[i].X * entry.Tint.Red,
-                newPts.VertexColors[i].Y * entry.Tint.Green,
-                newPts.VertexColors[i].Z * entry.Tint.Blue,
-                newPts.VertexColors[i].W * entry.Tint.Alpha
+                orig.X * entry.Tint.Red,
+                orig.Y * entry.Tint.Green,
+                orig.Z * entry.Tint.Blue,
+                orig.W * entry.Tint.Alpha
             );
         }
         entry.Points = newPts;
-        // Update the ECS component
-        entry.Node.Entity.NotifyComponentChanged<PointCloudComponent>();
     }
 
     // ------------------------------------------------------------------
@@ -678,7 +699,7 @@ internal sealed class PointsDemo : IDisposable
             var data = _worldDataProvider?.PointCloudData;
             if (data is not null)
             {
-                Gui.Text($"GPU buffer points: {data.PointCount:N0}");
+                Gui.Text($"GPU buffer points: {data.TotalPointCount:N0}");
                 Gui.Text($"Entity count: {data.Count}");
             }
         }
@@ -701,18 +722,15 @@ internal sealed class PointsDemo : IDisposable
 
     private void ApplyTint(PointCloudEntry entry)
     {
-        // Regenerate original colors and apply new tint
-        // For simplicity, just modulate existing alpha-premultiplied colors
+        // Re-derive tinted colors from the stored originals
         for (int i = 0; i < entry.Points.VertexColors.Count; i++)
         {
-            ref var c = ref entry.Points.VertexColors.At(i);
-            // Normalize to "white" then re-tint (approximate)
-            float lum = MathF.Max(0.01f, MathF.Max(c.X, MathF.Max(c.Y, c.Z)));
-            c = new Vector4(
-                c.X / lum * entry.Tint.Red,
-                c.Y / lum * entry.Tint.Green,
-                c.Z / lum * entry.Tint.Blue,
-                c.W
+            var orig = entry.OriginalColors[i];
+            entry.Points.VertexColors[i] = new Vector4(
+                orig.X * entry.Tint.Red,
+                orig.Y * entry.Tint.Green,
+                orig.Z * entry.Tint.Blue,
+                orig.W * entry.Tint.Alpha
             );
         }
         entry.Points.MarkDirty(GeometryBufferType.VertexColor);
@@ -766,11 +784,24 @@ internal sealed class PointCloudEntry
     public Geometry Points { get; set; }
     public Color4 Tint { get; set; }
 
-    public PointCloudEntry(string name, Node node, Geometry points, Color4 tint)
+    /// <summary>
+    /// Stores the untinted (original) vertex colors so that tint can be
+    /// re-applied non-destructively any number of times.
+    /// </summary>
+    public List<Vector4> OriginalColors { get; set; }
+
+    public PointCloudEntry(
+        string name,
+        Node node,
+        Geometry points,
+        Color4 tint,
+        List<Vector4> originalColors
+    )
     {
         Name = name;
         Node = node;
         Points = points;
         Tint = tint;
+        OriginalColors = originalColors;
     }
 }

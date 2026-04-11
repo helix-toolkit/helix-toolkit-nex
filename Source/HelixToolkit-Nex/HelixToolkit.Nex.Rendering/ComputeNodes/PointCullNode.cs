@@ -85,7 +85,7 @@ public sealed class PointCullNode : ComputeNode
         }
 
         var points = res.Context.Data.PointCloudData;
-        if (points!.PointCount == 0)
+        if (points!.TotalPointCount == 0)
         {
             return;
         }

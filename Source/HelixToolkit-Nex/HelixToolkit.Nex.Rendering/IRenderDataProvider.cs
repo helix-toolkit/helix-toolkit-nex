@@ -121,6 +121,8 @@ public interface IMeshDrawData : IRenderData
 
 public sealed class PointCloudDataEntry : IDisposable
 {
+    private bool _disposed;
+    public bool IsDisposed => _disposed;
     public MaterialTypeId MaterialId { get; }
     public FastList<Entity> Entities { get; } = [];
     public ElementBuffer<PointDrawData> DrawDataBuffer { get; }
@@ -169,8 +171,13 @@ public sealed class PointCloudDataEntry : IDisposable
 
     public void Dispose()
     {
+        if (_disposed)
+        {
+            return;
+        }
         DrawDataBuffer.Dispose();
         DrawArgsBuffer.Dispose();
+        _disposed = true;
     }
 }
 
@@ -193,7 +200,7 @@ public interface IPointCloudData : IRenderData
     /// <summary>
     /// Gets the total number of points in the collection.
     /// </summary>
-    uint PointCount { get; }
+    uint TotalPointCount { get; }
 }
 
 public interface IRenderDataProvider
