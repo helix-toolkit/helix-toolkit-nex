@@ -115,6 +115,10 @@ public sealed class PointCullNode : ComputeNode
 
         foreach (var entry in points.Data.Values)
         {
+            if (!entry.Valid)
+            {
+                continue;
+            }
             entry.EnsureCapacity();
             // --- Reset indirect args ---
             var args = new PointDrawIndirectArgs
