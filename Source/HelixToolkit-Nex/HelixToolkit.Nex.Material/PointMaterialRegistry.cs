@@ -206,6 +206,27 @@ public static class PointMaterialRegistry
     }
 
     /// <summary>
+    /// Attempts to retrieve the <see cref="MaterialTypeId"/> associated with the specified name.
+    /// </summary>
+    /// <remarks>This method does not throw an exception if the specified name is not found. Instead, it
+    /// returns  <see langword="false"/> and sets <paramref name="typeId"/> to its default value.</remarks>
+    /// <param name="name">The name of the material type to look up. This value cannot be <see langword="null"/>.</param>
+    /// <param name="typeId">When this method returns, contains the <see cref="MaterialTypeId"/> associated with the specified name,  if the
+    /// lookup succeeds; otherwise, contains the default value of <see cref="MaterialTypeId"/>.</param>
+    /// <returns><see langword="true"/> if the lookup succeeds and a <see cref="MaterialTypeId"/> is found for the specified
+    /// name;  otherwise, <see langword="false"/>.</returns>
+    public static bool TryGetTypeId(string name, out MaterialTypeId typeId)
+    {
+        typeId = default;
+        if (_registrations.TryGetValue(name, out var registration))
+        {
+            typeId = registration.TypeId;
+            return true;
+        }
+        return false;
+    }
+
+    /// <summary>
     /// Gets the point material type name for a given ID.
     /// </summary>
     public static string? GetTypeName(MaterialTypeId typeId)
