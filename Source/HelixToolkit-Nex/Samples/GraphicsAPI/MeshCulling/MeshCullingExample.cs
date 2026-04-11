@@ -315,7 +315,7 @@ internal class MeshCullingExample : IDisposable
                 ViewProjection = view * proj,
                 InverseViewProjection = invViewProj,
                 CameraPosition = _camera.Position,
-                Time = (float)DateTime.Now.TimeOfDay.TotalSeconds,
+                TimeMs = Time.GetMonoTimeMs(),
                 MeshInfoBufferAddress = _meshInfoBuffer.GpuAddress,
                 MaterialBufferAddress = _pbrPropertiesBuffer.GpuAddress,
                 MeshDrawBufferAddress = _meshDrawBuffer.GpuAddress,

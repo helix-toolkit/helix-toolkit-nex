@@ -358,7 +358,7 @@ internal class InstancingMeshCullingExample : IDisposable
                 ViewProjection = view * proj,
                 InverseViewProjection = invViewProj,
                 CameraPosition = _camera.Position,
-                Time = (float)DateTime.Now.TimeOfDay.TotalSeconds,
+                TimeMs = Time.GetMonoTimeMs(),
                 MaterialBufferAddress = _pbrPropertiesBuffer.GpuAddress,
                 MeshDrawBufferAddress = _meshDrawBuffer.GpuAddress,
                 MeshInfoBufferAddress = _meshInfoBuffer.GpuAddress,
