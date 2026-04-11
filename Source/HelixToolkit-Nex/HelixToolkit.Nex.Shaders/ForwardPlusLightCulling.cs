@@ -20,7 +20,7 @@ public static class ForwardPlusLightCulling
         /// <summary>
         /// Maximum number of lights per tile.
         /// </summary>
-        public uint MaxLightsPerTile = 8;
+        public uint MaxLightsPerTile = 12;
 
         public static Config Default => new();
     }

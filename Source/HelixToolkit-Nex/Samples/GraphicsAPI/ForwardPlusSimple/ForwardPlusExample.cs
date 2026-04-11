@@ -592,7 +592,7 @@ public class ForwardPlusExample
                 ViewProjection = view * proj,
                 InverseViewProjection = invViewProj,
                 CameraPosition = camera.Position,
-                Time = (float)DateTime.Now.TimeOfDay.TotalSeconds,
+                TimeMs = Time.GetMonoTimeMs(),
                 MeshInfoBufferAddress = _meshInfoBuffer.GpuAddress,
                 LightBufferAddress = _lightBuffer.GpuAddress,
                 LightGridBufferAddress = _lightGridBuffer.GpuAddress,
