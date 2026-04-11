@@ -31,7 +31,7 @@ public sealed class DepthPassNode() : RenderNode
         }
         var fpData = new FPConstants
         {
-            Time = res.Context.Time,
+            TimeMs = res.Context.TimeMs,
             CameraPosition = context.CameraParams.Position,
             InverseViewProjection = context.CameraParams.InvViewProjection,
             ViewProjection = context.CameraParams.ViewProjection,

@@ -42,8 +42,8 @@ uint getSamplerId() {
 
 FPConstants fpConst = FPBuffer(pc.value.fpConstAddress).fpConstants;
 
-float getTime() {
-    return fpConst.time;
+uint64_t getTimeMs() {
+    return fpConst.timeMs;
 }
 
 mat4 getViewProjection() {

@@ -101,7 +101,7 @@ public class MinecraftScene : IScene
             "Lava",
             """
             PBRMaterial material = createPBRMaterial();
-            float pulse = 0.7 + 0.3 * sin(getTime() * 2.0 + fragWorldPos.x + fragWorldPos.z);
+            float pulse = 0.7 + 0.3 * sin(float(getTimeMs() % 100000) / 1000 * 2.0 + fragWorldPos.x + fragWorldPos.z);
             material.emissive = material.albedo * pulse * 3.0;
             material.albedo *= 0.2;
             return vec4(material.albedo + material.emissive, 1.0);
@@ -124,7 +124,7 @@ public class MinecraftScene : IScene
             "Water",
             """
             PBRMaterial material = createPBRMaterial();
-            float wave = 0.5 + 0.5 * sin(getTime() * 3.0 + fragWorldPos.x * 0.8 + fragWorldPos.z * 0.6);
+            float wave = 0.5 + 0.5 * sin(float(getTimeMs() % 100000) / 1000 * 3.0 + fragWorldPos.x * 0.8 + fragWorldPos.z * 0.6);
             material.albedo = mix(material.albedo, vec3(0.1, 1, 1.0), wave);
             material.emissive = material.albedo * 0.15;
             return forwardPlusLighting(material) + vec4(material.emissive, 0.0);

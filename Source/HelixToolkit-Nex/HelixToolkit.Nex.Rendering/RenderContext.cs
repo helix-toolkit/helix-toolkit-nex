@@ -49,6 +49,7 @@ public readonly struct CameraParams(
 public sealed class RenderContext(IServiceProvider services) : Initializable
 {
     private static readonly ILogger _logger = LogManager.Create<RenderContext>();
+    private static readonly long _baseTimestamp = Stopwatch.GetTimestamp();
 
     public readonly IContext Context = services.GetRequiredService<IContext>();
 
@@ -125,9 +126,11 @@ public sealed class RenderContext(IServiceProvider services) : Initializable
     public override string Name => nameof(RenderContext);
 
     /// <summary>
-    /// Gets the time value in seconds.
+    /// Gets the elapsed time, in milliseconds, since the application started.
     /// </summary>
-    public float Time => Stopwatch.GetTimestamp() / (float)Stopwatch.Frequency;
+    /// <remarks>The value is calculated based on the system's high-resolution performance counter.</remarks>
+    public ulong TimeMs =>
+        (ulong)((double)(Stopwatch.GetTimestamp() - _baseTimestamp) / Stopwatch.Frequency * 1000u);
 
     /// <summary>
     /// Initiates the rendering process for a new frame.

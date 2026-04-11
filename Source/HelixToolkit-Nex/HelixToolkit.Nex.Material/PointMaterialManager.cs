@@ -26,6 +26,25 @@ public interface IPointMaterialManager : IDisposable
     /// </summary>
     /// <returns>The number of pipelines created.</returns>
     int CreatePipelinesFromRegistry();
+
+    /// <summary>
+    /// Retrieves the unique identifier for a material based on its name.
+    /// </summary>
+    /// <param name="name">The name of the material. This value cannot be null or empty.</param>
+    /// <returns>The <see cref="MaterialTypeId"/> associated with the specified material name.</returns>
+    MaterialTypeId? GetMaterialId(string name);
+
+    /// <summary>
+    /// Attempts to retrieve the material identifier associated with the specified material name.
+    /// </summary>
+    /// <remarks>This method does not throw an exception if the material name is not found. Instead, it
+    /// returns <see langword="false"/> and sets <paramref name="materialId"/> to its default value.</remarks>
+    /// <param name="name">The name of the material to look up. This value cannot be <see langword="null"/> or empty.</param>
+    /// <param name="materialId">When this method returns, contains the <see cref="MaterialTypeId"/> associated with the specified material name,
+    /// if the lookup was successful; otherwise, contains the default value of <see cref="MaterialTypeId"/>.</param>
+    /// <returns><see langword="true"/> if the material identifier was successfully retrieved; otherwise, <see
+    /// langword="false"/>.</returns>
+    bool TryGetMaterialId(string name, out MaterialTypeId materialId);
 }
 
 /// <summary>
@@ -193,6 +212,18 @@ public sealed class PointMaterialManager(IContext context, IShaderRepository sha
             registration.TypeId.Id
         );
         return true;
+    }
+
+    /// <inheritdoc/>
+    public MaterialTypeId? GetMaterialId(string name)
+    {
+        return PointMaterialRegistry.GetTypeId(name);
+    }
+
+    /// <inheritdoc/>
+    public bool TryGetMaterialId(string name, out MaterialTypeId materialId)
+    {
+        return PointMaterialRegistry.TryGetTypeId(name, out materialId);
     }
 
     #region IDisposable

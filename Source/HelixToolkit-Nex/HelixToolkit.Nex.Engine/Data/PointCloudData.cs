@@ -1,3 +1,4 @@
+using System.Data.SqlTypes;
 using HelixToolkit.Nex.ECS.Utils;
 using HelixToolkit.Nex.Rendering.Components;
 
@@ -13,7 +14,6 @@ internal sealed class PointCloudData(IContext context, World world) : Initializa
 {
     private static readonly ITracer _tracer = TracerFactory.GetTracer(nameof(PointCloudData));
     private static readonly ILogger _logger = LogManager.Create<PointCloudData>();
-
     private readonly Dictionary<MaterialTypeId, PointCloudDataEntry> _pointsByMaterial = [];
     private EntityCollection? _entities;
     private long _lastBufferUpdateTicks;
@@ -105,7 +105,13 @@ internal sealed class PointCloudData(IContext context, World world) : Initializa
             if (!pc.Valid)
                 continue;
             TotalPointCount += (uint)pc.PointCount;
-
+            if (
+                pc.PointMaterialName is not null
+                && PointMaterialRegistry.TryGetTypeId(pc.PointMaterialName, out var materialId)
+            )
+            {
+                pc.PointMaterialId = materialId;
+            }
             if (
                 !_pointsByMaterial.TryGetValue(pc.PointMaterialId, out var entry)
                 || entry.IsDisposed

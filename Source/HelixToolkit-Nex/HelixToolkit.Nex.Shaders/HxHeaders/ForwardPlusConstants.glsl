@@ -4,7 +4,7 @@ struct FPConstants {
     mat4 inverseViewProjection;
 
     vec3 cameraPosition;
-    float time;
+    float dpiScale;
 
     uint lightCount;
     uint tileSize;
@@ -15,8 +15,7 @@ struct FPConstants {
     uint maxLightsPerTile;
     uint enabled;
 
-    float dpiScale;
-    uint _padding;
+    uint64_t timeMs;
 
     uint64_t meshInfoBufferAddress;
     uint64_t lightBufferAddress;

@@ -25,7 +25,7 @@ public sealed class ForwardPlusOpaqueNode : RenderNode
         var fpData = new FPConstants
         {
             Enabled = UseLightCulling ? 1u : 0,
-            Time = res.Context.Time,
+            TimeMs = res.Context.TimeMs,
             CameraPosition = context.CameraParams.Position,
             InverseViewProjection = context.CameraParams.InvViewProjection,
             ViewProjection = context.CameraParams.ViewProjection,

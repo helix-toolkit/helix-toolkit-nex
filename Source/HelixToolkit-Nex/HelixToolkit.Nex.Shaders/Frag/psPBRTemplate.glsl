@@ -85,8 +85,8 @@ PBRProperties getPBRMaterial()
     return materialBuf.materials[materialId];
 }
 
-float getTime() {
-    return fpConst.time;
+uint64_t getTimeMs() {
+    return fpConst.timeMs;
 }
 
 mat4 getViewProjection() {
