@@ -4,7 +4,7 @@
 [![Github Action](https://github.com/helix-toolkit/helix-toolkit-nex/actions/workflows/ci.yml/badge.svg)](https://github.com/helix-toolkit/helix-toolkit-nex/actions?query=workflow%3ACI
 )
 
-HelixToolkit Nex is the experimental graphics engine from HelixToolkit. It offers a unified graphics interface designed to support multiple backend implementations, with an initial focus on Vulkan 1.3.
+HelixToolkit Nex is the next generation 3D graphics engine from HelixToolkit. It offers a unified graphics interface designed to support multiple backend implementations, with an initial focus on Vulkan 1.3.
 
 The graphics interface and Vulkan backend are inspired by [LightWeightVk](https://github.com/corporateshark/lightweightvk).
 
@@ -13,10 +13,17 @@ Currently in development.
 ## Features (Done or In progress)
 
 - Vulkan backend implementation (Done)
+- Complete bindless descriptor architecture.
+- Linux support (Planned)
 - [ImGui integration](Source/HelixToolkit-Nex/Samples/GraphicsAPI/ImGuiTest/README.md) (Done)
 - [Forward+(Tiled based GPU light culling)](Source/HelixToolkit-Nex/Samples/GraphicsAPI/ForwardPlusSimple/README.md) rendering pipeline. (Done)
-- PBR material system. (In Progress)
+- Material systems.
+  - Physically Based Rendering (Done)
+  - Point cloud (Done)
+  - Line (Planned)
+  - Billboard (Planned)
   - Material registry and shader generation system. (Done)
+
 - [GPU Frustum Culling](Source/HelixToolkit-Nex/Samples/GraphicsAPI/MeshCulling/README.md) and [GPU Frustum Culling on Instancing](Source/HelixToolkit-Nex/Samples/GraphicsAPI/InstancingMeshCulling/README.md). (Done)
 - ECS based scene management system. (In Progress)
 - Engine architecture design. (In Progress)
@@ -30,7 +37,10 @@ Currently in development.
     - Wireframe rendering. (Done)
     - Tone mapping post-processing effect. (Done)
   - GPU Object level picking. (Done)
-  - Point Cloud rendering. (In Progress)
+ 
+- Wpf Framework Integration (In progress)
+- WinUI Integration (In Progree)
+- Avalonia UI Integration (Planned)
 
 ## Rendering Samples
 
