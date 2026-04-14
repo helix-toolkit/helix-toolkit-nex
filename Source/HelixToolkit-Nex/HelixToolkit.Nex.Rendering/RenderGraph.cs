@@ -161,7 +161,7 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
     private readonly Dictionary<string, GraphNode> _passes = [];
     private readonly Dictionary<string, List<GraphNode>> _resourceProducers = [];
     private readonly List<GraphNode> _sortedPasses = [];
-    private bool _resourceDirty = true;
+    private long _lastUpdatedTimeStamp = 0;
 
     public IReadOnlyList<GraphNode> SortedPasses => _sortedPasses;
 
@@ -407,7 +407,7 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
         }
 
         IsDirty = false;
-        _resourceDirty = true;
+        _lastUpdatedTimeStamp = Stopwatch.GetTimestamp();
     }
 
     /// <summary>
@@ -541,7 +541,7 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
         return result;
     }
 
-    public void Execute(
+    public bool Execute(
         RenderContext context,
         ICommandBuffer cmdBuf,
         IReadOnlyDictionary<string, RenderNode> nodes
@@ -558,9 +558,21 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
         {
             Compile();
         }
-        if (_resourceDirty)
+
+        if (context.WindowSize.Width <= 0 || context.WindowSize.Height <= 0)
+        {
+            _logger.LogWarning(
+                "RenderContext has invalid window size {SIZE}. Skipping render graph execution.",
+                context.WindowSize
+            );
+            return false;
+        }
+
+        resourceSet.CurrentGraph = this;
+        if (resourceSet.LastUpdatedTimeStamp != _lastUpdatedTimeStamp)
         {
             ApplyRegistrations(resourceSet);
+            resourceSet.LastUpdatedTimeStamp = _lastUpdatedTimeStamp;
         }
 
         resourceSet.EnsureResources(context, wasDirty);
@@ -593,6 +605,7 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
                 )
             );
         }
+        return true;
     }
 
     protected override ResultCode OnInitializing()
@@ -633,7 +646,6 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
         {
             resourceSet.AddBuffer(kvp.Key, kvp.Value.BuildFunc, kvp.Value.DependsOnScreenSize);
         }
-        _resourceDirty = false;
     }
 
     private void SetupResourcesForPass(

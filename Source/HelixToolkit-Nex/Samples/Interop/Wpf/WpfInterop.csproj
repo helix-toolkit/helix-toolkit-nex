@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <OutputType>WinExe</OutputType>
+        <TargetFramework>net8.0-windows</TargetFramework>
+        <UseWPF>true</UseWPF>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <LangVersion>latest</LangVersion>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\..\HelixToolkit.Nex.Engine\HelixToolkit.Nex.Engine.csproj" />
+        <ProjectReference Include="..\..\..\HelixToolkit.Nex.Graphics.Vulkan\HelixToolkit.Nex.Graphics.Vulkan.csproj" />
+        <ProjectReference Include="..\..\..\HelixToolkit.Nex.Graphics\HelixToolkit.Nex.Graphics.csproj" />
+        <ProjectReference Include="..\..\..\HelixToolkit.Nex.Geometries.Builders\HelixToolkit.Nex.Geometries.Builders.csproj" />
+        <ProjectReference Include="..\..\..\HelixToolkit.Nex.Interop.DirectX\HelixToolkit.Nex.Interop.DirectX.csproj" />
+        <ProjectReference Include="..\..\..\HelixToolkit.Nex.Wpf\HelixToolkit.Nex.Wpf.csproj" />
+        <ProjectReference Include="..\..\SceneSamples\SceneSamples.csproj" />
+    </ItemGroup>
+</Project>

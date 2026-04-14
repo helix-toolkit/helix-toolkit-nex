@@ -1320,7 +1320,11 @@ internal sealed partial class VulkanContext : Initializable, IContext
         InitSwapchain((uint)newWidth, (uint)newHeight);
     }
 
-    public SubmitHandle Submit(ICommandBuffer commandBuffer, in TextureHandle present)
+    public SubmitHandle Submit(
+        ICommandBuffer commandBuffer,
+        in TextureHandle present,
+        KeyedMutexSyncInfo syncInfo
+    )
     {
         HxDebug.Assert(Immediate != null);
         if (commandBuffer is not CommandBuffer vkCmdBuffer)
@@ -1365,8 +1369,32 @@ internal sealed partial class VulkanContext : Initializable, IContext
             Swapchain.TimelineWaitValues[Swapchain.CurrentImageIndex] = signalValue;
             Immediate!.SignalSemaphore(TimelineSemaphore, signalValue);
         }
-
-        vkCmdBuffer.LastSubmitHandle = Immediate!.Submit(vkCmdBuffer.Wrapper);
+        unsafe
+        {
+            switch (syncInfo.SyncType)
+            {
+                case KeyedMutexSyncType.D3D11SharedFence:
+                {
+                    VkDeviceMemory acquireSyncMem = new(syncInfo.AcquireSyncHandle);
+                    VkDeviceMemory releaseSyncMem = new(syncInfo.ReleaseSyncHandle);
+                    var info = new VkWin32KeyedMutexAcquireReleaseInfoKHR()
+                    {
+                        acquireCount = 1,
+                        pAcquireKeys = &syncInfo.AcquireKey,
+                        pAcquireSyncs = &acquireSyncMem,
+                        pAcquireTimeouts = &syncInfo.Timeout,
+                        releaseCount = 1,
+                        pReleaseKeys = &syncInfo.ReleaseKey,
+                        pReleaseSyncs = &releaseSyncMem,
+                    };
+                    vkCmdBuffer.LastSubmitHandle = Immediate!.Submit(vkCmdBuffer.Wrapper, &info);
+                    break;
+                }
+                default:
+                    vkCmdBuffer.LastSubmitHandle = Immediate!.Submit(vkCmdBuffer.Wrapper, null);
+                    break;
+            }
+        }
 
         if (shouldPresent)
         {

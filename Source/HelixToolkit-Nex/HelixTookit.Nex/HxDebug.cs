@@ -34,10 +34,13 @@ public sealed class HxDebug
         [CallerMemberName] string function = ""
     )
     {
-        if (!cond && EnableDebugAssertions)
+        if (!cond)
         {
             logger.LogError($"Assertion failed in {function}: {message}");
-            Debug.Assert(false);
+            if (EnableDebugAssertions)
+            {
+                Debug.Assert(false, message);
+            }
         }
     }
 }

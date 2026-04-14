@@ -1,0 +1,44 @@
+<Window
+  x:Class="WpfInterop.MainWindow"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:local="clr-namespace:WpfInterop"
+  xmlns:hx="clr-namespace:HelixToolkit.Nex.Wpf;assembly=HelixToolkit.Nex.Wpf"
+  xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
+  Title="HelixToolkit.Nex - WPF Interop (MinecraftLarge)"
+  Width="1280"
+  Height="720"
+>
+  <Window.Resources>
+    <local:MainViewModel x:Key="vm" />
+  </Window.Resources>
+  <Grid DataContext="{StaticResource ResourceKey=vm}">
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition></ColumnDefinition>
+      <ColumnDefinition Width="Auto" />
+      <ColumnDefinition></ColumnDefinition>
+    </Grid.ColumnDefinitions>
+    <hx:HelixViewport x:Name="ViewportFly" Grid.Column="0" Engine="{Binding Engine}" />
+    <GridSplitter
+      Grid.Column="1"
+      Width="5"
+      HorizontalAlignment="Center"
+      VerticalAlignment="Stretch"
+      ResizeDirection="Columns"
+      ResizeBehavior="PreviousAndNext"
+    />
+    <hx:HelixViewport x:Name="ViewportOverhead" Grid.Column="2" Engine="{Binding Engine}" />
+    <Grid
+      Grid.ColumnSpan="3"
+      VerticalAlignment="Bottom"
+      HorizontalAlignment="Center"
+      Margin="10"
+      Background="MidnightBlue"
+    >
+      <StackPanel Orientation="Horizontal">
+        <Button Margin="10" MinWidth="120" Content="Wpf Button 1" />
+        <Button Margin="10" MinWidth="120" Content="Wpf Button 2" />
+      </StackPanel>
+    </Grid>
+  </Grid>
+</Window>

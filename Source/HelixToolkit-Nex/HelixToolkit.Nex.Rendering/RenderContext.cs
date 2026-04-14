@@ -81,7 +81,8 @@ public sealed class RenderContext(IServiceProvider services) : Initializable
     /// </summary>
     public RenderGraphResourceSet? ResourceSet { set; get; }
 
-    private Size _windowSize;
+    private static readonly Size DefaultWindowSize = new(1, 1);
+    private Size _windowSize = DefaultWindowSize;
 
     public Size WindowSize
     {
@@ -90,25 +91,40 @@ public sealed class RenderContext(IServiceProvider services) : Initializable
             if (_windowSize != value)
             {
                 _windowSize = value;
+                if (value.Width <= 0 || value.Height <= 0)
+                {
+                    _logger.LogWarning(
+                        "Invalid window size set: {Width}x{Height}. Window size must be positive. Defaulting to {DefaultWidth}x{DefaultHeight}.",
+                        value.Width,
+                        value.Height,
+                        DefaultWindowSize.Width,
+                        DefaultWindowSize.Height
+                    );
+                    _windowSize = DefaultWindowSize;
+                }
                 _logger.LogInformation(
                     "Window size changed: {Width}x{Height}",
                     value.Width,
                     value.Height
                 );
-                TileCountX =
+                TileCountX = Math.Max(
                     (WindowSize.Width + (int)FPLightConfig.TileSize - 1)
-                    / (int)FPLightConfig.TileSize;
-                TileCountY =
+                        / (int)FPLightConfig.TileSize,
+                    1
+                );
+                TileCountY = Math.Max(
                     (WindowSize.Height + (int)FPLightConfig.TileSize - 1)
-                    / (int)FPLightConfig.TileSize;
+                        / (int)FPLightConfig.TileSize,
+                    1
+                );
             }
         }
         get => _windowSize;
     }
 
-    public int TileCountX { private set; get; }
+    public int TileCountX { private set; get; } = 1;
 
-    public int TileCountY { private set; get; }
+    public int TileCountY { private set; get; } = 1;
 
     public float DpiScale { set; get; } = 1;
 

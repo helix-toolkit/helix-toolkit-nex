@@ -1,3 +1,5 @@
+using System.Text;
+
 namespace HelixToolkit.Nex.Graphics.Vulkan;
 
 public sealed class VulkanContextConfig()
@@ -19,6 +21,19 @@ public sealed class VulkanContextConfig()
 
     // LVK knows about these extensions and can manage them automatically upon request
     public bool EnableHeadlessSurface = false; // VK_EXT_headless_surface
+
+    /// <summary>
+    /// When true, enables VK_KHR_external_memory_win32 and VK_KHR_external_memory
+    /// device extensions during Vulkan device creation. Default false.
+    /// </summary>
+    public bool EnableExternalMemoryWin32 = false;
+
+    /// <summary>
+    /// Optional LUID filter. When set, VulkanContext will only select a physical device
+    /// whose VkPhysicalDeviceIDProperties.deviceLUID matches this value.
+    /// Used by the interop layer to ensure Vulkan and DirectX use the same GPU.
+    /// </summary>
+    public byte[]? RequiredDeviceLuid = null;
 
     public bool ForcePresentModeFIFO = false; // force VK_PRESENT_MODE_FIFO_KHR as the only present mode, even if other modes are available
 
@@ -108,6 +123,9 @@ internal sealed partial class VulkanContext
         VK.VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
     ];
     private readonly List<VkUtf8String> _instanceExtensions = [];
+    private readonly HashSet<string> _supportedExtensions = [];
+
+    public string DeviceName { get; private set; } = string.Empty;
 
     public ref readonly VkPhysicalDeviceProperties2 VkPhysicalDeviceProperties2 =>
         ref _vkPhysicalDeviceProperties2;
@@ -598,6 +616,20 @@ internal sealed partial class VulkanContext
         }
     }
 
+    /// <summary>
+    /// Compares two 8-byte LUID values for exact byte equality.
+    /// </summary>
+    /// <param name="a">First LUID (must be at least 8 bytes).</param>
+    /// <param name="b">Second LUID (must be at least 8 bytes).</param>
+    /// <returns>True if all 8 bytes match.</returns>
+    internal static bool LuidMatches(ReadOnlySpan<byte> a, ReadOnlySpan<byte> b)
+    {
+        if (a.Length < 8 || b.Length < 8)
+            return false;
+
+        return a[..8].SequenceEqual(b[..8]);
+    }
+
     private static bool IsDeviceSuitable(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface)
     {
         var (graphicsFamily, presentFamily, computeFamily) = FindQueueFamilies(
@@ -694,12 +726,37 @@ internal sealed partial class VulkanContext
         VK.vkEnumeratePhysicalDevices(_vkInstance, &physicalDevicesCount, physicalDevices)
             .CheckResult();
 
+        bool luidFilterActive = Config.RequiredDeviceLuid is { Length: 8 };
+        List<string>? availableLuids = luidFilterActive ? [] : null;
+        byte* luidCopyBuffer = stackalloc byte[8];
+
         for (int i = 0; i < physicalDevicesCount; i++)
         {
             VkPhysicalDevice physicalDevice = physicalDevices[i];
 
             if (!IsDeviceSuitable(physicalDevice, _vkSurface))
                 continue;
+
+            // When LUID filtering is active, query VkPhysicalDeviceIDProperties and skip non-matching devices
+            if (luidFilterActive)
+            {
+                VkPhysicalDeviceIDProperties idProps = new();
+                VkPhysicalDeviceProperties2 props2 = new() { pNext = &idProps };
+                VK.vkGetPhysicalDeviceProperties2(physicalDevice, &props2);
+
+                byte* luidPtr = idProps.deviceLUID;
+                for (int j = 0; j < 8; j++)
+                    luidCopyBuffer[j] = luidPtr[j];
+
+                ReadOnlySpan<byte> deviceLuidSpan = new(luidCopyBuffer, 8);
+                availableLuids!.Add(Convert.ToHexString(deviceLuidSpan));
+
+                if (
+                    !idProps.deviceLUIDValid
+                    || !LuidMatches(deviceLuidSpan, Config.RequiredDeviceLuid!)
+                )
+                    continue;
+            }
 
             VK.vkGetPhysicalDeviceProperties(
                 physicalDevice,
@@ -712,6 +769,14 @@ internal sealed partial class VulkanContext
                 // If this is discrete GPU, look no further (prioritize discrete GPU)
                 break;
             }
+        }
+
+        if (_vkPhysicalDevice.IsNull && luidFilterActive)
+        {
+            throw new InvalidOperationException(
+                $"Vulkan: No physical device matches the required LUID '{Convert.ToHexString(Config.RequiredDeviceLuid!)}'. "
+                    + $"Available device LUIDs: [{string.Join(", ", availableLuids!)}]"
+            );
         }
         if (_vkPhysicalDevice.IsNull)
         {
@@ -728,7 +793,29 @@ internal sealed partial class VulkanContext
             _logger.LogError("Vulkan: The physical device does not support Vulkan 1.3 or higher.");
             return ResultCode.RuntimeError;
         }
+        if (properties.deviceName is not null)
+        {
+            DeviceName =
+                new VkUtf8ReadOnlyString(
+                    new ReadOnlySpan<byte>(
+                        properties.deviceName,
+                        (int)VK.VK_MAX_PHYSICAL_DEVICE_NAME_SIZE
+                    )
+                ).ToString() ?? string.Empty;
+            DeviceName = DeviceName.TrimEnd('\0'); // Remove any trailing null characters
+        }
 
+        _logger.LogInformation(
+            $"""
+            Selected Graphics Card Info:
+            ---------------------------
+            Device ID: {properties.deviceID}
+            API Version: {properties.apiVersion}
+            Device Name: {DeviceName}
+            Device Type: {properties.deviceType}
+            ----------------------------
+            """
+        );
         DeviceQueues.GraphicsQueueFamilyIndex = HxVkUtils.FindQueueFamilyIndex(
             _vkPhysicalDevice,
             VkQueueFlags.Graphics
@@ -753,6 +840,18 @@ internal sealed partial class VulkanContext
             return ResultCode.RuntimeError;
         }
         var availableDeviceExtensions = VK.vkEnumerateDeviceExtensionProperties(_vkPhysicalDevice);
+        if (availableDeviceExtensions != null)
+        {
+            _supportedExtensions.Clear();
+            foreach (var ext in availableDeviceExtensions)
+            {
+                if (ext.extensionName is null)
+                {
+                    continue;
+                }
+                _supportedExtensions.Add(new VkUtf8String(ext.extensionName).ToString()!);
+            }
+        }
 
         //var supportPresent = vkGetPhysicalDeviceWin32PresentationSupportKHR(PhysicalDevice, queueFamilies.graphicsFamily);
         VkDeviceQueueCreateInfo* queueCreateInfos = stackalloc VkDeviceQueueCreateInfo[3];
@@ -819,9 +918,8 @@ internal sealed partial class VulkanContext
             if (properties.apiVersion <= VkVersion.Version_1_3)
             {
                 if (
-                    HxVkUtils.CheckDeviceExtensionSupport(
-                        VK.VK_KHR_8BIT_STORAGE_EXTENSION_NAME,
-                        availableDeviceExtensions
+                    _supportedExtensions.Contains(
+                        VK.VK_KHR_8BIT_STORAGE_EXTENSION_NAME.GetString()!
                     )
                 )
                 {
@@ -830,6 +928,12 @@ internal sealed partial class VulkanContext
                     *features_chain = &storage_8bit_features;
                     features_chain = &storage_8bit_features.pNext;
                 }
+            }
+
+            // Conditionally enable VK_KHR_external_memory_win32 for DirectX interop
+            if (Config.EnableExternalMemoryWin32)
+            {
+                _deviceExtensions.Add(VK.VK_KHR_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME);
             }
 
             VK.vkGetPhysicalDeviceFeatures2(_vkPhysicalDevice, &deviceFeatures2);
@@ -850,6 +954,8 @@ internal sealed partial class VulkanContext
             _vkPhysicalDeviceVulkan11Properties = deviceProps1_1;
             _vkPhysicalDeviceVulkan12Properties = deviceProps1_2;
             _vkPhysicalDeviceVulkan13Properties = deviceProps1_3;
+
+            VerifyRequiredDeviceExtensions();
 
             using var deviceExtensionNames = new VkStringArray(_deviceExtensions);
 
@@ -2410,5 +2516,18 @@ internal sealed partial class VulkanContext
             Disposer.DisposeAndRemove(ref _validationSettings);
         }
         return ResultCode.Ok;
+    }
+
+    private void VerifyRequiredDeviceExtensions()
+    {
+        foreach (var ext in _deviceExtensions)
+        {
+            if (!_supportedExtensions.Contains(ext.ToString()!))
+            {
+                throw new InvalidOperationException(
+                    $"Vulkan: Physical device does not support the {ext} extension."
+                );
+            }
+        }
     }
 }

@@ -170,7 +170,7 @@ internal sealed class VulkanSwapchain : IDisposable
             var presentMode = _ctx.Config.ForcePresentModeFIFO
                 ? VkPresentModeKHR.Fifo
                 : chooseSwapPresentMode(_ctx.DevicePresentModes);
-            var pmci = new VkSwapchainPresentModesCreateInfoEXT
+            var pmci = new VkSwapchainPresentModesCreateInfoKHR
             {
                 presentModeCount = 1,
                 pPresentModes = &presentMode,
@@ -316,7 +316,7 @@ internal sealed class VulkanSwapchain : IDisposable
             VkSwapchainKHR swapchain_1 = _swapchain;
             var idx = _currentImageIndex;
 
-            VkSwapchainPresentFenceInfoEXT fenceInfo = new()
+            VkSwapchainPresentFenceInfoKHR fenceInfo = new()
             {
                 swapchainCount = 1,
                 pFences = &presentFence,

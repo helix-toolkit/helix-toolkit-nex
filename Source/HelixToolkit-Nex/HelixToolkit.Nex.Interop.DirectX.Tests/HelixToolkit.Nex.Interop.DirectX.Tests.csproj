@@ -1,0 +1,40 @@
+<Project Sdk="MSTest.Sdk/3.6.4">
+    <PropertyGroup>
+        <TargetFramework>net8.0-windows</TargetFramework>
+        <LangVersion>latest</LangVersion>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <UseVSTest>true</UseVSTest>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="FsCheck" Version="3.3.2" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\HelixToolkit.Nex.Interop.DirectX\HelixToolkit.Nex.Interop.DirectX.csproj" />
+        <ProjectReference Include="..\HelixToolkit.Nex.Graphics.Vulkan\HelixToolkit.Nex.Graphics.Vulkan.csproj" />
+        <ProjectReference Include="..\HelixToolkit.Nex.Graphics.Mock\HelixToolkit.Nex.Graphics.Mock.csproj" />
+        <ProjectReference Include="..\HelixToolkit.Nex.Engine\HelixToolkit.Nex.Engine.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Update="Microsoft.NET.Test.Sdk" Version="18.4.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Update="MSTest.Analyzers" Version="4.2.1">
+        <PrivateAssets>all</PrivateAssets>
+        <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      </PackageReference>
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Update="MSTest.TestAdapter" Version="4.2.1" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Update="MSTest.TestFramework" Version="4.2.1" />
+    </ItemGroup>
+</Project>

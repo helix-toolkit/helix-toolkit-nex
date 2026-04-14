@@ -136,6 +136,14 @@ internal sealed class VulkanImage : IDisposable
         VkSamplerYcbcrConversionInfo? samplerYcbcrInfo
     )
     {
+        if (!IsOwningVkImage)
+        {
+            _logger.LogError(
+                "Cannot create a VulkanImage that doesn't own its VkImage. DebugName: {DEBUG_NAME}",
+                _debugName
+            );
+            return ResultCode.InvalidState;
+        }
         uint32_t numPlanes = ImageFormat.GetNumImagePlanes();
         bool isDisjoint = numPlanes > 1;
         string debugNameImage = $"Image: {_debugName ?? string.Empty}";
@@ -813,10 +821,15 @@ internal sealed class VulkanImage : IDisposable
                 {
                     return;
                 }
+                if (!IsOwningVkImage)
+                {
+                    return; // this image is not owned by this class, so don't destroy it
+                }
                 var vkDevice = _ctx!.VkDevice;
                 if (ImageView.IsNotNull)
                 {
                     var view = ImageView;
+                    ImageView = VkImageView.Null;
                     _ctx!.DeferredTask(
                         () =>
                         {
@@ -832,6 +845,7 @@ internal sealed class VulkanImage : IDisposable
                 if (ImageViewStorage.IsNotNull)
                 {
                     var storage = ImageViewStorage;
+                    ImageViewStorage = VkImageView.Null;
                     _ctx!.DeferredTask(
                         () =>
                         {
@@ -882,11 +896,6 @@ internal sealed class VulkanImage : IDisposable
                             ImageViewForFramebufferMultiview[i] = VkImageView.Null;
                         }
                     }
-                }
-
-                if (!IsOwningVkImage)
-                {
-                    return;
                 }
 
                 if (_ctx.UseVmaAllocator && _memory[1].IsNull)

@@ -1,0 +1,363 @@
+using System.Runtime.InteropServices;
+using HelixToolkit.Nex.Engine;
+using HelixToolkit.Nex.Graphics;
+using HelixToolkit.Nex.Interop.DirectX;
+using HelixToolkit.Nex.Rendering;
+using Microsoft.Extensions.Logging;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Silk.NET.Core.Native;
+using Silk.NET.Direct3D11;
+using Silk.NET.DXGI;
+using Vortice.Vulkan;
+using static Silk.NET.Core.Native.SilkMarshal;
+using Size = HelixToolkit.Nex.Maths.Size;
+using TextureHandle = HelixToolkit.Nex.Handle<HelixToolkit.Nex.Graphics.Texture>;
+
+namespace HelixToolkit.Nex.WinUI;
+
+/// <summary>
+/// COM interface for setting a DXGI swap chain on a <see cref="SwapChainPanel"/>.
+/// </summary>
+[
+    ComImport,
+    Guid("63aad0b8-7c24-40ff-85a8-640d944cc325"),
+    InterfaceType(ComInterfaceType.InterfaceIsIUnknown)
+]
+internal partial interface ISwapChainPanelNative
+{
+    [PreserveSig]
+    HResult SetSwapChain(ComPtr<IDXGISwapChain1> swapchain);
+}
+
+/// <summary>
+/// WinUI 3 control that hosts the HelixToolkit.Nex 3D engine output.
+/// Uses <see cref="SwapChainPanel"/> with a DXGI swap chain for composition
+/// and keyed mutex synchronization for Vulkan-to-D3D11 interop.
+/// <para>
+/// The engine is provided externally via <see cref="Engine"/> so that multiple viewports
+/// can share a single engine instance. Each viewport creates its own
+/// <see cref="RenderContext"/>. Subscribe to <see cref="Rendering"/> to set the camera,
+/// provide a <see cref="WorldDataProvider"/>, and perform per-frame scene updates.
+/// </para>
+/// </summary>
+public sealed unsafe class HelixViewport : UserControl, IDisposable
+{
+    private static readonly ILogger _logger = LogManager.Create<HelixViewport>();
+
+    private const int WAIT_TIMEOUT = unchecked((int)0x00000102L);
+    private const int WAIT_ABANDONED = unchecked((int)0x00000080L);
+    #region Dependency Properties
+    public static readonly DependencyProperty EngineDp = HelixProperty.Register<
+        HelixViewport,
+        Engine.Engine?
+    >(
+        "Engine",
+        null,
+        (d, e) =>
+        {
+            if (d is not HelixViewport viewport)
+            {
+                return;
+            }
+            viewport.SetEngine((Engine.Engine)e.NewValue);
+        }
+    );
+    public Engine.Engine? Engine
+    {
+        get { return (Engine.Engine)GetValue(EngineDp); }
+        set { SetValue(EngineDp, value); }
+    }
+    #endregion
+    private SwapChainPanel? _swapChainPanel;
+    private D3D11DeviceManager? _d3d11Manager;
+    private ComPtr<IDXGIDevice3> _dxgiDevice;
+    private ComPtr<IDXGIAdapter> _dxgiAdapter;
+    private ComPtr<IDXGIFactory2> _dxgiFactory;
+    private ComPtr<IDXGISwapChain1> _swapchain;
+    private ComPtr<ID3D11Texture2D> _backbuffer;
+    private ComPtr<ID3D11Resource> _backbufferResource;
+    private ComPtr<ID3D11Resource> _renderTargetResource;
+    private SharedTextureResult? _sharedTexture;
+    private ImportedVulkanTexture? _importedTexture;
+    private ComPtr<IDXGIKeyedMutex> _keyedMutex;
+    private long _lastTimestamp;
+    private ViewportRenderingEventArgs? _renderArgs;
+    private Engine.Engine? _engine;
+    private bool _sizeChanged = true;
+    private bool _disposed;
+
+    /// <summary>Per-viewport render context (window size, camera, final output texture).</summary>
+    public RenderContext? RenderContext { get; private set; }
+
+    /// <summary>
+    /// Raised each frame before rendering. Subscribers should set the camera on
+    /// <see cref="ViewportRenderingEventArgs.RenderContext"/> and provide a
+    /// <see cref="ViewportRenderingEventArgs.WorldDataProvider"/>.
+    /// If no WorldDataProvider is set, the frame is skipped.
+    /// </summary>
+    public event EventHandler<ViewportRenderingEventArgs>? Rendering;
+
+    private KeyedMutexSyncInfo _vulkanSyncInfo;
+    private KeyedMutexSyncInfo _copySyncInfo;
+
+    public HelixViewport()
+    {
+        _swapChainPanel = new SwapChainPanel();
+        Content = _swapChainPanel;
+
+        Loaded += OnLoaded;
+        Unloaded += OnUnloaded;
+        SizeChanged += OnSizeChanged;
+    }
+
+    private void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        // 1. D3D11 device for shared texture interop
+        _d3d11Manager = new D3D11DeviceManager();
+
+        // 2. DXGI device, adapter, factory for swap chain creation
+        _dxgiDevice = _d3d11Manager.Device.QueryInterface<IDXGIDevice3>();
+        ThrowHResult(_dxgiDevice.GetAdapter(ref _dxgiAdapter));
+        _dxgiFactory = _dxgiAdapter.GetParent<IDXGIFactory2>();
+
+        // 4. Create shared resources at the current control size
+        var width = (uint)ActualWidth;
+        var height = (uint)ActualHeight;
+        if (width > 0 && height > 0)
+        {
+            CreateResources(width, height);
+        }
+    }
+
+    private void SetEngine(Engine.Engine engine)
+    {
+        if (_engine == engine)
+        {
+            return;
+        }
+        ReleaseResources();
+        _engine = engine;
+        if (IsLoaded && Width > 0 && Height > 0)
+        {
+            CreateResources((uint)Width, (uint)Height);
+        }
+    }
+
+    private void CreateResources(uint width, uint height)
+    {
+        if (_engine is null)
+        {
+            return;
+        }
+        _logger.LogInformation(
+            "Creating resources for HelixViewport with size {Width}x{Height}.",
+            width,
+            height
+        );
+        RenderContext = _engine.CreateRenderContext();
+        RenderContext.Initialize();
+        _renderArgs = new(RenderContext);
+        var context = _engine.Context;
+
+        // 1. DXGI swap chain for composition
+        var swapchainDesc = new SwapChainDesc1
+        {
+            Width = width,
+            Height = height,
+            Format = Silk.NET.DXGI.Format.FormatR8G8B8A8Unorm,
+            SwapEffect = SwapEffect.FlipSequential,
+            SampleDesc = new SampleDesc(1u, 0u),
+            BufferUsage = DXGI.UsageBackBuffer,
+            BufferCount = 2u,
+        };
+
+        ThrowHResult(
+            _dxgiFactory.CreateSwapChainForComposition(
+                _dxgiDevice,
+                in swapchainDesc,
+                default(ComPtr<IDXGIOutput>),
+                ref _swapchain
+            )
+        );
+
+        _backbuffer = _swapchain.GetBuffer<ID3D11Texture2D>(0u);
+        SetSwapChainOnPanel(_swapChainPanel!, _swapchain);
+
+        // 2. Shared D3D11 render target (NT handle + keyed mutex)
+        _sharedTexture = SharedTextureFactory.CreateForWinUI(_d3d11Manager!, width, height);
+        _backbufferResource = _backbuffer.QueryInterface<ID3D11Resource>();
+        _renderTargetResource = _sharedTexture.Texture.QueryInterface<ID3D11Resource>();
+
+        #region Get keyed mutex for render target texture and setup syncing
+        _keyedMutex = _renderTargetResource.QueryInterface<IDXGIKeyedMutex>();
+        _vulkanSyncInfo = new KeyedMutexSyncInfo
+        {
+            AcquireKey = 0, // Vulkan goes first
+            ReleaseKey = 1, // Release key for copy to back buffer to run
+            Timeout = 1000,
+            SyncType = KeyedMutexSyncType.D3D11SharedFence,
+        };
+        _copySyncInfo = new KeyedMutexSyncInfo
+        {
+            AcquireKey = 1,
+            ReleaseKey = 0, // Release key for Vulkan to run
+            Timeout = 500,
+            SyncType = KeyedMutexSyncType.D3D11SharedFence,
+        };
+        #endregion
+        // 3. Import into Vulkan as R8G8B8A8Unorm
+        _importedTexture = VulkanExternalMemoryImporter.Import(
+            context,
+            _sharedTexture.SharedHandle,
+            VkExternalMemoryHandleTypeFlags.D3D11Texture,
+            VkFormat.R8G8B8A8Unorm,
+            width,
+            height
+        );
+
+        _vulkanSyncInfo.AcquireSyncHandle = _importedTexture.Memory.Handle;
+        _vulkanSyncInfo.ReleaseSyncHandle = _importedTexture.Memory.Handle;
+
+        // 4. Wire up render context
+        RenderContext!.WindowSize = new Size((int)width, (int)height);
+        RenderContext.FinalOutputTexture = _importedTexture.Handle;
+
+        Microsoft.UI.Xaml.Media.CompositionTarget.Rendering += OnCompositionRendering;
+    }
+
+    private void OnCompositionRendering(object? sender, object e)
+    {
+        if (
+            _disposed
+            || Engine is null
+            || RenderContext is null
+            || _d3d11Manager is null
+            || _keyedMutex.Handle is null
+            || _renderArgs is null
+        )
+            return;
+
+        // Compute delta time
+        long now = System.Diagnostics.Stopwatch.GetTimestamp();
+        float delta =
+            _lastTimestamp == 0
+                ? 0f
+                : (float)(now - _lastTimestamp) / System.Diagnostics.Stopwatch.Frequency;
+        _lastTimestamp = now;
+        _renderArgs.DeltaTime = delta;
+
+        RenderContext.WindowSize = new Size((int)ActualWidth, (int)ActualHeight);
+        // Let the subscriber set camera, world data provider, and do per-frame updates
+        Rendering?.Invoke(this, _renderArgs);
+
+        if (_renderArgs.WorldDataProvider is null)
+            return;
+        EnsureSize();
+        var context = Engine.Context;
+
+        // Render offscreen
+        var cmdBuf = Engine.RenderOffscreen(RenderContext, _renderArgs.WorldDataProvider);
+        var submitHandle = context.Submit(cmdBuf, TextureHandle.Null, _vulkanSyncInfo);
+        context.Wait(submitHandle);
+
+        // Keyed mutex acquire → copy → release → present
+        var hr = _keyedMutex.AcquireSync(_copySyncInfo.AcquireKey, _copySyncInfo.Timeout);
+        if (hr == WAIT_TIMEOUT || hr == WAIT_ABANDONED)
+        {
+            _logger.LogWarning(
+                "Keyed mutex acquire timed out (HRESULT=0x{HR:X8}), skipping frame.",
+                hr
+            );
+            return;
+        }
+        ThrowHResult(hr);
+
+        _d3d11Manager.DeviceContext.CopyResource(_backbufferResource, _renderTargetResource);
+        ThrowHResult(_keyedMutex.ReleaseSync(_copySyncInfo.ReleaseKey));
+        ThrowHResult(_swapchain.Present(0u, 0u));
+    }
+
+    private void EnsureSize()
+    {
+        if (!_sizeChanged || ActualWidth == 0 || ActualHeight == 0)
+            return;
+
+        if (_disposed || Engine is null)
+            return;
+        Engine.Context.Wait(default);
+        ReleaseResources();
+        CreateResources((uint)ActualWidth, (uint)ActualHeight);
+        _sizeChanged = false;
+    }
+
+    private void OnSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if (_disposed || Engine is null)
+            return;
+
+        _sizeChanged = true;
+    }
+
+    private void ReleaseResources()
+    {
+        _logger.LogInformation("Releasing resources for HelixViewport.");
+        Microsoft.UI.Xaml.Media.CompositionTarget.Rendering -= OnCompositionRendering;
+
+        if (Engine is not null)
+            Engine.Context.Wait(default);
+
+        Disposer.DisposeAndRemove(ref _keyedMutex);
+        Disposer.DisposeAndRemove(ref _renderTargetResource);
+        Disposer.DisposeAndRemove(ref _backbufferResource);
+        Disposer.DisposeAndRemove(ref _importedTexture);
+        Disposer.DisposeAndRemove(ref _sharedTexture);
+        Disposer.DisposeAndRemove(ref _backbuffer);
+        Disposer.DisposeAndRemove(ref _swapchain);
+    }
+
+    private static void SetSwapChainOnPanel(SwapChainPanel panel, ComPtr<IDXGISwapChain1> swapchain)
+    {
+        var panelNativePtr = Marshal.GetComInterfaceForObject<
+            SwapChainPanel,
+            ISwapChainPanelNative
+        >(panel);
+        try
+        {
+            var panelNative = (ISwapChainPanelNative)Marshal.GetObjectForIUnknown(panelNativePtr);
+            ThrowHResult(panelNative.SetSwapChain(swapchain));
+        }
+        finally
+        {
+            Marshal.Release(panelNativePtr);
+        }
+    }
+
+    private void OnUnloaded(object sender, RoutedEventArgs e)
+    {
+        Dispose();
+    }
+
+    public void Dispose()
+    {
+        if (_disposed)
+            return;
+        _disposed = true;
+
+        ReleaseResources();
+
+        // Dispose per-viewport render context (we own it)
+        RenderContext?.Teardown();
+        RenderContext = null;
+
+        // We do NOT dispose Engine — it is externally owned
+
+        _dxgiFactory.Dispose();
+        _dxgiAdapter.Dispose();
+        _dxgiDevice.Dispose();
+
+        Disposer.DisposeAndRemove(ref _d3d11Manager);
+
+        GC.SuppressFinalize(this);
+    }
+}
