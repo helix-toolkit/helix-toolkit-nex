@@ -317,14 +317,17 @@ public partial class Geometry : ObservableObject, IDisposable
                 {
                     HxDebug.Assert(false, "Vertex properties count must match vertex count");
                 }
-                _vertexPropsBuffer ??= new ElementBuffer<VertexProperties>(
-                    context,
-                    _vertexProps.Count,
-                    BufferUsageBits.Vertex | BufferUsageBits.Storage,
-                    IsDynamic,
-                    debugName: $"Geo_{Id}_VertProps"
-                );
-                _vertexPropsBuffer.Upload(_vertexProps);
+                else
+                {
+                    _vertexPropsBuffer ??= new ElementBuffer<VertexProperties>(
+                        context,
+                        _vertexProps.Count,
+                        BufferUsageBits.Vertex | BufferUsageBits.Storage,
+                        IsDynamic,
+                        debugName: $"Geo_{Id}_VertProps"
+                    );
+                    _vertexPropsBuffer.Upload(_vertexProps);
+                }
             }
 
             BufferDirty &= ~GeometryBufferType.VertexProp;
@@ -364,14 +367,17 @@ public partial class Geometry : ObservableObject, IDisposable
                 {
                     HxDebug.Assert(false, "Vertex colors count must match vertex count");
                 }
-                _vertColorsBuffer ??= new ElementBuffer<Vector4>(
-                    context,
-                    _vertexColors.Count,
-                    BufferUsageBits.Vertex | BufferUsageBits.Storage,
-                    IsDynamic,
-                    debugName: $"Geo_{Id}_VertColor"
-                );
-                _vertColorsBuffer.Upload(_vertexColors);
+                else
+                {
+                    _vertColorsBuffer ??= new ElementBuffer<Vector4>(
+                        context,
+                        _vertexColors.Count,
+                        BufferUsageBits.Vertex | BufferUsageBits.Storage,
+                        IsDynamic,
+                        debugName: $"Geo_{Id}_VertColor"
+                    );
+                    _vertColorsBuffer.Upload(_vertexColors);
+                }
             }
 
             BufferDirty &= ~GeometryBufferType.VertexColor;

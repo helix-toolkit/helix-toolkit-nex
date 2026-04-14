@@ -47,7 +47,23 @@ public interface IContext : IInitializable
     /// <param name="commandBuffer">The command buffer to submit.</param>
     /// <param name="present">Optional texture to present to the swapchain. Use <see cref="TextureHandle.Null"/> for no presentation.</param>
     /// <returns>A <see cref="SubmitHandle"/> that can be used to wait for completion.</returns>
-    SubmitHandle Submit(ICommandBuffer commandBuffer, in TextureHandle present);
+    SubmitHandle Submit(ICommandBuffer commandBuffer, in TextureHandle present)
+    {
+        return Submit(commandBuffer, present, default);
+    }
+
+    /// <summary>
+    /// Submits a command buffer for execution on the GPU.
+    /// </summary>
+    /// <param name="commandBuffer">The command buffer to submit.</param>
+    /// <param name="present">Optional texture to present to the swapchain. Use <see cref="TextureHandle.Null"/> for no presentation.</param>
+    /// <param name="syncInfo">Keyed mutex synchronization information.</param>
+    /// <returns></returns>
+    SubmitHandle Submit(
+        ICommandBuffer commandBuffer,
+        in TextureHandle present,
+        KeyedMutexSyncInfo syncInfo
+    );
 
     /// <summary>
     /// Waits for a submitted command buffer to complete execution.

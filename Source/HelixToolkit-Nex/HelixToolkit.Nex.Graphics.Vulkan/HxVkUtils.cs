@@ -152,7 +152,7 @@ internal class HxVkUtils
         VkMemoryPropertyFlags flags
     )
     {
-        VkPhysicalDeviceMemoryProperties2 memProperties;
+        VkPhysicalDeviceMemoryProperties2 memProperties = new();
         unsafe
         {
             VK.vkGetPhysicalDeviceMemoryProperties2(physDev, &memProperties);
@@ -400,23 +400,6 @@ internal class HxVkUtils
             surface
         );
         return details;
-    }
-
-    public static bool CheckDeviceExtensionSupport(
-        in VkUtf8ReadOnlyString extensionName,
-        ReadOnlySpan<VkExtensionProperties> availableDeviceExtensions
-    )
-    {
-        unsafe
-        {
-            foreach (var property in availableDeviceExtensions)
-            {
-                if (extensionName == property.extensionName)
-                    return true;
-            }
-
-            return false;
-        }
     }
 
     public static uint32_t CalcNumMipLevels(uint32_t width, uint32_t height)

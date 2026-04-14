@@ -167,7 +167,11 @@ public class MockContext : IContext
         return cmdBuffer;
     }
 
-    public SubmitHandle Submit(ICommandBuffer commandBuffer, in TextureHandle present)
+    public SubmitHandle Submit(
+        ICommandBuffer commandBuffer,
+        in TextureHandle present,
+        KeyedMutexSyncInfo syncInfo
+    )
     {
         if (commandBuffer is not MockCommandBuffer mockCmdBuffer)
             throw new ArgumentException(

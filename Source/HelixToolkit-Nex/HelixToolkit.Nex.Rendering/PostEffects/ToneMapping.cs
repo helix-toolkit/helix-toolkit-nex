@@ -12,6 +12,8 @@ public sealed class ToneMapping : PostEffect
 
     public ToneMappingMode Mode { set; get; } = ToneMappingMode.ACESFilm;
 
+    public bool EnableGammaCorrection { set; get; } = false;
+
     public override Color DebugColor => Color.Aquamarine;
     public override uint Priority => (uint)PostEffectPriority.ToneMapping;
 
@@ -32,6 +34,7 @@ public sealed class ToneMapping : PostEffect
                 HdrTextureId = res.Textures[readSlot].Index,
                 SamplerId = _toneMappingSampler.Index,
                 TonemapMode = (uint)Mode,
+                GammaEnabled = EnableGammaCorrection ? 1u : 0,
             }
         );
         cmdBuffer.Draw(3); // Full-screen triangle

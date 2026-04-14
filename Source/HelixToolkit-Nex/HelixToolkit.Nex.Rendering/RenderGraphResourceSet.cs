@@ -49,6 +49,26 @@ public sealed class RenderGraphResourceSet : IDisposable
     /// </summary>
     public Dictionary<string, TextureHandle> Textures { get; } = [];
 
+    private RenderGraph? _currentGraph;
+    internal RenderGraph? CurrentGraph
+    {
+        set
+        {
+            if (_currentGraph != value)
+            {
+                _currentGraph = value;
+                _logger.LogInformation(
+                    "Current render graph set to '{GraphName}'.",
+                    _currentGraph?.Name ?? "null"
+                );
+                LastUpdatedTimeStamp = 0;
+            }
+        }
+        get => _currentGraph;
+    }
+
+    internal long LastUpdatedTimeStamp { get; set; }
+
     private int _screenWidth;
     private int _screenHeight;
     private bool _resourcesCreated;

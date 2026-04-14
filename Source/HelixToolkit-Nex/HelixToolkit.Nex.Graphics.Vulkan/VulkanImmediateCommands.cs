@@ -311,6 +311,14 @@ internal sealed class VulkanImmediateCommands : IDisposable
 
     public SubmitHandle Submit(CommandBufferWrapper wrapper)
     {
+        unsafe
+        {
+            return Submit(wrapper, null);
+        }
+    }
+
+    public unsafe SubmitHandle Submit(CommandBufferWrapper wrapper, void* submitInfoPNext = null)
+    {
         HxDebug.Assert(wrapper.IsEncoding);
         VK.vkEndCommandBuffer(wrapper.Instance).CheckResult();
         unsafe
@@ -349,6 +357,7 @@ internal sealed class VulkanImmediateCommands : IDisposable
                 pCommandBufferInfos = &bufferSI,
                 signalSemaphoreInfoCount = numSignalSemaphores,
                 pSignalSemaphoreInfos = signalSemaphores,
+                pNext = submitInfoPNext,
             };
             var result = VK.vkQueueSubmit2(_queue, 1u, &si, wrapper.Fence);
 
