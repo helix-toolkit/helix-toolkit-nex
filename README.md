@@ -18,7 +18,7 @@ Currently in development.
 - [ImGui integration](Source/HelixToolkit-Nex/Samples/GraphicsAPI/ImGuiTest/README.md) (Done)
 - [Forward+(Tiled based GPU light culling)](Source/HelixToolkit-Nex/Samples/GraphicsAPI/ForwardPlusSimple/README.md) rendering pipeline. (Done)
 - Material systems.
-  - Physics Based Rendering (Done)
+  - Physically Based Rendering (Done)
   - Point cloud (Done)
   - Line (Planned)
   - Billboard (Planned)
