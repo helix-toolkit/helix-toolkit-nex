@@ -13,6 +13,7 @@ Currently in development.
 ## Features (Done or In progress)
 
 - Vulkan backend implementation (Done)
+- Linux support (Planned)
 - [ImGui integration](Source/HelixToolkit-Nex/Samples/GraphicsAPI/ImGuiTest/README.md) (Done)
 - [Forward+(Tiled based GPU light culling)](Source/HelixToolkit-Nex/Samples/GraphicsAPI/ForwardPlusSimple/README.md) rendering pipeline. (Done)
 - Material systems.
