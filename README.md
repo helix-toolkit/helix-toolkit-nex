@@ -12,7 +12,7 @@ Currently in development.
 
 ## Features (Done or In progress)
 
-- Vulkan backend implementation (Done)
+- [Vulkan backend implementation](Source/HelixToolkit-Nex/HelixToolkit.Nex.Graphics.Vulkan/README.md) (Done)
 - Complete bindless descriptor architecture.
 - Linux support (Planned)
 - [ImGui integration](Source/HelixToolkit-Nex/Samples/GraphicsAPI/ImGuiTest/README.md) (Done)
@@ -49,6 +49,14 @@ Currently in development.
 ![Image](Source/HelixToolkit-Nex/Samples/Integration/ImGui/Screenshots/Sample.jpg)
 
 ![Image](Source/HelixToolkit-Nex/Samples/Integration/Points/Screenshots/Points.gif)
+
+## Interoperability
+
+- Render content with Vulkan Backend in Wpf and WinUI applications using D3D11 interoperability. (Requires Vulkan Extension: `VK_KHR_external_memory_win32`)
+    - [WPF](Source/HelixToolkit-Nex/Samples/Interop/Wpf)
+    ![Image](Source/HelixToolkit-Nex/Samples/Interop/Wpf/Screenshots/Sample.jpg)
+    - [WinUI](Source/HelixToolkit-Nex/Samples/Interop/WinUI)
+    ![Image](Source/HelixToolkit-Nex/Samples/Interop/WinUI/Screenshots/Sample.jpg)
 
 ## Contributing
 

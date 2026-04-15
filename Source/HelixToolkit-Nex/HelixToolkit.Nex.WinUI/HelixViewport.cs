@@ -1,12 +1,12 @@
 using System.Runtime.InteropServices;
 using HelixToolkit.Nex.Engine;
 using HelixToolkit.Nex.Graphics;
+using HelixToolkit.Nex.Interop;
 using HelixToolkit.Nex.Interop.DirectX;
 using HelixToolkit.Nex.Rendering;
 using Microsoft.Extensions.Logging;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using SharpGen.Runtime;
 using Vortice.Direct3D11;
 using Vortice.DXGI;
 using Vortice.Vulkan;
@@ -91,7 +91,7 @@ public sealed class HelixViewport : UserControl, IDisposable
     /// <summary>
     /// Raised each frame before rendering. Subscribers should set the camera on
     /// <see cref="ViewportRenderingEventArgs.RenderContext"/> and provide a
-    /// <see cref="ViewportRenderingEventArgs.WorldDataProvider"/>.
+    /// <see cref="ViewportRenderingEventArgs.DataProvider"/>.
     /// If no WorldDataProvider is set, the frame is skipped.
     /// </summary>
     public event EventHandler<ViewportRenderingEventArgs>? Rendering;
@@ -248,13 +248,13 @@ public sealed class HelixViewport : UserControl, IDisposable
         // Let the subscriber set camera, world data provider, and do per-frame updates
         Rendering?.Invoke(this, _renderArgs);
 
-        if (_renderArgs.WorldDataProvider is null)
+        if (_renderArgs.DataProvider is null)
             return;
         EnsureSize();
         var context = Engine.Context;
 
         // Render offscreen
-        var cmdBuf = Engine.RenderOffscreen(_renderContext, _renderArgs.WorldDataProvider);
+        var cmdBuf = Engine.RenderOffscreen(_renderContext, _renderArgs.DataProvider);
         var submitHandle = context.Submit(cmdBuf, TextureHandle.Null, _vulkanSyncInfo);
         context.Wait(submitHandle);
 

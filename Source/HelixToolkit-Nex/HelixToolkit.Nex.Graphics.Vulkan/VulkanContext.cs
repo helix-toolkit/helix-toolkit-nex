@@ -379,7 +379,7 @@ internal sealed partial class VulkanContext
         }
 
         VkUtf8ReadOnlyString pApplicationName = "HelixToolkit-Nex/Vulkan"u8;
-        VkUtf8ReadOnlyString pEngineName = "HelixToolkit-Nex/Vulkan"u8;
+        VkUtf8ReadOnlyString pEngineName = "HelixToolkit-Nex-Engine"u8;
         VkApplicationInfo appInfo = new()
         {
             pNext = null,

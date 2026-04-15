@@ -46,6 +46,10 @@
         <ProjectReference Include="..\..\..\HelixToolkit.Nex.Interop.DirectX\HelixToolkit.Nex.Interop.DirectX.csproj" />
         <ProjectReference Include="..\..\..\HelixToolkit.Nex.WinUI\HelixToolkit.Nex.WinUI.csproj" />
         <ProjectReference Include="..\..\SceneSamples\SceneSamples.csproj" />
+        <ProjectReference Include="..\InteropShared\InteropShared.csproj" />
+    </ItemGroup>
+    <ItemGroup>
+      <Folder Include="Screenshots\" />
     </ItemGroup>
 
     <!--

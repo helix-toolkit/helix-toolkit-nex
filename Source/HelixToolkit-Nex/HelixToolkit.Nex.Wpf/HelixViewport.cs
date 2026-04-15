@@ -3,7 +3,7 @@ using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
 using HelixToolkit.Nex.Engine;
-using HelixToolkit.Nex.Graphics;
+using HelixToolkit.Nex.Interop;
 using HelixToolkit.Nex.Interop.DirectX;
 using HelixToolkit.Nex.Rendering;
 using Microsoft.Extensions.Logging;
@@ -73,7 +73,7 @@ public unsafe class HelixViewport : FrameworkElement, IDisposable
     /// <summary>
     /// Raised each frame before rendering. Subscribers should set the camera on
     /// <see cref="ViewportRenderingEventArgs.RenderContext"/> and provide a
-    /// <see cref="ViewportRenderingEventArgs.WorldDataProvider"/>.
+    /// <see cref="ViewportRenderingEventArgs.DataProvider"/>.
     /// If no WorldDataProvider is set, the frame is skipped.
     /// </summary>
     public event EventHandler<ViewportRenderingEventArgs>? Rendering;
@@ -219,7 +219,7 @@ public unsafe class HelixViewport : FrameworkElement, IDisposable
 
         Rendering?.Invoke(this, _renderArgs);
 
-        if (_renderArgs.WorldDataProvider is null)
+        if (_renderArgs.DataProvider is null)
             return;
 
         EnsureSize();
@@ -227,7 +227,7 @@ public unsafe class HelixViewport : FrameworkElement, IDisposable
         var context = Engine.Context;
 
         // Render offscreen
-        var cmdBuf = Engine.RenderOffscreen(_renderContext, _renderArgs.WorldDataProvider);
+        var cmdBuf = Engine.RenderOffscreen(_renderContext, _renderArgs.DataProvider);
         var submitHandle = context.Submit(cmdBuf, TextureHandle.Null);
         context.Wait(submitHandle);
 

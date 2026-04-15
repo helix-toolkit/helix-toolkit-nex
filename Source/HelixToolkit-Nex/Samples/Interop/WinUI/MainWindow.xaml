@@ -4,12 +4,13 @@
   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
   xmlns:local="using:WinUIInterop"
+  xmlns:common="using:Interop.Common"
   xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
   xmlns:toolkits="using:CommunityToolkit.WinUI.Controls"
   xmlns:hx="using:HelixToolkit.Nex.WinUI"
   mc:Ignorable="d"
-  Title="WinUIInterop"
+  Title="HelixToolkit.Nex - WinUI Interop (Minecraft)"
 >
   <Window.SystemBackdrop>
     <MicaBackdrop />
@@ -17,7 +18,7 @@
 
   <Grid>
     <Grid.DataContext>
-      <local:MainViewModel />
+      <common:MainViewModel />
     </Grid.DataContext>
     <Grid.ColumnDefinitions>
       <ColumnDefinition></ColumnDefinition>
