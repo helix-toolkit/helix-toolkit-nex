@@ -79,7 +79,7 @@ public sealed class RenderContext(IServiceProvider services) : Initializable
     /// for the current render graph execution. The resource set is owned by the
     /// <see cref="RenderContext"/> and disposed when the context is torn down.
     /// </summary>
-    public RenderGraphResourceSet? ResourceSet { set; get; }
+    public RenderGraphResourceSet ResourceSet { get; } = new();
 
     private static readonly Size DefaultWindowSize = new(1, 1);
     private Size _windowSize = DefaultWindowSize;
@@ -178,8 +178,7 @@ public sealed class RenderContext(IServiceProvider services) : Initializable
 
     protected override ResultCode OnTearingDown()
     {
-        ResourceSet?.Dispose();
-        ResourceSet = null;
+        ResourceSet.Dispose();
         return ResultCode.Ok;
     }
 }

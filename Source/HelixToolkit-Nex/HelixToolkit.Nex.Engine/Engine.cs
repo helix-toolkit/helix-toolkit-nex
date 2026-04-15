@@ -136,7 +136,6 @@ public class Engine : Initializable
     public RenderContext CreateRenderContext()
     {
         var renderContext = new RenderContext(Config.Services);
-        renderContext.ResourceSet = new RenderGraphResourceSet();
         return renderContext;
     }
 

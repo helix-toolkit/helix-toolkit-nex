@@ -22,8 +22,9 @@ namespace HelixToolkit.Nex.Wpf;
 /// <para>
 /// The engine is provided externally via <see cref="Engine"/> so that multiple viewports
 /// can share a single engine instance. Each viewport creates its own
-/// <see cref="RenderContext"/>. Subscribe to <see cref="Rendering"/> to set the camera,
-/// provide a <see cref="WorldDataProvider"/>, and perform per-frame scene updates.
+/// <see cref="RenderContext"/>. Assign a <see cref="ViewportClient"/> to supply camera
+/// and scene data each frame. The optional <see cref="BeforeRender"/> event is raised
+/// as a read-only notification after the client update.
 /// </para>
 /// </summary>
 public unsafe class HelixViewport : FrameworkElement, IDisposable
@@ -50,6 +51,32 @@ public unsafe class HelixViewport : FrameworkElement, IDisposable
         get { return (Engine.Engine)GetValue(EngineDp); }
         set { SetValue(EngineDp, value); }
     }
+
+    public static readonly DependencyProperty ViewportClientDp = HelixProperty.Register<
+        HelixViewport,
+        IViewportClient?
+    >(
+        "ViewportClient",
+        null,
+        (d, e) =>
+        {
+            if (d is not HelixViewport viewport)
+            {
+                return;
+            }
+            viewport._viewportClient = (IViewportClient?)e.NewValue;
+        }
+    );
+
+    /// <summary>
+    /// Gets or sets the <see cref="IViewportClient"/> that provides per-frame camera
+    /// updates and scene data for this viewport. When <c>null</c>, no frames are rendered.
+    /// </summary>
+    public IViewportClient? ViewportClient
+    {
+        get { return (IViewportClient?)GetValue(ViewportClientDp); }
+        set { SetValue(ViewportClientDp, value); }
+    }
     #endregion
     private D3DImage? _d3dImage;
     private D3D9DeviceManager? _d3d9Manager;
@@ -63,6 +90,7 @@ public unsafe class HelixViewport : FrameworkElement, IDisposable
     private long _lastTimestamp;
     private bool _disposed;
     private Engine.Engine? _engine;
+    private IViewportClient? _viewportClient;
     private bool _sizeChanged = true;
 
     private ViewportRenderingEventArgs? _renderArgs;
@@ -71,12 +99,11 @@ public unsafe class HelixViewport : FrameworkElement, IDisposable
     private RenderContext? _renderContext;
 
     /// <summary>
-    /// Raised each frame before rendering. Subscribers should set the camera on
-    /// <see cref="ViewportRenderingEventArgs.RenderContext"/> and provide a
-    /// <see cref="ViewportRenderingEventArgs.DataProvider"/>.
-    /// If no WorldDataProvider is set, the frame is skipped.
+    /// Raised each frame after <see cref="IViewportClient.Update"/> but before rendering.
+    /// This is a <b>read-only notification</b>; use <see cref="ViewportClient"/> to
+    /// provide the camera and scene data.
     /// </summary>
-    public event EventHandler<ViewportRenderingEventArgs>? Rendering;
+    public event EventHandler<ViewportRenderingEventArgs>? BeforeRender;
 
     public HelixViewport()
     {
@@ -213,21 +240,29 @@ public unsafe class HelixViewport : FrameworkElement, IDisposable
                 : (float)(now - _lastTimestamp) / System.Diagnostics.Stopwatch.Frequency;
         _lastTimestamp = now;
 
-        // Let the subscriber set camera, world data provider, and do per-frame updates
+        // Update window size and delta time
         _renderArgs.DeltaTime = delta;
         _renderContext.WindowSize = new Size((int)ActualWidth, (int)ActualHeight);
 
-        Rendering?.Invoke(this, _renderArgs);
-
-        if (_renderArgs.DataProvider is null)
+        // Pull per-frame data from the viewport client
+        if (_viewportClient is null)
             return;
+
+        _viewportClient.Update(_renderContext, delta);
+
+        var dataProvider = _viewportClient.DataProvider;
+        if (dataProvider is null)
+            return;
+
+        // Notify optional subscribers (read-only)
+        BeforeRender?.Invoke(this, _renderArgs);
 
         EnsureSize();
 
         var context = Engine.Context;
 
         // Render offscreen
-        var cmdBuf = Engine.RenderOffscreen(_renderContext, _renderArgs.DataProvider);
+        var cmdBuf = Engine.RenderOffscreen(_renderContext, dataProvider);
         var submitHandle = context.Submit(cmdBuf, TextureHandle.Null);
         context.Wait(submitHandle);
 
