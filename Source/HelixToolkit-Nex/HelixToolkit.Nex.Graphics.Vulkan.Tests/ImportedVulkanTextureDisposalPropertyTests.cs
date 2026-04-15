@@ -13,7 +13,7 @@ namespace HelixToolkit.Nex.Tests.Vulkan;
 /// Validates: Requirements 1.6
 /// </summary>
 [TestClass]
-[TestCategory("GPU")]
+[TestCategory("GPURequired")]
 public class ImportedVulkanTextureDisposalPropertyTests
 {
     private static readonly Config FsCheckConfig = Config.Default.WithMaxTest(100);
