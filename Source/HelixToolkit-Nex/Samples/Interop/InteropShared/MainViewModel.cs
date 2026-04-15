@@ -7,6 +7,7 @@ using HelixToolkit.Nex.Graphics;
 using HelixToolkit.Nex.Graphics.Vulkan;
 using HelixToolkit.Nex.Interop;
 using HelixToolkit.Nex.Interop.DirectX;
+using HelixToolkit.Nex.Rendering;
 using HelixToolkit.Nex.Rendering.PostEffects;
 using HelixToolkit.Nex.Rendering.RenderNodes;
 using HelixToolkit.Nex.Scene;
@@ -15,21 +16,69 @@ using Format = HelixToolkit.Nex.Graphics.Format;
 
 namespace Interop.Common;
 
+/// <summary>
+/// <see cref="IViewportClient"/> that owns a <see cref="Camera"/> and delegates
+/// per-frame camera manipulation to an optional callback.
+/// Shares a single <see cref="IRenderDataProvider"/> and scene tick guard via the owning view model.
+/// </summary>
+internal sealed class DelegateViewportClient : IViewportClient
+{
+    private readonly MainViewModel _owner;
+    private readonly Action<DelegateViewportClient, float>? _onUpdate;
+
+    /// <summary>The camera owned by this viewport client.</summary>
+    public Camera Camera { get; }
+
+    public IRenderDataProvider? DataProvider => _owner.WorldDataProvider;
+
+    /// <param name="owner">The owning view model (provides data provider and scene tick).</param>
+    /// <param name="camera">The camera this client controls.</param>
+    /// <param name="onUpdate">
+    /// Optional per-frame callback invoked before the camera is applied to the render context.
+    /// Use this to animate the camera (e.g. orbit, follow path).
+    /// </param>
+    public DelegateViewportClient(
+        MainViewModel owner,
+        Camera camera,
+        Action<DelegateViewportClient, float>? onUpdate = null
+    )
+    {
+        _owner = owner;
+        Camera = camera;
+        _onUpdate = onUpdate;
+    }
+
+    public void Update(RenderContext context, float deltaTime)
+    {
+        _owner.TickSceneOnce(deltaTime);
+
+        if (context.WindowSize.Width <= 0 || context.WindowSize.Height <= 0)
+            return;
+
+        _onUpdate?.Invoke(this, deltaTime);
+        context.Update(Camera);
+    }
+}
+
 public class MainViewModel : ObservableObject, IDisposable
 {
     public Engine? Engine => _engine;
+
+    /// <summary>Viewport client for the orbiting fly-through camera.</summary>
+    public IViewportClient FlyClient { get; }
+
+    /// <summary>Viewport client for the static overhead camera.</summary>
+    public IViewportClient OverheadClient { get; }
+
+    internal IRenderDataProvider? WorldDataProvider => _worldDataProvider;
+
     private IContext? _vulkanContext;
     private Engine? _engine;
     private WorldDataProvider? _worldDataProvider;
     private IScene? _scene;
     private Node? _root;
 
-    // Orbit camera (circles around target)
-    private Camera _orbitCamera = new PerspectiveCamera();
     private readonly long _startTimestamp = Stopwatch.GetTimestamp();
-
-    // Overhead camera (static top-down view)
-    private Camera _overheadCamera = new PerspectiveCamera();
 
     // Scene tick guard — only tick once per frame even though two viewports fire Rendering
     private long _lastTickFrame;
@@ -78,7 +127,7 @@ public class MainViewModel : ObservableObject, IDisposable
         _root = _scene.Build(_vulkanContext, _engine.ResourceManager, _worldDataProvider);
 
         // 6. Cameras
-        _orbitCamera = new PerspectiveCamera
+        var orbitCamera = new PerspectiveCamera
         {
             Position = new Vector3(
                 _scene.WorldSizeX / 2f,
@@ -89,68 +138,44 @@ public class MainViewModel : ObservableObject, IDisposable
             FarPlane = 1000,
         };
 
-        _overheadCamera = new PerspectiveCamera
+        var overheadCamera = new PerspectiveCamera
         {
             Position = new Vector3(_scene.WorldSizeX / 2f, 50, _scene.WorldSizeZ / 2f),
             Target = new Vector3(_scene.WorldSizeX / 2f, 0, _scene.WorldSizeZ / 2f),
             Up = -Vector3.UnitZ,
             FarPlane = 1000,
         };
+
+        // 7. Create viewport clients (each owns its camera)
+        FlyClient = new DelegateViewportClient(
+            this,
+            orbitCamera,
+            (client, _) =>
+            {
+                var target = new Vector3(_scene.WorldSizeX / 2f, 0f, _scene.WorldSizeZ / 2f);
+                float t =
+                    (float)(
+                        (Stopwatch.GetTimestamp() - _startTimestamp) / (double)Stopwatch.Frequency
+                    ) * OrbitSpeed;
+
+                float x = target.X + OrbitRadius * MathF.Sin(t);
+                float z = target.Z + OrbitRadius * MathF.Cos(t);
+
+                client.Camera.Position = new Vector3(x, OrbitHeight, z);
+                client.Camera.Target = target;
+                client.Camera.Up = Vector3.UnitY;
+            }
+        );
+        OverheadClient = new DelegateViewportClient(this, overheadCamera);
     }
 
-    private void TickSceneOnce(float deltaTime)
+    internal void TickSceneOnce(float deltaTime)
     {
         long frame = Stopwatch.GetTimestamp();
         if (frame == _lastTickFrame)
             return;
         _lastTickFrame = frame;
         _scene!.Tick(deltaTime);
-        UpdateOrbitCamera();
-    }
-
-    // --- Viewport 1: orbit ---
-    public void OnFlyRendering(object? sender, ViewportRenderingEventArgs e)
-    {
-        TickSceneOnce(e.DeltaTime);
-
-        var rc = e.RenderContext;
-        if (rc.WindowSize.Width <= 0 || rc.WindowSize.Height <= 0)
-            return;
-
-        rc.CameraParams = _orbitCamera.ToCameraParams(
-            (float)rc.WindowSize.Width / rc.WindowSize.Height
-        );
-        e.DataProvider = _worldDataProvider;
-    }
-
-    // --- Viewport 2: overhead ---
-    public void OnOverheadRendering(object? sender, ViewportRenderingEventArgs e)
-    {
-        TickSceneOnce(e.DeltaTime);
-
-        var rc = e.RenderContext;
-        if (rc.WindowSize.Width <= 0 || rc.WindowSize.Height <= 0)
-            return;
-
-        rc.CameraParams = _overheadCamera.ToCameraParams(
-            (float)rc.WindowSize.Width / rc.WindowSize.Height
-        );
-        e.DataProvider = _worldDataProvider;
-    }
-
-    private void UpdateOrbitCamera()
-    {
-        var target = new Vector3(_scene!.WorldSizeX / 2f, 0f, _scene.WorldSizeZ / 2f);
-        float t =
-            (float)((Stopwatch.GetTimestamp() - _startTimestamp) / (double)Stopwatch.Frequency)
-            * OrbitSpeed;
-
-        float x = target.X + OrbitRadius * MathF.Sin(t);
-        float z = target.Z + OrbitRadius * MathF.Cos(t);
-
-        _orbitCamera.Position = new Vector3(x, OrbitHeight, z);
-        _orbitCamera.Target = target;
-        _orbitCamera.Up = Vector3.UnitY;
     }
 
     protected virtual void Dispose(bool disposing)

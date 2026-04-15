@@ -25,13 +25,13 @@
       <ColumnDefinition Width="Auto" />
       <ColumnDefinition></ColumnDefinition>
     </Grid.ColumnDefinitions>
-    <hx:HelixViewport x:Name="ViewportFly" Grid.Column="0" Engine="{Binding Engine}" />
+    <hx:HelixViewport x:Name="ViewportFly" Grid.Column="0" Engine="{Binding Engine}" ViewportClient="{Binding FlyClient}" />
     <toolkits:GridSplitter
       Grid.Column="1"
       ResizeBehavior="PreviousAndNext"
       ResizeDirection="Columns"
     />
-    <hx:HelixViewport x:Name="ViewportOverhead" Grid.Column="2" Engine="{Binding Engine}" />
+    <hx:HelixViewport x:Name="ViewportOverhead" Grid.Column="2" Engine="{Binding Engine}" ViewportClient="{Binding OverheadClient}" />
     <Grid
       Grid.ColumnSpan="3"
       VerticalAlignment="Bottom"

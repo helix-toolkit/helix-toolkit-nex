@@ -9,19 +9,5 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         DataContext = new MainViewModel();
-        ViewportFly.Rendering += (s, e) =>
-        {
-            if (ViewportFly.DataContext is MainViewModel vm)
-            {
-                vm.OnFlyRendering(s, e);
-            }
-        };
-        ViewportOverhead.Rendering += (s, e) =>
-        {
-            if (ViewportOverhead.DataContext is MainViewModel vm)
-            {
-                vm.OnOverheadRendering(s, e);
-            }
-        };
     }
 }
