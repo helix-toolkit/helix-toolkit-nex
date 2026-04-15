@@ -6,11 +6,10 @@ using HelixToolkit.Nex.Rendering;
 using Microsoft.Extensions.Logging;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Silk.NET.Core.Native;
-using Silk.NET.Direct3D11;
-using Silk.NET.DXGI;
+using SharpGen.Runtime;
+using Vortice.Direct3D11;
+using Vortice.DXGI;
 using Vortice.Vulkan;
-using static Silk.NET.Core.Native.SilkMarshal;
 using Size = HelixToolkit.Nex.Maths.Size;
 using TextureHandle = HelixToolkit.Nex.Handle<HelixToolkit.Nex.Graphics.Texture>;
 
@@ -27,7 +26,10 @@ namespace HelixToolkit.Nex.WinUI;
 internal partial interface ISwapChainPanelNative
 {
     [PreserveSig]
-    HResult SetSwapChain(ComPtr<IDXGISwapChain1> swapchain);
+    int SetSwapChain([In] IntPtr swapchain);
+
+    [PreserveSig]
+    ulong Release();
 }
 
 /// <summary>
@@ -37,16 +39,14 @@ internal partial interface ISwapChainPanelNative
 /// <para>
 /// The engine is provided externally via <see cref="Engine"/> so that multiple viewports
 /// can share a single engine instance. Each viewport creates its own
-/// <see cref="RenderContext"/>. Subscribe to <see cref="Rendering"/> to set the camera,
+/// <see cref="_renderContext"/>. Subscribe to <see cref="Rendering"/> to set the camera,
 /// provide a <see cref="WorldDataProvider"/>, and perform per-frame scene updates.
 /// </para>
 /// </summary>
-public sealed unsafe class HelixViewport : UserControl, IDisposable
+public sealed class HelixViewport : UserControl, IDisposable
 {
     private static readonly ILogger _logger = LogManager.Create<HelixViewport>();
 
-    private const int WAIT_TIMEOUT = unchecked((int)0x00000102L);
-    private const int WAIT_ABANDONED = unchecked((int)0x00000080L);
     #region Dependency Properties
     public static readonly DependencyProperty EngineDp = HelixProperty.Register<
         HelixViewport,
@@ -60,7 +60,7 @@ public sealed unsafe class HelixViewport : UserControl, IDisposable
             {
                 return;
             }
-            viewport.SetEngine((Engine.Engine)e.NewValue);
+            viewport.SetEngine((Engine.Engine?)e.NewValue);
         }
     );
     public Engine.Engine? Engine
@@ -71,24 +71,22 @@ public sealed unsafe class HelixViewport : UserControl, IDisposable
     #endregion
     private SwapChainPanel? _swapChainPanel;
     private D3D11DeviceManager? _d3d11Manager;
-    private ComPtr<IDXGIDevice3> _dxgiDevice;
-    private ComPtr<IDXGIAdapter> _dxgiAdapter;
-    private ComPtr<IDXGIFactory2> _dxgiFactory;
-    private ComPtr<IDXGISwapChain1> _swapchain;
-    private ComPtr<ID3D11Texture2D> _backbuffer;
-    private ComPtr<ID3D11Resource> _backbufferResource;
-    private ComPtr<ID3D11Resource> _renderTargetResource;
+    private IDXGIDevice3? _dxgiDevice;
+    private IDXGIAdapter? _dxgiAdapter;
+    private IDXGIFactory2? _dxgiFactory;
+    private IDXGISwapChain1? _swapchain;
+    private ID3D11Texture2D? _backbuffer;
+    private ID3D11Resource? _backbufferResource;
+    private ID3D11Resource? _renderTargetResource;
     private SharedTextureResult? _sharedTexture;
     private ImportedVulkanTexture? _importedTexture;
-    private ComPtr<IDXGIKeyedMutex> _keyedMutex;
+    private IDXGIKeyedMutex? _keyedMutex;
     private long _lastTimestamp;
     private ViewportRenderingEventArgs? _renderArgs;
     private Engine.Engine? _engine;
     private bool _sizeChanged = true;
+    private RenderContext? _renderContext;
     private bool _disposed;
-
-    /// <summary>Per-viewport render context (window size, camera, final output texture).</summary>
-    public RenderContext? RenderContext { get; private set; }
 
     /// <summary>
     /// Raised each frame before rendering. Subscribers should set the camera on
@@ -118,7 +116,7 @@ public sealed unsafe class HelixViewport : UserControl, IDisposable
 
         // 2. DXGI device, adapter, factory for swap chain creation
         _dxgiDevice = _d3d11Manager.Device.QueryInterface<IDXGIDevice3>();
-        ThrowHResult(_dxgiDevice.GetAdapter(ref _dxgiAdapter));
+        _dxgiDevice.GetAdapter(out _dxgiAdapter).CheckError();
         _dxgiFactory = _dxgiAdapter.GetParent<IDXGIFactory2>();
 
         // 4. Create shared resources at the current control size
@@ -130,14 +128,22 @@ public sealed unsafe class HelixViewport : UserControl, IDisposable
         }
     }
 
-    private void SetEngine(Engine.Engine engine)
+    private void SetEngine(Engine.Engine? engine)
     {
         if (_engine == engine)
         {
             return;
         }
         ReleaseResources();
+        Disposer.DisposeAndRemove(ref _renderContext);
         _engine = engine;
+        if (_engine is null)
+        {
+            return;
+        }
+        _renderContext = _engine.CreateRenderContext();
+        _renderContext.Initialize();
+        _renderArgs = new(_renderContext);
         if (IsLoaded && Width > 0 && Height > 0)
         {
             CreateResources((uint)Width, (uint)Height);
@@ -146,7 +152,7 @@ public sealed unsafe class HelixViewport : UserControl, IDisposable
 
     private void CreateResources(uint width, uint height)
     {
-        if (_engine is null)
+        if (_engine is null || _dxgiFactory is null)
         {
             return;
         }
@@ -155,31 +161,22 @@ public sealed unsafe class HelixViewport : UserControl, IDisposable
             width,
             height
         );
-        RenderContext = _engine.CreateRenderContext();
-        RenderContext.Initialize();
-        _renderArgs = new(RenderContext);
+
         var context = _engine.Context;
 
         // 1. DXGI swap chain for composition
-        var swapchainDesc = new SwapChainDesc1
+        var swapchainDesc = new SwapChainDescription1
         {
             Width = width,
             Height = height,
-            Format = Silk.NET.DXGI.Format.FormatR8G8B8A8Unorm,
+            Format = Vortice.DXGI.Format.R8G8B8A8_UNorm,
             SwapEffect = SwapEffect.FlipSequential,
-            SampleDesc = new SampleDesc(1u, 0u),
-            BufferUsage = DXGI.UsageBackBuffer,
+            SampleDescription = new(1u, 0u),
+            BufferUsage = Usage.Backbuffer,
             BufferCount = 2u,
         };
 
-        ThrowHResult(
-            _dxgiFactory.CreateSwapChainForComposition(
-                _dxgiDevice,
-                in swapchainDesc,
-                default(ComPtr<IDXGIOutput>),
-                ref _swapchain
-            )
-        );
+        _swapchain = _dxgiFactory.CreateSwapChainForComposition(_dxgiDevice, swapchainDesc);
 
         _backbuffer = _swapchain.GetBuffer<ID3D11Texture2D>(0u);
         SetSwapChainOnPanel(_swapChainPanel!, _swapchain);
@@ -220,8 +217,8 @@ public sealed unsafe class HelixViewport : UserControl, IDisposable
         _vulkanSyncInfo.ReleaseSyncHandle = _importedTexture.Memory.Handle;
 
         // 4. Wire up render context
-        RenderContext!.WindowSize = new Size((int)width, (int)height);
-        RenderContext.FinalOutputTexture = _importedTexture.Handle;
+        _renderContext!.WindowSize = new Size((int)width, (int)height);
+        _renderContext.FinalOutputTexture = _importedTexture.Handle;
 
         Microsoft.UI.Xaml.Media.CompositionTarget.Rendering += OnCompositionRendering;
     }
@@ -231,9 +228,9 @@ public sealed unsafe class HelixViewport : UserControl, IDisposable
         if (
             _disposed
             || Engine is null
-            || RenderContext is null
+            || _renderContext is null
             || _d3d11Manager is null
-            || _keyedMutex.Handle is null
+            || _keyedMutex is null
             || _renderArgs is null
         )
             return;
@@ -247,7 +244,7 @@ public sealed unsafe class HelixViewport : UserControl, IDisposable
         _lastTimestamp = now;
         _renderArgs.DeltaTime = delta;
 
-        RenderContext.WindowSize = new Size((int)ActualWidth, (int)ActualHeight);
+        _renderContext.WindowSize = new Size((int)ActualWidth, (int)ActualHeight);
         // Let the subscriber set camera, world data provider, and do per-frame updates
         Rendering?.Invoke(this, _renderArgs);
 
@@ -257,25 +254,15 @@ public sealed unsafe class HelixViewport : UserControl, IDisposable
         var context = Engine.Context;
 
         // Render offscreen
-        var cmdBuf = Engine.RenderOffscreen(RenderContext, _renderArgs.WorldDataProvider);
+        var cmdBuf = Engine.RenderOffscreen(_renderContext, _renderArgs.WorldDataProvider);
         var submitHandle = context.Submit(cmdBuf, TextureHandle.Null, _vulkanSyncInfo);
         context.Wait(submitHandle);
 
         // Keyed mutex acquire → copy → release → present
-        var hr = _keyedMutex.AcquireSync(_copySyncInfo.AcquireKey, _copySyncInfo.Timeout);
-        if (hr == WAIT_TIMEOUT || hr == WAIT_ABANDONED)
-        {
-            _logger.LogWarning(
-                "Keyed mutex acquire timed out (HRESULT=0x{HR:X8}), skipping frame.",
-                hr
-            );
-            return;
-        }
-        ThrowHResult(hr);
-
+        _keyedMutex.AcquireSync(_copySyncInfo.AcquireKey, (int)_copySyncInfo.Timeout);
         _d3d11Manager.DeviceContext.CopyResource(_backbufferResource, _renderTargetResource);
-        ThrowHResult(_keyedMutex.ReleaseSync(_copySyncInfo.ReleaseKey));
-        ThrowHResult(_swapchain.Present(0u, 0u));
+        _keyedMutex.ReleaseSync(_copySyncInfo.ReleaseKey);
+        _swapchain?.Present(0u, 0u);
     }
 
     private void EnsureSize()
@@ -316,7 +303,7 @@ public sealed unsafe class HelixViewport : UserControl, IDisposable
         Disposer.DisposeAndRemove(ref _swapchain);
     }
 
-    private static void SetSwapChainOnPanel(SwapChainPanel panel, ComPtr<IDXGISwapChain1> swapchain)
+    private static void SetSwapChainOnPanel(SwapChainPanel panel, IDXGISwapChain1 swapchain)
     {
         var panelNativePtr = Marshal.GetComInterfaceForObject<
             SwapChainPanel,
@@ -325,7 +312,7 @@ public sealed unsafe class HelixViewport : UserControl, IDisposable
         try
         {
             var panelNative = (ISwapChainPanelNative)Marshal.GetObjectForIUnknown(panelNativePtr);
-            ThrowHResult(panelNative.SetSwapChain(swapchain));
+            panelNative.SetSwapChain(swapchain.NativePointer);
         }
         finally
         {
@@ -346,15 +333,12 @@ public sealed unsafe class HelixViewport : UserControl, IDisposable
 
         ReleaseResources();
 
-        // Dispose per-viewport render context (we own it)
-        RenderContext?.Teardown();
-        RenderContext = null;
+        Disposer.DisposeAndRemove(ref _renderContext);
 
         // We do NOT dispose Engine — it is externally owned
-
-        _dxgiFactory.Dispose();
-        _dxgiAdapter.Dispose();
-        _dxgiDevice.Dispose();
+        Disposer.DisposeAndRemove(ref _dxgiFactory);
+        Disposer.DisposeAndRemove(ref _dxgiAdapter);
+        Disposer.DisposeAndRemove(ref _dxgiDevice);
 
         Disposer.DisposeAndRemove(ref _d3d11Manager);
 

@@ -1,6 +1,4 @@
-using Silk.NET.Core.Native;
-using Silk.NET.Direct3D9;
-using static Silk.NET.Core.Native.SilkMarshal;
+using Vortice.Direct3D9;
 
 namespace HelixToolkit.Nex.Wpf;
 
@@ -11,47 +9,40 @@ namespace HelixToolkit.Nex.Wpf;
 /// </summary>
 public sealed unsafe class D3D9DeviceManager : IDisposable
 {
-    private readonly D3D9 _d3d9;
-    private ComPtr<IDirect3D9Ex> _context;
-    private ComPtr<IDirect3DDevice9Ex> _device;
+    private IDirect3D9Ex _context;
+    private IDirect3DDevice9Ex _device;
     private bool _disposed;
 
     /// <summary>
     /// The D3D9Ex context (IDirect3D9Ex).
     /// </summary>
-    public ComPtr<IDirect3D9Ex> Context => _context;
+    public IDirect3D9Ex Context => _context;
 
     /// <summary>
     /// The D3D9Ex device (IDirect3DDevice9Ex).
     /// </summary>
-    public ComPtr<IDirect3DDevice9Ex> Device => _device;
+    public IDirect3DDevice9Ex Device => _device;
 
     public D3D9DeviceManager()
     {
-        _d3d9 = D3D9.GetApi(null);
-
-        ThrowHResult(_d3d9.Direct3DCreate9Ex(D3D9.SdkVersion, ref _context));
+        D3D9.Direct3DCreate9Ex(out _context).CheckError();
 
         var presentParameters = new PresentParameters
         {
             Windowed = true,
-            SwapEffect = Swapeffect.Discard,
-            PresentationInterval = D3D9.PresentIntervalImmediate,
+            SwapEffect = SwapEffect.Discard,
+            PresentationInterval = PresentInterval.Immediate,
             BackBufferFormat = Format.Unknown,
             BackBufferWidth = 1,
             BackBufferHeight = 1,
         };
 
-        ThrowHResult(
-            _context.CreateDeviceEx(
-                0u,
-                Devtype.Hal,
-                nint.Zero,
-                D3D9.CreateHardwareVertexprocessing | D3D9.CreateMultithreaded,
-                ref presentParameters,
-                null,
-                ref _device
-            )
+        _device = _context.CreateDeviceEx(
+            0u,
+            DeviceType.Hardware,
+            nint.Zero,
+            CreateFlags.HardwareVertexProcessing | CreateFlags.Multithreaded,
+            presentParameters
         );
     }
 
@@ -63,6 +54,5 @@ public sealed unsafe class D3D9DeviceManager : IDisposable
 
         _device.Dispose();
         _context.Dispose();
-        _d3d9.Dispose();
     }
 }

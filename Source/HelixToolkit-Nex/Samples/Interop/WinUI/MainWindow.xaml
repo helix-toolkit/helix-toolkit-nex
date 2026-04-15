@@ -6,6 +6,7 @@
   xmlns:local="using:WinUIInterop"
   xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+  xmlns:toolkits="using:CommunityToolkit.WinUI.Controls"
   xmlns:hx="using:HelixToolkit.Nex.WinUI"
   mc:Ignorable="d"
   Title="WinUIInterop"
@@ -24,7 +25,11 @@
       <ColumnDefinition></ColumnDefinition>
     </Grid.ColumnDefinitions>
     <hx:HelixViewport x:Name="ViewportFly" Grid.Column="0" Engine="{Binding Engine}" />
-
+    <toolkits:GridSplitter
+      Grid.Column="1"
+      ResizeBehavior="PreviousAndNext"
+      ResizeDirection="Columns"
+    />
     <hx:HelixViewport x:Name="ViewportOverhead" Grid.Column="2" Engine="{Binding Engine}" />
     <Grid
       Grid.ColumnSpan="3"

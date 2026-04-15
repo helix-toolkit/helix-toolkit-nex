@@ -56,7 +56,6 @@ internal class MainViewModel : ObservableObject, IDisposable
         );
         // 3. Scene + materials (before engine build)
         _scene = new MinecraftLargeScene();
-        RenderSettings.LogFPSInDebug = true;
         _scene.RegisterMaterials();
 
         // 4. Build engine

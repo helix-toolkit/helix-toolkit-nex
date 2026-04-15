@@ -578,6 +578,11 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
         resourceSet.EnsureResources(context, wasDirty);
         resourceSet.SetupSystemResources(context);
 
+        if (context.Data is null)
+        {
+            return false;
+        }
+
         foreach (var pass in _sortedPasses)
         {
             if (!nodes.TryGetValue(pass.PassName, out var node))

@@ -455,19 +455,23 @@ public partial class Geometry : ObservableObject, IDisposable
             }
             else
             {
-                if (_vertexColors.Count != _vertices.Count)
+                if (_vertexProps.Count != _vertices.Count)
                 {
-                    HxDebug.Assert(false, "Vertex colors count must match vertex count");
+                    HxDebug.Assert(false, "Vertex properties count must match vertex count");
                 }
-                _vertexPropsBuffer ??= new ElementBuffer<VertexProperties>(
-                    context,
-                    _vertexProps.Count,
-                    BufferUsageBits.Vertex | BufferUsageBits.Storage,
-                    IsDynamic,
-                    debugName: $"Geo_{Id}_VertProps"
-                );
-                pending.UploadHandles.Add(_vertexPropsBuffer.UploadAsync(_vertexProps));
-                hasAnyUpload = true;
+                else
+                {
+                    _vertexPropsBuffer ??= new ElementBuffer<VertexProperties>(
+                        context,
+                        _vertexProps.Count,
+                        BufferUsageBits.Vertex | BufferUsageBits.Storage,
+                        IsDynamic,
+                        debugName: $"Geo_{Id}_VertProps"
+                    );
+                    pending.UploadHandles.Add(_vertexPropsBuffer.UploadAsync(_vertexProps));
+                    hasAnyUpload = true;
+                }
+
                 pending.Types |= GeometryBufferType.VertexProp;
             }
             BufferDirty &= ~GeometryBufferType.VertexProp;
@@ -505,17 +509,24 @@ public partial class Geometry : ObservableObject, IDisposable
             {
                 if (_vertexColors.Count != _vertices.Count)
                 {
-                    HxDebug.Assert(false, "Vertex colors count must match vertex count");
+                    HxDebug.Assert(
+                        false,
+                        $"Vertex colors count {_vertexColors.Count} must match vertex count {_vertices.Count}"
+                    );
                 }
-                _vertColorsBuffer ??= new ElementBuffer<Vector4>(
-                    context,
-                    _vertexColors.Count,
-                    BufferUsageBits.Vertex | BufferUsageBits.Storage,
-                    IsDynamic,
-                    debugName: $"Geo_{Id}_VertColor"
-                );
-                pending.UploadHandles.Add(_vertColorsBuffer.UploadAsync(_vertexColors));
-                hasAnyUpload = true;
+                else
+                {
+                    _vertColorsBuffer ??= new ElementBuffer<Vector4>(
+                        context,
+                        _vertexColors.Count,
+                        BufferUsageBits.Vertex | BufferUsageBits.Storage,
+                        IsDynamic,
+                        debugName: $"Geo_{Id}_VertColor"
+                    );
+                    pending.UploadHandles.Add(_vertColorsBuffer.UploadAsync(_vertexColors));
+                    hasAnyUpload = true;
+                }
+
                 pending.Types |= GeometryBufferType.VertexColor;
             }
             BufferDirty &= ~GeometryBufferType.VertexColor;
