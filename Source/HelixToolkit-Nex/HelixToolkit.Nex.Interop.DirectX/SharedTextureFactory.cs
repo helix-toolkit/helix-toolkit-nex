@@ -1,7 +1,5 @@
-using Silk.NET.Core.Native;
-using Silk.NET.Direct3D11;
-using Silk.NET.DXGI;
-using static Silk.NET.Core.Native.SilkMarshal;
+using Vortice.Direct3D11;
+using Vortice.DXGI;
 
 namespace HelixToolkit.Nex.Interop.DirectX;
 
@@ -10,6 +8,8 @@ namespace HelixToolkit.Nex.Interop.DirectX;
 /// </summary>
 public static unsafe class SharedTextureFactory
 {
+    private static uint _sharedTextureId = 0;
+
     /// <summary>
     /// Creates a D3D11 shared texture for the WPF path (KMT handle).
     /// Opens a D3D9 shared texture on the D3D11 side via <c>OpenSharedResource</c>
@@ -32,21 +32,14 @@ public static unsafe class SharedTextureFactory
             );
 
         // 1. Open the D3D9 shared texture on the D3D11 side
-        var d3d11Texture = d3d11.Device.OpenSharedResource<ID3D11Texture2D>(
-            (void*)d3d9SharedHandle
-        );
+        var d3d11Texture = d3d11.Device.OpenSharedResource<ID3D11Texture2D>(d3d9SharedHandle);
 
         // 2. Get texture dimensions from the D3D11 texture description
-        Texture2DDesc desc = default;
-        d3d11Texture.GetDesc(ref desc);
+        var desc = d3d11Texture.Description;
 
         // 3. Query IDXGIResource1 to obtain the KMT shared handle.
-        //    IDXGIResource1 inherits IDXGIResource which defines GetSharedHandle;
-        //    Silk.NET 2.21 exposes the method on IDXGIResource1.
-        void* kmtHandlePtr;
         using var dxgiResource = d3d11Texture.QueryInterface<IDXGIResource1>();
-        ThrowHResult(dxgiResource.GetSharedHandle(&kmtHandlePtr));
-        var kmtHandle = (nint)kmtHandlePtr;
+        var kmtHandle = dxgiResource.SharedHandle;
 
         return new SharedTextureResult(
             d3d11Texture,
@@ -87,35 +80,30 @@ public static unsafe class SharedTextureFactory
             );
 
         // 1. Describe the texture with shared NT handle + keyed mutex flags
-        var desc = new Texture2DDesc
+        var desc = new Texture2DDescription
         {
             Width = width,
             Height = height,
-            Format = Format.FormatR8G8B8A8Unorm,
-            BindFlags = (uint)(BindFlag.RenderTarget | BindFlag.ShaderResource),
-            MiscFlags = (uint)(ResourceMiscFlag.SharedNthandle | ResourceMiscFlag.SharedKeyedmutex),
-            SampleDesc = new SampleDesc(1u, 0u),
-            Usage = Silk.NET.Direct3D11.Usage.Default,
+            Format = Format.R8G8B8A8_UNorm,
+            BindFlags = (BindFlags.RenderTarget | BindFlags.ShaderResource),
+            MiscFlags = (ResourceOptionFlags.SharedNTHandle | ResourceOptionFlags.SharedKeyedMutex),
+            SampleDescription = new(1u, 0u),
+            Usage = ResourceUsage.Default,
             ArraySize = 1u,
             MipLevels = 1u,
         };
 
         // 2. Create the D3D11 texture
-        var texture = default(ComPtr<ID3D11Texture2D>);
-        ThrowHResult(d3d11.Device.CreateTexture2D(in desc, null, ref texture));
+        var texture = d3d11.Device.CreateTexture2D(desc);
 
         // 3. Query IDXGIResource1 and create the NT shared handle
-        void* ntHandlePtr;
         using var dxgiResource = texture.QueryInterface<IDXGIResource1>();
-        ThrowHResult(
-            dxgiResource.CreateSharedHandle(
-                (SecurityAttributes*)null,
-                DXGI.SharedResourceRead | DXGI.SharedResourceWrite,
-                (char*)null,
-                &ntHandlePtr
-            )
+        var id = Interlocked.Increment(ref _sharedTextureId);
+        var ntHandle = dxgiResource.CreateSharedHandle(
+            null,
+            Vortice.DXGI.SharedResourceFlags.Read | Vortice.DXGI.SharedResourceFlags.Write,
+            $"Dx11SharedTexture_{id}"
         );
-        var ntHandle = (nint)ntHandlePtr;
 
         return new SharedTextureResult(texture, ntHandle, SharedHandleType.Nt, width, height);
     }

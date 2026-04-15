@@ -7,6 +7,10 @@
         <LangVersion>latest</LangVersion>
         <!-- This is a class library, not a WinUI app — disable app packaging targets -->
         <EnableMsixTooling>false</EnableMsixTooling>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <IncludeSymbols>True</IncludeSymbols>
+        <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
         <DefineConstants>$(DefineConstants);HxWinUI</DefineConstants>
@@ -29,4 +33,10 @@
         Project="..\HelixToolkit.Nex.Interop.PlatformShared\HelixToolkit.Nex.Interop.PlatformShared.projitems"
         Label="Shared"
     />
+    <ItemGroup>
+        <None Update="README.md">
+            <Pack>True</Pack>
+            <PackagePath>\</PackagePath>
+        </None>
+    </ItemGroup>
 </Project>

@@ -1,5 +1,4 @@
-using Silk.NET.Core.Native;
-using Silk.NET.Direct3D11;
+using Vortice.Direct3D11;
 
 namespace HelixToolkit.Nex.Interop.DirectX;
 
@@ -9,13 +8,13 @@ namespace HelixToolkit.Nex.Interop.DirectX;
 /// </summary>
 public sealed unsafe class SharedTextureResult : IDisposable
 {
-    private ComPtr<ID3D11Texture2D> _texture;
+    private ID3D11Texture2D _texture;
     private bool _disposed;
 
     /// <summary>
     /// The D3D11 texture opened/created in shared mode.
     /// </summary>
-    public ComPtr<ID3D11Texture2D> Texture => _texture;
+    public ID3D11Texture2D Texture => _texture;
 
     /// <summary>
     /// The shared handle (KMT or NT) for Vulkan external memory import.
@@ -38,7 +37,7 @@ public sealed unsafe class SharedTextureResult : IDisposable
     public uint Height { get; }
 
     internal SharedTextureResult(
-        ComPtr<ID3D11Texture2D> texture,
+        ID3D11Texture2D texture,
         nint sharedHandle,
         SharedHandleType handleType,
         uint width,

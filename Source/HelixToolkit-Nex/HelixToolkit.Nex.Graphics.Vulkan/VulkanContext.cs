@@ -33,7 +33,7 @@ public sealed class VulkanContextConfig()
     /// whose VkPhysicalDeviceIDProperties.deviceLUID matches this value.
     /// Used by the interop layer to ensure Vulkan and DirectX use the same GPU.
     /// </summary>
-    public byte[]? RequiredDeviceLuid = null;
+    public byte[]? RequiredDeviceLuid;
 
     public bool ForcePresentModeFIFO = false; // force VK_PRESENT_MODE_FIFO_KHR as the only present mode, even if other modes are available
 
@@ -751,11 +751,16 @@ internal sealed partial class VulkanContext
                 ReadOnlySpan<byte> deviceLuidSpan = new(luidCopyBuffer, 8);
                 availableLuids!.Add(Convert.ToHexString(deviceLuidSpan));
 
-                if (
-                    !idProps.deviceLUIDValid
-                    || !LuidMatches(deviceLuidSpan, Config.RequiredDeviceLuid!)
-                )
+                if (!idProps.deviceLUIDValid)
+                {
                     continue;
+                }
+                if (LuidMatches(deviceLuidSpan, Config.RequiredDeviceLuid!))
+                {
+                    _vkPhysicalDevice = physicalDevice;
+                    break;
+                }
+                continue;
             }
 
             VK.vkGetPhysicalDeviceProperties(

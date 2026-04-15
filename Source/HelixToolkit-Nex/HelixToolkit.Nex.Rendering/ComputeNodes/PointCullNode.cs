@@ -80,7 +80,7 @@ public sealed class PointCullNode : ComputeNode
     {
         if (res.Context is null || res.Context.Data is null)
         {
-            _logger.LogWarning("Point data is null. Skipping point culling.");
+            _logger.LogWarning("Context.Data is null. Skipping point culling.");
             return;
         }
 
