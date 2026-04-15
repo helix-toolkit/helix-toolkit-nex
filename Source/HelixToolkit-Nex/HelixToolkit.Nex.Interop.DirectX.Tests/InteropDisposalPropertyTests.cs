@@ -12,7 +12,7 @@ namespace HelixToolkit.Nex.Tests.Interop;
 /// Validates: Requirements 9.1
 /// </summary>
 [TestClass]
-[TestCategory("GPU")]
+[TestCategory("GPURequired")]
 public class InteropDisposalPropertyTests
 {
     private static readonly Config FsCheckConfig = Config.Default.WithMaxTest(100);
