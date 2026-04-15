@@ -5,14 +5,12 @@
   xmlns:local="clr-namespace:WpfInterop"
   xmlns:hx="clr-namespace:HelixToolkit.Nex.Wpf;assembly=HelixToolkit.Nex.Wpf"
   xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
-  Title="HelixToolkit.Nex - WPF Interop (MinecraftLarge)"
+  xmlns:common="Interop.Common"
+  Title="HelixToolkit.Nex - Wpf Interop (Minecraft)"
   Width="1280"
   Height="720"
 >
-  <Window.Resources>
-    <local:MainViewModel x:Key="vm" />
-  </Window.Resources>
-  <Grid DataContext="{StaticResource ResourceKey=vm}">
+  <Grid>
     <Grid.ColumnDefinitions>
       <ColumnDefinition></ColumnDefinition>
       <ColumnDefinition Width="Auto" />

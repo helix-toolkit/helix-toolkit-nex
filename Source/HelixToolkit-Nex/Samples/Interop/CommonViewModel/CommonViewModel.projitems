@@ -3,9 +3,12 @@
   <PropertyGroup>
     <MSBuildAllProjects Condition="'$(MSBuildVersion)' == '' Or '$(MSBuildVersion)' &lt; '16.0'">$(MSBuildAllProjects);$(MSBuildThisFileFullPath)</MSBuildAllProjects>
     <HasSharedItems>true</HasSharedItems>
-    <SharedGUID>c88d24a8-833f-48f5-8cda-db8dcc18dc53</SharedGUID>
+    <SharedGUID>14375c9f-9214-4c4f-9e5b-3954e2310f80</SharedGUID>
   </PropertyGroup>
   <PropertyGroup Label="Configuration">
-    <Import_RootNamespace>HelixToolkit.Nex.Interop.PlatformShared</Import_RootNamespace>
+    <Import_RootNamespace>CommonViewModel</Import_RootNamespace>
   </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)MainViewModel.cs" />
+  </ItemGroup>
 </Project>

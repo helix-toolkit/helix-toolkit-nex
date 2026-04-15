@@ -17,17 +17,18 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\HelixToolkit.Nex.Graphics\HelixToolkit.Nex.Graphics.csproj" />
-        <ProjectReference Include="..\HelixToolkit.Nex.Graphics.Vulkan\HelixToolkit.Nex.Graphics.Vulkan.csproj" />
-    </ItemGroup>
-
-    <ItemGroup>
         <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
             <_Parameter1>HelixToolkit.Nex.Interop.DirectX.Tests</_Parameter1>
         </AssemblyAttribute>
         <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
             <_Parameter1>HelixToolkit.Nex.Graphics.Vulkan.Tests</_Parameter1>
         </AssemblyAttribute>
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\HelixToolkit.Nex.Graphics.Vulkan\HelixToolkit.Nex.Graphics.Vulkan.csproj" />
+      <ProjectReference Include="..\HelixToolkit.Nex.Graphics\HelixToolkit.Nex.Graphics.csproj" />
+      <ProjectReference Include="..\HelixToolkit.Nex.Rendering\HelixToolkit.Nex.Rendering.csproj" />
     </ItemGroup>
     <ItemGroup>
         <None Update="README.md">

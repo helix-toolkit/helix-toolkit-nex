@@ -1,4 +1,3 @@
-using System;
 using System.Diagnostics;
 using System.Numerics;
 using HelixToolkit.Nex;
@@ -6,27 +5,27 @@ using HelixToolkit.Nex.Engine;
 using HelixToolkit.Nex.Engine.Cameras;
 using HelixToolkit.Nex.Graphics;
 using HelixToolkit.Nex.Graphics.Vulkan;
+using HelixToolkit.Nex.Interop;
 using HelixToolkit.Nex.Interop.DirectX;
 using HelixToolkit.Nex.Rendering.PostEffects;
 using HelixToolkit.Nex.Rendering.RenderNodes;
 using HelixToolkit.Nex.Scene;
-using HelixToolkit.Nex.WinUI;
 using SceneSamples;
 using Format = HelixToolkit.Nex.Graphics.Format;
 
-namespace WinUIInterop;
+namespace Interop.Common;
 
-internal class MainViewModel : ObservableObject, IDisposable
+public class MainViewModel : ObservableObject, IDisposable
 {
     public Engine? Engine => _engine;
     private IContext? _vulkanContext;
     private Engine? _engine;
     private WorldDataProvider? _worldDataProvider;
-    private MinecraftLargeScene? _scene;
+    private IScene? _scene;
     private Node? _root;
 
-    // Fly-through camera (lemniscate path)
-    private Camera _flyCamera = new PerspectiveCamera();
+    // Orbit camera (circles around target)
+    private Camera _orbitCamera = new PerspectiveCamera();
     private readonly long _startTimestamp = Stopwatch.GetTimestamp();
 
     // Overhead camera (static top-down view)
@@ -35,10 +34,9 @@ internal class MainViewModel : ObservableObject, IDisposable
     // Scene tick guard — only tick once per frame even though two viewports fire Rendering
     private long _lastTickFrame;
     private bool _disposedValue;
-    private const float FlyHeight = 30f;
-    private const float FlySpeed = 0.08f;
-    private const float FlyRadius = 80f;
-    private const float PitchDown = -0.18f;
+    private const float OrbitRadius = 80f;
+    private const float OrbitHeight = 40f;
+    private const float OrbitSpeed = 0.3f;
 
     public MainViewModel()
     {
@@ -55,7 +53,8 @@ internal class MainViewModel : ObservableObject, IDisposable
             }
         );
         // 3. Scene + materials (before engine build)
-        _scene = new MinecraftLargeScene();
+        _scene = new MinecraftScene();
+        RenderSettings.LogFPSInDebug = true;
         _scene.RegisterMaterials();
 
         // 4. Build engine
@@ -71,7 +70,7 @@ internal class MainViewModel : ObservableObject, IDisposable
                 effects.AddEffect(new WireframePostEffect());
                 effects.AddEffect(new ShowFPS());
             })
-            .AddNode(new RenderToFinalNode(Format.RGBA_UN8))
+            .AddNode(new RenderToFinalNode(Format.BGRA_UN8))
             .Build();
         // 5. World data + scene
         _worldDataProvider = _engine.CreateWorldDataProvider();
@@ -79,16 +78,20 @@ internal class MainViewModel : ObservableObject, IDisposable
         _root = _scene.Build(_vulkanContext, _engine.ResourceManager, _worldDataProvider);
 
         // 6. Cameras
-        _flyCamera = new PerspectiveCamera
+        _orbitCamera = new PerspectiveCamera
         {
-            Position = new Vector3(_scene.WorldSizeX / 2f, 80, -_scene.WorldSizeZ / 2f - 20),
+            Position = new Vector3(
+                _scene.WorldSizeX / 2f,
+                OrbitHeight,
+                -_scene.WorldSizeZ / 2f - OrbitRadius
+            ),
             Target = new Vector3(_scene.WorldSizeX / 2f, 0, _scene.WorldSizeZ / 2f),
             FarPlane = 1000,
         };
 
         _overheadCamera = new PerspectiveCamera
         {
-            Position = new Vector3(_scene.WorldSizeX / 2f, 200, _scene.WorldSizeZ / 2f),
+            Position = new Vector3(_scene.WorldSizeX / 2f, 50, _scene.WorldSizeZ / 2f),
             Target = new Vector3(_scene.WorldSizeX / 2f, 0, _scene.WorldSizeZ / 2f),
             Up = -Vector3.UnitZ,
             FarPlane = 1000,
@@ -102,10 +105,10 @@ internal class MainViewModel : ObservableObject, IDisposable
             return;
         _lastTickFrame = frame;
         _scene!.Tick(deltaTime);
-        UpdateFlyCamera();
+        UpdateOrbitCamera();
     }
 
-    // --- Viewport 1: fly-through ---
+    // --- Viewport 1: orbit ---
     public void OnFlyRendering(object? sender, ViewportRenderingEventArgs e)
     {
         TickSceneOnce(e.DeltaTime);
@@ -114,10 +117,10 @@ internal class MainViewModel : ObservableObject, IDisposable
         if (rc.WindowSize.Width <= 0 || rc.WindowSize.Height <= 0)
             return;
 
-        rc.CameraParams = _flyCamera.ToCameraParams(
+        rc.CameraParams = _orbitCamera.ToCameraParams(
             (float)rc.WindowSize.Width / rc.WindowSize.Height
         );
-        e.WorldDataProvider = _worldDataProvider;
+        e.DataProvider = _worldDataProvider;
     }
 
     // --- Viewport 2: overhead ---
@@ -132,40 +135,22 @@ internal class MainViewModel : ObservableObject, IDisposable
         rc.CameraParams = _overheadCamera.ToCameraParams(
             (float)rc.WindowSize.Width / rc.WindowSize.Height
         );
-        e.WorldDataProvider = _worldDataProvider;
+        e.DataProvider = _worldDataProvider;
     }
 
-    private void UpdateFlyCamera()
+    private void UpdateOrbitCamera()
     {
-        var worldCenter = new Vector3(_scene!.WorldSizeX / 2f, 0f, _scene.WorldSizeZ / 2f);
+        var target = new Vector3(_scene!.WorldSizeX / 2f, 0f, _scene.WorldSizeZ / 2f);
         float t =
             (float)((Stopwatch.GetTimestamp() - _startTimestamp) / (double)Stopwatch.Frequency)
-            * FlySpeed;
+            * OrbitSpeed;
 
-        float sinT = MathF.Sin(t);
-        float cosT = MathF.Cos(t);
-        float denom = 1f + sinT * sinT;
-        float lx = FlyRadius * cosT / denom;
-        float lz = FlyRadius * sinT * cosT / denom;
+        float x = target.X + OrbitRadius * MathF.Sin(t);
+        float z = target.Z + OrbitRadius * MathF.Cos(t);
 
-        float denom2 = denom * denom;
-        float dlx = (-FlyRadius * sinT * denom - FlyRadius * cosT * 2f * sinT * cosT) / denom2;
-        float dlz =
-            (
-                FlyRadius * (cosT * cosT - sinT * sinT) * denom
-                - FlyRadius * sinT * cosT * 2f * sinT * cosT
-            ) / denom2;
-
-        _flyCamera.Position = worldCenter + new Vector3(lx, FlyHeight, lz);
-
-        var forward = new Vector3(dlx, 0f, dlz);
-        if (forward.LengthSquared() < 1e-6f)
-            forward = Vector3.UnitX;
-        forward = Vector3.Normalize(forward);
-
-        var pitchedForward = Vector3.Normalize(forward + new Vector3(0f, MathF.Sin(PitchDown), 0f));
-        _flyCamera.Target = _flyCamera.Position + pitchedForward * 10f;
-        _flyCamera.Up = Vector3.UnitY;
+        _orbitCamera.Position = new Vector3(x, OrbitHeight, z);
+        _orbitCamera.Target = target;
+        _orbitCamera.Up = Vector3.UnitY;
     }
 
     protected virtual void Dispose(bool disposing)
