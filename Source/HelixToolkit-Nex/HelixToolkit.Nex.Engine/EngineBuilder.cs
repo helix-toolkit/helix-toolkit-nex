@@ -59,6 +59,7 @@ public sealed class EngineBuilder
     private readonly IContext _context;
     private readonly List<RenderNode> _nodes = [];
     private readonly List<Action<IServiceCollection>> _serviceConfigurators = [];
+    private readonly List<Action<IReadOnlyList<RenderNode>>> _nodeConfigurators = [];
     private PostEffectsNode _postEffectsNode = new();
     private bool _addRenderToFinal;
     private Action<IResourceManager>? _onResourceManagerReady;
@@ -102,6 +103,42 @@ public sealed class EngineBuilder
     {
         ArgumentNullException.ThrowIfNull(node);
         _nodes.Add(node);
+        return this;
+    }
+
+    /// <summary>
+    /// Configures all previously added <see cref="RenderNode"/>s of type <typeparamref name="T"/>.
+    /// <para>
+    /// The callback is deferred until <see cref="Build"/> so it works with both manually
+    /// added nodes and nodes added by presets such as <see cref="WithDefaultNodes"/>.
+    /// If no node of the requested type exists, the callback is silently skipped.
+    /// </para>
+    /// <para>
+    /// <b>Example:</b>
+    /// <code>
+    /// EngineBuilder.Create(context)
+    ///     .WithDefaultNodes()
+    ///     .ConfigureNode&lt;ForwardPlusOpaqueNode&gt;(n => n.UseLightCulling = false)
+    ///     .Build();
+    /// </code>
+    /// </para>
+    /// </summary>
+    /// <typeparam name="T">The concrete <see cref="RenderNode"/> type to configure.</typeparam>
+    /// <param name="configure">A callback that receives each matching node instance.</param>
+    /// <returns>This builder for method chaining.</returns>
+    public EngineBuilder ConfigureNode<T>(Action<T> configure) where T : RenderNode
+    {
+        ArgumentNullException.ThrowIfNull(configure);
+        _nodeConfigurators.Add(nodes =>
+        {
+            foreach (var node in nodes)
+            {
+                if (node is T typed)
+                {
+                    configure(typed);
+                }
+            }
+        });
         return this;
     }
 
@@ -218,6 +255,12 @@ public sealed class EngineBuilder
         engine.ResourceManager.PBRMaterialManager.CreatePBRMaterialsFromRegistry();
         engine.ResourceManager.PointMaterialManager.CreatePipelinesFromRegistry();
         _onResourceManagerReady?.Invoke(engine.ResourceManager);
+
+        // --- Apply deferred node configurations ---
+        foreach (var configurator in _nodeConfigurators)
+        {
+            configurator(_nodes);
+        }
 
         // --- Add render nodes ---
         foreach (var node in _nodes)

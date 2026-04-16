@@ -8,6 +8,7 @@ global using HelixToolkit.Nex.Graphics;
 global using HelixToolkit.Nex.Material;
 global using HelixToolkit.Nex.Maths;
 global using HelixToolkit.Nex.Rendering;
+global using HelixToolkit.Nex.Rendering.RenderNodes;
 global using HelixToolkit.Nex.Repository;
 global using HelixToolkit.Nex.Scene;
 global using HelixToolkit.Nex.Shaders;
