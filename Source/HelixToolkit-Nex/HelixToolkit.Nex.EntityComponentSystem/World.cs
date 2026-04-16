@@ -1,3 +1,5 @@
+using System.Reflection;
+
 namespace HelixToolkit.Nex.ECS;
 
 /// <summary>
@@ -300,6 +302,22 @@ public sealed class World : IEnumerable<Entity>, IDisposable
     #endregion
 
     #region Components
+    /// <summary>
+    /// Checks whether the entity at the given id has the specified component type
+    /// by inspecting the EntityState bitmask directly. Used internally by tag component managers.
+    /// This intentionally does not check entity validity, so it can be used during
+    /// EntityDisposingEvent processing when the entity state has already been invalidated.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal bool HasComponentTypeById(int entityId, in ComponentTypeId typeId)
+    {
+        if (entityId < 0 || entityId >= _entityState.Count)
+        {
+            return false;
+        }
+        return _entityState.GetInternalArray()[entityId].ComponentTypes.HasType(typeId);
+    }
+
     private static void ThrowEntityInvalidException(in Entity entity)
     {
         throw new ArgumentException($"Entity {entity} is not valid or belongs to another world.");
@@ -321,10 +339,18 @@ public sealed class World : IEnumerable<Entity>, IDisposable
         var ret = ResultCode.Invalid;
         if (ValidateEntity(ref entity))
         {
-            var manager = ComponentManager<T>.GetOrCreateManager(GetWorldInternal, Id);
-            if (manager != null)
+            if (IsTagType<T>())
             {
-                ret = manager.Set(entity.Id, ref component, out added);
+                ret = ResultCode.Ok;
+            }
+            else
+            {
+                var manager = ComponentManager<T>.GetOrCreateManager(
+                    GetWorldInternal,
+                    Id,
+                    defaultCapacity: IsTagType<T>() ? 0 : 128
+                );
+                ret = manager?.Set(entity.Id, ref component, out added) ?? ResultCode.Invalid;
             }
         }
         if (ret == ResultCode.Ok)
@@ -356,8 +382,16 @@ public sealed class World : IEnumerable<Entity>, IDisposable
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public ref T GetComponent<T>(Entity entity)
     {
+        if (!ValidateEntity(ref entity))
+        {
+            ThrowEntityInvalidException(entity);
+        }
+        if (IsTagType<T>())
+        {
+            return ref ComponentIdProxy<T>.DefaultValue!;
+        }
         var manager = ComponentManager<T>.GetManager(Id);
-        if (manager == null || !ValidateEntity(ref entity))
+        if (manager == null)
         {
             ThrowEntityInvalidException(entity);
         }
@@ -394,7 +428,18 @@ public sealed class World : IEnumerable<Entity>, IDisposable
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool HasAnyComponent<T>()
     {
-        return Id > 0 && ComponentManager<T>.HasWorld(Id);
+        if (Id == 0)
+        {
+            return false;
+        }
+        foreach (var entity in this)
+        {
+            if (entity.Has<T>())
+            {
+                return true;
+            }
+        }
+        return false;
     }
 
     /// <summary>
@@ -408,12 +453,28 @@ public sealed class World : IEnumerable<Entity>, IDisposable
     public ResultCode RemoveComponent<T>(Entity entity, bool keepSorted = false)
     {
         ResultCode ret;
+        if (!HasComponent<T>(entity))
+        {
+            return ResultCode.NotFound;
+        }
         lock (_lock)
         {
-            ret = ValidateEntity(ref entity)
-                ? ComponentManager<T>.GetManager(Id)?.Remove(entity.Id, keepSorted)
-                    ?? ResultCode.NotFound
-                : ResultCode.Invalid;
+            ret = ResultCode.Invalid;
+
+            if (ValidateEntity(ref entity))
+            {
+                if (IsTagType<T>())
+                {
+                    ret = ResultCode.Ok;
+                }
+                else
+                {
+                    ret =
+                        ComponentManager<T>.GetManager(Id)?.Remove(entity.Id, keepSorted)
+                        ?? ResultCode.NotFound;
+                }
+            }
+
             if (ret == ResultCode.Ok)
             {
                 ref var state = ref GetState(entity.Id, entity.Generation);
@@ -444,6 +505,10 @@ public sealed class World : IEnumerable<Entity>, IDisposable
     /// <typeparam name="T"></typeparam>
     public void TrimComponentStorage<T>()
     {
+        if (IsTagType<T>())
+        {
+            return;
+        }
         ComponentManager<T>.GetManager(Id)?.TrimExcess();
     }
 
@@ -455,6 +520,12 @@ public sealed class World : IEnumerable<Entity>, IDisposable
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Components<T> GetComponents<T>()
     {
+        if (IsTagType<T>())
+        {
+            throw new InvalidOperationException(
+                "Tag type is not valid for GetComponents operation."
+            );
+        }
         var manager = GetComponentManager<T>();
         return manager != null ? manager.AsComponents() : new Components<T>();
     }
@@ -462,6 +533,10 @@ public sealed class World : IEnumerable<Entity>, IDisposable
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal ComponentManager<T>? GetComponentManager<T>()
     {
+        if (IsTagType<T>())
+        {
+            return null;
+        }
         return ComponentManager<T>.GetOrCreateManager(GetWorldInternal, Id);
     }
 
@@ -473,6 +548,10 @@ public sealed class World : IEnumerable<Entity>, IDisposable
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public ComponentTypeId GetComponentTypeId<T>()
     {
+        if (IsTagType<T>())
+        {
+            return ComponentIdProxy<T>.TypeId;
+        }
         return ComponentManager<T>.TypeId;
     }
 
@@ -503,7 +582,7 @@ public sealed class World : IEnumerable<Entity>, IDisposable
         where T : ISortable<T>
     {
         var manager = GetComponentManager<T>();
-        if (manager == null)
+        if (manager == null || IsTagType<T>())
         {
             return;
         }
@@ -517,15 +596,28 @@ public sealed class World : IEnumerable<Entity>, IDisposable
     /// </summary>
     public IEnumerable<Entity> GetComponentEntities<T>()
     {
-        var manager = GetComponentManager<T>();
-        if (manager == null)
+        if (IsTagType<T>())
         {
-            yield break;
+            foreach (var entity in this)
+            {
+                if (entity.Has<T>())
+                {
+                    yield return entity;
+                }
+            }
         }
-        foreach (var entity in manager.GetEntities())
+        else
         {
-            if (entity.Valid)
-                yield return entity;
+            var manager = GetComponentManager<T>();
+            if (manager == null)
+            {
+                yield break;
+            }
+            foreach (var entity in manager.GetEntities())
+            {
+                if (entity.Valid)
+                    yield return entity;
+            }
         }
     }
 
@@ -695,6 +787,11 @@ public sealed class World : IEnumerable<Entity>, IDisposable
         ECSEventBus.Unregister(Id, action);
     }
     #endregion
+
+    private static bool IsTagType<T>()
+    {
+        return typeof(T).GetTypeInfo().IsTagType();
+    }
 
     #region Disposible
     public event EventHandler? Disposing;
