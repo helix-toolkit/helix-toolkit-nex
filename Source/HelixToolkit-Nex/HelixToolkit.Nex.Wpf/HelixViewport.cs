@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
 using HelixToolkit.Nex.Engine;
+using HelixToolkit.Nex.Engine.CameraControllers;
 using HelixToolkit.Nex.Interop;
 using HelixToolkit.Nex.Interop.DirectX;
 using HelixToolkit.Nex.Rendering;
@@ -27,57 +28,10 @@ namespace HelixToolkit.Nex.Wpf;
 /// as a read-only notification after the client update.
 /// </para>
 /// </summary>
-public unsafe class HelixViewport : FrameworkElement, IDisposable
+public partial class HelixViewport : FrameworkElement, IDisposable
 {
     private static readonly ILogger _logger = LogManager.Create<HelixViewport>();
-    #region Dependency Properties
-    public static readonly DependencyProperty EngineDp = HelixProperty.Register<
-        HelixViewport,
-        Engine.Engine?
-    >(
-        "Engine",
-        null,
-        (d, e) =>
-        {
-            if (d is not HelixViewport viewport)
-            {
-                return;
-            }
-            viewport.SetEngine((Engine.Engine?)e.NewValue);
-        }
-    );
-    public Engine.Engine? Engine
-    {
-        get { return (Engine.Engine)GetValue(EngineDp); }
-        set { SetValue(EngineDp, value); }
-    }
 
-    public static readonly DependencyProperty ViewportClientDp = HelixProperty.Register<
-        HelixViewport,
-        IViewportClient?
-    >(
-        "ViewportClient",
-        null,
-        (d, e) =>
-        {
-            if (d is not HelixViewport viewport)
-            {
-                return;
-            }
-            viewport._viewportClient = (IViewportClient?)e.NewValue;
-        }
-    );
-
-    /// <summary>
-    /// Gets or sets the <see cref="IViewportClient"/> that provides per-frame camera
-    /// updates and scene data for this viewport. When <c>null</c>, no frames are rendered.
-    /// </summary>
-    public IViewportClient? ViewportClient
-    {
-        get { return (IViewportClient?)GetValue(ViewportClientDp); }
-        set { SetValue(ViewportClientDp, value); }
-    }
-    #endregion
     private D3DImage? _d3dImage;
     private D3D9DeviceManager? _d3d9Manager;
     private D3D11DeviceManager? _d3d11Manager;
@@ -91,6 +45,7 @@ public unsafe class HelixViewport : FrameworkElement, IDisposable
     private bool _disposed;
     private Engine.Engine? _engine;
     private IViewportClient? _viewportClient;
+    private ICameraController? _cameraController;
     private bool _sizeChanged = true;
 
     private ViewportRenderingEventArgs? _renderArgs;
@@ -145,6 +100,18 @@ public unsafe class HelixViewport : FrameworkElement, IDisposable
         {
             CreateResources((uint)Width, (uint)Height);
         }
+    }
+
+    private void SetClient(IViewportClient? client)
+    {
+        _viewportClient = client;
+    }
+
+    private void SetCameraController(ICameraController? controller)
+    {
+        if (_renderContext is null)
+            return;
+        _cameraController = controller;
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e)
@@ -244,6 +211,7 @@ public unsafe class HelixViewport : FrameworkElement, IDisposable
         _renderArgs.DeltaTime = delta;
         _renderContext.WindowSize = new Size((int)ActualWidth, (int)ActualHeight);
 
+        _cameraController?.Update(delta);
         // Pull per-frame data from the viewport client
         if (_viewportClient is null)
             return;
