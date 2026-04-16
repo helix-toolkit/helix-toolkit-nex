@@ -6,7 +6,7 @@ namespace HelixToolkit.Nex.ECS.Utils;
 
 internal static class TypeHelper
 {
-    public static bool IsFlagType(this TypeInfo typeInfo) =>
+    public static bool IsTagType(this TypeInfo typeInfo) =>
         typeInfo.IsValueType
         && !typeInfo.IsEnum
         && !typeInfo.IsPrimitive

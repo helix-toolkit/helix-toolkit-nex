@@ -155,7 +155,7 @@ public struct Entity : IDisposable, IEquatable<Entity>
     /// <returns></returns>
     public readonly ref T Get<T>()
     {
-        return ref World!.GetComponentManager<T>()!.Get(Id);
+        return ref World!.GetComponent<T>(this);
     }
 
     /// <summary>
@@ -169,7 +169,7 @@ public struct Entity : IDisposable, IEquatable<Entity>
     /// component.</param>
     public void Update<T>(Func<T, T> updateFunc)
     {
-        if (World?.HasComponent<T>(this) ?? false)
+        if (Has<T>())
         {
             ref var component = ref Get<T>();
             var updatedComponent = updateFunc(component);
@@ -187,15 +187,15 @@ public struct Entity : IDisposable, IEquatable<Entity>
     /// default value for the type.</param>
     /// <returns><see langword="true"/> if the component of type <typeparamref name="T"/> is found; otherwise, <see
     /// langword="false"/>.</returns>
-    public readonly bool TryGet<T>(out T component)
+    public readonly bool TryGet<T>(out T? component)
     {
-        if (World?.HasComponent<T>(this) ?? false)
+        if (!Has<T>())
         {
-            component = World.GetComponentManager<T>()!.Get(Id);
-            return true;
+            component = default;
+            return false;
         }
-        component = default!;
-        return false;
+        component = World!.GetComponent<T>(this);
+        return true;
     }
 
     /// <summary>

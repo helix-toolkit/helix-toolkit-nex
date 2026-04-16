@@ -84,16 +84,24 @@ internal static class ComponentSorting
     }
 }
 
-internal class ComponentManager<T> : IDisposable
+internal readonly struct ComponentIdProxy<T>
+{
+    public static readonly ComponentTypeId TypeId = ComponentTypeId.GetNexId();
+    public static bool IsTagType = typeof(T).GetTypeInfo().IsTagType();
+
+    public static implicit operator ComponentTypeId(ComponentIdProxy<T> proxy) => TypeId;
+
+    public static T? DefaultValue = default;
+}
+
+internal sealed class ComponentManager<T> : IDisposable
 {
     #region Manager Storage
-    internal static readonly ComponentTypeId TypeId = ComponentTypeId.GetNexId();
+    internal static readonly ComponentTypeId TypeId = ComponentIdProxy<T>.TypeId;
     private static readonly FastList<ComponentManager<T>?> _managerStorage = [];
     private static readonly ReaderWriterLockSlim _managerStorageLock = new();
     private static Func<int, World?>? _getWorldFunc;
     private static readonly bool _isReferenceType = !typeof(T).GetTypeInfo().IsValueType;
-
-    private static readonly bool _isFlagType = typeof(T).GetTypeInfo().IsFlagType();
 
     internal readonly object Lock = new();
 
@@ -122,9 +130,7 @@ internal class ComponentManager<T> : IDisposable
             _managerStorage.Resize(Math.Max(_managerStorage.Count, worldId + 1));
             if (_managerStorage[worldId] == null)
             {
-                _managerStorage[worldId] = _isFlagType
-                    ? new TagComponentManager<T>(worldId, defaultCapacity)
-                    : new ComponentManager<T>(worldId, defaultCapacity);
+                _managerStorage[worldId] = new ComponentManager<T>(worldId, defaultCapacity);
             }
             return _managerStorage[worldId];
         }
@@ -289,7 +295,7 @@ internal class ComponentManager<T> : IDisposable
     }
     #endregion
     #region Private Properties
-    internal int WorldId { private protected set; get; }
+    internal int WorldId { private set; get; }
     internal readonly FastList<T> Storage;
     internal readonly FastList<ComponentMappingKey> CompMapping;
     internal readonly FastList<EntityMappingKey> EntityMapping;
@@ -303,7 +309,7 @@ internal class ComponentManager<T> : IDisposable
     /// <value>
     /// The count.
     /// </value>
-    public virtual int Count
+    public int Count
     {
         get => Storage.Count;
     }
@@ -314,7 +320,7 @@ internal class ComponentManager<T> : IDisposable
     /// <value>
     /// The capacity.
     /// </value>
-    public virtual int Capacity
+    public int Capacity
     {
         get => Storage.Capacity;
     }
@@ -325,7 +331,7 @@ internal class ComponentManager<T> : IDisposable
     /// </summary>
     /// <param name="worldId">The world identifier.</param>
     /// <param name="defaultCapcity">The default capcity.</param>
-    protected ComponentManager(int worldId, in int defaultCapcity = 128)
+    public ComponentManager(int worldId, in int defaultCapcity = 128)
     {
         WorldId = worldId;
         Storage = new(defaultCapcity);
@@ -344,7 +350,7 @@ internal class ComponentManager<T> : IDisposable
     /// <param name="component">The component.</param>
     /// <param name="added">If component is added the first time</param>
     /// <returns></returns>
-    public virtual ResultCode Set(int entity, ref T component, out bool added)
+    public ResultCode Set(int entity, ref T component, out bool added)
     {
         added = false;
         if (!IsValid())
@@ -382,7 +388,7 @@ internal class ComponentManager<T> : IDisposable
     ///   <c>true</c> if [has] [the specified entity]; otherwise, <c>false</c>.
     /// </returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public virtual bool Has(int entity)
+    public bool Has(int entity)
     {
         if (
             !IsValid()
@@ -402,7 +408,7 @@ internal class ComponentManager<T> : IDisposable
     /// <param name="entityId">The entity identifier.</param>
     /// <param name="keepSorted">Keeps the order of the rest of components in the storage after removing</param>
     /// <returns></returns>
-    public virtual ResultCode Remove(int entityId, bool keepSorted = false)
+    public ResultCode Remove(int entityId, bool keepSorted = false)
     {
         if (!Has(entityId))
         {
@@ -471,7 +477,7 @@ internal class ComponentManager<T> : IDisposable
     /// </summary>
     /// <param name="entity">The entity.</param>
     /// <returns>component reference</returns>
-    public virtual ref T Get(int entity)
+    public ref T Get(int entity)
     {
         return ref Storage.GetInternalArray()[CompMapping[entity].ComponentIndex];
     }
@@ -481,7 +487,7 @@ internal class ComponentManager<T> : IDisposable
     /// </summary>
     /// <param name="entity"></param>
     /// <returns></returns>
-    public virtual int GetIndex(int entity)
+    public int GetIndex(int entity)
     {
         return CompMapping[entity].ComponentIndex;
     }
@@ -504,7 +510,7 @@ internal class ComponentManager<T> : IDisposable
     /// Gets the entities.
     /// </summary>
     /// <returns></returns>
-    public virtual EntityEnumerable GetEntities() => new(this);
+    public EntityEnumerable GetEntities() => new(this);
 
     /// <summary>
     /// Gets the component with the specified entity.
@@ -523,7 +529,7 @@ internal class ComponentManager<T> : IDisposable
     /// <summary>
     /// Trims the excess of component storages.
     /// </summary>
-    public virtual void TrimExcess()
+    public void TrimExcess()
     {
         if (WorldId == 0)
         {
@@ -539,7 +545,7 @@ internal class ComponentManager<T> : IDisposable
     /// Verifies the storage. Only used for testing.
     /// </summary>
     /// <returns></returns>
-    internal virtual bool VerifyStorage()
+    internal bool VerifyStorage()
     {
         lock (Lock)
         {
@@ -570,12 +576,12 @@ internal class ComponentManager<T> : IDisposable
         return WorldId != 0;
     }
 
-    protected void HandleWorldDisposing(int worldId, WorldDisposingEvent msg)
+    private void HandleWorldDisposing(int worldId, WorldDisposingEvent msg)
     {
         Dispose();
     }
 
-    protected void HandleEntityDisposing(int worldId, EntityDisposingEvent msg)
+    private void HandleEntityDisposing(int worldId, EntityDisposingEvent msg)
     {
         Remove(msg.EntityId);
     }
@@ -585,7 +591,7 @@ internal class ComponentManager<T> : IDisposable
     /// <summary>
     /// Performs application-defined tasks associated with freeing, releasing, or resetting unmanaged resources.
     /// </summary>
-    public virtual void Dispose()
+    public void Dispose()
     {
         if (WorldId == 0)
         {
@@ -602,133 +608,4 @@ internal class ComponentManager<T> : IDisposable
         RemoveManager(worldId);
     }
     #endregion
-}
-
-/// <summary>
-/// Specialized component manager for tag/flag components (empty structs with no instance fields).
-/// This manager avoids allocating storage for the component data itself, since there is no data to store.
-/// It only tracks which entities have the tag.
-/// </summary>
-/// <typeparam name="T"></typeparam>
-internal sealed class TagComponentManager<T> : ComponentManager<T>
-{
-    private static T _default = default!;
-    private int _count;
-
-    public TagComponentManager(int worldId, int defaultCapacity = 128)
-        : base(worldId, defaultCapacity) { }
-
-    public override int Count => _count;
-
-    public override int Capacity => CompMapping.Capacity;
-
-    public override ResultCode Set(int entity, ref T component, out bool added)
-    {
-        added = false;
-        if (WorldId == 0)
-        {
-            return ResultCode.Invalid;
-        }
-        if (Has(entity))
-        {
-            return ResultCode.Ok;
-        }
-        lock (Lock)
-        {
-            CompMapping.Resize(Math.Max(CompMapping.Count, entity + 1), true);
-            CompMapping[entity] = new ComponentMappingKey(0) { Valid = true };
-            _count++;
-        }
-        added = true;
-        return ResultCode.Ok;
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public override bool Has(int entity)
-    {
-        return WorldId != 0
-            && CompMapping.Count > entity
-            && CompMapping[entity].Valid;
-    }
-
-    public override ResultCode Remove(int entityId, bool keepSorted = false)
-    {
-        if (!Has(entityId))
-        {
-            return ResultCode.NotFound;
-        }
-        lock (Lock)
-        {
-            CompMapping[entityId] = default;
-            _count--;
-            if (entityId == CompMapping.Count - 1)
-            {
-                var i = entityId;
-                for (; i >= 0; --i)
-                {
-                    if (CompMapping[i].Valid)
-                    {
-                        break;
-                    }
-                }
-                CompMapping.Resize(i + 1);
-            }
-        }
-        return ResultCode.Ok;
-    }
-
-    public override ref T Get(int entity)
-    {
-        return ref _default;
-    }
-
-    public override int GetIndex(int entity)
-    {
-        return Has(entity) ? 0 : -1;
-    }
-
-    public override void TrimExcess()
-    {
-        if (WorldId == 0)
-        {
-            return;
-        }
-        lock (Lock)
-        {
-            CompMapping.TrimExcess();
-        }
-    }
-
-    internal override bool VerifyStorage()
-    {
-        lock (Lock)
-        {
-            var validCount = 0;
-            for (var i = 0; i < CompMapping.Count; ++i)
-            {
-                if (CompMapping[i].Valid)
-                {
-                    validCount++;
-                }
-            }
-            return validCount == _count
-                && (CompMapping.Count == 0 || CompMapping[CompMapping.Count - 1].Valid);
-        }
-    }
-
-    public override void Dispose()
-    {
-        if (WorldId == 0)
-        {
-            return;
-        }
-        var worldId = WorldId;
-        WorldId = 0;
-        ECSEventBus.Unregister<WorldDisposingEvent>(worldId, HandleWorldDisposing);
-        ECSEventBus.Unregister<EntityDisposingEvent>(worldId, HandleEntityDisposing);
-        CompMapping.Clear();
-        CompMapping.TrimExcess();
-        _count = 0;
-        RemoveManager(worldId);
-    }
 }

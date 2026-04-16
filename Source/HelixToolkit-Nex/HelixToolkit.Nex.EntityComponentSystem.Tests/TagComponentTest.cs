@@ -39,13 +39,12 @@ public class TagComponentTest
     }
 
     [TestMethod]
-    public void TagSetIdempotentTest()
+    public void TagSetTest()
     {
         var entity = World!.CreateEntity();
         entity.Tag<TagA>();
         entity.Tag<TagA>(); // Setting again should be idempotent
         Assert.IsTrue(entity.Has<TagA>());
-        Assert.AreEqual(1, World!.GetComponentManager<TagA>()!.Count);
     }
 
     [TestMethod]
@@ -82,8 +81,6 @@ public class TagComponentTest
             entities.Add(entity);
         }
 
-        Assert.AreEqual(count, World!.GetComponentManager<TagA>()!.Count);
-
         for (int i = 0; i < count; ++i)
         {
             Assert.IsTrue(entities[i].Has<TagA>());
@@ -94,7 +91,6 @@ public class TagComponentTest
         {
             entities[i].Remove<TagA>();
             Assert.IsFalse(entities[i].Has<TagA>());
-            Assert.AreEqual(count - i - 1, World!.GetComponentManager<TagA>()!.Count);
 
             // Verify remaining entities still have the tag
             for (int j = i + 1; j < count; ++j)
@@ -108,7 +104,7 @@ public class TagComponentTest
     [DataRow(10)]
     [DataRow(100)]
     [DataRow(1000)]
-    public void TagDisposeEntityCleansUpTest(int count)
+    public void TagComponentManagerNullTest(int count)
     {
         var entities = new List<Entity>();
         for (int i = 0; i < count; ++i)
@@ -119,16 +115,8 @@ public class TagComponentTest
             entities.Add(entity);
         }
 
-        Assert.AreEqual(count, World!.GetComponentManager<TagA>()!.Count);
-        Assert.AreEqual(count, World!.GetComponentManager<TagB>()!.Count);
-
-        for (int i = 0; i < count; ++i)
-        {
-            entities[i].Dispose();
-        }
-
-        Assert.AreEqual(0, World!.GetComponentManager<TagA>()!.Count);
-        Assert.AreEqual(0, World!.GetComponentManager<TagB>()!.Count);
+        Assert.IsNull(World!.GetComponentManager<TagA>());
+        Assert.IsNull(World!.GetComponentManager<TagB>());
     }
 
     [TestMethod]
@@ -150,17 +138,14 @@ public class TagComponentTest
     }
 
     [TestMethod]
-    public void TagNoStorageAllocationTest()
+    public void TagNoComponentManagerTest()
     {
         // Verify that the manager for tag components is a TagComponentManager
         // (no underlying T[] storage used)
         var entity = World!.CreateEntity();
         entity.Tag<TagA>();
 
-        var manager = World!.GetComponentManager<TagA>()!;
-        // Storage should remain empty for tag components
-        Assert.AreEqual(0, manager.Storage.Count);
-        Assert.AreEqual(1, manager.Count);
+        Assert.IsNull(World!.GetComponentManager<TagA>());
     }
 
     [TestMethod]
