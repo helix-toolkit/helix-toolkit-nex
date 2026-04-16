@@ -216,6 +216,95 @@ public class Engine : Initializable
     }
 
     /// <summary>
+    /// Attempts to retrieve a render node by its name and cast it to <typeparamref name="T"/>.
+    /// </summary>
+    /// <typeparam name="T">The expected concrete type of the render node.</typeparam>
+    /// <param name="name">The name of the render node to retrieve.</param>
+    /// <param name="node">When this method returns, contains the typed render node if found and the type matches; otherwise, <see langword="null"/>.</param>
+    /// <returns><see langword="true"/> if a render node with the specified name and type is found; otherwise, <see langword="false"/>.</returns>
+    public bool TryGetRenderNode<T>(string name, out T? node) where T : RenderNode
+    {
+        if (_renderer.TryGetRenderNode(name, out var rawNode) && rawNode is T typed)
+        {
+            node = typed;
+            return true;
+        }
+        node = null;
+        return false;
+    }
+
+    /// <summary>
+    /// Returns the first render node of type <typeparamref name="T"/>, or <see langword="null"/>
+    /// if no matching node is registered.
+    /// <para>
+    /// This is a convenience overload for ImGui debug panels and runtime tweaking where the
+    /// caller knows only the node type, not its string name. The result can be cached once
+    /// and reused across frames since nodes are stable after initialization.
+    /// </para>
+    /// <para>
+    /// <b>Example — ImGui slider for light culling:</b>
+    /// <code>
+    /// // Cache once (e.g., in a field):
+    /// _opaqueNode ??= engine.GetRenderNode&lt;ForwardPlusOpaqueNode&gt;();
+    ///
+    /// // Every frame in ImGui:
+    /// if (_opaqueNode is not null)
+    /// {
+    ///     var useLc = _opaqueNode.UseLightCulling;
+    ///     ImGui.Checkbox("Light Culling", ref useLc);
+    ///     _opaqueNode.UseLightCulling = useLc;
+    /// }
+    /// </code>
+    /// </para>
+    /// </summary>
+    /// <typeparam name="T">The concrete <see cref="RenderNode"/> type to find.</typeparam>
+    /// <returns>The first matching node, or <see langword="null"/>.</returns>
+    public T? GetRenderNode<T>() where T : RenderNode
+    {
+        foreach (var node in _renderer.RenderNodes)
+        {
+            if (node is T typed)
+            {
+                return typed;
+            }
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Returns the first post-effect of type <typeparamref name="T"/> from the
+    /// <see cref="PostEffectsNode"/>, or <see langword="null"/> if the engine has no
+    /// <see cref="PostEffectsNode"/> or no matching effect is registered.
+    /// <para>
+    /// This is a convenience shortcut for ImGui debug panels. Cache the result once
+    /// and reuse it across frames — effects are stable after initialization.
+    /// </para>
+    /// <para>
+    /// <b>Example — ImGui controls for bloom:</b>
+    /// <code>
+    /// _bloom ??= engine.GetPostEffect&lt;Bloom&gt;();
+    /// if (_bloom is not null)
+    /// {
+    ///     var threshold = _bloom.Threshold;
+    ///     ImGui.SliderFloat("Bloom Threshold", ref threshold, 0f, 2f);
+    ///     _bloom.Threshold = threshold;
+    ///
+    ///     var intensity = _bloom.Intensity;
+    ///     ImGui.SliderFloat("Bloom Intensity", ref intensity, 0f, 10f);
+    ///     _bloom.Intensity = intensity;
+    /// }
+    /// </code>
+    /// </para>
+    /// </summary>
+    /// <typeparam name="T">The concrete <see cref="PostEffect"/> type to find.</typeparam>
+    /// <returns>The first matching effect, or <see langword="null"/>.</returns>
+    public T? GetPostEffect<T>() where T : PostEffect
+    {
+        var postEffectsNode = GetRenderNode<PostEffectsNode>();
+        return postEffectsNode?.GetEffect<T>();
+    }
+
+    /// <summary>
     /// Executes a full render frame: acquires the swapchain texture, executes the render
     /// graph, and presents.
     /// </summary>

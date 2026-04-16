@@ -117,6 +117,46 @@ public sealed class PostEffectsNode : RenderNode
         return _effectMap.TryGetValue(name, out effect);
     }
 
+    /// <summary>
+    /// Attempts to retrieve a post-processing effect by its name and cast it to <typeparamref name="T"/>.
+    /// </summary>
+    /// <typeparam name="T">The expected concrete type of the post-effect.</typeparam>
+    /// <param name="name">The name of the post-processing effect to retrieve.</param>
+    /// <param name="effect">When this method returns, contains the typed effect if found and the type matches; otherwise, <see langword="null"/>.</param>
+    /// <returns><see langword="true"/> if an effect with the specified name and type is found; otherwise, <see langword="false"/>.</returns>
+    public bool TryGetEffect<T>(string name, out T? effect) where T : PostEffect
+    {
+        if (_effectMap.TryGetValue(name, out var raw) && raw is T typed)
+        {
+            effect = typed;
+            return true;
+        }
+        effect = null;
+        return false;
+    }
+
+    /// <summary>
+    /// Returns the first post-effect of type <typeparamref name="T"/>, or <see langword="null"/>
+    /// if no matching effect is registered.
+    /// <para>
+    /// Intended for ImGui debug panels and runtime tweaking. The result can be cached once
+    /// and reused across frames since effects are stable after initialization.
+    /// </para>
+    /// </summary>
+    /// <typeparam name="T">The concrete <see cref="PostEffect"/> type to find.</typeparam>
+    /// <returns>The first matching effect, or <see langword="null"/>.</returns>
+    public T? GetEffect<T>() where T : PostEffect
+    {
+        foreach (var effect in _effects)
+        {
+            if (effect is T typed)
+            {
+                return typed;
+            }
+        }
+        return null;
+    }
+
     protected override bool BeginRender(in RenderResources res)
     {
         return true;
