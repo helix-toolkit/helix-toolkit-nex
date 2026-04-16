@@ -1,5 +1,5 @@
 using System.Runtime.InteropServices;
-using HelixToolkit.Nex.Engine;
+using HelixToolkit.Nex.Engine.CameraControllers;
 using HelixToolkit.Nex.Graphics;
 using HelixToolkit.Nex.Interop;
 using HelixToolkit.Nex.Interop.DirectX;
@@ -44,58 +44,10 @@ internal partial interface ISwapChainPanelNative
 /// as a read-only notification after the client update.
 /// </para>
 /// </summary>
-public sealed class HelixViewport : UserControl, IDisposable
+public partial class HelixViewport : UserControl, IDisposable
 {
     private static readonly ILogger _logger = LogManager.Create<HelixViewport>();
 
-    #region Dependency Properties
-    public static readonly DependencyProperty EngineDp = HelixProperty.Register<
-        HelixViewport,
-        Engine.Engine?
-    >(
-        "Engine",
-        null,
-        (d, e) =>
-        {
-            if (d is not HelixViewport viewport)
-            {
-                return;
-            }
-            viewport.SetEngine((Engine.Engine?)e.NewValue);
-        }
-    );
-    public Engine.Engine? Engine
-    {
-        get { return (Engine.Engine)GetValue(EngineDp); }
-        set { SetValue(EngineDp, value); }
-    }
-
-    public static readonly DependencyProperty ViewportClientDp = HelixProperty.Register<
-        HelixViewport,
-        IViewportClient?
-    >(
-        "ViewportClient",
-        null,
-        (d, e) =>
-        {
-            if (d is not HelixViewport viewport)
-            {
-                return;
-            }
-            viewport._viewportClient = (IViewportClient?)e.NewValue;
-        }
-    );
-
-    /// <summary>
-    /// Gets or sets the <see cref="IViewportClient"/> that provides per-frame camera
-    /// updates and scene data for this viewport. When <c>null</c>, no frames are rendered.
-    /// </summary>
-    public IViewportClient? ViewportClient
-    {
-        get { return (IViewportClient?)GetValue(ViewportClientDp); }
-        set { SetValue(ViewportClientDp, value); }
-    }
-    #endregion
     private SwapChainPanel? _swapChainPanel;
     private D3D11DeviceManager? _d3d11Manager;
     private IDXGIDevice3? _dxgiDevice;
@@ -112,6 +64,7 @@ public sealed class HelixViewport : UserControl, IDisposable
     private ViewportRenderingEventArgs? _renderArgs;
     private Engine.Engine? _engine;
     private IViewportClient? _viewportClient;
+    private ICameraController? _cameraController;
     private bool _sizeChanged = true;
     private RenderContext? _renderContext;
     private bool _disposed;
@@ -175,6 +128,18 @@ public sealed class HelixViewport : UserControl, IDisposable
         {
             CreateResources((uint)Width, (uint)Height);
         }
+    }
+
+    private void SetClient(IViewportClient? client)
+    {
+        _viewportClient = client;
+    }
+
+    private void SetCameraController(ICameraController? controller)
+    {
+        if (_renderContext is null)
+            return;
+        _cameraController = controller;
     }
 
     private void CreateResources(uint width, uint height)
@@ -273,6 +238,7 @@ public sealed class HelixViewport : UserControl, IDisposable
 
         _renderContext.WindowSize = new Size((int)ActualWidth, (int)ActualHeight);
 
+        _cameraController?.Update(delta);
         // Pull per-frame data from the viewport client
         if (_viewportClient is null)
             return;

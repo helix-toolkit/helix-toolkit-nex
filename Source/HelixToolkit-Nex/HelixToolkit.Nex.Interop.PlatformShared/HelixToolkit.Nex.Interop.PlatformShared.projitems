@@ -8,4 +8,7 @@
   <PropertyGroup Label="Configuration">
     <Import_RootNamespace>HelixToolkit.Nex.Interop.PlatformShared</Import_RootNamespace>
   </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)ViewportProperties.cs" />
+  </ItemGroup>
 </Project>
