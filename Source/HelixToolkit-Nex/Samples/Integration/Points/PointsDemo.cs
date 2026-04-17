@@ -334,7 +334,7 @@ internal sealed class PointsDemo : IDisposable
     )
     {
         var world = _worldDataProvider!.World;
-        var node = new Node(world) { Name = name };
+        var node = world.CreatePointCloudNode(name);
         _root!.AddChild(node);
 
         // Snapshot the original (untinted) colors
@@ -354,16 +354,11 @@ internal sealed class PointsDemo : IDisposable
             );
         }
 
-        node.Entity.Set(
-            new PointCloudComponent(
-                geo,
-                Color.White,
-                hitable: true,
-                fixedSize: _fixedSize,
-                pointMaterialName: materialName,
-                size: _globalPointSize
-            )
-        );
+        node.Geometry = geo;
+        node.Color = Color4.White;
+        node.FixedSize = _fixedSize;
+        node.PointMaterialName = materialName;
+        node.Size = _globalPointSize;
 
         _pointClouds.Add(
             new PointCloudEntry(

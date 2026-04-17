@@ -19,29 +19,29 @@ public struct MeshComponent : IIndexable
     /// <summary>
     /// Handle to the geometry resource in the geometry pool.
     /// </summary>
-    public readonly Geometry? Geometry;
+    public Geometry? Geometry { set; get; }
 
     /// <summary>
     /// Represents the material properties associated with this instance.
     /// </summary>
     /// <remarks>This field is read-only and provides access to the material's physical or structural
     /// characteristics.</remarks>
-    public readonly PBRMaterialProperties? MaterialProperties;
+    public PBRMaterialProperties? MaterialProperties { set; get; }
 
     /// <summary>
     /// Gets the instancing mode for the associated object, if specified.
     /// </summary>
-    public readonly Instancing? Instancing;
+    public Instancing? Instancing { set; get; }
 
     /// <summary>
     /// Gets a value indicating whether the object can be excluded from rendering based on culling logic.
     /// </summary>
-    public bool Cullable { get; }
+    public bool Cullable { set; get; }
 
     /// <summary>
     /// Gets a value indicating whether the object can be interacted with or selected.
     /// </summary>
-    public bool Hitable { get; }
+    public bool Hitable { set; get; }
 
     /// <summary>
     /// Gets or sets the index of the current draw operation.
