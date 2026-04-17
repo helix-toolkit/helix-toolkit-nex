@@ -9,8 +9,8 @@ struct MeshDraw {
     uint meshId; // Unique geometry id, used for fetching bounding box.
     uint materialId; // The material id this mesh uses, used for fetching material properties.
     uint materialType; // The material type, used for shader permutation.
+    uint worldId; // The world id this mesh belongs to, used for GPU picking.
     uint entityId; // The entity id this mesh belongs to, used for GPU picking.
-    uint entityVer; // The entity version, used for GPU picking to filter out stale picks.
     uint cullable; // Whether this mesh is cullable, used for frustum culling.
     uint drawType; // Encoded information about mesh draw type. [0x1] IsDynamic. [0x2] IsInstancing.
     uint64_t instancingBufferAddress; // For GPU driven instancing

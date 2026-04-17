@@ -4,6 +4,7 @@
 #include "HxHeaders/MeshDraw.glsl"
 #include "HxHeaders/MeshInfo.glsl"
 #include "HxHeaders/Instancing.glsl"
+#include "HxHeaders/HeaderPackEntity.glsl"
 
 layout(location = 0) out vec3 fragWorldPos;
 layout(location = 1) out flat uint materialId;
@@ -14,7 +15,7 @@ layout(location = 4) out vec3 fragTangent;
 layout(location = 5) out vec2 fragTexCoord;
 #endif
 #ifdef OUTPUT_DRAW_ID
-layout(location = 6) out flat vec2 fragEntityId;
+layout(location = 6) out flat uvec2 fragEntityId;
 #endif
 
 layout(push_constant) uniform Pc {
@@ -142,7 +143,7 @@ void main() {
     uint idx = getInstancingIndex();
     calVertexOutput(idx, gl_Position, fragWorldPos, fragNormal, fragTangent, fragColor, fragTexCoord);
 #ifdef OUTPUT_DRAW_ID
-    fragEntityId = packEntityIdAndIndex(meshDraw.entityId, meshDraw.entityVer, idx);
+    fragEntityId = packObjectInfo(meshDraw.worldId, meshDraw.entityId, idx);
 #endif
 }
 

@@ -148,17 +148,28 @@ internal class LightCullingTest(IContext context, bool largeScene = true) : IDis
             _selectedEntity.Remove<BorderHighlightComponent>();
             _selectedEntity.Remove<WireframeComponent>();
         }
-        _context.TryPick(
-            _renderContext!.ResourceSet!.Textures[SystemBufferNames.TextureEntityId],
-            (uint)_renderContext.WindowSize.Width,
-            (uint)_renderContext.WindowSize.Height,
-            x,
-            y,
-            out var entityId,
-            out var entityVar,
-            out var instanceIdx
+        if (
+            !_context.TryPick(
+                _renderContext!.ResourceSet!.Textures[SystemBufferNames.TextureEntityId],
+                (uint)_renderContext.WindowSize.Width,
+                (uint)_renderContext.WindowSize.Height,
+                x,
+                y,
+                out var worldId,
+                out var entityId,
+                out var instanceIdx,
+                out var primitiveId
+            )
+        )
+        {
+            _logger.LogInformation("No entity picked");
+            return;
+        }
+        Debug.Assert(
+            _worldDataProvider!.World.Id == worldId,
+            "Picked world ID does not match current world"
         );
-        _selectedEntity = _worldDataProvider!.World.GetEntity((int)entityId, entityVar);
+        _selectedEntity = _worldDataProvider!.World.GetEntity((int)entityId);
         _logger.LogInformation($"Picked entity {_selectedEntity} (instance {instanceIdx})");
         _selectedEntity.Set(BorderHighlightComponent.Default);
         _selectedEntity.Set(new WireframeComponent() { Color = new Color4(1f, 0f, 0f, 1f) });

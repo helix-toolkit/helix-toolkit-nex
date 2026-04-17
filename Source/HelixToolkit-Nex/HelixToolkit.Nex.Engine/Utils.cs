@@ -3,25 +3,34 @@ namespace HelixToolkit.Nex.Engine;
 public static class Utils
 {
     /// <summary>
-    /// Extracts the entity ID, entity version, and instance index from the given packed values.
-    /// This is the inverse of the packing logic used in the shader(HeaderVertex.glsl), where the entity ID and part of the instance index
+    /// Unpacks the mesh information encoded in the red and green channels of a texture pixel.
     /// </summary>
-    /// <param name="r">The packed value containing the entity ID and part of the instance index.</param>
-    /// <param name="g">The packed value containing the entity version and part of the instance index.</param>
-    /// <param name="entityId">When this method returns, contains the extracted entity ID.</param>
-    /// <param name="entityVersion">When this method returns, contains the extracted entity version.</param>
-    /// <param name="instanceIndex">When this method returns, contains the extracted instance index.</param>
-    public static void UnpackEntityId(
+    /// <param name="r"></param>
+    /// <param name="g"></param>
+    /// <param name="worldId"></param>
+    /// <param name="entityId"></param>
+    /// <param name="instanceId"></param>
+    /// <param name="primitiveId"></param>
+    public static void UnpackMeshInfo(
         uint r,
         uint g,
-        out int entityId,
-        out ushort entityVersion,
-        out uint instanceIndex
+        out uint worldId,
+        out uint entityId,
+        out uint instanceId,
+        out uint primitiveId
     )
     {
-        entityId = (int)(r & 0xFFFFFF);
-        instanceIndex = (r >> 24) | ((g & 0xFFFF) << 8);
-        entityVersion = (ushort)(g >> 16);
+        // Extract World and Entity
+        worldId = r & 0xF;
+        entityId = (r >> 4) & Limits.MaxEntityId;
+
+        // Reconstruct Instance ID (12 bits from X, 10 bits from Y)
+        uint instLow = (r >> 20);
+        uint instHigh = (g & 0x3FF);
+        instanceId = instLow | (instHigh << 12);
+
+        // Extract Primitive ID (Top 22 bits of Y)
+        primitiveId = (g >> 10);
     }
 
     public static bool TryPick(
@@ -31,14 +40,16 @@ public static class Utils
         uint textureHeight,
         int x,
         int y,
-        out int entityId,
-        out ushort entityVersion,
-        out uint instanceIndex
+        out uint worldId,
+        out uint entityId,
+        out uint instanceId,
+        out uint primitiveId
     )
     {
+        worldId = 0;
         entityId = 0;
-        entityVersion = 0;
-        instanceIndex = 0;
+        instanceId = 0;
+        primitiveId = 0;
         if (x < 0 || y < 0 || x >= textureWidth || y >= textureHeight)
         {
             return false;
@@ -60,14 +71,15 @@ public static class Utils
                 .CheckResult();
             if (ret == ResultCode.Ok)
             {
-                UnpackEntityId(
+                UnpackMeshInfo(
                     data[0],
                     data[1],
+                    out worldId,
                     out entityId,
-                    out entityVersion,
-                    out instanceIndex
+                    out instanceId,
+                    out primitiveId
                 );
-                return true;
+                return worldId > 0 && entityId > 0;
             }
         }
 

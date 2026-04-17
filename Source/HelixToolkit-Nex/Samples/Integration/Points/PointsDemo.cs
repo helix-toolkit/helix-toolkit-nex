@@ -589,26 +589,35 @@ internal sealed class PointsDemo : IDisposable
     {
         if (_renderContext?.ResourceSet is null || _worldDataProvider is null)
             return;
-
-        _context.TryPick(
-            _renderContext.ResourceSet.Textures[SystemBufferNames.TextureEntityId],
-            (uint)_renderContext.WindowSize.Width,
-            (uint)_renderContext.WindowSize.Height,
-            x,
-            y,
-            out var entityId,
-            out var entityVer,
-            out var instanceIdx
-        );
-
-        _pickedEntityId = entityId;
-        _pickedInstanceIdx = instanceIdx;
-
         // Deselect previous
         if (_selectedEntity.Valid)
             _selectedEntity.Remove<BorderHighlightComponent>();
+        if (
+            !_context.TryPick(
+                _renderContext.ResourceSet.Textures[SystemBufferNames.TextureEntityId],
+                (uint)_renderContext.WindowSize.Width,
+                (uint)_renderContext.WindowSize.Height,
+                x,
+                y,
+                out var worldId,
+                out var entityId,
+                out var instanceIdx,
+                out var primitiveId
+            )
+        )
+        {
+            _logger.LogInformation("No entity picked at ({X}, {Y})", x, y);
+            return;
+        }
 
-        var entity = _worldDataProvider.World.GetEntity(entityId, entityVer);
+        _pickedEntityId = (int)entityId;
+        _pickedInstanceIdx = instanceIdx;
+
+        Debug.Assert(
+            _worldDataProvider.World.Id == worldId,
+            "Picked world ID does not match current world"
+        );
+        var entity = _worldDataProvider.World.GetEntity((int)entityId);
         _selectedEntity = entity;
 
         if (_selectedEntity.Valid)

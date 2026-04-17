@@ -20,7 +20,7 @@ public struct Entity : IDisposable, IEquatable<Entity>
     internal Generation Generation;
     public int Id { get; private set; }
     public readonly ushort Gen => Generation.EntityGeneration;
-    internal readonly int WorldId => Generation.WorldId;
+    public readonly byte WorldId => Generation.WorldId;
     private readonly ushort WorldGeneration => Generation.WorldGeneration;
 
     /// <summary>
