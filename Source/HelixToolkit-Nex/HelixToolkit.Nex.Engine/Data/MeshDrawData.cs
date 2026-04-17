@@ -261,8 +261,8 @@ internal class MeshDrawData : Initializable, IMeshDrawData
                 MeshId = meshRenderComp.Geometry!.Id,
                 MaterialId = meshRenderComp.MaterialProperties!.Index,
                 MaterialType = materialType,
+                WorldId = entity.WorldId,
                 EntityId = meshRenderComp.Hitable ? (uint)entity.Id : 0u,
-                EntityVer = meshRenderComp.Hitable ? entity.Gen : 0u,
                 Transform = transform.Value,
                 InstancingBufferAddress = meshRenderComp.Instancing is not null
                     ? meshRenderComp.Instancing.Buffer!.Buffer.GpuAddress
@@ -356,7 +356,7 @@ internal class MeshDrawData : Initializable, IMeshDrawData
         for (int i = 0; i < _meshDraws.Count; ++i)
         {
             ref var draw = ref _meshDraws.At(i);
-            var entity = World.GetEntity((int)draw.EntityId, (ushort)draw.EntityVer);
+            var entity = World.GetEntity((int)draw.EntityId);
             ref var comp = ref entity.Get<MeshComponent>();
             comp.Index = i;
         }
@@ -386,8 +386,8 @@ internal class MeshDrawData : Initializable, IMeshDrawData
                 MeshId = meshRenderComp.Geometry!.Id,
                 MaterialId = meshRenderComp.MaterialProperties!.Index,
                 MaterialType = materialType,
+                WorldId = entity.WorldId,
                 EntityId = meshRenderComp.Hitable ? (uint)entity.Id : 0u,
-                EntityVer = meshRenderComp.Hitable ? entity.Gen : 0u,
                 Transform = transform.Value,
                 InstancingBufferAddress = meshRenderComp.Instancing is not null
                     ? meshRenderComp.Instancing.Buffer!.Buffer.GpuAddress

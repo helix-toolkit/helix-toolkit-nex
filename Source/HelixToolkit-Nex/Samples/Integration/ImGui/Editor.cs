@@ -15,6 +15,8 @@ using HelixToolkit.Nex.Rendering.RenderNodes;
 using HelixToolkit.Nex.Scene;
 using Microsoft.Extensions.Logging;
 using SceneSamples;
+using static HelixToolkit.Nex.Rendering.PostEffects.BorderHighlightPostEffect;
+using static HelixToolkit.Nex.Rendering.PostEffects.WireframePostEffect;
 
 namespace ImGuiTest;
 
@@ -207,20 +209,41 @@ internal partial class Editor : IDisposable
     {
         if (_renderContext?.ResourceSet is null || _worldDataProvider is null)
             return;
-
-        _context.TryPick(
-            _renderContext.ResourceSet.Textures[SystemBufferNames.TextureEntityId],
-            (uint)_renderContext.WindowSize.Width,
-            (uint)_renderContext.WindowSize.Height,
-            x,
-            y,
-            out var entityId,
-            out var entityVar,
-            out var instanceIdx
+        if (_selectedEntity.Valid)
+        {
+            _selectedEntity.Remove<BorderHighlightComponent>();
+            _selectedEntity.Remove<WireframeComponent>();
+        }
+        if (
+            !_context.TryPick(
+                _renderContext.ResourceSet.Textures[SystemBufferNames.TextureEntityId],
+                (uint)_renderContext.WindowSize.Width,
+                (uint)_renderContext.WindowSize.Height,
+                x,
+                y,
+                out var worldId,
+                out var entityId,
+                out var instanceIdx,
+                out var primitiveId
+            )
+        )
+        {
+            return;
+        }
+        Debug.Assert(
+            _worldDataProvider.World.Id == worldId,
+            "Picked world ID does not match current world"
         );
-        var entity = _worldDataProvider.World.GetEntity((int)entityId, entityVar);
+        var entity = _worldDataProvider.World.GetEntity((int)entityId);
         _logger.LogInformation($"Picked entity {entity} (instance {instanceIdx})");
-        SelectEntity(entity);
+        _selectedEntity = entity;
+
+        // Apply highlight to new selection
+        if (_selectedEntity.Valid)
+        {
+            _selectedEntity.Set(BorderHighlightComponent.Default);
+            _selectedEntity.Set(new WireframeComponent() { Color = new Color4(1f, 0f, 0f, 1f) });
+        }
     }
 
     /// <summary>

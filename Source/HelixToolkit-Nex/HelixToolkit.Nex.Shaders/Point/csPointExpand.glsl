@@ -1,6 +1,6 @@
 #include "HxHeaders/HeaderCompute.glsl"
-#include "HxHeaders/HeaderVertex.glsl"
 #include "Point/PointStructs.glsl"
+#include "HxHeaders/HeaderPackEntity.glsl"
 
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
@@ -76,7 +76,7 @@ void main() {
     if (screenSize < args.minScreenSize) return;
 
     // --- Pack entity ID ---
-    vec2 packedId = packEntityIdAndIndex(pc.value.entityId, pc.value.entityVer, idx);
+    uvec2 packedId = packObjectInfo(pc.value.worldId, pc.value.entityId, idx);
   
     // --- Allocate output slot ---
 
@@ -88,7 +88,7 @@ void main() {
     d.worldPos      = p.xyz;
     d.screenSize    = screenSize;
     d.color         = color;
-    d.packedEntityId = packedId;
+    d.packedEntityId = vec2(uintBitsToFloat(packedId.x), uintBitsToFloat(packedId.y));
     d.textureIndex  = pc.value.textureIndex;
     d.samplerIndex  = pc.value.samplerIndex;
     outBuf.data[slot] = d;

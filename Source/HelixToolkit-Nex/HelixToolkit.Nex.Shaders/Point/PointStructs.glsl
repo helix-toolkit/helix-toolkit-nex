@@ -42,8 +42,8 @@ struct PointExpandPC {
     uint64_t indirectArgsAddress;    // GPU address of PointDrawIndirectArgs buffer
     uint     pointCount;             // Total number of input points
     uint     fixedSize;              // Whether point size is fixed in screen space (ignore perspective and use size as pixels)
+    uint     worldId;               // World ID for all points in this dispatch (used for GPU picking)
     uint     entityId;               // Entity ID for all points in this dispatch
-    uint     entityVer;              // Entity version for all points in this dispatch
     uint     textureIndex;           // Bindless texture index (0 = no texture)
     uint     samplerIndex;           // Bindless sampler index
     vec4     color;                  // Uniform color for all points (overridden by per-point color if pointColorAddress is non-zero)

@@ -58,10 +58,10 @@ public sealed class World : IEnumerable<Entity>, IDisposable
         try
         {
             var nextId = _worldIdGen.GetNextId();
-            if (nextId >= byte.MaxValue)
+            if (nextId >= Limits.MaxWorldId)
             {
                 throw new Exception(
-                    $"Number of worlds exceeds maximum supported size of {byte.MaxValue}."
+                    $"Number of worlds exceeds maximum supported size of {Limits.MaxWorldId}."
                 );
             }
             // Monotonically increasing. Preserves worlds generation. Max number of worlds is only 255.
@@ -165,6 +165,12 @@ public sealed class World : IEnumerable<Entity>, IDisposable
         lock (_lock)
         {
             var entityId = _entityIdGen.GetNextId();
+            if (entityId >= Limits.MaxEntityId)
+            {
+                throw new Exception(
+                    $"Number of entities in world {Id} exceeds maximum supported size of {Limits.MaxEntityId}."
+                );
+            }
             _entityState.Resize(Math.Max(_entityState.Count, entityId + 1), true);
             _entityState.GetInternalArray()[entityId].Reset(Id, Generation);
             return new Entity(this, entityId);
