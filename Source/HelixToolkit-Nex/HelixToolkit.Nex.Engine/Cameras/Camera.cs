@@ -12,6 +12,8 @@ public abstract class Camera
     public float NearPlane { set; get; } = 0.01f;
     public float FarPlane { set; get; } = 1000;
 
+    public Vector3 LookDir => Vector3.Normalize(Target - Position);
+
     /// <summary>
     /// Creates a right-handed view matrix looking from Position to Target.
     /// </summary>
