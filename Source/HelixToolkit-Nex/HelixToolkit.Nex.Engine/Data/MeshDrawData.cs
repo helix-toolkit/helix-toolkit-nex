@@ -321,9 +321,8 @@ internal class MeshDrawData : Initializable, IMeshDrawData
             _meshDrawSortingStatic.AddRange(kv.Key, in range);
             _meshDraws.AddRange(kv.Value);
         }
-        range = new DrawRange(0, range.End);
-        var start = range.End;
 
+        var start = range.End;
         foreach (var kv in _meshDrawSortingStaticInstancing.MeshDrawByMaterialType)
         {
             _meshDrawSortingStaticInstancing.Sort();
@@ -332,22 +331,31 @@ internal class MeshDrawData : Initializable, IMeshDrawData
             _meshDraws.AddRange(kv.Value);
         }
 
-        range = new DrawRange(start, range.End);
-        start = range.End;
+        if (range.End == start)
+        {
+            range = default;
+        }
 
+        range = new DrawRange(start, range.Count);
+        start = range.End;
         foreach (var kv in _meshDrawSortingDynamic.MeshDrawByMaterialType)
         {
-            _meshDrawSortingStaticInstancing.Sort();
+            _meshDrawSortingDynamic.Sort();
             range = new DrawRange(range.End, (uint)kv.Value.Count);
             _meshDrawSortingDynamic.AddRange(kv.Key, in range);
             _meshDraws.AddRange(kv.Value);
         }
 
-        range = new DrawRange(start, range.End - start);
+        if (range.End == start)
+        {
+            range = default;
+        }
+
+        range = new DrawRange(start, range.Count);
         start = range.End;
         foreach (var kv in _meshDrawSortingDynamicInstancing.MeshDrawByMaterialType)
         {
-            _meshDrawSortingStaticInstancing.Sort();
+            _meshDrawSortingDynamicInstancing.Sort();
             range = new DrawRange(range.End, (uint)kv.Value.Count);
             _meshDrawSortingDynamicInstancing.AddRange(kv.Key, in range);
             _meshDraws.AddRange(kv.Value);

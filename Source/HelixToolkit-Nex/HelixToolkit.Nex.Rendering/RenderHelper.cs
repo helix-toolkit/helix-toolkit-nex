@@ -252,6 +252,14 @@ public static class RenderHelper
 
                 for (var i = range.Start; i < range.Start + range.Count; i++)
                 {
+                    if (meshDrawData.DrawCommands[(int)i].IndexCount == 0)
+                    {
+                        _logger.LogError(
+                            "MeshDrawData contains a draw command with zero indices at index {Id}, skipping",
+                            i
+                        );
+                        continue;
+                    }
                     var meshId = meshDrawData.DrawCommands[(int)i].MeshId;
                     var geometry = context.Data.GetGeometry(meshId);
                     if (geometry is null)
