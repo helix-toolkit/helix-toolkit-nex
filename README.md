@@ -10,6 +10,11 @@ The graphics interface and Vulkan backend are inspired by [LightWeightVk](https:
 
 Currently in development.
 
+## Minimum Requirements
+- Windows 10 or later (Linux support planned)
+- Vulkan 1.3 compatible GPU and drivers
+- .NET 8.0 or later
+
 ## Features (Done or In progress)
 
 - [Vulkan backend implementation](Source/HelixToolkit-Nex/HelixToolkit.Nex.Graphics.Vulkan/README.md) (Done)

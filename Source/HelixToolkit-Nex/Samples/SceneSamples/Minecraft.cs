@@ -227,8 +227,10 @@ public class MinecraftScene : IScene
                 continue;
 
             instancings[b].UpdateBuffer(context);
-            var blockNode = new Node(worldDataProvider.World, $"Block_{(BlockType)b}");
-            blockNode.Entity.Set(new MeshComponent(cube, matProps[b], instancings[b]));
+            var blockNode = worldDataProvider.World.CreateMeshNode(
+                $"Block_{(BlockType)b}",
+                new MeshComponent(cube, matProps[b], instancings[b])
+            );
             blocksNode.AddChild(blockNode);
         }
 
@@ -259,7 +261,7 @@ public class MinecraftScene : IScene
             var pos = new Vector3(lx, ly, lz);
             var col = _lightColors[i % _lightColors.Length];
 
-            var lightNode = new Node(worldDataProvider.World, $"PointLight_{i}");
+            var lightNode = worldDataProvider.World.CreateNode($"PointLight_{i}");
             lightNode.Transform = new Transform { Translation = pos };
             lightNode.Entity.Set(
                 new RangeLightComponent(RangeLightType.Point)
@@ -285,8 +287,10 @@ public class MinecraftScene : IScene
                 continue;
 
             inst.UpdateBuffer(context);
-            var sphereNode = new Node(worldDataProvider.World, $"LightSpheres_{color}");
-            sphereNode.Entity.Set(new MeshComponent(lightSphere, mat, inst));
+            var sphereNode = worldDataProvider.World.CreateMeshNode(
+                $"LightSpheres_{color}",
+                new MeshComponent(lightSphere, mat, inst)
+            );
             lightSpheresNode.AddChild(sphereNode);
         }
 

@@ -845,7 +845,7 @@ internal sealed partial class VulkanContext
             return ResultCode.RuntimeError;
         }
         var availableDeviceExtensions = VK.vkEnumerateDeviceExtensionProperties(_vkPhysicalDevice);
-        if (availableDeviceExtensions != null)
+        if (!availableDeviceExtensions.IsEmpty)
         {
             _supportedExtensions.Clear();
             foreach (var ext in availableDeviceExtensions)
