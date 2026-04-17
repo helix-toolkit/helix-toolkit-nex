@@ -347,6 +347,7 @@ public sealed class World : IEnumerable<Entity>, IDisposable
         {
             if (IsTagType<T>())
             {
+                added = !HasComponent<T>(entity);
                 ret = ResultCode.Ok;
             }
             else
@@ -366,7 +367,7 @@ public sealed class World : IEnumerable<Entity>, IDisposable
             {
                 return ResultCode.Invalid;
             }
-            state.ComponentTypes.AddType(ComponentManager<T>.TypeId);
+            state.ComponentTypes.AddType(ComponentIdProxy<T>.TypeId);
             ECSEventBus.Send(
                 Id,
                 new ComponentChangedEvent<T>(
@@ -554,11 +555,7 @@ public sealed class World : IEnumerable<Entity>, IDisposable
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public ComponentTypeId GetComponentTypeId<T>()
     {
-        if (IsTagType<T>())
-        {
-            return ComponentIdProxy<T>.TypeId;
-        }
-        return ComponentManager<T>.TypeId;
+        return ComponentIdProxy<T>.TypeId;
     }
 
     /// <summary>

@@ -114,11 +114,11 @@ public class MeshNode : Node
         get => Entity.Has<TransparentComponent>();
         set
         {
-            if (value && !Entity.Has<TransparentComponent>())
+            if (value)
             {
                 Entity.Tag<TransparentComponent>();
             }
-            else if (!value && Entity.Has<TransparentComponent>())
+            else
             {
                 Entity.Remove<TransparentComponent>();
             }

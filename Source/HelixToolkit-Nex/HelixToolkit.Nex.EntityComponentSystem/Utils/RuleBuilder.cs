@@ -1,5 +1,3 @@
-using static HelixToolkit.Nex.ECS.ComponentTypeSet;
-
 namespace HelixToolkit.Nex.ECS.Utils;
 
 public readonly record struct EntityChangedEvent(int EntityId, ComponentTypeId Type);
@@ -98,7 +96,7 @@ public sealed class RuleBuilder : IDisposable
 
     private RuleBuilder AddOrRemove<T>(OpType op)
     {
-        var id = ComponentManager<T>.TypeId;
+        var id = ComponentIdProxy<T>.TypeId;
         var subObj = Publisher.Subscribe<ComponentChangedEvent<T>>(
             World.Id,
             (w, msg) => OnComponentChanged(msg)
@@ -110,7 +108,7 @@ public sealed class RuleBuilder : IDisposable
 
     internal void OnComponentChanged<T>(in ComponentChangedEvent<T> msg)
     {
-        var id = ComponentManager<T>.TypeId;
+        var id = ComponentIdProxy<T>.TypeId;
         switch (msg.Operation)
         {
             case ComponentOperations.Added:

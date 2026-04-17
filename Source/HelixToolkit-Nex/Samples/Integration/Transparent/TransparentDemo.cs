@@ -257,11 +257,6 @@ internal partial class TransparentDemo : IDisposable
             2.0f,
             30f
         );
-
-        // Finalize transforms
-        var allNodes = new FastList<Node>();
-        _root.Flatten(node => node.Enabled, allNodes);
-        allNodes.UpdateTransforms();
     }
 
     private void CreateTransparentObject(
@@ -281,11 +276,11 @@ internal partial class TransparentDemo : IDisposable
         mat.Properties.Opacity = opacity;
         mat.NotifyUpdated();
 
-        var node = new Node(_worldDataProvider!.World, name);
+        var node = new MeshNode(_worldDataProvider!.World, name);
         node.Transform = new Transform { Translation = position };
-        node.Entity.Set(new MeshComponent(geometry, mat));
-        // Mark as transparent for OIT rendering
-        node.Entity.Set(new TransparentComponent());
+        node.Geometry = geometry;
+        node.MaterialProperties = mat;
+        node.IsTransparent = true;
         _root!.AddChild(node);
 
         _transparentObjects.Add(
