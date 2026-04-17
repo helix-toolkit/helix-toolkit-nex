@@ -76,8 +76,8 @@ void main() {
     if (screenSize < args.minScreenSize) return;
 
     // --- Pack entity ID ---
-    uvec2 packedId = packObjectInfo(pc.value.worldId, pc.value.entityId, idx);
-  
+    uvec2 objId = packObjectInfo(pc.value.worldId, pc.value.entityId, idx);
+    vec2 packedId = packPrimitiveId(objId, idx);
     // --- Allocate output slot ---
 
     uint slot = atomicAdd(cmdBuf.args.instanceCount, 1);
@@ -88,7 +88,7 @@ void main() {
     d.worldPos      = p.xyz;
     d.screenSize    = screenSize;
     d.color         = color;
-    d.packedEntityId = vec2(uintBitsToFloat(packedId.x), uintBitsToFloat(packedId.y));
+    d.packedEntityId = packedId;
     d.textureIndex  = pc.value.textureIndex;
     d.samplerIndex  = pc.value.samplerIndex;
     outBuf.data[slot] = d;

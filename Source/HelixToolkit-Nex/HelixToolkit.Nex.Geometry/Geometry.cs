@@ -1,4 +1,3 @@
-using HelixToolkit.Nex.Graphics;
 using HelixToolkit.Nex.Trace;
 
 namespace HelixToolkit.Nex.Geometries;
@@ -342,6 +341,15 @@ public partial class Geometry : ObservableObject, IDisposable
             {
                 if (CanHaveIndexBuffer && IsDynamic && _indices.Count > 0)
                 {
+                    if (_indices.Count / 3 > Limits.MaxPrimitiveCount)
+                    {
+                        logger.LogWarning(
+                            "Geometry {ID} has {INDEX_COUNT} indices which exceeds the maximum of {MAX_INDEX_COUNT}. Primitive ID in GPU picking may be incorrect.",
+                            Id,
+                            _indices.Count,
+                            Limits.MaxPrimitiveCount * 3
+                        );
+                    }
                     _indexBuffer ??= new ElementBuffer<uint>(
                         context,
                         _indices.Count,

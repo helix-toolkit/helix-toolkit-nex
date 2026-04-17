@@ -106,6 +106,11 @@ internal sealed class ShaderBuilder
         RegexOptions.Compiled | RegexOptions.Singleline
     );
 
+    private static readonly Regex UnrecognizedPlaceholderRegex = new(
+        @"LIMITS_[A-Z_]+",
+        RegexOptions.Compiled
+    );
+
     /// <summary>
     /// Creates a new shader builder for the specified stage
     /// </summary>
@@ -201,6 +206,9 @@ internal sealed class ShaderBuilder
             builder.AppendLine();
         }
 
+        // Replace LIMITS_ placeholders with derived constants from LimitsShaderConstants
+        source = ReplaceLimitsPlaceholders(source);
+
         // Process user shader (handle includes, strip comments, etc.)
         string processedUserShader = ProcessIncludes(source);
 
@@ -262,6 +270,9 @@ internal sealed class ShaderBuilder
                     string? includeContent = LoadIncludeFile(includePath);
                     if (includeContent != null)
                     {
+                        // Replace LIMITS_ placeholders in include content
+                        includeContent = ReplaceLimitsPlaceholders(includeContent);
+
                         builder.AppendLine($"// Begin include: {includePath}");
                         builder.AppendLine(ProcessIncludes(includeContent)); // Recursive processing
                         builder.AppendLine($"// End include: {includePath}");
@@ -346,5 +357,31 @@ internal sealed class ShaderBuilder
         source = MultiLineCommentRegex.Replace(source, string.Empty);
 
         return source;
+    }
+
+    private string ReplaceLimitsPlaceholders(string source)
+    {
+        var placeholders = LimitsShaderConstants.GetGlslPlaceholders();
+        foreach (var (token, value) in placeholders)
+        {
+            source = source.Replace(token, value);
+        }
+
+        WarnUnrecognizedPlaceholders(source);
+        return source;
+    }
+
+    private void WarnUnrecognizedPlaceholders(string source)
+    {
+        var knownTokens = LimitsShaderConstants.GetGlslPlaceholders().Keys;
+        var matches = UnrecognizedPlaceholderRegex.Matches(source);
+        foreach (Match match in matches)
+        {
+            string token = match.Value;
+            if (!knownTokens.Contains(token))
+            {
+                _warnings.Add($"Unrecognized LIMITS_ placeholder token: {token}");
+            }
+        }
     }
 }
