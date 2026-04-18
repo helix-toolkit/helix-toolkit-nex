@@ -66,6 +66,11 @@ public partial class HelixViewport : FrameworkElement, IDisposable
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
         SizeChanged += OnSizeChanged;
+        MouseDown += OnMouseDown;
+        MouseUp += OnMouseUp;
+        MouseMove += OnMouseMove;
+        MouseLeave += OnMouseLeave;
+        MouseWheel += OnMouseWheel;
     }
 
     protected override void OnRender(DrawingContext drawingContext)
@@ -288,6 +293,62 @@ public partial class HelixViewport : FrameworkElement, IDisposable
             return;
         Dispose();
     }
+
+    #region Mouse event forwarding to camera controller
+
+    private static ViewportMouseButton ToViewportButton(System.Windows.Input.MouseButton button) => button switch
+    {
+        System.Windows.Input.MouseButton.Left => ViewportMouseButton.Left,
+        System.Windows.Input.MouseButton.Middle => ViewportMouseButton.Middle,
+        System.Windows.Input.MouseButton.Right => ViewportMouseButton.Right,
+        _ => ViewportMouseButton.None,
+    };
+
+    private void OnMouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        var pos = e.GetPosition(this);
+        HandlePointerPressed(ToViewportButton(e.ChangedButton), (float)pos.X, (float)pos.Y);
+        if (_activeDrag != ActiveDragAction.None)
+        {
+            CaptureMouse();
+            e.Handled = true;
+        }
+    }
+
+    private void OnMouseUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        HandlePointerReleased(ToViewportButton(e.ChangedButton));
+        if (_activeDrag == ActiveDragAction.None)
+        {
+            ReleaseMouseCapture();
+        }
+        e.Handled = true;
+    }
+
+    private void OnMouseMove(object sender, System.Windows.Input.MouseEventArgs e)
+    {
+        var pos = e.GetPosition(this);
+        HandlePointerMoved((float)pos.X, (float)pos.Y);
+    }
+
+    private void OnMouseLeave(object sender, System.Windows.Input.MouseEventArgs e)
+    {
+        if (ActiveDrag)
+        {
+            return;
+        }
+        HandlePointerExited();
+        ReleaseMouseCapture();
+    }
+
+    private void OnMouseWheel(object sender, System.Windows.Input.MouseWheelEventArgs e)
+    {
+        // WPF reports 120 units per notch; normalise to ±1.
+        HandleMouseWheel(e.Delta / 120f);
+        e.Handled = true;
+    }
+
+    #endregion
 
     public void Dispose()
     {

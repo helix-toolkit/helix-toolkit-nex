@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Numerics;
 using HelixToolkit.Nex;
 using HelixToolkit.Nex.Engine;
+using HelixToolkit.Nex.Engine.CameraControllers;
 using HelixToolkit.Nex.Engine.Cameras;
 using HelixToolkit.Nex.Graphics;
 using HelixToolkit.Nex.Graphics.Vulkan;
@@ -70,6 +71,12 @@ public class MainViewModel : ObservableObject, IDisposable
     /// <summary>Viewport client for the static overhead camera.</summary>
     public IViewportClient OverheadClient { get; }
 
+    /// <summary>Camera controller for the fly-through viewport.</summary>
+    public ICameraController FlyCameraController { get; }
+
+    /// <summary>Camera controller for the overhead viewport.</summary>
+    public ICameraController OverheadCameraController { get; }
+
     internal IRenderDataProvider? WorldDataProvider => _worldDataProvider;
 
     private IContext? _vulkanContext;
@@ -78,14 +85,9 @@ public class MainViewModel : ObservableObject, IDisposable
     private IScene? _scene;
     private Node? _root;
 
-    private readonly long _startTimestamp = Stopwatch.GetTimestamp();
-
     // Scene tick guard — only tick once per frame even though two viewports fire Rendering
     private long _lastTickFrame;
     private bool _disposedValue;
-    private const float OrbitRadius = 80f;
-    private const float OrbitHeight = 40f;
-    private const float OrbitSpeed = 0.3f;
 
     public MainViewModel()
     {
@@ -114,9 +116,9 @@ public class MainViewModel : ObservableObject, IDisposable
             {
                 effects.AddEffect(new Smaa());
                 effects.AddEffect(new Bloom());
-                effects.AddEffect(new ToneMapping() { EnableGammaCorrection = true });
                 effects.AddEffect(new BorderHighlightPostEffect());
                 effects.AddEffect(new WireframePostEffect());
+                effects.AddEffect(new ToneMapping() { EnableGammaCorrection = true });
                 effects.AddEffect(new ShowFPS());
             })
             .AddNode(new RenderToFinalNode(Format.BGRA_UN8))
@@ -127,45 +129,29 @@ public class MainViewModel : ObservableObject, IDisposable
         _root = _scene.Build(_vulkanContext, _engine.ResourceManager, _worldDataProvider);
 
         // 6. Cameras
-        var orbitCamera = new PerspectiveCamera
+        var center = new Vector3(_scene.WorldSizeX / 2f, 0, _scene.WorldSizeZ / 2f);
+
+        var flyCamera = new PerspectiveCamera
         {
-            Position = new Vector3(
-                _scene.WorldSizeX / 2f,
-                OrbitHeight,
-                -_scene.WorldSizeZ / 2f - OrbitRadius
-            ),
-            Target = new Vector3(_scene.WorldSizeX / 2f, 0, _scene.WorldSizeZ / 2f),
+            Position = center + new Vector3(0, 40f, -80f),
+            Target = center,
             FarPlane = 1000,
         };
 
         var overheadCamera = new PerspectiveCamera
         {
-            Position = new Vector3(_scene.WorldSizeX / 2f, 50, _scene.WorldSizeZ / 2f),
-            Target = new Vector3(_scene.WorldSizeX / 2f, 0, _scene.WorldSizeZ / 2f),
+            Position = new Vector3(center.X, 50, center.Z),
+            Target = center,
             Up = -Vector3.UnitZ,
             FarPlane = 1000,
         };
 
-        // 7. Create viewport clients (each owns its camera)
-        FlyClient = new DelegateViewportClient(
-            this,
-            orbitCamera,
-            (client, _) =>
-            {
-                var target = new Vector3(_scene.WorldSizeX / 2f, 0f, _scene.WorldSizeZ / 2f);
-                float t =
-                    (float)(
-                        (Stopwatch.GetTimestamp() - _startTimestamp) / (double)Stopwatch.Frequency
-                    ) * OrbitSpeed;
+        // 7. Camera controllers (user-driven orbit for both viewports)
+        FlyCameraController = new OrbitCameraController(flyCamera);
+        OverheadCameraController = new OrbitCameraController(overheadCamera);
 
-                float x = target.X + OrbitRadius * MathF.Sin(t);
-                float z = target.Z + OrbitRadius * MathF.Cos(t);
-
-                client.Camera.Position = new Vector3(x, OrbitHeight, z);
-                client.Camera.Target = target;
-                client.Camera.Up = Vector3.UnitY;
-            }
-        );
+        // 8. Create viewport clients (each owns its camera)
+        FlyClient = new DelegateViewportClient(this, flyCamera);
         OverheadClient = new DelegateViewportClient(this, overheadCamera);
     }
 
