@@ -5,8 +5,10 @@ using HelixToolkit.Nex.Interop;
 using HelixToolkit.Nex.Interop.DirectX;
 using HelixToolkit.Nex.Rendering;
 using Microsoft.Extensions.Logging;
+using Microsoft.UI.Input;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
 using Vortice.Direct3D11;
 using Vortice.DXGI;
 using Vortice.Vulkan;
@@ -87,6 +89,12 @@ public partial class HelixViewport : UserControl, IDisposable
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
         SizeChanged += OnSizeChanged;
+
+        _swapChainPanel.PointerPressed += OnPointerPressed;
+        _swapChainPanel.PointerReleased += OnPointerReleased;
+        _swapChainPanel.PointerMoved += OnPointerMoved;
+        _swapChainPanel.PointerExited += OnPointerExited;
+        _swapChainPanel.PointerWheelChanged += OnPointerWheelChanged;
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e)
@@ -326,6 +334,93 @@ public partial class HelixViewport : UserControl, IDisposable
     {
         Dispose();
     }
+
+    #region Pointer event forwarding to camera controller
+
+    private static ViewportMouseButton ToViewportButton(PointerPointProperties props)
+    {
+        if (props.IsLeftButtonPressed)
+            return ViewportMouseButton.Left;
+        if (props.IsMiddleButtonPressed)
+            return ViewportMouseButton.Middle;
+        if (props.IsRightButtonPressed)
+            return ViewportMouseButton.Right;
+        return ViewportMouseButton.None;
+    }
+
+    /// <summary>
+    /// Determines which button was just released by comparing the current state
+    /// (where the released button is no longer reported as pressed) against the
+    /// active drag action.
+    /// </summary>
+    private ViewportMouseButton InferReleasedButton(PointerPointProperties props)
+    {
+        // During a release event the released button is NOT reported as pressed.
+        // Match against the action that started the drag.
+        if (_activeDrag == ActiveDragAction.Rotate && !IsButtonPressed(props, RotateMouseButton))
+            return RotateMouseButton;
+        if (_activeDrag == ActiveDragAction.Pan && !IsButtonPressed(props, PanMouseButton))
+            return PanMouseButton;
+        return ViewportMouseButton.None;
+    }
+
+    private static bool IsButtonPressed(PointerPointProperties props, ViewportMouseButton button) => button switch
+    {
+        ViewportMouseButton.Left => props.IsLeftButtonPressed,
+        ViewportMouseButton.Middle => props.IsMiddleButtonPressed,
+        ViewportMouseButton.Right => props.IsRightButtonPressed,
+        _ => false,
+    };
+
+    private void OnPointerPressed(object sender, PointerRoutedEventArgs e)
+    {
+        var point = e.GetCurrentPoint(_swapChainPanel);
+        var button = ToViewportButton(point.Properties);
+        HandlePointerPressed(button, (float)point.Position.X, (float)point.Position.Y);
+        if (_activeDrag != ActiveDragAction.None)
+        {
+            _swapChainPanel?.CapturePointer(e.Pointer);
+            e.Handled = true;
+        }
+    }
+
+    private void OnPointerReleased(object sender, PointerRoutedEventArgs e)
+    {
+        var point = e.GetCurrentPoint(_swapChainPanel);
+        var button = InferReleasedButton(point.Properties);
+        HandlePointerReleased(button);
+        if (_activeDrag == ActiveDragAction.None)
+        {
+            _swapChainPanel?.ReleasePointerCapture(e.Pointer);
+        }
+        e.Handled = true;
+    }
+
+    private void OnPointerMoved(object sender, PointerRoutedEventArgs e)
+    {
+        var point = e.GetCurrentPoint(_swapChainPanel);
+        HandlePointerMoved((float)point.Position.X, (float)point.Position.Y);
+    }
+
+    private void OnPointerExited(object sender, PointerRoutedEventArgs e)
+    {
+        if (ActiveDrag)
+        {
+            return;
+        }
+        HandlePointerExited();
+        _swapChainPanel?.ReleasePointerCaptures();
+    }
+
+    private void OnPointerWheelChanged(object sender, PointerRoutedEventArgs e)
+    {
+        var point = e.GetCurrentPoint(_swapChainPanel);
+        // WinUI reports 120 units per notch, normalise to ±1.
+        HandleMouseWheel(point.Properties.MouseWheelDelta / 120f);
+        e.Handled = true;
+    }
+
+    #endregion
 
     public void Dispose()
     {

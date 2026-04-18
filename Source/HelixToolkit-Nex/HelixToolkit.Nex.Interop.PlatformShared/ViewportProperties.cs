@@ -91,8 +91,36 @@ public partial class HelixViewport
     /// </summary>
     public ICameraController? CameraController
     {
-        get { return (ICameraController?)GetValue(ViewportClientDp); }
-        set { SetValue(ViewportClientDp, value); }
+        get { return (ICameraController?)GetValue(CameraControllerDp); }
+        set { SetValue(CameraControllerDp, value); }
+    }
+
+    public static readonly DependencyProperty RotateMouseButtonDp = HelixProperty.Register<
+        HelixViewport,
+        ViewportMouseButton
+    >("RotateMouseButton", ViewportMouseButton.Left);
+
+    /// <summary>
+    /// Gets or sets the mouse button used to rotate the camera. Default is <see cref="ViewportMouseButton.Left"/>.
+    /// </summary>
+    public ViewportMouseButton RotateMouseButton
+    {
+        get { return (ViewportMouseButton)GetValue(RotateMouseButtonDp); }
+        set { SetValue(RotateMouseButtonDp, value); }
+    }
+
+    public static readonly DependencyProperty PanMouseButtonDp = HelixProperty.Register<
+        HelixViewport,
+        ViewportMouseButton
+    >("PanMouseButton", ViewportMouseButton.Middle);
+
+    /// <summary>
+    /// Gets or sets the mouse button used to pan the camera. Default is <see cref="ViewportMouseButton.Middle"/>.
+    /// </summary>
+    public ViewportMouseButton PanMouseButton
+    {
+        get { return (ViewportMouseButton)GetValue(PanMouseButtonDp); }
+        set { SetValue(PanMouseButtonDp, value); }
     }
     #endregion
 }

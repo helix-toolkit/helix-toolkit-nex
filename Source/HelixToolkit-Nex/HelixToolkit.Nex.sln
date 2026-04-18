@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.13.35931.197
+# Visual Studio Version 18
+VisualStudioVersion = 18.5.11709.299 stable
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HelixToolkit.Nex.Graphics", "HelixToolkit.Nex.Graphics\HelixToolkit.Nex.Graphics.csproj", "{CAA87CBD-1638-42EF-945A-BF95997A6E4C}"
 EndProject
@@ -663,6 +663,7 @@ Global
 		{F53D1C5C-C37A-403A-980E-E585B85BAEDC}.Release|x86.Build.0 = Release|Any CPU
 		{C2C275AE-2072-4183-ACAA-CC4A48B906CE}.Debug|Any CPU.ActiveCfg = Debug|x64
 		{C2C275AE-2072-4183-ACAA-CC4A48B906CE}.Debug|Any CPU.Build.0 = Debug|x64
+		{C2C275AE-2072-4183-ACAA-CC4A48B906CE}.Debug|Any CPU.Deploy.0 = Debug|x64
 		{C2C275AE-2072-4183-ACAA-CC4A48B906CE}.Debug|x64.ActiveCfg = Debug|Any CPU
 		{C2C275AE-2072-4183-ACAA-CC4A48B906CE}.Debug|x64.Build.0 = Debug|Any CPU
 		{C2C275AE-2072-4183-ACAA-CC4A48B906CE}.Debug|x86.ActiveCfg = Debug|Any CPU
