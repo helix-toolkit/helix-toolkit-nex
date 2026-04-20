@@ -448,11 +448,17 @@ namespace HelixToolkit.Nex.Maths
 
         public static void SetScaleVector(ref Matrix m, ref Vector3 value)
         {
-            m.M11 = value.X;
-            m.M22 = value.Y;
-            m.M33 = value.Z;
+            m.M11 *= value.X;
+            m.M22 *= value.Y;
+            m.M33 *= value.Z;
         }
 
+        public static void SetScaleVector(ref Matrix m, Vector3 value)
+        {
+            m.M11 *= value.X;
+            m.M22 *= value.Y;
+            m.M33 *= value.Z;
+        }
         /// <summary>
         /// Gets or sets the component at the specified index.
         /// </summary>

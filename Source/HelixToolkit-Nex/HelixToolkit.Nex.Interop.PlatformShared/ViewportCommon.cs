@@ -1,7 +1,4 @@
-using System;
-using System.Collections.Generic;
-using System.Text;
-using HelixToolkit.Nex.Engine.CameraControllers;
+using HelixToolkit.Nex.Engine;
 using HelixToolkit.Nex.Interop;
 #if HxWPF
 using System.ComponentModel;
@@ -23,6 +20,7 @@ namespace HelixToolkit.Nex.WinUI;
 
 public partial class HelixViewport
 {
+    private readonly PickingResult _pickResult = new();
     /// <summary>Tracks which camera action (if any) is currently being driven by a mouse drag.</summary>
     private enum ActiveDragAction
     {
@@ -32,6 +30,8 @@ public partial class HelixViewport
     }
 
     private ActiveDragAction _activeDrag = ActiveDragAction.None;
+
+    public bool ActiveDrag => _activeDrag != ActiveDragAction.None;
 
     /// <summary>
     /// Resolves which camera action a pressed button should trigger based on the
@@ -57,22 +57,21 @@ public partial class HelixViewport
     /// </summary>
     private void HandlePointerPressed(ViewportMouseButton button, float x, float y)
     {
-        if (_cameraController is null)
+        if (_cameraController is null || _renderContext is null)
             return;
-
         var action = ResolveDragAction(button);
         if (action == ActiveDragAction.None)
             return;
 
         _activeDrag = action;
-
+        var hitted = _renderContext.TryPick((int)x, (int)y, _pickResult);
         switch (action)
         {
             case ActiveDragAction.Rotate:
-                _cameraController.OnRotateBegin(x, y);
+                _cameraController.OnRotateBegin(x, y, hitted ? _pickResult.WorldPosition : null);
                 break;
             case ActiveDragAction.Pan:
-                _cameraController.OnPanBegin(x, y);
+                _cameraController.OnPanBegin(x, y, hitted ? _pickResult.WorldPosition : null);
                 break;
         }
     }
@@ -126,5 +125,14 @@ public partial class HelixViewport
     private void HandlePointerExited()
     {
         _activeDrag = ActiveDragAction.None;
+    }
+
+    private void UpdateViewportSize(float width, float height)
+    {
+        if (_cameraController is not null)
+        {
+            _cameraController.ViewportWidth = width;
+            _cameraController.ViewportHeight = height;
+        }
     }
 }

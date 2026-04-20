@@ -31,6 +31,12 @@ public class FirstPersonCameraController : ICameraController
     /// </summary>
     public Camera Camera { get; }
 
+    /// <inheritdoc />
+    public float ViewportWidth { get; set; } = 1;
+
+    /// <inheritdoc />
+    public float ViewportHeight { get; set; } = 1;
+
     /// <summary>
     /// Gets or sets the look sensitivity multiplier.
     /// Higher values mean faster rotation per pixel of mouse movement.
@@ -118,7 +124,7 @@ public class FirstPersonCameraController : ICameraController
     }
 
     /// <inheritdoc />
-    public void OnRotateBegin(float x, float y)
+    public void OnRotateBegin(float x, float y, Vector3? pickPosition = null)
     {
         _lastRotateX = x;
         _lastRotateY = y;
@@ -143,7 +149,7 @@ public class FirstPersonCameraController : ICameraController
     }
 
     /// <inheritdoc />
-    public void OnPanBegin(float x, float y)
+    public void OnPanBegin(float x, float y, Vector3? pickPosition = null)
     {
         // Not applicable for first-person controller; use movement keys instead.
     }
@@ -155,7 +161,7 @@ public class FirstPersonCameraController : ICameraController
     }
 
     /// <inheritdoc />
-    public void OnZoomDelta(float delta)
+    public void OnZoomDelta(float delta, Vector3? pickPosition = null)
     {
         // In first-person mode, zoom acts as a forward/backward dolly
         var forward = GetForwardDirection();

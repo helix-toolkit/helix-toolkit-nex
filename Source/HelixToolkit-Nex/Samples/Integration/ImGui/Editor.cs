@@ -79,6 +79,7 @@ internal partial class Editor : IDisposable
     // Viewport-relative mouse tracking for camera input
     private bool _isRotating;
     private bool _isPanning;
+    private Vector2 _pointerLocation;
 
     public Editor(IContext context)
     {
@@ -162,15 +163,8 @@ internal partial class Editor : IDisposable
         // Use the ImGui viewport size (from the previous frame) for render graph resource
         // allocation and the camera projection. This decouples the 3D rendering resolution
         // from the swapchain / window size.
-        if (!_viewportSize.IsEmpty)
-        {
-            _renderContext.WindowSize = _viewportSize;
-        }
-        var aspectRatio = _viewportSize.IsEmpty
-            ? (float)width / height
-            : (float)_viewportSize.Width / _viewportSize.Height;
-
-        _renderContext.CameraParams = _camera.ToCameraParams(aspectRatio);
+        _renderContext!.Update(_viewportSize, _camera);
+        _renderContext.SetPointer(_pointerLocation);
         // FinalOutputTexture is not used by the offscreen graph, but the resource set
         // still expects it to be non-null for system resource setup.
         _renderContext.FinalOutputTexture = _context.GetCurrentSwapchainTexture();
@@ -368,6 +362,7 @@ internal partial class Editor : IDisposable
     /// </summary>
     public void OnViewportMouseMove(float viewportX, float viewportY)
     {
+        _pointerLocation = new Vector2(viewportX, viewportY);
         if (_activeController is null)
             return;
 

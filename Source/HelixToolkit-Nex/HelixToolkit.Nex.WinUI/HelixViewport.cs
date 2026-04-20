@@ -285,6 +285,7 @@ public partial class HelixViewport : UserControl, IDisposable
         Engine.Context.Wait(default);
         ReleaseResources();
         CreateResources((uint)ActualWidth, (uint)ActualHeight);
+        UpdateViewportSize((float)ActualWidth, (float)ActualHeight);
         _sizeChanged = false;
     }
 

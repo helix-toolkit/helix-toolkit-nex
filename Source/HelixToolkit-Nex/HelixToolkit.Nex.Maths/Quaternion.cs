@@ -899,5 +899,10 @@ namespace HelixToolkit.Nex.Maths
         {
             return new Vector4(q.X, q.Y, q.Z, q.W);
         }
+
+        public static Quaternion ToQuaternion(this Vector4 v)
+        {
+            return new Quaternion(v.X, v.Y, v.Z, v.W);
+        }
     }
 }

@@ -14,11 +14,25 @@ public interface ICameraController
     Camera Camera { get; }
 
     /// <summary>
+    /// Gets or sets the viewport width in pixels.
+    /// Must be set by the host before input events are processed so that
+    /// panning and zooming can compute accurate world-space deltas.
+    /// </summary>
+    float ViewportWidth { get; set; }
+
+    /// <summary>
+    /// Gets or sets the viewport height in pixels.
+    /// Must be set by the host before input events are processed so that
+    /// panning and zooming can compute accurate world-space deltas.
+    /// </summary>
+    float ViewportHeight { get; set; }
+    /// <summary>
     /// Called when a rotation gesture begins (e.g., left mouse button down).
     /// </summary>
     /// <param name="x">The starting X position in screen pixels.</param>
     /// <param name="y">The starting Y position in screen pixels.</param>
-    void OnRotateBegin(float x, float y);
+    /// <param name="pickPosition">Optional world-space position under the cursor, used as the rotation pivot.</param>
+    void OnRotateBegin(float x, float y, Vector3? pickPosition = null);
 
     /// <summary>
     /// Called during a rotation gesture (e.g., left mouse button drag).
@@ -32,7 +46,8 @@ public interface ICameraController
     /// </summary>
     /// <param name="x">The starting X position in screen pixels.</param>
     /// <param name="y">The starting Y position in screen pixels.</param>
-    void OnPanBegin(float x, float y);
+    /// <param name="pickPosition">Optional world-space position under the cursor, used as the pan anchor.</param>
+    void OnPanBegin(float x, float y, Vector3? pickPosition = null);
 
     /// <summary>
     /// Called during a pan gesture (e.g., middle mouse button drag).
@@ -45,7 +60,8 @@ public interface ICameraController
     /// Called when a zoom gesture occurs (e.g., mouse scroll wheel).
     /// </summary>
     /// <param name="delta">The zoom delta. Positive values zoom in, negative values zoom out.</param>
-    void OnZoomDelta(float delta);
+    /// <param name="pickPosition">Optional world-space position under the cursor, used as the zoom target.</param>
+    void OnZoomDelta(float delta, Vector3? pickPosition = null);
 
     /// <summary>
     /// Updates the controller state. Should be called once per frame.

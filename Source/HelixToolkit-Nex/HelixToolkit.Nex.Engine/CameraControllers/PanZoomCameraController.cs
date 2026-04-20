@@ -14,6 +14,7 @@ public class PanZoomCameraController : ICameraController
     private float _lastPanY;
     private float _lastRotateX;
     private float _lastRotateY;
+    private float _panWorldPerPixel; // World units per pixel at the pan depth
 
     private float _yaw;
     private float _pitch;
@@ -29,6 +30,12 @@ public class PanZoomCameraController : ICameraController
     /// Gets the camera being controlled.
     /// </summary>
     public Camera Camera { get; }
+
+    /// <inheritdoc />
+    public float ViewportWidth { get; set; } = 1;
+
+    /// <inheritdoc />
+    public float ViewportHeight { get; set; } = 1;
 
     /// <summary>
     /// Gets or sets the pan sensitivity multiplier.
@@ -100,7 +107,7 @@ public class PanZoomCameraController : ICameraController
     }
 
     /// <inheritdoc />
-    public void OnRotateBegin(float x, float y)
+    public void OnRotateBegin(float x, float y, Vector3? pickPosition = null)
     {
         _lastRotateX = x;
         _lastRotateY = y;
@@ -126,10 +133,24 @@ public class PanZoomCameraController : ICameraController
     }
 
     /// <inheritdoc />
-    public void OnPanBegin(float x, float y)
+    public void OnPanBegin(float x, float y, Vector3? pickPosition = null)
     {
         _lastPanX = x;
         _lastPanY = y;
+
+        float panDepth;
+        if (pickPosition.HasValue)
+        {
+            panDepth = (Camera.Position - pickPosition.Value).Length();
+            if (panDepth < MathUtil.ZeroTolerance)
+                panDepth = _distance;
+        }
+        else
+        {
+            panDepth = _distance;
+        }
+
+        _panWorldPerPixel = ComputeWorldPerPixel(panDepth);
     }
 
     /// <inheritdoc />
@@ -142,18 +163,7 @@ public class PanZoomCameraController : ICameraController
         var right = new Vector3(view.M11, view.M21, view.M31);
         var up = new Vector3(view.M12, view.M22, view.M32);
 
-        // Scale pan by orthographic width or distance for consistent behavior
-        float scale;
-        if (Camera is OrthographicCamera ortho)
-        {
-            scale = PanSensitivity * ortho.Width;
-        }
-        else
-        {
-            scale = PanSensitivity * _distance;
-        }
-
-        var panOffset = -right * dx * scale + up * dy * scale;
+        var panOffset = -right * dx * _panWorldPerPixel + up * dy * _panWorldPerPixel;
         Camera.Target += panOffset;
 
         _lastPanX = x;
@@ -163,19 +173,34 @@ public class PanZoomCameraController : ICameraController
     }
 
     /// <inheritdoc />
-    public void OnZoomDelta(float delta)
+    public void OnZoomDelta(float delta, Vector3? pickPosition = null)
     {
         if (Camera is OrthographicCamera ortho)
         {
-            // For orthographic cameras, adjust the viewing width
+            float oldWidth = ortho.Width;
             ortho.Width *= 1f - delta * ZoomSensitivity;
             ortho.Width = MathUtil.Clamp(ortho.Width, MinOrthoWidth, MaxOrthoWidth);
+
+            // Shift the target toward the pick point proportionally to the zoom change
+            if (pickPosition.HasValue && oldWidth > MathUtil.ZeroTolerance)
+            {
+                float zoomRatio = 1f - ortho.Width / oldWidth;
+                Camera.Target += (pickPosition.Value - Camera.Target) * zoomRatio;
+                UpdateCameraPosition();
+            }
         }
         else
         {
-            // For perspective cameras, dolly in/out
+            float oldDistance = _distance;
             _distance *= 1f - delta * ZoomSensitivity;
             _distance = MathUtil.Clamp(_distance, MinDistance, MaxDistance);
+
+            if (pickPosition.HasValue && oldDistance > MathUtil.ZeroTolerance)
+            {
+                float zoomRatio = 1f - _distance / oldDistance;
+                Camera.Target += (pickPosition.Value - Camera.Target) * zoomRatio;
+            }
+
             UpdateCameraPosition();
         }
     }
@@ -217,5 +242,22 @@ public class PanZoomCameraController : ICameraController
 
         Camera.Position = Camera.Target + offset;
         Camera.Up = Vector3.UnitY;
+    }
+
+    /// <summary>
+    /// Computes the world-space units per screen pixel at the given depth from the camera.
+    /// </summary>
+    private float ComputeWorldPerPixel(float depth)
+    {
+        if (Camera is PerspectiveCamera persp)
+        {
+            return 2f * depth * MathF.Tan(persp.Fov * 0.5f) / MathF.Max(ViewportHeight, 1f);
+        }
+        else if (Camera is OrthographicCamera ortho)
+        {
+            return ortho.Width / MathF.Max(ViewportWidth, 1f);
+        }
+
+        return PanSensitivity * depth;
     }
 }

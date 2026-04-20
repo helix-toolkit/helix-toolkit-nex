@@ -92,10 +92,8 @@ internal class LightCullingTest(IContext context, bool largeScene = true) : IDis
         float delta = (float)(Stopwatch.GetTimestamp() - _lastTimestamp) / Stopwatch.Frequency;
         _lastTimestamp = Stopwatch.GetTimestamp();
         _scene.Tick(delta);
-        var aspectRatio = (float)width / height;
-        _renderContext!.WindowSize = new HelixToolkit.Nex.Maths.Size(width, height);
         RotateCamera();
-        _renderContext.CameraParams = _camera.ToCameraParams(aspectRatio);
+        _renderContext!.Update(new Size(width, height), _camera);
         _engine!.Render(_renderContext, _worldDataProvider!);
     }
 

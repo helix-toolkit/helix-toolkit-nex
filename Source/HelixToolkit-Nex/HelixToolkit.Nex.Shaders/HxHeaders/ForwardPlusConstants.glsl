@@ -15,6 +15,11 @@ struct FPConstants {
     uint maxLightsPerTile;
     uint enabled;
 
+    vec3 pointerRayOrigin; // Pointer ray origin in world space.
+    uint pointerRayEnabled; // 0 = disabled, 1 = enabled
+    vec3 pointerRayDirection; // Pointer ray direction in world space.
+    float pointerRayDistThreshold; // Distance threshold for fragment world position to pointer ray.
+
     uint64_t timeMs;
 
     uint64_t meshInfoBufferAddress;

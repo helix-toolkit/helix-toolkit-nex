@@ -13,8 +13,9 @@ public class OrbitCameraController : ICameraController
     private float _lastRotateY;
     private float _lastPanX;
     private float _lastPanY;
+    private float _panWorldPerPixel; // World units per pixel at the pan depth
 
-    private float _theta; // Azimuth angle in radians (around Y axis)
+    private float _theta;
     private float _phi; // Polar angle in radians (from Y axis, clamped to avoid flipping)
     private float _radius; // Distance from camera to target
 
@@ -27,6 +28,12 @@ public class OrbitCameraController : ICameraController
     /// Gets the camera being controlled.
     /// </summary>
     public Camera Camera { get; }
+
+    /// <inheritdoc />
+    public float ViewportWidth { get; set; } = 1;
+
+    /// <inheritdoc />
+    public float ViewportHeight { get; set; } = 1;
 
     /// <summary>
     /// Gets or sets the rotation sensitivity multiplier.
@@ -107,7 +114,7 @@ public class OrbitCameraController : ICameraController
     }
 
     /// <inheritdoc />
-    public void OnRotateBegin(float x, float y)
+    public void OnRotateBegin(float x, float y, Vector3? pickPosition = null)
     {
         _lastRotateX = x;
         _lastRotateY = y;
@@ -132,10 +139,30 @@ public class OrbitCameraController : ICameraController
     }
 
     /// <inheritdoc />
-    public void OnPanBegin(float x, float y)
+    public void OnPanBegin(float x, float y, Vector3? pickPosition = null)
     {
         _lastPanX = x;
         _lastPanY = y;
+
+        // Compute the distance from the camera to the pan plane.
+        // When a pick position is provided, use the distance to the picked point
+        // so panning feels anchored to the geometry under the cursor.
+        float panDepth;
+        if (pickPosition.HasValue)
+        {
+            panDepth = (Camera.Position - pickPosition.Value).Length();
+            if (panDepth < MathUtil.ZeroTolerance)
+                panDepth = _radius;
+        }
+        else
+        {
+            panDepth = _radius;
+        }
+
+        // Compute the exact world-per-pixel ratio at the pan depth.
+        // For perspective: worldPerPixel = 2 * d * tan(fov/2) / viewportHeight
+        // For orthographic: worldPerPixel = orthoWidth / viewportWidth
+        _panWorldPerPixel = ComputeWorldPerPixel(panDepth);
     }
 
     /// <inheritdoc />
@@ -148,10 +175,7 @@ public class OrbitCameraController : ICameraController
         // This avoids extracting them from the view matrix and is more robust.
         GetCameraRightUp(out var right, out var up);
 
-        // Scale pan speed by the distance to the target for consistent feel
-        float panScale = PanSensitivity * _radius;
-
-        var panOffset = -right * dx * panScale + up * dy * panScale;
+        var panOffset = -right * dx * _panWorldPerPixel + up * dy * _panWorldPerPixel;
         Camera.Target += panOffset;
 
         _lastPanX = x;
@@ -161,12 +185,21 @@ public class OrbitCameraController : ICameraController
     }
 
     /// <inheritdoc />
-    public void OnZoomDelta(float delta)
+    public void OnZoomDelta(float delta, Vector3? pickPosition = null)
     {
+        float oldRadius = _radius;
+
         // Additive zoom scaled by current radius for consistent feel at all distances.
-        // This avoids the "stuck at min radius" problem of purely multiplicative zoom.
         _radius -= delta * ZoomSensitivity * _radius;
         _radius = MathUtil.Clamp(_radius, MinRadius, MaxRadius);
+
+        // When a pick position is provided, shift the orbit target toward the picked
+        // point proportionally to the zoom change. This gives "zoom toward cursor" feel.
+        if (pickPosition.HasValue && oldRadius > MathUtil.ZeroTolerance)
+        {
+            float zoomRatio = 1f - _radius / oldRadius;
+            Camera.Target += (pickPosition.Value - Camera.Target) * zoomRatio;
+        }
 
         UpdateCameraPosition();
     }
@@ -227,7 +260,8 @@ public class OrbitCameraController : ICameraController
         );
 
         Camera.Position = Camera.Target + offset;
-        Camera.Up = Vector3.UnitY;
+        GetCameraRightUp(out _, out var up);
+        Camera.Up = up;
     }
 
     /// <summary>
@@ -255,5 +289,26 @@ public class OrbitCameraController : ICameraController
             up /= upLen;
         else
             up = Vector3.UnitY;
+    }
+
+    /// <summary>
+    /// Computes the world-space units per screen pixel at the given depth from the camera.
+    /// For perspective cameras this uses the vertical FOV; for orthographic cameras this
+    /// uses the orthographic width.
+    /// </summary>
+    private float ComputeWorldPerPixel(float depth)
+    {
+        if (Camera is PerspectiveCamera persp)
+        {
+            // worldPerPixel = 2 * depth * tan(fov/2) / viewportHeight
+            return 2f * depth * MathF.Tan(persp.Fov * 0.5f) / MathF.Max(ViewportHeight, 1f);
+        }
+        else if (Camera is OrthographicCamera ortho)
+        {
+            return ortho.Width / MathF.Max(ViewportWidth, 1f);
+        }
+
+        // Fallback: use PanSensitivity as a rough scale
+        return PanSensitivity * depth;
     }
 }
