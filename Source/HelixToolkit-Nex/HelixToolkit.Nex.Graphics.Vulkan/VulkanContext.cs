@@ -909,7 +909,7 @@ internal sealed partial class VulkanContext
             VkPhysicalDeviceVulkan12Features features1_2 = new() { pNext = &features1_3 };
             VkPhysicalDeviceVulkan11Features features1_1 = new() { pNext = &features1_2 };
 
-            VkPhysicalDeviceFeatures2 deviceFeatures2 = new() { pNext = &features1_1 };
+            VkPhysicalDeviceFeatures2 feature_1_0 = new() { pNext = &features1_1 };
 
             void** features_chain = &features1_2.pNext;
 
@@ -941,12 +941,20 @@ internal sealed partial class VulkanContext
                 _deviceExtensions.Add(VK.VK_KHR_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME);
             }
 
-            VK.vkGetPhysicalDeviceFeatures2(_vkPhysicalDevice, &deviceFeatures2);
-            _vkFeatures10 = deviceFeatures2;
+            VK.vkGetPhysicalDeviceFeatures2(_vkPhysicalDevice, &feature_1_0);
+            feature_1_0 = new() { features = DeviceFeatures.CreateFeatures10(ref feature_1_0.features) };
+            features1_1 = DeviceFeatures.CreateFeatures11(ref features1_1);
+            features1_2 = DeviceFeatures.CreateFeatures12(ref features1_2);
+            features1_3 = DeviceFeatures.CreateFeatures13(ref features1_3);
+
+            feature_1_0.pNext = &features1_1;
+            features1_1.pNext = &features1_2;
+            features1_2.pNext = &features1_3;
+
+            _vkFeatures10 = feature_1_0;
             _vkFeatures11 = features1_1;
             _vkFeatures12 = features1_2;
             _vkFeatures13 = features1_3;
-            //vkFeatureMeshShader = meshShaderFeatures;
 
             GraphicsSettings.SupportMeshShader = _vkFeatureMeshShader.meshShader;
             // VkPhysicalDeviceMeshShaderPropertiesEXT meshShaderProps = new();
@@ -966,7 +974,7 @@ internal sealed partial class VulkanContext
 
             VkDeviceCreateInfo deviceCreateInfo = new()
             {
-                pNext = &deviceFeatures2,
+                pNext = &feature_1_0,
                 queueCreateInfoCount = numQueues,
                 pQueueCreateInfos = queueCreateInfos,
                 enabledExtensionCount = deviceExtensionNames.Length,
