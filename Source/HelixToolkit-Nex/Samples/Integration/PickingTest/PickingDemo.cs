@@ -12,7 +12,6 @@ using HelixToolkit.Nex.Maths;
 using HelixToolkit.Nex.Rendering;
 using HelixToolkit.Nex.Rendering.Components;
 using HelixToolkit.Nex.Rendering.PostEffects;
-using HelixToolkit.Nex.Rendering.RenderNodes;
 using HelixToolkit.Nex.Scene;
 using Microsoft.Extensions.Logging;
 
@@ -50,6 +49,8 @@ internal sealed class PickingDemo : IDisposable
     private Geometry? _highlightPointGeometry;
 
     private Node? _lightNode;
+
+    private Vector2 _mousePos;
 
     public PickingDemo(IContext context)
     {
@@ -117,7 +118,7 @@ internal sealed class PickingDemo : IDisposable
 
         // Material: grey PBR
         var greyMaterial = materialPool.Create("PBR");
-        greyMaterial.Properties.Albedo = new Vector3(0.6f, 0.6f, 0.6f);
+        greyMaterial.Properties.Albedo = new Vector3(0.6f, 0.2f, 0.6f);
         greyMaterial.Properties.Metallic = 0.3f;
         greyMaterial.Properties.Roughness = 0.5f;
         greyMaterial.Properties.Ao = 1.0f;
@@ -206,14 +207,15 @@ internal sealed class PickingDemo : IDisposable
 
     public void Render(int width, int height)
     {
+        _orbitController!.ViewportHeight = height;
+        _orbitController!.ViewportWidth = width;
         _lightNode!.Entity.Update<DirectionalLightComponent>(light =>
         {
             light.Direction = _camera.LookDir;
             return light;
         });
-        var aspectRatio = (float)width / height;
-        _renderContext!.WindowSize = new Size(width, height);
-        _renderContext.CameraParams = _camera.ToCameraParams(aspectRatio);
+        _renderContext!.Update(new Size(width, height), _camera);
+        _renderContext.SetPointer(_mousePos);
         _engine!.Render(_renderContext, _worldDataProvider!);
     }
 
@@ -229,6 +231,7 @@ internal sealed class PickingDemo : IDisposable
 
     public void OnMouseMove(float x, float y, bool isRotating, bool isPanning)
     {
+        _mousePos = new Vector2(x, y);
         if (_orbitController is null)
             return;
         if (isRotating)

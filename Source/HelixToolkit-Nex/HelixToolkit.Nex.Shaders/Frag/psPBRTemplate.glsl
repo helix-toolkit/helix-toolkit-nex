@@ -78,7 +78,7 @@ uint64_t getCustomMaterialBufferAddress() {
     return pc.value.customMaterialBufferAddress;
 }
 
-// Utility Functions
+/*UTILITY_FUNCTIONS_BEGIN*/
 PBRProperties getPBRMaterial()
 {
     MaterialBuffer materialBuf = MaterialBuffer(fpConst.materialBufferAddress);
@@ -104,6 +104,32 @@ vec3 getCameraPosition() {
 vec2 getScreenSize() {
     return fpConst.screenDimensions;
 }
+
+bool isPointerRayEnabled() {
+    return fpConst.pointerRayEnabled != 0;
+}
+
+vec3 getPointerRayDirection() {
+    return fpConst.pointerRayDirection;
+}
+
+vec3 getPointerRayOrigin() {
+    return fpConst.pointerRayOrigin;
+}
+
+float getPointerRayDistanceThreshold() {
+    return fpConst.pointerRayDistThreshold;
+}
+
+float getFragToPointerRayDistance() {
+    vec3 rayOrigin = getPointerRayOrigin();
+    vec3 rayDir = normalize(getPointerRayDirection());
+    vec3 toFrag = fragWorldPos - rayOrigin;
+    float t = dot(toFrag, rayDir);
+    vec3 closestPoint = rayOrigin + rayDir * max(t, 0.0);
+    return length(fragWorldPos - closestPoint);
+}
+/*UTILITY_FUNCTIONS_END*/
 
 // Custom code injection point
 // TEMPLATE_CUSTOM_CODE
@@ -301,6 +327,7 @@ vec4 outputColor()
         return vec4(1.0, 0.0, 1.0, 1.0); // Magenta for unsupported shading model
     }
 }
+
 
 /*TEMPLATE_CUSTOM_MAIN_START*/
 void main() {

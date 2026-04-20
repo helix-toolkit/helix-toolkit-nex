@@ -160,9 +160,8 @@ internal class DepthPrepassTest(IContext context) : IDisposable
     public void Render(int width, int height)
     {
         var aspectRatio = (float)width / height;
-        _renderContext!.WindowSize = new HelixToolkit.Nex.Maths.Size(width, height);
         RotateCamera();
-        _renderContext.CameraParams = _camera.ToCameraParams(aspectRatio);
+        _renderContext!.Update(new Size(width, height), _camera);
         _renderContext.FinalOutputTexture = _context.GetCurrentSwapchainTexture();
         _renderer!.Render(_renderContext!, _renderGraph!);
     }

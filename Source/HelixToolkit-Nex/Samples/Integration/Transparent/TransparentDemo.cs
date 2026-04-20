@@ -333,15 +333,7 @@ internal partial class TransparentDemo : IDisposable
         _orbitController?.Update(delta);
 
         // --- Update render context ---
-        if (!_viewportSize.IsEmpty)
-        {
-            _renderContext.WindowSize = _viewportSize;
-        }
-        var aspectRatio = _viewportSize.IsEmpty
-            ? (float)width / height
-            : (float)_viewportSize.Width / _viewportSize.Height;
-
-        _renderContext.CameraParams = _camera.ToCameraParams(aspectRatio);
+        _renderContext!.Update(new Size(width, height), _camera);
         _renderContext.FinalOutputTexture = _context.GetCurrentSwapchainTexture();
 
         // --- Step 1: Execute 3D render graph (offscreen) ---

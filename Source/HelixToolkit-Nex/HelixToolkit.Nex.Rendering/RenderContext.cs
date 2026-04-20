@@ -127,8 +127,24 @@ public sealed class RenderContext(IServiceProvider services) : Initializable
     public int TileCountY { private set; get; } = 1;
 
     public float DpiScale { set; get; } = 1;
-
-    public CameraParams CameraParams { set; get; } = CameraParams.Identity;
+    /// <summary>
+    /// Gets the current camera parameters applied to the view.
+    /// </summary>
+    public CameraParams CameraParams { private set; get; } = CameraParams.Identity;
+    /// <summary>
+    /// Pointer ray in world space calculated from the current mouse position. The ray's origin is on camera nearplane,
+    /// </summary>
+    public Ray PointerRay { private set; get; }
+    /// <summary>
+    /// Used to check if fragment is close enough to the pointer ray for shading effects.
+    /// The distance is measured in world space units. 
+    /// Adjust this threshold based on the scale of your scene.
+    /// </summary>
+    public float PointerRayDistThreshold { private set; get; } = 1f;
+    /// <summary>
+    /// Current mouse pointer position in screen space (pixels), with (0,0) at the top-left corner of the window.
+    /// </summary>
+    public Vector2 Pointer { private set; get; }
 
     public bool UseExternalPipeline { get; private set; } = false;
 
@@ -169,6 +185,52 @@ public sealed class RenderContext(IServiceProvider services) : Initializable
     public void EndFrame()
     {
         Statistics.EndFrame();
+    }
+
+    /// <summary>
+    /// Updates the window size and recalculates camera parameters based on the specified provider.
+    /// </summary>
+    /// <remarks>Call this method when the window size changes to ensure camera parameters remain consistent
+    /// with the display.</remarks>
+    /// <param name="windowSize">The new size of the window, used to determine the aspect ratio for camera parameter calculation.</param>
+    /// <param name="cameraParamsProvider">An object that provides camera parameters based on the current aspect ratio. Cannot be null.</param>
+    public void Update(Size windowSize, ICameraParamsProvider cameraParamsProvider)
+    {
+        WindowSize = windowSize;
+        CameraParams = cameraParamsProvider.ToCameraParams(
+            (float)WindowSize.Width / WindowSize.Height
+        );
+    }
+
+    /// <summary>
+    /// Recalculates camera parameters based on the specified provider.
+    /// </summary>
+    /// <param name="cameraParamsProvider">An object that provides camera parameters based on the current aspect ratio. Cannot be null.</param>
+    public void Update(ICameraParamsProvider cameraParamsProvider)
+    {
+        Update(WindowSize, cameraParamsProvider);
+    }
+
+    /// <summary>
+    /// Set current mouse pointer position and calculate the corresponding picking ray in world space.
+    /// Must be called after <see cref="Update"/> to ensure the camera parameters are up to date for correct ray calculation.
+    /// </summary>
+    /// <param name="x"></param>
+    /// <param name="y"></param>
+    public void SetPointer(float x, float y)
+    {
+        Pointer = new Vector2(x, y);
+        PointerRay = this.TryUnProject(x, y, out var ray) ? ray : default;
+    }
+
+    /// <summary>
+    /// Set current mouse pointer position and calculate the corresponding picking ray in world space.
+    /// Must be called after <see cref="Update"/> to ensure the camera parameters are up to date for correct ray calculation.
+    /// </summary>
+    /// <param name="pos"></param>
+    public void SetPointer(Vector2 pos)
+    {
+        SetPointer(pos.X, pos.Y);
     }
 
     protected override ResultCode OnInitializing()

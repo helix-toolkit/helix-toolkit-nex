@@ -14,6 +14,7 @@ public class TurntableCameraController : ICameraController
     private float _lastRotateY;
     private float _lastPanX;
     private float _lastPanY;
+    private float _panWorldPerPixel; // World units per pixel at the pan depth
 
     private float _theta; // Azimuth in radians (around Up axis)
     private float _phi; // Elevation in radians (angle from horizontal plane)
@@ -32,6 +33,12 @@ public class TurntableCameraController : ICameraController
     /// Gets the camera being controlled.
     /// </summary>
     public Camera Camera { get; }
+
+    /// <inheritdoc />
+    public float ViewportWidth { get; set; } = 1;
+
+    /// <inheritdoc />
+    public float ViewportHeight { get; set; } = 1;
 
     /// <summary>
     /// Gets or sets the rotation sensitivity multiplier.
@@ -113,7 +120,7 @@ public class TurntableCameraController : ICameraController
     }
 
     /// <inheritdoc />
-    public void OnRotateBegin(float x, float y)
+    public void OnRotateBegin(float x, float y, Vector3? pickPosition = null)
     {
         _lastRotateX = x;
         _lastRotateY = y;
@@ -144,10 +151,24 @@ public class TurntableCameraController : ICameraController
     }
 
     /// <inheritdoc />
-    public void OnPanBegin(float x, float y)
+    public void OnPanBegin(float x, float y, Vector3? pickPosition = null)
     {
         _lastPanX = x;
         _lastPanY = y;
+
+        float panDepth;
+        if (pickPosition.HasValue)
+        {
+            panDepth = (Camera.Position - pickPosition.Value).Length();
+            if (panDepth < MathUtil.ZeroTolerance)
+                panDepth = _radius;
+        }
+        else
+        {
+            panDepth = _radius;
+        }
+
+        _panWorldPerPixel = ComputeWorldPerPixel(panDepth);
     }
 
     /// <inheritdoc />
@@ -159,7 +180,7 @@ public class TurntableCameraController : ICameraController
         // Compute the camera's local right and up vectors directly from spherical coordinates.
         GetCameraRightUp(out var right, out var up);
 
-        float panScale = PanSensitivity * _radius;
+        float panScale = _panWorldPerPixel;
         var panOffset = -right * dx * panScale + up * dy * panScale;
         Camera.Target += panOffset;
 
@@ -170,11 +191,18 @@ public class TurntableCameraController : ICameraController
     }
 
     /// <inheritdoc />
-    public void OnZoomDelta(float delta)
+    public void OnZoomDelta(float delta, Vector3? pickPosition = null)
     {
-        // Additive zoom scaled by current radius for consistent feel at all distances.
+        float oldRadius = _radius;
+
         _radius -= delta * ZoomSensitivity * _radius;
         _radius = MathUtil.Clamp(_radius, MinRadius, MaxRadius);
+
+        if (pickPosition.HasValue && oldRadius > MathUtil.ZeroTolerance)
+        {
+            float zoomRatio = 1f - _radius / oldRadius;
+            Camera.Target += (pickPosition.Value - Camera.Target) * zoomRatio;
+        }
 
         UpdateCameraPosition();
     }
@@ -244,7 +272,8 @@ public class TurntableCameraController : ICameraController
         );
 
         Camera.Position = Camera.Target + offset;
-        Camera.Up = Vector3.UnitY;
+        GetCameraRightUp(out _, out var up);
+        Camera.Up = up;
     }
 
     /// <summary>
@@ -269,5 +298,22 @@ public class TurntableCameraController : ICameraController
             up /= upLen;
         else
             up = Vector3.UnitY;
+    }
+
+    /// <summary>
+    /// Computes the world-space units per screen pixel at the given depth from the camera.
+    /// </summary>
+    private float ComputeWorldPerPixel(float depth)
+    {
+        if (Camera is PerspectiveCamera persp)
+        {
+            return 2f * depth * MathF.Tan(persp.Fov * 0.5f) / MathF.Max(ViewportHeight, 1f);
+        }
+        else if (Camera is OrthographicCamera ortho)
+        {
+            return ortho.Width / MathF.Max(ViewportWidth, 1f);
+        }
+
+        return PanSensitivity * depth;
     }
 }

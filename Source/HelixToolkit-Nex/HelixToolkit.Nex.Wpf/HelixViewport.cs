@@ -2,7 +2,6 @@ using System.ComponentModel;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
-using HelixToolkit.Nex.Engine;
 using HelixToolkit.Nex.Engine.CameraControllers;
 using HelixToolkit.Nex.Interop;
 using HelixToolkit.Nex.Interop.DirectX;
@@ -264,6 +263,7 @@ public partial class HelixViewport : FrameworkElement, IDisposable
         Engine.Context.Wait(default);
         ReleaseResources();
         CreateResources((uint)ActualWidth, (uint)ActualHeight);
+        UpdateViewportSize((float)ActualWidth, (float)ActualHeight);
         _sizeChanged = false;
     }
 

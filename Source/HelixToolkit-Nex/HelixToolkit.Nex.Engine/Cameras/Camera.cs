@@ -4,7 +4,7 @@ namespace HelixToolkit.Nex.Engine.Cameras;
 /// Simple camera structure for the example.
 /// Supports perspective projection with reverse-Z depth buffer.
 /// </summary>
-public abstract class Camera
+public abstract class Camera : ICameraParamsProvider
 {
     public Vector3 Position { set; get; }
     public Vector3 Target { set; get; }

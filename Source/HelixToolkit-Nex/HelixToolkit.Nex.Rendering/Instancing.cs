@@ -34,6 +34,14 @@ public static class InstanceTransformExts
         transform.Translation = translation;
         return transform;
     }
+
+    public static Matrix4x4 ToMatrix(this InstanceTransform transform)
+    {
+        var m = transform.Quaternion.ToQuaternion().ToMatrix();
+        m.Translation = transform.Translation;
+        MatrixHelper.SetScaleVector(ref m, new Vector3(transform.Scale));
+        return m;
+    }
 }
 
 public partial class Instancing : ObservableObject, IDisposable

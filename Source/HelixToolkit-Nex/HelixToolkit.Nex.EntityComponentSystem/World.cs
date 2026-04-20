@@ -81,6 +81,25 @@ public sealed class World : IEnumerable<Entity>, IDisposable
         }
     }
 
+    public static bool TryCreateWorld(out World? world)
+    {
+        try
+        {
+            world = CreateWorld();
+            return true;
+        }
+        catch (Exception)
+        {
+            world = null;
+            return false;
+        }
+    }
+
+    public static World? GetWorldById(int worldId)
+    {
+        return GetWorldInternal(worldId);
+    }
+
     internal static bool TryGetWorld(in Generation generation, out World? world)
     {
         world = GetWorld(generation);
