@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using System.Numerics;
 using HelixToolkit.Nex;
-using HelixToolkit.Nex.ECS;
 using HelixToolkit.Nex.Engine;
 using HelixToolkit.Nex.Engine.CameraControllers;
 using HelixToolkit.Nex.Engine.Cameras;
@@ -18,7 +17,6 @@ using HelixToolkit.Nex.Rendering.PostEffects;
 using HelixToolkit.Nex.Rendering.RenderNodes;
 using HelixToolkit.Nex.Scene;
 using HelixToolkit.Nex.Shaders.Frag;
-using ImGuiNET;
 using Microsoft.Extensions.Logging;
 
 namespace Transparent;
@@ -141,9 +139,9 @@ internal partial class TransparentDemo : IDisposable
         geometryManager.Add(floorGeo, out _);
 
         _floorMaterial = materialPool.Create(PBRShadingMode.PBR);
-        _floorMaterial.Properties.Albedo = new Vector3(0.6f, 0.6f, 0.6f);
+        _floorMaterial.Properties.Albedo = new Vector3(0.3f, 0.3f, 0.3f);
         _floorMaterial.Properties.Roughness = 0.9f;
-        _floorMaterial.Properties.Metallic = 0.0f;
+        _floorMaterial.Properties.Metallic = 0.3f;
         _floorMaterial.Properties.Ao = 1.0f;
         _floorMaterial.Properties.Opacity = 1.0f;
         _floorMaterial.NotifyUpdated();
@@ -333,7 +331,7 @@ internal partial class TransparentDemo : IDisposable
         _orbitController?.Update(delta);
 
         // --- Update render context ---
-        _renderContext!.Update(new Size(width, height), _camera);
+        _renderContext!.Update(_viewportSize, _camera);
         _renderContext.FinalOutputTexture = _context.GetCurrentSwapchainTexture();
 
         // --- Step 1: Execute 3D render graph (offscreen) ---
