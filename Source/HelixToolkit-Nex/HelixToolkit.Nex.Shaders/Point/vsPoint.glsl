@@ -8,6 +8,7 @@ layout(location = 2) out float v_screenSize;
 layout(location = 3) out flat vec2  v_entityId;
 layout(location = 4) out flat uint  v_textureIndex;
 layout(location = 5) out flat uint  v_samplerIndex;
+layout(location = 6) out flat vec3  v_fragWorldPos;
 
 layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer PointDrawDataBuffer {
     PointDrawData data[];
@@ -59,4 +60,5 @@ void main() {
     v_entityId     = d.packedEntityId;
     v_textureIndex = d.textureIndex;
     v_samplerIndex = d.samplerIndex;
+    v_fragWorldPos = d.worldPos;
 }

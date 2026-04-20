@@ -13,7 +13,10 @@ internal interface IMaterialRegistration
     /// Gets the unique ID of this material type. Used for shader pipeline selection.
     /// </summary>
     MaterialTypeId TypeId { get; }
-
+    /// <summary>
+    /// Gets a value indicating whether pointer ring rendering is supported.
+    /// </summary>
+    bool SupportPointerRing { get; }
     /// <summary>
     /// Generates the implementation code for color output.
     /// </summary>
@@ -34,16 +37,14 @@ internal static class MaterialRegistrationExtensions
             .ToList();
 
         var sb = new StringBuilder();
-        sb.AppendLine("// Template function to create final color");
-        sb.AppendLine("vec4 outputColor()");
-        sb.AppendLine("{");
 
+        // Generate individual color output functions per material type
         foreach (var reg in regs)
         {
-            sb.AppendLine($"    if (MATERIAL_TYPE == {(uint)reg.TypeId}u) {{");
-            sb.AppendLine($"        // {reg.Name}");
+            sb.AppendLine($"// Color output for material type: {reg.Name} (ID: {(uint)reg.TypeId})");
+            sb.AppendLine($"vec4 outputColor_{reg.Name}()");
+            sb.AppendLine("{");
 
-            // Indent the implementation
             var lines = reg.GetColorOutputImplCode()!.Split('\n');
             foreach (var line in lines)
             {
@@ -53,12 +54,31 @@ internal static class MaterialRegistrationExtensions
                 }
             }
 
+            sb.AppendLine("}");
+            sb.AppendLine();
+        }
+
+        // Generate the dispatch function that calls individual functions
+        sb.AppendLine("// Template function to create final color");
+        sb.AppendLine("vec4 outputColor()");
+        sb.AppendLine("{");
+
+        foreach (var reg in regs)
+        {
+            sb.AppendLine($"    if (MATERIAL_TYPE == {(uint)reg.TypeId}u) {{");
+            sb.AppendLine($"        vec4 color = outputColor_{reg.Name}();");
+            if (reg.SupportPointerRing)
+            {
+                sb.AppendLine("        // Additional logic for pointer ring rendering can be added here");
+                sb.AppendLine("        color = mixWithPointerRing(color);");
+            }
+            sb.AppendLine($"        return color;");
             sb.AppendLine("    }");
         }
 
         // Default fallback
-        sb.AppendLine("  // Fallback for unknown material types");
-        sb.AppendLine("  return vec4(1.0, 0.0, 1.0, 1.0); // Magenta");
+        sb.AppendLine("    // Fallback for unknown material types");
+        sb.AppendLine("    return vec4(1.0, 0.0, 1.0, 1.0); // Magenta");
         sb.AppendLine("}");
 
         // Replace the existing outputColor function

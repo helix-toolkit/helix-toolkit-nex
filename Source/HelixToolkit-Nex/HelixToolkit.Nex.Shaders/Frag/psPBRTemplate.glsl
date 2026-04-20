@@ -105,20 +105,32 @@ vec2 getScreenSize() {
     return fpConst.screenDimensions;
 }
 
-bool isPointerRayEnabled() {
-    return fpConst.pointerRayEnabled != 0;
+bool isPointerRingEnabled() {
+    return fpConst.pointerRing.enabled != 0;
 }
 
 vec3 getPointerRayDirection() {
-    return fpConst.pointerRayDirection;
+    return fpConst.pointerRing.rayDirection;
 }
 
 vec3 getPointerRayOrigin() {
-    return fpConst.pointerRayOrigin;
+    return fpConst.pointerRing.rayOrigin;
 }
 
-float getPointerRayDistanceThreshold() {
-    return fpConst.pointerRayDistThreshold;
+float getPointerRingOuterDistThreshold() {
+    return fpConst.pointerRing.outerDistThreshold;
+}
+
+float getPointerRingInnerDistThreshold() {
+    return fpConst.pointerRing.innerDistThreshold;
+}
+
+float getPointerRingColorMix() {
+    return fpConst.pointerRing.colorMix;
+}
+
+vec3 getPointerRingColor() {
+    return fpConst.pointerRing.color;
 }
 
 float getFragToPointerRayDistance() {
@@ -128,6 +140,20 @@ float getFragToPointerRayDistance() {
     float t = dot(toFrag, rayDir);
     vec3 closestPoint = rayOrigin + rayDir * max(t, 0.0);
     return length(fragWorldPos - closestPoint);
+}
+
+bool isInPointerRing() {
+    float dist = getFragToPointerRayDistance();
+    return dist >= getPointerRingInnerDistThreshold() && dist <= getPointerRingOuterDistThreshold();
+}
+
+
+vec4 mixWithPointerRing(in vec4 color) {
+    if (isPointerRingEnabled() && isInPointerRing()) {
+        vec3 ringColor = getPointerRingColor();
+        color.rgb = mix(color.rgb, ringColor, getPointerRingColorMix());
+    }
+    return color;
 }
 /*UTILITY_FUNCTIONS_END*/
 

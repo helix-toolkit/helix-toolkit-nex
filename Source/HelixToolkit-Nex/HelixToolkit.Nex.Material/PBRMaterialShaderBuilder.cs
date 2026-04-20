@@ -302,11 +302,12 @@ public class PBRMaterialShaderBuilder
         }
 
         var sb = new StringBuilder();
-        sb.AppendLine($"// Material type: {registration.Name} (ID: {typeId})");
-        sb.AppendLine("vec4 outputColor()");
+
+        // Generate individual color output function
+        sb.AppendLine($"// Color output for material type: {registration.Name} (ID: {typeId})");
+        sb.AppendLine($"vec4 outputColor_{registration.Name}()");
         sb.AppendLine("{");
 
-        // Add the implementation
         var lines = registration.OutputColorImplementation.Split('\n');
         foreach (var line in lines)
         {
@@ -316,6 +317,14 @@ public class PBRMaterialShaderBuilder
             }
         }
 
+        sb.AppendLine("}");
+        sb.AppendLine();
+
+        // Generate dispatch function
+        sb.AppendLine($"// Material type: {registration.Name} (ID: {typeId})");
+        sb.AppendLine("vec4 outputColor()");
+        sb.AppendLine("{");
+        sb.AppendLine($"    return outputColor_{registration.Name}();");
         sb.AppendLine("}");
 
         // Replace the existing outputColor function (same logic as uber shader)
@@ -393,7 +402,7 @@ public class PBRMaterialShaderBuilder
     }
 
     /// <summary>
-    /// Collects <see cref="MaterialTypeRegistration.CustomBufferGlsl"/> from every
+    /// Collects <see cref="PBRMaterialRegistration.CustomBufferGlsl"/> from every
     /// registration that will be included in this shader build and injects the
     /// combined declarations at the <c>// TEMPLATE_CUSTOM_STRUCTS</c> marker.
     /// Duplicate declarations (same type name registered twice) are deduplicated by
@@ -401,7 +410,7 @@ public class PBRMaterialShaderBuilder
     /// </summary>
     private string InjectCustomBufferStructs(string template)
     {
-        IEnumerable<MaterialTypeRegistration> registrations;
+        IEnumerable<PBRMaterialRegistration> registrations;
 
         if (_buildUberShader)
         {

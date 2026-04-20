@@ -130,17 +130,12 @@ public sealed class RenderContext(IServiceProvider services) : Initializable
     /// <summary>
     /// Gets the current camera parameters applied to the view.
     /// </summary>
-    public CameraParams CameraParams { private set; get; } = CameraParams.Identity;
+    public CameraParams CameraParams = CameraParams.Identity;
     /// <summary>
-    /// Pointer ray in world space calculated from the current mouse position. The ray's origin is on camera nearplane,
+    /// Gets the pointer ring used to provide recent pointer as ray in world space in shader.
     /// </summary>
-    public Ray PointerRay { private set; get; }
-    /// <summary>
-    /// Used to check if fragment is close enough to the pointer ray for shading effects.
-    /// The distance is measured in world space units. 
-    /// Adjust this threshold based on the scale of your scene.
-    /// </summary>
-    public float PointerRayDistThreshold { private set; get; } = 1f;
+    public PointerRing PointerRing = new()
+    { Enabled = 0, Color = Color.Yellow.ToColor3(), ColorMix = 0.8f, OuterDistThreshold = 1f, InnerDistThreshold = 0.8f };
     /// <summary>
     /// Current mouse pointer position in screen space (pixels), with (0,0) at the top-left corner of the window.
     /// </summary>
@@ -220,7 +215,11 @@ public sealed class RenderContext(IServiceProvider services) : Initializable
     public void SetPointer(float x, float y)
     {
         Pointer = new Vector2(x, y);
-        PointerRay = this.TryUnProject(x, y, out var ray) ? ray : default;
+        if (this.TryUnProject(x, y, out var ray))
+        {
+            PointerRing.RayDirection = ray.Direction;
+            PointerRing.RayOrigin = ray.Position;
+        }
     }
 
     /// <summary>

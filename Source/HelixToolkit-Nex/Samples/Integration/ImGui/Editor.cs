@@ -9,9 +9,7 @@ using HelixToolkit.Nex.Graphics;
 using HelixToolkit.Nex.ImGui;
 using HelixToolkit.Nex.Maths;
 using HelixToolkit.Nex.Rendering;
-using HelixToolkit.Nex.Rendering.ComputeNodes;
 using HelixToolkit.Nex.Rendering.PostEffects;
-using HelixToolkit.Nex.Rendering.RenderNodes;
 using HelixToolkit.Nex.Scene;
 using Microsoft.Extensions.Logging;
 using SceneSamples;
@@ -125,6 +123,10 @@ internal partial class Editor : IDisposable
         // --- Per-viewport state and scene data ---
         _renderContext = _engine.CreateRenderContext();
         _renderContext.Initialize();
+        _renderContext.PointerRing.Enabled = 1;
+        _renderContext.PointerRing.OuterDistThreshold = 0.6f;
+        _renderContext.PointerRing.InnerDistThreshold = 0.4f;
+        _renderContext.PointerRing.ColorMix = 0.4f;
 
         _worldDataProvider = _engine.CreateWorldDataProvider();
         _worldDataProvider.Initialize();

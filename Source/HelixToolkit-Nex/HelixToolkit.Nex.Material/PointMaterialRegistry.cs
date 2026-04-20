@@ -47,6 +47,14 @@ public sealed class PointMaterialRegistration : IMaterialRegistration
     /// No need to set <see cref="ColorAttachment.Format"/>. The pipeline will use the format of the render target's color attachment.
     /// </summary>
     public ColorAttachment? BlendConfig { get; init; } = null;
+    /// <inheritdoc/>
+    public bool SupportPointerRing { get; set; } = false;
+
+    public PointMaterialRegistration WithPointerRingSupport()
+    {
+        SupportPointerRing = true;
+        return this;
+    }
 }
 
 /// <summary>
