@@ -848,7 +848,9 @@ internal static class HxVkExtensions
         this VkCommandBuffer cmdbuffer,
         in VulkanBuffer buf,
         VkPipelineStageFlags2 srcStage,
-        VkPipelineStageFlags2 dstStage
+        VkPipelineStageFlags2 dstStage,
+        VkDeviceSize offset = 0,
+        VkDeviceSize size = VK.VK_WHOLE_SIZE
     )
     {
         VkBufferMemoryBarrier2 barrier = new()
@@ -860,8 +862,8 @@ internal static class HxVkExtensions
             srcQueueFamilyIndex = VK.VK_QUEUE_FAMILY_IGNORED,
             dstQueueFamilyIndex = VK.VK_QUEUE_FAMILY_IGNORED,
             buffer = buf!.VkBuffer,
-            offset = 0,
-            size = VK.VK_WHOLE_SIZE,
+            offset = offset,
+            size = size,
         };
 
         if (srcStage.HasFlag(VkPipelineStageFlags2.Transfer))
