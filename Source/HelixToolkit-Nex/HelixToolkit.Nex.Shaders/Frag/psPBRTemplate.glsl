@@ -151,6 +151,14 @@ bool isInPointerRing() {
 vec4 mixWithPointerRing(in vec4 color) {
     if (isPointerRingEnabled() && isInPointerRing()) {
         vec3 ringColor = getPointerRingColor();
+#ifndef EXCLUDE_MESH_PROPS
+        // Modulate the ring brightness based on the surface normal vs. view direction,
+        // so the ring shades naturally across uneven geometry.
+        vec3 N = normalize(fragNormal);
+        vec3 V = normalize(getCameraPosition() - fragWorldPos);
+        float NdotV = max(dot(N, V), 0.0);
+        ringColor = ringColor * mix(0.2, 1.0, NdotV);
+#endif
         color.rgb = mix(color.rgb, ringColor, getPointerRingColorMix());
     }
     return color;
