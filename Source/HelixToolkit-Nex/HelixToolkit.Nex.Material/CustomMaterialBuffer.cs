@@ -9,7 +9,7 @@ namespace HelixToolkit.Nex.Material;
 /// </summary>
 /// <remarks>
 /// Implement this interface (or derive from <see cref="CustomMaterialBuffer{T}"/>) for
-/// every material type that declares a <see cref="MaterialTypeRegistration.CustomBufferGlsl"/>
+/// every material type that declares a <see cref="PBRMaterialRegistration.CustomBufferGlsl"/>
 /// block.  At render time, call <see cref="Update"/> to flush pending CPU writes to the
 /// GPU buffer, then pass <see cref="GpuAddress"/> to the renderer so it can set
 /// <c>FPConstants.customMaterialBufferAddress</c> before drawing with that material.
@@ -45,11 +45,11 @@ public interface ICustomMaterialBuffer : IDisposable
 /// <summary>
 /// Base class for managing a strongly-typed custom material properties buffer that
 /// backs a GLSL <c>buffer_reference</c> block declared in
-/// <see cref="MaterialTypeRegistration.CustomBufferGlsl"/>.
+/// <see cref="PBRMaterialRegistration.CustomBufferGlsl"/>.
 /// </summary>
 /// <typeparam name="T">
 /// An unmanaged struct whose memory layout exactly matches the GLSL struct declared in
-/// <see cref="MaterialTypeRegistration.CustomBufferGlsl"/>.  Annotate the struct with
+/// <see cref="PBRMaterialRegistration.CustomBufferGlsl"/>.  Annotate the struct with
 /// <c>[StructLayout(LayoutKind.Sequential, Pack = N)]</c> to guarantee the layout matches
 /// the <c>std430</c> GLSL layout rules.
 /// </typeparam>

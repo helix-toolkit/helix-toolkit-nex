@@ -6,7 +6,7 @@ namespace HelixToolkit.Nex.Material;
 /// <summary>
 /// Represents a registered material type with its unique ID and shader implementation.
 /// </summary>
-public sealed class MaterialTypeRegistration : IMaterialRegistration
+public sealed class PBRMaterialRegistration : IMaterialRegistration
 {
     /// <summary>
     /// Unique identifier for this material type. Used as specialization constant value.
@@ -70,6 +70,9 @@ public sealed class MaterialTypeRegistration : IMaterialRegistration
     /// </summary>
     public string? CustomBufferGlsl { get; init; }
 
+    /// <inheritdoc/>
+    public bool SupportPointerRing { get; set; } = false;
+
     /// <summary>
     /// Describes the custom GPU buffer layout for this material type so the C# side can
     /// manage uploads correctly.  This is optional metadata — the shader only needs
@@ -80,11 +83,17 @@ public sealed class MaterialTypeRegistration : IMaterialRegistration
 
     public Func<string, PBRMaterial> BuilderFunction { get; init; } =
         (name) => new PBRMaterial(name);
+
+    public PBRMaterialRegistration WithPointerRingSupport()
+    {
+        SupportPointerRing = true;
+        return this;
+    }
 }
 
 /// <summary>
 /// Describes the expected GPU layout of a custom material buffer declared via
-/// <see cref="MaterialTypeRegistration.CustomBufferGlsl"/>.
+/// <see cref="PBRMaterialRegistration.CustomBufferGlsl"/>.
 /// </summary>
 public sealed class CustomBufferDescription
 {
@@ -95,7 +104,7 @@ public sealed class CustomBufferDescription
 
     /// <summary>
     /// Expected size of one element in bytes.  Must match the <c>std430</c> layout
-    /// of the GLSL struct declared in <see cref="MaterialTypeRegistration.CustomBufferGlsl"/>.
+    /// of the GLSL struct declared in <see cref="PBRMaterialRegistration.CustomBufferGlsl"/>.
     /// </summary>
     public required uint ElementSizeBytes { get; init; }
 
@@ -112,7 +121,7 @@ public sealed class CustomBufferDescription
 /// </summary>
 public static class PBRMaterialTypeRegistry
 {
-    private static readonly ConcurrentDictionary<string, MaterialTypeRegistration> _registrations =
+    private static readonly ConcurrentDictionary<string, PBRMaterialRegistration> _registrations =
         new(StringComparer.OrdinalIgnoreCase);
 
     private static readonly ConcurrentDictionary<MaterialTypeId, string> _idToName = new();
@@ -129,7 +138,7 @@ public static class PBRMaterialTypeRegistry
     {
         // PBR material type (default)
         Register(
-            new MaterialTypeRegistration
+            new PBRMaterialRegistration
             {
                 TypeId = PBRShadingMode.PBR,
                 Name = PBRShadingMode.PBR.ToString(),
@@ -141,11 +150,11 @@ public static class PBRMaterialTypeRegistry
                     return color;
                     ",
             }
-        );
+        ).WithPointerRingSupport();
 
         // Unlit material type
         Register(
-            new MaterialTypeRegistration
+            new PBRMaterialRegistration
             {
                 TypeId = PBRShadingMode.Unlit,
                 Name = PBRShadingMode.Unlit.ToString(),
@@ -155,11 +164,11 @@ public static class PBRMaterialTypeRegistry
                     return nonLitOutputColor(material);
                     ",
             }
-        );
+        ).WithPointerRingSupport();
 
         // Debug tile light count visualization
         Register(
-            new MaterialTypeRegistration
+            new PBRMaterialRegistration
             {
                 TypeId = PBRShadingMode.DebugTileLightCount,
                 Name = PBRShadingMode.DebugTileLightCount.ToString(),
@@ -172,7 +181,7 @@ public static class PBRMaterialTypeRegistry
 
         // Normal visualization
         Register(
-            new MaterialTypeRegistration
+            new PBRMaterialRegistration
             {
                 TypeId = PBRShadingMode.Normal,
                 Name = PBRShadingMode.Normal.ToString(),
@@ -182,8 +191,9 @@ public static class PBRMaterialTypeRegistry
                     ",
             }
         );
+
         Register(
-            new MaterialTypeRegistration
+            new PBRMaterialRegistration
             {
                 TypeId = PBRShadingMode.Flat,
                 Name = PBRShadingMode.Flat.ToString(),
@@ -195,7 +205,7 @@ public static class PBRMaterialTypeRegistry
                     return color;
                     ",
             }
-        );
+        ).WithPointerRingSupport();
     }
 
     /// <summary>
@@ -203,7 +213,7 @@ public static class PBRMaterialTypeRegistry
     /// </summary>
     /// <param name="registration">Material type registration information.</param>
     /// <exception cref="ArgumentException">Thrown if a material with the same name or ID is already registered.</exception>
-    public static void Register(MaterialTypeRegistration registration)
+    public static PBRMaterialRegistration Register(PBRMaterialRegistration registration)
     {
         ArgumentNullException.ThrowIfNull(registration);
 
@@ -242,6 +252,7 @@ public static class PBRMaterialTypeRegistry
                 _nextTypeId = registration.TypeId + 1;
             }
         }
+        return registration;
     }
 
     /// <summary>
@@ -252,7 +263,7 @@ public static class PBRMaterialTypeRegistry
     /// <param name="createMaterialImpl">Optional GLSL for createPBRMaterial override.</param>
     /// <param name="additionalCode">Optional additional GLSL code.</param>
     /// <returns>The assigned type ID.</returns>
-    public static uint Register(
+    public static PBRMaterialRegistration Register(
         string name,
         string outputColorImpl,
         string? createMaterialImpl = null,
@@ -263,7 +274,7 @@ public static class PBRMaterialTypeRegistry
         {
             uint typeId = _nextTypeId++;
 
-            var registration = new MaterialTypeRegistration
+            var registration = new PBRMaterialRegistration
             {
                 TypeId = typeId,
                 Name = name,
@@ -272,8 +283,7 @@ public static class PBRMaterialTypeRegistry
                 AdditionalCode = additionalCode,
             };
 
-            Register(registration);
-            return typeId;
+            return Register(registration);
         }
     }
 
@@ -283,7 +293,7 @@ public static class PBRMaterialTypeRegistry
     /// <param name="name">Material type name.</param>
     /// <param name="registration">The registration if found.</param>
     /// <returns>True if the material type exists.</returns>
-    public static bool TryGetByName(string name, out MaterialTypeRegistration? registration)
+    public static bool TryGetByName(string name, out PBRMaterialRegistration? registration)
     {
         return _registrations.TryGetValue(name, out registration);
     }
@@ -294,7 +304,7 @@ public static class PBRMaterialTypeRegistry
     /// <param name="typeId">Material type ID.</param>
     /// <param name="registration">The registration if found.</param>
     /// <returns>True if the material type exists.</returns>
-    public static bool TryGetById(MaterialTypeId typeId, out MaterialTypeRegistration? registration)
+    public static bool TryGetById(MaterialTypeId typeId, out PBRMaterialRegistration? registration)
     {
         registration = null;
         return _idToName.TryGetValue(typeId, out var name)
@@ -305,7 +315,7 @@ public static class PBRMaterialTypeRegistry
     /// Gets all registered material types.
     /// </summary>
     /// <returns>Collection of all material type registrations.</returns>
-    public static IReadOnlyCollection<MaterialTypeRegistration> GetAllRegistrations()
+    public static IReadOnlyCollection<PBRMaterialRegistration> GetAllRegistrations()
     {
         return _registrations.Values.ToArray();
     }

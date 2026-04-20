@@ -504,7 +504,7 @@ internal sealed class PointsDemo : IDisposable
             _pointCullNode.MinScreenSize = _minScreenSize;
 
         // Render context setup
-        _renderContext!.Update(new Size(width, height), _camera);
+        _renderContext!.Update(_viewportSize, _camera);
         _renderContext.FinalOutputTexture = _context.GetCurrentSwapchainTexture();
 
         // 3D render (offscreen)

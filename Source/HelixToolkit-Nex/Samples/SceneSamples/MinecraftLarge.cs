@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.Numerics;
-using HelixToolkit.Nex;
 using HelixToolkit.Nex.Engine;
 using HelixToolkit.Nex.Engine.Components;
 using HelixToolkit.Nex.Geometries;
@@ -220,7 +219,7 @@ public class MinecraftLargeScene : IScene
             material.albedo *= 0.2;
             return vec4(material.albedo + material.emissive, 1.0);
             """
-        );
+        ).WithPointerRingSupport();
 
         // Gold ore: metallic PBR with a view-angle sparkle emissive highlight
         PBRMaterialTypeRegistry.Register(
@@ -231,7 +230,7 @@ public class MinecraftLargeScene : IScene
             material.emissive = vec3(1.0, 0.85, 0.1) * sparkle * 1.5;
             return forwardPlusLighting(material) + vec4(material.emissive, 0.0);
             """
-        );
+        ).WithPointerRingSupport();
 
         // Water: time-based wave shimmer blended with PBR lighting
         PBRMaterialTypeRegistry.Register(
@@ -243,7 +242,7 @@ public class MinecraftLargeScene : IScene
             material.emissive = material.albedo * 0.15;
             return forwardPlusLighting(material) + vec4(material.emissive, 0.0);
             """
-        );
+        ).WithPointerRingSupport();
 
         // Snow: bright diffuse white with a subtle sparkle specular
         PBRMaterialTypeRegistry.Register(
@@ -254,7 +253,7 @@ public class MinecraftLargeScene : IScene
             material.emissive = vec3(0.9, 0.95, 1.0) * sparkle * 0.3;
             return forwardPlusLighting(material) + vec4(material.emissive, 0.0);
             """
-        );
+        ).WithPointerRingSupport();
     }
 
     /// <summary>

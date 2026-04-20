@@ -55,10 +55,7 @@ public sealed class ForwardPlusOpaqueNode : RenderNode
             LightCount = (uint)context.Data.Lights.Count,
             TileSize = context.FPLightConfig.TileSize,
             MaxLightsPerTile = context.FPLightConfig.MaxLightsPerTile,
-            PointerRayOrigin = context.PointerRay.Position,
-            PointerRayDirection = context.PointerRay.Direction,
-            PointerRayEnabled = context.PointerRay.Direction.LengthSquared() > (1 - 1e-3) ? 1u : 0,
-            PointerRayDistThreshold = context.PointerRayDistThreshold,
+            PointerRing = context.PointerRing,
         };
         res.CmdBuffer.UpdateBuffer(fpBuffer, ref fpData);
         return base.BeginRender(in res);

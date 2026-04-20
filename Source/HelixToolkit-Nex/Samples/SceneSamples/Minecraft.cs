@@ -106,7 +106,7 @@ public class MinecraftScene : IScene
             material.albedo *= 0.2;
             return vec4(material.albedo + material.emissive, 1.0);
             """
-        );
+        ).WithPointerRingSupport();
 
         // Gold ore: metallic PBR with a view-angle sparkle emissive highlight
         PBRMaterialTypeRegistry.Register(
@@ -117,7 +117,7 @@ public class MinecraftScene : IScene
             material.emissive = vec3(1.0, 0.85, 0.1) * sparkle * 1.5;
             return forwardPlusLighting(material) + vec4(material.emissive, 0.0);
             """
-        );
+        ).WithPointerRingSupport();
 
         // Water: time-based wave shimmer blended with PBR lighting
         PBRMaterialTypeRegistry.Register(
@@ -129,7 +129,7 @@ public class MinecraftScene : IScene
             material.emissive = material.albedo * 0.15;
             return forwardPlusLighting(material) + vec4(material.emissive, 0.0);
             """
-        );
+        ).WithPointerRingSupport();
     }
 
     /// <summary>

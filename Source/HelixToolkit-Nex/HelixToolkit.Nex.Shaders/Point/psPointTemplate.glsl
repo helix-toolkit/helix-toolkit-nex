@@ -8,6 +8,7 @@ layout(location = 2) in float v_screenSize;
 layout(location = 3) in flat vec2  v_entityId;
 layout(location = 4) in flat uint  v_textureIndex;
 layout(location = 5) in flat uint  v_samplerIndex;
+layout(location = 6) in flat vec3  v_fragWorldPos;
 
 layout(location = 0) out vec4 outColor;
 layout(location = 1) out vec2 outEntityId;
@@ -42,6 +43,7 @@ uint getSamplerId() {
 
 FPConstants fpConst = FPBuffer(pc.value.fpConstAddress).fpConstants;
 
+/*UTILITY_FUNCTIONS_BEGIN*/
 uint64_t getTimeMs() {
     return fpConst.timeMs;
 }
@@ -61,6 +63,57 @@ vec3 getCameraPosition() {
 vec2 getScreenSize() {
     return fpConst.screenDimensions;
 }
+
+bool isPointerRingEnabled() {
+    return fpConst.pointerRing.enabled != 0;
+}
+
+vec3 getPointerRayDirection() {
+    return fpConst.pointerRing.rayDirection;
+}
+
+vec3 getPointerRayOrigin() {
+    return fpConst.pointerRing.rayOrigin;
+}
+
+float getPointerRingOuterDistThreshold() {
+    return fpConst.pointerRing.outerDistThreshold;
+}
+
+float getPointerRingInnerDistThreshold() {
+    return fpConst.pointerRing.innerDistThreshold;
+}
+
+float getPointerRingColorMix() {
+    return fpConst.pointerRing.colorMix;
+}
+
+vec3 getPointerRingColor() {
+    return fpConst.pointerRing.color;
+}
+
+float getFragToPointerRayDistance() {
+    vec3 rayOrigin = getPointerRayOrigin();
+    vec3 rayDir = normalize(getPointerRayDirection());
+    vec3 toFrag = v_fragWorldPos - rayOrigin;
+    float t = dot(toFrag, rayDir);
+    vec3 closestPoint = rayOrigin + rayDir * max(t, 0.0);
+    return length(v_fragWorldPos - closestPoint);
+}
+
+bool isInPointerRing() {
+    float dist = getFragToPointerRayDistance();
+    return dist >= getPointerRingInnerDistThreshold() && dist <= getPointerRingOuterDistThreshold();
+}
+
+vec4 mixWithPointerRing(in vec4 color) {
+    if (isPointerRingEnabled() && isInPointerRing()) {
+        vec3 ringColor = getPointerRingColor();
+        color.rgb = mix(color.rgb, ringColor, getPointerRingColorMix());
+    }
+    return color;
+}
+/*UTILITY_FUNCTIONS_END*/
 
 layout (constant_id = 0) const uint MATERIAL_TYPE = 0; 
 // --- User-overridable functions ---

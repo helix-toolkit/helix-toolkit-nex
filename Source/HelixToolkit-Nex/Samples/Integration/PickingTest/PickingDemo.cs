@@ -84,7 +84,9 @@ internal sealed class PickingDemo : IDisposable
 
         _renderContext = _engine.CreateRenderContext();
         _renderContext.Initialize();
-
+        _renderContext.PointerRing.Enabled = 1;
+        _renderContext.PointerRing.OuterDistThreshold = 0.6f;
+        _renderContext.PointerRing.InnerDistThreshold = 0.4f;
         _worldDataProvider = _engine.CreateWorldDataProvider();
         _worldDataProvider.Initialize();
 
