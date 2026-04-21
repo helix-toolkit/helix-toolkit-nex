@@ -1,3 +1,4 @@
+using HelixToolkit.Nex.Engine;
 using Interop.Common;
 using Microsoft.UI.Xaml;
 
@@ -14,7 +15,7 @@ namespace WinUIInterop
         public MainWindow()
         {
             InitializeComponent();
-            MainGrid.DataContext = new MainViewModel(HelixToolkit.Nex.Graphics.Format.RGBA_UN8);
+            MainGrid.DataContext = new MainViewModel(EngineInteropTarget.WinUI);
         }
     }
 }

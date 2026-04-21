@@ -8,6 +8,6 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        DataContext = new MainViewModel(HelixToolkit.Nex.Graphics.Format.BGRA_UN8);
+        DataContext = new MainViewModel(HelixToolkit.Nex.Engine.EngineInteropTarget.WPF);
     }
 }
