@@ -11,10 +11,8 @@ using HelixToolkit.Nex.Interop;
 using HelixToolkit.Nex.Interop.DirectX;
 using HelixToolkit.Nex.Rendering;
 using HelixToolkit.Nex.Rendering.PostEffects;
-using HelixToolkit.Nex.Rendering.RenderNodes;
 using HelixToolkit.Nex.Scene;
 using SceneSamples;
-using Format = HelixToolkit.Nex.Graphics.Format;
 
 namespace Interop.Common;
 
@@ -93,7 +91,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private long _lastTickFrame;
     private bool _disposedValue;
 
-    public MainViewModel(Format finalTextureFormat)
+    public MainViewModel(EngineInteropTarget target)
     {
         // 1. D3D11 device to get the adapter LUID
         using var d3d11 = new D3D11DeviceManager();
@@ -124,7 +122,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
                 effects.AddEffect(new ToneMapping() { EnableGammaCorrection = true });
                 effects.AddEffect(new ShowFPS());
             })
-            .AddNode(new RenderToFinalNode(finalTextureFormat))
+            .WithInteropTarget(target)
             .Build();
         // 5. World data + scene
         _worldDataProvider = _engine.CreateWorldDataProvider();
@@ -164,7 +162,11 @@ public partial class MainViewModel : ObservableObject, IDisposable
         {
             return;
         }
-        _root = await _scene!.BuildAsync(_vulkanContext!, _engine!.ResourceManager, _worldDataProvider!);
+        _root = await _scene!.BuildAsync(
+            _vulkanContext!,
+            _engine!.ResourceManager,
+            _worldDataProvider!
+        );
     }
 
     internal void TickSceneOnce(float deltaTime)

@@ -1,8 +1,13 @@
 using HelixToolkit.Nex.Rendering.ComputeNodes;
-using HelixToolkit.Nex.Rendering.RenderNodes;
 
 namespace HelixToolkit.Nex.Engine;
 
+public enum EngineInteropTarget
+{
+    None,
+    WPF,
+    WinUI,
+};
 /// <summary>
 /// Fluent builder for creating and configuring an <see cref="Engine"/> instance.
 /// <para>
@@ -62,6 +67,7 @@ public sealed class EngineBuilder
     private readonly List<Action<IReadOnlyList<RenderNode>>> _nodeConfigurators = [];
     private PostEffectsNode _postEffectsNode = new();
     private bool _addRenderToFinal;
+    private EngineInteropTarget _interopTarget = EngineInteropTarget.None;
     private Action<IResourceManager>? _onResourceManagerReady;
 
     private EngineBuilder(IContext context)
@@ -219,6 +225,50 @@ public sealed class EngineBuilder
     }
 
     /// <summary>
+    /// Configures the engine builder to target Windows Presentation Foundation (WPF) interop.
+    /// </summary>
+    /// <remarks>Call this method when building an engine that will be used in a WPF application. This method
+    /// enables WPF-specific interop features. This method can be chained with other configuration methods.</remarks>
+    /// <returns>The current instance of <see cref="EngineBuilder"/> with WPF interop enabled.</returns>
+    public EngineBuilder WithWpf()
+    {
+        _interopTarget = EngineInteropTarget.WPF;
+        _addRenderToFinal = true;
+        return this;
+    }
+
+    /// <summary>
+    /// Build the engine with WinUI interop support. This configures the engine to use WinUI-compatible
+    /// rendering and input handling.
+    /// </summary>
+    /// <returns>The current instance of <see cref="EngineBuilder"/> with WinUI interop enabled.</returns>
+    public EngineBuilder WithWinUI()
+    {
+        _interopTarget = EngineInteropTarget.WinUI;
+        _addRenderToFinal = true;
+        return this;
+    }
+
+    /// <summary>
+    /// Configures the engine to use the specified interop target for rendering operations.
+    /// </summary>
+    /// <remarks>If an interop target other than EngineInteropTarget.None is specified, additional rendering
+    /// to the final output is enabled. This method supports fluent configuration by returning the same EngineBuilder
+    /// instance.</remarks>
+    /// <param name="target">The interop target to be used by the engine. Specify a value other than EngineInteropTarget.None to enable
+    /// interop rendering.</param>
+    /// <returns>The current instance of EngineBuilder with the updated interop target configuration.</returns>
+    public EngineBuilder WithInteropTarget(EngineInteropTarget target)
+    {
+        _interopTarget = target;
+        if (target != EngineInteropTarget.None)
+        {
+            _addRenderToFinal = true;
+        }
+        return this;
+    }
+
+    /// <summary>
     /// Builds and initializes the <see cref="Engine"/>.
     /// <para>
     /// This method:
@@ -271,7 +321,18 @@ public sealed class EngineBuilder
         _postEffectsNode = new();
         if (_addRenderToFinal)
         {
-            engine.AddNode(new RenderToFinalNode(_context.GetSwapchainFormat()));
+            switch (_interopTarget)
+            {
+                case EngineInteropTarget.WPF:
+                    engine.AddNode(new RenderToFinalNode(Format.BGRA_UN8));
+                    break;
+                case EngineInteropTarget.WinUI:
+                    engine.AddNode(new RenderToFinalNode(Format.RGBA_UN8));
+                    break;
+                default:
+                    engine.AddNode(new RenderToFinalNode(_context.GetSwapchainFormat()));
+                    break;
+            }
         }
 
         // --- Initialize rendering infrastructure ---
