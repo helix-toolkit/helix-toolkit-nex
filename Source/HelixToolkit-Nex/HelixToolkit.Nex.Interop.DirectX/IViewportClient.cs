@@ -29,5 +29,5 @@ public interface IViewportClient
     /// </summary>
     /// <param name="context">The per-viewport render context (window size, camera, output texture).</param>
     /// <param name="deltaTime">Seconds elapsed since the previous frame.</param>
-    void Update(RenderContext context, float deltaTime);
+    ICameraParamsProvider Update(RenderContext context, float deltaTime);
 }

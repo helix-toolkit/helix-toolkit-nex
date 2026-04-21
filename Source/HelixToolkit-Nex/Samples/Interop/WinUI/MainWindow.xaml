@@ -16,22 +16,33 @@
     <MicaBackdrop />
   </Window.SystemBackdrop>
 
-  <Grid>
-    <Grid.DataContext>
-      <common:MainViewModel />
-    </Grid.DataContext>
+  <Grid Name="MainGrid">
     <Grid.ColumnDefinitions>
       <ColumnDefinition></ColumnDefinition>
       <ColumnDefinition Width="Auto" />
       <ColumnDefinition></ColumnDefinition>
     </Grid.ColumnDefinitions>
-    <hx:HelixViewport x:Name="ViewportFly" Grid.Column="0" Engine="{Binding Engine}" ViewportClient="{Binding FlyClient}" CameraController="{Binding FlyCameraController}" />
+    <hx:HelixViewport
+      x:Name="ViewportFly"
+      Grid.Column="0"
+      Engine="{Binding Engine}"
+      ViewportClient="{Binding FlyClient}"
+      CameraController="{Binding FlyCameraController}"
+      PointerRingEnabled="{Binding IsPointerRingEnabled, Mode=OneWay}"
+    />
     <toolkits:GridSplitter
       Grid.Column="1"
       ResizeBehavior="PreviousAndNext"
       ResizeDirection="Columns"
     />
-    <hx:HelixViewport x:Name="ViewportOverhead" Grid.Column="2" Engine="{Binding Engine}" ViewportClient="{Binding OverheadClient}" CameraController="{Binding OverheadCameraController}" />
+    <hx:HelixViewport
+      x:Name="ViewportOverhead"
+      Grid.Column="2"
+      Engine="{Binding Engine}"
+      ViewportClient="{Binding OverheadClient}"
+      CameraController="{Binding OverheadCameraController}"
+      PointerRingEnabled="{Binding IsPointerRingEnabled, Mode=OneWay}"
+    />
     <Grid
       Grid.ColumnSpan="3"
       VerticalAlignment="Bottom"
@@ -40,8 +51,17 @@
       Background="MidnightBlue"
     >
       <StackPanel Orientation="Horizontal">
-        <Button Margin="10" MinWidth="120" Content="WinUI Button 1" />
-        <Button Margin="10" MinWidth="120" Content="WinUI Button 2" />
+        <Button
+          Margin="10"
+          MinWidth="120"
+          Content="Load Scene"
+          Command="{Binding LoadSceneCommand}"
+        />
+        <CheckBox
+          Margin="10"
+          Content="Enable Pointer Ring"
+          IsChecked="{Binding IsPointerRingEnabled, Mode=TwoWay}"
+        />
       </StackPanel>
     </Grid>
   </Grid>

@@ -502,8 +502,9 @@ public interface IContext : IInitializable
     /// <param name="offset">Byte offset within the buffer.</param>
     /// <param name="data">Data array.</param>
     /// <param name="count">Data count in data array.</param>
-    /// <returns>An <see cref="AsyncUploadHandle"/> that tracks the upload's completion.</returns>
-    AsyncUploadHandle UploadAsync<T>(in BufferHandle handle, size_t offset, T[] data, size_t count)
+    /// <returns>An <see cref="AsyncUploadHandle{THandle}"/> that tracks the upload's completion,
+    /// yielding the <see cref="BufferHandle"/> alongside the <see cref="ResultCode"/> when awaited.</returns>
+    AsyncUploadHandle<BufferHandle> UploadAsync<T>(in BufferHandle handle, size_t offset, T[] data, size_t count)
         where T : unmanaged
     {
         // Default implementation: synchronous fallback
@@ -516,9 +517,7 @@ public interface IContext : IInitializable
                 (nint)ptr.Pointer,
                 count * NativeHelper.SizeOf<T>()
             );
-            var h = new AsyncUploadHandle();
-            h.Complete(result);
-            return h;
+            return AsyncUploadHandle<BufferHandle>.CreateCompleted(result, handle);
         }
     }
 
@@ -542,8 +541,9 @@ public interface IContext : IInitializable
     /// <param name="handle">The buffer handle to upload data to.</param>
     /// <param name="offset">Byte offset within the buffer.</param>
     /// <param name="data">Data in <see cref="FastList{T}"/>.</param>
-    /// <returns>An <see cref="AsyncUploadHandle"/> that tracks the upload's completion.</returns>
-    AsyncUploadHandle UploadAsync<T>(in BufferHandle handle, size_t offset, FastList<T> data)
+    /// <returns>An <see cref="AsyncUploadHandle{THandle}"/> that tracks the upload's completion,
+    /// yielding the <see cref="BufferHandle"/> alongside the <see cref="ResultCode"/> when awaited.</returns>
+    AsyncUploadHandle<BufferHandle> UploadAsync<T>(in BufferHandle handle, size_t offset, FastList<T> data)
         where T : unmanaged
     {
         return UploadAsync(handle, offset, data.GetInternalArray(), (size_t)data.Count);
@@ -570,8 +570,9 @@ public interface IContext : IInitializable
     /// <param name="range">The texture range to upload to.</param>
     /// <param name="data">Data array.</param>
     /// <param name="count">data count in data array</param>
-    /// <returns>An <see cref="AsyncUploadHandle"/> that tracks the upload's completion.</returns>
-    AsyncUploadHandle UploadAsync<T>(
+    /// <returns>An <see cref="AsyncUploadHandle{THandle}"/> that tracks the upload's completion,
+    /// yielding the <see cref="TextureHandle"/> alongside the <see cref="ResultCode"/> when awaited.</returns>
+    AsyncUploadHandle<TextureHandle> UploadAsync<T>(
         in TextureHandle handle,
         TextureRangeDesc range,
         T[] data,
@@ -584,9 +585,7 @@ public interface IContext : IInitializable
         {
             using var ptr = data.Pin();
             var result = Upload(handle, range, (nint)ptr.Pointer, count * NativeHelper.SizeOf<T>());
-            var h = new AsyncUploadHandle();
-            h.Complete(result);
-            return h;
+            return AsyncUploadHandle<TextureHandle>.CreateCompleted(result, handle);
         }
     }
 }

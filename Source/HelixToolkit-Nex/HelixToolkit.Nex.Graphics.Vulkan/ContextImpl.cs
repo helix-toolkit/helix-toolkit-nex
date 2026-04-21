@@ -6,7 +6,7 @@ internal sealed partial class VulkanContext : Initializable, IContext
 
     public bool HasDedicatedTransferQueue => DeviceQueues.HasDedicatedTransferQueue;
 
-    public AsyncUploadHandle UploadAsync<T>(
+    public AsyncUploadHandle<BufferHandle> UploadAsync<T>(
         in BufferHandle handle,
         size_t offset,
         T[] data,
@@ -15,18 +15,10 @@ internal sealed partial class VulkanContext : Initializable, IContext
         where T : unmanaged
     {
         if (data.Length < count)
-        {
-            var h = new AsyncUploadHandle();
-            h.Complete(ResultCode.ArgumentOutOfRange);
-            return h;
-        }
+            return AsyncUploadHandle<BufferHandle>.CreateCompleted(ResultCode.ArgumentOutOfRange, handle);
 
         if (count == 0)
-        {
-            var h = new AsyncUploadHandle();
-            h.Complete(ResultCode.Ok);
-            return h;
-        }
+            return AsyncUploadHandle<BufferHandle>.CreateCompleted(ResultCode.Ok, handle);
 
         if (_transferQueue is null)
         {
@@ -40,16 +32,14 @@ internal sealed partial class VulkanContext : Initializable, IContext
                     (nint)ptr.Pointer,
                     count * NativeHelper.SizeOf<T>()
                 );
-                var h = new AsyncUploadHandle();
-                h.Complete(result);
-                return h;
+                return AsyncUploadHandle<BufferHandle>.CreateCompleted(result, handle);
             }
         }
 
         return _transferQueue.EnqueueBufferUpload(handle, offset, data, count);
     }
 
-    public AsyncUploadHandle UploadAsync<T>(
+    public AsyncUploadHandle<TextureHandle> UploadAsync<T>(
         in TextureHandle handle,
         TextureRangeDesc range,
         T[] data,
@@ -58,17 +48,10 @@ internal sealed partial class VulkanContext : Initializable, IContext
         where T : unmanaged
     {
         if (data.Length < count)
-        {
-            var h = new AsyncUploadHandle();
-            h.Complete(ResultCode.ArgumentOutOfRange);
-            return h;
-        }
+            return AsyncUploadHandle<TextureHandle>.CreateCompleted(ResultCode.ArgumentOutOfRange, handle);
+
         if (count == 0)
-        {
-            var h = new AsyncUploadHandle();
-            h.Complete(ResultCode.Ok);
-            return h;
-        }
+            return AsyncUploadHandle<TextureHandle>.CreateCompleted(ResultCode.Ok, handle);
 
         if (_transferQueue is null)
         {
@@ -82,9 +65,7 @@ internal sealed partial class VulkanContext : Initializable, IContext
                     (nint)ptr.Pointer,
                     count * NativeHelper.SizeOf<T>()
                 );
-                var h = new AsyncUploadHandle();
-                h.Complete(result);
-                return h;
+                return AsyncUploadHandle<TextureHandle>.CreateCompleted(result, handle);
             }
         }
 

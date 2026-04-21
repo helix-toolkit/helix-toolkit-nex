@@ -7,7 +7,7 @@ namespace HelixToolkit.Nex.Wpf;
 /// Creates a D3D9Ex context and device so that shared-handle textures can be used
 /// as back buffers for <c>D3DImage.SetBackBuffer</c>.
 /// </summary>
-public sealed unsafe class D3D9DeviceManager : IDisposable
+public sealed class D3D9DeviceManager : IDisposable
 {
     private IDirect3D9Ex _context;
     private IDirect3DDevice9Ex _device;

@@ -5,13 +5,10 @@ using System.Windows.Media;
 using HelixToolkit.Nex.Engine.CameraControllers;
 using HelixToolkit.Nex.Interop;
 using HelixToolkit.Nex.Interop.DirectX;
-using HelixToolkit.Nex.Rendering;
 using Microsoft.Extensions.Logging;
 using Vortice.Direct3D9;
 using Vortice.Vulkan;
 using Rect = System.Windows.Rect;
-using Size = HelixToolkit.Nex.Maths.Size;
-using TextureHandle = HelixToolkit.Nex.Handle<HelixToolkit.Nex.Graphics.Texture>;
 
 namespace HelixToolkit.Nex.Wpf;
 
@@ -42,15 +39,7 @@ public partial class HelixViewport : FrameworkElement, IDisposable
     private TimeSpan _lastRenderTime;
     private long _lastTimestamp;
     private bool _disposed;
-    private Engine.Engine? _engine;
-    private IViewportClient? _viewportClient;
-    private ICameraController? _cameraController;
     private bool _sizeChanged = true;
-
-    private ViewportRenderingEventArgs? _renderArgs;
-
-    /// <summary>Per-viewport render context (window size, camera, final output texture).</summary>
-    private RenderContext? _renderContext;
 
     /// <summary>
     /// Raised each frame after <see cref="IViewportClient.Update"/> but before rendering.
@@ -204,39 +193,8 @@ public partial class HelixViewport : FrameworkElement, IDisposable
             return;
 
         // Compute delta time
-        long now = System.Diagnostics.Stopwatch.GetTimestamp();
-        float delta =
-            _lastTimestamp == 0
-                ? 0f
-                : (float)(now - _lastTimestamp) / System.Diagnostics.Stopwatch.Frequency;
-        _lastTimestamp = now;
-
-        // Update window size and delta time
-        _renderArgs.DeltaTime = delta;
-        _renderContext.WindowSize = new Size((int)ActualWidth, (int)ActualHeight);
-
-        _cameraController?.Update(delta);
-        // Pull per-frame data from the viewport client
-        if (_viewportClient is null)
+        if (!Render((float)ActualWidth, (float)ActualHeight))
             return;
-
-        _viewportClient.Update(_renderContext, delta);
-
-        var dataProvider = _viewportClient.DataProvider;
-        if (dataProvider is null)
-            return;
-
-        // Notify optional subscribers (read-only)
-        BeforeRender?.Invoke(this, _renderArgs);
-
-        EnsureSize();
-
-        var context = Engine.Context;
-
-        // Render offscreen
-        var cmdBuf = Engine.RenderOffscreen(_renderContext, dataProvider);
-        var submitHandle = context.Submit(cmdBuf, TextureHandle.Null);
-        context.Wait(submitHandle);
 
         //// Present through D3DImage
         _d3dImage.Lock();
@@ -333,6 +291,7 @@ public partial class HelixViewport : FrameworkElement, IDisposable
 
     private void OnMouseLeave(object sender, System.Windows.Input.MouseEventArgs e)
     {
+        ResetPointerLocation();
         if (ActiveDrag)
         {
             return;

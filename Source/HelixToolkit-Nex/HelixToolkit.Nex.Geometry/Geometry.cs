@@ -62,7 +62,7 @@ public enum GeometryBufferType
 public readonly struct GeometryResourceType { }
 
 [JsonConverter(typeof(Serialization.GeometryJsonConverter))]
-public partial class Geometry : ObservableObject, IDisposable
+public partial class Geometry : HxObservableObject, IDisposable
 {
     private static readonly ILogger logger = LogManager.Create<Geometry>();
     private static readonly ITracer _tracer = TracerFactory.GetTracer(nameof(Geometry));
@@ -415,7 +415,7 @@ public partial class Geometry : ObservableObject, IDisposable
     /// <param name="context">The graphics context used to create and manage the buffers. Must not be <c>null</c>.</param>
     /// <param name="types">A bitwise combination of <see cref="GeometryBufferType"/> values indicating which buffers to update.</param>
     /// <returns>A <see cref="ResultCode"/> indicating whether buffer creation and upload scheduling succeeded.</returns>
-    public ResultCode UpdateBuffersAsync(IContext context, GeometryBufferType types)
+    internal ResultCode ScheduleBufferUploadsInternal(IContext context, GeometryBufferType types)
     {
         // Dynamic buffers use mapped memory — no benefit from async transfer
         if (IsDynamic)
@@ -427,7 +427,7 @@ public partial class Geometry : ObservableObject, IDisposable
             return ResultCode.InvalidState;
         }
 
-        using var scope = _tracer.BeginScope(nameof(UpdateBuffersAsync), TRACE_BUFFER);
+        using var scope = _tracer.BeginScope(nameof(ScheduleBufferUploadsInternal), TRACE_BUFFER);
 
         var pending = new PendingBufferUpdate();
         var hasAnyUpload = false;
@@ -552,13 +552,56 @@ public partial class Geometry : ObservableObject, IDisposable
     }
 
     /// <summary>
-    /// Asynchronously updates all dirty geometry buffers using the transfer queue.
+    /// Schedules asynchronous GPU uploads for all dirty geometry buffers and returns a <see cref="Task{ResultCode}"/>
+    /// that completes — and automatically applies the new buffers — once all transfers finish.
+    /// </summary>
+    /// <remarks>
+    /// This is the preferred entry-point for callers that want to <c>await</c> buffer upload completion.
+    /// Internally it calls <see cref="ScheduleBufferUploadsInternal"/> to enqueue the GPU transfers and
+    /// then awaits <see cref="WaitForPendingUploadsAsync"/> before returning.
+    /// For dynamic (host-visible) geometries the method falls back to the synchronous path.
+    /// </remarks>
+    /// <param name="context">The graphics context used to create and manage the buffers.</param>
+    /// <param name="types">A bitwise combination of <see cref="GeometryBufferType"/> values indicating which buffers to update.</param>
+    /// <returns>A <see cref="Task{T}"/> whose result is a <see cref="ResultCode"/> indicating success or failure.</returns>
+    public async Task<ResultCode> UpdateBuffersAsync(IContext context, GeometryBufferType types)
+    {
+        var scheduleResult = ScheduleBufferUploadsInternal(context, types);
+        if (scheduleResult != ResultCode.Ok)
+            return scheduleResult;
+        return await WaitForPendingUploadsAsync();
+    }
+
+    /// <summary>
+    /// Schedules asynchronous GPU uploads for all dirty geometry buffers and returns a <see cref="Task{ResultCode}"/>
+    /// that completes — and automatically applies the new buffers — once all transfers finish.
     /// </summary>
     /// <param name="context">The graphics context used to create and manage the buffers.</param>
-    /// <returns>A <see cref="ResultCode"/> indicating whether buffer creation and upload scheduling succeeded.</returns>
-    public ResultCode UpdateBuffersAsync(IContext context)
+    /// <returns>A <see cref="Task{T}"/> whose result is a <see cref="ResultCode"/> indicating success or failure.</returns>
+    public Task<ResultCode> UpdateBuffersAsync(IContext context)
     {
         return UpdateBuffersAsync(context, BufferDirty);
+    }
+
+    /// <summary>
+    /// Returns a <see cref="Task{T}"/> that completes when the currently pending GPU upload finishes
+    /// and the new buffers have been applied via <see cref="ApplyPendingBuffers"/>.
+    /// </summary>
+    /// <remarks>
+    /// If there are no pending uploads the returned task completes immediately with <see cref="ResultCode.Ok"/>.
+    /// Call this after <see cref="ScheduleBufferUploadsInternal"/> when you want to separate scheduling
+    /// (done inside a lock) from awaiting (done outside the lock).
+    /// </remarks>
+    /// <returns>A <see cref="Task{T}"/> whose result is <see cref="ResultCode.Ok"/> on success.</returns>
+    public async Task<ResultCode> WaitForPendingUploadsAsync()
+    {
+        if (_pendingBufferUpdate is null)
+            return ResultCode.Ok;
+
+        var pending = _pendingBufferUpdate;
+        await Task.WhenAll(pending.UploadHandles.Select(h => h.WhenCompleted));
+        ApplyPendingBuffers();
+        return ResultCode.Ok;
     }
 
     /// <summary>
@@ -652,7 +695,7 @@ public partial class Geometry : ObservableObject, IDisposable
     private sealed class PendingBufferUpdate
     {
         public GeometryBufferType Types;
-        public readonly List<AsyncUploadHandle> UploadHandles = [];
+        public readonly List<IAsyncUploadHandle> UploadHandles = [];
 
         /// <summary>
         /// Gets a value indicating whether all async uploads have completed.
@@ -739,6 +782,7 @@ public partial class Geometry : ObservableObject, IDisposable
     {
         if (!_disposedValue)
         {
+            _disposedValue = true; // Set eagerly to prevent re-entrant disposal via Manager.Remove → Pool.Destroy
             if (disposing)
             {
                 _pendingBufferUpdate = null;
@@ -751,7 +795,6 @@ public partial class Geometry : ObservableObject, IDisposable
 
             // TODO: free unmanaged resources (unmanaged objects) and override finalizer
             // TODO: set large fields to null
-            _disposedValue = true;
         }
     }
 

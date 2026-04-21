@@ -3,7 +3,11 @@
         <TargetFramework>net8.0-windows</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+        <LangVersion>latest</LangVersion>
     </PropertyGroup>
+    <ItemGroup>
+      <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    </ItemGroup>
 
     <ItemGroup>
         <ProjectReference Include="..\..\..\HelixToolkit.Nex.Engine\HelixToolkit.Nex.Engine.csproj" />

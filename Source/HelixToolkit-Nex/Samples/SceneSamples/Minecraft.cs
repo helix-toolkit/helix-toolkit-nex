@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.Numerics;
-using HelixToolkit.Nex;
 using HelixToolkit.Nex.Engine;
 using HelixToolkit.Nex.Engine.Components;
 using HelixToolkit.Nex.Geometries;
@@ -139,7 +138,7 @@ public class MinecraftScene : IScene
     /// <param name="context">Graphics context used to upload instancing buffers to the GPU.</param>
     /// <param name="resourceManager">Provides geometry and material property pools.</param>
     /// <param name="worldDataProvider">ECS world used to create scene nodes.</param>
-    public Node Build(
+    public async Task<Node> BuildAsync(
         IContext context,
         IResourceManager resourceManager,
         WorldDataProvider worldDataProvider
@@ -152,14 +151,14 @@ public class MinecraftScene : IScene
         var meshBuilder = new MeshBuilder(true, true, true);
         meshBuilder.AddCube();
         var cube = meshBuilder.ToMesh().ToGeometry();
-        bool succ = geometryManager.Add(cube, out _);
+        var (succ, _) = await geometryManager.AddAsync(cube);
         Debug.Assert(succ, "Failed to add cube geometry");
 
         // Small sphere mesh used to visualise each point light source
         meshBuilder = new MeshBuilder(true, true, true);
         meshBuilder.AddSphere(Vector3.Zero, 0.3f, 12, 12);
         var lightSphere = meshBuilder.ToMesh().ToGeometry();
-        succ = geometryManager.Add(lightSphere, out _);
+        (succ, _) = await geometryManager.AddAsync(lightSphere);
         Debug.Assert(succ, "Failed to add light sphere geometry");
 
         var root = new Node(worldDataProvider.World, "MinecraftRoot");
@@ -200,7 +199,7 @@ public class MinecraftScene : IScene
         // ------------------------------------------------------------------
         // Generate terrain heightmap and populate per-block-type instance transforms
         // ------------------------------------------------------------------
-        int[,] heightMap = GenerateHeightMap(WorldSizeX, WorldSizeZ);
+        int[,] heightMap = await GenerateHeightMap(WorldSizeX, WorldSizeZ);
 
         for (int x = 0; x < WorldSizeX; x++)
         {
@@ -306,13 +305,6 @@ public class MinecraftScene : IScene
             }
         );
 
-        // ------------------------------------------------------------------
-        // Flatten hierarchy and synchronise world transforms
-        // ------------------------------------------------------------------
-        var allNodes = new FastList<Node>();
-        root.Flatten(node => node.Enabled, allNodes);
-        allNodes.UpdateTransforms();
-
         return root;
     }
 
@@ -323,7 +315,7 @@ public class MinecraftScene : IScene
     /// <summary>
     /// Generates a 2D heightmap using layered sine/cosine waves for natural terrain variation.
     /// </summary>
-    public int[,] GenerateHeightMap(int sizeX, int sizeZ)
+    public async Task<int[,]> GenerateHeightMap(int sizeX, int sizeZ)
     {
         var map = new int[sizeX, sizeZ];
         for (int x = 0; x < sizeX; x++)

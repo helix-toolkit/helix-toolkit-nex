@@ -45,7 +45,7 @@ public struct PointCloudComponent
     /// for rendering this point cloud. Defaults to 0, which corresponds to the default point material (e.g., a simple
     /// (circle SDF). Register custom materials via <see cref="PointMaterialRegistry"/>.
     /// </summary>
-    public MaterialTypeId PointMaterialId { get; set; }
+    public MaterialTypeId PointMaterialId { get; internal set; }
 
     /// <summary>
     /// Represents the size for each point in the cloud. The interpretation of this value depends on the <see cref="FixedSize"/> field:

@@ -16,6 +16,15 @@ public interface IScene
         IContext context,
         IResourceManager resourceManager,
         WorldDataProvider worldDataProvider
+    )
+    {
+        return BuildAsync(context, resourceManager, worldDataProvider).Result;
+    }
+
+    Task<Node> BuildAsync(
+        IContext context,
+        IResourceManager resourceManager,
+        WorldDataProvider worldDataProvider
     );
 
     void Tick(float deltaTime);

@@ -40,6 +40,58 @@ public sealed class GeometryManager(IContext context) : IGeometryManager
         return Add(geometry, true, out id);
     }
 
+    /// <summary>
+    /// Adds the geometry to the pool, schedules GPU buffer uploads, and returns a <see cref="Task"/> that
+    /// completes once all GPU transfers have finished and the new buffers are live.
+    /// </summary>
+    /// <remarks>
+    /// The synchronous registration (pool entry, property-change subscription, bounds) is performed
+    /// inside the internal lock. The GPU upload is then awaited <em>outside</em> the lock so that other
+    /// threads are not blocked while data is transferred to the GPU.
+    /// </remarks>
+    /// <param name="geometry">The geometry to add. Must not already belong to a manager.</param>
+    /// <returns>
+    /// A <see cref="Task{T}"/> whose result is a <c>(bool Success, uint Id)</c> tuple.
+    /// <c>Success</c> is <see langword="false"/> if the geometry already belongs to another manager.
+    /// </returns>
+    public async Task<(bool Success, uint Id)> AddAsync(Geometry geometry)
+    {
+        if (geometry.Handle.Valid || geometry.Manager is not null)
+        {
+            _logger.LogError("Geometry already belongs to a GeometryManager.");
+            return (false, 0);
+        }
+
+        uint id;
+        lock (_lock)
+        {
+            var handle = _pool.Create(geometry);
+            if (!handle.Valid)
+                return (false, 0);
+
+            geometry.Handle = handle;
+            geometry.Manager = this;
+            geometry.PropertyChanged += Geometry_PropertyChanged;
+            geometry.UpdateBounds();
+
+            if (!geometry.IsDynamic)
+            {
+                TotalStaticIndexCount += (int)geometry.IndexCount;
+                _indexCountDict[geometry] = (int)geometry.IndexCount;
+            }
+
+            id = geometry.Id;
+            _eventBus.Publish(new GeometryUpdatedEvent(geometry.Id, GeometryChangeOp.Added));
+
+            // Schedule GPU transfers inside the lock (fast: only enqueues work, no blocking I/O).
+            geometry.ScheduleBufferUploadsInternal(_context, geometry.BufferDirty).CheckResult();
+        }
+
+        // Await GPU completion outside the lock so other threads aren’t blocked.
+        await geometry.WaitForPendingUploadsAsync();
+        return (true, id);
+    }
+
     public bool Add(Geometry geometry, bool async, out uint id)
     {
         id = 0;
@@ -58,7 +110,7 @@ public sealed class GeometryManager(IContext context) : IGeometryManager
                 geometry.PropertyChanged += Geometry_PropertyChanged;
                 if (async)
                 {
-                    geometry.UpdateBuffersAsync(_context).CheckResult();
+                    geometry.ScheduleBufferUploadsInternal(_context, geometry.BufferDirty).CheckResult();
                 }
                 else
                 {
@@ -156,18 +208,23 @@ public sealed class GeometryManager(IContext context) : IGeometryManager
 
     public bool Remove(Geometry geometry)
     {
-        if (geometry.Manager != this || !geometry.Handle.Valid)
+        // geometry.Manager may already be null if Remove is called from Geometry.Dispose
+        // (which nulls Manager first to prevent re-entrant disposal loops).
+        if ((geometry.Manager != this && geometry.Manager is not null) || !geometry.Handle.Valid)
         {
             _logger.LogError("Geometry does not belong to this GeometryManager.");
             return false;
         }
         lock (_lock)
         {
-            _pool.Destroy(geometry.Handle);
-            var id = geometry.Id;
-            geometry.PropertyChanged -= Geometry_PropertyChanged;
+            var handle = geometry.Handle;
+            var id = geometry.Id; // save before clearing the handle
+            // Clear the handle and manager reference BEFORE destroying the pool entry,
+            // because Pool.Destroy calls geometry.Dispose() which would otherwise re-enter Remove.
             geometry.Handle = Handle<GeometryResourceType>.Null;
             geometry.Manager = null;
+            geometry.PropertyChanged -= Geometry_PropertyChanged;
+            _pool.Destroy(handle);
             if (_indexCountDict.ContainsKey(geometry))
             {
                 TotalStaticIndexCount -= _indexCountDict[geometry];

@@ -16,7 +16,14 @@
       <ColumnDefinition Width="Auto" />
       <ColumnDefinition></ColumnDefinition>
     </Grid.ColumnDefinitions>
-    <hx:HelixViewport x:Name="ViewportFly" Grid.Column="0" Engine="{Binding Engine}" ViewportClient="{Binding FlyClient}" CameraController="{Binding FlyCameraController}" />
+    <hx:HelixViewport
+      x:Name="ViewportFly"
+      Grid.Column="0"
+      Engine="{Binding Engine}"
+      ViewportClient="{Binding FlyClient}"
+      CameraController="{Binding FlyCameraController}"
+      PointerRingEnabled="{Binding IsPointerRingEnabled, Mode=OneWay}"
+    />
     <GridSplitter
       Grid.Column="1"
       Width="5"
@@ -25,7 +32,14 @@
       ResizeDirection="Columns"
       ResizeBehavior="PreviousAndNext"
     />
-    <hx:HelixViewport x:Name="ViewportOverhead" Grid.Column="2" Engine="{Binding Engine}" ViewportClient="{Binding OverheadClient}" CameraController="{Binding OverheadCameraController}" />
+    <hx:HelixViewport
+      x:Name="ViewportOverhead"
+      Grid.Column="2"
+      Engine="{Binding Engine}"
+      ViewportClient="{Binding OverheadClient}"
+      CameraController="{Binding OverheadCameraController}"
+      PointerRingEnabled="{Binding IsPointerRingEnabled, Mode=OneWay}"
+    />
     <Grid
       Grid.ColumnSpan="3"
       VerticalAlignment="Bottom"
@@ -34,8 +48,18 @@
       Background="MidnightBlue"
     >
       <StackPanel Orientation="Horizontal">
-        <Button Margin="10" MinWidth="120" Content="Wpf Button 1" />
-        <Button Margin="10" MinWidth="120" Content="Wpf Button 2" />
+        <Button
+          Margin="10"
+          MinWidth="120"
+          Content="Load Scene"
+          Command="{Binding LoadSceneCommand}"
+        />
+        <CheckBox
+          Margin="10"
+          MinWidth="120"
+          Content="Pointer Ring Enabled"
+          IsChecked="{Binding IsPointerRingEnabled}"
+        />
       </StackPanel>
     </Grid>
   </Grid>

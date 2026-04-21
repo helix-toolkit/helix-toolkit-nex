@@ -51,6 +51,17 @@ public interface IGeometryManager : IDisposable
     bool AddAsync(Geometry geometry, out uint id);
 
     /// <summary>
+    /// Adds the geometry to the pool, schedules GPU buffer uploads, and returns a <see cref="Task"/> that
+    /// completes once all GPU transfers have finished and the new buffers are live.
+    /// </summary>
+    /// <param name="geometry">The geometry to add. Must not already belong to a manager.</param>
+    /// <returns>
+    /// A <see cref="Task{T}"/> whose result is a <c>(bool Success, uint Id)</c> tuple.
+    /// <c>Success</c> is <see langword="false"/> if the geometry already belongs to another manager.
+    /// </returns>
+    Task<(bool Success, uint Id)> AddAsync(Geometry geometry);
+
+    /// <summary>
     /// Remove geometry from Geometry Manager. You can also call geometry.Dispose() to remove geometry from Geometry Manager.
     /// </summary>
     /// <param name="geometry"></param>

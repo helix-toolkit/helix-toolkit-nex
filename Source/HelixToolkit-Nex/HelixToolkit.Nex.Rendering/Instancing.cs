@@ -44,7 +44,7 @@ public static class InstanceTransformExts
     }
 }
 
-public partial class Instancing : ObservableObject, IDisposable
+public partial class Instancing : HxObservableObject, IDisposable
 {
     public static readonly InstanceTransform Identity = new()
     {

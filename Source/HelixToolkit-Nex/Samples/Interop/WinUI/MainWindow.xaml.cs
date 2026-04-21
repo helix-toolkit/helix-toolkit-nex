@@ -1,3 +1,4 @@
+using Interop.Common;
 using Microsoft.UI.Xaml;
 
 // To learn more about WinUI, the WinUI project structure,
@@ -13,6 +14,7 @@ namespace WinUIInterop
         public MainWindow()
         {
             InitializeComponent();
+            MainGrid.DataContext = new MainViewModel(HelixToolkit.Nex.Graphics.Format.RGBA_UN8);
         }
     }
 }

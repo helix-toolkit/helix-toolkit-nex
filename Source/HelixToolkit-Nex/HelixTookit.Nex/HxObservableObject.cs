@@ -43,7 +43,7 @@ public sealed class ObservableAttribute : Attribute
     public string? Default { get; set; }
 }
 
-public abstract class ObservableObject : INotifyPropertyChanged
+public abstract class HxObservableObject : INotifyPropertyChanged
 {
     private bool _disablePropertyChangedEvent = false;
     public bool DisablePropertyChangedEvent
