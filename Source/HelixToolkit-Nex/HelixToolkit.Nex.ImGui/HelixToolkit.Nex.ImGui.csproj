@@ -8,9 +8,14 @@
         <IncludeSymbols>True</IncludeSymbols>
         <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
         <PackageReadmeFile>README.md</PackageReadmeFile>
+        <PackageIcon>icon.png</PackageIcon>
     </PropertyGroup>
     <ItemGroup>
-        <None Include="..\..\..\README.md">
+        <None Include="README.md">
+            <Pack>True</Pack>
+            <PackagePath>\</PackagePath>
+        </None>
+        <None  Include="..\..\..\Assets\icon.png">
             <Pack>True</Pack>
             <PackagePath>\</PackagePath>
         </None>
