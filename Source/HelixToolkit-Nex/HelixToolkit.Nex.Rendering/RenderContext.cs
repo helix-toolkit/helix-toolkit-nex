@@ -215,6 +215,12 @@ public sealed class RenderContext(IServiceProvider services) : Initializable
     public void SetPointer(float x, float y)
     {
         Pointer = new Vector2(x, y);
+        if (Pointer.X < 0 || Pointer.Y < 0 || Pointer.X > WindowSize.Width || Pointer.Y > WindowSize.Height)
+        {
+            PointerRing.RayDirection = Vector3.Zero;
+            PointerRing.RayOrigin = Vector3.Zero;
+            return;
+        }
         if (this.TryUnProject(x, y, out var ray))
         {
             PointerRing.RayDirection = ray.Direction;

@@ -8,9 +8,9 @@ public static class Extensions
         return id;
     }
 
-    public static uint AddAsync(this Engine engine, Geometry geometry)
+    public static async Task<uint> AddAsync(this Engine engine, Geometry geometry)
     {
-        engine.ResourceManager.Geometries.AddAsync(geometry, out var id);
+        var (_, id) = await engine.ResourceManager.Geometries.AddAsync(geometry);
         return id;
     }
 }

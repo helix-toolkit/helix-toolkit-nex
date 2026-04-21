@@ -1,6 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Text;
 using HelixToolkit.Nex.Engine.CameraControllers;
 using HelixToolkit.Nex.Interop;
 #if HxWPF
@@ -30,7 +27,7 @@ public partial class HelixViewport
     >(
         "Engine",
         null,
-        (d, e) =>
+        static (d, e) =>
         {
             if (d is not HelixViewport viewport)
             {
@@ -51,7 +48,7 @@ public partial class HelixViewport
     >(
         "ViewportClient",
         null,
-        (d, e) =>
+        static (d, e) =>
         {
             if (d is not HelixViewport viewport)
             {
@@ -76,7 +73,7 @@ public partial class HelixViewport
     >(
         "CameraController",
         null,
-        (d, e) =>
+        static (d, e) =>
         {
             if (d is not HelixViewport viewport)
             {
@@ -121,6 +118,23 @@ public partial class HelixViewport
     {
         get { return (ViewportMouseButton)GetValue(PanMouseButtonDp); }
         set { SetValue(PanMouseButtonDp, value); }
+    }
+
+    public static readonly DependencyProperty PointerRingEnabledDp = HelixProperty.Register<
+        HelixViewport,
+        bool
+    >("PointerRingEnabled", false, static (d, e) =>
+    {
+        (d as HelixViewport)?.RenderContext?.PointerRing.Enabled = (bool)e.NewValue ? 1u : 0;
+    });
+
+    /// <summary>
+    /// Gets or sets a value indicating whether the pointer ring is enabled.
+    /// </summary>
+    public bool PointerRingEnabled
+    {
+        get { return (bool)GetValue(PointerRingEnabledDp); }
+        set { SetValue(PointerRingEnabledDp, value); }
     }
     #endregion
 }

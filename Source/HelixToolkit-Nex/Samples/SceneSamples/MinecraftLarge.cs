@@ -260,7 +260,7 @@ public class MinecraftLargeScene : IScene
     /// Builds the Minecraft world and returns the root <see cref="Node"/> containing all blocks,
     /// point lights, spot lights, animals, and the directional sun.
     /// </summary>
-    public Node Build(
+    public async Task<Node> BuildAsync(
         IContext context,
         IResourceManager resourceManager,
         WorldDataProvider worldDataProvider
@@ -273,14 +273,14 @@ public class MinecraftLargeScene : IScene
         var meshBuilder = new MeshBuilder(true, true, true);
         meshBuilder.AddCube();
         var cube = meshBuilder.ToMesh().ToGeometry();
-        bool succ = geometryManager.AddAsync(cube, out _);
+        var (succ, _) = await geometryManager.AddAsync(cube);
         Debug.Assert(succ, "Failed to add cube geometry");
 
         // Small sphere mesh used to visualise each point light source
         meshBuilder = new MeshBuilder(true, true, true);
         meshBuilder.AddSphere(Vector3.Zero, 0.3f, 12, 12);
         var lightSphere = meshBuilder.ToMesh().ToGeometry();
-        succ = geometryManager.AddAsync(lightSphere, out _);
+        (succ, _) = await geometryManager.AddAsync(lightSphere);
         Debug.Assert(succ, "Failed to add light sphere geometry");
 
         var root = new Node(worldDataProvider.World, "MinecraftRoot");
@@ -424,12 +424,12 @@ public class MinecraftLargeScene : IScene
         // ------------------------------------------------------------------
         // Build animals: create meshes, materials, spawn on terrain
         // ------------------------------------------------------------------
-        BuildAnimals(context, geometryManager, materialPool, worldDataProvider, animalsNode);
+        await BuildAnimals(context, geometryManager, materialPool, worldDataProvider, animalsNode);
 
         // ------------------------------------------------------------------
         // Build spot lights: elevated positions, sweeping beams, cone visualisers
         // ------------------------------------------------------------------
-        BuildSpotLights(
+        await BuildSpotLights(
             context,
             geometryManager,
             materialPool,
@@ -461,7 +461,7 @@ public class MinecraftLargeScene : IScene
     /// Each animal is its own <see cref="Node"/> — movement is driven by
     /// <see cref="Node.Transform"/> rather than GPU instancing.
     /// </summary>
-    private void BuildAnimals(
+    private async Task BuildAnimals(
         IContext context,
         IGeometryManager geometryManager,
         IPBRMaterialPropertyManager materialPool,
@@ -470,10 +470,10 @@ public class MinecraftLargeScene : IScene
     )
     {
         var animalMeshes = new Geometry[4];
-        animalMeshes[(int)AnimalType.Cow] = BuildCowMesh(geometryManager);
-        animalMeshes[(int)AnimalType.Pig] = BuildPigMesh(geometryManager);
-        animalMeshes[(int)AnimalType.Chicken] = BuildChickenMesh(geometryManager);
-        animalMeshes[(int)AnimalType.Sheep] = BuildSheepMesh(geometryManager);
+        animalMeshes[(int)AnimalType.Cow] = await BuildCowMesh(geometryManager);
+        animalMeshes[(int)AnimalType.Pig] = await BuildPigMesh(geometryManager);
+        animalMeshes[(int)AnimalType.Chicken] = await BuildChickenMesh(geometryManager);
+        animalMeshes[(int)AnimalType.Sheep] = await BuildSheepMesh(geometryManager);
 
         var animalMatProps = new PBRMaterialProperties[4];
         for (int a = 0; a < 4; a++)
@@ -568,7 +568,7 @@ public class MinecraftLargeScene : IScene
     /// are given random sweep parameters; their beams are animated each frame via
     /// <see cref="UpdateSpotLights"/>.
     /// </summary>
-    private void BuildSpotLights(
+    private async Task BuildSpotLights(
         IContext context,
         IGeometryManager geometryManager,
         IPBRMaterialPropertyManager materialPool,
@@ -584,8 +584,8 @@ public class MinecraftLargeScene : IScene
         var mb = new MeshBuilder(true, true, true);
         mb.AddCone(Vector3.Zero, -Vector3.UnitY, 0f, 0.8f, 2.5f, false, true, 12);
         var coneMesh = mb.ToMesh().ToGeometry();
-        bool ok = geometryManager.AddAsync(coneMesh, out _);
-        Debug.Assert(ok, "Failed to add spot-light cone geometry");
+        var (succ, _) = await geometryManager.AddAsync(coneMesh);
+        Debug.Assert(succ, "Failed to add spot-light cone geometry");
 
         _spotLights.Clear();
 
@@ -779,7 +779,7 @@ public class MinecraftLargeScene : IScene
     // Animal mesh builders (Minecraft-style blocky animals)
     // -----------------------------------------------------------------------
 
-    private static Geometry BuildCowMesh(IGeometryManager geometryManager)
+    private static async Task<Geometry> BuildCowMesh(IGeometryManager geometryManager)
     {
         var mb = new MeshBuilder(true, true, true);
         mb.AddBox(new Vector3(0, 0.5f, 0), 0.8f, 0.7f, 1.4f);
@@ -789,11 +789,12 @@ public class MinecraftLargeScene : IScene
         mb.AddBox(new Vector3(-0.25f, 0.0f, -0.4f), 0.2f, 0.5f, 0.2f);
         mb.AddBox(new Vector3(0.25f, 0.0f, -0.4f), 0.2f, 0.5f, 0.2f);
         var geo = mb.ToMesh().ToGeometry();
-        Debug.Assert(geometryManager.AddAsync(geo, out _), "Failed to add cow geometry");
+        var (success, id) = await geometryManager.AddAsync(geo);
+        Debug.Assert(success, "Failed to add cow geometry.");
         return geo;
     }
 
-    private static Geometry BuildPigMesh(IGeometryManager geometryManager)
+    private static async Task<Geometry> BuildPigMesh(IGeometryManager geometryManager)
     {
         var mb = new MeshBuilder(true, true, true);
         mb.AddBox(new Vector3(0, 0.35f, 0), 0.6f, 0.5f, 0.9f);
@@ -804,11 +805,12 @@ public class MinecraftLargeScene : IScene
         mb.AddBox(new Vector3(-0.18f, 0.0f, -0.25f), 0.15f, 0.3f, 0.15f);
         mb.AddBox(new Vector3(0.18f, 0.0f, -0.25f), 0.15f, 0.3f, 0.15f);
         var geo = mb.ToMesh().ToGeometry();
-        Debug.Assert(geometryManager.AddAsync(geo, out _), "Failed to add pig geometry");
+        var (success, id) = await geometryManager.AddAsync(geo);
+        Debug.Assert(success, "Failed to add pig geometry");
         return geo;
     }
 
-    private static Geometry BuildChickenMesh(IGeometryManager geometryManager)
+    private static async Task<Geometry> BuildChickenMesh(IGeometryManager geometryManager)
     {
         var mb = new MeshBuilder(true, true, true);
         mb.AddBox(new Vector3(0, 0.25f, 0), 0.3f, 0.3f, 0.4f);
@@ -818,11 +820,12 @@ public class MinecraftLargeScene : IScene
         mb.AddBox(new Vector3(0.06f, 0.0f, 0.0f), 0.05f, 0.2f, 0.05f);
         mb.AddBox(new Vector3(0, 0.35f, -0.25f), 0.15f, 0.2f, 0.1f);
         var geo = mb.ToMesh().ToGeometry();
-        Debug.Assert(geometryManager.AddAsync(geo, out _), "Failed to add chicken geometry");
+        var (success, id) = await geometryManager.AddAsync(geo);
+        Debug.Assert(success, "Failed to add chicken geometry");
         return geo;
     }
 
-    private static Geometry BuildSheepMesh(IGeometryManager geometryManager)
+    private static async Task<Geometry> BuildSheepMesh(IGeometryManager geometryManager)
     {
         var mb = new MeshBuilder(true, true, true);
         mb.AddBox(new Vector3(0, 0.5f, 0), 0.75f, 0.65f, 1.1f);
@@ -832,7 +835,8 @@ public class MinecraftLargeScene : IScene
         mb.AddBox(new Vector3(-0.22f, 0.0f, -0.3f), 0.15f, 0.45f, 0.15f);
         mb.AddBox(new Vector3(0.22f, 0.0f, -0.3f), 0.15f, 0.45f, 0.15f);
         var geo = mb.ToMesh().ToGeometry();
-        Debug.Assert(geometryManager.AddAsync(geo, out _), "Failed to add sheep geometry");
+        var (success, id) = await geometryManager.AddAsync(geo);
+        Debug.Assert(success, "Failed to add sheep geometry");
         return geo;
     }
 

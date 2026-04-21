@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Numerics;
-using HelixToolkit.Nex;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using HelixToolkit.Nex.Engine;
 using HelixToolkit.Nex.Engine.CameraControllers;
 using HelixToolkit.Nex.Engine.Cameras;
@@ -49,19 +50,19 @@ internal sealed class DelegateViewportClient : IViewportClient
         _onUpdate = onUpdate;
     }
 
-    public void Update(RenderContext context, float deltaTime)
+    public ICameraParamsProvider Update(RenderContext context, float deltaTime)
     {
         _owner.TickSceneOnce(deltaTime);
 
         if (context.WindowSize.Width <= 0 || context.WindowSize.Height <= 0)
-            return;
+            return Camera;
 
         _onUpdate?.Invoke(this, deltaTime);
-        context.Update(Camera);
+        return Camera;
     }
 }
 
-public class MainViewModel : ObservableObject, IDisposable
+public partial class MainViewModel : ObservableObject, IDisposable
 {
     public Engine? Engine => _engine;
 
@@ -77,6 +78,9 @@ public class MainViewModel : ObservableObject, IDisposable
     /// <summary>Camera controller for the overhead viewport.</summary>
     public ICameraController OverheadCameraController { get; }
 
+    [ObservableProperty]
+    public partial bool IsPointerRingEnabled { set; get; }
+
     internal IRenderDataProvider? WorldDataProvider => _worldDataProvider;
 
     private IContext? _vulkanContext;
@@ -89,7 +93,7 @@ public class MainViewModel : ObservableObject, IDisposable
     private long _lastTickFrame;
     private bool _disposedValue;
 
-    public MainViewModel()
+    public MainViewModel(Format finalTextureFormat)
     {
         // 1. D3D11 device to get the adapter LUID
         using var d3d11 = new D3D11DeviceManager();
@@ -105,7 +109,6 @@ public class MainViewModel : ObservableObject, IDisposable
         );
         // 3. Scene + materials (before engine build)
         _scene = new MinecraftScene();
-        RenderSettings.LogFPSInDebug = true;
         _scene.RegisterMaterials();
 
         // 4. Build engine
@@ -121,12 +124,11 @@ public class MainViewModel : ObservableObject, IDisposable
                 effects.AddEffect(new ToneMapping() { EnableGammaCorrection = true });
                 effects.AddEffect(new ShowFPS());
             })
-            .AddNode(new RenderToFinalNode(Format.BGRA_UN8))
+            .AddNode(new RenderToFinalNode(finalTextureFormat))
             .Build();
         // 5. World data + scene
         _worldDataProvider = _engine.CreateWorldDataProvider();
         _worldDataProvider.Initialize();
-        _root = _scene.Build(_vulkanContext, _engine.ResourceManager, _worldDataProvider);
 
         // 6. Cameras
         var center = new Vector3(_scene.WorldSizeX / 2f, 0, _scene.WorldSizeZ / 2f);
@@ -153,6 +155,16 @@ public class MainViewModel : ObservableObject, IDisposable
         // 8. Create viewport clients (each owns its camera)
         FlyClient = new DelegateViewportClient(this, flyCamera);
         OverheadClient = new DelegateViewportClient(this, overheadCamera);
+    }
+
+    [RelayCommand]
+    private async Task LoadSceneAsync()
+    {
+        if (_root is not null)
+        {
+            return;
+        }
+        _root = await _scene!.BuildAsync(_vulkanContext!, _engine!.ResourceManager, _worldDataProvider!);
     }
 
     internal void TickSceneOnce(float deltaTime)

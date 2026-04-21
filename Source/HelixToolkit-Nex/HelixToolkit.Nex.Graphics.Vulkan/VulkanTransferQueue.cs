@@ -1,6 +1,5 @@
 using System.Buffers;
 using System.Collections.Concurrent;
-using Vortice.Vulkan;
 
 namespace HelixToolkit.Nex.Graphics.Vulkan;
 
@@ -48,7 +47,7 @@ internal sealed class VulkanTransferQueue : IDisposable
     private readonly object _lock = new();
 
     // Background upload queue
-    private readonly BlockingCollection<UploadRequest> _uploadQueue = new();
+    private readonly BlockingCollection<UploadRequest> _uploadQueue = new(KMaxInflightTransfers);
     private readonly Thread _workerThread;
     private volatile bool _disposed;
 
@@ -59,9 +58,11 @@ internal sealed class VulkanTransferQueue : IDisposable
         public bool InUse;
     }
 
-    private abstract class UploadRequest(AsyncUploadHandle handle)
+    // Base request: uses a delegate to complete the typed AsyncUploadHandle<THandle>
+    // without making the process methods themselves generic.
+    private abstract class UploadRequest(Action<ResultCode> complete)
     {
-        public AsyncUploadHandle Handle { get; } = handle;
+        public void Complete(ResultCode result) => complete(result);
 
         public abstract MemoryHandle Pin();
 
@@ -69,22 +70,22 @@ internal sealed class VulkanTransferQueue : IDisposable
     }
 
     private abstract class BufferUploadRequest(
-        AsyncUploadHandle handle,
+        Action<ResultCode> complete,
         BufferHandle destBuffer,
         uint offset
-    ) : UploadRequest(handle)
+    ) : UploadRequest(complete)
     {
         public BufferHandle DestBuffer { get; } = destBuffer;
         public uint Offset { get; } = offset;
     }
 
     private sealed class BufferUploadRequest<T>(
-        AsyncUploadHandle handle,
+        Action<ResultCode> complete,
         BufferHandle destBuffer,
         uint offset,
         T[] data,
         size_t count
-    ) : BufferUploadRequest(handle, destBuffer, offset)
+    ) : BufferUploadRequest(complete, destBuffer, offset)
         where T : unmanaged
     {
         public T[] Data { get; } = data;
@@ -98,22 +99,22 @@ internal sealed class VulkanTransferQueue : IDisposable
     }
 
     private abstract class TextureUploadRequest(
-        AsyncUploadHandle handle,
+        Action<ResultCode> complete,
         TextureHandle destTexture,
         TextureRangeDesc range
-    ) : UploadRequest(handle)
+    ) : UploadRequest(complete)
     {
         public TextureHandle DestTexture { get; } = destTexture;
         public TextureRangeDesc Range { get; } = range;
     }
 
     private sealed class TextureUploadRequest<T>(
-        AsyncUploadHandle handle,
+        Action<ResultCode> complete,
         TextureHandle destTexture,
         TextureRangeDesc range,
         T[] data,
         size_t count
-    ) : TextureUploadRequest(handle, destTexture, range)
+    ) : TextureUploadRequest(complete, destTexture, range)
         where T : unmanaged
     {
         public T[] Data { get; } = data;
@@ -212,7 +213,7 @@ internal sealed class VulkanTransferQueue : IDisposable
     /// Enqueues an asynchronous buffer upload.
     /// Data is copied immediately so the caller's memory can be freed.
     /// </summary>
-    public AsyncUploadHandle EnqueueBufferUpload<T>(
+    public AsyncUploadHandle<BufferHandle> EnqueueBufferUpload<T>(
         in BufferHandle destBuffer,
         uint offset,
         T[] data,
@@ -221,19 +222,28 @@ internal sealed class VulkanTransferQueue : IDisposable
         where T : unmanaged
     {
         if (count == 0)
-            return AsyncUploadHandle.CompletedOk;
+            return AsyncUploadHandle<BufferHandle>.CreateCompleted(ResultCode.Ok, destBuffer);
         if (data.Length < count)
             throw new ArgumentException("Data array length is less than count", nameof(data));
-        var handle = new AsyncUploadHandle();
-        _uploadQueue.Add(new BufferUploadRequest<T>(handle, destBuffer, offset, data, count));
-        return handle;
+        var uploadHandle = new AsyncUploadHandle<BufferHandle>();
+        var captured = destBuffer; // capture for closure
+        _uploadQueue.Add(
+            new BufferUploadRequest<T>(
+                result => uploadHandle.Complete(result, captured),
+                destBuffer,
+                offset,
+                data,
+                count
+            )
+        );
+        return uploadHandle;
     }
 
     /// <summary>
     /// Enqueues an asynchronous texture upload.
     /// Data is copied immediately so the caller's memory can be freed.
     /// </summary>
-    public AsyncUploadHandle EnqueueTextureUpload<T>(
+    public AsyncUploadHandle<TextureHandle> EnqueueTextureUpload<T>(
         in TextureHandle destTexture,
         in TextureRangeDesc range,
         T[] data,
@@ -244,11 +254,19 @@ internal sealed class VulkanTransferQueue : IDisposable
         if (data.Length < count)
             throw new ArgumentException("Data array length is less than count", nameof(data));
         if (count == 0)
-            return AsyncUploadHandle.CompletedOk;
-
-        var handle = new AsyncUploadHandle();
-        _uploadQueue.Add(new TextureUploadRequest<T>(handle, destTexture, range, data, count));
-        return handle;
+            return AsyncUploadHandle<TextureHandle>.CreateCompleted(ResultCode.Ok, destTexture);
+        var uploadHandle = new AsyncUploadHandle<TextureHandle>();
+        var captured = destTexture; // capture for closure
+        _uploadQueue.Add(
+            new TextureUploadRequest<T>(
+                result => uploadHandle.Complete(result, captured),
+                destTexture,
+                range,
+                data,
+                count
+            )
+        );
+        return uploadHandle;
     }
 
     /// <summary>
@@ -295,7 +313,7 @@ internal sealed class VulkanTransferQueue : IDisposable
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Error processing async upload request");
-                    request.Handle.Complete(ResultCode.RuntimeError);
+                    request.Complete(ResultCode.RuntimeError);
                 }
             }
         }
@@ -307,6 +325,7 @@ internal sealed class VulkanTransferQueue : IDisposable
 
     private void ProcessRequest(UploadRequest request)
     {
+        _logger.LogDebug("Processing async upload request of type {TYPE}", request.GetType().Name);
         switch (request)
         {
             case BufferUploadRequest req:
@@ -323,7 +342,7 @@ internal sealed class VulkanTransferQueue : IDisposable
         var destBuffer = _ctx.BuffersPool.Get(request.DestBuffer);
         if (destBuffer is null || !destBuffer.Valid)
         {
-            request.Handle.Complete(ResultCode.InvalidState);
+            request.Complete(ResultCode.InvalidState);
             return;
         }
 
@@ -333,7 +352,7 @@ internal sealed class VulkanTransferQueue : IDisposable
         var stagingBuf = _ctx.BuffersPool.Get(_stagingBuffer.Handle);
         if (stagingBuf is null || !stagingBuf.Valid)
         {
-            request.Handle.Complete(ResultCode.InvalidState);
+            request.Complete(ResultCode.InvalidState);
             return;
         }
 
@@ -458,7 +477,7 @@ internal sealed class VulkanTransferQueue : IDisposable
             slot.InUse = false;
         }
 
-        request.Handle.Complete(ResultCode.Ok);
+        request.Complete(ResultCode.Ok);
     }
 
     private void ProcessTextureUpload(TextureUploadRequest request)
@@ -466,7 +485,7 @@ internal sealed class VulkanTransferQueue : IDisposable
         var destImage = _ctx.TexturesPool.Get(request.DestTexture);
         if (destImage is null)
         {
-            request.Handle.Complete(ResultCode.InvalidState);
+            request.Complete(ResultCode.InvalidState);
             return;
         }
 
@@ -487,7 +506,7 @@ internal sealed class VulkanTransferQueue : IDisposable
             );
         }
 
-        request.Handle.Complete(result);
+        request.Complete(result);
     }
 
     private int AcquireSlot()

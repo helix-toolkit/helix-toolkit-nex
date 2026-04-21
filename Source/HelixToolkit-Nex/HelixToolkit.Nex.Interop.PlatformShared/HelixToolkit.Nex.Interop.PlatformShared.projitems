@@ -9,6 +9,7 @@
     <Import_RootNamespace>HelixToolkit.Nex.Interop.PlatformShared</Import_RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)GlobalUsings.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)ViewportCommon.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)ViewportProperties.cs" />
   </ItemGroup>

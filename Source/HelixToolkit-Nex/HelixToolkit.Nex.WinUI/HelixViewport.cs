@@ -3,7 +3,6 @@ using HelixToolkit.Nex.Engine.CameraControllers;
 using HelixToolkit.Nex.Graphics;
 using HelixToolkit.Nex.Interop;
 using HelixToolkit.Nex.Interop.DirectX;
-using HelixToolkit.Nex.Rendering;
 using Microsoft.Extensions.Logging;
 using Microsoft.UI.Input;
 using Microsoft.UI.Xaml;
@@ -13,7 +12,6 @@ using Vortice.Direct3D11;
 using Vortice.DXGI;
 using Vortice.Vulkan;
 using Size = HelixToolkit.Nex.Maths.Size;
-using TextureHandle = HelixToolkit.Nex.Handle<HelixToolkit.Nex.Graphics.Texture>;
 
 namespace HelixToolkit.Nex.WinUI;
 
@@ -63,12 +61,7 @@ public partial class HelixViewport : UserControl, IDisposable
     private ImportedVulkanTexture? _importedTexture;
     private IDXGIKeyedMutex? _keyedMutex;
     private long _lastTimestamp;
-    private ViewportRenderingEventArgs? _renderArgs;
-    private Engine.Engine? _engine;
-    private IViewportClient? _viewportClient;
-    private ICameraController? _cameraController;
     private bool _sizeChanged = true;
-    private RenderContext? _renderContext;
     private bool _disposed;
 
     /// <summary>
@@ -227,47 +220,16 @@ public partial class HelixViewport : UserControl, IDisposable
     {
         if (
             _disposed
-            || Engine is null
-            || _renderContext is null
             || _d3d11Manager is null
             || _keyedMutex is null
             || _renderArgs is null
         )
             return;
 
-        // Compute delta time
-        long now = System.Diagnostics.Stopwatch.GetTimestamp();
-        float delta =
-            _lastTimestamp == 0
-                ? 0f
-                : (float)(now - _lastTimestamp) / System.Diagnostics.Stopwatch.Frequency;
-        _lastTimestamp = now;
-        _renderArgs.DeltaTime = delta;
-
-        _renderContext.WindowSize = new Size((int)ActualWidth, (int)ActualHeight);
-
-        _cameraController?.Update(delta);
-        // Pull per-frame data from the viewport client
-        if (_viewportClient is null)
+        if (!Render((float)ActualWidth, (float)ActualHeight))
+        {
             return;
-
-        _viewportClient.Update(_renderContext, delta);
-
-        var dataProvider = _viewportClient.DataProvider;
-        if (dataProvider is null)
-            return;
-
-        // Notify optional subscribers (read-only)
-        BeforeRender?.Invoke(this, _renderArgs);
-
-        EnsureSize();
-        var context = Engine.Context;
-
-        // Render offscreen
-        var cmdBuf = Engine.RenderOffscreen(_renderContext, dataProvider);
-        var submitHandle = context.Submit(cmdBuf, TextureHandle.Null, _vulkanSyncInfo);
-        context.Wait(submitHandle);
-
+        }
         // Keyed mutex acquire → copy → release → present
         _keyedMutex.AcquireSync(_copySyncInfo.AcquireKey, (int)_copySyncInfo.Timeout);
         _d3d11Manager.DeviceContext.CopyResource(_backbufferResource, _renderTargetResource);
@@ -405,6 +367,7 @@ public partial class HelixViewport : UserControl, IDisposable
 
     private void OnPointerExited(object sender, PointerRoutedEventArgs e)
     {
+        ResetPointerLocation();
         if (ActiveDrag)
         {
             return;

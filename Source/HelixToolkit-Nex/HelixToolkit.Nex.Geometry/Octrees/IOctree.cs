@@ -3,7 +3,7 @@ namespace HelixToolkit.Nex.Geometries.Octrees;
 /// <summary>
 ///
 /// </summary>
-public sealed class OctreeBuildParameter : ObservableObject
+public sealed class OctreeBuildParameter : HxObservableObject
 {
     private float _minimumOctantSize = 1f;
 

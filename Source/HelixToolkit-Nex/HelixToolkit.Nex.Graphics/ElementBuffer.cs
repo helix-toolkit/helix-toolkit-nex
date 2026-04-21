@@ -363,8 +363,8 @@ public sealed class ElementBuffer<T> : IDisposable
     /// <param name="count">The number of elements to upload from the <paramref name="data"/> array. Must be greater than zero and less than
     /// or equal to the capacity of the buffer.</param>
     /// <param name="dstOffset">The offset, in elements, within the destination buffer where the upload begins. Defaults to 0.</param>
-    /// <returns>An <see cref="AsyncUploadHandle"/> representing the asynchronous upload operation.</returns>
-    public AsyncUploadHandle UploadAsync(T[] data, int count, int dstOffset = 0)
+    /// <returns>An <see cref="AsyncUploadHandle{THandle}"/> representing the asynchronous upload operation.</returns>
+    public AsyncUploadHandle<BufferHandle> UploadAsync(T[] data, int count, int dstOffset = 0)
     {
         // Handle resizing based on IsDynamic flag
         if (count > Capacity)
@@ -383,8 +383,8 @@ public sealed class ElementBuffer<T> : IDisposable
     /// if resizing is not desired.</remarks>
     /// <param name="data">The data to upload, represented as a <see cref="FastList{T}"/>.</param>
     /// <param name="dstOffset">The destination offset, in elements, where the data will be written. Defaults to 0.</param>
-    /// <returns>An <see cref="AsyncUploadHandle"/> that represents the asynchronous upload operation.</returns>
-    public AsyncUploadHandle UploadAsync(FastList<T> data, int dstOffset = 0)
+    /// <returns>An <see cref="AsyncUploadHandle{THandle}"/> that represents the asynchronous upload operation.</returns>
+    public AsyncUploadHandle<BufferHandle> UploadAsync(FastList<T> data, int dstOffset = 0)
     {
         if (IsDynamic)
         { // For dynamic buffers, use mapped memory for direct CPU writes
@@ -394,7 +394,7 @@ public sealed class ElementBuffer<T> : IDisposable
                 if (mappedPtr == nint.Zero)
                 {
                     _logger.LogError("Cannot upload data: dynamic buffer is not mapped.");
-                    return AsyncUploadHandle.CreateCompleted(ResultCode.InvalidState);
+                    return AsyncUploadHandle<BufferHandle>.CreateCompleted(ResultCode.InvalidState, Buffer.Handle);
                 }
                 mappedPtr += dstOffset * sizeof(T);
                 using var pinnedData = data.GetInternalArray().Pin();
@@ -406,7 +406,7 @@ public sealed class ElementBuffer<T> : IDisposable
                     (uint)(dstOffset * sizeof(T)),
                     (uint)(data.Count * sizeof(T))
                 );
-                return AsyncUploadHandle.CreateCompleted(ResultCode.Ok);
+                return AsyncUploadHandle<BufferHandle>.CreateCompleted(ResultCode.Ok, Buffer.Handle);
             }
         }
         var requiredCapacity = data.Count;
