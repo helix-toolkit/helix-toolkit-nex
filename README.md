@@ -41,11 +41,12 @@ Currently in development.
     - Object border highlighting effect. (Done) 
     - Wireframe rendering. (Done)
     - Tone mapping post-processing effect. (Done)
-  - GPU Object level picking. (Done)
+  - GPU picking. (Done)
+  - Async Buffer/Texture upload with transfer queue. (Done)
  
-- Wpf Framework Integration (In progress)
-- WinUI Integration (In Progree)
-- Avalonia UI Integration (Planned)
+- Wpf Framework Interoperation (Done)
+- WinUI Interoperation (Done)
+- Avalonia UI Interoperation (Planned)
 
 ## Rendering Samples
 
@@ -57,7 +58,7 @@ Currently in development.
 
 ## Interoperability
 
-- Render content with Vulkan Backend in Wpf and WinUI applications using D3D11 interoperability. (Requires Vulkan Extension: `VK_KHR_external_memory_win32`)
+- Render content with Vulkan Backend in Wpf and WinUI applications using D3D11 interoperation. (Requires Vulkan Extension: `VK_KHR_external_memory_win32`)
     - [WPF](Source/HelixToolkit-Nex/Samples/Interop/Wpf)
     ![Image](Source/HelixToolkit-Nex/Samples/Interop/Wpf/Screenshots/Sample.jpg)
     - [WinUI](Source/HelixToolkit-Nex/Samples/Interop/WinUI)
