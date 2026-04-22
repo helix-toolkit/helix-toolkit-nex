@@ -337,9 +337,7 @@ internal partial class TransparentDemo : IDisposable
         // --- Step 1: Execute 3D render graph (offscreen) ---
         var cmdBuf = _engine.RenderOffscreen(_renderContext, _worldDataProvider!);
 
-        var offscreenTexHandle = _renderContext.ResourceSet!.Textures[
-            SystemBufferNames.TextureColorF16Current
-        ];
+        var offscreenTexHandle = _renderContext.TextureColorF16Current;
 
         // --- Step 2: ImGui composite pass ---
         var swapchainTex = _context.GetCurrentSwapchainTexture();

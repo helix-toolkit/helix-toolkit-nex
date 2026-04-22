@@ -158,6 +158,12 @@ public sealed class RenderContext(IServiceProvider services) : Initializable
     public ulong TimeMs => Time.GetMonoTimeMs();
 
     /// <summary>
+    /// Gets the current Intermidiate Color Buffer texture handle, which is expected to be in R16G16B16A16_Float format.
+    /// This texture is used for rendering the scene with high dynamic range (HDR) color precision.
+    /// </summary>
+    public TextureHandle TextureColorF16Current => ResourceSet?.Textures[SystemBufferNames.TextureColorF16Current] ?? TextureHandle.Null;
+
+    /// <summary>
     /// Initiates the rendering process for a new frame.
     /// </summary>
     /// <remarks>This method updates the rendering data and logs a warning if the update fails. Ensure that

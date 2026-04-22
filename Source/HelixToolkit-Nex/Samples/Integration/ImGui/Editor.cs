@@ -175,9 +175,7 @@ internal partial class Editor : IDisposable
         var cmdBuf = _engine.RenderOffscreen(_renderContext, _worldDataProvider!);
 
         // Retrieve the offscreen texture that the graph produced
-        var offscreenTexHandle = _renderContext.ResourceSet!.Textures[
-            SystemBufferNames.TextureColorF16Current
-        ];
+        var offscreenTexHandle = _renderContext.TextureColorF16Current;
 
         // --- Step 2: ImGui composite pass — renders to swapchain ---
         var swapchainTex = _context.GetCurrentSwapchainTexture();
