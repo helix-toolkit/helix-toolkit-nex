@@ -127,6 +127,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HelixToolkit.Nex.Textures",
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HelixToolkit.Nex.Textures.Tests", "HelixToolkit.Nex.Textures.Tests\HelixToolkit.Nex.Textures.Tests.csproj", "{4AF6B7B9-D5DE-4ECC-8612-71E7D133D94F}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PBRTest", "Samples\Integration\PBRTest\PBRTest.csproj", "{531216AC-DC69-7F01-3B20-8F3E29233293}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -726,6 +728,18 @@ Global
 		{4AF6B7B9-D5DE-4ECC-8612-71E7D133D94F}.Release|x64.Build.0 = Release|Any CPU
 		{4AF6B7B9-D5DE-4ECC-8612-71E7D133D94F}.Release|x86.ActiveCfg = Release|Any CPU
 		{4AF6B7B9-D5DE-4ECC-8612-71E7D133D94F}.Release|x86.Build.0 = Release|Any CPU
+		{531216AC-DC69-7F01-3B20-8F3E29233293}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{531216AC-DC69-7F01-3B20-8F3E29233293}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{531216AC-DC69-7F01-3B20-8F3E29233293}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{531216AC-DC69-7F01-3B20-8F3E29233293}.Debug|x64.Build.0 = Debug|Any CPU
+		{531216AC-DC69-7F01-3B20-8F3E29233293}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{531216AC-DC69-7F01-3B20-8F3E29233293}.Debug|x86.Build.0 = Debug|Any CPU
+		{531216AC-DC69-7F01-3B20-8F3E29233293}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{531216AC-DC69-7F01-3B20-8F3E29233293}.Release|Any CPU.Build.0 = Release|Any CPU
+		{531216AC-DC69-7F01-3B20-8F3E29233293}.Release|x64.ActiveCfg = Release|Any CPU
+		{531216AC-DC69-7F01-3B20-8F3E29233293}.Release|x64.Build.0 = Release|Any CPU
+		{531216AC-DC69-7F01-3B20-8F3E29233293}.Release|x86.ActiveCfg = Release|Any CPU
+		{531216AC-DC69-7F01-3B20-8F3E29233293}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -754,6 +768,7 @@ Global
 		{C2C275AE-2072-4183-ACAA-CC4A48B906CE} = {7A8597E8-9453-C08C-CA0F-13C54366883F}
 		{ABF95AF0-7B49-406F-B071-B4FC484FC728} = {829FAF7D-D31C-E825-4EDA-423059A17A7D}
 		{021CE12B-6197-4F19-8453-4C7126263F50} = {7E2B8F9A-97A5-4434-B291-EE9DDEC474DC}
+		{531216AC-DC69-7F01-3B20-8F3E29233293} = {7E2B8F9A-97A5-4434-B291-EE9DDEC474DC}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {E5E7411B-7281-4FBB-8D21-475B6670439C}
