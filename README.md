@@ -1,4 +1,4 @@
-# HelixToolkit Nex
+# HelixToolkit Nex <img src="Assets/icon.png" width=32 height=32 style="background-color: transparent;">
 
 [![License: MIT](https://img.shields.io/github/license/helix-toolkit/helix-toolkit-nex)](https://github.com/helix-toolkit/helix-toolkit-nex/blob/main/LICENSE)
 [![Github Action](https://github.com/helix-toolkit/helix-toolkit-nex/actions/workflows/ci.yml/badge.svg)](https://github.com/helix-toolkit/helix-toolkit-nex/actions?query=workflow%3ACI
