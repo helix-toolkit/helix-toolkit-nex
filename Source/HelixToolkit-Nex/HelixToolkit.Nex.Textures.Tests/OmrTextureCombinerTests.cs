@@ -1,7 +1,6 @@
 using FsCheck;
 using FsCheck.Fluent;
 using HelixToolkit.Nex.Graphics;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace HelixToolkit.Nex.Textures.Tests;
 
@@ -199,7 +198,7 @@ public class OmrTextureCombinerTests
         var outPixel = outPb.GetPixel<Rgba8Pixel>(2, 2);
 
         Assert.AreEqual(100, outPixel.R, "Occlusion (R) should match source R");
-        Assert.AreEqual(150, outPixel.G, "Metallic (G) should match source G");
+        Assert.AreEqual(150, outPixel.B, "Metallic (G) should match source G");
     }
 
     /// <summary>
@@ -398,10 +397,10 @@ public class OmrTextureCombinerTests
                         combiner.WithOcclusion(source, t.srcChannel);
                         break;
                     case 1:
-                        combiner.WithMetallic(source, t.srcChannel);
+                        combiner.WithRoughness(source, t.srcChannel);
                         break;
                     case 2:
-                        combiner.WithRoughness(source, t.srcChannel);
+                        combiner.WithMetallic(source, t.srcChannel);
                         break;
                 }
 
@@ -448,8 +447,8 @@ public class OmrTextureCombinerTests
                 {
                     using var result = new OmrTextureCombiner()
                         .WithOcclusion(t.rConst)
-                        .WithMetallic(t.gConst)
-                        .WithRoughness(t.bConst)
+                        .WithMetallic(t.bConst)
+                        .WithRoughness(t.gConst)
                         .Combine(t.width, t.height);
 
                     var outPb = result.GetPixelBuffer(0, 0);
@@ -739,8 +738,8 @@ public class OmrTextureCombinerTests
         // Inversion should be applied: 255 - 100 = 155
         Assert.AreEqual(
             (byte)(255 - 100),
-            pixel.B,
-            "B channel should be inverted (255 - rawValue)"
+            pixel.G,
+            "G channel should be inverted (255 - rawValue)"
         );
     }
 
@@ -772,7 +771,7 @@ public class OmrTextureCombinerTests
         var pixel = outPb.GetPixel<Rgba8Pixel>(0, 0);
 
         // No inversion: raw value 100 should be written directly
-        Assert.AreEqual((byte)100, pixel.B, "B channel should be raw value (no inversion)");
+        Assert.AreEqual((byte)100, pixel.G, "G channel should be raw value (no inversion)");
     }
 
     [TestMethod]
@@ -816,7 +815,7 @@ public class OmrTextureCombinerTests
 
         var outPb = result.GetPixelBuffer(0, 0);
         var pixel = outPb.GetPixel<Rgba8Pixel>(0, 0);
-        Assert.AreEqual((byte)255, pixel.B, "Inversion of 0 should be 255");
+        Assert.AreEqual((byte)255, pixel.G, "Inversion of 0 should be 255");
     }
 
     [TestMethod]
@@ -880,7 +879,7 @@ public class OmrTextureCombinerTests
                 var outPb = result.GetPixelBuffer(0, 0);
                 var pixel = outPb.GetPixel<Rgba8Pixel>(t.x, t.y);
 
-                return pixel.B == (byte)(255 - rawValue);
+                return pixel.G == (byte)(255 - rawValue);
             }
         );
         Check.One(Config.QuickThrowOnFailure.WithMaxTest(200), prop);
