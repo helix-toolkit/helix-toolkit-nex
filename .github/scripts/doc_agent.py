@@ -41,6 +41,10 @@ GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
 FORCE_ALL = os.environ.get("FORCE_ALL", "false").lower() == "true"
 
+# Git uses 40 zero-chars as the "null" SHA to indicate a non-existent ref
+# (e.g. github.event.before on the very first push to a branch).
+GIT_NULL_SHA = "0" * 40
+
 # ---- AI Client ----
 
 SYSTEM_PROMPT = """\
@@ -128,12 +132,10 @@ def is_readme_empty(readme_path: Path) -> bool:
     """A README is considered empty when it has no meaningful content beyond a bare title."""
     if not readme_path.exists():
         return True
-    content = readme_path.read_text(encoding="utf-8-sig").strip()
-    if not content:
-        return True
-    # Strip BOM, strip blank lines, count non-empty lines
-    non_empty = [ln.strip() for ln in content.splitlines() if ln.strip()]
-    if len(non_empty) == 0:
+    # utf-8-sig transparently strips the BOM if present
+    raw = readme_path.read_text(encoding="utf-8-sig")
+    non_empty = [ln.strip() for ln in raw.splitlines() if ln.strip()]
+    if not non_empty:
         return True
     # Only a single heading line (e.g. "# PackageName") counts as empty
     if len(non_empty) == 1 and non_empty[0].startswith("#"):
@@ -186,7 +188,8 @@ def build_source_context(project_dir: Path, max_total: int = MAX_FULL_DOC_CHARS)
             break
         content = read_file_limited(f, MAX_FILE_CHARS)
         rel = f.relative_to(project_dir)
-        block = f"### {rel}\n```csharp\n{content}\n```\n"
+        lang = "glsl" if f.suffix in {".glsl", ".vert", ".frag", ".comp", ".glh"} else "csharp"
+        block = f"### {rel}\n```{lang}\n{content}\n```\n"
         total += len(block)
         parts.append(block)
     return "\n".join(parts)
@@ -360,8 +363,7 @@ def main() -> int:
         since_sha = "HEAD~1"
     else:
         before_sha = os.environ.get("BEFORE_SHA", "").strip()
-        null_sha = "0" * 40
-        since_sha = before_sha if (before_sha and before_sha != null_sha) else "HEAD~1"
+        since_sha = before_sha if (before_sha and before_sha != GIT_NULL_SHA) else "HEAD~1"
 
         changed_packages = get_changed_packages(since_sha)
         empty_packages = [p for p in all_packages if is_readme_empty(p / "README.md")]
