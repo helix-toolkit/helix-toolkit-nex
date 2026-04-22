@@ -44,14 +44,14 @@ public sealed class ToneMapping : PostEffect
 
     protected override ResultCode OnInitializing()
     {
-        if (Context is null)
+        if (ResourceManager is null)
         {
-            _logger.LogError("Render context is null during tone mapping initialization.");
+            _logger.LogError("ResourceManager is null during tone mapping initialization.");
             return ResultCode.InvalidState;
         }
         CreateToneMappingPipeline();
         var samplerDesc = SamplerStateDesc.PointRepeat;
-        _toneMappingSampler = Context.CreateSampler(samplerDesc);
+        _toneMappingSampler = ResourceManager.SamplerRepository.GetOrCreate(samplerDesc);
         if (!_toneMappingSampler.Valid || !_toneGammaPipeline.Valid)
         {
             return ResultCode.RuntimeError;

@@ -243,6 +243,17 @@ public class MockContext : IContext
         return ResultCode.Ok;
     }
 
+    /// <summary>
+    /// Gets the <see cref="TextureDesc"/> that was used to create the texture with the given handle.
+    /// Returns null if the handle is not found.
+    /// </summary>
+    public TextureDesc? GetTextureDesc(in TextureHandle handle)
+    {
+        if (_textures.TryGetValue(handle, out var data))
+            return data.Desc;
+        return null;
+    }
+
     public ResultCode CreateTextureView(
         in TextureHandle texture,
         TextureViewDesc desc,

@@ -35,6 +35,16 @@ public interface IResourceManager : IInitializable
     IShaderRepository ShaderRepository { get; }
 
     /// <summary>
+    /// Gets the sampler repository used to manage and retrieve sampler instances.
+    /// </summary>
+    ISamplerRepository SamplerRepository { get; }
+
+    /// <summary>
+    /// Gets the repository used to access and manage textures.
+    /// </summary>
+    ITextureRepository TextureRepository { get; }
+
+    /// <summary>
     /// Gets the global index data buffer associated with the static mesh.
     /// </summary>
     IStaticMeshIndexData StaticMeshIndexData { get; }

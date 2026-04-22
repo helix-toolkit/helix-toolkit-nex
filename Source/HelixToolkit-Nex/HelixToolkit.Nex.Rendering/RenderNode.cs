@@ -25,6 +25,8 @@ public abstract class RenderNode : IDisposable
 
     public IContext? Context => Renderer?.Context;
 
+    public IResourceManager? ResourceManager => Renderer?.ResourceManager;
+
     private bool _isAttached = false;
 
     private ITracer? _tracer;

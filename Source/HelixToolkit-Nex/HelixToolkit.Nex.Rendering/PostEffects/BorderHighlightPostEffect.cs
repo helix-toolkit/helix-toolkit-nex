@@ -188,14 +188,14 @@ public sealed class BorderHighlightPostEffect : PostEffect
 
     protected override ResultCode OnInitializing()
     {
-        if (Context is null)
+        if (ResourceManager is null)
         {
-            _logger.LogError("Render context is null during highlight initialisation.");
+            _logger.LogError("ResourceManager is null during highlight initialisation.");
             return ResultCode.InvalidState;
         }
 
-        _pointSampler = Context.CreateSampler(SamplerStateDesc.PointClamp);
-        _linearSampler = Context.CreateSampler(SamplerStateDesc.LinearClamp);
+        _pointSampler = ResourceManager.SamplerRepository.GetOrCreate(SamplerStateDesc.PointClamp);
+        _linearSampler = ResourceManager.SamplerRepository.GetOrCreate(SamplerStateDesc.LinearClamp);
 
         if (!_pointSampler.Valid || !_linearSampler.Valid)
         {

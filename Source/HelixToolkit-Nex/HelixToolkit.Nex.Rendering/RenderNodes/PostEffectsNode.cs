@@ -11,10 +11,12 @@ public enum PostEffectPriority : uint
 
 public abstract class PostEffect() : Initializable
 {
-    public IContext? Context { internal set; get; }
+    public IContext? Context => Renderer?.Context;
     public bool Enabled { get; set; } = true;
 
     public Renderer? Renderer { internal set; get; }
+
+    public IResourceManager? ResourceManager => Renderer?.ResourceManager;
 
     public abstract Color DebugColor { get; }
 
@@ -207,7 +209,6 @@ public sealed class PostEffectsNode : RenderNode
     {
         foreach (var effect in _effects)
         {
-            effect.Context = Context;
             effect.Renderer = Renderer;
             effect.Initialize().CheckResult();
         }
@@ -219,7 +220,7 @@ public sealed class PostEffectsNode : RenderNode
         foreach (var effect in _effects)
         {
             effect.Teardown();
-            effect.Context = null;
+            effect.Renderer = null;
         }
         base.OnTeardown();
     }

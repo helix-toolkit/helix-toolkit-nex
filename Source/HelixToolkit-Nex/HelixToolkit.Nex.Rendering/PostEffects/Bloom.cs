@@ -201,14 +201,14 @@ public sealed class Bloom : PostEffect
 
     protected override ResultCode OnInitializing()
     {
-        if (Context is null)
+        if (ResourceManager is null)
         {
-            _logger.LogError("Render context is null during bloom initialization.");
+            _logger.LogError("ResourceManager is null during bloom initialization.");
             return ResultCode.InvalidState;
         }
 
-        _linearSampler = Context.CreateSampler(SamplerStateDesc.LinearClamp);
-        _pointSampler = Context.CreateSampler(SamplerStateDesc.PointClamp);
+        _linearSampler = ResourceManager.SamplerRepository.GetOrCreate(SamplerStateDesc.LinearClamp);
+        _pointSampler = ResourceManager.SamplerRepository.GetOrCreate(SamplerStateDesc.PointClamp);
 
         if (!_linearSampler.Valid || !_pointSampler.Valid)
         {

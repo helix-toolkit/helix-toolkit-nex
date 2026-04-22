@@ -96,6 +96,7 @@ internal sealed class PickingDemo : IDisposable
     private void BuildScene()
     {
         var geometryManager = _engine!.ResourceManager.Geometries;
+        var textureManager = _engine!.ResourceManager.TextureRepository;
         var materialPool = _engine.ResourceManager.PBRPropertyManager;
         var world = _worldDataProvider!.World;
 
@@ -120,7 +121,7 @@ internal sealed class PickingDemo : IDisposable
 
         // Material: grey PBR
         var greyMaterial = materialPool.Create("PBR");
-        greyMaterial.Properties.Albedo = new Vector3(0.6f, 0.2f, 0.6f);
+        greyMaterial.Properties.Albedo = new Vector3(0.6f, 0.6f, 0.6f);
         greyMaterial.Properties.Metallic = 0.3f;
         greyMaterial.Properties.Roughness = 0.5f;
         greyMaterial.Properties.Ao = 1.0f;

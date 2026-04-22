@@ -33,9 +33,9 @@ public sealed class ForwardPlusLightCullingNode : ComputeNode
 
     protected override bool OnSetup()
     {
-        if (Context is null)
+        if (Context is null || ResourceManager is null)
         {
-            _logger.LogError("Context is null, cannot set up ForwardPlusLightCullingNode.");
+            _logger.LogError("Context or ResourceManager is null, cannot set up ForwardPlusLightCullingNode.");
             return false;
         }
 
@@ -45,7 +45,7 @@ public sealed class ForwardPlusLightCullingNode : ComputeNode
             StorageType.Device,
             "FP_LightCull"
         );
-        _depthSampler = Context.CreateSampler(SamplerStateDesc.PointClamp);
+        _depthSampler = ResourceManager.SamplerRepository.GetOrCreate(SamplerStateDesc.PointClamp);
 
         return CreatePipeline();
     }

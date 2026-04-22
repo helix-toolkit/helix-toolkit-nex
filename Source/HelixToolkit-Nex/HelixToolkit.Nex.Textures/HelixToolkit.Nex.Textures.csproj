@@ -3,20 +3,22 @@
         <TargetFramework>net8.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <IncludeSymbols>True</IncludeSymbols>
         <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
         <PackageReadmeFile>README.md</PackageReadmeFile>
-        <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
         <PackageIcon>icon.png</PackageIcon>
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\HelixTookit.Nex\HelixToolkit.Nex.csproj" />
-        <ProjectReference Include="..\HelixToolkit.Nex.Geometry\HelixToolkit.Nex.Geometries.csproj" />
         <ProjectReference Include="..\HelixToolkit.Nex.Graphics\HelixToolkit.Nex.Graphics.csproj" />
-        <ProjectReference Include="..\HelixToolkit.Nex.Shaders\HelixToolkit.Nex.Shaders.csproj" />
-        <ProjectReference Include="..\HelixToolkit.Nex.Textures\HelixToolkit.Nex.Textures.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
+            <_Parameter1>HelixToolkit.Nex.Textures.Tests</_Parameter1>
+        </AssemblyAttribute>
     </ItemGroup>
     <ItemGroup>
         <None Update="README.md">
@@ -27,5 +29,8 @@
             <Pack>True</Pack>
             <PackagePath>\</PackagePath>
         </None>
+    </ItemGroup>
+    <ItemGroup>
+      <PackageReference Include="SixLabors.ImageSharp" Version="3.1.12" />
     </ItemGroup>
 </Project>

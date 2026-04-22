@@ -64,10 +64,7 @@ namespace HelixToolkit.Nex.Engine;
 public class Engine : Initializable
 {
     private static readonly ILogger _logger = LogManager.Create<Engine>();
-
-    private readonly Renderer _renderer;
-    private readonly RenderGraph _renderGraph;
-    private readonly Initializable[] _initializables;
+    private readonly IInitializable[] _initializables;
 
     /// <summary>
     /// Gets the GPU graphics context.
@@ -87,12 +84,12 @@ public class Engine : Initializable
     /// <summary>
     /// Gets the renderer that owns all <see cref="RenderNode"/>s.
     /// </summary>
-    public Renderer Renderer => _renderer;
+    public Renderer Renderer { get; }
 
     /// <summary>
     /// Gets the render graph that defines the pass execution order.
     /// </summary>
-    public RenderGraph RenderGraph => _renderGraph;
+    public RenderGraph RenderGraph { get; }
 
     public override string Name => nameof(Engine);
 
@@ -112,12 +109,12 @@ public class Engine : Initializable
         ResourceManager =
             Config.Services.GetService<IResourceManager>() ?? new ResourceManager(Config.Services);
 
-        _renderer = new Renderer(Config.Services);
-        _renderGraph = new RenderGraph(Config.Services);
+        Renderer = new Renderer(Config.Services);
+        RenderGraph = new RenderGraph(Config.Services);
 
         // Initialization order matters: Renderer → RenderGraph.
         // Teardown runs in reverse order.
-        _initializables = [_renderer, _renderGraph];
+        _initializables = [Renderer, RenderGraph, ResourceManager];
     }
 
     /// <summary>
@@ -170,11 +167,11 @@ public class Engine : Initializable
     /// <returns><c>true</c> if the node was added successfully.</returns>
     public bool AddNode(string name, RenderNode node)
     {
-        if (!_renderer.AddNode(name, node))
+        if (!Renderer.AddNode(name, node))
         {
             return false;
         }
-        node.AddToGraph(_renderGraph);
+        node.AddToGraph(RenderGraph);
         return true;
     }
 
@@ -199,8 +196,8 @@ public class Engine : Initializable
     /// <param name="node">The render node to remove.</param>
     public void RemoveNode(RenderNode node)
     {
-        _renderer.RemoveNode(node);
-        _renderGraph.RemovePass(node.Name);
+        Renderer.RemoveNode(node);
+        RenderGraph.RemovePass(node.Name);
     }
 
     /// <summary>
@@ -212,7 +209,7 @@ public class Engine : Initializable
     /// <returns><see langword="true"/> if a render node with the specified name is found; otherwise, <see langword="false"/>.</returns>
     public bool TryGetRenderNode(string name, out RenderNode? node)
     {
-        return _renderer.TryGetRenderNode(name, out node);
+        return Renderer.TryGetRenderNode(name, out node);
     }
 
     /// <summary>
@@ -222,9 +219,10 @@ public class Engine : Initializable
     /// <param name="name">The name of the render node to retrieve.</param>
     /// <param name="node">When this method returns, contains the typed render node if found and the type matches; otherwise, <see langword="null"/>.</param>
     /// <returns><see langword="true"/> if a render node with the specified name and type is found; otherwise, <see langword="false"/>.</returns>
-    public bool TryGetRenderNode<T>(string name, out T? node) where T : RenderNode
+    public bool TryGetRenderNode<T>(string name, out T? node)
+        where T : RenderNode
     {
-        if (_renderer.TryGetRenderNode(name, out var rawNode) && rawNode is T typed)
+        if (Renderer.TryGetRenderNode(name, out var rawNode) && rawNode is T typed)
         {
             node = typed;
             return true;
@@ -259,9 +257,10 @@ public class Engine : Initializable
     /// </summary>
     /// <typeparam name="T">The concrete <see cref="RenderNode"/> type to find.</typeparam>
     /// <returns>The first matching node, or <see langword="null"/>.</returns>
-    public T? GetRenderNode<T>() where T : RenderNode
+    public T? GetRenderNode<T>()
+        where T : RenderNode
     {
-        foreach (var node in _renderer.RenderNodes)
+        foreach (var node in Renderer.RenderNodes)
         {
             if (node is T typed)
             {
@@ -298,7 +297,8 @@ public class Engine : Initializable
     /// </summary>
     /// <typeparam name="T">The concrete <see cref="PostEffect"/> type to find.</typeparam>
     /// <returns>The first matching effect, or <see langword="null"/>.</returns>
-    public T? GetPostEffect<T>() where T : PostEffect
+    public T? GetPostEffect<T>()
+        where T : PostEffect
     {
         var postEffectsNode = GetRenderNode<PostEffectsNode>();
         return postEffectsNode?.GetEffect<T>();
@@ -321,7 +321,7 @@ public class Engine : Initializable
     {
         renderContext.Data = dataProvider;
         renderContext.FinalOutputTexture = Context.GetCurrentSwapchainTexture();
-        _renderer.Render(renderContext, _renderGraph);
+        Renderer.Render(renderContext, RenderGraph);
     }
 
     /// <summary>
@@ -345,7 +345,7 @@ public class Engine : Initializable
     )
     {
         renderContext.Data = dataProvider;
-        return _renderer.RenderOffscreen(renderContext, _renderGraph);
+        return Renderer.RenderOffscreen(renderContext, RenderGraph);
     }
 
     protected override ResultCode OnInitializing()
