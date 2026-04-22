@@ -1,3 +1,5 @@
+using HelixToolkit.Nex.Textures;
+
 namespace HelixToolkit.Nex.Repository;
 
 /// <summary>
@@ -51,6 +53,17 @@ public interface ITextureRepository : IDisposable
     /// <exception cref="InvalidOperationException">Thrown if the file cannot be decoded or texture creation fails.</exception>
     /// <exception cref="ObjectDisposedException">Thrown if the repository or context has been disposed.</exception>
     TextureResource GetOrCreateFromFile(string filePath, string? debugName = null);
+
+    /// <summary>
+    /// Gets or creates a GPU texture from an already decoded image, using <paramref name="name"/> as the cache key.
+    /// </summary>
+    /// <param name="name">A unique name that identifies this texture in the cache.</param>
+    /// <param name="image">The decoded image data.</param>
+    /// <returns>The texture resource, either from cache or newly created.</returns>
+    /// <exception cref="ArgumentException">Thrown if <paramref name="name"/> is null or empty.</exception>
+    /// <exception cref="InvalidOperationException">Thrown if the image cannot be used to create a texture.</exception>
+    /// <exception cref="ObjectDisposedException">Thrown if the repository or context has been disposed.</exception>
+    TextureResource GetOrCreateFromImage(string name, Image image);
 
     /// <summary>
     /// Attempts to retrieve a cached texture entry by its cache key.

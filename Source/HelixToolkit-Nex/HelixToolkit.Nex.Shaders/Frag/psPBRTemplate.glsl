@@ -279,12 +279,14 @@ PBRMaterial createPBRMaterial()
     }
     if (props.metallicRoughnessTexIndex > 0)
     {
-        vec2 metallicRoughness = texture(sampler2D(kTextures2D[props.metallicRoughnessTexIndex], kSamplers[props.samplerIndex]), fragTexCoord).gb;
-        material.metallic = metallicRoughness.x;
-        material.roughness = metallicRoughness.y;
+        vec2 omr = texture(sampler2D(kTextures2D[props.metallicRoughnessTexIndex], kSamplers[props.samplerIndex]), fragTexCoord).gb;
+        // glTF channel packing: G = Roughness, B = Metallic
+        material.roughness = omr.x;
+        material.metallic  = omr.y;
     }
     if (props.aoTexIndex > 0)
     {
+        // glTF channel packing: R = Ambient Occlusion
         material.ao = material.ao * texture(sampler2D(kTextures2D[props.aoTexIndex], kSamplers[props.samplerIndex]), fragTexCoord).r;
     }
     material.normal = normalize(fragNormal);
@@ -328,9 +330,15 @@ PBRMaterial createPBRMaterialFlatNormal()
     }
     if (props.metallicRoughnessTexIndex > 0)
     {
-        vec2 metallicRoughness = texture(sampler2D(kTextures2D[props.metallicRoughnessTexIndex], kSamplers[props.samplerIndex]), fragTexCoord).bg;
-        material.metallic = metallicRoughness.r;
-        material.roughness = metallicRoughness.g;
+        vec2 omr = texture(sampler2D(kTextures2D[props.metallicRoughnessTexIndex], kSamplers[props.samplerIndex]), fragTexCoord).gb;
+        // glTF channel packing: G = Roughness, B = Metallic
+        material.roughness = omr.x;
+        material.metallic  = omr.y;
+    }
+    if (props.aoTexIndex > 0)
+    {
+        // glTF channel packing: R = Ambient Occlusion
+        material.ao = material.ao * texture(sampler2D(kTextures2D[props.aoTexIndex], kSamplers[props.samplerIndex]), fragTexCoord).r;
     }
 #endif
     material.normal = normalize(cross(dFdy(fragWorldPos), dFdx(fragWorldPos)));
