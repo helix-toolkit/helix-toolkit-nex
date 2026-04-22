@@ -1,0 +1,130 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net8.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <RootNamespace>TextureTest</RootNamespace>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\..\HelixToolkit.Nex.Engine\HelixToolkit.Nex.Engine.csproj" />
+        <ProjectReference Include="..\..\..\HelixToolkit.Nex.Geometries.Builders\HelixToolkit.Nex.Geometries.Builders.csproj" />
+        <ProjectReference Include="..\..\..\HelixToolkit.Nex.Graphics.Vulkan\HelixToolkit.Nex.Graphics.Vulkan.csproj" />
+        <ProjectReference Include="..\..\..\HelixToolkit.Nex.ImGui\HelixToolkit.Nex.ImGui.csproj" />
+        <ProjectReference Include="..\..\..\HelixToolkit.Nex.Textures\HelixToolkit.Nex.Textures.csproj" />
+        <ProjectReference Include="..\..\Application\Application.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <!-- ── Earth ── -->
+        <None
+            Include="..\..\..\..\..\Assets\Textures\Earth\2k_earth_daymap.jpg"
+            Link="Assets\Textures\Earth\2k_earth_daymap.jpg"
+        >
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None
+            Include="..\..\..\..\..\Assets\Textures\Earth\2k_earth_normal_map.tif"
+            Link="Assets\Textures\Earth\2k_earth_normal_map.tif"
+        >
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+
+        <!-- ── Metal Corroded ── -->
+        <None
+            Include="..\..\..\..\..\Assets\Textures\MetalCorroded\MetalCorrodedHeavy001_COL_2K_METALNESS.jpg"
+            Link="Assets\Textures\MetalCorroded\MetalCorrodedHeavy001_COL_2K_METALNESS.jpg"
+        >
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None
+            Include="..\..\..\..\..\Assets\Textures\MetalCorroded\MetalCorrodedHeavy001_NRM_2K_METALNESS.jpg"
+            Link="Assets\Textures\MetalCorroded\MetalCorrodedHeavy001_NRM_2K_METALNESS.jpg"
+        >
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None
+            Include="..\..\..\..\..\Assets\Textures\MetalCorroded\MetalCorrodedHeavy001_METALNESS_2K_METALNESS.jpg"
+            Link="Assets\Textures\MetalCorroded\MetalCorrodedHeavy001_METALNESS_2K_METALNESS.jpg"
+        >
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None
+            Include="..\..\..\..\..\Assets\Textures\MetalCorroded\MetalCorrodedHeavy001_ROUGHNESS_2K_METALNESS.jpg"
+            Link="Assets\Textures\MetalCorroded\MetalCorrodedHeavy001_ROUGHNESS_2K_METALNESS.jpg"
+        >
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+
+        <!-- ── Ceramic Glossy Tile ── -->
+        <None
+            Include="..\..\..\..\..\Assets\Textures\CeramicGlossyTile\TilesMosaicPennyround001_COL_2K.png"
+            Link="Assets\Textures\CeramicGlossyTile\TilesMosaicPennyround001_COL_2K.png"
+        >
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None
+            Include="..\..\..\..\..\Assets\Textures\CeramicGlossyTile\TilesMosaicPennyround001_NRM_2K.png"
+            Link="Assets\Textures\CeramicGlossyTile\TilesMosaicPennyround001_NRM_2K.png"
+        >
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None
+            Include="..\..\..\..\..\Assets\Textures\CeramicGlossyTile\TilesMosaicPennyround001_GLOSS_2K.png"
+            Link="Assets\Textures\CeramicGlossyTile\TilesMosaicPennyround001_GLOSS_2K.png"
+        >
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None
+            Include="..\..\..\..\..\Assets\Textures\CeramicGlossyTile\TilesMosaicPennyround001_REFL_2K.png"
+            Link="Assets\Textures\CeramicGlossyTile\TilesMosaicPennyround001_REFL_2K.png"
+        >
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None
+            Include="..\..\..\..\..\Assets\Textures\CeramicGlossyTile\TilesMosaicPennyround001_AO_2K.png"
+            Link="Assets\Textures\CeramicGlossyTile\TilesMosaicPennyround001_AO_2K.png"
+        >
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+
+        <!-- ── Grass Patchy Ground ── -->
+        <None
+            Include="..\..\..\..\..\Assets\Textures\GrassPatchyGround\Poliigon_GrassPatchyGround_4585_AmbientOcclusion.jpg"
+            Link="Assets\Textures\GrassPatchyGround\Poliigon_GrassPatchyGround_4585_AmbientOcclusion.jpg"
+        >
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None
+            Include="..\..\..\..\..\Assets\Textures\GrassPatchyGround\Poliigon_GrassPatchyGround_4585_BaseColor.jpg"
+            Link="Assets\Textures\GrassPatchyGround\Poliigon_GrassPatchyGround_4585_BaseColor.jpg"
+        >
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None
+            Include="..\..\..\..\..\Assets\Textures\GrassPatchyGround\Poliigon_GrassPatchyGround_4585_Metallic.jpg"
+            Link="Assets\Textures\GrassPatchyGround\Poliigon_GrassPatchyGround_4585_Metallic.jpg"
+        >
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None
+            Include="..\..\..\..\..\Assets\Textures\GrassPatchyGround\Poliigon_GrassPatchyGround_4585_Normal.png"
+            Link="Assets\Textures\GrassPatchyGround\Poliigon_GrassPatchyGround_4585_Normal.png"
+        >
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None
+            Include="..\..\..\..\..\Assets\Textures\GrassPatchyGround\Poliigon_GrassPatchyGround_4585_ORM.jpg"
+            Link="Assets\Textures\GrassPatchyGround\Poliigon_GrassPatchyGround_4585_ORM.jpg"
+        >
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None
+            Include="..\..\..\..\..\Assets\Textures\GrassPatchyGround\Poliigon_GrassPatchyGround_4585_Roughness.jpg"
+            Link="Assets\Textures\GrassPatchyGround\Poliigon_GrassPatchyGround_4585_Roughness.jpg"
+        >
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+    </ItemGroup>
+</Project>

@@ -1,0 +1,615 @@
+using System.Diagnostics;
+using System.Numerics;
+using HelixToolkit.Nex;
+using HelixToolkit.Nex.Engine;
+using HelixToolkit.Nex.Engine.CameraControllers;
+using HelixToolkit.Nex.Engine.Cameras;
+using HelixToolkit.Nex.Engine.Components;
+using HelixToolkit.Nex.Geometries;
+using HelixToolkit.Nex.Graphics;
+using HelixToolkit.Nex.ImGui;
+using HelixToolkit.Nex.Material;
+using HelixToolkit.Nex.Maths;
+using HelixToolkit.Nex.Rendering;
+using HelixToolkit.Nex.Rendering.PostEffects;
+using HelixToolkit.Nex.Repository;
+using HelixToolkit.Nex.Scene;
+using HelixToolkit.Nex.Shaders.Frag;
+using HelixToolkit.Nex.Textures;
+using Microsoft.Extensions.Logging;
+
+namespace TextureTest;
+
+// ---------------------------------------------------------------------------
+// Texture set descriptor
+// ---------------------------------------------------------------------------
+
+/// <summary>
+/// Describes the file paths and default PBR scalar values for one texture set.
+/// Null paths mean "no texture for this slot".
+/// </summary>
+internal sealed record TextureSetDesc(
+    string DisplayName,
+    // Albedo
+    string? AlbedoFile,
+    // Normal map
+    string? NormalFile,
+    // Metallic-roughness: either a combined glTF-style file (B=metallic, G=roughness)
+    // or separate metallic + roughness files that are combined at load time.
+    string? MetallicRoughnessFile, // pre-combined (glTF convention)
+    string? MetallicFile, // separate metallic (R channel)
+    string? RoughnessFile, // separate roughness (R channel) — or GLOSS (inverted)
+    bool RoughnessIsGloss, // true → invert roughness channel
+                           // AO
+    string? AoFile,
+    // Default scalar overrides (applied on top of textures)
+    float DefaultMetallic,
+    float DefaultRoughness,
+    float DefaultAo,
+    float ClearCoatRoughness = 1f,
+    float ClearCoatStrength = 0f
+);
+
+// ---------------------------------------------------------------------------
+// Loaded texture set (GPU resources)
+// ---------------------------------------------------------------------------
+
+/// <summary>Holds the GPU texture resources for one loaded texture set.</summary>
+internal sealed class LoadedTextureSet(
+    TextureResource albedo,
+    TextureResource normal,
+    TextureResource metallicRoughness,
+    TextureResource ao
+)
+{
+    public TextureResource Albedo { get; } = albedo;
+    public TextureResource Normal { get; } = normal;
+    public TextureResource MetallicRoughness { get; } = metallicRoughness;
+    public TextureResource Ao { get; } = ao;
+}
+
+// ---------------------------------------------------------------------------
+// Demo
+// ---------------------------------------------------------------------------
+
+/// <summary>
+/// PBR texture showcase demo.
+/// Renders a sphere and lets the user switch between texture sets via ImGui.
+/// </summary>
+internal sealed partial class TextureDemo : IDisposable
+{
+    private static readonly ILogger _logger = LogManager.Create<TextureDemo>();
+
+    // ---- Texture set catalogue ----
+    internal static readonly TextureSetDesc[] TextureSets =
+    [
+        new TextureSetDesc(
+            DisplayName: "Earth",
+            AlbedoFile: "Assets/Textures/Earth/2k_earth_daymap.jpg",
+            NormalFile: "Assets/Textures/Earth/2k_earth_normal_map.tif",
+            MetallicRoughnessFile: null,
+            MetallicFile: null,
+            RoughnessFile: null,
+            RoughnessIsGloss: false,
+            AoFile: null,
+            DefaultMetallic: 0.0f,
+            DefaultRoughness: 0.6f,
+            DefaultAo: 1.0f
+        ),
+        new TextureSetDesc(
+            DisplayName: "Metal Corroded",
+            AlbedoFile: "Assets/Textures/MetalCorroded/MetalCorrodedHeavy001_COL_2K_METALNESS.jpg",
+            NormalFile: "Assets/Textures/MetalCorroded/MetalCorrodedHeavy001_NRM_2K_METALNESS.jpg",
+            MetallicRoughnessFile: null,
+            MetallicFile: "Assets/Textures/MetalCorroded/MetalCorrodedHeavy001_METALNESS_2K_METALNESS.jpg",
+            RoughnessFile: "Assets/Textures/MetalCorroded/MetalCorrodedHeavy001_ROUGHNESS_2K_METALNESS.jpg",
+            RoughnessIsGloss: false,
+            AoFile: null,
+            DefaultMetallic: 1.0f,
+            DefaultRoughness: 0.8f,
+            DefaultAo: 1.0f
+        ),
+        new TextureSetDesc(
+            DisplayName: "Ceramic Glossy Tile",
+            AlbedoFile: "Assets/Textures/CeramicGlossyTile/TilesMosaicPennyround001_COL_2K.png",
+            NormalFile: "Assets/Textures/CeramicGlossyTile/TilesMosaicPennyround001_NRM_2K.png",
+            MetallicRoughnessFile: null,
+            MetallicFile: "Assets/Textures/CeramicGlossyTile/TilesMosaicPennyround001_REFL_2K.png",
+            // GLOSS map — will be inverted to roughness
+            RoughnessFile: "Assets/Textures/CeramicGlossyTile/TilesMosaicPennyround001_GLOSS_2K.png",
+            RoughnessIsGloss: true,
+            AoFile: "Assets/Textures/CeramicGlossyTile/TilesMosaicPennyround001_AO_2K.png",
+            DefaultMetallic: 0.0f,
+            DefaultRoughness: 0.2f,
+            DefaultAo: 1.0f,
+            ClearCoatRoughness: 0.3f,
+            ClearCoatStrength: 0.8f
+        ),
+        new TextureSetDesc(
+            DisplayName: "Grass Patchy Ground",
+            AlbedoFile: "Assets/Textures/GrassPatchyGround/Poliigon_GrassPatchyGround_4585_BaseColor.jpg",
+            NormalFile: "Assets/Textures/GrassPatchyGround/Poliigon_GrassPatchyGround_4585_Normal.png",
+            MetallicRoughnessFile: null,
+            MetallicFile: "Assets/Textures/GrassPatchyGround/Poliigon_GrassPatchyGround_4585_Metallic.jpg",
+            // GLOSS map — will be inverted to roughness
+            RoughnessFile: "Assets/Textures/GrassPatchyGround/Poliigon_GrassPatchyGround_4585_Roughness.jpg",
+            RoughnessIsGloss: false,
+            AoFile: "Assets/Textures/GrassPatchyGround/Poliigon_GrassPatchyGround_4585_AmbientOcclusion.png",
+            DefaultMetallic: 0.0f,
+            DefaultRoughness: 0.2f,
+            DefaultAo: 1.0f
+        ),
+    ];
+
+    // ---- Engine objects ----
+    private readonly IContext _context;
+    private Engine? _engine;
+    private RenderContext? _renderContext;
+    private WorldDataProvider? _worldDataProvider;
+    private ImGuiRenderer? _imGuiRenderer;
+    private Node? _root;
+
+    // ---- Camera ----
+    private Camera _camera = new PerspectiveCamera();
+    private OrbitCameraController? _orbitController;
+    private bool _isRotating;
+    private bool _isPanning;
+
+    // ---- ImGui swapchain pass ----
+    private readonly Framebuffer _imGuiFramebuffer = new();
+    private readonly RenderPass _imGuiPass = new();
+    private readonly Dependencies _imGuiDeps = new();
+
+    // ---- Post effects ----
+    internal readonly ToneMapping ToneMapping = new() { Enabled = true };
+    internal readonly Fxaa Fxaa = new() { Enabled = true };
+    internal readonly ShowFPS ShowFPS = new() { Enabled = true };
+
+    // ---- Viewport ----
+    private Size _viewportSize = new(1, 1);
+
+    // ---- Scene objects ----
+    private MeshNode? _sphereNode;
+    private PBRMaterialProperties? _material;
+    private SamplerResource _sampler = SamplerResource.Null;
+
+    // ---- Texture set state ----
+    private readonly LoadedTextureSet?[] _loadedSets = new LoadedTextureSet?[TextureSets.Length];
+    internal int ActiveSetIndex = 0;
+
+    // ---- Auto-rotation ----
+    internal bool AutoRotate = true;
+    internal float RotationAngle;
+    private long _lastTimestamp;
+
+    // ---- Editable material scalars (mirrored for ImGui) ----
+    internal float Metallic;
+    internal float Roughness;
+    internal float Ao;
+    internal Vector3 AlbedoTint = Vector3.One;
+    internal float Opacity = 1.0f;
+
+    public ImGuiRenderer? ImGui => _imGuiRenderer;
+
+    public TextureDemo(IContext context)
+    {
+        _context = context;
+    }
+
+    // -------------------------------------------------------------------------
+    // Initialization
+    // -------------------------------------------------------------------------
+
+    public void Initialize(int width, int height)
+    {
+        _camera = new PerspectiveCamera
+        {
+            Position = new Vector3(0f, 0f, -4f),
+            Target = Vector3.Zero,
+            FarPlane = 500f,
+        };
+        _orbitController = new OrbitCameraController(_camera);
+
+        RenderSettings.LogFPSInDebug = true;
+
+        _engine = EngineBuilder
+            .Create(_context)
+            .WithDefaultNodes()
+            .WithPostEffects(effects =>
+            {
+                effects.AddEffect(Fxaa);
+                effects.AddEffect(ToneMapping);
+                effects.AddEffect(ShowFPS);
+            })
+            .Build();
+
+        _renderContext = _engine.CreateRenderContext();
+        _renderContext.Initialize();
+
+        _worldDataProvider = _engine.CreateWorldDataProvider();
+        _worldDataProvider.Initialize();
+
+        BuildScene();
+
+        _imGuiRenderer = new ImGuiRenderer(_context, new ImGuiConfig());
+        _imGuiRenderer.Initialize(_context.GetSwapchainFormat());
+
+        _imGuiPass.Colors[0].ClearColor = new Color4(0.08f, 0.08f, 0.08f, 1.0f);
+        _imGuiPass.Colors[0].LoadOp = LoadOp.Clear;
+        _imGuiPass.Colors[0].StoreOp = StoreOp.Store;
+    }
+
+    // -------------------------------------------------------------------------
+    // Scene construction
+    // -------------------------------------------------------------------------
+
+    private void BuildScene()
+    {
+        var geometryManager = _engine!.ResourceManager.Geometries;
+        var materialPool = _engine.ResourceManager.PBRPropertyManager;
+        var samplerRepo = _engine.ResourceManager.SamplerRepository;
+
+        _root = new Node(_worldDataProvider!.World, "TextureTestRoot");
+
+        // ---- Sphere geometry ----
+        var meshBuilder = new MeshBuilder(true, true, true);
+        meshBuilder.AddSphere(Vector3.Zero, 1.5f, 64, 64);
+        var sphereGeo = meshBuilder.ToMesh().ToGeometry();
+        geometryManager.Add(sphereGeo, out _);
+
+        // ---- Shared sampler ----
+        _sampler = samplerRepo.GetOrCreate(SamplerStateDesc.LinearRepeat);
+
+        // ---- Load the initial texture set ----
+        var initialSet = LoadTextureSet(ActiveSetIndex);
+        _loadedSets[ActiveSetIndex] = initialSet;
+
+        // ---- PBR material ----
+        var desc = TextureSets[ActiveSetIndex];
+        Metallic = desc.DefaultMetallic;
+        Roughness = desc.DefaultRoughness;
+        Ao = desc.DefaultAo;
+
+        _material = materialPool.Create(PBRShadingMode.PBR);
+        ApplyTextureSet(initialSet, desc);
+
+        // ---- Sphere node ----
+        _sphereNode = new MeshNode(_worldDataProvider.World, "Sphere")
+        {
+            Geometry = sphereGeo,
+            MaterialProperties = _material,
+        };
+        _root.AddChild(_sphereNode);
+
+        // ---- Lighting ----
+        var sunNode = new Node(_worldDataProvider.World, "Sun");
+        sunNode.Entity.Set(
+            new DirectionalLightComponent
+            {
+                Direction = Vector3.Normalize(new Vector3(-1f, -1f, 0.5f)),
+                Color = new Color4(1.0f, 0.95f, 0.85f, 1f),
+                Intensity = 1.0f,
+            }
+        );
+        sunNode.Transform = new Transform();
+        _root.AddChild(sunNode);
+
+        var fillNode = new Node(_worldDataProvider.World, "FillLight");
+        fillNode.Entity.Set(
+            new RangeLightComponent(RangeLightType.Point)
+            {
+                Position = new Vector3(-3.5f, 0f, 0f),
+                Color = new Color4(1f, 0, 1.0f, 1f),
+                Intensity = 2.0f,
+                Range = 3f,
+            }
+        );
+        _root.AddChild(fillNode);
+    }
+
+    // -------------------------------------------------------------------------
+    // Texture set loading
+    // -------------------------------------------------------------------------
+
+    /// <summary>
+    /// Loads (or returns cached) GPU textures for the given set index.
+    /// </summary>
+    private LoadedTextureSet LoadTextureSet(int index)
+    {
+        if (_loadedSets[index] is { } cached)
+            return cached;
+
+        var desc = TextureSets[index];
+        var textureRepo = _engine!.ResourceManager.TextureRepository;
+
+        var albedo = TryLoadFile(textureRepo, desc.AlbedoFile, $"{desc.DisplayName}_Albedo");
+        var normal = TryLoadFile(textureRepo, desc.NormalFile, $"{desc.DisplayName}_Normal");
+
+        TextureResource mr;
+        if (desc.MetallicRoughnessFile is not null)
+        {
+            // Pre-combined file (e.g. glTF-style, G=metallic, B=roughness)
+            mr = TryLoadFile(textureRepo, desc.MetallicRoughnessFile, $"{desc.DisplayName}_MR");
+        }
+        else if (
+            desc.AoFile is not null
+            || desc.MetallicFile is not null
+            || desc.RoughnessFile is not null
+        )
+        {
+            // Separate files — use OmrTextureCombiner to pack into R=AO, G=Roughness, B=Metallic
+            mr = BuildOmrTexture(textureRepo, desc);
+        }
+        else
+        {
+            mr = TextureResource.Null;
+        }
+
+        // AO is baked into the OMR texture's R channel when separate files are used.
+        // Set AO to same omr texture for simplicity, and the shader will read the R channel for AO and G/B for roughness/metallic.
+        var ao = mr;
+
+        var set = new LoadedTextureSet(albedo, normal, mr, ao);
+        _loadedSets[index] = set;
+        return set;
+    }
+
+    /// <summary>
+    /// Uses <see cref="OmrTextureCombiner"/> to pack separate AO, roughness/gloss, and metallic
+    /// files into a single RGBA_UN8 texture following the glTF channel convention:
+    ///   R = Ambient Occlusion
+    ///   G = Roughness
+    ///   B = Metallic
+    ///   A = 255 (fixed)
+    ///
+    /// The OmrTextureCombiner output slots are repurposed as:
+    ///   WithOcclusion → R = AO
+    ///   WithMetallic  → G = Roughness  (combiner G slot used for roughness data)
+    ///   WithRoughness → B = Metallic   (combiner B slot used for metallic data)
+    /// </summary>
+    private TextureResource BuildOmrTexture(ITextureRepository textureRepo, TextureSetDesc desc)
+    {
+        var cacheKey = $"{desc.DisplayName}_OMR_Combined";
+
+        // Return from cache if already built
+        if (textureRepo.TryGet(cacheKey, out var cached) && cached is not null)
+            return cached.Texture;
+
+        try
+        {
+            Image? aoImg =
+                desc.AoFile is not null && File.Exists(desc.AoFile)
+                    ? Image.Load(desc.AoFile)
+                    : null;
+            Image? roughnessImg =
+                desc.RoughnessFile is not null && File.Exists(desc.RoughnessFile)
+                    ? Image.Load(desc.RoughnessFile)
+                    : null;
+            Image? metallicImg =
+                desc.MetallicFile is not null && File.Exists(desc.MetallicFile)
+                    ? Image.Load(desc.MetallicFile)
+                    : null;
+
+            if (aoImg is null && roughnessImg is null && metallicImg is null)
+                return TextureResource.Null;
+
+            using var _ao = aoImg;
+            using var _r = roughnessImg;
+            using var _m = metallicImg;
+
+            var combiner = new OmrTextureCombiner();
+
+            // R = AO  (WithOcclusion → output R)
+            if (aoImg is not null)
+                combiner.WithOcclusion(aoImg, ChannelComponent.R);
+
+            // G = Roughness  (WithMetallic → output G, fed with roughness/gloss data)
+            if (roughnessImg is not null)
+                if (desc.RoughnessIsGloss)
+                    combiner.WithRoughnessFromGloss(roughnessImg, ChannelComponent.R);
+                else
+                    combiner.WithRoughness(roughnessImg, ChannelComponent.R);
+
+            // B = Metallic  (WithRoughness → output B, fed with metallic data)
+            if (metallicImg is not null)
+                combiner.WithMetallic(metallicImg, ChannelComponent.R);
+
+            using var combined = combiner.Combine();
+
+            return textureRepo.GetOrCreateFromImage(cacheKey, combined);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to build OMR texture for {Set}", desc.DisplayName);
+            return TextureResource.Null;
+        }
+    }
+
+    private TextureResource TryLoadFile(ITextureRepository repo, string? filePath, string debugName)
+    {
+        if (filePath is null)
+            return TextureResource.Null;
+
+        if (!File.Exists(filePath))
+        {
+            _logger.LogWarning("Texture not found: {Path}", filePath);
+            return TextureResource.Null;
+        }
+
+        try
+        {
+            return repo.GetOrCreateFromFile(filePath, debugName);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to load texture: {Path}", filePath);
+            return TextureResource.Null;
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Texture set switching
+    // -------------------------------------------------------------------------
+
+    /// <summary>
+    /// Switches the active texture set, loading it if not yet cached, and
+    /// updates the live material with the new textures and default scalars.
+    /// </summary>
+    internal void SwitchToTextureSet(int index)
+    {
+        if (index == ActiveSetIndex || _material is null)
+            return;
+
+        ActiveSetIndex = index;
+        var set = LoadTextureSet(index);
+        var desc = TextureSets[index];
+
+        // Reset scalars to the new set's defaults
+        Metallic = desc.DefaultMetallic;
+        Roughness = desc.DefaultRoughness;
+        Ao = desc.DefaultAo;
+        AlbedoTint = Vector3.One;
+        Opacity = 1.0f;
+
+        ApplyTextureSet(set, desc);
+    }
+
+    private void ApplyTextureSet(LoadedTextureSet set, TextureSetDesc desc)
+    {
+        if (_material is null)
+            return;
+
+        _material.AlbedoMap = set.Albedo.Valid ? set.Albedo : TextureResource.Null;
+        _material.NormalMap = set.Normal.Valid ? set.Normal : TextureResource.Null;
+        _material.MetallicRoughnessMap = set.MetallicRoughness.Valid
+            ? set.MetallicRoughness
+            : TextureResource.Null;
+        _material.Sampler = _sampler;
+
+        _material.Properties.Albedo = AlbedoTint;
+        _material.Properties.Metallic = Metallic;
+        _material.Properties.Roughness = Roughness;
+        _material.Properties.Ao = Ao;
+        _material.Properties.Opacity = Opacity;
+        _material.Properties.Emissive = Vector3.Zero;
+        _material.Properties.ClearCoatRoughness = desc.ClearCoatRoughness;
+        _material.Properties.ClearCoatStrength = desc.ClearCoatStrength;
+    }
+
+    // -------------------------------------------------------------------------
+    // Render loop
+    // -------------------------------------------------------------------------
+
+    public void Render(int width, int height)
+    {
+        if (_engine is null || _renderContext is null || _imGuiRenderer is null)
+            return;
+
+        if (_lastTimestamp == 0)
+            _lastTimestamp = Stopwatch.GetTimestamp();
+        float delta = (float)(Stopwatch.GetTimestamp() - _lastTimestamp) / Stopwatch.Frequency;
+        _lastTimestamp = Stopwatch.GetTimestamp();
+
+        if (AutoRotate && _sphereNode is not null)
+        {
+            RotationAngle += delta * 15f;
+            if (RotationAngle >= 360f)
+                RotationAngle -= 360f;
+
+            _sphereNode.Transform = new Transform
+            {
+                Rotation = Quaternion.CreateFromAxisAngle(
+                    Vector3.UnitY,
+                    RotationAngle * MathF.PI / 180f
+                ),
+            };
+            _sphereNode.NotifyTransformChanged();
+        }
+
+        _orbitController?.Update(delta);
+
+        _renderContext.Update(_viewportSize, _camera);
+        _renderContext.FinalOutputTexture = _context.GetCurrentSwapchainTexture();
+
+        var cmdBuf = _engine.RenderOffscreen(_renderContext, _worldDataProvider!);
+
+        var offscreenTex = _renderContext.TextureColorF16Current;
+        var swapchainTex = _context.GetCurrentSwapchainTexture();
+
+        _imGuiFramebuffer.Colors[0].Texture = swapchainTex;
+        _imGuiDeps.Textures[0] = offscreenTex;
+
+        _imGuiRenderer.BeginFrame(new Vector2(width, height));
+        DrawGui(
+            offscreenTex,
+            width / _imGuiRenderer.DisplayScale,
+            height / _imGuiRenderer.DisplayScale
+        );
+        _imGuiRenderer.EndFrame();
+        _imGuiRenderer.Render(cmdBuf, _imGuiPass, _imGuiFramebuffer, _imGuiDeps);
+
+        _context.Submit(cmdBuf, swapchainTex);
+    }
+
+    // -------------------------------------------------------------------------
+    // Input forwarding
+    // -------------------------------------------------------------------------
+
+    public void OnViewportMouseDown(int button, float vx, float vy)
+    {
+        if (_orbitController is null)
+            return;
+        if (button == 1)
+        {
+            _isRotating = true;
+            _orbitController.OnRotateBegin(vx, vy);
+        }
+        else if (button == 2)
+        {
+            _isPanning = true;
+            _orbitController.OnPanBegin(vx, vy);
+        }
+    }
+
+    public void OnViewportMouseUp(int button)
+    {
+        if (button == 1)
+            _isRotating = false;
+        else if (button == 2)
+            _isPanning = false;
+    }
+
+    public void OnViewportMouseMove(float vx, float vy)
+    {
+        if (_orbitController is null)
+            return;
+        if (_isRotating)
+            _orbitController.OnRotateDelta(vx, vy);
+        if (_isPanning)
+            _orbitController.OnPanDelta(vx, vy);
+    }
+
+    public void OnViewportMouseWheel(float delta)
+    {
+        _orbitController?.OnZoomDelta(delta);
+    }
+
+    // -------------------------------------------------------------------------
+    // IDisposable
+    // -------------------------------------------------------------------------
+
+    private bool _disposed;
+
+    public void Dispose()
+    {
+        if (_disposed)
+            return;
+        _disposed = true;
+
+        _material?.Dispose();
+        _imGuiRenderer?.Dispose();
+        _renderContext?.Dispose();
+        _worldDataProvider?.Dispose();
+        _engine?.Dispose();
+    }
+}

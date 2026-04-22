@@ -51,19 +51,7 @@ public sealed class TextureRepository
     public static string NormalizeFilePath(string filePath) =>
         Path.GetFullPath(filePath).ToLowerInvariant();
 
-    /// <summary>
-    /// Gets or creates a GPU texture from a memory stream, using <paramref name="name"/> as the cache key.
-    /// </summary>
-    /// <param name="name">
-    /// A unique name that identifies this texture in the cache.
-    /// If a texture with the same name already exists it is returned directly without re-decoding the stream.
-    /// </param>
-    /// <param name="stream">The stream containing the encoded image data.</param>
-    /// <param name="debugName">Optional debug name forwarded to the GPU resource.</param>
-    /// <returns>The texture resource, either from cache or newly created.</returns>
-    /// <exception cref="ArgumentException">Thrown if <paramref name="name"/> is null or empty.</exception>
-    /// <exception cref="InvalidOperationException">Thrown if the stream cannot be decoded or texture creation fails.</exception>
-    /// <exception cref="ObjectDisposedException">Thrown if the repository or context has been disposed.</exception>
+    /// <inheritdoc/>
     public TextureResource GetOrCreateFromStream(string name, Stream stream, string? debugName = null)
     {
         ArgumentException.ThrowIfNullOrEmpty(name);
@@ -80,20 +68,7 @@ public sealed class TextureRepository
         return StoreEntry(name, texture, debugName ?? name);
     }
 
-    /// <summary>
-    /// Gets or creates a GPU texture by loading a file from the file system.
-    /// The normalized absolute path is used as the cache key.
-    /// </summary>
-    /// <param name="filePath">Path to the image file on disk.</param>
-    /// <param name="debugName">
-    /// Optional debug name forwarded to the GPU resource.
-    /// Defaults to the file name when <c>null</c>.
-    /// </param>
-    /// <returns>The texture resource, either from cache or newly created.</returns>
-    /// <exception cref="ArgumentException">Thrown if <paramref name="filePath"/> is null or empty.</exception>
-    /// <exception cref="FileNotFoundException">Thrown if the file does not exist.</exception>
-    /// <exception cref="InvalidOperationException">Thrown if the file cannot be decoded or texture creation fails.</exception>
-    /// <exception cref="ObjectDisposedException">Thrown if the repository or context has been disposed.</exception>
+    /// <inheritdoc/>
     public TextureResource GetOrCreateFromFile(string filePath, string? debugName = null)
     {
         ArgumentException.ThrowIfNullOrEmpty(filePath);
@@ -114,6 +89,23 @@ public sealed class TextureRepository
         var resolvedDebugName = debugName ?? Path.GetFileName(filePath);
         var texture = TextureCreator.CreateTextureFromStream(_context, stream, resolvedDebugName);
         return StoreEntry(cacheKey, texture, resolvedDebugName);
+    }
+
+    /// <inheritdoc/>
+    public TextureResource GetOrCreateFromImage(string name, Image image)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(name);
+        ObjectDisposedException.ThrowIf(_context.IsDisposed, this);
+        var cacheKey = name;
+
+        if (TryGet(cacheKey, out var cached))
+        {
+            AddResourceReference(cached!.Texture);
+            return cached!.Texture;
+        }
+
+        var texture = TextureCreator.CreateTexture(_context, image, name);
+        return StoreEntry(cacheKey, texture, name);
     }
 
     /// <inheritdoc/>

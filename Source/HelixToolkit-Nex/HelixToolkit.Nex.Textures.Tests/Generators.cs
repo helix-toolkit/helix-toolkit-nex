@@ -40,6 +40,12 @@ public static class Generators
         Format.BC7_RGBA,
     ];
 
+    /// <summary>
+    /// Public accessor for all valid Format values (excluding Invalid).
+    /// Used by OmrTextureCombinerTests to generate unsupported formats.
+    /// </summary>
+    public static IReadOnlyList<Format> AllValidFormatsPublic => AllValidFormats;
+
     // Uncompressed formats with known bits-per-pixel
     private static readonly Format[] UncompressedFormats =
     [
