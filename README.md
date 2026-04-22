@@ -43,6 +43,8 @@ Currently in development.
     - Tone mapping post-processing effect. (Done)
   - GPU picking. (Done)
   - Async Buffer/Texture upload with transfer queue. (Done)
+  - Texture loading and caching system. (Done)
+  - Shader compilation and management system. (Done)
  
 - Wpf Framework Interoperation (Done)
 - WinUI Interoperation (Done)

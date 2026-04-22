@@ -587,7 +587,7 @@ internal sealed class PointsDemo : IDisposable
         if (_selectedEntity.Valid)
             _selectedEntity.Remove<BorderHighlightComponent>();
         if (
-            !_context.TryPick(
+            !_context.TryPickRaw(
                 _renderContext.ResourceSet.Textures[SystemBufferNames.TextureEntityId],
                 (uint)_renderContext.WindowSize.Width,
                 (uint)_renderContext.WindowSize.Height,
