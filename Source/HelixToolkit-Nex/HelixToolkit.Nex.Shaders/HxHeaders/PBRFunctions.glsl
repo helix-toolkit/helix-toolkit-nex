@@ -14,14 +14,17 @@
 // ============================================================================
 
 struct PBRMaterial {
-    vec3 albedo;           // Base color (sRGB)
-    float metallic;        // Metallic factor [0..1]
-    vec3 ambient;          // Ambient color
-    float roughness;       // Roughness factor [0..1]
-    vec3 normal;           // World-space normal (normalized)
-    float ao;              // Ambient occlusion [0..1]
-    vec3 emissive;         // Emissive color
-    float opacity;         // Opacity [0..1]
+    vec3 albedo;               // Base color (sRGB)
+    float metallic;            // Metallic factor [0..1]
+    vec3 ambient;              // Ambient color
+    float roughness;           // Roughness factor [0..1]
+    vec3 normal;               // World-space normal (normalized)
+    float ao;                  // Ambient occlusion [0..1]
+    vec3 emissive;             // Emissive color
+    float opacity;             // Opacity [0..1]
+    float clearCoatStrength;   // Clear coat layer strength [0..1]
+    float clearCoatRoughness;  // Clear coat layer roughness [0..1]
+    float reflectance;         // Fresnel reflectance at normal incidence for dielectrics (default 0.04)
 };
 
 
@@ -111,30 +114,41 @@ vec3 calculatePBRLighting(in PBRMaterial material, in Light light, in vec3 fragP
     float NdotL = max(dot(N, L), 0.0);
     float NdotV = max(dot(N, V), 0.0);
 
-    // Calculate F0
-    vec3 F0 = mix(vec3(0.04), material.albedo, material.metallic);
-    
+    // Calculate F0 using reflectance for dielectrics (default 0.04)
+    vec3 F0 = mix(vec3(material.reflectance), material.albedo, material.metallic);
+
     // Fresnel (kS) calculated once for both Specular and Diffuse
     vec3 F = fresnelSchlick(max(dot(H, V), 0.0), F0);
-    
+
     // Specular Term (Cook-Torrance)
     float NDF = distributionGGX(N, H, material.roughness);
     float G   = geometrySmith(N, V, L, material.roughness);
     // Optimization: NdotL in the denominator cancels with the NdotL in the final radiance multiplication
     // specular var here represents (fs * NdotL)
     vec3 specular = (NDF * G * F) / (4.0 * NdotV + 0.0001);
-    
+
     // Diffuse Term (Energy Conservation)
     vec3 kS = F;
     vec3 kD = (vec3(1.0) - kS) * (1.0 - material.metallic);
     vec3 diffuse = kD * material.albedo * RECIPROCAL_PI;
-    
+
     vec3 radiance = light.color * light.intensity * attenuation;
-    
+
+    // Clear Coat Layer (thin dielectric lobe on top of the base material)
+    // Uses a fixed F0 of 0.04 (air-to-polyurethane) and its own roughness
+    vec3 clearCoatF0 = vec3(0.04);
+    vec3 Fc = fresnelSchlick(max(dot(H, V), 0.0), clearCoatF0);
+    float clearCoatNDF = distributionGGX(N, H, material.clearCoatRoughness);
+    float clearCoatG   = geometrySmith(N, V, L, material.clearCoatRoughness);
+    // Same NdotL optimisation as base specular
+    vec3 clearCoatSpec = (clearCoatNDF * clearCoatG * Fc) / (4.0 * NdotV + 0.0001);
+    // Attenuate the base layer by the clear coat Fresnel so energy is conserved
+    float clearCoatAttenuation = 1.0 - material.clearCoatStrength * Fc.r;
+
     // Combine terms. Note: 'specular' variable already contains the NdotL factor due to the optimization above.
     // We only need to multiply diffuse by NdotL.
     // Scale by PI to cancel out the 1/PI factor in the BRDF terms, making intensity=1.0 result in expected brightness
-    return (diffuse * NdotL + specular) * radiance * PI;
+    return ((diffuse * NdotL + specular) * clearCoatAttenuation + clearCoatSpec * material.clearCoatStrength) * radiance * PI;
 }
 
 vec3 pbrShadingSimple(PBRMaterial material, vec3 fragPos, vec3 viewDir, 

@@ -33,10 +33,14 @@ struct PBRProperties {
     float ao;              // Ambient occlusion [0..1]
     float opacity;         // Opacity/alpha [0..1]
     float vertexColorMix; // Vertex color mix factor [0..1], 0 = no vertex color, 1 = full vertex color
-    uint albedoTexIndex;
-    uint normalTexIndex;
-    uint metallicRoughnessTexIndex;
-    uint samplerIndex;
+    float clearCoatStrength; // Clear coat layer strength [0..1]
+    float clearCoatRoughness; // Clear coat layer roughness [0..1]
+    float reflectance; // Fresnel reflectance at normal incidence (used if no albedo texture, typically 0.04 for dielectrics)
+    uint albedoTexIndex; // Index into texture array for albedo map, 0 if not used
+    uint normalTexIndex; // Index into texture array for normal map, 0 if not used
+    uint metallicRoughnessTexIndex; // Index into texture array for metallic-roughness map, 0 if not used. R=metallic, G=roughness
+    uint samplerIndex; // Index into sampler array for all textures, assuming same sampler is used for all material textures
+    uint aoTexIndex; // Index into texture array for ambient occlusion map, 0 if not used
     uint _padding0;
     uint _padding1;
 };
@@ -265,6 +269,9 @@ PBRMaterial createPBRMaterial()
     material.emissive = props.emissive;
     material.opacity = props.opacity;
     material.ambient = props.ambient;
+    material.clearCoatStrength = props.clearCoatStrength;
+    material.clearCoatRoughness = props.clearCoatRoughness;
+    material.reflectance = max(props.reflectance, 0.0);
 #ifndef EXCLUDE_MESH_PROPS
     if (props.albedoTexIndex > 0)
     {
@@ -272,9 +279,13 @@ PBRMaterial createPBRMaterial()
     }
     if (props.metallicRoughnessTexIndex > 0)
     {
-        vec2 metallicRoughness = texture(sampler2D(kTextures2D[props.metallicRoughnessTexIndex], kSamplers[props.samplerIndex]), fragTexCoord).bg;
-        material.metallic = metallicRoughness.r;
-        material.roughness = metallicRoughness.g;
+        vec2 metallicRoughness = texture(sampler2D(kTextures2D[props.metallicRoughnessTexIndex], kSamplers[props.samplerIndex]), fragTexCoord).gb;
+        material.metallic = metallicRoughness.x;
+        material.roughness = metallicRoughness.y;
+    }
+    if (props.aoTexIndex > 0)
+    {
+        material.ao = material.ao * texture(sampler2D(kTextures2D[props.aoTexIndex], kSamplers[props.samplerIndex]), fragTexCoord).r;
     }
     material.normal = normalize(fragNormal);
     if (props.normalTexIndex > 0) {
@@ -307,6 +318,9 @@ PBRMaterial createPBRMaterialFlatNormal()
     material.emissive = props.emissive;
     material.opacity = props.opacity;
     material.ambient = props.ambient;
+    material.clearCoatStrength = props.clearCoatStrength;
+    material.clearCoatRoughness = props.clearCoatRoughness;
+    material.reflectance = max(props.reflectance, 0.0);
 #ifndef EXCLUDE_MESH_PROPS
     if (props.albedoTexIndex > 0)
     {
