@@ -18,6 +18,11 @@ using Microsoft.Extensions.Logging;
 
 namespace PBRTest;
 
+internal struct IndexComponent
+{
+    public int Index { get; init; }
+}
+
 /// <summary>
 /// Holds the editable ImGui state for a single PBR sphere in the demo grid.
 /// All fields mirror the corresponding <see cref="PBRMaterialProperties"/> properties.
@@ -231,6 +236,7 @@ internal partial class PBRDemo : IDisposable
                     MaterialProperties = mat,
                 };
                 info.PullFromMaterial();
+                sphereNode.Entity.Set(new IndexComponent { Index = _spheres.Count });
                 _spheres.Add(info);
             }
         }
@@ -328,7 +334,16 @@ internal partial class PBRDemo : IDisposable
     {
         if (_orbitController is null)
             return;
-        if (button == 1)
+        if (button == 0)
+        {
+            var result = _renderContext!.Pick((int)vx, (int)vy);
+            if (result is null)
+            {
+                return;
+            }
+            _selectedIndex = (int)result.Entity.Get<IndexComponent>().Index;
+        }
+        else if (button == 1)
         {
             _isRotating = true;
             _orbitController.OnRotateBegin(vx, vy);

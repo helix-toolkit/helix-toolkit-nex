@@ -32,6 +32,7 @@ public class PickingResult
 public static class GpuPicking
 {
     private static readonly ILogger _logger = LogManager.Create("GpuPicking");
+
     /// <summary>
     /// Attempts to retrieve mesh picking information at the specified pixel coordinates from the given texture.
     /// </summary>
@@ -56,7 +57,7 @@ public static class GpuPicking
     /// otherwise, zero.</param>
     /// <returns><see langword="true"/> if picking information was successfully retrieved and valid identifiers were found;
     /// otherwise, <see langword="false"/>.</returns>
-    public static bool TryPick(
+    public static bool TryPickRaw(
         this IContext context,
         TextureHandle meshIdTexture,
         uint textureWidth,
@@ -126,7 +127,7 @@ public static class GpuPicking
     /// <param name="primitiveId">When this method returns, contains the identifier of the primitive at the specified coordinate, if picking
     /// succeeds; otherwise, zero.</param>
     /// <returns>true if picking information was successfully retrieved for the specified coordinate; otherwise, false.</returns>
-    public static bool TryPick(
+    public static bool TryPickRaw(
         this RenderContext context,
         int x,
         int y,
@@ -149,7 +150,7 @@ public static class GpuPicking
         {
             return false;
         }
-        return TryPick(
+        return TryPickRaw(
             context.Context,
             texture,
             (uint)context.WindowSize.Width,
@@ -172,7 +173,7 @@ public static class GpuPicking
     /// <param name="y">The y-coordinate, in screen space, where the picking operation is attempted.</param>
     /// <returns>A <see cref="PickingResult"/> containing the details of the picked object if the operation succeeds; otherwise,
     /// <see langword="null"/>.</returns>
-    public static PickingResult? TryPick(this RenderContext context, int x, int y)
+    public static PickingResult? Pick(this RenderContext context, int x, int y)
     {
         var result = new PickingResult();
         if (context.TryPick(x, y, result))
@@ -197,7 +198,7 @@ public static class GpuPicking
     public static bool TryPick(this RenderContext context, int x, int y, PickingResult result)
     {
         if (
-            !TryPick(
+            !TryPickRaw(
                 context,
                 x,
                 y,

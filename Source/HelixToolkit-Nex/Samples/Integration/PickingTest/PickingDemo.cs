@@ -132,10 +132,7 @@ internal sealed class PickingDemo : IDisposable
             Geometry = _largeMeshGeometry,
             MaterialProperties = greyMaterial,
         };
-        meshNode.Entity.Set(new WireframePostEffect.WireframeComponent
-        {
-            Color = Color.Blue,
-        });
+        meshNode.Entity.Set(new WireframePostEffect.WireframeComponent { Color = Color.Blue });
         _root.AddChild(meshNode);
 
         // --- Highlight triangle (dynamic, initially empty) ---
@@ -183,7 +180,9 @@ internal sealed class PickingDemo : IDisposable
 
         // --- Highlight point (dynamic single red point, initially hidden at origin) ---
         _highlightPointGeometry = new Geometry(Topology.Point, isDynamic: true);
-        _highlightPointGeometry.Vertices.Add(new Vector4(float.MaxValue, float.MaxValue, float.MaxValue, 1));
+        _highlightPointGeometry.Vertices.Add(
+            new Vector4(float.MaxValue, float.MaxValue, float.MaxValue, 1)
+        );
         _highlightPointGeometry.VertexColors.Add(new Vector4(1, 0, 0, 1));
         _highlightPointGeometry.UpdateBounds();
         succ = geometryManager.Add(_highlightPointGeometry, out _);
@@ -199,12 +198,14 @@ internal sealed class PickingDemo : IDisposable
 
         // --- Add a directional light ---
         _lightNode = new Node(world, "Sun");
-        _lightNode.Entity.Set(new DirectionalLightComponent
-        {
-            Color = new Color(1.0f, 1.0f, 1.0f),
-            Intensity = 2.0f,
-            Direction = Vector3.Normalize(new Vector3(0.3f, -1.0f, 0.5f)),
-        });
+        _lightNode.Entity.Set(
+            new DirectionalLightComponent
+            {
+                Color = new Color(1.0f, 1.0f, 1.0f),
+                Intensity = 2.0f,
+                Direction = Vector3.Normalize(new Vector3(0.3f, -1.0f, 0.5f)),
+            }
+        );
         _root.AddChild(_lightNode);
     }
 
@@ -251,7 +252,7 @@ internal sealed class PickingDemo : IDisposable
     public void Pick(int x, int y)
     {
         if (
-            !_renderContext!.TryPick(
+            !_renderContext!.TryPickRaw(
                 x,
                 y,
                 out var worldId,
@@ -288,7 +289,9 @@ internal sealed class PickingDemo : IDisposable
                 // Update highlight point position
                 _highlightPointGeometry!.Vertices[0] = pointPos;
                 _highlightPointGeometry.VertexColors[0] = new Vector4(1, 0, 0, 1);
-                _highlightPointGeometry.MarkDirty(GeometryBufferType.Vertex | GeometryBufferType.VertexColor);
+                _highlightPointGeometry.MarkDirty(
+                    GeometryBufferType.Vertex | GeometryBufferType.VertexColor
+                );
                 _highlightPointGeometry.UpdateBounds();
             }
             return;
@@ -342,10 +345,7 @@ internal sealed class PickingDemo : IDisposable
             _highlightGeometry.MarkDirty(GeometryBufferType.Vertex | GeometryBufferType.VertexProp);
             _highlightGeometry.UpdateBounds();
 
-            _logger.LogInformation(
-                "Highlighted triangle: ({V0}), ({V1}), ({V2})",
-                ov0, ov1, ov2
-            );
+            _logger.LogInformation("Highlighted triangle: ({V0}), ({V1}), ({V2})", ov0, ov1, ov2);
         }
     }
 

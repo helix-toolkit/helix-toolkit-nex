@@ -147,7 +147,7 @@ internal class LightCullingTest(IContext context, bool largeScene = true) : IDis
             _selectedEntity.Remove<WireframeComponent>();
         }
         if (
-            !_context.TryPick(
+            !_context.TryPickRaw(
                 _renderContext!.ResourceSet!.Textures[SystemBufferNames.TextureEntityId],
                 (uint)_renderContext.WindowSize.Width,
                 (uint)_renderContext.WindowSize.Height,

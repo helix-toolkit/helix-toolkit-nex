@@ -92,7 +92,7 @@ internal partial class PBRDemo
                 for (int col = GridCols - 1; col >= 0; col--)
                 {
                     int idx = row * GridCols + col;
-                    bool isSelected = _selectedIndex == idx;
+                    var isSelected = idx == _selectedIndex;
 
                     if (isSelected)
                         Gui.PushStyleColor(ImGuiCol.Button, new Vector4(0.9f, 0.5f, 0.1f, 1f));
@@ -309,7 +309,8 @@ internal partial class PBRDemo
             {
                 var mousePos = Gui.GetMousePos();
                 var rel = new Vector2(mousePos.X - canvasPos.X, mousePos.Y - canvasPos.Y);
-
+                if (Gui.IsMouseClicked(ImGuiMouseButton.Left))
+                    OnViewportMouseDown(0, rel.X, rel.Y);
                 if (Gui.IsMouseClicked(ImGuiMouseButton.Right))
                     OnViewportMouseDown(1, rel.X, rel.Y);
                 if (Gui.IsMouseClicked(ImGuiMouseButton.Middle))
