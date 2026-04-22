@@ -300,9 +300,7 @@ internal partial class PBRDemo : IDisposable
 
         var cmdBuf = _engine.RenderOffscreen(_renderContext, _worldDataProvider!);
 
-        var offscreenTex = _renderContext.ResourceSet!.Textures[
-            SystemBufferNames.TextureColorF16Current
-        ];
+        var offscreenTex = _renderContext.TextureColorF16Current;
 
         var swapchainTex = _context.GetCurrentSwapchainTexture();
         _imGuiFramebuffer.Colors[0].Texture = swapchainTex;
