@@ -1,25 +1,51 @@
 namespace HelixToolkit.Nex.Material;
 
+/// <summary>
+/// Marker struct used as the resource type tag for material property pool entries.
+/// </summary>
 public struct MaterialPropertyResource { }
 
+/// <summary>
+/// Specifies the operation that was performed on a material property entry.
+/// </summary>
 public enum MaterialPropertyOp
 {
+    /// <summary>A new material property entry was created.</summary>
     Create,
+
+    /// <summary>An existing material property entry was updated.</summary>
     Update,
+
+    /// <summary>An existing material property entry was destroyed.</summary>
     Destroy,
 }
 
+/// <summary>
+/// Event published on the <see cref="EventBus"/> whenever a material property entry is
+/// created, updated, or destroyed.
+/// </summary>
 public readonly struct MaterialPropsUpdatedEvent(
     MaterialTypeId materialTypeId,
     uint index,
     MaterialPropertyOp operation
 ) : IEvent
 {
+    /// <summary>Gets the identifier of the material type that owns this entry.</summary>
     public MaterialTypeId MaterialTypeId { get; } = materialTypeId;
+
+    /// <summary>Gets the pool index of the material property entry that was affected.</summary>
     public uint Index { get; } = index;
+
+    /// <summary>Gets the operation that triggered this event.</summary>
     public MaterialPropertyOp Operation { get; } = operation;
 }
 
+/// <summary>
+/// Manages the PBR (Physically Based Rendering) material properties for a single material
+/// instance, backed by a pooled <see cref="PBRProperties"/> entry.
+/// Publish change notifications via the <see cref="EventBus"/> whenever a property value is modified.
+/// Implements <see cref="IDisposable"/> to release the pooled entry when no longer needed.
+/// </summary>
 public sealed class PBRMaterialProperties : IDisposable
 {
     private static readonly EventBus _eventBus = EventBus.Instance;
@@ -32,14 +58,22 @@ public sealed class PBRMaterialProperties : IDisposable
         Opacity = 1,
     };
 
+    /// <summary>Gets the identifier of the material type that owns this instance.</summary>
     public readonly MaterialTypeId MaterialTypeId = 0;
 
+    /// <summary>Gets a reference to the underlying <see cref="PBRProperties"/> stored in the pool.</summary>
     public ref PBRProperties Properties => ref _pool!.GetRef(_handle)!;
 
+    /// <summary>Gets a value indicating whether this instance is backed by a valid pool entry.</summary>
     public bool Valid => _pool is not null && _handle.Valid;
 
+    /// <summary>Gets the zero-based index of this material's entry within the pool.</summary>
     public uint Index => _handle.Index;
 
+    /// <summary>
+    /// Gets or sets the base (albedo) color of the material.
+    /// </summary>
+    /// <value>A <see cref="Color"/> representing the diffuse reflectance of the surface.</value>
     public Color Albedo
     {
         set
@@ -55,6 +89,10 @@ public sealed class PBRMaterialProperties : IDisposable
         get => new(Properties.Albedo);
     }
 
+    /// <summary>
+    /// Gets or sets the opacity of the material.
+    /// </summary>
+    /// <value>A value in the range [0, 1], where <c>0</c> is fully transparent and <c>1</c> is fully opaque.</value>
     public float Opacity
     {
         set
@@ -69,6 +107,13 @@ public sealed class PBRMaterialProperties : IDisposable
         get => Properties.Opacity;
     }
 
+    /// <summary>
+    /// Gets or sets the metallic factor of the PBR material.
+    /// </summary>
+    /// <value>
+    /// A value in the range [0, 1], where <c>0</c> represents a fully dielectric (non-metallic)
+    /// surface and <c>1</c> represents a fully metallic surface.
+    /// </value>
     public float Metallic
     {
         set
@@ -82,6 +127,10 @@ public sealed class PBRMaterialProperties : IDisposable
         }
         get => Properties.Metallic;
     }
+
+    /// <summary>
+    /// Gets or sets the emissive color of the material, representing light emitted by the surface.
+    /// </summary>
     public Color Emissive
     {
         set
@@ -96,6 +145,11 @@ public sealed class PBRMaterialProperties : IDisposable
         }
         get => new(Properties.Emissive);
     }
+
+    /// <summary>
+    /// Gets or sets the roughness of the material surface.
+    /// </summary>
+    /// <value>A value in the range [0, 1], where <c>0</c> is perfectly smooth and <c>1</c> is fully rough.</value>
     public float Roughness
     {
         set
@@ -109,6 +163,10 @@ public sealed class PBRMaterialProperties : IDisposable
         }
         get => Properties.Roughness;
     }
+
+    /// <summary>
+    /// Gets or sets the ambient color contribution of the material.
+    /// </summary>
     public Color Ambient
     {
         set
@@ -123,6 +181,11 @@ public sealed class PBRMaterialProperties : IDisposable
         }
         get => new(Properties.Ambient);
     }
+
+    /// <summary>
+    /// Gets or sets the ambient occlusion (AO) factor of the material.
+    /// </summary>
+    /// <value>A value in the range [0, 1], where <c>0</c> means fully occluded and <c>1</c> means no occlusion.</value>
     public float Ao
     {
         set
@@ -137,6 +200,10 @@ public sealed class PBRMaterialProperties : IDisposable
         get => Properties.Ao;
     }
 
+    /// <summary>
+    /// Gets or sets the blend factor between the material's albedo color and per-vertex colors.
+    /// </summary>
+    /// <value>A value in the range [0, 1], where <c>0</c> uses only the albedo and <c>1</c> uses only vertex colors.</value>
     public float VertexColorMix
     {
         set
@@ -151,7 +218,66 @@ public sealed class PBRMaterialProperties : IDisposable
         get => Properties.VertexColorMix;
     }
 
+    /// <summary>
+    /// Gets or sets the strength of the clear-coat layer applied on top of the base material.
+    /// </summary>
+    /// <value>A value in the range [0, 1], where <c>0</c> disables the clear coat and <c>1</c> applies it at full strength.</value>
+    public float ClearCoatStrength
+    {
+        set
+        {
+            if (Properties.ClearCoatStrength == value)
+            {
+                return;
+            }
+            Properties.ClearCoatStrength = value;
+            NotifyUpdated();
+        }
+        get => Properties.ClearCoatStrength;
+    }
+
+    /// <summary>
+    /// Gets or sets the roughness of the clear-coat layer.
+    /// </summary>
+    /// <value>A value in the range [0, 1], where <c>0</c> is a perfectly smooth coat and <c>1</c> is fully rough.</value>
+    public float ClearCoatRoughness
+    {
+        set
+        {
+            if (Properties.ClearCoatRoughness == value)
+            {
+                return;
+            }
+            Properties.ClearCoatRoughness = value;
+            NotifyUpdated();
+        }
+        get => Properties.ClearCoatRoughness;
+    }
+
+    /// <summary>
+    /// Gets or sets the reflectance of the material at normal incidence (Fresnel F0 for dielectrics).
+    /// </summary>
+    /// <value>A value in the range [0, 1] controlling the specular reflectivity of non-metallic surfaces.</value>
+    public float Reflectance
+    {
+        set
+        {
+            if (Properties.Reflectance == value)
+            {
+                return;
+            }
+            Properties.Reflectance = value;
+            NotifyUpdated();
+        }
+        get => Properties.Reflectance;
+    }
+
     private TextureResource _albedoMap = TextureResource.Null;
+
+    /// <summary>
+    /// Gets or sets the albedo (base color) texture map.
+    /// Setting this updates <see cref="PBRProperties.AlbedoTexIndex"/> in the pooled data.
+    /// </summary>
     public TextureResource AlbedoMap
     {
         set
@@ -168,6 +294,11 @@ public sealed class PBRMaterialProperties : IDisposable
     }
 
     private TextureResource _normalMap = TextureResource.Null;
+
+    /// <summary>
+    /// Gets or sets the normal map texture used for surface detail lighting.
+    /// Setting this updates <see cref="PBRProperties.NormalTexIndex"/> in the pooled data.
+    /// </summary>
     public TextureResource NormalMap
     {
         set
@@ -184,6 +315,12 @@ public sealed class PBRMaterialProperties : IDisposable
     }
 
     private TextureResource _metallicRoughnessMap = TextureResource.Null;
+
+    /// <summary>
+    /// Gets or sets the combined metallic-roughness texture map.
+    /// The blue channel encodes metallic and the green channel encodes roughness (glTF convention).
+    /// Setting this updates <see cref="PBRProperties.MetallicRoughnessTexIndex"/> in the pooled data.
+    /// </summary>
     public TextureResource MetallicRoughnessMap
     {
         set
@@ -200,6 +337,11 @@ public sealed class PBRMaterialProperties : IDisposable
     }
 
     private SamplerResource _sampler = SamplerResource.Null;
+
+    /// <summary>
+    /// Gets or sets the texture sampler used when sampling all texture maps on this material.
+    /// Setting this updates <see cref="PBRProperties.SamplerIndex"/> in the pooled data.
+    /// </summary>
     public SamplerResource Sampler
     {
         set
@@ -215,6 +357,13 @@ public sealed class PBRMaterialProperties : IDisposable
         get => _sampler;
     }
 
+    /// <summary>
+    /// Initializes a new <see cref="PBRMaterialProperties"/> instance, allocating a pool entry
+    /// and publishing a <see cref="MaterialPropertyOp.Create"/> event.
+    /// </summary>
+    /// <param name="materialTypeId">The identifier of the owning material type.</param>
+    /// <param name="properties">Initial property values to store in the pool.</param>
+    /// <param name="pool">The pool that manages <see cref="PBRProperties"/> entries.</param>
     internal PBRMaterialProperties(
         MaterialTypeId materialTypeId,
         ref PBRProperties properties,
@@ -229,6 +378,11 @@ public sealed class PBRMaterialProperties : IDisposable
         );
     }
 
+    /// <summary>
+    /// Publishes a <see cref="MaterialPropertyOp.Update"/> event on the <see cref="EventBus"/>
+    /// to notify listeners that one or more properties have changed.
+    /// Does nothing if this instance is not <see cref="Valid"/>.
+    /// </summary>
     public void NotifyUpdated()
     {
         if (Valid)
@@ -280,5 +434,9 @@ public sealed class PBRMaterialProperties : IDisposable
         GC.SuppressFinalize(this);
     }
 
+    /// <summary>
+    /// Gets a sentinel <see cref="PBRMaterialProperties"/> instance that represents the absence
+    /// of a material. <see cref="Valid"/> returns <see langword="false"/> for this instance.
+    /// </summary>
     public static readonly PBRMaterialProperties Null = new();
 }
