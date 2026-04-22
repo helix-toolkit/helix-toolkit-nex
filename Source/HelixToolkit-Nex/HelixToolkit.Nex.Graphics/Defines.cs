@@ -713,6 +713,39 @@ public sealed class SamplerStateDesc()
         WrapW = SamplerWrap.Clamp,
         DebugName = "PointClamp",
     };
+
+    /// <inheritdoc/>
+    public override int GetHashCode()
+    {
+        var hash = new HashCode();
+        hash.Add(MinFilter);
+        hash.Add(MagFilter);
+        hash.Add(MipMap);
+        hash.Add(WrapU);
+        hash.Add(WrapV);
+        hash.Add(WrapW);
+        hash.Add(DepthCompareOp);
+        hash.Add(MipLodMin);
+        hash.Add(MipLodMax);
+        hash.Add(MaxAnisotropic);
+        hash.Add(DepthCompareEnabled);
+        return hash.ToHashCode();
+    }
+
+    /// <inheritdoc/>
+    public override bool Equals(object? obj) =>
+        obj is SamplerStateDesc other
+        && MinFilter == other.MinFilter
+        && MagFilter == other.MagFilter
+        && MipMap == other.MipMap
+        && WrapU == other.WrapU
+        && WrapV == other.WrapV
+        && WrapW == other.WrapW
+        && DepthCompareOp == other.DepthCompareOp
+        && MipLodMin == other.MipLodMin
+        && MipLodMax == other.MipLodMax
+        && MaxAnisotropic == other.MaxAnisotropic
+        && DepthCompareEnabled == other.DepthCompareEnabled;
 }
 
 /// <summary>

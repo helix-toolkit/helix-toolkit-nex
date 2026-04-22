@@ -43,6 +43,12 @@ public sealed class ResourceManager : Initializable, IResourceManager
     public IShaderRepository ShaderRepository { get; }
 
     /// <inheritdoc />
+    public ISamplerRepository SamplerRepository { get; }
+
+    /// <inheritdoc />
+    public ITextureRepository TextureRepository { get; }
+
+    /// <inheritdoc />
     public IStaticMeshIndexData StaticMeshIndexData { get; }
 
     /// <inheritdoc />
@@ -67,6 +73,10 @@ public sealed class ResourceManager : Initializable, IResourceManager
         PointMaterialManager =
             services.GetService<IPointMaterialManager>()
             ?? new PointMaterialManager(Context, ShaderRepository);
+        SamplerRepository =
+            services.GetService<ISamplerRepository>() ?? new SamplerRepository(Context);
+        TextureRepository =
+            services.GetService<ITextureRepository>() ?? new TextureRepository(Context);
         StaticMeshIndexData = new StaticMeshIndexData(this);
         PBRPropertyData = new PBRPropertyData(this);
         MeshInfoData = new MeshInfoData(this);
@@ -114,6 +124,11 @@ public sealed class ResourceManager : Initializable, IResourceManager
         Geometries.Clear();
         PBRPropertyManager.Clear();
         PBRMaterialManager.Clear();
+        PointMaterialManager.Clear();
+        ShaderRepository.Clear();
+        SamplerRepository.Clear();
+        TextureRepository.Clear();
+
         return ResultCode.Ok;
     }
 

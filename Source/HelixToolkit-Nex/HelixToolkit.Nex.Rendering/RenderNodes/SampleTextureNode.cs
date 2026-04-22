@@ -128,7 +128,12 @@ public abstract class SampleTextureNode(SampleTextureMode mode, Format targetFor
 
     protected override bool OnSetup()
     {
-        _sampler = Context!.CreateSampler(SamplerStateDesc.PointClamp);
+        if (Context is null || ResourceManager is null)
+        {
+            _logger.LogError("Context or ResourceManager is null, cannot set up SampleTextureNode.");
+            return false;
+        }
+        _sampler = ResourceManager.SamplerRepository.GetOrCreate(SamplerStateDesc.PointClamp);
         return CreatePipeline();
     }
 

@@ -1,5 +1,3 @@
-using System.Diagnostics;
-
 namespace HelixToolkit.Nex.Rendering.RenderNodes;
 
 /// <summary>
@@ -56,11 +54,11 @@ public sealed class WBOITCompositeNode : RenderNode
 
     protected override bool OnSetup()
     {
-        if (Context is null || Renderer is null)
+        if (Context is null || ResourceManager is null)
         {
             return false;
         }
-        _sampler = Context.CreateSampler(SamplerStateDesc.PointClamp);
+        _sampler = ResourceManager.SamplerRepository.GetOrCreate(SamplerStateDesc.PointClamp);
 
         var shaderCompiler = new ShaderCompiler();
 
@@ -75,7 +73,7 @@ public sealed class WBOITCompositeNode : RenderNode
             );
             return false;
         }
-        using var vs = Renderer.ShaderRepository.GetOrCreateFromGlsl(
+        using var vs = ResourceManager.ShaderRepository.GetOrCreateFromGlsl(
             ShaderStage.Vertex,
             vsResult.Source!,
             [],
@@ -93,7 +91,7 @@ public sealed class WBOITCompositeNode : RenderNode
             );
             return false;
         }
-        using var fs = Renderer.ShaderRepository.GetOrCreateFromGlsl(
+        using var fs = ResourceManager.ShaderRepository.GetOrCreateFromGlsl(
             ShaderStage.Fragment,
             fsResult.Source!,
             [],

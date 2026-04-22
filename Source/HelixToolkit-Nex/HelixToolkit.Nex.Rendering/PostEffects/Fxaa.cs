@@ -237,13 +237,13 @@ public sealed class Fxaa : PostEffect
 
     protected override ResultCode OnInitializing()
     {
-        if (Context is null)
+        if (ResourceManager is null)
         {
-            _logger.LogError("Render context is null during FXAA initialization.");
+            _logger.LogError("ResourceManager is null during FXAA initialization.");
             return ResultCode.InvalidState;
         }
 
-        _linearSampler = Context.CreateSampler(SamplerStateDesc.LinearClamp);
+        _linearSampler = ResourceManager.SamplerRepository.GetOrCreate(SamplerStateDesc.LinearClamp);
         if (!_linearSampler.Valid)
         {
             return ResultCode.RuntimeError;

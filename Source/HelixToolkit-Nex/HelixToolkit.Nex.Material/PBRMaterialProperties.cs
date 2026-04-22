@@ -151,60 +151,68 @@ public sealed class PBRMaterialProperties : IDisposable
         get => Properties.VertexColorMix;
     }
 
-    public uint AlbedoTexIndex
+    private TextureResource _albedoMap = TextureResource.Null;
+    public TextureResource AlbedoMap
     {
         set
         {
-            if (Properties.AlbedoTexIndex == value)
+            if (_albedoMap == value)
             {
                 return;
             }
-            Properties.AlbedoTexIndex = value;
+            _albedoMap = value;
+            Properties.AlbedoTexIndex = value.Index;
             NotifyUpdated();
         }
-        get => Properties.AlbedoTexIndex;
+        get => _albedoMap;
     }
 
-    public uint NormalTexIndex
+    private TextureResource _normalMap = TextureResource.Null;
+    public TextureResource NormalMap
     {
         set
         {
-            if (Properties.NormalTexIndex == value)
+            if (_normalMap == value)
             {
                 return;
             }
-            Properties.NormalTexIndex = value;
+            _normalMap = value;
+            Properties.NormalTexIndex = value.Index;
             NotifyUpdated();
         }
-        get => Properties.NormalTexIndex;
+        get => _normalMap;
     }
 
-    public uint MetallicRoughnessTexIndex
+    private TextureResource _metallicRoughnessMap = TextureResource.Null;
+    public TextureResource MetallicRoughnessMap
     {
         set
         {
-            if (Properties.MetallicRoughnessTexIndex == value)
+            if (_metallicRoughnessMap == value)
             {
                 return;
             }
-            Properties.MetallicRoughnessTexIndex = value;
+            _metallicRoughnessMap = value;
+            Properties.MetallicRoughnessTexIndex = value.Index;
             NotifyUpdated();
         }
-        get => Properties.MetallicRoughnessTexIndex;
+        get => _metallicRoughnessMap;
     }
 
-    public uint SamplerIndex
+    private SamplerResource _sampler = SamplerResource.Null;
+    public SamplerResource Sampler
     {
         set
         {
-            if (Properties.SamplerIndex == value)
+            if (_sampler == value)
             {
                 return;
             }
-            Properties.SamplerIndex = value;
+            _sampler = value;
+            Properties.SamplerIndex = value.Index;
             NotifyUpdated();
         }
-        get => Properties.SamplerIndex;
+        get => _sampler;
     }
 
     internal PBRMaterialProperties(
@@ -242,6 +250,10 @@ public sealed class PBRMaterialProperties : IDisposable
             if (disposing)
             {
                 var index = Index;
+                AlbedoMap.Dispose();
+                NormalMap.Dispose();
+                MetallicRoughnessMap.Dispose();
+                Sampler.Dispose();
                 _pool?.Destroy(_handle);
                 _eventBus.Publish(
                     new MaterialPropsUpdatedEvent(MaterialTypeId, index, MaterialPropertyOp.Destroy)

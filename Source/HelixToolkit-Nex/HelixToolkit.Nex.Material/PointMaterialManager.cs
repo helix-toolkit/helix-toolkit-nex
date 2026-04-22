@@ -45,6 +45,11 @@ public interface IPointMaterialManager : IDisposable
     /// <returns><see langword="true"/> if the material identifier was successfully retrieved; otherwise, <see
     /// langword="false"/>.</returns>
     bool TryGetMaterialId(string name, out MaterialTypeId materialId);
+
+    /// <summary>
+    /// Clear and destroy all materials and their associated GPU pipelines from the manager.
+    /// </summary>
+    void Clear();
 }
 
 /// <summary>
@@ -226,6 +231,13 @@ public sealed class PointMaterialManager(IContext context, IShaderRepository sha
         return PointMaterialRegistry.TryGetTypeId(name, out materialId);
     }
 
+    public void Clear()
+    {
+        foreach (var pipeline in _pipelines.Values)
+            pipeline.Dispose();
+        _pipelines.Clear();
+    }
+
     #region IDisposable
 
     private void Dispose(bool disposing)
@@ -234,9 +246,7 @@ public sealed class PointMaterialManager(IContext context, IShaderRepository sha
         {
             if (disposing)
             {
-                foreach (var pipeline in _pipelines.Values)
-                    pipeline.Dispose();
-                _pipelines.Clear();
+                Clear();
             }
             _disposed = true;
         }

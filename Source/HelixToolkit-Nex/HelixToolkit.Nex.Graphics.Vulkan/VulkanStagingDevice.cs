@@ -768,7 +768,7 @@ internal sealed class VulkanStagingDevice : IDisposable
                     };
                 }
                 // cache the largest available region that isn't as big as the one we're looking for
-                if (region.Size > _regions[bestNextRegion].Size)
+                if (region.Size > _regions[i].Size)
                 {
                     bestNextRegion = i;
                 }
