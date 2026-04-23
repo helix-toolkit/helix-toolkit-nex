@@ -16,6 +16,7 @@ internal static class DeviceFeatures
             samplerAnisotropy = supported.samplerAnisotropy,
             vertexPipelineStoresAndAtomics = supported.vertexPipelineStoresAndAtomics,
             fragmentStoresAndAtomics = supported.fragmentStoresAndAtomics,
+            shaderSampledImageArrayDynamicIndexing = VkBool32.True,
             shaderImageGatherExtended = supported.shaderImageGatherExtended,
             shaderInt64 = VkBool32.True,
             textureCompressionBC = supported.textureCompressionBC,
