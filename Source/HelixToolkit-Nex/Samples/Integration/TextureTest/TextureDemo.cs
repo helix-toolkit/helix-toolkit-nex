@@ -39,6 +39,8 @@ internal sealed record TextureSetDesc(
     string? MetallicRoughnessFile, // pre-combined (glTF convention)
     string? MetallicFile, // separate metallic (R channel)
     string? RoughnessFile, // separate roughness (R channel) — or GLOSS (inverted)
+    string? DisplaceFile, // displacement map.
+    string? BumpFile, // bump map,
     bool RoughnessIsGloss, // true → invert roughness channel
                            // AO
     string? AoFile,
@@ -59,13 +61,54 @@ internal sealed class LoadedTextureSet(
     TextureResource albedo,
     TextureResource normal,
     TextureResource metallicRoughness,
-    TextureResource ao
-)
+    TextureResource ao,
+    TextureResource displace,
+    TextureResource bump
+) : IDisposable
 {
+    private bool _disposedValue;
+
     public TextureResource Albedo { get; } = albedo;
     public TextureResource Normal { get; } = normal;
     public TextureResource MetallicRoughness { get; } = metallicRoughness;
     public TextureResource Ao { get; } = ao;
+    public TextureResource Displace { get; } = displace;
+
+    public TextureResource Bump { get; } = bump;
+
+    private void Dispose(bool disposing)
+    {
+        if (!_disposedValue)
+        {
+            if (disposing)
+            {
+                Albedo?.Dispose();
+                Normal?.Dispose();
+                MetallicRoughness?.Dispose();
+                Ao?.Dispose();
+                Displace?.Dispose();
+                Bump?.Dispose();
+            }
+
+            // TODO: free unmanaged resources (unmanaged objects) and override finalizer
+            // TODO: set large fields to null
+            _disposedValue = true;
+        }
+    }
+
+    // // TODO: override finalizer only if 'Dispose(bool disposing)' has code to free unmanaged resources
+    // ~LoadedTextureSet()
+    // {
+    //     // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+    //     Dispose(disposing: false);
+    // }
+
+    public void Dispose()
+    {
+        // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+        Dispose(disposing: true);
+        GC.SuppressFinalize(this);
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -91,6 +134,8 @@ internal sealed partial class TextureDemo : IDisposable
             MetallicFile: null,
             RoughnessFile: null,
             RoughnessIsGloss: false,
+            DisplaceFile: null,
+            BumpFile: null,
             AoFile: null,
             DefaultMetallic: 0.0f,
             DefaultRoughness: 0.6f,
@@ -104,6 +149,8 @@ internal sealed partial class TextureDemo : IDisposable
             MetallicFile: "Assets/Textures/MetalCorroded/MetalCorrodedHeavy001_METALNESS_2K_METALNESS.jpg",
             RoughnessFile: "Assets/Textures/MetalCorroded/MetalCorrodedHeavy001_ROUGHNESS_2K_METALNESS.jpg",
             RoughnessIsGloss: false,
+            DisplaceFile: "Assets/Textures/MetalCorroded/MetalCorrodedHeavy001_DISP_2K_METALNESS.jpg",
+            BumpFile: null,
             AoFile: null,
             DefaultMetallic: 1.0f,
             DefaultRoughness: 0.8f,
@@ -119,6 +166,8 @@ internal sealed partial class TextureDemo : IDisposable
             RoughnessFile: "Assets/Textures/CeramicGlossyTile/TilesMosaicPennyround001_GLOSS_2K.png",
             RoughnessIsGloss: true,
             AoFile: "Assets/Textures/CeramicGlossyTile/TilesMosaicPennyround001_AO_2K.png",
+            BumpFile: "Assets/Textures/CeramicGlossyTile/TilesMosaicPennyround001_BUMP_2K.png",
+            DisplaceFile: null,
             DefaultMetallic: 0.0f,
             DefaultRoughness: 0.2f,
             DefaultAo: 1.0f,
@@ -135,6 +184,8 @@ internal sealed partial class TextureDemo : IDisposable
             RoughnessFile: "Assets/Textures/GrassPatchyGround/Poliigon_GrassPatchyGround_4585_Roughness.jpg",
             RoughnessIsGloss: false,
             AoFile: "Assets/Textures/GrassPatchyGround/Poliigon_GrassPatchyGround_4585_AmbientOcclusion.png",
+            BumpFile: null,
+            DisplaceFile: null,
             DefaultMetallic: 0.0f,
             DefaultRoughness: 0.2f,
             DefaultAo: 1.0f
@@ -172,6 +223,7 @@ internal sealed partial class TextureDemo : IDisposable
     private MeshNode? _sphereNode;
     private PBRMaterialProperties? _material;
     private SamplerResource _sampler = SamplerResource.Null;
+    private SamplerResource _displaceSampler = SamplerResource.Null;
 
     // ---- Texture set state ----
     private readonly LoadedTextureSet?[] _loadedSets = new LoadedTextureSet?[TextureSets.Length];
@@ -186,7 +238,7 @@ internal sealed partial class TextureDemo : IDisposable
     internal float Metallic;
     internal float Roughness;
     internal float Ao;
-    internal Vector3 AlbedoTint = Vector3.One;
+    internal Color4 AlbedoTint = Color.White;
     internal float Opacity = 1.0f;
 
     public ImGuiRenderer? ImGui => _imGuiRenderer;
@@ -253,12 +305,13 @@ internal sealed partial class TextureDemo : IDisposable
 
         // ---- Sphere geometry ----
         var meshBuilder = new MeshBuilder(true, true, true);
-        meshBuilder.AddSphere(Vector3.Zero, 1.5f, 64, 64);
+        meshBuilder.AddSphere(Vector3.Zero, 1.5f, 128, 128);
         var sphereGeo = meshBuilder.ToMesh().ToGeometry();
         geometryManager.Add(sphereGeo, out _);
 
         // ---- Shared sampler ----
         _sampler = samplerRepo.GetOrCreate(SamplerStateDesc.LinearRepeat);
+        _displaceSampler = samplerRepo.GetOrCreate(SamplerStateDesc.PointClamp);
 
         // ---- Load the initial texture set ----
         var initialSet = LoadTextureSet(ActiveSetIndex);
@@ -324,6 +377,8 @@ internal sealed partial class TextureDemo : IDisposable
 
         var albedo = TryLoadFile(textureRepo, desc.AlbedoFile, $"{desc.DisplayName}_Albedo");
         var normal = TryLoadFile(textureRepo, desc.NormalFile, $"{desc.DisplayName}_Normal");
+        var displace = TryLoadFile(textureRepo, desc.DisplaceFile, $"{desc.DisplayName}_Displace"); // not used in this demo
+        var bump = TryLoadFile(textureRepo, desc.BumpFile, $"{desc.DisplayName}_Bump"); // not used in this demo
 
         TextureResource mr;
         if (desc.MetallicRoughnessFile is not null)
@@ -349,7 +404,7 @@ internal sealed partial class TextureDemo : IDisposable
         // Set AO to same omr texture for simplicity, and the shader will read the R channel for AO and G/B for roughness/metallic.
         var ao = mr;
 
-        var set = new LoadedTextureSet(albedo, normal, mr, ao);
+        var set = new LoadedTextureSet(albedo, normal, mr, ao, displace, bump);
         _loadedSets[index] = set;
         return set;
     }
@@ -468,7 +523,7 @@ internal sealed partial class TextureDemo : IDisposable
         Metallic = desc.DefaultMetallic;
         Roughness = desc.DefaultRoughness;
         Ao = desc.DefaultAo;
-        AlbedoTint = Vector3.One;
+        AlbedoTint = Color.White;
         Opacity = 1.0f;
 
         ApplyTextureSet(set, desc);
@@ -484,16 +539,20 @@ internal sealed partial class TextureDemo : IDisposable
         _material.MetallicRoughnessMap = set.MetallicRoughness.Valid
             ? set.MetallicRoughness
             : TextureResource.Null;
+        _material.AoMap = set.Ao.Valid ? set.Ao : TextureResource.Null;
+        _material.DisplaceMap = set.Displace.Valid ? set.Displace : TextureResource.Null;
         _material.Sampler = _sampler;
+        _material.DisplaceSampler = _displaceSampler;
+        _material.BumpMap = set.Bump.Valid ? set.Bump : TextureResource.Null;
 
-        _material.Properties.Albedo = AlbedoTint;
-        _material.Properties.Metallic = Metallic;
-        _material.Properties.Roughness = Roughness;
-        _material.Properties.Ao = Ao;
-        _material.Properties.Opacity = Opacity;
-        _material.Properties.Emissive = Vector3.Zero;
-        _material.Properties.ClearCoatRoughness = desc.ClearCoatRoughness;
-        _material.Properties.ClearCoatStrength = desc.ClearCoatStrength;
+        _material.Albedo = AlbedoTint;
+        _material.Metallic = Metallic;
+        _material.Roughness = Roughness;
+        _material.Ao = Ao;
+        _material.Opacity = Opacity;
+        _material.Emissive = Color.Transparent;
+        _material.ClearCoatRoughness = desc.ClearCoatRoughness;
+        _material.ClearCoatStrength = desc.ClearCoatStrength;
     }
 
     // -------------------------------------------------------------------------

@@ -1,4 +1,5 @@
 using System.Numerics;
+using HelixToolkit.Nex.Maths;
 using HelixToolkit.Nex.Shaders;
 using ImGuiNET;
 using Gui = ImGuiNET.ImGui;
@@ -185,8 +186,12 @@ internal sealed partial class TextureDemo
 
         Gui.Text("Albedo Tint");
         Gui.SetNextItemWidth(-1f);
-        if (Gui.ColorEdit3("##AlbedoTint", ref AlbedoTint))
+        Vector3 tint = AlbedoTint.ToVector3();
+        if (Gui.ColorEdit3("##AlbedoTint", ref tint))
+        {
+            AlbedoTint = tint.ToColor4();
             changed = true;
+        }
 
         Gui.Spacing();
 
@@ -229,7 +234,7 @@ internal sealed partial class TextureDemo
         if (Gui.Button("Reset to Set Defaults", new Vector2(-1f, 0f)))
         {
             var d = TextureSets[ActiveSetIndex];
-            AlbedoTint = Vector3.One;
+            AlbedoTint = Color.White;
             Metallic = d.DefaultMetallic;
             Roughness = d.DefaultRoughness;
             Ao = d.DefaultAo;
@@ -246,12 +251,11 @@ internal sealed partial class TextureDemo
         if (_material is null)
             return;
 
-        _material.Properties.Albedo = AlbedoTint;
-        _material.Properties.Metallic = Metallic;
-        _material.Properties.Roughness = Roughness;
-        _material.Properties.Ao = Ao;
-        _material.Properties.Opacity = Opacity;
-        _material.NotifyUpdated();
+        _material.Albedo = AlbedoTint;
+        _material.Metallic = Metallic;
+        _material.Roughness = Roughness;
+        _material.Ao = Ao;
+        _material.Opacity = Opacity;
     }
 
     // -------------------------------------------------------------------------

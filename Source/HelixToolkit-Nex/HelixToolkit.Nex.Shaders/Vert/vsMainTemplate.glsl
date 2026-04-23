@@ -5,6 +5,7 @@
 #include "HxHeaders/MeshInfo.glsl"
 #include "HxHeaders/Instancing.glsl"
 #include "HxHeaders/HeaderPackEntity.glsl"
+#include "HxHeaders/PBRProperties.glsl"
 
 layout(location = 0) out vec3 fragWorldPos;
 layout(location = 1) out flat uint materialId;
@@ -54,6 +55,10 @@ layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer Me
     MeshInfo value[];
 };
 
+layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer MaterialBuffer {
+    PBRProperties materials[];
+};
+
 FPConstants fpConst = FPBuffer(pc.value.fpConstAddress).fpConstants;
 
 uint meshDrawIndex = gl_DrawID + pc.value.drawCommandIdxOffset;
@@ -61,6 +66,21 @@ uint meshDrawIndex = gl_DrawID + pc.value.drawCommandIdxOffset;
 MeshDraw meshDraw = MeshDrawBuffer(fpConst.meshDrawBufferAddress).draws[meshDrawIndex];
 
 MeshInfo meshInfo = MeshInfoBuffer(fpConst.meshInfoBufferAddress).value[meshDraw.meshId];
+
+void getDisplaceTex(uint materialId, out uint dispTex, out uint dispSampler, out float dispScale, out float dispBase) {
+    if (fpConst.materialBufferAddress == 0) {
+        dispTex = 0;
+        dispSampler = 0;
+        dispScale = 1.0;
+        dispBase = 0.5;
+        return;
+    }
+    MaterialBuffer materialBuf = MaterialBuffer(fpConst.materialBufferAddress);
+    dispTex = materialBuf.materials[materialId].displaceTexIndex;
+    dispSampler = materialBuf.materials[materialId].displaceSamplerIndex;
+    dispScale = materialBuf.materials[materialId].displaceScale;
+    dispBase = materialBuf.materials[materialId].displaceBase;
+}
 
 uint getInstancingIndex() {
     if (meshDraw.instancingBufferAddress == 0) {
@@ -112,6 +132,17 @@ vec4 getVertexColor() {
 void calVertexOutput(in uint index, out vec4 pos, out vec3 wp, out vec3 normal, out vec3 tangent, out vec4 color, out vec2 texCoord) {
 /*TEMPLATE_CALCULATE_VERTEX_OUTPUT_IMPL_START*/
     vec4 position = getVertex();
+    uint displaceTex = 0; 
+    uint displaceSampler = 0;
+    float displaceScale = 1.0;
+    float displaceBase = 0.5;
+    getDisplaceTex(meshDraw.materialId, displaceTex, displaceSampler, displaceScale, displaceBase);
+    GpuVertexProps vertProps = getVertexProps();
+    if (displaceTex != 0 && displaceSampler != 0 && displaceScale != 0) {        
+        float h = textureBindless2D(displaceTex, displaceSampler, vertProps.texCoord).r - displaceBase;
+        position.xyz += vertProps.normal * h * displaceScale;
+    }
+
     InstanceTransform instance = getInstancingMatrix(index);
     mat3 instanceRot = quatToMat3(instance.quaternion);
 
@@ -121,7 +152,6 @@ void calVertexOutput(in uint index, out vec4 pos, out vec3 wp, out vec3 normal, 
     wp = worldPos.xyz;
     pos = fpConst.viewProjection * worldPos;
 #ifndef EXCLUDE_MESH_PROPS
-    GpuVertexProps vertProps = getVertexProps();
     normal = mat3(meshDraw.transform) * vertProps.normal;
     normal = normalize(instanceRot * normal);
     tangent = mat3(meshDraw.transform) * vertProps.tangent;

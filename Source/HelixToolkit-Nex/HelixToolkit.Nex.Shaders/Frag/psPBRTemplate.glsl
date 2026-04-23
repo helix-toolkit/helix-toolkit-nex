@@ -4,6 +4,7 @@
 #include "HxHeaders/ForwardPlusConstants.glsl"
 #include "HxHeaders/ForwardPlusTile.glsl"
 #include "HxHeaders/MeshDraw.glsl"
+#include "HxHeaders/PBRProperties.glsl"
 
 layout(location = 0) in vec3 fragWorldPos;
 layout(location = 1) in flat uint materialId;
@@ -22,28 +23,6 @@ layout(location = 1) out float outRevealage;
 #else
 layout(location = 0) out vec4 outColor;
 #endif
-
-@code_gen
-struct PBRProperties {
-    vec3 albedo;           // Base color (sRGB)
-    float metallic;        // Metallic factor [0..1]
-    vec3 emissive;         // Emissive color
-    float roughness;       // Roughness factor [0..1]
-    vec3 ambient;           // Ambient color
-    float ao;              // Ambient occlusion [0..1]
-    float opacity;         // Opacity/alpha [0..1]
-    float vertexColorMix; // Vertex color mix factor [0..1], 0 = no vertex color, 1 = full vertex color
-    float clearCoatStrength; // Clear coat layer strength [0..1]
-    float clearCoatRoughness; // Clear coat layer roughness [0..1]
-    float reflectance; // Fresnel reflectance at normal incidence (used if no albedo texture, typically 0.04 for dielectrics)
-    uint albedoTexIndex; // Index into texture array for albedo map, 0 if not used
-    uint normalTexIndex; // Index into texture array for normal map, 0 if not used
-    uint metallicRoughnessTexIndex; // Index into texture array for metallic-roughness map, 0 if not used. R=metallic, G=roughness
-    uint samplerIndex; // Index into sampler array for all textures, assuming same sampler is used for all material textures
-    uint aoTexIndex; // Index into texture array for ambient occlusion map, 0 if not used
-    uint _padding0;
-    uint _padding1;
-};
 
 layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer FPBuffer {
     FPConstants fpConstants;
@@ -290,6 +269,7 @@ PBRMaterial createPBRMaterial()
         material.ao = material.ao * texture(sampler2D(kTextures2D[props.aoTexIndex], kSamplers[props.samplerIndex]), fragTexCoord).r;
     }
     material.normal = normalize(fragNormal);
+
     if (props.normalTexIndex > 0) {
         vec3 normalMap = texture(sampler2D(kTextures2D[props.normalTexIndex], kSamplers[props.samplerIndex]), fragTexCoord).xyz * 2.0 - 1.0;
         vec3 N = normalize(fragNormal);
@@ -297,6 +277,30 @@ PBRMaterial createPBRMaterial()
         vec3 B = cross(N, T);
         mat3 TBN = mat3(T, B, N);
         material.normal = normalize(TBN * normalMap);
+    }
+    if (props.bumpTexIndex > 0 )
+    {
+        float h = texture(sampler2D(kTextures2D[props.bumpTexIndex], kSamplers[props.samplerIndex]), fragTexCoord).r;
+        // 2. Get screen-space derivatives of world position and height
+        vec3 dpdx = dFdx(fragWorldPos);
+        vec3 dpdy = dFdy(fragWorldPos);
+        float dhdx = dFdx(h);
+        float dhdy = dFdy(h);
+
+        // 3. Construct local geometry basis (Right-Handed)
+        // r1 and r2 represent the 'tilt' directions on the plane of the triangle
+        vec3 r1 = cross(dpdy, material.normal);
+        vec3 r2 = cross(material.normal, dpdx);
+
+        // 4. Calculate the surface gradient 
+        // We divide by the determinant (dot(dpdx, r1)) to keep the scale consistent 
+        // regardless of distance or perspective distortion.
+        float det = dot(dpdx, r1);
+        vec3 grad = (r1 * dhdx + r2 * dhdy) / det;
+
+        // 5. Apply perturbation
+        // Subtracting the gradient 'tilts' the existing normal towards the height slope
+        material.normal = normalize(material.normal - props.bumpScale * grad);
     }
 #else
     {

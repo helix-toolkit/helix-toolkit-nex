@@ -56,6 +56,9 @@ public sealed class PBRMaterialProperties : IDisposable
     {
         Albedo = new(1, 1, 1),
         Opacity = 1,
+        DisplaceScale = 1,
+        BumpScale = 1,
+        DisplaceBase = 0.5f,
     };
 
     /// <summary>Gets the identifier of the material type that owns this instance.</summary>
@@ -73,8 +76,8 @@ public sealed class PBRMaterialProperties : IDisposable
     /// <summary>
     /// Gets or sets the base (albedo) color of the material.
     /// </summary>
-    /// <value>A <see cref="Color"/> representing the diffuse reflectance of the surface.</value>
-    public Color Albedo
+    /// <value>A <see cref="Color4"/> representing the diffuse reflectance of the surface.</value>
+    public Color4 Albedo
     {
         set
         {
@@ -131,7 +134,7 @@ public sealed class PBRMaterialProperties : IDisposable
     /// <summary>
     /// Gets or sets the emissive color of the material, representing light emitted by the surface.
     /// </summary>
-    public Color Emissive
+    public Color4 Emissive
     {
         set
         {
@@ -167,7 +170,7 @@ public sealed class PBRMaterialProperties : IDisposable
     /// <summary>
     /// Gets or sets the ambient color contribution of the material.
     /// </summary>
-    public Color Ambient
+    public Color4 Ambient
     {
         set
         {
@@ -336,6 +339,63 @@ public sealed class PBRMaterialProperties : IDisposable
         get => _metallicRoughnessMap;
     }
 
+    private TextureResource _aoMap = TextureResource.Null;
+
+    /// <summary>
+    /// Gets or sets the ambient occlusion texture resource used for shading effects.
+    /// </summary>
+    /// <remarks>Changing this property updates the associated texture index and notifies listeners of the
+    /// update. The ambient occlusion map enhances the perception of depth and surface detail in rendered
+    /// materials.</remarks>
+    public TextureResource AoMap
+    {
+        set
+        {
+            if (_aoMap == value)
+            {
+                return;
+            }
+            _aoMap = value;
+            Properties.AoTexIndex = value.Index;
+            NotifyUpdated();
+        }
+        get => _aoMap;
+    }
+
+    private TextureResource _bumpMap = TextureResource.Null;
+    /// <summary>
+    /// Gets or sets the bump map texture used for simulating surface detail through normal perturbation.
+    /// </summary>
+    public TextureResource BumpMap
+    {
+        set
+        {
+            if (_bumpMap == value)
+            {
+                return;
+            }
+            _bumpMap = value;
+            Properties.BumpTexIndex = value.Index;
+            NotifyUpdated();
+        }
+        get => _bumpMap;
+    }
+
+    private float _bumpScale = 1.0f;
+    public float BumpScale
+    {
+        set
+        {
+            if (Properties.BumpScale == value)
+            {
+                return;
+            }
+            Properties.BumpScale = value;
+            NotifyUpdated();
+        }
+        get => _bumpScale;
+    }
+
     private SamplerResource _sampler = SamplerResource.Null;
 
     /// <summary>
@@ -355,6 +415,67 @@ public sealed class PBRMaterialProperties : IDisposable
             NotifyUpdated();
         }
         get => _sampler;
+    }
+
+    private SamplerResource _displaceSampler = SamplerResource.Null;
+
+    /// <summary>
+    /// Gets or sets the sampler resource used for displacement mapping operations.
+    /// </summary>
+    /// <remarks>Changing this property updates the associated displacement sampler index and notifies
+    /// listeners of the update. The sampler resource determines how texture sampling is performed during displacement
+    /// mapping.</remarks>
+    public SamplerResource DisplaceSampler
+    {
+        set
+        {
+            if (_displaceSampler == value)
+            {
+                return;
+            }
+            _displaceSampler = value;
+            Properties.DisplaceSamplerIndex = value.Index;
+            NotifyUpdated();
+        }
+        get => _displaceSampler;
+    }
+
+    private TextureResource _displaceMap = TextureResource.Null;
+
+    /// <summary>
+    /// Gets or sets the displacement map texture used for surface deformation effects.
+    /// </summary>
+    /// <remarks>Changing this property updates the associated displacement texture index and notifies
+    /// listeners of the update. The displacement map is typically used in rendering to alter the appearance of a
+    /// surface based on the provided texture.</remarks>
+    public TextureResource DisplaceMap
+    {
+        set
+        {
+            if (_displaceMap == value)
+            {
+                return;
+            }
+            _displaceMap = value;
+            Properties.DisplaceTexIndex = value.Index;
+            NotifyUpdated();
+        }
+        get => _displaceMap;
+    }
+
+    private float _displaceScale = 1.0f;
+    public float DisplaceScale
+    {
+        set
+        {
+            if (Properties.DisplaceScale == value)
+            {
+                return;
+            }
+            Properties.DisplaceScale = value;
+            NotifyUpdated();
+        }
+        get => _displaceScale;
     }
 
     /// <summary>
@@ -408,6 +529,8 @@ public sealed class PBRMaterialProperties : IDisposable
                 NormalMap.Dispose();
                 MetallicRoughnessMap.Dispose();
                 Sampler.Dispose();
+                DisplaceMap.Dispose();
+                DisplaceSampler.Dispose();
                 _pool?.Destroy(_handle);
                 _eventBus.Publish(
                     new MaterialPropsUpdatedEvent(MaterialTypeId, index, MaterialPropertyOp.Destroy)

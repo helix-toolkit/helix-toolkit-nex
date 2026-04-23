@@ -1833,12 +1833,9 @@ internal sealed partial class VulkanContext
         }
 
         // 1. Sampled and storage images
-        FastList<VkDescriptorImageInfo> infoSampledImages = [];
-        FastList<VkDescriptorImageInfo> infoStorageImages = [];
+        FastList<VkDescriptorImageInfo> infoSampledImages = new(TexturesPool.Count);
+        FastList<VkDescriptorImageInfo> infoStorageImages = new(TexturesPool.Count);
         FastList<VkDescriptorImageInfo> infoYUVImages = [];
-
-        infoSampledImages.Capacity = TexturesPool.Count;
-        infoStorageImages.Capacity = TexturesPool.Count;
 
         bool hasYcbcrSamplers = _numYcbcrSamplers > 0;
 
@@ -1860,6 +1857,35 @@ internal sealed partial class VulkanContext
             var img = obj.Obj;
             if (img is null)
             {
+                // Insert dummy views to preserve pool-index → descriptor-slot alignment.
+                // Skipping (continue) would compact the array and shift all subsequent
+                // textures to the wrong descriptor slots, causing out-of-bounds accesses.
+                infoSampledImages.Add(
+                    new VkDescriptorImageInfo
+                    {
+                        sampler = VkSampler.Null,
+                        imageView = dummyImageView,
+                        imageLayout = VK.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                    }
+                );
+                infoStorageImages.Add(
+                    new VkDescriptorImageInfo
+                    {
+                        sampler = VkSampler.Null,
+                        imageView = dummyImageView,
+                        imageLayout = VK.VK_IMAGE_LAYOUT_GENERAL,
+                    }
+                );
+                if (hasYcbcrSamplers)
+                {
+                    infoYUVImages.Add(
+                        new VkDescriptorImageInfo
+                        {
+                            imageView = dummyImageView,
+                            imageLayout = VK.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                        }
+                    );
+                }
                 continue;
             }
             VkImageView view = img.ImageView;
@@ -1901,8 +1927,7 @@ internal sealed partial class VulkanContext
         }
 
         // 2. Samplers
-        FastList<VkDescriptorImageInfo> infoSamplers = [];
-        infoSamplers.Capacity = SamplersPool.Objects.Count;
+        FastList<VkDescriptorImageInfo> infoSamplers = new(SamplersPool.Objects.Count);
 
         foreach (var sampler in SamplersPool.Objects)
         {

@@ -56,6 +56,12 @@
         >
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
+        <None
+            Include="..\..\..\..\..\Assets\Textures\MetalCorroded\MetalCorrodedHeavy001_DISP_2K_METALNESS.jpg"
+            Link="Assets\Textures\MetalCorroded\MetalCorrodedHeavy001_DISP_2K_METALNESS.jpg"
+        >
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
 
         <!-- ── Ceramic Glossy Tile ── -->
         <None
@@ -88,7 +94,12 @@
         >
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
-
+        <None
+            Include="..\..\..\..\..\Assets\Textures\CeramicGlossyTile\TilesMosaicPennyround001_BUMP_2K.png"
+            Link="Assets\Textures\CeramicGlossyTile\TilesMosaicPennyround001_BUMP_2K.png"
+        >
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
         <!-- ── Grass Patchy Ground ── -->
         <None
             Include="..\..\..\..\..\Assets\Textures\GrassPatchyGround\Poliigon_GrassPatchyGround_4585_AmbientOcclusion.jpg"

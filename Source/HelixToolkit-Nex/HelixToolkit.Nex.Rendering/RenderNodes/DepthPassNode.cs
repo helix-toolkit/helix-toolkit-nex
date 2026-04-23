@@ -39,6 +39,7 @@ public sealed class DepthPassNode() : RenderNode
             DpiScale = context.DpiScale,
             MeshInfoBufferAddress = context.Data?.MeshInfos.GpuAddress ?? 0,
             MeshDrawBufferAddress = context.Data?.MeshDrawsOpaque.GpuAddress ?? 0,
+            MaterialBufferAddress = context.Data?.PBRPropertiesBuffer.Buffer.GpuAddress(context.Context) ?? 0,
         };
         res.CmdBuffer.UpdateBuffer(fpBuffer, ref fpData);
         return base.BeginRender(in res);
