@@ -1,237 +1,153 @@
+```markdown
 # HelixToolkit.Nex.CodeGen
+
+`HelixToolkit.Nex.CodeGen` is a C# source generation library designed to streamline the development of 3D graphics applications using the HelixToolkit.Nex engine. It automates the generation of boilerplate code, such as C# struct definitions from GLSL shaders and observable properties for data binding, enabling developers to focus on creating performant and maintainable 3D applications.
 
 ## Overview
 
-HelixToolkit.Nex.CodeGen is a C# source generator library that provides automated code generation tools for the HelixToolkit.Nex graphics framework. This library contains Roslyn-based incremental source generators that reduce boilerplate code and improve developer productivity.
+`HelixToolkit.Nex.CodeGen` plays a critical role in the HelixToolkit.Nex ecosystem by providing tools to bridge the gap between GLSL shader code and C# data structures. It also simplifies the creation of observable properties, which are essential for implementing data binding in modern applications. The package leverages the Roslyn source generator infrastructure to dynamically generate code at compile time, ensuring type safety and reducing runtime overhead.
 
-## Features
+### Key Features:
+- **GLSL to C# Struct Conversion**: Automatically generates C# struct definitions from GLSL shader code annotated with `@code_gen`.
+- **Observable Property Generation**: Converts fields marked with the `[Observable]` attribute into properties with change notification support.
+- **Memory Layout Optimization**: Ensures proper memory alignment for interop between C# and GPU shaders.
 
-This library includes two main source generators:
+## Key Types
 
-### 1. **GLSL to C# Struct Generator**
-Automatically converts GLSL shader struct definitions into equivalent C# structs with proper memory layout for GPU buffer interoperability.
+| Type                          | Description                                                                 |
+|-------------------------------|-----------------------------------------------------------------------------|
+| `CSharpStructGenerator`       | Generates C# struct definitions from parsed GLSL structs.                  |
+| `GlslStructGenerator`         | Roslyn source generator for extracting GLSL struct definitions.            |
+| `GlslStructParser`            | Parses GLSL code to extract struct definitions annotated with `@code_gen`. |
+| `GlslStruct`                  | Represents a GLSL struct definition.                                       |
+| `GlslField`                   | Represents a field in a GLSL struct.                                       |
+| `ObservablePropertyGenerator` | Roslyn source generator for creating observable properties in C#.          |
 
-**Key capabilities:**
-- Automatic type mapping from GLSL to C# types
-- Proper memory layout with `[StructLayout(LayoutKind.Sequential, Pack = 16)]`
-- Automatic `SizeInBytes` constant generation
-- Documentation preservation from GLSL comments
-- Array support with generated index accessors
+## Usage Examples
 
-**[Read the full GLSL Struct Generator documentation](GLSL_STRUCT_GENERATOR_README.md)**
+### 1. Generating C# Structs from GLSL
 
-### 2. **Observable Property Generator**
-Automatically generates observable properties from fields marked with the `[Observable]` attribute, following the CommunityToolkit.Mvvm pattern.
+To generate C# structs from GLSL shader code, annotate the GLSL struct with `@code_gen` and include the GLSL file as an additional file in your project. For example:
 
-**Key capabilities:**
-- Automatic `INotifyPropertyChanged` implementation
-- Convention-based property naming
-- Default value support
-- IntelliSense integration
-
-**[Read the full Observable Property Generator documentation](OBSERVABLE_PROPERTY_GENERATOR_README.md)**
-
-## Target Framework
-
-- **.NET Standard 2.0** - Ensures maximum compatibility with various .NET runtimes and IDEs
-
-## Technology Stack
-
-- **Roslyn Compiler Platform** - Microsoft.CodeAnalysis.CSharp 4.14.0
-- **Incremental Generators** - For optimal build performance
-- **C# 11+ Language Features** - With LangVersion set to latest
-
-## Installation
-
-Reference this project as an analyzer in your `.csproj` file:
-
-```xml
-<ItemGroup>
-  <ProjectReference Include="..\HelixToolkit.Nex.CodeGen\HelixToolkit.Nex.CodeGen.csproj"
-                    OutputItemType="Analyzer"
-                    ReferenceOutputAssembly="false" />
-</ItemGroup>
-```
-
-## Quick Start
-
-### Using the GLSL Struct Generator
-
-1. Add your GLSL shader files to the project as `AdditionalFiles`:
-```xml
-<ItemGroup>
-    <AdditionalFiles Include="Shaders\*.glsl" />
-</ItemGroup>
-```
-
-2. Define structs in your GLSL files and mark them with `@code_gen`:
+**Example GLSL File (`MyShader.glsl`):**
 ```glsl
 @code_gen
-struct Material {
-    vec3 color;
-    float roughness;
+struct LightData {
+    vec3 position; // Position of the light
+    vec3 color;    // Color of the light
+    float intensity; // Intensity of the light
 };
 ```
 
-3. Build the project - C# structs are automatically generated!
+The `GlslStructGenerator` will automatically generate the following C# struct:
 
-### Using the Observable Property Generator
-
-1. Mark fields with `[Observable]` attribute:
+**Generated C# Struct:**
 ```csharp
-public partial class MyViewModel : ObservableObject
+// <auto-generated/>
+#nullable enable
+
+using System.Numerics;
+using System.Runtime.InteropServices;
+
+namespace HelixToolkit.Nex.Shaders;
+
+/// <summary>
+/// C# representation of the GLSL struct 'LightData'.
+/// </summary>
+[StructLayout(LayoutKind.Sequential, Pack = 16)]
+public struct LightData
 {
-    [Observable]
-    private string _title;
-    
-    [Observable(Default = "0")]
-    private int _count;
+    /// <summary>
+    /// Position of the light
+    /// </summary>
+    public Vector3 Position;
+
+    /// <summary>
+    /// Color of the light
+    /// </summary>
+    public Vector3 Color;
+
+    /// <summary>
+    /// Intensity of the light
+    /// </summary>
+    public float Intensity;
+
+    /// <summary>
+    /// The size of the <see cref="LightData"/> struct, in bytes.
+    /// </summary>
+    public static readonly unsafe uint SizeInBytes = (uint)sizeof(LightData);
 }
 ```
 
-2. Build the project - Observable properties are automatically generated!
+### 2. Creating Observable Properties
 
-## Generated Files Location
+To generate observable properties, annotate fields with the `[Observable]` attribute. For example:
 
-By default, generated files are created in:
-```
-obj/Generated/HelixToolkit.Nex.CodeGen/
-```
+**Input C# Code:**
+```csharp
+using HelixToolkit.Nex;
 
-To emit generated files to a visible directory for debugging:
-```bash
-dotnet build /p:EmitCompilerGeneratedFiles=true /p:CompilerGeneratedFilesOutputPath=obj/GeneratedFiles
-```
+namespace MyNamespace
+{
+    public partial class MyViewModel
+    {
+        [Observable]
+        private int _count;
 
-Or add to your `.csproj`:
-```xml
-<PropertyGroup>
-  <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
-  <CompilerGeneratedFilesOutputPath>$(BaseIntermediateOutputPath)\Generated</CompilerGeneratedFilesOutputPath>
-</PropertyGroup>
-
-<ItemGroup>
-  <Compile Include="$(CompilerGeneratedFilesOutputPath)\**\*.cs" Visible="false" />
-</ItemGroup>
+        [Observable]
+        private string _name;
+    }
+}
 ```
 
-## Project Structure
+The `ObservablePropertyGenerator` will generate the following code:
 
-```
-HelixToolkit.Nex.CodeGen/
-- README.md                                    # This file
-- GLSL_STRUCT_GENERATOR_README.md              # GLSL generator documentation
-- OBSERVABLE_PROPERTY_GENERATOR_README.md      # Observable generator documentation
-- HelixToolkit.Nex.CodeGen.csproj             # Project file
-- GlslStructGenerator.cs                       # GLSL source generator
-- GlslStructParser.cs                          # GLSL parsing logic
-- CSharpStructGenerator.cs                     # C# code generation
-- ObservablePropertyGenerator.cs               # Observable property generator
-```
+**Generated C# Code:**
+```csharp
+// <auto-generated/>
+#nullable enable
 
-## Testing
+namespace MyNamespace
+{
+    partial class MyViewModel
+    {
+        /// <summary>
+        /// Gets or sets the Count.
+        /// </summary>
+        public int Count
+        {
+            get => _count;
+            set { Set(ref _count, value); }
+        }
 
-Unit tests are available in the companion test project:
-```bash
-dotnet test HelixToolkit.Nex.CodeGen.Tests
-```
-
-The test project includes:
-- `GlslStructParserTests` - GLSL parser validation
-- `ObservablePropertyGeneratorTests` - Observable property generation tests
-
-## Requirements
-
-- **.NET SDK 8.0 or higher** (for building)
-- **C# compiler with source generator support** (Visual Studio 2022, VS Code with C# extension, or Rider)
-
-## Documentation
-
-For detailed usage instructions, examples, and troubleshooting:
-
-- **[GLSL Struct Generator Guide](GLSL_STRUCT_GENERATOR_README.md)** - Complete documentation for shader struct generation
-- **[Observable Property Generator Guide](OBSERVABLE_PROPERTY_GENERATOR_README.md)** - Complete documentation for observable property generation
-
-## Architecture
-
-### Source Generator Pipeline
-
-```
-Input Files ? Syntax Analysis ? Code Generation ? Compilation
+        /// <summary>
+        /// Gets or sets the Name.
+        /// </summary>
+        public string Name
+        {
+            get => _name;
+            set { Set(ref _name, value); }
+        }
+    }
+}
 ```
 
-Both generators implement the `IIncrementalGenerator` interface for optimal performance:
-- Only process changed files
-- Cache intermediate results
-- Minimize allocations
-- Support incremental compilation
+### 3. Customizing Struct Parsing
 
-### Key Components
+You can customize the GLSL struct parsing by ensuring your GLSL structs are annotated with `@code_gen`. Only annotated structs will be processed and converted into C#.
 
-1. **GlslStructGenerator** - Main entry point for GLSL processing
-2. **GlslStructParser** - Regex-based GLSL struct parser
-3. **CSharpStructGenerator** - C# code emission for structs
-4. **ObservablePropertyGenerator** - Property generation from fields
+## Architecture Notes
 
-## Benefits
-
-? **Reduces Boilerplate** - Eliminates hundreds of lines of repetitive code  
-? **Type Safety** - Compile-time validation of generated code  
-? **IDE Support** - Full IntelliSense for generated members  
-? **Performance** - Incremental generation only processes changes  
-? **Maintainability** - Single source of truth for definitions  
-? **Consistency** - Enforces naming and pattern conventions  
-
-## Troubleshooting
-
-### Generator not running
-- Ensure the project is referenced as an analyzer (`OutputItemType="Analyzer"`)
-- Clean and rebuild the solution
-- Check for errors in the build output
-
-### IntelliSense not showing generated code
-- Build the project to trigger code generation
-- Restart your IDE
-- Verify `EmitCompilerGeneratedFiles` is enabled
-- Check that generated files exist in `obj/Generated/`
-
-### Generated code has errors
-- Review the generator documentation for correct usage patterns
-- Ensure your source code meets the generator requirements
-- Check the build output for generator diagnostics
-
-For detailed troubleshooting, see the individual generator documentation files.
+- **Roslyn Source Generators**: The package uses Roslyn's `IIncrementalGenerator` to analyze source code and generate additional C# files at compile time.
+- **GLSL to C# Type Mapping**: The `CSharpStructGenerator` includes a predefined mapping of GLSL types (e.g., `vec3`, `mat4`) to their equivalent C# types (e.g., `System.Numerics.Vector3`, `System.Numerics.Matrix4x4`).
+- **Memory Alignment**: Generated C# structs are decorated with `[StructLayout(LayoutKind.Sequential, Pack = 16)]` to ensure proper memory alignment for GPU interop.
+- **Dependencies**: The package depends on the `HelixToolkit.Nex` core library for integration with the ECS-based rendering engine.
 
 ## Contributing
 
-When contributing to this project:
-
-1. **Follow the coding conventions** used in existing generators
-2. **Add unit tests** for new functionality
-3. **Update documentation** in the relevant README files
-4. **Test with incremental builds** to ensure performance
-5. **Validate in multiple IDEs** (Visual Studio, VS Code, Rider)
+Contributions are welcome! If you encounter issues or have suggestions for new features, feel free to open an issue or submit a pull request.
 
 ## License
 
-This project is part of the HelixToolkit.Nex graphics framework. See the root repository for license information.
-
-## Related Projects
-
-- **HelixToolkit.Nex** - Main graphics framework library
-- **HelixToolkit.Nex.Shaders** - Shader compilation and management
-- **HelixToolkit.Nex.Material** - Material system (uses Observable properties)
-- **HelixToolkit.Nex.CodeGen.Tests** - Unit tests for this project
-
-## Support
-
-For questions, issues, or feature requests:
-- Visit the [HelixToolkit GitHub repository](https://github.com/helix-toolkit/helix-toolkit-nex)
-- Check the detailed documentation in the markdown files listed above
-- Review the test project for usage examples
-
----
-
-**Version:** Compatible with .NET Standard 2.0 and higher  
-**Generator API:** Microsoft.CodeAnalysis 4.14.0  
-**Last Updated:** 2026
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+```
