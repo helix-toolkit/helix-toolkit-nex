@@ -14,10 +14,14 @@ on:
   workflow_dispatch:
     inputs:
       force_all:
+        description: 'Update ALL package READMEs (ignores change detection)'
+        type: boolean
+        default: false
+      force_regenerate_all:
         description: 'Regenerate ALL package READMEs (ignores change detection)'
         type: boolean
         default: false
-
+        
 permissions:
   contents: write
   pull-requests: write
@@ -54,7 +58,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           FORCE_ALL: ${{ inputs.force_all || 'false' }}
-          FORCE_REGENERATE_ALL_READMES: ${{ inputs.force_all || 'false' }}
+          FORCE_REGENERATE_ALL_READMES: ${{ inputs.force_regenerate_all || 'false' }}
           # On a push event GitHub sets `github.event.before` to the SHA
           # that was the HEAD before the push.  The script uses this to
           # compute which packages changed.
