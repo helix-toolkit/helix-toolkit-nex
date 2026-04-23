@@ -248,7 +248,11 @@ def get_pr_base_sha_from_event_payload() -> str | None:
         return None
     try:
         payload = json.loads(Path(event_path).read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
+    except OSError as exc:
+        print(f"WARN: failed to read GITHUB_EVENT_PATH payload ({event_path}): {exc}", file=sys.stderr)
+        return None
+    except json.JSONDecodeError as exc:
+        print(f"WARN: invalid JSON in GITHUB_EVENT_PATH payload ({event_path}): {exc}", file=sys.stderr)
         return None
     base_sha = payload.get("pull_request", {}).get("base", {}).get("sha")
     if not isinstance(base_sha, str):
@@ -469,6 +473,7 @@ def main() -> int:
     )
     args = parser.parse_args()
 
+    # Regenerating all READMEs implies processing all packages, not only changed/empty ones.
     force_all = args.force_all or args.regenerate_all_readmes
     force_regenerate_all_readmes = args.regenerate_all_readmes
     since_sha, since_sha_reason = resolve_since_sha(args.since_sha)
