@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+from __future__ import annotations
+
 """
 Documentation Agent for HelixToolkit-Nex.
 
@@ -7,22 +9,28 @@ and writes up full documentation for packages with empty READMEs.
 
 Usage:
   - Triggered via GitHub Actions on push to main/develop
-  - Manually via: python .github/scripts/doc_agent.py
+  - Manually via: python .github/scripts/doc_agent.py [--force-all] [--regenerate-all-readmes] [--since-sha <sha>]
 
 Environment variables:
   GITHUB_TOKEN   - Required. Used to authenticate with GitHub Models API.
   OPENAI_API_KEY - Optional. If set, uses OpenAI API instead of GitHub Models.
-  FORCE_ALL      - If "true", regenerates all package docs regardless of changes.
+  FORCE_ALL      - If "true", processes all package docs regardless of change detection.
+  FORCE_REGENERATE_ALL_READMES - If "true", regenerates all package README.md files from source.
   BEFORE_SHA     - The commit SHA before the push (set by GitHub Actions push event).
+  SINCE_SHA      - Optional override for the git base commit used in change detection.
   DOC_AGENT_MODEL - AI model name (default: gpt-4o).
 """
 
 import os
 import sys
 import subprocess
+import argparse
+import json
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from openai import OpenAI
+if TYPE_CHECKING:
+    from openai import OpenAI
 
 # ---- Configuration ----
 
@@ -40,6 +48,8 @@ MODEL = os.environ.get("DOC_AGENT_MODEL", "gpt-4o")
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
 FORCE_ALL = os.environ.get("FORCE_ALL", "false").lower() == "true"
+FORCE_REGENERATE_ALL_READMES = os.environ.get("FORCE_REGENERATE_ALL_READMES", "false").lower() == "true"
+DEFAULT_SINCE_SHA = "HEAD~1"
 
 # Git uses 40 zero-chars as the "null" SHA to indicate a non-existent ref
 # (e.g. github.event.before on the very first push to a branch).
@@ -72,7 +82,16 @@ When writing documentation:
 """
 
 
-def get_openai_client() -> OpenAI:
+def get_openai_client() -> "OpenAI":
+    try:
+        from openai import OpenAI
+    except ImportError as exc:
+        print(
+            "ERROR: openai package is required. Install with: pip install openai>=1.0.0",
+            file=sys.stderr,
+        )
+        raise SystemExit(1) from exc
+
     if OPENAI_API_KEY:
         return OpenAI(api_key=OPENAI_API_KEY)
     if GITHUB_TOKEN:
@@ -208,6 +227,57 @@ def run_git(*args: str) -> str:
     return result.stdout
 
 
+def run_git_optional(*args: str) -> str | None:
+    result = subprocess.run(
+        ["git", "--no-pager", *args],
+        capture_output=True,
+        text=True,
+        cwd=REPO_ROOT,
+    )
+    if result.returncode != 0:
+        return None
+    return result.stdout.strip()
+
+
+def get_pr_base_sha_from_event_payload() -> str | None:
+    event_path = os.environ.get("GITHUB_EVENT_PATH", "").strip()
+    if not event_path:
+        return None
+    try:
+        payload = json.loads(Path(event_path).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    base_sha = payload.get("pull_request", {}).get("base", {}).get("sha")
+    if not isinstance(base_sha, str):
+        return None
+    base_sha = base_sha.strip()
+    return base_sha or None
+
+
+def resolve_since_sha(explicit_since_sha: str = "") -> tuple[str, str]:
+    explicit_since_sha = explicit_since_sha.strip()
+    if explicit_since_sha:
+        return explicit_since_sha, "explicit --since-sha / SINCE_SHA override"
+
+    before_sha = os.environ.get("BEFORE_SHA", "").strip()
+    if before_sha and before_sha != GIT_NULL_SHA:
+        return before_sha, "BEFORE_SHA from push context"
+
+    base_ref = os.environ.get("GITHUB_BASE_REF", "").strip()
+    if base_ref:
+        merge_base = run_git_optional("merge-base", "HEAD", f"origin/{base_ref}")
+        if merge_base:
+            return merge_base, f"merge-base of HEAD and origin/{base_ref} (PR context)"
+
+    event_name = os.environ.get("GITHUB_EVENT_NAME", "").strip()
+    if event_name.startswith("pull_request"):
+        pr_base_sha = get_pr_base_sha_from_event_payload()
+        if pr_base_sha:
+            return pr_base_sha, "pull_request.base.sha from GitHub event payload"
+
+    return DEFAULT_SINCE_SHA, f"fallback default ({DEFAULT_SINCE_SHA})"
+
+
 def get_changed_packages(since_sha: str) -> list[Path]:
     """Return packages that have source file changes since since_sha."""
     changed_files_raw = run_git("diff", "--name-only", since_sha, "HEAD")
@@ -321,14 +391,26 @@ def update_readme(
 # ---- Per-Package Processing ----
 
 
-def process_package(client: OpenAI, project_dir: Path, since_sha: str) -> bool:
+def process_package(
+    client: "OpenAI",
+    project_dir: Path,
+    since_sha: str,
+    force_regenerate_readme: bool = False,
+) -> bool:
     """Process a package and update its README.md. Returns True if the file was changed."""
     project_name = get_project_name(project_dir)
     readme_path = project_dir / "README.md"
 
     print(f"\n── {project_name}")
 
-    if is_readme_empty(readme_path):
+    if force_regenerate_readme:
+        print("   Force-regenerate mode — generating full documentation...")
+        source_context = build_source_context(project_dir, max_total=MAX_FULL_DOC_CHARS)
+        if not source_context.strip():
+            print("   No source files found — skipping.")
+            return False
+        new_content = generate_full_readme(client, project_name, source_context)
+    elif is_readme_empty(readme_path):
         print("   README is empty — generating full documentation...")
         source_context = build_source_context(project_dir, max_total=MAX_FULL_DOC_CHARS)
         if not source_context.strip():
@@ -354,17 +436,51 @@ def process_package(client: OpenAI, project_dir: Path, since_sha: str) -> bool:
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser(
+        description=(
+            "Update package README.md files using AI. "
+            "By default, only changed packages and packages with empty README files are processed."
+        )
+    )
+    parser.add_argument(
+        "--force-all",
+        action="store_true",
+        default=FORCE_ALL,
+        help=(
+            "Process all packages (same as FORCE_ALL=true). "
+            "README update behavior remains unchanged unless --regenerate-all-readmes is also set."
+        ),
+    )
+    parser.add_argument(
+        "--regenerate-all-readmes",
+        action="store_true",
+        default=FORCE_REGENERATE_ALL_READMES,
+        help=(
+            "Regenerate every package README.md from source regardless of existing README content "
+            "(same as FORCE_REGENERATE_ALL_READMES=true)."
+        ),
+    )
+    parser.add_argument(
+        "--since-sha",
+        default=os.environ.get("SINCE_SHA", ""),
+        help=(
+            "Override the git base commit used for change detection "
+            "(same as SINCE_SHA environment variable)."
+        ),
+    )
+    args = parser.parse_args()
+
+    force_all = args.force_all or args.regenerate_all_readmes
+    force_regenerate_all_readmes = args.regenerate_all_readmes
+    since_sha, since_sha_reason = resolve_since_sha(args.since_sha)
+
     client = get_openai_client()
     all_packages = get_all_packages()
 
-    if FORCE_ALL:
+    if force_all:
         print("Force mode: processing all packages.")
         packages_to_process = all_packages
-        since_sha = "HEAD~1"
     else:
-        before_sha = os.environ.get("BEFORE_SHA", "").strip()
-        since_sha = before_sha if (before_sha and before_sha != GIT_NULL_SHA) else "HEAD~1"
-
         changed_packages = get_changed_packages(since_sha)
         empty_packages = [p for p in all_packages if is_readme_empty(p / "README.md")]
 
@@ -379,12 +495,14 @@ def main() -> int:
 
     print(f"Packages to process ({len(packages_to_process)}): "
           f"{[p.name for p in packages_to_process]}")
-    print(f"Since SHA: {since_sha}")
+    print(f"Since SHA: {since_sha} ({since_sha_reason})")
+    if force_regenerate_all_readmes:
+        print("README mode: force-regenerate all README.md files.")
 
     changed: list[str] = []
     for pkg in packages_to_process:
         try:
-            if process_package(client, pkg, since_sha):
+            if process_package(client, pkg, since_sha, force_regenerate_readme=force_regenerate_all_readmes):
                 changed.append(get_project_name(pkg))
         except Exception as exc:
             print(f"   ERROR processing {pkg.name}: {exc}", file=sys.stderr)
