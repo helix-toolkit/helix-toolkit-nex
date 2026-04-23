@@ -30,8 +30,9 @@ permissions:
 jobs:
   doc-agent:
     runs-on: ubuntu-latest
-
+    environment: DocGen
     steps:
+
       # ------------------------------------------------------------------ #
       # 1. Checkout with full history so we can inspect any commit range.   #
       # ------------------------------------------------------------------ #
@@ -59,6 +60,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           FORCE_ALL: ${{ inputs.force_all || 'false' }}
           FORCE_REGENERATE_ALL_READMES: ${{ inputs.force_regenerate_all || 'false' }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           # On a push event GitHub sets `github.event.before` to the SHA
           # that was the HEAD before the push.  The script uses this to
           # compute which packages changed.
