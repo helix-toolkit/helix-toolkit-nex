@@ -235,6 +235,9 @@ def run_git_optional(*args: str) -> str | None:
         cwd=REPO_ROOT,
     )
     if result.returncode != 0:
+        stderr = (result.stderr or "").strip()
+        if stderr:
+            print(f"WARN: git {' '.join(args)} failed: {stderr}", file=sys.stderr)
         return None
     return result.stdout.strip()
 
@@ -373,7 +376,7 @@ def generate_full_readme(client: OpenAI, project_name: str, source_context: str)
 
 
 def update_readme(
-    client: OpenAI,
+    client: "OpenAI",
     project_name: str,
     current_readme: str,
     diff_context: str,
@@ -392,7 +395,7 @@ def update_readme(
 
 
 def process_package(
-    client: "OpenAI",
+    client: OpenAI,
     project_dir: Path,
     since_sha: str,
     force_regenerate_readme: bool = False,
@@ -403,15 +406,11 @@ def process_package(
 
     print(f"\n── {project_name}")
 
-    if force_regenerate_readme:
-        print("   Force-regenerate mode — generating full documentation...")
-        source_context = build_source_context(project_dir, max_total=MAX_FULL_DOC_CHARS)
-        if not source_context.strip():
-            print("   No source files found — skipping.")
-            return False
-        new_content = generate_full_readme(client, project_name, source_context)
-    elif is_readme_empty(readme_path):
-        print("   README is empty — generating full documentation...")
+    if force_regenerate_readme or is_readme_empty(readme_path):
+        if force_regenerate_readme:
+            print("   Force-regenerate mode — generating full documentation...")
+        else:
+            print("   README is empty — generating full documentation...")
         source_context = build_source_context(project_dir, max_total=MAX_FULL_DOC_CHARS)
         if not source_context.strip():
             print("   No source files found — skipping.")
