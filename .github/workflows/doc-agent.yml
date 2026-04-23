@@ -14,7 +14,7 @@ on:
   workflow_dispatch:
     inputs:
       force_all:
-        description: 'Update ALL package READMEs (ignores change detection)'
+        description: 'Process all packages (still only updates changed/empty READMEs)'
         type: boolean
         default: false
       force_regenerate_all:
