@@ -39,12 +39,12 @@ PROJECTS_DIR = REPO_ROOT / "Source" / "HelixToolkit-Nex"
 SAMPLES_DIR = PROJECTS_DIR / "Samples"
 
 # Maximum characters sent per source file to the AI
-MAX_FILE_CHARS = 8_000
+MAX_FILE_CHARS = 100_000
 # Maximum total characters of source context per AI request
-MAX_FULL_DOC_CHARS = 60_000
-MAX_UPDATE_DOC_CHARS = 30_000
+MAX_FULL_DOC_CHARS = 400_000
+MAX_UPDATE_DOC_CHARS = 128_000
 
-MODEL = os.environ.get("DOC_AGENT_MODEL", "gpt-4o")
+MODEL = os.environ.get("DOC_AGENT_MODEL", "gpt-5.4-mini")
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
 FORCE_ALL = os.environ.get("FORCE_ALL", "false").lower() == "true"
@@ -65,6 +65,7 @@ Engine background (important for accuracy):
 - All C# matrices are row-major; all GLSL matrices are column-major.
 - Uses Reverse-Z for projection matrices.
 - Uses Forward Plus light culling.
+- Uses GPU-based Frustum culling.
 - Uses GPU-based instance culling.
 - Uses Entity Component System (ECS) based on the Arch ECS library.
 - Uses a Render Graph to manage render node execution order.
