@@ -395,7 +395,7 @@ def update_readme(
 
 
 def process_package(
-    client: OpenAI,
+    client: "OpenAI",
     project_dir: Path,
     since_sha: str,
     force_regenerate_readme: bool = False,
@@ -456,7 +456,7 @@ def main() -> int:
         default=FORCE_REGENERATE_ALL_READMES,
         help=(
             "Regenerate every package README.md from source regardless of existing README content "
-            "(same as FORCE_REGENERATE_ALL_READMES=true)."
+            "(same as FORCE_REGENERATE_ALL_READMES=true). Implies processing all packages."
         ),
     )
     parser.add_argument(
