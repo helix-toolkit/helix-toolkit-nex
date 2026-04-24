@@ -79,7 +79,6 @@ internal sealed class PickingDemo : IDisposable
                 effects.AddEffect(new ToneMapping());
                 effects.AddEffect(new ShowFPS());
             })
-            .AddRenderToFinal()
             .Build();
 
         _renderContext = _engine.CreateRenderContext();

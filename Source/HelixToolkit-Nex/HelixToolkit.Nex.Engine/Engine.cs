@@ -305,6 +305,15 @@ public class Engine : Initializable
     }
 
     /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="context"></param>
+    public void EnsureResources(RenderContext context)
+    {
+        RenderGraph.EnsureResources(context);
+    }
+
+    /// <summary>
     /// Executes a full render frame: acquires the swapchain texture, executes the render
     /// graph, and presents.
     /// </summary>
@@ -320,6 +329,7 @@ public class Engine : Initializable
     public void Render(RenderContext renderContext, IRenderDataProvider dataProvider)
     {
         renderContext.Data = dataProvider;
+        EnsureResources(renderContext);
         renderContext.FinalOutputTexture = Context.GetCurrentSwapchainTexture();
         Renderer.Render(renderContext, RenderGraph);
     }
@@ -338,14 +348,42 @@ public class Engine : Initializable
     /// Typically a <see cref="WorldDataProvider"/> instance. The engine does not own or
     /// dispose this object.
     /// </param>
+    /// <param name="target">The offscreen render target.</param>
     /// <returns>The command buffer with recorded render graph commands.</returns>
     public ICommandBuffer RenderOffscreen(
         RenderContext renderContext,
-        IRenderDataProvider dataProvider
+        IRenderDataProvider dataProvider,
+        TextureHandle target
     )
     {
+        EnsureResources(renderContext);
         renderContext.Data = dataProvider;
-        return Renderer.RenderOffscreen(renderContext, RenderGraph);
+        renderContext.FinalOutputTexture = target;
+        var cmd = Renderer.RenderOffscreen(renderContext, RenderGraph);
+        return cmd;
+    }
+
+    /// <summary>
+    /// Executes the render graph into an offscreen target without presenting.
+    /// Returns the <see cref="ICommandBuffer"/> so the caller can record additional
+    /// work (e.g., an ImGui composite pass) before submitting.
+    /// </summary>
+    /// <param name="renderContext"></param>
+    /// <param name="dataProvider"></param>
+    /// <param name="targetName"></param>
+    /// <returns></returns>
+    public ICommandBuffer RenderOffscreen(
+        RenderContext renderContext,
+        IRenderDataProvider dataProvider,
+        string targetName
+    )
+    {
+        EnsureResources(renderContext);
+        renderContext.Data = dataProvider;
+        renderContext.ResourceSet.TryGetTexture(targetName, out var handle);
+        renderContext.FinalOutputTexture = handle;
+        var cmd = Renderer.RenderOffscreen(renderContext, RenderGraph);
+        return cmd;
     }
 
     protected override ResultCode OnInitializing()
