@@ -7,9 +7,7 @@ using HelixToolkit.Nex.Engine.Cameras;
 using HelixToolkit.Nex.Graphics;
 using HelixToolkit.Nex.Maths;
 using HelixToolkit.Nex.Rendering;
-using HelixToolkit.Nex.Rendering.ComputeNodes;
 using HelixToolkit.Nex.Rendering.PostEffects;
-using HelixToolkit.Nex.Rendering.RenderNodes;
 using HelixToolkit.Nex.Scene;
 using HelixToolkit.Nex.Shaders.Frag;
 using Microsoft.Extensions.Logging;
@@ -69,7 +67,6 @@ internal class LightCullingTest(IContext context, bool largeScene = true) : IDis
                 effects.AddEffect(new WireframePostEffect());
                 effects.AddEffect(new ShowFPS());
             })
-            .AddRenderToFinal()
             .Build();
 
         // --- Per-viewport state and scene data ---

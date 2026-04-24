@@ -33,6 +33,7 @@ using TextureHandle = HelixToolkit.Nex.Handle<HelixToolkit.Nex.Graphics.Texture>
 internal sealed class PointsDemo : IDisposable
 {
     private static readonly ILogger _logger = LogManager.Create<PointsDemo>();
+    private const string ViewportTextureName = "ViewportTexture";
 
     private readonly IContext _context;
     private Engine? _engine;
@@ -113,6 +114,7 @@ internal sealed class PointsDemo : IDisposable
             .AddNode(new ForwardPlusOpaqueNode())
             .AddNode(_pointCullNode)
             .AddNode(new PointRenderNode())
+            .RenderToCustomTarget(RenderSettings.IntermediateTargetFormat)
             .WithPostEffects(effects =>
             {
                 effects.AddEffect(_smaa);
@@ -124,6 +126,18 @@ internal sealed class PointsDemo : IDisposable
 
         _renderContext = _engine.CreateRenderContext();
         _renderContext.Initialize();
+        _renderContext.ResourceSet.AddTexture(
+            ViewportTextureName,
+            res =>
+            {
+                return _context.CreateRenderTarget2D(
+                    RenderSettings.IntermediateTargetFormat,
+                    (uint)_renderContext.WindowSize.Width,
+                    (uint)_renderContext.WindowSize.Height,
+                    debugName: ViewportTextureName
+                );
+            }
+        );
 
         _worldDataProvider = _engine.CreateWorldDataProvider();
         _worldDataProvider.Initialize();
@@ -494,38 +508,37 @@ internal sealed class PointsDemo : IDisposable
         _lastTimestamp = Stopwatch.GetTimestamp();
         _animTime += dt;
 
+        _imGuiRenderer.BeginFrame(new Vector2(width, height));
+        DrawUI(
+            _renderContext.FinalOutputTexture,
+            width / _imGuiRenderer.DisplayScale,
+            height / _imGuiRenderer.DisplayScale
+        );
+        _imGuiRenderer.EndFrame();
+
         _orbitController?.Update(dt);
 
         // Animate the wave point cloud
         UpdateWave();
-
         // Update min screen size on the render node
         if (_pointCullNode is not null)
             _pointCullNode.MinScreenSize = _minScreenSize;
 
         // Render context setup
         _renderContext!.Update(_viewportSize, _camera);
-        _renderContext.FinalOutputTexture = _context.GetCurrentSwapchainTexture();
 
         // 3D render (offscreen)
-        var cmdBuf = _engine.RenderOffscreen(_renderContext, _worldDataProvider);
-
-        var offscreenTex = _renderContext.ResourceSet!.Textures[
-            SystemBufferNames.TextureColorF16Current
-        ];
+        var cmdBuf = _engine.RenderOffscreen(
+            _renderContext,
+            _worldDataProvider,
+            ViewportTextureName
+        );
 
         // ImGui composite to swapchain
         var swapchainTex = _context.GetCurrentSwapchainTexture();
         _imGuiFramebuffer.Colors[0].Texture = swapchainTex;
-        _imGuiDeps.Textures[0] = offscreenTex;
+        _imGuiDeps.Textures[0] = _renderContext.FinalOutputTexture;
 
-        _imGuiRenderer.BeginFrame(new Vector2(width, height));
-        DrawUI(
-            offscreenTex,
-            width / _imGuiRenderer.DisplayScale,
-            height / _imGuiRenderer.DisplayScale
-        );
-        _imGuiRenderer.EndFrame();
         _imGuiRenderer.Render(cmdBuf, _imGuiPass, _imGuiFramebuffer, _imGuiDeps);
 
         _context.Submit(cmdBuf, swapchainTex);

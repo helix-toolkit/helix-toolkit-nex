@@ -95,6 +95,7 @@ internal sealed class PBRSphereInfo
 internal partial class PBRDemo : IDisposable
 {
     private static readonly ILogger _logger = LogManager.Create<PBRDemo>();
+    private const string ViewportTextureName = "ViewportTextureName";
 
     // Grid dimensions: rows = metallic steps, cols = roughness steps
     private const int GridRows = 4;
@@ -160,7 +161,8 @@ internal partial class PBRDemo : IDisposable
 
         _engine = EngineBuilder
             .Create(_context)
-            .WithDefaultNodes()
+            .WithDefaultNodes(false)
+            .RenderToCustomTarget(RenderSettings.IntermediateTargetFormat)
             .WithPostEffects(effects =>
             {
                 effects.AddEffect(_fxaa);
@@ -171,6 +173,18 @@ internal partial class PBRDemo : IDisposable
 
         _renderContext = _engine.CreateRenderContext();
         _renderContext.Initialize();
+        _renderContext.ResourceSet.AddTexture(
+            ViewportTextureName,
+            res =>
+            {
+                return _context.CreateRenderTarget2D(
+                    RenderSettings.IntermediateTargetFormat,
+                    (uint)_renderContext.WindowSize.Width,
+                    (uint)_renderContext.WindowSize.Height,
+                    debugName: ViewportTextureName
+                );
+            }
+        );
 
         _worldDataProvider = _engine.CreateWorldDataProvider();
         _worldDataProvider.Initialize();
@@ -299,28 +313,30 @@ internal partial class PBRDemo : IDisposable
         float delta = (float)(Stopwatch.GetTimestamp() - _lastTimestamp) / Stopwatch.Frequency;
         _lastTimestamp = Stopwatch.GetTimestamp();
 
-        _orbitController?.Update(delta);
-
-        _renderContext.Update(_viewportSize, _camera);
-        _renderContext.FinalOutputTexture = _context.GetCurrentSwapchainTexture();
-
-        var cmdBuf = _engine.RenderOffscreen(_renderContext, _worldDataProvider!);
-
-        var offscreenTex = _renderContext.TextureColorF16Current;
-
-        var swapchainTex = _context.GetCurrentSwapchainTexture();
-        _imGuiFramebuffer.Colors[0].Texture = swapchainTex;
-        _imGuiDeps.Textures[0] = offscreenTex;
-
         _imGuiRenderer.BeginFrame(new Vector2(width, height));
 
         DrawGui(
-            offscreenTex,
+            _renderContext.FinalOutputTexture,
             width / _imGuiRenderer.DisplayScale,
             height / _imGuiRenderer.DisplayScale
         );
 
         _imGuiRenderer.EndFrame();
+
+        _orbitController?.Update(delta);
+
+        _renderContext.Update(_viewportSize, _camera);
+
+        var cmdBuf = _engine.RenderOffscreen(
+            _renderContext,
+            _worldDataProvider!,
+            ViewportTextureName
+        );
+
+        var swapchainTex = _context.GetCurrentSwapchainTexture();
+        _imGuiFramebuffer.Colors[0].Texture = swapchainTex;
+        _imGuiDeps.Textures[0] = _renderContext.FinalOutputTexture;
+
         _imGuiRenderer.Render(cmdBuf, _imGuiPass, _imGuiFramebuffer, _imGuiDeps);
 
         _context.Submit(cmdBuf, swapchainTex);

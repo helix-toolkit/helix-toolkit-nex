@@ -28,6 +28,7 @@ namespace Transparent;
 internal partial class TransparentDemo : IDisposable
 {
     private static readonly ILogger _logger = LogManager.Create<TransparentDemo>();
+    private const string ViewportTextureName = "ViewportTexture";
 
     private readonly IContext _context;
     private Engine? _engine;
@@ -87,7 +88,8 @@ internal partial class TransparentDemo : IDisposable
         // --- Build engine with OIT support via EngineBuilder ---
         _engine = EngineBuilder
             .Create(_context)
-            .WithDefaultNodes()
+            .WithDefaultNodes(false)
+            .RenderToCustomTarget(RenderSettings.IntermediateTargetFormat)
             .AddNode(new PrepareNode())
             .AddNode(new DepthPassNode())
             .AddNode(new FrustumCullNode())
@@ -109,6 +111,19 @@ internal partial class TransparentDemo : IDisposable
         // --- Per-viewport state and scene data ---
         _renderContext = _engine.CreateRenderContext();
         _renderContext.Initialize();
+        // Create the offscreen render target texture for the 3D viewport and add it to the system resource set
+        _renderContext.ResourceSet.AddTexture(
+            ViewportTextureName,
+            res =>
+            {
+                return res.Context.Context.CreateRenderTarget2D(
+                    RenderSettings.IntermediateTargetFormat,
+                    (uint)res.Context.WindowSize.Width,
+                    (uint)res.Context.WindowSize.Height,
+                    debugName: ViewportTextureName
+                );
+            }
+        );
 
         _worldDataProvider = _engine.CreateWorldDataProvider();
         _worldDataProvider.Initialize();
@@ -328,32 +343,34 @@ internal partial class TransparentDemo : IDisposable
         float delta = (float)(Stopwatch.GetTimestamp() - _lastTimestamp) / Stopwatch.Frequency;
         _lastTimestamp = Stopwatch.GetTimestamp();
 
-        _orbitController?.Update(delta);
-
-        // --- Update render context ---
-        _renderContext!.Update(_viewportSize, _camera);
-        _renderContext.FinalOutputTexture = _context.GetCurrentSwapchainTexture();
-
-        // --- Step 1: Execute 3D render graph (offscreen) ---
-        var cmdBuf = _engine.RenderOffscreen(_renderContext, _worldDataProvider!);
-
-        var offscreenTexHandle = _renderContext.TextureColorF16Current;
-
-        // --- Step 2: ImGui composite pass ---
-        var swapchainTex = _context.GetCurrentSwapchainTexture();
-        _imGuiFramebuffer.Colors[0].Texture = swapchainTex;
-        _imGuiDeps.Textures[0] = offscreenTexHandle;
-
         _imGuiRenderer.BeginFrame(new Vector2(width, height));
 
         // Draw ImGui
         DrawGui(
-            offscreenTexHandle,
+            _renderContext.FinalOutputTexture,
             width / _imGuiRenderer.DisplayScale,
             height / _imGuiRenderer.DisplayScale
         );
 
         _imGuiRenderer.EndFrame();
+
+        _orbitController?.Update(delta);
+
+        // --- Update render context ---
+        _renderContext!.Update(_viewportSize, _camera);
+
+        // --- Step 1: Execute 3D render graph (offscreen) ---
+        var cmdBuf = _engine.RenderOffscreen(
+            _renderContext,
+            _worldDataProvider!,
+            ViewportTextureName
+        );
+
+        // --- Step 2: ImGui composite pass ---
+        var swapchainTex = _context.GetCurrentSwapchainTexture();
+        _imGuiFramebuffer.Colors[0].Texture = swapchainTex;
+        _imGuiDeps.Textures[0] = _renderContext.FinalOutputTexture;
+
         _imGuiRenderer.Render(cmdBuf, _imGuiPass, _imGuiFramebuffer, _imGuiDeps);
 
         // --- Submit & present ---

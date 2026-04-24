@@ -112,6 +112,7 @@ internal sealed class LoadedTextureSet(
 internal sealed partial class TextureDemo : IDisposable
 {
     private static readonly ILogger _logger = LogManager.Create<TextureDemo>();
+    private const string ViewportTextureName = "GuiViewportTexture";
 
     // ---- Texture set catalogue ----
     internal static readonly TextureSetDesc[] TextureSets =
@@ -179,6 +180,21 @@ internal sealed partial class TextureDemo : IDisposable
             DefaultMetallic: 0.0f,
             DefaultRoughness: 0.2f,
             DefaultAo: 1.0f
+        ),
+        new TextureSetDesc(
+            DisplayName: "Metal Matte",
+            AlbedoFile: "Assets/Textures/MetalMatte/Poliigon_MetalPaintedMatte_7037_BaseColor.jpg",
+            NormalFile: "Assets/Textures/MetalMatte/Poliigon_MetalPaintedMatte_7037_Normal.png",
+            DisplaceFile: "Assets/Textures/MetalMatte/Poliigon_MetalPaintedMatte_7037_Displacement.tiff",
+            MetallicRoughnessFile: "Assets/Textures/MetalMatte/Poliigon_MetalPaintedMatte_7037_ORM.jpg",
+            BumpFile: null,
+            RoughnessIsGloss: false,
+            DefaultMetallic: 0.8f,
+            DefaultRoughness: 0.6f,
+            DefaultAo: 1.0f,
+            MetallicFile: null,
+            RoughnessFile: null,
+            AoFile: "Assets/Textures/MetalMatte/Poliigon_MetalPaintedMatte_7037_ORM.jpg"
         ),
     ];
 
@@ -256,7 +272,8 @@ internal sealed partial class TextureDemo : IDisposable
 
         _engine = EngineBuilder
             .Create(_context)
-            .WithDefaultNodes()
+            .WithDefaultNodes(false)
+            .RenderToCustomTarget(Format.RGBA_F16)
             .WithPostEffects(effects =>
             {
                 effects.AddEffect(Fxaa);
@@ -267,6 +284,19 @@ internal sealed partial class TextureDemo : IDisposable
 
         _renderContext = _engine.CreateRenderContext();
         _renderContext.Initialize();
+        _renderContext.ResourceSet.AddTexture(
+            ViewportTextureName,
+            res =>
+            {
+                return res.Context.Context.CreateRenderTarget2D(
+                    Format.RGBA_F16,
+                    (uint)res.Context.WindowSize.Width,
+                    (uint)res.Context.WindowSize.Height,
+                    debugName: ViewportTextureName
+                );
+            },
+            true
+        );
 
         _worldDataProvider = _engine.CreateWorldDataProvider();
         _worldDataProvider.Initialize();
@@ -574,27 +604,30 @@ internal sealed partial class TextureDemo : IDisposable
             };
             _sphereNode.NotifyTransformChanged();
         }
-
-        _orbitController?.Update(delta);
-
-        _renderContext.Update(_viewportSize, _camera);
-        _renderContext.FinalOutputTexture = _context.GetCurrentSwapchainTexture();
-
-        var cmdBuf = _engine.RenderOffscreen(_renderContext, _worldDataProvider!);
-
-        var offscreenTex = _renderContext.TextureColorF16Current;
-        var swapchainTex = _context.GetCurrentSwapchainTexture();
-
-        _imGuiFramebuffer.Colors[0].Texture = swapchainTex;
-        _imGuiDeps.Textures[0] = offscreenTex;
-
+        // Draw the ImGui UI
         _imGuiRenderer.BeginFrame(new Vector2(width, height));
         DrawGui(
-            offscreenTex,
+            _renderContext.FinalOutputTexture,
             width / _imGuiRenderer.DisplayScale,
             height / _imGuiRenderer.DisplayScale
         );
         _imGuiRenderer.EndFrame();
+
+        _orbitController?.Update(delta);
+
+        _renderContext.Update(_viewportSize, _camera);
+
+        var cmdBuf = _engine.RenderOffscreen(
+            _renderContext,
+            _worldDataProvider!,
+            ViewportTextureName
+        );
+
+        var swapchainTex = _context.GetCurrentSwapchainTexture();
+
+        _imGuiFramebuffer.Colors[0].Texture = swapchainTex;
+        _imGuiDeps.Textures[0] = _renderContext.FinalOutputTexture;
+
         _imGuiRenderer.Render(cmdBuf, _imGuiPass, _imGuiFramebuffer, _imGuiDeps);
 
         _context.Submit(cmdBuf, swapchainTex);

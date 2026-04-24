@@ -12,6 +12,10 @@ public sealed class RenderToFinalNode(Format outputFormat)
     {
         MinValue = res.Context.CameraParams.NearPlane;
         MaxValue = res.Context.CameraParams.FarPlane;
+        if (!res.Context.FinalOutputTexture.Valid)
+        {
+            return false;
+        }
         return base.BeginRender(in res);
     }
 
@@ -26,7 +30,7 @@ public sealed class RenderToFinalNode(Format outputFormat)
             outputs: [new(SystemBufferNames.FinalOutputTexture, ResourceType.Texture)],
             onSetup: (res) =>
             {
-                res.Framebuf.Colors[0].Texture = res.Textures[SystemBufferNames.FinalOutputTexture];
+                res.Framebuf.Colors[0].Texture = res.Context.FinalOutputTexture;
                 res.Pass.Colors[0].ClearColor = Color.Transparent;
                 res.Pass.Colors[0].LoadOp = LoadOp.Load;
                 res.Pass.Colors[0].StoreOp = StoreOp.Store;
@@ -112,6 +116,14 @@ public abstract class SampleTextureNode(SampleTextureMode mode, Format targetFor
         Debug.Assert(_pipeline.Valid, "Pipeline is not valid.");
         var cmdBuffer = res.CmdBuffer;
         var deps = res.Deps;
+        if (deps.Textures[0].Index == 0)
+        {
+            _logger.LogWarning(
+                "Input texture for {NodeName} is not valid. Skipping render.",
+                Name
+            );
+            return;
+        }
         cmdBuffer.BindRenderPipeline(_pipeline);
         cmdBuffer.BindDepthState(DepthState.Disabled);
         cmdBuffer.PushConstants(

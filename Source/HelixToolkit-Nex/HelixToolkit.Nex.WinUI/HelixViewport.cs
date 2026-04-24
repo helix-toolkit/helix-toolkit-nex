@@ -211,7 +211,6 @@ public partial class HelixViewport : UserControl, IDisposable
 
         // 4. Wire up render context
         _renderContext!.WindowSize = new Size((int)width, (int)height);
-        _renderContext.FinalOutputTexture = _importedTexture.Handle;
 
         Microsoft.UI.Xaml.Media.CompositionTarget.Rendering += OnCompositionRendering;
     }
@@ -226,7 +225,7 @@ public partial class HelixViewport : UserControl, IDisposable
         )
             return;
 
-        if (!Render((float)ActualWidth, (float)ActualHeight))
+        if (!Render((float)ActualWidth, (float)ActualHeight, _importedTexture!.Handle))
         {
             return;
         }
