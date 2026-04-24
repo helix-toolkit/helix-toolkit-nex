@@ -31,6 +31,7 @@ internal enum CameraControllerMode
 internal partial class Editor : IDisposable
 {
     private static readonly ILogger _logger = LogManager.Create<Editor>();
+    private const string ViewportTextureName = "ViewportTexture";
 
     private readonly IContext _context;
     private Engine? _engine;
@@ -107,7 +108,8 @@ internal partial class Editor : IDisposable
         // --- Build engine via EngineBuilder (offscreen — no swapchain write) ---
         _engine = EngineBuilder
             .Create(_context)
-            .WithDefaultNodes()
+            .WithDefaultNodes(false)
+            .RenderToCustomTarget(RenderSettings.IntermediateTargetFormat)
             .WithPostEffects(effects =>
             {
                 effects.AddEffect(_fxaa);
@@ -123,6 +125,20 @@ internal partial class Editor : IDisposable
         // --- Per-viewport state and scene data ---
         _renderContext = _engine.CreateRenderContext();
         _renderContext.Initialize();
+
+        // Create the offscreen render target texture for the 3D viewport and add it to the system resource set
+        _renderContext.ResourceSet.AddTexture(
+            ViewportTextureName,
+            res =>
+            {
+                return res.Context.Context.CreateRenderTarget2D(
+                    RenderSettings.IntermediateTargetFormat,
+                    (uint)res.Context.WindowSize.Width,
+                    (uint)res.Context.WindowSize.Height,
+                    debugName: ViewportTextureName
+                );
+            }
+        );
         _renderContext.PointerRing.Enabled = 1;
         _renderContext.PointerRing.OuterDistThreshold = 0.6f;
         _renderContext.PointerRing.InnerDistThreshold = 0.4f;
@@ -156,6 +172,17 @@ internal partial class Editor : IDisposable
             _lastTimestamp = Stopwatch.GetTimestamp();
         float delta = (float)(Stopwatch.GetTimestamp() - _lastTimestamp) / Stopwatch.Frequency;
         _lastTimestamp = Stopwatch.GetTimestamp();
+        _imGuiRenderer.BeginFrame(new Vector2(width, height));
+        // --- ImGui UI ---
+        DrawMainMenuBar();
+        DrawLayout(
+            _renderContext.FinalOutputTexture,
+            width / _imGuiRenderer.DisplayScale,
+            height / _imGuiRenderer.DisplayScale
+        );
+
+        _imGuiRenderer.EndFrame();
+        ;
         _scene.Tick(delta);
 
         // Update the active camera controller
@@ -167,34 +194,19 @@ internal partial class Editor : IDisposable
         // from the swapchain / window size.
         _renderContext!.Update(_viewportSize, _camera);
         _renderContext.SetPointer(_pointerLocation);
-        // FinalOutputTexture is not used by the offscreen graph, but the resource set
-        // still expects it to be non-null for system resource setup.
-        _renderContext.FinalOutputTexture = _context.GetCurrentSwapchainTexture();
 
         // --- Step 1: Execute 3D render graph (offscreen) ---
-        var cmdBuf = _engine.RenderOffscreen(_renderContext, _worldDataProvider!);
-
-        // Retrieve the offscreen texture that the graph produced
-        var offscreenTexHandle = _renderContext.TextureColorF16Current;
+        var cmdBuf = _engine.RenderOffscreen(
+            _renderContext,
+            _worldDataProvider!,
+            ViewportTextureName
+        );
 
         // --- Step 2: ImGui composite pass — renders to swapchain ---
         var swapchainTex = _context.GetCurrentSwapchainTexture();
         _imGuiFramebuffer.Colors[0].Texture = swapchainTex;
-        _imGuiDeps.Textures[0] = offscreenTexHandle;
-
-        _imGuiRenderer.BeginFrame(new Vector2(width, height));
-
-        // --- ImGui UI ---
-        DrawMainMenuBar();
-        DrawLayout(
-            offscreenTexHandle,
-            width / _imGuiRenderer.DisplayScale,
-            height / _imGuiRenderer.DisplayScale
-        );
-
-        _imGuiRenderer.EndFrame();
+        _imGuiDeps.Textures[0] = _renderContext.FinalOutputTexture;
         _imGuiRenderer.Render(cmdBuf, _imGuiPass, _imGuiFramebuffer, _imGuiDeps);
-
         // --- Submit & present ---
         _context.Submit(cmdBuf, swapchainTex);
     }

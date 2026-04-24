@@ -1,5 +1,3 @@
-using HelixToolkit.Nex.Repository;
-
 namespace HelixToolkit.Nex.Rendering;
 
 public class Renderer(IServiceProvider serviceProvider) : Initializable

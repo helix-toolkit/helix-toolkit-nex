@@ -170,10 +170,6 @@ public partial class HelixViewport : FrameworkElement, IDisposable
             height
         );
 
-        // 5. Per-viewport render context
-
-        _renderContext!.FinalOutputTexture = _importedTexture.Handle;
-
         // 6. Subscribe to the WPF render loop
         CompositionTarget.Rendering += OnCompositionRendering;
     }
@@ -193,7 +189,7 @@ public partial class HelixViewport : FrameworkElement, IDisposable
             return;
 
         // Compute delta time
-        if (!Render((float)ActualWidth, (float)ActualHeight))
+        if (!Render((float)ActualWidth, (float)ActualHeight, _importedTexture!.Handle))
             return;
 
         //// Present through D3DImage

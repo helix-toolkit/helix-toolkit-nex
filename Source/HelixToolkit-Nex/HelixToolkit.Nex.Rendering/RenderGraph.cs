@@ -541,20 +541,10 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
         return result;
     }
 
-    public bool Execute(
-        RenderContext context,
-        ICommandBuffer cmdBuf,
-        IReadOnlyDictionary<string, RenderNode> nodes
-    )
+    public bool EnsureResources(RenderContext context)
     {
-        var resourceSet =
-            context.ResourceSet
-            ?? throw new InvalidOperationException(
-                "RenderContext.ResourceSet must be set before executing the render graph."
-            );
-
-        var wasDirty = IsDirty;
-        if (wasDirty)
+        var resourceSet = context.ResourceSet;
+        if (IsDirty)
         {
             Compile();
         }
@@ -573,16 +563,28 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
         {
             ApplyRegistrations(resourceSet);
             resourceSet.LastUpdatedTimeStamp = _lastUpdatedTimeStamp;
+            resourceSet.EnsureResources(context, true);
+        }
+        else
+        {
+            resourceSet.EnsureResources(context, false);
         }
 
-        resourceSet.EnsureResources(context, wasDirty);
-        resourceSet.SetupSystemResources(context);
+        return true;
+    }
 
+    public bool Execute(
+        RenderContext context,
+        ICommandBuffer cmdBuf,
+        IReadOnlyDictionary<string, RenderNode> nodes
+    )
+    {
         if (context.Data is null)
         {
             return false;
         }
 
+        context.ResourceSet.SetupSystemResources(context);
         foreach (var pass in _sortedPasses)
         {
             if (!nodes.TryGetValue(pass.PassName, out var node))
@@ -597,7 +599,7 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
             {
                 continue;
             }
-            SetupResourcesForPass(context, cmdBuf, resourceSet, pass);
+            SetupResourcesForPass(context, cmdBuf, context.ResourceSet, pass);
             node.Render(
                 new RenderResources(
                     context,
@@ -605,8 +607,8 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
                     pass.Pass,
                     pass.Framebuffer,
                     pass.Dependencies,
-                    resourceSet.Textures,
-                    resourceSet.Buffers
+                    context.ResourceSet.Textures,
+                    context.ResourceSet.Buffers
                 )
             );
         }

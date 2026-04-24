@@ -8,6 +8,7 @@ public enum EngineInteropTarget
     WPF,
     WinUI,
 };
+
 /// <summary>
 /// Fluent builder for creating and configuring an <see cref="Engine"/> instance.
 /// <para>
@@ -67,6 +68,7 @@ public sealed class EngineBuilder
     private readonly List<Action<IReadOnlyList<RenderNode>>> _nodeConfigurators = [];
     private PostEffectsNode _postEffectsNode = new();
     private bool _addRenderToFinal;
+    private Format _finalTextureFormat = Format.Invalid;
     private EngineInteropTarget _interopTarget = EngineInteropTarget.None;
     private Action<IResourceManager>? _onResourceManagerReady;
 
@@ -132,7 +134,8 @@ public sealed class EngineBuilder
     /// <typeparam name="T">The concrete <see cref="RenderNode"/> type to configure.</typeparam>
     /// <param name="configure">A callback that receives each matching node instance.</param>
     /// <returns>This builder for method chaining.</returns>
-    public EngineBuilder ConfigureNode<T>(Action<T> configure) where T : RenderNode
+    public EngineBuilder ConfigureNode<T>(Action<T> configure)
+        where T : RenderNode
     {
         ArgumentNullException.ThrowIfNull(configure);
         _nodeConfigurators.Add(nodes =>
@@ -167,9 +170,10 @@ public sealed class EngineBuilder
     /// for offscreen-only rendering, e.g., ImGui composite).
     /// </summary>
     /// <returns>This builder for method chaining.</returns>
-    public EngineBuilder AddRenderToFinal()
+    public EngineBuilder RenderToCustomTarget(Format targetFormat)
     {
         _addRenderToFinal = true;
+        _finalTextureFormat = targetFormat;
         return this;
     }
 
@@ -221,6 +225,10 @@ public sealed class EngineBuilder
         AddNode(new ForwardPlusTransparentNode());
         AddNode(new WBOITCompositeNode());
         _addRenderToFinal = renderToSwapchain;
+        if (renderToSwapchain)
+        {
+            _finalTextureFormat = _context.GetSwapchainFormat();
+        }
         return this;
     }
 
@@ -232,8 +240,7 @@ public sealed class EngineBuilder
     /// <returns>The current instance of <see cref="EngineBuilder"/> with WPF interop enabled.</returns>
     public EngineBuilder WithWpf()
     {
-        _interopTarget = EngineInteropTarget.WPF;
-        _addRenderToFinal = true;
+        WithInteropTarget(EngineInteropTarget.WPF);
         return this;
     }
 
@@ -244,8 +251,7 @@ public sealed class EngineBuilder
     /// <returns>The current instance of <see cref="EngineBuilder"/> with WinUI interop enabled.</returns>
     public EngineBuilder WithWinUI()
     {
-        _interopTarget = EngineInteropTarget.WinUI;
-        _addRenderToFinal = true;
+        WithInteropTarget(EngineInteropTarget.WinUI);
         return this;
     }
 
@@ -264,6 +270,12 @@ public sealed class EngineBuilder
         if (target != EngineInteropTarget.None)
         {
             _addRenderToFinal = true;
+            _finalTextureFormat = target switch
+            {
+                EngineInteropTarget.WPF => Format.BGRA_UN8,
+                EngineInteropTarget.WinUI => Format.RGBA_UN8,
+                _ => Format.Invalid,
+            };
         }
         return this;
     }
@@ -321,18 +333,11 @@ public sealed class EngineBuilder
         _postEffectsNode = new();
         if (_addRenderToFinal)
         {
-            switch (_interopTarget)
+            if (_finalTextureFormat == Format.Invalid)
             {
-                case EngineInteropTarget.WPF:
-                    engine.AddNode(new RenderToFinalNode(Format.BGRA_UN8));
-                    break;
-                case EngineInteropTarget.WinUI:
-                    engine.AddNode(new RenderToFinalNode(Format.RGBA_UN8));
-                    break;
-                default:
-                    engine.AddNode(new RenderToFinalNode(_context.GetSwapchainFormat()));
-                    break;
+                _finalTextureFormat = _context.GetSwapchainFormat();
             }
+            engine.AddNode(new RenderToFinalNode(_finalTextureFormat));
         }
 
         // --- Initialize rendering infrastructure ---

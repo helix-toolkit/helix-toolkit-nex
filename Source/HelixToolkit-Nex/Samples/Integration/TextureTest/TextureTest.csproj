@@ -137,5 +137,30 @@
         >
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
+        <!-- ── Metal Matte ── -->
+        <None
+            Include="..\..\..\..\..\Assets\Textures\MetalMatte\Poliigon_MetalPaintedMatte_7037_BaseColor.jpg"
+            Link="Assets\Textures\MetalMatte\Poliigon_MetalPaintedMatte_7037_BaseColor.jpg"
+        >
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None
+            Include="..\..\..\..\..\Assets\Textures\MetalMatte\Poliigon_MetalPaintedMatte_7037_Displacement.tiff"
+            Link="Assets\Textures\MetalMatte\Poliigon_MetalPaintedMatte_7037_Displacement.tiff"
+        >
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None
+            Include="..\..\..\..\..\Assets\Textures\MetalMatte\Poliigon_MetalPaintedMatte_7037_ORM.jpg"
+            Link="Assets\Textures\MetalMatte\Poliigon_MetalPaintedMatte_7037_ORM.jpg"
+        >
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None
+            Include="..\..\..\..\..\Assets\Textures\MetalMatte\Poliigon_MetalPaintedMatte_7037_Normal.png"
+            Link="Assets\Textures\MetalMatte\Poliigon_MetalPaintedMatte_7037_Normal.png"
+        >
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
     </ItemGroup>
 </Project>

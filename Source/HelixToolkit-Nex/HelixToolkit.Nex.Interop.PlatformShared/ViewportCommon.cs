@@ -161,7 +161,7 @@ public partial class HelixViewport
         }
     }
 
-    private bool Render(float width, float height)
+    private bool Render(float width, float height, TextureHandle target)
     {
         // Pull per-frame data from the viewport client
         if (
@@ -199,7 +199,7 @@ public partial class HelixViewport
         var context = Engine.Context;
 
         // Render offscreen
-        var cmdBuf = Engine.RenderOffscreen(_renderContext, dataProvider);
+        var cmdBuf = Engine.RenderOffscreen(_renderContext, dataProvider, target);
 #if HxWPF
         var submitHandle = context.Submit(cmdBuf, TextureHandle.Null);
 #elif HxWinUI

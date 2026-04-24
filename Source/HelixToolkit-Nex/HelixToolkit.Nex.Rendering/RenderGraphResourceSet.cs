@@ -124,8 +124,34 @@ public sealed class RenderGraphResourceSet : IDisposable
     }
 
     /// <summary>
+    /// Attempts to retrieve a texture handle associated with the specified name.
+    /// </summary>
+    /// <param name="name">The name of the texture to locate. Cannot be null.</param>
+    /// <param name="handle">When this method returns, contains the handle of the texture if found; otherwise, the default value for <see
+    /// cref="TextureHandle"/>.</param>
+    /// <returns><see langword="true"/> if a texture with the specified name is found; otherwise, <see langword="false"/>.</returns>
+    public bool TryGetTexture(string name, out TextureHandle handle)
+    {
+        return Textures.TryGetValue(name, out handle);
+    }
+
+    /// <summary>
+    /// Attempts to retrieve a buffer handle associated with the specified name.
+    /// </summary>
+    /// <param name="name">The name of the buffer to locate. Cannot be null.</param>
+    /// <param name="handle">When this method returns, contains the buffer handle associated with the specified name, if found; otherwise,
+    /// the default value.</param>
+    /// <returns>true if a buffer with the specified name is found; otherwise, false.</returns>
+    public bool TryGetBuffer(string name, out BufferHandle handle)
+    {
+        return Buffers.TryGetValue(name, out handle);
+    }
+
+    /// <summary>
     /// Ensures GPU resources are up-to-date for the current render context.
     /// </summary>
+    /// <param name="context">The current render context providing necessary information for resource creation.</param>
+    /// <param name="isDirty">Indicates whether all resources should be recreated regardless of screen size changes.</param>
     public void EnsureResources(RenderContext context, bool isDirty)
     {
         if (isDirty || !_resourcesCreated)

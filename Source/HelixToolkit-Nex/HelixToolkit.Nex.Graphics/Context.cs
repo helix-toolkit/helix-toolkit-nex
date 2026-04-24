@@ -146,6 +146,40 @@ public interface IContext : IInitializable
     }
 
     /// <summary>
+    /// Create a 2D texture resource specifically configured for use as a render target, with the specified format, dimensions, and optional multisampling and mipmapping.
+    /// </summary>
+    /// <param name="format">The pixel format to use for the texture.</param>
+    /// <param name="width">The width of the texture, in pixels. Must be greater than 0.</param>
+    /// <param name="height">The height of the texture, in pixels. Must be greater than 0.</param>
+    /// <param name="numLayers">The number of array layers in the texture. Must be at least 1. Defaults to 1.</param>
+    /// <param name="numSamples">The number of samples per pixel for multisampling. Must be at least 1. Defaults to 1 (no multisampling).</param>
+    /// <param name="numMipLevels">The number of mipmap levels for the texture. Must be at least 1. Defaults to 1 (no mipmaps).</param>
+    /// <param name="debugName">An optional name for debugging purposes. Can be <see langword="null"/>.</param>
+    /// <returns>A <see cref="TextureResource"/> representing the created render target.</returns>
+    TextureResource CreateRenderTarget2D(
+        Format format,
+        uint width,
+        uint height,
+        uint numLayers = 1,
+        uint numSamples = 1,
+        uint numMipLevels = 1,
+        string? debugName = null
+    )
+    {
+        return CreateTexture2D(
+            format,
+            width,
+            height,
+            TextureUsageBits.Attachment | TextureUsageBits.Sampled,
+            StorageType.Device,
+            numLayers,
+            numSamples,
+            numMipLevels,
+            debugName
+        );
+    }
+
+    /// <summary>
     /// Creates a texture view from an existing texture.
     /// </summary>
     /// <param name="texture">The base texture handle.</param>
@@ -504,7 +538,12 @@ public interface IContext : IInitializable
     /// <param name="count">Data count in data array.</param>
     /// <returns>An <see cref="AsyncUploadHandle{THandle}"/> that tracks the upload's completion,
     /// yielding the <see cref="BufferHandle"/> alongside the <see cref="ResultCode"/> when awaited.</returns>
-    AsyncUploadHandle<BufferHandle> UploadAsync<T>(in BufferHandle handle, size_t offset, T[] data, size_t count)
+    AsyncUploadHandle<BufferHandle> UploadAsync<T>(
+        in BufferHandle handle,
+        size_t offset,
+        T[] data,
+        size_t count
+    )
         where T : unmanaged
     {
         // Default implementation: synchronous fallback
@@ -543,7 +582,11 @@ public interface IContext : IInitializable
     /// <param name="data">Data in <see cref="FastList{T}"/>.</param>
     /// <returns>An <see cref="AsyncUploadHandle{THandle}"/> that tracks the upload's completion,
     /// yielding the <see cref="BufferHandle"/> alongside the <see cref="ResultCode"/> when awaited.</returns>
-    AsyncUploadHandle<BufferHandle> UploadAsync<T>(in BufferHandle handle, size_t offset, FastList<T> data)
+    AsyncUploadHandle<BufferHandle> UploadAsync<T>(
+        in BufferHandle handle,
+        size_t offset,
+        FastList<T> data
+    )
         where T : unmanaged
     {
         return UploadAsync(handle, offset, data.GetInternalArray(), (size_t)data.Count);
