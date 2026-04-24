@@ -118,14 +118,14 @@ internal sealed partial class TextureDemo
 
         // Show per-slot status for the active set
         var loaded = _loadedSets[ActiveSetIndex];
-        DrawSlotRow("Albedo", desc.AlbedoFile, loaded?.Albedo.Valid ?? false);
-        DrawSlotRow("Normal", desc.NormalFile, loaded?.Normal.Valid ?? false);
+        DrawSlotRow("Albedo", desc.AlbedoFile, loaded?.Albedo.GetHandle().Valid ?? false);
+        DrawSlotRow("Normal", desc.NormalFile, loaded?.Normal.GetHandle().Valid ?? false);
         DrawSlotRow(
             "Metallic-Roughness",
             desc.MetallicRoughnessFile ?? BuildMrLabel(desc),
-            loaded?.MetallicRoughness.Valid ?? false
+            loaded?.MetallicRoughness.GetHandle().Valid ?? false
         );
-        DrawSlotRow("AO", desc.AoFile, loaded?.Ao.Valid ?? false);
+        DrawSlotRow("AO", desc.AoFile, loaded?.Ao.GetHandle().Valid ?? false);
     }
 
     private static string BuildMrLabel(TextureSetDesc desc)

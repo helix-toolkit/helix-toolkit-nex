@@ -5,71 +5,44 @@ namespace HelixToolkit.Nex.Repository;
 /// <summary>
 /// Represents a cache entry for a GPU texture resource.
 /// </summary>
-public sealed class TextureCacheEntry : CacheEntry<TextureResource>
+public sealed class TextureCacheEntry : CacheEntry<TextureRef>
 {
-    /// <summary>
-    /// The GPU texture resource.
-    /// </summary>
-    public TextureResource Texture => Resource;
+    /// <summary>The canonical TextureRef for this cache entry.</summary>
+    public TextureRef Ref => Resource;
 }
 
 /// <summary>
 /// Thread-safe repository for caching GPU texture resources.
 /// </summary>
-/// <remarks>
-/// Textures can be created from:
-/// <list type="bullet">
-/// <item><description>A memory <see cref="Stream"/> with a caller-supplied name as the cache key.</description></item>
-/// <item><description>A file path on disk — the normalized absolute path is used as the cache key.</description></item>
-/// </list>
-/// The repository uses an LRU eviction policy when the cache is full and supports optional
-/// time-based expiration. All public members are thread-safe.
-/// </remarks>
 public sealed class TextureRepository
-    : Repository<string, TextureCacheEntry, TextureResource>,
+    : Repository<string, TextureCacheEntry, TextureRef>,
         ITextureRepository
 {
     private readonly IContext _context;
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="TextureRepository"/> class.
-    /// </summary>
-    /// <param name="context">The graphics context used to create GPU textures.</param>
-    /// <param name="maxEntries">Maximum number of textures to cache (0 = unlimited). Defaults to 0.</param>
-    /// <param name="expirationTime">Time before a cached entry expires. Defaults to no expiration.</param>
     public TextureRepository(IContext context, int maxEntries = 0, TimeSpan? expirationTime = null)
         : base(maxEntries, expirationTime)
     {
         _context = context;
     }
 
-    /// <summary>
-    /// Returns a normalized, case-insensitive absolute path suitable for use as a file cache key.
-    /// </summary>
-    /// <param name="filePath">The raw file path supplied by the caller.</param>
-    /// <returns>Normalized absolute file path.</returns>
     public static string NormalizeFilePath(string filePath) =>
         Path.GetFullPath(filePath).ToLowerInvariant();
 
-    /// <inheritdoc/>
-    public TextureResource GetOrCreateFromStream(string name, Stream stream, string? debugName = null)
+    public TextureRef GetOrCreateFromStream(string name, Stream stream, string? debugName = null)
     {
         ArgumentException.ThrowIfNullOrEmpty(name);
         ArgumentNullException.ThrowIfNull(stream);
         ObjectDisposedException.ThrowIf(_context.IsDisposed, this);
 
         if (TryGet(name, out var cached))
-        {
-            AddResourceReference(cached!.Texture);
-            return cached!.Texture;
-        }
+            return cached!.Ref;
 
         var texture = TextureCreator.CreateTextureFromStream(_context, stream, debugName ?? name);
         return StoreEntry(name, texture, debugName ?? name);
     }
 
-    /// <inheritdoc/>
-    public TextureResource GetOrCreateFromFile(string filePath, string? debugName = null)
+    public TextureRef GetOrCreateFromFile(string filePath, string? debugName = null)
     {
         ArgumentException.ThrowIfNullOrEmpty(filePath);
         ObjectDisposedException.ThrowIf(_context.IsDisposed, this);
@@ -77,10 +50,7 @@ public sealed class TextureRepository
         var cacheKey = NormalizeFilePath(filePath);
 
         if (TryGet(cacheKey, out var cached))
-        {
-            AddResourceReference(cached!.Texture);
-            return cached!.Texture;
-        }
+            return cached!.Ref;
 
         if (!File.Exists(filePath))
             throw new FileNotFoundException($"Texture file not found: '{filePath}'", filePath);
@@ -91,48 +61,130 @@ public sealed class TextureRepository
         return StoreEntry(cacheKey, texture, resolvedDebugName);
     }
 
-    /// <inheritdoc/>
-    public TextureResource GetOrCreateFromImage(string name, Image image)
+    public TextureRef GetOrCreateFromImage(string name, Image image)
     {
         ArgumentException.ThrowIfNullOrEmpty(name);
         ObjectDisposedException.ThrowIf(_context.IsDisposed, this);
-        var cacheKey = name;
 
-        if (TryGet(cacheKey, out var cached))
-        {
-            AddResourceReference(cached!.Texture);
-            return cached!.Texture;
-        }
+        if (TryGet(name, out var cached))
+            return cached!.Ref;
 
         var texture = TextureCreator.CreateTexture(_context, image, name);
-        return StoreEntry(cacheKey, texture, name);
+        return StoreEntry(name, texture, name);
     }
 
-    /// <inheritdoc/>
-    protected override void AddResourceReference(TextureResource resource)
+    public async Task<TextureRef> GetOrCreateFromStreamAsync(
+        string name,
+        Stream stream,
+        string? debugName = null
+    )
     {
-        resource.AddReference();
+        ArgumentException.ThrowIfNullOrEmpty(name);
+        ArgumentNullException.ThrowIfNull(stream);
+        ObjectDisposedException.ThrowIf(_context.IsDisposed, this);
+
+        if (TryGet(name, out var cached))
+            return cached!.Ref;
+
+        var image =
+            Image.Load(stream)
+            ?? throw new InvalidOperationException("Failed to load image from stream");
+
+        using (image)
+        {
+            var (textureResource, uploadHandle) = TextureCreator.CreateTextureAsyncWithResource(
+                _context,
+                image,
+                debugName ?? name
+            );
+            var textureRef = StoreEntry(name, textureResource, debugName ?? name);
+            await uploadHandle;
+            return textureRef;
+        }
     }
 
-    /// <inheritdoc/>
+    public async Task<TextureRef> GetOrCreateFromFileAsync(
+        string filePath,
+        string? debugName = null
+    )
+    {
+        ArgumentException.ThrowIfNullOrEmpty(filePath);
+        ObjectDisposedException.ThrowIf(_context.IsDisposed, this);
+
+        var cacheKey = NormalizeFilePath(filePath);
+
+        if (TryGet(cacheKey, out var cached))
+            return cached!.Ref;
+
+        if (!File.Exists(filePath))
+            throw new FileNotFoundException($"Texture file not found: '{filePath}'", filePath);
+
+        using var stream = File.OpenRead(filePath);
+        var resolvedDebugName = debugName ?? Path.GetFileName(filePath);
+        var image =
+            Image.Load(stream)
+            ?? throw new InvalidOperationException("Failed to load image from file");
+
+        using (image)
+        {
+            var (textureResource, uploadHandle) = TextureCreator.CreateTextureAsyncWithResource(
+                _context,
+                image,
+                resolvedDebugName
+            );
+            var textureRef = StoreEntry(cacheKey, textureResource, resolvedDebugName);
+            await uploadHandle;
+            return textureRef;
+        }
+    }
+
+    public async Task<TextureRef> GetOrCreateFromImageAsync(string name, Image image)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(name);
+        ObjectDisposedException.ThrowIf(_context.IsDisposed, this);
+
+        if (TryGet(name, out var cached))
+            return cached!.Ref;
+
+        var (textureResource, uploadHandle) = TextureCreator.CreateTextureAsyncWithResource(
+            _context,
+            image,
+            name
+        );
+        var textureRef = StoreEntry(name, textureResource, name);
+        await uploadHandle;
+        return textureRef;
+    }
+
+    public bool Remove(string key)
+    {
+        if (TryRemoveFromCache(key, out var removed) && removed is not null)
+        {
+            DisposeEntry(removed);
+            return true;
+        }
+        return false;
+    }
+
+    protected override void AddResourceReference(TextureRef resource) { }
+
     protected override void DisposeEntry(TextureCacheEntry entry)
     {
-        entry.Texture.Dispose();
+        entry.Ref.DisposeResource();
     }
 
-    private TextureResource StoreEntry(string cacheKey, TextureResource texture, string debugName)
+    private TextureRef StoreEntry(string cacheKey, TextureResource texture, string debugName)
     {
+        var textureRef = new TextureRef(cacheKey, this, texture);
         var entry = new TextureCacheEntry
         {
-            Resource = texture,
+            Resource = textureRef,
             SourceHash = cacheKey,
             DebugName = debugName,
             AccessCount = 1,
         };
-
         Set(cacheKey, entry);
-        AddResourceReference(texture);
         HxDebug.Assert(texture.Valid, "Texture resource is not valid after creation.");
-        return texture;
+        return textureRef;
     }
 }

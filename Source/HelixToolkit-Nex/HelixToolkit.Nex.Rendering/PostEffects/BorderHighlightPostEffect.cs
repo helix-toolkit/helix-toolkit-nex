@@ -78,8 +78,8 @@ public sealed class BorderHighlightPostEffect : PostEffect
     // Composite pass: full-screen-quad VS + edge-detect/blend FS.
     private RenderPipelineResource _compositePipeline = RenderPipelineResource.Null;
 
-    private SamplerResource _pointSampler = SamplerResource.Null;
-    private SamplerResource _linearSampler = SamplerResource.Null;
+    private SamplerRef _pointSampler = SamplerRef.Null;
+    private SamplerRef _linearSampler = SamplerRef.Null;
     private readonly Dependencies _deps = new();
     private readonly Framebuffer _frameBuffer = new();
     private readonly RenderPass _pass = new();
@@ -194,8 +194,12 @@ public sealed class BorderHighlightPostEffect : PostEffect
             return ResultCode.InvalidState;
         }
 
-        _pointSampler = ResourceManager.SamplerRepository.GetOrCreate(SamplerStateDesc.PointClamp);
-        _linearSampler = ResourceManager.SamplerRepository.GetOrCreate(SamplerStateDesc.LinearClamp);
+        _pointSampler = ResourceManager.SamplerRepository.GetOrCreate(
+            SamplerStateDesc.PointClamp
+        );
+        _linearSampler = ResourceManager.SamplerRepository.GetOrCreate(
+            SamplerStateDesc.LinearClamp
+        );
 
         if (!_pointSampler.Valid || !_linearSampler.Valid)
         {
@@ -209,8 +213,6 @@ public sealed class BorderHighlightPostEffect : PostEffect
     {
         _maskPipeline.Dispose();
         _compositePipeline.Dispose();
-        _pointSampler.Dispose();
-        _linearSampler.Dispose();
         // TextureHighlightMask is owned by the shared RenderGraphResourceSet — not disposed here.
         return ResultCode.Ok;
     }
@@ -371,9 +373,9 @@ public sealed class BorderHighlightPostEffect : PostEffect
                 new HighlightPushConstants
                 {
                     SceneTextureId = sceneTex.Index,
-                    SceneSamplerId = _pointSampler.Index,
+                    SceneSamplerId = _pointSampler,
                     MaskTextureId = maskTex.Index,
-                    MaskSamplerId = _linearSampler.Index,
+                    MaskSamplerId = _linearSampler,
                     TexelWidth = texelW,
                     TexelHeight = texelH,
                     R = r,

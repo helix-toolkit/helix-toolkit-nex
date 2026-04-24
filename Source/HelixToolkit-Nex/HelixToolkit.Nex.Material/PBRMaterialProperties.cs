@@ -275,13 +275,22 @@ public sealed class PBRMaterialProperties : IDisposable
         get => Properties.Reflectance;
     }
 
-    private TextureResource _albedoMap = TextureResource.Null;
+    private readonly Action _onAlbedoMapDisposed;
+    private readonly Action _onNormalMapDisposed;
+    private readonly Action _onMetallicRoughnessMapDisposed;
+    private readonly Action _onAoMapDisposed;
+    private readonly Action _onBumpMapDisposed;
+    private readonly Action _onDisplaceMapDisposed;
+    private readonly Action _onSamplerDisposed;
+    private readonly Action _onDisplaceSamplerDisposed;
+
+    private TextureRef _albedoMap = TextureRef.Null;
 
     /// <summary>
     /// Gets or sets the albedo (base color) texture map.
     /// Setting this updates <see cref="PBRProperties.AlbedoTexIndex"/> in the pooled data.
     /// </summary>
-    public TextureResource AlbedoMap
+    public TextureRef? AlbedoMap
     {
         set
         {
@@ -289,20 +298,22 @@ public sealed class PBRMaterialProperties : IDisposable
             {
                 return;
             }
-            _albedoMap = value;
-            Properties.AlbedoTexIndex = value.Index;
+            _albedoMap.OnDisposed -= _onAlbedoMapDisposed;
+            _albedoMap = value ?? TextureRef.Null;
+            _albedoMap.OnDisposed += _onAlbedoMapDisposed;
+            Properties.AlbedoTexIndex = _albedoMap;
             NotifyUpdated();
         }
         get => _albedoMap;
     }
 
-    private TextureResource _normalMap = TextureResource.Null;
+    private TextureRef _normalMap = TextureRef.Null;
 
     /// <summary>
     /// Gets or sets the normal map texture used for surface detail lighting.
     /// Setting this updates <see cref="PBRProperties.NormalTexIndex"/> in the pooled data.
     /// </summary>
-    public TextureResource NormalMap
+    public TextureRef? NormalMap
     {
         set
         {
@@ -310,21 +321,23 @@ public sealed class PBRMaterialProperties : IDisposable
             {
                 return;
             }
-            _normalMap = value;
-            Properties.NormalTexIndex = value.Index;
+            _normalMap.OnDisposed -= _onNormalMapDisposed;
+            _normalMap = value ?? TextureRef.Null;
+            _normalMap.OnDisposed += _onNormalMapDisposed;
+            Properties.NormalTexIndex = _normalMap;
             NotifyUpdated();
         }
         get => _normalMap;
     }
 
-    private TextureResource _metallicRoughnessMap = TextureResource.Null;
+    private TextureRef _metallicRoughnessMap = TextureRef.Null;
 
     /// <summary>
     /// Gets or sets the combined metallic-roughness texture map.
     /// The blue channel encodes metallic and the green channel encodes roughness (glTF convention).
     /// Setting this updates <see cref="PBRProperties.MetallicRoughnessTexIndex"/> in the pooled data.
     /// </summary>
-    public TextureResource MetallicRoughnessMap
+    public TextureRef? MetallicRoughnessMap
     {
         set
         {
@@ -332,14 +345,16 @@ public sealed class PBRMaterialProperties : IDisposable
             {
                 return;
             }
-            _metallicRoughnessMap = value;
-            Properties.MetallicRoughnessTexIndex = value.Index;
+            _metallicRoughnessMap.OnDisposed -= _onMetallicRoughnessMapDisposed;
+            _metallicRoughnessMap = value ?? TextureRef.Null;
+            _metallicRoughnessMap.OnDisposed += _onMetallicRoughnessMapDisposed;
+            Properties.MetallicRoughnessTexIndex = _metallicRoughnessMap;
             NotifyUpdated();
         }
         get => _metallicRoughnessMap;
     }
 
-    private TextureResource _aoMap = TextureResource.Null;
+    private TextureRef _aoMap = TextureRef.Null;
 
     /// <summary>
     /// Gets or sets the ambient occlusion texture resource used for shading effects.
@@ -347,7 +362,7 @@ public sealed class PBRMaterialProperties : IDisposable
     /// <remarks>Changing this property updates the associated texture index and notifies listeners of the
     /// update. The ambient occlusion map enhances the perception of depth and surface detail in rendered
     /// materials.</remarks>
-    public TextureResource AoMap
+    public TextureRef? AoMap
     {
         set
         {
@@ -355,18 +370,21 @@ public sealed class PBRMaterialProperties : IDisposable
             {
                 return;
             }
-            _aoMap = value;
-            Properties.AoTexIndex = value.Index;
+            _aoMap.OnDisposed -= _onAoMapDisposed;
+            _aoMap = value ?? TextureRef.Null;
+            _aoMap.OnDisposed += _onAoMapDisposed;
+            Properties.AoTexIndex = _aoMap;
             NotifyUpdated();
         }
         get => _aoMap;
     }
 
-    private TextureResource _bumpMap = TextureResource.Null;
+    private TextureRef _bumpMap = TextureRef.Null;
+
     /// <summary>
     /// Gets or sets the bump map texture used for simulating surface detail through normal perturbation.
     /// </summary>
-    public TextureResource BumpMap
+    public TextureRef? BumpMap
     {
         set
         {
@@ -374,8 +392,10 @@ public sealed class PBRMaterialProperties : IDisposable
             {
                 return;
             }
-            _bumpMap = value;
-            Properties.BumpTexIndex = value.Index;
+            _bumpMap.OnDisposed -= _onBumpMapDisposed;
+            _bumpMap = value ?? TextureRef.Null;
+            _bumpMap.OnDisposed += _onBumpMapDisposed;
+            Properties.BumpTexIndex = _bumpMap;
             NotifyUpdated();
         }
         get => _bumpMap;
@@ -396,13 +416,13 @@ public sealed class PBRMaterialProperties : IDisposable
         get => _bumpScale;
     }
 
-    private SamplerResource _sampler = SamplerResource.Null;
+    private SamplerRef _sampler = SamplerRef.Null;
 
     /// <summary>
     /// Gets or sets the texture sampler used when sampling all texture maps on this material.
     /// Setting this updates <see cref="PBRProperties.SamplerIndex"/> in the pooled data.
     /// </summary>
-    public SamplerResource Sampler
+    public SamplerRef? Sampler
     {
         set
         {
@@ -410,22 +430,24 @@ public sealed class PBRMaterialProperties : IDisposable
             {
                 return;
             }
-            _sampler = value;
-            Properties.SamplerIndex = value.Index;
+            _sampler.OnDisposed -= _onSamplerDisposed;
+            _sampler = value ?? SamplerRef.Null;
+            _sampler.OnDisposed += _onSamplerDisposed;
+            Properties.SamplerIndex = _sampler;
             NotifyUpdated();
         }
         get => _sampler;
     }
 
-    private SamplerResource _displaceSampler = SamplerResource.Null;
+    private SamplerRef _displaceSampler = SamplerRef.Null;
 
     /// <summary>
-    /// Gets or sets the sampler resource used for displacement mapping operations.
+    /// Gets or sets the sampler used for displacement mapping operations.
     /// </summary>
     /// <remarks>Changing this property updates the associated displacement sampler index and notifies
-    /// listeners of the update. The sampler resource determines how texture sampling is performed during displacement
+    /// listeners of the update. The sampler determines how texture sampling is performed during displacement
     /// mapping.</remarks>
-    public SamplerResource DisplaceSampler
+    public SamplerRef? DisplaceSampler
     {
         set
         {
@@ -433,14 +455,16 @@ public sealed class PBRMaterialProperties : IDisposable
             {
                 return;
             }
-            _displaceSampler = value;
-            Properties.DisplaceSamplerIndex = value.Index;
+            _displaceSampler.OnDisposed -= _onDisplaceSamplerDisposed;
+            _displaceSampler = value ?? SamplerRef.Null;
+            _displaceSampler.OnDisposed += _onDisplaceSamplerDisposed;
+            Properties.DisplaceSamplerIndex = _displaceSampler;
             NotifyUpdated();
         }
         get => _displaceSampler;
     }
 
-    private TextureResource _displaceMap = TextureResource.Null;
+    private TextureRef _displaceMap = TextureRef.Null;
 
     /// <summary>
     /// Gets or sets the displacement map texture used for surface deformation effects.
@@ -448,7 +472,7 @@ public sealed class PBRMaterialProperties : IDisposable
     /// <remarks>Changing this property updates the associated displacement texture index and notifies
     /// listeners of the update. The displacement map is typically used in rendering to alter the appearance of a
     /// surface based on the provided texture.</remarks>
-    public TextureResource DisplaceMap
+    public TextureRef? DisplaceMap
     {
         set
         {
@@ -456,8 +480,10 @@ public sealed class PBRMaterialProperties : IDisposable
             {
                 return;
             }
-            _displaceMap = value;
-            Properties.DisplaceTexIndex = value.Index;
+            _displaceMap.OnDisposed -= _onDisplaceMapDisposed;
+            _displaceMap = value ?? TextureRef.Null;
+            _displaceMap.OnDisposed += _onDisplaceMapDisposed;
+            Properties.DisplaceTexIndex = _displaceMap;
             NotifyUpdated();
         }
         get => _displaceMap;
@@ -493,6 +519,70 @@ public sealed class PBRMaterialProperties : IDisposable
     {
         MaterialTypeId = materialTypeId;
         _pool = pool;
+        _onAlbedoMapDisposed = () =>
+        {
+            if (Valid)
+            {
+                Properties.AlbedoTexIndex = 0;
+                NotifyUpdated();
+            }
+        };
+        _onNormalMapDisposed = () =>
+        {
+            if (Valid)
+            {
+                Properties.NormalTexIndex = 0;
+                NotifyUpdated();
+            }
+        };
+        _onMetallicRoughnessMapDisposed = () =>
+        {
+            if (Valid)
+            {
+                Properties.MetallicRoughnessTexIndex = 0;
+                NotifyUpdated();
+            }
+        };
+        _onAoMapDisposed = () =>
+        {
+            if (Valid)
+            {
+                Properties.AoTexIndex = 0;
+                NotifyUpdated();
+            }
+        };
+        _onBumpMapDisposed = () =>
+        {
+            if (Valid)
+            {
+                Properties.BumpTexIndex = 0;
+                NotifyUpdated();
+            }
+        };
+        _onDisplaceMapDisposed = () =>
+        {
+            if (Valid)
+            {
+                Properties.DisplaceTexIndex = 0;
+                NotifyUpdated();
+            }
+        };
+        _onSamplerDisposed = () =>
+        {
+            if (Valid)
+            {
+                Properties.SamplerIndex = 0;
+                NotifyUpdated();
+            }
+        };
+        _onDisplaceSamplerDisposed = () =>
+        {
+            if (Valid)
+            {
+                Properties.DisplaceSamplerIndex = 0;
+                NotifyUpdated();
+            }
+        };
         _handle = _pool.Create(properties);
         _eventBus.Publish(
             new MaterialPropsUpdatedEvent(MaterialTypeId, Index, MaterialPropertyOp.Create)
@@ -514,7 +604,17 @@ public sealed class PBRMaterialProperties : IDisposable
         }
     }
 
-    private PBRMaterialProperties() { }
+    private PBRMaterialProperties()
+    {
+        _onAlbedoMapDisposed = () => { };
+        _onNormalMapDisposed = () => { };
+        _onMetallicRoughnessMapDisposed = () => { };
+        _onAoMapDisposed = () => { };
+        _onBumpMapDisposed = () => { };
+        _onDisplaceMapDisposed = () => { };
+        _onSamplerDisposed = () => { };
+        _onDisplaceSamplerDisposed = () => { };
+    }
 
     private bool _disposedValue;
 
@@ -524,13 +624,17 @@ public sealed class PBRMaterialProperties : IDisposable
         {
             if (disposing)
             {
+                // Unsubscribe all OnDisposed handlers before releasing pool entry
+                _albedoMap.OnDisposed -= _onAlbedoMapDisposed;
+                _normalMap.OnDisposed -= _onNormalMapDisposed;
+                _metallicRoughnessMap.OnDisposed -= _onMetallicRoughnessMapDisposed;
+                _aoMap.OnDisposed -= _onAoMapDisposed;
+                _bumpMap.OnDisposed -= _onBumpMapDisposed;
+                _displaceMap.OnDisposed -= _onDisplaceMapDisposed;
+                _sampler.OnDisposed -= _onSamplerDisposed;
+                _displaceSampler.OnDisposed -= _onDisplaceSamplerDisposed;
+
                 var index = Index;
-                AlbedoMap.Dispose();
-                NormalMap.Dispose();
-                MetallicRoughnessMap.Dispose();
-                Sampler.Dispose();
-                DisplaceMap.Dispose();
-                DisplaceSampler.Dispose();
                 _pool?.Destroy(_handle);
                 _eventBus.Publish(
                     new MaterialPropsUpdatedEvent(MaterialTypeId, index, MaterialPropertyOp.Destroy)

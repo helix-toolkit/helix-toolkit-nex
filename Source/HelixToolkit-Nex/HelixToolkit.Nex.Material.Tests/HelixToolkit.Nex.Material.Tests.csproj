@@ -1,20 +1,24 @@
 <Project Sdk="MSTest.Sdk/3.6.4">
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <LangVersion>latest</LangVersion>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <UseVSTest>true</UseVSTest>
+    </PropertyGroup>
 
-  <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
-    <LangVersion>latest</LangVersion>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-    <UseVSTest>true</UseVSTest>
-  </PropertyGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\HelixToolkit.Nex.Geometry\HelixToolkit.Nex.Geometries.csproj" />
+        <ProjectReference Include="..\HelixToolkit.Nex.Graphics.Mock\HelixToolkit.Nex.Graphics.Mock.csproj" />
+        <ProjectReference Include="..\HelixToolkit.Nex.Graphics.Vulkan\HelixToolkit.Nex.Graphics.Vulkan.csproj" />
+        <ProjectReference Include="..\HelixToolkit.Nex.Graphics\HelixToolkit.Nex.Graphics.csproj" />
+        <ProjectReference Include="..\HelixToolkit.Nex.Material\HelixToolkit.Nex.Material.csproj" />
+        <ProjectReference Include="..\HelixToolkit.Nex.Maths\HelixToolkit.Nex.Maths.csproj" />
+        <ProjectReference Include="..\HelixToolkit.Nex.Repository\HelixToolkit.Nex.Repository.csproj" />
+        <ProjectReference Include="..\HelixToolkit.Nex.Shaders\HelixToolkit.Nex.Shaders.csproj" />
+    </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\HelixToolkit.Nex.Geometry\HelixToolkit.Nex.Geometries.csproj" />
-    <ProjectReference Include="..\HelixToolkit.Nex.Graphics.Vulkan\HelixToolkit.Nex.Graphics.Vulkan.csproj" />
-    <ProjectReference Include="..\HelixToolkit.Nex.Graphics\HelixToolkit.Nex.Graphics.csproj" />
-    <ProjectReference Include="..\HelixToolkit.Nex.Material\HelixToolkit.Nex.Material.csproj" />
-    <ProjectReference Include="..\HelixToolkit.Nex.Maths\HelixToolkit.Nex.Maths.csproj" />
-    <ProjectReference Include="..\HelixToolkit.Nex.Shaders\HelixToolkit.Nex.Shaders.csproj" />
-  </ItemGroup>
-
+    <ItemGroup>
+        <PackageReference Include="FsCheck" Version="3.3.2" />
+    </ItemGroup>
 </Project>

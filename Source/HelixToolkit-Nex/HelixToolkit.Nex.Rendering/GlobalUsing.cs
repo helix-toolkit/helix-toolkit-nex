@@ -6,6 +6,7 @@ global using HelixToolkit.Nex.Geometries;
 global using HelixToolkit.Nex.Graphics;
 global using HelixToolkit.Nex.Material;
 global using HelixToolkit.Nex.Maths;
+global using HelixToolkit.Nex.Repository;
 global using HelixToolkit.Nex.Shaders;
 global using HelixToolkit.Nex.Trace;
 global using Microsoft.Extensions.Logging;
