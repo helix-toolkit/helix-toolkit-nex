@@ -25,8 +25,8 @@ public sealed class Bloom : PostEffect
     private RenderPipelineResource _blurVPipeline = RenderPipelineResource.Null;
     private RenderPipelineResource _compositePipeline = RenderPipelineResource.Null;
 
-    private SamplerResource _linearSampler = SamplerResource.Null;
-    private SamplerResource _pointSampler = SamplerResource.Null;
+    private SamplerRef _linearSampler = SamplerRef.Null;
+    private SamplerRef _pointSampler = SamplerRef.Null;
 
     // -----------------------------------------------------------------------
     // Public settings
@@ -133,7 +133,7 @@ public sealed class Bloom : PostEffect
             new BloomPushConstants
             {
                 TextureId = sceneTex.Index,
-                SamplerId = _linearSampler.Index,
+                SamplerId = _linearSampler,
                 Threshold = Threshold,
             }
         );
@@ -154,7 +154,7 @@ public sealed class Bloom : PostEffect
                 new BloomPushConstants
                 {
                     TextureId = bloomA.Index,
-                    SamplerId = _linearSampler.Index,
+                    SamplerId = _linearSampler,
                     TexelWidth = texelW,
                     TexelHeight = texelH,
                 }
@@ -169,7 +169,7 @@ public sealed class Bloom : PostEffect
                 new BloomPushConstants
                 {
                     TextureId = bloomB.Index,
-                    SamplerId = _linearSampler.Index,
+                    SamplerId = _linearSampler,
                     TexelWidth = texelW,
                     TexelHeight = texelH,
                 }
@@ -189,9 +189,9 @@ public sealed class Bloom : PostEffect
             new BloomPushConstants
             {
                 TextureId = sceneTex.Index,
-                SamplerId = _pointSampler.Index,
+                SamplerId = _pointSampler,
                 BloomTextureId = bloomA.Index,
-                BloomSamplerId = _linearSampler.Index,
+                BloomSamplerId = _linearSampler,
                 Intensity = Intensity,
             },
             input2Handle: bloomA
@@ -207,8 +207,12 @@ public sealed class Bloom : PostEffect
             return ResultCode.InvalidState;
         }
 
-        _linearSampler = ResourceManager.SamplerRepository.GetOrCreate(SamplerStateDesc.LinearClamp);
-        _pointSampler = ResourceManager.SamplerRepository.GetOrCreate(SamplerStateDesc.PointClamp);
+        _linearSampler = ResourceManager.SamplerRepository.GetOrCreate(
+            SamplerStateDesc.LinearClamp
+        );
+        _pointSampler = ResourceManager.SamplerRepository.GetOrCreate(
+            SamplerStateDesc.PointClamp
+        );
 
         if (!_linearSampler.Valid || !_pointSampler.Valid)
         {
@@ -224,8 +228,6 @@ public sealed class Bloom : PostEffect
         _blurHPipeline.Dispose();
         _blurVPipeline.Dispose();
         _compositePipeline.Dispose();
-        _linearSampler.Dispose();
-        _pointSampler.Dispose();
         // Note: BloomA / BloomB are owned by the shared RenderGraphResourceSet — not disposed here.
         return ResultCode.Ok;
     }

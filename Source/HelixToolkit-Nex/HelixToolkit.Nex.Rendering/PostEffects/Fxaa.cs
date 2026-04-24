@@ -94,7 +94,7 @@ public sealed class Fxaa : PostEffect
     private RenderPipelineResource _pipeline = RenderPipelineResource.Null;
     private RenderPipelineResource _debugEdgePipeline = RenderPipelineResource.Null;
     private RenderPipelineResource _debugBlendPipeline = RenderPipelineResource.Null;
-    private SamplerResource _linearSampler = SamplerResource.Null;
+    private SamplerRef _linearSampler = SamplerRef.Null;
     private readonly RenderPass _pass = new();
     private readonly Framebuffer _framebuffer = new();
     private readonly Dependencies _deps = new();
@@ -217,7 +217,7 @@ public sealed class Fxaa : PostEffect
             new FxaaPushConstants
             {
                 ColorTextureId = inputTex.Index,
-                SamplerId = _linearSampler.Index,
+                SamplerId = _linearSampler,
                 TexelWidth = tw,
                 TexelHeight = th,
                 ContrastThreshold = _contrastThreshold,
@@ -243,7 +243,10 @@ public sealed class Fxaa : PostEffect
             return ResultCode.InvalidState;
         }
 
-        _linearSampler = ResourceManager.SamplerRepository.GetOrCreate(SamplerStateDesc.LinearClamp);
+        _linearSampler = ResourceManager.SamplerRepository.GetOrCreate(
+            SamplerStateDesc.LinearClamp
+        );
+
         if (!_linearSampler.Valid)
         {
             return ResultCode.RuntimeError;
@@ -257,7 +260,6 @@ public sealed class Fxaa : PostEffect
         _pipeline.Dispose();
         _debugEdgePipeline.Dispose();
         _debugBlendPipeline.Dispose();
-        _linearSampler.Dispose();
         return ResultCode.Ok;
     }
 

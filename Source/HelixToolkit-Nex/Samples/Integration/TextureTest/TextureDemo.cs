@@ -56,42 +56,32 @@ internal sealed record TextureSetDesc(
 // Loaded texture set (GPU resources)
 // ---------------------------------------------------------------------------
 
-/// <summary>Holds the GPU texture resources for one loaded texture set.</summary>
+/// <summary>Holds the GPU texture references for one loaded texture set.</summary>
 internal sealed class LoadedTextureSet(
-    TextureResource albedo,
-    TextureResource normal,
-    TextureResource metallicRoughness,
-    TextureResource ao,
-    TextureResource displace,
-    TextureResource bump
+    TextureRef albedo,
+    TextureRef normal,
+    TextureRef metallicRoughness,
+    TextureRef ao,
+    TextureRef displace,
+    TextureRef bump
 ) : IDisposable
 {
     private bool _disposedValue;
 
-    public TextureResource Albedo { get; } = albedo;
-    public TextureResource Normal { get; } = normal;
-    public TextureResource MetallicRoughness { get; } = metallicRoughness;
-    public TextureResource Ao { get; } = ao;
-    public TextureResource Displace { get; } = displace;
+    public TextureRef Albedo { get; } = albedo;
+    public TextureRef Normal { get; } = normal;
+    public TextureRef MetallicRoughness { get; } = metallicRoughness;
+    public TextureRef Ao { get; } = ao;
+    public TextureRef Displace { get; } = displace;
 
-    public TextureResource Bump { get; } = bump;
+    public TextureRef Bump { get; } = bump;
 
     private void Dispose(bool disposing)
     {
         if (!_disposedValue)
         {
-            if (disposing)
-            {
-                Albedo?.Dispose();
-                Normal?.Dispose();
-                MetallicRoughness?.Dispose();
-                Ao?.Dispose();
-                Displace?.Dispose();
-                Bump?.Dispose();
-            }
-
-            // TODO: free unmanaged resources (unmanaged objects) and override finalizer
-            // TODO: set large fields to null
+            // TextureRef does not own the underlying resource — the repository does.
+            // Nothing to dispose here.
             _disposedValue = true;
         }
     }
@@ -222,8 +212,8 @@ internal sealed partial class TextureDemo : IDisposable
     // ---- Scene objects ----
     private MeshNode? _sphereNode;
     private PBRMaterialProperties? _material;
-    private SamplerResource _sampler = SamplerResource.Null;
-    private SamplerResource _displaceSampler = SamplerResource.Null;
+    private SamplerRef _sampler = SamplerRef.Null;
+    private SamplerRef _displaceSampler = SamplerRef.Null;
 
     // ---- Texture set state ----
     private readonly LoadedTextureSet?[] _loadedSets = new LoadedTextureSet?[TextureSets.Length];
@@ -380,7 +370,7 @@ internal sealed partial class TextureDemo : IDisposable
         var displace = TryLoadFile(textureRepo, desc.DisplaceFile, $"{desc.DisplayName}_Displace"); // not used in this demo
         var bump = TryLoadFile(textureRepo, desc.BumpFile, $"{desc.DisplayName}_Bump"); // not used in this demo
 
-        TextureResource mr;
+        TextureRef mr;
         if (desc.MetallicRoughnessFile is not null)
         {
             // Pre-combined file (e.g. glTF-style, G=metallic, B=roughness)
@@ -397,7 +387,7 @@ internal sealed partial class TextureDemo : IDisposable
         }
         else
         {
-            mr = TextureResource.Null;
+            mr = TextureRef.Null;
         }
 
         // AO is baked into the OMR texture's R channel when separate files are used.
@@ -422,13 +412,13 @@ internal sealed partial class TextureDemo : IDisposable
     ///   WithMetallic  → G = Roughness  (combiner G slot used for roughness data)
     ///   WithRoughness → B = Metallic   (combiner B slot used for metallic data)
     /// </summary>
-    private TextureResource BuildOmrTexture(ITextureRepository textureRepo, TextureSetDesc desc)
+    private TextureRef BuildOmrTexture(ITextureRepository textureRepo, TextureSetDesc desc)
     {
         var cacheKey = $"{desc.DisplayName}_OMR_Combined";
 
         // Return from cache if already built
         if (textureRepo.TryGet(cacheKey, out var cached) && cached is not null)
-            return cached.Texture;
+            return cached.Ref;
 
         try
         {
@@ -446,7 +436,7 @@ internal sealed partial class TextureDemo : IDisposable
                     : null;
 
             if (aoImg is null && roughnessImg is null && metallicImg is null)
-                return TextureResource.Null;
+                return TextureRef.Null;
 
             using var _ao = aoImg;
             using var _r = roughnessImg;
@@ -476,19 +466,19 @@ internal sealed partial class TextureDemo : IDisposable
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to build OMR texture for {Set}", desc.DisplayName);
-            return TextureResource.Null;
+            return TextureRef.Null;
         }
     }
 
-    private TextureResource TryLoadFile(ITextureRepository repo, string? filePath, string debugName)
+    private TextureRef TryLoadFile(ITextureRepository repo, string? filePath, string debugName)
     {
         if (filePath is null)
-            return TextureResource.Null;
+            return TextureRef.Null;
 
         if (!File.Exists(filePath))
         {
             _logger.LogWarning("Texture not found: {Path}", filePath);
-            return TextureResource.Null;
+            return TextureRef.Null;
         }
 
         try
@@ -498,7 +488,7 @@ internal sealed partial class TextureDemo : IDisposable
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to load texture: {Path}", filePath);
-            return TextureResource.Null;
+            return TextureRef.Null;
         }
     }
 
@@ -534,16 +524,16 @@ internal sealed partial class TextureDemo : IDisposable
         if (_material is null)
             return;
 
-        _material.AlbedoMap = set.Albedo.Valid ? set.Albedo : TextureResource.Null;
-        _material.NormalMap = set.Normal.Valid ? set.Normal : TextureResource.Null;
-        _material.MetallicRoughnessMap = set.MetallicRoughness.Valid
+        _material.AlbedoMap = set.Albedo.GetHandle().Valid ? set.Albedo : TextureRef.Null;
+        _material.NormalMap = set.Normal.GetHandle().Valid ? set.Normal : TextureRef.Null;
+        _material.MetallicRoughnessMap = set.MetallicRoughness.GetHandle().Valid
             ? set.MetallicRoughness
-            : TextureResource.Null;
-        _material.AoMap = set.Ao.Valid ? set.Ao : TextureResource.Null;
-        _material.DisplaceMap = set.Displace.Valid ? set.Displace : TextureResource.Null;
+            : TextureRef.Null;
+        _material.AoMap = set.Ao.GetHandle().Valid ? set.Ao : TextureRef.Null;
+        _material.DisplaceMap = set.Displace.GetHandle().Valid ? set.Displace : TextureRef.Null;
         _material.Sampler = _sampler;
         _material.DisplaceSampler = _displaceSampler;
-        _material.BumpMap = set.Bump.Valid ? set.Bump : TextureResource.Null;
+        _material.BumpMap = set.Bump.GetHandle().Valid ? set.Bump : TextureRef.Null;
 
         _material.Albedo = AlbedoTint;
         _material.Metallic = Metallic;

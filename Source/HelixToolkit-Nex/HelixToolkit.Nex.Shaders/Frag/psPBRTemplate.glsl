@@ -268,7 +268,8 @@ PBRMaterial createPBRMaterial()
         // glTF channel packing: R = Ambient Occlusion
         material.ao = material.ao * texture(sampler2D(kTextures2D[props.aoTexIndex], kSamplers[props.samplerIndex]), fragTexCoord).r;
     }
-    material.normal = normalize(fragNormal);
+    vec3 baseNormal = normalize(fragNormal);
+    vec3 finalNormal = baseNormal;
 
     if (props.normalTexIndex > 0) {
         vec3 normalMap = texture(sampler2D(kTextures2D[props.normalTexIndex], kSamplers[props.samplerIndex]), fragTexCoord).xyz * 2.0 - 1.0;
@@ -276,32 +277,38 @@ PBRMaterial createPBRMaterial()
         vec3 T = normalize(fragTangent);
         vec3 B = cross(N, T);
         mat3 TBN = mat3(T, B, N);
-        material.normal = normalize(TBN * normalMap);
+        finalNormal = normalize(TBN * normalMap);
     }
     if (props.bumpTexIndex > 0 )
     {
         float h = texture(sampler2D(kTextures2D[props.bumpTexIndex], kSamplers[props.samplerIndex]), fragTexCoord).r;
-        // 2. Get screen-space derivatives of world position and height
+        // 1. Get screen-space derivatives of world position and height
         vec3 dpdx = dFdx(fragWorldPos);
         vec3 dpdy = dFdy(fragWorldPos);
         float dhdx = dFdx(h);
         float dhdy = dFdy(h);
 
-        // 3. Construct local geometry basis (Right-Handed)
+        // 2. Construct local geometry basis (Right-Handed)
         // r1 and r2 represent the 'tilt' directions on the plane of the triangle
-        vec3 r1 = cross(dpdy, material.normal);
-        vec3 r2 = cross(material.normal, dpdx);
+        vec3 r1 = cross(dpdy, baseNormal);
+        vec3 r2 = cross(baseNormal, dpdx);
 
-        // 4. Calculate the surface gradient 
+        // 3. Calculate the surface gradient 
         // We divide by the determinant (dot(dpdx, r1)) to keep the scale consistent 
         // regardless of distance or perspective distortion.
         float det = dot(dpdx, r1);
-        vec3 grad = (r1 * dhdx + r2 * dhdy) / det;
+        // Prevent division by zero while preserving the sign of det to avoid
+        // flipping the gradient direction on degenerate/back-facing geometry.
+        float epsilon = 0.000001;
+        float safeDet = abs(det) < epsilon ? (det >= 0.0 ? epsilon : -epsilon) : det;
+        vec3 grad = (r1 * dhdx + r2 * dhdy) / safeDet;
 
-        // 5. Apply perturbation
-        // Subtracting the gradient 'tilts' the existing normal towards the height slope
-        material.normal = normalize(material.normal - props.bumpScale * grad);
+        // 4. Combine the results
+        // We perturb the current normal (which might already have normal mapping) 
+        // by the bump gradient calculated from the vertex normal basis.
+        finalNormal = normalize(finalNormal - props.bumpScale * grad);
     }
+    material.normal = finalNormal;
 #else
     {
         material.normal = normalize(cross(dFdy(fragWorldPos), dFdx(fragWorldPos)));

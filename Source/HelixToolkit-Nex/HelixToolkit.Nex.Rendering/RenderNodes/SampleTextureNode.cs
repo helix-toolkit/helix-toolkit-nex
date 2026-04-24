@@ -102,7 +102,7 @@ public abstract class SampleTextureNode(SampleTextureMode mode, Format targetFor
     private readonly SampleTextureMode _mode = mode;
     private readonly Format _targetFormat = targetFormat;
     private RenderPipelineResource _pipeline = RenderPipelineResource.Null;
-    private SamplerResource _sampler = SamplerResource.Null;
+    private SamplerRef _sampler = SamplerRef.Null;
 
     public float MinValue { set; get; } = 0.0f;
     public float MaxValue { set; get; } = 1.0f;
@@ -117,7 +117,7 @@ public abstract class SampleTextureNode(SampleTextureMode mode, Format targetFor
         cmdBuffer.PushConstants(
             new SampleTexturePushConstants()
             {
-                SamplerId = _sampler.Index,
+                SamplerId = _sampler,
                 TextureId = deps.Textures[0].Index,
                 MinValue = MinValue,
                 MaxValue = MaxValue,
@@ -130,7 +130,9 @@ public abstract class SampleTextureNode(SampleTextureMode mode, Format targetFor
     {
         if (Context is null || ResourceManager is null)
         {
-            _logger.LogError("Context or ResourceManager is null, cannot set up SampleTextureNode.");
+            _logger.LogError(
+                "Context or ResourceManager is null, cannot set up SampleTextureNode."
+            );
             return false;
         }
         _sampler = ResourceManager.SamplerRepository.GetOrCreate(SamplerStateDesc.PointClamp);
@@ -197,7 +199,6 @@ public abstract class SampleTextureNode(SampleTextureMode mode, Format targetFor
 
     protected override void OnTeardown()
     {
-        _sampler.Dispose();
         _pipeline.Dispose();
         base.OnTeardown();
     }

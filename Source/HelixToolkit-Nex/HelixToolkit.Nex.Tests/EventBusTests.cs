@@ -8,9 +8,7 @@ public sealed class EventBusTests
     [TestInitialize]
     public void Setup()
     {
-        // Do not capture the context for unit tests to ensure consistent behavior
-        // (unless we specifically set up a context).
-        _eventBus = new EventBus(captureMainThreadContext: false);
+        _eventBus = new EventBus();
     }
 
     [TestCleanup]
@@ -59,28 +57,6 @@ public sealed class EventBusTests
 
         Assert.IsTrue(handled);
         Assert.AreEqual("Hello", receivedMessage);
-    }
-
-    [TestMethod]
-    public void PublishAsync_ShouldInvokeHandler_Eventually()
-    {
-        using var signal = new ManualResetEventSlim(false);
-        string? receivedMessage = null;
-        Assert.IsNotNull(_eventBus);
-        _eventBus.Subscribe<TestEvent>(e =>
-        {
-            receivedMessage = e.Message;
-            signal.Set();
-        });
-
-        var testEvent = new TestEvent { Message = "Async Hello" };
-        _eventBus.PublishAsync(testEvent);
-
-        // Wait for the background thread to process the event
-        bool signaled = signal.Wait(TimeSpan.FromSeconds(2));
-
-        Assert.IsTrue(signaled, "Event handler was not invoked within timeout.");
-        Assert.AreEqual("Async Hello", receivedMessage);
     }
 
     [TestMethod]
@@ -139,11 +115,6 @@ public sealed class EventBusTests
 
         Assert.ThrowsException<ObjectDisposedException>(() =>
         {
-            _eventBus.PublishAsync(new TestEvent());
-        });
-
-        Assert.ThrowsException<ObjectDisposedException>(() =>
-        {
             _eventBus.Subscribe<TestEvent>(e => { });
         });
     }
@@ -175,100 +146,12 @@ public sealed class EventBusTests
     }
 
     [TestMethod]
-    public void Publish_ShouldDispatchToSynchronizationContext_WhenConfigured()
-    {
-        var oldContext = SynchronizationContext.Current;
-        var testContext = new TestSynchronizationContext();
-        SynchronizationContext.SetSynchronizationContext(testContext);
-
-        try
-        {
-            // Create a new bus that captures the current (test) context
-            using var bus = new EventBus(captureMainThreadContext: true);
-
-            bool handled = false;
-            bus.Subscribe<TestEvent>(e => handled = true, dispatchOnMainThread: true);
-
-            bus.Publish(new TestEvent());
-
-            Assert.IsTrue(handled);
-            // Verify that Post was called on our custom context
-            Assert.AreEqual(1, testContext.PostCount);
-        }
-        finally
-        {
-            SynchronizationContext.SetSynchronizationContext(oldContext);
-        }
-    }
-
-    [TestMethod]
-    public void PublishAsync_ShouldRunOnBackgroundThread_WhenNotDispatchingToMain()
-    {
-        Assert.IsNotNull(_eventBus);
-        using var signal = new ManualResetEventSlim(false);
-        bool isBackgroundThread = false;
-        string threadName = string.Empty;
-
-        // dispatchOnMainThread: false means it should stay on the publisher thread
-        _eventBus.Subscribe<TestEvent>(
-            e =>
-            {
-                isBackgroundThread = Thread.CurrentThread.IsBackground;
-                threadName = Thread.CurrentThread.Name is not null ? Thread.CurrentThread.Name : "";
-                signal.Set();
-            },
-            dispatchOnMainThread: false
-        );
-
-        _eventBus.PublishAsync(new TestEvent());
-
-        Assert.IsTrue(signal.Wait(TimeSpan.FromSeconds(2)));
-        Assert.IsTrue(isBackgroundThread, "Handler should run on background thread");
-        Assert.AreEqual("EventBus Publisher Thread", threadName);
-    }
-
-    [TestMethod]
-    public void PublishAsync_ShouldDispatchToSynchronizationContext()
-    {
-        var oldContext = SynchronizationContext.Current;
-        var testContext = new TestSynchronizationContext();
-        SynchronizationContext.SetSynchronizationContext(testContext);
-
-        try
-        {
-            using var bus = new EventBus(captureMainThreadContext: true);
-            using var signal = new ManualResetEventSlim(false);
-
-            bus.Subscribe<TestEvent>(
-                e =>
-                {
-                    signal.Set();
-                },
-                dispatchOnMainThread: true
-            );
-
-            bus.PublishAsync(new TestEvent());
-
-            // Wait for the handler to be executed
-            Assert.IsTrue(signal.Wait(TimeSpan.FromSeconds(2)));
-
-            // Verify Post was called
-            Assert.AreEqual(1, testContext.PostCount);
-        }
-        finally
-        {
-            SynchronizationContext.SetSynchronizationContext(oldContext);
-        }
-    }
-
-    [TestMethod]
     public void Publish_NoSubscribers_ShouldNotThrow()
     {
         Assert.IsNotNull(_eventBus);
         try
         {
             _eventBus.Publish(new TestEvent());
-            _eventBus.PublishAsync(new TestEvent());
         }
         catch (Exception ex)
         {
@@ -395,14 +278,11 @@ public sealed class EventBusTests
         int totalCalls = 0;
         object lockObj = new object();
 
-        _eventBus.Subscribe<TestEvent>(
-            e =>
-            {
-                lock (lockObj)
-                    totalCalls++;
-            },
-            dispatchOnMainThread: false
-        );
+        _eventBus.Subscribe<TestEvent>(e =>
+        {
+            lock (lockObj)
+                totalCalls++;
+        });
 
         int numberOfThreads = 10;
         int publishesPerThread = 100;
@@ -430,17 +310,4 @@ public sealed class EventBusTests
 
     // Helper class for testing
     public class OtherEvent : IEvent { }
-
-    // Helper context to verify UI thread dispatching
-    private class TestSynchronizationContext : SynchronizationContext
-    {
-        private int _postCount;
-        public int PostCount => _postCount;
-
-        public override void Post(SendOrPostCallback d, object? state)
-        {
-            Interlocked.Increment(ref _postCount);
-            d(state);
-        }
-    }
 }
