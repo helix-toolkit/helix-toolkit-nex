@@ -22,7 +22,7 @@ public sealed class ForwardPlusLightCullingNode : ComputeNode
     private ComputePipelineResource _pipeline = ComputePipelineResource.Null;
     private BufferResource _cullingConstantsBuffer = BufferResource.Null;
     private LightCullingConstants _cullingConstants;
-    private SamplerResource _depthSampler = SamplerResource.Null;
+    private SamplerRef _depthSampler = SamplerRef.Null;
 
     public override string Name => nameof(ForwardPlusLightCullingNode);
     public override Color4 DebugColor => Color.Gold;
@@ -35,7 +35,9 @@ public sealed class ForwardPlusLightCullingNode : ComputeNode
     {
         if (Context is null || ResourceManager is null)
         {
-            _logger.LogError("Context or ResourceManager is null, cannot set up ForwardPlusLightCullingNode.");
+            _logger.LogError(
+                "Context or ResourceManager is null, cannot set up ForwardPlusLightCullingNode."
+            );
             return false;
         }
 
@@ -45,14 +47,21 @@ public sealed class ForwardPlusLightCullingNode : ComputeNode
             StorageType.Device,
             "FP_LightCull"
         );
-        _depthSampler = ResourceManager.SamplerRepository.GetOrCreate(SamplerStateDesc.PointClamp);
+        _depthSampler = ResourceManager.SamplerRepository.GetOrCreate(
+            SamplerStateDesc.PointClamp
+        );
+
+        if (!_depthSampler.Valid)
+        {
+            _logger.LogError("Failed to create depth sampler for ForwardPlusLightCullingNode.");
+            return false;
+        }
 
         return CreatePipeline();
     }
 
     protected override void OnTeardown()
     {
-        _depthSampler.Dispose();
         _pipeline.Dispose();
         _cullingConstantsBuffer.Dispose();
         base.OnTeardown();
@@ -91,7 +100,7 @@ public sealed class ForwardPlusLightCullingNode : ComputeNode
         _cullingConstants.DepthTextureIndex = res.Textures[SystemBufferNames.TextureDepthF32].Index;
         _cullingConstants.MaxLightsPerTile = renderContext.FPLightConfig.MaxLightsPerTile;
         _cullingConstants.LightBufferAddress = renderContext.Data.Lights.GpuAddress;
-        _cullingConstants.SamplerIndex = _depthSampler.Index;
+        _cullingConstants.SamplerIndex = _depthSampler;
         _cullingConstants.LightGridBufferAddress = res.Buffers[SystemBufferNames.BufferLightGrid]
             .GpuAddress(renderContext.Context);
         _cullingConstants.LightIndexBufferAddress = res.Buffers[SystemBufferNames.BufferLightIndex]

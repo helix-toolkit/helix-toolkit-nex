@@ -6,7 +6,7 @@ public sealed class ToneMapping : PostEffect
 {
     private static readonly ILogger _logger = LogManager.Create<ToneMapping>();
     private RenderPipelineResource _toneGammaPipeline = RenderPipelineResource.Null;
-    private SamplerResource _toneMappingSampler = SamplerResource.Null;
+    private SamplerRef _toneMappingSampler = SamplerRef.Null;
 
     public override string Name => nameof(ToneMapping);
 
@@ -32,7 +32,7 @@ public sealed class ToneMapping : PostEffect
                 Enabled = 1,
                 Exposure = 1f,
                 HdrTextureId = res.Textures[readSlot].Index,
-                SamplerId = _toneMappingSampler.Index,
+                SamplerId = _toneMappingSampler.GetHandle().Index,
                 TonemapMode = (uint)Mode,
                 GammaEnabled = EnableGammaCorrection ? 1u : 0,
             }
@@ -62,7 +62,6 @@ public sealed class ToneMapping : PostEffect
     protected override ResultCode OnTearingDown()
     {
         _toneGammaPipeline.Dispose();
-        _toneMappingSampler.Dispose();
         return ResultCode.Ok;
     }
 

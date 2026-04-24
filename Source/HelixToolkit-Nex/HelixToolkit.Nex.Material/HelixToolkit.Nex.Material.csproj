@@ -18,6 +18,7 @@
         <ProjectReference Include="..\HelixToolkit.Nex.CodeGen\HelixToolkit.Nex.CodeGen.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
         <ProjectReference Include="..\HelixToolkit.Nex.Repository\HelixToolkit.Nex.Repository.csproj" />
         <ProjectReference Include="..\HelixToolkit.Nex.Shaders\HelixToolkit.Nex.Shaders.csproj" />
+        <ProjectReference Include="..\HelixToolkit.Nex.Textures\HelixToolkit.Nex.Textures.csproj" />
     </ItemGroup>
 
     <ItemGroup>
@@ -25,7 +26,7 @@
             <Pack>True</Pack>
             <PackagePath>\</PackagePath>
         </None>
-        <None  Include="..\..\..\Assets\icon.png">
+        <None Include="..\..\..\Assets\icon.png">
             <Pack>True</Pack>
             <PackagePath>\</PackagePath>
         </None>

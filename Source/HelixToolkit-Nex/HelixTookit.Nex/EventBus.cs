@@ -13,52 +13,25 @@ public interface IEvent { }
 public interface IEventSubscription : IDisposable { }
 
 /// <summary>
-/// Thread-safe event bus implementation supporting generic event types with async publishing
-/// and main thread subscriber dispatch
+/// Thread-safe event bus implementation supporting generic event types with synchronous publishing
 /// </summary>
 public sealed class EventBus : IDisposable
 {
     private readonly ConcurrentDictionary<Type, object> _subscribers = new();
-    private readonly SynchronizationContext? _mainThreadContext;
-    private readonly ConcurrentQueue<Action> _eventQueue = new();
-    private readonly CancellationTokenSource _cancellationTokenSource = new();
-    private readonly Thread _publishThread;
     private bool _disposed;
 
     /// <summary>
     /// Initializes a new instance of the EventBus class
     /// </summary>
-    /// <param name="captureMainThreadContext">If true, captures the current synchronization context as the main thread context</param>
-    public EventBus(bool captureMainThreadContext = true)
-        : this(captureMainThreadContext ? SynchronizationContext.Current : null) { }
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="EventBus"/> class with the specified synchronization context.
-    /// </summary>
-    /// <param name="context">The <see cref="SynchronizationContext"/> to use for invoking event handlers on the main thread. If <see
-    /// langword="null"/>, event handlers will not be marshaled to a specific synchronization context.</param>
-    public EventBus(SynchronizationContext? context)
-    {
-        _mainThreadContext = context;
-        _publishThread = new Thread(ProcessEventQueue)
-        {
-            Name = "EventBus Publisher Thread",
-            IsBackground = true,
-        };
-        _publishThread.Start();
-    }
+    public EventBus() { }
 
     /// <summary>
     /// Subscribes to events of type TEvent
     /// </summary>
     /// <typeparam name="TEvent">The event type to subscribe to</typeparam>
     /// <param name="handler">The handler to invoke when an event is published</param>
-    /// <param name="dispatchOnMainThread">If true, handler will be invoked on the main thread (default: true)</param>
     /// <returns>A subscription handle that can be disposed to unsubscribe</returns>
-    public IEventSubscription Subscribe<TEvent>(
-        Action<TEvent> handler,
-        bool dispatchOnMainThread = true
-    )
+    public IEventSubscription Subscribe<TEvent>(Action<TEvent> handler)
         where TEvent : IEvent
     {
         if (handler == null)
@@ -70,31 +43,10 @@ public sealed class EventBus : IDisposable
             (SubscriberList<TEvent>)
                 _subscribers.GetOrAdd(typeof(TEvent), _ => new SubscriberList<TEvent>());
 
-        var subscription = new EventSubscription<TEvent>(
-            this,
-            handler,
-            subscriberList,
-            dispatchOnMainThread
-        );
+        var subscription = new EventSubscription<TEvent>(this, handler, subscriberList);
         subscriberList.Add(subscription);
 
         return subscription;
-    }
-
-    /// <summary>
-    /// Publishes an event asynchronously in a thread-safe manner
-    /// </summary>
-    /// <typeparam name="TEvent">The event type to publish</typeparam>
-    /// <param name="eventData">The event data to publish</param>
-    public void PublishAsync<TEvent>(TEvent eventData)
-        where TEvent : IEvent
-    {
-        if (eventData == null)
-            throw new ArgumentNullException(nameof(eventData));
-
-        ObjectDisposedException.ThrowIf(_disposed, this);
-
-        _eventQueue.Enqueue(() => PublishInternal(eventData));
     }
 
     /// <summary>
@@ -139,60 +91,14 @@ public sealed class EventBus : IDisposable
 
         foreach (var subscription in subscriptionsSnapshot)
         {
-            if (subscription.DispatchOnMainThread && _mainThreadContext != null)
-            {
-                // Dispatch to main thread
-                _mainThreadContext.Post(
-                    _ =>
-                    {
-                        try
-                        {
-                            subscription.Handler(eventData);
-                        }
-                        catch (Exception ex)
-                        {
-                            // Log error but don't crash the event bus
-                            System.Diagnostics.Debug.WriteLine($"Error in event handler: {ex}");
-                        }
-                    },
-                    null
-                );
-            }
-            else
-            {
-                // Invoke directly on the current thread
-                try
-                {
-                    subscription.Handler(eventData);
-                }
-                catch (Exception ex)
-                {
-                    // Log error but don't crash the event bus
-                    System.Diagnostics.Debug.WriteLine($"Error in event handler: {ex}");
-                }
-            }
-        }
-    }
-
-    private void ProcessEventQueue()
-    {
-        while (!_cancellationTokenSource.Token.IsCancellationRequested)
-        {
             try
             {
-                if (_eventQueue.TryDequeue(out var action))
-                {
-                    action();
-                }
-                else
-                {
-                    // Sleep briefly if queue is empty to avoid spinning
-                    Thread.Sleep(1);
-                }
+                subscription.Handler(eventData);
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error processing event queue: {ex}");
+                // Log error but don't crash the event bus
+                System.Diagnostics.Debug.WriteLine($"Error in event handler: {ex}");
             }
         }
     }
@@ -203,17 +109,6 @@ public sealed class EventBus : IDisposable
             return;
 
         _disposed = true;
-        _cancellationTokenSource.Cancel();
-
-        // Wait for the publish thread to complete
-        if (!_publishThread.Join(TimeSpan.FromSeconds(5)))
-        {
-            System.Diagnostics.Debug.WriteLine(
-                "EventBus publish thread did not terminate gracefully"
-            );
-        }
-
-        _cancellationTokenSource.Dispose();
         _subscribers.Clear();
     }
 
@@ -228,19 +123,16 @@ public sealed class EventBus : IDisposable
         private bool _disposed;
 
         public Action<TEvent> Handler { get; }
-        public bool DispatchOnMainThread { get; }
 
         public EventSubscription(
             EventBus eventBus,
             Action<TEvent> handler,
-            SubscriberList<TEvent> subscriberList,
-            bool dispatchOnMainThread
+            SubscriberList<TEvent> subscriberList
         )
         {
             _eventBus = eventBus;
             Handler = handler;
             _subscriberList = subscriberList;
-            DispatchOnMainThread = dispatchOnMainThread;
         }
 
         public void Dispose()

@@ -156,6 +156,89 @@ public static class TextureCreator
     }
 
     /// <summary>
+    /// Creates a GPU texture from the given <see cref="Image"/> and returns both the
+    /// <see cref="TextureResource"/> and an <see cref="AsyncUploadHandle{TextureHandle}"/> for async pixel upload.
+    /// The texture is allocated synchronously; pixel data is uploaded asynchronously.
+    /// </summary>
+    /// <param name="context">The graphics context.</param>
+    /// <param name="image">The CPU-side image.</param>
+    /// <param name="debugName">Optional debug name for the texture.</param>
+    /// <returns>
+    /// A tuple of the <see cref="TextureResource"/> (GPU memory allocated synchronously) and an
+    /// <see cref="AsyncUploadHandle{TextureHandle}"/> that completes when pixel upload finishes.
+    /// </returns>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when <paramref name="image"/>'s format is <see cref="Format.Invalid"/>.
+    /// </exception>
+    public static (
+        TextureResource resource,
+        AsyncUploadHandle<TextureHandle> uploadHandle
+    ) CreateTextureAsyncWithResource(IContext context, Image image, string? debugName = null)
+    {
+        if (image.Description.Format == Format.Invalid)
+            throw new InvalidOperationException(
+                "Cannot create a GPU texture from an image with Format.Invalid"
+            );
+
+        // Create texture without initial data (synchronous GPU memory allocation)
+        var desc = BuildTextureDesc(image, includeData: false);
+        context.CreateTexture(desc, out var texture, debugName).CheckResult();
+        var handle = texture.Handle;
+
+        // Upload pixel data for each array slice and mip level
+        var desc2 = image.Description;
+        int d = desc2.Depth;
+        AsyncUploadHandle<TextureHandle> lastUploadHandle =
+            AsyncUploadHandle<TextureHandle>.CreateCompleted(ResultCode.Ok, handle);
+
+        for (int arrayIndex = 0; arrayIndex < desc2.ArraySize; arrayIndex++)
+        {
+            int depth = d;
+            for (int level = 0; level < desc2.MipLevels; level++)
+            {
+                for (int zSlice = 0; zSlice < depth; zSlice++)
+                {
+                    var pb = image.GetPixelBuffer(
+                        desc2.Dimension == TextureDimension.Texture3D ? zSlice : arrayIndex,
+                        level
+                    );
+
+                    var range = new TextureRangeDesc
+                    {
+                        Layer = (uint)arrayIndex,
+                        NumLayers = 1,
+                        MipLevel = (uint)level,
+                        NumMipLevels = 1,
+                        Dimensions = new Dimensions((uint)pb.Width, (uint)pb.Height, 1),
+                    };
+
+                    var pixelData = new byte[pb.BufferStride];
+                    unsafe
+                    {
+                        System.Runtime.InteropServices.Marshal.Copy(
+                            pb.DataPointer,
+                            pixelData,
+                            0,
+                            pb.BufferStride
+                        );
+                    }
+
+                    lastUploadHandle = context.UploadAsync<byte>(
+                        in handle,
+                        range,
+                        pixelData,
+                        (size_t)pixelData.Length
+                    );
+                }
+                if (depth > 1)
+                    depth >>= 1;
+            }
+        }
+
+        return (texture, lastUploadHandle);
+    }
+
+    /// <summary>
     /// Loads an image from a stream and creates a GPU texture asynchronously.
     /// </summary>
     /// <param name="context">The graphics context.</param>

@@ -19,7 +19,7 @@ public sealed class WBOITCompositeNode : RenderNode
     private static readonly ILogger _logger = LogManager.Create<WBOITCompositeNode>();
 
     private RenderPipelineResource _pipeline = RenderPipelineResource.Null;
-    private SamplerResource _sampler = SamplerResource.Null;
+    private SamplerRef _sampler = SamplerRef.Null;
 
     public override string Name => nameof(WBOITCompositeNode);
     public override Color4 DebugColor => new(0.2f, 0.8f, 0.4f, 1.0f);
@@ -41,7 +41,7 @@ public sealed class WBOITCompositeNode : RenderNode
             {
                 AccumTextureId = res.Deps.Textures[0].Index,
                 RevealTextureId = res.Deps.Textures[1].Index,
-                SamplerId = _sampler.Index,
+                SamplerId = _sampler,
             }
         );
         cmdBuffer.Draw(3); // Full-screen triangle
@@ -123,7 +123,6 @@ public sealed class WBOITCompositeNode : RenderNode
 
     protected override void OnTeardown()
     {
-        _sampler.Dispose();
         _pipeline.Dispose();
         base.OnTeardown();
     }

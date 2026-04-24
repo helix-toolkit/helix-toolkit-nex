@@ -90,8 +90,8 @@ public sealed class Smaa : PostEffect
     private RenderPipelineResource _weightPipeline = RenderPipelineResource.Null;
     private RenderPipelineResource _blendPipeline = RenderPipelineResource.Null;
 
-    private SamplerResource _linearSampler = SamplerResource.Null;
-    private SamplerResource _pointSampler = SamplerResource.Null;
+    private SamplerRef _linearSampler = SamplerRef.Null;
+    private SamplerRef _pointSampler = SamplerRef.Null;
 
     // Reusable per-frame objects (avoids per-pass allocations).
     private readonly Dependencies _deps = new();
@@ -213,7 +213,7 @@ public sealed class Smaa : PostEffect
             new SmaaPushConstants
             {
                 ColorTextureId = sceneTex.Index,
-                ColorSamplerId = _linearSampler.Index,
+                ColorSamplerId = _linearSampler,
                 TexelWidth = tw,
                 TexelHeight = th,
                 EdgeThreshold = EdgeThreshold,
@@ -232,7 +232,7 @@ public sealed class Smaa : PostEffect
             new SmaaPushConstants
             {
                 EdgeTextureId = edgeTex.Index,
-                EdgeSamplerId = _linearSampler.Index,
+                EdgeSamplerId = _linearSampler,
                 TexelWidth = tw,
                 TexelHeight = th,
                 EdgeThreshold = EdgeThreshold,
@@ -251,9 +251,9 @@ public sealed class Smaa : PostEffect
             new SmaaPushConstants
             {
                 ColorTextureId = sceneTex.Index,
-                ColorSamplerId = _pointSampler.Index,
+                ColorSamplerId = _pointSampler,
                 WeightTextureId = weightTex.Index,
-                WeightSamplerId = _linearSampler.Index,
+                WeightSamplerId = _linearSampler,
                 TexelWidth = tw,
                 TexelHeight = th,
                 EdgeThreshold = EdgeThreshold,
@@ -273,8 +273,12 @@ public sealed class Smaa : PostEffect
             return ResultCode.InvalidState;
         }
 
-        _linearSampler = ResourceManager.SamplerRepository.GetOrCreate(SamplerStateDesc.LinearClamp);
-        _pointSampler = ResourceManager.SamplerRepository.GetOrCreate(SamplerStateDesc.PointClamp);
+        _linearSampler = ResourceManager.SamplerRepository.GetOrCreate(
+            SamplerStateDesc.LinearClamp
+        );
+        _pointSampler = ResourceManager.SamplerRepository.GetOrCreate(
+            SamplerStateDesc.PointClamp
+        );
 
         if (!_linearSampler.Valid || !_pointSampler.Valid)
         {
@@ -289,8 +293,6 @@ public sealed class Smaa : PostEffect
         _edgePipeline.Dispose();
         _weightPipeline.Dispose();
         _blendPipeline.Dispose();
-        _linearSampler.Dispose();
-        _pointSampler.Dispose();
         // TextureSmaaEdges / TextureSmaaWeights are owned by the shared RenderGraphResourceSet.
         return ResultCode.Ok;
     }

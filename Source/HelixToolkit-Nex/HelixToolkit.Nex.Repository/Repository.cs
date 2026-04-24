@@ -7,7 +7,8 @@ namespace HelixToolkit.Nex.Repository;
 /// Represents a cache entry in a generic repository.
 /// </summary>
 /// <typeparam name="TResource">The type of the cached resource.</typeparam>
-public abstract class CacheEntry<TResource> where TResource : class, IDisposable
+public abstract class CacheEntry<TResource>
+    where TResource : class, IDisposable
 {
     /// <summary>
     /// The cached resource.
@@ -193,6 +194,18 @@ public abstract class Repository<TKey, TEntry, TResource> : IRepository<TKey, TE
         Interlocked.Increment(ref _cacheMisses);
         entry = null;
         return false;
+    }
+
+    /// <summary>
+    /// Attempts to remove an entry from the cache by key without disposing it.
+    /// The caller is responsible for disposing the returned entry.
+    /// </summary>
+    /// <param name="cacheKey">The cache key to remove.</param>
+    /// <param name="entry">The removed entry, if found.</param>
+    /// <returns><c>true</c> if the entry was found and removed; otherwise, <c>false</c>.</returns>
+    protected bool TryRemoveFromCache(TKey cacheKey, out TEntry? entry)
+    {
+        return _cache.TryRemove(cacheKey, out entry);
     }
 
     /// <summary>

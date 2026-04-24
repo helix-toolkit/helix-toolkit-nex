@@ -418,6 +418,8 @@ struct NamingTest {
     public void ReadActualPBRTemplateFile_ShouldParseSuccessfully()
     {
         // Arrange
+        // PBRProperties struct was moved to its own include file (PBRProperties.glsl)
+        // in commit 7dd99bd when displacement/bump map support was added.
         var glslFilePath = Path.Combine(
             AppContext.BaseDirectory,
             "..",
@@ -425,14 +427,14 @@ struct NamingTest {
             "..",
             "..",
             "HelixToolkit.Nex.Shaders",
-            "Frag",
-            "psPBRTemplate.glsl"
+            "HxHeaders",
+            "PBRProperties.glsl"
         );
 
         // Skip if file doesn't exist (for CI/CD environments)
         if (!File.Exists(glslFilePath))
         {
-            Assert.Inconclusive($"psPBRTemplate.glsl not found at {glslFilePath}");
+            Assert.Inconclusive($"PBRProperties.glsl not found at {glslFilePath}");
             return;
         }
 
@@ -443,7 +445,7 @@ struct NamingTest {
         var structs = parser.ParseStructs(glslContent);
 
         // Assert
-        Assert.IsTrue(structs.Count == 1, "Should find 1 structs in psPBRTemplate.glsl");
+        Assert.IsTrue(structs.Count == 1, "Should find 1 struct in PBRProperties.glsl");
         Assert.IsTrue(
             structs.Any(s => s.Name == "PBRProperties"),
             "Should find PBRProperties struct"

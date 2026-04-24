@@ -79,6 +79,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InstancingMeshCulling", "Sa
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HelixToolkit.Nex.Repository", "HelixToolkit.Nex.Repository\HelixToolkit.Nex.Repository.csproj", "{7E4C5943-4A66-4817-9546-4A3137ED3A47}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HelixToolkit.Nex.Repository.Tests", "HelixToolkit.Nex.Repository.Tests\HelixToolkit.Nex.Repository.Tests.csproj", "{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}"
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HelixToolkit.Nex.Graphics.Mock", "HelixToolkit.Nex.Graphics.Mock\HelixToolkit.Nex.Graphics.Mock.csproj", "{E47C5CAC-E95A-4AA7-8CBF-25048CB13D18}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Integration", "Integration", "{7E2B8F9A-97A5-4434-B291-EE9DDEC474DC}"
@@ -501,6 +503,18 @@ Global
 		{7E4C5943-4A66-4817-9546-4A3137ED3A47}.Release|x64.Build.0 = Release|Any CPU
 		{7E4C5943-4A66-4817-9546-4A3137ED3A47}.Release|x86.ActiveCfg = Release|Any CPU
 		{7E4C5943-4A66-4817-9546-4A3137ED3A47}.Release|x86.Build.0 = Release|Any CPU
+		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}.Debug|x64.Build.0 = Debug|Any CPU
+		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}.Debug|x86.Build.0 = Debug|Any CPU
+		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}.Release|x64.ActiveCfg = Release|Any CPU
+		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}.Release|x64.Build.0 = Release|Any CPU
+		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}.Release|x86.ActiveCfg = Release|Any CPU
+		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}.Release|x86.Build.0 = Release|Any CPU
 		{E47C5CAC-E95A-4AA7-8CBF-25048CB13D18}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{E47C5CAC-E95A-4AA7-8CBF-25048CB13D18}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E47C5CAC-E95A-4AA7-8CBF-25048CB13D18}.Debug|x64.ActiveCfg = Debug|Any CPU
