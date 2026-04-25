@@ -24,6 +24,8 @@ The repository package is a critical component of the HelixToolkit.Nex engine, r
 | `SamplerRepository` | Concrete implementation for caching sampler resources. |
 | `ShaderRepository` | Concrete implementation for caching shader modules. |
 | `TextureRepository` | Concrete implementation for caching texture resources. |
+| `SamplerRef` | Wrapper for a live sampler resource with disposal notification. |
+| `TextureRef` | Wrapper for a live texture resource with disposal notification. |
 | `CacheEntry<TResource>` | Represents a cache entry for a resource. |
 | `RepositoryStatistics` | Provides statistics about the repository cache. |
 
@@ -39,7 +41,7 @@ var context = /* Obtain IContext instance */;
 var textureRepo = new TextureRepository(context);
 
 using var stream = File.OpenRead("path/to/texture.png");
-var texture = textureRepo.GetOrCreateFromStream("uniqueTextureName", stream);
+var textureRef = textureRepo.GetOrCreateFromStream("uniqueTextureName", stream);
 ```
 
 ### Caching a Shader Module from GLSL Source
@@ -70,7 +72,19 @@ var samplerDesc = new SamplerStateDesc
     WrapV = WrapMode.Repeat
 };
 
-var sampler = samplerRepo.GetOrCreate(samplerDesc);
+var samplerRef = samplerRepo.GetOrCreate(samplerDesc);
+```
+
+### Asynchronously Caching a Texture from a File
+
+```csharp
+using HelixToolkit.Nex.Repository;
+using System.Threading.Tasks;
+
+var context = /* Obtain IContext instance */;
+var textureRepo = new TextureRepository(context);
+
+var textureRef = await textureRepo.GetOrCreateFromFileAsync("path/to/texture.png");
 ```
 
 ## Architecture Notes
@@ -79,4 +93,5 @@ var sampler = samplerRepo.GetOrCreate(samplerDesc);
 - **Dependencies**: The repositories depend on the `HelixToolkit.Nex.Graphics` package for context and resource creation. They also utilize `Microsoft.Extensions.Logging` for logging purposes.
 - **LRU Eviction**: The repositories implement an LRU eviction policy to ensure that the most recently used resources are retained while older, less frequently accessed resources are evicted when the cache reaches its capacity.
 - **Thread Safety**: All public methods are thread-safe, allowing concurrent access and modification of the cache without data races or inconsistencies.
+- **Resource Wrappers**: `SamplerRef` and `TextureRef` provide a safe way to handle GPU resources, ensuring that resources are properly disposed and notifying consumers when resources are no longer valid.
 ```

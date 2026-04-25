@@ -28,6 +28,7 @@ HelixToolkit.Nex.Graphics is a core component of the HelixToolkit.Nex engine, re
 | `RenderPipelineDesc`          | Represents the configuration for a render pipeline.                        |
 | `ShaderModuleDesc`            | Describes the properties required to create a shader module.                |
 | `VertexInput`                 | Describes the complete vertex input configuration for a graphics pipeline.  |
+| `TextureResource`             | Represents a GPU texture resource.                                          |
 
 ## Usage Examples
 
@@ -37,6 +38,18 @@ HelixToolkit.Nex.Graphics is a core component of the HelixToolkit.Nex engine, re
 var context = /* obtain IContext instance */;
 var bufferDesc = new BufferDesc(BufferUsageBits.Vertex, StorageType.Device, IntPtr.Zero, 1024);
 context.CreateBuffer(bufferDesc, out var buffer);
+```
+
+### Creating a Render Target 2D Texture
+
+```csharp
+var renderTarget = context.CreateRenderTarget2D(
+    Format.RGBA_UN8,
+    1920,
+    1080,
+    numSamples: 4,
+    debugName: "MainRenderTarget"
+);
 ```
 
 ### Uploading Data Asynchronously

@@ -58,4 +58,8 @@ using (var deviceManager = new D3D9DeviceManager())
 - **Design Patterns**: The package employs the Factory pattern for creating shared textures and importing them into Vulkan. It also uses the Observer pattern for event handling in the `HelixViewport`.
 - **Dependencies**: Relies on the Vortice.Direct3D9 library for Direct3D9 operations and the HelixToolkit.Nex engine for Vulkan rendering.
 - **Interop Strategy**: Utilizes VK_KHR_external_memory_win32 for sharing textures between Direct3D9 and Vulkan, ensuring efficient resource management and rendering performance.
+
+## Recent Changes
+
+- **HelixViewport Rendering Update**: The `Render` method now requires the imported texture handle as a parameter to ensure the correct texture is used during rendering. This change improves the clarity and correctness of the rendering process by explicitly passing the texture handle.
 ```

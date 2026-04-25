@@ -12,6 +12,7 @@ Key features include:
 - Forward Plus light culling for efficient lighting calculations.
 - GPU-based frustum and instance culling for optimized rendering.
 - Support for Vulkan's advanced features like mesh shaders and dynamic rendering.
+- Enhanced support for Vulkan features such as `shaderSampledImageArrayDynamicIndexing` and `shaderInt64`.
 
 ## Key Types
 

@@ -81,4 +81,9 @@ var deserializedGeometry = JsonSerializer.Deserialize<Geometry>(json, options);
 - **Dependencies**: It relies on other HelixToolkit-Nex packages such as `HelixToolkit.Nex.Graphics` for rendering and `HelixToolkit.Nex.Maths` for mathematical operations.
 - **Octree Implementation**: The package includes several octree implementations for efficient spatial queries, such as `StaticMeshGeometryOctree` and `StaticPointGeometryOctree`.
 - **Serialization**: Custom JSON converters are provided for `Geometry` and `VertexProperties` to facilitate serialization and deserialization.
+
+## Recent Changes
+
+- **Asynchronous Event Publishing**: The `Geometry` and `GeometryManager` classes now use `PublishAsync` for event publishing, improving responsiveness and non-blocking operations.
+- **Buffer Management**: The `GeometryManager` now schedules GPU transfers asynchronously, enhancing performance by reducing blocking I/O operations.
 ```
