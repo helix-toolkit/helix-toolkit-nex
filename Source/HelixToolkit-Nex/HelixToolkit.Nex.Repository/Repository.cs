@@ -8,7 +8,7 @@ namespace HelixToolkit.Nex.Repository;
 /// </summary>
 /// <typeparam name="TResource">The type of the cached resource.</typeparam>
 public abstract class CacheEntry<TResource>
-    where TResource : class, IDisposable
+    where TResource : class
 {
     /// <summary>
     /// The cached resource.
@@ -120,7 +120,7 @@ public sealed class RepositoryStatistics
 public abstract class Repository<TKey, TEntry, TResource> : IRepository<TKey, TEntry, TResource>
     where TKey : notnull
     where TEntry : CacheEntry<TResource>
-    where TResource : class, IDisposable
+    where TResource : class
 {
     private readonly ConcurrentDictionary<TKey, TEntry> _cache = new();
     private readonly int _maxEntries;
