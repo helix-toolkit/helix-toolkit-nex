@@ -57,6 +57,21 @@ if (image != null)
 }
 ```
 
+### Creating a GPU Texture Asynchronously
+
+```csharp
+// Assume 'context' is a valid IContext instance
+Image? image = Image.Load("texture.png");
+if (image != null)
+{
+    using (image)
+    {
+        var (texture, uploadHandle) = TextureCreator.CreateTextureAsyncWithResource(context, image, "MyTexture");
+        // Use texture and await uploadHandle if needed
+    }
+}
+```
+
 ### Combining Textures
 
 ```csharp
