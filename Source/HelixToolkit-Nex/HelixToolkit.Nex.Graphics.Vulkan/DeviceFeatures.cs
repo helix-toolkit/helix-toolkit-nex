@@ -4,6 +4,20 @@ internal static class DeviceFeatures
 {
     public static VkPhysicalDeviceFeatures CreateFeatures10(ref VkPhysicalDeviceFeatures supported)
     {
+        if (supported.shaderSampledImageArrayDynamicIndexing != VkBool32.True)
+        {
+            throw new NotSupportedException(
+                "Required Vulkan feature 'shaderSampledImageArrayDynamicIndexing' is not supported by this device."
+            );
+        }
+
+        if (supported.shaderInt64 != VkBool32.True)
+        {
+            throw new NotSupportedException(
+                "Required Vulkan feature 'shaderInt64' is not supported by this device."
+            );
+        }
+
         return new VkPhysicalDeviceFeatures()
         {
             geometryShader = supported.geometryShader,
