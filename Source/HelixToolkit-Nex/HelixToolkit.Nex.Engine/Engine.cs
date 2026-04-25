@@ -388,7 +388,16 @@ public class Engine : Initializable
     {
         EnsureResources(renderContext);
         renderContext.Data = dataProvider;
-        renderContext.ResourceSet.TryGetTexture(targetName, out var handle);
+        if (!renderContext.ResourceSet.TryGetTexture(targetName, out var handle))
+        {
+            _logger.LogError(
+                "RenderOffscreen failed: target texture '{TargetName}' was not found in the render context resource set.",
+                targetName
+            );
+            throw new InvalidOperationException(
+                $"RenderOffscreen target texture '{targetName}' was not found."
+            );
+        }
         renderContext.FinalOutputTexture = handle;
         var cmd = Renderer.RenderOffscreen(renderContext, RenderGraph);
         return cmd;

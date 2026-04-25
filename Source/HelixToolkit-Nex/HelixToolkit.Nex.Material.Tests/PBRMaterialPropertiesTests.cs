@@ -211,6 +211,9 @@ public class PBRMaterialPropertiesTests
             // Dispose the ref — should trigger NotifyUpdated via the OnDisposed callback
             textureRef.DisposeResource();
 
+            // NotifyUpdated uses PublishAsync — flush the queue before asserting
+            EventBus.Instance.ProcessEvents();
+
             Assert.IsTrue(
                 updateCount > 0,
                 "NotifyUpdated (MaterialPropsUpdatedEvent with Update) should be published when OnDisposed fires."

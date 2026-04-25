@@ -302,6 +302,45 @@ public sealed class EventBusTests
         Assert.AreEqual(numberOfThreads * publishesPerThread, totalCalls);
     }
 
+    [TestMethod]
+    public void PublishAsync_ShouldNotInvokeHandler_UntilProcessEventsIsCalled()
+    {
+        Assert.IsNotNull(_eventBus);
+        bool handled = false;
+        _eventBus.Subscribe<TestEvent>(_ => handled = true);
+
+        _eventBus.PublishAsync(new TestEvent());
+
+        // Handler must NOT be called yet — event is deferred
+        Assert.IsFalse(handled, "Handler should not be invoked before ProcessEvents is called.");
+
+        _eventBus.ProcessEvents();
+
+        Assert.IsTrue(handled, "Handler should be invoked after ProcessEvents is called.");
+    }
+
+    [TestMethod]
+    public void ProcessEvents_ShouldDrainQueue_InFIFOOrder()
+    {
+        Assert.IsNotNull(_eventBus);
+        var order = new List<string>();
+        _eventBus.Subscribe<TestEvent>(e => order.Add(e.Message));
+
+        _eventBus.PublishAsync(new TestEvent { Message = "first" });
+        _eventBus.PublishAsync(new TestEvent { Message = "second" });
+        _eventBus.PublishAsync(new TestEvent { Message = "third" });
+
+        // Nothing dispatched yet
+        Assert.AreEqual(0, order.Count);
+
+        _eventBus.ProcessEvents();
+
+        Assert.AreEqual(3, order.Count);
+        Assert.AreEqual("first", order[0]);
+        Assert.AreEqual("second", order[1]);
+        Assert.AreEqual("third", order[2]);
+    }
+
     // Helper class for testing
     public class TestEvent : IEvent
     {
