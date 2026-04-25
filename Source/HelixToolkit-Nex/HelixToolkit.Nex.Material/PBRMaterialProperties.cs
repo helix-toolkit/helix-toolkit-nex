@@ -401,7 +401,6 @@ public sealed class PBRMaterialProperties : IDisposable
         get => _bumpMap;
     }
 
-    private float _bumpScale = 1.0f;
     public float BumpScale
     {
         set
@@ -413,7 +412,7 @@ public sealed class PBRMaterialProperties : IDisposable
             Properties.BumpScale = value;
             NotifyUpdated();
         }
-        get => _bumpScale;
+        get => Properties.BumpScale;
     }
 
     private SamplerRef _sampler = SamplerRef.Null;
@@ -489,7 +488,6 @@ public sealed class PBRMaterialProperties : IDisposable
         get => _displaceMap;
     }
 
-    private float _displaceScale = 1.0f;
     public float DisplaceScale
     {
         set
@@ -501,7 +499,7 @@ public sealed class PBRMaterialProperties : IDisposable
             Properties.DisplaceScale = value;
             NotifyUpdated();
         }
-        get => _displaceScale;
+        get => Properties.DisplaceScale;
     }
 
     /// <summary>
