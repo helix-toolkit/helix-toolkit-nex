@@ -182,7 +182,6 @@ internal partial class Editor : IDisposable
         );
 
         _imGuiRenderer.EndFrame();
-        ;
         _scene.Tick(delta);
 
         // Update the active camera controller
