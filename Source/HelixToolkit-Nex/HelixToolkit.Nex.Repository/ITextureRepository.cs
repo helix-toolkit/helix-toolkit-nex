@@ -17,8 +17,11 @@ namespace HelixToolkit.Nex.Repository;
 /// absolute file path (for file-system sources).
 /// <para>
 /// Callers receive a <see cref="TextureRef"/> wrapper instead of a raw <see cref="TextureResource"/>.
-/// The wrapper lazily re-fetches the GPU handle from the repository when the cached handle becomes stale,
-/// enabling transparent hot-swap without manual reference-count management.
+/// The wrapper holds a direct reference to the underlying GPU resource and exposes it via
+/// <see cref="TextureRef.GetHandle()"/> as an O(1) property. When a texture is removed from the repository
+/// (via <see cref="Remove"/>), the underlying GPU resource is disposed and the ref's
+/// <see cref="TextureRef.OnDisposed"/> event fires synchronously, allowing consumers to react
+/// (e.g., zero their bindless indices) rather than polling or re-fetching.
 /// </para>
 /// </remarks>
 public interface ITextureRepository : IDisposable
