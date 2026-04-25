@@ -126,6 +126,12 @@ internal sealed partial class TextureDemo
             loaded?.MetallicRoughness.GetHandle().Valid ?? false
         );
         DrawSlotRow("AO", desc.AoFile, loaded?.Ao.GetHandle().Valid ?? false);
+        DrawSlotRow(
+            "Displacement",
+            desc.DisplaceFile ?? BuildMrLabel(desc),
+            loaded?.Displace.GetHandle().Valid ?? false
+        );
+        DrawSlotRow("Bump", desc.BumpFile, loaded?.Bump.GetHandle().Valid ?? false);
     }
 
     private static string BuildMrLabel(TextureSetDesc desc)

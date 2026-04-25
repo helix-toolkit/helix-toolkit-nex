@@ -81,7 +81,7 @@ public sealed class GeometryManager(IContext context) : IGeometryManager
             }
 
             id = geometry.Id;
-            _eventBus.Publish(new GeometryUpdatedEvent(geometry.Id, GeometryChangeOp.Added));
+            _eventBus.PublishAsync(new GeometryUpdatedEvent(geometry.Id, GeometryChangeOp.Added));
 
             // Schedule GPU transfers inside the lock (fast: only enqueues work, no blocking I/O).
             geometry.ScheduleBufferUploadsInternal(_context, geometry.BufferDirty).CheckResult();
@@ -122,7 +122,7 @@ public sealed class GeometryManager(IContext context) : IGeometryManager
                     TotalStaticIndexCount += (int)geometry.IndexCount;
                     _indexCountDict[geometry] = (int)geometry.IndexCount;
                 }
-                _eventBus.Publish(new GeometryUpdatedEvent(geometry.Id, GeometryChangeOp.Added));
+                _eventBus.PublishAsync(new GeometryUpdatedEvent(geometry.Id, GeometryChangeOp.Added));
                 id = geometry.Id;
             }
             return true;
@@ -144,7 +144,7 @@ public sealed class GeometryManager(IContext context) : IGeometryManager
         {
             // Handle property changes if needed, e.g., mark geometry as dirty for rendering
             _logger.LogDebug("Geometry property changed: {PropertyName}", e.PropertyName);
-            _eventBus.Publish(new GeometryUpdatedEvent(geometry.Id, GeometryChangeOp.Updated));
+            _eventBus.PublishAsync(new GeometryUpdatedEvent(geometry.Id, GeometryChangeOp.Updated));
         }
     }
 
@@ -230,7 +230,7 @@ public sealed class GeometryManager(IContext context) : IGeometryManager
                 TotalStaticIndexCount -= _indexCountDict[geometry];
                 _indexCountDict.Remove(geometry);
             }
-            _eventBus.Publish(new GeometryUpdatedEvent(id, GeometryChangeOp.Removed));
+            _eventBus.PublishAsync(new GeometryUpdatedEvent(id, GeometryChangeOp.Removed));
             return true;
         }
     }

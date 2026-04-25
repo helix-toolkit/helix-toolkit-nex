@@ -584,7 +584,7 @@ public sealed class PBRMaterialProperties : IDisposable
             }
         };
         _handle = _pool.Create(properties);
-        _eventBus.Publish(
+        _eventBus.PublishAsync(
             new MaterialPropsUpdatedEvent(MaterialTypeId, Index, MaterialPropertyOp.Create)
         );
     }
@@ -598,7 +598,7 @@ public sealed class PBRMaterialProperties : IDisposable
     {
         if (Valid)
         {
-            _eventBus.Publish(
+            _eventBus.PublishAsync(
                 new MaterialPropsUpdatedEvent(MaterialTypeId, Index, MaterialPropertyOp.Update)
             );
         }
@@ -636,7 +636,7 @@ public sealed class PBRMaterialProperties : IDisposable
 
                 var index = Index;
                 _pool?.Destroy(_handle);
-                _eventBus.Publish(
+                _eventBus.PublishAsync(
                     new MaterialPropsUpdatedEvent(MaterialTypeId, index, MaterialPropertyOp.Destroy)
                 );
             }
