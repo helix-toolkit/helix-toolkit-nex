@@ -111,7 +111,14 @@ public static class TextureCreator
 
                     var range = new TextureRangeDesc
                     {
-                        Layer = (uint)arrayIndex,
+                        Offset = new Offset3D(
+                            0,
+                            0,
+                            desc2.Dimension == TextureDimension.Texture3D ? zSlice : 0
+                        ),
+                        Layer = desc2.Dimension == TextureDimension.Texture3D
+                            ? 0u
+                            : (uint)arrayIndex,
                         NumLayers = 1,
                         MipLevel = (uint)level,
                         NumMipLevels = 1,
@@ -205,7 +212,14 @@ public static class TextureCreator
 
                     var range = new TextureRangeDesc
                     {
-                        Layer = (uint)arrayIndex,
+                        Offset = new Offset3D(
+                            0,
+                            0,
+                            desc2.Dimension == TextureDimension.Texture3D ? zSlice : 0
+                        ),
+                        Layer = desc2.Dimension == TextureDimension.Texture3D
+                            ? 0u
+                            : (uint)arrayIndex,
                         NumLayers = 1,
                         MipLevel = (uint)level,
                         NumMipLevels = 1,
