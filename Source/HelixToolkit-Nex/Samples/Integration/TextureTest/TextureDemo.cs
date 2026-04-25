@@ -41,15 +41,17 @@ internal sealed record TextureSetDesc(
     string? RoughnessFile, // separate roughness (R channel) — or GLOSS (inverted)
     string? DisplaceFile, // displacement map.
     string? BumpFile, // bump map,
+
     bool RoughnessIsGloss, // true → invert roughness channel
-                           // AO
-    string? AoFile,
-    // Default scalar overrides (applied on top of textures)
+
+    string? AoFile,    // AO
+                       // Default scalar overrides (applied on top of textures)
     float DefaultMetallic,
     float DefaultRoughness,
     float DefaultAo,
     float ClearCoatRoughness = 1f,
-    float ClearCoatStrength = 0f
+    float ClearCoatStrength = 0f,
+    float BumpScale = 1f // multiplier for bump map effect
 );
 
 // ---------------------------------------------------------------------------
@@ -163,7 +165,8 @@ internal sealed partial class TextureDemo : IDisposable
             DefaultRoughness: 0.2f,
             DefaultAo: 1.0f,
             ClearCoatRoughness: 0.3f,
-            ClearCoatStrength: 0.8f
+            ClearCoatStrength: 0.8f,
+            BumpScale: 0.1f
         ),
         new TextureSetDesc(
             DisplayName: "Grass Patchy Ground",
@@ -564,6 +567,7 @@ internal sealed partial class TextureDemo : IDisposable
         _material.Sampler = _sampler;
         _material.DisplaceSampler = _displaceSampler;
         _material.BumpMap = set.Bump.GetHandle().Valid ? set.Bump : TextureRef.Null;
+        _material.BumpScale = desc.BumpScale;
 
         _material.Albedo = AlbedoTint;
         _material.Metallic = Metallic;

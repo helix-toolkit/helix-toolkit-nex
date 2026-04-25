@@ -191,7 +191,7 @@ public partial class Geometry : HxObservableObject, IDisposable
             }
             if (BufferDirty != GeometryBufferType.None && Attached)
             {
-                EventBus.Instance.Publish(new GeometryUpdatedEvent(Id, GeometryChangeOp.Updated));
+                EventBus.Instance.PublishAsync(new GeometryUpdatedEvent(Id, GeometryChangeOp.Updated));
             }
         };
     }
@@ -683,7 +683,7 @@ public partial class Geometry : HxObservableObject, IDisposable
         {
             BufferDirty &= ~GeometryBufferType.VertexColor;
         }
-        EventBus.Instance.Publish(new GeometryUpdatedEvent(Id, GeometryChangeOp.Updated));
+        EventBus.Instance.PublishAsync(new GeometryUpdatedEvent(Id, GeometryChangeOp.Updated));
     }
 
     /// <summary>

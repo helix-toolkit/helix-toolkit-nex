@@ -64,6 +64,8 @@ namespace HelixToolkit.Nex.Engine;
 public class Engine : Initializable
 {
     private static readonly ILogger _logger = LogManager.Create<Engine>();
+    private static readonly EventBus _bus = EventBus.Instance;
+
     private readonly IInitializable[] _initializables;
 
     /// <summary>
@@ -304,12 +306,18 @@ public class Engine : Initializable
         return postEffectsNode?.GetEffect<T>();
     }
 
+    public void ProcessEvents()
+    {
+        _bus.ProcessEvents();
+    }
+
     /// <summary>
     /// 
     /// </summary>
     /// <param name="context"></param>
     public void EnsureResources(RenderContext context)
     {
+        ProcessEvents();
         RenderGraph.EnsureResources(context);
     }
 

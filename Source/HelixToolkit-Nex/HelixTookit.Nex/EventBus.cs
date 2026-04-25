@@ -13,11 +13,13 @@ public interface IEvent { }
 public interface IEventSubscription : IDisposable { }
 
 /// <summary>
-/// Thread-safe event bus implementation supporting generic event types with synchronous publishing
+/// Thread-safe event bus implementation supporting synchronous publishing and
+/// deferred async publishing that is flushed via <see cref="EventBus.ProcessEvents"/>.
 /// </summary>
 public sealed class EventBus : IDisposable
 {
     private readonly ConcurrentDictionary<Type, object> _subscribers = new();
+    private readonly ConcurrentQueue<Action> _pendingEvents = new();
     private bool _disposed;
 
     /// <summary>
@@ -63,6 +65,38 @@ public sealed class EventBus : IDisposable
         ObjectDisposedException.ThrowIf(_disposed, this);
 
         PublishInternal(eventData);
+    }
+
+    /// <summary>
+    /// Enqueues an event to be dispatched on the next call to <see cref="ProcessEvents"/>.
+    /// Safe to call from any thread; handlers are always invoked on the thread that calls
+    /// <see cref="ProcessEvents"/> (typically the render thread).
+    /// </summary>
+    /// <typeparam name="TEvent">The event type to publish</typeparam>
+    /// <param name="eventData">The event data to publish</param>
+    public void PublishAsync<TEvent>(TEvent eventData)
+        where TEvent : IEvent
+    {
+        if (eventData == null)
+            throw new ArgumentNullException(nameof(eventData));
+
+        ObjectDisposedException.ThrowIf(_disposed, this);
+
+        _pendingEvents.Enqueue(() => PublishInternal(eventData));
+    }
+
+    /// <summary>
+    /// Drains the async event queue and dispatches all pending events.
+    /// Call this once at the beginning of each render loop iteration.
+    /// </summary>
+    public void ProcessEvents()
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+
+        while (_pendingEvents.TryDequeue(out var dispatch))
+        {
+            dispatch();
+        }
     }
 
     /// <summary>

@@ -14,3 +14,10 @@
   * Engine uses indirect draw calls wherever possible to minimize CPU overhead and improve rendering performance.
   * RenderContext contains a per-viewport resource set (buffers and textures). Resolution-dependent textures and buffers in this resource set are re-created when the viewport size changes.
   * WorldDataProvider contains per-world data collections. This data set is collected and sent to the GPU for rendering.
+
+- Resource Management
+  * All graphics resources (such as `PipelineResource`, `ShaderModuleResource` and `BufferResource`) life cycles should be manually managed. Call `Resource.Dispose()` to dispose the resource if no longer needed.
+  * `TextureRepository` and `SamplerRepository` cache GPU resources and return `TextureRef` / `SamplerRef` wrapper objects. Each wrapper holds its `TextureResource` / `SamplerResource` internally and exposes `GetHandle()` as a direct, O(1) property — no repository round-trip. `TextureRef` and `SamplerRef` do **not** implement `IDisposable` and must never be disposed directly. To release a resource, call `TextureRepository.Remove(key)` or `SamplerRepository.Remove(key)`, which disposes the underlying GPU resource and fires the ref's `OnDisposed` event.
+  * `TextureRef.OnDisposed` and `SamplerRef.OnDisposed` are `event Action?` callbacks that fire synchronously when the repository disposes the resource. `PBRMaterialProperties` subscribes to these events to automatically zero the corresponding bindless texture/sampler indices when a resource is removed.
+  * The `Replace*` family of methods has been removed. To hot-swap a texture, call `Remove(key)` followed by the appropriate `GetOrCreateFrom*` method. This ensures `OnDisposed` fires on the old ref before the new one is created.
+  * `ITextureRepository` also exposes async creation methods (`GetOrCreateFromStreamAsync`, `GetOrCreateFromFileAsync`, `GetOrCreateFromImageAsync`) that allocate GPU memory synchronously (so the ref is immediately available in the cache) and upload pixel data asynchronously. Await the returned `Task<TextureRef>` on the main thread before assigning the result to a `PBRMaterialProperties` field.

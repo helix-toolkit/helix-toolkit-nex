@@ -274,7 +274,7 @@ PBRMaterial createPBRMaterial()
     if (props.normalTexIndex > 0) {
         vec3 normalMap = texture(sampler2D(kTextures2D[props.normalTexIndex], kSamplers[props.samplerIndex]), fragTexCoord).xyz * 2.0 - 1.0;
         vec3 N = normalize(fragNormal);
-        vec3 T = normalize(fragTangent);
+        vec3 T = normalize(fragTangent - dot(fragTangent, N) * N);
         vec3 B = cross(N, T);
         mat3 TBN = mat3(T, B, N);
         finalNormal = normalize(TBN * normalMap);
