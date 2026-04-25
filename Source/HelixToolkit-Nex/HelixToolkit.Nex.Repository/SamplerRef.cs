@@ -41,7 +41,7 @@ internal sealed class NullSamplerRepository : ISamplerRepository
 /// A lightweight wrapper that holds a live <see cref="SamplerResource"/> and exposes an
 /// <see cref="OnDisposed"/> event for push notification when the resource is disposed.
 /// </summary>
-public sealed class SamplerRef : IDisposable
+public sealed class SamplerRef
 {
     /// <summary>Gets the cache key that identifies this sampler in the repository.</summary>
     public string Key { get; }
@@ -73,8 +73,9 @@ public sealed class SamplerRef : IDisposable
         OnDisposed?.Invoke();
     }
 
-    /// <inheritdoc/>
-    public void Dispose() => DisposeResource();
+    // IDisposable is intentionally NOT implemented on SamplerRef.
+    // The repository is the sole owner of the underlying resource.
+    // To release a sampler, call SamplerRepository.Remove(key).
 
     /// <summary>
     /// A sentinel <see cref="SamplerRef"/> that represents the absence of a sampler.

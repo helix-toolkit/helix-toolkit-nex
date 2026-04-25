@@ -19,7 +19,7 @@ namespace HelixToolkit.Nex.Repository;
 public interface IRepository<TKey, TEntry, TResource> : IDisposable
     where TKey : notnull
     where TEntry : CacheEntry<TResource>
-    where TResource : class, IDisposable
+    where TResource : class
 {
     /// <summary>
     /// Gets the number of cached resources.
