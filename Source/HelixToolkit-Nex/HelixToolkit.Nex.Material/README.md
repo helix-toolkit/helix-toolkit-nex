@@ -62,8 +62,10 @@ var materialCreator = materialManager.CreateMaterial("MyMaterial", name => new P
 
 // Retrieve and modify material properties
 var materialProperties = materialCreator.Create();
-materialProperties.Albedo = new Color(1, 0, 0);
+materialProperties.Albedo = new Color4(1, 0, 0, 1);
 materialProperties.Metallic = 0.5f;
+materialProperties.BumpScale = 1.0f;
+materialProperties.DisplaceScale = 0.5f;
 ```
 
 ## Architecture Notes

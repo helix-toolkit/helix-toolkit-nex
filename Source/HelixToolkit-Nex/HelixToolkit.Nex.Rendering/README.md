@@ -26,6 +26,21 @@ HelixToolkit.Nex.Rendering is responsible for managing the rendering pipeline of
 | `PostEffect`                     | Base class for post-processing effects.                                     |
 | `Renderer`                       | Manages the lifecycle and execution of render nodes.                        |
 
+## Recent Changes
+
+### Updated Sampler Handling
+
+- **SamplerRef**: Replaced `SamplerResource` with `SamplerRef` for improved resource management and validation.
+- **Validation**: Added validation checks for sampler creation to ensure resources are correctly initialized.
+
+### ForwardPlusLightCullingNode
+
+- **Depth Sampler**: Updated to use `SamplerRef` and added validation to ensure the sampler is valid before proceeding with setup.
+
+### Post-Processing Effects
+
+- **Bloom, BorderHighlightPostEffect, Fxaa, Smaa**: Updated to use `SamplerRef` for samplers, improving resource management and reducing potential errors.
+
 ## Usage Examples
 
 ### Setting Up a Render Graph

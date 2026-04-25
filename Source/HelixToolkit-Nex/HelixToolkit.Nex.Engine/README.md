@@ -18,7 +18,7 @@ HelixToolkit.Nex.Engine is a core component of the HelixToolkit.Nex suite, respo
 |----------------------------------|-----------------------------------------------------------------------------|
 | `Engine`                         | The main coordinator for the 3D rendering engine.                           |
 | `RenderContext`                  | Holds per-viewport state such as window size and camera parameters.         |
-| `WorldDataProvider`             | Provides scene data to the engine, managing ECS-to-GPU data pipelines.      |
+| `WorldDataProvider`              | Provides scene data to the engine, managing ECS-to-GPU data pipelines.      |
 | `FirstPersonCameraController`    | A camera controller for first-person navigation.                           |
 | `OrbitCameraController`          | A camera controller for orbiting around a target point.                    |
 | `PanZoomCameraController`        | A camera controller for panning and zooming, suitable for orthographic views.|
@@ -28,6 +28,7 @@ HelixToolkit.Nex.Engine is a core component of the HelixToolkit.Nex suite, respo
 | `PerspectiveCamera`              | A camera with a perspective projection.                                    |
 | `DirectionalLightComponent`      | Represents a directional light in the scene.                               |
 | `RangeLightComponent`            | Represents a point or spot light in the scene.                             |
+| `EngineBuilder`                  | Fluent builder for creating and configuring an `Engine` instance.          |
 
 ## Usage Examples
 
@@ -85,6 +86,23 @@ if (pickingResult != null)
 - **Reverse-Z Projection:** The engine uses reverse-Z projection matrices to improve depth buffer precision, reducing artifacts in large scenes.
 - **Forward Plus Lighting:** Forward Plus light culling is used to efficiently manage lighting calculations, supporting a large number of dynamic lights.
 - **Integration with Vulkan:** The engine is built on top of the Vulkan API, providing low-level access to GPU resources and enabling high-performance rendering.
+
+## Recent Additions
+
+### New Methods in `Engine`
+
+- `ProcessEvents()`: Processes pending events in the engine's event bus.
+- `EnsureResources(RenderContext context)`: Ensures that all necessary resources are available for rendering, processing events, and preparing the render graph.
+
+### New Overloads for `RenderOffscreen`
+
+- `RenderOffscreen(RenderContext renderContext, IRenderDataProvider dataProvider, TextureHandle target)`: Executes the render graph into an offscreen target without presenting.
+- `RenderOffscreen(RenderContext renderContext, IRenderDataProvider dataProvider, string targetName)`: Executes the render graph into an offscreen target specified by name, without presenting.
+
+### `EngineBuilder` Enhancements
+
+- `RenderToCustomTarget(Format targetFormat)`: Configures the engine to render to a custom target format.
+- Improved interop support with `WithWpf()` and `WithWinUI()` methods for WPF and WinUI applications.
 
 HelixToolkit.Nex.Engine is designed to be a robust and flexible foundation for building 3D applications, offering a rich set of features and a modular architecture that can be tailored to specific needs.
 ```

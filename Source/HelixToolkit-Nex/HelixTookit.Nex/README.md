@@ -85,7 +85,14 @@ var myService = serviceProvider.GetRequiredService<IMyService>();
 var eventBus = new EventBus();
 eventBus.Subscribe<MyEvent>(e => Console.WriteLine("Event received!"));
 
+// Publish synchronously
 eventBus.Publish(new MyEvent());
+
+// Publish asynchronously
+eventBus.PublishAsync(new MyEvent());
+
+// Process async events
+eventBus.ProcessEvents();
 ```
 
 ### Tracing
