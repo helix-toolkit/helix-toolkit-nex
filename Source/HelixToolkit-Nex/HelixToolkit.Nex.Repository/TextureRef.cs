@@ -61,7 +61,7 @@ internal sealed class NullTextureRepository : ITextureRepository
 /// A lightweight wrapper that holds a live <see cref="TextureResource"/> and exposes an
 /// <see cref="OnDisposed"/> event for push notification when the resource is disposed.
 /// </summary>
-public sealed class TextureRef : IDisposable
+public sealed class TextureRef
 {
     /// <summary>Gets the cache key that identifies this texture in the repository.</summary>
     public string Key { get; }
@@ -102,10 +102,9 @@ public sealed class TextureRef : IDisposable
         OnDisposed?.Invoke();
     }
 
-    /// <summary>
-    /// Implements <see cref="IDisposable"/> by calling <see cref="DisposeResource"/>.
-    /// </summary>
-    public void Dispose() => DisposeResource();
+    // IDisposable is intentionally NOT implemented on TextureRef.
+    // The repository is the sole owner of the underlying resource.
+    // To release a texture, call TextureRepository.Remove(key).
 
     /// <summary>
     /// A sentinel <see cref="TextureRef"/> instance that represents the absence of a texture.
