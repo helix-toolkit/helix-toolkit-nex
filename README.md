@@ -52,11 +52,13 @@ Currently in development.
 
 ## Rendering Samples
 
-![Image](Source/HelixToolkit-Nex/Samples/Integration/LightCulling/Screenshots/LargeScene.gif)
+<img src="Source/HelixToolkit-Nex/Samples/Integration/LightCulling/Screenshots/LargeScene.gif" width=400>
 
-![Image](Source/HelixToolkit-Nex/Samples/Integration/ImGui/Screenshots/Sample.jpg)
+<img src="Source/HelixToolkit-Nex/Samples/Integration/ImGui/Screenshots/Sample.jpg" width=400>
 
-![Image](Source/HelixToolkit-Nex/Samples/Integration/Points/Screenshots/Points.gif)
+<img src="Source/HelixToolkit-Nex/Samples/Integration/Points/Screenshots/Points.gif" width=400>
+
+<img src="Source/HelixToolkit-Nex/Samples/Integration/TextureTest/Screenshots/Sample.jpg" width=400>
 
 ## Interoperability
 
