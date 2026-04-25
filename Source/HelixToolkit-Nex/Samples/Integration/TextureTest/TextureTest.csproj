@@ -18,149 +18,84 @@
 
     <ItemGroup>
         <!-- ── Earth ── -->
-        <None
-            Include="..\..\..\..\..\Assets\Textures\Earth\2k_earth_daymap.jpg"
-            Link="Assets\Textures\Earth\2k_earth_daymap.jpg"
-        >
+        <None Include="..\..\..\..\..\Assets\Textures\Earth\2k_earth_daymap.jpg" Link="Assets\Textures\Earth\2k_earth_daymap.jpg">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
-        <None
-            Include="..\..\..\..\..\Assets\Textures\Earth\2k_earth_normal_map.tif"
-            Link="Assets\Textures\Earth\2k_earth_normal_map.tif"
-        >
+        <None Include="..\..\..\..\..\Assets\Textures\Earth\2k_earth_normal_map.tif" Link="Assets\Textures\Earth\2k_earth_normal_map.tif">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
 
         <!-- ── Metal Corroded ── -->
-        <None
-            Include="..\..\..\..\..\Assets\Textures\MetalCorroded\MetalCorrodedHeavy001_COL_2K_METALNESS.jpg"
-            Link="Assets\Textures\MetalCorroded\MetalCorrodedHeavy001_COL_2K_METALNESS.jpg"
-        >
+        <None Include="..\..\..\..\..\Assets\Textures\MetalCorroded\MetalCorrodedHeavy001_COL_2K_METALNESS.jpg" Link="Assets\Textures\MetalCorroded\MetalCorrodedHeavy001_COL_2K_METALNESS.jpg">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
-        <None
-            Include="..\..\..\..\..\Assets\Textures\MetalCorroded\MetalCorrodedHeavy001_NRM_2K_METALNESS.jpg"
-            Link="Assets\Textures\MetalCorroded\MetalCorrodedHeavy001_NRM_2K_METALNESS.jpg"
-        >
+        <None Include="..\..\..\..\..\Assets\Textures\MetalCorroded\MetalCorrodedHeavy001_NRM_2K_METALNESS.jpg" Link="Assets\Textures\MetalCorroded\MetalCorrodedHeavy001_NRM_2K_METALNESS.jpg">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
-        <None
-            Include="..\..\..\..\..\Assets\Textures\MetalCorroded\MetalCorrodedHeavy001_METALNESS_2K_METALNESS.jpg"
-            Link="Assets\Textures\MetalCorroded\MetalCorrodedHeavy001_METALNESS_2K_METALNESS.jpg"
-        >
+        <None Include="..\..\..\..\..\Assets\Textures\MetalCorroded\MetalCorrodedHeavy001_METALNESS_2K_METALNESS.jpg" Link="Assets\Textures\MetalCorroded\MetalCorrodedHeavy001_METALNESS_2K_METALNESS.jpg">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
-        <None
-            Include="..\..\..\..\..\Assets\Textures\MetalCorroded\MetalCorrodedHeavy001_ROUGHNESS_2K_METALNESS.jpg"
-            Link="Assets\Textures\MetalCorroded\MetalCorrodedHeavy001_ROUGHNESS_2K_METALNESS.jpg"
-        >
+        <None Include="..\..\..\..\..\Assets\Textures\MetalCorroded\MetalCorrodedHeavy001_ROUGHNESS_2K_METALNESS.jpg" Link="Assets\Textures\MetalCorroded\MetalCorrodedHeavy001_ROUGHNESS_2K_METALNESS.jpg">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
-        <None
-            Include="..\..\..\..\..\Assets\Textures\MetalCorroded\MetalCorrodedHeavy001_DISP_2K_METALNESS.jpg"
-            Link="Assets\Textures\MetalCorroded\MetalCorrodedHeavy001_DISP_2K_METALNESS.jpg"
-        >
+        <None Include="..\..\..\..\..\Assets\Textures\MetalCorroded\MetalCorrodedHeavy001_DISP_2K_METALNESS.jpg" Link="Assets\Textures\MetalCorroded\MetalCorrodedHeavy001_DISP_2K_METALNESS.jpg">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
 
         <!-- ── Ceramic Glossy Tile ── -->
-        <None
-            Include="..\..\..\..\..\Assets\Textures\CeramicGlossyTile\TilesMosaicPennyround001_COL_2K.png"
-            Link="Assets\Textures\CeramicGlossyTile\TilesMosaicPennyround001_COL_2K.png"
-        >
+        <None Include="..\..\..\..\..\Assets\Textures\CeramicGlossyTile\TilesMosaicPennyround001_COL_2K.png" Link="Assets\Textures\CeramicGlossyTile\TilesMosaicPennyround001_COL_2K.png">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
-        <None
-            Include="..\..\..\..\..\Assets\Textures\CeramicGlossyTile\TilesMosaicPennyround001_NRM_2K.png"
-            Link="Assets\Textures\CeramicGlossyTile\TilesMosaicPennyround001_NRM_2K.png"
-        >
+        <None Include="..\..\..\..\..\Assets\Textures\CeramicGlossyTile\TilesMosaicPennyround001_NRM_2K.png" Link="Assets\Textures\CeramicGlossyTile\TilesMosaicPennyround001_NRM_2K.png">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
-        <None
-            Include="..\..\..\..\..\Assets\Textures\CeramicGlossyTile\TilesMosaicPennyround001_GLOSS_2K.png"
-            Link="Assets\Textures\CeramicGlossyTile\TilesMosaicPennyround001_GLOSS_2K.png"
-        >
+        <None Include="..\..\..\..\..\Assets\Textures\CeramicGlossyTile\TilesMosaicPennyround001_GLOSS_2K.png" Link="Assets\Textures\CeramicGlossyTile\TilesMosaicPennyround001_GLOSS_2K.png">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
-        <None
-            Include="..\..\..\..\..\Assets\Textures\CeramicGlossyTile\TilesMosaicPennyround001_REFL_2K.png"
-            Link="Assets\Textures\CeramicGlossyTile\TilesMosaicPennyround001_REFL_2K.png"
-        >
+        <None Include="..\..\..\..\..\Assets\Textures\CeramicGlossyTile\TilesMosaicPennyround001_REFL_2K.png" Link="Assets\Textures\CeramicGlossyTile\TilesMosaicPennyround001_REFL_2K.png">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
-        <None
-            Include="..\..\..\..\..\Assets\Textures\CeramicGlossyTile\TilesMosaicPennyround001_AO_2K.png"
-            Link="Assets\Textures\CeramicGlossyTile\TilesMosaicPennyround001_AO_2K.png"
-        >
+        <None Include="..\..\..\..\..\Assets\Textures\CeramicGlossyTile\TilesMosaicPennyround001_AO_2K.png" Link="Assets\Textures\CeramicGlossyTile\TilesMosaicPennyround001_AO_2K.png">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
-        <None
-            Include="..\..\..\..\..\Assets\Textures\CeramicGlossyTile\TilesMosaicPennyround001_BUMP_2K.png"
-            Link="Assets\Textures\CeramicGlossyTile\TilesMosaicPennyround001_BUMP_2K.png"
-        >
+        <None Include="..\..\..\..\..\Assets\Textures\CeramicGlossyTile\TilesMosaicPennyround001_BUMP_2K.png" Link="Assets\Textures\CeramicGlossyTile\TilesMosaicPennyround001_BUMP_2K.png">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
         <!-- ── Grass Patchy Ground ── -->
-        <None
-            Include="..\..\..\..\..\Assets\Textures\GrassPatchyGround\Poliigon_GrassPatchyGround_4585_AmbientOcclusion.jpg"
-            Link="Assets\Textures\GrassPatchyGround\Poliigon_GrassPatchyGround_4585_AmbientOcclusion.jpg"
-        >
+        <None Include="..\..\..\..\..\Assets\Textures\GrassPatchyGround\Poliigon_GrassPatchyGround_4585_AmbientOcclusion.jpg" Link="Assets\Textures\GrassPatchyGround\Poliigon_GrassPatchyGround_4585_AmbientOcclusion.jpg">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
-        <None
-            Include="..\..\..\..\..\Assets\Textures\GrassPatchyGround\Poliigon_GrassPatchyGround_4585_BaseColor.jpg"
-            Link="Assets\Textures\GrassPatchyGround\Poliigon_GrassPatchyGround_4585_BaseColor.jpg"
-        >
+        <None Include="..\..\..\..\..\Assets\Textures\GrassPatchyGround\Poliigon_GrassPatchyGround_4585_BaseColor.jpg" Link="Assets\Textures\GrassPatchyGround\Poliigon_GrassPatchyGround_4585_BaseColor.jpg">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
-        <None
-            Include="..\..\..\..\..\Assets\Textures\GrassPatchyGround\Poliigon_GrassPatchyGround_4585_Metallic.jpg"
-            Link="Assets\Textures\GrassPatchyGround\Poliigon_GrassPatchyGround_4585_Metallic.jpg"
-        >
+        <None Include="..\..\..\..\..\Assets\Textures\GrassPatchyGround\Poliigon_GrassPatchyGround_4585_Metallic.jpg" Link="Assets\Textures\GrassPatchyGround\Poliigon_GrassPatchyGround_4585_Metallic.jpg">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
-        <None
-            Include="..\..\..\..\..\Assets\Textures\GrassPatchyGround\Poliigon_GrassPatchyGround_4585_Normal.png"
-            Link="Assets\Textures\GrassPatchyGround\Poliigon_GrassPatchyGround_4585_Normal.png"
-        >
+        <None Include="..\..\..\..\..\Assets\Textures\GrassPatchyGround\Poliigon_GrassPatchyGround_4585_Normal.png" Link="Assets\Textures\GrassPatchyGround\Poliigon_GrassPatchyGround_4585_Normal.png">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
-        <None
-            Include="..\..\..\..\..\Assets\Textures\GrassPatchyGround\Poliigon_GrassPatchyGround_4585_ORM.jpg"
-            Link="Assets\Textures\GrassPatchyGround\Poliigon_GrassPatchyGround_4585_ORM.jpg"
-        >
+        <None Include="..\..\..\..\..\Assets\Textures\GrassPatchyGround\Poliigon_GrassPatchyGround_4585_ORM.jpg" Link="Assets\Textures\GrassPatchyGround\Poliigon_GrassPatchyGround_4585_ORM.jpg">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
-        <None
-            Include="..\..\..\..\..\Assets\Textures\GrassPatchyGround\Poliigon_GrassPatchyGround_4585_Roughness.jpg"
-            Link="Assets\Textures\GrassPatchyGround\Poliigon_GrassPatchyGround_4585_Roughness.jpg"
-        >
+        <None Include="..\..\..\..\..\Assets\Textures\GrassPatchyGround\Poliigon_GrassPatchyGround_4585_Roughness.jpg" Link="Assets\Textures\GrassPatchyGround\Poliigon_GrassPatchyGround_4585_Roughness.jpg">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
         <!-- ── Metal Matte ── -->
-        <None
-            Include="..\..\..\..\..\Assets\Textures\MetalMatte\Poliigon_MetalPaintedMatte_7037_BaseColor.jpg"
-            Link="Assets\Textures\MetalMatte\Poliigon_MetalPaintedMatte_7037_BaseColor.jpg"
-        >
+        <None Include="..\..\..\..\..\Assets\Textures\MetalMatte\Poliigon_MetalPaintedMatte_7037_BaseColor.jpg" Link="Assets\Textures\MetalMatte\Poliigon_MetalPaintedMatte_7037_BaseColor.jpg">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
-        <None
-            Include="..\..\..\..\..\Assets\Textures\MetalMatte\Poliigon_MetalPaintedMatte_7037_Displacement.tiff"
-            Link="Assets\Textures\MetalMatte\Poliigon_MetalPaintedMatte_7037_Displacement.tiff"
-        >
+        <None Include="..\..\..\..\..\Assets\Textures\MetalMatte\Poliigon_MetalPaintedMatte_7037_Displacement.tiff" Link="Assets\Textures\MetalMatte\Poliigon_MetalPaintedMatte_7037_Displacement.tiff">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
-        <None
-            Include="..\..\..\..\..\Assets\Textures\MetalMatte\Poliigon_MetalPaintedMatte_7037_ORM.jpg"
-            Link="Assets\Textures\MetalMatte\Poliigon_MetalPaintedMatte_7037_ORM.jpg"
-        >
+        <None Include="..\..\..\..\..\Assets\Textures\MetalMatte\Poliigon_MetalPaintedMatte_7037_ORM.jpg" Link="Assets\Textures\MetalMatte\Poliigon_MetalPaintedMatte_7037_ORM.jpg">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
-        <None
-            Include="..\..\..\..\..\Assets\Textures\MetalMatte\Poliigon_MetalPaintedMatte_7037_Normal.png"
-            Link="Assets\Textures\MetalMatte\Poliigon_MetalPaintedMatte_7037_Normal.png"
-        >
+        <None Include="..\..\..\..\..\Assets\Textures\MetalMatte\Poliigon_MetalPaintedMatte_7037_Normal.png" Link="Assets\Textures\MetalMatte\Poliigon_MetalPaintedMatte_7037_Normal.png">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
+    </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="Screenshots\" />
     </ItemGroup>
 </Project>
