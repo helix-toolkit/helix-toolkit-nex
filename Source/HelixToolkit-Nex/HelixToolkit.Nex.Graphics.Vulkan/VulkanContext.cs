@@ -711,38 +711,27 @@ internal sealed partial class VulkanContext
         return (graphicsFamily, presentFamily, computeFamily);
     }
 
-    private unsafe ResultCode InitContext()
+    private static unsafe VkPhysicalDevice FindBestDevice(VkSurfaceKHR surface, ReadOnlySpan<VkPhysicalDevice> devices, byte[]? requiredLuid = null)
     {
-        // Find physical device, setup queue's and create device.
-        uint physicalDevicesCount = 0;
-        VK.vkEnumeratePhysicalDevices(_vkInstance, &physicalDevicesCount, null).CheckResult();
-
-        if (physicalDevicesCount == 0)
-        {
-            throw new Exception("Vulkan: Failed to find GPUs with Vulkan support");
-        }
-
-        VkPhysicalDevice* physicalDevices = stackalloc VkPhysicalDevice[(int)physicalDevicesCount];
-        VK.vkEnumeratePhysicalDevices(_vkInstance, &physicalDevicesCount, physicalDevices)
-            .CheckResult();
-
-        bool luidFilterActive = Config.RequiredDeviceLuid is { Length: 8 };
-        List<string>? availableLuids = luidFilterActive ? [] : null;
+        List<string>? availableLuids = requiredLuid is not null ? new() : null;
         byte* luidCopyBuffer = stackalloc byte[8];
 
-        for (int i = 0; i < physicalDevicesCount; i++)
-        {
-            VkPhysicalDevice physicalDevice = physicalDevices[i];
+        Dictionary<VkPhysicalDeviceType, uint> bestDeviceByType = new((int)devices.Length);
+        VkPhysicalDevice selectedDevice = VkPhysicalDevice.Null;
 
-            if (!IsDeviceSuitable(physicalDevice, _vkSurface))
+        for (uint i = 0; i < devices.Length; i++)
+        {
+            var candidate = devices[(int)i];
+
+            if (!IsDeviceSuitable(candidate, surface))
                 continue;
 
             // When LUID filtering is active, query VkPhysicalDeviceIDProperties and skip non-matching devices
-            if (luidFilterActive)
+            if (requiredLuid is not null)
             {
                 VkPhysicalDeviceIDProperties idProps = new();
                 VkPhysicalDeviceProperties2 props2 = new() { pNext = &idProps };
-                VK.vkGetPhysicalDeviceProperties2(physicalDevice, &props2);
+                VK.vkGetPhysicalDeviceProperties2(candidate, &props2);
 
                 byte* luidPtr = idProps.deviceLUID;
                 for (int j = 0; j < 8; j++)
@@ -755,34 +744,78 @@ internal sealed partial class VulkanContext
                 {
                     continue;
                 }
-                if (LuidMatches(deviceLuidSpan, Config.RequiredDeviceLuid!))
+                if (LuidMatches(deviceLuidSpan, requiredLuid!))
                 {
-                    _vkPhysicalDevice = physicalDevice;
+                    selectedDevice = candidate;
                     break;
                 }
                 continue;
             }
 
             VK.vkGetPhysicalDeviceProperties(
-                physicalDevice,
+                candidate,
                 out VkPhysicalDeviceProperties checkProperties
             );
-            bool discrete = checkProperties.deviceType == VkPhysicalDeviceType.DiscreteGpu;
-            _vkPhysicalDevice = physicalDevice;
-            if (discrete)
-            {
-                // If this is discrete GPU, look no further (prioritize discrete GPU)
-                break;
-            }
-        }
 
-        if (_vkPhysicalDevice.IsNull && luidFilterActive)
+            bestDeviceByType[checkProperties.deviceType] = i;
+        }
+        if (selectedDevice.IsNotNull)
         {
-            throw new InvalidOperationException(
-                $"Vulkan: No physical device matches the required LUID '{Convert.ToHexString(Config.RequiredDeviceLuid!)}'. "
+            _logger.LogInformation(
+                $"Selected physical device based on LUID match. Device LUID: {Convert.ToHexString(requiredLuid!)}"
+            );
+            return selectedDevice;
+        }
+        if (requiredLuid is not null)
+        {
+            _logger.LogError(
+                $"Vulkan: No physical device matches the required LUID '{Convert.ToHexString(requiredLuid!)}'. "
                     + $"Available device LUIDs: [{string.Join(", ", availableLuids!)}]"
             );
+            return VkPhysicalDevice.Null;
         }
+        if (bestDeviceByType.ContainsKey(VkPhysicalDeviceType.DiscreteGpu))
+        {
+            _logger.LogInformation("Selected discrete GPU.");
+            selectedDevice = devices[(int)bestDeviceByType[VkPhysicalDeviceType.DiscreteGpu]];
+        }
+        else if (bestDeviceByType.ContainsKey(VkPhysicalDeviceType.IntegratedGpu))
+        {
+            _logger.LogInformation("Selected integrated GPU.");
+            selectedDevice = devices[(int)bestDeviceByType[VkPhysicalDeviceType.IntegratedGpu]];
+        }
+        else if (bestDeviceByType.ContainsKey(VkPhysicalDeviceType.VirtualGpu))
+        {
+            _logger.LogInformation("Selected virtual GPU.");
+            selectedDevice = devices[(int)bestDeviceByType[VkPhysicalDeviceType.VirtualGpu]];
+        }
+        else if (bestDeviceByType.ContainsKey(VkPhysicalDeviceType.Cpu))
+        {
+            _logger.LogInformation("Selected CPU device.");
+            selectedDevice = devices[(int)bestDeviceByType[VkPhysicalDeviceType.Cpu]];
+        }
+
+        return selectedDevice;
+    }
+
+    private unsafe ResultCode InitContext()
+    {
+        // Find physical device, setup queue's and create device.
+        uint physicalDevicesCount = 0;
+        VK.vkEnumeratePhysicalDevices(_vkInstance, &physicalDevicesCount, null).CheckResult();
+
+        if (physicalDevicesCount == 0)
+        {
+            throw new Exception("Vulkan: Failed to find GPUs with Vulkan support");
+        }
+
+        var physicalDevices = stackalloc VkPhysicalDevice[(int)physicalDevicesCount];
+        VK.vkEnumeratePhysicalDevices(_vkInstance, &physicalDevicesCount, physicalDevices)
+            .CheckResult();
+
+        var luidFilterActive = Config.RequiredDeviceLuid is { Length: 8 };
+        _vkPhysicalDevice = FindBestDevice(_vkSurface, new ReadOnlySpan<VkPhysicalDevice>(physicalDevices, (int)physicalDevicesCount), luidFilterActive ? Config.RequiredDeviceLuid : null);
+
         if (_vkPhysicalDevice.IsNull)
         {
             _logger.LogError("Vulkan: No suitable physical device found");
@@ -1051,8 +1084,11 @@ internal sealed partial class VulkanContext
 
         _stagingDevice = new VulkanStagingDevice(this);
 
-        // Create async transfer queue for background uploads
-        _transferQueue = new VulkanTransferQueue(this);
+        if (DeviceQueues.HasDedicatedTransferQueue)
+        {
+            // Create async transfer queue for background uploads
+            _transferQueue = new VulkanTransferQueue(this);
+        }
 
         // default texture
         {

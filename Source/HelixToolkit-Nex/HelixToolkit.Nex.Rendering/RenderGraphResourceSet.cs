@@ -199,6 +199,11 @@ public sealed class RenderGraphResourceSet : IDisposable
             Buffers[SystemBufferNames.BufferLights] =
                 context.Data?.Lights.Buffer ?? BufferResource.Null;
         }
+        if (Buffers.ContainsKey(SystemBufferNames.BufferPBRProperties))
+        {
+            Buffers[SystemBufferNames.BufferPBRProperties] =
+                context.Data?.PBRPropertiesBuffer.Buffer ?? BufferResource.Null;
+        }
     }
 
     private void CreateAllResources(RenderContext context)
