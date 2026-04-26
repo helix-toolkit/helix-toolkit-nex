@@ -39,7 +39,8 @@ public sealed class DepthPassNode() : RenderNode
             DpiScale = context.DpiScale,
             MeshInfoBufferAddress = context.Data?.MeshInfos.GpuAddress ?? 0,
             MeshDrawBufferAddress = context.Data?.MeshDrawsOpaque.GpuAddress ?? 0,
-            MaterialBufferAddress = context.Data?.PBRPropertiesBuffer.Buffer.GpuAddress(context.Context) ?? 0,
+            MaterialBufferAddress =
+                context.Data?.PBRPropertiesBuffer.Buffer.GpuAddress(context.Context) ?? 0,
         };
         res.CmdBuffer.UpdateBuffer(fpBuffer, ref fpData);
         return base.BeginRender(in res);
@@ -89,7 +90,11 @@ public sealed class DepthPassNode() : RenderNode
         using var vs = Renderer.ShaderRepository.GetOrCreateFromGlsl(
             ShaderStage.Vertex,
             result.Source!,
-            [new ShaderDefine(BuildFlags.OUTPUT_DRAW_ID, BuildFlags.EXCLUDE_MESH_PROPS)],
+            [
+                new ShaderDefine(BuildFlags.OUTPUT_DRAW_ID),
+                new ShaderDefine(BuildFlags.EXCLUDE_MESH_PROPS),
+                new ShaderDefine(BuildFlags.DEPTH_PREPASS),
+            ],
             "DepthPass_VS"
         );
         result = shaderCompiler.CompileFragmentShader(
@@ -138,7 +143,7 @@ public sealed class DepthPassNode() : RenderNode
                 [
                     new(SystemBufferNames.BufferForwardPlusConstants, ResourceType.Buffer),
                     new(SystemBufferNames.BufferMeshDrawOpaque, ResourceType.Buffer),
-                    new(SystemBufferNames.BufferPBRProperties, ResourceType.Buffer)
+                    new(SystemBufferNames.BufferPBRProperties, ResourceType.Buffer),
                 ],
                 outputs:
                 [
@@ -147,12 +152,16 @@ public sealed class DepthPassNode() : RenderNode
                 ],
                 onSetup: (res) =>
                 {
-                    res.Framebuf.DepthStencil.Texture = res.Textures[SystemBufferNames.TextureDepthF32];
+                    res.Framebuf.DepthStencil.Texture = res.Textures[
+                        SystemBufferNames.TextureDepthF32
+                    ];
                     res.Pass.Depth.ClearDepth = 0.0f;
                     res.Pass.Depth.LoadOp = LoadOp.Clear;
                     res.Pass.Depth.StoreOp = StoreOp.Store;
 
-                    res.Framebuf.Colors[0].Texture = res.Textures[SystemBufferNames.TextureEntityId];
+                    res.Framebuf.Colors[0].Texture = res.Textures[
+                        SystemBufferNames.TextureEntityId
+                    ];
                     res.Pass.Colors[0].ClearColor = new(0, 0, 0, 0);
                     res.Pass.Colors[0].LoadOp = LoadOp.Clear;
                     res.Pass.Colors[0].StoreOp = StoreOp.Store;
