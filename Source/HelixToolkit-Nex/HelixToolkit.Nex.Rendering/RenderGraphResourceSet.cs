@@ -179,31 +179,24 @@ public sealed class RenderGraphResourceSet : IDisposable
         {
             Textures[SystemBufferNames.FinalOutputTexture] = context.FinalOutputTexture;
         }
-        if (Buffers.ContainsKey(SystemBufferNames.BufferMeshDrawOpaque))
-        {
-            Buffers[SystemBufferNames.BufferMeshDrawOpaque] =
-                context.Data?.MeshDrawsOpaque.Buffer ?? BufferResource.Null;
-        }
-        if (Buffers.ContainsKey(SystemBufferNames.BufferMeshDrawTransparent))
-        {
-            Buffers[SystemBufferNames.BufferMeshDrawTransparent] =
-                context.Data?.MeshDrawsTransparent.Buffer ?? BufferResource.Null;
-        }
-        if (Buffers.ContainsKey(SystemBufferNames.BufferDirectionalLight))
-        {
-            Buffers[SystemBufferNames.BufferDirectionalLight] =
-                context.Data?.DirectionalLights.Buffer ?? BufferResource.Null;
-        }
-        if (Buffers.ContainsKey(SystemBufferNames.BufferLights))
-        {
-            Buffers[SystemBufferNames.BufferLights] =
-                context.Data?.Lights.Buffer ?? BufferResource.Null;
-        }
-        if (Buffers.ContainsKey(SystemBufferNames.BufferPBRProperties))
-        {
-            Buffers[SystemBufferNames.BufferPBRProperties] =
-                context.Data?.PBRPropertiesBuffer.Buffer ?? BufferResource.Null;
-        }
+
+        Buffers[SystemBufferNames.BufferMeshDrawOpaque] =
+            context.Data?.MeshDrawsOpaque.Buffer ?? BufferResource.Null;
+
+        Buffers[SystemBufferNames.BufferMeshDrawTransparent] =
+            context.Data?.MeshDrawsTransparent.Buffer ?? BufferResource.Null;
+
+        Buffers[SystemBufferNames.BufferDirectionalLight] =
+            context.Data?.DirectionalLights.Buffer ?? BufferResource.Null;
+
+        Buffers[SystemBufferNames.BufferLights] =
+            context.Data?.Lights.Buffer ?? BufferResource.Null;
+
+        Buffers[SystemBufferNames.BufferPBRProperties] =
+            context.Data?.PBRPropertiesBuffer.Buffer ?? BufferResource.Null;
+
+        Buffers[SystemBufferNames.BufferMeshInfo] =
+            context.Data?.MeshInfos.Buffer ?? BufferResource.Null;
     }
 
     private void CreateAllResources(RenderContext context)
