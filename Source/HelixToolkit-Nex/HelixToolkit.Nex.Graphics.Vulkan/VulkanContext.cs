@@ -6,12 +6,26 @@ public sealed class VulkanContextConfig()
 {
     public delegate VkSurfaceKHR CreateSurface(VkInstance instance);
     public readonly VkVersion VulkanVersion = VkVersion.Version_1_3;
+    /// <summary>
+    /// When true, the Vulkan validation callback will invoke std::terminate() after logging any validation error. This is useful for development and debugging to immediately catch and diagnose validation issues. Default false, as it can be disruptive in production environments, but can be enabled when running with a debugger attached to break on the exception.
+    /// </summary>
     public bool TerminateOnValidationError = false; // invoke std::terminate() on any validation error
+    /// <summary>
+    /// When true, enables Vulkan validation layers if available. This will cause the application to log detailed validation messages for any incorrect Vulkan API usage, which is extremely useful for development and debugging. Default is true if the KHRONOS validation layer is available, false otherwise.
+    /// </summary>
     public bool EnableValidation = true;
+
     public ColorSpace SwapchainRequestedColorSpace = ColorSpace.SRGB_NONLINEAR;
+    /// <summary>
+    /// If set, VulkanContext will try to use this present mode for the swapchain. If the requested mode is not available, it will fall back to the best available mode (preferring MAILBOX > IMMEDIATE > FIFO). This is useful for applications that want to prefer low-latency present modes when available, but still work on systems that only support FIFO.
+    /// </summary>
+    public VkPresentModeKHR? PreferredPresentMode = VkPresentModeKHR.FifoRelaxed;
+
+    /// <summary>
+    /// When true, enables Vulkan Memory Allocator (VMA) for efficient memory management. Default true.
+    /// </summary>
     public bool EnableVma = true;
 
-    // owned by the application - should be alive until createVulkanContextWithSwapchain() returns
     public nint PipelineCacheData = nint.Zero;
     public size_t PipelineCacheDataSize = 0;
     public readonly List<string> ExtensionsInstance = []; // add extra instance extensions on top of required ones
@@ -34,8 +48,6 @@ public sealed class VulkanContextConfig()
     /// Used by the interop layer to ensure Vulkan and DirectX use the same GPU.
     /// </summary>
     public byte[]? RequiredDeviceLuid;
-
-    public bool ForcePresentModeFIFO = false; // force VK_PRESENT_MODE_FIFO_KHR as the only present mode, even if other modes are available
 
     public delegate void ShaderModuleErrorCallback(
         in string errorMessage,
