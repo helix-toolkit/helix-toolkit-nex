@@ -5,8 +5,6 @@ public class PrepareNode : RenderNode
     public override string Name => nameof(PrepareNode);
     public override Color4 DebugColor => Color.Black;
 
-    public Color4 BackgroundColor { set; get; } = Color.Transparent;
-
     public override void AddToGraph(RenderGraph graph)
     {
         graph
@@ -92,12 +90,12 @@ public class PrepareNode : RenderNode
     {
         res.CmdBuffer.ClearColorImage(
             res.Textures[SystemBufferNames.TextureColorF16A],
-            BackgroundColor,
+            res.Context.RenderParams.BackgroundColor,
             new TextureLayers()
         );
         res.CmdBuffer.ClearColorImage(
             res.Textures[SystemBufferNames.TextureColorF16B],
-            BackgroundColor,
+            res.Context.RenderParams.BackgroundColor,
             new TextureLayers()
         );
 
