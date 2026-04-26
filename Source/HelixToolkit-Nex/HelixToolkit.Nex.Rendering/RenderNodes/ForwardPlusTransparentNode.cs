@@ -137,6 +137,7 @@ public class ForwardPlusTransparentNode : RenderNode
                 new(SystemBufferNames.BufferForwardPlusConstants, ResourceType.Buffer),
                 new(SystemBufferNames.BufferLightGrid, ResourceType.Buffer),
                 new(SystemBufferNames.BufferLightIndex, ResourceType.Buffer),
+                new(SystemBufferNames.BufferPBRProperties, ResourceType.Buffer)
             ],
             outputs: [new(SystemBufferNames.TextureColorF16A, ResourceType.Texture)],
             onSetup: (res) =>
@@ -153,6 +154,7 @@ public class ForwardPlusTransparentNode : RenderNode
                 res.Deps.Buffers[1] = res.Buffers[SystemBufferNames.BufferForwardPlusConstants];
                 res.Deps.Buffers[2] = res.Buffers[SystemBufferNames.BufferLightGrid];
                 res.Deps.Buffers[3] = res.Buffers[SystemBufferNames.BufferLightIndex];
+                res.Deps.Buffers[4] = res.Buffers[SystemBufferNames.BufferPBRProperties];
             },
             after: [nameof(ForwardPlusOpaqueNode), nameof(PointRenderNode)]
         );
