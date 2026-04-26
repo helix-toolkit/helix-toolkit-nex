@@ -4,7 +4,7 @@ namespace HelixToolkit.Nex.Graphics.Vulkan;
 
 internal sealed class VulkanSwapchain : IDisposable
 {
-    public const uint32_t MAX_SWAPCHAIN_IMAGES = 16;
+    public const uint32_t MAX_SWAPCHAIN_IMAGES = 8;
     private static readonly ILogger _logger = LogManager.Create<VulkanSwapchain>();
 
     private readonly VulkanContext _ctx;
@@ -53,10 +53,10 @@ internal sealed class VulkanSwapchain : IDisposable
             TimelineWaitValues[i] = 0;
         }
 
-        CreateSwapchain().CheckResult();
+        CreateSwapchain(ctx.Config.PreferredPresentMode).CheckResult();
     }
 
-    private VkResult CreateSwapchain()
+    private VkResult CreateSwapchain(VkPresentModeKHR? forcedPresentMode = null)
     {
         HxDebug.Assert(
             SurfaceFormat.format != VK.VK_FORMAT_UNDEFINED,
@@ -93,26 +93,45 @@ internal sealed class VulkanSwapchain : IDisposable
             var chooseSwapPresentMode = new Func<IReadOnlyList<VkPresentModeKHR>, VkPresentModeKHR>(
                 modes =>
                 {
+                    if (forcedPresentMode.HasValue)
+                    {
+                        if (modes.Contains(forcedPresentMode.Value))
+                        {
+                            return forcedPresentMode.Value;
+                        }
+                        else
+                        {
+                            _logger.LogWarning(
+                                "Forced present mode {0} is not supported by the device. Falling back to default present mode selection.",
+                                forcedPresentMode.Value
+                            );
+                        }
+                    }
                     if (SystemInfo.IsLinuxPlatform() || SystemInfo.IsArmArchitecture())
                     {
+                        if (modes.Contains(VkPresentModeKHR.Fifo))
+                        {
+                            return VkPresentModeKHR.Fifo;
+                        }
                         if (modes.Contains(VkPresentModeKHR.Immediate))
                         {
                             return VkPresentModeKHR.Immediate;
                         }
                     }
-                    if (modes.Contains(VkPresentModeKHR.Mailbox))
-                    {
-                        return VkPresentModeKHR.Mailbox;
-                    }
-                    if (modes.Contains(VkPresentModeKHR.Immediate))
-                    {
-                        return VkPresentModeKHR.Immediate;
-                    }
+
                     if (modes.Contains(VkPresentModeKHR.FifoRelaxed))
                     {
                         return VkPresentModeKHR.FifoRelaxed;
                     }
-                    return VkPresentModeKHR.Fifo;
+                    if (modes.Contains(VkPresentModeKHR.Fifo))
+                    {
+                        return VkPresentModeKHR.Fifo;
+                    }
+                    if (modes.Contains(VkPresentModeKHR.Mailbox))
+                    {
+                        return VkPresentModeKHR.Mailbox;
+                    }
+                    return VkPresentModeKHR.Immediate;
                 }
             );
 
@@ -167,9 +186,9 @@ internal sealed class VulkanSwapchain : IDisposable
                     &capabilities
                 )
                 .CheckResult();
-            var presentMode = _ctx.Config.ForcePresentModeFIFO
-                ? VkPresentModeKHR.Fifo
-                : chooseSwapPresentMode(_ctx.DevicePresentModes);
+            var presentMode = chooseSwapPresentMode(_ctx.DevicePresentModes);
+            _logger.LogInformation("Chosen swapchain present mode: {0}", presentMode);
+
             var pmci = new VkSwapchainPresentModesCreateInfoKHR
             {
                 presentModeCount = 1,
@@ -259,8 +278,8 @@ internal sealed class VulkanSwapchain : IDisposable
                     },
                     VK.VK_IMAGE_TYPE_2D,
                     SurfaceFormat.format,
-                    isDepthFormat: SurfaceFormat.format.IsDepthFormat(),
-                    isStencilFormat: SurfaceFormat.format.IsStencilFormat(),
+                    isDepthFormat: false,
+                    isStencilFormat: false,
                     true,
                     false
                 );
