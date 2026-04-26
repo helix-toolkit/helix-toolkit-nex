@@ -65,7 +65,6 @@ public sealed class DepthPassNode() : RenderNode
     protected override void EndRender(in RenderResources res)
     {
         base.EndRender(res);
-        res.CmdBuffer.TransitionToShaderReadOnly(res.Textures[SystemBufferNames.TextureDepthF32]);
     }
 
     private bool CreatePipeline()

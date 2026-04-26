@@ -46,6 +46,11 @@ public readonly struct CameraParams(
     );
 };
 
+public sealed class RenderParams
+{
+    public Color4 BackgroundColor = Color.Black;
+}
+
 public sealed class RenderContext(IServiceProvider services) : Initializable
 {
     private static readonly ILogger _logger = LogManager.Create<RenderContext>();
@@ -80,6 +85,10 @@ public sealed class RenderContext(IServiceProvider services) : Initializable
     /// <see cref="RenderContext"/> and disposed when the context is torn down.
     /// </summary>
     public RenderGraphResourceSet ResourceSet { get; } = new();
+    /// <summary>
+    /// Render parameters including background color and other settings.
+    /// </summary>
+    public RenderParams RenderParams { get; } = new();
 
     private static readonly Size DefaultWindowSize = new(1, 1);
     private Size _windowSize = DefaultWindowSize;
