@@ -8,7 +8,7 @@ namespace HelixToolkit.Nex.Graphics;
 /// cref="MAX_SUBMIT_DEPENDENCIES"/>.</remarks>
 public sealed class Dependencies
 {
-    public const uint32_t MAX_SUBMIT_DEPENDENCIES = 4;
+    public const uint32_t MAX_SUBMIT_DEPENDENCIES = 6;
 
     public readonly TextureHandle[] Textures = new TextureHandle[MAX_SUBMIT_DEPENDENCIES];
 

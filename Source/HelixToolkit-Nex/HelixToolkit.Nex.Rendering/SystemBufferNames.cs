@@ -37,6 +37,8 @@ public static class SystemBufferNames
     public const string BufferDirectionalLight = "BufDirLight";
     public const string BufferLights = "BufLights";
 
+    public const string BufferPBRProperties = "BufPBRProps";
+
     /// <summary>
     /// Intermediate texture A used by the <see cref="PostEffects.Bloom"/> effect for the
     /// brightness-extract output and the final blurred result.
