@@ -12,4 +12,10 @@ public static class BuildFlags
     /// Used to compile vertex shaders for depth pass rendering that outputs draw index id. This can be used to implement features like object picking or selection by encoding the draw index into the shader output.
     /// </summary>
     public const string OUTPUT_DRAW_ID = "OUTPUT_DRAW_ID";
+
+    /// <summary>
+    /// Used to compile shaders for depth pre-pass rendering.
+    /// This can be used to optimize rendering by performing a depth-only pass before the main rendering pass, allowing for early depth testing and reducing overdraw.
+    /// </summary>
+    public const string DEPTH_PREPASS = "DEPTH_PREPASS";
 }
