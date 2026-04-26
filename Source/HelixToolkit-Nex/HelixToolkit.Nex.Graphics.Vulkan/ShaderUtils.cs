@@ -294,9 +294,14 @@ internal sealed class ShaderUtils
 
         using Shader shader = new(input);
 
-        foreach (var define in defines ?? [])
+        if (defines is { Length: > 0 })
         {
-            shader.SetPreamble($"{define}\n");
+            StringBuilder preamble = new();
+            foreach (var define in defines)
+            {
+                preamble.AppendLine(define.ToString());
+            }
+            shader.SetPreamble(preamble.ToString());
         }
 
         if (!shader.Preprocess())
