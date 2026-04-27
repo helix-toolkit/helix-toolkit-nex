@@ -1,16 +1,19 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-    <PropertyGroup>
+    <PropertyGroup Condition="!$([MSBuild]::IsOSPlatform('Linux'))">
         <TargetFramework>net8.0-windows</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <LangVersion>latest</LangVersion>
-        <Configurations>Debug;Release;LinuxDebug;LinuxRelease</Configurations>
+        <Configurations>Debug;Release</Configurations>
     </PropertyGroup>
-    <ItemGroup>
+    <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('Linux'))">
+        <TargetFramework>net8.0</TargetFramework>
+    </PropertyGroup>
+    <ItemGroup Condition="!$([MSBuild]::IsOSPlatform('Linux'))">
       <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
     </ItemGroup>
 
-    <ItemGroup>
+    <ItemGroup Condition="!$([MSBuild]::IsOSPlatform('Linux'))">
         <ProjectReference Include="..\..\..\HelixToolkit.Nex.Engine\HelixToolkit.Nex.Engine.csproj" />
         <ProjectReference Include="..\..\..\HelixToolkit.Nex.Graphics.Vulkan\HelixToolkit.Nex.Graphics.Vulkan.csproj" />
         <ProjectReference Include="..\..\..\HelixToolkit.Nex.Interop.DirectX\HelixToolkit.Nex.Interop.DirectX.csproj" />

@@ -61,8 +61,8 @@ Most modern IDEs (Visual Studio, VS Code, Rider) automatically recognize and app
 To build the solution:
 
 ```powershell
-dotnet restore Source/HelixToolkit-Nex/HelixToolkit.Nex.sln
-dotnet build Source/HelixToolkit-Nex/HelixToolkit.Nex.sln --configuration Debug
+dotnet restore Source/HelixToolkit-Nex/HelixToolkit.Nex.slnx
+dotnet build Source/HelixToolkit-Nex/HelixToolkit.Nex.slnx --configuration Debug
 ```
 
 ## Running Tests
@@ -70,7 +70,7 @@ dotnet build Source/HelixToolkit-Nex/HelixToolkit.Nex.sln --configuration Debug
 To run the test suite:
 
 ```powershell
-dotnet test Source/HelixToolkit-Nex/HelixToolkit.Nex.sln --configuration Debug
+dotnet test Source/HelixToolkit-Nex/HelixToolkit.Nex.slnx --configuration Debug
 ```
 
 Note: Tests tagged with `TestCategory=GPURequired` require GPU access and are skipped in CI environments.

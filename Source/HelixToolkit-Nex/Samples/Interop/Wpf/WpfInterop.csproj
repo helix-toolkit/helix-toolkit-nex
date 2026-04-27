@@ -1,8 +1,13 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-    <PropertyGroup>
+    <PropertyGroup Condition="!$([MSBuild]::IsOSPlatform('Linux'))">
         <OutputType>WinExe</OutputType>
         <TargetFramework>net8.0-windows</TargetFramework>
         <UseWPF>true</UseWPF>
+    </PropertyGroup>
+    <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('Linux'))">
+        <TargetFramework>net8.0</TargetFramework>
+    </PropertyGroup>
+    <PropertyGroup>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <LangVersion>latest</LangVersion>
         <ImplicitUsings>enable</ImplicitUsings>
@@ -10,7 +15,7 @@
         <Configurations>Debug;Release</Configurations>
     </PropertyGroup>
 
-    <ItemGroup>
+    <ItemGroup Condition="!$([MSBuild]::IsOSPlatform('Linux'))">
         <ProjectReference Include="..\..\..\HelixToolkit.Nex.Engine\HelixToolkit.Nex.Engine.csproj" />
         <ProjectReference Include="..\..\..\HelixToolkit.Nex.Graphics.Vulkan\HelixToolkit.Nex.Graphics.Vulkan.csproj" />
         <ProjectReference Include="..\..\..\HelixToolkit.Nex.Graphics\HelixToolkit.Nex.Graphics.csproj" />

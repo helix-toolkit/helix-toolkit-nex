@@ -1,6 +1,11 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-    <PropertyGroup>
+    <PropertyGroup Condition="!$([MSBuild]::IsOSPlatform('Linux'))">
         <TargetFramework>net8.0-windows</TargetFramework>
+    </PropertyGroup>
+    <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('Linux'))">
+        <TargetFramework>net8.0</TargetFramework>
+    </PropertyGroup>
+    <PropertyGroup>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <LangVersion>latest</LangVersion>
@@ -13,7 +18,7 @@
         <Configurations>Debug;Release</Configurations>
     </PropertyGroup>
 
-    <ItemGroup>
+    <ItemGroup Condition="!$([MSBuild]::IsOSPlatform('Linux'))">
         <PackageReference Include="Vortice.Direct3D11" Version="3.6.2" />
         <PackageReference Include="Vortice.DXGI" Version="3.6.2" />
     </ItemGroup>
@@ -33,10 +38,10 @@
         </AssemblyAttribute>
     </ItemGroup>
 
-    <ItemGroup>
-      <ProjectReference Include="..\HelixToolkit.Nex.Graphics.Vulkan\HelixToolkit.Nex.Graphics.Vulkan.csproj" />
-      <ProjectReference Include="..\HelixToolkit.Nex.Graphics\HelixToolkit.Nex.Graphics.csproj" />
-      <ProjectReference Include="..\HelixToolkit.Nex.Rendering\HelixToolkit.Nex.Rendering.csproj" />
+    <ItemGroup Condition="!$([MSBuild]::IsOSPlatform('Linux'))">
+        <ProjectReference Include="..\HelixToolkit.Nex.Graphics.Vulkan\HelixToolkit.Nex.Graphics.Vulkan.csproj" />
+        <ProjectReference Include="..\HelixToolkit.Nex.Graphics\HelixToolkit.Nex.Graphics.csproj" />
+        <ProjectReference Include="..\HelixToolkit.Nex.Rendering\HelixToolkit.Nex.Rendering.csproj" />
     </ItemGroup>
     <ItemGroup>
         <None Update="README.md">
