@@ -36,7 +36,9 @@ Key features include:
 var config = new VulkanContextConfig
 {
     EnableValidation = true,
-    EnableVma = true
+    EnableVma = true,
+    TerminateOnValidationError = false, // New property added
+    PreferredPresentMode = VkPresentModeKHR.FifoRelaxed // New property added
 };
 
 var context = VulkanBuilder.Create(config, windowHandle, displayHandle);
