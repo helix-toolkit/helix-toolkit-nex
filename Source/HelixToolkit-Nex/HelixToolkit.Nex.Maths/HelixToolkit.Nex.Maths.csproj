@@ -12,6 +12,7 @@
         <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <PackageIcon>icon.png</PackageIcon>
+        <Configurations>Debug;Release;LinuxDebug;LinuxRelease</Configurations>
     </PropertyGroup>
     <ItemGroup>
         <ProjectReference Include="..\HelixTookit.Nex\HelixToolkit.Nex.csproj" />
@@ -21,7 +22,7 @@
             <Pack>True</Pack>
             <PackagePath>\</PackagePath>
         </None>
-        <None  Include="..\..\..\Assets\icon.png">
+        <None Include="..\..\..\Assets\icon.png">
             <Pack>True</Pack>
             <PackagePath>\</PackagePath>
         </None>

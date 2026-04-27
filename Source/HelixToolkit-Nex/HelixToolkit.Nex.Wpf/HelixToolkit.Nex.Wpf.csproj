@@ -11,12 +11,19 @@
         <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <PackageIcon>icon.png</PackageIcon>
+        <Configurations>Debug;Release;LinuxDebug;LinuxRelease</Configurations>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
         <DefineConstants>$(DefineConstants);HxWPF</DefineConstants>
     </PropertyGroup>
+    <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='LinuxDebug|AnyCPU'">
+      <DefineConstants>$(DefineConstants);HxWPF</DefineConstants>
+    </PropertyGroup>
     <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
         <DefineConstants>$(DefineConstants);HxWPF</DefineConstants>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='LinuxRelease|AnyCPU'">
+      <DefineConstants>$(DefineConstants);HxWPF</DefineConstants>
     </PropertyGroup>
 
     <ItemGroup>
@@ -26,16 +33,13 @@
     <ItemGroup>
         <PackageReference Include="Vortice.Direct3D9" Version="3.6.2" />
     </ItemGroup>
-    <Import
-        Project="..\HelixToolkit.Nex.Interop.PlatformShared\HelixToolkit.Nex.Interop.PlatformShared.projitems"
-        Label="Shared"
-    />
+    <Import Project="..\HelixToolkit.Nex.Interop.PlatformShared\HelixToolkit.Nex.Interop.PlatformShared.projitems" Label="Shared" />
     <ItemGroup>
         <None Update="README.md">
             <Pack>True</Pack>
             <PackagePath>\</PackagePath>
         </None>
-        <None  Include="..\..\..\Assets\icon.png">
+        <None Include="..\..\..\Assets\icon.png">
             <Pack>True</Pack>
             <PackagePath>\</PackagePath>
         </None>

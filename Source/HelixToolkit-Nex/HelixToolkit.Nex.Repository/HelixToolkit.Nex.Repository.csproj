@@ -9,6 +9,7 @@
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
         <PackageIcon>icon.png</PackageIcon>
+        <Configurations>Debug;Release;LinuxDebug;LinuxRelease</Configurations>
     </PropertyGroup>
 
     <ItemGroup>

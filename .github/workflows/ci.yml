@@ -17,7 +17,7 @@ on:
       - '.gitignore'
 
 jobs:
-  build:
+  build-windows:
     runs-on: windows-latest
     steps:
       - name: Checkout repository
@@ -58,11 +58,52 @@ jobs:
       - name: Build Debug
         run: dotnet build Source/HelixToolkit-Nex/HelixToolkit.Nex.sln --configuration Debug --no-restore /p:Version=${{ steps.version_step.outputs.SemVer }} /p:AssemblyVersion=${{ steps.version_step.outputs.assemblySemVer }}
 
-      - name: Test Debug
-        run: dotnet test Source/HelixToolkit-Nex/HelixToolkit.Nex.sln --configuration Debug --no-build --verbosity normal --filter "TestCategory!=GPURequired"
-
       - name: Build Release
         run: dotnet build Source/HelixToolkit-Nex/HelixToolkit.Nex.sln --configuration Release --no-restore /p:Version=${{ steps.version_step.outputs.SemVer }} /p:AssemblyVersion=${{ steps.version_step.outputs.assemblySemVer }}
 
       - name: Test Release
         run: dotnet test Source/HelixToolkit-Nex/HelixToolkit.Nex.sln --configuration Release --no-build --verbosity normal --filter "TestCategory!=GPURequired"
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Install Vulkan SDK
+        uses: humbletim/setup-vulkan-sdk@v1.2.1
+        with:
+          vulkan-query-version: 1.3.296.0
+          vulkan-components: Vulkan-Headers, Vulkan-Loader
+          vulkan-use-cache: true
+
+      - name: Install GitVersion
+        uses: gittools/actions/gitversion/setup@v3.2.0
+        with:
+          versionSpec: '6.2.x'
+
+      - name: Determine Version
+        id: version_step
+        uses: gittools/actions/gitversion/execute@v3.2.0
+        with:
+          useConfigFile: true
+          configFilePath: gitversion.yml
+
+      - name: Restore dependencies
+        run: dotnet restore Source/HelixToolkit-Nex/HelixToolkit.Nex.sln
+
+      - name: Build LinuxDebug
+        run: dotnet build Source/HelixToolkit-Nex/HelixToolkit.Nex.sln --configuration LinuxDebug --no-restore /p:Version=${{ steps.version_step.outputs.SemVer }} /p:AssemblyVersion=${{ steps.version_step.outputs.assemblySemVer }}
+
+      - name: Build LinuxRelease
+        run: dotnet build Source/HelixToolkit-Nex/HelixToolkit.Nex.sln --configuration LinuxRelease --no-restore /p:Version=${{ steps.version_step.outputs.SemVer }} /p:AssemblyVersion=${{ steps.version_step.outputs.assemblySemVer }}
+
+      - name: Test LinuxRelease
+        run: dotnet test Source/HelixToolkit-Nex/HelixToolkit.Nex.sln --configuration LinuxRelease --no-build --verbosity normal --filter "TestCategory!=GPURequired"
