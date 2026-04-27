@@ -11,7 +11,8 @@ The graphics interface and Vulkan backend are inspired by [LightWeightVk](https:
 Currently in development.
 
 ## Minimum Requirements
-- Windows 10 or later (Linux support planned)
+- Windows 10 or later
+- Linux (Tested on Ubuntu 26.04)
 - Vulkan 1.3 compatible GPU and drivers
 - .NET 8.0 or later
 
@@ -66,7 +67,7 @@ Currently in development.
 
 ## Interoperability
 
-- Render content with Vulkan Backend in Wpf and WinUI applications using D3D11 interoperation. (Requires Vulkan Extension: `VK_KHR_external_memory_win32`)
+- Render content with Vulkan Backend in Wpf and WinUI applications using D3D11 interoperation. (Requires Vulkan Extension: `VK_KHR_external_memory_win32`. Only tested on Discrete Graphics Card.)
 
     - [WPF](Source/HelixToolkit-Nex/Samples/Interop/Wpf)
     <img src="Source/HelixToolkit-Nex/Samples/Interop/Wpf/Screenshots/Sample.jpg" width=400>
