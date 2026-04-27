@@ -1,0 +1,108 @@
+<Solution>
+  <Configurations>
+    <BuildType Name="Debug" />
+    <BuildType Name="LinuxDebug" />
+    <BuildType Name="LinuxRelease" />
+    <BuildType Name="Release" />
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Folder Name="/Samples/">
+    <Project Path="Samples/Application/Application.csproj" />
+    <Project Path="Samples/SceneSamples/SceneSamples.csproj" />
+  </Folder>
+  <Folder Name="/Samples/GrahicsAPI/">
+    <Project Path="Samples/GraphicsAPI/ForwardPlusSimple/ForwardPlusSimple.csproj" />
+    <Project Path="Samples/GraphicsAPI/HelloTriangle/HelloTriangle.csproj" />
+    <Project Path="Samples/GraphicsAPI/ImGuiTest/ImGuiTest.csproj" />
+    <Project Path="Samples/GraphicsAPI/InstancingMeshCulling/InstancingMeshCulling.csproj" />
+    <Project Path="Samples/GraphicsAPI/MeshCulling/MeshCulling.csproj" />
+    <Project Path="Samples/GraphicsAPI/RenderToCubeMap/RenderToCubeMap.csproj" />
+    <Project Path="Samples/GraphicsAPI/RenderToCubeMapSinglePass/RenderToCubeMapSinglePass.csproj" />
+  </Folder>
+  <Folder Name="/Samples/Integration/">
+    <Project Path="Samples/Integration/DepthPrepassRenderer/DepthPrepassRenderer.csproj" />
+    <Project Path="Samples/Integration/ImGui/ImGui.csproj" />
+    <Project Path="Samples/Integration/LightCulling/LightCulling.csproj" />
+    <Project Path="Samples/Integration/PBRTest/PBRTest.csproj" />
+    <Project Path="Samples/Integration/PickingTest/PickingTest.csproj" />
+    <Project Path="Samples/Integration/Points/Points.csproj" />
+    <Project Path="Samples/Integration/TextureTest/TextureTest.csproj" />
+    <Project Path="Samples/Integration/Transparent/Transparent.csproj" />
+  </Folder>
+  <Folder Name="/Samples/Interop/">
+    <Project Path="Samples/Interop/InteropShared/InteropShared.csproj" />
+  </Folder>
+  <Folder Name="/Samples/Interop/WinUI/">
+    <Project Path="Samples/Interop/WinUI/WinUIInterop.csproj">
+      <Platform Solution="Debug|Any CPU" Project="x64" />
+      <Platform Solution="Release|Any CPU" Project="x64" />
+      <Build Solution="LinuxDebug|Any CPU" Project="false" />
+      <Build Solution="LinuxRelease|Any CPU" Project="false" />
+    </Project>
+  </Folder>
+  <Folder Name="/Samples/Interop/Wpf/">
+    <Project Path="Samples/Interop/Wpf/WpfInterop.csproj">
+      <Build Solution="LinuxDebug|Any CPU" Project="false" />
+      <Build Solution="LinuxRelease|Any CPU" Project="false" />
+    </Project>
+  </Folder>
+  <Folder Name="/Solution Items/">
+    <File Path="../../.editorconfig" />
+    <File Path="../../.github/workflows/ci.yml" />
+    <File Path="../../.github/workflows/doc-agent.yml" />
+    <File Path="../../.github/instructions/context.instructions.md" />
+    <File Path="../../.github/scripts/doc_agent.py" />
+    <File Path="../../CODE_FORMATTING.md" />
+    <File Path="../../CONTRIBUTING.md" />
+    <File Path="../../README.md" />
+    <File Path="../../Scripts/fix-naming.ps1" />
+    <File Path="../../Scripts/format-solution.ps1" />
+  </Folder>
+  <Project Path="HelixTookit.Nex/HelixToolkit.Nex.csproj" />
+  <Project Path="HelixToolkit.Nex.CodeGen.Tests/HelixToolkit.Nex.CodeGen.Tests.csproj" />
+  <Project Path="HelixToolkit.Nex.CodeGen/HelixToolkit.Nex.CodeGen.csproj" />
+  <Project Path="HelixToolkit.Nex.Engine/HelixToolkit.Nex.Engine.csproj" />
+  <Project Path="HelixToolkit.Nex.EntityComponentSystem.Tests/HelixToolkit.Nex.ECS.Tests.csproj" />
+  <Project Path="HelixToolkit.Nex.EntityComponentSystem/HelixToolkit.Nex.ECS.csproj" />
+  <Project Path="HelixToolkit.Nex.Geometries.Builders/HelixToolkit.Nex.Geometries.Builders.csproj" />
+  <Project Path="HelixToolkit.Nex.Geometry.Tests/HelixToolkit.Nex.Geometries.Tests.csproj" />
+  <Project Path="HelixToolkit.Nex.Geometry/HelixToolkit.Nex.Geometries.csproj" />
+  <Project Path="HelixToolkit.Nex.Graphics.Mock/HelixToolkit.Nex.Graphics.Mock.csproj" />
+  <Project Path="HelixToolkit.Nex.Graphics.Vulkan.Tests/HelixToolkit.Nex.Graphics.Vulkan.Tests.csproj" />
+  <Project Path="HelixToolkit.Nex.Graphics.Vulkan/HelixToolkit.Nex.Graphics.Vulkan.csproj" />
+  <Project Path="HelixToolkit.Nex.Graphics/HelixToolkit.Nex.Graphics.csproj" />
+  <Project Path="HelixToolkit.Nex.ImGui/HelixToolkit.Nex.ImGui.csproj" />
+  <Project Path="HelixToolkit.Nex.Interop.DirectX.Tests/HelixToolkit.Nex.Interop.DirectX.Tests.csproj">
+    <Build Solution="LinuxDebug|Any CPU" Project="false" />
+    <Build Solution="LinuxRelease|Any CPU" Project="false" />
+  </Project>
+  <Project Path="HelixToolkit.Nex.Interop.DirectX/HelixToolkit.Nex.Interop.DirectX.csproj">
+    <Build Solution="LinuxDebug|Any CPU" Project="false" />
+    <Build Solution="LinuxRelease|Any CPU" Project="false" />
+  </Project>
+  <Project Path="HelixToolkit.Nex.Interop.PlatformShared/HelixToolkit.Nex.Interop.PlatformShared.shproj" />
+  <Project Path="HelixToolkit.Nex.Material/HelixToolkit.Nex.Material.csproj" />
+  <Project Path="HelixToolkit.Nex.Maths.Tests/HelixToolkit.Nex.Maths.Tests.csproj" />
+  <Project Path="HelixToolkit.Nex.Maths/HelixToolkit.Nex.Maths.csproj" />
+  <Project Path="HelixToolkit.Nex.Rendering.Tests/HelixToolkit.Nex.Rendering.Tests.csproj" />
+  <Project Path="HelixToolkit.Nex.Rendering/HelixToolkit.Nex.Rendering.csproj" />
+  <Project Path="HelixToolkit.Nex.Repository.Tests/HelixToolkit.Nex.Repository.Tests.csproj" />
+  <Project Path="HelixToolkit.Nex.Repository/HelixToolkit.Nex.Repository.csproj" />
+  <Project Path="HelixToolkit.Nex.Scene.Tests/HelixToolkit.Nex.Scene.Tests.csproj" />
+  <Project Path="HelixToolkit.Nex.Scene/HelixToolkit.Nex.Scene.csproj" />
+  <Project Path="HelixToolkit.Nex.Shaders.Tests/HelixToolkit.Nex.Shaders.Tests.csproj" />
+  <Project Path="HelixToolkit.Nex.Shaders/HelixToolkit.Nex.Shaders.csproj" />
+  <Project Path="HelixToolkit.Nex.Tests/HelixToolkit.Nex.Tests.csproj" />
+  <Project Path="HelixToolkit.Nex.Textures.Tests/HelixToolkit.Nex.Textures.Tests.csproj" />
+  <Project Path="HelixToolkit.Nex.Textures/HelixToolkit.Nex.Textures.csproj" />
+  <Project Path="HelixToolkit.Nex.WinUI/HelixToolkit.Nex.WinUI.csproj">
+    <Build Solution="LinuxDebug|Any CPU" Project="false" />
+    <Build Solution="LinuxRelease|Any CPU" Project="false" />
+  </Project>
+  <Project Path="HelixToolkit.Nex.Wpf/HelixToolkit.Nex.Wpf.csproj">
+    <Build Solution="LinuxDebug|Any CPU" Project="false" />
+    <Build Solution="LinuxRelease|Any CPU" Project="false" />
+  </Project>
+</Solution>
