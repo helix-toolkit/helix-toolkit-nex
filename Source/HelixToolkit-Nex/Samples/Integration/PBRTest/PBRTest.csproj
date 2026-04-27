@@ -6,6 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <RootNamespace>PBRTest</RootNamespace>
+    <Configurations>Debug;Release;LinuxDebug;LinuxRelease</Configurations>
   </PropertyGroup>
 
   <ItemGroup>

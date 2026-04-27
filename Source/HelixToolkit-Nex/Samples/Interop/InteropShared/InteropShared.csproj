@@ -4,6 +4,7 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <LangVersion>latest</LangVersion>
+        <Configurations>Debug;Release;LinuxDebug;LinuxRelease</Configurations>
     </PropertyGroup>
     <ItemGroup>
       <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />

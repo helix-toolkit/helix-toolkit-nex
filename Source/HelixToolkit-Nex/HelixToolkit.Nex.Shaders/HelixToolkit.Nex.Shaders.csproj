@@ -9,6 +9,7 @@
         <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <PackageIcon>icon.png</PackageIcon>
+        <Configurations>Debug;Release;LinuxDebug;LinuxRelease</Configurations>
     </PropertyGroup>
 
     <ItemGroup>

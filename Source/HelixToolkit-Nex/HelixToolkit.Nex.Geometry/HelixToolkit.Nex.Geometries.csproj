@@ -13,6 +13,7 @@
         <!-- Enable source generator diagnostics and emit generated files -->
         <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
         <CompilerGeneratedFilesOutputPath>$(BaseIntermediateOutputPath)\Generated</CompilerGeneratedFilesOutputPath>
+        <Configurations>Debug;Release;LinuxDebug;LinuxRelease</Configurations>
     </PropertyGroup>
 
     <ItemGroup>
@@ -33,7 +34,7 @@
             <Pack>True</Pack>
             <PackagePath>\</PackagePath>
         </None>
-        <None  Include="..\..\..\Assets\icon.png">
+        <None Include="..\..\..\Assets\icon.png">
             <Pack>True</Pack>
             <PackagePath>\</PackagePath>
         </None>

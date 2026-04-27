@@ -5,6 +5,7 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <UseVSTest>true</UseVSTest>
+        <Configurations>Debug;Release;LinuxDebug;LinuxRelease</Configurations>
     </PropertyGroup>
 
     <ItemGroup>
