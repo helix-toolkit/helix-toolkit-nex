@@ -3,8 +3,8 @@
 * text=auto
 
 # Source code - always normalize to LF in repo
-*.cs text diff=csharp
-*.csx text diff=csharp
+*.cs text eol=crlf diff=csharp
+*.csx text eol=crlf diff=csharp
 *.xaml text
 *.xml text
 *.json text
