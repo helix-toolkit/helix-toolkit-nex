@@ -27,6 +27,9 @@ The `HelixToolkit.Nex.Maths` package is integral to the HelixToolkit-Nex engine,
 | `Ray`                 | Represents a ray in 3D space for intersection tests.                        |
 | `Plane`               | Represents a plane in 3D space.                                             |
 | `Collision`           | Provides static methods for collision detection and geometric queries.      |
+| `Bool4`               | Represents a four-dimensional vector of boolean values.                     |
+| `Bool32Bit`           | Represents a boolean value with a size of 32 bits.                          |
+| `AngleSingle`         | Represents a unit-independent angle using a single-precision floating-point.|
 
 ## Usage Examples
 
@@ -81,6 +84,40 @@ if (Collision.RayIntersectsPlane(ref ray, ref plane, out float distance))
     Vector3 intersectionPoint = ray.Position + ray.Direction * distance;
     Console.WriteLine($"Intersection at: {intersectionPoint}");
 }
+```
+
+### Using Bool4 and Bool32Bit
+
+```csharp
+using HelixToolkit.Nex.Maths;
+
+// Create a Bool4 vector
+Bool4 boolVector = new Bool4(true, false, true, false);
+
+// Access components
+bool xValue = boolVector.X;
+
+// Create a Bool32Bit
+Bool32Bit bool32 = new Bool32Bit(true);
+
+// Convert to and from bool
+bool normalBool = bool32;
+Bool32Bit convertedBack = normalBool;
+```
+
+### Working with Angles
+
+```csharp
+using HelixToolkit.Nex.Maths;
+
+// Create an angle in degrees
+AngleSingle angle = new AngleSingle(90, AngleType.Degree);
+
+// Convert to radians
+float radians = angle.Radians;
+
+// Wrap the angle
+angle.Wrap();
 ```
 
 ## Architecture Notes

@@ -13,6 +13,7 @@ Key features include:
 - GPU-based frustum and instance culling for optimized rendering.
 - Support for Vulkan's advanced features like mesh shaders and dynamic rendering.
 - Enhanced support for Vulkan features such as `shaderSampledImageArrayDynamicIndexing` and `shaderInt64`.
+- Support for Linux configurations with `LinuxDebug` and `LinuxRelease`.
 
 ## Key Types
 
@@ -25,6 +26,7 @@ Key features include:
 | `VulkanPipelineBuilder`       | Facilitates the creation of Vulkan graphics pipelines.                      |
 | `VulkanStagingDevice`         | Manages staging buffers for efficient data transfer to the GPU.             |
 | `Bindings` (enum)             | Defines descriptor set binding points for Vulkan pipelines.                 |
+| `DeviceQueues`                | Manages Vulkan device queues for graphics, compute, and transfer operations.|
 
 ## Usage Examples
 

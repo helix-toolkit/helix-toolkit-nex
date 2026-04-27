@@ -104,5 +104,10 @@ if (pickingResult != null)
 - `RenderToCustomTarget(Format targetFormat)`: Configures the engine to render to a custom target format.
 - Improved interop support with `WithWpf()` and `WithWinUI()` methods for WPF and WinUI applications.
 
+### Buffer Management Updates
+
+- Replaced `ElementBuffer` with `RingElementBuffer` for `MeshDrawData` and `RangeLightData` to improve buffer management and performance.
+- `RingElementBuffer` allows for efficient handling of dynamic data by rotating through buffer slots, minimizing GPU stalls.
+
 HelixToolkit.Nex.Engine is designed to be a robust and flexible foundation for building 3D applications, offering a rich set of features and a modular architecture that can be tailored to specific needs.
 ```

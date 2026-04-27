@@ -29,6 +29,9 @@ HelixToolkit.Nex.Graphics is a core component of the HelixToolkit.Nex engine, re
 | `ShaderModuleDesc`            | Describes the properties required to create a shader module.                |
 | `VertexInput`                 | Describes the complete vertex input configuration for a graphics pipeline.  |
 | `TextureResource`             | Represents a GPU texture resource.                                          |
+| `Dependencies`                | Manages dependencies for command buffer submissions.                       |
+| `ElementBuffer<T>`            | Represents a buffer for storing elements of type `T`.                      |
+| `RingElementBuffer<T>`        | Manages a ring buffer for dynamic element storage.                         |
 
 ## Usage Examples
 
@@ -69,6 +72,17 @@ commandBuffer.BindRenderPipeline(renderPipeline.Handle);
 commandBuffer.Draw(3);
 commandBuffer.EndRendering();
 context.Submit(commandBuffer);
+```
+
+### Using RingElementBuffer with Copy
+
+```csharp
+var ringBuffer = new RingElementBuffer<float>(context, initialCapacity: 1024, isDynamic: true);
+var commandBuffer = context.AcquireCommandBuffer();
+if (ringBuffer.AdvanceWithCopy(commandBuffer))
+{
+    // Proceed with rendering using the new buffer slot
+}
 ```
 
 ## Architecture Notes

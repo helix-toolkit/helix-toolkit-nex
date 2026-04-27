@@ -25,6 +25,7 @@ HelixToolkit.Nex.Rendering is responsible for managing the rendering pipeline of
 | `RenderGraph`                    | Organizes and executes rendering nodes in a defined order.                  |
 | `PostEffect`                     | Base class for post-processing effects.                                     |
 | `Renderer`                       | Manages the lifecycle and execution of render nodes.                        |
+| `RenderParams`                   | Contains render parameters including background color and other settings.   |
 
 ## Recent Changes
 
@@ -33,9 +34,13 @@ HelixToolkit.Nex.Rendering is responsible for managing the rendering pipeline of
 - **SamplerRef**: Replaced `SamplerResource` with `SamplerRef` for improved resource management and validation.
 - **Validation**: Added validation checks for sampler creation to ensure resources are correctly initialized.
 
-### ForwardPlusLightCullingNode
+### FrustumCullNode
 
-- **Depth Sampler**: Updated to use `SamplerRef` and added validation to ensure the sampler is valid before proceeding with setup.
+- **Buffer Management**: Updated to include `BufferMeshInfo` as an input and output dependency for better resource tracking and management.
+
+### RenderContext
+
+- **RenderParams**: Introduced `RenderParams` class to encapsulate render parameters such as background color.
 
 ### Post-Processing Effects
 

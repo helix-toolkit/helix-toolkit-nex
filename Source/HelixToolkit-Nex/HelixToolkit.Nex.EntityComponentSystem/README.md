@@ -79,5 +79,11 @@ entity.Register<EntityEnableEvent>((worldId, evt) =>
 - **World Isolation**: Each `World` instance provides a separate namespace for entities, ensuring no interference between different worlds.
 - **Component Type Identification**: Uses `ComponentTypeId` for unique identification of component types, supporting up to 128 unique types.
 
+## Recent Changes
+
+- **New Configurations**: Added support for `LinuxDebug` and `LinuxRelease` configurations in the project file.
+- **Component Sorting**: Enhanced component sorting using Shell Sort for improved performance.
+- **Entity Management**: Improved entity lifecycle management with additional event handling for entity disposal.
+
 HelixToolkit.Nex.ECS is designed to be flexible and efficient, making it suitable for a wide range of 3D applications within the HelixToolkit.Nex engine.
 ```

@@ -55,4 +55,8 @@ imguiRenderer.Render(commandBuffer, renderPass, framebuffer, dependencies);
 - **Design Patterns**: The `ImGuiRenderer` utilizes the IDisposable pattern to manage resources effectively, ensuring that Vulkan resources are properly released.
 - **Dependencies**: This package depends on the `HelixToolkit.Nex.Graphics` and `HelixToolkit.Nex.Shaders` packages for rendering and shader management.
 - **Integration**: The renderer is designed to fit into the HelixToolkit.Nex's ECS and render graph architecture, allowing for efficient and organized rendering of ImGui elements alongside other 3D content.
+
+## Recent Changes
+
+- **Platform Configurations**: The project now includes additional build configurations for Linux (`LinuxDebug` and `LinuxRelease`), enhancing cross-platform support.
 ```
