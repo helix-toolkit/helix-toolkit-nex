@@ -104,6 +104,47 @@ public sealed class RingElementBuffer<T> : IDisposable
     }
 
     /// <summary>
+    /// Advances to the next ring slot and records a GPU-side buffer copy from the
+    /// previous slot into the new one. After this call the CPU only needs to patch
+    /// the elements that actually changed via <see cref="WriteDynamic"/>.
+    /// <para>
+    /// The copy command is recorded into <paramref name="cmdBuf"/> and will execute
+    /// on the GPU timeline before any subsequent render passes in the same submission.
+    /// </para>
+    /// </summary>
+    /// <param name="cmdBuf">The command buffer to record the copy into.</param>
+    /// <returns><c>true</c> if a copy was recorded; <c>false</c> if the previous
+    /// slot was empty (nothing to copy).</returns>
+    public bool AdvanceWithCopy(ICommandBuffer cmdBuf)
+    {
+        int prevIndex = _currentIndex;
+        Advance();
+
+        var prev = _buffers[prevIndex];
+        var cur = Current;
+
+        if (prev.Count <= 0 || !prev.Buffer.Valid)
+        {
+            return false;
+        }
+
+        // Ensure the destination slot can hold the data.
+        cur.EnsureCapacity(prev.Count);
+
+        unsafe
+        {
+            var byteSize = (size_t)(prev.Count * sizeof(T));
+            cmdBuf.CopyBuffer(prev.Buffer, 0, cur.Buffer, 0, byteSize);
+        }
+
+        // Sync the CPU-side element count so that subsequent reads
+        // (e.g. draw-call count) reflect the copied data.
+        cur.Count = prev.Count;
+
+        return true;
+    }
+
+    /// <summary>
     /// Ensures that the current buffer has at least <paramref name="minCapacity"/> elements.
     /// If the buffer is too small it is resized (the old buffer is disposed internally
     /// by <see cref="ElementBuffer{T}"/>).
