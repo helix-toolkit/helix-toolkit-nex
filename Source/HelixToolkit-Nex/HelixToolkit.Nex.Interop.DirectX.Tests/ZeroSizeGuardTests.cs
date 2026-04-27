@@ -8,7 +8,7 @@ namespace HelixToolkit.Nex.Tests.Interop;
 /// Validates: Requirement 8.3
 /// </summary>
 [TestClass]
-[TestCategory("GPU")]
+[TestCategory("GPURequired")]
 public class ZeroSizeGuardTests
 {
     private D3D11DeviceManager _d3d11 = null!;
