@@ -597,7 +597,7 @@ internal sealed partial class VulkanContext
                         display = display,
                         surface = window,
                     };
-                    VK.vkCreateWaylandSurfaceKHR(_vkInstance, &ci, null, &surface);
+                    VK.vkCreateWaylandSurfaceKHR(_vkInstance, &ci, null, &surface).CheckResult();
                 }
                 else
                 {
