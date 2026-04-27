@@ -14,7 +14,7 @@ namespace HelixToolkit.Nex.Tests.Interop;
 /// Validates: Requirements 4.8, 5.8, 8.2
 /// </summary>
 [TestClass]
-[TestCategory("GPU")]
+[TestCategory("GPURequired")]
 public class ResizePropertyTests
 {
     private static readonly Config FsCheckConfig = Config.Default.WithMaxTest(100);
