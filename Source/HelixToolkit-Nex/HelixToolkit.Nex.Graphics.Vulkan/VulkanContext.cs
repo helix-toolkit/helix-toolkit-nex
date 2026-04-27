@@ -1284,11 +1284,19 @@ internal sealed partial class VulkanContext
         VkSamplerCreateInfo cinfo = info;
         unsafe
         {
-            VkSamplerYcbcrConversionInfo? ycbrInfo;
+            VkSamplerYcbcrConversionInfo ycbcrInfo = default;
             if (yuvFormat != Format.Invalid)
             {
-                ycbrInfo = GetOrCreateYcbcrConversionInfo(yuvFormat);
-                cinfo.pNext = &ycbrInfo;
+                var ycbrInfo = GetOrCreateYcbcrConversionInfo(yuvFormat);
+                if (!ycbrInfo.HasValue)
+                {
+                    throw new InvalidOperationException(
+                        $"Failed to create YCbCr conversion info for format {yuvFormat}."
+                    );
+                }
+
+                ycbcrInfo = ycbrInfo.Value;
+                cinfo.pNext = &ycbcrInfo;
                 // must be CLAMP_TO_EDGE
                 // https://vulkan.lunarg.com/doc/view/1.3.268.0/windows/1.3-extensions/vkspec.html#VUID-VkSamplerCreateInfo-addressModeU-01646
                 cinfo.addressModeU = VK.VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
