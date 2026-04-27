@@ -5,6 +5,7 @@
         <IsPackable>false</IsPackable>
         <IsTestProject>true</IsTestProject>
         <Nullable>enable</Nullable>
+        <Configurations>Debug;Release;LinuxDebug;LinuxRelease</Configurations>
     </PropertyGroup>
 
     <ItemGroup>

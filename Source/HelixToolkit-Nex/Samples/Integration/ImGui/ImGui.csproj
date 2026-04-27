@@ -6,6 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <RootNamespace>$(MSBuildProjectName.Replace(" ", "_"))Test</RootNamespace>
+    <Configurations>Debug;Release;LinuxDebug;LinuxRelease</Configurations>
   </PropertyGroup>
 
   <ItemGroup>

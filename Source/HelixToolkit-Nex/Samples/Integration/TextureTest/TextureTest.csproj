@@ -5,6 +5,7 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <RootNamespace>TextureTest</RootNamespace>
+        <Configurations>Debug;Release;LinuxDebug;LinuxRelease</Configurations>
     </PropertyGroup>
 
     <ItemGroup>
@@ -93,9 +94,5 @@
         <None Include="..\..\..\..\..\Assets\Textures\MetalMatte\Poliigon_MetalPaintedMatte_7037_Normal.png" Link="Assets\Textures\MetalMatte\Poliigon_MetalPaintedMatte_7037_Normal.png">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
-    </ItemGroup>
-
-    <ItemGroup>
-      <Folder Include="Screenshots\" />
     </ItemGroup>
 </Project>

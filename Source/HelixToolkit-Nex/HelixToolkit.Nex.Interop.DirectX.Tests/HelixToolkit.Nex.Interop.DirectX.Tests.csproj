@@ -6,6 +6,7 @@
         <Nullable>enable</Nullable>
         <UseVSTest>true</UseVSTest>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <Configurations>Debug;Release;LinuxDebug;LinuxRelease</Configurations>
     </PropertyGroup>
 
     <ItemGroup>
