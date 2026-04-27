@@ -86,6 +86,7 @@ internal class RangeLightData : Initializable, IRenderData
         {
             _lights.Clear();
             _lightBuffer.Reset();
+            _lastBufferUpdateTicks = _lastDataUpdateTicks;
             return true;
         }
         _lightBuffer.Advance();
