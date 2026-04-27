@@ -1,5 +1,5 @@
 # Auto-detect text files and normalize line endings
-# Git stores LF in the repo, checks out native line endings (CRLF on Windows, LF on Linux/Mac)
+# Git stores LF in the repo and, by default, checks out native line endings (CRLF on Windows, LF on Linux/Mac); some file types below explicitly override this behavior.
 * text=auto
 
 # Source code - always normalize to LF in repo
