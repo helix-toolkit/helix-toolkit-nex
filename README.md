@@ -19,7 +19,7 @@ Currently in development.
 
 - [Vulkan backend implementation](Source/HelixToolkit-Nex/HelixToolkit.Nex.Graphics.Vulkan/README.md) (Done)
 - Complete bindless descriptor architecture.
-- Linux support (Planned)
+- Linux support (Done)
 - [ImGui integration](Source/HelixToolkit-Nex/Samples/GraphicsAPI/ImGuiTest/README.md) (Done)
 - [Forward+(Tiled based GPU light culling)](Source/HelixToolkit-Nex/Samples/GraphicsAPI/ForwardPlusSimple/README.md) rendering pipeline. (Done)
 - Material systems.
@@ -60,13 +60,19 @@ Currently in development.
 
 <img src="Source/HelixToolkit-Nex/Samples/Integration/TextureTest/Screenshots/Sample.jpg" width=400>
 
+## Linux Support
+
+<img src="Assets/Screenshots/linux_support.png" width=400>
+
 ## Interoperability
 
 - Render content with Vulkan Backend in Wpf and WinUI applications using D3D11 interoperation. (Requires Vulkan Extension: `VK_KHR_external_memory_win32`)
+
     - [WPF](Source/HelixToolkit-Nex/Samples/Interop/Wpf)
-    ![Image](Source/HelixToolkit-Nex/Samples/Interop/Wpf/Screenshots/Sample.jpg)
+    <img src="Source/HelixToolkit-Nex/Samples/Interop/Wpf/Screenshots/Sample.jpg" width=400>
+
     - [WinUI](Source/HelixToolkit-Nex/Samples/Interop/WinUI)
-    ![Image](Source/HelixToolkit-Nex/Samples/Interop/WinUI/Screenshots/Sample.jpg)
+    <img src="Source/HelixToolkit-Nex/Samples/Interop/WinUI/Screenshots/Sample.jpg" width=400>
 
 ## Contributing
 
