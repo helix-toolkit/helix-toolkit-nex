@@ -51,4 +51,7 @@ context.CreateTexture(new TextureDesc { Dimensions = new Dimensions(256, 256, 1)
 - **Dependencies**: This package depends on other HelixToolkit.Nex packages, such as `HelixToolkit.Nex.Graphics` and `HelixToolkit.Nex.Maths`, to define the interfaces and data structures used in the mock implementations.
 - **Integration**: The mock implementations are designed to integrate with the HelixToolkit.Nex engine's ECS and render graph systems, providing a seamless testing environment for developers.
 
+## Recent Changes
+
+- **Project Configuration**: Added new build configurations for `LinuxDebug` and `LinuxRelease` to support cross-platform testing and development.
 ```
