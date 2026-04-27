@@ -12,7 +12,7 @@
     <Project Path="Samples/Application/Application.csproj" />
     <Project Path="Samples/SceneSamples/SceneSamples.csproj" />
   </Folder>
-  <Folder Name="/Samples/GrahicsAPI/">
+  <Folder Name="/Samples/GraphicsAPI/">
     <Project Path="Samples/GraphicsAPI/ForwardPlusSimple/ForwardPlusSimple.csproj" />
     <Project Path="Samples/GraphicsAPI/HelloTriangle/HelloTriangle.csproj" />
     <Project Path="Samples/GraphicsAPI/ImGuiTest/ImGuiTest.csproj" />
@@ -32,7 +32,10 @@
     <Project Path="Samples/Integration/Transparent/Transparent.csproj" />
   </Folder>
   <Folder Name="/Samples/Interop/">
-    <Project Path="Samples/Interop/InteropShared/InteropShared.csproj" />
+    <Project Path="Samples/Interop/InteropShared/InteropShared.csproj">
+      <Build Solution="LinuxDebug|Any CPU" Project="false" />
+      <Build Solution="LinuxRelease|Any CPU" Project="false" />
+    </Project>
   </Folder>
   <Folder Name="/Samples/Interop/WinUI/">
     <Project Path="Samples/Interop/WinUI/WinUIInterop.csproj">
