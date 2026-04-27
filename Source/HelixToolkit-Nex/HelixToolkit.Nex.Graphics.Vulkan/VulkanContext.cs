@@ -2540,7 +2540,7 @@ internal sealed partial class VulkanContext
                         _vkDevice.SetDebugObjectName(
                             VK.VK_OBJECT_TYPE_PIPELINE,
                             (nuint)cps.Pipeline,
-                            $"[Vk.Pipline]: {cps.Desc.DebugName}"
+                            $"[Vk.Pipeline]: {cps.Desc.DebugName}"
                         );
                     }
                 }
