@@ -27,7 +27,6 @@
 
     <ItemGroup>
         <ProjectReference Include="..\HelixToolkit.Nex.Graphics.Vulkan\HelixToolkit.Nex.Graphics.Vulkan.csproj" />
-        <ProjectReference Include="..\HelixToolkit.Nex.Interop.DirectX\HelixToolkit.Nex.Interop.DirectX.csproj" />
     </ItemGroup>
 
     <ItemGroup>

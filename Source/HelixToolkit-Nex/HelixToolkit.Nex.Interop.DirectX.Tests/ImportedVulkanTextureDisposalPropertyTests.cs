@@ -6,7 +6,7 @@ using Vortice.Vulkan;
 using TextureHandle = HelixToolkit.Nex.Handle<HelixToolkit.Nex.Graphics.Texture>;
 using VK = Vortice.Vulkan.Vulkan;
 
-namespace HelixToolkit.Nex.Tests.Vulkan;
+namespace HelixToolkit.Nex.Tests.Interop;
 
 /// <summary>
 /// Feature: wpf-winui-integration, Property 6: ImportedVulkanTexture disposal clears resources
