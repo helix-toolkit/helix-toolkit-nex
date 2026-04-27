@@ -19,6 +19,8 @@ layout(location = 5) out vec2 fragTexCoord;
 layout(location = 6) out flat uvec2 fragEntityId;
 #endif
 
+invariant gl_Position;
+
 layout(push_constant) uniform Pc {
     MeshDrawPushConstant value;
 } pc;
@@ -172,9 +174,7 @@ void main() {
 #endif
     uint idx = getInstancingIndex();
     calVertexOutput(idx, gl_Position, fragWorldPos, fragNormal, fragTangent, fragColor, fragTexCoord);
-#ifdef DEPTH_PREPASS
-    gl_Position.z -= 0.000001 * gl_Position.w; // Push the vertex slightly back to avoid z-fighting with depth pre-pass when rendering opaque/transparent objects
-#endif
+
 #ifdef OUTPUT_DRAW_ID
     fragEntityId = packObjectInfo(meshDraw.worldId, meshDraw.entityId, idx);
 #endif

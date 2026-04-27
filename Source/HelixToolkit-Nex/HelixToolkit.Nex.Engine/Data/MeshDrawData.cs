@@ -84,7 +84,7 @@ internal class MeshDrawData : Initializable, IMeshDrawData
     private static readonly ITracer _tracer = TracerFactory.GetTracer(nameof(MeshDrawData));
     private static readonly ILogger _logger = LogManager.Create<MeshDrawData>();
 
-    private ElementBuffer<MeshDraw>? _buffer = null;
+    private RingElementBuffer<MeshDraw>? _ringBuffer = null;
     private readonly FastList<MeshDraw> _meshDraws = new(InitialBufferSize);
     private readonly MeshDrawSorting _meshDrawSortingStatic = new();
     private readonly MeshDrawSorting _meshDrawSortingStaticInstancing = new();
@@ -105,11 +105,11 @@ internal class MeshDrawData : Initializable, IMeshDrawData
     private bool _needRebuilt = true;
     public IEnumerable<MaterialTypeId> MaterialTypes => _materialTypes;
 
-    public BufferHandle Buffer => _buffer is not null ? _buffer.Buffer : BufferHandle.Null;
-    public ulong GpuAddress => _buffer is null ? 0 : _buffer.Buffer.GpuAddress;
+    public BufferHandle Buffer => _ringBuffer is not null ? _ringBuffer.Buffer : BufferHandle.Null;
+    public ulong GpuAddress => _ringBuffer is null ? 0 : _ringBuffer.GpuAddress;
     public uint Stride => MeshDraw.SizeInBytes;
 
-    public uint Count => _buffer is not null ? (uint)_buffer.Count : 0;
+    public uint Count => _ringBuffer is not null ? (uint)_ringBuffer.Count : 0;
 
     public override string Name { get; }
 
@@ -179,11 +179,12 @@ internal class MeshDrawData : Initializable, IMeshDrawData
         _entities.EntityChanged += OnEntityChanged;
         _entities.EntityAdded += OnAddOrRemovedChanged;
         _entities.EntityRemoved += OnAddOrRemovedChanged;
-        _buffer = new ElementBuffer<MeshDraw>(
+        var ringSize = Math.Max(Context.GetNumSwapchainImages(), 2);
+        _ringBuffer = new RingElementBuffer<MeshDraw>(
             Context,
+            (int)ringSize,
             InitialBufferSize,
             BufferUsageBits.Storage | BufferUsageBits.Indirect,
-            true,
             Name
         );
         return ResultCode.Ok;
@@ -192,13 +193,13 @@ internal class MeshDrawData : Initializable, IMeshDrawData
     protected override ResultCode OnTearingDown()
     {
         Disposer.DisposeAndRemove(ref _entities);
-        Disposer.DisposeAndRemove(ref _buffer);
+        Disposer.DisposeAndRemove(ref _ringBuffer);
         return ResultCode.Ok;
     }
 
     public bool Update()
     {
-        if (_buffer == null)
+        if (_ringBuffer == null)
         {
             return false;
         }
@@ -206,7 +207,7 @@ internal class MeshDrawData : Initializable, IMeshDrawData
         {
             return true;
         }
-
+        _ringBuffer.Advance();
         using var t = _tracer.BeginScope(nameof(Update));
         var success = true;
         if (_needRebuilt)
@@ -305,7 +306,7 @@ internal class MeshDrawData : Initializable, IMeshDrawData
             ++count;
         }
         FinalizeMeshDraws();
-        _buffer?.Upload(_meshDraws);
+        _ringBuffer?.Upload(_meshDraws);
         _needRebuilt = false;
         return true;
     }
@@ -415,17 +416,7 @@ internal class MeshDrawData : Initializable, IMeshDrawData
             _updatedIndices.Add(meshRenderComp.Index);
         }
         _updatedEntities.Clear();
-        _buffer?.WriteDynamic(
-            _meshDraws.Count,
-            ctx =>
-            {
-                foreach (var idx in _updatedIndices)
-                {
-                    ref var draw = ref _meshDraws.At(idx);
-                    ctx.WriteElement(ref draw, idx);
-                }
-            }
-        );
+        _ringBuffer?.Upload(_meshDraws);
         return true;
     }
 
