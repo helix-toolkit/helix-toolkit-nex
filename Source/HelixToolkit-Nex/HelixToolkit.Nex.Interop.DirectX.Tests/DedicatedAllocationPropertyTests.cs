@@ -3,7 +3,7 @@ using FsCheck.Fluent;
 using HelixToolkit.Nex.Interop.DirectX;
 using Vortice.Vulkan;
 
-namespace HelixToolkit.Nex.Tests.Vulkan;
+namespace HelixToolkit.Nex.Tests.Interop;
 
 /// <summary>
 /// Feature: wpf-winui-integration, Property 2: Dedicated allocation when DedicatedOnlyBit is set
