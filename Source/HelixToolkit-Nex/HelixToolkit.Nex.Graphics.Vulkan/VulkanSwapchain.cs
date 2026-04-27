@@ -129,7 +129,7 @@ internal sealed class VulkanSwapchain : IDisposable
                     {
                         return VkPresentModeKHR.Mailbox;
                     }
-                    return VkPresentModeKHR.Immediate;
+                    return VkPresentModeKHR.Fifo;
                 }
             );
 
