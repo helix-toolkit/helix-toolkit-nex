@@ -66,6 +66,11 @@ public sealed unsafe class D3D11DeviceManager : IDisposable
         AdapterLuid = RetrieveAdapterLuid();
     }
 
+    /// <summary>
+    /// Finds the best discrete GPU adapter. Only discrete GPUs are considered because
+    /// Vulkan-to-D3D11 interoperation (<c>VkExternalMemoryHandleTypeFlags.D3D11TextureKMT</c>)
+    /// requires a discrete graphics card. Integrated GPUs are not supported for interop.
+    /// </summary>
     private static IDXGIAdapter? FindDiscreteGraphicCard(IDXGIFactory1 factory)
     {
         IDXGIAdapter? bestAdapter = null;

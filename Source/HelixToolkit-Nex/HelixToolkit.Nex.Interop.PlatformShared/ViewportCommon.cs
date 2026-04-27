@@ -203,7 +203,7 @@ public partial class HelixViewport
         var submitHandle = context.Submit(cmdBuf, TextureHandle.Null);
         context.Wait(submitHandle);
 #elif HxWinUI
-        var submitHandle = context.Submit(cmdBuf, TextureHandle.Null, _vulkanSyncInfo);
+        _ = context.Submit(cmdBuf, TextureHandle.Null, _vulkanSyncInfo);
         // GPU-side sync via _vulkanSyncInfo — CPU wait not needed here
 #else
 #error Unknown framework
