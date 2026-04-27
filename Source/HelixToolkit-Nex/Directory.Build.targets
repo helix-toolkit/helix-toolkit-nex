@@ -1,0 +1,37 @@
+<Project>
+  <!--
+    On Linux, detect Windows-only projects and suppress restore + build.
+    This runs AFTER the csproj is evaluated, so TargetFramework / UseWPF / UseWinUI
+    are already set and can be inspected reliably.
+
+    Affected projects (those with net8.0-windows* TFMs or UseWPF/UseWinUI):
+      - HelixToolkit.Nex.Interop.DirectX
+      - HelixToolkit.Nex.Interop.DirectX.Tests
+      - HelixToolkit.Nex.WinUI
+      - HelixToolkit.Nex.Wpf
+      - Samples/Interop/WinUI/WinUIInterop
+      - Samples/Interop/Wpf/WpfInterop
+  -->
+  <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('Linux'))">
+    <_IsWindowsOnlyProject>false</_IsWindowsOnlyProject>
+    <_IsWindowsOnlyProject Condition="$(TargetFramework.Contains('-windows'))"
+      >true</_IsWindowsOnlyProject
+    >
+    <_IsWindowsOnlyProject Condition="'$(UseWPF)' == 'true'">true</_IsWindowsOnlyProject>
+    <_IsWindowsOnlyProject Condition="'$(UseWinUI)' == 'true'">true</_IsWindowsOnlyProject>
+  </PropertyGroup>
+
+  <!-- Strip all references so restore becomes a no-op for these projects -->
+  <ItemGroup Condition="$([MSBuild]::IsOSPlatform('Linux')) and '$(_IsWindowsOnlyProject)' == 'true'">
+    <PackageReference Remove="@(PackageReference)" />
+    <ProjectReference Remove="@(ProjectReference)" />
+  </ItemGroup>
+
+  <!-- Override the TFM and disable Windows SDK features so the project graph resolves -->
+  <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('Linux')) and '$(_IsWindowsOnlyProject)' == 'true'">
+    <TargetFramework>net8.0</TargetFramework>
+    <UseWPF>false</UseWPF>
+    <UseWinUI>false</UseWinUI>
+    <EnableMsixTooling>false</EnableMsixTooling>
+  </PropertyGroup>
+</Project>
