@@ -3,7 +3,7 @@
 # Script to format the HelixToolkit.Nex solution
 # This script runs dotnet format on the entire solution
 
-$solutionPath = Join-Path -Path $PSScriptRoot -ChildPath "../Source/HelixToolkit-Nex/HelixToolkit.Nex.sln"
+$solutionPath = Join-Path -Path $PSScriptRoot -ChildPath "../Source/HelixToolkit-Nex/HelixToolkit.Nex.slnx"
 
 Write-Host "Formatting solution: $solutionPath" -ForegroundColor Green
 

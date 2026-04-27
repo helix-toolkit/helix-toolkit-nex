@@ -1,5 +1,5 @@
 # Script to help identify and fix naming violations
-$solution = "Source/HelixToolkit-Nex/HelixToolkit.Nex.sln"
+$solution = "Source/HelixToolkit-Nex/HelixToolkit.Nex.slnx"
 
 # Get all naming violations with file paths
 $violations = dotnet format $solution --verify-no-changes --verbosity diagnostic 2>&1 | 
