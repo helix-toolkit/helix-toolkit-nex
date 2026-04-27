@@ -14,7 +14,7 @@
   -->
   <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('Linux'))">
     <_IsWindowsOnlyProject>false</_IsWindowsOnlyProject>
-    <_IsWindowsOnlyProject Condition="$(TargetFramework.Contains('-windows'))"
+    <_IsWindowsOnlyProject Condition="$(TargetFramework.Contains('-windows*'))"
       >true</_IsWindowsOnlyProject
     >
     <_IsWindowsOnlyProject Condition="'$(UseWPF)' == 'true'">true</_IsWindowsOnlyProject>
