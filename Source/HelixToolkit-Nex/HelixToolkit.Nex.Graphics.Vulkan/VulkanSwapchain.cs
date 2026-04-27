@@ -4,7 +4,7 @@ namespace HelixToolkit.Nex.Graphics.Vulkan;
 
 internal sealed class VulkanSwapchain : IDisposable
 {
-    public const uint32_t MAX_SWAPCHAIN_IMAGES = 8;
+    public const uint32_t MAX_SWAPCHAIN_IMAGES = 16;
     private static readonly ILogger _logger = LogManager.Create<VulkanSwapchain>();
 
     private readonly VulkanContext _ctx;
