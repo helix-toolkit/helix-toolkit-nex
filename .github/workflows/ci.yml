@@ -97,13 +97,13 @@ jobs:
           configFilePath: gitversion.yml
 
       - name: Restore dependencies
-        run: dotnet restore Source/HelixToolkit-Nex/HelixToolkit.Nex.sln
+        run: dotnet restore Source/HelixToolkit-Nex/HelixToolkit.Nex.linux.slnf
 
       - name: Build LinuxDebug
-        run: dotnet build Source/HelixToolkit-Nex/HelixToolkit.Nex.sln --configuration LinuxDebug --no-restore /p:Version=${{ steps.version_step.outputs.SemVer }} /p:AssemblyVersion=${{ steps.version_step.outputs.assemblySemVer }}
+        run: dotnet build Source/HelixToolkit-Nex/HelixToolkit.Nex.linux.slnf --configuration LinuxDebug --no-restore /p:Version=${{ steps.version_step.outputs.SemVer }} /p:AssemblyVersion=${{ steps.version_step.outputs.assemblySemVer }}
 
       - name: Build LinuxRelease
-        run: dotnet build Source/HelixToolkit-Nex/HelixToolkit.Nex.sln --configuration LinuxRelease --no-restore /p:Version=${{ steps.version_step.outputs.SemVer }} /p:AssemblyVersion=${{ steps.version_step.outputs.assemblySemVer }}
+        run: dotnet build Source/HelixToolkit-Nex/HelixToolkit.Nex.linux.slnf --configuration LinuxRelease --no-restore /p:Version=${{ steps.version_step.outputs.SemVer }} /p:AssemblyVersion=${{ steps.version_step.outputs.assemblySemVer }}
 
       - name: Test LinuxRelease
-        run: dotnet test Source/HelixToolkit-Nex/HelixToolkit.Nex.sln --configuration LinuxRelease --no-build --verbosity normal --filter "TestCategory!=GPURequired"
+        run: dotnet test Source/HelixToolkit-Nex/HelixToolkit.Nex.linux.slnf --configuration LinuxRelease --no-build --verbosity normal --filter "TestCategory!=GPURequired"
