@@ -90,4 +90,12 @@ combinedImage.Save("combined_omr.png", ImageFileType.Png);
 - **Dependencies**: It relies on the `HelixToolkit.Nex.Graphics` package for GPU texture creation and management.
 - **Integration**: The package is designed to work within the HelixToolkit-Nex engine's ECS architecture, allowing for efficient texture management and rendering.
 - **Performance**: Utilizes GPU-based operations for efficient texture processing, including mipmap generation and texture uploads.
+
+## Build Configurations
+
+The project now supports additional build configurations for Linux:
+- `LinuxDebug`
+- `LinuxRelease`
+
+These configurations allow for building and testing the package on Linux environments, expanding the versatility and deployment options for developers using the HelixToolkit-Nex engine.
 ```

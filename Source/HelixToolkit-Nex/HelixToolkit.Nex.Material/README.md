@@ -27,6 +27,8 @@ This package plays a crucial role in the rendering pipeline, providing the neces
 | `PBRMaterialTypeRegistry` | Global registry for material types and their shader implementations. |
 | `PointMaterialManager` | Manages point cloud render pipelines. |
 | `PointMaterialRegistry` | Registry for point material types and their shader implementations. |
+| `MaterialTypeId` | Represents a unique identifier for material types. |
+| `MaterialPropertyCreator` | Facilitates creation and configuration of material properties. |
 
 ## Usage Examples
 

@@ -11,7 +11,7 @@ This package is designed to bridge the gap between DirectX and Vulkan by managin
 
 | Type Name                | Description                                                                 |
 |--------------------------|-----------------------------------------------------------------------------|
-| `D3D11DeviceManager`     | Manages the D3D11 device and provides the DXGI adapter LUID.                |
+| `D3D11DeviceManager`     | Manages the D3D11 device and provides the DXGI adapter LUID. Only supports discrete GPUs. |
 | `IViewportClient`        | Interface for providing per-frame data and updates for a `HelixViewport`.   |
 | `ImportedVulkanTexture`  | Represents a Vulkan texture imported from a shared DirectX texture.         |
 | `SharedHandleType`       | Enum identifying the type of shared handle used for DirectX-Vulkan interop. |
@@ -66,4 +66,5 @@ public class MyViewportClient : IViewportClient
 - **Design Patterns**: The package utilizes the Factory pattern for creating shared textures (`SharedTextureFactory`) and the Adapter pattern for managing device contexts (`D3D11DeviceManager`).
 - **Dependencies**: This package depends on other HelixToolkit.Nex packages, specifically those related to Vulkan graphics (`HelixToolkit.Nex.Graphics.Vulkan`) and rendering contexts.
 - **Interop Strategy**: The package employs VK_KHR_external_memory_win32 for Vulkan-DirectX interop, allowing textures to be shared across APIs efficiently.
+- **Platform Support**: The project now includes conditional platform support, targeting `net8.0-windows` for Windows and `net8.0` for Linux, though DirectX interop is only applicable on Windows.
 ```

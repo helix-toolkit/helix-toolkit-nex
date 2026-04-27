@@ -86,4 +86,5 @@ var deserializedGeometry = JsonSerializer.Deserialize<Geometry>(json, options);
 
 - **Asynchronous Event Publishing**: The `Geometry` and `GeometryManager` classes now use `PublishAsync` for event publishing, improving responsiveness and non-blocking operations.
 - **Buffer Management**: The `GeometryManager` now schedules GPU transfers asynchronously, enhancing performance by reducing blocking I/O operations.
+- **Platform Configurations**: Added new build configurations for `LinuxDebug` and `LinuxRelease` to support cross-platform development.
 ```

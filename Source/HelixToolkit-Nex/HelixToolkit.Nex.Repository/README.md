@@ -94,4 +94,12 @@ var textureRef = await textureRepo.GetOrCreateFromFileAsync("path/to/texture.png
 - **LRU Eviction**: The repositories implement an LRU eviction policy to ensure that the most recently used resources are retained while older, less frequently accessed resources are evicted when the cache reaches its capacity.
 - **Thread Safety**: All public methods are thread-safe, allowing concurrent access and modification of the cache without data races or inconsistencies.
 - **Resource Wrappers**: `SamplerRef` and `TextureRef` provide a safe way to handle GPU resources, ensuring that resources are properly disposed and notifying consumers when resources are no longer valid.
+
+## Configuration
+
+The project now supports additional build configurations for Linux:
+- `LinuxDebug`
+- `LinuxRelease`
+
+These configurations allow for building and testing the repository package on Linux platforms, expanding the versatility and deployment options for the HelixToolkit.Nex engine.
 ```
