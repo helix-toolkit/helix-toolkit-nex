@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using Vortice.Direct3D;
 using Vortice.Direct3D11;
 using Vortice.DXGI;
@@ -10,6 +11,7 @@ namespace HelixToolkit.Nex.Interop.DirectX;
 /// </summary>
 public sealed unsafe class D3D11DeviceManager : IDisposable
 {
+    private static readonly ILogger _logger = LogManager.Create<D3D11DeviceManager>();
     private ID3D11Device _device;
     private ID3D11DeviceContext _deviceContext;
     private bool _disposed;
@@ -32,10 +34,26 @@ public sealed unsafe class D3D11DeviceManager : IDisposable
 
     public D3D11DeviceManager()
     {
+        DXGI.CreateDXGIFactory1(out IDXGIFactory1? factory).CheckError();
+        using var f = factory;
+        if (factory == null)
+        {
+            throw new InvalidOperationException("Failed to create DXGI Factory.");
+        }
+        using var adapter = FindDiscreteGraphicCard(factory);
+        if (adapter is null)
+        {
+            throw new NotSupportedException("No suitable discrete graphics card found.");
+        }
+        _logger.LogInformation(
+            "Using adapter: {Description}, Dedicated Memory: {DedicatedMemory} MB",
+            adapter.Description.Description,
+            adapter.Description.DedicatedVideoMemory / (1024 * 1024)
+        );
         D3D11
             .D3D11CreateDevice(
-                null,
-                DriverType.Hardware,
+                adapter,
+                DriverType.Unknown,
                 DeviceCreationFlags.BgraSupport,
                 [FeatureLevel.Level_11_0],
                 out _device,
@@ -44,6 +62,37 @@ public sealed unsafe class D3D11DeviceManager : IDisposable
             .CheckError();
 
         AdapterLuid = RetrieveAdapterLuid();
+    }
+
+    private static IDXGIAdapter? FindDiscreteGraphicCard(IDXGIFactory1 factory)
+    {
+        IDXGIAdapter? bestAdapter = null;
+        ulong bestDedicatedMemory = 0;
+
+        for (int i = 0; factory!.EnumAdapters((uint)i, out IDXGIAdapter? adapter).Success; i++)
+        {
+            var desc = adapter!.Description;
+
+            // Skip software/basic render adapters
+            if (desc.VendorId == 0x1414 && desc.DeviceId == 0x8c) // Microsoft Basic Render Driver
+            {
+                adapter.Dispose();
+                continue;
+            }
+
+            ulong dedicatedMemory = (ulong)desc.DedicatedVideoMemory;
+            if (dedicatedMemory > bestDedicatedMemory)
+            {
+                bestAdapter?.Dispose();
+                bestAdapter = adapter;
+                bestDedicatedMemory = dedicatedMemory;
+            }
+            else
+            {
+                adapter.Dispose();
+            }
+        }
+        return bestAdapter;
     }
 
     private byte[] RetrieveAdapterLuid()
