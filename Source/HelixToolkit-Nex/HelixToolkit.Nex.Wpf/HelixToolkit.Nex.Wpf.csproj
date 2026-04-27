@@ -1,7 +1,12 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-    <PropertyGroup>
+    <PropertyGroup Condition="!$([MSBuild]::IsOSPlatform('Linux'))">
         <TargetFramework>net8.0-windows</TargetFramework>
         <UseWPF>true</UseWPF>
+    </PropertyGroup>
+    <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('Linux'))">
+        <TargetFramework>net8.0</TargetFramework>
+    </PropertyGroup>
+    <PropertyGroup>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
@@ -20,14 +25,18 @@
         <DefineConstants>$(DefineConstants);HxWPF</DefineConstants>
     </PropertyGroup>
 
-    <ItemGroup>
+    <ItemGroup Condition="!$([MSBuild]::IsOSPlatform('Linux'))">
         <ProjectReference Include="..\HelixToolkit.Nex.Engine\HelixToolkit.Nex.Engine.csproj" />
         <ProjectReference Include="..\HelixToolkit.Nex.Interop.DirectX\HelixToolkit.Nex.Interop.DirectX.csproj" />
     </ItemGroup>
-    <ItemGroup>
+    <ItemGroup Condition="!$([MSBuild]::IsOSPlatform('Linux'))">
         <PackageReference Include="Vortice.Direct3D9" Version="3.6.2" />
     </ItemGroup>
-    <Import Project="..\HelixToolkit.Nex.Interop.PlatformShared\HelixToolkit.Nex.Interop.PlatformShared.projitems" Label="Shared" />
+    <Import
+        Condition="!$([MSBuild]::IsOSPlatform('Linux'))"
+        Project="..\HelixToolkit.Nex.Interop.PlatformShared\HelixToolkit.Nex.Interop.PlatformShared.projitems"
+        Label="Shared"
+    />
     <ItemGroup>
         <None Update="README.md">
             <Pack>True</Pack>
