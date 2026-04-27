@@ -180,7 +180,7 @@ public sealed class ElementBuffer<T> : IDisposable
     public IContext Context { get; }
     public BufferResource Buffer { get; private set; } = BufferResource.Null;
     public int Capacity { get; private set; }
-    public int Count { private set; get; } = 0;
+    public int Count { internal set; get; } = 0;
     public bool IsDynamic { get; }
     public BufferUsageBits Usage { get; }
 
@@ -394,7 +394,10 @@ public sealed class ElementBuffer<T> : IDisposable
                 if (mappedPtr == nint.Zero)
                 {
                     _logger.LogError("Cannot upload data: dynamic buffer is not mapped.");
-                    return AsyncUploadHandle<BufferHandle>.CreateCompleted(ResultCode.InvalidState, Buffer.Handle);
+                    return AsyncUploadHandle<BufferHandle>.CreateCompleted(
+                        ResultCode.InvalidState,
+                        Buffer.Handle
+                    );
                 }
                 mappedPtr += dstOffset * sizeof(T);
                 using var pinnedData = data.GetInternalArray().Pin();
@@ -406,7 +409,10 @@ public sealed class ElementBuffer<T> : IDisposable
                     (uint)(dstOffset * sizeof(T)),
                     (uint)(data.Count * sizeof(T))
                 );
-                return AsyncUploadHandle<BufferHandle>.CreateCompleted(ResultCode.Ok, Buffer.Handle);
+                return AsyncUploadHandle<BufferHandle>.CreateCompleted(
+                    ResultCode.Ok,
+                    Buffer.Handle
+                );
             }
         }
         var requiredCapacity = data.Count;
