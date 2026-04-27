@@ -1,0 +1,58 @@
+# Auto-detect text files and normalize line endings
+# Git stores LF in the repo, checks out native line endings (CRLF on Windows, LF on Linux/Mac)
+* text=auto
+
+# Source code - always normalize to LF in repo
+*.cs text diff=csharp
+*.csx text diff=csharp
+*.xaml text
+*.xml text
+*.json text
+*.yml text
+*.yaml text
+*.md text
+*.txt text
+
+# Project/solution files
+*.sln text eol=crlf
+*.slnx text eol=crlf
+*.csproj text
+*.props text
+*.targets text
+*.nuspec text
+*.config text
+*.ruleset text
+
+# Shell scripts - always LF (even on Windows checkout)
+*.sh text eol=lf
+
+# PowerShell scripts - always CRLF
+*.ps1 text eol=crlf
+*.psm1 text eol=crlf
+*.psd1 text eol=crlf
+
+# Batch scripts - always CRLF
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# Git config files
+.gitattributes text
+.gitignore text
+.editorconfig text
+
+# Binary files - never touch these
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.tif binary
+*.tiff binary
+*.dds binary
+*.raw binary
+*.dat binary
+*.bin binary
+*.dll binary
+*.exe binary
+*.pdb binary
+*.nupkg binary
