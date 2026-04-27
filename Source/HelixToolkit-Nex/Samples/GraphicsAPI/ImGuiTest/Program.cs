@@ -10,7 +10,6 @@ using ImGuiNET;
 using ImGuiTest;
 using SDL3;
 using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.ColorSpaces;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
 
@@ -43,7 +42,6 @@ internal class App : Application
             {
                 TerminateOnValidationError = true,
                 OnCreateSurface = CreateSurface,
-                ForcePresentModeFIFO = true,
             },
             MainWindow.Instance,
             0
