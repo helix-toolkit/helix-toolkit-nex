@@ -13,7 +13,8 @@ internal class RangeLightData : Initializable, IRenderData
     public IContext Context { get; }
     public World World { get; }
 
-    private ElementBuffer<Light>? _lightBuffer;
+    private RingElementBuffer<Light>? _lightBuffer;
+    private readonly FastList<Light> _lights = new(InitialBufferSize);
 
     private long _lastBufferUpdateTicks = 0;
     private long _lastDataUpdateTicks = Stopwatch.GetTimestamp();
@@ -25,7 +26,7 @@ internal class RangeLightData : Initializable, IRenderData
     public uint Stride { get; } = Light.SizeInBytes;
 
     public uint Count => _lightBuffer is null ? 0 : (uint)_lightBuffer.Count;
-    public ulong GpuAddress => _lightBuffer is null ? 0 : _lightBuffer.Buffer.GpuAddress;
+    public ulong GpuAddress => _lightBuffer is null ? 0 : _lightBuffer.GpuAddress;
 
     public override string Name { get; }
 
@@ -48,11 +49,12 @@ internal class RangeLightData : Initializable, IRenderData
         _entities.EntityAdded += OnLightAddRemove;
         _entities.EntityRemoved += OnLightAddRemove;
         _entities.EntityChanged += OnLightChanged;
-        _lightBuffer = new ElementBuffer<Light>(
+        var ringSize = Math.Max(Context.GetNumSwapchainImages(), 2);
+        _lightBuffer = new RingElementBuffer<Light>(
             Context,
+            (int)ringSize,
             InitialBufferSize,
             BufferUsageBits.Storage,
-            true,
             "Light"
         );
         return ResultCode.Ok;
@@ -67,10 +69,11 @@ internal class RangeLightData : Initializable, IRenderData
 
     public bool Update()
     {
-        if (!Buffer.Valid || _lightBuffer is null)
+        if (_lightBuffer is null)
         {
             return false;
         }
+
         if (_lastDataUpdateTicks <= _lastBufferUpdateTicks)
         {
             return true;
@@ -81,54 +84,44 @@ internal class RangeLightData : Initializable, IRenderData
         }
         if (_entities.Count == 0)
         {
-            _lightBuffer?.Reset();
+            _lights.Clear();
+            _lightBuffer.Reset();
             return true;
         }
-        _lightBuffer
-            ?.WriteDynamic(
-                _entities.Count,
-                (ctx) =>
-                {
-                    if (_needRebuild)
-                    {
-                        var idx = 0;
-                        foreach (var entity in _entities)
-                        {
-                            ref var lightComp = ref entity.Get<RangeLightComponent>();
-                            ref var transform = ref entity.Get<WorldTransform>();
-                            var light = lightComp.Light;
-                            light.Direction = Vector3.TransformNormal(
-                                light.Direction,
-                                transform.Value
-                            );
-                            light.Position = Vector3.Transform(light.Position, transform.Value);
-                            Debug.Assert(light.Type != 0);
-                            ctx.Write(ref light);
-                            lightComp.Index = idx++;
-                        }
-                        _needRebuild = false;
-                    }
-                    else
-                    {
-                        foreach (var entityId in _pendingEntities)
-                        {
-                            var entity = World.GetEntity(entityId);
-                            ref var lightComp = ref entity.Get<RangeLightComponent>();
-                            ref var transform = ref entity.Get<WorldTransform>();
-                            var light = lightComp.Light;
-                            light.Direction = Vector3.TransformNormal(
-                                light.Direction,
-                                transform.Value
-                            );
-                            light.Position = Vector3.Transform(light.Position, transform.Value);
-                            Debug.Assert(light.Type != 0);
-                            Debug.Assert(lightComp.Index >= 0, "Light index must >= 0.");
-                            ctx.WriteElement(ref light, lightComp.Index);
-                        }
-                    }
-                }
-            )
-            .CheckResult();
+        _lightBuffer.Advance();
+        if (_needRebuild)
+        {
+            _lights.Clear();
+            var idx = 0;
+            foreach (var entity in _entities)
+            {
+                ref var lightComp = ref entity.Get<RangeLightComponent>();
+                ref var transform = ref entity.Get<WorldTransform>();
+                var light = lightComp.Light;
+                light.Direction = Vector3.TransformNormal(light.Direction, transform.Value);
+                light.Position = Vector3.Transform(light.Position, transform.Value);
+                Debug.Assert(light.Type != 0);
+                _lights.Add(light);
+                lightComp.Index = idx++;
+            }
+            _needRebuild = false;
+        }
+        else
+        {
+            foreach (var entityId in _pendingEntities)
+            {
+                var entity = World.GetEntity(entityId);
+                ref var lightComp = ref entity.Get<RangeLightComponent>();
+                ref var transform = ref entity.Get<WorldTransform>();
+                var light = lightComp.Light;
+                light.Direction = Vector3.TransformNormal(light.Direction, transform.Value);
+                light.Position = Vector3.Transform(light.Position, transform.Value);
+                Debug.Assert(light.Type != 0);
+                Debug.Assert(lightComp.Index >= 0, "Light index must >= 0.");
+                _lights.At(lightComp.Index) = light;
+            }
+        }
+        _lightBuffer.Upload(_lights);
         _lastBufferUpdateTicks = _lastDataUpdateTicks;
         _pendingEntities.Clear();
         return true;
