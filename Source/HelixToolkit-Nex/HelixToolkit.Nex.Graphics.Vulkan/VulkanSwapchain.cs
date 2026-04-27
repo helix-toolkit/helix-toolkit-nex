@@ -1,5 +1,3 @@
-using Vortice.Vulkan;
-
 namespace HelixToolkit.Nex.Graphics.Vulkan;
 
 internal sealed class VulkanSwapchain : IDisposable
@@ -324,7 +322,7 @@ internal sealed class VulkanSwapchain : IDisposable
         }
         _swapchain = VkSwapchainKHR.Null;
         // Recreate the swapchain with the new dimensions
-        return CreateSwapchain() == VkResult.Success ? ResultCode.Ok : ResultCode.RuntimeError;
+        return CreateSwapchain(_ctx.Config.PreferredPresentMode) == VkResult.Success ? ResultCode.Ok : ResultCode.RuntimeError;
     }
 
     public ResultCode Present(VkSemaphore waitSemaphore)

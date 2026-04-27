@@ -8,6 +8,8 @@ namespace HelixToolkit.Nex.Interop.DirectX;
 /// <summary>
 /// Manages the D3D11 device and provides the DXGI adapter LUID.
 /// Shared by both WPF and WinUI paths.
+/// Only supports creating a single D3D11 device for the discrete GPU, as that's the only scenario where the LUID is needed to correlate with Vulkan.
+/// Does not support software adapters or multiple GPUs or integrated GPU.
 /// </summary>
 public sealed unsafe class D3D11DeviceManager : IDisposable
 {
@@ -68,6 +70,7 @@ public sealed unsafe class D3D11DeviceManager : IDisposable
     {
         IDXGIAdapter? bestAdapter = null;
         ulong bestDedicatedMemory = 0;
+        ulong bestSystemMemory = 0;
 
         for (int i = 0; factory!.EnumAdapters((uint)i, out IDXGIAdapter? adapter).Success; i++)
         {
@@ -80,12 +83,21 @@ public sealed unsafe class D3D11DeviceManager : IDisposable
                 continue;
             }
 
-            ulong dedicatedMemory = (ulong)desc.DedicatedVideoMemory;
-            if (dedicatedMemory > bestDedicatedMemory)
+            if (desc.DedicatedVideoMemory > bestDedicatedMemory)
             {
                 bestAdapter?.Dispose();
                 bestAdapter = adapter;
-                bestDedicatedMemory = dedicatedMemory;
+                bestDedicatedMemory = desc.DedicatedVideoMemory;
+                bestSystemMemory = desc.DedicatedSystemMemory;
+            }
+            else if (desc.DedicatedSystemMemory > bestSystemMemory)
+            {
+                if (desc.DedicatedVideoMemory >= bestDedicatedMemory)
+                {
+                    bestAdapter?.Dispose();
+                    bestAdapter = adapter;
+                    bestSystemMemory = desc.DedicatedSystemMemory;
+                }
             }
             else
             {
