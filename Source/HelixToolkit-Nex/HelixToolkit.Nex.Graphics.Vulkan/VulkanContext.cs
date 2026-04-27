@@ -6,18 +6,22 @@ public sealed class VulkanContextConfig()
 {
     public delegate VkSurfaceKHR CreateSurface(VkInstance instance);
     public readonly VkVersion VulkanVersion = VkVersion.Version_1_3;
+
     /// <summary>
     /// When true, the Vulkan validation callback will invoke std::terminate() after logging any validation error. This is useful for development and debugging to immediately catch and diagnose validation issues. Default false, as it can be disruptive in production environments, but can be enabled when running with a debugger attached to break on the exception.
     /// </summary>
     public bool TerminateOnValidationError = false; // invoke std::terminate() on any validation error
+
     /// <summary>
     /// When true, enables Vulkan validation layers if available. This will cause the application to log detailed validation messages for any incorrect Vulkan API usage, which is extremely useful for development and debugging. Default is true if the KHRONOS validation layer is available, false otherwise.
     /// </summary>
     public bool EnableValidation = true;
 
     public ColorSpace SwapchainRequestedColorSpace = ColorSpace.SRGB_NONLINEAR;
+
     /// <summary>
-    /// If set, VulkanContext will try to use this present mode for the swapchain. If the requested mode is not available, it will fall back to the best available mode (preferring MAILBOX > IMMEDIATE > FIFO). This is useful for applications that want to prefer low-latency present modes when available, but still work on systems that only support FIFO.
+    /// If set, VulkanContext will try to use this present mode for the swapchain. If the requested mode is not available,
+    /// it will fall back to the best available mode (preferring FIFORelaxed > FIFO > MAILBOX > IMMEDIATE).
     /// </summary>
     public VkPresentModeKHR? PreferredPresentMode = VkPresentModeKHR.FifoRelaxed;
 
@@ -723,7 +727,11 @@ internal sealed partial class VulkanContext
         return (graphicsFamily, presentFamily, computeFamily);
     }
 
-    private static unsafe VkPhysicalDevice FindBestDevice(VkSurfaceKHR surface, ReadOnlySpan<VkPhysicalDevice> devices, byte[]? requiredLuid = null)
+    private static unsafe VkPhysicalDevice FindBestDevice(
+        VkSurfaceKHR surface,
+        ReadOnlySpan<VkPhysicalDevice> devices,
+        byte[]? requiredLuid = null
+    )
     {
         List<string>? availableLuids = requiredLuid is not null ? new() : null;
         byte* luidCopyBuffer = stackalloc byte[8];
@@ -826,7 +834,11 @@ internal sealed partial class VulkanContext
             .CheckResult();
 
         var luidFilterActive = Config.RequiredDeviceLuid is { Length: 8 };
-        _vkPhysicalDevice = FindBestDevice(_vkSurface, new ReadOnlySpan<VkPhysicalDevice>(physicalDevices, (int)physicalDevicesCount), luidFilterActive ? Config.RequiredDeviceLuid : null);
+        _vkPhysicalDevice = FindBestDevice(
+            _vkSurface,
+            new ReadOnlySpan<VkPhysicalDevice>(physicalDevices, (int)physicalDevicesCount),
+            luidFilterActive ? Config.RequiredDeviceLuid : null
+        );
 
         if (_vkPhysicalDevice.IsNull)
         {
@@ -987,7 +999,10 @@ internal sealed partial class VulkanContext
             }
 
             VK.vkGetPhysicalDeviceFeatures2(_vkPhysicalDevice, &feature_1_0);
-            feature_1_0 = new() { features = DeviceFeatures.CreateFeatures10(ref feature_1_0.features) };
+            feature_1_0 = new()
+            {
+                features = DeviceFeatures.CreateFeatures10(ref feature_1_0.features),
+            };
             features1_1 = DeviceFeatures.CreateFeatures11(ref features1_1);
             features1_2 = DeviceFeatures.CreateFeatures12(ref features1_2);
             features1_3 = DeviceFeatures.CreateFeatures13(ref features1_3);
