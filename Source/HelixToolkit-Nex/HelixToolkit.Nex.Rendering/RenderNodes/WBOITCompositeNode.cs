@@ -160,7 +160,8 @@ public sealed class WBOITCompositeNode : RenderNode
                 res.Deps.Textures[0] = res.Textures[SystemBufferNames.TextureWboitAccum];
                 res.Deps.Textures[1] = res.Textures[SystemBufferNames.TextureWboitRevealage];
             },
-            after: [nameof(ForwardPlusTransparentNode)]
+            after: [nameof(ForwardPlusTransparentNode)],
+            stage: RenderStage.Transparent
         );
     }
 }

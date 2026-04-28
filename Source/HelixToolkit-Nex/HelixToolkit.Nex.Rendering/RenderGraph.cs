@@ -1,5 +1,40 @@
 namespace HelixToolkit.Nex.Rendering;
 
+/// <summary>
+/// Declares the broad execution phase a render/compute pass belongs to.
+/// The graph compiler automatically orders passes so that all passes in an
+/// earlier stage complete before any pass in a later stage begins, without
+/// requiring every node to name its predecessors explicitly.
+/// <para>
+/// Within a single stage, fine-grained ordering is still expressed through
+/// resource edges (inputs/outputs) or the explicit <c>after</c> list.
+/// </para>
+/// </summary>
+public enum RenderStage
+{
+    /// <summary>CPU/GPU data preparation: frustum culling etc.</summary>
+    Prepare = 0,
+    /// <summary>Opaque geometry: depth pre-pass, light culling, opaque meshes, point clouds, etc.</summary>
+    Opaque = 10,
+    /// <summary>Transparent geometry: WBOIT render + composite, alpha-blended passes, etc.</summary>
+    Transparent = 20,
+    /// <summary>Full-screen HDR post-processing effects (FXAA, bloom, …). Runs before tone mapping.</summary>
+    PostProcess = 30,
+    /// <summary>
+    /// HDR-to-LDR conversion. Separating this from <see cref="PostProcess"/> ensures that
+    /// all HDR effects complete before the scene is linearised, and that all
+    /// <see cref="Overlay"/> passes receive an LDR surface to draw onto.
+    /// </summary>
+    ToneMap = 35,
+    /// <summary>
+    /// LDR overlays rendered on top of the tone-mapped image: gizmos, debug geometry,
+    /// editor widgets, etc. Depth buffer from the opaque pass is still available here.
+    /// </summary>
+    Overlay = 40,
+    /// <summary>Final blit to the swap-chain / output texture.</summary>
+    Output = 50,
+}
+
 public readonly record struct RenderResource(string Name, ResourceType Type);
 
 public sealed record ResourceBuildParams(RenderContext Context);
@@ -15,7 +50,8 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
         IList<RenderResource> outputs,
         Action<RenderResources> onSetup,
         IList<string> after,
-        string? pingPongGroup = null
+        string? pingPongGroup = null,
+        RenderStage stage = RenderStage.Opaque
     )
     {
         public readonly RenderPass Pass = new();
@@ -31,6 +67,13 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
         /// Names of passes that must execute before this one, regardless of resource dependencies.
         /// </summary>
         public readonly IList<string> After = after;
+
+        /// <summary>
+        /// The broad execution phase this pass belongs to.
+        /// The graph compiler adds automatic edges so that every pass in a lower-numbered
+        /// stage finishes before any pass in a higher-numbered stage begins.
+        /// </summary>
+        public readonly RenderStage Stage = stage;
 
         /// <summary>
         /// The ping-pong group this pass belongs to, or <see langword="null"/> if not a ping-pong pass.
@@ -110,6 +153,9 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
     /// <see cref="RenderResources"/> overload that resolves them automatically.
     /// </param>
     /// <param name="after">Optional explicit ordering constraints (pass names that must precede this one).</param>
+    /// <param name="stage">
+    /// The broad execution phase this pass belongs to. Defaults to <see cref="RenderStage.PostProcess"/>.
+    /// </param>
     /// <returns>The current instance for method chaining.</returns>
     public RenderGraph AddPingPongPass(
         string passName,
@@ -117,7 +163,8 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
         IList<RenderResource> extraInputs,
         IList<RenderResource> extraOutputs,
         Action<RenderResources, string, string> onSetup,
-        IList<string>? after = null
+        IList<string>? after = null,
+        RenderStage stage = RenderStage.PostProcess
     )
     {
         if (_passes.ContainsKey(passName))
@@ -141,7 +188,8 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
             extraOutputs,
             _ => { }, // placeholder; replaced in Compile()
             after ?? [],
-            pingPongGroup
+            pingPongGroup,
+            stage
         );
 
         // Capture the real setup action so Compile() can wrap it with resolved slot names.
@@ -244,12 +292,17 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
     /// <param name="after">
     /// Optional list of pass names that must execute before this pass, regardless of resource dependencies.
     /// </param>
+    /// <param name="stage">
+    /// The broad execution phase this pass belongs to. The graph compiler automatically orders passes
+    /// so all passes in an earlier stage complete before any pass in a later stage. Defaults to <see cref="RenderStage.Opaque"/>.
+    /// </param>
     public RenderGraph AddPass(
         string passName,
         IList<RenderResource> inputs,
         IList<RenderResource> outputs,
         Action<RenderResources> onSetup,
-        IList<string>? after = null
+        IList<string>? after = null,
+        RenderStage stage = RenderStage.Opaque
     )
     {
         if (_passes.ContainsKey(passName))
@@ -258,7 +311,7 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
                 $"A pass with the name '{passName}' already exists in the render graph."
             );
         }
-        _passes.Add(passName, new GraphNode(passName, inputs, outputs, onSetup, after ?? []));
+        _passes.Add(passName, new GraphNode(passName, inputs, outputs, onSetup, after ?? [], stage: stage));
         IsDirty = true;
         return this;
     }
@@ -362,6 +415,17 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
                 if (addedEdges.Add((predecessor, pass)))
                 {
                     adjacencyList[predecessor].Add(pass);
+                    inDegree[pass]++;
+                }
+            }
+
+            // Stage-based ordering edges:
+            // Every pass in an earlier stage is a predecessor of every pass in a later stage.
+            foreach (var other in _passes.Values)
+            {
+                if (other.Stage < pass.Stage && addedEdges.Add((other, pass)))
+                {
+                    adjacencyList[other].Add(pass);
                     inDegree[pass]++;
                 }
             }
