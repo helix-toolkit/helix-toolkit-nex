@@ -120,7 +120,9 @@ public sealed class ForwardPlusOpaqueNode : RenderNode
                     res.Deps.Buffers[2] = res.Buffers[SystemBufferNames.BufferLightGrid];
                     res.Deps.Buffers[3] = res.Buffers[SystemBufferNames.BufferLightIndex];
                     res.Deps.Buffers[4] = res.Buffers[SystemBufferNames.BufferPBRProperties];
-                }
+                },
+                stage: RenderStage.Opaque,
+                after: [nameof(ForwardPlusLightCulling)]
             );
     }
 }

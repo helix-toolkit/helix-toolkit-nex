@@ -298,7 +298,8 @@ public sealed class FrustumCullNode : ComputeNode
                     res.Deps.Buffers[0] = res.Buffers[SystemBufferNames.BufferMeshDrawOpaque];
                     res.Deps.Buffers[1] = res.Buffers[SystemBufferNames.BufferMeshDrawTransparent];
                     res.Deps.Buffers[2] = res.Buffers[SystemBufferNames.BufferMeshInfo];
-                }
+                },
+                stage: RenderStage.Prepare
             );
     }
 }

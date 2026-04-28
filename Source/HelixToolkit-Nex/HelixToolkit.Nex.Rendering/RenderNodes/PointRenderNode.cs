@@ -1,5 +1,3 @@
-using HelixToolkit.Nex.Rendering.ComputeNodes;
-
 namespace HelixToolkit.Nex.Rendering.RenderNodes;
 
 public sealed class PointRenderNode : RenderNode
@@ -134,7 +132,6 @@ public sealed class PointRenderNode : RenderNode
                 new(SystemBufferNames.BufferForwardPlusConstants, ResourceType.Buffer),
             ],
             outputs: [new(SystemBufferNames.TextureColorF16Current, ResourceType.Texture)],
-            after: [nameof(ForwardPlusOpaqueNode), nameof(PointCullNode)],
             onSetup: (res) =>
             {
                 // Color 0: scene color (load existing opaque content)
@@ -157,7 +154,9 @@ public sealed class PointRenderNode : RenderNode
                 // Dependencies
                 res.Deps.Textures[0] = res.Textures[SystemBufferNames.TextureColorF16Current];
                 res.Deps.Textures[1] = res.Textures[SystemBufferNames.TextureDepthF32];
-            }
+            },
+            stage: RenderStage.Opaque,
+            after: [nameof(ForwardPlusOpaqueNode)]
         );
     }
 
