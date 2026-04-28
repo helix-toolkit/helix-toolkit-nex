@@ -70,7 +70,6 @@ internal sealed class PointsDemo : IDisposable
 
     // Post effects
     private readonly Smaa _smaa = new();
-    private readonly ToneMapping _toneMapping = new();
     private readonly BorderHighlightPostEffect _borderHighlight = new();
     private readonly ShowFPS _showFPS = new();
 
@@ -118,7 +117,6 @@ internal sealed class PointsDemo : IDisposable
             .WithPostEffects(effects =>
             {
                 effects.AddEffect(_smaa);
-                effects.AddEffect(_toneMapping);
                 effects.AddEffect(_borderHighlight);
                 effects.AddEffect(_showFPS);
             })
@@ -854,9 +852,10 @@ internal sealed class PointsDemo : IDisposable
             if (Gui.Checkbox("SMAA", ref smaaEnabled))
                 _smaa.Enabled = smaaEnabled;
 
-            bool tmEnabled = _toneMapping.Enabled;
+            var toneMappingNode = _engine!.GetRenderNode<ToneMappingNode>()!;
+            var tmEnabled = toneMappingNode.Enabled;
             if (Gui.Checkbox("Tone Mapping", ref tmEnabled))
-                _toneMapping.Enabled = tmEnabled;
+                toneMappingNode.Enabled = tmEnabled;
 
             bool bhEnabled = _borderHighlight.Enabled;
             if (Gui.Checkbox("Border Highlight", ref bhEnabled))

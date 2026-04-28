@@ -49,7 +49,7 @@ internal partial class TransparentDemo : IDisposable
     // Post Effects (no Bloom per requirement)
     private readonly Fxaa _fxaa = new() { Enabled = false };
     private readonly Smaa _smaa = new();
-    private readonly ToneMapping _toneMapping = new();
+    private readonly ToneMappingNode _toneMappingNode = new();
     private readonly ShowFPS _showFPS = new();
 
     private Size _viewportSize = new(1, 1);
@@ -103,9 +103,9 @@ internal partial class TransparentDemo : IDisposable
                 effects.AddEffect(_fxaa);
                 effects.AddEffect(_smaa);
                 // No bloom per requirement
-                effects.AddEffect(_toneMapping);
                 effects.AddEffect(_showFPS);
             })
+            .AddNode(_toneMappingNode)
             .Build();
 
         // --- Per-viewport state and scene data ---

@@ -65,7 +65,6 @@ internal class MainViewModel : ObservableObject, IDisposable
             {
                 effects.AddEffect(new Smaa());
                 effects.AddEffect(new Bloom());
-                effects.AddEffect(new ToneMapping() { EnableGammaCorrection = true });
                 effects.AddEffect(new BorderHighlightPostEffect());
                 effects.AddEffect(new WireframePostEffect());
                 effects.AddEffect(new ShowFPS());

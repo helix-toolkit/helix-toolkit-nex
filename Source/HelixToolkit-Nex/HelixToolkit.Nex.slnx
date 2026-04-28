@@ -43,6 +43,7 @@
       <Platform Solution="Release|Any CPU" Project="x64" />
       <Build Solution="LinuxDebug|Any CPU" Project="false" />
       <Build Solution="LinuxRelease|Any CPU" Project="false" />
+      <Deploy Solution="Debug|Any CPU" />
     </Project>
   </Folder>
   <Folder Name="/Samples/Interop/Wpf/">

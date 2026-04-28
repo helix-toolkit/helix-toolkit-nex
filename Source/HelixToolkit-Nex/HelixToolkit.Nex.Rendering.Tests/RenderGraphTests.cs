@@ -1,4 +1,5 @@
-using HelixToolkit.Nex.Rendering;
+using HelixToolkit.Nex.Rendering.ComputeNodes;
+using HelixToolkit.Nex.Rendering.RenderNodes;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace HelixToolkit.Nex.Rendering.Tests;
@@ -878,5 +879,234 @@ public class RenderGraphTests
         graph.AddPass("PassB", [], [], _ => { }, after: ["PassA"]);
 
         graph.Compile(); // must throw
+    }
+
+    // -----------------------------------------------------------------------
+    // Full default pipeline: real node AddToGraph registrations
+    // -----------------------------------------------------------------------
+
+    /// <summary>
+    /// Verifies that the full default render pipeline — using the real
+    /// <see cref="RenderNode.AddToGraph"/> implementations — compiles without
+    /// a circular dependency and produces the correct stage-based ordering.
+    /// <para>
+    /// No GPU context is required because <c>AddToGraph</c> only registers
+    /// resource metadata and passes; it never allocates GPU objects.
+    /// </para>
+    /// </summary>
+    [TestMethod]
+    [TestCategory("RenderGraph")]
+    public void Compile_DefaultPipeline_CorrectStageOrder()
+    {
+        var graph = new RenderGraph(BuildServices());
+
+        new PrepareNode().AddToGraph(graph);
+        new DepthPassNode().AddToGraph(graph);
+        new FrustumCullNode().AddToGraph(graph);
+        new PointCullNode().AddToGraph(graph);
+        new ForwardPlusLightCullingNode().AddToGraph(graph);
+        new ForwardPlusOpaqueNode().AddToGraph(graph);
+        new PointRenderNode().AddToGraph(graph);
+        new ForwardPlusTransparentNode().AddToGraph(graph);
+        new WBOITCompositeNode().AddToGraph(graph);
+        new PostEffectsNode().AddToGraph(graph);
+        new ToneMappingNode().AddToGraph(graph);
+
+        // Must not throw — no circular dependency.
+        graph.Compile();
+
+        var names = graph.SortedPasses.Select(p => p.PassName).ToList();
+
+        Assert.AreEqual(11, names.Count,
+            $"Expected 11 passes, got {names.Count}: {string.Join(", ", names)}");
+
+        // --- Stage: Prepare ---
+        Assert.IsTrue(Precedes(names, nameof(PrepareNode), nameof(DepthPassNode)), "PrepareNode before DepthPassNode");
+        Assert.IsTrue(Precedes(names, nameof(FrustumCullNode), nameof(ForwardPlusOpaqueNode)), "FrustumCullNode before ForwardPlusOpaqueNode");
+        Assert.IsTrue(Precedes(names, nameof(PointCullNode), nameof(PointRenderNode)), "PointCullNode before PointRenderNode");
+
+        // --- Stage: Opaque ---
+        Assert.IsTrue(Precedes(names, nameof(DepthPassNode), nameof(ForwardPlusLightCullingNode)), "DepthPassNode before ForwardPlusLightCullingNode");
+        Assert.IsTrue(Precedes(names, nameof(DepthPassNode), nameof(ForwardPlusOpaqueNode)), "DepthPassNode before ForwardPlusOpaqueNode");
+        Assert.IsTrue(Precedes(names, nameof(ForwardPlusLightCullingNode), nameof(ForwardPlusOpaqueNode)), "ForwardPlusLightCullingNode before ForwardPlusOpaqueNode");
+        Assert.IsTrue(Precedes(names, nameof(ForwardPlusOpaqueNode), nameof(PointRenderNode)), "ForwardPlusOpaqueNode before PointRenderNode");
+
+        // --- Stage: Transparent ---
+        Assert.IsTrue(Precedes(names, nameof(PointRenderNode), nameof(ForwardPlusTransparentNode)), "PointRenderNode before ForwardPlusTransparentNode");
+        Assert.IsTrue(Precedes(names, nameof(ForwardPlusOpaqueNode), nameof(ForwardPlusTransparentNode)), "ForwardPlusOpaqueNode before ForwardPlusTransparentNode");
+        Assert.IsTrue(Precedes(names, nameof(ForwardPlusTransparentNode), nameof(WBOITCompositeNode)), "ForwardPlusTransparentNode before WBOITCompositeNode");
+
+        // --- Stage: PostProcess → ToneMap ---
+        Assert.IsTrue(Precedes(names, nameof(WBOITCompositeNode), nameof(PostEffectsNode)), "WBOITCompositeNode before PostEffectsNode");
+        Assert.IsTrue(Precedes(names, nameof(PostEffectsNode), nameof(ToneMappingNode)), "PostEffectsNode before ToneMappingNode");
+    }
+
+    /// <summary>
+    /// Helper that asserts all canonical stage-ordering invariants for the
+    /// default pipeline, regardless of the node insertion order.
+    /// </summary>
+    private static void AssertDefaultPipelineOrder(List<string> names)
+    {
+        Assert.AreEqual(11, names.Count,
+            $"Expected 11 passes, got {names.Count}: {string.Join(", ", names)}");
+
+        // Prepare → Opaque
+        Assert.IsTrue(Precedes(names, nameof(PrepareNode), nameof(DepthPassNode)), "PrepareNode before DepthPassNode");
+        Assert.IsTrue(Precedes(names, nameof(FrustumCullNode), nameof(ForwardPlusOpaqueNode)), "FrustumCullNode before ForwardPlusOpaqueNode");
+        Assert.IsTrue(Precedes(names, nameof(PointCullNode), nameof(PointRenderNode)), "PointCullNode before PointRenderNode");
+
+        // Opaque ordering
+        Assert.IsTrue(Precedes(names, nameof(DepthPassNode), nameof(ForwardPlusLightCullingNode)), "DepthPassNode before ForwardPlusLightCullingNode");
+        Assert.IsTrue(Precedes(names, nameof(DepthPassNode), nameof(ForwardPlusOpaqueNode)), "DepthPassNode before ForwardPlusOpaqueNode");
+        Assert.IsTrue(Precedes(names, nameof(ForwardPlusLightCullingNode), nameof(ForwardPlusOpaqueNode)), "ForwardPlusLightCullingNode before ForwardPlusOpaqueNode");
+        Assert.IsTrue(Precedes(names, nameof(ForwardPlusOpaqueNode), nameof(PointRenderNode)), "ForwardPlusOpaqueNode before PointRenderNode");
+
+        // Opaque → Transparent
+        Assert.IsTrue(Precedes(names, nameof(PointRenderNode), nameof(ForwardPlusTransparentNode)), "PointRenderNode before ForwardPlusTransparentNode");
+        Assert.IsTrue(Precedes(names, nameof(ForwardPlusOpaqueNode), nameof(ForwardPlusTransparentNode)), "ForwardPlusOpaqueNode before ForwardPlusTransparentNode");
+        Assert.IsTrue(Precedes(names, nameof(ForwardPlusTransparentNode), nameof(WBOITCompositeNode)), "ForwardPlusTransparentNode before WBOITCompositeNode");
+
+        // Transparent → PostProcess → ToneMap
+        Assert.IsTrue(Precedes(names, nameof(WBOITCompositeNode), nameof(PostEffectsNode)), "WBOITCompositeNode before PostEffectsNode");
+        Assert.IsTrue(Precedes(names, nameof(PostEffectsNode), nameof(ToneMappingNode)), "PostEffectsNode before ToneMappingNode");
+    }
+
+    private static List<string> CompileNodes(IEnumerable<RenderNode> nodes)
+    {
+        var graph = new RenderGraph(BuildServices());
+        foreach (var node in nodes)
+            node.AddToGraph(graph);
+        graph.Compile();
+        return graph.SortedPasses.Select(p => p.PassName).ToList();
+    }
+
+    // -----------------------------------------------------------------------
+    // Default pipeline — reversed insertion order
+    // -----------------------------------------------------------------------
+
+    [TestMethod]
+    [TestCategory("RenderGraph")]
+    public void Compile_DefaultPipeline_ReversedInsertionOrder_CorrectStageOrder()
+    {
+        // Nodes added in exactly the reverse of the canonical order.
+        var names = CompileNodes([
+            new ToneMappingNode(),
+            new PostEffectsNode(),
+            new WBOITCompositeNode(),
+            new ForwardPlusTransparentNode(),
+            new PointRenderNode(),
+            new ForwardPlusOpaqueNode(),
+            new ForwardPlusLightCullingNode(),
+            new PointCullNode(),
+            new FrustumCullNode(),
+            new DepthPassNode(),
+            new PrepareNode(),
+        ]);
+
+        AssertDefaultPipelineOrder(names);
+    }
+
+    // -----------------------------------------------------------------------
+    // Default pipeline — transparent nodes before opaque nodes
+    // -----------------------------------------------------------------------
+
+    [TestMethod]
+    [TestCategory("RenderGraph")]
+    public void Compile_DefaultPipeline_TransparentBeforeOpaqueInsertion_CorrectStageOrder()
+    {
+        // Transparent-stage nodes are added before opaque-stage nodes.
+        var names = CompileNodes([
+            new ForwardPlusTransparentNode(),
+            new WBOITCompositeNode(),
+            new PrepareNode(),
+            new DepthPassNode(),
+            new FrustumCullNode(),
+            new PointCullNode(),
+            new ForwardPlusLightCullingNode(),
+            new ForwardPlusOpaqueNode(),
+            new PointRenderNode(),
+            new PostEffectsNode(),
+            new ToneMappingNode(),
+        ]);
+
+        AssertDefaultPipelineOrder(names);
+    }
+
+    // -----------------------------------------------------------------------
+    // Default pipeline — post-process nodes first
+    // -----------------------------------------------------------------------
+
+    [TestMethod]
+    [TestCategory("RenderGraph")]
+    public void Compile_DefaultPipeline_PostProcessNodesFirst_CorrectStageOrder()
+    {
+        // ToneMappingNode and PostEffectsNode added before everything else.
+        var names = CompileNodes([
+            new ToneMappingNode(),
+            new PostEffectsNode(),
+            new PrepareNode(),
+            new FrustumCullNode(),
+            new PointCullNode(),
+            new DepthPassNode(),
+            new ForwardPlusLightCullingNode(),
+            new ForwardPlusOpaqueNode(),
+            new PointRenderNode(),
+            new ForwardPlusTransparentNode(),
+            new WBOITCompositeNode(),
+        ]);
+
+        AssertDefaultPipelineOrder(names);
+    }
+
+    // -----------------------------------------------------------------------
+    // Default pipeline — interleaved stages
+    // -----------------------------------------------------------------------
+
+    [TestMethod]
+    [TestCategory("RenderGraph")]
+    public void Compile_DefaultPipeline_InterleavedStageInsertion_CorrectStageOrder()
+    {
+        // Nodes from different stages interleaved: one from each stage in turn.
+        var names = CompileNodes([
+            new ToneMappingNode(),         // ToneMap
+            new ForwardPlusOpaqueNode(),   // Opaque
+            new PostEffectsNode(),         // PostProcess
+            new PrepareNode(),             // Prepare
+            new WBOITCompositeNode(),      // Transparent
+            new DepthPassNode(),           // Opaque
+            new ForwardPlusTransparentNode(), // Transparent
+            new FrustumCullNode(),         // Prepare
+            new ForwardPlusLightCullingNode(), // Opaque
+            new PointCullNode(),           // Prepare
+            new PointRenderNode(),         // Opaque
+        ]);
+
+        AssertDefaultPipelineOrder(names);
+    }
+
+    // -----------------------------------------------------------------------
+    // Default pipeline — opaque-last insertion
+    // -----------------------------------------------------------------------
+
+    [TestMethod]
+    [TestCategory("RenderGraph")]
+    public void Compile_DefaultPipeline_OpaqueNodesLast_CorrectStageOrder()
+    {
+        // All opaque-stage nodes added after transparent and post-process nodes.
+        var names = CompileNodes([
+            new PrepareNode(),
+            new FrustumCullNode(),
+            new PointCullNode(),
+            new ForwardPlusTransparentNode(),
+            new WBOITCompositeNode(),
+            new PostEffectsNode(),
+            new ToneMappingNode(),
+            new DepthPassNode(),
+            new ForwardPlusLightCullingNode(),
+            new ForwardPlusOpaqueNode(),
+            new PointRenderNode(),
+        ]);
+
+        AssertDefaultPipelineOrder(names);
     }
 }

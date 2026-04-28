@@ -76,7 +76,6 @@ internal sealed class PickingDemo : IDisposable
             {
                 effects.AddEffect(new Smaa());
                 effects.AddEffect(new WireframePostEffect());
-                effects.AddEffect(new ToneMapping());
                 effects.AddEffect(new ShowFPS());
             })
             .Build();

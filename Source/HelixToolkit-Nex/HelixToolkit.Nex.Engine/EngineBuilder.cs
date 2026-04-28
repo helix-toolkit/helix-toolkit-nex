@@ -53,8 +53,8 @@ public enum EngineInteropTarget
 ///     .WithPostEffects(effects => {
 ///         effects.AddEffect(new Smaa());
 ///         effects.AddEffect(new Bloom());
-///         effects.AddEffect(new ToneMapping());
 ///     })
+///     .AddNode(new ToneMappingNode())
 ///     .AddNode(new RenderToFinalNode(context.GetSwapchainFormat()))
 ///     .Build();
 /// </code>
@@ -208,6 +208,7 @@ public sealed class EngineBuilder
     ///     .AddNode(new PostEffectsNode())
     ///     .AddNode(new ForwardPlusTransparentNode())
     ///     .AddNode(new WBOITCompositeNode())
+    ///     .AddNode(new ToneMappingNode())
     /// </code>
     /// </para>
     /// </summary>
@@ -224,6 +225,7 @@ public sealed class EngineBuilder
         AddNode(new PointRenderNode());
         AddNode(new ForwardPlusTransparentNode());
         AddNode(new WBOITCompositeNode());
+        AddNode(new ToneMappingNode());
         _addRenderToFinal = renderToSwapchain;
         if (renderToSwapchain)
         {

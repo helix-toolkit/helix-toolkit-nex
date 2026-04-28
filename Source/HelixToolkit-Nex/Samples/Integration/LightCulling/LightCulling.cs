@@ -62,7 +62,6 @@ internal class LightCullingTest(IContext context, bool largeScene = true) : IDis
             {
                 effects.AddEffect(new Smaa()); // 1. AA first – clean geometry edges on raw scene colour
                 effects.AddEffect(new Bloom()); // 2. Bloom on the already-anti-aliased signal
-                effects.AddEffect(new ToneMapping());
                 effects.AddEffect(new BorderHighlightPostEffect());
                 effects.AddEffect(new WireframePostEffect());
                 effects.AddEffect(new ShowFPS());
