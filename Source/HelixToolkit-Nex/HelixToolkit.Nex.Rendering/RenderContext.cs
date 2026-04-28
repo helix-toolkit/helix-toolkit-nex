@@ -263,4 +263,22 @@ public sealed class RenderContext(IServiceProvider services) : Initializable
         ResourceSet.Dispose();
         return ResultCode.Ok;
     }
+
+    public void SwapIntermediateBuffers()
+    {
+        var temp = ResourceSet.Textures[SystemBufferNames.TextureColorF16Current];
+        if (temp == TextureHandle.Null)
+        {
+            _logger.LogWarning("Current intermediate buffer is null. Cannot swap buffers.");
+            return;
+        }
+        if (temp == ResourceSet.Textures[SystemBufferNames.TextureColorF16A])
+        {
+            ResourceSet.Textures[SystemBufferNames.TextureColorF16Current] = ResourceSet.Textures[SystemBufferNames.TextureColorF16B];
+        }
+        else
+        {
+            ResourceSet.Textures[SystemBufferNames.TextureColorF16Current] = ResourceSet.Textures[SystemBufferNames.TextureColorF16A];
+        }
+    }
 }

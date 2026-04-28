@@ -221,7 +221,6 @@ internal sealed partial class TextureDemo : IDisposable
     private readonly Dependencies _imGuiDeps = new();
 
     // ---- Post effects ----
-    internal readonly ToneMapping ToneMapping = new() { Enabled = true };
     internal readonly Fxaa Fxaa = new() { Enabled = true };
     internal readonly ShowFPS ShowFPS = new() { Enabled = true };
 
@@ -280,7 +279,6 @@ internal sealed partial class TextureDemo : IDisposable
             .WithPostEffects(effects =>
             {
                 effects.AddEffect(Fxaa);
-                effects.AddEffect(ToneMapping);
                 effects.AddEffect(ShowFPS);
             })
             .Build();
