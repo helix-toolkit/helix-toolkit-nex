@@ -154,7 +154,7 @@ public class ForwardPlusTransparentNode : RenderNode
                 res.Deps.Buffers[3] = res.Buffers[SystemBufferNames.BufferLightIndex];
                 res.Deps.Buffers[4] = res.Buffers[SystemBufferNames.BufferPBRProperties];
             },
-            after: [nameof(ForwardPlusOpaqueNode), nameof(PointRenderNode)]
+            stage: RenderStage.Transparent
         );
     }
 
@@ -236,7 +236,7 @@ public class ForwardPlusTransparentNode : RenderNode
                 res.Deps.Buffers[2] = res.Buffers[SystemBufferNames.BufferLightGrid];
                 res.Deps.Buffers[3] = res.Buffers[SystemBufferNames.BufferLightIndex];
             },
-            after: [nameof(ForwardPlusOpaqueNode), nameof(PointRenderNode)]
+            stage: RenderStage.Transparent
         );
     }
 }

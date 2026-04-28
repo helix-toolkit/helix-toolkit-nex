@@ -170,7 +170,8 @@ public sealed class DepthPassNode() : RenderNode
                     res.Deps.Buffers[0] = res.Buffers[SystemBufferNames.BufferMeshDrawOpaque];
                     res.Deps.Buffers[1] = res.Buffers[SystemBufferNames.BufferPBRProperties];
                     res.Deps.Buffers[2] = res.Buffers[SystemBufferNames.BufferForwardPlusConstants];
-                }
+                },
+                stage: RenderStage.Opaque
             );
     }
 }

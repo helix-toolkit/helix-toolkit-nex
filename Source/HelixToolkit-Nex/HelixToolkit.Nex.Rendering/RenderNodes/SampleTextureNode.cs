@@ -36,7 +36,7 @@ public sealed class RenderToFinalNode(Format outputFormat)
                 res.Pass.Colors[0].StoreOp = StoreOp.Store;
                 res.Deps.Textures[0] = res.Textures[SystemBufferNames.TextureColorF16Current];
             },
-            after: [nameof(PostEffectsNode)]
+            stage: RenderStage.Output
         );
     }
 }

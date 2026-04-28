@@ -172,7 +172,8 @@ public sealed class PointCullNode : ComputeNode
                 new(SystemBufferNames.BufferPointDrawData, ResourceType.Buffer),
                 new(SystemBufferNames.BufferPointIndirectArgs, ResourceType.Buffer),
             ],
-            onSetup: (res) => { }
+            onSetup: (res) => { },
+            stage: RenderStage.Prepare
         );
     }
 }

@@ -266,7 +266,7 @@ public sealed class PostEffectsNode : RenderNode
                 res.Pass.Colors[0].LoadOp = LoadOp.Load;
                 res.Pass.Colors[0].StoreOp = StoreOp.Store;
             },
-            after: [nameof(ForwardPlusOpaqueNode), nameof(ForwardPlusTransparentNode), nameof(WBOITCompositeNode)]
+            stage: RenderStage.PostProcess
         );
     }
 }
