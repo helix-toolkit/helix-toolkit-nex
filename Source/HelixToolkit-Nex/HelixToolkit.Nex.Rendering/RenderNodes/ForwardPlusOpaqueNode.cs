@@ -17,11 +17,16 @@ public sealed class ForwardPlusOpaqueNode : RenderNode
             _logger.LogWarning("Render context data is null, skipping forward+ opaque pass.");
             return false;
         }
+
+        if (res.Context.Data!.MeshDrawsOpaque.Count == 0)
+            return false;
+
         var fpBuffer = res.Buffers[SystemBufferNames.BufferForwardPlusConstants];
         if (!fpBuffer.Valid)
         {
             return false;
         }
+
         var fpData = new FPConstants
         {
             Enabled = UseLightCulling ? 1u : 0,
@@ -29,6 +34,8 @@ public sealed class ForwardPlusOpaqueNode : RenderNode
             CameraPosition = context.CameraParams.Position,
             InverseViewProjection = context.CameraParams.InvViewProjection,
             ViewProjection = context.CameraParams.ViewProjection,
+            View = context.CameraParams.View,
+            InverseView = context.CameraParams.InvView,
             ScreenDimensions = new Vector2(context.WindowSize.Width, context.WindowSize.Height),
             DpiScale = context.DpiScale,
             MeshInfoBufferAddress = context.Data.MeshInfos.GpuAddress,
@@ -63,16 +70,8 @@ public sealed class ForwardPlusOpaqueNode : RenderNode
 
     protected override void OnRender(in RenderResources res)
     {
-        if (res.Context.Data is null)
-        {
-            _logger.LogWarning("Render context data is null, skipping forward+ opaque.");
-            return;
-        }
-        if (res.Context.Data.MeshDrawsOpaque.Count > 0)
-        {
-            res.CmdBuffer.BindDepthState(DepthState.ReadOnlyInvZ);
-            res.Context.Statistics.DrawCalls += RenderHelper.RenderOpaque(in res);
-        }
+        res.CmdBuffer.BindDepthState(DepthState.ReadOnlyInvZ);
+        res.Context.Statistics.DrawCalls += RenderHelper.RenderOpaque(in res);
     }
 
     protected override bool OnSetup()

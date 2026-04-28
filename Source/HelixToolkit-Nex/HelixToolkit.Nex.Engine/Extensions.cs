@@ -12,4 +12,9 @@ public static class Extensions
         var (_, handle) = await engine.ResourceManager.Geometries.AddAsync(geometry);
         return handle;
     }
+
+    public static PBRMaterialProperties CreatePBRProperties(this Engine engine, string materialName)
+    {
+        return engine.ResourceManager.PBRPropertyManager.Create(materialName);
+    }
 }

@@ -24,6 +24,8 @@ public sealed class DepthPassNode() : RenderNode
     protected override bool BeginRender(in RenderResources res)
     {
         var context = res.Context;
+        if (context.Data!.MeshDrawsOpaque.Count == 0)
+            return false;
         var fpBuffer = res.Buffers[SystemBufferNames.BufferForwardPlusConstants];
         if (!fpBuffer.Valid)
         {
@@ -35,6 +37,8 @@ public sealed class DepthPassNode() : RenderNode
             CameraPosition = context.CameraParams.Position,
             InverseViewProjection = context.CameraParams.InvViewProjection,
             ViewProjection = context.CameraParams.ViewProjection,
+            View = context.CameraParams.View,
+            InverseView = context.CameraParams.InvView,
             ScreenDimensions = new Vector2(context.WindowSize.Width, context.WindowSize.Height),
             DpiScale = context.DpiScale,
             MeshInfoBufferAddress = context.Data?.MeshInfos.GpuAddress ?? 0,
@@ -54,13 +58,10 @@ public sealed class DepthPassNode() : RenderNode
             return;
         }
         Debug.Assert(_pipeline.Valid, "_pipeline is not valid.");
-        if (res.Context.Data.MeshDrawsOpaque.Count > 0)
-        {
-            using var _ = res.Context.EnableExternalPipelineScoped();
-            res.CmdBuffer.BindRenderPipeline(_pipeline);
-            res.CmdBuffer.BindDepthState(DepthState.DefaultReversedZ);
-            res.Context.Statistics.DrawCalls += RenderHelper.RenderOpaque(in res);
-        }
+        using var _ = res.Context.EnableExternalPipelineScoped();
+        res.CmdBuffer.BindRenderPipeline(_pipeline);
+        res.CmdBuffer.BindDepthState(DepthState.DefaultReversedZ);
+        res.Context.Statistics.DrawCalls += RenderHelper.RenderOpaque(in res);
     }
 
     protected override void EndRender(in RenderResources res)
