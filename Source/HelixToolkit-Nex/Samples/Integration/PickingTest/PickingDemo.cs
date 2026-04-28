@@ -115,7 +115,7 @@ internal sealed class PickingDemo : IDisposable
         );
 
         _largeMeshGeometry = meshGeom3D.ToGeometry();
-        bool succ = geometryManager.Add(_largeMeshGeometry, out _);
+        bool succ = geometryManager.Add(_largeMeshGeometry);
         Debug.Assert(succ, "Failed to add large mesh geometry");
 
         // Material: grey PBR
@@ -147,7 +147,7 @@ internal sealed class PickingDemo : IDisposable
         _highlightGeometry.Indices.Add(1);
         _highlightGeometry.Indices.Add(2);
         _highlightGeometry.UpdateBounds();
-        succ = geometryManager.Add(_highlightGeometry, out _);
+        succ = geometryManager.Add(_highlightGeometry);
         Debug.Assert(succ, "Failed to add highlight geometry");
 
         // Yellow unlit material for highlight
@@ -165,7 +165,7 @@ internal sealed class PickingDemo : IDisposable
 
         // --- Point cloud: random sphere of points ---
         _pointCloudGeometry = GeneratePointCloudSphere(10_000, 12f, new Vector3(25, 0, 0));
-        succ = geometryManager.Add(_pointCloudGeometry, out _);
+        succ = geometryManager.Add(_pointCloudGeometry);
         Debug.Assert(succ, "Failed to add point cloud geometry");
 
         var pointCloudNode = new PointCloudNode(world, "PointCloud")
@@ -184,7 +184,7 @@ internal sealed class PickingDemo : IDisposable
         );
         _highlightPointGeometry.VertexColors.Add(new Vector4(1, 0, 0, 1));
         _highlightPointGeometry.UpdateBounds();
-        succ = geometryManager.Add(_highlightPointGeometry, out _);
+        succ = geometryManager.Add(_highlightPointGeometry);
         Debug.Assert(succ, "Failed to add highlight point geometry");
 
         _highlightPointNode = new PointCloudNode(world, "HighlightPoint")

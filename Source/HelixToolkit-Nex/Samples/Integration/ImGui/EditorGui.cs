@@ -1,6 +1,5 @@
 using System.Numerics;
 using HelixToolkit.Nex.ECS;
-using HelixToolkit.Nex.Engine.CameraControllers;
 using HelixToolkit.Nex.Engine.Components;
 using HelixToolkit.Nex.Maths;
 using HelixToolkit.Nex.Rendering.Components;
@@ -325,7 +324,7 @@ internal partial class Editor
         // --- Light component ---
         if (_selectedEntity.TryGet<RangeLightComponent>(out var light))
         {
-            if (Gui.CollapsingHeader("Range Light"))
+            if (light is not null && Gui.CollapsingHeader("Range Light"))
             {
                 Gui.Text($"Type: {light.Type}");
                 Gui.Text($"Range: {light.Range:F2}");

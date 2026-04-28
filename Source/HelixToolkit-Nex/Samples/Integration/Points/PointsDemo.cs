@@ -384,7 +384,7 @@ internal sealed class PointsDemo : IDisposable
                 Array.IndexOf(_materialTypes, materialName)
             )
         );
-        _engine!.ResourceManager.Geometries.Add(geo, out _);
+        _engine!.Add(geo);
     }
 
     // ------------------------------------------------------------------
@@ -922,10 +922,6 @@ internal sealed class PointsDemo : IDisposable
     // ------------------------------------------------------------------
     // Camera input forwarding
     // ------------------------------------------------------------------
-
-    // Right-drag viewport tracking
-    private bool _isRotating,
-        _isPanning;
 
     public void OnKeyboardInput(bool w, bool s, bool a, bool d, bool space, bool ctrl, bool shift)
     {

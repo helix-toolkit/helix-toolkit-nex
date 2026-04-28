@@ -11,12 +11,9 @@ using HelixToolkit.Nex.Maths;
 using HelixToolkit.Nex.Rendering;
 using HelixToolkit.Nex.Rendering.Components;
 using HelixToolkit.Nex.Rendering.ComputeNodes;
-using HelixToolkit.Nex.Rendering.PostEffects;
 using HelixToolkit.Nex.Rendering.RenderNodes;
-using HelixToolkit.Nex.Repository;
 using HelixToolkit.Nex.Scene;
 using HelixToolkit.Nex.Shaders.Frag;
-using SDL3;
 
 internal class DepthPrepassTest(IContext context) : IDisposable
 {
@@ -76,18 +73,18 @@ internal class DepthPrepassTest(IContext context) : IDisposable
         var meshbuilder = new MeshBuilder(true, true, true);
         meshbuilder.AddSphere(Vector3.Zero);
         var sphere = meshbuilder.ToMesh().ToGeometry();
-        var succ = geometryManager.Add(sphere, out var sphereId);
+        var succ = geometryManager.Add(sphere);
         Debug.Assert(succ, "Failed to add geometry");
         meshbuilder = new MeshBuilder(true, true, true);
         meshbuilder.AddCube();
         var cube = meshbuilder.ToMesh().ToGeometry();
-        succ = geometryManager.Add(cube, out var cubeId);
+        succ = geometryManager.Add(cube);
         Debug.Assert(succ, "Failed to add geometry");
 
         meshbuilder = new MeshBuilder(true, true, true);
         meshbuilder.AddTetrahedron(Vector3.Zero, Vector3.UnitX, Vector3.UnitY, 2);
         var tetrahron = meshbuilder.ToMesh().ToGeometry();
-        succ = geometryManager.Add(tetrahron, out var tetrahedronId);
+        succ = geometryManager.Add(tetrahron);
 
         _root = new Node(_worldDataProvider!.World, "Root");
         for (int i = 0; i < NumSpheresPerAxis; ++i)
