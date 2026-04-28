@@ -5,7 +5,6 @@ public enum PostEffectPriority : uint
     AntiAliasing = 10,
     Bloom = 20,
     Highlight = 30,
-    ToneMapping = 40,
     Other = 50,
 }
 
@@ -246,14 +245,13 @@ public sealed class PostEffectsNode : RenderNode
         // is written at runtime by OnRender, not allocated as a separate GPU texture.
         graph.AddTexture(
             SystemBufferNames.TextureColorF16Current,
-            null,
-            dependsOnScreenSize: false
+            null
         );
 
         graph.AddPingPongPass(
             nameof(PostEffectsNode),
             PingPongGroups.ColorF16,
-            extraInputs: [new(SystemBufferNames.TextureColorF16A, ResourceType.Texture)],
+            extraInputs: [],
             // Declare TextureColorF16Current as an output so downstream passes that consume it
             // are correctly ordered after PostEffectsNode by the topological sort.
             extraOutputs: [new(SystemBufferNames.TextureColorF16Current, ResourceType.Texture)],

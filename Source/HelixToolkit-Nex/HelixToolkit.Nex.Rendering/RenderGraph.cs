@@ -529,10 +529,10 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
                 {
                     new(readSlot, ResourceType.Texture),
                 };
-                var patchedOutputs = new List<RenderResource>(pass.Outputs)
-                {
-                    new(writeSlot, ResourceType.Texture),
-                };
+                // Write slot is captured in the setup closure only — do NOT add it as a graph
+                // output edge, or it creates a backward resource dependency that conflicts with
+                // the forward stage edge (e.g. ToneMappingNode writes A → PostEffectsNode reads A).
+                var patchedOutputs = new List<RenderResource>(pass.Outputs);
 
                 // Replace inputs/outputs via reflection-free helper fields.
                 // GraphNode.Inputs/Outputs are readonly IList, so we replace the node entirely.
@@ -558,34 +558,52 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
     }
 
     /// <summary>
-    /// Topologically sorts a subset of passes (within a single ping-pong group) using only
-    /// the <c>after</c> edges between members of that subset.
+    /// Topologically sorts a subset of passes (within a single ping-pong group) using
+    /// intra-group <c>after</c> edges and <see cref="GraphNode.Stage"/> ordering.
+    /// Stage ordering is treated as an implicit edge: every pass in a lower stage
+    /// precedes every pass in a higher stage, exactly like the main <see cref="Compile"/> sort.
     /// </summary>
     private static List<GraphNode> TopologicalSortGroup(List<GraphNode> passes)
     {
         var nameMap = passes.ToDictionary(p => p.PassName);
         var inDegree = passes.ToDictionary(p => p, _ => 0);
         var adj = passes.ToDictionary(p => p, _ => new List<GraphNode>());
+        var addedEdges = new HashSet<(GraphNode, GraphNode)>();
 
         foreach (var pass in passes)
         {
+            // Intra-group explicit after edges
             foreach (var afterName in pass.After)
             {
-                if (nameMap.TryGetValue(afterName, out var predecessor))
+                if (nameMap.TryGetValue(afterName, out var predecessor)
+                    && addedEdges.Add((predecessor, pass)))
                 {
                     adj[predecessor].Add(pass);
                     inDegree[pass]++;
                 }
             }
+
+            // Intra-group stage edges
+            foreach (var other in passes)
+            {
+                if (other.Stage < pass.Stage && addedEdges.Add((other, pass)))
+                {
+                    adj[other].Add(pass);
+                    inDegree[pass]++;
+                }
+            }
         }
 
-        var queue = new Queue<GraphNode>(passes.Where(p => inDegree[p] == 0));
+        // Kahn's algorithm — seed with stage-stable order so slot assignment is deterministic.
+        var queue = new Queue<GraphNode>(
+            passes.Where(p => inDegree[p] == 0).OrderBy(p => (int)p.Stage)
+        );
         var result = new List<GraphNode>(passes.Count);
         while (queue.Count > 0)
         {
             var n = queue.Dequeue();
             result.Add(n);
-            foreach (var dep in adj[n])
+            foreach (var dep in adj[n].OrderBy(d => (int)d.Stage))
             {
                 if (--inDegree[dep] == 0)
                 {
@@ -594,8 +612,8 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
             }
         }
 
-        // Any remaining passes have no intra-group after constraint — append in original order.
-        foreach (var pass in passes)
+        // Any remaining passes (no intra-group constraint) — append sorted by stage.
+        foreach (var pass in passes.OrderBy(p => (int)p.Stage))
         {
             if (!result.Contains(pass))
             {

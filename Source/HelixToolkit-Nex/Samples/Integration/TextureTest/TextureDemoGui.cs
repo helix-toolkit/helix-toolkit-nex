@@ -1,5 +1,6 @@
 using System.Numerics;
 using HelixToolkit.Nex.Maths;
+using HelixToolkit.Nex.Rendering.RenderNodes;
 using HelixToolkit.Nex.Shaders;
 using ImGuiNET;
 using Gui = ImGuiNET.ImGui;
@@ -295,17 +296,18 @@ internal sealed partial class TextureDemo
         if (Gui.Checkbox("FXAA", ref fxaaEnabled))
             Fxaa.Enabled = fxaaEnabled;
 
-        bool tmEnabled = ToneMapping.Enabled;
+        var toneMappingNode = _engine!.GetRenderNode<ToneMappingNode>()!;
+        bool tmEnabled = toneMappingNode.Enabled;
         if (Gui.Checkbox("Tone Mapping", ref tmEnabled))
-            ToneMapping.Enabled = tmEnabled;
+            toneMappingNode.Enabled = tmEnabled;
 
-        if (ToneMapping.Enabled)
+        if (toneMappingNode.Enabled)
         {
             Gui.Indent();
-            int tmMode = (int)ToneMapping.Mode;
+            int tmMode = (int)toneMappingNode.Mode;
             Gui.SetNextItemWidth(-1f);
             if (Gui.Combo("Mode##TM", ref tmMode, "ACES Film\0Reinhard\0Uncharted 2\0"))
-                ToneMapping.Mode = (ToneMappingMode)tmMode;
+                toneMappingNode.Mode = (ToneMappingMode)tmMode;
             Gui.Unindent();
         }
 

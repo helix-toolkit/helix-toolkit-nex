@@ -119,7 +119,6 @@ public partial class MainViewModel : ObservableObject, IDisposable
                 effects.AddEffect(new Bloom());
                 effects.AddEffect(new BorderHighlightPostEffect());
                 effects.AddEffect(new WireframePostEffect());
-                effects.AddEffect(new ToneMapping() { EnableGammaCorrection = true });
                 effects.AddEffect(new ShowFPS());
             })
             .WithInteropTarget(target)

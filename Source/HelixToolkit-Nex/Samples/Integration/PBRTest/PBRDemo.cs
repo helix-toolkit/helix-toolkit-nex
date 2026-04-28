@@ -120,7 +120,6 @@ internal partial class PBRDemo : IDisposable
     private readonly Dependencies _imGuiDeps = new();
 
     // Post effects
-    private readonly ToneMapping _toneMapping = new();
     private readonly Fxaa _fxaa = new() { Enabled = true };
     private readonly ShowFPS _showFPS = new();
 
@@ -166,7 +165,6 @@ internal partial class PBRDemo : IDisposable
             .WithPostEffects(effects =>
             {
                 effects.AddEffect(_fxaa);
-                effects.AddEffect(_toneMapping);
                 effects.AddEffect(_showFPS);
             })
             .Build();

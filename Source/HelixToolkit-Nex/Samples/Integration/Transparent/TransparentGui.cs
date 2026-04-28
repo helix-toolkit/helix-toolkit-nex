@@ -142,10 +142,10 @@ internal partial class TransparentDemo
                     _fxaa.Enabled = fxaaEnabled;
                 }
 
-                var tonemapEnabled = _toneMapping.Enabled;
+                var tonemapEnabled = _toneMappingNode.Enabled;
                 if (Gui.Checkbox("Tone Mapping", ref tonemapEnabled))
                 {
-                    _toneMapping.Enabled = tonemapEnabled;
+                    _toneMappingNode.Enabled = tonemapEnabled;
                 }
 
                 var showFps = _showFPS.Enabled;

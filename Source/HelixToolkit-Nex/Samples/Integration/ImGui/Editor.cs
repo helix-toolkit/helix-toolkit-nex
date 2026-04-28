@@ -57,7 +57,6 @@ internal partial class Editor : IDisposable
     private readonly Bloom _bloom = new();
     private readonly BorderHighlightPostEffect _borderHighlight = new();
     private readonly WireframePostEffect _wireframe = new();
-    private readonly ToneMapping _toneMapping = new();
     private readonly ShowFPS _showFPS = new();
 
     /// <summary>
@@ -117,7 +116,6 @@ internal partial class Editor : IDisposable
                 effects.AddEffect(_bloom);
                 effects.AddEffect(_borderHighlight);
                 effects.AddEffect(_wireframe);
-                effects.AddEffect(_toneMapping);
                 effects.AddEffect(_showFPS);
             })
             .Build();

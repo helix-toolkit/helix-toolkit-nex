@@ -4,6 +4,7 @@ using HelixToolkit.Nex.Engine.Components;
 using HelixToolkit.Nex.Maths;
 using HelixToolkit.Nex.Rendering.Components;
 using HelixToolkit.Nex.Rendering.PostEffects;
+using HelixToolkit.Nex.Rendering.RenderNodes;
 using HelixToolkit.Nex.Scene;
 using HelixToolkit.Nex.Shaders;
 using ImGuiNET;
@@ -465,13 +466,14 @@ internal partial class Editor
         // --- Tone Mapping ---
         if (Gui.CollapsingHeader("Tone Mapping"))
         {
-            bool tmEnabled = _toneMapping.Enabled;
+            var toneMappingNode = _engine!.GetRenderNode<ToneMappingNode>()!;
+            bool tmEnabled = toneMappingNode.Enabled;
             if (Gui.Checkbox("Enabled##ToneMapping", ref tmEnabled))
-                _toneMapping.Enabled = tmEnabled;
+                toneMappingNode.Enabled = tmEnabled;
 
-            int tmMode = (int)_toneMapping.Mode;
+            int tmMode = (int)toneMappingNode.Mode;
             if (Gui.Combo("Mode##ToneMapping", ref tmMode, "ACES Film\0Reinhard\0Uncharted 2\0"))
-                _toneMapping.Mode = (ToneMappingMode)tmMode;
+                toneMappingNode.Mode = (ToneMappingMode)tmMode;
         }
 
         // --- Border Highlight ---
