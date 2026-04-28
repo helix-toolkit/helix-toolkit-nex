@@ -26,6 +26,16 @@ public sealed class WBOITCompositeNode : RenderNode
 
     protected override bool BeginRender(in RenderResources res)
     {
+        if (res.Context.Data is null)
+        {
+            _logger.LogWarning("Render context data is null, skipping WBOIT composite pass.");
+            return false;
+        }
+        if (res.Context.Data.MeshDrawsTransparent.Count == 0)
+        {
+            // No transparent draws, so no need to composite.
+            return false;
+        }
         res.CmdBuffer.BeginRendering(res.Pass, res.Framebuf, res.Deps);
         return true;
     }

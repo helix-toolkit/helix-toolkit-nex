@@ -17,28 +17,32 @@ struct PointerRing {
 struct FPConstants {
     mat4 viewProjection;
     mat4 inverseViewProjection;
+    mat4 view;
+    mat4 inverseView;
 
     vec3 cameraPosition;
     float dpiScale;
 
+    vec2 screenDimensions;
     uint lightCount;
     uint tileSize;
-    vec2 screenDimensions;
 
     uint tileCountX;
     uint tileCountY;
     uint maxLightsPerTile;
     uint enabled;
 
-    PointerRing pointerRing;
-
     uint64_t timeMs;
-
     uint64_t meshInfoBufferAddress;
+
     uint64_t lightBufferAddress;
     uint64_t lightGridBufferAddress;
+
     uint64_t lightIndexBufferAddress;
     uint64_t materialBufferAddress;
+
     uint64_t meshDrawBufferAddress;
     uint64_t directionalLightsBufferAddress;
+
+    PointerRing pointerRing;
 };

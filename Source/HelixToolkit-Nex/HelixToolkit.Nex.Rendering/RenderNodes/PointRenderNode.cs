@@ -24,6 +24,59 @@ public sealed class PointRenderNode : RenderNode
 
     #region Render
 
+    protected override bool BeginRender(in RenderResources res)
+    {
+        var context = res.Context;
+        if (context.Data is null)
+        {
+            _logger.LogWarning("Render context data is null. Skipping point rendering.");
+            return false;
+        }
+
+        if (context.Data.PointCloudData!.TotalPointCount == 0)
+        {
+            return false;
+        }
+        var fpBuffer = res.Buffers[SystemBufferNames.BufferForwardPlusConstants];
+        if (!fpBuffer.Valid)
+        {
+            return false;
+        }
+        var fpData = new FPConstants
+        {
+            Enabled = 1u,
+            TimeMs = res.Context.TimeMs,
+            CameraPosition = context.CameraParams.Position,
+            InverseViewProjection = context.CameraParams.InvViewProjection,
+            ViewProjection = context.CameraParams.ViewProjection,
+            View = context.CameraParams.View,
+            InverseView = context.CameraParams.InvView,
+            ScreenDimensions = new Vector2(context.WindowSize.Width, context.WindowSize.Height),
+            DpiScale = context.DpiScale,
+            DirectionalLightsBufferAddress =
+                context.Data.DirectionalLights.Count > 0
+                    ? res.Buffers[SystemBufferNames.BufferDirectionalLight]
+                        .GpuAddress(context.Context)
+                    : 0,
+            LightBufferAddress = context.Data.Lights.GpuAddress,
+            LightGridBufferAddress =
+                context.Data.Lights.Count > 0
+                    ? res.Buffers[SystemBufferNames.BufferLightGrid].GpuAddress(context.Context)
+                    : 0,
+            LightIndexBufferAddress =
+                context.Data.Lights.Count > 0
+                    ? res.Buffers[SystemBufferNames.BufferLightIndex].GpuAddress(context.Context)
+                    : 0,
+            TileCountX = (uint)context.TileCountX,
+            TileCountY = (uint)context.TileCountY,
+            LightCount = (uint)context.Data.Lights.Count,
+            TileSize = context.FPLightConfig.TileSize,
+            MaxLightsPerTile = context.FPLightConfig.MaxLightsPerTile,
+        };
+        res.CmdBuffer.UpdateBuffer(fpBuffer, ref fpData);
+        return base.BeginRender(res);
+    }
+
     protected override void OnRender(in RenderResources res)
     {
         if (res.Context is null || res.Context.Data is null)
@@ -32,11 +85,7 @@ public sealed class PointRenderNode : RenderNode
             return;
         }
         var points = res.Context.Data.PointCloudData;
-        if (points!.TotalPointCount == 0)
-        {
-            return;
-        }
-        foreach (var entry in points.Data.Values)
+        foreach (var entry in points!.Data.Values)
         {
             if (entry.PointCount == 0)
             {
