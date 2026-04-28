@@ -71,7 +71,7 @@ public partial class Geometry : HxObservableObject, IDisposable
     internal Handle<GeometryResourceType> Handle { set; get; } = Handle<GeometryResourceType>.Null;
     internal GeometryManager? Manager { set; get; } = null;
 
-    public bool Attached => Handle.Valid && Manager is not null;
+    public bool Valid => Handle.Valid && Manager is not null;
 
     public uint Id => Handle.Index;
 
@@ -124,6 +124,8 @@ public partial class Geometry : HxObservableObject, IDisposable
     #endregion
 
     private GeometryBufferType _bufferDirty = GeometryBufferType.All;
+    private bool _disposedValue;
+
     public GeometryBufferType BufferDirty
     {
         set
@@ -189,7 +191,7 @@ public partial class Geometry : HxObservableObject, IDisposable
             {
                 BufferDirty |= GeometryBufferType.VertexColor;
             }
-            if (BufferDirty != GeometryBufferType.None && Attached)
+            if (BufferDirty != GeometryBufferType.None && Valid)
             {
                 EventBus.Instance.PublishAsync(new GeometryUpdatedEvent(Id, GeometryChangeOp.Updated));
             }
@@ -773,26 +775,31 @@ public partial class Geometry : HxObservableObject, IDisposable
     }
     #endregion
 
-    #region Dispose Support
-    private bool _disposedValue;
+
+    internal void Release()
+    {
+        _pendingBufferUpdate = null;
+        Disposer.DisposeAndRemove(ref _vertexBuffer);
+        Disposer.DisposeAndRemove(ref _vertexPropsBuffer);
+        Disposer.DisposeAndRemove(ref _indexBuffer);
+        Disposer.DisposeAndRemove(ref _vertColorsBuffer);
+        Handle = Handle<GeometryResourceType>.Null;
+        Manager = null;
+    }
 
     protected virtual void Dispose(bool disposing)
     {
         if (!_disposedValue)
         {
-            _disposedValue = true; // Set eagerly to prevent re-entrant disposal via Manager.Remove → Pool.Destroy
             if (disposing)
             {
-                _pendingBufferUpdate = null;
-                Disposer.DisposeAndRemove(ref _vertexBuffer);
-                Disposer.DisposeAndRemove(ref _vertexPropsBuffer);
-                Disposer.DisposeAndRemove(ref _indexBuffer);
-                Disposer.DisposeAndRemove(ref _vertColorsBuffer);
                 Manager?.Remove(this);
+                Release();
             }
 
             // TODO: free unmanaged resources (unmanaged objects) and override finalizer
             // TODO: set large fields to null
+            _disposedValue = true;
         }
     }
 
@@ -809,5 +816,4 @@ public partial class Geometry : HxObservableObject, IDisposable
         Dispose(disposing: true);
         GC.SuppressFinalize(this);
     }
-    #endregion
 }

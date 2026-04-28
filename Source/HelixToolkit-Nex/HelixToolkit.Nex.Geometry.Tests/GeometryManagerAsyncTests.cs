@@ -34,39 +34,6 @@ public sealed class GeometryManagerAsyncTests
     }
 
     // -----------------------------------------------------------------------
-    // Fire-and-forget overload: bool AddAsync(Geometry, out uint)
-    // -----------------------------------------------------------------------
-
-    [TestMethod]
-    public void AddAsync_OutParam_SetsAttachedAndAssignsId()
-    {
-        using var geometry = new Geometry
-        {
-            Vertices = [.. Enumerable.Repeat(new Vector4(1, 2, 3, 1), 64)],
-        };
-
-        var ok = _manager!.AddAsync(geometry, out uint id);
-
-        Assert.IsTrue(ok, "AddAsync should return true for a new geometry.");
-        Assert.IsTrue(geometry.Attached, "Geometry should be attached after AddAsync.");
-        Assert.AreEqual(id, geometry.Id, "Id returned via out param should match geometry.Id.");
-    }
-
-    [TestMethod]
-    public void AddAsync_OutParam_AlreadyManaged_ReturnsFalse()
-    {
-        using var geometry = new Geometry
-        {
-            Vertices = [.. Enumerable.Repeat(new Vector4(0, 1, 0, 1), 8)],
-        };
-
-        _manager!.AddAsync(geometry, out _);
-        var ok = _manager.AddAsync(geometry, out _);
-
-        Assert.IsFalse(ok, "AddAsync should return false when geometry already belongs to a manager.");
-    }
-
-    // -----------------------------------------------------------------------
     // Awaitable overload: Task<(bool Success, uint Id)> AddAsync(Geometry)
     // -----------------------------------------------------------------------
 
@@ -78,11 +45,11 @@ public sealed class GeometryManagerAsyncTests
             Vertices = [.. Enumerable.Repeat(new Vector4(1, 0, 0, 1), 32)],
         };
 
-        var (success, id) = await _manager!.AddAsync(geometry);
+        var (success, handle) = await _manager!.AddAsync(geometry);
 
         Assert.IsTrue(success, "Task AddAsync should succeed for a new geometry.");
-        Assert.AreEqual(id, geometry.Id, "Returned id should match geometry.Id.");
-        Assert.IsTrue(geometry.Attached, "Geometry should be attached after awaiting AddAsync.");
+        Assert.AreEqual(handle.Index, geometry.Id, "Returned id should match geometry.Id.");
+        Assert.IsTrue(geometry.Valid, "Geometry should be attached after awaiting AddAsync.");
     }
 
     [TestMethod]
@@ -135,7 +102,7 @@ public sealed class GeometryManagerAsyncTests
     }
 
     [TestMethod]
-    public async Task AddAsync_Task_AlreadyManaged_ReturnsFalse()
+    public async Task AddAsync_Task_AlreadyManaged_ReturnsTrue()
     {
         using var geometry = new Geometry
         {
@@ -143,10 +110,10 @@ public sealed class GeometryManagerAsyncTests
         };
 
         await _manager!.AddAsync(geometry);
-        var (success, id) = await _manager.AddAsync(geometry);
+        var (success, handle) = await _manager.AddAsync(geometry);
 
-        Assert.IsFalse(success, "Second AddAsync of already-managed geometry should return Success=false.");
-        Assert.AreEqual(0u, id, "Id should be 0 when AddAsync fails.");
+        Assert.IsTrue(success, "Second AddAsync of already-managed geometry should return Success=true.");
+        Assert.AreEqual(geometry.Id, handle.Index, "Id should be same if try to add to same manager.");
     }
 
     [TestMethod]
@@ -209,7 +176,7 @@ public sealed class GeometryManagerAsyncTests
             Assert.AreEqual(count, results.Length);
             Assert.IsTrue(results.All(r => r.Success), "All concurrent AddAsync calls should succeed.");
 
-            var ids = results.Select(r => r.Id).ToHashSet();
+            var ids = results.Select(r => r.Item2.Index).ToHashSet();
             Assert.AreEqual(count, ids.Count, "All concurrent AddAsync results should have unique IDs.");
         }
         finally
@@ -227,7 +194,7 @@ public sealed class GeometryManagerAsyncTests
         var (success, id) = await _manager!.AddAsync(geometry);
 
         Assert.IsTrue(success, "AddAsync should succeed even with empty vertex data.");
-        Assert.IsTrue(geometry.Attached);
+        Assert.IsTrue(geometry.Valid);
     }
 
     [TestMethod]
@@ -245,6 +212,6 @@ public sealed class GeometryManagerAsyncTests
 
         Assert.IsTrue(removed, "Remove should return true for a managed geometry.");
         Assert.AreEqual(countAfterAdd - 1, _manager.Count, "Count should decrement after Remove.");
-        Assert.IsFalse(geometry.Attached, "Geometry should no longer be attached after Remove.");
+        Assert.IsFalse(geometry.Valid, "Geometry should no longer be attached after Remove.");
     }
 }

@@ -37,18 +37,8 @@ public interface IGeometryManager : IDisposable
     /// Adds a new geometry to the Geometry Manager.
     /// </summary>
     /// <param name="geometry">The geometry to add.</param>
-    /// <param name="id">Outputs the assigned geometry id</param>
-    /// <returns>Success or failed.</returns>
-    bool Add(Geometry geometry, out uint id);
-
-    /// <summary>
-    /// Asynchronously adds the specified geometry to the collection and assigns it a unique identifier.
-    /// </summary>
-    /// <param name="geometry">The geometry object to add. Cannot be <see langword="null"/>.</param>
-    /// <param name="id">When this method returns, contains the unique identifier assigned to the added geometry, if the operation
-    /// succeeds.</param>
-    /// <returns><see langword="true"/> if the geometry was successfully added; otherwise, <see langword="false"/>.</returns>
-    bool AddAsync(Geometry geometry, out uint id);
+    /// <returns>Returns valid handle if success, otherwise failed.</returns>
+    Handle<GeometryResourceType> Add(Geometry geometry);
 
     /// <summary>
     /// Adds the geometry to the pool, schedules GPU buffer uploads, and returns a <see cref="Task"/> that
@@ -56,10 +46,10 @@ public interface IGeometryManager : IDisposable
     /// </summary>
     /// <param name="geometry">The geometry to add. Must not already belong to a manager.</param>
     /// <returns>
-    /// A <see cref="Task{T}"/> whose result is a <c>(bool Success, uint Id)</c> tuple.
+    /// A <see cref="Task{T}"/> whose result is a <c>(bool Success, Handle<GeometryResourceType>)</c> tuple.
     /// <c>Success</c> is <see langword="false"/> if the geometry already belongs to another manager.
     /// </returns>
-    Task<(bool Success, uint Id)> AddAsync(Geometry geometry);
+    Task<(bool Success, Handle<GeometryResourceType>)> AddAsync(Geometry geometry);
 
     /// <summary>
     /// Remove geometry from Geometry Manager. You can also call geometry.Dispose() to remove geometry from Geometry Manager.
@@ -94,4 +84,11 @@ public interface IGeometryManager : IDisposable
     /// <param name="index"></param>
     /// <returns></returns>
     Geometry? GetGeometryById(uint index);
+
+    /// <summary>
+    /// Get geometry by its handle. Note that the geometry may be null if it has been removed from the pool, so always check for null before using the returned geometry.
+    /// </summary>
+    /// <param name="handle"></param>
+    /// <returns></returns>
+    Geometry? GetGeometry(Handle<GeometryResourceType> handle);
 }

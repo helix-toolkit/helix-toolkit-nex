@@ -210,7 +210,7 @@ internal partial class PBRDemo : IDisposable
         var meshBuilder = new MeshBuilder(true, true, true);
         meshBuilder.AddSphere(Vector3.Zero, SphereRadius, 32, 32);
         var sphereGeo = meshBuilder.ToMesh().ToGeometry();
-        geometryManager.Add(sphereGeo, out _);
+        geometryManager.Add(sphereGeo);
 
         float gridWidth = (GridCols - 1) * SphereSpacing;
         float gridDepth = (GridRows - 1) * SphereSpacing;
