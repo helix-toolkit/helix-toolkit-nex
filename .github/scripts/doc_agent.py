@@ -48,7 +48,9 @@ MODEL = os.environ.get("DOC_AGENT_MODEL", "gpt-5.4-mini")
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
 FORCE_ALL = os.environ.get("FORCE_ALL", "false").lower() == "true"
-FORCE_REGENERATE_ALL_READMES = os.environ.get("FORCE_REGENERATE_ALL_READMES", "false").lower() == "true"
+FORCE_REGENERATE_ALL_READMES = (
+    os.environ.get("FORCE_REGENERATE_ALL_READMES", "false").lower() == "true"
+)
 DEFAULT_SINCE_SHA = "HEAD~1"
 
 # Git uses 40 zero-chars as the "null" SHA to indicate a non-existent ref
@@ -191,10 +193,35 @@ def read_file_limited(filepath: Path, max_chars: int = MAX_FILE_CHARS) -> str:
     try:
         content = filepath.read_text(encoding="utf-8-sig", errors="replace")
         if len(content) > max_chars:
-            return content[:max_chars] + f"\n... [truncated — {len(content) - max_chars} additional chars omitted]"
+            return (
+                content[:max_chars]
+                + f"\n... [truncated — {len(content) - max_chars} additional chars omitted]"
+            )
         return content
     except OSError as exc:
         return f"[Could not read file: {exc}]"
+
+
+def extract_utility_functions(content: str, filepath: str) -> str:
+    """Extract the text between UTILITY_FUNCTIONS markers from shader file content.
+
+    Returns the substring between /*UTILITY_FUNCTIONS_BEGIN*/ and /*UTILITY_FUNCTIONS_END*/,
+    preserving all original whitespace and line breaks. Returns "" if either marker is missing.
+    """
+    begin_marker = "/*UTILITY_FUNCTIONS_BEGIN*/"
+    end_marker = "/*UTILITY_FUNCTIONS_END*/"
+
+    begin_idx = content.find(begin_marker)
+    if begin_idx == -1:
+        print(f"WARN: {filepath}: missing {begin_marker} marker", file=sys.stderr)
+        return ""
+
+    end_idx = content.find(end_marker, begin_idx + len(begin_marker))
+    if end_idx == -1:
+        print(f"WARN: {filepath}: missing {end_marker} marker", file=sys.stderr)
+        return ""
+
+    return content[begin_idx + len(begin_marker) : end_idx]
 
 
 def build_source_context(project_dir: Path, max_total: int = MAX_FULL_DOC_CHARS) -> str:
@@ -208,7 +235,11 @@ def build_source_context(project_dir: Path, max_total: int = MAX_FULL_DOC_CHARS)
             break
         content = read_file_limited(f, MAX_FILE_CHARS)
         rel = f.relative_to(project_dir)
-        lang = "glsl" if f.suffix in {".glsl", ".vert", ".frag", ".comp", ".glh"} else "csharp"
+        lang = (
+            "glsl"
+            if f.suffix in {".glsl", ".vert", ".frag", ".comp", ".glh"}
+            else "csharp"
+        )
         block = f"### {rel}\n```{lang}\n{content}\n```\n"
         total += len(block)
         parts.append(block)
@@ -250,10 +281,16 @@ def get_pr_base_sha_from_event_payload() -> str | None:
     try:
         payload = json.loads(Path(event_path).read_text(encoding="utf-8"))
     except OSError as exc:
-        print(f"WARN: failed to read GITHUB_EVENT_PATH payload ({event_path}): {exc}", file=sys.stderr)
+        print(
+            f"WARN: failed to read GITHUB_EVENT_PATH payload ({event_path}): {exc}",
+            file=sys.stderr,
+        )
         return None
     except json.JSONDecodeError as exc:
-        print(f"WARN: invalid JSON in GITHUB_EVENT_PATH payload ({event_path}): {exc}", file=sys.stderr)
+        print(
+            f"WARN: invalid JSON in GITHUB_EVENT_PATH payload ({event_path}): {exc}",
+            file=sys.stderr,
+        )
         return None
     base_sha = payload.get("pull_request", {}).get("base", {}).get("sha")
     if not isinstance(base_sha, str):
@@ -289,7 +326,9 @@ def resolve_since_sha(explicit_since_sha: str = "") -> tuple[str, str]:
 def get_changed_packages(since_sha: str) -> list[Path]:
     """Return packages that have source file changes since since_sha."""
     changed_files_raw = run_git("diff", "--name-only", since_sha, "HEAD")
-    changed_files = [REPO_ROOT / ln for ln in changed_files_raw.strip().splitlines() if ln]
+    changed_files = [
+        REPO_ROOT / ln for ln in changed_files_raw.strip().splitlines() if ln
+    ]
 
     all_pkgs = get_all_packages()
     changed: set[Path] = set()
@@ -304,7 +343,9 @@ def get_changed_packages(since_sha: str) -> list[Path]:
     return sorted(changed)
 
 
-def get_diff_for_package(project_dir: Path, since_sha: str, max_chars: int = 15_000) -> str:
+def get_diff_for_package(
+    project_dir: Path, since_sha: str, max_chars: int = 15_000
+) -> str:
     diff = run_git("diff", since_sha, "HEAD", "--", str(project_dir))
     if len(diff) > max_chars:
         diff = diff[:max_chars] + "\n... [diff truncated]"
@@ -372,6 +413,36 @@ Return ONLY the updated Markdown content of the README.md, with no preamble or t
 """
 
 
+_SHADER_UTIL_DOC_PROMPT = """\
+Document the GLSL utility functions found in the shader file `{shader_file_name}`.
+
+Below is the extracted GLSL utility function code:
+
+```glsl
+{glsl_code}
+```
+
+Instructions:
+- Begin with a level-1 heading: `# {shader_file_name} Utility Functions`
+- For each function, provide:
+  1. The function signature in a fenced `glsl` code block.
+  2. A description of the function's purpose.
+  3. The return type.
+- Return only Markdown content with no preamble or trailing commentary.\
+"""
+
+SHADER_UTIL_CONFIGS: list[tuple[str, str]] = [
+    (
+        "Source/HelixToolkit-Nex/HelixToolkit.Nex.Shaders/Frag/psPBRTemplate.glsl",
+        "Documentation/PBRShaderUtilFunctions.md",
+    ),
+    (
+        "Source/HelixToolkit-Nex/HelixToolkit.Nex.Shaders/Point/psPointTemplate.glsl",
+        "Documentation/PointShaderUtilFunctions.md",
+    ),
+]
+
+
 def generate_full_readme(client: OpenAI, project_name: str, source_context: str) -> str:
     prompt = _FULL_README_PROMPT.format(
         project_name=project_name,
@@ -394,6 +465,44 @@ def update_readme(
         source_context=source_context,
     )
     return call_ai(client, prompt)
+
+
+def generate_shader_util_docs(client: "OpenAI") -> list[str]:
+    """Generate Markdown documentation for shader utility functions.
+
+    Iterates over SHADER_UTIL_CONFIGS, extracts utility function blocks from each
+    shader file, sends them to the AI model for documentation, and writes the
+    resulting Markdown files.
+
+    Returns a list of output file names that were successfully written.
+    """
+    results: list[str] = []
+
+    for shader_path, output_doc_path in SHADER_UTIL_CONFIGS:
+        shader_full_path = REPO_ROOT / shader_path
+        output_full_path = REPO_ROOT / output_doc_path
+        shader_file_name = Path(shader_path).name
+
+        content = read_file_limited(shader_full_path)
+        extracted = extract_utility_functions(content, str(shader_full_path))
+
+        if not extracted:
+            print(
+                f"   Shader {shader_file_name}: no utility functions found — skipping."
+            )
+            continue
+
+        prompt = _SHADER_UTIL_DOC_PROMPT.format(
+            shader_file_name=shader_file_name,
+            glsl_code=extracted,
+        )
+        doc_content = call_ai(client, prompt)
+
+        output_full_path.write_text(doc_content + "\n", encoding="utf-8")
+        print(f"   ✓ {output_full_path.name} written")
+        results.append(output_full_path.name)
+
+    return results
 
 
 # ---- Per-Package Processing ----
@@ -428,8 +537,12 @@ def process_package(
             return False
         print("   Updating README based on recent changes...")
         current_readme = readme_path.read_text(encoding="utf-8-sig")
-        source_context = build_source_context(project_dir, max_total=MAX_UPDATE_DOC_CHARS)
-        new_content = update_readme(client, project_name, current_readme, diff_context, source_context)
+        source_context = build_source_context(
+            project_dir, max_total=MAX_UPDATE_DOC_CHARS
+        )
+        new_content = update_readme(
+            client, project_name, current_readme, diff_context, source_context
+        )
 
     readme_path.write_text(new_content + "\n", encoding="utf-8")
     print(f"   ✓ README.md updated")
@@ -498,8 +611,10 @@ def main() -> int:
                 packages_to_process.append(p)
         packages_to_process.sort()
 
-    print(f"Packages to process ({len(packages_to_process)}): "
-          f"{[p.name for p in packages_to_process]}")
+    print(
+        f"Packages to process ({len(packages_to_process)}): "
+        f"{[p.name for p in packages_to_process]}"
+    )
     print(f"Since SHA: {since_sha} ({since_sha_reason})")
     if force_regenerate_all_readmes:
         print("README mode: force-regenerate all README.md files.")
@@ -507,12 +622,25 @@ def main() -> int:
     changed: list[str] = []
     for pkg in packages_to_process:
         try:
-            if process_package(client, pkg, since_sha, force_regenerate_readme=force_regenerate_all_readmes):
+            if process_package(
+                client,
+                pkg,
+                since_sha,
+                force_regenerate_readme=force_regenerate_all_readmes,
+            ):
                 changed.append(get_project_name(pkg))
         except Exception as exc:
             print(f"   ERROR processing {pkg.name}: {exc}", file=sys.stderr)
 
-    changed_summary = "\n".join(f"- `{p}`" for p in changed) if changed else "_No packages changed._"
+    print("\n── Shader Utility Documentation")
+    try:
+        changed.extend(generate_shader_util_docs(client))
+    except Exception as exc:
+        print(f"   ERROR generating shader util docs: {exc}", file=sys.stderr)
+
+    changed_summary = (
+        "\n".join(f"- `{p}`" for p in changed) if changed else "_No packages changed._"
+    )
     print(f"\nSummary:\n{changed_summary}")
 
     # Export variables for the GitHub Actions workflow
