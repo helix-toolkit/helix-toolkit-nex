@@ -62,7 +62,7 @@ uint64_t getCustomMaterialBufferAddress() {
 }
 
 /*UTILITY_FUNCTIONS_BEGIN*/
-PBRProperties getPBRMaterial()
+PBRProperties getPBRProperties()
 {
     MaterialBuffer materialBuf = MaterialBuffer(fpConst.materialBufferAddress);
     return materialBuf.materials[materialId];
@@ -79,6 +79,14 @@ mat4 getViewProjection() {
 mat4 getInvViewProjection() {
     return fpConst.inverseViewProjection;
 }
+
+mat4 getView() {
+    return fpConst.view;
+}
+
+mat4 getInvView() {
+    return fpConst.inverseView;
+}   
 
 vec3 getCameraPosition() {
     return fpConst.cameraPosition;
@@ -239,7 +247,7 @@ PBRMaterial createPBRMaterial()
 {
 
 /*TEMPLATE_CREATE_PBR_MATERIAL_IMPL_START*/
-    PBRProperties props = getPBRMaterial();
+    PBRProperties props = getPBRProperties();
     PBRMaterial material;
     material.albedo = props.albedo;
     material.roughness = props.roughness;
@@ -322,7 +330,7 @@ PBRMaterial createPBRMaterial()
 // Template function to create final PBR material properties with flat normal
 PBRMaterial createPBRMaterialFlatNormal()
 {
-    PBRProperties props = getPBRMaterial();
+    PBRProperties props = getPBRProperties();
     PBRMaterial material;
     material.albedo = props.albedo;
     material.roughness = props.roughness;

@@ -56,6 +56,14 @@ mat4 getInvViewProjection() {
     return fpConst.inverseViewProjection;
 }
 
+mat4 getView() {
+    return fpConst.view;
+}
+
+mat4 getInvView() {
+    return fpConst.inverseView;
+}
+
 vec3 getCameraPosition() {
     return fpConst.cameraPosition;
 }
