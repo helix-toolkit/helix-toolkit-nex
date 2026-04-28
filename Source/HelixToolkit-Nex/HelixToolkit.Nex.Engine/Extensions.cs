@@ -2,15 +2,14 @@ namespace HelixToolkit.Nex.Engine;
 
 public static class Extensions
 {
-    public static uint Add(this Engine engine, Geometry geometry)
+    public static Handle<GeometryResourceType> Add(this Engine engine, Geometry geometry)
     {
-        engine.ResourceManager.Geometries.Add(geometry, out var id);
-        return id;
+        return engine.ResourceManager.Geometries.Add(geometry);
     }
 
-    public static async Task<uint> AddAsync(this Engine engine, Geometry geometry)
+    public static async Task<Handle<GeometryResourceType>> AddAsync(this Engine engine, Geometry geometry)
     {
-        var (_, id) = await engine.ResourceManager.Geometries.AddAsync(geometry);
-        return id;
+        var (_, handle) = await engine.ResourceManager.Geometries.AddAsync(geometry);
+        return handle;
     }
 }

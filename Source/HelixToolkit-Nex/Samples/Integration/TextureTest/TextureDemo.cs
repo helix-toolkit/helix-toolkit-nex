@@ -320,7 +320,10 @@ internal sealed partial class TextureDemo : IDisposable
 
     private void BuildScene()
     {
-        var geometryManager = _engine!.ResourceManager.Geometries;
+        if (_engine is null)
+        {
+            return;
+        }
         var materialPool = _engine.ResourceManager.PBRPropertyManager;
         var samplerRepo = _engine.ResourceManager.SamplerRepository;
 
@@ -330,7 +333,7 @@ internal sealed partial class TextureDemo : IDisposable
         var meshBuilder = new MeshBuilder(true, true, true);
         meshBuilder.AddSphere(Vector3.Zero, 1.5f, 128, 128);
         var sphereGeo = meshBuilder.ToMesh().ToGeometry();
-        geometryManager.Add(sphereGeo, out _);
+        _engine.Add(sphereGeo);
 
         // ---- Shared sampler ----
         _sampler = samplerRepo.GetOrCreate(SamplerStateDesc.LinearRepeat);

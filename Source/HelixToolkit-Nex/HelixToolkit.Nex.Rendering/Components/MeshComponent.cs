@@ -79,7 +79,7 @@ public struct MeshComponent : IIndexable
     public bool Valid =>
         Geometry is not null
         && MaterialProperties is not null
-        && Geometry.Attached
+        && Geometry.Valid
         && MaterialProperties.Valid;
 
     public override string ToString()

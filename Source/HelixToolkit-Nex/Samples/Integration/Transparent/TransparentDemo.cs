@@ -142,7 +142,10 @@ internal partial class TransparentDemo : IDisposable
 
     private void BuildScene()
     {
-        var geometryManager = _engine!.ResourceManager.Geometries;
+        if (_engine is null)
+        {
+            return;
+        }
         var materialPool = _engine.ResourceManager.PBRPropertyManager;
 
         _root = new Node(_worldDataProvider!.World, "Root");
@@ -151,7 +154,7 @@ internal partial class TransparentDemo : IDisposable
         var floorBuilder = new MeshBuilder(true, true, true);
         floorBuilder.AddBox(Vector3.Zero, 30, 0.2f, 30);
         var floorGeo = floorBuilder.ToMesh().ToGeometry();
-        geometryManager.Add(floorGeo, out _);
+        _engine.Add(floorGeo);
 
         _floorMaterial = materialPool.Create(PBRShadingMode.PBR);
         _floorMaterial.Properties.Albedo = new Vector3(0.3f, 0.3f, 0.3f);
@@ -170,7 +173,7 @@ internal partial class TransparentDemo : IDisposable
         var sphereBuilder = new MeshBuilder(true, true, true);
         sphereBuilder.AddSphere(Vector3.Zero, 1.5f);
         var sphereGeo = sphereBuilder.ToMesh().ToGeometry();
-        geometryManager.Add(sphereGeo, out _);
+        _engine.Add(sphereGeo);
 
         CreateTransparentObject(
             "Red Sphere",
@@ -201,7 +204,7 @@ internal partial class TransparentDemo : IDisposable
         var cubeBuilder = new MeshBuilder(true, true, true);
         cubeBuilder.AddBox(Vector3.Zero, 2, 2, 2);
         var cubeGeo = cubeBuilder.ToMesh().ToGeometry();
-        geometryManager.Add(cubeGeo, out _);
+        _engine.Add(cubeGeo);
 
         CreateTransparentObject(
             "Yellow Cube",
@@ -224,7 +227,7 @@ internal partial class TransparentDemo : IDisposable
         var bigBoxBuilder = new MeshBuilder(true, true, true);
         bigBoxBuilder.AddBox(Vector3.Zero, 6, 3, 6);
         var bigBoxGeo = bigBoxBuilder.ToMesh().ToGeometry();
-        geometryManager.Add(bigBoxGeo, out _);
+        _engine.Add(bigBoxGeo);
 
         CreateTransparentObject(
             "Large Purple Box",

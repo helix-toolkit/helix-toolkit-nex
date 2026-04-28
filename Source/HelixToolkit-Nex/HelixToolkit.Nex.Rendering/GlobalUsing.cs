@@ -1,6 +1,5 @@
 global using System.Diagnostics;
 global using System.Numerics;
-global using System.Runtime.InteropServices;
 global using HelixToolkit.Nex.DependencyInjection;
 global using HelixToolkit.Nex.Geometries;
 global using HelixToolkit.Nex.Graphics;
@@ -11,9 +10,4 @@ global using HelixToolkit.Nex.Shaders;
 global using HelixToolkit.Nex.Trace;
 global using Microsoft.Extensions.Logging;
 global using BufferHandle = HelixToolkit.Nex.Handle<HelixToolkit.Nex.Graphics.Buffer>;
-global using ComputePipelineHandle = HelixToolkit.Nex.Handle<HelixToolkit.Nex.Graphics.ComputePipeline>;
-global using QueryPoolHandle = HelixToolkit.Nex.Handle<HelixToolkit.Nex.Graphics.QueryPool>;
-global using RenderPipelineHandle = HelixToolkit.Nex.Handle<HelixToolkit.Nex.Graphics.RenderPipeline>;
-global using SamplerHandle = HelixToolkit.Nex.Handle<HelixToolkit.Nex.Graphics.Sampler>;
-global using ShaderModuleHandle = HelixToolkit.Nex.Handle<HelixToolkit.Nex.Graphics.ShaderModule>;
 global using TextureHandle = HelixToolkit.Nex.Handle<HelixToolkit.Nex.Graphics.Texture>;
