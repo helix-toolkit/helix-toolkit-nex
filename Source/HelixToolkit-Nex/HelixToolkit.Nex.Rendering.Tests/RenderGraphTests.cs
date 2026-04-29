@@ -31,7 +31,7 @@ public class RenderGraphTests
         string name,
         IList<RenderResource> inputs,
         IList<RenderResource> outputs
-    ) => graph.AddPass(name, inputs, outputs, _ => { });
+    ) => graph.AddPass(name, inputs, outputs);
 
     /// <summary>
     /// Runs <see cref="RenderGraph.Compile"/> and returns the ordered list of
@@ -594,10 +594,6 @@ public class RenderGraphTests
             "Prepare",
             [],
             [
-                new RenderResource(
-                    SystemBufferNames.BufferForwardPlusConstants,
-                    ResourceType.Buffer
-                ),
                 new RenderResource(SystemBufferNames.TextureDepthF32, ResourceType.Texture),
                 new RenderResource(SystemBufferNames.TextureEntityId, ResourceType.Texture),
                 new RenderResource(SystemBufferNames.TextureColorF16A, ResourceType.Texture),
@@ -606,13 +602,7 @@ public class RenderGraphTests
         AddPass(
             graph,
             "DepthPass",
-            [
-                new RenderResource(
-                    SystemBufferNames.BufferForwardPlusConstants,
-                    ResourceType.Buffer
-                ),
-                new RenderResource(SystemBufferNames.BufferMeshDrawOpaque, ResourceType.Buffer),
-            ],
+            [new RenderResource(SystemBufferNames.BufferMeshDrawOpaque, ResourceType.Buffer)],
             [
                 new RenderResource(SystemBufferNames.TextureDepthF32, ResourceType.Texture),
                 new RenderResource(SystemBufferNames.TextureEntityId, ResourceType.Texture),
@@ -632,10 +622,6 @@ public class RenderGraphTests
             "Opaque",
             [
                 new RenderResource(SystemBufferNames.TextureDepthF32, ResourceType.Texture),
-                new RenderResource(
-                    SystemBufferNames.BufferForwardPlusConstants,
-                    ResourceType.Buffer
-                ),
                 new RenderResource(SystemBufferNames.BufferLightGrid, ResourceType.Buffer),
             ],
             [new RenderResource(SystemBufferNames.TextureColorF16A, ResourceType.Texture)]
@@ -786,7 +772,7 @@ public class RenderGraphTests
         // PassB has no resource dependency on PassA, but declares after: ["PassA"].
         var graph = new RenderGraph(BuildServices());
         AddPass(graph, "PassA", [], []);
-        graph.AddPass("PassB", [], [], _ => { }, after: ["PassA"]);
+        graph.AddPass("PassB", [], [], after: ["PassA"]);
 
         var names = GetSortedPassNames(graph);
 
@@ -806,21 +792,18 @@ public class RenderGraphTests
         graph.AddPass(
             "EffectA",
             [new RenderResource("TexColor", ResourceType.Texture)],
-            [new RenderResource("TexPing", ResourceType.Texture)],
-            _ => { }
+            [new RenderResource("TexPing", ResourceType.Texture)]
         );
         graph.AddPass(
             "EffectB",
             [new RenderResource("TexColor", ResourceType.Texture)],
             [new RenderResource("TexPing", ResourceType.Texture)],
-            _ => { },
             after: ["EffectA"]
         );
         graph.AddPass(
             "EffectC",
             [new RenderResource("TexColor", ResourceType.Texture)],
             [new RenderResource("TexPing", ResourceType.Texture)],
-            _ => { },
             after: ["EffectB"]
         );
 
@@ -844,7 +827,6 @@ public class RenderGraphTests
             "PassB",
             [new RenderResource("TexA", ResourceType.Texture)],
             [],
-            _ => { },
             after: ["PassA"]
         );
 
@@ -860,7 +842,7 @@ public class RenderGraphTests
     {
         // Referencing a non-existent pass in 'after' should log a warning and be ignored.
         var graph = new RenderGraph(BuildServices());
-        graph.AddPass("PassA", [], [], _ => { }, after: ["NonExistentPass"]);
+        graph.AddPass("PassA", [], [], after: ["NonExistentPass"]);
 
         var names = GetSortedPassNames(graph);
 
@@ -875,8 +857,8 @@ public class RenderGraphTests
     {
         // PassA after PassB, PassB after PassA — explicit cycle.
         var graph = new RenderGraph(BuildServices());
-        graph.AddPass("PassA", [], [], _ => { }, after: ["PassB"]);
-        graph.AddPass("PassB", [], [], _ => { }, after: ["PassA"]);
+        graph.AddPass("PassA", [], [], after: ["PassB"]);
+        graph.AddPass("PassB", [], [], after: ["PassA"]);
 
         graph.Compile(); // must throw
     }
@@ -917,28 +899,67 @@ public class RenderGraphTests
 
         var names = graph.SortedPasses.Select(p => p.PassName).ToList();
 
-        Assert.AreEqual(11, names.Count,
-            $"Expected 11 passes, got {names.Count}: {string.Join(", ", names)}");
+        Assert.AreEqual(
+            11,
+            names.Count,
+            $"Expected 11 passes, got {names.Count}: {string.Join(", ", names)}"
+        );
 
         // --- Stage: Prepare ---
-        Assert.IsTrue(Precedes(names, nameof(PrepareNode), nameof(DepthPassNode)), "PrepareNode before DepthPassNode");
-        Assert.IsTrue(Precedes(names, nameof(FrustumCullNode), nameof(ForwardPlusOpaqueNode)), "FrustumCullNode before ForwardPlusOpaqueNode");
-        Assert.IsTrue(Precedes(names, nameof(PointCullNode), nameof(PointRenderNode)), "PointCullNode before PointRenderNode");
+        Assert.IsTrue(
+            Precedes(names, nameof(PrepareNode), nameof(DepthPassNode)),
+            "PrepareNode before DepthPassNode"
+        );
+        Assert.IsTrue(
+            Precedes(names, nameof(FrustumCullNode), nameof(ForwardPlusOpaqueNode)),
+            "FrustumCullNode before ForwardPlusOpaqueNode"
+        );
+        Assert.IsTrue(
+            Precedes(names, nameof(PointCullNode), nameof(PointRenderNode)),
+            "PointCullNode before PointRenderNode"
+        );
 
         // --- Stage: Opaque ---
-        Assert.IsTrue(Precedes(names, nameof(DepthPassNode), nameof(ForwardPlusLightCullingNode)), "DepthPassNode before ForwardPlusLightCullingNode");
-        Assert.IsTrue(Precedes(names, nameof(DepthPassNode), nameof(ForwardPlusOpaqueNode)), "DepthPassNode before ForwardPlusOpaqueNode");
-        Assert.IsTrue(Precedes(names, nameof(ForwardPlusLightCullingNode), nameof(ForwardPlusOpaqueNode)), "ForwardPlusLightCullingNode before ForwardPlusOpaqueNode");
-        Assert.IsTrue(Precedes(names, nameof(ForwardPlusOpaqueNode), nameof(PointRenderNode)), "ForwardPlusOpaqueNode before PointRenderNode");
+        Assert.IsTrue(
+            Precedes(names, nameof(DepthPassNode), nameof(ForwardPlusLightCullingNode)),
+            "DepthPassNode before ForwardPlusLightCullingNode"
+        );
+        Assert.IsTrue(
+            Precedes(names, nameof(DepthPassNode), nameof(ForwardPlusOpaqueNode)),
+            "DepthPassNode before ForwardPlusOpaqueNode"
+        );
+        Assert.IsTrue(
+            Precedes(names, nameof(ForwardPlusLightCullingNode), nameof(ForwardPlusOpaqueNode)),
+            "ForwardPlusLightCullingNode before ForwardPlusOpaqueNode"
+        );
+        Assert.IsTrue(
+            Precedes(names, nameof(ForwardPlusOpaqueNode), nameof(PointRenderNode)),
+            "ForwardPlusOpaqueNode before PointRenderNode"
+        );
 
         // --- Stage: Transparent ---
-        Assert.IsTrue(Precedes(names, nameof(PointRenderNode), nameof(ForwardPlusTransparentNode)), "PointRenderNode before ForwardPlusTransparentNode");
-        Assert.IsTrue(Precedes(names, nameof(ForwardPlusOpaqueNode), nameof(ForwardPlusTransparentNode)), "ForwardPlusOpaqueNode before ForwardPlusTransparentNode");
-        Assert.IsTrue(Precedes(names, nameof(ForwardPlusTransparentNode), nameof(WBOITCompositeNode)), "ForwardPlusTransparentNode before WBOITCompositeNode");
+        Assert.IsTrue(
+            Precedes(names, nameof(PointRenderNode), nameof(ForwardPlusTransparentNode)),
+            "PointRenderNode before ForwardPlusTransparentNode"
+        );
+        Assert.IsTrue(
+            Precedes(names, nameof(ForwardPlusOpaqueNode), nameof(ForwardPlusTransparentNode)),
+            "ForwardPlusOpaqueNode before ForwardPlusTransparentNode"
+        );
+        Assert.IsTrue(
+            Precedes(names, nameof(ForwardPlusTransparentNode), nameof(WBOITCompositeNode)),
+            "ForwardPlusTransparentNode before WBOITCompositeNode"
+        );
 
         // --- Stage: PostProcess → ToneMap ---
-        Assert.IsTrue(Precedes(names, nameof(WBOITCompositeNode), nameof(PostEffectsNode)), "WBOITCompositeNode before PostEffectsNode");
-        Assert.IsTrue(Precedes(names, nameof(PostEffectsNode), nameof(ToneMappingNode)), "PostEffectsNode before ToneMappingNode");
+        Assert.IsTrue(
+            Precedes(names, nameof(WBOITCompositeNode), nameof(PostEffectsNode)),
+            "WBOITCompositeNode before PostEffectsNode"
+        );
+        Assert.IsTrue(
+            Precedes(names, nameof(PostEffectsNode), nameof(ToneMappingNode)),
+            "PostEffectsNode before ToneMappingNode"
+        );
     }
 
     /// <summary>
@@ -947,28 +968,67 @@ public class RenderGraphTests
     /// </summary>
     private static void AssertDefaultPipelineOrder(List<string> names)
     {
-        Assert.AreEqual(11, names.Count,
-            $"Expected 11 passes, got {names.Count}: {string.Join(", ", names)}");
+        Assert.AreEqual(
+            11,
+            names.Count,
+            $"Expected 11 passes, got {names.Count}: {string.Join(", ", names)}"
+        );
 
         // Prepare → Opaque
-        Assert.IsTrue(Precedes(names, nameof(PrepareNode), nameof(DepthPassNode)), "PrepareNode before DepthPassNode");
-        Assert.IsTrue(Precedes(names, nameof(FrustumCullNode), nameof(ForwardPlusOpaqueNode)), "FrustumCullNode before ForwardPlusOpaqueNode");
-        Assert.IsTrue(Precedes(names, nameof(PointCullNode), nameof(PointRenderNode)), "PointCullNode before PointRenderNode");
+        Assert.IsTrue(
+            Precedes(names, nameof(PrepareNode), nameof(DepthPassNode)),
+            "PrepareNode before DepthPassNode"
+        );
+        Assert.IsTrue(
+            Precedes(names, nameof(FrustumCullNode), nameof(ForwardPlusOpaqueNode)),
+            "FrustumCullNode before ForwardPlusOpaqueNode"
+        );
+        Assert.IsTrue(
+            Precedes(names, nameof(PointCullNode), nameof(PointRenderNode)),
+            "PointCullNode before PointRenderNode"
+        );
 
         // Opaque ordering
-        Assert.IsTrue(Precedes(names, nameof(DepthPassNode), nameof(ForwardPlusLightCullingNode)), "DepthPassNode before ForwardPlusLightCullingNode");
-        Assert.IsTrue(Precedes(names, nameof(DepthPassNode), nameof(ForwardPlusOpaqueNode)), "DepthPassNode before ForwardPlusOpaqueNode");
-        Assert.IsTrue(Precedes(names, nameof(ForwardPlusLightCullingNode), nameof(ForwardPlusOpaqueNode)), "ForwardPlusLightCullingNode before ForwardPlusOpaqueNode");
-        Assert.IsTrue(Precedes(names, nameof(ForwardPlusOpaqueNode), nameof(PointRenderNode)), "ForwardPlusOpaqueNode before PointRenderNode");
+        Assert.IsTrue(
+            Precedes(names, nameof(DepthPassNode), nameof(ForwardPlusLightCullingNode)),
+            "DepthPassNode before ForwardPlusLightCullingNode"
+        );
+        Assert.IsTrue(
+            Precedes(names, nameof(DepthPassNode), nameof(ForwardPlusOpaqueNode)),
+            "DepthPassNode before ForwardPlusOpaqueNode"
+        );
+        Assert.IsTrue(
+            Precedes(names, nameof(ForwardPlusLightCullingNode), nameof(ForwardPlusOpaqueNode)),
+            "ForwardPlusLightCullingNode before ForwardPlusOpaqueNode"
+        );
+        Assert.IsTrue(
+            Precedes(names, nameof(ForwardPlusOpaqueNode), nameof(PointRenderNode)),
+            "ForwardPlusOpaqueNode before PointRenderNode"
+        );
 
         // Opaque → Transparent
-        Assert.IsTrue(Precedes(names, nameof(PointRenderNode), nameof(ForwardPlusTransparentNode)), "PointRenderNode before ForwardPlusTransparentNode");
-        Assert.IsTrue(Precedes(names, nameof(ForwardPlusOpaqueNode), nameof(ForwardPlusTransparentNode)), "ForwardPlusOpaqueNode before ForwardPlusTransparentNode");
-        Assert.IsTrue(Precedes(names, nameof(ForwardPlusTransparentNode), nameof(WBOITCompositeNode)), "ForwardPlusTransparentNode before WBOITCompositeNode");
+        Assert.IsTrue(
+            Precedes(names, nameof(PointRenderNode), nameof(ForwardPlusTransparentNode)),
+            "PointRenderNode before ForwardPlusTransparentNode"
+        );
+        Assert.IsTrue(
+            Precedes(names, nameof(ForwardPlusOpaqueNode), nameof(ForwardPlusTransparentNode)),
+            "ForwardPlusOpaqueNode before ForwardPlusTransparentNode"
+        );
+        Assert.IsTrue(
+            Precedes(names, nameof(ForwardPlusTransparentNode), nameof(WBOITCompositeNode)),
+            "ForwardPlusTransparentNode before WBOITCompositeNode"
+        );
 
         // Transparent → PostProcess → ToneMap
-        Assert.IsTrue(Precedes(names, nameof(WBOITCompositeNode), nameof(PostEffectsNode)), "WBOITCompositeNode before PostEffectsNode");
-        Assert.IsTrue(Precedes(names, nameof(PostEffectsNode), nameof(ToneMappingNode)), "PostEffectsNode before ToneMappingNode");
+        Assert.IsTrue(
+            Precedes(names, nameof(WBOITCompositeNode), nameof(PostEffectsNode)),
+            "WBOITCompositeNode before PostEffectsNode"
+        );
+        Assert.IsTrue(
+            Precedes(names, nameof(PostEffectsNode), nameof(ToneMappingNode)),
+            "PostEffectsNode before ToneMappingNode"
+        );
     }
 
     private static List<string> CompileNodes(IEnumerable<RenderNode> nodes)
@@ -1068,17 +1128,17 @@ public class RenderGraphTests
     {
         // Nodes from different stages interleaved: one from each stage in turn.
         var names = CompileNodes([
-            new ToneMappingNode(),         // ToneMap
-            new ForwardPlusOpaqueNode(),   // Opaque
-            new PostEffectsNode(),         // PostProcess
-            new PrepareNode(),             // Prepare
-            new WBOITCompositeNode(),      // Transparent
-            new DepthPassNode(),           // Opaque
+            new ToneMappingNode(), // ToneMap
+            new ForwardPlusOpaqueNode(), // Opaque
+            new PostEffectsNode(), // PostProcess
+            new PrepareNode(), // Prepare
+            new WBOITCompositeNode(), // Transparent
+            new DepthPassNode(), // Opaque
             new ForwardPlusTransparentNode(), // Transparent
-            new FrustumCullNode(),         // Prepare
+            new FrustumCullNode(), // Prepare
             new ForwardPlusLightCullingNode(), // Opaque
-            new PointCullNode(),           // Prepare
-            new PointRenderNode(),         // Opaque
+            new PointCullNode(), // Prepare
+            new PointRenderNode(), // Opaque
         ]);
 
         AssertDefaultPipelineOrder(names);

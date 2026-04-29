@@ -21,47 +21,48 @@ public sealed class DepthPassNode() : RenderNode
         base.OnTeardown();
     }
 
+    protected override void OnSetupRender(in RenderResources res)
+    {
+        res.Framebuf.DepthStencil.Texture = res.Textures[SystemBufferNames.TextureDepthF32];
+        res.Pass.Depth.ClearDepth = 0.0f;
+        res.Pass.Depth.LoadOp = LoadOp.Clear;
+        res.Pass.Depth.StoreOp = StoreOp.Store;
+
+        res.Framebuf.Colors[0].Texture = res.Textures[SystemBufferNames.TextureEntityId];
+        res.Pass.Colors[0].ClearColor = new(0, 0, 0, 0);
+        res.Pass.Colors[0].LoadOp = LoadOp.Clear;
+        res.Pass.Colors[0].StoreOp = StoreOp.Store;
+
+        res.Deps.Buffers[0] = res.Buffers[SystemBufferNames.BufferMeshDrawOpaque];
+        res.Deps.Buffers[1] = res.Buffers[SystemBufferNames.BufferPBRProperties];
+        res.Deps.Buffers[2] = res.Buffers[SystemBufferNames.BufferForwardPlusConstants];
+    }
+
     protected override bool BeginRender(in RenderResources res)
     {
-        var context = res.Context;
+        var context = res.RenderContext;
         if (context.Data!.MeshDrawsOpaque.Count == 0)
             return false;
-        var fpBuffer = res.Buffers[SystemBufferNames.BufferForwardPlusConstants];
-        if (!fpBuffer.Valid)
-        {
-            return false;
-        }
-        var fpData = new FPConstants
-        {
-            TimeMs = res.Context.TimeMs,
-            CameraPosition = context.CameraParams.Position,
-            InverseViewProjection = context.CameraParams.InvViewProjection,
-            ViewProjection = context.CameraParams.ViewProjection,
-            View = context.CameraParams.View,
-            InverseView = context.CameraParams.InvView,
-            ScreenDimensions = new Vector2(context.WindowSize.Width, context.WindowSize.Height),
-            DpiScale = context.DpiScale,
-            MeshInfoBufferAddress = context.Data?.MeshInfos.GpuAddress ?? 0,
-            MeshDrawBufferAddress = context.Data?.MeshDrawsOpaque.GpuAddress ?? 0,
-            MaterialBufferAddress =
-                context.Data?.PBRPropertiesBuffer.Buffer.GpuAddress(context.Context) ?? 0,
-        };
-        res.CmdBuffer.UpdateBuffer(fpBuffer, ref fpData);
+
         return base.BeginRender(in res);
     }
 
     protected override void OnRender(in RenderResources res)
     {
-        if (res.Context.Data is null)
+        if (res.RenderContext.Data is null)
         {
             _logger.LogWarning("Render context data is null, skipping depth pass.");
             return;
         }
         Debug.Assert(_pipeline.Valid, "_pipeline is not valid.");
-        using var _ = res.Context.EnableExternalPipelineScoped();
+        using var _ = res.RenderContext.EnableExternalPipelineScoped();
         res.CmdBuffer.BindRenderPipeline(_pipeline);
         res.CmdBuffer.BindDepthState(DepthState.DefaultReversedZ);
-        res.Context.Statistics.DrawCalls += RenderHelper.RenderOpaque(in res);
+        res.RenderContext.Statistics.DrawCalls += RenderHelper.RenderOpaque(
+            in res,
+            res.Buffers[SystemBufferNames.BufferForwardPlusConstants]
+                .GpuAddress(res.RenderContext.Context)
+        );
     }
 
     protected override void EndRender(in RenderResources res)
@@ -142,35 +143,15 @@ public sealed class DepthPassNode() : RenderNode
                 nameof(DepthPassNode),
                 inputs:
                 [
-                    new(SystemBufferNames.BufferForwardPlusConstants, ResourceType.Buffer),
                     new(SystemBufferNames.BufferMeshDrawOpaque, ResourceType.Buffer),
                     new(SystemBufferNames.BufferPBRProperties, ResourceType.Buffer),
+                    new(SystemBufferNames.BufferForwardPlusConstants, ResourceType.Buffer),
                 ],
                 outputs:
                 [
                     new(SystemBufferNames.TextureEntityId, ResourceType.Texture),
                     new(SystemBufferNames.TextureDepthF32, ResourceType.Texture),
                 ],
-                onSetup: (res) =>
-                {
-                    res.Framebuf.DepthStencil.Texture = res.Textures[
-                        SystemBufferNames.TextureDepthF32
-                    ];
-                    res.Pass.Depth.ClearDepth = 0.0f;
-                    res.Pass.Depth.LoadOp = LoadOp.Clear;
-                    res.Pass.Depth.StoreOp = StoreOp.Store;
-
-                    res.Framebuf.Colors[0].Texture = res.Textures[
-                        SystemBufferNames.TextureEntityId
-                    ];
-                    res.Pass.Colors[0].ClearColor = new(0, 0, 0, 0);
-                    res.Pass.Colors[0].LoadOp = LoadOp.Clear;
-                    res.Pass.Colors[0].StoreOp = StoreOp.Store;
-
-                    res.Deps.Buffers[0] = res.Buffers[SystemBufferNames.BufferMeshDrawOpaque];
-                    res.Deps.Buffers[1] = res.Buffers[SystemBufferNames.BufferPBRProperties];
-                    res.Deps.Buffers[2] = res.Buffers[SystemBufferNames.BufferForwardPlusConstants];
-                },
                 stage: RenderStage.Opaque
             );
     }

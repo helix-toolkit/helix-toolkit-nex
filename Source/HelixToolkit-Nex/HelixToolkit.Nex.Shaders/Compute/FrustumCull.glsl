@@ -22,12 +22,19 @@ layout(buffer_reference, std430, buffer_reference_align = 16) buffer MeshDrawBuf
     MeshDraw draws[];
 };
 
+@code_gen
+struct FrustumCullPC {
+    uint64_t cullingConstAddress;
+    uint64_t meshDrawBufferAddress;
+    uint instanceCount;     // Total instances to process   
+    uint meshDrawIdxOffset; // Offset in MeshDraw buffer for this culling batch (if processing in chunks)
+};
 // ------------------------------------------------------------------
 // PUSH CONSTANTS
 // ------------------------------------------------------------------
 
 layout(push_constant) uniform CullingPC {
-    uint64_t cullingConstAddress;
+    FrustumCullPC value;
 } pc;
 
 // Constants
@@ -41,18 +48,18 @@ void main() {
     uint gID = gl_GlobalInvocationID.x;
 
     // Access Constants
-    CullingConstBuffer cullingConst = CullingConstBuffer(pc.cullingConstAddress);
+    CullingConstBuffer cullingConst = CullingConstBuffer(pc.value.cullingConstAddress);
     if (cullingConst.value.cullingEnabled == 0) { // Early out if culling is disabled
        return;
     }
-    if (gID >= cullingConst.value.instanceCount) { // Ensure valid access
+    if (gID >= pc.value.instanceCount) { // Ensure valid access
         return;
     }
 
     // Access Buffers
-    MeshDrawBuffer meshDrawBuf = MeshDrawBuffer(cullingConst.value.meshDrawBufferAddress);
+    MeshDrawBuffer meshDrawBuf = MeshDrawBuffer(pc.value.meshDrawBufferAddress);
 
-    uint drawIdx = gID + cullingConst.value.meshDrawIdxOffset;
+    uint drawIdx = gID + pc.value.meshDrawIdxOffset;
     
     MeshDraw draw = meshDrawBuf.draws[drawIdx];
 

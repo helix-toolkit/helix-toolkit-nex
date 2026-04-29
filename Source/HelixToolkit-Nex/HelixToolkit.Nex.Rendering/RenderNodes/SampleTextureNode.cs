@@ -8,11 +8,24 @@ public sealed class RenderToFinalNode(Format outputFormat)
     public override string Name => nameof(RenderToFinalNode);
     public override Color4 DebugColor => Color.Yellow;
 
+    protected override void OnSetupRender(in RenderResources res)
+    {
+        if (!res.RenderContext.FinalOutputTexture.Valid)
+        {
+            return;
+        }
+        res.Framebuf.Colors[0].Texture = res.RenderContext.FinalOutputTexture;
+        res.Pass.Colors[0].ClearColor = Color.Transparent;
+        res.Pass.Colors[0].LoadOp = LoadOp.Load;
+        res.Pass.Colors[0].StoreOp = StoreOp.Store;
+        res.Deps.Textures[0] = res.Textures[SystemBufferNames.TextureColorF16Current];
+    }
+
     protected override bool BeginRender(in RenderResources res)
     {
-        MinValue = res.Context.CameraParams.NearPlane;
-        MaxValue = res.Context.CameraParams.FarPlane;
-        if (!res.Context.FinalOutputTexture.Valid)
+        MinValue = res.RenderContext.CameraParams.NearPlane;
+        MaxValue = res.RenderContext.CameraParams.FarPlane;
+        if (!res.RenderContext.FinalOutputTexture.Valid)
         {
             return false;
         }
@@ -28,14 +41,6 @@ public sealed class RenderToFinalNode(Format outputFormat)
             // final color result, regardless of how many effects ran.
             inputs: [new(SystemBufferNames.TextureColorF16Current, ResourceType.Texture)],
             outputs: [new(SystemBufferNames.FinalOutputTexture, ResourceType.Texture)],
-            onSetup: (res) =>
-            {
-                res.Framebuf.Colors[0].Texture = res.Context.FinalOutputTexture;
-                res.Pass.Colors[0].ClearColor = Color.Transparent;
-                res.Pass.Colors[0].LoadOp = LoadOp.Load;
-                res.Pass.Colors[0].StoreOp = StoreOp.Store;
-                res.Deps.Textures[0] = res.Textures[SystemBufferNames.TextureColorF16Current];
-            },
             stage: RenderStage.Output
         );
     }
@@ -47,10 +52,21 @@ public sealed class DebugDepthBufferNode()
     public override string Name => nameof(DebugDepthBufferNode);
     public override Color4 DebugColor => Color.Red;
 
+    protected override void OnSetupRender(in RenderResources res)
+    {
+        res.Framebuf.Colors[0].Texture = res.Textures[
+            SystemBufferNames.TextureColorF16Current
+        ];
+        res.Pass.Colors[0].ClearColor = Color.Transparent;
+        res.Pass.Colors[0].LoadOp = LoadOp.Load;
+        res.Pass.Colors[0].StoreOp = StoreOp.Store;
+        res.Deps.Textures[0] = res.Textures[SystemBufferNames.TextureDepthF32];
+    }
+
     protected override bool BeginRender(in RenderResources res)
     {
-        MinValue = res.Context.CameraParams.NearPlane;
-        MaxValue = res.Context.CameraParams.FarPlane;
+        MinValue = res.RenderContext.CameraParams.NearPlane;
+        MaxValue = res.RenderContext.CameraParams.FarPlane;
         return base.BeginRender(in res);
     }
 
@@ -59,17 +75,7 @@ public sealed class DebugDepthBufferNode()
         graph.AddPass(
             nameof(DebugDepthBufferNode),
             inputs: [new(SystemBufferNames.TextureDepthF32, ResourceType.Texture)],
-            outputs: [new(SystemBufferNames.TextureColorF16Current, ResourceType.Texture)],
-            onSetup: (res) =>
-            {
-                res.Framebuf.Colors[0].Texture = res.Textures[
-                    SystemBufferNames.TextureColorF16Current
-                ];
-                res.Pass.Colors[0].ClearColor = Color.Transparent;
-                res.Pass.Colors[0].LoadOp = LoadOp.DontCare;
-                res.Pass.Colors[0].StoreOp = StoreOp.Store;
-                res.Deps.Textures[0] = res.Textures[SystemBufferNames.TextureDepthF32];
-            }
+            outputs: [new(SystemBufferNames.TextureColorF16Current, ResourceType.Texture)]
         );
     }
 }
@@ -80,22 +86,23 @@ public sealed class DebugMeshIdNode()
     public override string Name => nameof(DebugDepthBufferNode);
     public override Color4 DebugColor => Color.Red;
 
+    protected override void OnSetupRender(in RenderResources res)
+    {
+        res.Framebuf.Colors[0].Texture = res.Textures[
+            SystemBufferNames.TextureColorF16Current
+        ];
+        res.Pass.Colors[0].ClearColor = Color.Black;
+        res.Pass.Colors[0].LoadOp = LoadOp.Load;
+        res.Pass.Colors[0].StoreOp = StoreOp.Store;
+        res.Deps.Textures[0] = res.Textures[SystemBufferNames.TextureEntityId];
+    }
+
     public override void AddToGraph(RenderGraph graph)
     {
         graph.AddPass(
             nameof(DebugMeshIdNode),
             inputs: [new(SystemBufferNames.TextureEntityId, ResourceType.Texture)],
-            outputs: [new(SystemBufferNames.TextureColorF16Current, ResourceType.Texture)],
-            onSetup: (res) =>
-            {
-                res.Framebuf.Colors[0].Texture = res.Textures[
-                    SystemBufferNames.TextureColorF16Current
-                ];
-                res.Pass.Colors[0].ClearColor = Color.Black;
-                res.Pass.Colors[0].LoadOp = LoadOp.DontCare;
-                res.Pass.Colors[0].StoreOp = StoreOp.Store;
-                res.Deps.Textures[0] = res.Textures[SystemBufferNames.TextureEntityId];
-            }
+            outputs: [new(SystemBufferNames.TextureColorF16Current, ResourceType.Texture)]
         );
     }
 }

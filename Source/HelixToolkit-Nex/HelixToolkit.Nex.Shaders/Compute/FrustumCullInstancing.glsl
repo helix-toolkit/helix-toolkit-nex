@@ -38,8 +38,11 @@ layout(buffer_reference, scalar) writeonly buffer VisableInstanceIndexBuffer {
 @code_gen
 struct FrustumCullInstancingPC {
     uint64_t cullingConstAddress;
+    uint64_t meshDrawBufferAddress;
     uint drawCommandIdx;
     uint instanceCount;
+    uint _padding0;
+    uint _padding1;
 };
 
 layout(push_constant) uniform CullingPC {
@@ -67,7 +70,7 @@ void main() {
     }
 
     // Access Buffers
-    MeshDrawBuffer meshDrawBuf = MeshDrawBuffer(cullingConst.value.meshDrawBufferAddress);
+    MeshDrawBuffer meshDrawBuf = MeshDrawBuffer(pc.value.meshDrawBufferAddress);
     MeshDraw draw = meshDrawBuf.draws[pc.value.drawCommandIdx];
     if (draw.instancingBufferAddress == 0) {
         return;

@@ -26,11 +26,11 @@ public sealed class ShowFPS : PostEffect
         cmdBuffer.BeginRendering(res.Pass, res.Framebuf, res.Deps);
         cmdBuffer.BindRenderPipeline(_pipeline);
         cmdBuffer.BindDepthState(DepthState.Disabled);
-        var width = res.Context.WindowSize.Width * Scale;
-        var height = res.Context.WindowSize.Height * Scale;
+        var width = res.RenderContext.WindowSize.Width * Scale;
+        var height = res.RenderContext.WindowSize.Height * Scale;
         var max = MathF.Max(MinSize, MathF.Max(width, height));
         cmdBuffer.BindViewport(new ViewportF(0, 0, max, max / AspectRatio));
-        cmdBuffer.PushConstants((int)res.Context.Statistics.FramesPerSecond);
+        cmdBuffer.PushConstants((int)res.RenderContext.Statistics.FramesPerSecond);
         cmdBuffer.Draw(3); // Full-screen triangle
         cmdBuffer.EndRendering();
         return true;

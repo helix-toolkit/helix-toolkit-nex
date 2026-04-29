@@ -24,14 +24,29 @@ public sealed class WBOITCompositeNode : RenderNode
     public override string Name => nameof(WBOITCompositeNode);
     public override Color4 DebugColor => new(0.2f, 0.8f, 0.4f, 1.0f);
 
+    protected override void OnSetupRender(in RenderResources res)
+    {
+
+        // Render onto the main color target (which already has the opaque scene).
+        res.Framebuf.Colors[0].Texture = res.Textures[
+            SystemBufferNames.TextureColorF16Current
+        ];
+        res.Pass.Colors[0].LoadOp = LoadOp.Load;
+        res.Pass.Colors[0].StoreOp = StoreOp.Store;
+
+        // Bind the WBOIT textures as sampled inputs (no depth needed).
+        res.Deps.Textures[0] = res.Textures[SystemBufferNames.TextureWboitAccum];
+        res.Deps.Textures[1] = res.Textures[SystemBufferNames.TextureWboitRevealage];
+    }
+
     protected override bool BeginRender(in RenderResources res)
     {
-        if (res.Context.Data is null)
+        if (res.RenderContext.Data is null)
         {
             _logger.LogWarning("Render context data is null, skipping WBOIT composite pass.");
             return false;
         }
-        if (res.Context.Data.MeshDrawsTransparent.Count == 0)
+        if (res.RenderContext.Data.MeshDrawsTransparent.Count == 0)
         {
             // No transparent draws, so no need to composite.
             return false;
@@ -147,19 +162,6 @@ public sealed class WBOITCompositeNode : RenderNode
                 new(SystemBufferNames.TextureWboitRevealage, ResourceType.Texture),
             ],
             outputs: [new(SystemBufferNames.TextureColorF16Current, ResourceType.Texture)],
-            onSetup: (res) =>
-            {
-                // Render onto the main color target (which already has the opaque scene).
-                res.Framebuf.Colors[0].Texture = res.Textures[
-                    SystemBufferNames.TextureColorF16Current
-                ];
-                res.Pass.Colors[0].LoadOp = LoadOp.Load;
-                res.Pass.Colors[0].StoreOp = StoreOp.Store;
-
-                // Bind the WBOIT textures as sampled inputs (no depth needed).
-                res.Deps.Textures[0] = res.Textures[SystemBufferNames.TextureWboitAccum];
-                res.Deps.Textures[1] = res.Textures[SystemBufferNames.TextureWboitRevealage];
-            },
             after: [nameof(ForwardPlusTransparentNode)],
             stage: RenderStage.Transparent
         );
