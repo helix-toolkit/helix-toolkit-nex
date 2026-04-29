@@ -303,8 +303,27 @@ internal class HxVkUtils
         List<VkUtf8String> instanceLayers
     )
     {
+        List<VkUtf8String> nvidia = [
+            "VK_LAYER_NV_optimus"u8,
+        ];
+        if (ValidateLayers(availableLayers, nvidia))
+        {
+            instanceLayers.AddRange(nvidia);
+        }
+
+        List<VkUtf8String> renderDoc = [
+            "{VK_LAYER_RENDERDOC_Capture}"u8,
+        ];
+        if (ValidateLayers(availableLayers, renderDoc))
+        {
+            instanceLayers.AddRange(renderDoc);
+        }
         // The preferred validation layer is "VK_LAYER_KHRONOS_validation"
-        List<VkUtf8String> validationLayers = ["VK_LAYER_KHRONOS_validation"u8];
+        List<VkUtf8String> validationLayers =
+        [
+            "VK_LAYER_KHRONOS_validation"u8,
+            "VK_LAYER_KHRONOS_synchronization2"u8,
+        ];
 
         if (ValidateLayers(availableLayers, validationLayers))
         {
@@ -366,7 +385,7 @@ internal class HxVkUtils
 
             if (!found)
             {
-                //Log.Warn("Validation Layer '{}' not found", layer);
+                _logger.LogWarning("Validation Layer '{}' not found", layer);
                 return false;
             }
         }

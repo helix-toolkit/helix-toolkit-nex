@@ -76,15 +76,17 @@ public sealed class PointCullNode : ComputeNode
         return _expandPipeline.Valid;
     }
 
+    protected override void OnSetupRender(in RenderResources res) { }
+
     protected override void OnRender(in RenderResources res)
     {
-        if (res.Context is null || res.Context.Data is null)
+        if (res.RenderContext is null || res.RenderContext.Data is null)
         {
             _logger.LogWarning("Context.Data is null. Skipping point culling.");
             return;
         }
 
-        var points = res.Context.Data.PointCloudData;
+        var points = res.RenderContext.Data.PointCloudData;
         if (points!.TotalPointCount == 0)
         {
             return;
@@ -93,7 +95,7 @@ public sealed class PointCullNode : ComputeNode
         res.CmdBuffer.PushDebugGroupLabel("PointCull", new Color4(0.8f, 0.6f, 0.2f, 1.0f));
 
         // --- Shared camera state ---
-        var camera = res.Context.CameraParams;
+        var camera = res.RenderContext.CameraParams;
         var view = camera.View;
         var right = new Vector3(view.M11, view.M21, view.M31);
         var up = new Vector3(view.M12, view.M22, view.M32);
@@ -105,7 +107,7 @@ public sealed class PointCullNode : ComputeNode
             ViewProjection = camera.ViewProjection,
             CameraPosition = camera.Position,
             CameraRight = right,
-            ScreenHeight = res.Context.WindowSize.Height,
+            ScreenHeight = res.RenderContext.WindowSize.Height,
             CameraUp = up,
             FovY = fovY,
             MinScreenSize = MinScreenSize,
@@ -172,7 +174,6 @@ public sealed class PointCullNode : ComputeNode
                 new(SystemBufferNames.BufferPointDrawData, ResourceType.Buffer),
                 new(SystemBufferNames.BufferPointIndirectArgs, ResourceType.Buffer),
             ],
-            onSetup: (res) => { },
             stage: RenderStage.Prepare
         );
     }

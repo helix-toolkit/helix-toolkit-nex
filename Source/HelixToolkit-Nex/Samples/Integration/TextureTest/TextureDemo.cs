@@ -635,7 +635,7 @@ internal sealed partial class TextureDemo : IDisposable
 
         _imGuiRenderer.Render(cmdBuf, _imGuiPass, _imGuiFramebuffer, _imGuiDeps);
 
-        _context.Submit(cmdBuf, swapchainTex);
+        _engine.Submit(cmdBuf, swapchainTex);
     }
 
     // -------------------------------------------------------------------------

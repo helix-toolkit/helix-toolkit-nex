@@ -114,7 +114,7 @@ public sealed class Bloom : PostEffect
         var bloomB = res.Textures[SystemBufferNames.TextureBloomB];
 
         // texel size for the blur passes (dimensions come from the managed resource)
-        var dims = res.Context.Context.GetDimensions(bloomA);
+        var dims = res.RenderContext.Context.GetDimensions(bloomA);
         float texelW = dims.Width > 0 ? 1.0f / dims.Width : 0f;
         float texelH = dims.Height > 0 ? 1.0f / dims.Height : 0f;
 
@@ -265,7 +265,7 @@ public sealed class Bloom : PostEffect
         }
 
         var pass = new RenderPass();
-        pass.Colors[0].LoadOp = LoadOp.DontCare;
+        pass.Colors[0].LoadOp = LoadOp.Load;
         pass.Colors[0].StoreOp = StoreOp.Store;
 
         var fb = new Framebuffer();

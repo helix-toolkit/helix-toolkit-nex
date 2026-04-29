@@ -15,10 +15,10 @@ internal class DirectionalLightData : Initializable, IRenderData
 
     public IContext Context { get; }
 
-    private BufferResource? _buffer;
-    public BufferHandle Buffer => _buffer ?? BufferHandle.Null;
+    private RingFixSizeBuffer<DirectionalLights>? _buffer;
+    public BufferHandle Buffer => _buffer?.Current ?? BufferHandle.Null;
 
-    public uint Stride { get; } = DirectionalLight.SizeInBytes;
+    public uint Stride { get; } = DirectionalLights.SizeInBytes;
 
     public uint Count { private set; get; } = 0;
     public ulong GpuAddress => _buffer is null ? 0 : _buffer.GpuAddress;
@@ -42,16 +42,13 @@ internal class DirectionalLightData : Initializable, IRenderData
         _entities.EntityChanged += OnLightChanged;
         _entities.EntityAdded += OnLightChanged;
         _entities.EntityRemoved += OnLightChanged;
-        var result = Context
-            .CreateBuffer(
-                new DirectionalLights(),
-                BufferUsageBits.Storage,
-                StorageType.Device,
-                out _buffer,
-                "DirectionalLight"
-            )
-            .CheckResult();
-        return result;
+        _buffer = new(
+            Context,
+            (int)Math.Min(Context.GetNumSwapchainImages(), RenderSettings.MaxFrameInFlight),
+            BufferUsageBits.Storage,
+            $"DirLight[{World.Id}]"
+        );
+        return ResultCode.Ok;
     }
 
     protected override ResultCode OnTearingDown()
@@ -63,7 +60,7 @@ internal class DirectionalLightData : Initializable, IRenderData
 
     public bool Update()
     {
-        if (!Buffer.Valid)
+        if (_buffer is null)
         {
             return false;
         }
@@ -89,7 +86,7 @@ internal class DirectionalLightData : Initializable, IRenderData
             }
         }
         Count = lights.LightCount;
-        Context.Upload(Buffer, 0, ref lights);
+        _buffer.AdvanceAndUpdate(ref lights);
         _lastBufferUpdateTicks = _lastDataUpdateTicks;
         return true;
     }

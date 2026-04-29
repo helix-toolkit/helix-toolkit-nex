@@ -179,7 +179,7 @@ internal class MeshDrawData : Initializable, IMeshDrawData
         _entities.EntityChanged += OnEntityChanged;
         _entities.EntityAdded += OnAddOrRemovedChanged;
         _entities.EntityRemoved += OnAddOrRemovedChanged;
-        var ringSize = Math.Max(Context.GetNumSwapchainImages(), 2);
+        var ringSize = Math.Min(Context.GetNumSwapchainImages(), RenderSettings.MaxFrameInFlight);
         _ringBuffer = new RingElementBuffer<MeshDraw>(
             Context,
             (int)ringSize,

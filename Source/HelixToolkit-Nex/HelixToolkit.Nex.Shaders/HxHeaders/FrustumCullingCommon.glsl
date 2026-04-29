@@ -9,18 +9,13 @@ struct CullingConstants {
     
     vec4 frustumPlanes[6];  // Left, Right, Top, Bottom, Near, Far
     
-    uint instanceCount;     // Total instances to process
     uint cullingEnabled;    // 1 = Enable Frustum Culling, 0 = Pass through
-    uint occlusionEnabled;  // 1 = Enable Occlusion Culling (reserved)
     uint planeCount;        // Number of planes to test (e.g., 5 for Infinite Far Plane, 6 for Standard)
-
     float maxDrawDistance;  // Max distance from camera (0.0 = disabled)
     float minScreenSize;    // Min projected size in NDC/Screen ratio (0.0 = disabled)
-    uint meshDrawIdxOffset; // Offset in MeshDraw buffer for this culling batch (if processing in chunks)
-    uint _padding1;
 
     uint64_t meshInfoBufferAddress;     // Input: MeshInfo[]
-    uint64_t meshDrawBufferAddress;      // Input: MeshDraw[]
+    uint64_t _padding;
 };
 
 // ------------------------------------------------------------------

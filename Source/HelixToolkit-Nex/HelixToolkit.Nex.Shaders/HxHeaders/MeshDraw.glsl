@@ -21,9 +21,8 @@ struct MeshDraw {
 @code_gen
 struct MeshDrawPushConstant {
     uint64_t fpConstAddress;
+    uint64_t meshDrawBufferAddress;
     uint64_t customMaterialBufferAddress; // Address of custom material properties buffer (set per material type)
     uint drawCommandIdxOffset;
     uint meshDrawId;
-    uint _padding0;
-    uint _padding1;
 };

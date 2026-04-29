@@ -1,5 +1,3 @@
-using System.Runtime.InteropServices;
-
 namespace HelixToolkit.Nex.Material;
 
 /// <summary>
@@ -12,13 +10,13 @@ namespace HelixToolkit.Nex.Material;
 /// every material type that declares a <see cref="PBRMaterialRegistration.CustomBufferGlsl"/>
 /// block.  At render time, call <see cref="Update"/> to flush pending CPU writes to the
 /// GPU buffer, then pass <see cref="GpuAddress"/> to the renderer so it can set
-/// <c>FPConstants.customMaterialBufferAddress</c> before drawing with that material.
+/// <c>MeshDrawPushConstant.customMaterialBufferAddress</c> before drawing with that material.
 /// </remarks>
 public interface ICustomMaterialBuffer : IDisposable
 {
     /// <summary>
     /// GPU device address of the underlying storage buffer.
-    /// Pass this value into <c>FPConstants.customMaterialBufferAddress</c> before issuing
+    /// Pass this value into <c>MeshDrawPushConstant.customMaterialBufferAddress</c> before issuing
     /// draw calls that use the owning material type.
     /// Returns <c>0</c> when the buffer is not yet initialized.
     /// </summary>
@@ -72,7 +70,7 @@ public interface ICustomMaterialBuffer : IDisposable
 ///
 /// // 4. Each frame: flush + provide GPU address
 /// toonBuffer.Update();
-/// fpConstants.customMaterialBufferAddress = toonBuffer.GpuAddress;
+/// MeshDrawPushConstant.customMaterialBufferAddress = toonBuffer.GpuAddress;
 /// </code>
 /// </example>
 public class CustomMaterialBuffer<T> : ICustomMaterialBuffer

@@ -52,7 +52,8 @@ public sealed class WireframePostEffect : PostEffect
     private readonly RenderPass _pass = new();
     private readonly DepthState _depthState = DepthState.DefaultReversedZ.Clone();
 
-    private readonly List<WireframeEntry> _entries = [];
+    private readonly List<WireframeEntry> _entriesOpaque = [];
+    private readonly List<WireframeEntry> _entriesTransparent = [];
 
     public override string Name => nameof(WireframePostEffect);
     public override Color DebugColor => Color.Chartreuse;
@@ -97,7 +98,7 @@ public sealed class WireframePostEffect : PostEffect
     {
         Debug.Assert(_wireframePipeline.Valid, "Wireframe pipeline is not valid.");
 
-        var data = res.Context.Data;
+        var data = res.RenderContext.Data;
         if (data is null)
         {
             return false;
@@ -111,12 +112,38 @@ public sealed class WireframePostEffect : PostEffect
         }
 
         GatherWireframeDraws(world, data);
-        if (_entries.Count == 0)
+        if (_entriesOpaque.Count == 0)
         {
             return false;
         }
         (readSlot, writeSlot) = (writeSlot, readSlot); // Swap slots so we write into the current texture.
-        DrawWireframe(in res, res.CmdBuffer, data, ref readSlot, ref writeSlot, _entries);
+
+        if (_entriesOpaque.Count > 0)
+        {
+            DrawWireframe(
+                in res,
+                res.CmdBuffer,
+                data,
+                ref readSlot,
+                ref writeSlot,
+                _entriesOpaque,
+                data.MeshDrawsOpaque.GpuAddress
+            );
+        }
+
+        if (_entriesTransparent.Count > 0)
+        {
+            DrawWireframe(
+                in res,
+                res.CmdBuffer,
+                data,
+                ref readSlot,
+                ref writeSlot,
+                _entriesTransparent,
+                data.MeshDrawsTransparent.GpuAddress
+            );
+        }
+
         return true;
     }
 
@@ -146,7 +173,8 @@ public sealed class WireframePostEffect : PostEffect
     /// </summary>
     private void GatherWireframeDraws(World world, IRenderDataProvider data)
     {
-        _entries.Clear();
+        _entriesOpaque.Clear();
+        _entriesTransparent.Clear();
         var meshDraws = data.MeshDrawsOpaque;
 
         foreach (var entity in world.GetComponentEntities<WireframeComponent>())
@@ -169,7 +197,9 @@ public sealed class WireframePostEffect : PostEffect
             }
 
             ref var wireframe = ref entity.Get<WireframeComponent>();
-            _entries.Add(
+
+            var entries = entity.Has<TransparentComponent>() ? _entriesTransparent : _entriesOpaque;
+            entries.Add(
                 new WireframeEntry(DrawIndex: (uint)meshComp.Index, Color: wireframe.Color)
             );
         }
@@ -190,25 +220,27 @@ public sealed class WireframePostEffect : PostEffect
         IRenderDataProvider data,
         ref string readSlot,
         ref string writeSlot,
-        List<WireframeEntry> entries
+        List<WireframeEntry> entries,
+        ulong meshDrawDataAddress
     )
     {
-        var context = res.Context;
+        var context = res.RenderContext;
         var meshDraws = data.MeshDrawsOpaque;
-        var fpConstBuf = res.Buffers[SystemBufferNames.BufferForwardPlusConstants];
 
+        var fpBuffer = res.Buffers[SystemBufferNames.BufferForwardPlusConstants];
         // Render wireframes directly onto the write-slot texture.
         // Load existing content so we composite on top of the scene.
         _pass.Colors[0].LoadOp = LoadOp.Load;
         _pass.Colors[0].StoreOp = StoreOp.Store;
         _pass.Depth.LoadOp = LoadOp.Load;
-        _pass.Depth.StoreOp = StoreOp.DontCare; // No need to preserve depth after this pass.
+        _pass.Depth.StoreOp = StoreOp.Store;
         _frameBuffer.Colors[0].Texture = res.Textures[writeSlot];
         _frameBuffer.DepthStencil.Texture = res.Textures[SystemBufferNames.TextureDepthF32];
 
         // No sampled-texture dependencies — mesh draws only need the scene target as output.
         _deps.Textures[0] = TextureHandle.Null;
         _deps.Textures[1] = TextureHandle.Null;
+        _deps.Buffers[0] = fpBuffer;
 
         cmdBuffer.BeginRendering(_pass, _frameBuffer, _deps);
         cmdBuffer.BindRenderPipeline(_wireframePipeline);
@@ -217,7 +249,7 @@ public sealed class WireframePostEffect : PostEffect
         // Use external-pipeline scope so RenderHelper skips per-material pipeline binding.
         using var _ = context.EnableExternalPipelineScoped();
 
-        var fpConstAddress = fpConstBuf.GpuAddress(context.Context);
+        var fpConstAddress = fpBuffer.GpuAddress(res.RenderContext.Context);
 
         foreach (var entry in entries)
         {
@@ -243,6 +275,7 @@ public sealed class WireframePostEffect : PostEffect
                 {
                     FpConstAddress = fpConstAddress,
                     DrawCommandIdxOffset = entry.DrawIndex,
+                    MeshDrawBufferAddress = meshDrawDataAddress,
                 }
             );
             cmdBuffer.PushConstants(entry.Color, MeshDrawPushConstant.SizeInBytes);
