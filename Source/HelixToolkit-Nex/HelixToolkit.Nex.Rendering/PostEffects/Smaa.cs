@@ -198,7 +198,7 @@ public sealed class Smaa : PostEffect
         var weightTex = res.Textures[SystemBufferNames.TextureSmaaWeights];
 
         // Texel size – taken from the scene (full-resolution) texture.
-        var dims = res.Context.Context.GetDimensions(sceneTex);
+        var dims = res.RenderContext.Context.GetDimensions(sceneTex);
         float tw = dims.Width > 0 ? 1.0f / dims.Width : 0f;
         float th = dims.Height > 0 ? 1.0f / dims.Height : 0f;
 
@@ -323,7 +323,7 @@ public sealed class Smaa : PostEffect
         _deps.Textures[0] = dep0;
         _deps.Textures[1] = dep1;
 
-        _pass.Colors[0].LoadOp = clearOutput ? LoadOp.Clear : LoadOp.DontCare;
+        _pass.Colors[0].LoadOp = clearOutput ? LoadOp.Clear : LoadOp.Load;
         _pass.Colors[0].StoreOp = StoreOp.Store;
         _pass.Colors[0].ClearColor = new Color4(0f, 0f, 0f, 0f);
 

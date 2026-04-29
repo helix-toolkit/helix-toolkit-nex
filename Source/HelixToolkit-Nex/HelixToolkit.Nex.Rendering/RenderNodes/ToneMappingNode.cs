@@ -46,20 +46,34 @@ public sealed class ToneMappingNode : RenderNode
         );
         if (!vsResult.Success || vsResult.Source is null)
         {
-            _logger.LogError("Failed to compile full-screen quad vertex shader: {ERRORS}", string.Join("\n", vsResult.Errors));
+            _logger.LogError(
+                "Failed to compile full-screen quad vertex shader: {ERRORS}",
+                string.Join("\n", vsResult.Errors)
+            );
             return false;
         }
-        using var vs = Context.CreateShaderModuleGlsl(vsResult.Source, ShaderStage.Vertex, "ToneMappingNode_VS");
+        using var vs = Context.CreateShaderModuleGlsl(
+            vsResult.Source,
+            ShaderStage.Vertex,
+            "ToneMappingNode_VS"
+        );
 
         var fsResult = shaderCompiler.CompileFragmentShader(
             GlslUtils.GetEmbeddedGlslShader("Frag/psToneGamma.glsl")
         );
         if (!fsResult.Success || fsResult.Source is null)
         {
-            _logger.LogError("Failed to compile tone mapping shader: {ERRORS}", string.Join("\n", fsResult.Errors));
+            _logger.LogError(
+                "Failed to compile tone mapping shader: {ERRORS}",
+                string.Join("\n", fsResult.Errors)
+            );
             return false;
         }
-        using var fs = Context.CreateShaderModuleGlsl(fsResult.Source, ShaderStage.Fragment, "ToneMappingNode_FS");
+        using var fs = Context.CreateShaderModuleGlsl(
+            fsResult.Source,
+            ShaderStage.Fragment,
+            "ToneMappingNode_FS"
+        );
 
         var pipelineDesc = new RenderPipelineDesc
         {
@@ -69,7 +83,9 @@ public sealed class ToneMappingNode : RenderNode
             VertexShader = vs,
             FragmentShader = fs,
         };
-        pipelineDesc.Colors[0] = ColorAttachment.CreateOpaque(RenderSettings.IntermediateTargetFormat);
+        pipelineDesc.Colors[0] = ColorAttachment.CreateOpaque(
+            RenderSettings.IntermediateTargetFormat
+        );
 
         _pipeline = Context.CreateRenderPipeline(pipelineDesc);
         return _pipeline.Valid;
@@ -81,13 +97,17 @@ public sealed class ToneMappingNode : RenderNode
         base.OnTeardown();
     }
 
+    protected override void OnSetupRender(in RenderResources res)
+    {
+    }
+
     protected override bool BeginRender(in RenderResources res)
     {
-        res.Pass.Colors[0].LoadOp = LoadOp.DontCare;
+        res.Pass.Colors[0].LoadOp = LoadOp.Load;
         res.Pass.Colors[0].StoreOp = StoreOp.Store;
-        res.Deps.Textures[0] = res.Context.TextureColorF16Current;
-        res.Context.SwapIntermediateBuffers();
-        res.Framebuf.Colors[0].Texture = res.Context.TextureColorF16Current;
+        res.Deps.Textures[0] = res.RenderContext.TextureColorF16Current;
+        res.RenderContext.SwapIntermediateBuffers();
+        res.Framebuf.Colors[0].Texture = res.RenderContext.TextureColorF16Current;
         res.CmdBuffer.BeginRendering(res.Pass, res.Framebuf, res.Deps);
         return true;
     }
@@ -111,7 +131,6 @@ public sealed class ToneMappingNode : RenderNode
         res.CmdBuffer.Draw(3); // full-screen triangle
     }
 
-
     public override void AddToGraph(RenderGraph graph)
     {
         graph.AddPingPongGroup(
@@ -125,9 +144,6 @@ public sealed class ToneMappingNode : RenderNode
             PingPongGroups.ColorF16,
             extraInputs: [],
             extraOutputs: [],
-            onSetup: (res, readSlot, writeSlot) =>
-            {
-            },
             stage: RenderStage.ToneMap
         );
     }

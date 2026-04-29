@@ -65,7 +65,7 @@ FPConstants fpConst = FPBuffer(pc.value.fpConstAddress).fpConstants;
 
 uint meshDrawIndex = gl_DrawID + pc.value.drawCommandIdxOffset;
 
-MeshDraw meshDraw = MeshDrawBuffer(fpConst.meshDrawBufferAddress).draws[meshDrawIndex];
+MeshDraw meshDraw = MeshDrawBuffer(pc.value.meshDrawBufferAddress).draws[meshDrawIndex];
 
 MeshInfo meshInfo = MeshInfoBuffer(fpConst.meshInfoBufferAddress).value[meshDraw.meshId];
 

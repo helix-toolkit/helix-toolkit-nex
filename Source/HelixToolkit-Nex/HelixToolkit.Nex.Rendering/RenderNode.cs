@@ -1,7 +1,7 @@
 namespace HelixToolkit.Nex.Rendering;
 
 public readonly record struct RenderResources(
-    RenderContext Context,
+    RenderContext RenderContext,
     ICommandBuffer CmdBuffer,
     RenderPass Pass,
     Framebuffer Framebuf,
@@ -81,6 +81,7 @@ public abstract class RenderNode : IDisposable
         }
         using var scope = _tracer?.BeginScope(nameof(Render));
         res.CmdBuffer.PushDebugGroupLabel(Name, DebugColor);
+        OnSetupRender(res);
         if (BeginRender(in res))
         {
             OnRender(in res);
@@ -88,6 +89,12 @@ public abstract class RenderNode : IDisposable
         }
         res.CmdBuffer.PopDebugGroupLabel();
     }
+
+    /// <summary>
+    /// Setup all the resource dependencies for this render node. This is called before the render pass begins, and can be used to bind resources or set up any necessary state.
+    /// </summary>
+    /// <param name="res">The render resources for the current frame.</param>
+    protected abstract void OnSetupRender(in RenderResources res);
 
     protected virtual bool BeginRender(in RenderResources res)
     {

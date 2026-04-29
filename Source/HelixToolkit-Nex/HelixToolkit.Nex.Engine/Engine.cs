@@ -68,6 +68,11 @@ public class Engine : Initializable
 
     private readonly IInitializable[] _initializables;
 
+    private readonly SubmitHandle[] _submitHandles = new SubmitHandle[
+        (int)RenderSettings.MaxFrameInFlight
+    ];
+    private int _frameIndex = 0;
+
     /// <summary>
     /// Gets the GPU graphics context.
     /// </summary>
@@ -117,6 +122,42 @@ public class Engine : Initializable
         // Initialization order matters: Renderer → RenderGraph.
         // Teardown runs in reverse order.
         _initializables = [Renderer, RenderGraph, ResourceManager];
+    }
+
+    protected override ResultCode OnInitializing()
+    {
+        for (var i = 0; i < _initializables.Length; ++i)
+        {
+            ResultCode ret = _initializables[i].Initialize();
+            if (ret != ResultCode.Ok)
+            {
+                _logger.LogError(
+                    "Failed to initialize '{Name}'. Result: {Result}",
+                    _initializables[i].Name,
+                    ret
+                );
+                return ret;
+            }
+        }
+        return ResultCode.Ok;
+    }
+
+    protected override ResultCode OnTearingDown()
+    {
+        for (var i = _initializables.Length - 1; i >= 0; --i)
+        {
+            ResultCode ret = _initializables[i].Teardown();
+            if (ret != ResultCode.Ok)
+            {
+                _logger.LogError(
+                    "Failed to tear down '{Name}'. Result: {Result}",
+                    _initializables[i].Name,
+                    ret
+                );
+                return ret;
+            }
+        }
+        return ResultCode.Ok;
     }
 
     /// <summary>
@@ -312,7 +353,7 @@ public class Engine : Initializable
     }
 
     /// <summary>
-    /// 
+    ///
     /// </summary>
     /// <param name="context"></param>
     public void EnsureResources(RenderContext context)
@@ -339,7 +380,8 @@ public class Engine : Initializable
         renderContext.Data = dataProvider;
         EnsureResources(renderContext);
         renderContext.FinalOutputTexture = Context.GetCurrentSwapchainTexture();
-        Renderer.Render(renderContext, RenderGraph);
+        var cmdBuf = Renderer.Render(renderContext, RenderGraph);
+        Submit(cmdBuf, renderContext.FinalOutputTexture);
     }
 
     /// <summary>
@@ -367,7 +409,7 @@ public class Engine : Initializable
         EnsureResources(renderContext);
         renderContext.Data = dataProvider;
         renderContext.FinalOutputTexture = target;
-        var cmd = Renderer.RenderOffscreen(renderContext, RenderGraph);
+        var cmd = Renderer.Render(renderContext, RenderGraph);
         return cmd;
     }
 
@@ -399,43 +441,57 @@ public class Engine : Initializable
             );
         }
         renderContext.FinalOutputTexture = handle;
-        var cmd = Renderer.RenderOffscreen(renderContext, RenderGraph);
+        var cmd = Renderer.Render(renderContext, RenderGraph);
         return cmd;
     }
 
-    protected override ResultCode OnInitializing()
+    /// <summary>
+    /// Submits a command buffer for execution on the GPU.
+    /// </summary>
+    /// <param name="commandBuffer">The command buffer to submit.</param>
+    /// <param name="present">Optional texture to present to the swapchain. Use <see cref="TextureHandle.Null"/> for no presentation.</param>
+    /// <returns>A <see cref="SubmitHandle"/> that can be used to wait for completion.</returns>
+    public void Submit(ICommandBuffer commandBuffer, in TextureHandle present)
     {
-        for (var i = 0; i < _initializables.Length; ++i)
-        {
-            ResultCode ret = _initializables[i].Initialize();
-            if (ret != ResultCode.Ok)
-            {
-                _logger.LogError(
-                    "Failed to initialize '{Name}'. Result: {Result}",
-                    _initializables[i].Name,
-                    ret
-                );
-                return ret;
-            }
-        }
-        return ResultCode.Ok;
+        Submit(commandBuffer, present, default);
     }
 
-    protected override ResultCode OnTearingDown()
+    /// <summary>
+    /// Submits a command buffer for execution on the GPU.
+    /// </summary>
+    /// <param name="commandBuffer">The command buffer to submit.</param>
+    /// <param name="present">Optional texture to present to the swapchain. Use <see cref="TextureHandle.Null"/> for no presentation.</param>
+    /// <param name="syncInfo">Keyed mutex synchronization information.</param>
+    /// <returns></returns>
+    public void Submit(
+        ICommandBuffer commandBuffer,
+        in TextureHandle present,
+        KeyedMutexSyncInfo syncInfo
+    )
     {
-        for (var i = _initializables.Length - 1; i >= 0; --i)
+        var currHandle = _submitHandles[_frameIndex];
+        if (!currHandle.Empty)
         {
-            ResultCode ret = _initializables[i].Teardown();
-            if (ret != ResultCode.Ok)
-            {
-                _logger.LogError(
-                    "Failed to tear down '{Name}'. Result: {Result}",
-                    _initializables[i].Name,
-                    ret
-                );
-                return ret;
-            }
+            Context.Wait(currHandle);
         }
-        return ResultCode.Ok;
+        _submitHandles[_frameIndex] = Context.Submit(commandBuffer, present, syncInfo);
+        _frameIndex = (_frameIndex + 1) % (int)RenderSettings.MaxFrameInFlight;
+    }
+
+    /// <summary>
+    /// Waits for all in-flight GPU work submitted by this engine to complete. This is primarily
+    /// used for cleanup and ensuring that all GPU operations have finished before shutting down.
+    /// </summary>
+    public void WaitForIdle()
+    {
+        for (var i = 0; i < _submitHandles.Length; ++i)
+        {
+            var handle = _submitHandles[i];
+            if (!handle.Empty)
+            {
+                Context.Wait(handle);
+            }
+            _submitHandles[i] = default;
+        }
     }
 }

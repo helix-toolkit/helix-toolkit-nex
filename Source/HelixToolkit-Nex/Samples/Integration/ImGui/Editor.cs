@@ -205,7 +205,7 @@ internal partial class Editor : IDisposable
         _imGuiDeps.Textures[0] = _renderContext.FinalOutputTexture;
         _imGuiRenderer.Render(cmdBuf, _imGuiPass, _imGuiFramebuffer, _imGuiDeps);
         // --- Submit & present ---
-        _context.Submit(cmdBuf, swapchainTex);
+        _engine.Submit(cmdBuf, swapchainTex);
     }
 
     public void Pick(int x, int y)

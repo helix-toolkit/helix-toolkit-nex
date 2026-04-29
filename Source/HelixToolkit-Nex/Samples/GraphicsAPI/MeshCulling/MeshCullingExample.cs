@@ -172,7 +172,6 @@ internal class MeshCullingExample : IDisposable
         );
 
         _cullConst.MeshInfoBufferAddress = _meshInfoBuffer.GpuAddress;
-        _cullConst.MeshDrawBufferAddress = _meshDrawBuffer.GpuAddress;
 
         // 2.4 Build Pipelines
         CreateCullingPipeline();
@@ -270,7 +269,6 @@ internal class MeshCullingExample : IDisposable
 
         // 3.2 Update Culling Constants
         _cullConst.CullingEnabled = 1;
-        _cullConst.InstanceCount = (uint)_instanceCount;
         _cullConst.ViewMatrix = view;
         _cullConst.ViewProjectionMatrix = viewProj;
         _cullConst.ProjectionMatrix = proj;
@@ -293,7 +291,14 @@ internal class MeshCullingExample : IDisposable
         cmdBuffer.UpdateBuffer(_cullConstBuffer, _cullConst);
 
         cmdBuffer.BindComputePipeline(_cullingPipeline);
-        cmdBuffer.PushConstants(_cullConstBuffer.GpuAddress);
+        cmdBuffer.PushConstants(
+            new FrustumCullPC()
+            {
+                CullingConstAddress = _cullConstBuffer.GpuAddress,
+                MeshDrawBufferAddress = _meshDrawBuffer.GpuAddress,
+                InstanceCount = (uint)_instanceCount,
+            }
+        );
 
         // Run one thread per object to check visibility
         cmdBuffer.DispatchThreadGroups(
@@ -318,7 +323,6 @@ internal class MeshCullingExample : IDisposable
                 TimeMs = Time.GetMonoTimeMs(),
                 MeshInfoBufferAddress = _meshInfoBuffer.GpuAddress,
                 MaterialBufferAddress = _pbrPropertiesBuffer.GpuAddress,
-                MeshDrawBufferAddress = _meshDrawBuffer.GpuAddress,
                 DirectionalLightsBufferAddress = _directionalLightBuffer.GpuAddress,
                 LightCount = 0, // No lights in this unlit demo
                 TileSize = 0,
@@ -337,7 +341,11 @@ internal class MeshCullingExample : IDisposable
         cmdBuffer.BindDepthState(_depthState);
         cmdBuffer.BindRenderPipeline(_unlitRenderPipeline);
         cmdBuffer.PushConstants(
-            new MeshDrawPushConstant() { FpConstAddress = _fpConstBuffer.GpuAddress }
+            new MeshDrawPushConstant()
+            {
+                FpConstAddress = _fpConstBuffer.GpuAddress,
+                MeshDrawBufferAddress = _meshDrawBuffer.GpuAddress,
+            }
         );
         cmdBuffer.BindIndexBuffer(_indexBuffer, IndexFormat.UI32);
         cmdBuffer.DrawIndexedIndirect(
@@ -353,6 +361,7 @@ internal class MeshCullingExample : IDisposable
             {
                 FpConstAddress = _fpConstBuffer.GpuAddress,
                 DrawCommandIdxOffset = (uint)(_instanceCount / 2),
+                MeshDrawBufferAddress = _meshDrawBuffer.GpuAddress,
             }
         );
         cmdBuffer.DrawIndexedIndirect(

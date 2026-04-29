@@ -67,15 +67,20 @@ public sealed class ForwardPlusLightCullingNode : ComputeNode
         base.OnTeardown();
     }
 
+    protected override void OnSetupRender(in RenderResources res)
+    {
+        res.Deps.Textures[0] = res.Textures[SystemBufferNames.TextureDepthF32];
+    }
+
     protected override void OnRender(in RenderResources res)
     {
-        if (res.Context.Data is null)
+        if (res.RenderContext.Data is null)
         {
             _logger.LogWarning("Render context data is null, skipping light culling pass.");
             return;
         }
         Debug.Assert(_pipeline.Valid, "_pipeline is not valid.");
-        var renderContext = res.Context;
+        var renderContext = res.RenderContext;
 
         if (renderContext.Data.Lights.Count == 0)
         {
@@ -192,8 +197,6 @@ public sealed class ForwardPlusLightCullingNode : ComputeNode
                     new(SystemBufferNames.BufferLightGrid, ResourceType.Buffer),
                     new(SystemBufferNames.BufferLightIndex, ResourceType.Buffer),
                 ],
-                onSetup: (res) =>
-                    res.Deps.Textures[0] = res.Textures[SystemBufferNames.TextureDepthF32],
                 stage: RenderStage.Opaque
             );
     }

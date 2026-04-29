@@ -598,7 +598,6 @@ public class ForwardPlusExample
                 LightGridBufferAddress = _lightGridBuffer.GpuAddress,
                 LightIndexBufferAddress = _lightIndexBuffer.GpuAddress,
                 MaterialBufferAddress = _pbrPropertiesBuffer.GpuAddress,
-                MeshDrawBufferAddress = _meshDrawBuffer.GpuAddress,
                 DirectionalLightsBufferAddress = _directionalLightBuffer.GpuAddress,
                 LightCount = (uint)_lights.Count,
                 TileSize = _config.TileSize,
@@ -656,6 +655,7 @@ public class ForwardPlusExample
             {
                 FpConstAddress = _fpConstBuffer.GpuAddress,
                 MeshDrawId = 0,
+                MeshDrawBufferAddress = _meshDrawBuffer.GpuAddress,
             }
         );
         cmdBuffer.DrawIndexed((uint)_mesh.Indices.Count);
@@ -700,6 +700,7 @@ public class ForwardPlusExample
             {
                 FpConstAddress = _fpConstBuffer.GpuAddress,
                 MeshDrawId = 0,
+                MeshDrawBufferAddress = _meshDrawBuffer.GpuAddress,
             }
         );
 
@@ -712,6 +713,7 @@ public class ForwardPlusExample
             {
                 FpConstAddress = _fpConstBuffer.GpuAddress,
                 DrawCommandIdxOffset = 1,
+                MeshDrawBufferAddress = _meshDrawBuffer.GpuAddress,
             }
         );
 

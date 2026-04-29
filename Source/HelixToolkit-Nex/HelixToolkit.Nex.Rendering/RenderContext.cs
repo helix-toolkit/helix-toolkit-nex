@@ -49,6 +49,7 @@ public readonly struct CameraParams(
 public sealed class RenderParams
 {
     public Color4 BackgroundColor = Color.Black;
+    public bool EnableLightCulling = true;
 }
 
 public sealed class RenderContext(IServiceProvider services) : Initializable

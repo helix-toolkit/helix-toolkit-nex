@@ -12,7 +12,6 @@ using HelixToolkit.Nex.Material;
 using HelixToolkit.Nex.Maths;
 using HelixToolkit.Nex.Rendering;
 using HelixToolkit.Nex.Rendering.Components;
-using HelixToolkit.Nex.Rendering.ComputeNodes;
 using HelixToolkit.Nex.Rendering.PostEffects;
 using HelixToolkit.Nex.Rendering.RenderNodes;
 using HelixToolkit.Nex.Scene;
@@ -90,14 +89,6 @@ internal partial class TransparentDemo : IDisposable
             .Create(_context)
             .WithDefaultNodes(false)
             .RenderToCustomTarget(RenderSettings.IntermediateTargetFormat)
-            .AddNode(new PrepareNode())
-            .AddNode(new DepthPassNode())
-            .AddNode(new FrustumCullNode())
-            .AddNode(new ForwardPlusOpaqueNode() { UseLightCulling = true })
-            .AddNode(new ForwardPlusLightCullingNode())
-            // WBOIT transparent pass + composite
-            .AddNode(new ForwardPlusTransparentNode() { UseWBOIT = true, UseLightCulling = true })
-            .AddNode(new WBOITCompositeNode())
             .WithPostEffects(effects =>
             {
                 effects.AddEffect(_fxaa);
@@ -377,7 +368,7 @@ internal partial class TransparentDemo : IDisposable
         _imGuiRenderer.Render(cmdBuf, _imGuiPass, _imGuiFramebuffer, _imGuiDeps);
 
         // --- Submit & present ---
-        _context.Submit(cmdBuf, swapchainTex);
+        _engine.Submit(cmdBuf, swapchainTex);
     }
 
     // -------------------------------------------------------------------

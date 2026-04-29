@@ -7,7 +7,6 @@ using HelixToolkit.Nex.Material;
 using HelixToolkit.Nex.Maths;
 using HelixToolkit.Nex.Shaders;
 using HelixToolkit.Nex.Shaders.Frag;
-using SDL3;
 
 namespace InstancingMeshCulling;
 
@@ -191,7 +190,6 @@ internal class InstancingMeshCullingExample : IDisposable
         );
 
         _cullConst.MeshInfoBufferAddress = _meshInfoBuffer.GpuAddress;
-        _cullConst.MeshDrawBufferAddress = _meshDrawBuffer.GpuAddress;
 
         // 2.4 Build Pipelines
         CreateCullingPipeline();
@@ -290,7 +288,6 @@ internal class InstancingMeshCullingExample : IDisposable
         // 3.2 Update Culling Constants
         // Upload the new camera matrices and frustum planes to the GPU.
         _cullConst.CullingEnabled = 1;
-        _cullConst.InstanceCount = (uint)_instanceCount;
         _cullConst.ViewMatrix = view;
         _cullConst.ViewProjectionMatrix = viewProj;
         _cullConst.ProjectionMatrix = proj;
@@ -333,7 +330,8 @@ internal class InstancingMeshCullingExample : IDisposable
             {
                 CullingConstAddress = _cullConstBuffer.GpuAddress,
                 DrawCommandIdx = 0,
-                InstanceCount = (uint)_instanceMatrices.Count,
+                InstanceCount = (uint)_instanceCount,
+                MeshDrawBufferAddress = _meshDrawBuffer.GpuAddress
             }
         );
 
@@ -360,7 +358,6 @@ internal class InstancingMeshCullingExample : IDisposable
                 CameraPosition = _camera.Position,
                 TimeMs = Time.GetMonoTimeMs(),
                 MaterialBufferAddress = _pbrPropertiesBuffer.GpuAddress,
-                MeshDrawBufferAddress = _meshDrawBuffer.GpuAddress,
                 MeshInfoBufferAddress = _meshInfoBuffer.GpuAddress,
                 LightCount = 0, // No lights in this unlit demo
                 TileSize = 0,
@@ -377,7 +374,7 @@ internal class InstancingMeshCullingExample : IDisposable
         cmdBuffer.BeginRendering(_renderPass, _frameBuffer, _renderDependencies);
         cmdBuffer.BindRenderPipeline(_renderPipeline);
         cmdBuffer.BindDepthState(_depthState);
-        cmdBuffer.PushConstants(_fpConstBuffer.GpuAddress);
+        cmdBuffer.PushConstants(new MeshDrawPushConstant() { FpConstAddress = _fpConstBuffer.GpuAddress, MeshDrawBufferAddress = _meshDrawBuffer.GpuAddress });
         cmdBuffer.BindIndexBuffer(_indexBuffer, IndexFormat.UI32);
 
         // Indirect Draw:

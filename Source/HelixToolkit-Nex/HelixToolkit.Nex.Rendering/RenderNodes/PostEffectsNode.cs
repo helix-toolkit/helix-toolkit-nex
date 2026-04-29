@@ -125,7 +125,8 @@ public sealed class PostEffectsNode : RenderNode
     /// <param name="name">The name of the post-processing effect to retrieve.</param>
     /// <param name="effect">When this method returns, contains the typed effect if found and the type matches; otherwise, <see langword="null"/>.</param>
     /// <returns><see langword="true"/> if an effect with the specified name and type is found; otherwise, <see langword="false"/>.</returns>
-    public bool TryGetEffect<T>(string name, out T? effect) where T : PostEffect
+    public bool TryGetEffect<T>(string name, out T? effect)
+        where T : PostEffect
     {
         if (_effectMap.TryGetValue(name, out var raw) && raw is T typed)
         {
@@ -146,7 +147,8 @@ public sealed class PostEffectsNode : RenderNode
     /// </summary>
     /// <typeparam name="T">The concrete <see cref="PostEffect"/> type to find.</typeparam>
     /// <returns>The first matching effect, or <see langword="null"/>.</returns>
-    public T? GetEffect<T>() where T : PostEffect
+    public T? GetEffect<T>()
+        where T : PostEffect
     {
         foreach (var effect in _effects)
         {
@@ -156,6 +158,18 @@ public sealed class PostEffectsNode : RenderNode
             }
         }
         return null;
+    }
+
+    protected override void OnSetupRender(in RenderResources res)
+    {
+        (_initialReadSlot, _initialWriteSlot) =
+            res.RenderContext.TextureColorF16Current == res.Textures[SystemBufferNames.TextureColorF16A]
+                ? (SystemBufferNames.TextureColorF16A, SystemBufferNames.TextureColorF16B)
+                : (SystemBufferNames.TextureColorF16B, SystemBufferNames.TextureColorF16A);
+
+        res.Pass.Colors[0].ClearColor = Color.Transparent;
+        res.Pass.Colors[0].LoadOp = LoadOp.Load;
+        res.Pass.Colors[0].StoreOp = StoreOp.Store;
     }
 
     protected override bool BeginRender(in RenderResources res)
@@ -196,7 +210,7 @@ public sealed class PostEffectsNode : RenderNode
         // When zero effects ran, `read` == _initialReadSlot, which is already the correct source.
         // Publish this as the stable TextureColorF16Current alias so all downstream passes
         // (e.g. RenderToFinalNode) always read the correct texture regardless of effect count.
-        if (res.Context.ResourceSet is { } resourceSet)
+        if (res.RenderContext.ResourceSet is { } resourceSet)
         {
             resourceSet.Textures[SystemBufferNames.TextureColorF16Current] = resourceSet.Textures[
                 read
@@ -243,27 +257,15 @@ public sealed class PostEffectsNode : RenderNode
 
         // Register the stable current-color alias. It has no build function because its handle
         // is written at runtime by OnRender, not allocated as a separate GPU texture.
-        graph.AddTexture(
-            SystemBufferNames.TextureColorF16Current,
-            null
-        );
+        graph.AddTexture(SystemBufferNames.TextureColorF16Current, null);
 
         graph.AddPingPongPass(
             nameof(PostEffectsNode),
             PingPongGroups.ColorF16,
-            extraInputs: [],
+            extraInputs: [new(SystemBufferNames.BufferForwardPlusConstants, ResourceType.Buffer)],
             // Declare TextureColorF16Current as an output so downstream passes that consume it
             // are correctly ordered after PostEffectsNode by the topological sort.
             extraOutputs: [new(SystemBufferNames.TextureColorF16Current, ResourceType.Texture)],
-            onSetup: (res, readSlot, writeSlot) =>
-            {
-                _initialReadSlot = readSlot;
-                _initialWriteSlot = writeSlot;
-
-                res.Pass.Colors[0].ClearColor = Color.Transparent;
-                res.Pass.Colors[0].LoadOp = LoadOp.Load;
-                res.Pass.Colors[0].StoreOp = StoreOp.Store;
-            },
             stage: RenderStage.PostProcess
         );
     }

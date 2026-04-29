@@ -14,23 +14,29 @@ public enum RenderStage
 {
     /// <summary>CPU/GPU data preparation: frustum culling etc.</summary>
     Prepare = 0,
+
     /// <summary>Opaque geometry: depth pre-pass, light culling, opaque meshes, point clouds, etc.</summary>
     Opaque = 10,
+
     /// <summary>Transparent geometry: WBOIT render + composite, alpha-blended passes, etc.</summary>
     Transparent = 20,
+
     /// <summary>Full-screen HDR post-processing effects (FXAA, bloom, …). Runs before tone mapping.</summary>
     PostProcess = 30,
+
     /// <summary>
     /// HDR-to-LDR conversion. Separating this from <see cref="PostProcess"/> ensures that
     /// all HDR effects complete before the scene is linearised, and that all
     /// <see cref="Overlay"/> passes receive an LDR surface to draw onto.
     /// </summary>
     ToneMap = 35,
+
     /// <summary>
     /// LDR overlays rendered on top of the tone-mapped image: gizmos, debug geometry,
     /// editor widgets, etc. Depth buffer from the opaque pass is still available here.
     /// </summary>
     Overlay = 40,
+
     /// <summary>Final blit to the swap-chain / output texture.</summary>
     Output = 50,
 }
@@ -48,7 +54,6 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
         string passName,
         IList<RenderResource> inputs,
         IList<RenderResource> outputs,
-        Action<RenderResources> onSetup,
         IList<string> after,
         string? pingPongGroup = null,
         RenderStage stage = RenderStage.Opaque
@@ -80,9 +85,6 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
         /// </summary>
         public readonly string? PingPongGroup = pingPongGroup;
 
-        private Action<RenderResources> _onSetupRenderParams = onSetup;
-        public Action<RenderResources> OnSetupRenderParams => _onSetupRenderParams;
-
         /// <summary>
         /// The name of the resource slot this pass reads from (resolved by <see cref="RenderGraph.Compile"/>
         /// for ping-pong passes; <see langword="null"/> for regular passes).
@@ -94,13 +96,6 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
         /// for ping-pong passes; <see langword="null"/> for regular passes).
         /// </summary>
         public string? PingPongWriteSlot { get; internal set; }
-
-        /// <summary>
-        /// Replaces the setup delegate. Called by <see cref="RenderGraph.ResolvePingPongSlots"/>
-        /// to inject the resolved slot names into a closure.
-        /// </summary>
-        internal void SetOnSetupRenderParams(Action<RenderResources> action) =>
-            _onSetupRenderParams = action;
     }
 
     // -----------------------------------------------------------------------
@@ -162,7 +157,6 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
         string pingPongGroup,
         IList<RenderResource> extraInputs,
         IList<RenderResource> extraOutputs,
-        Action<RenderResources, string, string> onSetup,
         IList<string>? after = null,
         RenderStage stage = RenderStage.PostProcess
     )
@@ -186,24 +180,15 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
             passName,
             extraInputs,
             extraOutputs,
-            _ => { }, // placeholder; replaced in Compile()
             after ?? [],
             pingPongGroup,
             stage
         );
 
-        // Capture the real setup action so Compile() can wrap it with resolved slot names.
-        _pingPongSetupActions[passName] = onSetup;
         _passes.Add(passName, node);
         IsDirty = true;
         return this;
     }
-
-    // Maps pass name -> the ping-pong setup delegate (before slot names are resolved).
-    private readonly Dictionary<
-        string,
-        Action<RenderResources, string, string>
-    > _pingPongSetupActions = [];
 
     private readonly IServiceProvider _services = serviceProvider;
     private readonly Dictionary<string, GraphNode> _passes = [];
@@ -300,7 +285,6 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
         string passName,
         IList<RenderResource> inputs,
         IList<RenderResource> outputs,
-        Action<RenderResources> onSetup,
         IList<string>? after = null,
         RenderStage stage = RenderStage.Opaque
     )
@@ -311,7 +295,7 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
                 $"A pass with the name '{passName}' already exists in the render graph."
             );
         }
-        _passes.Add(passName, new GraphNode(passName, inputs, outputs, onSetup, after ?? [], stage: stage));
+        _passes.Add(passName, new GraphNode(passName, inputs, outputs, after ?? [], stage: stage));
         IsDirty = true;
         return this;
     }
@@ -322,7 +306,6 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
     public RenderGraph RemovePass(string passName)
     {
         _passes.Remove(passName);
-        _pingPongSetupActions.Remove(passName);
         _resourceProducers.Clear();
         _sortedPasses.Clear();
         IsDirty = true;
@@ -542,17 +525,6 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
                 pass.Inputs.AddRange(patchedInputs);
                 pass.Outputs.Clear();
                 pass.Outputs.AddRange(patchedOutputs);
-
-                // Wrap the setup action with the resolved slot names.
-                if (_pingPongSetupActions.TryGetValue(pass.PassName, out var setupAction))
-                {
-                    var capturedRead = readSlot;
-                    var capturedWrite = writeSlot;
-                    // Patch the OnSetupRenderParams field via the internal setter on GraphNode.
-                    pass.SetOnSetupRenderParams(res =>
-                        setupAction(res, capturedRead, capturedWrite)
-                    );
-                }
             }
         }
     }
@@ -575,8 +547,10 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
             // Intra-group explicit after edges
             foreach (var afterName in pass.After)
             {
-                if (nameMap.TryGetValue(afterName, out var predecessor)
-                    && addedEdges.Add((predecessor, pass)))
+                if (
+                    nameMap.TryGetValue(afterName, out var predecessor)
+                    && addedEdges.Add((predecessor, pass))
+                )
                 {
                     adj[predecessor].Add(pass);
                     inDegree[pass]++;
@@ -681,7 +655,6 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
             {
                 continue;
             }
-            SetupResourcesForPass(context, cmdBuf, context.ResourceSet, pass);
             node.Render(
                 new RenderResources(
                     context,
@@ -735,25 +708,5 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
         {
             resourceSet.AddBuffer(kvp.Key, kvp.Value.BuildFunc, kvp.Value.DependsOnScreenSize);
         }
-    }
-
-    private void SetupResourcesForPass(
-        RenderContext context,
-        ICommandBuffer cmdBuf,
-        RenderGraphResourceSet resourceSet,
-        GraphNode pass
-    )
-    {
-        pass.OnSetupRenderParams(
-            new RenderResources(
-                context,
-                cmdBuf,
-                pass.Pass,
-                pass.Framebuffer,
-                pass.Dependencies,
-                resourceSet.Textures,
-                resourceSet.Buffers
-            )
-        );
     }
 }

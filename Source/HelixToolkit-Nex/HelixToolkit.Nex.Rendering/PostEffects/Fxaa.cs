@@ -191,13 +191,13 @@ public sealed class Fxaa : PostEffect
         var cmdBuffer = res.CmdBuffer;
         var inputTex = res.Textures[readSlot];
 
-        var dims = res.Context.Context.GetDimensions(inputTex);
+        var dims = res.RenderContext.Context.GetDimensions(inputTex);
         float tw = dims.Width > 0 ? 1.0f / dims.Width : 0f;
         float th = dims.Height > 0 ? 1.0f / dims.Height : 0f;
 
         _deps.Textures[0] = inputTex;
 
-        _pass.Colors[0].LoadOp = LoadOp.DontCare;
+        _pass.Colors[0].LoadOp = LoadOp.Load;
         _pass.Colors[0].StoreOp = StoreOp.Store;
         _pass.Colors[0].ClearColor = new Color4(0f, 0f, 0f, 1f);
 

@@ -83,9 +83,8 @@ public sealed class BorderHighlightPostEffect : PostEffect
     private readonly Dependencies _deps = new();
     private readonly Framebuffer _frameBuffer = new();
     private readonly RenderPass _pass = new();
-
-    private readonly List<HighlightEntry> _entries = [];
-
+    private readonly List<HighlightEntry> _entriesOpaque = [];
+    private readonly List<HighlightEntry> _entriesTransparent = [];
     public override string Name => nameof(BorderHighlightPostEffect);
     public override Color DebugColor => Color.Orange;
     public override uint Priority => (uint)PostEffectPriority.Highlight;
@@ -126,7 +125,7 @@ public sealed class BorderHighlightPostEffect : PostEffect
         Debug.Assert(_maskPipeline.Valid, "Highlight mask pipeline is not valid.");
         Debug.Assert(_compositePipeline.Valid, "Highlight composite pipeline is not valid.");
 
-        var data = res.Context.Data;
+        var data = res.RenderContext.Data;
         if (data is null)
         {
             return false;
@@ -149,13 +148,13 @@ public sealed class BorderHighlightPostEffect : PostEffect
         // ------------------------------------------------------------------
 
         GatherHighlightedDraws(world, data);
-        if (_entries.Count == 0)
+        if (_entriesOpaque.Count == 0)
         {
             return false;
         }
 
         // Compute texel dimensions for the mask texture (used in the composite pass).
-        var maskDims = res.Context.Context.GetDimensions(maskTex);
+        var maskDims = res.RenderContext.Context.GetDimensions(maskTex);
         float texelW = maskDims.Width > 0 ? 1.0f / maskDims.Width : 0f;
         float texelH = maskDims.Height > 0 ? 1.0f / maskDims.Height : 0f;
 
@@ -164,7 +163,29 @@ public sealed class BorderHighlightPostEffect : PostEffect
         //   Draw all highlighted meshes into TextureHighlightMask as flat white.
         //   The interior is solid white; the exterior stays black (clear colour).
         // ------------------------------------------------------------------
-        DrawSilhouetteMask(in res, cmdBuffer, maskTex, data, _entries);
+        if (_entriesOpaque.Count > 0)
+        {
+            DrawSilhouetteMask(
+                in res,
+                cmdBuffer,
+                maskTex,
+                data,
+                _entriesOpaque,
+                res.Buffers[SystemBufferNames.BufferForwardPlusConstants],
+                data.MeshDrawsOpaque.GpuAddress
+            );
+        }
+        if (_entriesTransparent.Count > 0)
+        {
+            DrawSilhouetteMask(
+                in res,
+                cmdBuffer,
+                maskTex,
+                data,
+                _entriesTransparent, res.Buffers[SystemBufferNames.BufferForwardPlusConstants],
+                data.MeshDrawsTransparent.GpuAddress
+            );
+        }
 
         // ------------------------------------------------------------------
         // Stage 1: Composite
@@ -181,7 +202,7 @@ public sealed class BorderHighlightPostEffect : PostEffect
             texelH,
             ref readSlot,
             ref writeSlot,
-            _entries
+            _entriesOpaque
         );
         return true;
     }
@@ -194,9 +215,7 @@ public sealed class BorderHighlightPostEffect : PostEffect
             return ResultCode.InvalidState;
         }
 
-        _pointSampler = ResourceManager.SamplerRepository.GetOrCreate(
-            SamplerStateDesc.PointClamp
-        );
+        _pointSampler = ResourceManager.SamplerRepository.GetOrCreate(SamplerStateDesc.PointClamp);
         _linearSampler = ResourceManager.SamplerRepository.GetOrCreate(
             SamplerStateDesc.LinearClamp
         );
@@ -205,7 +224,6 @@ public sealed class BorderHighlightPostEffect : PostEffect
         {
             return ResultCode.RuntimeError;
         }
-
         return CreatePipelines();
     }
 
@@ -228,7 +246,7 @@ public sealed class BorderHighlightPostEffect : PostEffect
     /// </summary>
     private void GatherHighlightedDraws(World world, IRenderDataProvider data)
     {
-        _entries.Clear();
+        _entriesOpaque.Clear();
         var meshDraws = data.MeshDrawsOpaque;
 
         foreach (var entity in world.GetComponentEntities<BorderHighlightComponent>())
@@ -251,7 +269,8 @@ public sealed class BorderHighlightPostEffect : PostEffect
             }
 
             ref var highlight = ref entity.Get<BorderHighlightComponent>();
-            _entries.Add(
+            var entries = entity.Has<TransparentComponent>() ? _entriesTransparent : _entriesOpaque;
+            entries.Add(
                 new HighlightEntry(
                     DrawIndex: (uint)meshComp.Index,
                     Color: highlight.Color,
@@ -272,20 +291,21 @@ public sealed class BorderHighlightPostEffect : PostEffect
         ICommandBuffer cmdBuffer,
         TextureHandle maskTex,
         IRenderDataProvider data,
-        List<HighlightEntry> entries
+        List<HighlightEntry> entries,
+        BufferHandle fpBuffer,
+        ulong meshDrawAddress
     )
     {
-        var context = res.Context;
+        var context = res.RenderContext!;
         var meshDraws = data.MeshDrawsOpaque;
-        var fpConstBuf = res.Buffers[SystemBufferNames.BufferForwardPlusConstants];
 
         _pass.Colors[0].ClearColor = new Color4(0f, 0f, 0f, 0f);
         _pass.Colors[0].LoadOp = LoadOp.Clear;
         _pass.Colors[0].StoreOp = StoreOp.Store;
 
         _frameBuffer.Colors[0].Texture = maskTex;
-        _deps.Textures[0] = TextureHandle.Null;
-        _deps.Textures[1] = TextureHandle.Null;
+        _deps.Buffers[0] = fpBuffer;
+
         cmdBuffer.BeginRendering(_pass, _frameBuffer, _deps);
         cmdBuffer.BindRenderPipeline(_maskPipeline);
         cmdBuffer.BindDepthState(DepthState.Disabled);
@@ -293,7 +313,7 @@ public sealed class BorderHighlightPostEffect : PostEffect
         // Use external-pipeline scope so RenderHelper skips per-material pipeline binding.
         using var _ = context.EnableExternalPipelineScoped();
 
-        var fpConstAddress = fpConstBuf.GpuAddress(context.Context);
+        var fpConstAddress = fpBuffer.GpuAddress(context.Context);
 
         foreach (var entry in entries)
         {
@@ -320,6 +340,7 @@ public sealed class BorderHighlightPostEffect : PostEffect
                     FpConstAddress = fpConstAddress,
                     DrawCommandIdxOffset = entry.DrawIndex,
                     MeshDrawId = entry.DrawIndex,
+                    MeshDrawBufferAddress = meshDrawAddress,
                 }
             );
 

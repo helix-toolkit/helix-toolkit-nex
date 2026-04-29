@@ -49,7 +49,7 @@ internal class RangeLightData : Initializable, IRenderData
         _entities.EntityAdded += OnLightAddRemove;
         _entities.EntityRemoved += OnLightAddRemove;
         _entities.EntityChanged += OnLightChanged;
-        var ringSize = Math.Max(Context.GetNumSwapchainImages(), 2);
+        var ringSize = Math.Min(Context.GetNumSwapchainImages(), RenderSettings.MaxFrameInFlight);
         _lightBuffer = new RingElementBuffer<Light>(
             Context,
             (int)ringSize,
