@@ -1435,6 +1435,12 @@ internal sealed partial class VulkanContext : Initializable, IContext
         Immediate!.WaitAll();
     }
 
+    public bool IsReady(in SubmitHandle handle)
+    {
+        using var t = _tracer.BeginScope(nameof(IsReady), nameof(IContext));
+        return Immediate!.IsReady(handle);
+    }
+
     public void Destroy(in ComputePipelineHandle handle)
     {
         ComputePipelinesPool.Destroy(handle);
