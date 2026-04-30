@@ -1,7 +1,3 @@
-using System.Data;
-using System.Reflection.Metadata;
-using Vortice.Vulkan;
-
 namespace HelixToolkit.Nex.Graphics.Vulkan;
 
 /// <summary>
@@ -135,27 +131,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
         }
         for (uint32_t i = 0; i != Dependencies.MAX_SUBMIT_DEPENDENCIES && deps.Buffers[i]; i++)
         {
-            VkPipelineStageFlags2 dstStageFlags =
-                VkPipelineStageFlags2.VertexShader | VkPipelineStageFlags2.FragmentShader;
-            var buf = _ctx.BuffersPool.Get(deps.Buffers[i]);
-            HxDebug.Assert(buf);
-            if (
-                buf!.VkUsageFlags.HasFlag(VK.VK_BUFFER_USAGE_INDEX_BUFFER_BIT)
-                || buf.VkUsageFlags.HasFlag(VK.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT)
-            )
-            {
-                dstStageFlags |= VkPipelineStageFlags2.VertexInput;
-            }
-            if (buf.VkUsageFlags.HasFlag(VK.VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT))
-            {
-                dstStageFlags |= VkPipelineStageFlags2.DrawIndirect;
-            }
-            var buffer = _ctx.BuffersPool.Get(deps.Buffers[i]);
-            HxDebug.Assert(
-                buffer,
-                "Buffer is null. Make sure the buffer is created before binding it to the command buffer."
-            );
-            if (buffer is null || !buffer.Valid)
+            if (!Barrier(in deps.Buffers[i]))
             {
                 _logger.LogError(
                     "Buffer {INDEX} is null or invalid. Make sure the buffer is created before binding it to the command buffer.",
@@ -163,7 +139,6 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
                 );
                 continue;
             }
-            CmdBuffer.BufferBarrier2(buffer, VkPipelineStageFlags2.ComputeShader, dstStageFlags);
         }
 
         uint32_t numFbColorAttachments = fb.GetNumColorAttachments();
@@ -1740,5 +1715,38 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
         var vkPool = _ctx.QueriesPool.Get(pool);
         HxDebug.Assert(vkPool is not null, "Query pool is null or not valid.");
         VK.vkCmdWriteTimestamp(CmdBuffer, VK.VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, vkPool, query);
+    }
+
+    /// <inheritdoc/>
+    public bool Barrier(in BufferHandle handle)
+    {
+        VkPipelineStageFlags2 dstStageFlags =
+            VkPipelineStageFlags2.VertexShader | VkPipelineStageFlags2.FragmentShader;
+        var buf = _ctx.BuffersPool.Get(in handle);
+        HxDebug.Assert(buf);
+        if (
+            buf!.VkUsageFlags.HasFlag(VK.VK_BUFFER_USAGE_INDEX_BUFFER_BIT)
+            || buf.VkUsageFlags.HasFlag(VK.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT)
+        )
+        {
+            dstStageFlags |= VkPipelineStageFlags2.VertexInput;
+        }
+        if (buf.VkUsageFlags.HasFlag(VK.VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT))
+        {
+            dstStageFlags |= VkPipelineStageFlags2.DrawIndirect;
+        }
+        HxDebug.Assert(
+            buf,
+            "Buffer is null. Make sure the buffer is created before binding it to the command buffer."
+        );
+        if (buf is null || !buf.Valid)
+        {
+            _logger.LogError(
+                "Buffer is null or invalid. Make sure the buffer is created before binding it to the command buffer."
+            );
+            return false;
+        }
+        CmdBuffer.BufferBarrier2(buf, VkPipelineStageFlags2.ComputeShader, dstStageFlags);
+        return true;
     }
 }

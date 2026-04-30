@@ -46,7 +46,7 @@ internal class DirectionalLightData : Initializable, IRenderData
             Context,
             (int)Math.Min(Context.GetNumSwapchainImages(), RenderSettings.MaxFrameInFlight),
             BufferUsageBits.Storage,
-            $"DirLight[{World.Id}]"
+            debugName: $"DirLight"
         );
         return ResultCode.Ok;
     }
