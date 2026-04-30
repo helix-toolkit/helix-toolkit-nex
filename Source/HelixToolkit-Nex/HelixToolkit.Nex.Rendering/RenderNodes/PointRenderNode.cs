@@ -49,12 +49,20 @@ public sealed class PointRenderNode : RenderNode
             _logger.LogWarning("Render context data is null. Skipping point rendering.");
             return false;
         }
-
-        if (context.Data.PointCloudData!.TotalPointCount == 0)
+        var points = context.Data.PointCloudData;
+        if (points is null || points.TotalPointCount == 0)
         {
             return false;
         }
-
+        foreach (var entry in points!.Data.Values)
+        {
+            if (!entry.Valid)
+            {
+                continue;
+            }
+            res.CmdBuffer.Barrier(entry.DrawArgsBuffer);
+            res.CmdBuffer.Barrier(entry.DrawDataBuffer);
+        }
         return base.BeginRender(res);
     }
 
@@ -76,7 +84,6 @@ public sealed class PointRenderNode : RenderNode
                 entry.MaterialId
             );
             Debug.Assert(pipeline.Valid, "Point render pipeline is not valid.");
-
             res.CmdBuffer.BindRenderPipeline(pipeline);
             res.CmdBuffer.BindDepthState(DepthState.DefaultReversedZ);
 
