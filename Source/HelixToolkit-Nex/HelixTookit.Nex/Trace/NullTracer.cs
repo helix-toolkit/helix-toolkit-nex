@@ -75,4 +75,8 @@ public sealed class NullTracer : ITracer
     {
         // No operation
     }
+
+    public void EndScope(string name, string? category, long startTicks, long endTicks, int threadId)
+    {
+    }
 }

@@ -4,6 +4,7 @@ namespace HelixToolkit.Nex.Graphics.Vulkan
     {
         private unsafe ResultCode InitPhysicalDevice()
         {
+            using var t = _tracer.BeginScope(nameof(InitPhysicalDevice), nameof(VulkanContext));
             // Find physical device, setup queue's and create device.
             uint physicalDevicesCount = 0;
             VK.vkEnumeratePhysicalDevices(_vkInstance, &physicalDevicesCount, null).CheckResult();
@@ -93,6 +94,7 @@ namespace HelixToolkit.Nex.Graphics.Vulkan
 
         private unsafe ResultCode InitDevice()
         {
+            using var t = _tracer.BeginScope(nameof(InitDevice), nameof(VulkanContext));
             var availableDeviceExtensions = VK.vkEnumerateDeviceExtensionProperties(
                 _vkPhysicalDevice
             );
@@ -228,6 +230,7 @@ namespace HelixToolkit.Nex.Graphics.Vulkan
 
         private void InitImmediateCommands()
         {
+            using var t = _tracer.BeginScope(nameof(InitImmediateCommands), nameof(VulkanContext));
             VK.vkGetDeviceQueue(
                 _vkDevice,
                 DeviceQueues.GraphicsQueueFamilyIndex,
@@ -271,6 +274,7 @@ namespace HelixToolkit.Nex.Graphics.Vulkan
 
         private unsafe void InitPipelineCache()
         {
+            using var t = _tracer.BeginScope(nameof(InitPipelineCache), nameof(VulkanContext));
             VkPipelineCacheCreateInfo ci = new()
             {
                 flags = VkPipelineCacheCreateFlags.None,
@@ -296,6 +300,7 @@ namespace HelixToolkit.Nex.Graphics.Vulkan
 
         private unsafe ResultCode InitDefaultTextureSampler()
         {
+            using var t = _tracer.BeginScope(nameof(InitDefaultTextureSampler), nameof(VulkanContext));
             {
                 uint32_t pixel = 0xFF000000;
                 var result = CreateTexture(
@@ -356,6 +361,7 @@ namespace HelixToolkit.Nex.Graphics.Vulkan
 
         private unsafe void InitDescriptorSets()
         {
+            using var t = _tracer.BeginScope(nameof(InitDescriptorSets), nameof(VulkanContext));
             GrowDescriptorPool(CurrentMaxTextures, CurrentMaxSamplers);
             QuerySurfaceCapabilities();
             var bindings = stackalloc VkDescriptorSetLayoutBinding[Constants.MAX_COLOR_ATTACHMENTS];

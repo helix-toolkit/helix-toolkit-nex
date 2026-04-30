@@ -74,7 +74,7 @@ public sealed class PerformanceTracer : ITracer
     /// Internal method called by TraceScope to end a scope.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void EndScope(
+    public void EndScope(
         string name,
         string? category,
         long startTicks,
