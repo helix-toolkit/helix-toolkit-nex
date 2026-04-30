@@ -17,7 +17,7 @@ public class PrepareNode : RenderNode
             Context,
             frameInFly,
             BufferUsageBits.Storage,
-            "FPConst"
+            debugName: "FPConst"
         );
         return true;
     }

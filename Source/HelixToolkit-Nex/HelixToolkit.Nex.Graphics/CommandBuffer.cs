@@ -526,4 +526,11 @@ public interface ICommandBuffer
     /// generates all mipmap levels from the base level (level 0) by downsampling.
     /// </remarks>
     void GenerateMipmap(in TextureHandle handle);
+
+    /// <summary>
+    /// Create a GPU memory barrier to ensure proper ordering of memory operations on a buffer.
+    /// </summary>
+    /// <param name="buffer">The handle to the buffer for which to create the memory barrier.</param>
+    /// <returns>True if the barrier was successfully created; false if the buffer handle is invalid or the barrier could not be created.</returns>
+    bool Barrier(in BufferHandle buffer);
 }

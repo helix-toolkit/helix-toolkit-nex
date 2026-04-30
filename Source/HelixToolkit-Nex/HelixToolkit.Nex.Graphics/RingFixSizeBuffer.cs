@@ -15,7 +15,9 @@ public sealed class RingFixSizeBuffer<T> : IDisposable
 {
     private static readonly ILogger _logger = LogManager.Create<RingFixSizeBuffer<T>>();
 
+    private readonly IContext _context;
     private readonly BufferResource[] _buffers;
+    private readonly nint[] _mappedPtr;
     private int _currentIndex;
     private bool _disposed;
 
@@ -32,17 +34,17 @@ public sealed class RingFixSizeBuffer<T> : IDisposable
     /// <summary>
     /// Gets the <see cref="BufferResource"/> that is currently active for writing.
     /// </summary>
-    public BufferResource Current => _buffers[_currentIndex];
+    public BufferHandle Current => _buffers[_currentIndex];
 
     /// <summary>
     /// Gets the GPU buffer handle of the current active buffer.
     /// </summary>
-    public BufferResource Buffer => Current;
+    public BufferHandle Buffer => Current;
 
     /// <summary>
     /// Gets the GPU address of the current active buffer.
     /// </summary>
-    public ulong GpuAddress => Current.GpuAddress;
+    public ulong GpuAddress => _buffers[_currentIndex].GpuAddress;
 
     /// <summary>
     /// Gets the size in bytes of each buffer slot, which is always <c>sizeof(T)</c>.
@@ -64,20 +66,31 @@ public sealed class RingFixSizeBuffer<T> : IDisposable
         IContext context,
         int ringSize,
         BufferUsageBits usage = BufferUsageBits.Storage,
+        bool hostVisible = true,
         string? debugName = null
     )
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(ringSize, 1, nameof(ringSize));
-
+        _context = context;
         _buffers = new BufferResource[ringSize];
+        _mappedPtr = new nint[ringSize];
+        var storage = StorageType.Device;
+        if (hostVisible)
+        {
+            storage |= StorageType.HostVisible;
+        }
         for (int i = 0; i < ringSize; i++)
         {
             _buffers[i] = context.CreateBuffer(
                 new T(),
                 BufferUsageBits.Storage,
-                StorageType.Device,
+                storage,
                 $"ring_{debugName ?? ""}[{i}]"
             );
+            if (hostVisible)
+            {
+                _mappedPtr[i] = _context.GetMappedPtr(_buffers[i]);
+            }
         }
     }
 
@@ -111,6 +124,10 @@ public sealed class RingFixSizeBuffer<T> : IDisposable
     public ResultCode AdvanceAndUpdate(ICommandBuffer cmdBuffer, ref T value)
     {
         Advance();
+        if (!Current.Valid)
+        {
+            return ResultCode.InvalidState;
+        }
         return Update(cmdBuffer, ref value);
     }
 
@@ -121,11 +138,19 @@ public sealed class RingFixSizeBuffer<T> : IDisposable
     /// <returns><see cref="ResultCode.Ok"/> on success.</returns>
     public ResultCode Update(ref T value)
     {
-        if (Current.Context is null)
+        if (!Current.Valid)
         {
             return ResultCode.InvalidState;
         }
-        return Current.Context!.Upload<T>(Current, 0, ref value);
+        if (_mappedPtr[_currentIndex] != nint.Zero)
+        {
+            unsafe
+            {
+                *(T*)_mappedPtr[_currentIndex] = value;
+            }
+            return ResultCode.Ok;
+        }
+        return _context.Upload(Current, 0, ref value);
     }
 
     /// <summary>
@@ -136,12 +161,12 @@ public sealed class RingFixSizeBuffer<T> : IDisposable
     /// <returns><see cref="ResultCode.Ok"/> on success.</returns>
     public ResultCode AdvanceAndUpdate(ref T value)
     {
-        if (Current.Context is null)
+        Advance();
+        if (!Current.Valid)
         {
             return ResultCode.InvalidState;
         }
-        Advance();
-        return Current.Context!.Upload<T>(Current, 0, ref value);
+        return _context.Upload(Current, 0, ref value);
     }
 
     /// <summary>
@@ -152,6 +177,7 @@ public sealed class RingFixSizeBuffer<T> : IDisposable
         for (int i = 0; i < _buffers.Length; i++)
         {
             _buffers[i].Reset();
+            _mappedPtr[i] = nint.Zero;
         }
     }
 

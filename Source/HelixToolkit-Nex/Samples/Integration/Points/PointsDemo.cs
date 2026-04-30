@@ -102,26 +102,17 @@ internal sealed class PointsDemo : IDisposable
         RegisterCustomPointMaterials();
 
         // Build the engine with the point rendering node
-        _pointCullNode = new PointCullNode { MaxPoints = 500_000, MinScreenSize = _minScreenSize };
-
         _engine = EngineBuilder
             .Create(_context)
-            .AddNode(new PrepareNode())
-            .AddNode(new DepthPassNode())
-            .AddNode(new FrustumCullNode())
-            .AddNode(new ForwardPlusLightCullingNode())
-            .AddNode(new ForwardPlusOpaqueNode())
-            .AddNode(_pointCullNode)
-            .AddNode(new PointRenderNode())
-            .RenderToCustomTarget(RenderSettings.IntermediateTargetFormat)
+            .WithDefaultNodes()
             .WithPostEffects(effects =>
             {
                 effects.AddEffect(_smaa);
-                effects.AddEffect(_borderHighlight);
                 effects.AddEffect(_showFPS);
             })
+            .RenderToCustomTarget(RenderSettings.IntermediateTargetFormat)
             .Build();
-
+        _pointCullNode = _engine.GetRenderNode<PointCullNode>();
         _renderContext = _engine.CreateRenderContext();
         _renderContext.Initialize();
         _renderContext.ResourceSet.AddTexture(
