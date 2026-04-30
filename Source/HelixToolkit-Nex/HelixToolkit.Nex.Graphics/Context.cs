@@ -75,6 +75,13 @@ public interface IContext : IInitializable
     void WaitAll();
 
     /// <summary>
+    /// Determines whether the specified submit handle (usually from a previously submitted frame) has been processed.
+    /// </summary>
+    /// <param name="handle">The submit handle to check for readiness. Represents the operation or resource has been processed.</param>
+    /// <returns>true if the handle has been processed; otherwise, false.</returns>
+    bool IsReady(in SubmitHandle handle);
+
+    /// <summary>
     /// Creates a GPU buffer resource.
     /// </summary>
     /// <param name="desc">The buffer description.</param>
