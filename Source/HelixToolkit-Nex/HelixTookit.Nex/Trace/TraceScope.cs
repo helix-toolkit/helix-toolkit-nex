@@ -28,7 +28,7 @@ public readonly struct TraceScope : IDisposable
             _tracer = tracer;
             _name = name;
             _category = category;
-            _startTicks = System.Diagnostics.Stopwatch.GetTimestamp();
+            _startTicks = Stopwatch.GetTimestamp();
             _threadId = Environment.CurrentManagedThreadId;
         }
         else
@@ -49,11 +49,8 @@ public readonly struct TraceScope : IDisposable
     {
         if (_tracer != null && _name != null)
         {
-            var endTicks = System.Diagnostics.Stopwatch.GetTimestamp();
-            if (_tracer is PerformanceTracer perfTracer)
-            {
-                perfTracer.EndScope(_name, _category, _startTicks, endTicks, _threadId);
-            }
+            var endTicks = Stopwatch.GetTimestamp();
+            _tracer.EndScope(_name, _category, _startTicks, endTicks, _threadId);
         }
     }
 

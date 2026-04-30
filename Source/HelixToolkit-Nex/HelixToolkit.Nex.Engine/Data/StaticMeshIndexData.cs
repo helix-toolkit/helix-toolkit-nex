@@ -80,9 +80,9 @@ public sealed class StaticMeshIndexData : Initializable, IStaticMeshIndexData
         {
             return true;
         }
+        using var t = _tracer.BeginScope(nameof(Update));
         _context.WaitAll();
         _logger.LogInformation("Updating static mesh index buffer...");
-        using var t = _tracer.BeginScope(nameof(Update));
         _buffer.WriteDynamic(
             _resourceManager.Geometries.TotalStaticIndexCount,
             (ctx) => _resourceManager.Geometries?.UploadStaticMeshIndices(ref ctx)
