@@ -95,7 +95,6 @@ internal class MeshDrawData : Initializable, IMeshDrawData
     private readonly bool _isTransparent;
     private EntityCollection? _entities;
     private readonly HashSet<int> _updatedEntities = [];
-    private readonly FastList<int> _updatedIndices = [];
 
     public IContext Context { get; }
     public World World { get; }
@@ -179,13 +178,13 @@ internal class MeshDrawData : Initializable, IMeshDrawData
         _entities.EntityChanged += OnEntityChanged;
         _entities.EntityAdded += OnAddOrRemovedChanged;
         _entities.EntityRemoved += OnAddOrRemovedChanged;
-        var ringSize = Math.Min(Context.GetNumSwapchainImages(), RenderSettings.MaxFrameInFlight);
         _ringBuffer = new RingElementBuffer<MeshDraw>(
             Context,
-            (int)ringSize,
+            (int)RenderSettings.NumFrameInFlight(Context),
             InitialBufferSize,
             BufferUsageBits.Storage | BufferUsageBits.Indirect,
-            Name
+            hostVisiable: true,
+            debugName: Name
         );
         return ResultCode.Ok;
     }
@@ -378,7 +377,6 @@ internal class MeshDrawData : Initializable, IMeshDrawData
             Name,
             _updatedEntities.Count
         );
-        _updatedIndices.Clear();
         foreach (var entityId in _updatedEntities)
         {
             Debug.Assert(entityId != 0);
@@ -413,7 +411,6 @@ internal class MeshDrawData : Initializable, IMeshDrawData
                 Cullable = meshRenderComp.Cullable ? 1u : 0u,
                 DrawType = meshRenderComp.GetDrawType(),
             };
-            _updatedIndices.Add(meshRenderComp.Index);
         }
         _updatedEntities.Clear();
         _ringBuffer?.Upload(_meshDraws);

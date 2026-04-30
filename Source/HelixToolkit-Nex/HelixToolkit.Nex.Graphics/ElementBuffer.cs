@@ -160,13 +160,13 @@ public struct SafeWriteContext(IntPtr mappedPtr, int totalSizeInBytes)
 /// </list>
 /// </para>
 /// <para>
-/// <b>Dynamic Buffers (IsDynamic = true):</b><br/>
-/// - Use HOST_VISIBLE storage for direct CPU writes via map/unmap<br/>
+/// <b>Dynamic Buffers (HostVisible = true):</b><br/>
+/// - Use HOST_VISIBLE storage for direct CPU writes via mapped memory address<br/>
 /// - Resize by creating larger buffers only when needed<br/>
 /// - Optimal for frequently updated data (e.g., per-frame updates)
 /// </para>
 /// <para>
-/// <b>Static Buffers (IsDynamic = false):</b><br/>
+/// <b>Static Buffers (HostVisible = false):</b><br/>
 /// - Use Device-local storage for best GPU performance<br/>
 /// - Recreate the buffer when resizing is required<br/>
 /// - Optimal for data that changes infrequently
@@ -181,19 +181,20 @@ public sealed class ElementBuffer<T> : IDisposable
     public BufferResource Buffer { get; private set; } = BufferResource.Null;
     public int Capacity { get; private set; }
     public int Count { internal set; get; } = 0;
-    public bool IsDynamic { get; }
+    public bool HostVisible { get; }
     public BufferUsageBits Usage { get; }
 
     public string? DebugName { get; }
 
     private bool _disposedValue;
+    private nint _pinnedMappedPtr = nint.Zero;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ElementBuffer{T}"/> class with the specified remainSizeInBytes.
     /// </summary>
     /// <param name="context">The graphics context used to create GPU buffers.</param>
     /// <param name="capacity">The initial remainSizeInBytes (number of elements) of the buffer.</param>
-    /// <param name="isDynamic">
+    /// <param name="hostVisible">
     /// If true, creates a dynamic buffer using HOST_VISIBLE storage for frequent CPU updates via map/unmap.
     /// If false, creates a static buffer using Device storage for optimal GPU performance.
     /// </param>
@@ -201,10 +202,10 @@ public sealed class ElementBuffer<T> : IDisposable
         IContext context,
         int capacity,
         BufferUsageBits usage = BufferUsageBits.Storage,
-        bool isDynamic = false,
+        bool hostVisible = false,
         string? debugName = null
     )
-        : this(context, capacity, usage, isDynamic, debugName, null) { }
+        : this(context, capacity, usage, hostVisible, debugName, null) { }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ElementBuffer{T}"/> class with the specified context, data, and
@@ -215,16 +216,16 @@ public sealed class ElementBuffer<T> : IDisposable
     /// collection.</param>
     /// <param name="usage">Specifies the intended usage pattern of the buffer, such as <see cref="BufferUsageBits.Storage"/> or <see
     /// cref="BufferUsageBits.DynamicDraw"/>. The default is <see cref="BufferUsageBits.Storage"/>.</param>
-    /// <param name="isDynamic">Indicates whether the buffer is dynamic, allowing for frequent updates. The default is <see langword="false"/>.</param>
+    /// <param name="hostVisible">Indicates whether the buffer is dynamic, allowing for frequent updates. The default is <see langword="false"/>.</param>
     /// <param name="debugName">An optional name for debugging purposes. This can be <see langword="null"/>.</param>
     public ElementBuffer(
         IContext context,
         FastList<T> data,
         BufferUsageBits usage = BufferUsageBits.Storage,
-        bool isDynamic = false,
+        bool hostVisible = false,
         string? debugName = null
     )
-        : this(context, data.Count, usage, isDynamic, debugName, data.GetInternalArray()) { }
+        : this(context, data.Count, usage, hostVisible, debugName, data.GetInternalArray()) { }
 
     internal ElementBuffer(
         IContext context,
@@ -238,7 +239,7 @@ public sealed class ElementBuffer<T> : IDisposable
         ArgumentOutOfRangeException.ThrowIfNegative(capacity, nameof(capacity));
         Context = context;
         Capacity = capacity;
-        IsDynamic = isDynamic;
+        HostVisible = isDynamic;
         Usage = usage;
         DebugName = debugName;
 
@@ -269,7 +270,7 @@ public sealed class ElementBuffer<T> : IDisposable
     /// </returns>
     /// <remarks>
     /// <para>
-    /// This method automatically handles buffer resizing based on the <see cref="IsDynamic"/> flag:
+    /// This method automatically handles buffer resizing based on the <see cref="HostVisible"/> flag:
     /// </para>
     /// <list type="bullet">
     /// <item>
@@ -386,7 +387,7 @@ public sealed class ElementBuffer<T> : IDisposable
     /// <returns>An <see cref="AsyncUploadHandle{THandle}"/> that represents the asynchronous upload operation.</returns>
     public AsyncUploadHandle<BufferHandle> UploadAsync(FastList<T> data, int dstOffset = 0)
     {
-        if (IsDynamic)
+        if (HostVisible)
         { // For dynamic buffers, use mapped memory for direct CPU writes
             unsafe
             {
@@ -403,12 +404,6 @@ public sealed class ElementBuffer<T> : IDisposable
                 using var pinnedData = data.GetInternalArray().Pin();
                 var srcPtr = (nint)pinnedData.Pointer;
                 NativeHelper.MemoryCopy(mappedPtr, srcPtr, (uint)(data.Count * sizeof(T)));
-                // Flush mapped memory if not coherent
-                Context.FlushMappedMemory(
-                    Buffer.Handle,
-                    (uint)(dstOffset * sizeof(T)),
-                    (uint)(data.Count * sizeof(T))
-                );
                 return AsyncUploadHandle<BufferHandle>.CreateCompleted(
                     ResultCode.Ok,
                     Buffer.Handle
@@ -447,7 +442,7 @@ public sealed class ElementBuffer<T> : IDisposable
     /// write operation succeeds, or an error code if the operation fails.</returns>
     public ResultCode WriteDynamic(int totalCount, Action<SafeWriteContext> writeAction)
     {
-        if (!IsDynamic)
+        if (!HostVisible)
         {
             _logger.LogError("WriteDynamic can only be used with dynamic buffers.");
             return ResultCode.InvalidState;
@@ -480,8 +475,6 @@ public sealed class ElementBuffer<T> : IDisposable
                 return ResultCode.InvalidState;
             }
             writeAction(new SafeWriteContext(mappedPtr, Capacity * sizeof(T)));
-            // Flush mapped memory if not coherent
-            Context.FlushMappedMemory(Buffer.Handle, 0, (uint)(totalCount * sizeof(T)));
             Count = totalCount;
             return ResultCode.Ok;
         }
@@ -502,7 +495,7 @@ public sealed class ElementBuffer<T> : IDisposable
         {
             return ResultCode.Ok;
         }
-        var multiplier = IsDynamic && !exact ? 1.5f : 1.0f;
+        var multiplier = HostVisible && !exact ? 1.5f : 1.0f;
         return ResizeBuffer((int)(minCapacity * multiplier));
     }
 
@@ -541,7 +534,7 @@ public sealed class ElementBuffer<T> : IDisposable
         unsafe
         {
             uint bufferSize = (uint)capacity * (uint)sizeof(T);
-            var storageType = IsDynamic ? StorageType.HostVisible : StorageType.Device;
+            var storageType = HostVisible ? StorageType.HostVisible : StorageType.Device;
 
             var result = Context.CreateBuffer(
                 new BufferDesc(
@@ -571,6 +564,10 @@ public sealed class ElementBuffer<T> : IDisposable
 
             Buffer = newBuffer;
             Capacity = capacity;
+            if (HostVisible)
+            {
+                _pinnedMappedPtr = Context.GetMappedPtr(newBuffer);
+            }
 
             return ResultCode.Ok;
         }
@@ -590,6 +587,7 @@ public sealed class ElementBuffer<T> : IDisposable
         {
             Buffer.Dispose();
             Buffer = BufferResource.Null;
+            _pinnedMappedPtr = nint.Zero;
         }
         if (newCapacity == 0)
         {
@@ -652,24 +650,20 @@ public sealed class ElementBuffer<T> : IDisposable
 
             uint dataSize = (uint)(count * sizeof(T));
 
-            if (IsDynamic)
+            if (HostVisible)
             {
                 // For dynamic buffers, use mapped memory for direct CPU writes
-                nint mappedPtr = Context.GetMappedPtr(Buffer.Handle);
 
-                if (mappedPtr == nint.Zero)
+                if (_pinnedMappedPtr == nint.Zero)
                 {
                     _logger.LogError("Cannot upload data: dynamic buffer is not mapped.");
                     return ResultCode.InvalidState;
                 }
-                mappedPtr += dstOffset;
+                var mappedPtr = _pinnedMappedPtr + dstOffset;
                 // Copy data directly to mapped memory
                 using var pinnedData = data.Pin();
                 var srcPtr = (nint)pinnedData.Pointer + start * sizeof(T);
                 NativeHelper.MemoryCopy(mappedPtr, srcPtr, dataSize);
-
-                // Flush mapped memory if not coherent
-                Context.FlushMappedMemory(Buffer.Handle, (uint)dstOffset, dataSize);
 
                 return ResultCode.Ok;
             }

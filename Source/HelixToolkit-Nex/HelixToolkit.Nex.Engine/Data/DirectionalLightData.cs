@@ -44,7 +44,7 @@ internal class DirectionalLightData : Initializable, IRenderData
         _entities.EntityRemoved += OnLightChanged;
         _buffer = new(
             Context,
-            (int)Math.Min(Context.GetNumSwapchainImages(), RenderSettings.MaxFrameInFlight),
+            (int)RenderSettings.NumFrameInFlight(Context),
             BufferUsageBits.Storage,
             debugName: $"DirLight"
         );

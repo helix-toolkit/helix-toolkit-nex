@@ -1,4 +1,3 @@
-using System.Data.SqlTypes;
 using HelixToolkit.Nex.ECS.Utils;
 using HelixToolkit.Nex.Rendering.Components;
 
