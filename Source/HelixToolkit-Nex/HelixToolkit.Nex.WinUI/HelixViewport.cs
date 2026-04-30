@@ -8,6 +8,7 @@ using Microsoft.UI.Input;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
 using Vortice.Direct3D11;
 using Vortice.DXGI;
 using Vortice.Vulkan;
@@ -124,6 +125,7 @@ public partial class HelixViewport : UserControl, IDisposable
         }
         _renderContext = _engine.CreateRenderContext();
         _renderContext.Initialize();
+        _renderContext.RenderParams.EnableGammaCorrection = true; // Must enable gamma correction.
         _renderArgs = new(_renderContext);
         if (IsLoaded && Width > 0 && Height > 0)
         {
@@ -212,7 +214,7 @@ public partial class HelixViewport : UserControl, IDisposable
         // 4. Wire up render context
         _renderContext!.WindowSize = new Size((int)width, (int)height);
 
-        Microsoft.UI.Xaml.Media.CompositionTarget.Rendering += OnCompositionRendering;
+        CompositionTarget.Rendering += OnCompositionRendering;
     }
 
     private void OnCompositionRendering(object? sender, object e)
@@ -261,7 +263,7 @@ public partial class HelixViewport : UserControl, IDisposable
     private void ReleaseResources()
     {
         _logger.LogInformation("Releasing resources for HelixViewport.");
-        Microsoft.UI.Xaml.Media.CompositionTarget.Rendering -= OnCompositionRendering;
+        CompositionTarget.Rendering -= OnCompositionRendering;
 
         if (Engine is not null)
             Engine.Context.Wait(default);

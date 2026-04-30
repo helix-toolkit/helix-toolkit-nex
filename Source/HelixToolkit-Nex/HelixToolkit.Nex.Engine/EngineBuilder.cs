@@ -226,7 +226,7 @@ public sealed class EngineBuilder
         AddNode(new ForwardPlusTransparentNode());
         AddNode(new WBOITCompositeNode());
         AddNode(new ToneMappingNode());
-        _addRenderToFinal = renderToSwapchain;
+        _addRenderToFinal = renderToSwapchain && _context.GetNumSwapchainImages() > 0;
         if (renderToSwapchain)
         {
             _finalTextureFormat = _context.GetSwapchainFormat();

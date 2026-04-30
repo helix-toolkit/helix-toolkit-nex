@@ -26,9 +26,6 @@ public sealed class ToneMappingNode : RenderNode
     /// <summary>Gets or sets the scene exposure multiplier.</summary>
     public float Exposure { get; set; } = 1f;
 
-    /// <summary>When <see langword="true"/>, applies gamma correction (linear → sRGB) after tone mapping.</summary>
-    public bool EnableGammaCorrection { get; set; } = false;
-
     protected override bool OnSetup()
     {
         if (Context is null || ResourceManager is null)
@@ -125,7 +122,7 @@ public sealed class ToneMappingNode : RenderNode
                 HdrTextureId = res.Deps.Textures[0].Index,
                 SamplerId = _sampler.GetHandle().Index,
                 TonemapMode = (uint)Mode,
-                GammaEnabled = EnableGammaCorrection ? 1u : 0,
+                GammaEnabled = res.RenderContext.RenderParams.EnableGammaCorrection ? 1u : 0,
             }
         );
         res.CmdBuffer.Draw(3); // full-screen triangle

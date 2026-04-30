@@ -59,19 +59,19 @@ public class ElementBufferTests
     {
         // Arrange
         const int capacity = 100;
-        using var buffer = new ElementBuffer<Vector4>(_vkContext!, capacity, isDynamic: true);
+        using var buffer = new ElementBuffer<Vector4>(_vkContext!, capacity, hostVisible: true);
 
         // Assert
         Assert.AreEqual(capacity, buffer.Capacity);
         Assert.IsTrue(buffer.Buffer.Valid);
-        Assert.IsTrue(buffer.IsDynamic);
+        Assert.IsTrue(buffer.HostVisible);
     }
 
     [TestMethod]
     public void DynamicBuffer_CreateWithZeroCapacity()
     {
         // Arrange & Act
-        using var buffer = new ElementBuffer<Vector4>(_vkContext!, capacity: 0, isDynamic: true);
+        using var buffer = new ElementBuffer<Vector4>(_vkContext!, capacity: 0, hostVisible: true);
 
         // Assert
         Assert.AreEqual(0, buffer.Capacity);
@@ -82,7 +82,7 @@ public class ElementBufferTests
     public void DynamicBuffer_UploadSmallData()
     {
         // Arrange
-        using var buffer = new ElementBuffer<Vector4>(_vkContext!, capacity: 10, isDynamic: true);
+        using var buffer = new ElementBuffer<Vector4>(_vkContext!, capacity: 10, hostVisible: true);
         var data = new FastList<Vector4>
         {
             new Vector4(1, 2, 3, 4),
@@ -102,7 +102,7 @@ public class ElementBufferTests
     public void DynamicBuffer_UploadCausesResize()
     {
         // Arrange
-        using var buffer = new ElementBuffer<Vector4>(_vkContext!, capacity: 10, isDynamic: true);
+        using var buffer = new ElementBuffer<Vector4>(_vkContext!, capacity: 10, hostVisible: true);
         var data = new FastList<Vector4>();
         for (int i = 0; i < 50; i++)
         {
@@ -125,7 +125,7 @@ public class ElementBufferTests
         using var buffer = new ElementBuffer<TestElement>(
             _vkContext!,
             capacity: 10,
-            isDynamic: true
+            hostVisible: true
         );
 
         // Act 1: Upload 5 elements (no resize)
@@ -170,7 +170,7 @@ public class ElementBufferTests
     public void DynamicBuffer_UploadEmptyList()
     {
         // Arrange
-        using var buffer = new ElementBuffer<Vector4>(_vkContext!, capacity: 10, isDynamic: true);
+        using var buffer = new ElementBuffer<Vector4>(_vkContext!, capacity: 10, hostVisible: true);
         var data = new FastList<Vector4>();
 
         // Act
@@ -185,7 +185,7 @@ public class ElementBufferTests
     public void DynamicBuffer_UploadLargeData()
     {
         // Arrange
-        using var buffer = new ElementBuffer<Vector4>(_vkContext!, capacity: 100, isDynamic: true);
+        using var buffer = new ElementBuffer<Vector4>(_vkContext!, capacity: 100, hostVisible: true);
         var data = new FastList<Vector4>();
         for (int i = 0; i < 1000; i++)
         {
@@ -205,7 +205,7 @@ public class ElementBufferTests
     public void DynamicBuffer_UsesMappedMemory()
     {
         // Arrange
-        using var buffer = new ElementBuffer<Vector4>(_vkContext!, capacity: 10, isDynamic: true);
+        using var buffer = new ElementBuffer<Vector4>(_vkContext!, capacity: 10, hostVisible: true);
 
         // Act - Verify buffer uses mapped memory
         var mappedPtr = _vkContext!.GetMappedPtr(buffer.Buffer.Handle);
@@ -218,7 +218,7 @@ public class ElementBufferTests
     public void DynamicBuffer_EnsureCapacity()
     {
         // Arrange
-        using var buffer = new ElementBuffer<Vector4>(_vkContext!, capacity: 10, isDynamic: true);
+        using var buffer = new ElementBuffer<Vector4>(_vkContext!, capacity: 10, hostVisible: true);
 
         // Act
         var result = buffer.EnsureCapacity(50);
@@ -232,7 +232,7 @@ public class ElementBufferTests
     public void DynamicBuffer_EnsureCapacityNoResize()
     {
         // Arrange
-        using var buffer = new ElementBuffer<Vector4>(_vkContext!, capacity: 100, isDynamic: true);
+        using var buffer = new ElementBuffer<Vector4>(_vkContext!, capacity: 100, hostVisible: true);
 
         // Act
         var result = buffer.EnsureCapacity(50);
@@ -251,19 +251,19 @@ public class ElementBufferTests
     {
         // Arrange
         const int capacity = 100;
-        using var buffer = new ElementBuffer<Vector4>(_vkContext!, capacity, isDynamic: false);
+        using var buffer = new ElementBuffer<Vector4>(_vkContext!, capacity, hostVisible: false);
 
         // Assert
         Assert.AreEqual(capacity, buffer.Capacity);
         Assert.IsTrue(buffer.Buffer.Valid);
-        Assert.IsFalse(buffer.IsDynamic);
+        Assert.IsFalse(buffer.HostVisible);
     }
 
     [TestMethod]
     public void StaticBuffer_UploadSmallData()
     {
         // Arrange
-        using var buffer = new ElementBuffer<Vector4>(_vkContext!, capacity: 10, isDynamic: false);
+        using var buffer = new ElementBuffer<Vector4>(_vkContext!, capacity: 10, hostVisible: false);
         var data = new FastList<Vector4> { new Vector4(1, 2, 3, 4), new Vector4(5, 6, 7, 8) };
 
         // Act
@@ -278,7 +278,7 @@ public class ElementBufferTests
     public void StaticBuffer_UploadCausesResize()
     {
         // Arrange
-        using var buffer = new ElementBuffer<Vector4>(_vkContext!, capacity: 10, isDynamic: false);
+        using var buffer = new ElementBuffer<Vector4>(_vkContext!, capacity: 10, hostVisible: false);
         var data = new FastList<Vector4>();
         for (int i = 0; i < 50; i++)
         {
@@ -301,7 +301,7 @@ public class ElementBufferTests
         using var buffer = new ElementBuffer<TestElement>(
             _vkContext!,
             capacity: 10,
-            isDynamic: false
+            hostVisible: false
         );
 
         // Act 1: Upload 15 elements (resize to 15)
@@ -333,7 +333,7 @@ public class ElementBufferTests
     public void StaticBuffer_DoesNotUseMappedMemory()
     {
         // Arrange
-        using var buffer = new ElementBuffer<Vector4>(_vkContext!, capacity: 10, isDynamic: false);
+        using var buffer = new ElementBuffer<Vector4>(_vkContext!, capacity: 10, hostVisible: false);
 
         // Act - Verify buffer does NOT use mapped memory (device-local)
         var mappedPtr = _vkContext!.GetMappedPtr(buffer.Buffer.Handle);
@@ -350,7 +350,7 @@ public class ElementBufferTests
     public void StaticBuffer_EnsureCapacityExactSize()
     {
         // Arrange
-        using var buffer = new ElementBuffer<Vector4>(_vkContext!, capacity: 10, isDynamic: false);
+        using var buffer = new ElementBuffer<Vector4>(_vkContext!, capacity: 10, hostVisible: false);
 
         // Act
         var result = buffer.EnsureCapacity(50, true);
@@ -368,7 +368,7 @@ public class ElementBufferTests
     public void DynamicBuffer_DataIntegrity_SmallData()
     {
         // Arrange
-        using var buffer = new ElementBuffer<Vector4>(_vkContext!, capacity: 10, isDynamic: true);
+        using var buffer = new ElementBuffer<Vector4>(_vkContext!, capacity: 10, hostVisible: true);
         var originalData = new FastList<Vector4>
         {
             new Vector4(1.5f, 2.5f, 3.5f, 4.5f),
@@ -407,7 +407,7 @@ public class ElementBufferTests
         using var buffer = new ElementBuffer<TestElement>(
             _vkContext!,
             capacity: 100,
-            isDynamic: true
+            hostVisible: true
         );
         var originalData = new FastList<TestElement>();
         for (int i = 0; i < 500; i++)
@@ -453,7 +453,7 @@ public class ElementBufferTests
         using var buffer = new ElementBuffer<Matrix4x4>(
             _vkContext!,
             capacity: 10,
-            isDynamic: false
+            hostVisible: false
         );
         var originalData = new FastList<Matrix4x4>
         {
@@ -494,7 +494,7 @@ public class ElementBufferTests
     public void DynamicBuffer_UploadNull_ReturnsOk()
     {
         // Arrange
-        using var buffer = new ElementBuffer<Vector4>(_vkContext!, capacity: 10, isDynamic: true);
+        using var buffer = new ElementBuffer<Vector4>(_vkContext!, capacity: 10, hostVisible: true);
 
         // Act
         var result = buffer.Upload(null!);
@@ -507,7 +507,7 @@ public class ElementBufferTests
     public void StaticBuffer_UploadNull_ReturnsOk()
     {
         // Arrange
-        using var buffer = new ElementBuffer<Vector4>(_vkContext!, capacity: 10, isDynamic: false);
+        using var buffer = new ElementBuffer<Vector4>(_vkContext!, capacity: 10, hostVisible: false);
 
         // Act
         var result = buffer.Upload(null!);
@@ -523,7 +523,7 @@ public class ElementBufferTests
         using var buffer = new ElementBuffer<Vector4>(
             _vkContext!,
             capacity: 1000000,
-            isDynamic: true
+            hostVisible: true
         );
 
         // Assert
@@ -538,7 +538,7 @@ public class ElementBufferTests
         using var buffer = new ElementBuffer<Vector4>(
             _vkContext!,
             capacity: 1000000,
-            isDynamic: false
+            hostVisible: false
         );
 
         // Assert
@@ -555,7 +555,7 @@ public class ElementBufferTests
     public void DynamicBuffer_PerformanceTest_MultipleSmallUploads()
     {
         // Arrange
-        using var buffer = new ElementBuffer<Vector4>(_vkContext!, capacity: 1000, isDynamic: true);
+        using var buffer = new ElementBuffer<Vector4>(_vkContext!, capacity: 1000, hostVisible: true);
         var data = new FastList<Vector4>();
         for (int i = 0; i < 100; i++)
         {
@@ -581,7 +581,7 @@ public class ElementBufferTests
         using var buffer = new ElementBuffer<Vector4>(
             _vkContext!,
             capacity: 1000,
-            isDynamic: false
+            hostVisible: false
         );
         var data = new FastList<Vector4>();
         for (int i = 0; i < 100; i++)
@@ -610,7 +610,7 @@ public class ElementBufferTests
         // Arrange
         BufferResource bufferHandle;
         {
-            var buffer = new ElementBuffer<Vector4>(_vkContext!, capacity: 10, isDynamic: true);
+            var buffer = new ElementBuffer<Vector4>(_vkContext!, capacity: 10, hostVisible: true);
             bufferHandle = buffer.Buffer;
             Assert.IsTrue(bufferHandle.Valid);
 
@@ -630,7 +630,7 @@ public class ElementBufferTests
         // Arrange
         BufferResource bufferHandle;
         {
-            var buffer = new ElementBuffer<Vector4>(_vkContext!, capacity: 10, isDynamic: false);
+            var buffer = new ElementBuffer<Vector4>(_vkContext!, capacity: 10, hostVisible: false);
             bufferHandle = buffer.Buffer;
             Assert.IsTrue(bufferHandle.Valid);
 
@@ -646,7 +646,7 @@ public class ElementBufferTests
     public void DynamicBuffer_MultipleDisposeCalls()
     {
         // Arrange
-        var buffer = new ElementBuffer<Vector4>(_vkContext!, capacity: 10, isDynamic: true);
+        var buffer = new ElementBuffer<Vector4>(_vkContext!, capacity: 10, hostVisible: true);
 
         // Act & Assert - Should not throw
         buffer.Dispose();
@@ -664,7 +664,7 @@ public class ElementBufferTests
     public void DynamicBuffer_FloatType()
     {
         // Arrange
-        using var buffer = new ElementBuffer<float>(_vkContext!, capacity: 100, isDynamic: true);
+        using var buffer = new ElementBuffer<float>(_vkContext!, capacity: 100, hostVisible: true);
         var data = new FastList<float>();
         for (int i = 0; i < 50; i++)
         {
@@ -683,7 +683,7 @@ public class ElementBufferTests
     public void DynamicBuffer_UIntType()
     {
         // Arrange
-        using var buffer = new ElementBuffer<uint>(_vkContext!, capacity: 100, isDynamic: true);
+        using var buffer = new ElementBuffer<uint>(_vkContext!, capacity: 100, hostVisible: true);
         var data = new FastList<uint>();
         for (uint i = 0; i < 50; i++)
         {
@@ -705,7 +705,7 @@ public class ElementBufferTests
         using var buffer = new ElementBuffer<Matrix4x4>(
             _vkContext!,
             capacity: 50,
-            isDynamic: false
+            hostVisible: false
         );
         var data = new FastList<Matrix4x4>();
         for (int i = 0; i < 30; i++)
@@ -732,7 +732,7 @@ public class ElementBufferTests
         using var buffer = new ElementBuffer<Matrix4x4>(
             _vkContext!,
             capacity: 1000,
-            isDynamic: true
+            hostVisible: true
         );
 
         // Simulate 100 frames
@@ -761,7 +761,7 @@ public class ElementBufferTests
     public void StaticBuffer_MaterialProperties_Pattern()
     {
         // Simulate one-time material property upload
-        using var buffer = new ElementBuffer<Vector4>(_vkContext!, capacity: 10, isDynamic: false);
+        using var buffer = new ElementBuffer<Vector4>(_vkContext!, capacity: 10, hostVisible: false);
 
         var materials = new FastList<Vector4>();
         for (int i = 0; i < 25; i++)
@@ -788,7 +788,7 @@ public class ElementBufferTests
         using var visibleInstanceBuffer = new ElementBuffer<uint>(
             _vkContext!,
             capacity: 5000,
-            isDynamic: true
+            hostVisible: true
         );
 
         // Frame 1: 3000 visible

@@ -9,14 +9,13 @@ public class PrepareNode : RenderNode
 
     protected override bool OnSetup()
     {
-        if (Context is null)
+        if (Context is null || Renderer is null)
             return false;
-        var frameInFly = (int)
-            Math.Min(Context.GetNumSwapchainImages(), RenderSettings.MaxFrameInFlight);
         _constantsBuffer = new RingFixSizeBuffer<FPConstants>(
             Context,
-            frameInFly,
+            (int)RenderSettings.NumFrameInFlight(Context),
             BufferUsageBits.Storage,
+            hostVisible: false,
             debugName: "FPConst"
         );
         return true;
