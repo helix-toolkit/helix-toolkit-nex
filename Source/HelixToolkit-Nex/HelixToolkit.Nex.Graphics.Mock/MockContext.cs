@@ -582,6 +582,10 @@ public class MockContext : IContext
         levels = 0;
     }
 
+    public void WaitAll()
+    {
+    }
+
     // Mock data structures
     private class MockBufferData
     {

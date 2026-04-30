@@ -26,6 +26,17 @@ public interface ITracer
     TraceScope BeginScope(string name, string category);
 
     /// <summary>
+    /// Ends a previously started logical scope and records its completion details for diagnostic or logging purposes.
+    /// </summary>
+    /// <param name="name">The name of the scope to end. This identifies the logical operation or region being tracked.</param>
+    /// <param name="category">The category associated with the scope. May be used to group or filter scopes. Can be null if no category is
+    /// specified.</param>
+    /// <param name="startTicks">The timestamp, in ticks, when the scope started. Used to calculate the duration of the scope.</param>
+    /// <param name="endTicks">The timestamp, in ticks, when the scope ended. Must be greater than or equal to startTicks.</param>
+    /// <param name="threadId">The identifier of the thread on which the scope was active.</param>
+    void EndScope(string name, string? category, long startTicks, long endTicks, int threadId);
+
+    /// <summary>
     /// Records a single trace event with a value.
     /// </summary>
     /// <param name="name">The name of the trace event.</param>

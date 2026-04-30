@@ -172,30 +172,33 @@ public partial class Geometry : HxObservableObject, IDisposable
     {
         Topology = topology;
         IsDynamic = isDynamic;
-        PropertyChanged += (s, e) =>
+        if (isDynamic)
         {
-            if (e.PropertyName is nameof(Vertices))
+            PropertyChanged += (s, e) =>
             {
-                BufferDirty |= GeometryBufferType.Vertex;
-                IsBoundDirty = true;
-            }
-            else if (e.PropertyName is nameof(VertexProps))
-            {
-                BufferDirty |= GeometryBufferType.Vertex;
-            }
-            else if (e.PropertyName is nameof(Indices))
-            {
-                BufferDirty |= GeometryBufferType.Index;
-            }
-            else if (e.PropertyName is nameof(VertexColors))
-            {
-                BufferDirty |= GeometryBufferType.VertexColor;
-            }
-            if (BufferDirty != GeometryBufferType.None && Valid)
-            {
-                EventBus.Instance.PublishAsync(new GeometryUpdatedEvent(Id, GeometryChangeOp.Updated));
-            }
-        };
+                if (e.PropertyName is nameof(Vertices))
+                {
+                    BufferDirty |= GeometryBufferType.Vertex;
+                    IsBoundDirty = true;
+                }
+                else if (e.PropertyName is nameof(VertexProps))
+                {
+                    BufferDirty |= GeometryBufferType.Vertex;
+                }
+                else if (e.PropertyName is nameof(Indices))
+                {
+                    BufferDirty |= GeometryBufferType.Index;
+                }
+                else if (e.PropertyName is nameof(VertexColors))
+                {
+                    BufferDirty |= GeometryBufferType.VertexColor;
+                }
+                if (BufferDirty != GeometryBufferType.None && Valid)
+                {
+                    EventBus.Instance.PublishAsync(new GeometryUpdatedEvent(Id, GeometryChangeOp.Updated));
+                }
+            };
+        }
     }
 
     public Geometry(bool isDynamic)
