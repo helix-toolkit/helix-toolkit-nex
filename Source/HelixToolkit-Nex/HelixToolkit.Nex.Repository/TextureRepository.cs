@@ -29,7 +29,7 @@ public sealed class TextureRepository
     public static string NormalizeFilePath(string filePath) =>
         Path.GetFullPath(filePath).ToLowerInvariant();
 
-    public TextureRef GetOrCreateFromStream(string name, Stream stream, string? debugName = null)
+    public TextureRef GetOrCreateFromStream(string name, Stream stream, bool generateMipmaps = true, string? debugName = null)
     {
         ArgumentException.ThrowIfNullOrEmpty(name);
         ArgumentNullException.ThrowIfNull(stream);
@@ -38,11 +38,11 @@ public sealed class TextureRepository
         if (TryGet(name, out var cached))
             return cached!.Ref;
 
-        var texture = TextureCreator.CreateTextureFromStream(_context, stream, debugName ?? name);
+        var texture = TextureCreator.CreateTextureFromStream(_context, stream, generateMipmaps, debugName: debugName ?? name);
         return StoreEntry(name, texture, debugName ?? name);
     }
 
-    public TextureRef GetOrCreateFromFile(string filePath, string? debugName = null)
+    public TextureRef GetOrCreateFromFile(string filePath, bool generateMipmaps = true, string? debugName = null)
     {
         ArgumentException.ThrowIfNullOrEmpty(filePath);
         ObjectDisposedException.ThrowIf(_context.IsDisposed, this);
@@ -57,11 +57,11 @@ public sealed class TextureRepository
 
         using var stream = File.OpenRead(filePath);
         var resolvedDebugName = debugName ?? Path.GetFileName(filePath);
-        var texture = TextureCreator.CreateTextureFromStream(_context, stream, resolvedDebugName);
+        var texture = TextureCreator.CreateTextureFromStream(_context, stream, generateMipmaps, debugName: resolvedDebugName);
         return StoreEntry(cacheKey, texture, resolvedDebugName);
     }
 
-    public TextureRef GetOrCreateFromImage(string name, Image image)
+    public TextureRef GetOrCreateFromImage(string name, Image image, bool generateMipmaps = true)
     {
         ArgumentException.ThrowIfNullOrEmpty(name);
         ObjectDisposedException.ThrowIf(_context.IsDisposed, this);
@@ -69,13 +69,14 @@ public sealed class TextureRepository
         if (TryGet(name, out var cached))
             return cached!.Ref;
 
-        var texture = TextureCreator.CreateTexture(_context, image, name);
+        var texture = TextureCreator.CreateTexture(_context, image, generateMipmaps, debugName: name);
         return StoreEntry(name, texture, name);
     }
 
     public async Task<TextureRef> GetOrCreateFromStreamAsync(
         string name,
         Stream stream,
+        bool generateMipmaps = true,
         string? debugName = null
     )
     {
@@ -95,7 +96,8 @@ public sealed class TextureRepository
             var (textureResource, uploadHandle) = TextureCreator.CreateTextureAsyncWithResource(
                 _context,
                 image,
-                debugName ?? name
+                generateMipmaps,
+                debugName: debugName ?? name
             );
             var textureRef = StoreEntry(name, textureResource, debugName ?? name);
             await uploadHandle;
@@ -105,6 +107,7 @@ public sealed class TextureRepository
 
     public async Task<TextureRef> GetOrCreateFromFileAsync(
         string filePath,
+        bool generateMipmaps = true,
         string? debugName = null
     )
     {
@@ -130,7 +133,8 @@ public sealed class TextureRepository
             var (textureResource, uploadHandle) = TextureCreator.CreateTextureAsyncWithResource(
                 _context,
                 image,
-                resolvedDebugName
+                generateMipmaps,
+                debugName: resolvedDebugName
             );
             var textureRef = StoreEntry(cacheKey, textureResource, resolvedDebugName);
             await uploadHandle;
@@ -138,7 +142,7 @@ public sealed class TextureRepository
         }
     }
 
-    public async Task<TextureRef> GetOrCreateFromImageAsync(string name, Image image)
+    public async Task<TextureRef> GetOrCreateFromImageAsync(string name, Image image, bool generateMipmaps = true)
     {
         ArgumentException.ThrowIfNullOrEmpty(name);
         ObjectDisposedException.ThrowIf(_context.IsDisposed, this);
@@ -149,7 +153,8 @@ public sealed class TextureRepository
         var (textureResource, uploadHandle) = TextureCreator.CreateTextureAsyncWithResource(
             _context,
             image,
-            name
+            generateMipmaps,
+            debugName: name
         );
         var textureRef = StoreEntry(name, textureResource, name);
         await uploadHandle;

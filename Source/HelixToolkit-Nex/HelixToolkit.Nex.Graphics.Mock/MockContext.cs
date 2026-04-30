@@ -1,5 +1,3 @@
-using System.Collections.Concurrent;
-
 namespace HelixToolkit.Nex.Graphics.Mock;
 
 /// <summary>
@@ -577,6 +575,11 @@ public class MockContext : IContext
         Teardown();
         IsDisposed = true;
         GC.SuppressFinalize(this);
+    }
+
+    public void GenerateMipmap(in TextureHandle texture, out uint levels)
+    {
+        levels = 0;
     }
 
     // Mock data structures

@@ -16,6 +16,11 @@ public static class TextureCreator
     /// </summary>
     /// <param name="context">The graphics context used to create the texture.</param>
     /// <param name="image">The CPU-side image containing pixel data and description.</param>
+    /// <param name="generateMipmaps">
+    /// When <c>true</c> and the image contains only one mip level, the full mip chain is allocated
+    /// and mipmaps are generated on the GPU immediately after upload. Has no effect if the image
+    /// already contains multiple mip levels.
+    /// </param>
     /// <param name="debugName">Optional debug name for the texture.</param>
     /// <returns>A <see cref="TextureResource"/> representing the created GPU texture.</returns>
     /// <exception cref="InvalidOperationException">
@@ -24,6 +29,7 @@ public static class TextureCreator
     public static TextureResource CreateTexture(
         IContext context,
         Image image,
+        bool generateMipmaps = false,
         string? debugName = null
     )
     {
@@ -32,8 +38,12 @@ public static class TextureCreator
                 "Cannot create a GPU texture from an image with Format.Invalid"
             );
 
-        var desc = BuildTextureDesc(image, includeData: true);
+        var desc = BuildTextureDesc(image, includeData: true, generateMipmaps: generateMipmaps);
         context.CreateTexture(desc, out var texture, debugName).CheckResult();
+        if (desc.GenerateMipmaps)
+        {
+            context.GenerateMipmap(texture.Handle, out _);
+        }
         return texture;
     }
 
@@ -42,12 +52,17 @@ public static class TextureCreator
     /// </summary>
     /// <param name="context">The graphics context.</param>
     /// <param name="stream">The stream containing image data.</param>
+    /// <param name="generateMipmaps">
+    /// When <c>true</c> and the image contains only one mip level, the full mip chain is allocated
+    /// and mipmaps are generated on the GPU immediately after upload.
+    /// </param>
     /// <param name="debugName">Optional debug name for the texture.</param>
     /// <returns>A <see cref="TextureResource"/> representing the created GPU texture.</returns>
     /// <exception cref="InvalidOperationException">Thrown if the stream cannot be decoded into an image.</exception>
     public static TextureResource CreateTextureFromStream(
         IContext context,
         Stream stream,
+        bool generateMipmaps = false,
         string? debugName = null
     )
     {
@@ -58,7 +73,7 @@ public static class TextureCreator
             );
         using (image)
         {
-            return CreateTexture(context, image, debugName);
+            return CreateTexture(context, image, generateMipmaps, debugName);
         }
     }
 
@@ -73,6 +88,10 @@ public static class TextureCreator
     /// </summary>
     /// <param name="context">The graphics context.</param>
     /// <param name="image">The CPU-side image.</param>
+    /// <param name="generateMipmaps">
+    /// When <c>true</c> and the image contains only one mip level, the full mip chain is allocated
+    /// and mipmaps are generated on the GPU after the upload completes.
+    /// </param>
     /// <param name="debugName">Optional debug name for the texture.</param>
     /// <returns>An <see cref="AsyncUploadHandle{TextureHandle}"/> that completes when the upload finishes.</returns>
     /// <exception cref="InvalidOperationException">
@@ -81,6 +100,7 @@ public static class TextureCreator
     public static AsyncUploadHandle<TextureHandle> CreateTextureAsync(
         IContext context,
         Image image,
+        bool generateMipmaps = false,
         string? debugName = null
     )
     {
@@ -90,7 +110,7 @@ public static class TextureCreator
             );
 
         // Create texture without initial data
-        var desc = BuildTextureDesc(image, includeData: false);
+        var desc = BuildTextureDesc(image, includeData: false, generateMipmaps: generateMipmaps);
         context.CreateTexture(desc, out var texture, debugName).CheckResult();
         var handle = texture.Handle;
 
@@ -116,9 +136,8 @@ public static class TextureCreator
                             0,
                             desc2.Dimension == TextureDimension.Texture3D ? zSlice : 0
                         ),
-                        Layer = desc2.Dimension == TextureDimension.Texture3D
-                            ? 0u
-                            : (uint)arrayIndex,
+                        Layer =
+                            desc2.Dimension == TextureDimension.Texture3D ? 0u : (uint)arrayIndex,
                         NumLayers = 1,
                         MipLevel = (uint)level,
                         NumMipLevels = 1,
@@ -151,7 +170,11 @@ public static class TextureCreator
                         && zSlice == depth - 1;
 
                     if (isLast)
+                    {
+                        if (desc.GenerateMipmaps)
+                            context.GenerateMipmap(handle, out _);
                         return uploadHandle;
+                    }
                 }
                 if (depth > 1)
                     depth >>= 1;
@@ -169,6 +192,10 @@ public static class TextureCreator
     /// </summary>
     /// <param name="context">The graphics context.</param>
     /// <param name="image">The CPU-side image.</param>
+    /// <param name="generateMipmaps">
+    /// When <c>true</c> and the image contains only one mip level, the full mip chain is allocated
+    /// and mipmaps are generated on the GPU after the upload completes.
+    /// </param>
     /// <param name="debugName">Optional debug name for the texture.</param>
     /// <returns>
     /// A tuple of the <see cref="TextureResource"/> (GPU memory allocated synchronously) and an
@@ -180,7 +207,12 @@ public static class TextureCreator
     public static (
         TextureResource resource,
         AsyncUploadHandle<TextureHandle> uploadHandle
-    ) CreateTextureAsyncWithResource(IContext context, Image image, string? debugName = null)
+    ) CreateTextureAsyncWithResource(
+        IContext context,
+        Image image,
+        bool generateMipmaps = false,
+        string? debugName = null
+    )
     {
         if (image.Description.Format == Format.Invalid)
             throw new InvalidOperationException(
@@ -188,7 +220,7 @@ public static class TextureCreator
             );
 
         // Create texture without initial data (synchronous GPU memory allocation)
-        var desc = BuildTextureDesc(image, includeData: false);
+        var desc = BuildTextureDesc(image, includeData: false, generateMipmaps: generateMipmaps);
         context.CreateTexture(desc, out var texture, debugName).CheckResult();
         var handle = texture.Handle;
 
@@ -217,9 +249,8 @@ public static class TextureCreator
                             0,
                             desc2.Dimension == TextureDimension.Texture3D ? zSlice : 0
                         ),
-                        Layer = desc2.Dimension == TextureDimension.Texture3D
-                            ? 0u
-                            : (uint)arrayIndex,
+                        Layer =
+                            desc2.Dimension == TextureDimension.Texture3D ? 0u : (uint)arrayIndex,
                         NumLayers = 1,
                         MipLevel = (uint)level,
                         NumMipLevels = 1,
@@ -249,6 +280,9 @@ public static class TextureCreator
             }
         }
 
+        if (desc.GenerateMipmaps)
+            context.GenerateMipmap(handle, out _);
+
         return (texture, lastUploadHandle);
     }
 
@@ -257,11 +291,16 @@ public static class TextureCreator
     /// </summary>
     /// <param name="context">The graphics context.</param>
     /// <param name="stream">The stream containing image data.</param>
+    /// <param name="generateMipmaps">
+    /// When <c>true</c> and the image contains only one mip level, the full mip chain is allocated
+    /// and mipmaps are generated on the GPU after the upload completes.
+    /// </param>
     /// <param name="debugName">Optional debug name for the texture.</param>
     /// <returns>An <see cref="AsyncUploadHandle{TextureHandle}"/> that completes when the upload finishes.</returns>
     public static AsyncUploadHandle<TextureHandle> CreateTextureFromStreamAsync(
         IContext context,
         Stream stream,
+        bool generateMipmaps = false,
         string? debugName = null
     )
     {
@@ -274,7 +313,7 @@ public static class TextureCreator
         // The pixel data is copied into managed arrays in CreateTextureAsync before disposal.
         using (image)
         {
-            return CreateTextureAsync(context, image, debugName);
+            return CreateTextureAsync(context, image, generateMipmaps, debugName);
         }
     }
 
@@ -282,21 +321,30 @@ public static class TextureCreator
     // Private helpers
     // -------------------------------------------------------------------------
 
-    private static TextureDesc BuildTextureDesc(Image image, bool includeData)
+    private static TextureDesc BuildTextureDesc(
+        Image image,
+        bool includeData,
+        bool generateMipmaps = false
+    )
     {
         var desc = image.Description;
+        bool needsGenerate = generateMipmaps && desc.MipLevels == 1;
+        uint mipLevels = needsGenerate
+            ? (uint)(1 + Math.Floor(Math.Log2(Math.Max(desc.Width, desc.Height))))
+            : (uint)desc.MipLevels;
         return new TextureDesc
         {
             Type = MapDimension(desc.Dimension),
             Format = desc.Format,
             Dimensions = new Dimensions((uint)desc.Width, (uint)desc.Height, (uint)desc.Depth),
             NumLayers = (uint)desc.ArraySize,
-            NumMipLevels = (uint)desc.MipLevels,
+            NumMipLevels = mipLevels,
             Usage = TextureUsageBits.Sampled,
             Storage = StorageType.Device,
             Data = includeData ? image.DataPointer : IntPtr.Zero,
             DataSize = includeData ? (size_t)image.TotalSizeInBytes : 0,
             DataNumMipLevels = includeData ? (uint)desc.MipLevels : 1,
+            GenerateMipmaps = needsGenerate,
         };
     }
 

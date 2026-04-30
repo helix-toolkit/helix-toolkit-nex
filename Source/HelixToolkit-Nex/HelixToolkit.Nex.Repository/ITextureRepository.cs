@@ -39,6 +39,7 @@ public interface ITextureRepository : IDisposable
     /// If a texture with the same name already exists it is returned directly without re-decoding the stream.
     /// </param>
     /// <param name="stream">The stream containing the encoded image data.</param>
+    /// <param name="generateMipmaps">When <c>true</c>, automatically generates the full mip chain on the GPU after upload. Defaults to <c>true</c>.</param>
     /// <param name="debugName">Optional debug name forwarded to the GPU resource.</param>
     /// <returns>
     /// A <see cref="TextureRef"/> whose <see cref="TextureRef.Key"/> matches <paramref name="name"/>
@@ -47,13 +48,14 @@ public interface ITextureRepository : IDisposable
     /// <exception cref="ArgumentException">Thrown if <paramref name="name"/> is null or empty.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the stream cannot be decoded or texture creation fails.</exception>
     /// <exception cref="ObjectDisposedException">Thrown if the repository or context has been disposed.</exception>
-    TextureRef GetOrCreateFromStream(string name, Stream stream, string? debugName = null);
+    TextureRef GetOrCreateFromStream(string name, Stream stream, bool generateMipmaps = true, string? debugName = null);
 
     /// <summary>
     /// Gets or creates a GPU texture by loading a file from the file system.
     /// The normalized absolute path is used as the cache key.
     /// </summary>
     /// <param name="filePath">Path to the image file on disk.</param>
+    /// <param name="generateMipmaps">When <c>true</c>, automatically generates the full mip chain on the GPU after upload. Defaults to <c>true</c>.</param>
     /// <param name="debugName">
     /// Optional debug name forwarded to the GPU resource.
     /// Defaults to the file name when <c>null</c>.
@@ -66,13 +68,14 @@ public interface ITextureRepository : IDisposable
     /// <exception cref="FileNotFoundException">Thrown if the file does not exist.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the file cannot be decoded or texture creation fails.</exception>
     /// <exception cref="ObjectDisposedException">Thrown if the repository or context has been disposed.</exception>
-    TextureRef GetOrCreateFromFile(string filePath, string? debugName = null);
+    TextureRef GetOrCreateFromFile(string filePath, bool generateMipmaps = true, string? debugName = null);
 
     /// <summary>
     /// Gets or creates a GPU texture from an already decoded image, using <paramref name="name"/> as the cache key.
     /// </summary>
     /// <param name="name">A unique name that identifies this texture in the cache.</param>
     /// <param name="image">The decoded image data.</param>
+    /// <param name="generateMipmaps">When <c>true</c>, automatically generates the full mip chain on the GPU after upload. Defaults to <c>true</c>.</param>
     /// <returns>
     /// A <see cref="TextureRef"/> whose <see cref="TextureRef.Key"/> matches <paramref name="name"/>
     /// and whose <see cref="TextureRef.Repository"/> is this repository instance.
@@ -80,7 +83,7 @@ public interface ITextureRepository : IDisposable
     /// <exception cref="ArgumentException">Thrown if <paramref name="name"/> is null or empty.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the image cannot be used to create a texture.</exception>
     /// <exception cref="ObjectDisposedException">Thrown if the repository or context has been disposed.</exception>
-    TextureRef GetOrCreateFromImage(string name, Image image);
+    TextureRef GetOrCreateFromImage(string name, Image image, bool generateMipmaps = true);
 
     /// <summary>
     /// Gets or creates a GPU texture from a memory stream asynchronously, using <paramref name="name"/> as the cache key.
@@ -90,6 +93,7 @@ public interface ITextureRepository : IDisposable
     /// If a texture with the same name already exists it is returned directly without re-decoding the stream.
     /// </param>
     /// <param name="stream">The stream containing the encoded image data.</param>
+    /// <param name="generateMipmaps">When <c>true</c>, automatically generates the full mip chain on the GPU after upload. Defaults to <c>true</c>.</param>
     /// <param name="debugName">Optional debug name forwarded to the GPU resource.</param>
     /// <returns>
     /// A <see cref="TextureRef"/> whose <see cref="TextureRef.Key"/> matches <paramref name="name"/>
@@ -98,6 +102,7 @@ public interface ITextureRepository : IDisposable
     Task<TextureRef> GetOrCreateFromStreamAsync(
         string name,
         Stream stream,
+        bool generateMipmaps = true,
         string? debugName = null
     );
 
@@ -106,6 +111,7 @@ public interface ITextureRepository : IDisposable
     /// The normalized absolute path is used as the cache key.
     /// </summary>
     /// <param name="filePath">Path to the image file on disk.</param>
+    /// <param name="generateMipmaps">When <c>true</c>, automatically generates the full mip chain on the GPU after upload. Defaults to <c>true</c>.</param>
     /// <param name="debugName">
     /// Optional debug name forwarded to the GPU resource.
     /// Defaults to the file name when <c>null</c>.
@@ -114,18 +120,19 @@ public interface ITextureRepository : IDisposable
     /// A <see cref="TextureRef"/> whose <see cref="TextureRef.Key"/> is the normalized absolute path
     /// and whose <see cref="TextureRef.Repository"/> is this repository instance.
     /// </returns>
-    Task<TextureRef> GetOrCreateFromFileAsync(string filePath, string? debugName = null);
+    Task<TextureRef> GetOrCreateFromFileAsync(string filePath, bool generateMipmaps = true, string? debugName = null);
 
     /// <summary>
     /// Gets or creates a GPU texture from an already decoded image asynchronously, using <paramref name="name"/> as the cache key.
     /// </summary>
     /// <param name="name">A unique name that identifies this texture in the cache.</param>
     /// <param name="image">The decoded image data.</param>
+    /// <param name="generateMipmaps">When <c>true</c>, automatically generates the full mip chain on the GPU after upload. Defaults to <c>true</c>.</param>
     /// <returns>
     /// A <see cref="TextureRef"/> whose <see cref="TextureRef.Key"/> matches <paramref name="name"/>
     /// and whose <see cref="TextureRef.Repository"/> is this repository instance.
     /// </returns>
-    Task<TextureRef> GetOrCreateFromImageAsync(string name, Image image);
+    Task<TextureRef> GetOrCreateFromImageAsync(string name, Image image, bool generateMipmaps = true);
 
     /// <summary>
     /// Removes and disposes the texture stored under <paramref name="key"/>.

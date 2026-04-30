@@ -1392,6 +1392,34 @@ internal sealed partial class VulkanContext : Initializable, IContext
         return handle;
     }
 
+    public void GenerateMipmap(in TextureHandle handle, out uint levels)
+    {
+        levels = 0;
+        if (handle.Empty)
+        {
+            return;
+        }
+
+        var tex = TexturesPool.Get(handle);
+
+        if (tex is null)
+        {
+            _logger.LogWarning("Texture {HANDLE} not found in pool", handle);
+            return;
+        }
+
+        if (tex.NumLevels <= 1)
+        {
+            return;
+        }
+
+        HxDebug.Assert(tex.ImageLayout != VK.VK_IMAGE_LAYOUT_UNDEFINED);
+        var wrapper = Immediate!.Acquire();
+        tex.GenerateMipmap(wrapper.Instance);
+        Immediate!.Submit(wrapper);
+        levels = tex.NumLevels;
+    }
+
     public void Wait(in SubmitHandle handle)
     {
         Immediate!.Wait(handle);

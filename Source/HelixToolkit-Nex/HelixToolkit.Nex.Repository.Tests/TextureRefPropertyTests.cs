@@ -75,25 +75,26 @@ internal sealed class MockTextureRepository : ITextureRepository
         return _tryGetResult;
     }
 
-    public TextureRef GetOrCreateFromStream(string name, Stream stream, string? debugName = null) =>
+    public TextureRef GetOrCreateFromStream(string name, Stream stream, bool generateMipmaps = true, string? debugName = null) =>
         new TextureRef(name, this, TextureResource.Null);
 
-    public TextureRef GetOrCreateFromFile(string filePath, string? debugName = null) =>
+    public TextureRef GetOrCreateFromFile(string filePath, bool generateMipmaps = true, string? debugName = null) =>
         new TextureRef(filePath, this, TextureResource.Null);
 
-    public TextureRef GetOrCreateFromImage(string name, Image image) =>
+    public TextureRef GetOrCreateFromImage(string name, Image image, bool generateMipmaps = true) =>
         new TextureRef(name, this, TextureResource.Null);
 
     public Task<TextureRef> GetOrCreateFromStreamAsync(
         string name,
         Stream stream,
+        bool generateMipmaps = true,
         string? debugName = null
     ) => Task.FromResult(new TextureRef(name, this, TextureResource.Null));
 
-    public Task<TextureRef> GetOrCreateFromFileAsync(string filePath, string? debugName = null) =>
+    public Task<TextureRef> GetOrCreateFromFileAsync(string filePath, bool generateMipmaps = true, string? debugName = null) =>
         Task.FromResult(new TextureRef(filePath, this, TextureResource.Null));
 
-    public Task<TextureRef> GetOrCreateFromImageAsync(string name, Image image) =>
+    public Task<TextureRef> GetOrCreateFromImageAsync(string name, Image image, bool generateMipmaps = true) =>
         Task.FromResult(new TextureRef(name, this, TextureResource.Null));
 
     public bool Remove(string key) => false;
@@ -234,7 +235,7 @@ public class TextureRefPropertyTests
                 (string key) =>
                 {
                     var mockRepo = new MockTextureRepository();
-                    var result = mockRepo.GetOrCreateFromStream(key, Stream.Null, null);
+                    var result = mockRepo.GetOrCreateFromStream(key, Stream.Null, debugName: null);
                     return result.Key == key && ReferenceEquals(result.Repository, mockRepo);
                 }
             )
