@@ -586,6 +586,11 @@ public class MockContext : IContext
     {
     }
 
+    public bool IsReady(in SubmitHandle handle)
+    {
+        return true;
+    }
+
     // Mock data structures
     private class MockBufferData
     {
