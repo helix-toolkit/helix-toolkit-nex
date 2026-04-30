@@ -517,7 +517,7 @@ internal sealed partial class TextureDemo : IDisposable
 
         try
         {
-            return repo.GetOrCreateFromFile(filePath, debugName);
+            return repo.GetOrCreateFromFile(filePath, debugName: debugName);
         }
         catch (Exception ex)
         {
