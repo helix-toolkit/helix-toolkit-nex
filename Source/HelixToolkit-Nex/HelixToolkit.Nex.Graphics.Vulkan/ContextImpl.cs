@@ -81,6 +81,7 @@ internal sealed partial class VulkanContext : Initializable, IContext
 
         HxDebug.Assert(size > 0, "Data size should be non-zero");
 
+        using var t = _tracer.BeginScope("UploadBuffer", nameof(IContext));
         var buf = BuffersPool.Get(handle);
 
         if (buf is null)
@@ -121,7 +122,7 @@ internal sealed partial class VulkanContext : Initializable, IContext
             _logger.LogError("Data pointer is null for texture upload");
             return ResultCode.ArgumentNull;
         }
-
+        using var t = _tracer.BeginScope("UploadTexture", nameof(IContext));
         var texture = TexturesPool.Get(handle);
 
         if (texture is null)
@@ -186,7 +187,7 @@ internal sealed partial class VulkanContext : Initializable, IContext
         }
 
         HxDebug.Assert(size > 0, "Data size should be non-zero");
-
+        using var t = _tracer.BeginScope("DownloadBuffer", nameof(IContext));
         var buf = BuffersPool.Get(handle);
 
         if (buf is null)
@@ -225,7 +226,7 @@ internal sealed partial class VulkanContext : Initializable, IContext
         {
             return ResultCode.ArgumentError;
         }
-
+        using var t = _tracer.BeginScope("DownloadTexture", nameof(IContext));
         var texture = TexturesPool.Get(handle);
 
         HxDebug.Assert(texture is not null);
@@ -1307,6 +1308,7 @@ internal sealed partial class VulkanContext : Initializable, IContext
         KeyedMutexSyncInfo syncInfo
     )
     {
+        using var t = _tracer.BeginScope(nameof(Submit), nameof(IContext));
         HxDebug.Assert(Immediate != null);
         if (commandBuffer is not CommandBuffer vkCmdBuffer)
         {
@@ -1394,6 +1396,7 @@ internal sealed partial class VulkanContext : Initializable, IContext
 
     public void GenerateMipmap(in TextureHandle handle, out uint levels)
     {
+        using var t = _tracer.BeginScope(nameof(GenerateMipmap), nameof(IContext));
         levels = 0;
         if (handle.Empty)
         {
@@ -1422,7 +1425,14 @@ internal sealed partial class VulkanContext : Initializable, IContext
 
     public void Wait(in SubmitHandle handle)
     {
+        using var t = _tracer.BeginScope(nameof(Wait), nameof(IContext));
         Immediate!.Wait(handle);
+    }
+
+    public void WaitAll()
+    {
+        using var t = _tracer.BeginScope(nameof(WaitAll), nameof(IContext));
+        Immediate!.WaitAll();
     }
 
     public void Destroy(in ComputePipelineHandle handle)

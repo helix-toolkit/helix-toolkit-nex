@@ -80,6 +80,7 @@ public sealed class StaticMeshIndexData : Initializable, IStaticMeshIndexData
         {
             return true;
         }
+        _context.WaitAll();
         _logger.LogInformation("Updating static mesh index buffer...");
         using var t = _tracer.BeginScope(nameof(Update));
         _buffer.WriteDynamic(
