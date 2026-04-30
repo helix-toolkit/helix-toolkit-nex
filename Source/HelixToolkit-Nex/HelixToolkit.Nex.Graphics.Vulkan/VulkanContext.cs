@@ -1,3 +1,5 @@
+using HelixToolkit.Nex.Trace;
+
 namespace HelixToolkit.Nex.Graphics.Vulkan;
 
 public sealed class VulkanContextConfig()
@@ -71,6 +73,7 @@ internal sealed partial class VulkanContext
     public const uint32_t KMaxYcbcrConversionData = 256; // maximum number of Ycbcr conversions that can be created in the context
     public const uint32_t KDescriptorSetInputAttachments = 4;
     private static readonly ILogger _logger = LogManager.Create<VulkanContext>();
+    private static readonly ITracer _tracer = TracerFactory.GetTracer(nameof(VulkanContext));
 
     public override string Name { get; } = nameof(VulkanContext);
 
@@ -732,6 +735,7 @@ internal sealed partial class VulkanContext
 
     private unsafe ResultCode InitContext()
     {
+        using var t = _tracer.BeginScope(nameof(InitContext), nameof(VulkanContext));
         InitPhysicalDevice().CheckResult();
 
         InitDevice().CheckResult();
@@ -1224,6 +1228,7 @@ internal sealed partial class VulkanContext
             _logger.LogWarning("Call initContext() first");
             return ResultCode.RuntimeError;
         }
+        using var t = _tracer.BeginScope(nameof(InitSwapchain), nameof(VulkanContext));
         unsafe
         {
             if (Swapchain is not null && Swapchain.Valid)
