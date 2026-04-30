@@ -67,7 +67,12 @@ public interface IContext : IInitializable
     /// Waits for a submitted command buffer to complete execution.
     /// </summary>
     /// <param name="handle">The submit handle to wait on. Passing an empty handle waits for all GPU operations to complete (device idle).</param>
-    void Wait(in SubmitHandle handle); // waiting on an empty handle results in vkDeviceWaitIdle()
+    void Wait(in SubmitHandle handle);
+
+    /// <summary>
+    /// Waits for all submitted command buffers to complete execution, effectively idling the GPU.
+    /// </summary>
+    void WaitAll();
 
     /// <summary>
     /// Creates a GPU buffer resource.
