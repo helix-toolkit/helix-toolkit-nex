@@ -13,24 +13,25 @@ internal sealed class NullTextureRepository : ITextureRepository
 
     public int Count => 0;
 
-    public TextureRef GetOrCreateFromStream(string name, Stream stream, string? debugName = null) =>
+    public TextureRef GetOrCreateFromStream(string name, Stream stream, bool generateMipmaps = true, string? debugName = null) =>
         TextureRef.Null;
 
-    public TextureRef GetOrCreateFromFile(string filePath, string? debugName = null) =>
+    public TextureRef GetOrCreateFromFile(string filePath, bool generateMipmaps = true, string? debugName = null) =>
         TextureRef.Null;
 
-    public TextureRef GetOrCreateFromImage(string name, Image image) => TextureRef.Null;
+    public TextureRef GetOrCreateFromImage(string name, Image image, bool generateMipmaps = true) => TextureRef.Null;
 
     public Task<TextureRef> GetOrCreateFromStreamAsync(
         string name,
         Stream stream,
+        bool generateMipmaps = true,
         string? debugName = null
     ) => Task.FromResult(TextureRef.Null);
 
-    public Task<TextureRef> GetOrCreateFromFileAsync(string filePath, string? debugName = null) =>
+    public Task<TextureRef> GetOrCreateFromFileAsync(string filePath, bool generateMipmaps = true, string? debugName = null) =>
         Task.FromResult(TextureRef.Null);
 
-    public Task<TextureRef> GetOrCreateFromImageAsync(string name, Image image) =>
+    public Task<TextureRef> GetOrCreateFromImageAsync(string name, Image image, bool generateMipmaps = true) =>
         Task.FromResult(TextureRef.Null);
 
     public bool Remove(string key) => false;
