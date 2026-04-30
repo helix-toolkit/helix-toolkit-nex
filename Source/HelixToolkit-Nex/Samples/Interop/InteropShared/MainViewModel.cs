@@ -112,7 +112,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         // 4. Build engine
         _engine = EngineBuilder
             .Create(_vulkanContext)
-            .WithDefaultNodes(renderToSwapchain: false)
+            .WithDefaultNodes()
             .WithPostEffects(effects =>
             {
                 effects.AddEffect(new Smaa());

@@ -175,7 +175,6 @@ public partial class HelixViewport
 
         if (dataProvider is null)
             return false;
-
         // Compute delta time
         long now = System.Diagnostics.Stopwatch.GetTimestamp();
         float delta =
@@ -195,16 +194,13 @@ public partial class HelixViewport
         _renderContext.Update(camera);
         _renderContext.SetPointer(_pointerLocation);
 
-        var context = Engine.Context;
-
         // Render offscreen
         var cmdBuf = Engine.RenderOffscreen(_renderContext, dataProvider, target);
 #if HxWPF
-        var submitHandle = context.Submit(cmdBuf, TextureHandle.Null);
-        context.Wait(submitHandle);
+        Engine.Submit(cmdBuf, TextureHandle.Null);
+        Engine.WaitForIdle();
 #elif HxWinUI
-        _ = context.Submit(cmdBuf, TextureHandle.Null, _vulkanSyncInfo);
-        // GPU-side sync via _vulkanSyncInfo — CPU wait not needed here
+        Engine.Submit(cmdBuf, TextureHandle.Null, _vulkanSyncInfo);
 #else
 #error Unknown framework
 #endif

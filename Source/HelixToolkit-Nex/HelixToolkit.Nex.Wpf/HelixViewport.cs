@@ -88,6 +88,7 @@ public partial class HelixViewport : FrameworkElement, IDisposable
         }
         _renderContext = _engine.CreateRenderContext();
         _renderContext.Initialize();
+        _renderContext.RenderParams.EnableGammaCorrection = true; // Must enable gamma correction.
         _renderArgs = new ViewportRenderingEventArgs(_renderContext);
         if (IsLoaded && Width > 0 && Height > 0)
         {
