@@ -50,7 +50,7 @@ internal class DepthPrepassTest(IContext context) : IDisposable
         _renderer.AddNode(new PrepareNode());
         _renderer.AddNode(new DepthPassNode());
         _renderer.AddNode(new DebugDepthBufferNode());
-        _renderer.AddNode(new FrustumCullNode());
+        _renderer.AddNode(new FrustumCullNode() { MinScreenSize = 0.005f });
         _renderer.AddNode(new RenderToFinalNode(_context.GetSwapchainFormat()));
         _renderer!.Initialize();
         _renderGraph = new RenderGraph(_serviceProvider);
@@ -160,7 +160,9 @@ internal class DepthPrepassTest(IContext context) : IDisposable
         RotateCamera();
         _renderContext!.Update(new Size(width, height), _camera);
         _renderContext.FinalOutputTexture = _context.GetCurrentSwapchainTexture();
-        _renderer!.Render(_renderContext!, _renderGraph!);
+        _renderGraph!.EnsureResources(_renderContext);
+        var cmd = _renderer!.Render(_renderContext!, _renderGraph!);
+        _context.Submit(cmd, _renderContext.FinalOutputTexture);
     }
 
     private void RotateCamera()
