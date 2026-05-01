@@ -85,6 +85,24 @@ if (ringBuffer.AdvanceWithCopy(commandBuffer))
 }
 ```
 
+### Creating a Memory Barrier
+
+```csharp
+var commandBuffer = context.AcquireCommandBuffer();
+bool barrierCreated = commandBuffer.Barrier(buffer.Handle);
+if (!barrierCreated)
+{
+    // Handle error
+}
+```
+
+### Waiting for Command Buffer Completion
+
+```csharp
+var submitHandle = context.Submit(commandBuffer);
+context.Wait(submitHandle, reset: true);
+```
+
 ## Architecture Notes
 
 - **Design Patterns**: The package uses an Entity Component System (ECS) for efficient entity management and a Render Graph to manage render node execution order.

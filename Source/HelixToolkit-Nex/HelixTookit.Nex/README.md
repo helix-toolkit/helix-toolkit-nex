@@ -109,6 +109,16 @@ using (tracer.BeginScope("MyOperation"))
 tracer.TraceEvent("OperationCompleted", 1.0);
 ```
 
+### Ending a Trace Scope
+
+```csharp
+var tracer = TracerFactory.GetTracer("MyTracer");
+long startTicks = Stopwatch.GetTimestamp();
+// Perform operation
+long endTicks = Stopwatch.GetTimestamp();
+tracer.EndScope("MyOperation", "Category", startTicks, endTicks, Environment.CurrentManagedThreadId);
+```
+
 ## Architecture Notes
 
 - **Entity Component System (ECS)**: HelixToolkit.Nex uses the Arch ECS library for efficient entity management, allowing for flexible and scalable component-based architecture.

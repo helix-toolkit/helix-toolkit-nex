@@ -10,7 +10,12 @@ The `HelixToolkit.Nex.Graphics.Mock` package is designed to fit seamlessly into 
 ## Key Types
 
 - **MockCommandBuffer**: A mock implementation of `ICommandBuffer` for unit testing, allowing the recording and validation of command buffer operations.
+  - **Barrier**: New method added to simulate a barrier operation on a buffer.
 - **MockContext**: A mock implementation of `IContext` that simulates a graphics context, providing methods to create and manage mock resources such as buffers, textures, and pipelines.
+  - **GenerateMipmap**: New method added to simulate mipmap generation for a texture.
+  - **WaitAll**: New method added to simulate waiting for all operations to complete.
+  - **IsReady**: New method added to check if a submit handle is ready.
+  - **Wait**: Overloaded method added to simulate waiting on a submit handle with an optional reset parameter.
 
 ## Usage Examples
 
@@ -45,6 +50,22 @@ TextureResource texture;
 context.CreateTexture(new TextureDesc { Dimensions = new Dimensions(256, 256, 1) }, out texture, "TestTexture");
 ```
 
+### Using New Methods
+
+#### Barrier Operation
+
+```csharp
+var commandBuffer = context.AcquireCommandBuffer();
+commandBuffer.Barrier(buffer.Handle);
+```
+
+#### Mipmap Generation
+
+```csharp
+uint levels;
+context.GenerateMipmap(texture.Handle, out levels);
+```
+
 ## Architecture Notes
 
 - **Design Patterns**: The package uses mock objects to simulate the behavior of graphics interfaces, allowing for isolated testing of rendering logic.
@@ -54,4 +75,5 @@ context.CreateTexture(new TextureDesc { Dimensions = new Dimensions(256, 256, 1)
 ## Recent Changes
 
 - **Project Configuration**: Added new build configurations for `LinuxDebug` and `LinuxRelease` to support cross-platform testing and development.
+- **New Methods**: Added `Barrier`, `GenerateMipmap`, `WaitAll`, `IsReady`, and an overloaded `Wait` method to enhance testing capabilities.
 ```
