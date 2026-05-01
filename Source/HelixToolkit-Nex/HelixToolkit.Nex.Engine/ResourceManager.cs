@@ -39,6 +39,9 @@ public sealed class ResourceManager : Initializable, IResourceManager
     /// <inheritdoc />
     public IPointMaterialManager PointMaterialManager { get; }
 
+    /// <inheritdoc />
+    public IBillboardMaterialManager BillboardMaterialManager { get; }
+
     /// <inheritdoc />>
     public IShaderRepository ShaderRepository { get; }
 
@@ -73,6 +76,9 @@ public sealed class ResourceManager : Initializable, IResourceManager
         PointMaterialManager =
             services.GetService<IPointMaterialManager>()
             ?? new PointMaterialManager(Context, ShaderRepository);
+        BillboardMaterialManager =
+            services.GetService<IBillboardMaterialManager>()
+            ?? new BillboardMaterialManager(Context, ShaderRepository);
         SamplerRepository =
             services.GetService<ISamplerRepository>() ?? new SamplerRepository(Context);
         TextureRepository =
@@ -125,6 +131,7 @@ public sealed class ResourceManager : Initializable, IResourceManager
         PBRPropertyManager.Clear();
         PBRMaterialManager.Clear();
         PointMaterialManager.Clear();
+        BillboardMaterialManager.Clear();
         ShaderRepository.Clear();
         SamplerRepository.Clear();
         TextureRepository.Clear();

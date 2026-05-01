@@ -89,6 +89,18 @@ public static class SystemBufferNames
     /// The compute shader atomically increments <c>instanceCount</c>.
     /// </summary>
     public const string BufferPointIndirectArgs = "BufPointIndirectArgs";
+
+    /// <summary>
+    /// GPU buffer holding <c>BillboardDrawData</c> structs written by the billboard expansion
+    /// compute shader and read by the billboard vertex shader.
+    /// </summary>
+    public const string BufferBillboardDrawData = "BufBillboardDrawData";
+
+    /// <summary>
+    /// GPU buffer holding <c>BillboardDrawIndirectArgs</c> for the billboard rendering draw call.
+    /// The compute shader atomically increments <c>instanceCount</c>.
+    /// </summary>
+    public const string BufferBillboardIndirectArgs = "BufBillboardIndirectArgs";
 }
 
 /// <summary>
