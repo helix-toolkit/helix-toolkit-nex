@@ -20,6 +20,11 @@ public interface IResourceManager : IInitializable
     IPointMaterialManager PointMaterialManager { get; }
 
     /// <summary>
+    /// Gets the manager responsible for handling billboard materials in the system.
+    /// </summary>
+    IBillboardMaterialManager BillboardMaterialManager { get; }
+
+    /// <summary>
     /// Gets the geometry pool for managing geometry resources.
     /// </summary>
     IGeometryManager Geometries { get; }
