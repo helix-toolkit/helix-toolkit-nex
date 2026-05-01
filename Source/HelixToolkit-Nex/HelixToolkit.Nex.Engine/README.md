@@ -93,6 +93,8 @@ if (pickingResult != null)
 
 - `ProcessEvents()`: Processes pending events in the engine's event bus.
 - `EnsureResources(RenderContext context)`: Ensures that all necessary resources are available for rendering, processing events, and preparing the render graph.
+- `Submit(ICommandBuffer commandBuffer, in TextureHandle present)`: Submits a command buffer for execution on the GPU.
+- `Submit(ICommandBuffer commandBuffer, in TextureHandle present, KeyedMutexSyncInfo syncInfo)`: Submits a command buffer with synchronization information.
 
 ### New Overloads for `RenderOffscreen`
 
@@ -108,6 +110,10 @@ if (pickingResult != null)
 
 - Replaced `ElementBuffer` with `RingElementBuffer` for `MeshDrawData` and `RangeLightData` to improve buffer management and performance.
 - `RingElementBuffer` allows for efficient handling of dynamic data by rotating through buffer slots, minimizing GPU stalls.
+
+### Light Data Management
+
+- Updated `DirectionalLightData` and `RangeLightData` to use `RingFixSizeBuffer` and `RingElementBuffer` respectively, improving resource management and update efficiency.
 
 HelixToolkit.Nex.Engine is designed to be a robust and flexible foundation for building 3D applications, offering a rich set of features and a modular architecture that can be tailored to specific needs.
 ```
