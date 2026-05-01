@@ -112,6 +112,7 @@ public sealed class PointRenderNode : RenderNode
     {
         // Register point-specific GPU buffers
         graph.AddPass(
+            RenderStage.Opaque,
             nameof(PointRenderNode),
             inputs:
             [
@@ -120,7 +121,6 @@ public sealed class PointRenderNode : RenderNode
                 new(SystemBufferNames.BufferForwardPlusConstants, ResourceType.Buffer),
             ],
             outputs: [new(SystemBufferNames.TextureColorF16Current, ResourceType.Texture)],
-            stage: RenderStage.Opaque,
             after: [nameof(ForwardPlusOpaqueNode)]
         );
     }

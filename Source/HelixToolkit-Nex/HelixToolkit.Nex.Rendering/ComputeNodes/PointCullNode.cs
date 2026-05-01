@@ -167,14 +167,14 @@ public sealed class PointCullNode : ComputeNode
     public override void AddToGraph(RenderGraph graph)
     {
         graph.AddPass(
+            RenderStage.Prepare,
             nameof(PointCullNode),
             inputs: [],
             outputs:
             [
                 new(SystemBufferNames.BufferPointDrawData, ResourceType.Buffer),
                 new(SystemBufferNames.BufferPointIndirectArgs, ResourceType.Buffer),
-            ],
-            stage: RenderStage.Prepare
+            ]
         );
     }
 }

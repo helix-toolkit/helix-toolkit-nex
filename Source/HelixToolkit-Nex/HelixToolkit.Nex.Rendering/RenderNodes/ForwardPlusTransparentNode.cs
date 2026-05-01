@@ -127,6 +127,7 @@ public class ForwardPlusTransparentNode : RenderNode
     private void AddClassicPass(RenderGraph graph)
     {
         graph.AddPass(
+            RenderStage.Transparent,
             nameof(ForwardPlusTransparentNode),
             inputs:
             [
@@ -136,8 +137,7 @@ public class ForwardPlusTransparentNode : RenderNode
                 new(SystemBufferNames.BufferLightIndex, ResourceType.Buffer),
                 new(SystemBufferNames.BufferPBRProperties, ResourceType.Buffer),
             ],
-            outputs: [new(SystemBufferNames.TextureColorF16A, ResourceType.Texture)],
-            stage: RenderStage.Transparent
+            outputs: [new(SystemBufferNames.TextureColorF16A, ResourceType.Texture)]
         );
     }
 
@@ -175,6 +175,7 @@ public class ForwardPlusTransparentNode : RenderNode
             );
 
         graph.AddPass(
+            RenderStage.Transparent,
             nameof(ForwardPlusTransparentNode),
             inputs:
             [
@@ -188,8 +189,7 @@ public class ForwardPlusTransparentNode : RenderNode
             [
                 new(SystemBufferNames.TextureWboitAccum, ResourceType.Texture),
                 new(SystemBufferNames.TextureWboitRevealage, ResourceType.Texture),
-            ],
-            stage: RenderStage.Transparent
+            ]
         );
     }
 }
