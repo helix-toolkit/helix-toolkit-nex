@@ -184,7 +184,6 @@ public partial class HelixViewport
         _lastTimestamp = now;
         _renderArgs.DeltaTime = delta;
         _renderContext.WindowSize = new Size((int)ActualWidth, (int)ActualHeight);
-        EnsureSize();
         _cameraController?.Update(delta);
 
         var camera = _viewportClient.Update(_renderContext, delta);

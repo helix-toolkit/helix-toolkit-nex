@@ -189,6 +189,7 @@ public partial class HelixViewport : FrameworkElement, IDisposable
         if (_lastRenderTime == args.RenderingTime)
             return;
 
+        EnsureSize();
         // Compute delta time
         if (!Render((float)ActualWidth, (float)ActualHeight, _importedTexture!.Handle))
             return;

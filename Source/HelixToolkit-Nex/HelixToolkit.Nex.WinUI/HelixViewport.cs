@@ -226,7 +226,7 @@ public partial class HelixViewport : UserControl, IDisposable
             || _renderArgs is null
         )
             return;
-
+        EnsureSize();
         if (!Render((float)ActualWidth, (float)ActualHeight, _importedTexture!.Handle))
         {
             return;
@@ -245,7 +245,7 @@ public partial class HelixViewport : UserControl, IDisposable
 
         if (_disposed || Engine is null)
             return;
-        Engine.Context.Wait(default);
+        Engine.WaitForIdle();
         ReleaseResources();
         CreateResources((uint)ActualWidth, (uint)ActualHeight);
         UpdateViewportSize((float)ActualWidth, (float)ActualHeight);
