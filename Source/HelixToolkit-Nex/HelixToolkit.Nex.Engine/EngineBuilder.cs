@@ -219,10 +219,12 @@ public sealed class EngineBuilder
         AddNode(new PrepareNode());
         AddNode(new DepthPassNode());
         AddNode(new FrustumCullNode());
-        AddNode(new PointCullNode());
         AddNode(new ForwardPlusLightCullingNode());
         AddNode(new ForwardPlusOpaqueNode());
+        AddNode(new PointCullNode());
         AddNode(new PointRenderNode());
+        AddNode(new BillboardCullNode());
+        AddNode(new BillboardRenderNode());
         AddNode(new ForwardPlusTransparentNode());
         AddNode(new WBOITCompositeNode());
         AddNode(new ToneMappingNode());
@@ -318,6 +320,7 @@ public sealed class EngineBuilder
 
         engine.ResourceManager.PBRMaterialManager.CreatePBRMaterialsFromRegistry();
         engine.ResourceManager.PointMaterialManager.CreatePipelinesFromRegistry();
+        engine.ResourceManager.BillboardMaterialManager.CreatePipelinesFromRegistry();
         _onResourceManagerReady?.Invoke(engine.ResourceManager);
 
         // --- Apply deferred node configurations ---

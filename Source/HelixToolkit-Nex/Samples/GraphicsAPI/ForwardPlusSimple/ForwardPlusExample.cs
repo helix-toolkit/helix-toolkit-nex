@@ -129,7 +129,7 @@ public class ForwardPlusExample
         _depthPass.Colors[0] = new RenderPass.AttachmentDesc
         {
             LoadOp = LoadOp.Invalid,
-            StoreOp = StoreOp.DontCare,
+            StoreOp = StoreOp.Store,
         };
         _depthPass.Depth = new RenderPass.AttachmentDesc
         {
@@ -149,7 +149,7 @@ public class ForwardPlusExample
         {
             ClearDepth = 0.0f,
             LoadOp = LoadOp.Load,
-            StoreOp = StoreOp.DontCare,
+            StoreOp = StoreOp.Store,
         };
 
         // Configure tone mapping pass: clear color, no depth

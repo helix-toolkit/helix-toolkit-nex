@@ -22,6 +22,10 @@
     <Project Path="Samples/GraphicsAPI/RenderToCubeMapSinglePass/RenderToCubeMapSinglePass.csproj" />
   </Folder>
   <Folder Name="/Samples/Integration/">
+    <Project Path="Samples/Integration/Billboard/Billboard.csproj">
+      <Build Solution="Debug|x64" Project="false" />
+      <Build Solution="Debug|x86" Project="false" />
+    </Project>
     <Project Path="Samples/Integration/DepthPrepassRenderer/DepthPrepassRenderer.csproj" />
     <Project Path="Samples/Integration/ImGui/ImGui.csproj" />
     <Project Path="Samples/Integration/LightCulling/LightCulling.csproj" />

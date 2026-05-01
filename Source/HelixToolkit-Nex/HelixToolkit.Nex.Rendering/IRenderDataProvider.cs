@@ -204,6 +204,91 @@ public interface IPointCloudData : IRenderData
     uint TotalPointCount { get; }
 }
 
+public sealed class BillboardDataEntry : IDisposable
+{
+    private bool _disposed;
+    public bool IsDisposed => _disposed;
+    public bool Valid => !_disposed && Entities.Count > 0;
+    public MaterialTypeId MaterialId { get; }
+    public FastList<Entity> Entities { get; } = [];
+    public ElementBuffer<BillboardDrawData> DrawDataBuffer { get; }
+    public BufferResource DrawArgsBuffer { get; }
+
+    public int BillboardCount { get; private set; }
+
+    public BillboardDataEntry(IContext context, int initialCapacity, MaterialTypeId id)
+    {
+        MaterialId = id;
+        DrawDataBuffer = new ElementBuffer<BillboardDrawData>(
+            context,
+            initialCapacity,
+            BufferUsageBits.Storage,
+            debugName: $"{id}"
+        );
+
+        DrawArgsBuffer = context.CreateBuffer(
+            new BufferDesc
+            {
+                DataSize = BillboardDrawIndirectArgs.SizeInBytes,
+                Usage = BufferUsageBits.Storage | BufferUsageBits.Indirect,
+                Storage = StorageType.Device,
+                DebugName = $"BillboardDrawArgs_{id}",
+            }
+        );
+    }
+
+    public void AddEntity(Entity entity)
+    {
+        Entities.Add(entity);
+        ref var comp = ref entity.Get<BillboardComponent>();
+        BillboardCount += comp.BillboardCount;
+    }
+
+    public void Clear()
+    {
+        Entities.Clear();
+        BillboardCount = 0;
+    }
+
+    public void EnsureCapacity()
+    {
+        DrawDataBuffer.EnsureCapacity(BillboardCount);
+    }
+
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+        DrawDataBuffer.Dispose();
+        DrawArgsBuffer.Dispose();
+        _disposed = true;
+    }
+}
+
+/// <summary>
+/// Provides access to collected billboard data for GPU rendering.
+/// <para>
+/// The data provider collects all <c>BillboardComponent</c> entities each frame,
+/// packs their data into a contiguous GPU buffer, and tracks per-entity
+/// dispatch information so the compute shader can stamp the correct entity ID.
+/// </para>
+/// </summary>
+public interface IBillboardData : IRenderData
+{
+    /// <summary>
+    /// Gets the dictionary which contains per-material billboard data entries
+    /// keyed by their material type ID.
+    /// </summary>
+    IReadOnlyDictionary<MaterialTypeId, BillboardDataEntry> Data { get; }
+
+    /// <summary>
+    /// Gets the total number of billboards in the collection.
+    /// </summary>
+    uint TotalBillboardCount { get; }
+}
+
 public interface IRenderDataProvider
 {
     World World { get; }
@@ -253,6 +338,12 @@ public interface IRenderDataProvider
     /// Returns <see langword="null"/> if no point cloud data provider is registered.
     /// </summary>
     IPointCloudData? PointCloudData { get; }
+
+    /// <summary>
+    /// Gets the billboard data collected from all <c>BillboardComponent</c> entities.
+    /// Returns <see langword="null"/> if no billboard data provider is registered.
+    /// </summary>
+    IBillboardData? BillboardData { get; }
 
     /// <summary>
     /// Retrieves a PBRMaterial based on the specified material type identifier.

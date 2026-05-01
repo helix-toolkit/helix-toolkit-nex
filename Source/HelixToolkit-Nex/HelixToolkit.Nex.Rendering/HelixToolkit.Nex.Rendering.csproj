@@ -11,9 +11,13 @@
         <Configurations>Debug;Release;LinuxDebug;LinuxRelease</Configurations>
     </PropertyGroup>
     <ItemGroup>
-      <Compile Remove="RenderGraphs\**" />
-      <EmbeddedResource Remove="RenderGraphs\**" />
-      <None Remove="RenderGraphs\**" />
+        <Compile Remove="RenderGraphs\**" />
+        <EmbeddedResource Remove="RenderGraphs\**" />
+        <None Remove="RenderGraphs\**" />
+    </ItemGroup>
+    <ItemGroup>
+        <None Remove="Assets\sans-regular.json" />
+        <None Remove="Assets\sans-regular.png" />
     </ItemGroup>
     <ItemGroup>
         <ProjectReference Include="..\HelixTookit.Nex\HelixToolkit.Nex.csproj" />
@@ -23,7 +27,11 @@
         <ProjectReference Include="..\HelixToolkit.Nex.Maths\HelixToolkit.Nex.Maths.csproj" />
         <ProjectReference Include="..\HelixToolkit.Nex.Repository\HelixToolkit.Nex.Repository.csproj" />
         <ProjectReference Include="..\HelixToolkit.Nex.Shaders\HelixToolkit.Nex.Shaders.csproj" />
-        <ProjectReference Include="..\HelixToolkit.Nex.CodeGen\HelixToolkit.Nex.CodeGen.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+        <ProjectReference
+            Include="..\HelixToolkit.Nex.CodeGen\HelixToolkit.Nex.CodeGen.csproj"
+            OutputItemType="Analyzer"
+            ReferenceOutputAssembly="false"
+        />
     </ItemGroup>
     <ItemGroup>
         <None Update="README.md">
@@ -39,5 +47,9 @@
         <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
             <_Parameter1>HelixToolkit.Nex.Engine</_Parameter1>
         </AssemblyAttribute>
+    </ItemGroup>
+    <ItemGroup>
+        <EmbeddedResource Include="Assets\sans-regular.json" />
+        <EmbeddedResource Include="Assets\sans-regular.png" />
     </ItemGroup>
 </Project>
