@@ -183,7 +183,7 @@ internal class MeshDrawData : Initializable, IMeshDrawData
             (int)RenderSettings.NumFrameInFlight(Context),
             InitialBufferSize,
             BufferUsageBits.Storage | BufferUsageBits.Indirect,
-            hostVisiable: true,
+            hostVisible: true,
             debugName: Name
         );
         return ResultCode.Ok;
