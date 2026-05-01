@@ -83,7 +83,7 @@ public sealed class RingFixSizeBuffer<T> : IDisposable
         {
             _buffers[i] = context.CreateBuffer(
                 new T(),
-                BufferUsageBits.Storage,
+                usage,
                 storage,
                 $"ring_{debugName ?? ""}[{i}]"
             );
@@ -166,7 +166,7 @@ public sealed class RingFixSizeBuffer<T> : IDisposable
         {
             return ResultCode.InvalidState;
         }
-        return _context.Upload(Current, 0, ref value);
+        return Update(ref value);
     }
 
     /// <summary>
