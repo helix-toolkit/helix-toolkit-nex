@@ -144,7 +144,7 @@ public class PrepareNode : RenderNode
             PointerRing = context.PointerRing,
         };
 
-        _constantsBuffer.AdvanceAndUpdate(ref fpData);
+        _constantsBuffer.AdvanceAndUpdate(res.CmdBuffer, ref fpData);
 
         res.Buffers[SystemBufferNames.BufferForwardPlusConstants] = _constantsBuffer!.Current;
 
