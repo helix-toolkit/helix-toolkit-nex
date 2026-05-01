@@ -75,7 +75,8 @@ public sealed class DebugDepthBufferNode()
         graph.AddPass(
             nameof(DebugDepthBufferNode),
             inputs: [new(SystemBufferNames.TextureDepthF32, ResourceType.Texture)],
-            outputs: [new(SystemBufferNames.TextureColorF16Current, ResourceType.Texture)]
+            outputs: [new(SystemBufferNames.TextureColorF16Current, ResourceType.Texture)],
+            stage: RenderStage.Output
         );
     }
 }
