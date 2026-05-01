@@ -66,6 +66,7 @@ public sealed class ForwardPlusOpaqueNode : RenderNode
             .AddBuffer(SystemBufferNames.BufferDirectionalLight, null)
             .AddBuffer(SystemBufferNames.BufferLights, null)
             .AddPass(
+                RenderStage.Opaque,
                 nameof(ForwardPlusOpaqueNode),
                 inputs:
                 [
@@ -77,7 +78,6 @@ public sealed class ForwardPlusOpaqueNode : RenderNode
                     new(SystemBufferNames.BufferForwardPlusConstants, ResourceType.Buffer),
                 ],
                 outputs: [new(SystemBufferNames.TextureColorF16A, ResourceType.Texture)],
-                stage: RenderStage.Opaque,
                 after: [nameof(ForwardPlusLightCulling)]
             );
     }

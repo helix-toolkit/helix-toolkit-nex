@@ -94,9 +94,7 @@ public sealed class ToneMappingNode : RenderNode
         base.OnTeardown();
     }
 
-    protected override void OnSetupRender(in RenderResources res)
-    {
-    }
+    protected override void OnSetupRender(in RenderResources res) { }
 
     protected override bool BeginRender(in RenderResources res)
     {
@@ -137,11 +135,11 @@ public sealed class ToneMappingNode : RenderNode
         );
 
         graph.AddPingPongPass(
+            RenderStage.ToneMap,
             nameof(ToneMappingNode),
             PingPongGroups.ColorF16,
             extraInputs: [],
-            extraOutputs: [],
-            stage: RenderStage.ToneMap
+            extraOutputs: []
         );
     }
 }

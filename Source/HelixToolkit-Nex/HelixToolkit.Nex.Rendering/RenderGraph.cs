@@ -51,12 +51,12 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
     private static readonly ILogger _logger = LogManager.Create<RenderGraph>();
 
     public sealed class GraphNode(
+        RenderStage stage,
         string passName,
         IList<RenderResource> inputs,
         IList<RenderResource> outputs,
         IList<string> after,
-        string? pingPongGroup = null,
-        RenderStage stage = RenderStage.Opaque
+        string? pingPongGroup = null
     )
     {
         public readonly RenderPass Pass = new();
@@ -137,6 +137,9 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
     /// statically assigns which slot is read and which is written for this pass based on
     /// the position of the pass in the group's execution chain — no runtime buffer swap is needed.
     /// </summary>
+    /// <param name="stage">
+    /// The broad execution phase this pass belongs to.
+    /// </param>
     /// <param name="passName">The unique name of the pass.</param>
     /// <param name="pingPongGroup">The name of the ping-pong group registered via <see cref="AddPingPongGroup"/>.</param>
     /// <param name="extraInputs">Additional non-ping-pong input resources required by the pass.</param>
@@ -148,17 +151,15 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
     /// <see cref="RenderResources"/> overload that resolves them automatically.
     /// </param>
     /// <param name="after">Optional explicit ordering constraints (pass names that must precede this one).</param>
-    /// <param name="stage">
-    /// The broad execution phase this pass belongs to. Defaults to <see cref="RenderStage.PostProcess"/>.
-    /// </param>
+
     /// <returns>The current instance for method chaining.</returns>
     public RenderGraph AddPingPongPass(
+        RenderStage stage,
         string passName,
         string pingPongGroup,
         IList<RenderResource> extraInputs,
         IList<RenderResource> extraOutputs,
-        IList<string>? after = null,
-        RenderStage stage = RenderStage.PostProcess
+        IList<string>? after = null
     )
     {
         if (_passes.ContainsKey(passName))
@@ -177,12 +178,12 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
         // Inputs/outputs for the dependency graph are resolved at Compile() time once slot
         // assignments are known. For now we store a sentinel — Compile() will patch them.
         var node = new GraphNode(
+            stage,
             passName,
             extraInputs,
             extraOutputs,
             after ?? [],
-            pingPongGroup,
-            stage
+            pingPongGroup
         );
 
         _passes.Add(passName, node);
@@ -274,19 +275,19 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
     /// <summary>
     /// Adds a regular (non-ping-pong) render pass.
     /// </summary>
-    /// <param name="after">
-    /// Optional list of pass names that must execute before this pass, regardless of resource dependencies.
-    /// </param>
     /// <param name="stage">
     /// The broad execution phase this pass belongs to. The graph compiler automatically orders passes
-    /// so all passes in an earlier stage complete before any pass in a later stage. Defaults to <see cref="RenderStage.Opaque"/>.
+    /// so all passes in an earlier stage complete before any pass in a later stage.
+    /// </param>
+    /// /// <param name="after">
+    /// Optional list of pass names that must execute before this pass, regardless of resource dependencies.
     /// </param>
     public RenderGraph AddPass(
+        RenderStage stage,
         string passName,
         IList<RenderResource> inputs,
         IList<RenderResource> outputs,
-        IList<string>? after = null,
-        RenderStage stage = RenderStage.Opaque
+        IList<string>? after = null
     )
     {
         if (_passes.ContainsKey(passName))
@@ -295,7 +296,7 @@ public sealed class RenderGraph(IServiceProvider serviceProvider) : Initializabl
                 $"A pass with the name '{passName}' already exists in the render graph."
             );
         }
-        _passes.Add(passName, new GraphNode(passName, inputs, outputs, after ?? [], stage: stage));
+        _passes.Add(passName, new GraphNode(stage: stage, passName, inputs, outputs, after ?? []));
         IsDirty = true;
         return this;
     }

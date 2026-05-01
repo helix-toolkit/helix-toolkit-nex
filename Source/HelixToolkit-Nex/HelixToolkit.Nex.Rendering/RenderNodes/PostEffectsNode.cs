@@ -163,7 +163,8 @@ public sealed class PostEffectsNode : RenderNode
     protected override void OnSetupRender(in RenderResources res)
     {
         (_initialReadSlot, _initialWriteSlot) =
-            res.RenderContext.TextureColorF16Current == res.Textures[SystemBufferNames.TextureColorF16A]
+            res.RenderContext.TextureColorF16Current
+            == res.Textures[SystemBufferNames.TextureColorF16A]
                 ? (SystemBufferNames.TextureColorF16A, SystemBufferNames.TextureColorF16B)
                 : (SystemBufferNames.TextureColorF16B, SystemBufferNames.TextureColorF16A);
 
@@ -260,13 +261,13 @@ public sealed class PostEffectsNode : RenderNode
         graph.AddTexture(SystemBufferNames.TextureColorF16Current, null);
 
         graph.AddPingPongPass(
+            RenderStage.PostProcess,
             nameof(PostEffectsNode),
             PingPongGroups.ColorF16,
             extraInputs: [new(SystemBufferNames.BufferForwardPlusConstants, ResourceType.Buffer)],
             // Declare TextureColorF16Current as an output so downstream passes that consume it
             // are correctly ordered after PostEffectsNode by the topological sort.
-            extraOutputs: [new(SystemBufferNames.TextureColorF16Current, ResourceType.Texture)],
-            stage: RenderStage.PostProcess
+            extraOutputs: [new(SystemBufferNames.TextureColorF16Current, ResourceType.Texture)]
         );
     }
 }

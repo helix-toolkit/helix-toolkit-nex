@@ -297,19 +297,15 @@ public sealed class FrustumCullNode : ComputeNode
 
     public override void AddToGraph(RenderGraph graph)
     {
-        graph
-            .AddPass(
-                nameof(FrustumCullNode),
-                inputs:
-                [
-                    new(SystemBufferNames.BufferMeshInfo, ResourceType.Buffer)
-                ],
-                outputs:
-                [
-                    new(SystemBufferNames.BufferMeshDrawOpaque, ResourceType.Buffer),
-                    new(SystemBufferNames.BufferMeshDrawTransparent, ResourceType.Buffer),
-                ],
-                stage: RenderStage.Prepare
-            );
+        graph.AddPass(
+            RenderStage.Prepare,
+            nameof(FrustumCullNode),
+            inputs: [new(SystemBufferNames.BufferMeshInfo, ResourceType.Buffer)],
+            outputs:
+            [
+                new(SystemBufferNames.BufferMeshDrawOpaque, ResourceType.Buffer),
+                new(SystemBufferNames.BufferMeshDrawTransparent, ResourceType.Buffer),
+            ]
+        );
     }
 }
