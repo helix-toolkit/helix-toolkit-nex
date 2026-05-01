@@ -140,6 +140,7 @@ public sealed class DepthPassNode() : RenderNode
         graph
             .AddBuffer(SystemBufferNames.BufferPBRProperties, null)
             .AddPass(
+                RenderStage.Opaque,
                 nameof(DepthPassNode),
                 inputs:
                 [
@@ -151,8 +152,7 @@ public sealed class DepthPassNode() : RenderNode
                 [
                     new(SystemBufferNames.TextureEntityId, ResourceType.Texture),
                     new(SystemBufferNames.TextureDepthF32, ResourceType.Texture),
-                ],
-                stage: RenderStage.Opaque
+                ]
             );
     }
 }

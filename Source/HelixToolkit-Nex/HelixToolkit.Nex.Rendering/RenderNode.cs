@@ -111,6 +111,11 @@ public abstract class RenderNode : IDisposable
 
     public abstract void AddToGraph(RenderGraph graph);
 
+    public override string ToString()
+    {
+        return Name;
+    }
+
     #region IDisposable Support
     private bool _disposedValue;
 

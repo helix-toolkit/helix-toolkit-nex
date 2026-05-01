@@ -47,9 +47,7 @@ public sealed class ForwardPlusLightCullingNode : ComputeNode
             StorageType.Device,
             "FP_LightCull"
         );
-        _depthSampler = ResourceManager.SamplerRepository.GetOrCreate(
-            SamplerStateDesc.PointClamp
-        );
+        _depthSampler = ResourceManager.SamplerRepository.GetOrCreate(SamplerStateDesc.PointClamp);
 
         if (!_depthSampler.Valid)
         {
@@ -186,6 +184,7 @@ public sealed class ForwardPlusLightCullingNode : ComputeNode
                 }
             )
             .AddPass(
+                RenderStage.Opaque,
                 nameof(ForwardPlusLightCullingNode),
                 inputs:
                 [
@@ -196,8 +195,7 @@ public sealed class ForwardPlusLightCullingNode : ComputeNode
                 [
                     new(SystemBufferNames.BufferLightGrid, ResourceType.Buffer),
                     new(SystemBufferNames.BufferLightIndex, ResourceType.Buffer),
-                ],
-                stage: RenderStage.Opaque
+                ]
             );
     }
 }
