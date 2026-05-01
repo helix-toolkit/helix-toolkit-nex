@@ -86,16 +86,20 @@ public sealed class PBRPropertyData : Initializable, IPBRPropertyData
             return true;
         }
         using var t = _tracer.BeginScope(nameof(Update));
-        var objects = _resourceManager.PBRPropertyManager.Objects;
+        // Make sure GPU is not using the buffer before updating.
+        // Must not reset the fence here, engine will handle it.
+        _context.WaitAll(reset: false);
+
+        var mgr = _resourceManager.PBRPropertyManager;
         if (_needFullUpdate)
         {
             _buffer.WriteDynamic(
-                objects.Count,
+                mgr.Count,
                 ctx =>
                 {
-                    for (var i = 0; i < objects.Count; ++i)
+                    for (var i = 0; i < mgr.Count; ++i)
                     {
-                        ctx.Write(objects[i].Obj);
+                        ctx.Write(ref mgr.At(i));
                     }
                 }
             );
@@ -105,19 +109,14 @@ public sealed class PBRPropertyData : Initializable, IPBRPropertyData
         {
             if (
                 _buffer.WriteDynamic(
-                    objects.Count,
+                    mgr.Count,
                     ctx =>
                     {
                         foreach (var index in _updatedProps)
                         {
-                            if (index < objects.Count)
+                            if (index < mgr.Count)
                             {
-                                if (
-                                    !ctx.WriteElement(
-                                        ref _resourceManager.PBRPropertyManager.At((int)index),
-                                        (int)index
-                                    )
-                                )
+                                if (!ctx.WriteElement(ref mgr.At((int)index), (int)index))
                                 {
                                     _logger.LogError(
                                         "Failed to write material property at index {INDEX}",

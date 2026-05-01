@@ -1423,16 +1423,16 @@ internal sealed partial class VulkanContext : Initializable, IContext
         levels = tex.NumLevels;
     }
 
-    public void Wait(in SubmitHandle handle)
+    public void Wait(in SubmitHandle handle, bool reset = true)
     {
         using var t = _tracer.BeginScope(nameof(Wait), nameof(IContext));
-        Immediate!.Wait(handle);
+        Immediate!.Wait(handle, reset);
     }
 
-    public void WaitAll()
+    public void WaitAll(bool reset = true)
     {
         using var t = _tracer.BeginScope(nameof(WaitAll), nameof(IContext));
-        Immediate!.WaitAll();
+        Immediate!.WaitAll(reset);
     }
 
     public bool IsReady(in SubmitHandle handle)

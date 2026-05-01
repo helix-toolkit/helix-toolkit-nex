@@ -47,6 +47,9 @@ internal sealed class MeshInfoData : Initializable, IRenderData
             return true;
         }
         using var t = _tracer.BeginScope(nameof(Update));
+        // Make sure GPU is not using the buffer before updating.
+        // Must not reset the fence here, engine will handle it.
+        Context.WaitAll(reset: false);
         var objects = _resourceManager.Geometries.Objects;
         var empty = new MeshInfo();
         _buffer.WriteDynamic(

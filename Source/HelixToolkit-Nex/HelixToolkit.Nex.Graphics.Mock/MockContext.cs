@@ -582,13 +582,17 @@ public class MockContext : IContext
         levels = 0;
     }
 
-    public void WaitAll()
+    public void WaitAll(bool reset)
     {
     }
 
     public bool IsReady(in SubmitHandle handle)
     {
         return true;
+    }
+
+    public void Wait(in SubmitHandle handle, bool reset = true)
+    {
     }
 
     // Mock data structures

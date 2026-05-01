@@ -67,12 +67,14 @@ public interface IContext : IInitializable
     /// Waits for a submitted command buffer to complete execution.
     /// </summary>
     /// <param name="handle">The submit handle to wait on. Passing an empty handle waits for all GPU operations to complete (device idle).</param>
-    void Wait(in SubmitHandle handle);
+    /// <param name="reset">Indicates whether to reset the submit handle after waiting. Defaults to true.</param>
+    void Wait(in SubmitHandle handle, bool reset = true);
 
     /// <summary>
     /// Waits for all submitted command buffers to complete execution, effectively idling the GPU.
     /// </summary>
-    void WaitAll();
+    /// <param name="reset">Indicates whether to reset the submit handles after waiting.</param>
+    void WaitAll(bool reset = true);
 
     /// <summary>
     /// Determines whether the specified submit handle (usually from a previously submitted frame) has been processed.
