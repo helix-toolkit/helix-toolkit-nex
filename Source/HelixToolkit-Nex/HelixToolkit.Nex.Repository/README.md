@@ -41,7 +41,7 @@ var context = /* Obtain IContext instance */;
 var textureRepo = new TextureRepository(context);
 
 using var stream = File.OpenRead("path/to/texture.png");
-var textureRef = textureRepo.GetOrCreateFromStream("uniqueTextureName", stream);
+var textureRef = textureRepo.GetOrCreateFromStream("uniqueTextureName", stream, generateMipmaps: true);
 ```
 
 ### Caching a Shader Module from GLSL Source
@@ -84,7 +84,7 @@ using System.Threading.Tasks;
 var context = /* Obtain IContext instance */;
 var textureRepo = new TextureRepository(context);
 
-var textureRef = await textureRepo.GetOrCreateFromFileAsync("path/to/texture.png");
+var textureRef = await textureRepo.GetOrCreateFromFileAsync("path/to/texture.png", generateMipmaps: true);
 ```
 
 ## Architecture Notes

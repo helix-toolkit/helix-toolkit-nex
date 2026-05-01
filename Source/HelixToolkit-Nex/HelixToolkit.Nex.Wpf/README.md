@@ -64,4 +64,6 @@ using (var deviceManager = new D3D9DeviceManager())
 - **Platform Support Update**: The project now conditionally targets `net8.0-windows` for Windows platforms and `net8.0` for Linux platforms, reflecting improved cross-platform compatibility.
 - **HelixViewport Rendering Update**: The `Render` method now requires the imported texture handle as a parameter to ensure the correct texture is used during rendering. This change improves the clarity and correctness of the rendering process by explicitly passing the texture handle.
 - **Configuration Management**: Added explicit configuration management with `Debug` and `Release` configurations to streamline build processes.
+- **Gamma Correction**: Enabled gamma correction in the `HelixViewport` by default to improve color accuracy in rendered scenes.
+- **Resource Management**: Added `EnsureSize` method in `HelixViewport` to handle dynamic resizing of resources, ensuring the viewport adapts to size changes efficiently.
 ```

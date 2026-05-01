@@ -37,10 +37,15 @@ HelixToolkit.Nex.Rendering is responsible for managing the rendering pipeline of
 ### FrustumCullNode
 
 - **Buffer Management**: Updated to include `BufferMeshInfo` as an input and output dependency for better resource tracking and management.
+- **Render Setup**: Added `OnSetupRender` method to manage buffer dependencies.
 
-### RenderContext
+### ForwardPlusLightCullingNode
 
-- **RenderParams**: Introduced `RenderParams` class to encapsulate render parameters such as background color.
+- **Render Setup**: Added `OnSetupRender` method to manage texture dependencies.
+
+### MeshComponent
+
+- **Validation**: Updated `Valid` property to check `Geometry.Valid` instead of `Geometry.Attached`.
 
 ### Post-Processing Effects
 

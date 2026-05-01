@@ -52,7 +52,7 @@ if (image != null)
 {
     using (image)
     {
-        TextureResource texture = TextureCreator.CreateTexture(context, image, "MyTexture");
+        TextureResource texture = TextureCreator.CreateTexture(context, image, generateMipmaps: true, "MyTexture");
     }
 }
 ```
@@ -66,7 +66,7 @@ if (image != null)
 {
     using (image)
     {
-        var (texture, uploadHandle) = TextureCreator.CreateTextureAsyncWithResource(context, image, "MyTexture");
+        var (texture, uploadHandle) = TextureCreator.CreateTextureAsyncWithResource(context, image, generateMipmaps: true, "MyTexture");
         // Use texture and await uploadHandle if needed
     }
 }

@@ -37,8 +37,9 @@ var config = new VulkanContextConfig
 {
     EnableValidation = true,
     EnableVma = true,
-    TerminateOnValidationError = false, // New property added
-    PreferredPresentMode = VkPresentModeKHR.FifoRelaxed // New property added
+    TerminateOnValidationError = false,
+    PreferredPresentMode = VkPresentModeKHR.FifoRelaxed,
+    ForceIntegratedGPU = false // New property added
 };
 
 var context = VulkanBuilder.Create(config, windowHandle, displayHandle);
@@ -66,6 +67,13 @@ var textureDesc = new TextureDesc
 };
 
 context.CreateTexture(textureDesc, out var textureResource, "MyTexture");
+```
+
+### Generating Mipmaps
+
+```csharp
+context.GenerateMipmap(textureResource.Handle, out uint levels);
+Console.WriteLine($"Generated {levels} mipmap levels.");
 ```
 
 ## Architecture Notes

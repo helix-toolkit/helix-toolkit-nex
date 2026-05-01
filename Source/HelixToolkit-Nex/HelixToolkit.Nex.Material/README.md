@@ -20,6 +20,7 @@ This package plays a crucial role in the rendering pipeline, providing the neces
 | `PBRMaterial` | Base class for all materials used in rendering. |
 | `CustomBufferPBRMaterial<T>` | Extends `PBRMaterial` to support custom buffers. |
 | `CustomMaterialBuffer<T>` | Manages GPU-side storage buffers for custom material properties. |
+| `ICustomMaterialBuffer` | Interface for managing custom material buffers. |
 | `IPBRMaterialManager` | Interface for managing PBR materials and their pipelines. |
 | `PBRMaterialManager` | Implements `IPBRMaterialManager` for managing PBR materials. |
 | `PBRMaterialProperties` | Manages PBR material properties for a single material instance. |
@@ -29,6 +30,7 @@ This package plays a crucial role in the rendering pipeline, providing the neces
 | `PointMaterialRegistry` | Registry for point material types and their shader implementations. |
 | `MaterialTypeId` | Represents a unique identifier for material types. |
 | `MaterialPropertyCreator` | Facilitates creation and configuration of material properties. |
+| `RenderSettings` | Provides static render settings including formats and frame configurations. |
 
 ## Usage Examples
 
@@ -51,7 +53,7 @@ customBuffer.Properties = new CustomProps { Color = new Vector4(1, 0, 0, 1), Int
 
 // Update buffer and use in rendering
 customBuffer.Update();
-fpConstants.customMaterialBufferAddress = customBuffer.GpuAddress;
+MeshDrawPushConstant.customMaterialBufferAddress = customBuffer.GpuAddress;
 ```
 
 ### Managing PBR Materials
