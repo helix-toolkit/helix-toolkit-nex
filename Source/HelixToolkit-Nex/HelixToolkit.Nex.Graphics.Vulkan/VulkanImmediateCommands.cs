@@ -589,7 +589,7 @@ internal sealed class VulkanImmediateCommands : IDisposable
         }
     }
 
-    public void Wait(in SubmitHandle handle)
+    public void Wait(in SubmitHandle handle, bool reset = true)
     {
         if (handle.Empty)
         {
@@ -607,10 +607,13 @@ internal sealed class VulkanImmediateCommands : IDisposable
             var fence = _buffers[handle.BufferIndex].Fence;
             VK.vkWaitForFences(_device, 1, &fence, VkBool32.True, ulong.MaxValue).CheckResult();
         }
-        Purge();
+        if (reset)
+        {
+            Purge();
+        }
     }
 
-    public void WaitAll()
+    public void WaitAll(bool reset = true)
     {
         unsafe
         {
@@ -633,7 +636,10 @@ internal sealed class VulkanImmediateCommands : IDisposable
                     .CheckResult();
             }
         }
-        Purge();
+        if (reset)
+        {
+            Purge();
+        }
     }
 
     private void Purge()

@@ -81,7 +81,9 @@ public sealed class StaticMeshIndexData : Initializable, IStaticMeshIndexData
             return true;
         }
         using var t = _tracer.BeginScope(nameof(Update));
-        _context.WaitAll();
+        // Make sure GPU is not using the buffer before updating.
+        // Must not reset the fence here, engine will handle it.
+        _context.WaitAll(false);
         _logger.LogInformation("Updating static mesh index buffer...");
         _buffer.WriteDynamic(
             _resourceManager.Geometries.TotalStaticIndexCount,
