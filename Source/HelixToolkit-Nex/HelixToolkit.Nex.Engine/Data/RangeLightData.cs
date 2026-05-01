@@ -54,7 +54,7 @@ internal class RangeLightData : Initializable, IRenderData
             (int)RenderSettings.NumFrameInFlight(Context),
             InitialBufferSize,
             BufferUsageBits.Storage,
-            hostVisiable: true,
+            hostVisible: true,
             "Light"
         );
         return ResultCode.Ok;

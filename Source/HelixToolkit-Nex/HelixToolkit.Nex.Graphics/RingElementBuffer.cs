@@ -75,7 +75,7 @@ public sealed class RingElementBuffer<T> : IDisposable
         int ringSize,
         int initialCapacity,
         BufferUsageBits usage = BufferUsageBits.Storage,
-        bool hostVisiable = true,
+        bool hostVisible = true,
         string? debugName = null
     )
     {
@@ -89,7 +89,7 @@ public sealed class RingElementBuffer<T> : IDisposable
                 context,
                 initialCapacity,
                 usage,
-                hostVisible: hostVisiable,
+                hostVisible: hostVisible,
                 debugName: debugName is not null ? $"{debugName}[{i}]" : null
             );
         }

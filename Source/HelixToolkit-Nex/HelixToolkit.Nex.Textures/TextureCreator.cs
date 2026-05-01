@@ -93,7 +93,10 @@ public static class TextureCreator
     /// and mipmaps are generated on the GPU after the upload completes.
     /// </param>
     /// <param name="debugName">Optional debug name for the texture.</param>
-    /// <returns>An <see cref="AsyncUploadHandle{TextureHandle}"/> that completes when the upload finishes.</returns>
+    /// <returns>
+    /// An <see cref="AsyncUploadHandle{TextureHandle}"/> that completes when both the pixel upload
+    /// and, if <paramref name="generateMipmaps"/> is <c>true</c>, mipmap generation have finished.
+    /// </returns>
     /// <exception cref="InvalidOperationException">
     /// Thrown when <paramref name="image"/>'s format is <see cref="Format.Invalid"/>.
     /// </exception>
@@ -171,9 +174,9 @@ public static class TextureCreator
 
                     if (isLast)
                     {
-                        if (desc.GenerateMipmaps)
-                            context.GenerateMipmap(handle, out _);
-                        return uploadHandle;
+                        return desc.GenerateMipmaps
+                            ? ChainMipmapGeneration(context, uploadHandle, handle)
+                            : uploadHandle;
                     }
                 }
                 if (depth > 1)
@@ -199,7 +202,8 @@ public static class TextureCreator
     /// <param name="debugName">Optional debug name for the texture.</param>
     /// <returns>
     /// A tuple of the <see cref="TextureResource"/> (GPU memory allocated synchronously) and an
-    /// <see cref="AsyncUploadHandle{TextureHandle}"/> that completes when pixel upload finishes.
+    /// <see cref="AsyncUploadHandle{TextureHandle}"/> that completes when both the pixel upload
+    /// and, if <paramref name="generateMipmaps"/> is <c>true</c>, mipmap generation have finished.
     /// </returns>
     /// <exception cref="InvalidOperationException">
     /// Thrown when <paramref name="image"/>'s format is <see cref="Format.Invalid"/>.
@@ -280,10 +284,11 @@ public static class TextureCreator
             }
         }
 
-        if (desc.GenerateMipmaps)
-            context.GenerateMipmap(handle, out _);
+        var finalHandle = desc.GenerateMipmaps
+            ? ChainMipmapGeneration(context, lastUploadHandle, handle)
+            : lastUploadHandle;
 
-        return (texture, lastUploadHandle);
+        return (texture, finalHandle);
     }
 
     /// <summary>
@@ -320,6 +325,37 @@ public static class TextureCreator
     // -------------------------------------------------------------------------
     // Private helpers
     // -------------------------------------------------------------------------
+
+    /// <summary>
+    /// Returns a new <see cref="AsyncUploadHandle{TextureHandle}"/> that completes only after
+    /// <paramref name="uploadHandle"/> finishes <em>and</em> mipmap generation has been submitted.
+    /// </summary>
+    private static AsyncUploadHandle<TextureHandle> ChainMipmapGeneration(
+        IContext context,
+        AsyncUploadHandle<TextureHandle> uploadHandle,
+        TextureHandle handle
+    )
+    {
+        var chainedHandle = new AsyncUploadHandle<TextureHandle>();
+        uploadHandle.Task.ContinueWith(
+            t =>
+            {
+                if (t.IsCompletedSuccessfully)
+                {
+                    var (result, h) = t.Result;
+                    if (result == ResultCode.Ok)
+                        context.GenerateMipmap(h, out _);
+                    chainedHandle.Complete(result, h);
+                }
+                else
+                {
+                    chainedHandle.Complete(ResultCode.RuntimeError, handle);
+                }
+            },
+            TaskScheduler.Default
+        );
+        return chainedHandle;
+    }
 
     private static TextureDesc BuildTextureDesc(
         Image image,
