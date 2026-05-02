@@ -11,7 +11,6 @@ using HelixToolkit.Nex.ImGui;
 using HelixToolkit.Nex.Material;
 using HelixToolkit.Nex.Maths;
 using HelixToolkit.Nex.Rendering;
-using HelixToolkit.Nex.Rendering.PostEffects;
 using HelixToolkit.Nex.Scene;
 using HelixToolkit.Nex.Shaders.Frag;
 using Microsoft.Extensions.Logging;
@@ -119,10 +118,6 @@ internal partial class PBRDemo : IDisposable
     private readonly RenderPass _imGuiPass = new();
     private readonly Dependencies _imGuiDeps = new();
 
-    // Post effects
-    private readonly Fxaa _fxaa = new() { Enabled = true };
-    private readonly ShowFPS _showFPS = new();
-
     private Size _viewportSize = new(1, 1);
 
     // Camera controller (orbit)
@@ -162,11 +157,6 @@ internal partial class PBRDemo : IDisposable
             .Create(_context)
             .WithDefaultNodes(false)
             .RenderToCustomTarget(RenderSettings.IntermediateTargetFormat)
-            .WithPostEffects(effects =>
-            {
-                effects.AddEffect(_fxaa);
-                effects.AddEffect(_showFPS);
-            })
             .Build();
 
         _renderContext = _engine.CreateRenderContext();

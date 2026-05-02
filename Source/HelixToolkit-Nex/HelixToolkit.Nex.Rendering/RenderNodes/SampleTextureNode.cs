@@ -18,7 +18,7 @@ public sealed class RenderToFinalNode(Format outputFormat)
         res.Pass.Colors[0].ClearColor = Color.Transparent;
         res.Pass.Colors[0].LoadOp = LoadOp.Load;
         res.Pass.Colors[0].StoreOp = StoreOp.Store;
-        res.Deps.Textures[0] = res.Textures[SystemBufferNames.TextureColorF16Current];
+        res.Deps.Textures[0] = res.Textures[SystemBufferNames.TextureColorF16Target];
     }
 
     protected override bool BeginRender(in RenderResources res)
@@ -40,7 +40,7 @@ public sealed class RenderToFinalNode(Format outputFormat)
             // TextureColorF16Current is the stable alias written by PostEffectsNode at the end
             // of its render loop. It always points to whichever ping-pong buffer holds the
             // final color result, regardless of how many effects ran.
-            inputs: [new(SystemBufferNames.TextureColorF16Current, ResourceType.Texture)],
+            inputs: [new(SystemBufferNames.TextureColorF16Target, ResourceType.Texture)],
             outputs: [new(SystemBufferNames.FinalOutputTexture, ResourceType.Texture)]
         );
     }
@@ -54,7 +54,7 @@ public sealed class DebugDepthBufferNode()
 
     protected override void OnSetupRender(in RenderResources res)
     {
-        res.Framebuf.Colors[0].Texture = res.Textures[SystemBufferNames.TextureColorF16Current];
+        res.Framebuf.Colors[0].Texture = res.Textures[SystemBufferNames.TextureColorF16Target];
         res.Pass.Colors[0].ClearColor = Color.Transparent;
         res.Pass.Colors[0].LoadOp = LoadOp.Load;
         res.Pass.Colors[0].StoreOp = StoreOp.Store;
@@ -74,7 +74,7 @@ public sealed class DebugDepthBufferNode()
             RenderStage.Output,
             nameof(DebugDepthBufferNode),
             inputs: [new(SystemBufferNames.TextureDepthF32, ResourceType.Texture)],
-            outputs: [new(SystemBufferNames.TextureColorF16Current, ResourceType.Texture)]
+            outputs: [new(SystemBufferNames.TextureColorF16Target, ResourceType.Texture)]
         );
     }
 }
@@ -87,7 +87,7 @@ public sealed class DebugMeshIdNode()
 
     protected override void OnSetupRender(in RenderResources res)
     {
-        res.Framebuf.Colors[0].Texture = res.Textures[SystemBufferNames.TextureColorF16Current];
+        res.Framebuf.Colors[0].Texture = res.Textures[SystemBufferNames.TextureColorF16Target];
         res.Pass.Colors[0].ClearColor = Color.Black;
         res.Pass.Colors[0].LoadOp = LoadOp.Load;
         res.Pass.Colors[0].StoreOp = StoreOp.Store;
@@ -100,7 +100,7 @@ public sealed class DebugMeshIdNode()
             RenderStage.Output,
             nameof(DebugMeshIdNode),
             inputs: [new(SystemBufferNames.TextureEntityId, ResourceType.Texture)],
-            outputs: [new(SystemBufferNames.TextureColorF16Current, ResourceType.Texture)]
+            outputs: [new(SystemBufferNames.TextureColorF16Target, ResourceType.Texture)]
         );
     }
 }

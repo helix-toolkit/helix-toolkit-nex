@@ -113,13 +113,13 @@ public partial class MainViewModel : ObservableObject, IDisposable
         _engine = EngineBuilder
             .Create(_vulkanContext)
             .WithDefaultNodes()
+            .WithSMAA()
+            .WithBloom()
+            .WithFPS()
             .WithPostEffects(effects =>
             {
-                effects.AddEffect(new Smaa());
-                effects.AddEffect(new Bloom());
                 effects.AddEffect(new BorderHighlightPostEffect());
                 effects.AddEffect(new WireframePostEffect());
-                effects.AddEffect(new ShowFPS());
             })
             .WithInteropTarget(target)
             .Build();

@@ -16,7 +16,7 @@ public static class SystemBufferNames
     /// alias at the end of its render loop so that downstream passes (e.g. tone mapping to the
     /// final output) can read the correct texture regardless of how many post-effects ran.
     /// </summary>
-    public const string TextureColorF16Current = "TexColorF16Current";
+    public const string TextureColorF16Target = "TexColorF16Target";
 
     public const string BufferMeshDrawOpaque = "BufMeshDrawOpaque";
     public const string BufferMeshDrawTransparent = "BufMeshDrawTrans";

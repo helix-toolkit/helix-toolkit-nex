@@ -27,7 +27,7 @@ public sealed class WBOITCompositeNode : RenderNode
     protected override void OnSetupRender(in RenderResources res)
     {
         // Render onto the main color target (which already has the opaque scene).
-        res.Framebuf.Colors[0].Texture = res.Textures[SystemBufferNames.TextureColorF16Current];
+        res.Framebuf.Colors[0].Texture = res.Textures[SystemBufferNames.TextureColorF16Target];
         res.Pass.Colors[0].LoadOp = LoadOp.Load;
         res.Pass.Colors[0].StoreOp = StoreOp.Store;
 
@@ -159,7 +159,7 @@ public sealed class WBOITCompositeNode : RenderNode
                 new(SystemBufferNames.TextureWboitAccum, ResourceType.Texture),
                 new(SystemBufferNames.TextureWboitRevealage, ResourceType.Texture),
             ],
-            outputs: [new(SystemBufferNames.TextureColorF16Current, ResourceType.Texture)],
+            outputs: [new(SystemBufferNames.TextureColorF16Target, ResourceType.Texture)],
             after: [nameof(ForwardPlusTransparentNode)]
         );
     }

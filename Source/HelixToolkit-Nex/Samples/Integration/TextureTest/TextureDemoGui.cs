@@ -1,7 +1,5 @@
 using System.Numerics;
 using HelixToolkit.Nex.Maths;
-using HelixToolkit.Nex.Rendering.RenderNodes;
-using HelixToolkit.Nex.Shaders;
 using ImGuiNET;
 using Gui = ImGuiNET.ImGui;
 using TextureHandle = HelixToolkit.Nex.Handle<HelixToolkit.Nex.Graphics.Texture>;
@@ -82,8 +80,6 @@ internal sealed partial class TextureDemo
         DrawMaterialSection();
         Gui.Spacing();
         DrawAnimationSection();
-        Gui.Spacing();
-        DrawPostEffectsSection();
 
         Gui.End();
     }
@@ -281,39 +277,6 @@ internal sealed partial class TextureDemo
             Gui.TextDisabled("(right-drag to orbit)");
         }
         Gui.Text($"Rotation: {RotationAngle:F1}°");
-    }
-
-    // -------------------------------------------------------------------------
-    // Post effects
-    // -------------------------------------------------------------------------
-
-    private void DrawPostEffectsSection()
-    {
-        if (!Gui.CollapsingHeader("Post Effects"))
-            return;
-
-        bool fxaaEnabled = Fxaa.Enabled;
-        if (Gui.Checkbox("FXAA", ref fxaaEnabled))
-            Fxaa.Enabled = fxaaEnabled;
-
-        var toneMappingNode = _engine!.GetRenderNode<ToneMappingNode>()!;
-        bool tmEnabled = toneMappingNode.Enabled;
-        if (Gui.Checkbox("Tone Mapping", ref tmEnabled))
-            toneMappingNode.Enabled = tmEnabled;
-
-        if (toneMappingNode.Enabled)
-        {
-            Gui.Indent();
-            int tmMode = (int)toneMappingNode.Mode;
-            Gui.SetNextItemWidth(-1f);
-            if (Gui.Combo("Mode##TM", ref tmMode, "ACES Film\0Reinhard\0Uncharted 2\0"))
-                toneMappingNode.Mode = (ToneMappingMode)tmMode;
-            Gui.Unindent();
-        }
-
-        bool fpsEnabled = ShowFPS.Enabled;
-        if (Gui.Checkbox("Show FPS", ref fpsEnabled))
-            ShowFPS.Enabled = fpsEnabled;
     }
 
     // -------------------------------------------------------------------------

@@ -1,23 +1,10 @@
-using HelixToolkit.Nex.Rendering.RenderNodes;
 using HelixToolkit.Nex.Shaders.Frag;
 
-namespace HelixToolkit.Nex.Rendering.PostEffects;
+namespace HelixToolkit.Nex.Rendering.RenderNodes;
 
-/// <summary>
-/// Bloom post-processing effect.
-/// Performs a three-stage pipeline:
-///   1. Brightness extract – isolates pixels brighter than <see cref="Threshold"/>.
-///   2. Two-pass Gaussian blur – horizontal then vertical, applied <see cref="BlurPasses"/> times.
-///   3. Composite – additively blends the blurred result onto the scene colour.
-///
-/// The two intermediate blur textures (<see cref="SystemBufferNames.TextureBloomA"/> and
-/// <see cref="SystemBufferNames.TextureBloomB"/>) are registered into the shared
-/// <see cref="RenderGraph"/> resource set via <see cref="RegisterResources"/>, so they are
-/// allocated and automatically resized by the resource set alongside all other render targets.
-/// </summary>
-public sealed class Bloom : PostEffect
+public sealed class BloomNode : RenderNode
 {
-    private static readonly ILogger _logger = LogManager.Create<Bloom>();
+    private static readonly ILogger _logger = LogManager.Create<BloomNode>();
 
     // Four pipeline variants, one per BloomMode specialization constant.
     private RenderPipelineResource _brightnessPipeline = RenderPipelineResource.Null;
@@ -52,24 +39,153 @@ public sealed class Bloom : PostEffect
     /// </summary>
     public int DownsampleFactor { get; set; } = 4;
 
-    public override string Name => nameof(Bloom);
-    public override Color DebugColor => Color.HotPink;
-    public override uint Priority => (uint)PostEffectPriority.Bloom;
+    public override string Name => nameof(BloomNode);
+    public override Color4 DebugColor => Color.HotPink;
+    protected override bool OnSetup()
+    {
+        if (ResourceManager is null)
+        {
+            _logger.LogError("ResourceManager is null during bloom initialization.");
+            return false;
+        }
 
-    // -----------------------------------------------------------------------
-    // Resource registration (graph-time)
-    // -----------------------------------------------------------------------
+        _linearSampler = ResourceManager.SamplerRepository.GetOrCreate(
+            SamplerStateDesc.LinearClamp
+        );
+        _pointSampler = ResourceManager.SamplerRepository.GetOrCreate(
+            SamplerStateDesc.PointClamp
+        );
 
-    /// <inheritdoc/>
-    /// <remarks>
-    /// Registers <see cref="SystemBufferNames.TextureBloomA"/> and
-    /// <see cref="SystemBufferNames.TextureBloomB"/> into the render graph so they are
-    /// created and resized by the shared resource set, exactly like every other render target.
-    /// The textures are allocated at <c>1 / <see cref="DownsampleFactor"/></c> of the screen
-    /// resolution, which is sufficient for the low-frequency bloom signal and significantly
-    /// reduces fill-rate cost.
-    /// </remarks>
-    public override void RegisterResources(RenderGraph graph)
+        if (!_linearSampler.Valid || !_pointSampler.Valid)
+        {
+            return false;
+        }
+
+        return CreatePipelines().CheckResult() == ResultCode.Ok;
+    }
+
+    protected override void OnTeardown()
+    {
+        _brightnessPipeline.Dispose();
+        _blurHPipeline.Dispose();
+        _blurVPipeline.Dispose();
+        _compositePipeline.Dispose();
+        base.OnTeardown();
+    }
+
+    protected override void OnSetupRender(in RenderResources res)
+    {
+    }
+
+    protected override bool BeginRender(in RenderResources res)
+    {
+        return true;
+    }
+
+    protected override void EndRender(in RenderResources res)
+    {
+    }
+
+    protected override void OnRender(in RenderResources res)
+    {
+        Debug.Assert(_brightnessPipeline.Valid, "Bloom pipeline is not valid.");
+
+        var cmdBuffer = res.CmdBuffer;
+        var sceneTex = res.Textures[SystemBufferNames.TextureColorF16Target];
+        var bloomA = res.Textures[SystemBufferNames.TextureBloomA];
+        var bloomB = res.Textures[SystemBufferNames.TextureBloomB];
+
+        // texel size for the blur passes (dimensions come from the managed resource)
+        var dims = res.RenderContext.Context.GetDimensions(bloomA);
+        float texelW = dims.Width > 0 ? 1.0f / dims.Width : 0f;
+        float texelH = dims.Height > 0 ? 1.0f / dims.Height : 0f;
+
+        // ------------------------------------------------------------------
+        // Stage 0: Brightness extract  scene → bloomA
+        // ------------------------------------------------------------------
+        // Use _linearSampler so the full-resolution scene is bilinearly
+        // filtered when downsampling to the bloom texture's coarser resolution.
+        // Point-sampling here creates hard aliased edges on bright pixels that
+        // the blur then spreads, making bloom appear too bright on moving objects.
+        RunFullScreenPass(
+            "Brightness Extract",
+            in res,
+            _brightnessPipeline,
+            inputHandle: in sceneTex,
+            outputHandle: in bloomA,
+            new BloomPushConstants
+            {
+                TextureId = sceneTex.Index,
+                SamplerId = _linearSampler,
+                Threshold = Threshold,
+            }
+        );
+
+        // ------------------------------------------------------------------
+        // Stages 1 & 2: Gaussian blur  (repeated BlurPasses times)
+        //   bloomA → bloomB  (horizontal)
+        //   bloomB → bloomA  (vertical)
+        // ------------------------------------------------------------------
+        for (int i = 0; i < BlurPasses; i++)
+        {
+            // Horizontal: bloomA → bloomB
+            RunFullScreenPass(
+                "Blur Pass Horizontal",
+                 in res,
+                 _blurHPipeline,
+                 inputHandle: in bloomA,
+                outputHandle: in bloomB,
+                new BloomPushConstants
+                {
+                    TextureId = bloomA.Index,
+                    SamplerId = _linearSampler,
+                    TexelWidth = texelW,
+                    TexelHeight = texelH,
+                }
+            );
+
+            // Vertical: bloomB → bloomA
+            RunFullScreenPass(
+                "Blur Pass Vertical",
+                in res,
+                _blurVPipeline,
+                inputHandle: in bloomB,
+                outputHandle: in bloomA,
+                new BloomPushConstants
+                {
+                    TextureId = bloomB.Index,
+                    SamplerId = _linearSampler,
+                    TexelWidth = texelW,
+                    TexelHeight = texelH,
+                }
+            );
+        }
+
+        // ------------------------------------------------------------------
+        // Stage 3: Composite  (scene + bloom) → writeSlot
+        // ------------------------------------------------------------------
+        // Both sceneTex and bloomA are sampled — both must be in deps so that
+        // BeginRendering issues the shader-read-only barrier for each of them.
+        res.RenderContext.SwapIntermediateBuffers();
+        RunFullScreenPass(
+            "Composite Pass",
+            in res,
+            _compositePipeline,
+            inputHandle: in sceneTex,
+            outputHandle: res.Textures[SystemBufferNames.TextureColorF16Target],
+            new BloomPushConstants
+            {
+                TextureId = sceneTex.Index,
+                SamplerId = _pointSampler,
+                BloomTextureId = bloomA.Index,
+                BloomSamplerId = _linearSampler,
+                Intensity = Intensity,
+            },
+            input2Handle: bloomA
+        );
+    }
+
+    public override void AddToGraph(RenderGraph graph)
     {
         graph.AddTexture(
             SystemBufferNames.TextureBloomA,
@@ -98,138 +214,13 @@ public sealed class Bloom : PostEffect
                 ),
             dependsOnScreenSize: true
         );
-    }
-
-    // -----------------------------------------------------------------------
-    // PostEffect interface
-    // -----------------------------------------------------------------------
-
-    public override bool Apply(in RenderResources res, ref string readSlot, ref string writeSlot)
-    {
-        Debug.Assert(_brightnessPipeline.Valid, "Bloom pipeline is not valid.");
-
-        var cmdBuffer = res.CmdBuffer;
-        var sceneTex = res.Textures[readSlot];
-        var bloomA = res.Textures[SystemBufferNames.TextureBloomA];
-        var bloomB = res.Textures[SystemBufferNames.TextureBloomB];
-
-        // texel size for the blur passes (dimensions come from the managed resource)
-        var dims = res.RenderContext.Context.GetDimensions(bloomA);
-        float texelW = dims.Width > 0 ? 1.0f / dims.Width : 0f;
-        float texelH = dims.Height > 0 ? 1.0f / dims.Height : 0f;
-
-        // ------------------------------------------------------------------
-        // Stage 0: Brightness extract  scene → bloomA
-        // ------------------------------------------------------------------
-        // Use _linearSampler so the full-resolution scene is bilinearly
-        // filtered when downsampling to the bloom texture's coarser resolution.
-        // Point-sampling here creates hard aliased edges on bright pixels that
-        // the blur then spreads, making bloom appear too bright on moving objects.
-        RunFullScreenPass(
-            cmdBuffer,
-            _brightnessPipeline,
-            inputHandle: sceneTex,
-            outputHandle: bloomA,
-            new BloomPushConstants
-            {
-                TextureId = sceneTex.Index,
-                SamplerId = _linearSampler,
-                Threshold = Threshold,
-            }
+        graph.AddPingPongPass(
+            RenderStage.Bloom,
+            nameof(BloomNode),
+            PingPongGroups.ColorF16,
+            extraInputs: [],
+            extraOutputs: []
         );
-
-        // ------------------------------------------------------------------
-        // Stages 1 & 2: Gaussian blur  (repeated BlurPasses times)
-        //   bloomA → bloomB  (horizontal)
-        //   bloomB → bloomA  (vertical)
-        // ------------------------------------------------------------------
-        for (int i = 0; i < BlurPasses; i++)
-        {
-            // Horizontal: bloomA → bloomB
-            RunFullScreenPass(
-                cmdBuffer,
-                _blurHPipeline,
-                inputHandle: bloomA,
-                outputHandle: bloomB,
-                new BloomPushConstants
-                {
-                    TextureId = bloomA.Index,
-                    SamplerId = _linearSampler,
-                    TexelWidth = texelW,
-                    TexelHeight = texelH,
-                }
-            );
-
-            // Vertical: bloomB → bloomA
-            RunFullScreenPass(
-                cmdBuffer,
-                _blurVPipeline,
-                inputHandle: bloomB,
-                outputHandle: bloomA,
-                new BloomPushConstants
-                {
-                    TextureId = bloomB.Index,
-                    SamplerId = _linearSampler,
-                    TexelWidth = texelW,
-                    TexelHeight = texelH,
-                }
-            );
-        }
-
-        // ------------------------------------------------------------------
-        // Stage 3: Composite  (scene + bloom) → writeSlot
-        // ------------------------------------------------------------------
-        // Both sceneTex and bloomA are sampled — both must be in deps so that
-        // BeginRendering issues the shader-read-only barrier for each of them.
-        RunFullScreenPass(
-            cmdBuffer,
-            _compositePipeline,
-            inputHandle: sceneTex,
-            outputHandle: res.Textures[writeSlot],
-            new BloomPushConstants
-            {
-                TextureId = sceneTex.Index,
-                SamplerId = _pointSampler,
-                BloomTextureId = bloomA.Index,
-                BloomSamplerId = _linearSampler,
-                Intensity = Intensity,
-            },
-            input2Handle: bloomA
-        );
-        return true;
-    }
-
-    protected override ResultCode OnInitializing()
-    {
-        if (ResourceManager is null)
-        {
-            _logger.LogError("ResourceManager is null during bloom initialization.");
-            return ResultCode.InvalidState;
-        }
-
-        _linearSampler = ResourceManager.SamplerRepository.GetOrCreate(
-            SamplerStateDesc.LinearClamp
-        );
-        _pointSampler = ResourceManager.SamplerRepository.GetOrCreate(
-            SamplerStateDesc.PointClamp
-        );
-
-        if (!_linearSampler.Valid || !_pointSampler.Valid)
-        {
-            return ResultCode.RuntimeError;
-        }
-
-        return CreatePipelines();
-    }
-
-    protected override ResultCode OnTearingDown()
-    {
-        _brightnessPipeline.Dispose();
-        _blurHPipeline.Dispose();
-        _blurVPipeline.Dispose();
-        _compositePipeline.Dispose();
-        // Note: BloomA / BloomB are owned by the shared RenderGraphResourceSet — not disposed here.
-        return ResultCode.Ok;
     }
 
     // -----------------------------------------------------------------------
@@ -249,34 +240,35 @@ public sealed class Bloom : PostEffect
     /// </para>
     /// </summary>
     private static void RunFullScreenPass(
-        ICommandBuffer cmdBuffer,
+        string debugName,
+        in RenderResources res,
         RenderPipelineResource pipeline,
-        TextureHandle inputHandle,
-        TextureHandle outputHandle,
+        in TextureHandle inputHandle,
+        in TextureHandle outputHandle,
         BloomPushConstants pc,
-        TextureHandle input2Handle = default
+        in TextureHandle input2Handle = default
     )
     {
-        var deps = new Dependencies();
-        deps.Textures[0] = inputHandle;
+        res.Deps.Textures[0] = inputHandle;
         if (input2Handle.Valid)
         {
-            deps.Textures[1] = input2Handle;
+            res.Deps.Textures[1] = input2Handle;
         }
-
+        var cmdBuffer = res.CmdBuffer;
         var pass = new RenderPass();
         pass.Colors[0].LoadOp = LoadOp.Load;
         pass.Colors[0].StoreOp = StoreOp.Store;
 
         var fb = new Framebuffer();
         fb.Colors[0].Texture = outputHandle;
-
-        cmdBuffer.BeginRendering(pass, fb, deps);
+        cmdBuffer.PushDebugGroupLabel(debugName, Color.AliceBlue);
+        cmdBuffer.BeginRendering(pass, fb, res.Deps);
         cmdBuffer.BindRenderPipeline(pipeline);
         cmdBuffer.BindDepthState(DepthState.Disabled);
         cmdBuffer.PushConstants(pc);
         cmdBuffer.Draw(3);
         cmdBuffer.EndRendering();
+        cmdBuffer.PopDebugGroupLabel();
     }
 
     /// <summary>

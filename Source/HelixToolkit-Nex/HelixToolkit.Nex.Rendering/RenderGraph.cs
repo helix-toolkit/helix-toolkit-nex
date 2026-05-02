@@ -10,35 +10,50 @@ namespace HelixToolkit.Nex.Rendering;
 /// resource edges (inputs/outputs) or the explicit <c>after</c> list.
 /// </para>
 /// </summary>
-public enum RenderStage
+public enum RenderStage : uint
 {
     /// <summary>CPU/GPU data preparation: frustum culling etc.</summary>
     Prepare = 0,
 
     /// <summary>Opaque geometry: depth pre-pass, light culling, opaque meshes, point clouds, etc.</summary>
-    Opaque = 10,
+    Opaque,
+
+    /// <summary>
+    ///  FXAA or other full-screen anti-aliasing pass. 
+    /// </summary>
+    Antialising,
 
     /// <summary>Transparent geometry: WBOIT render + composite, alpha-blended passes, etc.</summary>
-    Transparent = 20,
+    Transparent,
 
-    /// <summary>Full-screen HDR post-processing effects (FXAA, bloom, …). Runs before tone mapping.</summary>
-    PostProcess = 30,
+    /// <summary>
+    /// Particle rendering.
+    /// </summary>
+    Particle,
 
+    /// <summary>Post processing effects.</summary>
+    PostProcess,
+
+    Bloom,
+    /// <summary>
+    /// Billboard rendering. Placed after bloom to avoid unncessary bloom.
+    /// </summary>
+    Billboard,
     /// <summary>
     /// HDR-to-LDR conversion. Separating this from <see cref="PostProcess"/> ensures that
     /// all HDR effects complete before the scene is linearised, and that all
     /// <see cref="Overlay"/> passes receive an LDR surface to draw onto.
     /// </summary>
-    ToneMap = 35,
+    ToneMap,
 
     /// <summary>
     /// LDR overlays rendered on top of the tone-mapped image: gizmos, debug geometry,
     /// editor widgets, etc. Depth buffer from the opaque pass is still available here.
     /// </summary>
-    Overlay = 40,
+    Overlay,
 
     /// <summary>Final blit to the swap-chain / output texture.</summary>
-    Output = 50,
+    Output,
 }
 
 public readonly record struct RenderResource(string Name, ResourceType Type);
