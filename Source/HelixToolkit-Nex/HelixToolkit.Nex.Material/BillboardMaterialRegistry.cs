@@ -99,35 +99,43 @@ public static class BillboardMaterialRegistry
             }
         );
 
-        // SDFFont billboard material (ID = 1) — MSDF-based text rendering with anti-aliased edges
-        // DEBUG MODE: Visualize raw texture data to diagnose artifacts
-        // Set DEBUG_MODE to:
-        //   0 = normal MSDF rendering
-        //   1 = show raw UV as color (R=U, G=V, B=0)
-        //   2 = show raw texture RGB
-        //   3 = show median distance as grayscale
-        //   4 = show quad border (red = within 2px of edge)
+        // SDFFont billboard material (ID = 1) — MSDF-based text rendering
+        // Following the approach from https://www.redblobgames.com/articles/sdf-fonts/
+        // Converts texel to distance_em, then uses screen_px_scale for anti-aliasing.
         Register(
             new BillboardMaterialRegistration
             {
                 TypeId = 1,
                 Name = "SDFFont",
                 OutputColorImplementation = """
+                    // Atlas parameters — must match msdf-atlas-gen output
+                    // aemrange = [(distanceRangeMiddle - distanceRange/2) / size,
+                    //             (distanceRangeMiddle + distanceRange/2) / size]
+                    // For distanceRange=4, distanceRangeMiddle=0, size=96:
+                    const vec2 aemrange = vec2(-0.0208333, 0.0208333);
+                    const float threshold_em = 0.0;
+                    const vec2 atlas_size = vec2(604, 604);
+
                     vec2 uv = getUV();
                     vec3 s = textureBindless2D(getTextureId(), getSamplerId(), uv).rgb;
+                    float texel = max(min(s.r, s.g), min(max(s.r, s.g), s.b)); // median for MSDF
 
-                    // Median of MSDF
-                    float dist = max(min(s.r, s.g), min(max(s.r, s.g), s.b));
+                    // Convert texel (0-1) to signed distance in em units
+                    // texel=0 → aemrange[1] (outside), texel=1 → aemrange[0] (inside)
+                    float distance_em = mix(aemrange[1], aemrange[0], texel);
 
-                    float pxRange = 4.0;
-                    vec2 unitRange = vec2(pxRange)/getScreenSize();
-                    vec2 screenTexSize = vec2(1.0)/fwidth(uv);
-                    float screenPxDistance = max(0.5*dot(unitRange, screenTexSize), 1.0) * (dist - 0.5);
-                    float opacity = clamp(screenPxDistance + 0.5, 0.0, 1.0);
+                    // Screen-space anti-aliasing width
+                    // screen_px_scale: how many screen pixels correspond to one atlas texel
+                    vec2 gradient = fwidth(uv);
+                    vec2 product = atlas_size * gradient;
+                    float screen_px_scale = max(0.5 * dot(atlas_size, gradient) / max(product.x * product.y, 1e-6), 1.0);
+
+                    // antialias_per_em: atlas.size (96) gives 1 screen pixel of AA per em
+                    float inverse_width = screen_px_scale * 96.0;
+                    float opacity = clamp((threshold_em - distance_em) * inverse_width + 0.5, 0.0, 1.0);
 
                     vec4 color = getColor();
                     color.a *= opacity;
-
                     return color;
                 """,
                 BlendConfig = new ColorAttachment

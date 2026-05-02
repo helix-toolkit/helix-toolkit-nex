@@ -2,10 +2,7 @@ namespace HelixToolkit.Nex.Rendering.RenderNodes;
 
 public enum PostEffectPriority : uint
 {
-    AntiAliasing = 10,
-    Bloom = 20,
-    Highlight = 30,
-    Other = 50,
+    Highlight = 0
 }
 
 public abstract class PostEffect() : Initializable
@@ -17,7 +14,7 @@ public abstract class PostEffect() : Initializable
 
     public IResourceManager? ResourceManager => Renderer?.ResourceManager;
 
-    public abstract Color DebugColor { get; }
+    public abstract Color4 DebugColor { get; }
 
     /// <summary>
     /// Gets or sets the priority level of the effect. Effects with lower priority values are executed before those with higher values.
@@ -213,7 +210,7 @@ public sealed class PostEffectsNode : RenderNode
         // (e.g. RenderToFinalNode) always read the correct texture regardless of effect count.
         if (res.RenderContext.ResourceSet is { } resourceSet)
         {
-            resourceSet.Textures[SystemBufferNames.TextureColorF16Current] = resourceSet.Textures[
+            resourceSet.Textures[SystemBufferNames.TextureColorF16Target] = resourceSet.Textures[
                 read
             ];
         }
@@ -258,7 +255,7 @@ public sealed class PostEffectsNode : RenderNode
 
         // Register the stable current-color alias. It has no build function because its handle
         // is written at runtime by OnRender, not allocated as a separate GPU texture.
-        graph.AddTexture(SystemBufferNames.TextureColorF16Current, null);
+        graph.AddTexture(SystemBufferNames.TextureColorF16Target, null);
 
         graph.AddPingPongPass(
             RenderStage.PostProcess,
@@ -267,7 +264,7 @@ public sealed class PostEffectsNode : RenderNode
             extraInputs: [new(SystemBufferNames.BufferForwardPlusConstants, ResourceType.Buffer)],
             // Declare TextureColorF16Current as an output so downstream passes that consume it
             // are correctly ordered after PostEffectsNode by the topological sort.
-            extraOutputs: [new(SystemBufferNames.TextureColorF16Current, ResourceType.Texture)]
+            extraOutputs: [new(SystemBufferNames.TextureColorF16Target, ResourceType.Texture)]
         );
     }
 }

@@ -65,7 +65,7 @@ public class ForwardPlusTransparentNode : RenderNode
         {
             // Color 0: Main color target (RGBA16F).
             // Clear: Load existing opaque result. Blend: SRC_ALPHA / ONE_MINUS_SRC_ALPHA.
-            res.Framebuf.Colors[0].Texture = res.Textures[SystemBufferNames.TextureColorF16Current];
+            res.Framebuf.Colors[0].Texture = res.Textures[SystemBufferNames.TextureColorF16Target];
             res.Pass.Colors[0].LoadOp = LoadOp.Load;
             res.Pass.Colors[0].StoreOp = StoreOp.Store;
         }

@@ -21,7 +21,7 @@ public sealed class PointRenderNode : RenderNode
     protected override void OnSetupRender(in RenderResources res)
     {
         // Color 0: scene color (load existing opaque content)
-        res.Framebuf.Colors[0].Texture = res.Textures[SystemBufferNames.TextureColorF16Current];
+        res.Framebuf.Colors[0].Texture = res.Textures[SystemBufferNames.TextureColorF16Target];
         res.Pass.Colors[0].LoadOp = LoadOp.Load;
         res.Pass.Colors[0].StoreOp = StoreOp.Store;
 
@@ -36,7 +36,7 @@ public sealed class PointRenderNode : RenderNode
         res.Pass.Depth.StoreOp = StoreOp.Store;
 
         // Dependencies
-        res.Deps.Textures[0] = res.Textures[SystemBufferNames.TextureColorF16Current];
+        res.Deps.Textures[0] = res.Textures[SystemBufferNames.TextureColorF16Target];
         res.Deps.Textures[1] = res.Textures[SystemBufferNames.TextureDepthF32];
         res.Deps.Buffers[0] = res.Buffers[SystemBufferNames.BufferForwardPlusConstants];
     }
@@ -112,7 +112,7 @@ public sealed class PointRenderNode : RenderNode
     {
         // Register point-specific GPU buffers
         graph.AddPass(
-            RenderStage.Opaque,
+            RenderStage.Particle,
             nameof(PointRenderNode),
             inputs:
             [
@@ -120,7 +120,7 @@ public sealed class PointRenderNode : RenderNode
                 new(SystemBufferNames.TextureEntityId, ResourceType.Texture),
                 new(SystemBufferNames.BufferForwardPlusConstants, ResourceType.Buffer),
             ],
-            outputs: [new(SystemBufferNames.TextureColorF16Current, ResourceType.Texture)],
+            outputs: [new(SystemBufferNames.TextureColorF16Target, ResourceType.Texture)],
             after: [nameof(ForwardPlusOpaqueNode)]
         );
     }

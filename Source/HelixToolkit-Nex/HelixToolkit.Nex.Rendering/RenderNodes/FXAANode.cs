@@ -1,7 +1,4 @@
-using HelixToolkit.Nex.Rendering.RenderNodes;
-
-namespace HelixToolkit.Nex.Rendering.PostEffects;
-
+namespace HelixToolkit.Nex.Rendering.RenderNodes;
 /// <summary>
 /// Named quality presets for the <see cref="Fxaa"/> post-processing effect.
 /// Each level tunes the three underlying FXAA parameters
@@ -60,27 +57,9 @@ public enum FxaaDebugMode : uint
     /// </summary>
     BlendHeatMap = 2,
 }
-
-/// <summary>
-/// FXAA (Fast Approximate Anti-Aliasing) post-processing effect.
-///
-/// Implements Timothy Lottes' FXAA 3.11 algorithm as a single full-screen pass.
-/// The algorithm detects edges by measuring local luma contrast, then blends each
-/// edge pixel with its neighbour across the edge by an amount proportional to
-/// how far the pixel sits from the midpoint of the detected edge span.
-///
-/// FXAA is significantly cheaper than <see cref="Smaa"/> (one pass vs. three) at
-/// the cost of slightly lower quality and some blurring of fine detail.  It is a
-/// good choice when fill-rate budget is tight.
-///
-///// Use the <see cref="Quality"/> property to select a named preset, or set
-///// <see cref="Quality"/> to <see langword="null"/> and adjust
-///// <see cref="ContrastThreshold"/>, <see cref="RelativeThreshold"/>, and
-///// <see cref="SubpixelBlending"/> directly for fine-grained control.
-/// </summary>
-public sealed class Fxaa : PostEffect
+public sealed class FXAANode : RenderNode
 {
-    private static readonly ILogger _logger = LogManager.Create<Fxaa>();
+    private static readonly ILogger _logger = LogManager.Create<FXAANode>();
 
     // Preset parameter table  [contrastThreshold, relativeThreshold, subpixelBlending]
     private static readonly (float Contrast, float Relative, float Subpixel)[] _presets =
@@ -175,72 +154,15 @@ public sealed class Fxaa : PostEffect
     /// </summary>
     public FxaaDebugMode DebugMode { get; set; } = FxaaDebugMode.None;
 
-    public override string Name => nameof(Fxaa);
-    public override Color DebugColor => Color.Cyan;
-    public override uint Priority => (uint)PostEffectPriority.AntiAliasing;
+    public override string Name => nameof(FXAANode);
+    public override Color4 DebugColor => Color.Cyan;
 
-    // -----------------------------------------------------------------------
-    // PostEffect interface
-    // -----------------------------------------------------------------------
-
-    /// <inheritdoc/>
-    public override bool Apply(in RenderResources res, ref string readSlot, ref string writeSlot)
-    {
-        Debug.Assert(_pipeline.Valid, "FXAA pipeline is not valid.");
-
-        var cmdBuffer = res.CmdBuffer;
-        var inputTex = res.Textures[readSlot];
-
-        var dims = res.RenderContext.Context.GetDimensions(inputTex);
-        float tw = dims.Width > 0 ? 1.0f / dims.Width : 0f;
-        float th = dims.Height > 0 ? 1.0f / dims.Height : 0f;
-
-        _deps.Textures[0] = inputTex;
-
-        _pass.Colors[0].LoadOp = LoadOp.Load;
-        _pass.Colors[0].StoreOp = StoreOp.Store;
-        _pass.Colors[0].ClearColor = new Color4(0f, 0f, 0f, 1f);
-
-        _framebuffer.Colors[0].Texture = res.Textures[writeSlot];
-
-        var activePipeline = DebugMode switch
-        {
-            FxaaDebugMode.EdgeMask => _debugEdgePipeline,
-            FxaaDebugMode.BlendHeatMap => _debugBlendPipeline,
-            _ => _pipeline,
-        };
-
-        cmdBuffer.BeginRendering(_pass, _framebuffer, _deps);
-        cmdBuffer.BindRenderPipeline(activePipeline);
-        cmdBuffer.BindDepthState(DepthState.Disabled);
-        cmdBuffer.PushConstants(
-            new FxaaPushConstants
-            {
-                ColorTextureId = inputTex.Index,
-                SamplerId = _linearSampler,
-                TexelWidth = tw,
-                TexelHeight = th,
-                ContrastThreshold = _contrastThreshold,
-                RelativeThreshold = _relativeThreshold,
-                SubpixelBlending = _subpixelBlending,
-            }
-        );
-        cmdBuffer.Draw(3);
-        cmdBuffer.EndRendering();
-
-        return true;
-    }
-
-    // -----------------------------------------------------------------------
-    // Lifecycle
-    // -----------------------------------------------------------------------
-
-    protected override ResultCode OnInitializing()
+    protected override bool OnSetup()
     {
         if (ResourceManager is null)
         {
             _logger.LogError("ResourceManager is null during FXAA initialization.");
-            return ResultCode.InvalidState;
+            return false;
         }
 
         _linearSampler = ResourceManager.SamplerRepository.GetOrCreate(
@@ -249,20 +171,19 @@ public sealed class Fxaa : PostEffect
 
         if (!_linearSampler.Valid)
         {
-            return ResultCode.RuntimeError;
+            return false;
         }
 
-        return CreatePipeline();
+        return CreatePipeline().CheckResult() == ResultCode.Ok;
     }
 
-    protected override ResultCode OnTearingDown()
+    protected override void OnTeardown()
     {
         _pipeline.Dispose();
         _debugEdgePipeline.Dispose();
         _debugBlendPipeline.Dispose();
-        return ResultCode.Ok;
+        base.OnTeardown();
     }
-
     // -----------------------------------------------------------------------
     // Helpers
     // -----------------------------------------------------------------------
@@ -355,5 +276,65 @@ public sealed class Fxaa : PostEffect
         desc.Colors[0] = ColorAttachment.CreateOpaque(RenderSettings.IntermediateTargetFormat);
         desc.WriteSpecInfo(0, (uint)mode);
         return Context!.CreateRenderPipeline(desc);
+    }
+
+    protected override void OnSetupRender(in RenderResources res)
+    {
+        res.Pass.Colors[0].LoadOp = LoadOp.Load;
+        res.Pass.Colors[0].StoreOp = StoreOp.Store;
+        res.Pass.Colors[0].ClearColor = new Color4(0f, 0f, 0f, 1f);
+        res.Deps.Textures[0] = res.RenderContext.TextureColorF16Current;
+        res.RenderContext.SwapIntermediateBuffers();
+        res.Framebuf.Colors[0].Texture = res.RenderContext.TextureColorF16Current;
+    }
+
+    protected override void OnRender(in RenderResources res)
+    {
+        Debug.Assert(_pipeline.Valid, "FXAA pipeline is not valid.");
+
+        var cmdBuffer = res.CmdBuffer;
+
+        var dims = res.RenderContext.WindowSize;
+        float tw = dims.Width > 0 ? 1.0f / dims.Width : 0f;
+        float th = dims.Height > 0 ? 1.0f / dims.Height : 0f;
+
+        var activePipeline = DebugMode switch
+        {
+            FxaaDebugMode.EdgeMask => _debugEdgePipeline,
+            FxaaDebugMode.BlendHeatMap => _debugBlendPipeline,
+            _ => _pipeline,
+        };
+        cmdBuffer.BindRenderPipeline(activePipeline);
+        cmdBuffer.BindDepthState(DepthState.Disabled);
+        cmdBuffer.PushConstants(
+            new FxaaPushConstants
+            {
+                ColorTextureId = res.Deps.Textures[0].Index,
+                SamplerId = _linearSampler,
+                TexelWidth = tw,
+                TexelHeight = th,
+                ContrastThreshold = _contrastThreshold,
+                RelativeThreshold = _relativeThreshold,
+                SubpixelBlending = _subpixelBlending,
+            }
+        );
+        cmdBuffer.Draw(3);
+    }
+
+    public override void AddToGraph(RenderGraph graph)
+    {
+        graph.AddPingPongGroup(
+            PingPongGroups.ColorF16,
+            SystemBufferNames.TextureColorF16A,
+            SystemBufferNames.TextureColorF16B
+        );
+
+        graph.AddPingPongPass(
+            RenderStage.Antialising,
+            nameof(FXAANode),
+            PingPongGroups.ColorF16,
+            extraInputs: [],
+            extraOutputs: []
+        );
     }
 }

@@ -12,8 +12,6 @@ using HelixToolkit.Nex.Material;
 using HelixToolkit.Nex.Maths;
 using HelixToolkit.Nex.Rendering;
 using HelixToolkit.Nex.Rendering.Components;
-using HelixToolkit.Nex.Rendering.PostEffects;
-using HelixToolkit.Nex.Rendering.RenderNodes;
 using HelixToolkit.Nex.Scene;
 using HelixToolkit.Nex.Shaders.Frag;
 using Microsoft.Extensions.Logging;
@@ -44,12 +42,6 @@ internal partial class TransparentDemo : IDisposable
     private readonly Framebuffer _imGuiFramebuffer = new();
     private readonly RenderPass _imGuiPass = new();
     private readonly Dependencies _imGuiDeps = new();
-
-    // Post Effects (no Bloom per requirement)
-    private readonly Fxaa _fxaa = new() { Enabled = false };
-    private readonly Smaa _smaa = new();
-    private readonly ToneMappingNode _toneMappingNode = new();
-    private readonly ShowFPS _showFPS = new();
 
     private Size _viewportSize = new(1, 1);
 
@@ -89,14 +81,6 @@ internal partial class TransparentDemo : IDisposable
             .Create(_context)
             .WithDefaultNodes(false)
             .RenderToCustomTarget(RenderSettings.IntermediateTargetFormat)
-            .WithPostEffects(effects =>
-            {
-                effects.AddEffect(_fxaa);
-                effects.AddEffect(_smaa);
-                // No bloom per requirement
-                effects.AddEffect(_showFPS);
-            })
-            .AddNode(_toneMappingNode)
             .Build();
 
         // --- Per-viewport state and scene data ---

@@ -56,7 +56,7 @@ public sealed class WireframePostEffect : PostEffect
     private readonly List<WireframeEntry> _entriesTransparent = [];
 
     public override string Name => nameof(WireframePostEffect);
-    public override Color DebugColor => Color.Chartreuse;
+    public override Color4 DebugColor => Color.Chartreuse;
 
     public override uint Priority => (uint)PostEffectPriority.Highlight;
 
