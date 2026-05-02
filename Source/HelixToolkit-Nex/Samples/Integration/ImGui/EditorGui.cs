@@ -3,7 +3,6 @@ using HelixToolkit.Nex.ECS;
 using HelixToolkit.Nex.Engine.Components;
 using HelixToolkit.Nex.Maths;
 using HelixToolkit.Nex.Rendering.Components;
-using HelixToolkit.Nex.Rendering.PostEffects;
 using HelixToolkit.Nex.Rendering.RenderNodes;
 using HelixToolkit.Nex.Scene;
 using HelixToolkit.Nex.Shaders;
@@ -385,7 +384,7 @@ internal partial class Editor
         Gui.Separator();
 
         // --- FXAA ---
-        if (Gui.CollapsingHeader("FXAA"))
+        if (_fxaa is not null && Gui.CollapsingHeader("FXAA"))
         {
             bool fxaaEnabled = _fxaa.Enabled;
             if (Gui.Checkbox("Enabled##FXAA", ref fxaaEnabled))
@@ -413,7 +412,7 @@ internal partial class Editor
         }
 
         // --- SMAA ---
-        if (Gui.CollapsingHeader("SMAA"))
+        if (_smaa is not null && Gui.CollapsingHeader("SMAA"))
         {
             bool smaaEnabled = _smaa.Enabled;
             if (Gui.Checkbox("Enabled##SMAA", ref smaaEnabled))
@@ -421,7 +420,7 @@ internal partial class Editor
 
             int smaaQuality = (int)_smaa.Quality;
             if (Gui.Combo("Quality##SMAA", ref smaaQuality, "Low\0Medium\0High\0Ultra\0"))
-                _smaa.Quality = (SmaaQuality)smaaQuality;
+                _smaa.Quality = (SMAAQuality)smaaQuality;
 
             float edge = _smaa.EdgeThreshold;
             if (Gui.SliderFloat("Edge Threshold##SMAA", ref edge, 0.001f, 0.5f))
@@ -429,7 +428,7 @@ internal partial class Editor
         }
 
         // --- Bloom ---
-        if (Gui.CollapsingHeader("Bloom"))
+        if (_bloom is not null && Gui.CollapsingHeader("Bloom"))
         {
             bool bloomEnabled = _bloom.Enabled;
             if (Gui.Checkbox("Enabled##Bloom", ref bloomEnabled))
@@ -501,7 +500,7 @@ internal partial class Editor
         }
 
         // --- Show FPS ---
-        if (Gui.CollapsingHeader("Show FPS"))
+        if (_showFPS is not null && Gui.CollapsingHeader("Show FPS"))
         {
             bool fpsEnabled = _showFPS.Enabled;
             if (Gui.Checkbox("Enabled##ShowFPS", ref fpsEnabled))

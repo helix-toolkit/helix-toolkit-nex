@@ -74,10 +74,9 @@ internal sealed class PickingDemo : IDisposable
             .WithDefaultNodes()
             .WithPostEffects(effects =>
             {
-                effects.AddEffect(new Smaa());
                 effects.AddEffect(new WireframePostEffect());
-                effects.AddEffect(new ShowFPS());
             })
+            .WithFPS()
             .Build();
 
         _renderContext = _engine.CreateRenderContext();

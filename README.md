@@ -35,9 +35,10 @@ Currently in development.
 - Engine architecture design. (In Progress)
   - Render Graph based rendering architecture. (Done)
   - WB Order independent transparency rendering. (Done)
-  - PostEffects:
-    - SMAA anti-aliasing. (Done)
-    - FXAA anti-aliasing. (Done)
+  - Anti-aliasing:
+      - SMAA anti-aliasing. (Done)
+      - FXAA anti-aliasing. (Done)
+  - Effects:
     - Bloom post-processing effect. (Done)
     - Object border highlighting effect. (Done) 
     - Wireframe rendering. (Done)

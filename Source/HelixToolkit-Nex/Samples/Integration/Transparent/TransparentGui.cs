@@ -127,38 +127,6 @@ internal partial class TransparentDemo
             Gui.Separator();
             Gui.Spacing();
 
-            // --- Post Effects ---
-            if (Gui.CollapsingHeader("Post Effects", ImGuiTreeNodeFlags.DefaultOpen))
-            {
-                var smaaEnabled = _smaa.Enabled;
-                if (Gui.Checkbox("SMAA Anti-Aliasing", ref smaaEnabled))
-                {
-                    _smaa.Enabled = smaaEnabled;
-                }
-
-                var fxaaEnabled = _fxaa.Enabled;
-                if (Gui.Checkbox("FXAA Anti-Aliasing", ref fxaaEnabled))
-                {
-                    _fxaa.Enabled = fxaaEnabled;
-                }
-
-                var tonemapEnabled = _toneMappingNode.Enabled;
-                if (Gui.Checkbox("Tone Mapping", ref tonemapEnabled))
-                {
-                    _toneMappingNode.Enabled = tonemapEnabled;
-                }
-
-                var showFps = _showFPS.Enabled;
-                if (Gui.Checkbox("Show FPS", ref showFps))
-                {
-                    _showFPS.Enabled = showFps;
-                }
-            }
-
-            Gui.Spacing();
-            Gui.Separator();
-            Gui.Spacing();
-
             // --- Presets ---
             if (Gui.CollapsingHeader("Presets"))
             {

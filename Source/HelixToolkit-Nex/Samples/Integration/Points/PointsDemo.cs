@@ -14,8 +14,6 @@ using HelixToolkit.Nex.Maths;
 using HelixToolkit.Nex.Rendering;
 using HelixToolkit.Nex.Rendering.Components;
 using HelixToolkit.Nex.Rendering.ComputeNodes;
-using HelixToolkit.Nex.Rendering.PostEffects;
-using HelixToolkit.Nex.Rendering.RenderNodes;
 using HelixToolkit.Nex.Scene;
 using HelixToolkit.Nex.Shaders;
 using Microsoft.Extensions.Logging;
@@ -68,10 +66,6 @@ internal sealed class PointsDemo : IDisposable
     // Custom point material types registered by this demo
     private string[] _materialTypes = [];
 
-    // Post effects
-    private readonly Smaa _smaa = new();
-    private readonly BorderHighlightPostEffect _borderHighlight = new();
-    private readonly ShowFPS _showFPS = new();
 
     private PointCullNode? _pointCullNode;
 
@@ -105,11 +99,7 @@ internal sealed class PointsDemo : IDisposable
         _engine = EngineBuilder
             .Create(_context)
             .WithDefaultNodes()
-            .WithPostEffects(effects =>
-            {
-                effects.AddEffect(_smaa);
-                effects.AddEffect(_showFPS);
-            })
+            .WithFPS()
             .RenderToCustomTarget(RenderSettings.IntermediateTargetFormat)
             .Build();
         _pointCullNode = _engine.GetRenderNode<PointCullNode>();
@@ -832,29 +822,6 @@ internal sealed class PointsDemo : IDisposable
                 }
                 Gui.PopID();
             }
-        }
-
-        Gui.Separator();
-
-        // --- Post effects ---
-        if (Gui.CollapsingHeader("Post Effects"))
-        {
-            bool smaaEnabled = _smaa.Enabled;
-            if (Gui.Checkbox("SMAA", ref smaaEnabled))
-                _smaa.Enabled = smaaEnabled;
-
-            var toneMappingNode = _engine!.GetRenderNode<ToneMappingNode>()!;
-            var tmEnabled = toneMappingNode.Enabled;
-            if (Gui.Checkbox("Tone Mapping", ref tmEnabled))
-                toneMappingNode.Enabled = tmEnabled;
-
-            bool bhEnabled = _borderHighlight.Enabled;
-            if (Gui.Checkbox("Border Highlight", ref bhEnabled))
-                _borderHighlight.Enabled = bhEnabled;
-
-            bool fpsEnabled = _showFPS.Enabled;
-            if (Gui.Checkbox("Show FPS", ref fpsEnabled))
-                _showFPS.Enabled = fpsEnabled;
         }
 
         Gui.Separator();

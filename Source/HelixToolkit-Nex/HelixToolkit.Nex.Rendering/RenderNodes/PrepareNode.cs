@@ -91,7 +91,7 @@ public class PrepareNode : RenderNode
         // has a valid source even when PostEffectsNode is absent from the graph.
         if (res.RenderContext.ResourceSet is { } resourceSet)
         {
-            resourceSet.Textures[SystemBufferNames.TextureColorF16Current] = resourceSet.Textures[
+            resourceSet.Textures[SystemBufferNames.TextureColorF16Target] = resourceSet.Textures[
                 SystemBufferNames.TextureColorF16A
             ];
         }
@@ -158,7 +158,7 @@ public class PrepareNode : RenderNode
             .AddFinalOutputTexture()
             // Register the stable current-color alias with no build function —
             // its handle is set at runtime by PostEffectsNode (or PrepareNode as a fallback).
-            .AddTexture(SystemBufferNames.TextureColorF16Current, null, dependsOnScreenSize: false)
+            .AddTexture(SystemBufferNames.TextureColorF16Target, null, dependsOnScreenSize: false)
             .AddPass(
                 RenderStage.Prepare,
                 nameof(PrepareNode),
@@ -169,7 +169,7 @@ public class PrepareNode : RenderNode
                     new(SystemBufferNames.TextureEntityId, ResourceType.Texture),
                     new(SystemBufferNames.TextureColorF16A, ResourceType.Texture),
                     new(SystemBufferNames.TextureColorF16B, ResourceType.Texture),
-                    new(SystemBufferNames.TextureColorF16Current, ResourceType.Texture),
+                    new(SystemBufferNames.TextureColorF16Target, ResourceType.Texture),
                     new(SystemBufferNames.BufferForwardPlusConstants, ResourceType.Buffer),
                 ]
             );

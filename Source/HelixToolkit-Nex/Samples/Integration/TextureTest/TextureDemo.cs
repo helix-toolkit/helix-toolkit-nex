@@ -11,7 +11,6 @@ using HelixToolkit.Nex.ImGui;
 using HelixToolkit.Nex.Material;
 using HelixToolkit.Nex.Maths;
 using HelixToolkit.Nex.Rendering;
-using HelixToolkit.Nex.Rendering.PostEffects;
 using HelixToolkit.Nex.Repository;
 using HelixToolkit.Nex.Scene;
 using HelixToolkit.Nex.Shaders.Frag;
@@ -220,10 +219,6 @@ internal sealed partial class TextureDemo : IDisposable
     private readonly RenderPass _imGuiPass = new();
     private readonly Dependencies _imGuiDeps = new();
 
-    // ---- Post effects ----
-    internal readonly Fxaa Fxaa = new() { Enabled = true };
-    internal readonly ShowFPS ShowFPS = new() { Enabled = true };
-
     // ---- Viewport ----
     private Size _viewportSize = new(1, 1);
 
@@ -276,11 +271,6 @@ internal sealed partial class TextureDemo : IDisposable
             .Create(_context)
             .WithDefaultNodes(false)
             .RenderToCustomTarget(Format.RGBA_F16)
-            .WithPostEffects(effects =>
-            {
-                effects.AddEffect(Fxaa);
-                effects.AddEffect(ShowFPS);
-            })
             .Build();
 
         _renderContext = _engine.CreateRenderContext();

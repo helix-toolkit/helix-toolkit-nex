@@ -172,7 +172,7 @@ public sealed class RenderContext(IServiceProvider services) : Initializable
     /// Gets the current Intermidiate Color Buffer texture handle, which is expected to be in R16G16B16A16_Float format.
     /// This texture is used for rendering the scene with high dynamic range (HDR) color precision.
     /// </summary>
-    public TextureHandle TextureColorF16Current => ResourceSet?.Textures[SystemBufferNames.TextureColorF16Current] ?? TextureHandle.Null;
+    public TextureHandle TextureColorF16Current => ResourceSet?.Textures[SystemBufferNames.TextureColorF16Target] ?? TextureHandle.Null;
 
     /// <summary>
     /// Initiates the rendering process for a new frame.
@@ -266,9 +266,16 @@ public sealed class RenderContext(IServiceProvider services) : Initializable
         return ResultCode.Ok;
     }
 
+    /// <summary>
+    /// Swap the current intermediate color buffer with the alternate buffer.
+    /// This is used to implement ping-pong rendering techniques,
+    /// where the output of one rendering pass is used as the input for the next pass without needing to copy data between textures.
+    /// The method checks the current target buffer and switches to the other one accordingly.
+    /// If the current target buffer is null, a warning is logged and no action is taken.
+    /// </summary>
     public void SwapIntermediateBuffers()
     {
-        var temp = ResourceSet.Textures[SystemBufferNames.TextureColorF16Current];
+        var temp = ResourceSet.Textures[SystemBufferNames.TextureColorF16Target];
         if (temp == TextureHandle.Null)
         {
             _logger.LogWarning("Current intermediate buffer is null. Cannot swap buffers.");
@@ -276,11 +283,11 @@ public sealed class RenderContext(IServiceProvider services) : Initializable
         }
         if (temp == ResourceSet.Textures[SystemBufferNames.TextureColorF16A])
         {
-            ResourceSet.Textures[SystemBufferNames.TextureColorF16Current] = ResourceSet.Textures[SystemBufferNames.TextureColorF16B];
+            ResourceSet.Textures[SystemBufferNames.TextureColorF16Target] = ResourceSet.Textures[SystemBufferNames.TextureColorF16B];
         }
         else
         {
-            ResourceSet.Textures[SystemBufferNames.TextureColorF16Current] = ResourceSet.Textures[SystemBufferNames.TextureColorF16A];
+            ResourceSet.Textures[SystemBufferNames.TextureColorF16Target] = ResourceSet.Textures[SystemBufferNames.TextureColorF16A];
         }
     }
 }

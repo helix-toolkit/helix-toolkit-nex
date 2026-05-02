@@ -13,8 +13,6 @@ using HelixToolkit.Nex.Maths;
 using HelixToolkit.Nex.Rendering;
 using HelixToolkit.Nex.Rendering.Components;
 using HelixToolkit.Nex.Rendering.ComputeNodes;
-using HelixToolkit.Nex.Rendering.PostEffects;
-using HelixToolkit.Nex.Rendering.RenderNodes;
 using HelixToolkit.Nex.Scene;
 using HelixToolkit.Nex.Shaders;
 using Microsoft.Extensions.Logging;
@@ -73,11 +71,6 @@ internal sealed class BillboardDemo : IDisposable
     private Vector3 _newPosition = new(0, -3, 0);
     private Vector4 _newColor = new(1f, 1f, 1f, 1f);
 
-    // Post effects
-    private readonly Smaa _smaa = new();
-    private readonly BorderHighlightPostEffect _borderHighlight = new();
-    private readonly ShowFPS _showFPS = new();
-
     private BillboardCullNode? _billboardCullNode;
 
     // Registered SDF material variant IDs
@@ -113,16 +106,12 @@ internal sealed class BillboardDemo : IDisposable
         _engine = EngineBuilder
             .Create(_context)
             .WithDefaultNodes()
+            .WithSMAA()
             .RenderToCustomTarget(RenderSettings.IntermediateTargetFormat)
-            .WithPostEffects(effects =>
-            {
-                effects.AddEffect(_smaa);
-                effects.AddEffect(_borderHighlight);
-                effects.AddEffect(_showFPS);
-            })
+            .WithFPS()
             .Build();
         _billboardCullNode = _engine.GetRenderNode<BillboardCullNode>();
-        _billboardCullNode.MinScreenSize = _minScreenSize;
+        _billboardCullNode!.MinScreenSize = _minScreenSize;
         _renderContext = _engine.CreateRenderContext();
         _renderContext.Initialize();
         _renderContext.ResourceSet.AddTexture(
@@ -196,7 +185,8 @@ internal sealed class BillboardDemo : IDisposable
 
         var textureRef = textureRepo.GetOrCreateFromStream(
             "SDFFont_Atlas",
-            pngStream, false,
+            pngStream,
+            false,
             "SDFFont_Atlas"
         );
         uint textureIndex = textureRef;
@@ -732,29 +722,6 @@ internal sealed class BillboardDemo : IDisposable
                 _newText = "New Text";
                 _newPosition.Y -= 2f; // Offset next default position downward
             }
-        }
-
-        Gui.Separator();
-
-        // --- Post Effects ---
-        if (Gui.CollapsingHeader("Post Effects"))
-        {
-            bool smaaEnabled = _smaa.Enabled;
-            if (Gui.Checkbox("SMAA", ref smaaEnabled))
-                _smaa.Enabled = smaaEnabled;
-
-            var toneMappingNode = _engine!.GetRenderNode<ToneMappingNode>()!;
-            var tmEnabled = toneMappingNode.Enabled;
-            if (Gui.Checkbox("Tone Mapping", ref tmEnabled))
-                toneMappingNode.Enabled = tmEnabled;
-
-            bool bhEnabled = _borderHighlight.Enabled;
-            if (Gui.Checkbox("Border Highlight", ref bhEnabled))
-                _borderHighlight.Enabled = bhEnabled;
-
-            bool fpsEnabled = _showFPS.Enabled;
-            if (Gui.Checkbox("Show FPS", ref fpsEnabled))
-                _showFPS.Enabled = fpsEnabled;
         }
 
         Gui.Separator();
