@@ -58,8 +58,8 @@ void main() {
     clipCenter.xy = snappedNDC * clipCenter.w;
 
     // Use snapped sizes to keep the texels 1:1 with pixels as much as possible
-    float pixelSizeX = floor(d.screenWidth) / screenDims.x;
-    float pixelSizeY = floor(d.screenHeight) / screenDims.y;
+    float pixelSizeX = max(round(d.screenWidth), 1.0) / screenDims.x;
+    float pixelSizeY = max(round(d.screenHeight), 1.0) / screenDims.y;
 
     vec2 uv = QUAD_UVS[gl_VertexIndex];
     clipCenter.xy += vec2(uv.x * pixelSizeX, uv.y * pixelSizeY) * clipCenter.w;
