@@ -1,6 +1,4 @@
-using System.Data.SqlTypes;
 using HelixToolkit.Nex.ECS.Utils;
-using HelixToolkit.Nex.Rendering;
 using HelixToolkit.Nex.Rendering.Components;
 
 namespace HelixToolkit.Nex.Engine.Data;
@@ -71,6 +69,7 @@ internal sealed class BillboardData(IContext context, World world) : Initializab
             return true;
         }
         using var t = _tracer.BeginScope(nameof(Update));
+        Context.WaitAll(false);
         Rebuild();
         _lastBufferUpdateTicks = _lastDataUpdateTicks;
         return true;
