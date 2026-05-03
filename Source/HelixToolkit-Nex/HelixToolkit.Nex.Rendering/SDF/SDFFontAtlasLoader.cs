@@ -1,7 +1,13 @@
-using System.Numerics;
 using System.Text.Json;
 
-namespace HelixToolkit.Nex.Rendering;
+namespace HelixToolkit.Nex.Rendering.SDF;
+
+public enum BuildinFontAtlas
+{
+    GoogleSansRegular,
+    RobotoSlabRegular,
+    MichromaRegular,
+}
 
 /// <summary>
 /// Loads an <see cref="SDFFontAtlasDescriptor"/> from the JSON format produced by
@@ -34,6 +40,12 @@ public static class SDFFontAtlasLoader
         int atlasWidth = atlas.GetProperty("width").GetInt32();
         int atlasHeight = atlas.GetProperty("height").GetInt32();
         float distanceRange = atlas.GetProperty("distanceRange").GetSingle();
+        float distanceRangeMiddle = atlas.TryGetProperty("distanceRangeMiddle", out var drmProp)
+            ? drmProp.GetSingle()
+            : 0f;
+        float glyphCellSize = atlas.TryGetProperty("size", out var sizeProp)
+            ? sizeProp.GetSingle()
+            : 96f;
         bool yOriginBottom =
             atlas.TryGetProperty("yOrigin", out var yOriginProp)
             && yOriginProp.GetString() == "bottom";
@@ -138,6 +150,8 @@ public static class SDFFontAtlasLoader
             TextureWidth = atlasWidth,
             TextureHeight = atlasHeight,
             SDFSpread = distanceRange,
+            DistanceRangeMiddle = distanceRangeMiddle,
+            GlyphCellSize = glyphCellSize,
             LineHeight = lineHeight,
             Glyphs = glyphs,
         };
@@ -187,9 +201,23 @@ public static class SDFFontAtlasLoader
     /// <param name="textureIndex">The bindless texture index for the loaded SDF atlas PNG.</param>
     /// <param name="samplerIndex">The bindless sampler index.</param>
     /// <returns>A ready-to-use <see cref="SDFFontAtlas"/>.</returns>
-    public static SDFFontAtlas LoadBuiltInAtlas(uint textureIndex, uint samplerIndex)
+    public static SDFFontAtlas LoadBuiltInAtlas(
+        BuildinFontAtlas altasType,
+        uint textureIndex,
+        uint samplerIndex
+    )
     {
-        var descriptor = LoadFromEmbeddedResource("Assets.sans-regular.json");
+        var name = altasType switch
+        {
+            BuildinFontAtlas.GoogleSansRegular => "Assets.google-sans-regular.json",
+            BuildinFontAtlas.RobotoSlabRegular => "Assets.robotoslab-sans-regular.json",
+            BuildinFontAtlas.MichromaRegular => "Assets.michroma-regular.json",
+            _ => throw new ArgumentOutOfRangeException(
+                nameof(altasType),
+                $"Unsupported atlas type: {altasType}"
+            ),
+        };
+        var descriptor = LoadFromEmbeddedResource(name);
         return new SDFFontAtlas(textureIndex, samplerIndex, descriptor);
     }
 }

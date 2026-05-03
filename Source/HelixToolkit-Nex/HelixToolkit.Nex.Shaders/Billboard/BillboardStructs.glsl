@@ -23,9 +23,9 @@ struct BillboardDrawData {
     float screenHeight;    // Projected height in pixels
     uint  textureIndex;    // Bindless texture index (0 = no texture)
     uint  samplerIndex;    // Bindless sampler index
-    uint  _pad0;           // Padding for vec4 alignment
-    uint  _pad1;           // Padding for vec4 alignment
-    uint  _pad2;           // Padding for vec4 alignment
+    uint  sdfAemrangePacked;    // packHalf2x16(aemrange) — precomputed MSDF em-range
+    uint  sdfAtlasSizePacked;   // (uint(height) << 16) | uint(width) — atlas dimensions
+    uint  sdfGlyphCellSizeBits; // floatBitsToUint(glyphCellSize) — glyph cell size
     vec4  uvRect;          // Texture atlas sub-region (u_min, v_min, u_max, v_max)
 };
 
@@ -61,13 +61,21 @@ struct BillboardExpandPC {
     uint     fixedSize;                 // Whether size is fixed in screen space (ignore perspective and use width/height as pixels)
     uint     worldId;                   // World ID for all billboards in this dispatch (used for GPU picking)
     uint     entityId;                  // Entity ID for all billboards in this dispatch
+
     uint     textureIndex;              // Bindless texture index (0 = no texture)
     uint     samplerIndex;              // Bindless sampler index
     uint     axisConstrained;           // Whether to use axis-constrained orientation (0 = screen-aligned, non-zero = axis-constrained)
-    uint     _padding0;                 // Padding for vec4 alignment
+    float    sdfGlyphCellSize;          // MSDF atlas glyph cell size in atlas pixels (msdf-atlas-gen size)
+
     vec4     color;                     // Uniform color for all billboards (overridden by per-billboard color if color.a > 0)
+
     vec3     constraintAxis;            // World-space axis for axis-constrained mode
-    uint     _padding1;                 // Padding for struct alignment
+    float    sdfDistanceRange;          // MSDF atlas distance range in atlas pixels (msdf-atlas-gen distanceRange)
+
+    float    sdfDistanceRangeMiddle;    // MSDF atlas distance range middle value (msdf-atlas-gen distanceRangeMiddle)
+    float    sdfAtlasWidth;             // MSDF atlas texture width in pixels
+    float    sdfAtlasHeight;            // MSDF atlas texture height in pixels
+    uint     _padding;                 // Padding for vec4 alignment
 };
 
 /// Push constants for the billboard render vertex/fragment shaders.

@@ -1,6 +1,6 @@
 using System.Globalization;
 
-namespace HelixToolkit.Nex.Rendering;
+namespace HelixToolkit.Nex.Rendering.SDF;
 
 /// <summary>
 /// Configuration for SDF font material variants with optional outline and drop shadow effects.
@@ -82,22 +82,19 @@ public struct SDFFontMaterialConfig
     }
 
     /// <summary>
-    /// Emits the shared MSDF preamble GLSL containing atlas parameter const declarations,
+    /// Emits the shared MSDF preamble GLSL containing atlas parameter accessor calls,
     /// the em-space threshold conversion, UV retrieval, and screen-pixel-scale computation.
     /// </summary>
     private static string EmitMsdfPreamble(float edgeThreshold)
     {
-        const float AemrangeMin = -0.0208333f;
-        const float AemrangeMax = 0.0208333f;
-
-        float thresholdEm = AemrangeMax + (AemrangeMin - AemrangeMax) * edgeThreshold;
+        string edgeThresholdStr = FormatFloat(edgeThreshold);
 
         return $"""
-                    const vec2 aemrange = vec2(-0.0208333, 0.0208333);
-                    const vec2 atlas_size = vec2(604.0, 604.0);
-                    const float glyph_cell_size = 96.0;
-                    const float threshold_em = {FormatFloat(thresholdEm)};
+                    vec2 aemrange = getSdfAemrange();
+                    vec2 atlas_size = getSdfAtlasSize();
+                    float glyph_cell_size = getSdfGlyphCellSize();
                     const float SUPERSAMPLE_THRESHOLD = 20.0;
+                    float threshold_em = mix(aemrange[1], aemrange[0], {edgeThresholdStr});
 
                     vec2 uv = getUV();
                     float screen_px_scale = max(length(atlas_size * fwidth(uv)), 1.0);

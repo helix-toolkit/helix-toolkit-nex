@@ -13,6 +13,7 @@ using HelixToolkit.Nex.Maths;
 using HelixToolkit.Nex.Rendering;
 using HelixToolkit.Nex.Rendering.Components;
 using HelixToolkit.Nex.Rendering.ComputeNodes;
+using HelixToolkit.Nex.Rendering.SDF;
 using HelixToolkit.Nex.Scene;
 using HelixToolkit.Nex.Shaders;
 using Microsoft.Extensions.Logging;
@@ -173,38 +174,19 @@ internal sealed class BillboardDemo : IDisposable
 
     private void LoadFontAtlas()
     {
-        var textureRepo = _engine!.ResourceManager.TextureRepository;
-        var samplerRepo = _engine.ResourceManager.SamplerRepository;
-
-        // Load the embedded SDF atlas PNG as a GPU texture
-        var assembly = typeof(SDFFontAtlasLoader).Assembly;
-        var pngResourceName = $"{assembly.GetName().Name}.Assets.sans-regular.png";
-        using var pngStream =
-            assembly.GetManifestResourceStream(pngResourceName)
-            ?? throw new FileNotFoundException($"Embedded resource '{pngResourceName}' not found.");
-
-        var textureRef = textureRepo.GetOrCreateFromStream(
-            "SDFFont_Atlas",
-            pngStream,
-            false,
-            "SDFFont_Atlas"
+        var fontAtlasRepo = _engine!.ResourceManager.FontAtlasRepository;
+        _atlas = fontAtlasRepo.GetOrCreateBuiltIn(
+            BuildinFontAtlas.GoogleSansRegular,
+            _engine.ResourceManager.TextureRepository,
+            _engine.ResourceManager.SamplerRepository
         );
-        uint textureIndex = textureRef;
-
-        // Create a linear sampler for SDF text (smooth interpolation)
-        var samplerRef = samplerRepo.GetOrCreate(SamplerStateDesc.LinearClampNoMipmap);
-        uint samplerIndex = samplerRef;
-
-        // Load the built-in atlas descriptor and create the SDFFontAtlas
-        _atlas = SDFFontAtlasLoader.LoadBuiltInAtlas(textureIndex, samplerIndex);
 
         _logger.LogInformation(
-            "Loaded SDF font atlas: {W}x{H}, {G} glyphs, texture={T}, sampler={S}",
+            "Loaded SDF font atlas: {W}x{H}, texture={T}, sampler={S}",
             _atlas.TextureWidth,
             _atlas.TextureHeight,
-            _atlas.TextureWidth, // glyph count not directly exposed, use texture size as proxy
-            textureIndex,
-            samplerIndex
+            _atlas.TextureIndex,
+            _atlas.SamplerIndex
         );
     }
 
@@ -312,23 +294,20 @@ internal sealed class BillboardDemo : IDisposable
         if (_atlas is null)
             return new Node(_worldDataProvider!.World) { Name = $"Text_{text}" };
 
-        var geo = TextLayoutHelper.LayoutGeometry(text, _atlas, fontSize, origin, isDynamic: true);
+        var comp = _engine!.CreateBillboard(
+            BuildinFontAtlas.MichromaRegular,
+            text,
+            fontSize,
+            origin,
+            color,
+            materialName,
+            _fixedSize
+        );
 
         var world = _worldDataProvider!.World;
         var node = new Node(world) { Name = $"Text_{text}" };
         _root!.AddChild(node);
-        node.Entity.Set(
-            new BillboardComponent
-            {
-                BillboardGeometry = geo,
-                Color = color,
-                TextureIndex = _atlas.TextureIndex,
-                SamplerIndex = _atlas.SamplerIndex,
-                BillboardMaterialName = materialName,
-                Hitable = true,
-                FixedSize = _fixedSize,
-            }
-        );
+        node.Entity.Set(comp);
 
         return node;
     }

@@ -10,6 +10,9 @@ layout(location = 4) in flat vec2  v_entityId;
 layout(location = 5) in flat uint  v_textureIndex;
 layout(location = 6) in flat uint  v_samplerIndex;
 layout(location = 7) in flat vec3  v_fragWorldPos;
+layout(location = 8) in flat uint  v_sdfAemrangePacked;
+layout(location = 9) in flat uint  v_sdfAtlasSizePacked;
+layout(location = 10) in flat uint v_sdfGlyphCellSizeBits;
 
 layout(location = 0) out vec4 outColor;
 layout(location = 1) out vec2 outEntityId;
@@ -44,6 +47,18 @@ float getBillboardWidth() {
 
 float getBillboardHeight() {
     return v_screenHeight;
+}
+
+vec2 getSdfAemrange() {
+    return unpackHalf2x16(v_sdfAemrangePacked);
+}
+
+vec2 getSdfAtlasSize() {
+    return vec2(float(v_sdfAtlasSizePacked & 0xFFFFu), float(v_sdfAtlasSizePacked >> 16));
+}
+
+float getSdfGlyphCellSize() {
+    return uintBitsToFloat(v_sdfGlyphCellSizeBits);
 }
 
 FPConstants fpConst = FPBuffer(pc.value.fpConstAddress).fpConstants;

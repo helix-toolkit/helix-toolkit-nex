@@ -53,6 +53,34 @@ public struct BillboardComponent
     public Vector3 ConstraintAxis { get; set; } = new Vector3(0, 1, 0);
 
     /// <summary>
+    /// Gets or sets the MSDF atlas distance range in atlas pixels.
+    /// Corresponds to msdf-atlas-gen's distanceRange parameter. Default is 4.0.
+    /// </summary>
+    public float SdfDistanceRange { get; set; } = 4f;
+
+    /// <summary>
+    /// Gets or sets the MSDF atlas distance range middle value.
+    /// Corresponds to msdf-atlas-gen's distanceRangeMiddle parameter. Default is 0.
+    /// </summary>
+    public float SdfDistanceRangeMiddle { get; set; } = 0f;
+
+    /// <summary>
+    /// Gets or sets the MSDF atlas glyph cell size in atlas pixels.
+    /// Corresponds to msdf-atlas-gen's size parameter. Default is 96.
+    /// </summary>
+    public float SdfGlyphCellSize { get; set; } = 96f;
+
+    /// <summary>
+    /// Gets or sets the MSDF atlas texture width in pixels. Default is 604.
+    /// </summary>
+    public float SdfAtlasWidth { get; set; } = 604f;
+
+    /// <summary>
+    /// Gets or sets the MSDF atlas texture height in pixels. Default is 604.
+    /// </summary>
+    public float SdfAtlasHeight { get; set; } = 604f;
+
+    /// <summary>
     /// Whether the billboard can be selected via GPU picking.
     /// </summary>
     public bool Hitable { get; set; } = true;

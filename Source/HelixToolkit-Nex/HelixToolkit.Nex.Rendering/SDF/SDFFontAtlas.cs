@@ -1,6 +1,4 @@
-using System.Numerics;
-
-namespace HelixToolkit.Nex.Rendering;
+namespace HelixToolkit.Nex.Rendering.SDF;
 
 /// <summary>
 /// Per-glyph metrics loaded from the font atlas descriptor.
@@ -67,6 +65,17 @@ public sealed class SDFFontAtlasDescriptor
     public required float SDFSpread { get; init; }
 
     /// <summary>
+    /// Gets the distance range middle value from msdf-atlas-gen.
+    /// This determines where the glyph edge sits in the distance field encoding.
+    /// </summary>
+    public required float DistanceRangeMiddle { get; init; }
+
+    /// <summary>
+    /// Gets the glyph cell size in atlas pixels from msdf-atlas-gen.
+    /// </summary>
+    public required float GlyphCellSize { get; init; }
+
+    /// <summary>
     /// Gets the line height value for vertical text advancement.
     /// </summary>
     public required float LineHeight { get; init; }
@@ -110,6 +119,16 @@ public class SDFFontAtlas
     public float SDFSpread { get; }
 
     /// <summary>
+    /// Gets the distance range middle value from msdf-atlas-gen.
+    /// </summary>
+    public float DistanceRangeMiddle { get; }
+
+    /// <summary>
+    /// Gets the glyph cell size in atlas pixels from msdf-atlas-gen.
+    /// </summary>
+    public float GlyphCellSize { get; }
+
+    /// <summary>
     /// Gets the line height value for vertical text advancement.
     /// </summary>
     public float LineHeight { get; }
@@ -130,6 +149,8 @@ public class SDFFontAtlas
         TextureWidth = descriptor.TextureWidth;
         TextureHeight = descriptor.TextureHeight;
         SDFSpread = descriptor.SDFSpread;
+        DistanceRangeMiddle = descriptor.DistanceRangeMiddle;
+        GlyphCellSize = descriptor.GlyphCellSize;
         LineHeight = descriptor.LineHeight;
 
         _glyphs = new Dictionary<char, GlyphMetrics>(descriptor.Glyphs.Count);
