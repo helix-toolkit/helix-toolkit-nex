@@ -102,40 +102,50 @@ public static class BillboardMaterialRegistry
         // SDFFont billboard material (ID = 1) — MSDF-based text rendering
         // Following the approach from https://www.redblobgames.com/articles/sdf-fonts/
         // Converts texel to distance_em, then uses screen_px_scale for anti-aliasing.
+        // Applies 2×2 supersampling for small text and premultiplied alpha.
         Register(
             new BillboardMaterialRegistration
             {
                 TypeId = 1,
                 Name = "SDFFont",
                 OutputColorImplementation = """
-                    // Atlas parameters — must match msdf-atlas-gen output
-                    // aemrange = [(distanceRangeMiddle - distanceRange/2) / size,
-                    //             (distanceRangeMiddle + distanceRange/2) / size]
-                    // For distanceRange=4, distanceRangeMiddle=0, size=96:
                     const vec2 aemrange = vec2(-0.0208333, 0.0208333);
+                    const vec2 atlas_size = vec2(604.0, 604.0);
+                    const float glyph_cell_size = 96.0;
                     const float threshold_em = 0.0;
-                    const vec2 atlas_size = vec2(604, 604);
+                    const float SUPERSAMPLE_THRESHOLD = 20.0;
 
                     vec2 uv = getUV();
-                    vec3 s = textureBindless2D(getTextureId(), getSamplerId(), uv).rgb;
-                    float texel = max(min(s.r, s.g), min(max(s.r, s.g), s.b)); // median for MSDF
 
-                    // Convert texel (0-1) to signed distance in em units
-                    // texel=0 → aemrange[1] (outside), texel=1 → aemrange[0] (inside)
-                    float distance_em = mix(aemrange[1], aemrange[0], texel);
+                    float screen_px_scale = max(length(atlas_size * fwidth(uv)), 1.0);
+                    float inverse_width = screen_px_scale * glyph_cell_size;
 
-                    // Screen-space anti-aliasing width
-                    // screen_px_scale: how many screen pixels correspond to one atlas texel
-                    vec2 gradient = fwidth(uv);
-                    vec2 product = atlas_size * gradient;
-                    float screen_px_scale = max(0.5 * dot(atlas_size, gradient) / max(product.x * product.y, 1e-6), 1.0);
+                    float opacity;
+                    float maxDim = max(getBillboardWidth(), getBillboardHeight());
 
-                    // antialias_per_em: atlas.size (96) gives 1 screen pixel of AA per em
-                    float inverse_width = screen_px_scale * 96.0;
-                    float opacity = clamp((threshold_em - distance_em) * inverse_width + 0.5, 0.0, 1.0);
+                    if (maxDim < SUPERSAMPLE_THRESHOLD) {
+                        vec2 step = fwidth(uv) * 0.25;
+                        float sum = 0.0;
+                        for (int dy = -1; dy <= 1; dy += 2) {
+                            for (int dx = -1; dx <= 1; dx += 2) {
+                                vec2 suv = uv + vec2(float(dx), float(dy)) * step;
+                                vec3 s = textureBindless2D(getTextureId(), getSamplerId(), suv).rgb;
+                                float texel = max(min(s.r, s.g), min(max(s.r, s.g), s.b));
+                                float dist_em = mix(aemrange[1], aemrange[0], texel);
+                                sum += clamp((threshold_em - dist_em) * inverse_width + 0.5, 0.0, 1.0);
+                            }
+                        }
+                        opacity = sum * 0.25;
+                    } else {
+                        vec3 s = textureBindless2D(getTextureId(), getSamplerId(), uv).rgb;
+                        float texel = max(min(s.r, s.g), min(max(s.r, s.g), s.b));
+                        float dist_em = mix(aemrange[1], aemrange[0], texel);
+                        opacity = clamp((threshold_em - dist_em) * inverse_width + 0.5, 0.0, 1.0);
+                    }
 
                     vec4 color = getColor();
                     color.a *= opacity;
+                    color.rgb *= color.a;
                     return color;
                 """,
                 BlendConfig = new ColorAttachment

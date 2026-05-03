@@ -81,135 +81,250 @@ public struct SDFFontMaterialConfig
         return BillboardMaterialRegistry.Register(name, glsl);
     }
 
-    // MSDF median helper — inlined in each variant to avoid cross-function dependencies
-    private const string MsdfMedian = """
-                vec3 _s = textureBindless2D(getTextureId(), getSamplerId(), getUV()).rgb;
-                float dist = max(min(_s.r, _s.g), min(max(_s.r, _s.g), _s.b));
-        """;
+    /// <summary>
+    /// Emits the shared MSDF preamble GLSL containing atlas parameter const declarations,
+    /// the em-space threshold conversion, UV retrieval, and screen-pixel-scale computation.
+    /// </summary>
+    private static string EmitMsdfPreamble(float edgeThreshold)
+    {
+        const float AemrangeMin = -0.0208333f;
+        const float AemrangeMax = 0.0208333f;
 
-    private static string MsdfMedianAt(string uvExpr) =>
-        $"""
-                    vec3 _ss = textureBindless2D(getTextureId(), getSamplerId(), {uvExpr}).rgb;
-                    float shadowDist = max(min(_ss.r, _ss.g), min(max(_ss.r, _ss.g), _ss.b));
+        float thresholdEm = AemrangeMax + (AemrangeMin - AemrangeMax) * edgeThreshold;
+
+        return $"""
+                    const vec2 aemrange = vec2(-0.0208333, 0.0208333);
+                    const vec2 atlas_size = vec2(604.0, 604.0);
+                    const float glyph_cell_size = 96.0;
+                    const float threshold_em = {FormatFloat(thresholdEm)};
+                    const float SUPERSAMPLE_THRESHOLD = 20.0;
+
+                    vec2 uv = getUV();
+                    float screen_px_scale = max(length(atlas_size * fwidth(uv)), 1.0);
+                    float inverse_width = screen_px_scale * glyph_cell_size;
             """;
+    }
 
     private static string GenerateBasicFillGlsl(SDFFontMaterialConfig config)
     {
-        string threshold = FormatFloat(config.EdgeThreshold);
+        string preamble = EmitMsdfPreamble(config.EdgeThreshold);
 
         return $$"""
-                vec3 _s = textureBindless2D(getTextureId(), getSamplerId(), getUV()).rgb;
-                float dist = max(min(_s.r, _s.g), min(max(_s.r, _s.g), _s.b));
-                float edgeWidth = fwidth(dist);
-                float threshold = {{threshold}};
+            {{preamble}}
 
-                float fillAlpha = smoothstep(threshold - edgeWidth, threshold + edgeWidth, dist);
-                vec4 color = getColor();
-                color.a *= fillAlpha;
-                return color;
+                    float opacity;
+                    float maxDim = max(getBillboardWidth(), getBillboardHeight());
+
+                    if (maxDim < SUPERSAMPLE_THRESHOLD) {
+                        vec2 step = fwidth(uv) * 0.25;
+                        float sum = 0.0;
+                        for (int dy = -1; dy <= 1; dy += 2) {
+                            for (int dx = -1; dx <= 1; dx += 2) {
+                                vec2 suv = uv + vec2(float(dx), float(dy)) * step;
+                                vec3 s = textureBindless2D(getTextureId(), getSamplerId(), suv).rgb;
+                                float texel = max(min(s.r, s.g), min(max(s.r, s.g), s.b));
+                                float dist_em = mix(aemrange[1], aemrange[0], texel);
+                                sum += clamp((threshold_em - dist_em) * inverse_width + 0.5, 0.0, 1.0);
+                            }
+                        }
+                        opacity = sum * 0.25;
+                    } else {
+                        vec3 s = textureBindless2D(getTextureId(), getSamplerId(), uv).rgb;
+                        float texel = max(min(s.r, s.g), min(max(s.r, s.g), s.b));
+                        float dist_em = mix(aemrange[1], aemrange[0], texel);
+                        opacity = clamp((threshold_em - dist_em) * inverse_width + 0.5, 0.0, 1.0);
+                    }
+
+                    vec4 color = getColor();
+                    color.a *= opacity;
+                    color.rgb *= color.a;
+                    return color;
             """;
     }
 
     private static string GenerateOutlineFillGlsl(SDFFontMaterialConfig config)
     {
-        string threshold = FormatFloat(config.EdgeThreshold);
-        string outlineWidth = FormatFloat(config.OutlineWidth);
-        string outlineColor = FormatColor4(config.OutlineColor);
+        string preamble = EmitMsdfPreamble(config.EdgeThreshold);
+        string outlineWidthStr = FormatFloat(config.OutlineWidth);
+        string outlineColorStr = FormatColor4(config.OutlineColor);
 
         return $$"""
-                vec3 _s = textureBindless2D(getTextureId(), getSamplerId(), getUV()).rgb;
-                float dist = max(min(_s.r, _s.g), min(max(_s.r, _s.g), _s.b));
-                float edgeWidth = fwidth(dist);
-                float threshold = {{threshold}};
-                float outlineWidth = {{outlineWidth}};
-                vec4 outlineColor = vec4({{outlineColor}});
+            {{preamble}}
+                    const float outlineWidth = {{outlineWidthStr}};
+                    const vec4 outlineColor = vec4({{outlineColorStr}});
+                    float outlineOuter_em = threshold_em + outlineWidth;
 
-                float outlineOuter = threshold - outlineWidth;
-                float outlineAlpha = smoothstep(outlineOuter - edgeWidth, outlineOuter + edgeWidth, dist);
-                float fillAlpha = smoothstep(threshold - edgeWidth, threshold + edgeWidth, dist);
+                    float fillAlpha;
+                    float outlineAlpha;
+                    float maxDim = max(getBillboardWidth(), getBillboardHeight());
 
-                vec4 fill = getColor();
-                fill.a *= fillAlpha;
-                vec4 outline = outlineColor;
-                outline.a *= outlineAlpha;
-                vec4 result = mix(outline, fill, fillAlpha);
-                return result;
+                    if (maxDim < SUPERSAMPLE_THRESHOLD) {
+                        vec2 step = fwidth(uv) * 0.25;
+                        float fillSum = 0.0;
+                        float outlineSum = 0.0;
+                        for (int dy = -1; dy <= 1; dy += 2) {
+                            for (int dx = -1; dx <= 1; dx += 2) {
+                                vec2 suv = uv + vec2(float(dx), float(dy)) * step;
+                                vec3 s = textureBindless2D(getTextureId(), getSamplerId(), suv).rgb;
+                                float texel = max(min(s.r, s.g), min(max(s.r, s.g), s.b));
+                                float dist_em = mix(aemrange[1], aemrange[0], texel);
+                                fillSum += clamp((threshold_em - dist_em) * inverse_width + 0.5, 0.0, 1.0);
+                                outlineSum += clamp((outlineOuter_em - dist_em) * inverse_width + 0.5, 0.0, 1.0);
+                            }
+                        }
+                        fillAlpha = fillSum * 0.25;
+                        outlineAlpha = outlineSum * 0.25;
+                    } else {
+                        vec3 s = textureBindless2D(getTextureId(), getSamplerId(), uv).rgb;
+                        float texel = max(min(s.r, s.g), min(max(s.r, s.g), s.b));
+                        float dist_em = mix(aemrange[1], aemrange[0], texel);
+                        fillAlpha = clamp((threshold_em - dist_em) * inverse_width + 0.5, 0.0, 1.0);
+                        outlineAlpha = clamp((outlineOuter_em - dist_em) * inverse_width + 0.5, 0.0, 1.0);
+                    }
+
+                    vec4 fill = getColor();
+                    fill.a *= fillAlpha;
+                    vec4 outline = outlineColor;
+                    outline.a *= outlineAlpha;
+                    vec4 result = mix(outline, fill, fillAlpha);
+                    result.rgb *= result.a;
+                    return result;
             """;
     }
 
     private static string GenerateShadowFillGlsl(SDFFontMaterialConfig config)
     {
-        string threshold = FormatFloat(config.EdgeThreshold);
-        string shadowColor = FormatColor4(config.ShadowColor);
-        string shadowOffset = FormatVector2(config.ShadowOffset);
-        string shadowSoftness = FormatFloat(config.ShadowSoftness);
+        string preamble = EmitMsdfPreamble(config.EdgeThreshold);
+        string shadowColorStr = FormatColor4(config.ShadowColor);
+        string shadowOffsetStr = FormatVector2(config.ShadowOffset);
+        string shadowSoftnessStr = FormatFloat(config.ShadowSoftness);
 
         return $$"""
-                vec2 uv = getUV();
-                vec3 _s = textureBindless2D(getTextureId(), getSamplerId(), uv).rgb;
-                float dist = max(min(_s.r, _s.g), min(max(_s.r, _s.g), _s.b));
-                float edgeWidth = fwidth(dist);
-                float threshold = {{threshold}};
-                vec4 shadowColor = vec4({{shadowColor}});
-                vec2 shadowOffset = vec2({{shadowOffset}});
-                float shadowSoftness = {{shadowSoftness}};
+            {{preamble}}
+                    const vec4 shadowColor = vec4({{shadowColorStr}});
+                    const vec2 shadowOffset = vec2({{shadowOffsetStr}});
+                    const float shadowSoftness = {{shadowSoftnessStr}};
 
-                vec3 _ss = textureBindless2D(getTextureId(), getSamplerId(), uv - shadowOffset).rgb;
-                float shadowDist = max(min(_ss.r, _ss.g), min(max(_ss.r, _ss.g), _ss.b));
-                float shadowAlpha = smoothstep(threshold - shadowSoftness - edgeWidth,
-                                                threshold + edgeWidth, shadowDist);
-                vec4 shadow = shadowColor;
-                shadow.a *= shadowAlpha;
+                    float fillAlpha;
+                    float shadowAlpha;
+                    float maxDim = max(getBillboardWidth(), getBillboardHeight());
 
-                float fillAlpha = smoothstep(threshold - edgeWidth, threshold + edgeWidth, dist);
-                vec4 fill = getColor();
-                fill.a *= fillAlpha;
+                    if (maxDim < SUPERSAMPLE_THRESHOLD) {
+                        vec2 step = fwidth(uv) * 0.25;
+                        float fillSum = 0.0;
+                        float shadowSum = 0.0;
+                        for (int dy = -1; dy <= 1; dy += 2) {
+                            for (int dx = -1; dx <= 1; dx += 2) {
+                                vec2 suv = uv + vec2(float(dx), float(dy)) * step;
+                                vec3 s = textureBindless2D(getTextureId(), getSamplerId(), suv).rgb;
+                                float texel = max(min(s.r, s.g), min(max(s.r, s.g), s.b));
+                                float dist_em = mix(aemrange[1], aemrange[0], texel);
+                                fillSum += clamp((threshold_em - dist_em) * inverse_width + 0.5, 0.0, 1.0);
 
-                vec4 result = mix(shadow, fill, fillAlpha);
-                return result;
+                                vec2 shadowUv = suv - shadowOffset;
+                                vec3 ss = textureBindless2D(getTextureId(), getSamplerId(), shadowUv).rgb;
+                                float shadowTexel = max(min(ss.r, ss.g), min(max(ss.r, ss.g), ss.b));
+                                float shadowDist_em = mix(aemrange[1], aemrange[0], shadowTexel);
+                                shadowSum += clamp((threshold_em + shadowSoftness - shadowDist_em) * inverse_width + 0.5, 0.0, 1.0);
+                            }
+                        }
+                        fillAlpha = fillSum * 0.25;
+                        shadowAlpha = shadowSum * 0.25;
+                    } else {
+                        vec3 s = textureBindless2D(getTextureId(), getSamplerId(), uv).rgb;
+                        float texel = max(min(s.r, s.g), min(max(s.r, s.g), s.b));
+                        float dist_em = mix(aemrange[1], aemrange[0], texel);
+                        fillAlpha = clamp((threshold_em - dist_em) * inverse_width + 0.5, 0.0, 1.0);
+
+                        vec2 shadowUv = uv - shadowOffset;
+                        vec3 ss = textureBindless2D(getTextureId(), getSamplerId(), shadowUv).rgb;
+                        float shadowTexel = max(min(ss.r, ss.g), min(max(ss.r, ss.g), ss.b));
+                        float shadowDist_em = mix(aemrange[1], aemrange[0], shadowTexel);
+                        shadowAlpha = clamp((threshold_em + shadowSoftness - shadowDist_em) * inverse_width + 0.5, 0.0, 1.0);
+                    }
+
+                    vec4 fill = getColor();
+                    fill.a *= fillAlpha;
+                    vec4 shadow = shadowColor;
+                    shadow.a *= shadowAlpha;
+                    vec4 result = mix(shadow, fill, fillAlpha);
+                    result.rgb *= result.a;
+                    return result;
             """;
     }
 
     private static string GenerateShadowOutlineFillGlsl(SDFFontMaterialConfig config)
     {
-        string threshold = FormatFloat(config.EdgeThreshold);
-        string outlineWidth = FormatFloat(config.OutlineWidth);
-        string outlineColor = FormatColor4(config.OutlineColor);
-        string shadowColor = FormatColor4(config.ShadowColor);
-        string shadowOffset = FormatVector2(config.ShadowOffset);
-        string shadowSoftness = FormatFloat(config.ShadowSoftness);
+        string preamble = EmitMsdfPreamble(config.EdgeThreshold);
+        string outlineWidthStr = FormatFloat(config.OutlineWidth);
+        string outlineColorStr = FormatColor4(config.OutlineColor);
+        string shadowColorStr = FormatColor4(config.ShadowColor);
+        string shadowOffsetStr = FormatVector2(config.ShadowOffset);
+        string shadowSoftnessStr = FormatFloat(config.ShadowSoftness);
 
         return $$"""
-                vec2 uv = getUV();
-                vec3 _s = textureBindless2D(getTextureId(), getSamplerId(), uv).rgb;
-                float dist = max(min(_s.r, _s.g), min(max(_s.r, _s.g), _s.b));
-                float edgeWidth = fwidth(dist);
-                float threshold = {{threshold}};
-                float outlineWidth = {{outlineWidth}};
-                vec4 outlineColor = vec4({{outlineColor}});
-                vec4 shadowColor = vec4({{shadowColor}});
-                vec2 shadowOffset = vec2({{shadowOffset}});
-                float shadowSoftness = {{shadowSoftness}};
+            {{preamble}}
+                    const float outlineWidth = {{outlineWidthStr}};
+                    const vec4 outlineColor = vec4({{outlineColorStr}});
+                    const vec4 shadowColor = vec4({{shadowColorStr}});
+                    const vec2 shadowOffset = vec2({{shadowOffsetStr}});
+                    const float shadowSoftness = {{shadowSoftnessStr}};
+                    float outlineOuter_em = threshold_em + outlineWidth;
 
-                vec3 _ss = textureBindless2D(getTextureId(), getSamplerId(), uv - shadowOffset).rgb;
-                float shadowDist = max(min(_ss.r, _ss.g), min(max(_ss.r, _ss.g), _ss.b));
-                float shadowAlpha = smoothstep(threshold - shadowSoftness - edgeWidth,
-                                                threshold + edgeWidth, shadowDist);
-                vec4 shadow = shadowColor;
-                shadow.a *= shadowAlpha;
+                    float fillAlpha;
+                    float outlineAlpha;
+                    float shadowAlpha;
+                    float maxDim = max(getBillboardWidth(), getBillboardHeight());
 
-                float outlineOuter = threshold - outlineWidth;
-                float outlineAlpha = smoothstep(outlineOuter - edgeWidth, outlineOuter + edgeWidth, dist);
-                vec4 outline = outlineColor;
-                outline.a *= outlineAlpha;
+                    if (maxDim < SUPERSAMPLE_THRESHOLD) {
+                        vec2 step = fwidth(uv) * 0.25;
+                        float fillSum = 0.0;
+                        float outlineSum = 0.0;
+                        float shadowSum = 0.0;
+                        for (int dy = -1; dy <= 1; dy += 2) {
+                            for (int dx = -1; dx <= 1; dx += 2) {
+                                vec2 suv = uv + vec2(float(dx), float(dy)) * step;
+                                vec3 s = textureBindless2D(getTextureId(), getSamplerId(), suv).rgb;
+                                float texel = max(min(s.r, s.g), min(max(s.r, s.g), s.b));
+                                float dist_em = mix(aemrange[1], aemrange[0], texel);
+                                fillSum += clamp((threshold_em - dist_em) * inverse_width + 0.5, 0.0, 1.0);
+                                outlineSum += clamp((outlineOuter_em - dist_em) * inverse_width + 0.5, 0.0, 1.0);
 
-                float fillAlpha = smoothstep(threshold - edgeWidth, threshold + edgeWidth, dist);
-                vec4 fill = getColor();
-                fill.a *= fillAlpha;
+                                vec2 shadowUv = suv - shadowOffset;
+                                vec3 ss = textureBindless2D(getTextureId(), getSamplerId(), shadowUv).rgb;
+                                float shadowTexel = max(min(ss.r, ss.g), min(max(ss.r, ss.g), ss.b));
+                                float shadowDist_em = mix(aemrange[1], aemrange[0], shadowTexel);
+                                shadowSum += clamp((threshold_em + shadowSoftness - shadowDist_em) * inverse_width + 0.5, 0.0, 1.0);
+                            }
+                        }
+                        fillAlpha = fillSum * 0.25;
+                        outlineAlpha = outlineSum * 0.25;
+                        shadowAlpha = shadowSum * 0.25;
+                    } else {
+                        vec3 s = textureBindless2D(getTextureId(), getSamplerId(), uv).rgb;
+                        float texel = max(min(s.r, s.g), min(max(s.r, s.g), s.b));
+                        float dist_em = mix(aemrange[1], aemrange[0], texel);
+                        fillAlpha = clamp((threshold_em - dist_em) * inverse_width + 0.5, 0.0, 1.0);
+                        outlineAlpha = clamp((outlineOuter_em - dist_em) * inverse_width + 0.5, 0.0, 1.0);
 
-                vec4 result = mix(shadow, outline, outlineAlpha);
-                result = mix(result, fill, fillAlpha);
-                return result;
+                        vec2 shadowUv = uv - shadowOffset;
+                        vec3 ss = textureBindless2D(getTextureId(), getSamplerId(), shadowUv).rgb;
+                        float shadowTexel = max(min(ss.r, ss.g), min(max(ss.r, ss.g), ss.b));
+                        float shadowDist_em = mix(aemrange[1], aemrange[0], shadowTexel);
+                        shadowAlpha = clamp((threshold_em + shadowSoftness - shadowDist_em) * inverse_width + 0.5, 0.0, 1.0);
+                    }
+
+                    vec4 fill = getColor();
+                    fill.a *= fillAlpha;
+                    vec4 outline = outlineColor;
+                    outline.a *= outlineAlpha;
+                    vec4 shadow = shadowColor;
+                    shadow.a *= shadowAlpha;
+
+                    vec4 result = mix(shadow, outline, outlineAlpha);
+                    result = mix(result, fill, fillAlpha);
+                    result.rgb *= result.a;
+                    return result;
             """;
     }
 
