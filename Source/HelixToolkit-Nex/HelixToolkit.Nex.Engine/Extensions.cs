@@ -34,7 +34,8 @@ public static class BillboardExtensions
         float fontSize,
         Vector3 origin,
         Color4 color,
-        string materialName,
+        BillboardAnchor anchor = BillboardAnchor.Center,
+        string materialName = "SDFFont",
         bool fixedSize = true,
         bool isDynamic = false
     )
@@ -51,6 +52,7 @@ public static class BillboardExtensions
             fontSize,
             origin,
             color,
+            anchor,
             materialName: materialName,
             fixedSize: fixedSize,
             isDynamic: isDynamic
@@ -64,7 +66,8 @@ public static class BillboardExtensions
         float fontSize,
         Vector3 origin,
         Color4 color,
-        string materialName,
+        BillboardAnchor anchor = BillboardAnchor.Center,
+        string materialName = "SDFFont",
         bool fixedSize = true,
         bool isDynamic = false
     )
@@ -78,6 +81,7 @@ public static class BillboardExtensions
                 fontSize,
                 origin,
                 color,
+                anchor,
                 materialName: materialName,
                 fixedSize: fixedSize,
                 isDynamic: isDynamic

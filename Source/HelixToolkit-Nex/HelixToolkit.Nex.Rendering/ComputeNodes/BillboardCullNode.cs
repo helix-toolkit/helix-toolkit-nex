@@ -1,4 +1,5 @@
 using HelixToolkit.Nex.Rendering.Components;
+using HelixToolkit.Nex.Scene;
 
 namespace HelixToolkit.Nex.Rendering.ComputeNodes;
 
@@ -137,6 +138,7 @@ public sealed class BillboardCullNode : ComputeNode
                 {
                     continue;
                 }
+                ref var worldTransform = ref entity.Get<WorldTransform>();
                 var geo = comp.BillboardGeometry!;
                 var expandPC = new BillboardExpandPC
                 {
@@ -158,6 +160,7 @@ public sealed class BillboardCullNode : ComputeNode
                     SdfGlyphCellSize = comp.SdfGlyphCellSize,
                     SdfAtlasWidth = comp.SdfAtlasWidth,
                     SdfAtlasHeight = comp.SdfAtlasHeight,
+                    WorldTransform = worldTransform.Value,
                 };
                 res.CmdBuffer.PushConstants(expandPC);
                 uint groupCount = ((uint)comp.BillboardCount + 63) / 64;

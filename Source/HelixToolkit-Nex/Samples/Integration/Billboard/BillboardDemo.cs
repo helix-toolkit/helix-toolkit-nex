@@ -220,6 +220,7 @@ internal sealed class BillboardDemo : IDisposable
             new Vector3(0, 5, 0),
             new Color4(1f, 1f, 1f, 1f),
             _globalFontSize,
+            BuildinFontAtlas.GoogleSansRegular,
             "SDFFont",
             editable: false
         );
@@ -230,6 +231,7 @@ internal sealed class BillboardDemo : IDisposable
             new Vector3(0, 3, 0),
             new Color4(1f, 1f, 1f, 1f),
             _globalFontSize,
+            BuildinFontAtlas.RobotoSlabRegular,
             "SDFFont",
             editable: false
         );
@@ -240,6 +242,7 @@ internal sealed class BillboardDemo : IDisposable
             new Vector3(0, 1, 0),
             new Color4(0f, 1f, 1f, 1f),
             _globalFontSize,
+            BuildinFontAtlas.MichromaRegular,
             "SDFFont",
             editable: false
         );
@@ -250,6 +253,7 @@ internal sealed class BillboardDemo : IDisposable
             new Vector3(0, -1, 0),
             new Color4(1f, 1f, 0f, 1f),
             _globalFontSize,
+            BuildinFontAtlas.GoogleSansRegular,
             "SDFFont",
             editable: true
         );
@@ -260,11 +264,12 @@ internal sealed class BillboardDemo : IDisposable
         Vector3 position,
         Color4 color,
         float fontSize,
+        BuildinFontAtlas fontType,
         string materialName,
         bool editable
     )
     {
-        var node = CreateTextEntity(text, fontSize, position, color, materialName);
+        var node = CreateTextEntity(text, fontSize, position, color, fontType, materialName);
         _textEntries.Add(
             new TextEntry
             {
@@ -288,6 +293,7 @@ internal sealed class BillboardDemo : IDisposable
         float fontSize,
         Vector3 origin,
         Color4 color,
+        BuildinFontAtlas fontType,
         string materialName
     )
     {
@@ -295,11 +301,12 @@ internal sealed class BillboardDemo : IDisposable
             return new Node(_worldDataProvider!.World) { Name = $"Text_{text}" };
 
         var comp = _engine!.CreateBillboard(
-            BuildinFontAtlas.MichromaRegular,
+            fontType,
             text,
             fontSize,
-            origin,
+            Vector3.Zero,
             color,
+            BillboardAnchor.Center,
             materialName,
             _fixedSize
         );
@@ -308,7 +315,7 @@ internal sealed class BillboardDemo : IDisposable
         var node = new Node(world) { Name = $"Text_{text}" };
         _root!.AddChild(node);
         node.Entity.Set(comp);
-
+        node.Transform.Translation = origin;
         return node;
     }
 
@@ -346,6 +353,7 @@ internal sealed class BillboardDemo : IDisposable
             entry.FontSize,
             entry.Position,
             entry.Color,
+            entry.FontType,
             entry.MaterialName
         );
     }
@@ -695,6 +703,7 @@ internal sealed class BillboardDemo : IDisposable
                     _newPosition,
                     new Color4(_newColor.X, _newColor.Y, _newColor.Z, _newColor.W),
                     _globalFontSize,
+                    BuildinFontAtlas.GoogleSansRegular,
                     "SDFFont",
                     editable: true
                 );
@@ -851,4 +860,6 @@ internal sealed class TextEntry
     public Node? Node { get; set; }
     public bool Editable { get; set; }
     public bool Enabled { get; set; } = true;
+
+    public BuildinFontAtlas FontType { set; get; }
 }

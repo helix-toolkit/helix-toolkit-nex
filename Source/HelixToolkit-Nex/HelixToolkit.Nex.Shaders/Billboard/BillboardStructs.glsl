@@ -16,7 +16,7 @@ struct BillboardVertex {
 /// Per-visible-billboard data written by the compute shader and read by the vertex shader.
 @code_gen
 struct BillboardDrawData {
-    vec3  worldPos;        // World-space centre
+    vec3  worldPos;        // World-space anchor position (shared for all glyphs in a text string)
     float screenWidth;     // Projected width in pixels
     vec4  color;           // RGBA color
     vec2  packedEntityId;  // Packed entity ID for GPU picking
@@ -27,6 +27,8 @@ struct BillboardDrawData {
     uint  sdfAtlasSizePacked;   // (uint(height) << 16) | uint(width) — atlas dimensions
     uint  sdfGlyphCellSizeBits; // floatBitsToUint(glyphCellSize) — glyph cell size
     vec4  uvRect;          // Texture atlas sub-region (u_min, v_min, u_max, v_max)
+    vec2  pixelOffset;     // Per-glyph pixel offset from anchor position (in screen pixels)
+    vec2  _drawPadding;    // Padding for vec4 alignment
 };
 
 /// Indirect draw arguments for DrawIndirect (triangle strip, 4 verts, N instances).
@@ -76,6 +78,8 @@ struct BillboardExpandPC {
     float    sdfAtlasWidth;             // MSDF atlas texture width in pixels
     float    sdfAtlasHeight;            // MSDF atlas texture height in pixels
     uint     _padding;                 // Padding for vec4 alignment
+
+    mat4     worldTransform;            // Entity's WorldTransform matrix (identity for non-text billboards)
 };
 
 /// Push constants for the billboard render vertex/fragment shaders.
