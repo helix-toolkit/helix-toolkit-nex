@@ -1,4 +1,6 @@
 using System.Numerics;
+using HelixToolkit.Nex.Rendering.Components;
+using HelixToolkit.Nex.Rendering.SDF;
 
 namespace HelixToolkit.Nex.Rendering;
 
@@ -168,5 +170,47 @@ public static class TextLayoutHelper
         }
 
         return geo;
+    }
+
+    /// <summary>
+    /// Creates a <see cref="BillboardComponent"/> with text layout and all SDF atlas parameters set
+    /// from the given <see cref="SDFFontAtlas"/>.
+    /// </summary>
+    /// <param name="text">The text to lay out.</param>
+    /// <param name="atlas">The SDF font atlas containing glyph metrics and atlas parameters.</param>
+    /// <param name="fontSize">Desired font size in world-space units.</param>
+    /// <param name="origin">World-space origin position for the first glyph.</param>
+    /// <param name="color">The text color.</param>
+    /// <param name="materialName">The billboard material name (e.g., "SDFFont").</param>
+    /// <param name="fixedSize">Whether billboard sizes are fixed screen-space pixels.</param>
+    /// <param name="isDynamic">Whether the billboard geometry should use dynamic GPU buffers.</param>
+    /// <returns>A fully-configured <see cref="BillboardComponent"/>.</returns>
+    public static BillboardComponent CreateTextBillboard(
+        string text,
+        SDFFontAtlas atlas,
+        float fontSize,
+        Vector3 origin,
+        Color4 color,
+        string? materialName = "SDFFont",
+        bool fixedSize = false,
+        bool isDynamic = false
+    )
+    {
+        var geo = LayoutGeometry(text, atlas, fontSize, origin, isDynamic);
+        return new BillboardComponent
+        {
+            BillboardGeometry = geo,
+            Color = color,
+            TextureIndex = atlas.TextureIndex,
+            SamplerIndex = atlas.SamplerIndex,
+            BillboardMaterialName = materialName,
+            Hitable = true,
+            FixedSize = fixedSize,
+            SdfDistanceRange = atlas.SDFSpread,
+            SdfDistanceRangeMiddle = atlas.DistanceRangeMiddle,
+            SdfGlyphCellSize = atlas.GlyphCellSize,
+            SdfAtlasWidth = (float)atlas.TextureWidth,
+            SdfAtlasHeight = (float)atlas.TextureHeight,
+        };
     }
 }

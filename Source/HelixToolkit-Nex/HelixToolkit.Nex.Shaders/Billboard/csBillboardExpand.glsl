@@ -94,5 +94,14 @@ void main() {
     d.textureIndex   = pc.value.textureIndex;
     d.samplerIndex   = pc.value.samplerIndex;
     d.uvRect         = uvRect;
+
+    // --- Precompute and pack SDF atlas parameters ---
+    float halfRange = pc.value.sdfDistanceRange * 0.5;
+    float aemrangeMin = (pc.value.sdfDistanceRangeMiddle - halfRange) / pc.value.sdfGlyphCellSize;
+    float aemrangeMax = (pc.value.sdfDistanceRangeMiddle + halfRange) / pc.value.sdfGlyphCellSize;
+    d.sdfAemrangePacked    = packHalf2x16(vec2(aemrangeMin, aemrangeMax));
+    d.sdfAtlasSizePacked   = (uint(pc.value.sdfAtlasHeight) << 16) | uint(pc.value.sdfAtlasWidth);
+    d.sdfGlyphCellSizeBits = floatBitsToUint(pc.value.sdfGlyphCellSize);
+
     outBuf.data[slot] = d;
 }

@@ -109,9 +109,9 @@ public static class BillboardMaterialRegistry
                 TypeId = 1,
                 Name = "SDFFont",
                 OutputColorImplementation = """
-                    const vec2 aemrange = vec2(-0.0208333, 0.0208333);
-                    const vec2 atlas_size = vec2(604.0, 604.0);
-                    const float glyph_cell_size = 96.0;
+                    vec2 aemrange = getSdfAemrange();
+                    vec2 atlas_size = getSdfAtlasSize();
+                    float glyph_cell_size = getSdfGlyphCellSize();
                     const float threshold_em = 0.0;
                     const float SUPERSAMPLE_THRESHOLD = 20.0;
 
