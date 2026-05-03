@@ -81,6 +81,13 @@ public struct BillboardComponent
     public float SdfAtlasHeight { get; set; } = 604f;
 
     /// <summary>
+    /// Gets or sets the anchor point for text billboard placement.
+    /// Controls where the entity's world position maps to within the text bounding rectangle.
+    /// Defaults to <see cref="BillboardAnchor.BottomLeft"/>.
+    /// </summary>
+    public BillboardAnchor Anchor { get; set; } = BillboardAnchor.BottomLeft;
+
+    /// <summary>
     /// Whether the billboard can be selected via GPU picking.
     /// </summary>
     public bool Hitable { get; set; } = true;

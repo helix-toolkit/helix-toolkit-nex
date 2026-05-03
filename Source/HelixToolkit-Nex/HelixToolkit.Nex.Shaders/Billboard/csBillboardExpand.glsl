@@ -41,15 +41,19 @@ void main() {
     IndirectArgsBuffer       cmdBuf = IndirectArgsBuffer(pc.value.indirectArgsAddress);
     BillboardDrawDataBuffer  outBuf = BillboardDrawDataBuffer(pc.value.drawDataAddress);
 
-    vec4 p = vec4(v.position.xyz, 1);
+    // Transform the anchor point (origin) to world space.
+    // For text billboards, the anchor is at local (0,0,0); for non-text billboards
+    // with identity worldTransform, this equals (0,0,0) and glyph positions pass through.
+    vec4 anchorWorld = pc.value.worldTransform * vec4(0.0, 0.0, 0.0, 1.0);
 
     // Use per-billboard color if alpha > 0, otherwise use uniform color from push constants
     vec4 color = v.color.a > 0.0 ? v.color : pc.value.color;
 
     vec4 uvRect = v.uvRect;
 
-    // --- Frustum cull (clip-space) ---
-    vec4 clip = args.viewProjection * p;
+    // --- Frustum cull using anchor world position (not per-glyph) ---
+    // All glyphs in a text string share the same cull decision based on the anchor.
+    vec4 clip = args.viewProjection * anchorWorld;
     float w = clip.w;
     // Behind camera (reversed-Z: w < 0 means behind near plane)
     if (w <= 0.0) return;
@@ -58,20 +62,35 @@ void main() {
     vec4 clipAbs = abs(clip);
     if (clipAbs.x > w + padding || clipAbs.y > w + padding) return;
 
-    // --- Compute screen-space size ---
+    // --- Compute screen-space size using anchor distance (shared across all glyphs) ---
     float screenWidth;
     float screenHeight;
+    float dist = distance(args.cameraPosition, anchorWorld.xyz);
+    float projFactor = args.screenHeight / (2.0 * tan(args.fovY * 0.5));
     if (pc.value.fixedSize != 0u) {
         // Fixed-size mode: width/height are already in pixels, no perspective projection.
         screenWidth = width;
         screenHeight = height;
     } else {
         // World-space mode: project world-space dimensions to pixels.
+        // Use anchor distance so all glyphs in a text string get consistent sizing.
         // screenSize = (worldSize / dist) * (screenHeight / (2 * tan(fovY/2)))
-        float dist = distance(args.cameraPosition, p.xyz);
-        float projFactor = args.screenHeight / (2.0 * tan(args.fovY * 0.5));
         screenWidth = (width / max(dist, 0.001)) * projFactor;
         screenHeight = (height / max(dist, 0.001)) * projFactor;
+    }
+
+    // --- Compute per-glyph pixel offset from anchor ---
+    // The local offset (v.position.xyz) is in the text's local coordinate system.
+    // Convert it to a pixel offset so the vertex shader can apply it after pixel-snapping the anchor.
+    vec3 localOffset = v.position.xyz;
+    vec2 pixelOff;
+    if (pc.value.fixedSize != 0u) {
+        // Fixed-size: local offsets are already in pixel units
+        pixelOff = localOffset.xy;
+    } else {
+        // World-space: project local offset to pixels using the same projection factor
+        float pixelsPerUnit = projFactor / max(dist, 0.001);
+        pixelOff = localOffset.xy * pixelsPerUnit;
     }
 
     // Screen-size cull
@@ -86,7 +105,7 @@ void main() {
 
     // --- Write draw data ---
     BillboardDrawData d;
-    d.worldPos       = p.xyz;
+    d.worldPos       = anchorWorld.xyz;
     d.screenWidth    = screenWidth;
     d.color          = color;
     d.packedEntityId = packedId;
@@ -94,6 +113,8 @@ void main() {
     d.textureIndex   = pc.value.textureIndex;
     d.samplerIndex   = pc.value.samplerIndex;
     d.uvRect         = uvRect;
+    d.pixelOffset    = pixelOff;
+    d._drawPadding   = vec2(0.0);
 
     // --- Precompute and pack SDF atlas parameters ---
     float halfRange = pc.value.sdfDistanceRange * 0.5;
