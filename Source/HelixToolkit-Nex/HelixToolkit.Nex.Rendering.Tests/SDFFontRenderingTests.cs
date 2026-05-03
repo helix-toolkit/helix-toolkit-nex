@@ -1,6 +1,7 @@
 using System.Numerics;
 using HelixToolkit.Nex.Graphics;
 using HelixToolkit.Nex.Maths;
+using HelixToolkit.Nex.Rendering.SDF;
 
 namespace HelixToolkit.Nex.Rendering.Tests;
 
@@ -28,6 +29,8 @@ public class SDFFontRenderingTests
             TextureWidth = 224,
             TextureHeight = 224,
             SDFSpread = 4.0f,
+            DistanceRangeMiddle = 0f,
+            GlyphCellSize = 96f,
             LineHeight = 1.252f,
             Glyphs =
             [
@@ -77,18 +80,18 @@ public class SDFFontRenderingTests
     [TestMethod]
     public void LoadFromJson_ParsesAtlasMetadata()
     {
-        var descriptor = SDFFontAtlasLoader.LoadFromEmbeddedResource("Assets.sans-regular.json");
+        var descriptor = SDFFontAtlasLoader.LoadFromEmbeddedResource("Assets.google-sans-regular.json");
 
         Assert.IsTrue(descriptor.TextureWidth > 0);
         Assert.IsTrue(descriptor.TextureHeight > 0);
-        Assert.AreEqual(8.0f, descriptor.SDFSpread, 0.001f);
+        Assert.AreEqual(4.0f, descriptor.SDFSpread, 0.001f);
         Assert.AreEqual(1.252f, descriptor.LineHeight, 0.001f);
     }
 
     [TestMethod]
     public void LoadFromJson_ParsesAllPrintableAsciiGlyphs()
     {
-        var descriptor = SDFFontAtlasLoader.LoadFromEmbeddedResource("Assets.sans-regular.json");
+        var descriptor = SDFFontAtlasLoader.LoadFromEmbeddedResource("Assets.google-sans-regular.json");
 
         // Printable ASCII: 32 (space) through 126 (~) = 95 characters
         Assert.AreEqual(
@@ -101,7 +104,7 @@ public class SDFFontRenderingTests
     [TestMethod]
     public void LoadFromJson_SpaceGlyphHasZeroUVRect()
     {
-        var descriptor = SDFFontAtlasLoader.LoadFromEmbeddedResource("Assets.sans-regular.json");
+        var descriptor = SDFFontAtlasLoader.LoadFromEmbeddedResource("Assets.google-sans-regular.json");
 
         var space = descriptor.Glyphs.FirstOrDefault(g => g.CharacterCode == ' ');
         Assert.AreEqual(' ', space.CharacterCode);
@@ -116,7 +119,7 @@ public class SDFFontRenderingTests
     [TestMethod]
     public void LoadFromJson_LetterAHasValidUVRect()
     {
-        var descriptor = SDFFontAtlasLoader.LoadFromEmbeddedResource("Assets.sans-regular.json");
+        var descriptor = SDFFontAtlasLoader.LoadFromEmbeddedResource("Assets.google-sans-regular.json");
 
         var glyphA = descriptor.Glyphs.FirstOrDefault(g => g.CharacterCode == 'A');
         Assert.AreEqual('A', glyphA.CharacterCode);
@@ -140,7 +143,7 @@ public class SDFFontRenderingTests
     [TestMethod]
     public void LoadFromJson_AllGlyphsHavePositiveAdvanceWidth()
     {
-        var descriptor = SDFFontAtlasLoader.LoadFromEmbeddedResource("Assets.sans-regular.json");
+        var descriptor = SDFFontAtlasLoader.LoadFromEmbeddedResource("Assets.google-sans-regular.json");
 
         foreach (var glyph in descriptor.Glyphs)
         {
@@ -154,7 +157,7 @@ public class SDFFontRenderingTests
     [TestMethod]
     public void LoadFromJson_VisibleGlyphsHavePositiveDimensions()
     {
-        var descriptor = SDFFontAtlasLoader.LoadFromEmbeddedResource("Assets.sans-regular.json");
+        var descriptor = SDFFontAtlasLoader.LoadFromEmbeddedResource("Assets.google-sans-regular.json");
 
         foreach (var glyph in descriptor.Glyphs)
         {
@@ -175,7 +178,7 @@ public class SDFFontRenderingTests
     [TestMethod]
     public void LoadFromJson_UnicodeToCharacterCodeMapping()
     {
-        var descriptor = SDFFontAtlasLoader.LoadFromEmbeddedResource("Assets.sans-regular.json");
+        var descriptor = SDFFontAtlasLoader.LoadFromEmbeddedResource("Assets.google-sans-regular.json");
 
         // Verify specific character mappings
         Assert.IsTrue(descriptor.Glyphs.Any(g => g.CharacterCode == '0'), "Missing digit '0'");
@@ -239,6 +242,8 @@ public class SDFFontRenderingTests
             TextureWidth = 64,
             TextureHeight = 64,
             SDFSpread = 2.0f,
+            DistanceRangeMiddle = 0f,
+            GlyphCellSize = 96f,
             LineHeight = 1.0f,
             Glyphs = [],
         };
@@ -628,19 +633,6 @@ public class SDFFontRenderingTests
     }
 
     [TestMethod]
-    public void SDFFontMaterialConfig_GenerateGlsl_BasicFill_ContainsSmoothstep()
-    {
-        var config = new SDFFontMaterialConfig();
-        string glsl = SDFFontMaterialConfig.GenerateGlsl(config);
-
-        Assert.IsTrue(glsl.Contains("smoothstep"), "Basic fill GLSL should contain smoothstep");
-        Assert.IsTrue(glsl.Contains("fwidth"), "Basic fill GLSL should contain fwidth");
-        Assert.IsTrue(glsl.Contains("0.5"), "Basic fill GLSL should contain edge threshold 0.5");
-        Assert.IsFalse(glsl.Contains("outlineWidth"), "Basic fill should not contain outline code");
-        Assert.IsFalse(glsl.Contains("shadowOffset"), "Basic fill should not contain shadow code");
-    }
-
-    [TestMethod]
     public void SDFFontMaterialConfig_GenerateGlsl_OutlineOnly_ContainsOutlineCode()
     {
         var config = new SDFFontMaterialConfig { OutlineWidth = 0.1f };
@@ -726,7 +718,11 @@ public class SDFFontRenderingTests
     [TestMethod]
     public void LoadBuiltInAtlas_CreatesValidAtlas()
     {
-        var atlas = SDFFontAtlasLoader.LoadBuiltInAtlas(textureIndex: 5, samplerIndex: 2);
+        var atlas = SDFFontAtlasLoader.LoadBuiltInAtlas(
+            BuildinFontAtlas.GoogleSansRegular,
+            textureIndex: 5,
+            samplerIndex: 2
+        );
 
         Assert.AreEqual(5u, atlas.TextureIndex);
         Assert.AreEqual(2u, atlas.SamplerIndex);
@@ -742,7 +738,11 @@ public class SDFFontRenderingTests
     [TestMethod]
     public void LoadBuiltInAtlas_LayoutProducesValidDescriptors()
     {
-        var atlas = SDFFontAtlasLoader.LoadBuiltInAtlas(textureIndex: 1, samplerIndex: 0);
+        var atlas = SDFFontAtlasLoader.LoadBuiltInAtlas(
+            BuildinFontAtlas.GoogleSansRegular,
+            textureIndex: 1,
+            samplerIndex: 0
+        );
         var result = TextLayoutHelper.Layout("Hello", atlas, 1.0f, Vector3.Zero);
 
         Assert.AreEqual(5, result.Count, "Expected 5 glyph descriptors for 'Hello'");

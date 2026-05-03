@@ -153,6 +153,11 @@ public sealed class BillboardCullNode : ComputeNode
                     AxisConstrained = comp.AxisConstrained ? 1u : 0,
                     ConstraintAxis = comp.ConstraintAxis,
                     Color = comp.Color,
+                    SdfDistanceRange = comp.SdfDistanceRange,
+                    SdfDistanceRangeMiddle = comp.SdfDistanceRangeMiddle,
+                    SdfGlyphCellSize = comp.SdfGlyphCellSize,
+                    SdfAtlasWidth = comp.SdfAtlasWidth,
+                    SdfAtlasHeight = comp.SdfAtlasHeight,
                 };
                 res.CmdBuffer.PushConstants(expandPC);
                 uint groupCount = ((uint)comp.BillboardCount + 63) / 64;
@@ -177,8 +182,5 @@ public sealed class BillboardCullNode : ComputeNode
         );
     }
 
-    protected override void OnSetupRender(in RenderResources res)
-    {
-
-    }
+    protected override void OnSetupRender(in RenderResources res) { }
 }

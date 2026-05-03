@@ -23,13 +23,13 @@ public enum RenderStage : uint
     /// </summary>
     Antialising,
 
-    /// <summary>Transparent geometry: WBOIT render + composite, alpha-blended passes, etc.</summary>
-    Transparent,
-
     /// <summary>
     /// Particle rendering.
     /// </summary>
     Particle,
+
+    /// <summary>Transparent geometry: WBOIT render + composite, alpha-blended passes, etc.</summary>
+    Transparent,
 
     /// <summary>Post processing effects.</summary>
     PostProcess,
