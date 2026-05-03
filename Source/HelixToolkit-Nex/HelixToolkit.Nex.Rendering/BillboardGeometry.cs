@@ -90,6 +90,23 @@ public class BillboardGeometry : IDisposable
     }
 
     /// <summary>
+    /// Applies a position offset to all billboard instances.
+    /// Adds the given offset to the xyz components of each vertex's Position, preserving w.
+    /// </summary>
+    /// <param name="offset">The offset to add to each billboard position.</param>
+    public void ApplyPositionOffset(Vector3 offset)
+    {
+        var offset4 = new Vector4(offset, 0f);
+        for (int i = 0; i < Vertices.Count; i++)
+        {
+            var v = Vertices[i];
+            v.Position += offset4;
+            Vertices[i] = v;
+        }
+        _dirty = true;
+    }
+
+    /// <summary>
     /// Removes all billboard instances.
     /// </summary>
     public void Clear()
