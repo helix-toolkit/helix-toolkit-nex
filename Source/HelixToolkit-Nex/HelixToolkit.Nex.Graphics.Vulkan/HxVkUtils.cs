@@ -311,13 +311,6 @@ internal class HxVkUtils
             instanceLayers.AddRange(nvidia);
         }
 
-        List<VkUtf8String> renderDoc = [
-            "{VK_LAYER_RENDERDOC_Capture}"u8,
-        ];
-        if (ValidateLayers(availableLayers, renderDoc))
-        {
-            instanceLayers.AddRange(renderDoc);
-        }
         // The preferred validation layer is "VK_LAYER_KHRONOS_validation"
         List<VkUtf8String> validationLayers =
         [
