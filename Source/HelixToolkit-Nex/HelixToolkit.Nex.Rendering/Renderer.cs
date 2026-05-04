@@ -4,6 +4,22 @@ public class Renderer(IServiceProvider serviceProvider) : Initializable
 {
     private static readonly ILogger _logger = LogManager.Create<Renderer>();
     private readonly Dictionary<string, RenderNode> _renderers = [];
+    private readonly FastList<RenderStage> _renderSequence = [
+        RenderStage.Prepare,
+        RenderStage.SubmitFlag,
+        RenderStage.Opaque,
+        RenderStage.Antialising,
+        RenderStage.Particle,
+        RenderStage.Transparent,
+        RenderStage.SubmitFlag,
+        RenderStage.PostProcess,
+        RenderStage.Bloom,
+        RenderStage.Billboard,
+        RenderStage.ToneMap,
+        RenderStage.Overlay,
+        RenderStage.Output,
+        ];
+
     public IServiceProvider Services { get; } = serviceProvider;
     public int Width { get; private set; }
     public int Height { get; private set; }
@@ -98,7 +114,16 @@ public class Renderer(IServiceProvider serviceProvider) : Initializable
             return cmdBuf;
         }
         context.BeginFrame();
-        graph.Execute(context, cmdBuf, _renderers);
+        foreach (var stage in _renderSequence)
+        {
+            if (stage == RenderStage.SubmitFlag)
+            {
+                context.Context.Submit(cmdBuf);
+                cmdBuf = context.Context.AcquireCommandBuffer();
+                continue;
+            }
+            graph.Execute(context, cmdBuf, _renderers, stage);
+        }
         context.EndFrame();
         return cmdBuf;
     }

@@ -140,7 +140,7 @@ public sealed class DepthPassNode() : RenderNode
         graph
             .AddBuffer(SystemBufferNames.BufferPBRProperties, null)
             .AddPass(
-                RenderStage.Opaque,
+                RenderStage.Prepare,
                 nameof(DepthPassNode),
                 inputs:
                 [

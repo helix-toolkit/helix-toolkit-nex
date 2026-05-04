@@ -117,7 +117,7 @@ public class Engine : Initializable
             Config.Services.GetService<IResourceManager>() ?? new ResourceManager(Config.Services);
 
         Renderer = new Renderer(Config.Services);
-        RenderGraph = new RenderGraph(Config.Services);
+        RenderGraph = new RenderGraph();
 
         // Initialization order matters: Renderer → RenderGraph.
         // Teardown runs in reverse order.
