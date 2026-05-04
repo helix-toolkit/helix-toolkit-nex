@@ -22,7 +22,7 @@ layout(push_constant) uniform PushConstants {
 } pc;
 
 // ACES Filmic Tone Mapping
-vec3 ACESFilm(vec3 x) {
+vec3 ACESFilm(in vec3 x) {
     const float a = 2.51f;
     const float b = 0.03f;
     const float c = 2.43f;
@@ -32,7 +32,7 @@ vec3 ACESFilm(vec3 x) {
 }
 
 // Uncharted 2 Tone Mapping
-vec3 Uncharted2ToneMap(vec3 x) {
+vec3 Uncharted2ToneMap(in vec3 x) {
     const float A = 0.15;
     const float B = 0.50;
     const float C = 0.10;
@@ -40,6 +40,12 @@ vec3 Uncharted2ToneMap(vec3 x) {
     const float E = 0.02;
     const float F = 0.30;
     return ((x * (A * x + C * B) + D * E) / (x * (A * x + B) + D * F)) - E / F;
+}
+
+vec3 Reinhard(in vec3 x) {
+    float luminance = dot(x, vec3(0.2126, 0.7152, 0.0722));
+    float mappedLuminance = luminance / (1.0 + luminance);
+    return x * (mappedLuminance / luminance);
 }
 
 void main() {
@@ -54,23 +60,24 @@ void main() {
     hdrColor *= pc.value.exposure;
     
     // Tone mapping
-    vec3 mapped;
-    if (pc.value.tonemapMode == 0u) {
-        // ACES (best for most cases)
-        mapped = ACESFilm(hdrColor.rgb);
-    } else if (pc.value.tonemapMode == 1u) {
-        // Reinhard
-        mapped = hdrColor.rgb / (hdrColor.rgb + vec3(1.0));
-    } else {
-        // Uncharted 2
-        const float exposureBias = 2.0;
-        vec3 curr = Uncharted2ToneMap(hdrColor.rgb * exposureBias);
-        vec3 whiteScale = 1.0 / Uncharted2ToneMap(vec3(11.2));
-        mapped = curr * whiteScale;
+    vec3 mapped = hdrColor.rgb;
+    switch(pc.value.tonemapMode) {
+        case 0u:
+            mapped = ACESFilm(hdrColor.rgb);
+            break;
+        case 1u:
+            mapped = Reinhard(hdrColor.rgb);
+            break;
+        case 2u:
+            const float exposureBias = 2.0;
+            vec3 curr = Uncharted2ToneMap(hdrColor.rgb * exposureBias);
+            vec3 whiteScale = 1.0 / Uncharted2ToneMap(vec3(11.2));
+            mapped = curr * whiteScale;
+            break;
     }
     if (pc.value.gammaEnabled != 0u) {
         // Gamma correction (linear to sRGB)
         mapped = pow(mapped, vec3(1.0 / 2.2));
     }
-    outColor = vec4(mapped, 1.0);
+    outColor = vec4(mapped, hdrColor.a);
 }
