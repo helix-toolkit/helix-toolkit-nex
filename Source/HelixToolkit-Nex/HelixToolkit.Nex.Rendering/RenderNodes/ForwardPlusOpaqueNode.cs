@@ -22,7 +22,7 @@ public sealed class ForwardPlusOpaqueNode : RenderNode
     {
         res.Framebuf.DepthStencil.Texture = res.Textures[SystemBufferNames.TextureDepthF32];
         res.Pass.Depth.LoadOp = LoadOp.Load;
-        res.Pass.Depth.StoreOp = StoreOp.Store;
+        res.Pass.Depth.StoreOp = StoreOp.None;
 
         res.Framebuf.Colors[0].Texture = res.Textures[SystemBufferNames.TextureColorF16Target];
         res.Pass.Colors[0].LoadOp = LoadOp.Load;
