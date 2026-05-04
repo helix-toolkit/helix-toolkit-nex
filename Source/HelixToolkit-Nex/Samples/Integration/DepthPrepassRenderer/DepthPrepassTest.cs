@@ -53,7 +53,7 @@ internal class DepthPrepassTest(IContext context) : IDisposable
         _renderer.AddNode(new FrustumCullNode() { MinScreenSize = 0.005f });
         _renderer.AddNode(new RenderToFinalNode(_context.GetSwapchainFormat()));
         _renderer!.Initialize();
-        _renderGraph = new RenderGraph(_serviceProvider);
+        _renderGraph = new RenderGraph();
         foreach (var node in _renderer.RenderNodes)
         {
             node.AddToGraph(_renderGraph);

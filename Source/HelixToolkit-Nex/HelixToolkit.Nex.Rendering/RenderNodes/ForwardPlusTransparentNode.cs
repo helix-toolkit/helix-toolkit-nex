@@ -44,7 +44,7 @@ public class ForwardPlusTransparentNode : RenderNode
     {
         res.Framebuf.DepthStencil.Texture = res.Textures[SystemBufferNames.TextureDepthF32];
         res.Pass.Depth.LoadOp = LoadOp.Load;
-        res.Pass.Depth.StoreOp = StoreOp.Store;
+        res.Pass.Depth.StoreOp = StoreOp.None;
 
         if (UseWBOIT)
         {
