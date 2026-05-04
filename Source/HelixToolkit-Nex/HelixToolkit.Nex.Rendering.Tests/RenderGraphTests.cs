@@ -59,7 +59,7 @@ public class RenderGraphTests
     [TestCategory("RenderGraph")]
     public void Compile_EmptyGraph_ProducesEmptySortedList()
     {
-        var graph = new RenderGraph(BuildServices());
+        var graph = new RenderGraph();
 
         graph.Compile();
 
@@ -71,7 +71,7 @@ public class RenderGraphTests
     [TestCategory("RenderGraph")]
     public void Compile_SinglePass_NoInputsNoOutputs_IsIncluded()
     {
-        var graph = new RenderGraph(BuildServices());
+        var graph = new RenderGraph();
         AddPass(graph, RenderStage.Opaque, "OnlyPass", [], []);
 
         var names = GetSortedPassNames(graph);
@@ -84,7 +84,7 @@ public class RenderGraphTests
     [TestCategory("RenderGraph")]
     public void Compile_SinglePass_WithOutputs_IsIncluded()
     {
-        var graph = new RenderGraph(BuildServices());
+        var graph = new RenderGraph();
         AddPass(
             graph,
             RenderStage.Opaque,
@@ -107,7 +107,7 @@ public class RenderGraphTests
     [TestCategory("RenderGraph")]
     public void Compile_TwoPasses_ProducerBeforeConsumer()
     {
-        var graph = new RenderGraph(BuildServices());
+        var graph = new RenderGraph();
         AddPass(
             graph,
             RenderStage.Opaque,
@@ -136,7 +136,7 @@ public class RenderGraphTests
     [TestCategory("RenderGraph")]
     public void Compile_TwoPasses_AlreadyInOrder_RemainsCorrect()
     {
-        var graph = new RenderGraph(BuildServices());
+        var graph = new RenderGraph();
         // Add in natural order — sort must still be correct regardless.
         AddPass(
             graph,
@@ -168,7 +168,7 @@ public class RenderGraphTests
     public void Compile_ThreePassLinearChain_CorrectOrder()
     {
         // PassA -> PassB -> PassC
-        var graph = new RenderGraph(BuildServices());
+        var graph = new RenderGraph();
         AddPass(
             graph,
             RenderStage.Opaque,
@@ -211,7 +211,7 @@ public class RenderGraphTests
         //    BranchA  BranchB
         //        \    /
         //         Merge
-        var graph = new RenderGraph(BuildServices());
+        var graph = new RenderGraph();
         AddPass(
             graph,
             RenderStage.Opaque,
@@ -264,7 +264,7 @@ public class RenderGraphTests
     [TestCategory("RenderGraph")]
     public void Compile_TwoIndependentPasses_BothPresent()
     {
-        var graph = new RenderGraph(BuildServices());
+        var graph = new RenderGraph();
         AddPass(
             graph,
             RenderStage.Opaque,
@@ -296,7 +296,7 @@ public class RenderGraphTests
     public void Compile_PassWithExternalInput_TreatedAsRootPass()
     {
         // "SwapchainTex" has no producer pass — it is an external resource.
-        var graph = new RenderGraph(BuildServices());
+        var graph = new RenderGraph();
         AddPass(
             graph,
             RenderStage.Opaque,
@@ -316,7 +316,7 @@ public class RenderGraphTests
     public void Compile_MixedInternalAndExternalInputs_OrderCorrect()
     {
         // PrepPass outputs TexDepth, FinalPass needs TexDepth + external Swapchain.
-        var graph = new RenderGraph(BuildServices());
+        var graph = new RenderGraph();
         AddPass(
             graph,
             RenderStage.Opaque,
@@ -349,7 +349,7 @@ public class RenderGraphTests
     [TestCategory("RenderGraph")]
     public void Compile_BufferDependency_ProducerBeforeConsumer()
     {
-        var graph = new RenderGraph(BuildServices());
+        var graph = new RenderGraph();
         AddPass(
             graph,
             RenderStage.Opaque,
@@ -381,7 +381,7 @@ public class RenderGraphTests
     public void Compile_DirectCycle_ThrowsInvalidOperationException()
     {
         // PassA -> PassB -> PassA (2-node cycle)
-        var graph = new RenderGraph(BuildServices());
+        var graph = new RenderGraph();
         AddPass(
             graph,
             RenderStage.Opaque,
@@ -404,7 +404,7 @@ public class RenderGraphTests
     [TestCategory("RenderGraph")]
     public void Compile_DirectCycle_ExceptionMessageContainsCyclicPassNames()
     {
-        var graph = new RenderGraph(BuildServices());
+        var graph = new RenderGraph();
         AddPass(
             graph,
             RenderStage.Opaque,
@@ -433,7 +433,7 @@ public class RenderGraphTests
     public void Compile_ThreeNodeCycle_ThrowsInvalidOperationException()
     {
         // A -> B -> C -> A
-        var graph = new RenderGraph(BuildServices());
+        var graph = new RenderGraph();
         AddPass(
             graph,
             RenderStage.Opaque,
@@ -467,7 +467,7 @@ public class RenderGraphTests
     [TestCategory("RenderGraph")]
     public void IsDirty_InitiallyTrue()
     {
-        var graph = new RenderGraph(BuildServices());
+        var graph = new RenderGraph();
         Assert.IsTrue(graph.IsDirty, "A newly created graph must be dirty.");
     }
 
@@ -475,7 +475,7 @@ public class RenderGraphTests
     [TestCategory("RenderGraph")]
     public void IsDirty_FalseAfterCompile()
     {
-        var graph = new RenderGraph(BuildServices());
+        var graph = new RenderGraph();
         graph.Compile();
         Assert.IsFalse(graph.IsDirty, "Graph should not be dirty after Compile().");
     }
@@ -484,7 +484,7 @@ public class RenderGraphTests
     [TestCategory("RenderGraph")]
     public void IsDirty_TrueAfterAddPass()
     {
-        var graph = new RenderGraph(BuildServices());
+        var graph = new RenderGraph();
         graph.Compile();
 
         AddPass(graph, RenderStage.Opaque, "NewPass", [], []);
@@ -496,7 +496,7 @@ public class RenderGraphTests
     [TestCategory("RenderGraph")]
     public void IsDirty_TrueAfterRemovePass()
     {
-        var graph = new RenderGraph(BuildServices());
+        var graph = new RenderGraph();
         AddPass(graph, RenderStage.Opaque, "Pass1", [], []);
         graph.Compile();
 
@@ -514,7 +514,7 @@ public class RenderGraphTests
     [ExpectedException(typeof(InvalidOperationException))]
     public void AddPass_DuplicateName_ThrowsInvalidOperationException()
     {
-        var graph = new RenderGraph(BuildServices());
+        var graph = new RenderGraph();
         AddPass(graph, RenderStage.Opaque, "DupPass", [], []);
         AddPass(graph, RenderStage.Opaque, "DupPass", [], []); // must throw
     }
@@ -523,7 +523,7 @@ public class RenderGraphTests
     [TestCategory("RenderGraph")]
     public void AddTexture_DuplicateName_NoThrows()
     {
-        var graph = new RenderGraph(BuildServices());
+        var graph = new RenderGraph();
         graph.AddTexture("TexA", null);
         graph.AddTexture("TexA", null); // must not throw
     }
@@ -532,7 +532,7 @@ public class RenderGraphTests
     [TestCategory("RenderGraph")]
     public void AddBuffer_DuplicateName_NoThrows()
     {
-        var graph = new RenderGraph(BuildServices());
+        var graph = new RenderGraph();
         graph.AddBuffer("BufA", null);
         graph.AddBuffer("BufA", null); // must not throw
     }
@@ -542,7 +542,7 @@ public class RenderGraphTests
     [ExpectedException(typeof(InvalidOperationException))]
     public void AddTexture_DuplicateName_ThrowsInvalidOperation()
     {
-        var graph = new RenderGraph(BuildServices());
+        var graph = new RenderGraph();
         graph.AddTexture(
             "TexA",
             (res) =>
@@ -564,7 +564,7 @@ public class RenderGraphTests
     [ExpectedException(typeof(InvalidOperationException))]
     public void AddBuffer_DuplicateName_ThrowsInvalidOperation()
     {
-        var graph = new RenderGraph(BuildServices());
+        var graph = new RenderGraph();
         graph.AddBuffer(
             "BufA",
             (res) =>
@@ -589,7 +589,7 @@ public class RenderGraphTests
     [TestCategory("RenderGraph")]
     public void RemovePass_ThenCompile_RemovedPassAbsent()
     {
-        var graph = new RenderGraph(BuildServices());
+        var graph = new RenderGraph();
         AddPass(graph, RenderStage.Opaque, "Keep", [], []);
         AddPass(graph, RenderStage.Opaque, "Remove", [], []);
 
@@ -606,7 +606,7 @@ public class RenderGraphTests
     {
         // Before removal: PrepPass -> OpaquePass -> PostPass
         // Remove OpaquePass; PrepPass and PostPass are now independent roots.
-        var graph = new RenderGraph(BuildServices());
+        var graph = new RenderGraph();
         AddPass(
             graph,
             RenderStage.Opaque,
@@ -646,7 +646,7 @@ public class RenderGraphTests
     [TestCategory("RenderGraph")]
     public void Compile_CalledMultipleTimes_ProducesConsistentOrder()
     {
-        var graph = new RenderGraph(BuildServices());
+        var graph = new RenderGraph();
         AddPass(
             graph,
             RenderStage.Prepare,
@@ -701,7 +701,7 @@ public class RenderGraphTests
         //   Opaque    -> consumes TexDepth + FPConstants + LightGrid -> TexColor
         //   ToneMap   -> consumes TexColor -> FinalOutput
 
-        var graph = new RenderGraph(BuildServices());
+        var graph = new RenderGraph();
         AddPass(
             graph,
             RenderStage.Prepare,
@@ -780,7 +780,7 @@ public class RenderGraphTests
     {
         // A consumer lists the same resource name twice in its inputs.
         // The graph must not count the edge twice (which would corrupt in-degree).
-        var graph = new RenderGraph(BuildServices());
+        var graph = new RenderGraph();
         AddPass(
             graph,
             RenderStage.Opaque,
@@ -815,7 +815,7 @@ public class RenderGraphTests
     {
         // ProducerA and ProducerB both write "TexShared".
         // Consumer reads "TexShared" — it must come after both producers.
-        var graph = new RenderGraph(BuildServices());
+        var graph = new RenderGraph();
         AddPass(
             graph,
             RenderStage.Opaque,
@@ -854,7 +854,7 @@ public class RenderGraphTests
     [ExpectedException(typeof(InvalidOperationException))]
     public void Compile_SelfLoop_ThrowsInvalidOperationException()
     {
-        var graph = new RenderGraph(BuildServices());
+        var graph = new RenderGraph();
         // PassA outputs TexA and also inputs TexA — a self-dependency.
         AddPass(
             graph,
@@ -875,7 +875,7 @@ public class RenderGraphTests
     [TestCategory("RenderGraph")]
     public void Apply_AddsPassesViaConfigurator_CompileSucceeds()
     {
-        var graph = new RenderGraph(BuildServices());
+        var graph = new RenderGraph();
 
         graph.Apply(g =>
             AddPass(
@@ -895,7 +895,7 @@ public class RenderGraphTests
     [TestCategory("RenderGraph")]
     public void Apply_MultipleFluent_AllPassesPresent()
     {
-        var graph = new RenderGraph(BuildServices());
+        var graph = new RenderGraph();
 
         graph
             .Apply(g =>
@@ -932,7 +932,7 @@ public class RenderGraphTests
     public void Compile_ExplicitAfter_EnforcesOrderWithNoSharedResource()
     {
         // PassB has no resource dependency on PassA, but declares after: ["PassA"].
-        var graph = new RenderGraph(BuildServices());
+        var graph = new RenderGraph();
         AddPass(graph, RenderStage.Opaque, "PassA", [], []);
         graph.AddPass(RenderStage.Opaque, "PassB", [], [], after: ["PassA"]);
 
@@ -949,7 +949,7 @@ public class RenderGraphTests
         // Three passes all read TextureColorF16Target and write TextureColorF16Sample
         // (or vice versa). Without 'after', the sort order between them is undefined.
         // With 'after', the declared chain A -> B -> C is enforced.
-        var graph = new RenderGraph(BuildServices());
+        var graph = new RenderGraph();
         AddPass(
             graph,
             RenderStage.Opaque,
@@ -992,7 +992,7 @@ public class RenderGraphTests
     {
         // PassB already depends on PassA via a resource edge AND declares after: ["PassA"].
         // The dedup set must prevent double-counting the in-degree.
-        var graph = new RenderGraph(BuildServices());
+        var graph = new RenderGraph();
         AddPass(
             graph,
             RenderStage.Opaque,
@@ -1019,7 +1019,7 @@ public class RenderGraphTests
     public void Compile_ExplicitAfter_UnknownPassName_DoesNotThrow_GraphStillCompiles()
     {
         // Referencing a non-existent pass in 'after' should log a warning and be ignored.
-        var graph = new RenderGraph(BuildServices());
+        var graph = new RenderGraph();
         graph.AddPass(RenderStage.Opaque, "PassA", [], [], after: ["NonExistentPass"]);
 
         var names = GetSortedPassNames(graph);
@@ -1034,7 +1034,7 @@ public class RenderGraphTests
     public void Compile_ExplicitAfter_CreatesCycle_ThrowsInvalidOperationException()
     {
         // PassA after PassB, PassB after PassA — explicit cycle.
-        var graph = new RenderGraph(BuildServices());
+        var graph = new RenderGraph();
         graph.AddPass(RenderStage.Opaque, "PassA", [], [], after: ["PassB"]);
         graph.AddPass(RenderStage.Opaque, "PassB", [], [], after: ["PassA"]);
 
@@ -1058,7 +1058,7 @@ public class RenderGraphTests
     [TestCategory("RenderGraph")]
     public void Compile_DefaultPipeline_CorrectStageOrder()
     {
-        var graph = new RenderGraph(BuildServices());
+        var graph = new RenderGraph();
 
         new PrepareNode().AddToGraph(graph);
         new DepthPassNode().AddToGraph(graph);
@@ -1211,7 +1211,7 @@ public class RenderGraphTests
 
     private static List<string> CompileNodes(IEnumerable<RenderNode> nodes)
     {
-        var graph = new RenderGraph(BuildServices());
+        var graph = new RenderGraph();
         foreach (var node in nodes)
             node.AddToGraph(graph);
         graph.Compile();

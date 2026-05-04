@@ -113,10 +113,17 @@ namespace HelixToolkit.Nex.Graphics.Vulkan
 
             if (Config.EnableValidation)
             {
-                var sync2Name = new VkUtf8ReadOnlyString(VK.VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME).ToString();
-                if (sync2Name is not null && _supportedExtensions.Contains(sync2Name))
+                var extName = new VkUtf8ReadOnlyString(VK.VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME).ToString();
+                if (extName is not null && _supportedExtensions.Contains(extName))
                 {
                     _deviceExtensions.Add(VK.VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME);
+                }
+                extName = new VkUtf8ReadOnlyString(VK.VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME).ToString();
+                if (extName is not null && _supportedExtensions.Contains(extName))
+                {
+                    _deviceExtensions.Add(VK.VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME);
+                    HasExtDeviceFault = true;
+                    CheckpointType = CheckpointType.Nvidia;
                 }
             }
 

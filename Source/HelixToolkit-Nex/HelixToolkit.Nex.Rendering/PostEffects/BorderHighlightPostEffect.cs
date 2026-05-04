@@ -209,6 +209,7 @@ public sealed class BorderHighlightPostEffect : PostEffect
 
     protected override ResultCode OnInitializing()
     {
+        base.OnInitializing();
         if (ResourceManager is null)
         {
             _logger.LogError("ResourceManager is null during highlight initialisation.");
