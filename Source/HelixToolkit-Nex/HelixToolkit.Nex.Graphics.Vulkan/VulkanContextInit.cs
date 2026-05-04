@@ -111,6 +111,15 @@ namespace HelixToolkit.Nex.Graphics.Vulkan
                 }
             }
 
+            if (Config.EnableValidation)
+            {
+                var sync2Name = new VkUtf8ReadOnlyString(VK.VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME).ToString();
+                if (sync2Name is not null && _supportedExtensions.Contains(sync2Name))
+                {
+                    _deviceExtensions.Add(VK.VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME);
+                }
+            }
+
             //var supportPresent = vkGetPhysicalDeviceWin32PresentationSupportKHR(PhysicalDevice, queueFamilies.graphicsFamily);
             VkDeviceQueueCreateInfo* queueCreateInfos = stackalloc VkDeviceQueueCreateInfo[3];
             float queuePriority = 1f;

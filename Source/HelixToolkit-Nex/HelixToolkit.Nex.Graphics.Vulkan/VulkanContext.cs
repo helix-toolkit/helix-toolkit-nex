@@ -365,38 +365,40 @@ internal sealed partial class VulkanContext
                 HasExtSwapchainMaintenance1 = true;
             }
         }
-
-        if (SystemInfo.IsWindowsPlatform())
+        if (!Config.EnableHeadlessSurface)
         {
-            if (!availableInstanceExtensions.Contains(VK.VK_KHR_WIN32_SURFACE_EXTENSION_NAME))
+            if (SystemInfo.IsWindowsPlatform())
             {
-                throw new Exception(
-                    "Vulkan: Required instance extension 'VK_KHR_win32_surface' is not supported by the Vulkan implementation."
-                );
-            }
-            _instanceExtensions.Add(VK.VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
-        }
-        else if (SystemInfo.IsLinuxPlatform())
-        {
-            if (Config.UseWayland)
-            {
-                if (!availableInstanceExtensions.Contains(VK.VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME))
+                if (!availableInstanceExtensions.Contains(VK.VK_KHR_WIN32_SURFACE_EXTENSION_NAME))
                 {
                     throw new Exception(
-                        "Vulkan: Required instance extension 'VK_KHR_wayland_surface' is not supported by the Vulkan implementation."
+                        "Vulkan: Required instance extension 'VK_KHR_win32_surface' is not supported by the Vulkan implementation."
                     );
                 }
-                _instanceExtensions.Add(VK.VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME);
+                _instanceExtensions.Add(VK.VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
             }
-            else
+            else if (SystemInfo.IsLinuxPlatform())
             {
-                if (!availableInstanceExtensions.Contains(VK.VK_KHR_XLIB_SURFACE_EXTENSION_NAME))
+                if (Config.UseWayland)
                 {
-                    throw new Exception(
-                        "Vulkan: Required instance extension 'VK_KHR_xlib_surface' is not supported by the Vulkan implementation."
-                    );
+                    if (!availableInstanceExtensions.Contains(VK.VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME))
+                    {
+                        throw new Exception(
+                            "Vulkan: Required instance extension 'VK_KHR_wayland_surface' is not supported by the Vulkan implementation."
+                        );
+                    }
+                    _instanceExtensions.Add(VK.VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME);
                 }
-                _instanceExtensions.Add(VK.VK_KHR_XLIB_SURFACE_EXTENSION_NAME);
+                else
+                {
+                    if (!availableInstanceExtensions.Contains(VK.VK_KHR_XLIB_SURFACE_EXTENSION_NAME))
+                    {
+                        throw new Exception(
+                            "Vulkan: Required instance extension 'VK_KHR_xlib_surface' is not supported by the Vulkan implementation."
+                        );
+                    }
+                    _instanceExtensions.Add(VK.VK_KHR_XLIB_SURFACE_EXTENSION_NAME);
+                }
             }
         }
 
