@@ -32,6 +32,11 @@ public abstract class RenderNode : IDisposable
     private ITracer? _tracer;
 
     /// <summary>
+    /// Byte array representation of the node name for use in debug labels. This is populated during setup to avoid repeated string encoding during rendering.
+    /// </summary>
+    protected byte[] NameBytes { private set; get; } = [];
+
+    /// <summary>
     /// Gets a value indicating whether the render node is currently attached to a renderer.
     /// </summary>
     public bool IsAttached => Renderer != null && _isAttached;
@@ -50,6 +55,7 @@ public abstract class RenderNode : IDisposable
         }
         _tracer = TracerFactory.GetTracer($"{nameof(RenderNode)}[{Name}]");
         using var scope = _tracer.BeginScope($"Attaching renderer: {Name}");
+        NameBytes = System.Text.Encoding.UTF8.GetBytes(Name);
         Renderer = renderer;
         _isAttached = OnSetup();
         return IsAttached;
@@ -80,7 +86,7 @@ public abstract class RenderNode : IDisposable
             return;
         }
         using var scope = _tracer?.BeginScope(nameof(Render));
-        res.CmdBuffer.PushDebugGroupLabel(Name, DebugColor);
+        res.CmdBuffer.PushDebugGroupLabel(NameBytes, DebugColor);
         OnSetupRender(res);
         if (BeginRender(in res))
         {
@@ -157,7 +163,7 @@ public abstract class ComputeNode : RenderNode
     protected override bool BeginRender(in RenderResources res)
     {
         // Compute nodes do not begin a render pass.
-        res.CmdBuffer.PushDebugGroupLabel(Name, DebugColor);
+        res.CmdBuffer.PushDebugGroupLabel(NameBytes, DebugColor);
         return true;
     }
 

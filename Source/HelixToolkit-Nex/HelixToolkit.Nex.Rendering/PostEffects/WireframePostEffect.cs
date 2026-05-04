@@ -149,6 +149,7 @@ public sealed class WireframePostEffect : PostEffect
 
     protected override ResultCode OnInitializing()
     {
+        base.OnInitializing();
         if (Context is null)
         {
             _logger.LogError("Render context is null during wireframe initialisation.");

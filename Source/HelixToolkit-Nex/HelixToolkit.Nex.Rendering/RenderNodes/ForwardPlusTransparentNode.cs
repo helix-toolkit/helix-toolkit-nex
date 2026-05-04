@@ -19,7 +19,7 @@ public class ForwardPlusTransparentNode : RenderNode
     private static readonly ILogger _logger = LogManager.Create<ForwardPlusTransparentNode>();
     public override string Name => nameof(ForwardPlusTransparentNode);
 
-    public override Color4 DebugColor => Color.Green;
+    public override Color4 DebugColor => Color.DarkOrange;
 
     /// <summary>
     /// When <see langword="true"/> (default), transparent geometry is rendered using Weighted Blended

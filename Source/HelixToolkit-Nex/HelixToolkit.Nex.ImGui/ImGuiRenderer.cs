@@ -78,6 +78,7 @@ public class ImGuiRenderer(IContext context, ImGuiConfig config) : IDisposable
         """;
 
     private static readonly ILogger _logger = LogManager.Create<ImGuiRenderer>();
+    private static readonly byte[] _label = System.Text.Encoding.UTF8.GetBytes(nameof(ImGuiRenderer));
 
     private struct Drawable()
     {
@@ -262,7 +263,7 @@ public class ImGuiRenderer(IContext context, ImGuiConfig config) : IDisposable
 
     public bool Render(ICommandBuffer cmdBuf, RenderPass pass, Framebuffer frame, Dependencies dp)
     {
-        cmdBuf.PushDebugGroupLabel("ImGui", new Maths.Color4(1, 0, 0, 1));
+        cmdBuf.PushDebugGroupLabel(_label, new Maths.Color4(1, 0, 0, 1));
         cmdBuf.BeginRendering(pass, frame, dp);
         var ret = OnRender(cmdBuf);
         cmdBuf.EndRendering();
@@ -369,7 +370,6 @@ public class ImGuiRenderer(IContext context, ImGuiConfig config) : IDisposable
             }
         }
 
-        cmdBuf.PushDebugGroupLabel("ImGuiRender", new Maths.Color4(1, 0, 0, 1));
         cmdBuf.BindDepthState(new());
         cmdBuf.BindViewport(new() { Width = (uint)size.X, Height = (uint)size.Y });
         float L = drawData.DisplayPos.X;
@@ -439,7 +439,6 @@ public class ImGuiRenderer(IContext context, ImGuiConfig config) : IDisposable
             vtxOffset += (uint)cmdList.VtxBuffer.Size;
         }
 
-        cmdBuf.PopDebugGroupLabel();
         return true;
     }
 

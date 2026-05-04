@@ -51,13 +51,13 @@ internal sealed class VulkanImmediateCommands : IDisposable
     public VulkanImmediateCommands(
         in VkDevice device,
         uint32_t queueFamilyIndex,
-        bool has_EXT_device_fault,
+        bool hasEXTDeviceFault,
         string? debugName
     )
     {
         this._device = device;
         this._queueFamilyIndex = queueFamilyIndex;
-        this._hasExtDeviceFault = has_EXT_device_fault;
+        this._hasExtDeviceFault = hasEXTDeviceFault;
         this._debugName = debugName ?? string.Empty;
 
         VK.vkGetDeviceQueue(device, queueFamilyIndex, 0, out _queue);

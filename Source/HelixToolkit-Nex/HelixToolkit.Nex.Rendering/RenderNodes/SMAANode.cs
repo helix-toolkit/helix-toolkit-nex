@@ -1,3 +1,4 @@
+using System.Text;
 using HelixToolkit.Nex.Shaders.Frag;
 
 namespace HelixToolkit.Nex.Rendering.RenderNodes;
@@ -49,6 +50,10 @@ public sealed class SMAANode : RenderNode
         0.05f, // High
         0.02f, // Ultra
     ];
+
+    private static readonly byte[] _passNameEdgeDetection = Encoding.UTF8.GetBytes("SMAA Edge Detection");
+    private static readonly byte[] _passNameBlendingWeights = Encoding.UTF8.GetBytes("SMAA Blending Weights");
+    private static readonly byte[] _passNameNeighbourhoodBlending = Encoding.UTF8.GetBytes("SMAA Neighbourhood Blending");
 
     // One pipeline per SmaaMode specialization constant.
     private RenderPipelineResource _edgePipeline = RenderPipelineResource.Null;
@@ -266,7 +271,7 @@ public sealed class SMAANode : RenderNode
         // Pass 0: Edge detection  scene → edgeTex
         // ------------------------------------------------------------------
         RunSmaaPass(
-            "Edge Detection",
+            _passNameEdgeDetection,
             in res,
             _edgePipeline,
             outputHandle: edgeTex,
@@ -286,7 +291,7 @@ public sealed class SMAANode : RenderNode
         // Pass 1: Blending-weight computation  edgeTex → weightTex
         // ------------------------------------------------------------------
         RunSmaaPass(
-            "Blending Weights",
+            _passNameBlendingWeights,
             in res,
             _weightPipeline,
             outputHandle: weightTex,
@@ -307,7 +312,7 @@ public sealed class SMAANode : RenderNode
         // Pass 2: Neighbourhood blending  (scene + weights) → writeSlot
         // ------------------------------------------------------------------
         RunSmaaPass(
-            "Neighbourhood Blending",
+            _passNameNeighbourhoodBlending,
             in res,
             _blendPipeline,
             outputHandle: res.Textures[SystemBufferNames.TextureColorF16Target],
@@ -337,7 +342,7 @@ public sealed class SMAANode : RenderNode
     /// output overwrites every pixel unconditionally).
     /// </param>
     private void RunSmaaPass(
-        string debugName,
+        ReadOnlySpan<byte> debugName,
         in RenderResources res,
         RenderPipelineResource pipeline,
         in TextureHandle outputHandle,
