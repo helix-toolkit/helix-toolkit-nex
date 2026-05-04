@@ -116,13 +116,19 @@ public class Renderer(IServiceProvider serviceProvider) : Initializable
         context.BeginFrame();
         foreach (var stage in _renderSequence)
         {
-            if (stage == RenderStage.SubmitFlag)
+            var stageInfo = RenderStageNames.Names[(int)stage];
+            cmdBuf.PushDebugGroupLabel(stageInfo.Name, stageInfo.Color);
+            switch (stage)
             {
-                context.Context.Submit(cmdBuf);
-                cmdBuf = context.Context.AcquireCommandBuffer();
-                continue;
+                case RenderStage.SubmitFlag:
+                    context.Context.Submit(cmdBuf);
+                    cmdBuf = context.Context.AcquireCommandBuffer();
+                    break;
+                default:
+                    graph.Execute(context, cmdBuf, _renderers, stage);
+                    break;
             }
-            graph.Execute(context, cmdBuf, _renderers, stage);
+            cmdBuf.PopDebugGroupLabel();
         }
         context.EndFrame();
         return cmdBuf;

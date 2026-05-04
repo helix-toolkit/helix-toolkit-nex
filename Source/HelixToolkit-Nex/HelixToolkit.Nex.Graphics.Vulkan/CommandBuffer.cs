@@ -1493,31 +1493,33 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
     }
 
     /// <inheritdoc/>
-    public void InsertDebugEventLabel(string label, Color4 color)
+    public void InsertDebugEventLabel(ReadOnlySpan<byte> label, Color4 color)
     {
-        HxDebug.Assert(!string.IsNullOrEmpty(label));
+        if (!_ctx.Config.EnableDebugLabels)
+        {
+            return;
+        }
+        HxDebug.Assert(!label.IsEmpty);
 
-        if (string.IsNullOrEmpty(label))
+        if (label.IsEmpty)
         {
             return;
         }
         unsafe
         {
-            VkDebugUtilsLabelEXT utilsLabel = new()
+            fixed (byte* pLabel = label)
             {
-                pNext = null,
-                pLabelName = label.ToVkUtf8ReadOnlyString(),
-            };
-            color.CopyTo(utilsLabel.color, 4);
-            VK.vkCmdInsertDebugUtilsLabelEXT(CmdBuffer, &utilsLabel);
+                VkDebugUtilsLabelEXT utilsLabel = new()
+                {
+                    pNext = null,
+                    pLabelName = pLabel,
+                };
+                color.CopyTo(utilsLabel.color, 4);
+                VK.vkCmdInsertDebugUtilsLabelEXT(CmdBuffer, &utilsLabel);
+            }
         }
     }
 
-    /// <inheritdoc/>
-    public void PopDebugGroupLabel()
-    {
-        VK.vkCmdEndDebugUtilsLabelEXT(CmdBuffer);
-    }
 
     /// <inheritdoc/>
     public void PushConstants(nint data, uint size, uint offset)
@@ -1563,25 +1565,39 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
     }
 
     /// <inheritdoc/>
-    public void PushDebugGroupLabel(string label, Color4 color)
+    public void PushDebugGroupLabel(ReadOnlySpan<byte> label, Color4 color)
     {
-        HxDebug.Assert(!string.IsNullOrEmpty(label));
+        if (!_ctx.Config.EnableDebugLabels)
+        {
+            return;
+        }
+        HxDebug.Assert(!label.IsEmpty);
 
-        if (string.IsNullOrEmpty(label))
+        if (label.IsEmpty)
         {
             return;
         }
         unsafe
         {
-            VkDebugUtilsLabelEXT utilsLabel = new()
+            fixed (byte* pLabel = label)
             {
-                pNext = null,
-                pLabelName = label.ToVkUtf8ReadOnlyString(),
-            };
-            color.CopyTo(utilsLabel.color, 4);
-            VK.vkCmdBeginDebugUtilsLabelEXT(CmdBuffer, &utilsLabel);
+                VkDebugUtilsLabelEXT utilsLabel = new()
+                {
+                    pNext = null,
+                    pLabelName = pLabel,
+                };
+                color.CopyTo(utilsLabel.color, 4);
+                VK.vkCmdBeginDebugUtilsLabelEXT(CmdBuffer, &utilsLabel);
+            }
         }
     }
+
+    /// <inheritdoc/>
+    public void PopDebugGroupLabel()
+    {
+        VK.vkCmdEndDebugUtilsLabelEXT(CmdBuffer);
+    }
+
 
     /// <inheritdoc/>
     public void ResetQueryPool(in QueryPoolHandle pool, uint firstQuery, uint queryCount)
@@ -1748,5 +1764,27 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
         }
         CmdBuffer.BufferBarrier2(buf, VkPipelineStageFlags2.ComputeShader, dstStageFlags);
         return true;
+    }
+
+    public void SetCheckpointMarker(ReadOnlySpan<byte> label)
+    {
+        HxDebug.Assert(!label.IsEmpty);
+        if (label.IsEmpty)
+        {
+            return;
+        }
+        if (_ctx.CheckpointType == CheckpointType.None)
+        {
+            return;
+        }
+        unsafe
+        {
+            VkDebugUtilsLabelEXT utilsLabel = new()
+            {
+                pNext = null,
+                pLabelName = new VkUtf8ReadOnlyString(label),
+            };
+            VK.vkCmdSetCheckpointNV(CmdBuffer, &utilsLabel);
+        }
     }
 }

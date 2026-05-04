@@ -55,15 +55,15 @@ public class MockCommandBuffer : ICommandBuffer
     }
 
     /// <inheritdoc/>
-    public void PushDebugGroupLabel(string label, Color4 color)
+    public void PushDebugGroupLabel(ReadOnlySpan<byte> label, Color4 color)
     {
-        _recordedCommands.Add($"PushDebugGroupLabel({label})");
+        _recordedCommands.Add($"PushDebugGroupLabel({System.Text.Encoding.UTF8.GetString(label)})");
     }
 
     /// <inheritdoc/>
-    public void InsertDebugEventLabel(string label, Color4 color)
+    public void InsertDebugEventLabel(ReadOnlySpan<byte> label, Color4 color)
     {
-        _recordedCommands.Add($"InsertDebugEventLabel({label})");
+        _recordedCommands.Add($"InsertDebugEventLabel({System.Text.Encoding.UTF8.GetString(label)})");
     }
 
     /// <inheritdoc/>
@@ -342,5 +342,10 @@ public class MockCommandBuffer : ICommandBuffer
     {
         _recordedCommands.Add($"Barrier(buffer={buffer.Index})");
         return true;
+    }
+
+    public void SetCheckpointMarker(ReadOnlySpan<byte> label)
+    {
+        _recordedCommands.Add($"SetCheckpointMarker({System.Text.Encoding.UTF8.GetString(label)})");
     }
 }

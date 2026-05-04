@@ -64,14 +64,14 @@ public interface ICommandBuffer
     /// Debug groups can be nested. Each call to <see cref="PushDebugGroupLabel"/> must be matched with
     /// a corresponding <see cref="PopDebugGroupLabel"/> call.
     /// </remarks>
-    void PushDebugGroupLabel(string label, Color4 color);
+    void PushDebugGroupLabel(ReadOnlySpan<byte> label, Color4 color);
 
     /// <summary>
     /// Inserts a single debug event marker at the current position in the command buffer.
     /// </summary>
     /// <param name="label">The label text for the debug event.</param>
     /// <param name="color">The color associated with this debug event in debugging tools.</param>
-    void InsertDebugEventLabel(string label, Color4 color);
+    void InsertDebugEventLabel(ReadOnlySpan<byte> label, Color4 color);
 
     /// <summary>
     /// Ends the current debug group started by <see cref="PushDebugGroupLabel"/>.
@@ -533,4 +533,10 @@ public interface ICommandBuffer
     /// <param name="buffer">The handle to the buffer for which to create the memory barrier.</param>
     /// <returns>True if the barrier was successfully created; false if the buffer handle is invalid or the barrier could not be created.</returns>
     bool Barrier(in BufferHandle buffer);
+
+    /// <summary>
+    /// Sets a checkpoint marker with the specified label to identify a position or state in the process.
+    /// </summary>
+    /// <param name="label">The label that identifies the checkpoint marker. Cannot be null or empty.</param>
+    void SetCheckpointMarker(ReadOnlySpan<byte> label);
 }

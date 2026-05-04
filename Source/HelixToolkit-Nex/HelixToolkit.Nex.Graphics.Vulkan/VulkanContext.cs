@@ -2,6 +2,12 @@ using HelixToolkit.Nex.Trace;
 
 namespace HelixToolkit.Nex.Graphics.Vulkan;
 
+public enum CheckpointType
+{
+    None = 0,
+    Nvidia = 1,
+}
+
 public sealed class VulkanContextConfig()
 {
     public delegate VkSurfaceKHR CreateSurface(VkInstance instance);
@@ -16,6 +22,11 @@ public sealed class VulkanContextConfig()
     /// When true, enables Vulkan validation layers if available. This will cause the application to log detailed validation messages for any incorrect Vulkan API usage, which is extremely useful for development and debugging. Default is true if the KHRONOS validation layer is available, false otherwise.
     /// </summary>
     public bool EnableValidation = true;
+
+    /// <summary>
+    /// When true, enables debug labels for Vulkan objects and command buffers. This allows tools like RenderDoc to display human-readable names for Vulkan resources, which can greatly aid in debugging and profiling. Default true.
+    /// </summary>
+    public bool EnableDebugLabels = true;
 
     public ColorSpace SwapchainRequestedColorSpace = ColorSpace.SRGB_NONLINEAR;
 
@@ -160,6 +171,8 @@ internal sealed partial class VulkanContext
         ref _vkPhysicalDeviceVulkan13Properties;
 
     public bool SupportMeshShader => _vkFeatureMeshShader.meshShader;
+
+    public CheckpointType CheckpointType { private set; get; } = CheckpointType.None;
     public IReadOnlyList<VkUtf8String> DeviceExtensions => _deviceExtensions;
     public IReadOnlyList<VkUtf8String> InstanceExtensions => _instanceExtensions;
     public IReadOnlyList<VkFormat> DeviceDepthFormats => _deviceDepthFormats.AsReadOnly();

@@ -5,6 +5,10 @@ namespace HelixToolkit.Nex.Rendering.RenderNodes;
 public sealed class BloomNode : RenderNode
 {
     private static readonly ILogger _logger = LogManager.Create<BloomNode>();
+    private static readonly byte[] _passNameBrightness = System.Text.Encoding.UTF8.GetBytes("Bloom_BrightnessExtract");
+    private static readonly byte[] _passNameBlurH = System.Text.Encoding.UTF8.GetBytes("Bloom_BlurH");
+    private static readonly byte[] _passNameBlurV = System.Text.Encoding.UTF8.GetBytes("Bloom_BlurV");
+    private static readonly byte[] _passNameComposite = System.Text.Encoding.UTF8.GetBytes("Bloom_Composite");
 
     // Four pipeline variants, one per BloomMode specialization constant.
     private RenderPipelineResource _brightnessPipeline = RenderPipelineResource.Null;
@@ -108,7 +112,7 @@ public sealed class BloomNode : RenderNode
         // Point-sampling here creates hard aliased edges on bright pixels that
         // the blur then spreads, making bloom appear too bright on moving objects.
         RunFullScreenPass(
-            "Brightness Extract",
+            _passNameBrightness,
             in res,
             _brightnessPipeline,
             inputHandle: in sceneTex,
@@ -130,7 +134,7 @@ public sealed class BloomNode : RenderNode
         {
             // Horizontal: bloomA → bloomB
             RunFullScreenPass(
-                "Blur Pass Horizontal",
+                _passNameBlurH,
                  in res,
                  _blurHPipeline,
                  inputHandle: in bloomA,
@@ -146,7 +150,7 @@ public sealed class BloomNode : RenderNode
 
             // Vertical: bloomB → bloomA
             RunFullScreenPass(
-                "Blur Pass Vertical",
+                _passNameBlurV,
                 in res,
                 _blurVPipeline,
                 inputHandle: in bloomB,
@@ -168,7 +172,7 @@ public sealed class BloomNode : RenderNode
         // BeginRendering issues the shader-read-only barrier for each of them.
         res.RenderContext.SwapIntermediateBuffers();
         RunFullScreenPass(
-            "Composite Pass",
+            _passNameComposite,
             in res,
             _compositePipeline,
             inputHandle: in sceneTex,
@@ -240,7 +244,7 @@ public sealed class BloomNode : RenderNode
     /// </para>
     /// </summary>
     private static void RunFullScreenPass(
-        string debugName,
+        ReadOnlySpan<byte> debugName,
         in RenderResources res,
         RenderPipelineResource pipeline,
         in TextureHandle inputHandle,

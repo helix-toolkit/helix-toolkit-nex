@@ -1,71 +1,5 @@
 namespace HelixToolkit.Nex.Rendering;
 
-/// <summary>
-/// Declares the broad execution phase a render/compute pass belongs to.
-/// The graph compiler automatically orders passes so that all passes in an
-/// earlier stage complete before any pass in a later stage begins, without
-/// requiring every node to name its predecessors explicitly.
-/// <para>
-/// Within a single stage, fine-grained ordering is still expressed through
-/// resource edges (inputs/outputs) or the explicit <c>after</c> list.
-/// </para>
-/// </summary>
-public enum RenderStage : uint
-{
-    /// <summary>CPU/GPU data preparation: frustum culling etc.</summary>
-    Prepare = 0,
-
-    /// <summary>Opaque geometry: depth pre-pass, light culling, opaque meshes, point clouds, etc.</summary>
-    Opaque,
-
-    /// <summary>
-    ///  FXAA or other full-screen anti-aliasing pass. 
-    /// </summary>
-    Antialising,
-
-    /// <summary>
-    /// Particle rendering.
-    /// </summary>
-    Particle,
-
-    /// <summary>Transparent geometry: WBOIT render + composite, alpha-blended passes, etc.</summary>
-    Transparent,
-
-    /// <summary>Post processing effects.</summary>
-    PostProcess,
-
-    Bloom,
-    /// <summary>
-    /// Billboard rendering. Placed after bloom to avoid unncessary bloom.
-    /// </summary>
-    Billboard,
-    /// <summary>
-    /// HDR-to-LDR conversion. Separating this from <see cref="PostProcess"/> ensures that
-    /// all HDR effects complete before the scene is linearised, and that all
-    /// <see cref="Overlay"/> passes receive an LDR surface to draw onto.
-    /// </summary>
-    ToneMap,
-
-    /// <summary>
-    /// LDR overlays rendered on top of the tone-mapped image: gizmos, debug geometry,
-    /// editor widgets, etc. Depth buffer from the opaque pass is still available here.
-    /// </summary>
-    Overlay,
-
-    /// <summary>Final blit to the swap-chain / output texture.</summary>
-    Output,
-
-    /// <summary>
-    /// Sentinel value for iteration and validation — not an actual stage.
-    /// </summary>
-    StageCount,
-
-    /// <summary>
-    /// Used in renderer to indicate a command buffer submission operation. Not an actual render stage, and not processed by the graph compiler.
-    /// </summary>
-    SubmitFlag
-}
-
 public readonly record struct RenderResource(string Name, ResourceType Type);
 
 public sealed record ResourceBuildParams(RenderContext Context);
@@ -143,7 +77,9 @@ public sealed class RenderGraph : Initializable
     private readonly Dictionary<string, GraphNode> _passes = [];
     private readonly Dictionary<string, List<GraphNode>> _resourceProducers = [];
     private readonly FastList<GraphNode> _sortedPasses = [];
-    private readonly FastList<GraphNode>[] _passByStage = new FastList<GraphNode>[(int)RenderStage.StageCount];
+    private readonly FastList<GraphNode>[] _passByStage = new FastList<GraphNode>[
+        (int)RenderStage.StageCount
+    ];
     private long _lastUpdatedTimeStamp = 0;
 
     public IReadOnlyList<GraphNode> SortedPasses => _sortedPasses;
@@ -312,7 +248,6 @@ public sealed class RenderGraph : Initializable
     /// <see cref="RenderResources"/> overload that resolves them automatically.
     /// </param>
     /// <param name="after">Optional explicit ordering constraints (pass names that must precede this one).</param>
-
     /// <returns>The current instance for method chaining.</returns>
     public RenderGraph AddPingPongPass(
         RenderStage stage,
@@ -357,6 +292,7 @@ public sealed class RenderGraph : Initializable
         IsDirty = true;
         return this;
     }
+
     /// <summary>
     /// Compiles the render graph: resolves ping-pong slot assignments, identifies resource
     /// producers, builds the dependency graph, and performs a topological sort.

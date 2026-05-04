@@ -7,6 +7,8 @@ public enum PostEffectPriority : uint
 
 public abstract class PostEffect() : Initializable
 {
+    internal byte[] NameBytes { private set; get; } = [];
+
     public IContext? Context => Renderer?.Context;
     public bool Enabled { get; set; } = true;
 
@@ -46,6 +48,13 @@ public abstract class PostEffect() : Initializable
     /// Whether the effect applied successfully.
     /// </returns>
     public abstract bool Apply(in RenderResources res, ref string readSlot, ref string writeSlot);
+
+
+    protected override ResultCode OnInitializing()
+    {
+        NameBytes = System.Text.Encoding.UTF8.GetBytes(Name);
+        return ResultCode.Ok;
+    }
 }
 
 public sealed class PostEffectsNode : RenderNode
@@ -195,7 +204,7 @@ public sealed class PostEffectsNode : RenderNode
             {
                 continue;
             }
-            res.CmdBuffer.PushDebugGroupLabel(effect.Name, effect.DebugColor);
+            res.CmdBuffer.PushDebugGroupLabel(effect.NameBytes, effect.DebugColor);
             if (effect.Apply(in res, ref read, ref write))
             {
                 // Flip for next effect: what was just written becomes the next read source.
