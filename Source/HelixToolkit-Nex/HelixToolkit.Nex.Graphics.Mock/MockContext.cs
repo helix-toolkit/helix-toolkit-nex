@@ -158,7 +158,7 @@ public class MockContext : IContext
         return cmdBuffer;
     }
 
-    public ICommandBuffer CreateSecondaryCommandBuffer(RenderPass renderPassInfo)
+    public ICommandBuffer CreateSecondaryCommandBuffer()
     {
         var cmdBuffer = new MockCommandBuffer(this, isPrimary: false);
         AcquiredCommandBuffers.Add(cmdBuffer);
