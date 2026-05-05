@@ -36,6 +36,10 @@ public class MockCommandBuffer : ICommandBuffer
     /// </summary>
     public bool IsRendering => _isRendering;
 
+    public uint DrawCallCount { private set; get; }
+
+    public uint DispatchCallCount { private set; get; }
+
     /// <inheritdoc/>
     public void ExecuteCommands(params ICommandBuffer[] secondaryBuffers)
     {
@@ -84,6 +88,7 @@ public class MockCommandBuffer : ICommandBuffer
         _recordedCommands.Add(
             $"DispatchThreadGroups({threadgroupCount.Width}, {threadgroupCount.Height}, {threadgroupCount.Depth})"
         );
+        ++DispatchCallCount;
     }
 
     /// <inheritdoc/>
@@ -193,6 +198,7 @@ public class MockCommandBuffer : ICommandBuffer
     )
     {
         _recordedCommands.Add($"Draw(vertices={vertexCount}, instances={instanceCount})");
+        ++DrawCallCount;
     }
 
     /// <inheritdoc/>
@@ -205,6 +211,7 @@ public class MockCommandBuffer : ICommandBuffer
     )
     {
         _recordedCommands.Add($"DrawIndexed(indices={indexCount}, instances={instanceCount})");
+        ++DrawCallCount;
     }
 
     /// <inheritdoc/>
@@ -216,6 +223,7 @@ public class MockCommandBuffer : ICommandBuffer
     )
     {
         _recordedCommands.Add($"DrawIndirect(buffer={indirectBuffer.Index}, count={drawCount})");
+        DrawCallCount += drawCount;
     }
 
     /// <inheritdoc/>
@@ -229,6 +237,7 @@ public class MockCommandBuffer : ICommandBuffer
         _recordedCommands.Add(
             $"DrawIndexedIndirect(buffer={indirectBuffer.Index}, count={drawCount})"
         );
+        DrawCallCount += drawCount;
     }
 
     /// <inheritdoc/>
@@ -242,6 +251,7 @@ public class MockCommandBuffer : ICommandBuffer
     )
     {
         _recordedCommands.Add($"DrawIndexedIndirectCount(maxCount={maxDrawCount})");
+        DrawCallCount += maxDrawCount;
     }
 
     /// <inheritdoc/>
@@ -250,6 +260,7 @@ public class MockCommandBuffer : ICommandBuffer
         _recordedCommands.Add(
             $"DrawMeshTasks({threadgroupCount.Width}, {threadgroupCount.Height}, {threadgroupCount.Depth})"
         );
+        ++DrawCallCount;
     }
 
     /// <inheritdoc/>
@@ -263,6 +274,7 @@ public class MockCommandBuffer : ICommandBuffer
         _recordedCommands.Add(
             $"DrawMeshTasksIndirect(buffer={indirectBuffer.Index}, count={drawCount})"
         );
+        DrawCallCount += drawCount;
     }
 
     /// <inheritdoc/>
@@ -276,6 +288,7 @@ public class MockCommandBuffer : ICommandBuffer
     )
     {
         _recordedCommands.Add($"DrawMeshTasksIndirectCount(maxCount={maxDrawCount})");
+        DrawCallCount += maxDrawCount;
     }
 
     /// <inheritdoc/>
