@@ -281,10 +281,9 @@ namespace HelixToolkit.Nex.Graphics.Vulkan
             }
 
             _immediate = new VulkanImmediateCommands(
-                _vkDevice,
+                this,
                 DeviceQueues.GraphicsQueueFamilyIndex,
-                HasExtDeviceFault,
-                "VkContext::immediate"
+                HasExtDeviceFault
             );
         }
 

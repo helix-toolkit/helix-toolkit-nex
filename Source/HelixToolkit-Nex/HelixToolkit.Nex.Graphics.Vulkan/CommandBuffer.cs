@@ -8,30 +8,35 @@ namespace HelixToolkit.Nex.Graphics.Vulkan;
 /// This class wraps a Vulkan command buffer and provides a high-level API for recording GPU commands.
 /// It manages state tracking, resource transitions, and validation for rendering and compute operations.
 /// </remarks>
-internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
+internal sealed class CommandBuffer : ICommandBuffer, IDisposable
 {
     private static readonly ILogger _logger = LogManager.Create<CommandBuffer>();
-    private readonly VulkanContext _ctx = context;
+    private readonly VulkanContext _ctx;
     private InputAttachment _inputAttachments = new();
+    public uint DrawCallCount { private set; get; } = 0;
+    public uint DispatchCallCount { private set; get; } = 0;
+    public bool IsAvailable => CmdBuffer == VkCommandBuffer.Null;
+    public bool IsEncoding { private set; get; }
 
     /// <inheritdoc/>
     public IContext Context => _ctx;
+    private readonly VkCommandPool _commandPool;
+    private readonly VkCommandBuffer _cmdBufAllocated;
+    public SubmitHandle Handle;
+    public VkFence Fence { get; }
+    public VkSemaphore Semaphore { get; }
+
+    private bool _disposedValue;
 
     /// <summary>
     /// Gets a value indicating whether this is a secondary command buffer.
     /// </summary>
-    public bool IsSecondary { get; internal set; } = false;
-
-    /// <summary>
-    /// Gets or sets the wrapper for the underlying Vulkan command buffer.
-    /// </summary>
-    public VulkanImmediateCommands.CommandBufferWrapper Wrapper { get; internal set; } =
-        context.Immediate!.Acquire();
+    public bool IsSecondary { get; }
 
     /// <summary>
     /// Gets the native Vulkan command buffer handle.
     /// </summary>
-    public VkCommandBuffer CmdBuffer => Wrapper.Instance;
+    public VkCommandBuffer CmdBuffer { private set; get; } = VkCommandBuffer.Null;
 
     /// <summary>
     /// Gets the currently bound framebuffer.
@@ -69,6 +74,100 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
     /// </summary>
     public ComputePipelineHandle CurrentPipelineCompute { get; private set; } =
         ComputePipelineHandle.Null;
+
+    public CommandBuffer(
+        VulkanContext context,
+        bool isSecondary,
+        uint32_t index,
+        in VkCommandPool commandPool
+    )
+    {
+        _ctx = context;
+        Handle = new SubmitHandle(index);
+        IsSecondary = isSecondary;
+        _commandPool = commandPool;
+        Fence = context.VkDevice.CreateFence($"CmdFence_{index}");
+        Semaphore = context.VkDevice.CreateSemaphore($"CmdSemaphore_{index}");
+        unsafe
+        {
+            VkCommandBufferAllocateInfo ai = new()
+            {
+                commandPool = commandPool,
+                level = isSecondary
+                    ? VK.VK_COMMAND_BUFFER_LEVEL_SECONDARY
+                    : VK.VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+                commandBufferCount = 1,
+            };
+            VkCommandBuffer cmdBuf = VkCommandBuffer.Null;
+            VK.vkAllocateCommandBuffers(context.VkDevice, &ai, &cmdBuf);
+            _cmdBufAllocated = cmdBuf;
+        }
+    }
+
+    public bool BeginEncoding()
+    {
+        if (IsEncoding || CmdBuffer != VkCommandBuffer.Null)
+        {
+            throw new InvalidOperationException("Command buffer is already acquired.");
+        }
+        IsEncoding = true;
+        CmdBuffer = _cmdBufAllocated;
+        ResetStates();
+        unsafe
+        {
+            VkCommandBufferBeginInfo bi = new()
+            {
+                flags = VK.VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+            };
+            if (IsSecondary)
+            {
+                // For now, we'll use a simplified inheritance info
+                // In a full implementation, you'd need to pass the actual render pass and framebuffer
+                VkCommandBufferInheritanceInfo inheritanceInfo = new()
+                {
+                    sType = VK.VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO,
+                    pNext = null,
+                    renderPass = VkRenderPass.Null, // Dynamic rendering doesn't use render pass objects
+                    subpass = 0,
+                    framebuffer = VkFramebuffer.Null,
+                    occlusionQueryEnable = VkBool32.False,
+                    queryFlags = 0,
+                    pipelineStatistics = 0,
+                };
+                bi.flags |= VK.VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT;
+                bi.pInheritanceInfo = &inheritanceInfo;
+            }
+            VK.vkBeginCommandBuffer(CmdBuffer, &bi).CheckResult();
+        }
+        return true;
+    }
+
+    public bool EndEncoding()
+    {
+        if (!IsEncoding)
+        {
+            throw new InvalidOperationException("Command buffer is not acquired.");
+        }
+        IsEncoding = false;
+        VK.vkEndCommandBuffer(CmdBuffer).CheckResult();
+        return true;
+    }
+
+    public bool Reset()
+    {
+        if (IsEncoding)
+        {
+            throw new InvalidOperationException("Command buffer is currently acquired.");
+        }
+        VK.vkResetCommandBuffer(CmdBuffer, 0);
+        CmdBuffer = VkCommandBuffer.Null;
+        unsafe
+        {
+            var fence = Fence;
+            VK.vkResetFences(_ctx.VkDevice, 1, &fence).CheckResult();
+        }
+        return true;
+    }
 
     /// <summary>
     /// Prepares a texture for use in a compute shader by transitioning it to the appropriate layout.
@@ -203,7 +302,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
                 HxDebug.Assert(depthImg!.IsDepthFormat, "Invalid depth attachment format");
                 var flags = depthImg.GetImageAspectFlags();
                 depthImg.TransitionLayout(
-                    Wrapper.Instance,
+                    CmdBuffer,
                     VK.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                     new VkImageSubresourceRange(
                         flags,
@@ -230,7 +329,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
                 depthResolveImg.IsResolveAttachment = true;
                 var flags = depthResolveImg.GetImageAspectFlags();
                 depthResolveImg.TransitionLayout(
-                    Wrapper.Instance,
+                    CmdBuffer,
                     VK.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                     new VkImageSubresourceRange(
                         flags,
@@ -502,7 +601,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
 
             _ctx.CheckAndUpdateDescriptorSets();
 
-            VK.vkCmdBeginRendering(Wrapper.Instance, &renderingInfo);
+            VK.vkCmdBeginRendering(CmdBuffer, &renderingInfo);
         }
     }
 
@@ -528,10 +627,10 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
         if (LastPipelineBound != pipeline)
         {
             LastPipelineBound = pipeline;
-            VK.vkCmdBindPipeline(Wrapper.Instance, VK.VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
+            VK.vkCmdBindPipeline(CmdBuffer, VK.VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
             _ctx.CheckAndUpdateDescriptorSets();
             _ctx.BindDefaultDescriptorSets(
-                Wrapper.Instance,
+                CmdBuffer,
                 VK.VK_PIPELINE_BIND_POINT_COMPUTE,
                 cps!.PipelineLayout
             );
@@ -543,11 +642,11 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
     {
         var op = desc.CompareOp.ToVk();
         VK.vkCmdSetDepthWriteEnable(
-            Wrapper.Instance,
+            CmdBuffer,
             desc.IsDepthWriteEnabled ? VK_BOOL.True : VK_BOOL.False
         );
         VK.vkCmdSetDepthTestEnable(
-            Wrapper.Instance,
+            CmdBuffer,
             (op != VK.VK_COMPARE_OP_ALWAYS || desc.IsDepthWriteEnabled)
                 ? VK_BOOL.True
                 : VK_BOOL.False
@@ -562,15 +661,15 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
             return;
         }
 #endif
-        VK.vkCmdSetDepthCompareOp(Wrapper.Instance, op);
+        VK.vkCmdSetDepthCompareOp(CmdBuffer, op);
         VK.vkCmdSetDepthBiasEnable(
-            Wrapper.Instance,
+            CmdBuffer,
             desc.IsDepthBiasEnabled ? VK_BOOL.True : VK_BOOL.False
         );
         if (desc.IsDepthBiasEnabled)
         {
             VK.vkCmdSetDepthBias(
-                Wrapper.Instance,
+                CmdBuffer,
                 desc.DepthBiasConstantFactor,
                 desc.DepthBiasClamp,
                 desc.DepthBiasSlopeFactor
@@ -597,7 +696,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
         );
 
         var type = indexFormat.ToVk();
-        VK.vkCmdBindIndexBuffer(Wrapper.Instance, buf!.VkBuffer, indexBufferOffset, type);
+        VK.vkCmdBindIndexBuffer(CmdBuffer, buf!.VkBuffer, indexBufferOffset, type);
     }
 
     /// <inheritdoc/>
@@ -634,9 +733,9 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
         if (LastPipelineBound != pipeline)
         {
             LastPipelineBound = pipeline;
-            VK.vkCmdBindPipeline(Wrapper.Instance, VK.VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+            VK.vkCmdBindPipeline(CmdBuffer, VK.VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
             _ctx.BindDefaultDescriptorSets(
-                Wrapper.Instance,
+                CmdBuffer,
                 VK.VK_PIPELINE_BIND_POINT_GRAPHICS,
                 rps.PipelineLayout
             );
@@ -659,7 +758,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
                         };
                     }
                     VK.vkCmdPushDescriptorSetKHR(
-                        Wrapper.Instance,
+                        CmdBuffer,
                         VK.VK_PIPELINE_BIND_POINT_GRAPHICS,
                         rps.PipelineLayout,
                         VulkanContext.KDescriptorSetInputAttachments,
@@ -680,7 +779,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
         );
         unsafe
         {
-            VK.vkCmdSetScissor(Wrapper.Instance, 0, 1, &scissor);
+            VK.vkCmdSetScissor(CmdBuffer, 0, 1, &scissor);
         }
     }
 
@@ -726,7 +825,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
         };
         unsafe
         {
-            VK.vkCmdSetViewport(Wrapper.Instance, 0, 1, &vp);
+            VK.vkCmdSetViewport(CmdBuffer, 0, 1, &vp);
         }
     }
 
@@ -775,7 +874,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
         unsafe
         {
             VK.vkCmdClearColorImage(
-                Wrapper.Instance,
+                CmdBuffer,
                 img.Image,
                 VK.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                 &vkClearValue,
@@ -960,7 +1059,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
             unsafe
             {
                 VK.vkCmdCopyImage(
-                    Wrapper.Instance,
+                    CmdBuffer,
                     imgSrc.Image,
                     VK.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                     imgDst.Image,
@@ -975,7 +1074,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
             unsafe
             {
                 VK.vkCmdBlitImage(
-                    Wrapper.Instance,
+                    CmdBuffer,
                     imgSrc.Image,
                     VK.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                     imgDst.Image,
@@ -1070,10 +1169,11 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
             threadgroupCount.Height,
             threadgroupCount.Depth
         );
+        ++DispatchCallCount;
     }
 
     /// <inheritdoc/>
-    public void Draw(uint vertexCount, uint instanceCount, uint firstVertex, uint baseInstance)
+    public void Draw(uint vertexCount, uint CmdBufferCount, uint firstVertex, uint baseCmdBuffer)
     {
         if (vertexCount == 0)
         {
@@ -1081,16 +1181,17 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
             return;
         }
 
-        VK.vkCmdDraw(CmdBuffer, vertexCount, instanceCount, firstVertex, baseInstance);
+        VK.vkCmdDraw(CmdBuffer, vertexCount, CmdBufferCount, firstVertex, baseCmdBuffer);
+        ++DrawCallCount;
     }
 
     /// <inheritdoc/>
     public void DrawIndexed(
         uint indexCount,
-        uint instanceCount,
+        uint CmdBufferCount,
         uint firstIndex,
         int vertexOffset,
-        uint baseInstance
+        uint baseCmdBuffer
     )
     {
         if (indexCount == 0)
@@ -1102,11 +1203,12 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
         VK.vkCmdDrawIndexed(
             CmdBuffer,
             indexCount,
-            instanceCount,
+            CmdBufferCount,
             firstIndex,
             vertexOffset,
-            baseInstance
+            baseCmdBuffer
         );
+        ++DrawCallCount;
     }
 
     /// <inheritdoc/>
@@ -1130,6 +1232,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
                 stride > 0 ? stride : (uint)sizeof(VkDrawIndexedIndirectCommand)
             );
         }
+        DrawCallCount += drawCount;
     }
 
     /// <inheritdoc/>
@@ -1159,6 +1262,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
                 stride > 0 ? stride : (uint)sizeof(VkDrawIndexedIndirectCommand)
             );
         }
+        DrawCallCount += maxDrawCount;
     }
 
     /// <inheritdoc/>
@@ -1182,6 +1286,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
                 stride > 0 ? stride : (uint)sizeof(VkDrawIndirectCommand)
             );
         }
+        DrawCallCount += drawCount;
     }
 
     /// <inheritdoc/>
@@ -1193,6 +1298,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
             threadgroupCount.Height,
             threadgroupCount.Depth
         );
+        ++DrawCallCount;
     }
 
     /// <inheritdoc/>
@@ -1216,6 +1322,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
                 stride > 0 ? stride : (uint)sizeof(VkDrawMeshTasksIndirectCommandEXT)
             );
         }
+        DrawCallCount += drawCount;
     }
 
     /// <inheritdoc/>
@@ -1245,6 +1352,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
                 stride > 0 ? stride : (uint)sizeof(VkDrawMeshTasksIndirectCommandEXT)
             );
         }
+        DrawCallCount += maxDrawCount;
     }
 
     /// <inheritdoc/>
@@ -1297,6 +1405,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
                     }
 
                     vkBuffers[validCount++] = vkCmdBuffer.CmdBuffer;
+                    DrawCallCount += vkCmdBuffer.DrawCallCount;
                 }
                 else
                 {
@@ -1509,17 +1618,12 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
         {
             fixed (byte* pLabel = label)
             {
-                VkDebugUtilsLabelEXT utilsLabel = new()
-                {
-                    pNext = null,
-                    pLabelName = pLabel,
-                };
+                VkDebugUtilsLabelEXT utilsLabel = new() { pNext = null, pLabelName = pLabel };
                 color.CopyTo(utilsLabel.color, 4);
                 VK.vkCmdInsertDebugUtilsLabelEXT(CmdBuffer, &utilsLabel);
             }
         }
     }
-
 
     /// <inheritdoc/>
     public void PushConstants(nint data, uint size, uint offset)
@@ -1581,11 +1685,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
         {
             fixed (byte* pLabel = label)
             {
-                VkDebugUtilsLabelEXT utilsLabel = new()
-                {
-                    pNext = null,
-                    pLabelName = pLabel,
-                };
+                VkDebugUtilsLabelEXT utilsLabel = new() { pNext = null, pLabelName = pLabel };
                 color.CopyTo(utilsLabel.color, 4);
                 VK.vkCmdBeginDebugUtilsLabelEXT(CmdBuffer, &utilsLabel);
             }
@@ -1597,7 +1697,6 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
     {
         VK.vkCmdEndDebugUtilsLabelEXT(CmdBuffer);
     }
-
 
     /// <inheritdoc/>
     public void ResetQueryPool(in QueryPoolHandle pool, uint firstQuery, uint queryCount)
@@ -1643,7 +1742,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
             VkImageAspectFlags flags = img.GetImageAspectFlags();
             // set the result of the previous render pass
             img.TransitionLayout(
-                Wrapper.Instance,
+                CmdBuffer,
                 img.IsSampledImage
                     ? VK.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
                     : VK.VK_IMAGE_LAYOUT_GENERAL,
@@ -1670,7 +1769,7 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
 
         var flags = img.GetImageAspectFlags();
         img.TransitionLayout(
-            Wrapper.Instance,
+            CmdBuffer,
             VkImageLayout.RenderingLocalRead,
             new VkImageSubresourceRange(
                 flags,
@@ -1786,5 +1885,50 @@ internal sealed class CommandBuffer(VulkanContext context) : ICommandBuffer
             };
             VK.vkCmdSetCheckpointNV(CmdBuffer, &utilsLabel);
         }
+    }
+
+    private void ResetStates()
+    {
+        DrawCallCount = 0;
+        DispatchCallCount = 0;
+        LastPipelineBound = VkPipeline.Null;
+        CurrentPipelineGraphics = RenderPipelineHandle.Null;
+        CurrentPipelineCompute = ComputePipelineHandle.Null;
+    }
+
+    private void Dispose(bool disposing)
+    {
+        if (!_disposedValue)
+        {
+            if (disposing)
+            {
+                unsafe
+                {
+                    // lifetimes of all VkFence objects are managed explicitly we do not use deferredTask() for them
+                    VK.vkDestroyFence(_ctx.VkDevice, Fence, null);
+                    VK.vkDestroySemaphore(_ctx.VkDevice, Semaphore, null);
+                    var cmdBuf = _cmdBufAllocated;
+                    VK.vkFreeCommandBuffers(_ctx.VkDevice, _commandPool, 1, &cmdBuf);
+                }
+            }
+
+            // TODO: free unmanaged resources (unmanaged objects) and override finalizer
+            // TODO: set large fields to null
+            _disposedValue = true;
+        }
+    }
+
+    // // TODO: override finalizer only if 'Dispose(bool disposing)' has code to free unmanaged resources
+    // ~CommandBuffer()
+    // {
+    //     // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+    //     Dispose(disposing: false);
+    // }
+
+    public void Dispose()
+    {
+        // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+        Dispose(disposing: true);
+        GC.SuppressFinalize(this);
     }
 }
