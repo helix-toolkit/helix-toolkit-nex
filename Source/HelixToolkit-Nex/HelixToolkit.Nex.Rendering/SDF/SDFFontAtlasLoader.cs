@@ -198,13 +198,13 @@ public static class SDFFontAtlasLoader
     /// Convenience method that loads the built-in <c>sans-regular.json</c> embedded resource
     /// and creates an <see cref="SDFFontAtlas"/> from it.
     /// </summary>
-    /// <param name="textureIndex">The bindless texture index for the loaded SDF atlas PNG.</param>
-    /// <param name="samplerIndex">The bindless sampler index.</param>
+    /// <param name="texture">The bindless texture index for the loaded SDF atlas PNG.</param>
+    /// <param name="sampler">The bindless sampler index.</param>
     /// <returns>A ready-to-use <see cref="SDFFontAtlas"/>.</returns>
     public static SDFFontAtlas LoadBuiltInAtlas(
         BuildinFontAtlas altasType,
-        uint textureIndex,
-        uint samplerIndex
+        TextureRef texture,
+        SamplerRef sampler
     )
     {
         var name = altasType switch
@@ -218,6 +218,6 @@ public static class SDFFontAtlasLoader
             ),
         };
         var descriptor = LoadFromEmbeddedResource(name);
-        return new SDFFontAtlas(textureIndex, samplerIndex, descriptor);
+        return new SDFFontAtlas(texture, sampler, descriptor);
     }
 }

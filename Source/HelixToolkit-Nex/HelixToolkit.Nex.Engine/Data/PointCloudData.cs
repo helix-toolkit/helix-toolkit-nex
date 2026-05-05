@@ -1,5 +1,6 @@
 using HelixToolkit.Nex.ECS.Utils;
 using HelixToolkit.Nex.Rendering.Components;
+using HelixToolkit.Nex.Rendering.DataEntries;
 
 namespace HelixToolkit.Nex.Engine.Data;
 

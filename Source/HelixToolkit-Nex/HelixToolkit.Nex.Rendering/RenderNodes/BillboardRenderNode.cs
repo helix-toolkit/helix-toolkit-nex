@@ -63,7 +63,7 @@ public sealed class BillboardRenderNode : RenderNode
         var billboards = res.RenderContext.Data!.BillboardData;
         foreach (var entry in billboards!.Data.Values)
         {
-            if (!entry.Valid || entry.BillboardCount == 0)
+            if (!entry.Valid || entry.TotalCount == 0)
             {
                 continue;
             }
@@ -82,7 +82,7 @@ public sealed class BillboardRenderNode : RenderNode
         var billboards = res.RenderContext.Data.BillboardData;
         foreach (var entry in billboards!.Data.Values)
         {
-            if (!entry.Valid || entry.BillboardCount == 0)
+            if (!entry.Valid || entry.TotalCount == 0)
             {
                 continue;
             }

@@ -95,12 +95,12 @@ public class SDFFontAtlas
     /// <summary>
     /// Gets the bindless texture index for the SDF atlas texture.
     /// </summary>
-    public uint TextureIndex { get; }
+    public TextureRef Texture { get; }
 
     /// <summary>
     /// Gets the bindless sampler index for the SDF atlas texture.
     /// </summary>
-    public uint SamplerIndex { get; }
+    public SamplerRef Sampler { get; }
 
     /// <summary>
     /// Gets the width of the atlas texture in pixels.
@@ -139,13 +139,13 @@ public class SDFFontAtlas
     /// <summary>
     /// Creates a new <see cref="SDFFontAtlas"/> from the given texture handles and descriptor.
     /// </summary>
-    /// <param name="textureIndex">The bindless texture index for the SDF atlas texture.</param>
-    /// <param name="samplerIndex">The bindless sampler index for the SDF atlas texture.</param>
+    /// <param name="texture">The bindless texture index for the SDF atlas texture.</param>
+    /// <param name="sampler">The bindless sampler index for the SDF atlas texture.</param>
     /// <param name="descriptor">The descriptor containing atlas metadata and glyph metrics.</param>
-    public SDFFontAtlas(uint textureIndex, uint samplerIndex, SDFFontAtlasDescriptor descriptor)
+    public SDFFontAtlas(TextureRef texture, SamplerRef sampler, SDFFontAtlasDescriptor descriptor)
     {
-        TextureIndex = textureIndex;
-        SamplerIndex = samplerIndex;
+        Texture = texture;
+        Sampler = sampler;
         TextureWidth = descriptor.TextureWidth;
         TextureHeight = descriptor.TextureHeight;
         SDFSpread = descriptor.SDFSpread;

@@ -1,5 +1,6 @@
 using HelixToolkit.Nex.ECS.Utils;
 using HelixToolkit.Nex.Rendering.Components;
+using HelixToolkit.Nex.Rendering.DataEntries;
 
 namespace HelixToolkit.Nex.Engine.Data;
 
@@ -69,7 +70,6 @@ internal sealed class BillboardData(IContext context, World world) : Initializab
             return true;
         }
         using var t = _tracer.BeginScope(nameof(Update));
-        Context.WaitAll(false);
         Rebuild();
         _lastBufferUpdateTicks = _lastDataUpdateTicks;
         return true;
@@ -87,6 +87,7 @@ internal sealed class BillboardData(IContext context, World world) : Initializab
             return;
         }
         using var t = _tracer.BeginScope(nameof(Rebuild));
+
         foreach (var entry in _billboardsByMaterial.Values)
         {
             entry.Clear();
@@ -102,12 +103,6 @@ internal sealed class BillboardData(IContext context, World world) : Initializab
             ref var bb = ref entity.Get<BillboardComponent>();
             if (!bb.Valid)
                 continue;
-
-            // Update GPU buffers for this entity's BillboardGeometry
-            if (bb.BillboardGeometry!.BufferDirty)
-            {
-                bb.BillboardGeometry.UpdateBuffers(Context);
-            }
 
             TotalBillboardCount += (uint)bb.BillboardCount;
             if (
@@ -132,11 +127,16 @@ internal sealed class BillboardData(IContext context, World world) : Initializab
             ++Count;
         }
 
+        Context.WaitAll(false);
         foreach (var entry in _billboardsByMaterial.Values)
         {
-            if (entry.BillboardCount == 0)
+            if (entry.TotalCount == 0)
             {
                 entry.Dispose();
+            }
+            else
+            {
+                entry.UploadDrawData();
             }
         }
         _needRebuilt = false;
