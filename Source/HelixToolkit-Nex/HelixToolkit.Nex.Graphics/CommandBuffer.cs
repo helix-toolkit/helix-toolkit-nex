@@ -29,7 +29,20 @@ public interface ICommandBuffer
     /// Secondary command buffers can be recorded in parallel and executed by a primary command buffer.
     /// </summary>
     bool IsSecondary { get; }
-
+    /// <summary>
+    /// Gets the number of draw calls issued since the last reset or frame.
+    /// </summary>
+    /// <remarks>Use this property to monitor rendering performance or diagnose graphics bottlenecks. The
+    /// value is typically reset at the start of each frame or after a manual reset, depending on the
+    /// implementation.</remarks>
+    uint DrawCallCount { get; }
+    /// <summary>
+    /// Gets the total number of dispatch calls that have been made since the last reset or frame.
+    /// </summary>
+    /// <remarks>Use this property to monitor compute workload performance or diagnose GPU bottlenecks. The
+    /// value is typically reset at the start of each frame or after a manual reset, depending on the
+    /// implementation.</remarks>
+    uint DispatchCallCount { get; }
     /// <summary>
     /// Executes secondary command buffers within this primary command buffer.
     /// This method can only be called on primary command buffers during an active render pass.

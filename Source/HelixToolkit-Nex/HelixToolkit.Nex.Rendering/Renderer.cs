@@ -121,8 +121,11 @@ public class Renderer(IServiceProvider serviceProvider) : Initializable
             switch (stage)
             {
                 case RenderStage.SubmitFlag:
-                    context.Context.Submit(cmdBuf);
-                    cmdBuf = context.Context.AcquireCommandBuffer();
+                    if (cmdBuf.DrawCallCount > 0 || cmdBuf.DispatchCallCount > 0)
+                    {
+                        context.Context.Submit(cmdBuf);
+                        cmdBuf = context.Context.AcquireCommandBuffer();
+                    }
                     break;
                 default:
                     graph.Execute(context, cmdBuf, _renderers, stage);

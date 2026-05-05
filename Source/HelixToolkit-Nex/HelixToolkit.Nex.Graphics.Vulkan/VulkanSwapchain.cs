@@ -23,6 +23,7 @@ internal sealed class VulkanSwapchain : IDisposable
 
     public readonly TextureHandle[] SwapchainTextures = new TextureHandle[MAX_SWAPCHAIN_IMAGES];
     public readonly VkSemaphore[] AcquireSemaphore = new VkSemaphore[MAX_SWAPCHAIN_IMAGES];
+    public readonly VkSemaphore[] RenderCompleteSemaphore = new VkSemaphore[MAX_SWAPCHAIN_IMAGES];
     public readonly VkFence[] PresentFence = new VkFence[MAX_SWAPCHAIN_IMAGES];
     public readonly uint64_t[] TimelineWaitValues = new uint64_t[MAX_SWAPCHAIN_IMAGES];
 
@@ -47,6 +48,7 @@ internal sealed class VulkanSwapchain : IDisposable
         {
             SwapchainTextures[i] = TextureHandle.Null;
             AcquireSemaphore[i] = VkSemaphore.Null;
+            RenderCompleteSemaphore[i] = VkSemaphore.Null;
             PresentFence[i] = VkFence.Null;
             TimelineWaitValues[i] = 0;
         }
@@ -263,6 +265,9 @@ internal sealed class VulkanSwapchain : IDisposable
             for (uint32_t i = 0; i < NumSwapchainImages; i++)
             {
                 AcquireSemaphore[i] = _device.CreateSemaphore("Semaphore: swapchain-acquire");
+                RenderCompleteSemaphore[i] = _device.CreateSemaphore(
+                    "Semaphore: swapchain-render-complete"
+                );
 
                 VulkanImage image = new(
                     _ctx,
@@ -319,10 +324,20 @@ internal sealed class VulkanSwapchain : IDisposable
         unsafe
         {
             VK.vkDestroySwapchainKHR(_device, _swapchain, null);
+
+            for (int i = 0; i < (int)NumSwapchainImages; i++)
+            {
+                VK.vkDestroySemaphore(_device, AcquireSemaphore[i], null);
+                AcquireSemaphore[i] = VkSemaphore.Null;
+                VK.vkDestroySemaphore(_device, RenderCompleteSemaphore[i], null);
+                RenderCompleteSemaphore[i] = VkSemaphore.Null;
+            }
         }
         _swapchain = VkSwapchainKHR.Null;
         // Recreate the swapchain with the new dimensions
-        return CreateSwapchain(_ctx.Config.PreferredPresentMode) == VkResult.Success ? ResultCode.Ok : ResultCode.RuntimeError;
+        return CreateSwapchain(_ctx.Config.PreferredPresentMode) == VkResult.Success
+            ? ResultCode.Ok
+            : ResultCode.RuntimeError;
     }
 
     public ResultCode Present(VkSemaphore waitSemaphore)
@@ -590,6 +605,10 @@ internal sealed class VulkanSwapchain : IDisposable
                     VK.vkDestroySwapchainKHR(_device, _swapchain, null);
 
                     foreach (var sem in AcquireSemaphore)
+                    {
+                        VK.vkDestroySemaphore(_device, sem, null);
+                    }
+                    foreach (var sem in RenderCompleteSemaphore)
                     {
                         VK.vkDestroySemaphore(_device, sem, null);
                     }

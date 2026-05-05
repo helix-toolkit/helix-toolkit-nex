@@ -15,7 +15,10 @@ internal sealed partial class VulkanContext : Initializable, IContext
         where T : unmanaged
     {
         if (data.Length < count)
-            return AsyncUploadHandle<BufferHandle>.CreateCompleted(ResultCode.ArgumentOutOfRange, handle);
+            return AsyncUploadHandle<BufferHandle>.CreateCompleted(
+                ResultCode.ArgumentOutOfRange,
+                handle
+            );
 
         if (count == 0)
             return AsyncUploadHandle<BufferHandle>.CreateCompleted(ResultCode.Ok, handle);
@@ -48,7 +51,10 @@ internal sealed partial class VulkanContext : Initializable, IContext
         where T : unmanaged
     {
         if (data.Length < count)
-            return AsyncUploadHandle<TextureHandle>.CreateCompleted(ResultCode.ArgumentOutOfRange, handle);
+            return AsyncUploadHandle<TextureHandle>.CreateCompleted(
+                ResultCode.ArgumentOutOfRange,
+                handle
+            );
 
         if (count == 0)
             return AsyncUploadHandle<TextureHandle>.CreateCompleted(ResultCode.Ok, handle);
@@ -276,12 +282,14 @@ internal sealed partial class VulkanContext : Initializable, IContext
             // a temporary workaround for Windows on Snapdragon
             VK.vkDeviceWaitIdle(_vkDevice).CheckResult();
         }
-        _currentCommandBuffer = new CommandBuffer(this);
-
-        return _currentCommandBuffer;
+        if (Immediate == null)
+        {
+            throw new InvalidOperationException("Graphics context not properly initialized");
+        }
+        return Immediate!.Acquire();
     }
 
-    public ICommandBuffer CreateSecondaryCommandBuffer(RenderPass renderPassInfo)
+    public ICommandBuffer CreateSecondaryCommandBuffer()
     {
         HxDebug.Assert(Immediate != null, "Immediate commands not initialized");
 
@@ -290,10 +298,7 @@ internal sealed partial class VulkanContext : Initializable, IContext
             throw new InvalidOperationException("Graphics context not properly initialized");
         }
 
-        var wrapper = Immediate.CreateSecondaryBuffer(renderPassInfo);
-        var secondaryBuffer = new CommandBuffer(this) { IsSecondary = true, Wrapper = wrapper };
-
-        return secondaryBuffer;
+        return Immediate.CreateSecondaryBuffer();
     }
 
     public ResultCode CreateComputePipeline(
@@ -1351,6 +1356,12 @@ internal sealed partial class VulkanContext : Initializable, IContext
             // we wait for this value next time we want to acquire this swapchain image
             Swapchain.TimelineWaitValues[Swapchain.CurrentImageIndex] = signalValue;
             Immediate!.SignalSemaphore(TimelineSemaphore, signalValue);
+            // Signal the per-image render-complete semaphore for presentation.
+            // This decouples the presentation engine's semaphore from the command buffer's semaphore,
+            // preventing reuse conflicts when the command buffer is recycled.
+            Immediate!.SignalPresentSemaphore(
+                Swapchain!.RenderCompleteSemaphore[Swapchain!.CurrentImageIndex]
+            );
         }
         unsafe
         {
@@ -1370,23 +1381,23 @@ internal sealed partial class VulkanContext : Initializable, IContext
                         pReleaseKeys = &syncInfo.ReleaseKey,
                         pReleaseSyncs = &releaseSyncMem,
                     };
-                    vkCmdBuffer.LastSubmitHandle = Immediate!.Submit(vkCmdBuffer.Wrapper, &info);
+                    vkCmdBuffer.LastSubmitHandle = Immediate!.Submit(vkCmdBuffer, &info);
                     break;
                 }
                 default:
-                    vkCmdBuffer.LastSubmitHandle = Immediate!.Submit(vkCmdBuffer.Wrapper, null);
+                    vkCmdBuffer.LastSubmitHandle = Immediate!.Submit(vkCmdBuffer, null);
                     break;
             }
         }
 
         if (shouldPresent)
         {
-            Swapchain!.Present(Immediate.AcquireLastSubmitSemaphore());
+            Swapchain!.Present(Swapchain!.RenderCompleteSemaphore[Swapchain!.CurrentImageIndex]);
         }
 
         ProcessDeferredTasks();
 
-        SubmitHandle handle = vkCmdBuffer.LastSubmitHandle;
+        var handle = vkCmdBuffer.LastSubmitHandle;
 
         // reset
         _currentCommandBuffer = null;
@@ -1417,9 +1428,9 @@ internal sealed partial class VulkanContext : Initializable, IContext
         }
 
         HxDebug.Assert(tex.ImageLayout != VK.VK_IMAGE_LAYOUT_UNDEFINED);
-        var wrapper = Immediate!.Acquire();
-        tex.GenerateMipmap(wrapper.Instance);
-        Immediate!.Submit(wrapper);
+        var cmdBuf = Immediate!.Acquire();
+        tex.GenerateMipmap(cmdBuf.CmdBuffer);
+        Immediate!.Submit(cmdBuf);
         levels = tex.NumLevels;
     }
 

@@ -2,7 +2,7 @@ namespace HelixToolkit.Nex.Rendering.RenderNodes;
 
 public enum PostEffectPriority : uint
 {
-    Highlight = 0
+    Highlight = 0,
 }
 
 public abstract class PostEffect() : Initializable
@@ -48,7 +48,6 @@ public abstract class PostEffect() : Initializable
     /// Whether the effect applied successfully.
     /// </returns>
     public abstract bool Apply(in RenderResources res, ref string readSlot, ref string writeSlot);
-
 
     protected override ResultCode OnInitializing()
     {
@@ -197,7 +196,6 @@ public sealed class PostEffectsNode : RenderNode
         // Alternate read/write slots across effects without any runtime resource-dict mutation.
         var read = _initialReadSlot;
         var write = _initialWriteSlot;
-
         foreach (var effect in _effects)
         {
             if (!effect.Enabled)
@@ -217,12 +215,7 @@ public sealed class PostEffectsNode : RenderNode
         // When zero effects ran, `read` == _initialReadSlot, which is already the correct source.
         // Publish this as the stable TextureColorF16Current alias so all downstream passes
         // (e.g. RenderToFinalNode) always read the correct texture regardless of effect count.
-        if (res.RenderContext.ResourceSet is { } resourceSet)
-        {
-            resourceSet.Textures[SystemBufferNames.TextureColorF16Target] = resourceSet.Textures[
-                read
-            ];
-        }
+        res.Textures[SystemBufferNames.TextureColorF16Target] = res.Textures[read];
     }
 
     protected override bool OnSetup()
