@@ -26,7 +26,6 @@ public interface IContext : IInitializable
     /// Creates a secondary command buffer for parallel recording.
     /// Secondary command buffers can be recorded independently and executed by a primary command buffer.
     /// </summary>
-    /// <param name="renderPassInfo">The render pass information this secondary buffer will be used with.</param>
     /// <returns>A secondary command buffer ready for recording.</returns>
     /// <remarks>
     /// Secondary command buffers are useful for:
@@ -37,7 +36,7 @@ public interface IContext : IInitializable
     /// </list>
     /// The secondary buffer must be compatible with the render pass it will be executed in.
     /// </remarks>
-    ICommandBuffer CreateSecondaryCommandBuffer(RenderPass renderPassInfo);
+    ICommandBuffer CreateSecondaryCommandBuffer();
 
     /// <summary>
     /// Submits a command buffer for execution on the GPU.

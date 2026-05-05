@@ -619,7 +619,7 @@ public sealed class RenderGraph : Initializable
         return true;
     }
 
-    public bool Execute(
+    public int Execute(
         RenderContext context,
         ICommandBuffer cmdBuf,
         IReadOnlyDictionary<string, RenderNode> nodes,
@@ -628,11 +628,12 @@ public sealed class RenderGraph : Initializable
     {
         if (context.Data is null)
         {
-            return false;
+            return 0;
         }
 
         context.ResourceSet.SetupSystemResources(context);
         var passes = _passByStage[(int)stage];
+        var counter = 0;
         foreach (var pass in passes)
         {
             if (!nodes.TryGetValue(pass.PassName, out var node))
@@ -658,8 +659,9 @@ public sealed class RenderGraph : Initializable
                     context.ResourceSet.Buffers
                 )
             );
+            ++counter;
         }
-        return true;
+        return counter;
     }
 
     protected override ResultCode OnInitializing()
