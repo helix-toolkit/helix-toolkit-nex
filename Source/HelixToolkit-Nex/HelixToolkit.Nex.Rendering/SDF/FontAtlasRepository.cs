@@ -64,15 +64,13 @@ public sealed class FontAtlasRepository : IFontAtlasRepository
             generateMipmaps: false,
             debugName: $"SDFFont_Atlas_{atlasType}"
         );
-        uint textureIndex = textureRef;
 
         // Create sampler
         var samplerRef = samplerRepository.GetOrCreate(SamplerStateDesc.LinearClampNoMipmap);
-        uint samplerIndex = samplerRef;
 
         // Load descriptor
         var descriptor = SDFFontAtlasLoader.LoadFromEmbeddedResource(jsonResource);
-        var atlas = new SDFFontAtlas(textureIndex, samplerIndex, descriptor);
+        var atlas = new SDFFontAtlas(textureRef, samplerRef, descriptor);
 
         lock (_lock)
         {
@@ -119,18 +117,16 @@ public sealed class FontAtlasRepository : IFontAtlasRepository
             generateMipmaps: false,
             debugName: $"SDFFont_Atlas_{name}"
         );
-        uint textureIndex = textureRef;
 
         // Create sampler
         var samplerRef = samplerRepository.GetOrCreate(SamplerStateDesc.LinearClampNoMipmap);
-        uint samplerIndex = samplerRef;
 
         // Load descriptor
         using var jsonStream =
             assembly.GetManifestResourceStream(fullJsonName)
             ?? throw new FileNotFoundException($"Embedded resource '{fullJsonName}' not found.");
         var descriptor = SDFFontAtlasLoader.LoadFromStream(jsonStream);
-        var atlas = new SDFFontAtlas(textureIndex, samplerIndex, descriptor);
+        var atlas = new SDFFontAtlas(textureRef, samplerRef, descriptor);
 
         lock (_lock)
         {
@@ -179,16 +175,14 @@ public sealed class FontAtlasRepository : IFontAtlasRepository
             generateMipmaps: false,
             debugName: $"SDFFont_Atlas_{name}"
         );
-        uint textureIndex = textureRef;
 
         // Create sampler
         var samplerRef = samplerRepository.GetOrCreate(SamplerStateDesc.LinearClampNoMipmap);
-        uint samplerIndex = samplerRef;
 
         // Load descriptor
         using var jsonStream = File.OpenRead(jsonFilePath);
         var descriptor = SDFFontAtlasLoader.LoadFromStream(jsonStream);
-        var atlas = new SDFFontAtlas(textureIndex, samplerIndex, descriptor);
+        var atlas = new SDFFontAtlas(textureRef, samplerRef, descriptor);
 
         lock (_lock)
         {
