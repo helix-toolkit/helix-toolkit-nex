@@ -1,5 +1,6 @@
 using HelixToolkit.Nex.ECS;
-using HelixToolkit.Nex.Rendering.Components;
+
+using HelixToolkit.Nex.Rendering.DataEntries;
 
 namespace HelixToolkit.Nex.Rendering;
 
@@ -119,69 +120,6 @@ public interface IMeshDrawData : IRenderData
     DrawRange RangeDynamicMeshInstancing { get; }
 }
 
-public sealed class PointCloudDataEntry : IDisposable
-{
-    private bool _disposed;
-    public bool IsDisposed => _disposed;
-    public bool Valid => !_disposed && Entities.Count > 0;
-    public MaterialTypeId MaterialId { get; }
-    public FastList<Entity> Entities { get; } = [];
-    public ElementBuffer<PointDrawData> DrawDataBuffer { get; }
-    public BufferResource DrawArgsBuffer { get; }
-
-    public int PointCount { get; private set; }
-
-    public PointCloudDataEntry(IContext context, int initialCapacity, MaterialTypeId id)
-    {
-        MaterialId = id;
-        DrawDataBuffer = new ElementBuffer<PointDrawData>(
-            context,
-            initialCapacity,
-            BufferUsageBits.Storage,
-            debugName: $"{id}"
-        );
-
-        DrawArgsBuffer = context.CreateBuffer(
-            new BufferDesc
-            {
-                DataSize = PointDrawIndirectArgs.SizeInBytes,
-                Usage = BufferUsageBits.Storage | BufferUsageBits.Indirect,
-                Storage = StorageType.Device,
-                DebugName = $"PointDrawArgs_{id}",
-            }
-        );
-    }
-
-    public void AddEntity(Entity entity)
-    {
-        Entities.Add(entity);
-        ref var comp = ref entity.Get<PointCloudComponent>();
-        PointCount += comp.PointCount;
-    }
-
-    public void Clear()
-    {
-        Entities.Clear();
-        PointCount = 0;
-    }
-
-    public void EnsureCapacity()
-    {
-        DrawDataBuffer.EnsureCapacity(PointCount);
-    }
-
-    public void Dispose()
-    {
-        if (_disposed)
-        {
-            return;
-        }
-        DrawDataBuffer.Dispose();
-        DrawArgsBuffer.Dispose();
-        _disposed = true;
-    }
-}
-
 /// <summary>
 /// Provides access to collected point cloud data for GPU rendering.
 /// <para>
@@ -202,69 +140,6 @@ public interface IPointCloudData : IRenderData
     /// Gets the total number of points in the collection.
     /// </summary>
     uint TotalPointCount { get; }
-}
-
-public sealed class BillboardDataEntry : IDisposable
-{
-    private bool _disposed;
-    public bool IsDisposed => _disposed;
-    public bool Valid => !_disposed && Entities.Count > 0;
-    public MaterialTypeId MaterialId { get; }
-    public FastList<Entity> Entities { get; } = [];
-    public ElementBuffer<BillboardDrawData> DrawDataBuffer { get; }
-    public BufferResource DrawArgsBuffer { get; }
-
-    public int BillboardCount { get; private set; }
-
-    public BillboardDataEntry(IContext context, int initialCapacity, MaterialTypeId id)
-    {
-        MaterialId = id;
-        DrawDataBuffer = new ElementBuffer<BillboardDrawData>(
-            context,
-            initialCapacity,
-            BufferUsageBits.Storage,
-            debugName: $"{id}"
-        );
-
-        DrawArgsBuffer = context.CreateBuffer(
-            new BufferDesc
-            {
-                DataSize = BillboardDrawIndirectArgs.SizeInBytes,
-                Usage = BufferUsageBits.Storage | BufferUsageBits.Indirect,
-                Storage = StorageType.Device,
-                DebugName = $"BillboardDrawArgs_{id}",
-            }
-        );
-    }
-
-    public void AddEntity(Entity entity)
-    {
-        Entities.Add(entity);
-        ref var comp = ref entity.Get<BillboardComponent>();
-        BillboardCount += comp.BillboardCount;
-    }
-
-    public void Clear()
-    {
-        Entities.Clear();
-        BillboardCount = 0;
-    }
-
-    public void EnsureCapacity()
-    {
-        DrawDataBuffer.EnsureCapacity(BillboardCount);
-    }
-
-    public void Dispose()
-    {
-        if (_disposed)
-        {
-            return;
-        }
-        DrawDataBuffer.Dispose();
-        DrawArgsBuffer.Dispose();
-        _disposed = true;
-    }
 }
 
 /// <summary>

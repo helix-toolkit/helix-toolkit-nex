@@ -1,6 +1,3 @@
-using HelixToolkit.Nex.Rendering.Components;
-using HelixToolkit.Nex.Scene;
-
 namespace HelixToolkit.Nex.Rendering.ComputeNodes;
 
 public sealed class BillboardCullNode : ComputeNode
@@ -129,41 +126,18 @@ public sealed class BillboardCullNode : ComputeNode
             };
             res.CmdBuffer.UpdateBuffer(entry.DrawArgsBuffer, ref args);
             res.Deps.Buffers[1] = entry.DrawArgsBuffer;
-            foreach (var entity in entry.Entities)
+            var expandPC = new BillboardExpandPC
             {
-                ref var comp = ref entity.Get<BillboardComponent>();
-                if (comp.BillboardCount == 0)
-                {
-                    continue;
-                }
-                ref var worldTransform = ref entity.Get<WorldTransform>();
-                var geo = comp.BillboardGeometry!;
-                var expandPC = new BillboardExpandPC
-                {
-                    DrawDataAddress = entry.DrawDataBuffer,
-                    IndirectArgsAddress = entry.DrawArgsBuffer.GpuAddress,
-                    ArgsAddress = _billboardExpandArgsBuffer.GpuAddress,
-                    BillboardVertexAddress = geo.VertexBuffer.GpuAddress,
-                    BillboardCount = (uint)comp.BillboardCount,
-                    WorldId = entity.WorldId,
-                    EntityId = (uint)entity.Id,
-                    TextureIndex = comp.TextureIndex,
-                    SamplerIndex = comp.SamplerIndex,
-                    FixedSize = comp.FixedSize ? 1u : 0,
-                    AxisConstrained = comp.AxisConstrained ? 1u : 0,
-                    ConstraintAxis = comp.ConstraintAxis,
-                    Color = comp.Color,
-                    SdfDistanceRange = comp.SdfDistanceRange,
-                    SdfDistanceRangeMiddle = comp.SdfDistanceRangeMiddle,
-                    SdfGlyphCellSize = comp.SdfGlyphCellSize,
-                    SdfAtlasWidth = comp.SdfAtlasWidth,
-                    SdfAtlasHeight = comp.SdfAtlasHeight,
-                    WorldTransform = worldTransform.Value,
-                };
-                res.CmdBuffer.PushConstants(expandPC);
-                uint groupCount = ((uint)comp.BillboardCount + 63) / 64;
-                res.CmdBuffer.DispatchThreadGroups(new Dimensions(groupCount, 1, 1), res.Deps);
-            }
+                DrawDataAddress = entry.DrawDataBuffer,
+                IndirectArgsAddress = entry.DrawArgsBuffer.GpuAddress,
+                ArgsAddress = _billboardExpandArgsBuffer.GpuAddress,
+                BillboardVertexAddress = entry.VertexBuffer,
+                BillboardInfoAddress = entry.InfoBuffer,
+                BillboardCount = (uint)entry.TotalCount,
+            };
+            res.CmdBuffer.PushConstants(expandPC);
+            uint groupCount = ((uint)entry.TotalCount + 63) / 64;
+            res.CmdBuffer.DispatchThreadGroups(new Dimensions(groupCount, 1, 1), res.Deps);
         }
     }
 

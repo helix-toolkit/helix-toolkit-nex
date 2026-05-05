@@ -8,6 +8,10 @@ layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer Bi
     BillboardVertex vertices[];
 };
 
+layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer BillboardInfoBuffer {
+    BillboardInfo info[];
+};
+
 layout(buffer_reference, std430, buffer_reference_align = 16) writeonly buffer BillboardDrawDataBuffer {
     BillboardDrawData data[];
 };
@@ -26,13 +30,17 @@ layout(push_constant) uniform PC {
 
 BillboardExpandArgs args = BillboardExpandBuffer(pc.value.argsAddress).value;
 
+BillboardVertexBuffer billboardVertices = BillboardVertexBuffer(pc.value.billboardVertexAddress);
+BillboardInfoBuffer billboardInfo = BillboardInfoBuffer(pc.value.billboardInfoAddress);
+
 void main() {
     uint idx = gl_GlobalInvocationID.x;
 
     if (idx >= pc.value.billboardCount) return;
 
     // Read all per-billboard data from the single interleaved vertex buffer
-    BillboardVertex v = BillboardVertexBuffer(pc.value.billboardVertexAddress).vertices[idx];
+    BillboardVertex v = billboardVertices.vertices[idx];
+    BillboardInfo info = billboardInfo.info[v.infoIndex];
 
     float width = v.size.x;
     float height = v.size.y;
@@ -44,10 +52,10 @@ void main() {
     // Transform the anchor point (origin) to world space.
     // For text billboards, the anchor is at local (0,0,0); for non-text billboards
     // with identity worldTransform, this equals (0,0,0) and glyph positions pass through.
-    vec4 anchorWorld = pc.value.worldTransform * vec4(0.0, 0.0, 0.0, 1.0);
+    vec4 anchorWorld = info.worldTransform * vec4(0.0, 0.0, 0.0, 1.0);
 
     // Use per-billboard color if alpha > 0, otherwise use uniform color from push constants
-    vec4 color = v.color.a > 0.0 ? v.color : pc.value.color;
+    vec4 color = v.color.a > 0.0 ? v.color : info.color;
 
     vec4 uvRect = v.uvRect;
 
@@ -67,7 +75,7 @@ void main() {
     float screenHeight;
     float dist = distance(args.cameraPosition, anchorWorld.xyz);
     float projFactor = args.screenHeight / (2.0 * tan(args.fovY * 0.5));
-    if (pc.value.fixedSize != 0u) {
+    if (info.fixedSize != 0u) {
         // Fixed-size mode: width/height are already in pixels, no perspective projection.
         screenWidth = width;
         screenHeight = height;
@@ -84,7 +92,7 @@ void main() {
     // Convert it to a pixel offset so the vertex shader can apply it after pixel-snapping the anchor.
     vec3 localOffset = v.position.xyz;
     vec2 pixelOff;
-    if (pc.value.fixedSize != 0u) {
+    if (info.fixedSize != 0u) {
         // Fixed-size: local offsets are already in pixel units
         pixelOff = localOffset.xy;
     } else {
@@ -97,7 +105,7 @@ void main() {
     if (max(screenWidth, screenHeight) < args.minScreenSize) return;
 
     // --- Pack entity ID ---
-    uvec2 objId = packObjectInfo(pc.value.worldId, pc.value.entityId, idx);
+    uvec2 objId = packObjectInfo(info.worldId, info.entityId, idx);
     vec2 packedId = packPrimitiveId(objId, idx);
 
     // --- Allocate output slot ---
@@ -110,19 +118,19 @@ void main() {
     d.color          = color;
     d.packedEntityId = packedId;
     d.screenHeight   = screenHeight;
-    d.textureIndex   = pc.value.textureIndex;
-    d.samplerIndex   = pc.value.samplerIndex;
+    d.textureIndex   = info.textureIndex;
+    d.samplerIndex   = info.samplerIndex;
     d.uvRect         = uvRect;
     d.pixelOffset    = pixelOff;
     d._drawPadding   = vec2(0.0);
 
     // --- Precompute and pack SDF atlas parameters ---
-    float halfRange = pc.value.sdfDistanceRange * 0.5;
-    float aemrangeMin = (pc.value.sdfDistanceRangeMiddle - halfRange) / pc.value.sdfGlyphCellSize;
-    float aemrangeMax = (pc.value.sdfDistanceRangeMiddle + halfRange) / pc.value.sdfGlyphCellSize;
+    float halfRange = info.sdfDistanceRange * 0.5;
+    float aemrangeMin = (info.sdfDistanceRangeMiddle - halfRange) / info.sdfGlyphCellSize;
+    float aemrangeMax = (info.sdfDistanceRangeMiddle + halfRange) / info.sdfGlyphCellSize;
     d.sdfAemrangePacked    = packHalf2x16(vec2(aemrangeMin, aemrangeMax));
-    d.sdfAtlasSizePacked   = (uint(pc.value.sdfAtlasHeight) << 16) | uint(pc.value.sdfAtlasWidth);
-    d.sdfGlyphCellSizeBits = floatBitsToUint(pc.value.sdfGlyphCellSize);
+    d.sdfAtlasSizePacked   = (uint(info.sdfAtlasHeight) << 16) | uint(info.sdfAtlasWidth);
+    d.sdfGlyphCellSizeBits = floatBitsToUint(info.sdfGlyphCellSize);
 
     outBuf.data[slot] = d;
 }

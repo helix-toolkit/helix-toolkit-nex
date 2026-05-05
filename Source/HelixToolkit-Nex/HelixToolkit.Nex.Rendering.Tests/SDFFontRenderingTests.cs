@@ -1,7 +1,7 @@
 using System.Numerics;
-using HelixToolkit.Nex.Graphics;
 using HelixToolkit.Nex.Maths;
 using HelixToolkit.Nex.Rendering.SDF;
+using HelixToolkit.Nex.Repository;
 
 namespace HelixToolkit.Nex.Rendering.Tests;
 
@@ -68,9 +68,9 @@ public class SDFFontRenderingTests
         };
     }
 
-    private static SDFFontAtlas CreateTestAtlas(uint textureIndex = 1, uint samplerIndex = 0)
+    private static SDFFontAtlas CreateTestAtlas(TextureRef? texture = null, SamplerRef? sampler = null)
     {
-        return new SDFFontAtlas(textureIndex, samplerIndex, CreateTestDescriptor());
+        return new SDFFontAtlas(texture ?? TextureRef.Null, sampler ?? SamplerRef.Null, CreateTestDescriptor());
     }
 
     // -----------------------------------------------------------------------
@@ -215,15 +215,6 @@ public class SDFFontRenderingTests
     }
 
     [TestMethod]
-    public void SDFFontAtlas_StoresTextureAndSamplerIndices()
-    {
-        var atlas = CreateTestAtlas(textureIndex: 42, samplerIndex: 7);
-
-        Assert.AreEqual(42u, atlas.TextureIndex);
-        Assert.AreEqual(7u, atlas.SamplerIndex);
-    }
-
-    [TestMethod]
     public void SDFFontAtlas_StoresAtlasMetadata()
     {
         var atlas = CreateTestAtlas();
@@ -247,7 +238,7 @@ public class SDFFontRenderingTests
             LineHeight = 1.0f,
             Glyphs = [],
         };
-        var atlas = new SDFFontAtlas(0, 0, emptyDescriptor);
+        var atlas = new SDFFontAtlas(TextureRef.Null, SamplerRef.Null, emptyDescriptor);
 
         var fallback = atlas.GetGlyph('X');
         Assert.AreEqual('\0', fallback.CharacterCode);
@@ -369,16 +360,6 @@ public class SDFFontRenderingTests
     }
 
     [TestMethod]
-    public void TextLayoutHelper_PropagatesTextureIndicesFromAtlas()
-    {
-        var atlas = CreateTestAtlas(textureIndex: 99, samplerIndex: 3);
-        var result = TextLayoutHelper.Layout("A", atlas, 1.0f, Vector3.Zero);
-
-        Assert.AreEqual(99u, result[0].TextureIndex);
-        Assert.AreEqual(3u, result[0].SamplerIndex);
-    }
-
-    [TestMethod]
     public void TextLayoutHelper_OnlyNewlines_ReturnsEmptyList()
     {
         var atlas = CreateTestAtlas();
@@ -395,7 +376,7 @@ public class SDFFontRenderingTests
     public void TextLayoutHelper_LayoutGeometry_EmptyString_ReturnsEmptyGeometry()
     {
         var atlas = CreateTestAtlas();
-        using var geo = TextLayoutHelper.LayoutGeometry("", atlas, 1.0f, Vector3.Zero);
+        var geo = TextLayoutHelper.LayoutGeometry("", atlas, 1.0f, Vector3.Zero);
 
         Assert.AreEqual(0, geo.Count);
     }
@@ -404,7 +385,7 @@ public class SDFFontRenderingTests
     public void TextLayoutHelper_LayoutGeometry_NullString_ReturnsEmptyGeometry()
     {
         var atlas = CreateTestAtlas();
-        using var geo = TextLayoutHelper.LayoutGeometry(null!, atlas, 1.0f, Vector3.Zero);
+        var geo = TextLayoutHelper.LayoutGeometry(null!, atlas, 1.0f, Vector3.Zero);
 
         Assert.AreEqual(0, geo.Count);
     }
@@ -413,17 +394,17 @@ public class SDFFontRenderingTests
     public void TextLayoutHelper_LayoutGeometry_SingleCharacter_ReturnsOneEntry()
     {
         var atlas = CreateTestAtlas();
-        using var geo = TextLayoutHelper.LayoutGeometry("A", atlas, 1.0f, Vector3.Zero);
+        var geo = TextLayoutHelper.LayoutGeometry("A", atlas, 1.0f, Vector3.Zero);
 
         Assert.AreEqual(1, geo.Count);
-        Assert.AreEqual(new Vector4(0.1f, 0.2f, 0.3f, 0.4f), geo.UVRects[0]);
+        Assert.AreEqual(new Vector4(0.1f, 0.2f, 0.3f, 0.4f), geo.Vertices[0].UvRect);
     }
 
     [TestMethod]
     public void TextLayoutHelper_LayoutGeometry_GlyphCountMatchesNonNewlineCharacters()
     {
         var atlas = CreateTestAtlas();
-        using var geo = TextLayoutHelper.LayoutGeometry("AB A", atlas, 1.0f, Vector3.Zero);
+        var geo = TextLayoutHelper.LayoutGeometry("AB A", atlas, 1.0f, Vector3.Zero);
 
         Assert.AreEqual(4, geo.Count);
     }
@@ -436,7 +417,7 @@ public class SDFFontRenderingTests
         var origin = new Vector3(1, 2, 3);
 
         var descriptors = TextLayoutHelper.Layout("ABA", atlas, fontSize, origin);
-        using var geo = TextLayoutHelper.LayoutGeometry("ABA", atlas, fontSize, origin);
+        var geo = TextLayoutHelper.LayoutGeometry("ABA", atlas, fontSize, origin);
 
         Assert.AreEqual(descriptors.Count, geo.Count);
         for (int i = 0; i < descriptors.Count; i++)
@@ -444,26 +425,26 @@ public class SDFFontRenderingTests
             var desc = descriptors[i];
             Assert.AreEqual(
                 desc.WorldPosition.X,
-                geo.Positions[i].X,
+                geo.Vertices[i].Position.X,
                 0.001f,
                 $"Position X mismatch at {i}"
             );
             Assert.AreEqual(
                 desc.WorldPosition.Y,
-                geo.Positions[i].Y,
+                geo.Vertices[i].Position.Y,
                 0.001f,
                 $"Position Y mismatch at {i}"
             );
             Assert.AreEqual(
                 desc.WorldPosition.Z,
-                geo.Positions[i].Z,
+                geo.Vertices[i].Position.Z,
                 0.001f,
                 $"Position Z mismatch at {i}"
             );
-            Assert.AreEqual(1f, geo.Positions[i].W, 0.001f, $"Position W should be 1 at {i}");
-            Assert.AreEqual(desc.Width, geo.Sizes[i].X, 0.001f, $"Width mismatch at {i}");
-            Assert.AreEqual(desc.Height, geo.Sizes[i].Y, 0.001f, $"Height mismatch at {i}");
-            Assert.AreEqual(desc.UVRect, geo.UVRects[i], $"UVRect mismatch at {i}");
+            Assert.AreEqual(1f, geo.Vertices[i].Position.W, 0.001f, $"Position W should be 1 at {i}");
+            Assert.AreEqual(desc.Width, geo.Vertices[i].Size.X, 0.001f, $"Width mismatch at {i}");
+            Assert.AreEqual(desc.Height, geo.Vertices[i].Size.Y, 0.001f, $"Height mismatch at {i}");
+            Assert.AreEqual(desc.UVRect, geo.Vertices[i].UvRect, $"UVRect mismatch at {i}");
         }
     }
 
@@ -471,7 +452,7 @@ public class SDFFontRenderingTests
     public void TextLayoutHelper_LayoutGeometry_ColorsAreZero_WhenNoColorProvided()
     {
         var atlas = CreateTestAtlas();
-        using var geo = TextLayoutHelper.LayoutGeometry("AB", atlas, 1.0f, Vector3.Zero);
+        var geo = TextLayoutHelper.LayoutGeometry("AB", atlas, 1.0f, Vector3.Zero);
 
         // When no per-billboard color is provided, color alpha should be 0
         // (signals the compute shader to use the uniform color from push constants)
@@ -485,21 +466,6 @@ public class SDFFontRenderingTests
         }
     }
 
-    [TestMethod]
-    public void TextLayoutHelper_LayoutGeometry_IsDynamic_Propagated()
-    {
-        var atlas = CreateTestAtlas();
-        using var geo = TextLayoutHelper.LayoutGeometry(
-            "A",
-            atlas,
-            1.0f,
-            Vector3.Zero,
-            isDynamic: true
-        );
-
-        Assert.IsTrue(geo.IsDynamic);
-    }
-
     // -----------------------------------------------------------------------
     // BillboardGeometry
     // -----------------------------------------------------------------------
@@ -507,7 +473,7 @@ public class SDFFontRenderingTests
     [TestMethod]
     public void BillboardGeometry_Add_WithColor_IncreasesCount()
     {
-        using var geo = new BillboardGeometry();
+        var geo = new BillboardGeometry();
         geo.Add(Vector3.Zero, 1f, 1f, Vector4.One, Vector4.One);
 
         Assert.AreEqual(1, geo.Count);
@@ -518,7 +484,7 @@ public class SDFFontRenderingTests
     [TestMethod]
     public void BillboardGeometry_Add_WithoutColor_SetsZeroAlpha()
     {
-        using var geo = new BillboardGeometry();
+        var geo = new BillboardGeometry();
         geo.Add(Vector3.Zero, 1f, 1f, Vector4.One);
 
         Assert.AreEqual(1, geo.Count);
@@ -529,7 +495,7 @@ public class SDFFontRenderingTests
     [TestMethod]
     public void BillboardGeometry_Clear_ResetsVertices()
     {
-        using var geo = new BillboardGeometry();
+        var geo = new BillboardGeometry();
         geo.Add(Vector3.Zero, 1f, 1f, Vector4.One, Vector4.One);
         geo.Add(Vector3.One, 2f, 2f, Vector4.Zero, Vector4.Zero);
 
@@ -544,7 +510,7 @@ public class SDFFontRenderingTests
     [TestMethod]
     public void BillboardGeometry_DirtyFlags_SetOnAdd()
     {
-        using var geo = new BillboardGeometry();
+        var geo = new BillboardGeometry();
         geo.BufferDirty = false;
 
         geo.Add(Vector3.Zero, 1f, 1f, Vector4.One);
@@ -555,7 +521,7 @@ public class SDFFontRenderingTests
     [TestMethod]
     public void BillboardGeometry_DirtyFlags_SetOnClear()
     {
-        using var geo = new BillboardGeometry();
+        var geo = new BillboardGeometry();
         geo.BufferDirty = false;
 
         geo.Clear();
@@ -566,7 +532,7 @@ public class SDFFontRenderingTests
     [TestMethod]
     public void BillboardGeometry_MarkDirty_SetsDirtyFlag()
     {
-        using var geo = new BillboardGeometry();
+        var geo = new BillboardGeometry();
         geo.BufferDirty = false;
 
         geo.MarkDirty();
@@ -577,7 +543,7 @@ public class SDFFontRenderingTests
     [TestMethod]
     public void BillboardGeometry_StoresCorrectData()
     {
-        using var geo = new BillboardGeometry();
+        var geo = new BillboardGeometry();
         var pos = new Vector3(1, 2, 3);
         float w = 4f;
         float h = 5f;
@@ -591,30 +557,6 @@ public class SDFFontRenderingTests
         Assert.AreEqual(new Vector2(w, h), v.Size);
         Assert.AreEqual(uv, v.UvRect);
         Assert.AreEqual(col, v.Color);
-    }
-
-    [TestMethod]
-    public void BillboardGeometry_IsDynamic_DefaultFalse()
-    {
-        using var geo = new BillboardGeometry();
-        Assert.IsFalse(geo.IsDynamic);
-    }
-
-    [TestMethod]
-    public void BillboardGeometry_IsDynamic_CanBeSetTrue()
-    {
-        using var geo = new BillboardGeometry(isDynamic: true);
-        Assert.IsTrue(geo.IsDynamic);
-    }
-
-    [TestMethod]
-    public void BillboardGeometry_BufferIsNull_BeforeUpdateBuffers()
-    {
-        using var geo = new BillboardGeometry();
-        geo.Add(Vector3.Zero, 1f, 1f, Vector4.One);
-
-        // Before UpdateBuffers, GPU buffer should be null/empty
-        Assert.AreEqual(BufferResource.Null, geo.VertexBuffer);
     }
 
     // -----------------------------------------------------------------------
@@ -720,12 +662,10 @@ public class SDFFontRenderingTests
     {
         var atlas = SDFFontAtlasLoader.LoadBuiltInAtlas(
             BuildinFontAtlas.GoogleSansRegular,
-            textureIndex: 5,
-            samplerIndex: 2
+            TextureRef.Null,
+            SamplerRef.Null
         );
 
-        Assert.AreEqual(5u, atlas.TextureIndex);
-        Assert.AreEqual(2u, atlas.SamplerIndex);
         Assert.IsTrue(atlas.TextureWidth > 0);
         Assert.IsTrue(atlas.TextureHeight > 0);
 
@@ -740,8 +680,8 @@ public class SDFFontRenderingTests
     {
         var atlas = SDFFontAtlasLoader.LoadBuiltInAtlas(
             BuildinFontAtlas.GoogleSansRegular,
-            textureIndex: 1,
-            samplerIndex: 0
+            TextureRef.Null,
+            SamplerRef.Null
         );
         var result = TextLayoutHelper.Layout("Hello", atlas, 1.0f, Vector3.Zero);
 
@@ -749,8 +689,6 @@ public class SDFFontRenderingTests
 
         foreach (var desc in result)
         {
-            Assert.AreEqual(1u, desc.TextureIndex);
-            Assert.AreEqual(0u, desc.SamplerIndex);
             Assert.IsTrue(desc.Width > 0, "Glyph width should be positive");
             Assert.IsTrue(desc.Height > 0, "Glyph height should be positive");
         }
@@ -770,8 +708,8 @@ public class SDFFontRenderingTests
         Assert.IsFalse(comp.AxisConstrained);
         Assert.AreEqual(new Vector3(0, 1, 0), comp.ConstraintAxis);
         Assert.IsTrue(comp.Hitable);
-        Assert.AreEqual(0u, comp.TextureIndex);
-        Assert.AreEqual(0u, comp.SamplerIndex);
+        Assert.AreEqual(TextureRef.Null, comp.Texture);
+        Assert.AreEqual(SamplerRef.Null, comp.Sampler);
         Assert.IsNull(comp.BillboardMaterialName);
         Assert.IsNull(comp.BillboardGeometry);
         Assert.AreEqual(0, comp.BillboardCount);
@@ -781,7 +719,7 @@ public class SDFFontRenderingTests
     [TestMethod]
     public void BillboardComponent_WithBillboardGeometry_ReportsCorrectCount()
     {
-        using var geo = new BillboardGeometry();
+        var geo = new BillboardGeometry();
         geo.Add(Vector3.Zero, 1f, 1f, Vector4.One);
         geo.Add(Vector3.One, 2f, 2f, Vector4.Zero);
 
@@ -794,7 +732,7 @@ public class SDFFontRenderingTests
     [TestMethod]
     public void BillboardComponent_WithEmptyBillboardGeometry_IsNotValid()
     {
-        using var geo = new BillboardGeometry();
+        var geo = new BillboardGeometry();
 
         var comp = new Components.BillboardComponent { BillboardGeometry = geo };
 

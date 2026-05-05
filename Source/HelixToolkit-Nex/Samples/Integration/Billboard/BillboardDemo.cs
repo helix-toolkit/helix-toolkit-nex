@@ -185,8 +185,8 @@ internal sealed class BillboardDemo : IDisposable
             "Loaded SDF font atlas: {W}x{H}, texture={T}, sampler={S}",
             _atlas.TextureWidth,
             _atlas.TextureHeight,
-            _atlas.TextureIndex,
-            _atlas.SamplerIndex
+            _atlas.Texture,
+            _atlas.Sampler
         );
     }
 
@@ -331,12 +331,6 @@ internal sealed class BillboardDemo : IDisposable
                 _selectedEntity = Entity.Null;
             }
             _root?.RemoveChild(entry.Node);
-            // Dispose the BillboardGeometry
-            if (entry.Node.Entity.Valid && entry.Node.Entity.Has<BillboardComponent>())
-            {
-                ref var comp = ref entry.Node.Entity.Get<BillboardComponent>();
-                comp.BillboardGeometry?.Dispose();
-            }
             entry.Node.Dispose();
             entry.Node = null;
         }
@@ -813,18 +807,6 @@ internal sealed class BillboardDemo : IDisposable
         if (!_disposed && disposing)
         {
             // Dispose all BillboardGeometry instances
-            foreach (var entry in _textEntries)
-            {
-                if (
-                    entry.Node is not null
-                    && entry.Node.Entity.Valid
-                    && entry.Node.Entity.Has<BillboardComponent>()
-                )
-                {
-                    ref var comp = ref entry.Node.Entity.Get<BillboardComponent>();
-                    comp.BillboardGeometry?.Dispose();
-                }
-            }
             _imGuiRenderer?.Dispose();
             _worldDataProvider?.Dispose();
             _renderContext?.Teardown();

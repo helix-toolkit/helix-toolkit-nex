@@ -1,4 +1,3 @@
-using System.Numerics;
 using HelixToolkit.Nex.Rendering.Components;
 using HelixToolkit.Nex.Rendering.SDF;
 
@@ -231,8 +230,8 @@ public static class TextLayoutHelper
                     Width = width,
                     Height = height,
                     UVRect = glyph.UVRect,
-                    TextureIndex = atlas.TextureIndex,
-                    SamplerIndex = atlas.SamplerIndex,
+                    TextureIndex = atlas.Texture,
+                    SamplerIndex = atlas.Sampler,
                 }
             );
 
@@ -272,18 +271,16 @@ public static class TextLayoutHelper
     /// <param name="fontSize">Desired font size in world-space units.</param>
     /// <param name="origin">World-space origin position for the first glyph.</param>
     /// <param name="anchor">The anchor point within the text bounding rectangle. Defaults to BottomLeft (preserves legacy behavior).</param>
-    /// <param name="isDynamic">Whether the billboard geometry should use dynamic GPU buffers.</param>
     /// <returns>A <see cref="BillboardGeometry"/> containing per-glyph billboard data.</returns>
     public static BillboardGeometry LayoutGeometry(
         string text,
         SDFFontAtlas atlas,
         float fontSize,
         Vector3 origin,
-        BillboardAnchor anchor = BillboardAnchor.BottomLeft,
-        bool isDynamic = false
+        BillboardAnchor anchor = BillboardAnchor.BottomLeft
     )
     {
-        var geo = new BillboardGeometry(isDynamic);
+        var geo = new BillboardGeometry();
         if (string.IsNullOrEmpty(text))
             return geo;
 
@@ -355,13 +352,13 @@ public static class TextLayoutHelper
         bool isDynamic = false
     )
     {
-        var geo = LayoutGeometry(text, atlas, fontSize, origin, anchor, isDynamic);
+        var geo = LayoutGeometry(text, atlas, fontSize, origin, anchor);
         return new BillboardComponent
         {
             BillboardGeometry = geo,
             Color = color,
-            TextureIndex = atlas.TextureIndex,
-            SamplerIndex = atlas.SamplerIndex,
+            Texture = atlas.Texture,
+            Sampler = atlas.Sampler,
             BillboardMaterialName = materialName,
             Hitable = true,
             FixedSize = fixedSize,

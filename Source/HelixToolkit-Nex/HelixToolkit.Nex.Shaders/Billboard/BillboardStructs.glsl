@@ -7,7 +7,7 @@
 struct BillboardVertex {
     vec4  position;        // xyz = world-space centre, w = 1
     vec2  size;            // x = width, y = height (world-space or pixels if fixedSize)
-    uint  _padding0;       // Padding for vec4 alignment
+    uint  infoIndex;       // Index into BillboardInfo buffer, automatically set internally.
     uint  _padding1;       // Padding for vec4 alignment
     vec4  uvRect;          // Texture atlas sub-region (u_min, v_min, u_max, v_max)
     vec4  color;           // RGBA per-billboard color (0,0,0,0 = use uniform color from push constants)
@@ -52,17 +52,12 @@ struct BillboardExpandArgs {
     float fovY;            // Vertical field of view in radians
 };
 
-/// Push constants for the billboard expansion compute shader.
 @code_gen
-struct BillboardExpandPC {
-    uint64_t argsAddress;               // GPU address of BillboardExpandArgs buffer
-    uint64_t billboardVertexAddress;    // GPU address of BillboardVertex input buffer (single interleaved buffer)
-    uint64_t drawDataAddress;           // GPU address of BillboardDrawData output buffer
-    uint64_t indirectArgsAddress;       // GPU address of BillboardDrawIndirectArgs buffer
-    uint     billboardCount;            // Total number of input billboards
+struct BillboardInfo {
     uint     fixedSize;                 // Whether size is fixed in screen space (ignore perspective and use width/height as pixels)
     uint     worldId;                   // World ID for all billboards in this dispatch (used for GPU picking)
     uint     entityId;                  // Entity ID for all billboards in this dispatch
+    uint     _padding0;
 
     uint     textureIndex;              // Bindless texture index (0 = no texture)
     uint     samplerIndex;              // Bindless sampler index
@@ -77,9 +72,23 @@ struct BillboardExpandPC {
     float    sdfDistanceRangeMiddle;    // MSDF atlas distance range middle value (msdf-atlas-gen distanceRangeMiddle)
     float    sdfAtlasWidth;             // MSDF atlas texture width in pixels
     float    sdfAtlasHeight;            // MSDF atlas texture height in pixels
-    uint     _padding;                 // Padding for vec4 alignment
+    uint     _padding1;                 // Padding for vec4 alignment
 
     mat4     worldTransform;            // Entity's WorldTransform matrix (identity for non-text billboards)
+};
+
+/// Push constants for the billboard expansion compute shader.
+@code_gen
+struct BillboardExpandPC {
+    uint64_t argsAddress;               // GPU address of BillboardExpandArgs buffer
+    uint64_t billboardVertexAddress;    // GPU address of BillboardVertex input buffer (single interleaved buffer)
+    uint64_t drawDataAddress;           // GPU address of BillboardDrawData output buffer
+    uint64_t indirectArgsAddress;       // GPU address of BillboardDrawIndirectArgs buffer
+    uint64_t billboardInfoAddress;      // GPU address of BillboardInfo buffer
+    uint     billboardCount;            // Total number of input billboards
+    uint     _padding0;
+    uint     _padding1;
+    uint     _padding2;
 };
 
 /// Push constants for the billboard render vertex/fragment shaders.

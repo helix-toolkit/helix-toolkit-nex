@@ -1,3 +1,5 @@
+using HelixToolkit.Nex.ECS;
+
 namespace HelixToolkit.Nex.Rendering.Components;
 
 /// <summary>
@@ -8,7 +10,7 @@ namespace HelixToolkit.Nex.Rendering.Components;
 /// billboard data that is collected and uploaded each frame.
 /// </para>
 /// </summary>
-public struct BillboardComponent
+public struct BillboardComponent()
 {
     /// <summary>
     /// Gets or sets the billboard geometry containing per-billboard instance data
@@ -32,12 +34,12 @@ public struct BillboardComponent
     /// <summary>
     /// Gets or sets the bindless texture index for the billboard. 0 means no texture.
     /// </summary>
-    public uint TextureIndex { get; set; }
+    public TextureRef? Texture { get; set; }
 
     /// <summary>
     /// Gets or sets the bindless sampler index for the billboard.
     /// </summary>
-    public uint SamplerIndex { get; set; }
+    public SamplerRef? Sampler { get; set; }
 
     /// <summary>
     /// When <see langword="true"/>, enables axis-constrained mode where the billboard rotates
@@ -117,33 +119,29 @@ public struct BillboardComponent
     /// </summary>
     public readonly bool Valid => BillboardCount > 0;
 
-    public BillboardComponent() { }
-
-    public BillboardComponent(
-        BillboardGeometry billboardGeometry,
-        Color4 color,
-        bool hitable = true,
-        uint textureIndex = 0,
-        uint samplerIndex = 0,
-        bool fixedSize = false,
-        bool axisConstrained = false,
-        Vector3? constraintAxis = null,
-        string? billboardMaterialName = default
-    )
-    {
-        BillboardGeometry = billboardGeometry;
-        Color = color;
-        Hitable = hitable;
-        TextureIndex = textureIndex;
-        SamplerIndex = samplerIndex;
-        FixedSize = fixedSize;
-        AxisConstrained = axisConstrained;
-        ConstraintAxis = constraintAxis ?? new Vector3(0, 1, 0);
-        BillboardMaterialName = billboardMaterialName;
-    }
-
     public override readonly string ToString()
     {
         return $"Billboard: Count={BillboardCount}; Hitable={Hitable}; FixedSize={FixedSize}; AxisConstrained={AxisConstrained}; MaterialId={BillboardMaterialId.Id}";
+    }
+
+    public BillboardInfo ToInfo(Entity entity, Matrix4x4 worldTransform)
+    {
+        return new BillboardInfo()
+        {
+            WorldId = entity.WorldId,
+            EntityId = (uint)entity.Id,
+            TextureIndex = Texture?.GetHandle().Index ?? 0,
+            SamplerIndex = Sampler?.GetHandle().Index ?? 0,
+            FixedSize = FixedSize ? 1u : 0,
+            AxisConstrained = AxisConstrained ? 1u : 0,
+            ConstraintAxis = ConstraintAxis,
+            Color = Color,
+            SdfDistanceRange = SdfDistanceRange,
+            SdfDistanceRangeMiddle = SdfDistanceRangeMiddle,
+            SdfGlyphCellSize = SdfGlyphCellSize,
+            SdfAtlasWidth = SdfAtlasWidth,
+            SdfAtlasHeight = SdfAtlasHeight,
+            WorldTransform = worldTransform,
+        };
     }
 }
