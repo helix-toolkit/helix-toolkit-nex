@@ -19,8 +19,9 @@ public struct SDFFontMaterialConfig
     public Color4 OutlineColor { get; set; } = new Color4(0f, 0f, 0f, 1f);
 
     /// <summary>
-    /// Gets or sets the outline thickness in SDF distance units.
-    /// A value of 0 means no outline is rendered.
+    /// Gets or sets the outline thickness as a normalized SDF offset in the same [0, 1] space as <see cref="EdgeThreshold"/>.
+    /// For example, <c>0.1</c> extends the outline 10% of the SDF range beyond the glyph edge.
+    /// A value of 0 means no outline is rendered. Valid range is [0, <see cref="EdgeThreshold"/>].
     /// </summary>
     public float OutlineWidth { get; set; } = 0f;
 
@@ -142,14 +143,14 @@ public struct SDFFontMaterialConfig
     private static string GenerateOutlineFillGlsl(SDFFontMaterialConfig config)
     {
         string preamble = EmitMsdfPreamble(config.EdgeThreshold);
-        string outlineWidthStr = FormatFloat(config.OutlineWidth);
         string outlineColorStr = FormatColor4(config.OutlineColor);
+        float outlineOuterThreshold = Math.Max(0f, config.EdgeThreshold - config.OutlineWidth);
+        string outlineOuterThresholdStr = FormatFloat(outlineOuterThreshold);
 
         return $$"""
             {{preamble}}
-                    const float outlineWidth = {{outlineWidthStr}};
                     const vec4 outlineColor = vec4({{outlineColorStr}});
-                    float outlineOuter_em = threshold_em + outlineWidth;
+                    float outlineOuter_em = mix(aemrange[1], aemrange[0], {{outlineOuterThresholdStr}});
 
                     float fillAlpha;
                     float outlineAlpha;
@@ -253,20 +254,20 @@ public struct SDFFontMaterialConfig
     private static string GenerateShadowOutlineFillGlsl(SDFFontMaterialConfig config)
     {
         string preamble = EmitMsdfPreamble(config.EdgeThreshold);
-        string outlineWidthStr = FormatFloat(config.OutlineWidth);
         string outlineColorStr = FormatColor4(config.OutlineColor);
         string shadowColorStr = FormatColor4(config.ShadowColor);
         string shadowOffsetStr = FormatVector2(config.ShadowOffset);
         string shadowSoftnessStr = FormatFloat(config.ShadowSoftness);
+        float outlineOuterThreshold = Math.Max(0f, config.EdgeThreshold - config.OutlineWidth);
+        string outlineOuterThresholdStr = FormatFloat(outlineOuterThreshold);
 
         return $$"""
             {{preamble}}
-                    const float outlineWidth = {{outlineWidthStr}};
                     const vec4 outlineColor = vec4({{outlineColorStr}});
                     const vec4 shadowColor = vec4({{shadowColorStr}});
                     const vec2 shadowOffset = vec2({{shadowOffsetStr}});
                     const float shadowSoftness = {{shadowSoftnessStr}};
-                    float outlineOuter_em = threshold_em + outlineWidth;
+                    float outlineOuter_em = mix(aemrange[1], aemrange[0], {{outlineOuterThresholdStr}});
 
                     float fillAlpha;
                     float outlineAlpha;

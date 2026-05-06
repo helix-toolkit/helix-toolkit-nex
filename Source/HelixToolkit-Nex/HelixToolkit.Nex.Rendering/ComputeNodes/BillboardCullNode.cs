@@ -83,7 +83,7 @@ public sealed class BillboardCullNode : ComputeNode
         }
 
         var billboards = res.RenderContext.Data.BillboardData;
-        if (billboards!.TotalBillboardCount == 0)
+        if (billboards is null || billboards.TotalBillboardCount == 0)
         {
             return;
         }

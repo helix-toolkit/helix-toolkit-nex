@@ -5,7 +5,7 @@
 /// Written by the CPU (BillboardGeometry), read by the compute expand shader.
 @code_gen
 struct BillboardVertex {
-    vec4  position;        // xyz = world-space centre, w = 1
+    vec4  position;        // xyz = offset based on anchor position, w = unused
     vec2  size;            // x = width, y = height (world-space or pixels if fixedSize)
     uint  infoIndex;       // Index into BillboardInfo buffer, automatically set internally.
     uint  _padding1;       // Padding for vec4 alignment
