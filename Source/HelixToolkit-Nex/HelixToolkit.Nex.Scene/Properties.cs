@@ -49,6 +49,9 @@ public struct Transform()
 
     private bool _isWorldDirty = true;
     public readonly bool IsWorldDirty => _isWorldDirty || IsLocalDirty;
+
+    public long Timestamp { private set; get; } = Stopwatch.GetTimestamp();
+
     private Vector3 _scale = Vector3.One;
     public Vector3 Scale
     {
@@ -124,6 +127,7 @@ public struct Transform()
         }
         worldTransform = parent * Value;
         _isWorldDirty = false;
+        Timestamp = Stopwatch.GetTimestamp();
         return true;
     }
 
@@ -138,9 +142,12 @@ public struct Transform()
     }
 }
 
-public readonly struct WorldTransform(Matrix4x4 value)
+public readonly struct WorldTransform(ref Matrix4x4 value)
 {
     public readonly Matrix4x4 Value = value;
+
+    public WorldTransform(Matrix4x4 value)
+        : this(ref value) { }
 
     public static implicit operator Matrix4x4(in WorldTransform wt) => wt.Value;
 

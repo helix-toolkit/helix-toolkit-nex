@@ -2,14 +2,13 @@ namespace HelixToolkit.Nex.Rendering.RenderNodes;
 
 public enum PostEffectPriority : uint
 {
-    AntiAliasing = 10,
-    Bloom = 20,
-    Highlight = 30,
-    Other = 50,
+    Highlight = 0,
 }
 
 public abstract class PostEffect() : Initializable
 {
+    internal byte[] NameBytes { private set; get; } = [];
+
     public IContext? Context => Renderer?.Context;
     public bool Enabled { get; set; } = true;
 
@@ -17,7 +16,7 @@ public abstract class PostEffect() : Initializable
 
     public IResourceManager? ResourceManager => Renderer?.ResourceManager;
 
-    public abstract Color DebugColor { get; }
+    public abstract Color4 DebugColor { get; }
 
     /// <summary>
     /// Gets or sets the priority level of the effect. Effects with lower priority values are executed before those with higher values.
@@ -49,6 +48,12 @@ public abstract class PostEffect() : Initializable
     /// Whether the effect applied successfully.
     /// </returns>
     public abstract bool Apply(in RenderResources res, ref string readSlot, ref string writeSlot);
+
+    protected override ResultCode OnInitializing()
+    {
+        NameBytes = System.Text.Encoding.UTF8.GetBytes(Name);
+        return ResultCode.Ok;
+    }
 }
 
 public sealed class PostEffectsNode : RenderNode
@@ -191,14 +196,13 @@ public sealed class PostEffectsNode : RenderNode
         // Alternate read/write slots across effects without any runtime resource-dict mutation.
         var read = _initialReadSlot;
         var write = _initialWriteSlot;
-
         foreach (var effect in _effects)
         {
             if (!effect.Enabled)
             {
                 continue;
             }
-            res.CmdBuffer.PushDebugGroupLabel(effect.Name, effect.DebugColor);
+            res.CmdBuffer.PushDebugGroupLabel(effect.NameBytes, effect.DebugColor);
             if (effect.Apply(in res, ref read, ref write))
             {
                 // Flip for next effect: what was just written becomes the next read source.
@@ -211,12 +215,7 @@ public sealed class PostEffectsNode : RenderNode
         // When zero effects ran, `read` == _initialReadSlot, which is already the correct source.
         // Publish this as the stable TextureColorF16Current alias so all downstream passes
         // (e.g. RenderToFinalNode) always read the correct texture regardless of effect count.
-        if (res.RenderContext.ResourceSet is { } resourceSet)
-        {
-            resourceSet.Textures[SystemBufferNames.TextureColorF16Current] = resourceSet.Textures[
-                read
-            ];
-        }
+        res.Textures[SystemBufferNames.TextureColorF16Target] = res.Textures[read];
     }
 
     protected override bool OnSetup()
@@ -258,7 +257,7 @@ public sealed class PostEffectsNode : RenderNode
 
         // Register the stable current-color alias. It has no build function because its handle
         // is written at runtime by OnRender, not allocated as a separate GPU texture.
-        graph.AddTexture(SystemBufferNames.TextureColorF16Current, null);
+        graph.AddTexture(SystemBufferNames.TextureColorF16Target, null);
 
         graph.AddPingPongPass(
             RenderStage.PostProcess,
@@ -267,7 +266,7 @@ public sealed class PostEffectsNode : RenderNode
             extraInputs: [new(SystemBufferNames.BufferForwardPlusConstants, ResourceType.Buffer)],
             // Declare TextureColorF16Current as an output so downstream passes that consume it
             // are correctly ordered after PostEffectsNode by the topological sort.
-            extraOutputs: [new(SystemBufferNames.TextureColorF16Current, ResourceType.Texture)]
+            extraOutputs: [new(SystemBufferNames.TextureColorF16Target, ResourceType.Texture)]
         );
     }
 }

@@ -184,7 +184,7 @@ public sealed class ForwardPlusLightCullingNode : ComputeNode
                 }
             )
             .AddPass(
-                RenderStage.Opaque,
+                RenderStage.Prepare,
                 nameof(ForwardPlusLightCullingNode),
                 inputs:
                 [

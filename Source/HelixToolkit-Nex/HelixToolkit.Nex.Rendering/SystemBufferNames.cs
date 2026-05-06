@@ -16,7 +16,7 @@ public static class SystemBufferNames
     /// alias at the end of its render loop so that downstream passes (e.g. tone mapping to the
     /// final output) can read the correct texture regardless of how many post-effects ran.
     /// </summary>
-    public const string TextureColorF16Current = "TexColorF16Current";
+    public const string TextureColorF16Target = "TexColorF16Target";
 
     public const string BufferMeshDrawOpaque = "BufMeshDrawOpaque";
     public const string BufferMeshDrawTransparent = "BufMeshDrawTrans";
@@ -89,6 +89,18 @@ public static class SystemBufferNames
     /// The compute shader atomically increments <c>instanceCount</c>.
     /// </summary>
     public const string BufferPointIndirectArgs = "BufPointIndirectArgs";
+
+    /// <summary>
+    /// GPU buffer holding <c>BillboardDrawData</c> structs written by the billboard expansion
+    /// compute shader and read by the billboard vertex shader.
+    /// </summary>
+    public const string BufferBillboardDrawData = "BufBillboardDrawData";
+
+    /// <summary>
+    /// GPU buffer holding <c>BillboardDrawIndirectArgs</c> for the billboard rendering draw call.
+    /// The compute shader atomically increments <c>instanceCount</c>.
+    /// </summary>
+    public const string BufferBillboardIndirectArgs = "BufBillboardIndirectArgs";
 }
 
 /// <summary>

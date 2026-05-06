@@ -92,8 +92,6 @@ public sealed class PointCullNode : ComputeNode
             return;
         }
 
-        res.CmdBuffer.PushDebugGroupLabel("PointCull", new Color4(0.8f, 0.6f, 0.2f, 1.0f));
-
         // --- Shared camera state ---
         var camera = res.RenderContext.CameraParams;
         var view = camera.View;
@@ -160,8 +158,6 @@ public sealed class PointCullNode : ComputeNode
                 res.CmdBuffer.DispatchThreadGroups(new Dimensions(groupCount, 1, 1), res.Deps);
             }
         }
-
-        res.CmdBuffer.PopDebugGroupLabel();
     }
 
     public override void AddToGraph(RenderGraph graph)

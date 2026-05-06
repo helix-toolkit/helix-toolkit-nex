@@ -4,6 +4,22 @@ public class Renderer(IServiceProvider serviceProvider) : Initializable
 {
     private static readonly ILogger _logger = LogManager.Create<Renderer>();
     private readonly Dictionary<string, RenderNode> _renderers = [];
+    private readonly FastList<RenderStage> _renderSequence = [
+        RenderStage.Prepare,
+        RenderStage.SubmitFlag,
+        RenderStage.Opaque,
+        RenderStage.Particle,
+        RenderStage.Transparent,
+        RenderStage.SubmitFlag,
+        RenderStage.PostProcess,
+        RenderStage.Bloom,
+        RenderStage.ToneMap,
+        RenderStage.AntiAliasing,
+        RenderStage.Billboard,
+        RenderStage.Overlay,
+        RenderStage.Output,
+        ];
+
     public IServiceProvider Services { get; } = serviceProvider;
     public int Width { get; private set; }
     public int Height { get; private set; }
@@ -98,7 +114,22 @@ public class Renderer(IServiceProvider serviceProvider) : Initializable
             return cmdBuf;
         }
         context.BeginFrame();
-        graph.Execute(context, cmdBuf, _renderers);
+        foreach (var stage in _renderSequence)
+        {
+            var stageInfo = RenderStageNames.Names[(int)stage];
+
+            if (stage != RenderStage.SubmitFlag)
+            {
+                cmdBuf.PushDebugGroupLabel(stageInfo.Name, stageInfo.Color);
+                graph.Execute(context, cmdBuf, _renderers, stage);
+                cmdBuf.PopDebugGroupLabel();
+            }
+            else if (cmdBuf.DrawCallCount > 0 || cmdBuf.DispatchCallCount > 0)
+            {
+                context.Context.Submit(cmdBuf);
+                cmdBuf = context.Context.AcquireCommandBuffer();
+            }
+        }
         context.EndFrame();
         return cmdBuf;
     }

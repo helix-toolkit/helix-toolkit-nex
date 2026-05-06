@@ -86,7 +86,7 @@ public sealed class BorderHighlightPostEffect : PostEffect
     private readonly List<HighlightEntry> _entriesOpaque = [];
     private readonly List<HighlightEntry> _entriesTransparent = [];
     public override string Name => nameof(BorderHighlightPostEffect);
-    public override Color DebugColor => Color.Orange;
+    public override Color4 DebugColor => Color.Orange;
     public override uint Priority => (uint)PostEffectPriority.Highlight;
 
     // -----------------------------------------------------------------------
@@ -209,6 +209,7 @@ public sealed class BorderHighlightPostEffect : PostEffect
 
     protected override ResultCode OnInitializing()
     {
+        base.OnInitializing();
         if (ResourceManager is null)
         {
             _logger.LogError("ResourceManager is null during highlight initialisation.");

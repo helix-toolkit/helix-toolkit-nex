@@ -111,6 +111,22 @@ namespace HelixToolkit.Nex.Graphics.Vulkan
                 }
             }
 
+            if (Config.EnableValidation)
+            {
+                var extName = new VkUtf8ReadOnlyString(VK.VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME).ToString();
+                if (extName is not null && _supportedExtensions.Contains(extName))
+                {
+                    _deviceExtensions.Add(VK.VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME);
+                }
+                extName = new VkUtf8ReadOnlyString(VK.VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME).ToString();
+                if (extName is not null && _supportedExtensions.Contains(extName))
+                {
+                    _deviceExtensions.Add(VK.VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME);
+                    HasExtDeviceFault = true;
+                    CheckpointType = CheckpointType.Nvidia;
+                }
+            }
+
             //var supportPresent = vkGetPhysicalDeviceWin32PresentationSupportKHR(PhysicalDevice, queueFamilies.graphicsFamily);
             VkDeviceQueueCreateInfo* queueCreateInfos = stackalloc VkDeviceQueueCreateInfo[3];
             float queuePriority = 1f;
@@ -265,10 +281,9 @@ namespace HelixToolkit.Nex.Graphics.Vulkan
             }
 
             _immediate = new VulkanImmediateCommands(
-                _vkDevice,
+                this,
                 DeviceQueues.GraphicsQueueFamilyIndex,
-                HasExtDeviceFault,
-                "VkContext::immediate"
+                HasExtDeviceFault
             );
         }
 

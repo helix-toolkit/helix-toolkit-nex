@@ -101,37 +101,48 @@ public static class SceneSorting
 
     public static void UpdateTransforms(this World world)
     {
-        // Iterate entities in NodeInfo component-storage order (sorted by Level after SortSceneNodes).
-        // Resolve each Entity → Node via the registry; no Node back-ref lives in the struct anymore.
-        var level = 0;
-        var nodes = world.GetComponents<NodeInfo>();
-        for (int i = 0; i < nodes.Count; ++i)
+        var nodeInfos = world.GetComponents<NodeInfo>();
+        var transforms = world.GetComponents<Transform>();
+        var worldTransforms = world.GetComponents<WorldTransform>();
+        var parents = world.GetComponents<Parent>();
+
+        int level = 0;
+        for (int i = 0; i < nodeInfos.Count; ++i)
         {
-            ref var node = ref nodes[i];
-            var entity = world.GetEntity(node.EntityId);
+            ref var nodeInfo = ref nodeInfos[i];
+            var entity = world.GetEntity(nodeInfo.EntityId);
             if (!entity.Valid)
             {
                 continue;
             }
-            ref var transform = ref entity.Get<Transform>();
-            Debug.Assert(level <= node.Level);
-            level = node.Level;
-            if (transform.IsLocalDirty || transform.IsWorldDirty)
+
+            ref var transform = ref transforms[entity];
+            Debug.Assert(level <= nodeInfo.Level);
+            level = nodeInfo.Level;
+
+            var parentWorld = Matrix4x4.Identity;
+            ref readonly var parent = ref parents[entity];
+            if (parent.ParentEntity.Valid)
             {
-                if (!entity.TryGet<Parent>(out var parent) || !parent.ParentEntity.Valid)
+                // No need for entity.TryGet — every Node always has a Parent component.
+                if (transforms[parent.ParentEntity].Timestamp > transform.Timestamp)
                 {
-                    if (transform.UpdateWorldTransform(Matrix4x4.Identity, out var worldTransform))
-                    {
-                        entity.Set(new WorldTransform(worldTransform));
-                    }
+                    transform.MarkWorldDirty();
                 }
-                else
+                if (transform.IsWorldDirty)
                 {
-                    ref var parentWorld = ref parent.ParentEntity.Get<WorldTransform>();
-                    if (transform.UpdateWorldTransform(parentWorld.Value, out var worldTransform))
-                    {
-                        entity.Set(new WorldTransform(worldTransform));
-                    }
+                    parentWorld = worldTransforms[parent.ParentEntity].Value;
+                }
+            }
+
+            if (transform.IsWorldDirty)
+            {
+                if (transform.UpdateWorldTransform(parentWorld, out var worldMatrix))
+                {
+                    // Write directly to component storage — WorldTransform is derived data;
+                    // firing ComponentChangedEvent on every frame update is unnecessary overhead.
+                    worldTransforms[entity] = new WorldTransform(worldMatrix);
+                    entity.NotifyComponentChanged<WorldTransform>();
                 }
             }
         }

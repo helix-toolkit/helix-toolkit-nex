@@ -19,7 +19,7 @@ public class ForwardPlusTransparentNode : RenderNode
     private static readonly ILogger _logger = LogManager.Create<ForwardPlusTransparentNode>();
     public override string Name => nameof(ForwardPlusTransparentNode);
 
-    public override Color4 DebugColor => Color.Green;
+    public override Color4 DebugColor => Color.DarkOrange;
 
     /// <summary>
     /// When <see langword="true"/> (default), transparent geometry is rendered using Weighted Blended
@@ -44,7 +44,7 @@ public class ForwardPlusTransparentNode : RenderNode
     {
         res.Framebuf.DepthStencil.Texture = res.Textures[SystemBufferNames.TextureDepthF32];
         res.Pass.Depth.LoadOp = LoadOp.Load;
-        res.Pass.Depth.StoreOp = StoreOp.Store;
+        res.Pass.Depth.StoreOp = StoreOp.None;
 
         if (UseWBOIT)
         {
@@ -65,7 +65,7 @@ public class ForwardPlusTransparentNode : RenderNode
         {
             // Color 0: Main color target (RGBA16F).
             // Clear: Load existing opaque result. Blend: SRC_ALPHA / ONE_MINUS_SRC_ALPHA.
-            res.Framebuf.Colors[0].Texture = res.Textures[SystemBufferNames.TextureColorF16Current];
+            res.Framebuf.Colors[0].Texture = res.Textures[SystemBufferNames.TextureColorF16Target];
             res.Pass.Colors[0].LoadOp = LoadOp.Load;
             res.Pass.Colors[0].StoreOp = StoreOp.Store;
         }

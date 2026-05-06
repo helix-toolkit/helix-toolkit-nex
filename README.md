@@ -18,38 +18,41 @@ Currently in development.
 
 ## Features (Done or In progress)
 
-- [Vulkan backend implementation](Source/HelixToolkit-Nex/HelixToolkit.Nex.Graphics.Vulkan/README.md) (Done)
-- Complete bindless descriptor architecture.
-- Linux support (Done)
-- [ImGui integration](Source/HelixToolkit-Nex/Samples/GraphicsAPI/ImGuiTest/README.md) (Done)
-- [Forward+(Tiled based GPU light culling)](Source/HelixToolkit-Nex/Samples/GraphicsAPI/ForwardPlusSimple/README.md) rendering pipeline. (Done)
+- :white_check_mark: [Vulkan backend implementation](Source/HelixToolkit-Nex/HelixToolkit.Nex.Graphics.Vulkan/README.md)
+- :white_check_mark: Complete bindless descriptor architecture.
+- :white_check_mark: Linux support.
+- :white_check_mark: [ImGui integration](Source/HelixToolkit-Nex/Samples/GraphicsAPI/ImGuiTest/README.md)
+- :white_check_mark: [Forward+(Tiled based GPU light culling)](Source/HelixToolkit-Nex/Samples/GraphicsAPI/ForwardPlusSimple/README.md) rendering pipeline.
 - Material systems.
-  - Physically Based Rendering (Done)
-  - Point cloud (Done)
-  - Line (Planned)
-  - Billboard (Planned)
-  - Material registry and shader generation system. (Done)
-
-- [GPU Frustum Culling](Source/HelixToolkit-Nex/Samples/GraphicsAPI/MeshCulling/README.md) and [GPU Frustum Culling on Instancing](Source/HelixToolkit-Nex/Samples/GraphicsAPI/InstancingMeshCulling/README.md). (Done)
-- ECS based scene management system. (In Progress)
-- Engine architecture design. (In Progress)
-  - Render Graph based rendering architecture. (Done)
-  - WB Order independent transparency rendering. (Done)
-  - PostEffects:
-    - SMAA anti-aliasing. (Done)
-    - FXAA anti-aliasing. (Done)
-    - Bloom post-processing effect. (Done)
-    - Object border highlighting effect. (Done) 
-    - Wireframe rendering. (Done)
-    - Tone mapping post-processing effect. (Done)
-  - GPU picking. (Done)
-  - Async Buffer/Texture upload with transfer queue. (Done)
-  - Texture loading and caching system. (Done)
-  - Shader compilation and management system. (Done)
+  - :white_check_mark: Physically Based Rendering
+  - :white_check_mark: Point cloud
+  - :white_check_mark: Billboard ([MSDF based Font support](https://github.com/chlumsky/msdfgen))
+  - :white_check_mark: Material registry and shader generation system.
+  - :hourglass: Line (Planned)  
+  - :hourglass: Particle System (Planned)
+  - :hourglass: Skeletal/Morph Target Animation (Planned)
+  - :hourglass: Model importer (Planned)
+- :white_check_mark: [GPU Frustum Culling](Source/HelixToolkit-Nex/Samples/GraphicsAPI/MeshCulling/README.md) and [GPU Frustum Culling on Instancing](Source/HelixToolkit-Nex/Samples/GraphicsAPI/InstancingMeshCulling/README.md). (Done)
+- :white_check_mark: ECS based scene management system.
+- :white_check_mark: Engine architecture design.
+  - :white_check_mark: Render Graph based rendering architecture.
+  - :white_check_mark: WB Order independent transparency rendering.
+  - Anti-aliasing:
+      - :white_check_mark: SMAA anti-aliasing.
+      - :white_check_mark: FXAA anti-aliasing.
+  - Effects:
+    - :white_check_mark: Bloom post-processing effect.
+    - :white_check_mark: Object border highlighting effect.
+    - :white_check_mark: Wireframe rendering.
+    - :white_check_mark: Tone mapping post-processing effect.
+  - :white_check_mark: GPU picking.
+  - :white_check_mark: Async Buffer/Texture upload with transfer queue.
+  - :white_check_mark: Texture loading and caching system.
+  - :white_check_mark: Shader compilation and management system.
  
-- Wpf Framework Interoperation (Done)
-- WinUI Interoperation (Done)
-- Avalonia UI Interoperation (Planned)
+- :white_check_mark: Wpf Framework Interoperation
+- :white_check_mark: WinUI Interoperation
+- :hourglass: Avalonia UI Interoperation (Planned)
 
 ## Rendering Samples
 

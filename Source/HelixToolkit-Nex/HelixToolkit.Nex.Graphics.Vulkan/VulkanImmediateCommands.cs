@@ -1,36 +1,41 @@
 namespace HelixToolkit.Nex.Graphics.Vulkan;
 
+/// <summary>
+/// Manages a pool of Vulkan command buffers for immediate submission.
+/// Uses a free-list pool design: any available buffer can be acquired,
+/// and buffers are returned to the pool after their fence signals.
+///
+/// Buffer states:
+///   Available  — IsAvailable=true (CmdBuffer==Null). Ready to be acquired.
+///   Encoding   — IsEncoding=true. Being recorded into. Not yet submitted.
+///   InFlight   — !IsAvailable && !IsEncoding. Submitted to GPU, fence pending.
+///
+/// Invariants:
+///   - A buffer is only reset (vkResetCommandBuffer + vkResetFences) after its fence signals.
+///   - Wait(handle) only resets the buffer if handle.SubmitId matches the buffer's current SubmitId.
+///   - No external counter tracks availability — IsAvailable is the single source of truth.
+/// </summary>
 internal sealed class VulkanImmediateCommands : IDisposable
 {
-    // the maximum number of command buffers which can similtaneously exist in the system; when we run out of buffers, we stall and wait until
-    // an existing buffer becomes available
-    private const uint32_t KMaxCommandBuffers = 64;
-    private const uint32_t KMaxSecondaryCommandBuffers = 256;
+    private const uint32_t KMaxCommandBuffers = 32;
+    private const uint32_t KMaxSecondaryCommandBuffers = 64;
     private static readonly ILogger _logger = LogManager.Create<VulkanImmediateCommands>();
 
-    public sealed class CommandBufferWrapper()
-    {
-        public VkCommandBuffer Instance = VkCommandBuffer.Null;
-        public VkCommandBuffer CmdBufAllocated = VkCommandBuffer.Null;
-        public SubmitHandle Handle = SubmitHandle.Null;
-        public VkFence Fence = VkFence.Null;
-        public VkSemaphore Semaphore = VkSemaphore.Null;
-        public bool IsEncoding = false;
-        public bool IsSecondary = false;
-    };
-
+    private readonly VulkanContext _context;
     private readonly VkDevice _device = VkDevice.Null;
     private readonly VkQueue _queue = VkQueue.Null;
     private readonly VkCommandPool _commandPool = VkCommandPool.Null;
     private readonly VkCommandPool _secondaryCommandPool = VkCommandPool.Null;
     private readonly uint32_t _queueFamilyIndex = 0;
     private readonly bool _hasExtDeviceFault = false;
-    private readonly string _debugName = string.Empty;
 
-    private readonly CommandBufferWrapper[] _buffers = new CommandBufferWrapper[KMaxCommandBuffers];
-    private readonly List<CommandBufferWrapper> _secondaryBuffers = new();
+    private readonly CommandBuffer[] _buffers = new CommandBuffer[KMaxCommandBuffers];
+
+    // Secondary command buffer pool
+    private readonly List<CommandBuffer> _secondaryBuffers = new();
     private readonly object _secondaryBuffersLock = new();
 
+    // Semaphore state for the next submit
     private SubmitHandle _lastSubmitHandle = SubmitHandle.Null;
     private SubmitHandle _nextSubmitHandle = SubmitHandle.Null;
     private VkSemaphoreSubmitInfo _lastSubmitSemaphore = new()
@@ -40,29 +45,30 @@ internal sealed class VulkanImmediateCommands : IDisposable
     private VkSemaphoreSubmitInfo _waitSemaphore = new()
     {
         stageMask = VkPipelineStageFlags2.AllCommands,
-    }; // extra "wait" semaphore
+    };
     private VkSemaphoreSubmitInfo _signalSemaphore = new()
     {
         stageMask = VkPipelineStageFlags2.AllCommands,
-    }; // extra "signal" semaphore
-    private uint32_t _numAvailableCommandBuffers = KMaxCommandBuffers;
+    };
+    private VkSemaphoreSubmitInfo _presentSignalSemaphore = new()
+    {
+        stageMask = VkPipelineStageFlags2.AllCommands,
+    };
     private uint32_t _submitCounter = 1;
 
     public VulkanImmediateCommands(
-        in VkDevice device,
+        VulkanContext context,
         uint32_t queueFamilyIndex,
-        bool has_EXT_device_fault,
-        string? debugName
+        bool hasEXTDeviceFault
     )
     {
-        this._device = device;
-        this._queueFamilyIndex = queueFamilyIndex;
-        this._hasExtDeviceFault = has_EXT_device_fault;
-        this._debugName = debugName ?? string.Empty;
+        _context = context;
+        _device = context.GetVkDevice();
+        _queueFamilyIndex = queueFamilyIndex;
+        _hasExtDeviceFault = hasEXTDeviceFault;
 
-        VK.vkGetDeviceQueue(device, queueFamilyIndex, 0, out _queue);
+        VK.vkGetDeviceQueue(_device, queueFamilyIndex, 0, out _queue);
 
-        // Create primary command pool
         VkCommandPoolCreateInfo ci = new()
         {
             flags =
@@ -72,255 +78,160 @@ internal sealed class VulkanImmediateCommands : IDisposable
         };
         unsafe
         {
-            VK.vkCreateCommandPool(device, ci, null, out _commandPool).CheckResult();
+            VK.vkCreateCommandPool(_device, ci, null, out _commandPool).CheckResult();
         }
 
-        // Create secondary command pool (thread-safe)
         ci.flags = VK.VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
         unsafe
         {
-            VK.vkCreateCommandPool(device, ci, null, out _secondaryCommandPool).CheckResult();
+            VK.vkCreateCommandPool(_device, ci, null, out _secondaryCommandPool).CheckResult();
         }
 
-        if (GraphicsSettings.EnableDebug && !string.IsNullOrEmpty(this._debugName))
+        if (GraphicsSettings.EnableDebug)
         {
-            device.SetDebugObjectName(
+            _device.SetDebugObjectName(
                 VK.VK_OBJECT_TYPE_COMMAND_POOL,
                 (nuint)_commandPool.Handle,
-                $"[Vk.ImmediateCmdPool]: {debugName}"
+                "ImmediateCmdPool"
             );
-            device.SetDebugObjectName(
+            _device.SetDebugObjectName(
                 VK.VK_OBJECT_TYPE_COMMAND_POOL,
                 (nuint)_secondaryCommandPool.Handle,
-                $"[Vk.SecondaryCmdPool]: {debugName}"
+                "SecondaryCmdPool"
             );
         }
-
-        VkCommandBufferAllocateInfo ai = new()
-        {
-            commandPool = _commandPool,
-            level = VK.VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-            commandBufferCount = 1,
-        };
 
         for (uint32_t i = 0; i != KMaxCommandBuffers; i++)
         {
-            unsafe
-            {
-                string? fenceName = null;
-                string? semaphoreName = null;
-                if (this._debugName != string.Empty)
-                {
-                    fenceName = $"Fence: {this._debugName} (cmdbuf {i})";
-                    semaphoreName = $"Semaphore: {this._debugName} (cmdbuf {i})";
-                }
-                _buffers[i] = new CommandBufferWrapper();
-                var buf = _buffers[i];
-                buf.Semaphore = device.CreateSemaphore(semaphoreName);
-                buf.Fence = device.CreateFence(fenceName);
-                VkCommandBuffer cmdBuf = VkCommandBuffer.Null;
-                VK.vkAllocateCommandBuffers(device, &ai, &cmdBuf);
-                buf.CmdBufAllocated = cmdBuf;
-                buf.Handle.BufferIndex = i;
-                buf.IsSecondary = false;
-            }
+            _buffers[i] = new CommandBuffer(context, false, i, in _commandPool);
+            _freeStack.Push(i);
         }
     }
+
+    #region Primary Command Buffers - Acquire / Submit / Wait
 
     /// <summary>
-    /// Creates a secondary command buffer for parallel recording.
+    /// Stack of available buffer indices. Pop to acquire, push to return.
     /// </summary>
-    /// <param name="renderPass">The render pass this secondary buffer will be compatible with.</param>
-    /// <returns>A secondary command buffer wrapper.</returns>
-    public CommandBufferWrapper CreateSecondaryBuffer(in RenderPass renderPass)
-    {
-        lock (_secondaryBuffersLock)
-        {
-            // Try to reuse an available secondary buffer
-            foreach (var buf in _secondaryBuffers)
-            {
-                if (buf.Instance.IsNotNull && !buf.IsEncoding)
-                {
-                    buf.IsEncoding = true;
-                    BeginSecondaryBuffer(buf, renderPass);
-                    return buf;
-                }
-            }
-
-            // Need to allocate a new secondary buffer
-            if (_secondaryBuffers.Count >= KMaxSecondaryCommandBuffers)
-            {
-                _logger.LogWarning(
-                    "Maximum number of secondary command buffers reached. Attempting reuse.."
-                );
-                // Wait for some to become available
-                foreach (var buf in _secondaryBuffers)
-                {
-                    if (buf.Instance.IsNotNull && !buf.IsEncoding)
-                    {
-                        buf.IsEncoding = true;
-                        BeginSecondaryBuffer(buf, renderPass);
-                        return buf;
-                    }
-                }
-                throw new InvalidOperationException("No secondary command buffers available");
-            }
-
-            // Allocate new secondary command buffer
-            var newBuffer = new CommandBufferWrapper { IsSecondary = true };
-            unsafe
-            {
-                VkCommandBufferAllocateInfo ai = new()
-                {
-                    commandPool = _secondaryCommandPool,
-                    level = VK.VK_COMMAND_BUFFER_LEVEL_SECONDARY,
-                    commandBufferCount = 1,
-                };
-
-                VkCommandBuffer cmdBuf = VkCommandBuffer.Null;
-                VK.vkAllocateCommandBuffers(_device, &ai, &cmdBuf);
-                newBuffer.CmdBufAllocated = cmdBuf;
-                newBuffer.Instance = cmdBuf;
-            }
-
-            _secondaryBuffers.Add(newBuffer);
-            newBuffer.IsEncoding = true;
-            BeginSecondaryBuffer(newBuffer, renderPass);
-            return newBuffer;
-        }
-    }
-
-    private unsafe void BeginSecondaryBuffer(CommandBufferWrapper buf, in RenderPass renderPass)
-    {
-        // For now, we'll use a simplified inheritance info
-        // In a full implementation, you'd need to pass the actual render pass and framebuffer
-        VkCommandBufferInheritanceInfo inheritanceInfo = new()
-        {
-            sType = VK.VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO,
-            pNext = null,
-            renderPass = VkRenderPass.Null, // Dynamic rendering doesn't use render pass objects
-            subpass = 0,
-            framebuffer = VkFramebuffer.Null,
-            occlusionQueryEnable = VkBool32.False,
-            queryFlags = 0,
-            pipelineStatistics = 0,
-        };
-
-        VkCommandBufferBeginInfo bi = new()
-        {
-            sType = VK.VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-            flags =
-                VK.VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT
-                | VK.VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT,
-            pInheritanceInfo = &inheritanceInfo,
-        };
-
-        VK.vkBeginCommandBuffer(buf.Instance, &bi).CheckResult();
-    }
+    private readonly Stack<uint32_t> _freeStack = new((int)KMaxCommandBuffers);
 
     /// <summary>
-    /// Finalizes a secondary command buffer for execution.
+    /// Queue of in-flight buffer indices, ordered by submission time (oldest at front).
+    /// Used for efficient fence polling — only need to check the front.
     /// </summary>
-    /// <param name="wrapper">The secondary buffer wrapper to finalize.</param>
-    public void FinalizeSecondaryBuffer(CommandBufferWrapper wrapper)
-    {
-        if (!wrapper.IsSecondary)
-        {
-            throw new InvalidOperationException("Buffer is not a secondary command buffer");
-        }
-        lock (_secondaryBuffersLock)
-        {
-            VK.vkEndCommandBuffer(wrapper.Instance).CheckResult();
-            wrapper.IsEncoding = false;
-        }
-    }
+    private readonly Queue<uint32_t> _inFlightQueue = new((int)KMaxCommandBuffers);
 
     /// <summary>
-    /// Recycles a secondary command buffer for reuse.
+    /// Acquires an available command buffer. O(1) when buffers are available.
+    /// If none free, recycles completed buffers from the in-flight queue (front-to-back).
+    /// If all still in-flight, stalls on the oldest buffer's fence.
     /// </summary>
-    /// <param name="wrapper">The secondary buffer wrapper to recycle.</param>
-    public void RecycleSecondaryBuffer(CommandBufferWrapper wrapper)
+    public CommandBuffer Acquire()
     {
-        if (!wrapper.IsSecondary)
+        // Fast path: pop from free stack
+        if (_freeStack.Count > 0)
         {
-            return;
+            return BeginBuffer(_buffers[_freeStack.Pop()]);
         }
 
-        lock (_secondaryBuffersLock)
+        // No free buffers — try to recycle completed ones from the front of the in-flight queue
+        TryRecycleCompleted();
+
+        if (_freeStack.Count > 0)
         {
-            if (wrapper.Instance.IsNotNull)
-            {
-                unsafe
-                {
-                    VK.vkResetCommandBuffer(wrapper.Instance, new VkCommandBufferResetFlags())
-                        .CheckResult();
-                }
-                wrapper.Instance = wrapper.CmdBufAllocated;
-            }
+            return BeginBuffer(_buffers[_freeStack.Pop()]);
         }
+
+        // Still nothing — must stall on the oldest in-flight buffer
+        _logger.LogWarning("All command buffers in-flight, stalling...");
+        WaitAndRecycleFront();
+
+        return BeginBuffer(_buffers[_freeStack.Pop()]);
     }
 
-    // returns the current command buffer (creates one if it does not exist)
-    public CommandBufferWrapper Acquire()
+    private CommandBuffer BeginBuffer(CommandBuffer buf)
     {
-        if (_numAvailableCommandBuffers == 0)
-        {
-            Purge();
-        }
-
-        while (_numAvailableCommandBuffers == 0)
-        {
-            _logger.LogWarning("Waiting for command buffers...\n");
-            Purge();
-        }
-
-        int idx = 0;
-
-        // we are ok with any available buffer
-        for (; idx < KMaxCommandBuffers; ++idx)
-        {
-            if (_buffers[idx].Instance == VkCommandBuffer.Null)
-            {
-                break;
-            }
-        }
-
-        HxDebug.Assert(_numAvailableCommandBuffers > 0, "No available command buffers");
-        HxDebug.Assert(idx < KMaxCommandBuffers, "No available command buffers");
-        HxDebug.Assert(_buffers[idx].CmdBufAllocated != VkCommandBuffer.Null);
-        var buf = _buffers[idx];
-
         buf.Handle.SubmitId = _submitCounter;
-        _numAvailableCommandBuffers--;
-
-        buf.Instance = buf.CmdBufAllocated;
-        buf.IsEncoding = true;
-        unsafe
-        {
-            VkCommandBufferBeginInfo bi = new()
-            {
-                flags = VK.VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
-            };
-            VK.vkBeginCommandBuffer(buf.Instance, &bi).CheckResult();
-        }
-
+        buf.BeginEncoding();
         _nextSubmitHandle = buf.Handle;
-
         return buf;
     }
 
-    public SubmitHandle Submit(CommandBufferWrapper wrapper)
+    /// <summary>
+    /// Non-blocking: checks fences at the front of the in-flight queue and recycles
+    /// completed buffers back to the free stack. Stops at the first non-signaled fence
+    /// (single-queue FIFO guarantee: if buffer N isn't done, N+1 can't be either).
+    /// </summary>
+    private void TryRecycleCompleted()
     {
         unsafe
         {
-            return Submit(wrapper, null);
+            while (_inFlightQueue.Count > 0)
+            {
+                var idx = _inFlightQueue.Peek();
+                var buf = _buffers[idx];
+
+                // Skip if already recycled (e.g., by Wait())
+                if (buf.IsAvailable)
+                {
+                    _inFlightQueue.Dequeue();
+                    continue;
+                }
+
+                var fence = buf.Fence;
+                if (VK.vkWaitForFences(_device, 1, &fence, VkBool32.True, 0) == VkResult.Success)
+                {
+                    buf.Reset();
+                    _inFlightQueue.Dequeue();
+                    _freeStack.Push(idx);
+                }
+                else
+                {
+                    // Oldest isn't done — nothing behind it can be either
+                    break;
+                }
+            }
         }
     }
 
-    public unsafe SubmitHandle Submit(CommandBufferWrapper wrapper, void* submitInfoPNext = null)
+    /// <summary>
+    /// Blocking: waits on the oldest in-flight buffer's fence, then recycles it.
+    /// </summary>
+    private void WaitAndRecycleFront()
     {
-        HxDebug.Assert(wrapper.IsEncoding);
-        VK.vkEndCommandBuffer(wrapper.Instance).CheckResult();
+        HxDebug.Assert(_inFlightQueue.Count > 0, "No in-flight buffers to wait on");
+
+        var idx = _inFlightQueue.Dequeue();
+        var buf = _buffers[idx];
+
+        // May have been recycled by Wait() already
+        if (buf.IsAvailable)
+        {
+            _freeStack.Push(idx);
+            return;
+        }
+
+        unsafe
+        {
+            var fence = buf.Fence;
+            VK.vkWaitForFences(_device, 1, &fence, VkBool32.True, ulong.MaxValue).CheckResult();
+        }
+        buf.Reset();
+        _freeStack.Push(idx);
+    }
+
+    public SubmitHandle Submit(CommandBuffer cmdBuf)
+    {
+        unsafe
+        {
+            return Submit(cmdBuf, null);
+        }
+    }
+
+    public unsafe SubmitHandle Submit(CommandBuffer cmdBuf, void* submitInfoPNext = null)
+    {
+        HxDebug.Assert(cmdBuf.IsEncoding);
+        cmdBuf.EndEncoding();
         unsafe
         {
             var waitSemaphores = stackalloc VkSemaphoreSubmitInfo[2];
@@ -334,11 +245,10 @@ internal sealed class VulkanImmediateCommands : IDisposable
                 waitSemaphores[numWaitSemaphores++] = _lastSubmitSemaphore;
             }
 
-            var signalSemaphores = stackalloc VkSemaphoreSubmitInfo[2];
-
+            var signalSemaphores = stackalloc VkSemaphoreSubmitInfo[3];
             signalSemaphores[0] = new VkSemaphoreSubmitInfo()
             {
-                semaphore = wrapper.Semaphore,
+                semaphore = cmdBuf.Semaphore,
                 stageMask = VkPipelineStageFlags2.AllCommands,
             };
 
@@ -347,8 +257,12 @@ internal sealed class VulkanImmediateCommands : IDisposable
             {
                 signalSemaphores[numSignalSemaphores++] = _signalSemaphore;
             }
+            if (_presentSignalSemaphore.semaphore != VkSemaphore.Null)
+            {
+                signalSemaphores[numSignalSemaphores++] = _presentSignalSemaphore;
+            }
 
-            VkCommandBufferSubmitInfo bufferSI = new() { commandBuffer = wrapper.Instance };
+            VkCommandBufferSubmitInfo bufferSI = new() { commandBuffer = cmdBuf.CmdBuffer };
             VkSubmitInfo2 si = new()
             {
                 waitSemaphoreInfoCount = numWaitSemaphores,
@@ -359,158 +273,26 @@ internal sealed class VulkanImmediateCommands : IDisposable
                 pSignalSemaphoreInfos = signalSemaphores,
                 pNext = submitInfoPNext,
             };
-            var result = VK.vkQueueSubmit2(_queue, 1u, &si, wrapper.Fence);
+            var result = VK.vkQueueSubmit2(_queue, 1u, &si, cmdBuf.Fence);
 
             if (_hasExtDeviceFault && result == VkResult.ErrorDeviceLost)
             {
-                VkDeviceFaultCountsEXT count = new();
-                VK.vkGetDeviceFaultInfoEXT(_device, &count, null);
-                FastList<VkDeviceFaultAddressInfoEXT> addressInfo = new(
-                    (int)count.addressInfoCount
-                );
-                FastList<VkDeviceFaultVendorInfoEXT> vendorInfo = new((int)count.vendorInfoCount);
-                FastList<uint8_t> binary = new((int)count.vendorBinarySize);
-                VkDeviceFaultInfoEXT info = new();
-
-                using var pAddressInfos = addressInfo.GetInternalArray().Pin();
-                using var pVenderInfo = vendorInfo.GetInternalArray().Pin();
-                using var pBinary = binary.GetInternalArray().Pin();
-
-                info.pAddressInfos = (VkDeviceFaultAddressInfoEXT*)pAddressInfos.Pointer;
-                info.pVendorInfos = (VkDeviceFaultVendorInfoEXT*)pVenderInfo.Pointer;
-                info.pVendorBinaryData = (uint8_t*)pBinary.Pointer;
-                VK.vkGetDeviceFaultInfoEXT(_device, &count, &info);
-
-                _logger.LogWarning(
-                    "VK_ERROR_DEVICE_LOST: {DESCRIPTION}",
-                    Marshal.PtrToStringAnsi((IntPtr)info.description)
-                );
-                foreach (var aInfo in addressInfo)
-                {
-                    VkDeviceSize lowerAddress =
-                        aInfo.reportedAddress & ~(aInfo.addressPrecision - 1);
-                    VkDeviceSize upperAddress =
-                        aInfo.reportedAddress | (aInfo.addressPrecision - 1);
-                    _logger.LogWarning(
-                        "...address range [ {LOWER_ADDR}, {UPPER_ADDR} ]: {}",
-                        lowerAddress,
-                        upperAddress,
-                        aInfo.addressType
-                    );
-                }
-                foreach (var vInfo in vendorInfo)
-                {
-                    _logger.LogWarning(
-                        "...caused by `{DESCRIPTION}` with error code {FAULT_CODE} and data {FAULT_DATA}",
-                        Marshal.PtrToStringAnsi((IntPtr)vInfo.description),
-                        vInfo.vendorFaultCode,
-                        vInfo.vendorFaultData
-                    );
-                }
-                var binarySize = count.vendorBinarySize;
-
-                if (
-                    info.pVendorBinaryData != null
-                    && binarySize >= (ulong)sizeof(VkDeviceFaultVendorBinaryHeaderVersionOneEXT)
-                )
-                {
-                    var header = (VkDeviceFaultVendorBinaryHeaderVersionOneEXT*)
-                        info.pVendorBinaryData;
-
-                    var hexDigits =
-                        stackalloc char[] {
-                            '0',
-                            '1',
-                            '2',
-                            '3',
-                            '4',
-                            '5',
-                            '6',
-                            '7',
-                            '8',
-                            '9',
-                            'a',
-                            'b',
-                            'c',
-                            'd',
-                            'e',
-                            'f',
-                        };
-                    var uuid = new char[VK.VK_UUID_SIZE * 2 + 1];
-                    for (uint32_t i = 0; i < VK.VK_UUID_SIZE; ++i)
-                    {
-                        uuid[i * 2 + 0] = hexDigits[(header->pipelineCacheUUID[i] >> 4) & 0xF];
-                        uuid[i * 2 + 1] = hexDigits[header->pipelineCacheUUID[i] & 0xF];
-                    }
-                    _logger.LogWarning("VkDeviceFaultVendorBinaryHeaderVersionOne:");
-                    _logger.LogWarning("   headerSize        : {}", header->headerSize);
-                    _logger.LogWarning(
-                        "   headerVersion     : {}",
-                        (uint32_t)header->headerVersion
-                    );
-                    _logger.LogWarning("   vendorID          : {}", header->vendorID);
-                    _logger.LogWarning("   deviceID          : {}", header->deviceID);
-                    _logger.LogWarning("   driverVersion     : {}", header->driverVersion);
-                    _logger.LogWarning("   pipelineCacheUUID : {}", uuid);
-                    if (
-                        header->applicationNameOffset > 0
-                        && header->applicationNameOffset < binarySize
-                    )
-                    {
-                        _logger.LogWarning(
-                            "   applicationName   : {NAME}",
-                            Marshal.PtrToStringAnsi(
-                                (IntPtr)(
-                                    (char*)info.pVendorBinaryData + header->applicationNameOffset
-                                )
-                            )
-                        );
-                    }
-                    _logger.LogWarning(
-                        "   applicationVersion: {MAJOR}.{MINOR}.{PATCH}",
-                        header->applicationVersion.Major,
-                        header->applicationVersion.Minor,
-                        header->applicationVersion.Patch
-                    );
-                    if (header->engineNameOffset > 0 && header->engineNameOffset < binarySize)
-                    {
-                        _logger.LogWarning(
-                            "   engineName        : {NAME}",
-                            Marshal.PtrToStringAnsi(
-                                (IntPtr)((char*)info.pVendorBinaryData + header->engineNameOffset)
-                            )
-                        );
-                    }
-                    _logger.LogWarning(
-                        "   engineVersion     : {MAJOR}.{MINOR}.{PATCH}",
-                        header->engineVersion.Major,
-                        header->engineVersion.Minor,
-                        header->engineVersion.Patch
-                    );
-                    _logger.LogWarning(
-                        "   apiVersion        : {MAJOR}.{MINOR}.{PATCH}.{VARIANT}",
-                        header->apiVersion.Major,
-                        header->apiVersion.Minor,
-                        header->apiVersion.Patch,
-                        header->apiVersion.Variant
-                    );
-                }
+                ReportDeviceFault();
             }
 
             result.CheckResult();
 
-            _lastSubmitSemaphore.semaphore = wrapper.Semaphore;
-            _lastSubmitHandle = wrapper.Handle;
+            _lastSubmitSemaphore.semaphore = cmdBuf.Semaphore;
+            _lastSubmitHandle = cmdBuf.Handle;
             _waitSemaphore.semaphore = VkSemaphore.Null;
             _signalSemaphore.semaphore = VkSemaphore.Null;
+            _presentSignalSemaphore.semaphore = VkSemaphore.Null;
 
-            // reset
-            wrapper.IsEncoding = false;
+            _inFlightQueue.Enqueue(cmdBuf.Handle.BufferIndex);
+
             _submitCounter++;
-
             if (_submitCounter == 0)
             {
-                // skip the 0 value - when uint32_t wraps around (null SubmitHandle)
                 _submitCounter++;
             }
 
@@ -518,19 +300,28 @@ internal sealed class VulkanImmediateCommands : IDisposable
         }
     }
 
+    #endregion
+
+    #region Semaphore Configuration
+
     public void WaitSemaphore(in VkSemaphore semaphore)
     {
         HxDebug.Assert(_waitSemaphore.semaphore == VkSemaphore.Null);
-
         _waitSemaphore.semaphore = semaphore;
     }
 
     public void SignalSemaphore(in VkSemaphore semaphore, uint64_t signalValue)
     {
         HxDebug.Assert(_signalSemaphore.semaphore == VkSemaphore.Null);
-
         _signalSemaphore.semaphore = semaphore;
         _signalSemaphore.value = signalValue;
+    }
+
+    public void SignalPresentSemaphore(in VkSemaphore semaphore)
+    {
+        HxDebug.Assert(_presentSignalSemaphore.semaphore == VkSemaphore.Null);
+        _presentSignalSemaphore.semaphore = semaphore;
+        _presentSignalSemaphore.stageMask = VkPipelineStageFlags2.AllCommands;
     }
 
     public VkSemaphore AcquireLastSubmitSemaphore()
@@ -539,6 +330,10 @@ internal sealed class VulkanImmediateCommands : IDisposable
         _lastSubmitSemaphore.semaphore = VkSemaphore.Null;
         return semaphore;
     }
+
+    #endregion
+
+    #region Wait / Query
 
     public VkFence GetVkFence(SubmitHandle handle)
     {
@@ -555,33 +350,34 @@ internal sealed class VulkanImmediateCommands : IDisposable
         return _nextSubmitHandle;
     }
 
+    /// <summary>
+    /// Checks whether the submission identified by handle has completed.
+    /// </summary>
     public bool IsReady(in SubmitHandle handle, bool fastCheckNoVulkan = false)
     {
         if (handle.Empty)
         {
-            // a null handle
             return true;
         }
 
-        ref var buf = ref _buffers[handle.BufferIndex];
+        var buf = _buffers[handle.BufferIndex];
 
-        if (buf.Instance == VkCommandBuffer.Null)
+        if (buf.IsAvailable)
         {
-            // already recycled and not yet reused
             return true;
         }
 
         if (buf.Handle.SubmitId != handle.SubmitId)
         {
-            // already recycled and reused by another command buffer
+            // Buffer was recycled and reused — the original submission is long done.
             return true;
         }
 
         if (fastCheckNoVulkan)
         {
-            // do not ask the Vulkan API about it, just let it retire naturally (when submitId for this bufferIndex gets incremented)
             return false;
         }
+
         unsafe
         {
             var fence = buf.Fence;
@@ -589,6 +385,10 @@ internal sealed class VulkanImmediateCommands : IDisposable
         }
     }
 
+    /// <summary>
+    /// Waits for a specific submission to complete. Only resets the buffer if it still
+    /// belongs to the same submission (SubmitId matches). Safe to call with stale handles.
+    /// </summary>
     public void Wait(in SubmitHandle handle, bool reset = true)
     {
         if (handle.Empty)
@@ -597,34 +397,55 @@ internal sealed class VulkanImmediateCommands : IDisposable
             return;
         }
 
-        if (IsReady(handle))
+        var buf = _buffers[handle.BufferIndex];
+
+        // Already available — nothing to wait for
+        if (buf.IsAvailable)
         {
             return;
         }
-        HxDebug.Assert(!_buffers[handle.BufferIndex].IsEncoding);
+
+        // Buffer was recycled and reused by a newer submission — original work is done
+        if (buf.Handle.SubmitId != handle.SubmitId)
+        {
+            return;
+        }
+
+        // Buffer is still being recorded — shouldn't happen in correct usage
+        if (buf.IsEncoding)
+        {
+            _logger.LogWarning("Wait called on a command buffer that is still encoding");
+            return;
+        }
+
+        // Wait for this buffer's fence
         unsafe
         {
-            var fence = _buffers[handle.BufferIndex].Fence;
+            var fence = buf.Fence;
             VK.vkWaitForFences(_device, 1, &fence, VkBool32.True, ulong.MaxValue).CheckResult();
         }
+
         if (reset)
         {
-            Purge();
+            buf.Reset();
+            _freeStack.Push(handle.BufferIndex);
         }
     }
 
+    /// <summary>
+    /// Waits for all in-flight command buffers to complete.
+    /// </summary>
     public void WaitAll(bool reset = true)
     {
         unsafe
         {
             var fences = stackalloc VkFence[(int)KMaxCommandBuffers];
-
             uint32_t numFences = 0;
 
-            for (uint32_t i = 0; i < KMaxCommandBuffers; ++i)
+            for (int i = 0; i < KMaxCommandBuffers; i++)
             {
-                ref CommandBufferWrapper buf = ref _buffers[i];
-                if (buf.Instance != VkCommandBuffer.Null && !buf.IsEncoding)
+                var buf = _buffers[i];
+                if (!buf.IsAvailable && !buf.IsEncoding)
                 {
                     fences[numFences++] = buf.Fence;
                 }
@@ -636,43 +457,237 @@ internal sealed class VulkanImmediateCommands : IDisposable
                     .CheckResult();
             }
         }
+
         if (reset)
         {
-            Purge();
-        }
-    }
-
-    private void Purge()
-    {
-        unsafe
-        {
-            // if we have a fence, we can wait for it to become signaled and reset the command buffer
-            for (uint32_t i = 0; i != KMaxCommandBuffers; i++)
+            _inFlightQueue.Clear();
+            for (int i = 0; i < KMaxCommandBuffers; i++)
             {
-                ref CommandBufferWrapper buf = ref _buffers[
-                    (i + _lastSubmitHandle.BufferIndex + 1) % KMaxCommandBuffers
-                ];
-                if (buf.Instance == VkCommandBuffer.Null || buf.IsEncoding)
+                var buf = _buffers[i];
+                if (!buf.IsAvailable && !buf.IsEncoding)
                 {
-                    continue;
-                }
-                var result = VK.vkGetFenceStatus(_device, buf.Fence);
-                if (result == VkResult.Success)
-                {
-                    VK.vkResetCommandBuffer(buf.Instance, new VkCommandBufferResetFlags())
-                        .CheckResult();
-                    var fence = buf.Fence;
-                    VK.vkResetFences(_device, 1, &fence).CheckResult();
-                    buf.Instance = VkCommandBuffer.Null;
-                    _numAvailableCommandBuffers++;
-                }
-                else if (result != VkResult.Timeout)
-                {
-                    result.CheckResult();
+                    buf.Reset();
+                    _freeStack.Push((uint32_t)i);
                 }
             }
         }
     }
+
+    #endregion
+
+    #region Secondary Command Buffers
+
+    /// <summary>
+    /// Acquires a secondary command buffer from the pool, returned in encoding state.
+    /// Secondary buffers share the primary buffer's fence for lifetime tracking.
+    /// </summary>
+    public CommandBuffer CreateSecondaryBuffer()
+    {
+        lock (_secondaryBuffersLock)
+        {
+            foreach (var buf in _secondaryBuffers)
+            {
+                if (buf.IsAvailable)
+                {
+                    buf.BeginEncoding();
+                    return buf;
+                }
+            }
+
+            if (_secondaryBuffers.Count >= KMaxSecondaryCommandBuffers)
+            {
+                _logger.LogWarning(
+                    "Maximum secondary command buffers ({MAX}) reached.",
+                    KMaxSecondaryCommandBuffers
+                );
+                foreach (var buf in _secondaryBuffers)
+                {
+                    if (buf.IsAvailable)
+                    {
+                        buf.BeginEncoding();
+                        return buf;
+                    }
+                }
+                throw new InvalidOperationException(
+                    "No secondary command buffers available. Ensure buffers are recycled after use."
+                );
+            }
+
+            var newBuffer = new CommandBuffer(
+                _context,
+                true,
+                (uint)_secondaryBuffers.Count,
+                in _secondaryCommandPool
+            );
+            _secondaryBuffers.Add(newBuffer);
+            newBuffer.BeginEncoding();
+            return newBuffer;
+        }
+    }
+
+    /// <summary>
+    /// Ends recording on a secondary command buffer.
+    /// </summary>
+    public void FinalizeSecondaryBuffer(CommandBuffer cmdBuffer)
+    {
+        if (!cmdBuffer.IsSecondary)
+        {
+            throw new InvalidOperationException("Buffer is not a secondary command buffer");
+        }
+        cmdBuffer.EndEncoding();
+    }
+
+    /// <summary>
+    /// Returns a secondary command buffer to the pool for reuse.
+    /// </summary>
+    public void RecycleSecondaryBuffer(CommandBuffer cmdBuffer)
+    {
+        if (!cmdBuffer.IsSecondary)
+        {
+            return;
+        }
+
+        lock (_secondaryBuffersLock)
+        {
+            if (!cmdBuffer.IsAvailable)
+            {
+                if (cmdBuffer.IsEncoding)
+                {
+                    cmdBuffer.EndEncoding();
+                }
+                cmdBuffer.Reset();
+            }
+        }
+    }
+
+    #endregion
+
+    #region Device Fault Reporting
+
+    private unsafe void ReportDeviceFault()
+    {
+        VkDeviceFaultCountsEXT count = new();
+        VK.vkGetDeviceFaultInfoEXT(_device, &count, null);
+        FastList<VkDeviceFaultAddressInfoEXT> addressInfo = new((int)count.addressInfoCount);
+        FastList<VkDeviceFaultVendorInfoEXT> vendorInfo = new((int)count.vendorInfoCount);
+        FastList<uint8_t> binary = new((int)count.vendorBinarySize);
+        VkDeviceFaultInfoEXT info = new();
+
+        using var pAddressInfos = addressInfo.GetInternalArray().Pin();
+        using var pVenderInfo = vendorInfo.GetInternalArray().Pin();
+        using var pBinary = binary.GetInternalArray().Pin();
+
+        info.pAddressInfos = (VkDeviceFaultAddressInfoEXT*)pAddressInfos.Pointer;
+        info.pVendorInfos = (VkDeviceFaultVendorInfoEXT*)pVenderInfo.Pointer;
+        info.pVendorBinaryData = (uint8_t*)pBinary.Pointer;
+        VK.vkGetDeviceFaultInfoEXT(_device, &count, &info);
+
+        _logger.LogWarning(
+            "VK_ERROR_DEVICE_LOST: {DESCRIPTION}",
+            Marshal.PtrToStringAnsi((IntPtr)info.description)
+        );
+        foreach (var aInfo in addressInfo)
+        {
+            VkDeviceSize lowerAddress = aInfo.reportedAddress & ~(aInfo.addressPrecision - 1);
+            VkDeviceSize upperAddress = aInfo.reportedAddress | (aInfo.addressPrecision - 1);
+            _logger.LogWarning(
+                "...address range [ {LOWER_ADDR}, {UPPER_ADDR} ]: {}",
+                lowerAddress,
+                upperAddress,
+                aInfo.addressType
+            );
+        }
+        foreach (var vInfo in vendorInfo)
+        {
+            _logger.LogWarning(
+                "...caused by `{DESCRIPTION}` with error code {FAULT_CODE} and data {FAULT_DATA}",
+                Marshal.PtrToStringAnsi((IntPtr)vInfo.description),
+                vInfo.vendorFaultCode,
+                vInfo.vendorFaultData
+            );
+        }
+        var binarySize = count.vendorBinarySize;
+
+        if (
+            info.pVendorBinaryData != null
+            && binarySize >= (ulong)sizeof(VkDeviceFaultVendorBinaryHeaderVersionOneEXT)
+        )
+        {
+            var header = (VkDeviceFaultVendorBinaryHeaderVersionOneEXT*)info.pVendorBinaryData;
+
+            var hexDigits =
+                stackalloc char[] {
+                    '0',
+                    '1',
+                    '2',
+                    '3',
+                    '4',
+                    '5',
+                    '6',
+                    '7',
+                    '8',
+                    '9',
+                    'a',
+                    'b',
+                    'c',
+                    'd',
+                    'e',
+                    'f',
+                };
+            var uuid = new char[VK.VK_UUID_SIZE * 2 + 1];
+            for (uint32_t i = 0; i < VK.VK_UUID_SIZE; ++i)
+            {
+                uuid[i * 2 + 0] = hexDigits[(header->pipelineCacheUUID[i] >> 4) & 0xF];
+                uuid[i * 2 + 1] = hexDigits[header->pipelineCacheUUID[i] & 0xF];
+            }
+            _logger.LogWarning("VkDeviceFaultVendorBinaryHeaderVersionOne:");
+            _logger.LogWarning("   headerSize        : {}", header->headerSize);
+            _logger.LogWarning("   headerVersion     : {}", (uint32_t)header->headerVersion);
+            _logger.LogWarning("   vendorID          : {}", header->vendorID);
+            _logger.LogWarning("   deviceID          : {}", header->deviceID);
+            _logger.LogWarning("   driverVersion     : {}", header->driverVersion);
+            _logger.LogWarning("   pipelineCacheUUID : {}", uuid);
+            if (header->applicationNameOffset > 0 && header->applicationNameOffset < binarySize)
+            {
+                _logger.LogWarning(
+                    "   applicationName   : {NAME}",
+                    Marshal.PtrToStringAnsi(
+                        (IntPtr)((char*)info.pVendorBinaryData + header->applicationNameOffset)
+                    )
+                );
+            }
+            _logger.LogWarning(
+                "   applicationVersion: {MAJOR}.{MINOR}.{PATCH}",
+                header->applicationVersion.Major,
+                header->applicationVersion.Minor,
+                header->applicationVersion.Patch
+            );
+            if (header->engineNameOffset > 0 && header->engineNameOffset < binarySize)
+            {
+                _logger.LogWarning(
+                    "   engineName        : {NAME}",
+                    Marshal.PtrToStringAnsi(
+                        (IntPtr)((char*)info.pVendorBinaryData + header->engineNameOffset)
+                    )
+                );
+            }
+            _logger.LogWarning(
+                "   engineVersion     : {MAJOR}.{MINOR}.{PATCH}",
+                header->engineVersion.Major,
+                header->engineVersion.Minor,
+                header->engineVersion.Patch
+            );
+            _logger.LogWarning(
+                "   apiVersion        : {MAJOR}.{MINOR}.{PATCH}.{VARIANT}",
+                header->apiVersion.Major,
+                header->apiVersion.Minor,
+                header->apiVersion.Patch,
+                header->apiVersion.Variant
+            );
+        }
+    }
+
+    #endregion
 
     #region Dispose
     private bool _disposedValue;
@@ -688,25 +703,12 @@ internal sealed class VulkanImmediateCommands : IDisposable
                 {
                     for (int i = 0; i < KMaxCommandBuffers; ++i)
                     {
-                        ref var buf = ref _buffers[i];
-
-                        // lifetimes of all VkFence objects are managed explicitly we do not use deferredTask() for them
-                        VK.vkDestroyFence(_device, buf.Fence, null);
-                        VK.vkDestroySemaphore(_device, buf.Semaphore, null);
-                        buf.Semaphore = VkSemaphore.Null;
-                        buf.Fence = VkFence.Null;
-                        var cmdBuf = buf.CmdBufAllocated;
-                        VK.vkFreeCommandBuffers(_device, _commandPool, 1, &cmdBuf);
-                        buf.CmdBufAllocated = VkCommandBuffer.Null;
+                        _buffers[i].Dispose();
                     }
 
-                    // Clean up secondary buffers
                     foreach (var buf in _secondaryBuffers)
                     {
-                        var cmdBuf = buf.CmdBufAllocated;
-                        VK.vkFreeCommandBuffers(_device, _secondaryCommandPool, 1, &cmdBuf);
-                        buf.Instance = VkCommandBuffer.Null;
-                        buf.CmdBufAllocated = VkCommandBuffer.Null;
+                        buf.Dispose();
                     }
                     _secondaryBuffers.Clear();
 
@@ -714,15 +716,12 @@ internal sealed class VulkanImmediateCommands : IDisposable
                     VK.vkDestroyCommandPool(_device, _secondaryCommandPool, null);
                 }
             }
-            // TODO: free unmanaged resources (unmanaged objects) and override finalizer
-            // TODO: set large fields to null
             _disposedValue = true;
         }
     }
 
     public void Dispose()
     {
-        // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
         Dispose(disposing: true);
     }
     #endregion

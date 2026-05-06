@@ -688,19 +688,42 @@ public sealed class SamplerStateDesc()
     /// </summary>
     public string DebugName = string.Empty;
 
-    public static readonly SamplerStateDesc LinearRepeat = new() { DebugName = "LinearRepeat" };
+    public static readonly SamplerStateDesc LinearRepeat = new()
+    {
+        WrapU = SamplerWrap.Repeat,
+        WrapV = SamplerWrap.Repeat,
+        WrapW = SamplerWrap.Repeat,
+        MipMap = SamplerMip.Linear,
+        DebugName = "LinearRepeat"
+    };
+
     public static readonly SamplerStateDesc LinearClamp = new()
     {
         WrapU = SamplerWrap.Clamp,
         WrapV = SamplerWrap.Clamp,
         WrapW = SamplerWrap.Clamp,
+        MipMap = SamplerMip.Linear,
         DebugName = "LinearClamp",
+    };
+
+    public static readonly SamplerStateDesc LinearClampNoMipmap = new()
+    {
+        MinFilter = SamplerFilter.Linear,
+        MagFilter = SamplerFilter.Linear,
+        MipMap = SamplerMip.Disabled,
+        WrapU = SamplerWrap.Clamp,
+        WrapV = SamplerWrap.Clamp,
+        WrapW = SamplerWrap.Clamp,
+        DebugName = "LinearClampNoMipmap",
     };
 
     public static readonly SamplerStateDesc PointRepeat = new()
     {
         MinFilter = SamplerFilter.Nearest,
         MagFilter = SamplerFilter.Nearest,
+        WrapU = SamplerWrap.Repeat,
+        WrapV = SamplerWrap.Repeat,
+        WrapW = SamplerWrap.Repeat,
         DebugName = "PointRepeat",
     };
 

@@ -10,6 +10,7 @@ using HelixToolkit.Nex.ImGui;
 using HelixToolkit.Nex.Maths;
 using HelixToolkit.Nex.Rendering;
 using HelixToolkit.Nex.Rendering.PostEffects;
+using HelixToolkit.Nex.Rendering.RenderNodes;
 using HelixToolkit.Nex.Scene;
 using Microsoft.Extensions.Logging;
 using SceneSamples;
@@ -52,12 +53,12 @@ internal partial class Editor : IDisposable
     private readonly Dependencies _imGuiDeps = new();
 
     // Post Effects
-    private readonly Fxaa _fxaa = new() { Enabled = false };
-    private readonly Smaa _smaa = new();
-    private readonly Bloom _bloom = new();
+    private FXAANode? _fxaa;
+    private SMAANode? _smaa;
+    private BloomNode? _bloom;
+    private FPSNode? _showFPS;
     private readonly BorderHighlightPostEffect _borderHighlight = new();
     private readonly WireframePostEffect _wireframe = new();
-    private readonly ShowFPS _showFPS = new();
 
     /// <summary>
     /// Tracks the ImGui 3D viewport content region size from the previous frame.
@@ -108,17 +109,23 @@ internal partial class Editor : IDisposable
         _engine = EngineBuilder
             .Create(_context)
             .WithDefaultNodes(false)
+            .WithBloom()
+            .WithSMAA()
+            .WithFXAA()
+            .WithFPS()
             .RenderToCustomTarget(RenderSettings.IntermediateTargetFormat)
             .WithPostEffects(effects =>
             {
-                effects.AddEffect(_fxaa);
-                effects.AddEffect(_smaa);
-                effects.AddEffect(_bloom);
                 effects.AddEffect(_borderHighlight);
                 effects.AddEffect(_wireframe);
-                effects.AddEffect(_showFPS);
             })
             .Build();
+
+        _fxaa = _engine.GetRenderNode<FXAANode>();
+        _fxaa!.Enabled = false; // Start with FXAA off to better see the difference when toggling
+        _smaa = _engine.GetRenderNode<SMAANode>();
+        _bloom = _engine.GetRenderNode<BloomNode>();
+        _showFPS = _engine.GetRenderNode<FPSNode>();
 
         // --- Per-viewport state and scene data ---
         _renderContext = _engine.CreateRenderContext();

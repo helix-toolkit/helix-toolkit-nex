@@ -29,7 +29,20 @@ public interface ICommandBuffer
     /// Secondary command buffers can be recorded in parallel and executed by a primary command buffer.
     /// </summary>
     bool IsSecondary { get; }
-
+    /// <summary>
+    /// Gets the number of draw calls issued since the last reset or frame.
+    /// </summary>
+    /// <remarks>Use this property to monitor rendering performance or diagnose graphics bottlenecks. The
+    /// value is typically reset at the start of each frame or after a manual reset, depending on the
+    /// implementation.</remarks>
+    uint DrawCallCount { get; }
+    /// <summary>
+    /// Gets the total number of dispatch calls that have been made since the last reset or frame.
+    /// </summary>
+    /// <remarks>Use this property to monitor compute workload performance or diagnose GPU bottlenecks. The
+    /// value is typically reset at the start of each frame or after a manual reset, depending on the
+    /// implementation.</remarks>
+    uint DispatchCallCount { get; }
     /// <summary>
     /// Executes secondary command buffers within this primary command buffer.
     /// This method can only be called on primary command buffers during an active render pass.
@@ -64,14 +77,14 @@ public interface ICommandBuffer
     /// Debug groups can be nested. Each call to <see cref="PushDebugGroupLabel"/> must be matched with
     /// a corresponding <see cref="PopDebugGroupLabel"/> call.
     /// </remarks>
-    void PushDebugGroupLabel(string label, Color4 color);
+    void PushDebugGroupLabel(ReadOnlySpan<byte> label, Color4 color);
 
     /// <summary>
     /// Inserts a single debug event marker at the current position in the command buffer.
     /// </summary>
     /// <param name="label">The label text for the debug event.</param>
     /// <param name="color">The color associated with this debug event in debugging tools.</param>
-    void InsertDebugEventLabel(string label, Color4 color);
+    void InsertDebugEventLabel(ReadOnlySpan<byte> label, Color4 color);
 
     /// <summary>
     /// Ends the current debug group started by <see cref="PushDebugGroupLabel"/>.
@@ -533,4 +546,10 @@ public interface ICommandBuffer
     /// <param name="buffer">The handle to the buffer for which to create the memory barrier.</param>
     /// <returns>True if the barrier was successfully created; false if the buffer handle is invalid or the barrier could not be created.</returns>
     bool Barrier(in BufferHandle buffer);
+
+    /// <summary>
+    /// Sets a checkpoint marker with the specified label to identify a position or state in the process.
+    /// </summary>
+    /// <param name="label">The label that identifies the checkpoint marker. Cannot be null or empty.</param>
+    void SetCheckpointMarker(ReadOnlySpan<byte> label);
 }

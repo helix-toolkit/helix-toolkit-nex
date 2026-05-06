@@ -70,6 +70,13 @@ public sealed class EngineBuilder
     private bool _addRenderToFinal;
     private Format _finalTextureFormat = Format.Invalid;
     private EngineInteropTarget _interopTarget = EngineInteropTarget.None;
+    private bool _withFXAA;
+    private bool _withSMAA;
+    private bool _withBloom;
+    private bool _withFPS;
+    private bool _withTransparent;
+    private bool _withBillboard;
+    private bool _withPointCloud;
     private Action<IResourceManager>? _onResourceManagerReady;
 
     private EngineBuilder(IContext context)
@@ -192,23 +199,11 @@ public sealed class EngineBuilder
     }
 
     /// <summary>
-    /// Configures a full Forward+ rendering pipeline with commonly used nodes and
-    /// a standard set of post-effects (SMAA, Bloom, ToneMapping, ShowFPS).
+    /// Configures a full Forward+ rendering pipeline with commonly used nodes.
     /// <para>
     /// This is equivalent to manually calling:
     /// <code>
-    /// builder
-    ///     .AddNode(new PrepareNode())
-    ///     .AddNode(new DepthPassNode())
-    ///     .AddNode(new FrustumCullNode())
-    ///     .AddNode(new PointCullNode())
-    ///     .AddNode(new ForwardPlusLightCullingNode())
-    ///     .AddNode(new ForwardPlusOpaqueNode())
-    ///     .AddNode(new PointRenderNode())
-    ///     .AddNode(new PostEffectsNode())
-    ///     .AddNode(new ForwardPlusTransparentNode())
-    ///     .AddNode(new WBOITCompositeNode())
-    ///     .AddNode(new ToneMappingNode())
+    /// builder.WithBillBoard().WithPointCloud().WithTransparent()
     /// </code>
     /// </para>
     /// </summary>
@@ -216,21 +211,57 @@ public sealed class EngineBuilder
     /// <returns>This builder for method chaining.</returns>
     public EngineBuilder WithDefaultNodes(bool renderToSwapchain = true)
     {
-        AddNode(new PrepareNode());
-        AddNode(new DepthPassNode());
-        AddNode(new FrustumCullNode());
-        AddNode(new PointCullNode());
-        AddNode(new ForwardPlusLightCullingNode());
-        AddNode(new ForwardPlusOpaqueNode());
-        AddNode(new PointRenderNode());
-        AddNode(new ForwardPlusTransparentNode());
-        AddNode(new WBOITCompositeNode());
-        AddNode(new ToneMappingNode());
+        WithBillBoard();
+        WithPointCloud();
+        WithTransparent();
+
         _addRenderToFinal = renderToSwapchain && _context.GetNumSwapchainImages() > 0;
         if (renderToSwapchain)
         {
             _finalTextureFormat = _context.GetSwapchainFormat();
         }
+        return this;
+    }
+
+    public EngineBuilder WithBillBoard()
+    {
+        _withBillboard = true;
+        return this;
+    }
+
+    public EngineBuilder WithPointCloud()
+    {
+        _withPointCloud = true;
+        return this;
+    }
+
+    public EngineBuilder WithTransparent()
+    {
+        _withTransparent = true;
+        return this;
+    }
+
+    public EngineBuilder WithFXAA()
+    {
+        _withFXAA = true;
+        return this;
+    }
+
+    public EngineBuilder WithSMAA()
+    {
+        _withSMAA = true;
+        return this;
+    }
+
+    public EngineBuilder WithBloom()
+    {
+        _withBloom = true;
+        return this;
+    }
+
+    public EngineBuilder WithFPS()
+    {
+        _withFPS = true;
         return this;
     }
 
@@ -318,8 +349,47 @@ public sealed class EngineBuilder
 
         engine.ResourceManager.PBRMaterialManager.CreatePBRMaterialsFromRegistry();
         engine.ResourceManager.PointMaterialManager.CreatePipelinesFromRegistry();
+        engine.ResourceManager.BillboardMaterialManager.CreatePipelinesFromRegistry();
         _onResourceManagerReady?.Invoke(engine.ResourceManager);
+        AddNode(new PrepareNode());
+        AddNode(new DepthPassNode());
+        AddNode(new FrustumCullNode());
+        AddNode(new ForwardPlusLightCullingNode());
+        AddNode(new ForwardPlusOpaqueNode());
+        if (_withPointCloud)
+        {
+            AddNode(new PointCullNode());
+            AddNode(new PointRenderNode());
+        }
+        if (_withBillboard)
+        {
+            AddNode(new BillboardCullNode());
+            AddNode(new BillboardRenderNode());
+        }
+        if (_withTransparent)
+        {
+            AddNode(new ForwardPlusTransparentNode());
+            AddNode(new WBOITCompositeNode());
+        }
 
+        if (_withFXAA)
+        {
+            AddNode(new FXAANode());
+        }
+        if (_withSMAA)
+        {
+            AddNode(new SMAANode());
+        }
+        if (_withBloom)
+        {
+            AddNode(new BloomNode());
+        }
+        if (_withFPS)
+        {
+            AddNode(new FPSNode());
+        }
+
+        AddNode(new ToneMappingNode());
         // --- Apply deferred node configurations ---
         foreach (var configurator in _nodeConfigurators)
         {

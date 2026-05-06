@@ -4,7 +4,6 @@ using System.Runtime.InteropServices;
 using HelixToolkit.Nex;
 using HelixToolkit.Nex.Graphics;
 using HelixToolkit.Nex.Maths;
-using HxColor = HelixToolkit.Nex.Maths.Color;
 
 namespace ImGuiTest;
 
@@ -209,7 +208,6 @@ internal class ShaderToyRenderer : IDisposable
     public void Render(ICommandBuffer cmdBuf, uint type, Vector2 size, TextureResource target)
     {
         _fb.Colors[0].Texture = target;
-        cmdBuf.PushDebugGroupLabel("ShaderRenderer: Render", HxColor.Blue);
         cmdBuf.BeginRendering(_pass, _fb, Dependencies.Empty);
         cmdBuf.BindDepthState(new());
         cmdBuf.BindViewport(
@@ -242,7 +240,6 @@ internal class ShaderToyRenderer : IDisposable
         cmdBuf.PushConstants(pc);
         cmdBuf.Draw(4);
         cmdBuf.EndRendering();
-        cmdBuf.PopDebugGroupLabel();
     }
 
     private bool _disposedValue;

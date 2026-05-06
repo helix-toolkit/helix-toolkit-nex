@@ -1,29 +1,47 @@
-using HelixToolkit.Nex.Rendering.RenderNodes;
+namespace HelixToolkit.Nex.Rendering.RenderNodes;
 
-namespace HelixToolkit.Nex.Rendering.PostEffects;
-
-public sealed class ShowFPS : PostEffect
+public sealed class FPSNode : RenderNode
 {
-    private static readonly ILogger _logger = LogManager.Create<ShowFPS>();
+    private static readonly ILogger _logger = LogManager.Create<FPSNode>();
     private const float AspectRatio = 3f; // Max digits to show is 3, so do a 3 / 1 aspect ratio.
 
     private RenderPipelineResource _pipeline = RenderPipelineResource.Null;
 
-    public override string Name => nameof(ShowFPS);
-    public override Color DebugColor => Color.SandyBrown;
+    public override string Name => nameof(FPSNode);
+    public override Color4 DebugColor => Color.SandyBrown;
 
     public float Scale = 0.05f;
     public float MinSize { set; get; } = 64;
-    public override uint Priority => (uint)PostEffectPriority.Other;
 
-    public override bool Apply(in RenderResources res, ref string readSlot, ref string writeSlot)
+    protected override bool OnSetup()
+    {
+        if (Context is null)
+        {
+            _logger.LogError("Render context is null during tone mapping initialization.");
+            return false;
+        }
+        return CreatePipeline().CheckResult() == ResultCode.Ok;
+    }
+
+    protected override void OnTeardown()
+    {
+        _pipeline.Dispose();
+        base.OnTeardown();
+    }
+
+    protected override void OnSetupRender(in RenderResources res)
+    {
+        res.Deps.Textures[0] = res.Textures[SystemBufferNames.TextureColorF16Target];
+        res.Framebuf.Colors[0].Texture = res.Textures[SystemBufferNames.TextureColorF16Target];
+        res.Pass.Colors[0].LoadOp = LoadOp.Load;
+        res.Pass.Colors[0].StoreOp = StoreOp.Store;
+    }
+
+    protected override void OnRender(in RenderResources res)
     {
         Debug.Assert(_pipeline.Valid, "Tone mapping pipeline is not valid.");
         var cmdBuffer = res.CmdBuffer;
-        (readSlot, writeSlot) = (writeSlot, readSlot); // Manually swap so FPS writes onto the correct texture.
-        res.Deps.Textures[0] = res.Textures[writeSlot];
-        res.Framebuf.Colors[0].Texture = res.Textures[writeSlot];
-        cmdBuffer.BeginRendering(res.Pass, res.Framebuf, res.Deps);
+
         cmdBuffer.BindRenderPipeline(_pipeline);
         cmdBuffer.BindDepthState(DepthState.Disabled);
         var width = res.RenderContext.WindowSize.Width * Scale;
@@ -32,25 +50,6 @@ public sealed class ShowFPS : PostEffect
         cmdBuffer.BindViewport(new ViewportF(0, 0, max, max / AspectRatio));
         cmdBuffer.PushConstants((int)res.RenderContext.Statistics.FramesPerSecond);
         cmdBuffer.Draw(3); // Full-screen triangle
-        cmdBuffer.EndRendering();
-        return true;
-    }
-
-    protected override ResultCode OnInitializing()
-    {
-        if (Context is null)
-        {
-            _logger.LogError("Render context is null during tone mapping initialization.");
-            return ResultCode.InvalidState;
-        }
-        CreatePipeline();
-        return ResultCode.Ok;
-    }
-
-    protected override ResultCode OnTearingDown()
-    {
-        _pipeline.Dispose();
-        return ResultCode.Ok;
     }
 
     private ResultCode CreatePipeline()
@@ -110,5 +109,22 @@ public sealed class ShowFPS : PostEffect
         _pipeline = Context.CreateRenderPipeline(pipelineDesc);
         Debug.Assert(_pipeline.Valid);
         return ResultCode.Ok;
+    }
+
+    public override void AddToGraph(RenderGraph graph)
+    {
+        graph.AddPingPongGroup(
+            PingPongGroups.ColorF16,
+            SystemBufferNames.TextureColorF16A,
+            SystemBufferNames.TextureColorF16B
+        );
+
+        graph.AddPingPongPass(
+            RenderStage.Overlay,
+            nameof(FPSNode),
+            PingPongGroups.ColorF16,
+            extraInputs: [],
+            extraOutputs: []
+        );
     }
 }

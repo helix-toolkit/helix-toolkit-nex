@@ -1,3 +1,4 @@
+using HelixToolkit.Nex.Rendering.SDF;
 using HelixToolkit.Nex.Repository;
 
 namespace HelixToolkit.Nex.Rendering;
@@ -18,6 +19,11 @@ public interface IResourceManager : IInitializable
     /// Gets the manager responsible for handling point materials in the system.
     /// </summary>
     IPointMaterialManager PointMaterialManager { get; }
+
+    /// <summary>
+    /// Gets the manager responsible for handling billboard materials in the system.
+    /// </summary>
+    IBillboardMaterialManager BillboardMaterialManager { get; }
 
     /// <summary>
     /// Gets the geometry pool for managing geometry resources.
@@ -43,6 +49,11 @@ public interface IResourceManager : IInitializable
     /// Gets the repository used to access and manage textures.
     /// </summary>
     ITextureRepository TextureRepository { get; }
+
+    /// <summary>
+    /// Gets the font atlas repository for caching SDF font atlas instances.
+    /// </summary>
+    IFontAtlasRepository FontAtlasRepository { get; }
 
     /// <summary>
     /// Gets the global index data buffer associated with the static mesh.

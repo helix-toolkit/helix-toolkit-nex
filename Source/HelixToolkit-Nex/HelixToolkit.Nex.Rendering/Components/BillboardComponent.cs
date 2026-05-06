@@ -1,0 +1,147 @@
+using HelixToolkit.Nex.ECS;
+
+namespace HelixToolkit.Nex.Rendering.Components;
+
+/// <summary>
+/// ECS component that describes one or more billboards attached to an entity.
+/// <para>
+/// Each entity with a <see cref="BillboardComponent"/> contributes its billboards to the
+/// GPU billboard buffer managed by the billboard data provider. The component stores CPU-side
+/// billboard data that is collected and uploaded each frame.
+/// </para>
+/// </summary>
+public struct BillboardComponent()
+{
+    /// <summary>
+    /// Gets or sets the billboard geometry containing per-billboard instance data
+    /// (positions, sizes, UV rects, colors).
+    /// </summary>
+    public BillboardGeometry? BillboardGeometry { get; set; }
+
+    /// <summary>
+    /// Gets or sets the uniform tint color for all billboards when per-billboard colors
+    /// are not provided in the BillboardGeometry. Defaults to white.
+    /// </summary>
+    public Color4 Color { get; set; } = new Color4(1f, 1f, 1f, 1f);
+
+    /// <summary>
+    /// When <see langword="true"/>, billboard sizes are interpreted as
+    /// fixed screen-space pixel dimensions (no perspective scaling). When <see langword="false"/>
+    /// (default), they are interpreted as world-space units that are projected to screen space.
+    /// </summary>
+    public bool FixedSize { get; set; }
+
+    /// <summary>
+    /// Gets or sets the bindless texture index for the billboard. 0 means no texture.
+    /// </summary>
+    public TextureRef? Texture { get; set; }
+
+    /// <summary>
+    /// Gets or sets the bindless sampler index for the billboard.
+    /// </summary>
+    public SamplerRef? Sampler { get; set; }
+
+    /// <summary>
+    /// When <see langword="true"/>, enables axis-constrained mode where the billboard rotates
+    /// around the <see cref="ConstraintAxis"/> to face the camera. When <see langword="false"/>
+    /// (default), the billboard uses screen-aligned mode (fully camera-facing).
+    /// </summary>
+    public bool AxisConstrained { get; set; }
+
+    /// <summary>
+    /// Gets or sets the world-space axis for axis-constrained mode.
+    /// Defaults to (0, 1, 0) (Y-up).
+    /// </summary>
+    public Vector3 ConstraintAxis { get; set; } = new Vector3(0, 1, 0);
+
+    /// <summary>
+    /// Gets or sets the MSDF atlas distance range in atlas pixels.
+    /// Corresponds to msdf-atlas-gen's distanceRange parameter. Default is 4.0.
+    /// </summary>
+    public float SdfDistanceRange { get; set; } = 4f;
+
+    /// <summary>
+    /// Gets or sets the MSDF atlas distance range middle value.
+    /// Corresponds to msdf-atlas-gen's distanceRangeMiddle parameter. Default is 0.
+    /// </summary>
+    public float SdfDistanceRangeMiddle { get; set; } = 0f;
+
+    /// <summary>
+    /// Gets or sets the MSDF atlas glyph cell size in atlas pixels.
+    /// Corresponds to msdf-atlas-gen's size parameter. Default is 96.
+    /// </summary>
+    public float SdfGlyphCellSize { get; set; } = 96f;
+
+    /// <summary>
+    /// Gets or sets the MSDF atlas texture width in pixels. Default is 604.
+    /// </summary>
+    public float SdfAtlasWidth { get; set; } = 604f;
+
+    /// <summary>
+    /// Gets or sets the MSDF atlas texture height in pixels. Default is 604.
+    /// </summary>
+    public float SdfAtlasHeight { get; set; } = 604f;
+
+    /// <summary>
+    /// Gets or sets the anchor point for text billboard placement.
+    /// Controls where the entity's world position maps to within the text bounding rectangle.
+    /// Defaults to <see cref="BillboardAnchor.BottomLeft"/>.
+    /// </summary>
+    public BillboardAnchor Anchor { get; set; } = BillboardAnchor.BottomLeft;
+
+    /// <summary>
+    /// Whether the billboard can be selected via GPU picking.
+    /// </summary>
+    public bool Hitable { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets the name of the billboard material.
+    /// If specified, this name is used to look up the material in the <see cref="BillboardMaterialRegistry"/>.
+    /// If not found, it falls back to use <see cref="BillboardMaterialId"/>.
+    /// If both are not specified, it defaults to the default billboard material.
+    /// </summary>
+    public string? BillboardMaterialName { get; set; }
+
+    /// <summary>
+    /// The billboard material type ID that determines which fragment shader pipeline is used
+    /// for rendering this billboard. Defaults to 0, which corresponds to the default billboard material.
+    /// Register custom materials via <see cref="BillboardMaterialRegistry"/>.
+    /// </summary>
+    public MaterialTypeId BillboardMaterialId { get; internal set; }
+
+    /// <summary>
+    /// Gets the number of billboards defined by the <see cref="BillboardGeometry"/>, or 0 when BillboardGeometry is null.
+    /// </summary>
+    public readonly int BillboardCount => BillboardGeometry?.Count ?? 0;
+
+    /// <summary>
+    /// Gets a value indicating whether this component has valid billboard data.
+    /// </summary>
+    public readonly bool Valid => BillboardCount > 0;
+
+    public override readonly string ToString()
+    {
+        return $"Billboard: Count={BillboardCount}; Hitable={Hitable}; FixedSize={FixedSize}; AxisConstrained={AxisConstrained}; MaterialId={BillboardMaterialId.Id}";
+    }
+
+    public BillboardInfo ToInfo(Entity entity, Matrix4x4 worldTransform)
+    {
+        return new BillboardInfo()
+        {
+            WorldId = entity.WorldId,
+            EntityId = (uint)entity.Id,
+            TextureIndex = Texture?.GetHandle().Index ?? 0,
+            SamplerIndex = Sampler?.GetHandle().Index ?? 0,
+            FixedSize = FixedSize ? 1u : 0,
+            AxisConstrained = AxisConstrained ? 1u : 0,
+            ConstraintAxis = ConstraintAxis,
+            Color = Color,
+            SdfDistanceRange = SdfDistanceRange,
+            SdfDistanceRangeMiddle = SdfDistanceRangeMiddle,
+            SdfGlyphCellSize = SdfGlyphCellSize,
+            SdfAtlasWidth = SdfAtlasWidth,
+            SdfAtlasHeight = SdfAtlasHeight,
+            WorldTransform = worldTransform,
+        };
+    }
+}
