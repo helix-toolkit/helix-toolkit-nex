@@ -202,19 +202,19 @@ public static class SDFFontAtlasLoader
     /// <param name="sampler">The bindless sampler index.</param>
     /// <returns>A ready-to-use <see cref="SDFFontAtlas"/>.</returns>
     public static SDFFontAtlas LoadBuiltInAtlas(
-        BuildinFontAtlas altasType,
+        BuildinFontAtlas atlasType,
         TextureRef texture,
         SamplerRef sampler
     )
     {
-        var name = altasType switch
+        var name = atlasType switch
         {
             BuildinFontAtlas.GoogleSansRegular => "Assets.google-sans-regular.json",
             BuildinFontAtlas.RobotoSlabRegular => "Assets.robotoslab-sans-regular.json",
             BuildinFontAtlas.MichromaRegular => "Assets.michroma-regular.json",
             _ => throw new ArgumentOutOfRangeException(
-                nameof(altasType),
-                $"Unsupported atlas type: {altasType}"
+                nameof(atlasType),
+                $"Unsupported atlas type: {atlasType}"
             ),
         };
         var descriptor = LoadFromEmbeddedResource(name);

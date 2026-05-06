@@ -330,7 +330,7 @@ public sealed class FXAANode : RenderNode
         );
 
         graph.AddPingPongPass(
-            RenderStage.Antialising,
+            RenderStage.AntiAliasing,
             nameof(FXAANode),
             PingPongGroups.ColorF16,
             extraInputs: [],

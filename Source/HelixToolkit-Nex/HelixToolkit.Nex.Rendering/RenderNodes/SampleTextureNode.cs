@@ -37,7 +37,7 @@ public sealed class RenderToFinalNode(Format outputFormat)
         graph.AddPass(
             RenderStage.Output,
             nameof(RenderToFinalNode),
-            // TextureColorF16Current is the stable alias written by PostEffectsNode at the end
+            // TextureColorF16Target is the stable alias written by PostEffectsNode at the end
             // of its render loop. It always points to whichever ping-pong buffer holds the
             // final color result, regardless of how many effects ran.
             inputs: [new(SystemBufferNames.TextureColorF16Target, ResourceType.Texture)],
