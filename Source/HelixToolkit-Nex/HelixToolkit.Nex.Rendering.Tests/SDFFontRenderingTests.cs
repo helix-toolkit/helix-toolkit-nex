@@ -276,7 +276,7 @@ public class SDFFontRenderingTests
 
         Assert.AreEqual(1, result.Count);
         Assert.AreEqual(new Vector4(0.1f, 0.2f, 0.3f, 0.4f), result[0].UVRect);
-        Assert.AreEqual(1u, result[0].TextureIndex);
+        Assert.AreEqual(0u, result[0].TextureIndex);
         Assert.AreEqual(0u, result[0].SamplerIndex);
     }
 
@@ -580,7 +580,7 @@ public class SDFFontRenderingTests
         var config = new SDFFontMaterialConfig { OutlineWidth = 0.1f };
         string glsl = SDFFontMaterialConfig.GenerateGlsl(config);
 
-        Assert.IsTrue(glsl.Contains("outlineWidth"), "Outline GLSL should contain outlineWidth");
+        Assert.IsTrue(glsl.Contains("outlineOuter_em"), "Outline GLSL should contain outlineWidth");
         Assert.IsTrue(glsl.Contains("outlineColor"), "Outline GLSL should contain outlineColor");
         Assert.IsTrue(glsl.Contains("outlineOuter"), "Outline GLSL should contain outlineOuter");
         Assert.IsFalse(
@@ -613,7 +613,7 @@ public class SDFFontRenderingTests
         };
         string glsl = SDFFontMaterialConfig.GenerateGlsl(config);
 
-        Assert.IsTrue(glsl.Contains("outlineWidth"), "Combined GLSL should contain outlineWidth");
+        Assert.IsTrue(glsl.Contains("outlineOuter_em"), "Combined GLSL should contain outlineOuter_em");
         Assert.IsTrue(glsl.Contains("shadowOffset"), "Combined GLSL should contain shadowOffset");
         Assert.IsTrue(glsl.Contains("shadowColor"), "Combined GLSL should contain shadowColor");
         Assert.IsTrue(glsl.Contains("outlineColor"), "Combined GLSL should contain outlineColor");

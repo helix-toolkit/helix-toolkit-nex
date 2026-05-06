@@ -34,12 +34,12 @@ public struct BillboardComponent()
     /// <summary>
     /// Gets or sets the bindless texture index for the billboard. 0 means no texture.
     /// </summary>
-    public TextureRef? Texture { get; set; }
+    public TextureRef Texture { get; set; } = TextureRef.Null;
 
     /// <summary>
     /// Gets or sets the bindless sampler index for the billboard.
     /// </summary>
-    public SamplerRef? Sampler { get; set; }
+    public SamplerRef Sampler { get; set; } = SamplerRef.Null;
 
     /// <summary>
     /// When <see langword="true"/>, enables axis-constrained mode where the billboard rotates
@@ -130,8 +130,8 @@ public struct BillboardComponent()
         {
             WorldId = entity.WorldId,
             EntityId = (uint)entity.Id,
-            TextureIndex = Texture?.GetHandle().Index ?? 0,
-            SamplerIndex = Sampler?.GetHandle().Index ?? 0,
+            TextureIndex = Texture,
+            SamplerIndex = Sampler,
             FixedSize = FixedSize ? 1u : 0,
             AxisConstrained = AxisConstrained ? 1u : 0,
             ConstraintAxis = ConstraintAxis,
