@@ -58,5 +58,6 @@ imguiRenderer.Render(commandBuffer, renderPass, framebuffer, dependencies);
 
 ## Recent Changes
 
+- **Debug Group Label**: The `ImGuiRenderer` now uses a static byte array for the debug group label, improving performance by avoiding repeated string allocations.
 - **Platform Configurations**: The project now includes additional build configurations for Linux (`LinuxDebug` and `LinuxRelease`), enhancing cross-platform support.
 ```

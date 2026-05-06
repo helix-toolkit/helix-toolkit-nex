@@ -29,6 +29,8 @@ HelixToolkit.Nex.Engine is a core component of the HelixToolkit.Nex suite, respo
 | `DirectionalLightComponent`      | Represents a directional light in the scene.                               |
 | `RangeLightComponent`            | Represents a point or spot light in the scene.                             |
 | `EngineBuilder`                  | Fluent builder for creating and configuring an `Engine` instance.          |
+| `BillboardData`                  | Manages billboard entities and their data for rendering.                   |
+| `PointCloudData`                 | Manages point cloud entities and their data for rendering.                 |
 
 ## Usage Examples
 
@@ -79,6 +81,18 @@ if (pickingResult != null)
 }
 ```
 
+### Creating Billboards
+
+```csharp
+var billboard = engine.CreateBillboard(
+    BuildinFontAtlas.Default,
+    "Hello World",
+    12f,
+    new Vector3(0, 0, 0),
+    new Color4(1, 1, 1, 1)
+);
+```
+
 ## Architecture Notes
 
 - **Entity Component System (ECS):** The engine uses an ECS architecture based on the Arch ECS library, allowing for flexible and efficient scene management.
@@ -88,6 +102,11 @@ if (pickingResult != null)
 - **Integration with Vulkan:** The engine is built on top of the Vulkan API, providing low-level access to GPU resources and enabling high-performance rendering.
 
 ## Recent Additions
+
+### New Types
+
+- `BillboardData`: Manages billboard entities and their data for rendering.
+- `PointCloudData`: Manages point cloud entities and their data for rendering.
 
 ### New Methods in `Engine`
 
@@ -105,6 +124,7 @@ if (pickingResult != null)
 
 - `RenderToCustomTarget(Format targetFormat)`: Configures the engine to render to a custom target format.
 - Improved interop support with `WithWpf()` and `WithWinUI()` methods for WPF and WinUI applications.
+- New methods for enabling specific rendering features: `WithBillBoard()`, `WithPointCloud()`, `WithTransparent()`, `WithFXAA()`, `WithSMAA()`, `WithBloom()`, `WithFPS()`.
 
 ### Buffer Management Updates
 

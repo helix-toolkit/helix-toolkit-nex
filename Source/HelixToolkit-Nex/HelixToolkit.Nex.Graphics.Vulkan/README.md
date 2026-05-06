@@ -49,10 +49,12 @@ var context = VulkanBuilder.Create(config, windowHandle, displayHandle);
 
 ```csharp
 var commandBuffer = context.AcquireCommandBuffer();
+commandBuffer.BeginEncoding();
 commandBuffer.BeginRendering(renderPass, framebuffer, dependencies);
 commandBuffer.BindRenderPipeline(pipelineHandle);
 commandBuffer.Draw(vertexCount, instanceCount, firstVertex, baseInstance);
 commandBuffer.EndRendering();
+commandBuffer.EndEncoding();
 context.Submit(commandBuffer, presentTexture, syncInfo);
 ```
 
