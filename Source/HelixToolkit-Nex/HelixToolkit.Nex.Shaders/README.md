@@ -27,6 +27,13 @@ This package is integral to the HelixToolkit-Nex engine, facilitating the creati
 | `ShaderBuilder`               | Processes shader source code and includes necessary headers.                |
 | `ShaderCache`                 | Manages a cache of processed shader sources for efficient reuse.            |
 | `ShaderCompiler`              | High-level API for building shaders with automatic header inclusion.        |
+| `BillboardVertex`             | Struct for per-billboard input vertex data.                                 |
+| `BillboardDrawData`           | Struct for per-visible-billboard data written by the compute shader.        |
+| `BillboardDrawIndirectArgs`   | Struct for indirect draw arguments for DrawIndirect.                        |
+| `BillboardExpandArgs`         | Struct for shared camera state for the billboard expansion compute shader.  |
+| `BillboardInfo`               | Struct containing information for each billboard.                           |
+| `BillboardExpandPC`           | Struct for push constants for the billboard expansion compute shader.       |
+| `BillboardRenderPC`           | Struct for push constants for the billboard render vertex/fragment shaders. |
 
 ## Usage Examples
 
