@@ -408,7 +408,7 @@ public sealed class SMAANode : RenderNode
         );
 
         graph.AddPingPongPass(
-            RenderStage.Antialising,
+            RenderStage.AntiAliasing,
             nameof(SMAANode),
             PingPongGroups.ColorF16,
             extraInputs: [],

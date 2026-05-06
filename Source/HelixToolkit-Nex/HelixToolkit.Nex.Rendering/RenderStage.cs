@@ -19,11 +19,6 @@ public enum RenderStage : uint
     Opaque,
 
     /// <summary>
-    ///  FXAA or other full-screen anti-aliasing pass. 
-    /// </summary>
-    Antialising,
-
-    /// <summary>
     /// Particle rendering.
     /// </summary>
     Particle,
@@ -35,16 +30,23 @@ public enum RenderStage : uint
     PostProcess,
 
     Bloom,
-    /// <summary>
-    /// Billboard rendering. Placed after bloom to avoid unncessary bloom.
-    /// </summary>
-    Billboard,
+
     /// <summary>
     /// HDR-to-LDR conversion. Separating this from <see cref="PostProcess"/> ensures that
     /// all HDR effects complete before the scene is linearised, and that all
     /// <see cref="Overlay"/> passes receive an LDR surface to draw onto.
     /// </summary>
     ToneMap,
+
+    /// <summary>
+    ///  FXAA or other full-screen anti-aliasing pass. 
+    /// </summary>
+    AntiAliasing,
+
+    /// <summary>
+    /// Billboard rendering. Placed after bloom to avoid unncessary bloom.
+    /// </summary>
+    Billboard,
 
     /// <summary>
     /// LDR overlays rendered on top of the tone-mapped image: gizmos, debug geometry,
@@ -89,7 +91,7 @@ public static class RenderStageNames
                 return new Color4(1, 0, 0, 1);
             case RenderStage.Opaque:
                 return new Color4(0, 1, 0, 1);
-            case RenderStage.Antialising:
+            case RenderStage.AntiAliasing:
                 return new Color4(0, 0, 1, 1);
             case RenderStage.Particle:
                 return new Color4(1, 1, 0, 1);

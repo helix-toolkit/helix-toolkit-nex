@@ -44,6 +44,9 @@ vec3 Uncharted2ToneMap(in vec3 x) {
 
 vec3 Reinhard(in vec3 x) {
     float luminance = dot(x, vec3(0.2126, 0.7152, 0.0722));
+    if (luminance <= 0.000001) {
+        return x; // Avoid division by zero, return original color if black
+    }
     float mappedLuminance = luminance / (1.0 + luminance);
     return x * (mappedLuminance / luminance);
 }

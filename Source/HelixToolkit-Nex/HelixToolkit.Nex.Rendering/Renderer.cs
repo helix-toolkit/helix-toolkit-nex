@@ -14,7 +14,7 @@ public class Renderer(IServiceProvider serviceProvider) : Initializable
         RenderStage.PostProcess,
         RenderStage.Bloom,
         RenderStage.ToneMap,
-        RenderStage.Antialising,
+        RenderStage.AntiAliasing,
         RenderStage.Billboard,
         RenderStage.Overlay,
         RenderStage.Output,
@@ -117,21 +117,18 @@ public class Renderer(IServiceProvider serviceProvider) : Initializable
         foreach (var stage in _renderSequence)
         {
             var stageInfo = RenderStageNames.Names[(int)stage];
-            cmdBuf.PushDebugGroupLabel(stageInfo.Name, stageInfo.Color);
-            switch (stage)
+
+            if (stage != RenderStage.SubmitFlag)
             {
-                case RenderStage.SubmitFlag:
-                    if (cmdBuf.DrawCallCount > 0 || cmdBuf.DispatchCallCount > 0)
-                    {
-                        context.Context.Submit(cmdBuf);
-                        cmdBuf = context.Context.AcquireCommandBuffer();
-                    }
-                    break;
-                default:
-                    graph.Execute(context, cmdBuf, _renderers, stage);
-                    break;
+                cmdBuf.PushDebugGroupLabel(stageInfo.Name, stageInfo.Color);
+                graph.Execute(context, cmdBuf, _renderers, stage);
+                cmdBuf.PopDebugGroupLabel();
             }
-            cmdBuf.PopDebugGroupLabel();
+            else if (cmdBuf.DrawCallCount > 0 || cmdBuf.DispatchCallCount > 0)
+            {
+                context.Context.Submit(cmdBuf);
+                cmdBuf = context.Context.AcquireCommandBuffer();
+            }
         }
         context.EndFrame();
         return cmdBuf;
