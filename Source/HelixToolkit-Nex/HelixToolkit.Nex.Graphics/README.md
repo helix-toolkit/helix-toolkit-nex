@@ -32,6 +32,7 @@ HelixToolkit.Nex.Graphics is a core component of the HelixToolkit.Nex engine, re
 | `Dependencies`                | Manages dependencies for command buffer submissions.                       |
 | `ElementBuffer<T>`            | Represents a buffer for storing elements of type `T`.                      |
 | `RingElementBuffer<T>`        | Manages a ring buffer for dynamic element storage.                         |
+| `SamplerStateDesc`            | Describes the configuration for a texture sampler.                         |
 
 ## Usage Examples
 
@@ -101,6 +102,24 @@ if (!barrierCreated)
 ```csharp
 var submitHandle = context.Submit(commandBuffer);
 context.Wait(submitHandle, reset: true);
+```
+
+### Monitoring Draw and Dispatch Calls
+
+```csharp
+var commandBuffer = context.AcquireCommandBuffer();
+// Record commands...
+uint drawCalls = commandBuffer.DrawCallCount;
+uint dispatchCalls = commandBuffer.DispatchCallCount;
+```
+
+### Using Debug Labels and Checkpoints
+
+```csharp
+var commandBuffer = context.AcquireCommandBuffer();
+commandBuffer.PushDebugGroupLabel("RenderPass", new Color4(0.5f, 0.5f, 0.5f, 1.0f));
+commandBuffer.SetCheckpointMarker("MidFrame");
+commandBuffer.PopDebugGroupLabel();
 ```
 
 ## Architecture Notes

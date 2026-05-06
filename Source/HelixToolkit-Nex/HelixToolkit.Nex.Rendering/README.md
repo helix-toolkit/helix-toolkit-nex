@@ -18,9 +18,11 @@ HelixToolkit.Nex.Rendering is responsible for managing the rendering pipeline of
 | `IIndexable`                     | Interface for components that can be indexed.                               |
 | `MeshComponent`                  | Represents a mesh render component with geometry and material associations. |
 | `PointCloudComponent`            | Describes a point cloud attached to an entity.                              |
+| `BillboardComponent`             | Describes one or more billboards attached to an entity.                     |
 | `ForwardPlusLightCullingNode`    | Performs tiled Forward+ light culling.                                      |
 | `FrustumCullNode`                | Executes GPU-based frustum culling.                                         |
 | `PointCullNode`                  | Handles culling of point cloud data.                                        |
+| `BillboardCullNode`              | Handles culling of billboard data.                                          |
 | `RenderContext`                  | Manages rendering state and resources for a frame.                          |
 | `RenderGraph`                    | Organizes and executes rendering nodes in a defined order.                  |
 | `PostEffect`                     | Base class for post-processing effects.                                     |
@@ -28,6 +30,12 @@ HelixToolkit.Nex.Rendering is responsible for managing the rendering pipeline of
 | `RenderParams`                   | Contains render parameters including background color and other settings.   |
 
 ## Recent Changes
+
+### New Features
+
+- **BillboardComponent**: Added to describe billboards attached to an entity, supporting features like axis-constrained mode and MSDF atlas properties.
+- **BillboardCullNode**: Added for GPU-based culling of billboard data.
+- **PointCloudComponent**: Enhanced with additional properties for MSDF atlas configuration.
 
 ### Updated Sampler Handling
 
@@ -77,6 +85,17 @@ var meshComponent = new MeshComponent(
     materialProperties: myMaterialProperties,
     instancing: myInstancing
 );
+```
+
+### Adding a Billboard Component
+
+```csharp
+var billboardComponent = new BillboardComponent
+{
+    BillboardGeometry = new BillboardGeometry(),
+    Color = new Color4(1f, 1f, 1f, 1f),
+    FixedSize = false
+};
 ```
 
 ### Applying Post-Processing Effects

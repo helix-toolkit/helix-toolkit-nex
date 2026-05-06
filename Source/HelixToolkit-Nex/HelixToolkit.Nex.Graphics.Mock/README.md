@@ -10,12 +10,16 @@ The `HelixToolkit.Nex.Graphics.Mock` package is designed to fit seamlessly into 
 ## Key Types
 
 - **MockCommandBuffer**: A mock implementation of `ICommandBuffer` for unit testing, allowing the recording and validation of command buffer operations.
-  - **Barrier**: New method added to simulate a barrier operation on a buffer.
+  - **DrawCallCount**: Property added to track the number of draw calls made.
+  - **DispatchCallCount**: Property added to track the number of dispatch calls made.
+  - **SetCheckpointMarker**: New method added to simulate setting a checkpoint marker.
+  - **Barrier**: Method to simulate a barrier operation on a buffer.
 - **MockContext**: A mock implementation of `IContext` that simulates a graphics context, providing methods to create and manage mock resources such as buffers, textures, and pipelines.
-  - **GenerateMipmap**: New method added to simulate mipmap generation for a texture.
-  - **WaitAll**: New method added to simulate waiting for all operations to complete.
-  - **IsReady**: New method added to check if a submit handle is ready.
-  - **Wait**: Overloaded method added to simulate waiting on a submit handle with an optional reset parameter.
+  - **GenerateMipmap**: Method to simulate mipmap generation for a texture.
+  - **WaitAll**: Method to simulate waiting for all operations to complete.
+  - **IsReady**: Method to check if a submit handle is ready.
+  - **Wait**: Overloaded method to simulate waiting on a submit handle with an optional reset parameter.
+  - **CreateSecondaryCommandBuffer**: Method signature updated to remove `RenderPass` parameter.
 
 ## Usage Examples
 
@@ -66,6 +70,13 @@ uint levels;
 context.GenerateMipmap(texture.Handle, out levels);
 ```
 
+#### Set Checkpoint Marker
+
+```csharp
+var commandBuffer = context.AcquireCommandBuffer();
+commandBuffer.SetCheckpointMarker("Checkpoint1".AsSpan());
+```
+
 ## Architecture Notes
 
 - **Design Patterns**: The package uses mock objects to simulate the behavior of graphics interfaces, allowing for isolated testing of rendering logic.
@@ -75,5 +86,5 @@ context.GenerateMipmap(texture.Handle, out levels);
 ## Recent Changes
 
 - **Project Configuration**: Added new build configurations for `LinuxDebug` and `LinuxRelease` to support cross-platform testing and development.
-- **New Methods**: Added `Barrier`, `GenerateMipmap`, `WaitAll`, `IsReady`, and an overloaded `Wait` method to enhance testing capabilities.
+- **New Methods and Properties**: Added `DrawCallCount`, `DispatchCallCount`, `SetCheckpointMarker`, and updated `CreateSecondaryCommandBuffer` method signature to enhance testing capabilities.
 ```
