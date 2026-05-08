@@ -284,12 +284,8 @@ internal sealed class VulkanSwapchain : IDisposable
                     isDepthFormat: false,
                     isStencilFormat: false,
                     true,
-                    false
-                );
-                _device.SetDebugObjectName(
-                    VK.VK_OBJECT_TYPE_IMAGE,
-                    (nuint)image.Image,
-                    $"[Vk.SwapChainImage]: Swapchain {i}"
+                    false,
+                    debugName: $"Swapchain_Img_{i}"
                 );
 
                 image.ImageView = image.CreateImageView(
@@ -301,7 +297,7 @@ internal sealed class VulkanSwapchain : IDisposable
                     VK.VK_REMAINING_MIP_LEVELS,
                     0,
                     1,
-                    $"Image View: Swapchain {i}"
+                    $"Swapchain_Img_{i}"
                 );
                 SwapchainTextures[i] = _ctx.TexturesPool.Create(image);
             }

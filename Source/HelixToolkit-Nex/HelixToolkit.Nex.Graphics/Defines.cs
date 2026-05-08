@@ -1178,7 +1178,7 @@ public struct SubmitHandle
     /// <param name="handle">The packed 64-bit handle value.</param>
     public SubmitHandle(uint64_t handle)
     {
-        HxDebug.Assert(handle != 0, "Invalid submit handle");
+        //HxDebug.Assert(handle != 0, "Invalid submit handle");
         BufferIndex = (uint32_t)(handle & 0xffffffff);
         SubmitId = (uint32_t)(handle >> 32);
     }

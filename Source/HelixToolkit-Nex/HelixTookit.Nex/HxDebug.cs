@@ -43,4 +43,12 @@ public sealed class HxDebug
             }
         }
     }
+
+    static HxDebug()
+    {
+#if DEBUG
+        EnableDebugAssertions = true;
+#endif
+        logger.LogInformation("HxDebug initialized. EnableDebugAssertions = {EnableDebugAssertions}", EnableDebugAssertions);
+    }
 }

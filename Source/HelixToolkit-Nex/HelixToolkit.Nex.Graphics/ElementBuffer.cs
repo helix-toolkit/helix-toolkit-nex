@@ -184,6 +184,8 @@ public sealed class ElementBuffer<T> : IDisposable
     public bool HostVisible { get; }
     public BufferUsageBits Usage { get; }
 
+    public nint MappedPointer => _pinnedMappedPtr;
+
     public string? DebugName { get; }
 
     private bool _disposedValue;
@@ -480,6 +482,32 @@ public sealed class ElementBuffer<T> : IDisposable
         }
     }
 
+    /// <summary>
+    /// Writes an element of type <typeparamref name="T"/> to a specified index in the buffer.
+    /// </summary>
+    /// <remarks>The method writes the element to the buffer at the specified index, provided there is enough
+    /// space. The buffer must have sufficient capacity to accommodate the element at the given index; otherwise, the
+    /// method returns <see langword="false"/>.</remarks>
+    /// <typeparam name="T">The type of the element to write, which must be unmanaged.</typeparam>
+    /// <param name="data">The element to write to the buffer.</param>
+    /// <param name="index">The zero-based index at which to write the element.</param>
+    /// <returns><see langword="true"/> if the element was successfully written to the buffer; otherwise, <see
+    /// langword="false"/>.</returns>
+    public ResultCode WriteElement(ref T data, int index)
+    {
+        if (!HostVisible)
+        { return ResultCode.InvalidState; }
+        unsafe
+        {
+            if (index >= Capacity)
+            {
+                return ResultCode.OutOfMemory;
+            }
+            var ptr = (T*)((byte*)MappedPointer + index * sizeof(T));
+            *ptr = data;
+            return ResultCode.Ok;
+        }
+    }
     /// <summary>
     /// Ensures the buffer has at least the specified remainSizeInBytes, resizing if necessary.
     /// </summary>
