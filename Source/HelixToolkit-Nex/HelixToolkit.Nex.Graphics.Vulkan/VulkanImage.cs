@@ -1,5 +1,3 @@
-using Vortice.Vulkan;
-
 namespace HelixToolkit.Nex.Graphics.Vulkan;
 
 internal sealed class VulkanImage : IDisposable
@@ -821,10 +819,6 @@ internal sealed class VulkanImage : IDisposable
                 {
                     return;
                 }
-                if (!IsOwningVkImage)
-                {
-                    return; // this image is not owned by this class, so don't destroy it
-                }
                 var vkDevice = _ctx!.VkDevice;
                 if (ImageView.IsNotNull)
                 {
@@ -836,22 +830,6 @@ internal sealed class VulkanImage : IDisposable
                             unsafe
                             {
                                 VK.vkDestroyImageView(vkDevice, view, null);
-                            }
-                        },
-                        SubmitHandle.Null
-                    );
-                }
-
-                if (ImageViewStorage.IsNotNull)
-                {
-                    var storage = ImageViewStorage;
-                    ImageViewStorage = VkImageView.Null;
-                    _ctx!.DeferredTask(
-                        () =>
-                        {
-                            unsafe
-                            {
-                                VK.vkDestroyImageView(vkDevice, storage, null);
                             }
                         },
                         SubmitHandle.Null
@@ -896,6 +874,27 @@ internal sealed class VulkanImage : IDisposable
                             ImageViewForFramebufferMultiview[i] = VkImageView.Null;
                         }
                     }
+                }
+
+                if (!IsOwningVkImage)
+                {
+                    return; // this image is not owned by this class, so don't destroy it
+                }
+
+                if (ImageViewStorage.IsNotNull)
+                {
+                    var storage = ImageViewStorage;
+                    ImageViewStorage = VkImageView.Null;
+                    _ctx!.DeferredTask(
+                        () =>
+                        {
+                            unsafe
+                            {
+                                VK.vkDestroyImageView(vkDevice, storage, null);
+                            }
+                        },
+                        SubmitHandle.Null
+                    );
                 }
 
                 if (_ctx.UseVmaAllocator && _memory[1].IsNull)
