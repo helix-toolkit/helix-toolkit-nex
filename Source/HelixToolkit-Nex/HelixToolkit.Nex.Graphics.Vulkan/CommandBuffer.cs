@@ -224,17 +224,17 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
         IsRendering = true;
         ViewMask = renderPass.ViewMask;
 
-        for (uint32_t i = 0; i != Dependencies.MAX_SUBMIT_DEPENDENCIES && deps.Textures[i]; i++)
+        foreach (var tex in deps.TextureSpan)
         {
-            TransitionToShaderReadOnly(deps.Textures[i]);
+            TransitionToShaderReadOnly(tex);
         }
-        for (uint32_t i = 0; i != Dependencies.MAX_SUBMIT_DEPENDENCIES && deps.Buffers[i]; i++)
+        foreach (var buf in deps.BufferSpan)
         {
-            if (!Barrier(in deps.Buffers[i]))
+            if (!Barrier(in buf))
             {
-                _logger.LogError(
-                    "Buffer {INDEX} is null or invalid. Make sure the buffer is created before binding it to the command buffer.",
-                    i
+                HxDebug.Assert(
+                    false,
+                    "Buffer is null or invalid. Make sure the buffer is created before using it in render pass."
                 );
                 continue;
             }
@@ -1137,22 +1137,18 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
     {
         HxDebug.Assert(!IsRendering);
 
-        for (uint32_t i = 0; i != Dependencies.MAX_SUBMIT_DEPENDENCIES && deps.Textures[i]; i++)
+        foreach (var handle in deps.TextureSpan)
         {
-            UseComputeTexture(deps.Textures[i], VkPipelineStageFlags2.ComputeShader);
+            UseComputeTexture(handle, VkPipelineStageFlags2.ComputeShader);
         }
-        for (uint32_t i = 0; i != Dependencies.MAX_SUBMIT_DEPENDENCIES && deps.Buffers[i]; i++)
+        foreach (var handle in deps.BufferSpan)
         {
-            var buf = _ctx.BuffersPool.Get(deps.Buffers[i]);
-            HxDebug.Assert(
-                buf && buf!.VkUsageFlags.HasFlag(VK.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
-                "Did you forget to specify BufferUsageBits_Storage on your buffer?"
-            );
+            var buf = _ctx.BuffersPool.Get(handle);
             if (buf is null || !buf.Valid)
             {
-                _logger.LogError(
-                    "Buffer {INDEX} is null or invalid. Make sure the buffer is created before binding it to the command buffer.",
-                    i
+                HxDebug.Assert(
+                    false,
+                    "Buffer is null or invalid. Make sure the buffer is created before using it as a compute shader resource."
                 );
                 continue;
             }

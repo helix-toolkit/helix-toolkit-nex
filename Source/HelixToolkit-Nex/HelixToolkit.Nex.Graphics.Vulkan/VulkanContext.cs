@@ -2114,11 +2114,11 @@ internal sealed partial class VulkanContext
 
             VK.vkDestroySemaphore(_vkDevice, TimelineSemaphore, null);
 
+            Disposer.DisposeAndRemove(ref _swapchain);
             WaitDeferredTasks();
 
             if (ShaderModulesPool.Count > 0)
             {
-                HxDebug.Assert(false, $"Leaked {ShaderModulesPool.Count} shader modules");
                 _logger.LogWarning("Leaked {COUNT} shader modules", ShaderModulesPool.Count);
                 ShaderModulesPool.Clear();
             }
@@ -2136,20 +2136,17 @@ internal sealed partial class VulkanContext
             }
             if (SamplersPool.Count > 0)
             {
-                HxDebug.Assert(false, $"Leaked {SamplersPool.Count} samplers");
                 // the dummy value is owned by the context
                 _logger.LogWarning("Leaked {COUNT} samplers", SamplersPool.Count - 1);
                 SamplersPool.Clear();
             }
             if (TexturesPool.Count > 0)
             {
-                HxDebug.Assert(false, $"Leaked {TexturesPool.Count} textures");
                 _logger.LogWarning("Leaked {COUNT} textures", TexturesPool.Count);
                 TexturesPool.Clear();
             }
             if (BuffersPool.Count > 0)
             {
-                HxDebug.Assert(false, $"Leaked {BuffersPool.Count} buffers");
                 _logger.LogWarning("Leaked {COUNT} buffers", BuffersPool.Count);
                 BuffersPool.Clear();
             }

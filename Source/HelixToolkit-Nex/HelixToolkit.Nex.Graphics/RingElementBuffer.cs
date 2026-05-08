@@ -33,6 +33,8 @@ public sealed class RingElementBuffer<T> : IDisposable
     /// </summary>
     public int CurrentIndex => _currentIndex;
 
+    public bool HostVisable { get; }
+
     /// <summary>
     /// Gets the <see cref="ElementBuffer{T}"/> that is currently active for writing.
     /// After calling <see cref="Advance"/>, this becomes the next slot in the ring.
@@ -60,6 +62,11 @@ public sealed class RingElementBuffer<T> : IDisposable
     public int Capacity => Current.Capacity;
 
     /// <summary>
+    /// Provides a pointer to the mapped memory of the current buffer if it is host-visible;
+    /// </summary>
+    public nint MappedPointer => HostVisable ? Current.MappedPointer : nint.Zero;
+
+    /// <summary>
     /// Creates a new ring buffer with the specified number of slots.
     /// </summary>
     /// <param name="context">The graphics context for GPU buffer creation.</param>
@@ -81,7 +88,7 @@ public sealed class RingElementBuffer<T> : IDisposable
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(ringSize, 1, nameof(ringSize));
         ArgumentOutOfRangeException.ThrowIfNegative(initialCapacity, nameof(initialCapacity));
-
+        HostVisable = hostVisible;
         _buffers = new ElementBuffer<T>[ringSize];
         for (int i = 0; i < ringSize; i++)
         {
@@ -175,9 +182,31 @@ public sealed class RingElementBuffer<T> : IDisposable
     /// <summary>
     /// Uploads a <see cref="FastList{T}"/> to the current buffer.
     /// </summary>
-    public ResultCode Upload(FastList<T> data)
+    public ResultCode Upload(FastList<T> data, int offset = 0)
     {
-        return Current.Upload(data);
+        return Current.Upload(data, 0, data.Count, offset);
+    }
+
+    /// <summary>
+    /// Writes the specified data to the current target at the given index.
+    /// </summary>
+    /// <param name="data">A reference to the data to write. The data may be modified during the write process.</param>
+    /// <param name="index">The zero-based index specifying the target location for the write.</param>
+    /// <returns>A ResultCode value indicating the outcome of the write operation.</returns>
+    public ResultCode WriteElement(T data, int index)
+    {
+        return WriteElement(ref data, index);
+    }
+
+    /// <summary>
+    /// Writes the specified data to the current target at the given index.
+    /// </summary>
+    /// <param name="data">A reference to the data to write. The data may be modified during the write process.</param>
+    /// <param name="index">The zero-based index specifying the target location for the write.</param>
+    /// <returns>A ResultCode value indicating the outcome of the write operation.</returns>
+    public ResultCode WriteElement(ref T data, int index)
+    {
+        return Current.WriteElement(ref data, index);
     }
 
     /// <summary>
