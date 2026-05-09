@@ -15,7 +15,7 @@ struct CullingConstants {
     float minScreenSize;    // Min projected size in NDC/Screen ratio (0.0 = disabled)
 
     uint64_t meshInfoBufferAddress;     // Input: MeshInfo[]
-    uint64_t _padding;
+    uint64_t nodeInfoBufferAddress;
 };
 
 // ------------------------------------------------------------------

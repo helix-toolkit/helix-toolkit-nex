@@ -323,7 +323,7 @@ internal partial class PBRDemo : IDisposable
 
         var swapchainTex = _context.GetCurrentSwapchainTexture();
         _imGuiFramebuffer.Colors[0].Texture = swapchainTex;
-        _imGuiDeps.Textures[0] = _renderContext.FinalOutputTexture;
+        _imGuiDeps._textures[0] = _renderContext.FinalOutputTexture;
 
         _imGuiRenderer.Render(cmdBuf, _imGuiPass, _imGuiFramebuffer, _imGuiDeps);
 

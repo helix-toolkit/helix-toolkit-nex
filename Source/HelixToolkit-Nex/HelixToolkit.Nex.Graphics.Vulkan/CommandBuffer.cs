@@ -11,6 +11,16 @@ namespace HelixToolkit.Nex.Graphics.Vulkan;
 internal sealed class CommandBuffer : ICommandBuffer, IDisposable
 {
     private static readonly ILogger _logger = LogManager.Create<CommandBuffer>();
+    private static readonly bool[] _colorWritesAll = new bool[Constants.MAX_COLOR_ATTACHMENTS];
+
+    static CommandBuffer()
+    {
+        for (var i = 0; i < _colorWritesAll.Length; ++i)
+        {
+            _colorWritesAll[i] = true;
+        }
+    }
+
     private readonly VulkanContext _ctx;
     private InputAttachment _inputAttachments = new();
     public uint DrawCallCount { private set; get; } = 0;
@@ -344,10 +354,10 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
 
         // calculate and transition input attachments
         {
-            uint32_t i = 0;
-            while (i != Constants.MAX_COLOR_ATTACHMENTS && deps.InputAttachments[i])
+            var i = 0;
+            for (; i < deps.InputAttachmentSpan.Length && deps.InputAttachmentSpan[i].Valid; ++i)
             {
-                var handle = deps.InputAttachments[i];
+                var handle = deps.InputAttachmentSpan[i];
                 var tex = _ctx.TexturesPool.Get(handle);
                 HxDebug.Assert(tex != null && tex.Valid);
                 TransitionToRenderingLocalRead(handle);
@@ -357,9 +367,8 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
                     imageView = tex!.ImageView,
                     imageLayout = VkImageLayout.RenderingLocalRead,
                 };
-                i++;
             }
-            _inputAttachments.Count = i;
+            _inputAttachments.Count = (uint)i;
         }
 
         VkSampleCountFlags samples = VkSampleCountFlags.Count1;
@@ -432,9 +441,9 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
                 resolveImageLayout = VkImageLayout.Undefined,
                 loadOp = descColor.LoadOp.ToVk(),
                 storeOp = descColor.StoreOp.ToVk(),
+                clearValue = new() { color = descColor.ClearColor.ToVk() },
             };
 
-            colorAttachments[i].clearValue.color = descColor.ClearColor.ToVk();
             // handle MSAA
             if (attachment.ResolveTexture)
             {
@@ -595,9 +604,16 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
 
             BindViewport(viewport);
             BindScissorRect(scissor);
-            BindDepthState(
-                fb.DepthStencil.Texture ? DepthState.DefaultReversedZ : DepthState.Disabled
-            );
+            if (renderPass.DepthState is not null)
+            {
+                BindDepthState(renderPass.DepthState);
+            }
+            else
+            {
+                BindDepthState(
+                    fb.DepthStencil.Texture ? DepthState.DefaultReversedZ : DepthState.Disabled
+                );
+            }
 
             _ctx.CheckAndUpdateDescriptorSets();
 
@@ -700,7 +716,7 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
     }
 
     /// <inheritdoc/>
-    public void BindRenderPipeline(in RenderPipelineHandle handle)
+    public void BindRenderPipeline(in RenderPipelineHandle handle, ReadOnlySpan<bool> colorWrites)
     {
         if (!handle)
         {
@@ -717,6 +733,7 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
 
         bool hasDepthAttachmentPipeline = rps!.Desc.DepthFormat != Format.Invalid;
         bool hasDepthAttachmentPass = Framebuffer.DepthStencil.Texture.Valid;
+        uint numOutputAttachments = Framebuffer.GetNumColorAttachments();
 
         if (hasDepthAttachmentPipeline != hasDepthAttachmentPass)
         {
@@ -739,10 +756,11 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
                 VK.VK_PIPELINE_BIND_POINT_GRAPHICS,
                 rps.PipelineLayout
             );
-            if (_inputAttachments.Count > 0)
+            unsafe
             {
-                unsafe
+                if (_inputAttachments.Count > 0)
                 {
+
                     var writes = stackalloc VkWriteDescriptorSet[Constants.MAX_COLOR_ATTACHMENTS];
                     using var pImageInfos = _inputAttachments.ImageInfos.Pin();
                     for (uint i = 0; i < _inputAttachments.Count; ++i)
@@ -766,8 +784,19 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
                         writes
                     );
                 }
+                var attachmentWrites = stackalloc VK_BOOL[Constants.MAX_COLOR_ATTACHMENTS];
+                for (var i = 0; i < numOutputAttachments && i < colorWrites.Length; i++)
+                {
+                    attachmentWrites[i] = colorWrites[i] ? VK_BOOL.True : VK_BOOL.False;
+                }
+                VK.vkCmdSetColorWriteEnableEXT(CmdBuffer, Constants.MAX_COLOR_ATTACHMENTS, attachmentWrites);
             }
         }
+    }
+
+    public void BindRenderPipeline(in RenderPipelineHandle handle)
+    {
+        BindRenderPipeline(handle, _colorWritesAll);
     }
 
     /// <inheritdoc/>
@@ -1861,6 +1890,25 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
         return true;
     }
 
+    /// <inheritdoc/>
+    public void SetColorWriteEnabled(ReadOnlySpan<bool> colorAttachmentStates)
+    {
+        unsafe
+        {
+            var enabled = stackalloc VkBool32[Constants.MAX_COLOR_ATTACHMENTS];
+            for (int i = 0; i < colorAttachmentStates.Length; i++)
+            {
+                enabled[i] = colorAttachmentStates[i] ? VK_BOOL.True : VK_BOOL.False;
+            }
+            VK.vkCmdSetColorWriteEnableEXT(
+                CmdBuffer,
+                (uint)Math.Min(colorAttachmentStates.Length, Constants.MAX_COLOR_ATTACHMENTS),
+                enabled
+            );
+        }
+    }
+
+    /// <inheritdoc/>
     public void SetCheckpointMarker(ReadOnlySpan<byte> label)
     {
         HxDebug.Assert(!label.IsEmpty);

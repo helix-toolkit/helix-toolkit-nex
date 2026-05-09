@@ -31,7 +31,7 @@ public sealed class FPSNode : RenderNode
 
     protected override void OnSetupRender(in RenderResources res)
     {
-        res.Deps.Textures[0] = res.Textures[SystemBufferNames.TextureColorF16Target];
+        res.Deps.PushTexture(res.Textures[SystemBufferNames.TextureColorF16Target]);
         res.Framebuf.Colors[0].Texture = res.Textures[SystemBufferNames.TextureColorF16Target];
         res.Pass.Colors[0].LoadOp = LoadOp.Load;
         res.Pass.Colors[0].StoreOp = StoreOp.Store;

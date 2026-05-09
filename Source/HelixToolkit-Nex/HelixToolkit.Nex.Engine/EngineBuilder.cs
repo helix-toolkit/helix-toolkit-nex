@@ -9,6 +9,13 @@ public enum EngineInteropTarget
     WinUI,
 };
 
+public enum TransparentMode
+{
+    None,
+    ForwardPlus,
+    WBOIT,
+}
+
 /// <summary>
 /// Fluent builder for creating and configuring an <see cref="Engine"/> instance.
 /// <para>
@@ -74,7 +81,7 @@ public sealed class EngineBuilder
     private bool _withSMAA;
     private bool _withBloom;
     private bool _withFPS;
-    private bool _withTransparent;
+    private TransparentMode _transparentMode = TransparentMode.ForwardPlus;
     private bool _withBillboard;
     private bool _withPointCloud;
     private Action<IResourceManager>? _onResourceManagerReady;
@@ -213,7 +220,7 @@ public sealed class EngineBuilder
     {
         WithBillBoard();
         WithPointCloud();
-        WithTransparent();
+        WithTransparent(TransparentMode.ForwardPlus);
 
         _addRenderToFinal = renderToSwapchain && _context.GetNumSwapchainImages() > 0;
         if (renderToSwapchain)
@@ -235,9 +242,9 @@ public sealed class EngineBuilder
         return this;
     }
 
-    public EngineBuilder WithTransparent()
+    public EngineBuilder WithTransparent(TransparentMode mode)
     {
-        _withTransparent = true;
+        _transparentMode = mode;
         return this;
     }
 
@@ -356,20 +363,27 @@ public sealed class EngineBuilder
         AddNode(new FrustumCullNode());
         AddNode(new ForwardPlusLightCullingNode());
         AddNode(new ForwardPlusOpaqueNode());
-        if (_withPointCloud)
+        //if (_withPointCloud)
+        //{
+        //    AddNode(new PointCullNode());
+        //    AddNode(new PointRenderNode());
+        //}
+        //if (_withBillboard)
+        //{
+        //    AddNode(new BillboardCullNode());
+        //    AddNode(new BillboardRenderNode());
+        //}
+        if (_transparentMode != TransparentMode.None)
         {
-            AddNode(new PointCullNode());
-            AddNode(new PointRenderNode());
-        }
-        if (_withBillboard)
-        {
-            AddNode(new BillboardCullNode());
-            AddNode(new BillboardRenderNode());
-        }
-        if (_withTransparent)
-        {
-            AddNode(new ForwardPlusTransparentNode());
-            AddNode(new WBOITCompositeNode());
+            if (_transparentMode == TransparentMode.ForwardPlus)
+            {
+                AddNode(new ForwardPlusTransparentNode());
+            }
+            else if (_transparentMode == TransparentMode.WBOIT)
+            {
+                AddNode(new ForwardPlusWBOITNode());
+                AddNode(new WBOITCompositeNode());
+            }
         }
 
         if (_withFXAA)

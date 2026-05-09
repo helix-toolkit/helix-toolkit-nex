@@ -137,7 +137,7 @@ public static class SceneSorting
 
             if (transform.IsWorldDirty)
             {
-                if (transform.UpdateWorldTransform(parentWorld, out var worldMatrix))
+                if (transform.UpdateWorldTransform(ref parentWorld, out var worldMatrix))
                 {
                     // Write directly to component storage — WorldTransform is derived data;
                     // firing ComponentChangedEvent on every frame update is unnecessary overhead.

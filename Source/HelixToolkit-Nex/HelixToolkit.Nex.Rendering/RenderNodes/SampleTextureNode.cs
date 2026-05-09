@@ -18,7 +18,7 @@ public sealed class RenderToFinalNode(Format outputFormat)
         res.Pass.Colors[0].ClearColor = Color.Transparent;
         res.Pass.Colors[0].LoadOp = LoadOp.Load;
         res.Pass.Colors[0].StoreOp = StoreOp.Store;
-        res.Deps.Textures[0] = res.Textures[SystemBufferNames.TextureColorF16Target];
+        res.Deps.PushTexture(res.Textures[SystemBufferNames.TextureColorF16Target]);
     }
 
     protected override bool BeginRender(in RenderResources res)
@@ -58,7 +58,7 @@ public sealed class DebugDepthBufferNode()
         res.Pass.Colors[0].ClearColor = Color.Transparent;
         res.Pass.Colors[0].LoadOp = LoadOp.Load;
         res.Pass.Colors[0].StoreOp = StoreOp.Store;
-        res.Deps.Textures[0] = res.Textures[SystemBufferNames.TextureDepthF32];
+        res.Deps.PushTexture(res.Textures[SystemBufferNames.TextureDepthF32]);
     }
 
     protected override bool BeginRender(in RenderResources res)
@@ -91,7 +91,7 @@ public sealed class DebugMeshIdNode()
         res.Pass.Colors[0].ClearColor = Color.Black;
         res.Pass.Colors[0].LoadOp = LoadOp.Load;
         res.Pass.Colors[0].StoreOp = StoreOp.Store;
-        res.Deps.Textures[0] = res.Textures[SystemBufferNames.TextureEntityId];
+        res.Deps.PushTexture(res.Textures[SystemBufferNames.TextureEntityId]);
     }
 
     public override void AddToGraph(RenderGraph graph)
@@ -121,7 +121,7 @@ public abstract class SampleTextureNode(SampleTextureMode mode, Format targetFor
         Debug.Assert(_pipeline.Valid, "Pipeline is not valid.");
         var cmdBuffer = res.CmdBuffer;
         var deps = res.Deps;
-        if (deps.Textures[0].Index == 0)
+        if (deps.TextureSpan[0].Index == 0)
         {
             _logger.LogWarning("Input texture for {NodeName} is not valid. Skipping render.", Name);
             return;
@@ -132,7 +132,7 @@ public abstract class SampleTextureNode(SampleTextureMode mode, Format targetFor
             new SampleTexturePushConstants()
             {
                 SamplerId = _sampler,
-                TextureId = deps.Textures[0].Index,
+                TextureId = deps.TextureSpan[0].Index,
                 MinValue = MinValue,
                 MaxValue = MaxValue,
             }

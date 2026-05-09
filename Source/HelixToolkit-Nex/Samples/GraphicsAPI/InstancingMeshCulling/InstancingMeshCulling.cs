@@ -226,7 +226,7 @@ internal class InstancingMeshCullingExample : IDisposable
             "ResetDrawInstanceCount"
         );
         Debug.Assert(_resetInstanceCountPipeline.Valid);
-        _cullDeps.Buffers[0] = _meshDrawBuffer;
+        _cullDeps._buffers[0] = _meshDrawBuffer;
     }
 
     private void CreateRenderPipeline()
@@ -264,8 +264,8 @@ internal class InstancingMeshCullingExample : IDisposable
 
         // Dependencies ensure memory barriers are placed correctly.
         // We need to wait for the Compute Shader to finish writing to these buffers before Rendering reads them.
-        _renderDependencies.Buffers[0] = _culledInstanceIdxBuffer;
-        _renderDependencies.Buffers[1] = _meshDrawBuffer;
+        _renderDependencies._buffers[0] = _culledInstanceIdxBuffer;
+        _renderDependencies._buffers[1] = _meshDrawBuffer;
     }
     #endregion
 

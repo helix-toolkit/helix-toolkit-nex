@@ -1,6 +1,7 @@
 using HelixToolkit.Nex.ECS;
 using HelixToolkit.Nex.Rendering.Components;
 using HelixToolkit.Nex.Rendering.RenderNodes;
+using HelixToolkit.Nex.Scene;
 
 namespace HelixToolkit.Nex.Rendering.PostEffects;
 
@@ -127,7 +128,7 @@ public sealed class WireframePostEffect : PostEffect
                 ref readSlot,
                 ref writeSlot,
                 _entriesOpaque,
-                data.MeshDrawsOpaque.GpuAddress
+                data.MeshDrawsOpaque
             );
         }
 
@@ -140,7 +141,7 @@ public sealed class WireframePostEffect : PostEffect
                 ref readSlot,
                 ref writeSlot,
                 _entriesTransparent,
-                data.MeshDrawsTransparent.GpuAddress
+                data.MeshDrawsTransparent
             );
         }
 
@@ -180,19 +181,7 @@ public sealed class WireframePostEffect : PostEffect
 
         foreach (var entity in world.GetComponentEntities<WireframeComponent>())
         {
-            if (!entity.Has<MeshComponent>())
-            {
-                continue;
-            }
-
-            ref var meshComp = ref entity.Get<MeshComponent>();
-            if (!meshComp.Valid || meshComp.Index < 0)
-            {
-                continue;
-            }
-
-            // Validate the draw command index is within the buffer range.
-            if ((uint)meshComp.Index >= meshDraws.Count)
+            if (!entity.Has<MeshComponent>() || !entity.Has<Renderable>())
             {
                 continue;
             }
@@ -201,7 +190,7 @@ public sealed class WireframePostEffect : PostEffect
 
             var entries = entity.Has<TransparentComponent>() ? _entriesTransparent : _entriesOpaque;
             entries.Add(
-                new WireframeEntry(DrawIndex: (uint)meshComp.Index, Color: wireframe.Color)
+                new WireframeEntry(entity, Color: wireframe.Color)
             );
         }
     }
@@ -222,11 +211,10 @@ public sealed class WireframePostEffect : PostEffect
         ref string readSlot,
         ref string writeSlot,
         List<WireframeEntry> entries,
-        ulong meshDrawDataAddress
+        IMeshDrawData meshDraws
     )
     {
         var context = res.RenderContext;
-        var meshDraws = data.MeshDrawsOpaque;
 
         var fpBuffer = res.Buffers[SystemBufferNames.BufferForwardPlusConstants];
         // Render wireframes directly onto the write-slot texture.
@@ -239,9 +227,7 @@ public sealed class WireframePostEffect : PostEffect
         _frameBuffer.DepthStencil.Texture = res.Textures[SystemBufferNames.TextureDepthF32];
 
         // No sampled-texture dependencies — mesh draws only need the scene target as output.
-        _deps.Textures[0] = TextureHandle.Null;
-        _deps.Textures[1] = TextureHandle.Null;
-        _deps.Buffers[0] = fpBuffer;
+        using var depScope = _deps.PushBufferScoped(fpBuffer);
 
         cmdBuffer.BeginRendering(_pass, _frameBuffer, _deps);
         cmdBuffer.BindRenderPipeline(_wireframePipeline);
@@ -254,7 +240,11 @@ public sealed class WireframePostEffect : PostEffect
 
         foreach (var entry in entries)
         {
-            var drawCmd = meshDraws.DrawCommands[(int)entry.DrawIndex];
+            var (buffer, drawCmd, index) = meshDraws.GetMeshDraw(entry.Entity);
+            if (buffer == BufferHandle.Null || index < 0)
+            {
+                continue;
+            }
             var isDynamic = drawCmd.IsDynamic();
             if (!isDynamic)
             {
@@ -275,15 +265,17 @@ public sealed class WireframePostEffect : PostEffect
                 new MeshDrawPushConstant()
                 {
                     FpConstAddress = fpConstAddress,
-                    DrawCommandIdxOffset = entry.DrawIndex,
-                    MeshDrawBufferAddress = meshDrawDataAddress,
+                    DrawCommandIdxOffset = 0,
+                    MeshDrawId = (uint)index,
+                    MeshDrawBufferAddress = buffer.GpuAddress(Context!),
+                    NodeInfoBufferAddress = data.NodeInfos.GpuAddress,
                 }
             );
             cmdBuffer.PushConstants(entry.Color, MeshDrawPushConstant.SizeInBytes);
 
             cmdBuffer.DrawIndexedIndirect(
-                meshDraws.Buffer,
-                entry.DrawIndex * meshDraws.Stride,
+                buffer,
+                (uint)index * meshDraws.Stride,
                 1,
                 meshDraws.Stride
             );
@@ -372,5 +364,5 @@ public sealed class WireframePostEffect : PostEffect
     // Internal data
     // -----------------------------------------------------------------------
 
-    private readonly record struct WireframeEntry(uint DrawIndex, Vector4 Color);
+    private readonly record struct WireframeEntry(Entity Entity, Vector4 Color);
 }

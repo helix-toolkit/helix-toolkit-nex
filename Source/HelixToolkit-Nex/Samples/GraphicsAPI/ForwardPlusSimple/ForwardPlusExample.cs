@@ -676,7 +676,7 @@ public class ForwardPlusExample
 
         cmdBuffer.BindComputePipeline(_cullingPipeline);
         cmdBuffer.PushConstants(_context.GpuAddress(_lightCullingBuffer));
-        _lightCullDeps.Textures[0] = _depthBuffer;
+        _lightCullDeps._textures[0] = _depthBuffer;
         cmdBuffer.DispatchThreadGroups(new Dimensions(tileCountX, tileCountY), _lightCullDeps);
     }
 
@@ -689,7 +689,7 @@ public class ForwardPlusExample
     private void RenderPass(ICommandBuffer cmdBuffer)
     {
         _framebuffer.Colors[0].Texture = _f16Framebuffer;
-        _renderDeps.Buffers[0] = _lightIndexBuffer;
+        _renderDeps._buffers[0] = _lightIndexBuffer;
         cmdBuffer.BeginRendering(_renderPass, _framebuffer, _renderDeps);
         cmdBuffer.BindDepthState(DepthState.DefaultReversedZ);
         cmdBuffer.BindRenderPipeline(_renderPipelinePBR);
@@ -748,7 +748,7 @@ public class ForwardPlusExample
     {
         _framebuffer.Colors[0].Texture = target;
         _framebuffer.DepthStencil.Texture = TextureResource.Null;
-        _toneMappingDeps.Textures[0] = _f16Framebuffer;
+        _toneMappingDeps._textures[0] = _f16Framebuffer;
         cmdBuffer.BeginRendering(_toneMappingPass, _framebuffer, _toneMappingDeps);
         cmdBuffer.BindRenderPipeline(_toneGammePipeline);
         cmdBuffer.BindDepthState(DepthState.Disabled);

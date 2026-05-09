@@ -32,8 +32,8 @@ public sealed class WBOITCompositeNode : RenderNode
         res.Pass.Colors[0].StoreOp = StoreOp.Store;
 
         // Bind the WBOIT textures as sampled inputs (no depth needed).
-        res.Deps.Textures[0] = res.Textures[SystemBufferNames.TextureWboitAccum];
-        res.Deps.Textures[1] = res.Textures[SystemBufferNames.TextureWboitRevealage];
+        res.Deps.PushTexture(res.Textures[SystemBufferNames.TextureWboitAccum]);
+        res.Deps.PushTexture(res.Textures[SystemBufferNames.TextureWboitRevealage]);
     }
 
     protected override bool BeginRender(in RenderResources res)
@@ -61,8 +61,8 @@ public sealed class WBOITCompositeNode : RenderNode
         cmdBuffer.PushConstants(
             new WBOITCompositePushConstants
             {
-                AccumTextureId = res.Deps.Textures[0].Index,
-                RevealTextureId = res.Deps.Textures[1].Index,
+                AccumTextureId = res.Deps.TextureSpan[0].Index,
+                RevealTextureId = res.Deps.TextureSpan[1].Index,
                 SamplerId = _sampler,
             }
         );

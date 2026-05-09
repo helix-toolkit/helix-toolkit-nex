@@ -17,6 +17,7 @@ using HelixToolkit.Nex.Rendering.SDF;
 using HelixToolkit.Nex.Scene;
 using HelixToolkit.Nex.Shaders;
 using Microsoft.Extensions.Logging;
+using SceneSamples;
 using static HelixToolkit.Nex.Rendering.PostEffects.BorderHighlightPostEffect;
 using Gui = ImGuiNET.ImGui;
 using TextureHandle = HelixToolkit.Nex.Handle<HelixToolkit.Nex.Graphics.Texture>;
@@ -44,7 +45,7 @@ internal sealed class BillboardDemo : IDisposable
 
     // Camera
     private Camera _camera = new PerspectiveCamera();
-    private OrbitCameraController? _orbitController;
+    private FirstPersonCameraController? _firstPersonController;
     private long _lastTimestamp;
 
     // ImGui composite state
@@ -76,6 +77,11 @@ internal sealed class BillboardDemo : IDisposable
 
     // Registered SDF material variant IDs
     private MaterialTypeId _outlineMaterialId;
+    private MaterialTypeId _shadowMaterialId;
+
+    // Solar system scene
+    private SolarSystemScene? _solarSystemScene;
+    private Node? _solarSystemRoot;
 
     public ImGuiRenderer? ImGui => _imGuiRenderer;
 
@@ -92,11 +98,15 @@ internal sealed class BillboardDemo : IDisposable
     {
         _camera = new PerspectiveCamera
         {
-            Position = new Vector3(0, 5, -15),
-            Target = Vector3.Zero,
-            FarPlane = 500,
+            Position = new Vector3(0, 80, -220),
+            Target = new Vector3(100f, 0f, 0f),
+            FarPlane = 2000,
         };
-        _orbitController = new OrbitCameraController(_camera);
+        _firstPersonController = new FirstPersonCameraController(_camera)
+        {
+            MoveSpeed = 10f,
+            SprintMultiplier = 2f,
+        };
 
         RenderSettings.LogFPSInDebug = true;
 
@@ -157,14 +167,26 @@ internal sealed class BillboardDemo : IDisposable
             "SDFFont_Outlined",
             new SDFFontMaterialConfig
             {
-                OutlineColor = new Color4(0f, 0f, 0f, 1f),
-                OutlineWidth = 0.15f,
+                OutlineColor = new Color4(1f, 0f, 0f, 1f),
+                OutlineWidth = 0.3f,
+            }
+        );
+
+        // Register a drop-shadow SDF font material variant
+        _shadowMaterialId = SDFFontMaterialConfig.RegisterVariant(
+            "SDFFont_Shadow",
+            new SDFFontMaterialConfig
+            {
+                ShadowColor = new Color4(0f, 0f, 0f, 0.6f),
+                ShadowOffset = new System.Numerics.Vector2(0.003f, -0.003f),
+                ShadowSoftness = 0.05f,
             }
         );
 
         _logger.LogInformation(
-            "Registered SDF material variants: SDFFont_Outlined (ID={Id})",
-            _outlineMaterialId.Id
+            "Registered SDF material variants: SDFFont_Outlined (ID={OutlineId}), SDFFont_Shadow (ID={ShadowId})",
+            _outlineMaterialId.Id,
+            _shadowMaterialId.Id
         );
     }
 
@@ -197,10 +219,10 @@ internal sealed class BillboardDemo : IDisposable
     private void BuildScene()
     {
         var world = _worldDataProvider!.World;
-        _root = new Node(world) { Name = "Root" };
+        _root = new Node(world, "Root");
 
-        // Add a directional light
-        var lightNode = new Node(world) { Name = "DirectionalLight" };
+        // Add a directional light (ambient fill)
+        var lightNode = new Node(world, "DirectionalLight");
         lightNode.Entity.Set(
             new DirectionalLightComponent
             {
@@ -214,49 +236,14 @@ internal sealed class BillboardDemo : IDisposable
         );
         _root.AddChild(lightNode);
 
-        // 1. "Hello Billboard!" — default SDF material, white color
-        AddTextEntry(
-            "Hello Billboard!",
-            new Vector3(0, 5, 0),
-            new Color4(1f, 1f, 1f, 1f),
-            _globalFontSize,
-            BuildinFontAtlas.GoogleSansRegular,
-            "SDFFont",
-            editable: false
+        // Build the solar system scene
+        _solarSystemScene = new SolarSystemScene();
+        _solarSystemRoot = ((IScene)_solarSystemScene).Build(
+            _context,
+            _engine!.ResourceManager,
+            _worldDataProvider!
         );
-
-        // 2. "HelixToolkit-Nex" — SDF material with outline
-        AddTextEntry(
-            "HelixToolkit-Nex",
-            new Vector3(0, 3, 0),
-            new Color4(1f, 1f, 1f, 1f),
-            _globalFontSize,
-            BuildinFontAtlas.RobotoSlabRegular,
-            "SDFFont",
-            editable: false
-        );
-
-        // 3. "GPU Picking!" — SDF material, cyan color
-        AddTextEntry(
-            "GPU Picking!",
-            new Vector3(0, 1, 0),
-            new Color4(0f, 1f, 1f, 1f),
-            _globalFontSize,
-            BuildinFontAtlas.MichromaRegular,
-            "SDFFont",
-            editable: false
-        );
-
-        //// 4. "Editable Text" — SDF material, yellow color, editable via ImGui
-        AddTextEntry(
-            "Editable Text",
-            new Vector3(0, -1, 0),
-            new Color4(1f, 1f, 0f, 1f),
-            _globalFontSize,
-            BuildinFontAtlas.GoogleSansRegular,
-            "SDFFont",
-            editable: true
-        );
+        _root.AddChild(_solarSystemRoot);
     }
 
     private void AddTextEntry(
@@ -368,7 +355,7 @@ internal sealed class BillboardDemo : IDisposable
             _lastTimestamp = Stopwatch.GetTimestamp();
         float dt = (float)(Stopwatch.GetTimestamp() - _lastTimestamp) / Stopwatch.Frequency;
         _lastTimestamp = Stopwatch.GetTimestamp();
-
+        _solarSystemScene?.Tick(dt);
         _imGuiRenderer.BeginFrame(new Vector2(width, height));
         DrawUI(
             _renderContext.FinalOutputTexture,
@@ -377,7 +364,7 @@ internal sealed class BillboardDemo : IDisposable
         );
         _imGuiRenderer.EndFrame();
 
-        _orbitController?.Update(dt);
+        _firstPersonController?.Update(dt);
 
         // Update min screen size on the cull node
         if (_billboardCullNode is not null)
@@ -396,7 +383,7 @@ internal sealed class BillboardDemo : IDisposable
         // ImGui composite to swapchain
         var swapchainTex = _context.GetCurrentSwapchainTexture();
         _imGuiFramebuffer.Colors[0].Texture = swapchainTex;
-        _imGuiDeps.Textures[0] = _renderContext.FinalOutputTexture;
+        _imGuiDeps._textures[0] = _renderContext.FinalOutputTexture;
 
         _imGuiRenderer.Render(cmdBuf, _imGuiPass, _imGuiFramebuffer, _imGuiDeps);
 
@@ -528,24 +515,17 @@ internal sealed class BillboardDemo : IDisposable
                 if (Gui.IsMouseClicked(ImGuiNET.ImGuiMouseButton.Left))
                     Pick((int)rel.X, (int)rel.Y);
 
-                // Right-drag: rotate
+                // Right-drag: free-look
                 if (Gui.IsMouseClicked(ImGuiNET.ImGuiMouseButton.Right))
-                    _orbitController?.OnRotateBegin(rel.X, rel.Y);
+                    _firstPersonController?.OnRotateBegin(rel.X, rel.Y);
 
-                // Middle-drag: pan
-                if (Gui.IsMouseClicked(ImGuiNET.ImGuiMouseButton.Middle))
-                    _orbitController?.OnPanBegin(rel.X, rel.Y);
-
-                // Motion
                 if (Gui.IsMouseDown(ImGuiNET.ImGuiMouseButton.Right))
-                    _orbitController?.OnRotateDelta(rel.X, rel.Y);
-                if (Gui.IsMouseDown(ImGuiNET.ImGuiMouseButton.Middle))
-                    _orbitController?.OnPanDelta(rel.X, rel.Y);
+                    _firstPersonController?.OnRotateDelta(rel.X, rel.Y);
 
-                // Scroll: zoom
+                // Scroll: dolly forward/back
                 var io = Gui.GetIO();
                 if (MathF.Abs(io.MouseWheel) > 0.001f)
-                    _orbitController?.OnZoomDelta(io.MouseWheel);
+                    _firstPersonController?.OnZoomDelta(io.MouseWheel);
             }
         }
         Gui.End();
@@ -793,7 +773,17 @@ internal sealed class BillboardDemo : IDisposable
 
     public void OnKeyboardInput(bool w, bool s, bool a, bool d, bool space, bool ctrl, bool shift)
     {
-        // Orbit controller doesn't use keyboard, but reserve for future FP mode
+        if (_firstPersonController is null)
+            return;
+        _firstPersonController.IsSprinting = shift;
+        _firstPersonController.SetMovementInput(
+            forward: w,
+            backward: s,
+            left: a,
+            right: d,
+            up: space,
+            down: ctrl
+        );
     }
 
     // ------------------------------------------------------------------

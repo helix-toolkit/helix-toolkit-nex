@@ -29,6 +29,7 @@ public interface ICommandBuffer
     /// Secondary command buffers can be recorded in parallel and executed by a primary command buffer.
     /// </summary>
     bool IsSecondary { get; }
+
     /// <summary>
     /// Gets the number of draw calls issued since the last reset or frame.
     /// </summary>
@@ -36,6 +37,7 @@ public interface ICommandBuffer
     /// value is typically reset at the start of each frame or after a manual reset, depending on the
     /// implementation.</remarks>
     uint DrawCallCount { get; }
+
     /// <summary>
     /// Gets the total number of dispatch calls that have been made since the last reset or frame.
     /// </summary>
@@ -43,6 +45,7 @@ public interface ICommandBuffer
     /// value is typically reset at the start of each frame or after a manual reset, depending on the
     /// implementation.</remarks>
     uint DispatchCallCount { get; }
+
     /// <summary>
     /// Executes secondary command buffers within this primary command buffer.
     /// This method can only be called on primary command buffers during an active render pass.
@@ -141,6 +144,14 @@ public interface ICommandBuffer
     /// Binds a render pipeline for subsequent draw operations.
     /// </summary>
     /// <param name="handle">The handle to the render pipeline to bind.</param>
+    /// <param name="colorWrites">A span indicating which color attachments should be written to.</param>
+    void BindRenderPipeline(in RenderPipelineHandle handle, ReadOnlySpan<bool> colorWrites);
+
+    /// <summary>
+    /// Binds a render pipeline for subsequent draw operations.
+    /// </summary>
+    /// <param name="handle">The handle to the render pipeline to bind.</param>
+    /// <remarks>This will set all color attachments to be written to.</remarks>
     void BindRenderPipeline(in RenderPipelineHandle handle);
 
     /// <summary>
@@ -552,4 +563,10 @@ public interface ICommandBuffer
     /// </summary>
     /// <param name="label">The label that identifies the checkpoint marker. Cannot be null or empty.</param>
     void SetCheckpointMarker(ReadOnlySpan<byte> label);
+
+    /// <summary>
+    /// Sets the color write enable state for each color attachment in the current render pass.
+    /// </summary>
+    /// <param name="colorAttachmentStates">A span of boolean values indicating whether color writing is enabled for each attachment.</param>
+    void SetColorWriteEnabled(ReadOnlySpan<bool> colorAttachmentStates);
 }

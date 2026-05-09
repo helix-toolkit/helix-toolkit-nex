@@ -2,6 +2,7 @@
 #include "HxHeaders/FrustumCullingCommon.glsl"
 #include "HxHeaders/MeshDraw.glsl"
 #include "HxHeaders/Instancing.glsl"
+#include "HxHeaders/NodeInfo.glsl"
 
 // Enable subgroup extensions for efficient output compaction if allowed
 #extension GL_KHR_shader_subgroup_basic : enable
@@ -28,6 +29,10 @@ layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer In
     InstanceTransform instances[];
 };
 
+layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer NodeInfoBuffer {
+    GpuNodeInfo value[];
+};
+
 layout(buffer_reference, scalar) writeonly buffer VisableInstanceIndexBuffer {
     uint indices[];
 };
@@ -41,14 +46,18 @@ struct FrustumCullInstancingPC {
     uint64_t meshDrawBufferAddress;
     uint drawCommandIdx;
     uint instanceCount;
-    uint _padding0;
-    uint _padding1;
+    uint64_t _padding;
 };
 
 layout(push_constant) uniform CullingPC {
     FrustumCullInstancingPC value;
 } pc;
 
+CullingConstBuffer cullingConst = CullingConstBuffer(pc.value.cullingConstAddress);
+MeshDrawBuffer meshDrawBuf = MeshDrawBuffer(pc.value.meshDrawBufferAddress);
+
+MeshInfoBuffer meshInfoBuf = MeshInfoBuffer(cullingConst.value.meshInfoBufferAddress);
+NodeInfoBuffer nodeInfoBuf = NodeInfoBuffer(cullingConst.value.nodeInfoBufferAddress);
 // Constants
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
@@ -60,20 +69,26 @@ void main() {
     uint gID = gl_GlobalInvocationID.x;
 
     // Access Constants
-    CullingConstBuffer cullingConst = CullingConstBuffer(pc.value.cullingConstAddress);
-    if (cullingConst.value.cullingEnabled == 0) {
-       return;
-    }
     
     if (gID >= pc.value.instanceCount) {
         return;
     }
 
     // Access Buffers
-    MeshDrawBuffer meshDrawBuf = MeshDrawBuffer(pc.value.meshDrawBufferAddress);
     MeshDraw draw = meshDrawBuf.draws[pc.value.drawCommandIdx];
+    GpuNodeInfo info = nodeInfoBuf.value[draw.nodeInfoIndex];
+
+
+    if (info.enabled == 0) {
+        meshDrawBuf.draws[pc.value.drawCommandIdx].instanceCount = 0; // Mark all instances as culled
+    }
+    
     if (draw.instancingBufferAddress == 0) {
         return;
+    }
+
+    if (cullingConst.value.cullingEnabled == 0) {
+       return;
     }
 
     if (draw.cullable == 0) {
@@ -82,13 +97,13 @@ void main() {
     }
 
     bool isVisible = true;
-
+    
     InstancingBuffer instBuf = InstancingBuffer(draw.instancingBufferAddress);
-    MeshInfoBuffer meshInfoBuf = MeshInfoBuffer(cullingConst.value.meshInfoBufferAddress);
+
     MeshInfo bound = meshInfoBuf.value[draw.meshId];
 
     // Frustum Culling
-    mat4 worldMatrix = instanceTransfromToMat4(instBuf.instances[gID]) * draw.transform;
+    mat4 worldMatrix = instanceTransfromToMat4(instBuf.instances[gID]) * info.transform;
     // 1. Sphere Culling (Cheap, fast reject)
     // Transform local sphere center to world
     // Note: Scale is baked into world matrix rows, so simple mult works for uniform scale

@@ -67,7 +67,7 @@ public sealed class ForwardPlusLightCullingNode : ComputeNode
 
     protected override void OnSetupRender(in RenderResources res)
     {
-        res.Deps.Textures[0] = res.Textures[SystemBufferNames.TextureDepthF32];
+        res.Deps.PushTexture(res.Textures[SystemBufferNames.TextureDepthF32]);
     }
 
     protected override void OnRender(in RenderResources res)

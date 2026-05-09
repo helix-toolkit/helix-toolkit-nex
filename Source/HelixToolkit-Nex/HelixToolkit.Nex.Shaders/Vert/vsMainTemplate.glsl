@@ -6,6 +6,7 @@
 #include "HxHeaders/Instancing.glsl"
 #include "HxHeaders/HeaderPackEntity.glsl"
 #include "HxHeaders/PBRProperties.glsl"
+#include "HxHeaders/NodeInfo.glsl"
 
 layout(location = 0) out vec3 fragWorldPos;
 layout(location = 1) out flat uint materialId;
@@ -61,6 +62,10 @@ layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer Ma
     PBRProperties materials[];
 };
 
+layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer NodeInfoBuffer {
+    GpuNodeInfo value[];
+};
+
 FPConstants fpConst = FPBuffer(pc.value.fpConstAddress).fpConstants;
 
 uint meshDrawIndex = gl_DrawID + pc.value.drawCommandIdxOffset;
@@ -68,6 +73,8 @@ uint meshDrawIndex = gl_DrawID + pc.value.drawCommandIdxOffset;
 MeshDraw meshDraw = MeshDrawBuffer(pc.value.meshDrawBufferAddress).draws[meshDrawIndex];
 
 MeshInfo meshInfo = MeshInfoBuffer(fpConst.meshInfoBufferAddress).value[meshDraw.meshId];
+
+GpuNodeInfo nodeInfo = NodeInfoBuffer(fpConst.nodeInfoBufferAddress).value[meshDraw.nodeInfoIndex];
 
 void getDisplaceTex(uint materialId, out uint dispTex, out uint dispSampler, out float dispScale, out float dispBase) {
     if (fpConst.materialBufferAddress == 0) {
@@ -148,15 +155,15 @@ void calVertexOutput(in uint index, out vec4 pos, out vec3 wp, out vec3 normal, 
     InstanceTransform instance = getInstancingMatrix(index);
     mat3 instanceRot = quatToMat3(instance.quaternion);
 
-    vec4 worldPos = meshDraw.transform * position;
+    vec4 worldPos = nodeInfo.transform * position;
     worldPos = vec4(transformCoord(worldPos.xyz, instanceRot, instance.scale, instance.translation), 1);
 
     wp = worldPos.xyz;
     pos = fpConst.viewProjection * worldPos;
 #ifndef EXCLUDE_MESH_PROPS
-    normal = mat3(meshDraw.transform) * vertProps.normal;
+    normal = mat3(nodeInfo.transform) * vertProps.normal;
     normal = normalize(instanceRot * normal);
-    tangent = mat3(meshDraw.transform) * vertProps.tangent;
+    tangent = mat3(nodeInfo.transform) * vertProps.tangent;
     tangent = normalize(instanceRot * tangent);
 
     texCoord = vertProps.texCoord;
@@ -176,7 +183,7 @@ void main() {
     calVertexOutput(idx, gl_Position, fragWorldPos, fragNormal, fragTangent, fragColor, fragTexCoord);
 
 #ifdef OUTPUT_DRAW_ID
-    fragEntityId = packObjectInfo(meshDraw.worldId, meshDraw.entityId, idx);
+    fragEntityId = packObjectInfo(nodeInfo.worldId, nodeInfo.entityId, idx) * uint(isHitable(meshDraw.drawType));
 #endif
 }
 

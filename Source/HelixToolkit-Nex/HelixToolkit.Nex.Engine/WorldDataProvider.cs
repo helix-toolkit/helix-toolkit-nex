@@ -20,6 +20,8 @@ public sealed class WorldDataProvider : IRenderDataProvider, IDisposable
 
     public IContext Context => ResourceManager.Context;
 
+    public IRenderData NodeInfos => _sceneState;
+
     public IRenderData Lights => _lightData;
 
     public IRenderData DirectionalLights => _directionalLightData;
@@ -47,7 +49,7 @@ public sealed class WorldDataProvider : IRenderDataProvider, IDisposable
         _meshDrawDataTransparent = new MeshDrawData(Context, World, true);
         _pointCloudData = new PointCloudData(Context, World);
         _billboardData = new BillboardData(Context, World);
-        _sceneState = new SceneState(World);
+        _sceneState = new SceneState(Context, World);
         _renderDataList.Add(_lightData);
         _renderDataList.Add(_directionalLightData);
         _renderDataList.Add(_meshDrawDataOpaque);

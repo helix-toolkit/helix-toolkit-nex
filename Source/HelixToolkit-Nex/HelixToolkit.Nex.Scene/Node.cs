@@ -1,5 +1,3 @@
-using System.Collections.Concurrent;
-
 namespace HelixToolkit.Nex.Scene;
 
 public class Node : IDisposable
@@ -216,6 +214,28 @@ public class Node : IDisposable
     public ref Transform Transform => ref Entity.Get<Transform>();
 
     public ref WorldTransform WorldTransform => ref Entity.Get<WorldTransform>();
+
+    /// <summary>
+    /// Gets or sets a value indicating whether the entity is marked as renderable.
+    /// </summary>
+    /// <remarks>Setting this property to <see langword="true"/> adds the renderable marker to the entity;
+    /// setting it to <see langword="false"/> removes it. This property can be used to control whether the entity will
+    /// be considered for rendering by systems that process renderable entities.</remarks>
+    public bool IsRenderable
+    {
+        set
+        {
+            if (value)
+            {
+                Entity.Set(new Renderable());
+            }
+            else
+            {
+                Entity.Remove<Renderable>();
+            }
+        }
+        get => Entity.Has<Renderable>();
+    }
 
     public Node(World world, Entity? entity = null)
     {
