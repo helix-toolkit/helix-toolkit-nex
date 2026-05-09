@@ -5,6 +5,7 @@
 #include "HxHeaders/ForwardPlusTile.glsl"
 #include "HxHeaders/MeshDraw.glsl"
 #include "HxHeaders/PBRProperties.glsl"
+#include "HxHeaders/HeaderPackEntity.glsl"
 
 layout(location = 0) in vec3 fragWorldPos;
 layout(location = 1) in flat uint materialId;
@@ -14,14 +15,16 @@ layout(location = 3) in vec3 fragNormal;
 layout(location = 4) in vec3 fragTangent;
 layout(location = 5) in vec2 fragTexCoord;
 #endif
-
+#ifdef OUTPUT_DRAW_ID
+layout(location = 6) in flat uvec2 fragEntityId;
+#endif
 // Ensure FragCoord (0,0) is Top-Left to match Compute Shader tile generation
 // layout(origin_upper_left) in vec4 gl_FragCoord;
-#ifdef TRANSPARENT_PASS
-layout(location = 0) out vec4 outAccum;
-layout(location = 1) out float outRevealage;
-#else
+
 layout(location = 0) out vec4 outColor;
+layout(location = 1) out vec2 idOut;
+#ifdef TRANSPARENT_PASS
+layout(location = 2) out float outRevealage;
 #endif
 
 layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer FPBuffer {
@@ -406,6 +409,12 @@ vec4 outputColor()
 
 /*TEMPLATE_CUSTOM_MAIN_START*/
 void main() {
+#ifdef OUTPUT_DRAW_ID
+    uint primID = uint(gl_PrimitiveID);
+    idOut = packPrimitiveId(fragEntityId, primID);
+#else
+    idOut = vec2(0.0);
+#endif
     vec4 color = outputColor();
 #ifdef TRANSPARENT_PASS
     // Weighted Blended OIT (McGuire & Bavoil 2013)
@@ -423,7 +432,7 @@ void main() {
         1e-2, 3e3
     );
     // RT0 (accum): additive blend (ONE / ONE). Store premultiplied weighted color and weighted alpha.
-    outAccum = vec4(color.rgb * alpha * w, alpha * w);
+    outColor = vec4(color.rgb * alpha * w, alpha * w);
     // RT1 (revealage): blend is ZERO / ONE_MINUS_SRC_COLOR, buffer cleared to 1.
     // Output alpha so the blend hardware computes: dst = dst * (1 - alpha).
     outRevealage = alpha;

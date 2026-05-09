@@ -154,6 +154,8 @@ internal sealed partial class VulkanContext
         VK.VK_KHR_SWAPCHAIN_EXTENSION_NAME,
         VK.VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME,
         VK.VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
+        VK.VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME,
+        VK.VK_EXT_COLOR_WRITE_ENABLE_EXTENSION_NAME,
     ];
     private readonly List<VkUtf8String> _instanceExtensions = [];
     private readonly HashSet<string> _supportedExtensions = [];
@@ -345,7 +347,6 @@ internal sealed partial class VulkanContext
             );
         }
         _instanceExtensions.Add(VK.VK_KHR_SURFACE_EXTENSION_NAME); // always required
-
         List<VkUtf8String> instanceLayers = [];
 
         if (Config.EnableValidation)
@@ -1860,6 +1861,7 @@ internal sealed partial class VulkanContext
                 .DynamicState(VK.VK_DYNAMIC_STATE_DEPTH_COMPARE_OP)
                 // from Vulkan 1.3 or VK_EXT_extended_dynamic_state2
                 .DynamicState(VK.VK_DYNAMIC_STATE_DEPTH_BIAS_ENABLE)
+                .DynamicState(VK.VK_DYNAMIC_STATE_COLOR_WRITE_ENABLE_EXT)
                 .PrimitiveTopology(desc.Topology.ToVk())
                 .RasterizationSamples(
                     HxVkUtils.GetVulkanSampleCountFlags(

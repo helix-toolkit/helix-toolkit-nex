@@ -209,10 +209,11 @@ internal partial class Editor : IDisposable
         // --- Step 2: ImGui composite pass — renders to swapchain ---
         var swapchainTex = _context.GetCurrentSwapchainTexture();
         _imGuiFramebuffer.Colors[0].Texture = swapchainTex;
-        _imGuiDeps.Textures[0] = _renderContext.FinalOutputTexture;
+        _imGuiDeps.PushTexture(_renderContext.FinalOutputTexture);
         _imGuiRenderer.Render(cmdBuf, _imGuiPass, _imGuiFramebuffer, _imGuiDeps);
         // --- Submit & present ---
         _engine.Submit(cmdBuf, swapchainTex);
+        _imGuiDeps.PopTexture();
     }
 
     public void Pick(int x, int y)

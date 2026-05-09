@@ -12,10 +12,11 @@ public class MeshNode : Node
         : base(world, name)
     {
         Entity.Set(MeshComponent.Empty);
+        IsRenderable = true;
     }
 
     public MeshNode(World world, string name, MeshComponent meshComponent)
-        : base(world, name)
+        : this(world, name)
     {
         Entity.Set(meshComponent);
     }

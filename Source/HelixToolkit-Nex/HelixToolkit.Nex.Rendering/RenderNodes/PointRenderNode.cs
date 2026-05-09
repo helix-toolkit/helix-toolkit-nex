@@ -36,9 +36,9 @@ public sealed class PointRenderNode : RenderNode
         res.Pass.Depth.StoreOp = StoreOp.Store;
 
         // Dependencies
-        res.Deps.Textures[0] = res.Textures[SystemBufferNames.TextureColorF16Target];
-        res.Deps.Textures[1] = res.Textures[SystemBufferNames.TextureDepthF32];
-        res.Deps.Buffers[0] = res.Buffers[SystemBufferNames.BufferForwardPlusConstants];
+        res.Deps.PushTexture(res.Textures[SystemBufferNames.TextureColorF16Target]);
+        res.Deps.PushTexture(res.Textures[SystemBufferNames.TextureDepthF32]);
+        res.Deps.PushBuffer(res.Buffers[SystemBufferNames.BufferForwardPlusConstants]);
     }
 
     protected override bool BeginRender(in RenderResources res)

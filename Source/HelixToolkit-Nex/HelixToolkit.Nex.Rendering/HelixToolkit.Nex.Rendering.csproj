@@ -9,6 +9,7 @@
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <PackageIcon>icon.png</PackageIcon>
         <Configurations>Debug;Release;LinuxDebug;LinuxRelease</Configurations>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     </PropertyGroup>
     <ItemGroup>
         <Compile Remove="RenderGraphs\**" />

@@ -21,17 +21,20 @@ public sealed class RenderPass
     }
 
     public readonly AttachmentDesc[] Colors = new AttachmentDesc[Constants.MAX_COLOR_ATTACHMENTS];
+    public readonly bool[] ColorWrites = new bool[Constants.MAX_COLOR_ATTACHMENTS];
 
     public AttachmentDesc Depth = new() { LoadOp = LoadOp.DontCare, StoreOp = StoreOp.DontCare };
     public AttachmentDesc Stencil = new() { LoadOp = LoadOp.Invalid, StoreOp = StoreOp.DontCare };
     public uint32_t LayerCount = 1;
     public uint32_t ViewMask;
+    public DepthState? DepthState;
 
     public RenderPass(IEnumerable<AttachmentDesc>? colors = null)
     {
         for (uint32_t i = 0; i < Constants.MAX_COLOR_ATTACHMENTS; i++)
         {
             Colors[i] = new AttachmentDesc();
+            ColorWrites[i] = true;
         }
         if (colors != null)
         {

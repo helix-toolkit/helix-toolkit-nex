@@ -132,6 +132,30 @@ internal sealed class PickingDemo : IDisposable
         meshNode.Entity.Set(new WireframePostEffect.WireframeComponent { Color = Color.Blue });
         _root.AddChild(meshNode);
 
+        var redMaterial = materialPool.Create("PBR");
+        redMaterial.Properties.Albedo = new Vector3(1.0f, 0.2f, 0.2f);
+        meshNode = new MeshNode(world, "LargeSphereNoHitable")
+        {
+            Geometry = _largeMeshGeometry,
+            MaterialProperties = redMaterial,
+            Hitable = false, // This copy of the mesh is not hitable
+        };
+        meshNode.Transform.Translation = new Vector3(0, -20, 0);
+        _root.AddChild(meshNode);
+
+        var greenMaterial = materialPool.Create("PBR");
+        greenMaterial.Properties.Albedo = new Vector3(0.2f, 0.8f, 0.2f);
+        greenMaterial.Properties.Opacity = 0.5f;
+        meshNode = new MeshNode(world, "LargeSphereTransparentNoHitable")
+        {
+            Geometry = _largeMeshGeometry,
+            MaterialProperties = greenMaterial,
+            Hitable = false, // This copy of the mesh is not hitable
+        };
+        meshNode.Transform.Scale = new Vector3(3, 3, 3);
+        meshNode.IsTransparent = true;
+        _root.AddChild(meshNode);
+
         // --- Highlight triangle (dynamic, initially empty) ---
         _highlightGeometry = new Geometry(isDynamic: true);
         // Initialize with a degenerate triangle so the geometry is valid

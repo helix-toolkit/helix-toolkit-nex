@@ -87,6 +87,7 @@ public abstract class RenderNode : IDisposable
         }
         using var scope = _tracer?.BeginScope(nameof(Render));
         res.CmdBuffer.PushDebugGroupLabel(NameBytes, DebugColor);
+        res.Deps.Clear();
         OnSetupRender(res);
         if (BeginRender(in res))
         {

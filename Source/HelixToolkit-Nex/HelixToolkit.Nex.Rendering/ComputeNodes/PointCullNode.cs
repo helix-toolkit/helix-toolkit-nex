@@ -111,7 +111,7 @@ public sealed class PointCullNode : ComputeNode
             MinScreenSize = MinScreenSize,
         };
         res.CmdBuffer.UpdateBuffer(_pointExpandArgsBuffer, ref expandPC);
-        res.Deps.Buffers[0] = _pointExpandArgsBuffer;
+        res.Deps.PushBuffer(_pointExpandArgsBuffer);
 
         foreach (var entry in points.Data.Values)
         {
@@ -129,7 +129,7 @@ public sealed class PointCullNode : ComputeNode
                 FirstInstance = 0,
             };
             res.CmdBuffer.UpdateBuffer(entry.DrawArgsBuffer, ref args);
-            res.Deps.Buffers[1] = entry.DrawArgsBuffer;
+            res.Deps.PushBuffer(entry.DrawArgsBuffer);
             foreach (var entity in entry.Entities)
             {
                 ref var comp = ref entity.Get<PointCloudComponent>();
@@ -157,6 +157,7 @@ public sealed class PointCullNode : ComputeNode
                 uint groupCount = ((uint)comp.PointCount + 63) / 64;
                 res.CmdBuffer.DispatchThreadGroups(new Dimensions(groupCount, 1, 1), res.Deps);
             }
+            res.Deps.PopBuffer();
         }
     }
 

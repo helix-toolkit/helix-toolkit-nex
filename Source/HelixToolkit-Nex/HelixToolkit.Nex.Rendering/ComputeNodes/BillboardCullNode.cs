@@ -107,7 +107,7 @@ public sealed class BillboardCullNode : ComputeNode
             MinScreenSize = MinScreenSize,
         };
         res.CmdBuffer.UpdateBuffer(_billboardExpandArgsBuffer, ref expandArgs);
-        res.Deps.Buffers[0] = _billboardExpandArgsBuffer;
+        res.Deps.PushBuffer(_billboardExpandArgsBuffer);
 
         foreach (var entry in billboards.Data.Values)
         {
@@ -125,7 +125,7 @@ public sealed class BillboardCullNode : ComputeNode
                 FirstInstance = 0,
             };
             res.CmdBuffer.UpdateBuffer(entry.DrawArgsBuffer, ref args);
-            res.Deps.Buffers[1] = entry.DrawArgsBuffer;
+            res.Deps.PushBuffer(entry.DrawArgsBuffer);
             var expandPC = new BillboardExpandPC
             {
                 DrawDataAddress = entry.DrawDataBuffer,

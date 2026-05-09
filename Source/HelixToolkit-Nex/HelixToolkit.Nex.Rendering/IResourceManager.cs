@@ -1,5 +1,4 @@
 using HelixToolkit.Nex.Rendering.SDF;
-using HelixToolkit.Nex.Repository;
 
 namespace HelixToolkit.Nex.Rendering;
 

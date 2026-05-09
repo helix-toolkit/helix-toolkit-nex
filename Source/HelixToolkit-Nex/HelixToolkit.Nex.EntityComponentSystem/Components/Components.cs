@@ -4,7 +4,7 @@ namespace HelixToolkit.Nex.ECS;
 /// Base ref struct for components.
 /// </summary>
 /// <typeparam name="T"></typeparam>
-public readonly ref struct Components<T>
+public readonly struct Components<T>
 {
     private readonly FastList<T> _storage;
     private readonly FastList<ComponentManager<T>.ComponentMappingKey> _mapping;
@@ -74,6 +74,19 @@ public readonly ref struct Components<T>
     public T[] GetInternalArray()
     {
         return _storage.GetInternalArray();
+    }
+
+    public IEnumerable<int> GetEntities()
+    {
+        var mappingArray = _mapping.GetInternalArray();
+        for (int i = 0; i < _mapping.Count; i++)
+        {
+            ref var entity = ref mappingArray[i];
+            if (entity.Valid)
+            {
+                yield return i;
+            }
+        }
     }
 
     /// <summary>

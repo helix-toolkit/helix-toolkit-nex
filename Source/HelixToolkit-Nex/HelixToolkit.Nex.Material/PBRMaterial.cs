@@ -22,11 +22,12 @@ public readonly struct MaterialTypeId(uint id) : IComparable<MaterialTypeId>
     public override string ToString() => $"MatId_{Id}";
 }
 
-public enum MaterialPassType : int
+public enum MaterialPassType : uint
 {
     Opaque = 0,
-    Transparent = 1,
-    Count = 2,
+    Transparent,
+    WBOIT,
+    Count
 }
 
 /// <summary>

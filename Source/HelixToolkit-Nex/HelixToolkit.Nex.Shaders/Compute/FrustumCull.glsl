@@ -1,6 +1,7 @@
 #include "HxHeaders/HeaderCompute.glsl"
 #include "HxHeaders/MeshDraw.glsl"
 #include "HxHeaders/FrustumCullingCommon.glsl"
+#include "HxHeaders/NodeInfo.glsl"
 // Enable subgroup extensions for efficient output compaction if allowed
 #extension GL_KHR_shader_subgroup_basic : enable
 #extension GL_KHR_shader_subgroup_ballot : enable
@@ -16,6 +17,10 @@ layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer Cu
 
 layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer MeshInfoBuffer {
     MeshInfo value[];
+};
+
+layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer NodeInfoBuffer {
+    GpuNodeInfo value[];
 };
 
 layout(buffer_reference, std430, buffer_reference_align = 16) buffer MeshDrawBuffer {
@@ -37,6 +42,12 @@ layout(push_constant) uniform CullingPC {
     FrustumCullPC value;
 } pc;
 
+CullingConstBuffer cullingConst = CullingConstBuffer(pc.value.cullingConstAddress);
+MeshDrawBuffer meshDrawBuf = MeshDrawBuffer(pc.value.meshDrawBufferAddress);
+
+MeshInfoBuffer meshInfoBuf = MeshInfoBuffer(cullingConst.value.meshInfoBufferAddress);
+NodeInfoBuffer nodeInfoBuf = NodeInfoBuffer(cullingConst.value.nodeInfoBufferAddress);
+
 // Constants
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
@@ -48,7 +59,7 @@ void main() {
     uint gID = gl_GlobalInvocationID.x;
 
     // Access Constants
-    CullingConstBuffer cullingConst = CullingConstBuffer(pc.value.cullingConstAddress);
+    
     if (cullingConst.value.cullingEnabled == 0) { // Early out if culling is disabled
        return;
     }
@@ -57,16 +68,23 @@ void main() {
     }
 
     // Access Buffers
-    MeshDrawBuffer meshDrawBuf = MeshDrawBuffer(pc.value.meshDrawBufferAddress);
-
+  
     uint drawIdx = gID + pc.value.meshDrawIdxOffset;
     
     MeshDraw draw = meshDrawBuf.draws[drawIdx];
+
+    GpuNodeInfo info = nodeInfoBuf.value[draw.nodeInfoIndex];
 
     if (draw.instancingBufferAddress != 0) {
         // For instanced draws, we handle seperately.
         return;
     }
+
+    if (info.enabled == 0) {
+        // If node is disabled, we can skip culling and set instance count to 0
+        meshDrawBuf.draws[drawIdx].instanceCount = 0;
+        return;
+    }   
 
     if (draw.cullable == 0) {
         // If not cullable, we can skip culling and set instance count to 1 (or keep as is)
@@ -74,13 +92,12 @@ void main() {
         return;
     }
 
-    MeshInfoBuffer meshInfoBuf = MeshInfoBuffer(cullingConst.value.meshInfoBufferAddress);
 
     MeshInfo bound = meshInfoBuf.value[draw.meshId];
     bool isVisible = true;
 
     // Frustum Culling
-    mat4 worldMatrix = draw.transform;
+    mat4 worldMatrix = info.transform;
     // 1. Sphere Culling (Cheap, fast reject)
     // Transform local sphere center to world
     // Note: Scale is baked into world matrix rows, so simple mult works for uniform scale

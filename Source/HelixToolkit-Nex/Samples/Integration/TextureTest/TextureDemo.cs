@@ -621,11 +621,12 @@ internal sealed partial class TextureDemo : IDisposable
         var swapchainTex = _context.GetCurrentSwapchainTexture();
 
         _imGuiFramebuffer.Colors[0].Texture = swapchainTex;
-        _imGuiDeps.Textures[0] = _renderContext.FinalOutputTexture;
+        _imGuiDeps.PushTexture(_renderContext.FinalOutputTexture);
 
         _imGuiRenderer.Render(cmdBuf, _imGuiPass, _imGuiFramebuffer, _imGuiDeps);
 
         _engine.Submit(cmdBuf, swapchainTex);
+        _imGuiDeps.PopTexture();
     }
 
     // -------------------------------------------------------------------------

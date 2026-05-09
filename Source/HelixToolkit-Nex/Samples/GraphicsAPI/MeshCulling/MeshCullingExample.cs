@@ -247,7 +247,7 @@ internal class MeshCullingExample : IDisposable
         _renderPass.Depth.ClearDepth = 0.0f; // 0.0f for Reverse-Z
         _renderPass.Depth.LoadOp = LoadOp.Clear;
 
-        _renderDependencies.Buffers[0] = _meshDrawBuffer;
+        _renderDependencies._buffers[0] = _meshDrawBuffer;
     }
     #endregion
 

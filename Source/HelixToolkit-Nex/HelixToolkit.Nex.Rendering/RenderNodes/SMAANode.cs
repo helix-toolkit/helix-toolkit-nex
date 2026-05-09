@@ -352,8 +352,11 @@ public sealed class SMAANode : RenderNode
         in TextureHandle dep1 = default
     )
     {
-        res.Deps.Textures[0] = dep0;
-        res.Deps.Textures[1] = dep1;
+        res.Deps.Clear();
+        if (dep0)
+            res.Deps.PushTexture(dep0);
+        if (dep1)
+            res.Deps.PushTexture(dep1);
 
         res.Pass.Colors[0].LoadOp = clearOutput ? LoadOp.Clear : LoadOp.Load;
         res.Pass.Colors[0].StoreOp = StoreOp.Store;

@@ -12,6 +12,7 @@ public class PointCloudNode : Node
         : base(world, name)
     {
         Entity.Set(new PointCloudComponent());
+        IsRenderable = true;
     }
 
     public PointCloudNode(World world, string name, PointCloudComponent component)

@@ -253,10 +253,15 @@ public sealed class BloomNode : RenderNode
         in TextureHandle input2Handle = default
     )
     {
-        res.Deps.Textures[0] = inputHandle;
-        if (input2Handle.Valid)
+        res.Deps.Clear();
+        if (inputHandle)
         {
-            res.Deps.Textures[1] = input2Handle;
+            res.Deps.PushTexture(inputHandle);
+        }
+
+        if (input2Handle)
+        {
+            res.Deps.PushTexture(input2Handle);
         }
         var cmdBuffer = res.CmdBuffer;
         var pass = new RenderPass();
