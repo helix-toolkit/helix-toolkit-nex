@@ -26,7 +26,8 @@ public class PBRMaterialManager(IContext context, IPBRMaterialPropertyManager pr
             _uberShaderResults[idx] ??= new PBRMaterialShaderBuilder()
                 .WithForwardPlus(true)
                 .WithUberShader()
-                .BuildMaterialPipeline(Context, "UberShader");
+                .WithDefine(BuildFlags.OUTPUT_DRAW_ID)
+                .BuildMaterialPipeline(Context, "UberShader_Opaque");
             var desc = new RenderPipelineDesc
             {
                 VertexShader = _uberShaderResults[idx]!.VertexShader,
@@ -37,26 +38,57 @@ public class PBRMaterialManager(IContext context, IPBRMaterialPropertyManager pr
                 PolygonMode = PolygonMode.Fill,
                 DebugName = debugName ?? string.Empty,
             };
-            desc.Colors[0] = ColorAttachment.CreateAlphaBlend(
+            desc.Colors[0] = ColorAttachment.CreateOpaque(
                 RenderSettings.IntermediateTargetFormat
             );
-
+            desc.Colors[1] = new ColorAttachment()
+            {
+                Format = RenderSettings.MeshIdTexFormat,
+                BlendEnabled = false,
+            };
             descSets[(int)MaterialPassType.Opaque] = desc;
         }
-
         {
             var idx = (int)MaterialPassType.Transparent;
             _uberShaderResults[idx] ??= new PBRMaterialShaderBuilder()
                 .WithForwardPlus(true)
                 .WithUberShader()
-                .WithDefine("TRANSPARENT_PASS")
-                .BuildMaterialPipeline(Context, "UberShader");
+                .WithDefine(BuildFlags.OUTPUT_DRAW_ID)
+                .BuildMaterialPipeline(Context, "UberShader_Trans");
             var desc = new RenderPipelineDesc
             {
                 VertexShader = _uberShaderResults[idx]!.VertexShader,
                 FragmentShader = _uberShaderResults[idx]!.FragmentShader,
                 Topology = Topology.Triangle,
-                CullMode = CullMode.Back,
+                CullMode = CullMode.None,
+                DepthFormat = RenderSettings.DepthBufferFormat,
+                PolygonMode = PolygonMode.Fill,
+                DebugName = debugName ?? string.Empty,
+            };
+            desc.Colors[0] = ColorAttachment.CreateAlphaBlend(
+                RenderSettings.IntermediateTargetFormat
+            );
+            desc.Colors[1] = new ColorAttachment()
+            {
+                Format = RenderSettings.MeshIdTexFormat,
+                BlendEnabled = false
+            };
+            descSets[(int)MaterialPassType.Transparent] = desc;
+        }
+        {
+            var idx = (int)MaterialPassType.WBOIT;
+            _uberShaderResults[idx] ??= new PBRMaterialShaderBuilder()
+                .WithForwardPlus(true)
+                .WithUberShader()
+                .WithDefine(BuildFlags.OUTPUT_DRAW_ID)
+                .WithDefine("TRANSPARENT_PASS")
+                .BuildMaterialPipeline(Context, "UberShader_WBOIT");
+            var desc = new RenderPipelineDesc
+            {
+                VertexShader = _uberShaderResults[idx]!.VertexShader,
+                FragmentShader = _uberShaderResults[idx]!.FragmentShader,
+                Topology = Topology.Triangle,
+                CullMode = CullMode.None,
                 DepthFormat = RenderSettings.DepthBufferFormat,
                 PolygonMode = PolygonMode.Fill,
                 DebugName = debugName ?? string.Empty,
@@ -65,11 +97,16 @@ public class PBRMaterialManager(IContext context, IPBRMaterialPropertyManager pr
             // Each fragment writes vec4(color.rgb * alpha * w, alpha * w) and all
             // contributions are summed together.
             desc.Colors[0] = ColorAttachment.CreateWboitAccumulation(Format.RGBA_F16);
+            desc.Colors[1] = new ColorAttachment()
+            {
+                Format = RenderSettings.MeshIdTexFormat,
+                BlendEnabled = false,
+            };
             // WBOIT revealage (R16F): multiplicative blend (ZERO / ONE_MINUS_SRC_COLOR).
             // Buffer is cleared to 1.0; each fragment outputs alpha, and the hardware
             // computes dst = dst * (1 - alpha), yielding the product of all (1 - alpha_i).
-            desc.Colors[1] = ColorAttachment.CreateWboitRevealage(Format.R_F16);
-            descSets[(int)MaterialPassType.Transparent] = desc;
+            desc.Colors[2] = ColorAttachment.CreateWboitRevealage(Format.R_F16);
+            descSets[(int)MaterialPassType.WBOIT] = desc;
         }
         return descSets;
     }

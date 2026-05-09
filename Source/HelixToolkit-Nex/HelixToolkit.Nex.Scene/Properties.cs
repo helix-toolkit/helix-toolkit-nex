@@ -20,7 +20,7 @@ public struct NodeInfo : ISortable<NodeInfo>
 
     public override string ToString()
     {
-        return $"NodeInfo: {EntityId}, Version: {Version}";
+        return $"Entity: {EntityId}; Version: {Version}";
     }
 
     public bool Compare(ref NodeInfo obj)
@@ -182,4 +182,14 @@ public readonly struct Children
     {
         return ChildNodes.Remove(child);
     }
+}
+
+/// <summary>
+/// Represents an object that can be rendered by a graphics or UI system.
+/// </summary>
+public struct Renderable()
+{
+    public int GPUIndex = -1; // Index of the node data in GPU buffer. Used to retrieve such as transform data from buffer.
+    public int UpdateCounter = 0;
+    public uint RenderMask = 0xFFFFFFFF; // Bitmask for render layers. Default to all layers.
 }

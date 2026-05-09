@@ -100,7 +100,7 @@ public sealed class ToneMappingNode : RenderNode
     {
         res.Pass.Colors[0].LoadOp = LoadOp.Load;
         res.Pass.Colors[0].StoreOp = StoreOp.Store;
-        res.Deps.Textures[0] = res.RenderContext.TextureColorF16Current;
+        res.Deps.PushTexture(res.RenderContext.TextureColorF16Current);
         res.RenderContext.SwapIntermediateBuffers();
         res.Framebuf.Colors[0].Texture = res.RenderContext.TextureColorF16Current;
         res.CmdBuffer.BeginRendering(res.Pass, res.Framebuf, res.Deps);
@@ -117,7 +117,7 @@ public sealed class ToneMappingNode : RenderNode
             {
                 Enabled = 1,
                 Exposure = Exposure,
-                HdrTextureId = res.Deps.Textures[0].Index,
+                HdrTextureId = res.Deps.TextureSpan[0].Index,
                 SamplerId = _sampler.GetHandle().Index,
                 TonemapMode = (uint)Mode,
                 GammaEnabled = res.RenderContext.RenderParams.EnableGammaCorrection ? 1u : 0,

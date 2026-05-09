@@ -207,13 +207,25 @@ namespace HelixToolkit.Nex.Graphics.Vulkan
             features1_1.pNext = &features1_2;
             features1_2.pNext = &features1_3;
 
+            VkPhysicalDeviceExtendedDynamicStateFeaturesEXT dynamicStateFeatures = new()
+            {
+                extendedDynamicState = VK_BOOL.True, // Default to false, will enable if supported
+            };
+
+            VkPhysicalDeviceColorWriteEnableFeaturesEXT colorWriteFeatures = new()
+            {
+                colorWriteEnable = VK_BOOL.True, // Default to false, will enable if supported
+            };
+
+            features1_3.pNext = &colorWriteFeatures;
+
             _vkFeatures10 = feature_1_0;
             _vkFeatures11 = features1_1;
             _vkFeatures12 = features1_2;
             _vkFeatures13 = features1_3;
 
             GraphicsSettings.SupportMeshShader = _vkFeatureMeshShader.meshShader;
-            // VkPhysicalDeviceMeshShaderPropertiesEXT meshShaderProps = new();
+
             VkPhysicalDeviceVulkan13Properties deviceProps1_3 = new();
             VkPhysicalDeviceVulkan12Properties deviceProps1_2 = new() { pNext = &deviceProps1_3 };
             VkPhysicalDeviceVulkan11Properties deviceProps1_1 = new() { pNext = &deviceProps1_2 };

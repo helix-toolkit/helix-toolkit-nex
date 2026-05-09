@@ -46,6 +46,7 @@ public class PrepareNode : RenderNode
             InverseView = context.CameraParams.InvView,
             ScreenDimensions = new Vector2(context.WindowSize.Width, context.WindowSize.Height),
             DpiScale = context.DpiScale,
+            NodeInfoBufferAddress = context.Data.NodeInfos.GpuAddress,
             MeshInfoBufferAddress = context.Data.MeshInfos.GpuAddress,
             MaterialBufferAddress = context.Data.PBRPropertiesBuffer.Buffer.GpuAddress(
                 context.Context

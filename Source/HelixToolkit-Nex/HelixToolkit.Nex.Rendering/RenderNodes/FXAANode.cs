@@ -283,7 +283,7 @@ public sealed class FXAANode : RenderNode
         res.Pass.Colors[0].LoadOp = LoadOp.Load;
         res.Pass.Colors[0].StoreOp = StoreOp.Store;
         res.Pass.Colors[0].ClearColor = new Color4(0f, 0f, 0f, 1f);
-        res.Deps.Textures[0] = res.RenderContext.TextureColorF16Current;
+        res.Deps.PushTexture(res.RenderContext.TextureColorF16Current);
         res.RenderContext.SwapIntermediateBuffers();
         res.Framebuf.Colors[0].Texture = res.RenderContext.TextureColorF16Current;
     }
@@ -309,7 +309,7 @@ public sealed class FXAANode : RenderNode
         cmdBuffer.PushConstants(
             new FxaaPushConstants
             {
-                ColorTextureId = res.Deps.Textures[0].Index,
+                ColorTextureId = res.Deps.TextureSpan[0].Index,
                 SamplerId = _linearSampler,
                 TexelWidth = tw,
                 TexelHeight = th,

@@ -41,8 +41,8 @@ struct FPConstants {
     uint64_t lightIndexBufferAddress;
     uint64_t materialBufferAddress;
 
+    uint64_t nodeInfoBufferAddress;
     uint64_t directionalLightsBufferAddress;
-    uint64_t _padding;
 
     PointerRing pointerRing;
 };

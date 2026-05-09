@@ -9,7 +9,6 @@ using HelixToolkit.Nex.Geometries;
 using HelixToolkit.Nex.Graphics;
 using HelixToolkit.Nex.Maths;
 using HelixToolkit.Nex.Rendering;
-using HelixToolkit.Nex.Rendering.Components;
 using HelixToolkit.Nex.Rendering.ComputeNodes;
 using HelixToolkit.Nex.Rendering.RenderNodes;
 using HelixToolkit.Nex.Scene;
@@ -93,7 +92,7 @@ internal class DepthPrepassTest(IContext context) : IDisposable
             {
                 for (int z = 0; z < NumSpheresPerAxis; ++z)
                 {
-                    var node = new Node(_worldDataProvider.World, $"Sphere_{i}");
+                    var node = new MeshNode(_worldDataProvider.World, $"Sphere_{i}");
                     node.Transform = new Transform
                     {
                         Translation = new Vector3(
@@ -109,7 +108,8 @@ internal class DepthPrepassTest(IContext context) : IDisposable
                         Random.Shared.NextSingle()
                     );
                     pbrProps.NotifyUpdated();
-                    node.Entity.Set(new MeshComponent(z % 2 == 0 ? sphere : tetrahron, pbrProps));
+                    node.Geometry = z % 2 == 0 ? sphere : tetrahron;
+                    node.MaterialProperties = pbrProps;
                     _root.AddChild(node);
                 }
             }
@@ -137,10 +137,12 @@ internal class DepthPrepassTest(IContext context) : IDisposable
             );
         }
         instancing.UpdateBuffer(_context);
-        var instancingNode = new Node(_worldDataProvider.World, "InstancingNode");
+        var instancingNode = new MeshNode(_worldDataProvider.World, "InstancingNode");
         var pbrPropsInstancing = materialPropertyPool.Create(PBRShadingMode.PBR);
         pbrPropsInstancing.Properties.Albedo = new Vector3(1, 0, 1);
-        instancingNode.Entity.Set(new MeshComponent(cube, pbrPropsInstancing, instancing));
+        instancingNode.Geometry = cube;
+        instancingNode.MaterialProperties = pbrPropsInstancing;
+        instancingNode.Instancing = instancing;
         _root.AddChild(instancingNode);
 
         var allNodes = new FastList<Node>(NumSpheresPerAxis ^ 3 + 1);
@@ -156,6 +158,7 @@ internal class DepthPrepassTest(IContext context) : IDisposable
 
     public void Render(int width, int height)
     {
+        EventBus.Instance.ProcessEvents();
         var aspectRatio = (float)width / height;
         RotateCamera();
         _renderContext!.Update(new Size(width, height), _camera);

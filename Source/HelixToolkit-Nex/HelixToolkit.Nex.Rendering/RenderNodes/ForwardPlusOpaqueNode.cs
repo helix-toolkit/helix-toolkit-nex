@@ -27,12 +27,16 @@ public sealed class ForwardPlusOpaqueNode : RenderNode
         res.Framebuf.Colors[0].Texture = res.Textures[SystemBufferNames.TextureColorF16Target];
         res.Pass.Colors[0].LoadOp = LoadOp.Load;
         res.Pass.Colors[0].StoreOp = StoreOp.Store;
-        res.Deps.Textures[0] = res.Textures[SystemBufferNames.TextureDepthF32];
-        res.Deps.Buffers[0] = res.Buffers[SystemBufferNames.BufferMeshDrawOpaque];
-        res.Deps.Buffers[1] = res.Buffers[SystemBufferNames.BufferLightGrid];
-        res.Deps.Buffers[2] = res.Buffers[SystemBufferNames.BufferLightIndex];
-        res.Deps.Buffers[3] = res.Buffers[SystemBufferNames.BufferPBRProperties];
-        res.Deps.Buffers[4] = res.Buffers[SystemBufferNames.BufferForwardPlusConstants];
+
+        res.Framebuf.Colors[1].Texture = res.Textures[SystemBufferNames.TextureEntityId];
+        res.Pass.Colors[1].ClearColor = new Color4(0, 0, 0, 0);
+        res.Pass.Colors[1].LoadOp = LoadOp.Clear;
+        res.Pass.Colors[1].StoreOp = StoreOp.Store;
+        res.Deps.PushTexture(res.Textures[SystemBufferNames.TextureDepthF32]);
+        res.Deps.PushBuffer(res.Buffers[SystemBufferNames.BufferLightGrid]);
+        res.Deps.PushBuffer(res.Buffers[SystemBufferNames.BufferLightIndex]);
+        res.Deps.PushBuffer(res.Buffers[SystemBufferNames.BufferPBRProperties]);
+        res.Deps.PushBuffer(res.Buffers[SystemBufferNames.BufferForwardPlusConstants]);
     }
 
     protected override bool BeginRender(in RenderResources res)
@@ -46,17 +50,23 @@ public sealed class ForwardPlusOpaqueNode : RenderNode
 
         if (res.RenderContext.Data!.MeshDrawsOpaque.Count == 0)
             return false;
-
+        res.Pass.DepthState = DepthState.ReadOnlyInvZ;
         return base.BeginRender(in res);
     }
 
     protected override void OnRender(in RenderResources res)
     {
-        res.CmdBuffer.BindDepthState(DepthState.ReadOnlyInvZ);
         res.RenderContext.Statistics.DrawCalls += RenderHelper.RenderOpaque(
             in res,
             res.Buffers[SystemBufferNames.BufferForwardPlusConstants]
-                .GpuAddress(res.RenderContext.Context)
+                .GpuAddress(res.RenderContext.Context),
+            false
+        );
+        res.RenderContext.Statistics.DrawCalls += RenderHelper.RenderOpaque(
+            in res,
+            res.Buffers[SystemBufferNames.BufferForwardPlusConstants]
+                .GpuAddress(res.RenderContext.Context),
+            true
         );
     }
 
@@ -70,7 +80,7 @@ public sealed class ForwardPlusOpaqueNode : RenderNode
                 nameof(ForwardPlusOpaqueNode),
                 inputs:
                 [
-                    new(SystemBufferNames.BufferMeshDrawOpaque, ResourceType.Buffer),
+                    new(SystemBufferNames.BufferMeshDrawPlaceholder, ResourceType.Buffer),
                     new(SystemBufferNames.TextureDepthF32, ResourceType.Texture),
                     new(SystemBufferNames.BufferLightGrid, ResourceType.Buffer),
                     new(SystemBufferNames.BufferLightIndex, ResourceType.Buffer),

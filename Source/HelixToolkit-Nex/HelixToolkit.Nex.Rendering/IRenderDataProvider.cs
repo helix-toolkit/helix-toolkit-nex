@@ -1,5 +1,5 @@
 using HelixToolkit.Nex.ECS;
-
+using HelixToolkit.Nex.Rendering.Components;
 using HelixToolkit.Nex.Rendering.DataEntries;
 
 namespace HelixToolkit.Nex.Rendering;
@@ -26,98 +26,63 @@ public interface IStaticMeshIndexData : IRenderData
 public interface IMeshDrawData : IRenderData
 {
     /// <summary>
-    /// Gets the collection of mesh draw commands to be executed during rendering.
-    /// The draw commands is ordered as following:
-    /// <para>
-    /// [Static Meshes without Instancing, Static Meshes with Instancing, Dynamic Meshes without Instancing, Dynamic Meshes with Instancing]
-    /// </para>
-    /// <para>
-    /// All mesh draw commands are sorted based on their material types.
-    /// Use the provided methods to query the valid value ranges for each category of mesh draw commands based on material types.
-    /// </para>
-    /// </summary>
-    IReadOnlyList<MeshDraw> DrawCommands { get; }
-
-    /// <summary>
     /// Gets the collection of material types available in the current context.
     /// </summary>
     IEnumerable<MaterialTypeId> MaterialTypes { get; }
 
     /// <summary>
-    /// Gets a value indicating whether mesh draw data contains any dynamic mesh.
+    /// Check if any draw data exists for the specified mesh component variant.
     /// </summary>
-    bool HasDynamicMesh { get; }
+    /// <param name="variant"></param>
+    /// <returns></returns>
+    bool HasAny(MeshVariant variant);
+    /// <summary>
+    /// Retrieves the collection of material type identifiers associated with the specified mesh variant.
+    /// </summary>
+    /// <param name="variant">The mesh variant for which to obtain the corresponding material type identifiers.</param>
+    /// <returns>An enumerable collection of material type identifiers for the given mesh variant. The collection is empty if no
+    /// material types are associated with the variant.</returns>
+    IEnumerable<MaterialTypeId> GetMaterialTypes(MeshVariant variant);
+    /// <summary>
+    /// Retrieves the buffer handle and draw range associated with the specified material type and mesh component
+    /// variant.
+    /// </summary>
+    /// <param name="id">The identifier of the material type for which to retrieve the buffer and range.</param>
+    /// <param name="variant">The set of mesh component variant that influence the selection of the buffer and draw range.</param>
+    /// <returns>A tuple containing the draw range and buffer handle corresponding to the specified material type and mesh
+    /// component variant.</returns>
+    (BufferHandle, DrawRange) GetBufferByMaterial(MaterialTypeId id, MeshVariant variant);
 
     /// <summary>
-    /// Gets a value indicating whether mesh draw data contains any dynamic instancing mesh.
+    /// Retrieves the buffer and draw range associated with the specified mesh component variant.
     /// </summary>
-    bool HasDynamicInstancingMesh { get; }
+    /// <param name="variant">The set of mesh component variant for which to obtain the buffer and draw range.</param>
+    /// <returns>A tuple containing the draw range and buffer handle corresponding to the requested variant.</returns>
+    (BufferHandle, DrawRange) GetBuffer(MeshVariant variant);
 
     /// <summary>
-    /// Gets a value indicating whether mesh draw data contains any static mesh.
+    /// Retrieves the <see cref="MeshDraw"/> information associated with the specified mesh component variant, material type, and draw index.
     /// </summary>
-    bool HasStaticMesh { get; }
+    /// <param name="variant">The set of mesh component variant for which to obtain the mesh draw information.</param>
+    /// <param name="id">The identifier of the material type for which to retrieve the mesh draw information.</param>
+    /// <param name="drawIndex">The index of the draw call for which to retrieve the mesh draw information. The index must pass in the range returned by <see cref="GetRangeByMaterial(MeshVariant, MaterialTypeId)"/>.</param>
+    /// <returns>The <see cref="MeshDraw"/> information corresponding to the specified mesh component variant, material type, and draw index.</returns>
+    MeshDraw GetMeshDraw(MeshVariant variant, MaterialTypeId id, int drawIndex);
 
     /// <summary>
-    /// Gets a value indicating whether mesh draw data contains any static instancing mesh.
+    /// Retrieves the mesh draw information and associated buffer handle for the specified entity.
     /// </summary>
-    bool HasStaticInstancingMesh { get; }
+    /// <param name="entity">The entity for which to obtain mesh draw data. Must reference a valid entity containing mesh information.</param>
+    /// <returns>A tuple containing the buffer handle, the mesh draw data, and the draw index for the specified entity.</returns>
+    (BufferHandle, MeshDraw, int DrawIndex) GetMeshDraw(Entity entity);
 
     /// <summary>
-    /// Gets the valid value range for the specified static mesh material type in draw command buffer.
+    /// Retrieves the draw range associated with the specified mesh component variant and material type.
     /// </summary>
-    /// <param name="id">The material type for which to retrieve the valid value range.</param>
-    /// <returns>A <see cref="DrawRange"/> representing the minimum and maximum valid values for the specified material type.</returns>
-    DrawRange GetRangeStaticMesh(MaterialTypeId id);
-
-    /// <summary>
-    /// Gets the range of all static mesh draws.
-    /// </summary>
-    /// <returns>A <see cref="DrawRange"/>structure representing the range of static mesh draws inside the draw buffer.</returns>
-    DrawRange RangeStaticMesh { get; }
-
-    /// <summary>
-    /// Gets the range of static mesh instancing supported for the specified material type in draw command buffer.
-    /// </summary>
-    /// <param name="id">The material type for which to retrieve the supported static mesh instancing range.</param>
-    /// <returns>A <see cref="DrawRange"/> representing the range of static instancing mesh draws for the specified material type inside the draw buffer</returns>
-    DrawRange GetRangeStaticMeshInstancing(MaterialTypeId id);
-
-    /// <summary>
-    /// Gets the range of static mesh instancing draws.
-    /// </summary>
-    /// <returns>A <see cref="DrawRange"/> structure representing the range of static mesh instancing draws inside the draw buffer.</returns>
-    DrawRange RangeStaticMeshInstancing { get; }
-
-    /// <summary>
-    /// Returns the valid value range for the specified <see cref="MaterialType"/> when using a dynamic mesh in draw command buffer.
-    /// </summary>
-    /// <param name="id">The material type for which to retrieve the valid value range.</param>
-    /// <returns>A <see cref="DrawRange"/> representing the minimum and maximum valid values for the given <paramref
-    /// name="id"/> in the context of a dynamic mesh.</returns>
-    DrawRange GetRangeDynamicMesh(MaterialTypeId id);
-
-    /// <summary>
-    /// Gets the current range of the dynamic mesh draws.
-    /// </summary>
-    /// <returns>A <see cref="DrawRange"/> structure representing the range of dynamic mesh draws inside the draw buffer.</returns>
-    DrawRange RangeDynamicMesh { get; }
-
-    /// <summary>
-    /// Gets the valid range of dynamic mesh instancing supported for the specified material type in draw command buffer.
-    /// </summary>
-    /// <remarks>Use this method to determine the supported instancing limits before creating or configuring
-    /// dynamic mesh instances for a particular material type.</remarks>
-    /// <param name="id">The type of material for which to retrieve the supported dynamic mesh instancing range.</param>
-    /// <returns>A <see cref="DrawRange"/> representing the minimum and maximum number of dynamic mesh instances allowed for the
-    /// given material type.</returns>
-    DrawRange GetRangeDynamicMeshInstancing(MaterialTypeId id);
-
-    /// <summary>
-    /// Gets the range of indices used for dynamic mesh instancing.
-    /// </summary>
-    /// <returns>A <see cref="DrawRange"/> structure representing the range of dynamic mesh instancing draws inside the draw buffer.</returns>
-    DrawRange RangeDynamicMeshInstancing { get; }
+    /// <param name="variant">The set of mesh component variant for which to obtain the draw range.</param>
+    /// <param name="id">The identifier of the material type for which to retrieve the draw range.</param>
+    /// <returns>The draw range corresponding to the specified mesh component variant and material type.</returns>
+    DrawRange GetRangeByMaterial(MeshVariant variant, MaterialTypeId id);
 }
 
 /// <summary>
@@ -172,6 +137,11 @@ public interface IRenderDataProvider
     /// Gets the shared resource manager.
     /// </summary>
     IResourceManager ResourceManager { get; }
+
+    /// <summary>
+    /// Gets renderable node information for all renderable entities in current world. This includes data such as entity IDs, transforms, and enabled states,
+    /// </summary>
+    IRenderData NodeInfos { get; }
 
     /// <summary>
     /// Gets the collection of range light (point light, spot light) sources used for rendering the scene.

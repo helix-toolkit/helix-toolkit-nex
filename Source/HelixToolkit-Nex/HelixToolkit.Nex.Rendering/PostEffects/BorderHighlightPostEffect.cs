@@ -1,6 +1,7 @@
 using HelixToolkit.Nex.ECS;
 using HelixToolkit.Nex.Rendering.Components;
 using HelixToolkit.Nex.Rendering.RenderNodes;
+using HelixToolkit.Nex.Scene;
 using HelixToolkit.Nex.Shaders.Frag;
 
 namespace HelixToolkit.Nex.Rendering.PostEffects;
@@ -172,7 +173,7 @@ public sealed class BorderHighlightPostEffect : PostEffect
                 data,
                 _entriesOpaque,
                 res.Buffers[SystemBufferNames.BufferForwardPlusConstants],
-                data.MeshDrawsOpaque.GpuAddress
+                data.MeshDrawsOpaque
             );
         }
         if (_entriesTransparent.Count > 0)
@@ -182,8 +183,9 @@ public sealed class BorderHighlightPostEffect : PostEffect
                 cmdBuffer,
                 maskTex,
                 data,
-                _entriesTransparent, res.Buffers[SystemBufferNames.BufferForwardPlusConstants],
-                data.MeshDrawsTransparent.GpuAddress
+                _entriesTransparent,
+                res.Buffers[SystemBufferNames.BufferForwardPlusConstants],
+                data.MeshDrawsTransparent
             );
         }
 
@@ -252,28 +254,15 @@ public sealed class BorderHighlightPostEffect : PostEffect
 
         foreach (var entity in world.GetComponentEntities<BorderHighlightComponent>())
         {
-            if (!entity.Has<MeshComponent>())
+            if (!entity.Has<MeshComponent>() || !entity.Has<Renderable>())
             {
                 continue;
             }
-
-            ref var meshComp = ref entity.Get<MeshComponent>();
-            if (!meshComp.Valid || meshComp.Index < 0)
-            {
-                continue;
-            }
-
-            // Validate the draw command index is within the buffer range.
-            if ((uint)meshComp.Index >= meshDraws.Count)
-            {
-                continue;
-            }
-
             ref var highlight = ref entity.Get<BorderHighlightComponent>();
             var entries = entity.Has<TransparentComponent>() ? _entriesTransparent : _entriesOpaque;
             entries.Add(
                 new HighlightEntry(
-                    DrawIndex: (uint)meshComp.Index,
+                    entity,
                     Color: highlight.Color,
                     Thickness: highlight.Thickness > 0 ? highlight.Thickness : 2f
                 )
@@ -294,20 +283,20 @@ public sealed class BorderHighlightPostEffect : PostEffect
         IRenderDataProvider data,
         List<HighlightEntry> entries,
         BufferHandle fpBuffer,
-        ulong meshDrawAddress
+        IMeshDrawData meshDraws
     )
     {
         var context = res.RenderContext!;
-        var meshDraws = data.MeshDrawsOpaque;
 
         _pass.Colors[0].ClearColor = new Color4(0f, 0f, 0f, 0f);
         _pass.Colors[0].LoadOp = LoadOp.Clear;
         _pass.Colors[0].StoreOp = StoreOp.Store;
 
         _frameBuffer.Colors[0].Texture = maskTex;
-        _deps.Buffers[0] = fpBuffer;
 
-        cmdBuffer.BeginRendering(_pass, _frameBuffer, _deps);
+        using var scope = res.Deps.PushBufferScoped(fpBuffer);
+
+        cmdBuffer.BeginRendering(_pass, _frameBuffer, res.Deps);
         cmdBuffer.BindRenderPipeline(_maskPipeline);
         cmdBuffer.BindDepthState(DepthState.Disabled);
 
@@ -318,7 +307,11 @@ public sealed class BorderHighlightPostEffect : PostEffect
 
         foreach (var entry in entries)
         {
-            var drawCmd = meshDraws.DrawCommands[(int)entry.DrawIndex];
+            var (buffer, drawCmd, drawIndex) = meshDraws.GetMeshDraw(entry.Entity);
+            if (buffer == BufferHandle.Null || drawIndex < 0)
+            {
+                continue;
+            }
             var isDynamic = drawCmd.IsDynamic();
             if (!isDynamic)
             {
@@ -339,15 +332,16 @@ public sealed class BorderHighlightPostEffect : PostEffect
                 new MeshDrawPushConstant
                 {
                     FpConstAddress = fpConstAddress,
-                    DrawCommandIdxOffset = entry.DrawIndex,
-                    MeshDrawId = entry.DrawIndex,
-                    MeshDrawBufferAddress = meshDrawAddress,
+                    DrawCommandIdxOffset = 0,
+                    MeshDrawId = (uint)drawIndex,
+                    MeshDrawBufferAddress = buffer.GpuAddress(Context!),
+                    NodeInfoBufferAddress = data.NodeInfos.GpuAddress,
                 }
             );
 
             cmdBuffer.DrawIndexedIndirect(
-                meshDraws.Buffer,
-                entry.DrawIndex * meshDraws.Stride,
+                buffer,
+                (uint)drawIndex * meshDraws.Stride,
                 1,
                 meshDraws.Stride
             );
@@ -437,10 +431,11 @@ public sealed class BorderHighlightPostEffect : PostEffect
         TextureHandle input2Handle = default
     )
     {
-        _deps.Textures[0] = inputHandle;
+        _deps.Clear();
+        _deps.PushTexture(inputHandle);
         if (input2Handle.Valid)
         {
-            _deps.Textures[1] = input2Handle;
+            _deps.PushTexture(input2Handle);
         }
 
         _pass.Colors[0].LoadOp = LoadOp.Load;
@@ -572,5 +567,5 @@ public sealed class BorderHighlightPostEffect : PostEffect
     // Internal data
     // -----------------------------------------------------------------------
 
-    private readonly record struct HighlightEntry(uint DrawIndex, Color4 Color, float Thickness);
+    private readonly record struct HighlightEntry(Entity Entity, Color4 Color, float Thickness);
 }

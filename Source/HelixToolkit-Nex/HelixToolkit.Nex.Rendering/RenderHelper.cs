@@ -1,3 +1,5 @@
+using HelixToolkit.Nex.Rendering.Components;
+
 namespace HelixToolkit.Nex.Rendering;
 
 public static class RenderHelper
@@ -9,6 +11,7 @@ public static class RenderHelper
     /// </summary>
     /// <param name="res">The render resources.</param>
     /// <param name="fpConstAddress">The GPU address of the forward+ constants buffer.</param>
+    /// <param name="renderHitable"><see langword="true"/> to render hitable meshes; otherwise, <see langword="false"/>.</param>
     /// <param name="renderStatic"><see langword="true"/> to render static opaque objects; otherwise, <see langword="false"/>. Defaults to <see
     /// langword="true"/>.</param>
     /// <param name="renderDynamic"><see langword="true"/> to render dynamic opaque objects; otherwise, <see langword="false"/>. Defaults to <see
@@ -20,6 +23,7 @@ public static class RenderHelper
     public static uint RenderOpaque(
         in RenderResources res,
         ulong fpConstAddress,
+        bool renderHitable,
         bool renderStatic = true,
         bool renderDynamic = true,
         bool renderInstancing = true
@@ -28,11 +32,13 @@ public static class RenderHelper
         if (res.RenderContext.Data is null)
             return 0;
         uint drawCount = 0;
+        var baseVariant = renderHitable ? MeshVariant.Hitable : MeshVariant.None;
         if (renderStatic)
         {
             drawCount += RenderStatic(
                 in res,
                 fpConstAddress,
+                baseVariant,
                 res.RenderContext.Data.MeshDrawsOpaque,
                 renderInstancing,
                 MaterialPassType.Opaque
@@ -43,6 +49,7 @@ public static class RenderHelper
             drawCount += RenderDynamic(
                 in res,
                 fpConstAddress,
+                baseVariant,
                 res.RenderContext.Data.MeshDrawsOpaque,
                 renderInstancing,
                 MaterialPassType.Opaque
@@ -56,6 +63,7 @@ public static class RenderHelper
     /// </summary>
     /// <param name="res">The render resources.</param>
     /// <param name="fpConstAddress">The GPU address of the forward+ constants buffer.</param>
+    /// <param name="renderHitable"><see langword="true"/> to render hitable meshes; otherwise, <see langword="false"/>.</param>
     /// <param name="renderStatic"><see langword="true"/> to render static opaque objects; otherwise, <see langword="false"/>. Defaults to <see
     /// langword="true"/>.</param>
     /// <param name="renderDynamic"><see langword="true"/> to render dynamic opaque objects; otherwise, <see langword="false"/>. Defaults to <see
@@ -67,6 +75,7 @@ public static class RenderHelper
     public static uint RenderTransparent(
         in RenderResources res,
         ulong fpConstAddress,
+        bool renderHitable,
         bool renderStatic = true,
         bool renderDynamic = true,
         bool renderInstancing = true
@@ -75,11 +84,13 @@ public static class RenderHelper
         if (res.RenderContext.Data is null)
             return 0;
         uint drawCount = 0;
+        var baseVariant = renderHitable ? MeshVariant.Hitable : MeshVariant.None;
         if (renderStatic)
         {
             drawCount += RenderStatic(
                 in res,
                 fpConstAddress,
+                baseVariant,
                 res.RenderContext.Data.MeshDrawsTransparent,
                 renderInstancing,
                 MaterialPassType.Transparent
@@ -90,6 +101,7 @@ public static class RenderHelper
             drawCount += RenderDynamic(
                 in res,
                 fpConstAddress,
+                baseVariant,
                 res.RenderContext.Data.MeshDrawsTransparent,
                 renderInstancing,
                 MaterialPassType.Transparent
@@ -106,6 +118,7 @@ public static class RenderHelper
     /// material type unless the context is configured to use an external pipeline.</remarks>
     /// <param name="res">The render resources.</param>
     /// <param name="fpConstAddress">The GPU address of the forward+ constants buffer.</param>
+    /// <param name="baseVariant">Mesh base variant</param>
     /// <param name="meshDrawData">The mesh draw data containing geometry and material information to render.</param>
     /// <param name="renderInstancing"><see langword="true"/> to enable instanced rendering; <see langword="false"/> to render without instancing.
     /// Instancing can improve performance when rendering multiple copies of the same mesh.</param>
@@ -114,6 +127,7 @@ public static class RenderHelper
     public static uint RenderStatic(
         in RenderResources res,
         ulong fpConstAddress,
+        MeshVariant baseVariant,
         IMeshDrawData meshDrawData,
         bool renderInstancing = true,
         MaterialPassType passType = MaterialPassType.Opaque
@@ -127,11 +141,11 @@ public static class RenderHelper
         var cmdBuf = res.CmdBuffer;
         var context = res.RenderContext;
         cmdBuf.BindIndexBuffer(context.Data.StaticMeshIndexData.Buffer, IndexFormat.UI32);
-        if (meshDrawData.HasStaticMesh)
+        if (meshDrawData.HasAny(baseVariant))
         {
-            foreach (var materialType in meshDrawData.MaterialTypes)
+            foreach (var materialType in meshDrawData.GetMaterialTypes(baseVariant))
             {
-                var range = meshDrawData.GetRangeStaticMesh(materialType);
+                var (buffer, range) = meshDrawData.GetBufferByMaterial(materialType, baseVariant);
                 if (range.Empty)
                     continue;
                 ulong customMaterialBufferAddress = 0;
@@ -147,6 +161,10 @@ public static class RenderHelper
                         continue;
                     }
                     customMaterialBufferAddress = mat.CustomBufferAddress;
+                    if (passType == MaterialPassType.Transparent && !baseVariant.HasFlag(MeshVariant.Hitable))
+                    {
+                        cmdBuf.SetColorWriteEnabled(res.Pass.ColorWrites);
+                    }
                 }
                 cmdBuf.PushConstants(
                     new MeshDrawPushConstant
@@ -154,11 +172,12 @@ public static class RenderHelper
                         FpConstAddress = fpConstAddress,
                         CustomMaterialBufferAddress = customMaterialBufferAddress,
                         DrawCommandIdxOffset = range.Start,
-                        MeshDrawBufferAddress = meshDrawData.Buffer.GpuAddress(res.RenderContext.Context),
+                        MeshDrawBufferAddress = buffer.GpuAddress(res.RenderContext.Context),
+                        NodeInfoBufferAddress = context.Data.NodeInfos.GpuAddress,
                     }
                 );
                 cmdBuf.DrawIndexedIndirect(
-                    meshDrawData.Buffer,
+                    buffer,
                     range.Start * meshDrawData.Stride,
                     range.Count,
                     meshDrawData.Stride
@@ -167,11 +186,12 @@ public static class RenderHelper
             }
         }
 
-        if (renderInstancing && meshDrawData.HasStaticInstancingMesh)
+        baseVariant |= MeshVariant.Instancing;
+        if (renderInstancing && meshDrawData.HasAny(baseVariant))
         {
-            foreach (var materialType in meshDrawData.MaterialTypes)
+            foreach (var materialType in meshDrawData.GetMaterialTypes(baseVariant))
             {
-                var range = meshDrawData.GetRangeStaticMeshInstancing(materialType);
+                var (buffer, range) = meshDrawData.GetBufferByMaterial(materialType, baseVariant);
                 if (range.Empty)
                     continue;
                 ulong customMaterialBufferAddress = 0;
@@ -187,6 +207,10 @@ public static class RenderHelper
                         continue;
                     }
                     customMaterialBufferAddress = mat.CustomBufferAddress;
+                    if (passType == MaterialPassType.Transparent && !baseVariant.HasFlag(MeshVariant.Hitable))
+                    {
+                        cmdBuf.SetColorWriteEnabled(res.Pass.ColorWrites);
+                    }
                 }
                 cmdBuf.PushConstants(
                     new MeshDrawPushConstant
@@ -194,11 +218,12 @@ public static class RenderHelper
                         FpConstAddress = fpConstAddress,
                         CustomMaterialBufferAddress = customMaterialBufferAddress,
                         DrawCommandIdxOffset = range.Start,
-                        MeshDrawBufferAddress = meshDrawData.Buffer.GpuAddress(res.RenderContext.Context),
+                        MeshDrawBufferAddress = buffer.GpuAddress(res.RenderContext.Context),
+                        NodeInfoBufferAddress = context.Data.NodeInfos.GpuAddress,
                     }
                 );
                 cmdBuf.DrawIndexedIndirect(
-                    meshDrawData.Buffer,
+                    buffer,
                     range.Start * meshDrawData.Stride,
                     range.Count,
                     meshDrawData.Stride
@@ -217,6 +242,7 @@ public static class RenderHelper
     /// pipeline, pipeline binding is skipped.</remarks>
     /// <param name="res">The render resources.</param>
     /// <param name="fpConstAddress">The GPU address of the forward+ constants buffer.</param>
+    /// <param name="baseVariant">Mesh base variant</param>
     /// <param name="meshDrawData">The mesh draw data containing geometry and material information to render. Must not be <c>null</c>.</param>
     /// <param name="renderInstancing"><see langword="true"/> to enable instanced rendering where supported; otherwise, <see langword="false"/> to
     /// render without instancing. The default is <see langword="true"/>.</param>
@@ -226,6 +252,7 @@ public static class RenderHelper
     public static uint RenderDynamic(
         in RenderResources res,
         ulong fpConstAddress,
+        MeshVariant baseVariant,
         IMeshDrawData meshDrawData,
         bool renderInstancing = true,
         MaterialPassType passType = MaterialPassType.Opaque
@@ -238,11 +265,12 @@ public static class RenderHelper
         uint drawCount = 0;
         var cmdBuf = res.CmdBuffer;
         var context = res.RenderContext;
-        if (meshDrawData.HasDynamicMesh)
+        baseVariant |= MeshVariant.Dynamic;
+        if (meshDrawData.HasAny(baseVariant))
         {
-            foreach (var materialType in meshDrawData.MaterialTypes)
+            foreach (var materialType in meshDrawData.GetMaterialTypes(baseVariant))
             {
-                var range = meshDrawData.GetRangeDynamicMesh(materialType);
+                var (buffer, range) = meshDrawData.GetBufferByMaterial(materialType, baseVariant);
                 if (range.Empty)
                     continue;
                 ulong customMaterialBufferAddress = 0;
@@ -258,11 +286,16 @@ public static class RenderHelper
                         continue;
                     }
                     customMaterialBufferAddress = mat.CustomBufferAddress;
+                    if (passType == MaterialPassType.Transparent && !baseVariant.HasFlag(MeshVariant.Hitable))
+                    {
+                        cmdBuf.SetColorWriteEnabled(res.Pass.ColorWrites);
+                    }
                 }
 
-                for (var i = range.Start; i < range.Start + range.Count; i++)
+                for (var i = range.Start; i < range.Start + range.Count; ++i)
                 {
-                    if (meshDrawData.DrawCommands[(int)i].IndexCount == 0)
+                    var meshDraw = meshDrawData.GetMeshDraw(baseVariant, materialType, (int)i);
+                    if (meshDraw.IndexCount == 0)
                     {
                         _logger.LogError(
                             "MeshDrawData contains a draw command with zero indices at index {Id}, skipping",
@@ -270,7 +303,7 @@ public static class RenderHelper
                         );
                         continue;
                     }
-                    var meshId = meshDrawData.DrawCommands[(int)i].MeshId;
+                    var meshId = meshDraw.MeshId;
                     var geometry = context.Data.GetGeometry(meshId);
                     if (geometry is null)
                     {
@@ -288,13 +321,14 @@ public static class RenderHelper
                         {
                             FpConstAddress = fpConstAddress,
                             CustomMaterialBufferAddress = customMaterialBufferAddress,
-                            DrawCommandIdxOffset = range.Start,
-                            MeshDrawBufferAddress = meshDrawData.Buffer.GpuAddress(res.RenderContext.Context),
+                            DrawCommandIdxOffset = 0,
+                            MeshDrawBufferAddress = buffer.GpuAddress(res.RenderContext.Context),
                             MeshDrawId = i,
+                            NodeInfoBufferAddress = context.Data.NodeInfos.GpuAddress,
                         }
                     );
                     cmdBuf.DrawIndexedIndirect(
-                        meshDrawData.Buffer,
+                        buffer,
                         i * meshDrawData.Stride,
                         1,
                         meshDrawData.Stride
@@ -304,11 +338,12 @@ public static class RenderHelper
             }
         }
 
-        if (renderInstancing && meshDrawData.HasDynamicInstancingMesh)
+        baseVariant |= MeshVariant.Dynamic;
+        if (renderInstancing && meshDrawData.HasAny(baseVariant))
         {
-            foreach (var materialType in meshDrawData.MaterialTypes)
+            foreach (var materialType in meshDrawData.GetMaterialTypes(baseVariant))
             {
-                var range = meshDrawData.GetRangeDynamicMeshInstancing(materialType);
+                var (buffer, range) = meshDrawData.GetBufferByMaterial(materialType, baseVariant);
                 if (range.Empty)
                     continue;
                 ulong customMaterialBufferAddress = 0;
@@ -324,10 +359,15 @@ public static class RenderHelper
                         continue;
                     }
                     customMaterialBufferAddress = mat.CustomBufferAddress;
+                    if (passType == MaterialPassType.Transparent && !baseVariant.HasFlag(MeshVariant.Hitable))
+                    {
+                        cmdBuf.SetColorWriteEnabled(res.Pass.ColorWrites);
+                    }
                 }
                 for (var i = range.Start; i < range.Start + range.Count; i++)
                 {
-                    var meshId = meshDrawData.DrawCommands[(int)i].MeshId;
+                    var meshDraw = meshDrawData.GetMeshDraw(baseVariant, materialType, (int)i);
+                    var meshId = meshDraw.MeshId;
                     var geometry = context.Data.GetGeometry(meshId);
                     if (geometry is null)
                     {
@@ -345,13 +385,14 @@ public static class RenderHelper
                         {
                             FpConstAddress = fpConstAddress,
                             CustomMaterialBufferAddress = customMaterialBufferAddress,
-                            DrawCommandIdxOffset = range.Start,
-                            MeshDrawBufferAddress = meshDrawData.Buffer.GpuAddress(res.RenderContext.Context),
+                            DrawCommandIdxOffset = 0,
+                            MeshDrawBufferAddress = buffer.GpuAddress(res.RenderContext.Context),
                             MeshDrawId = i,
+                            NodeInfoBufferAddress = context.Data.NodeInfos.GpuAddress,
                         }
                     );
                     cmdBuf.DrawIndexedIndirect(
-                        meshDrawData.Buffer,
+                        buffer,
                         i * meshDrawData.Stride,
                         1,
                         meshDrawData.Stride
@@ -361,15 +402,5 @@ public static class RenderHelper
             }
         }
         return drawCount;
-    }
-
-    public static bool IsDynamic(this MeshDraw meshDraw)
-    {
-        return (meshDraw.DrawType & 0x1u) != 0u;
-    }
-
-    public static bool IsInstancing(this MeshDraw meshDraw)
-    {
-        return (meshDraw.DrawType & 0x2u) != 0u;
     }
 }

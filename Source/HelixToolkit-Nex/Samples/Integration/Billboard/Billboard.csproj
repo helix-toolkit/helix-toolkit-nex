@@ -12,6 +12,7 @@
         <ProjectReference Include="..\..\..\HelixToolkit.Nex.Graphics.Vulkan\HelixToolkit.Nex.Graphics.Vulkan.csproj" />
         <ProjectReference Include="..\..\..\HelixToolkit.Nex.ImGui\HelixToolkit.Nex.ImGui.csproj" />
         <ProjectReference Include="..\..\Application\Application.csproj" />
+        <ProjectReference Include="..\..\SceneSamples\SceneSamples.csproj" />
     </ItemGroup>
 
     <ItemGroup>

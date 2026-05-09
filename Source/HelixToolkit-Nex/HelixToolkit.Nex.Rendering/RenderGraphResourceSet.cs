@@ -180,12 +180,6 @@ public sealed class RenderGraphResourceSet : IDisposable
             Textures[SystemBufferNames.FinalOutputTexture] = context.FinalOutputTexture;
         }
 
-        Buffers[SystemBufferNames.BufferMeshDrawOpaque] =
-            context.Data?.MeshDrawsOpaque.Buffer ?? BufferResource.Null;
-
-        Buffers[SystemBufferNames.BufferMeshDrawTransparent] =
-            context.Data?.MeshDrawsTransparent.Buffer ?? BufferResource.Null;
-
         Buffers[SystemBufferNames.BufferDirectionalLight] =
             context.Data?.DirectionalLights.Buffer ?? BufferResource.Null;
 
@@ -197,6 +191,9 @@ public sealed class RenderGraphResourceSet : IDisposable
 
         Buffers[SystemBufferNames.BufferMeshInfo] =
             context.Data?.MeshInfos.Buffer ?? BufferResource.Null;
+
+        Buffers[SystemBufferNames.BufferNodeInfo] =
+            context.Data?.NodeInfos.Buffer ?? BufferResource.Null;
     }
 
     private void CreateAllResources(RenderContext context)

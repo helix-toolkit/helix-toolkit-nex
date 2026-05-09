@@ -18,10 +18,9 @@ public static class SystemBufferNames
     /// </summary>
     public const string TextureColorF16Target = "TexColorF16Target";
 
-    public const string BufferMeshDrawOpaque = "BufMeshDrawOpaque";
-    public const string BufferMeshDrawTransparent = "BufMeshDrawTrans";
-
     public const string BufferMeshInfo = "BufMeshInfo";
+    public const string BufferNodeInfo = "BufNodeInfo";
+    public const string BufferMeshDrawPlaceholder = "BufferMeshDraw";
 
     /// <summary>
     /// RGBA16F accumulation texture for Weighted Blended Order-Independent Transparency (WBOIT).
