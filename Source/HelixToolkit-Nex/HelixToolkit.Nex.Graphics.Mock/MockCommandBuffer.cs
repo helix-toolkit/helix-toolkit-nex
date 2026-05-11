@@ -361,4 +361,19 @@ public class MockCommandBuffer : ICommandBuffer
     {
         _recordedCommands.Add($"SetCheckpointMarker({System.Text.Encoding.UTF8.GetString(label)})");
     }
+
+    public void BindRenderPipeline(in RenderPipelineHandle handle, ReadOnlySpan<bool> colorWrites)
+    {
+        _recordedCommands.Add($"BindRenderPipeline({handle.Index}, colorWrites=[{string.Join(", ", colorWrites.ToArray())}])");
+    }
+
+    public void ClearDepthStencilImage(in TextureHandle tex, float depth = 0, uint stencil = 0)
+    {
+        _recordedCommands.Add($"ClearDepthStencilImage(texture={tex.Index}, depth={depth}, stencil={stencil})");
+    }
+
+    public void SetColorWriteEnabled(ReadOnlySpan<bool> colorAttachmentStates)
+    {
+        _recordedCommands.Add($"SetColorWriteEnabled([{string.Join(", ", colorAttachmentStates.ToArray())}])");
+    }
 }
