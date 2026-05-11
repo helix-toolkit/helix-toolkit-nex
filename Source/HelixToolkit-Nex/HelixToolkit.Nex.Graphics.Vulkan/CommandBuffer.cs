@@ -760,7 +760,6 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
             {
                 if (_inputAttachments.Count > 0)
                 {
-
                     var writes = stackalloc VkWriteDescriptorSet[Constants.MAX_COLOR_ATTACHMENTS];
                     using var pImageInfos = _inputAttachments.ImageInfos.Pin();
                     for (uint i = 0; i < _inputAttachments.Count; ++i)
@@ -789,7 +788,11 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
                 {
                     attachmentWrites[i] = colorWrites[i] ? VK_BOOL.True : VK_BOOL.False;
                 }
-                VK.vkCmdSetColorWriteEnableEXT(CmdBuffer, Constants.MAX_COLOR_ATTACHMENTS, attachmentWrites);
+                VK.vkCmdSetColorWriteEnableEXT(
+                    CmdBuffer,
+                    Constants.MAX_COLOR_ATTACHMENTS,
+                    attachmentWrites
+                );
             }
         }
     }
@@ -911,7 +914,83 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
                 &range
             );
         }
+        // a ternary cascade...
+        VkImageLayout newLayout =
+            img.ImageLayout == VK.VK_IMAGE_LAYOUT_UNDEFINED
+                ? (
+                    img.IsAttachment ? VK.VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL
+                    : img.IsSampledImage ? VK.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+                    : VK.VK_IMAGE_LAYOUT_GENERAL
+                )
+                : img.ImageLayout;
 
+        CmdBuffer.ImageMemoryBarrier2(
+            img.Image,
+            new StageAccess2()
+            {
+                Stage = VkPipelineStageFlags2.Transfer,
+                Access = VkAccessFlags2.TransferWrite,
+            },
+            new StageAccess2
+            {
+                Stage = VkPipelineStageFlags2.AllCommands,
+                Access = VkAccessFlags2.MemoryRead | VkAccessFlags2.MemoryWrite,
+            },
+            VK.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            newLayout,
+            range
+        );
+
+        img.ImageLayout = newLayout;
+    }
+
+    /// <inheritdoc/>
+    public void ClearDepthStencilImage(in TextureHandle tex, float depth = 0, uint stencil = 0)
+    {
+        var img = _ctx.TexturesPool.Get(tex);
+
+        if (img is null || !img.Valid)
+        {
+            return;
+        }
+        VkImageSubresourceRange range = new()
+        {
+            aspectMask = img.GetImageAspectFlags(),
+            baseMipLevel = 0,
+            levelCount = VK.VK_REMAINING_MIP_LEVELS,
+            baseArrayLayer = 0,
+            layerCount = 1,
+        };
+
+        CmdBuffer.ImageMemoryBarrier2(
+            img.Image,
+            new StageAccess2
+            {
+                Stage = VkPipelineStageFlags2.AllCommands,
+                Access = VkAccessFlags2.MemoryRead | VkAccessFlags2.MemoryWrite,
+            },
+            new StageAccess2
+            {
+                Stage = VkPipelineStageFlags2.Transfer,
+                Access = VkAccessFlags2.TransferWrite,
+            },
+            img.ImageLayout,
+            VK.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            range
+        );
+
+        unsafe
+        {
+            VkClearDepthStencilValue vkClearValue = new(depth, stencil);
+            VK.vkCmdClearDepthStencilImage(
+                CmdBuffer,
+                img.Image,
+                VK.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                &vkClearValue,
+                1,
+                &range
+            );
+        }
         // a ternary cascade...
         VkImageLayout newLayout =
             img.ImageLayout == VK.VK_IMAGE_LAYOUT_UNDEFINED

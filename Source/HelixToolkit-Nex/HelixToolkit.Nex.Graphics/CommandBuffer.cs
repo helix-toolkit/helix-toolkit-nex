@@ -522,6 +522,14 @@ public interface ICommandBuffer
     void ClearColorImage(in TextureHandle tex, Color4 value, TextureLayers layers);
 
     /// <summary>
+    /// Clear a depth stecil image to a specified depth value and stencil value.
+    /// </summary>
+    /// <param name="tex">The handle to the texture to clear.</param>
+    /// <param name="depth">Depth value.</param>
+    /// <param name="stencil">Stencil value</param>
+    void ClearDepthStencilImage(in TextureHandle tex, float depth = 0, uint stencil = 0);
+
+    /// <summary>
     /// Copies a region from one texture to another.
     /// </summary>
     /// <param name="src">The handle to the source texture.</param>

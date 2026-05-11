@@ -2,7 +2,6 @@ namespace HelixToolkit.Nex.Graphics.Vulkan;
 
 internal sealed class VulkanSwapchain : IDisposable
 {
-    public const uint32_t MAX_SWAPCHAIN_IMAGES = 16;
     private static readonly ILogger _logger = LogManager.Create<VulkanSwapchain>();
 
     private readonly VulkanContext _ctx;
@@ -21,12 +20,11 @@ internal sealed class VulkanSwapchain : IDisposable
 
     public VkSurfaceFormatKHR SurfaceFormat { get; }
 
-    public readonly TextureHandle[] SwapchainTextures = new TextureHandle[MAX_SWAPCHAIN_IMAGES];
-    public readonly VkSemaphore[] AcquireSemaphore = new VkSemaphore[MAX_SWAPCHAIN_IMAGES];
-    public readonly VkSemaphore[] RenderCompleteSemaphore = new VkSemaphore[MAX_SWAPCHAIN_IMAGES];
-    public readonly VkFence[] PresentFence = new VkFence[MAX_SWAPCHAIN_IMAGES];
-    public readonly uint64_t[] TimelineWaitValues = new uint64_t[MAX_SWAPCHAIN_IMAGES];
-
+    public readonly TextureHandle[] SwapchainTextures = new TextureHandle[GraphicsSettings.MaxNumSwapChains];
+    public readonly VkSemaphore[] AcquireSemaphore = new VkSemaphore[GraphicsSettings.MaxNumSwapChains];
+    public readonly VkSemaphore[] RenderCompleteSemaphore = new VkSemaphore[GraphicsSettings.MaxNumSwapChains];
+    public readonly VkFence[] PresentFence = new VkFence[GraphicsSettings.MaxNumSwapChains];
+    public readonly uint64_t[] TimelineWaitValues = new uint64_t[GraphicsSettings.MaxNumSwapChains];
     public bool Valid =>
         _swapchain != VkSwapchainKHR.Null && SurfaceFormat.format != VK.VK_FORMAT_UNDEFINED;
 
@@ -44,7 +42,7 @@ internal sealed class VulkanSwapchain : IDisposable
         _graphicsQueue = ctx.GraphicsQueue.GraphicsQueue;
 
         // Initialize swapchain textures and semaphores
-        for (int i = 0; i < MAX_SWAPCHAIN_IMAGES; i++)
+        for (int i = 0; i < GraphicsSettings.MaxNumSwapChains; i++)
         {
             SwapchainTextures[i] = TextureHandle.Null;
             AcquireSemaphore[i] = VkSemaphore.Null;
@@ -86,7 +84,12 @@ internal sealed class VulkanSwapchain : IDisposable
                 {
                     uint32_t desired = caps.minImageCount + 1;
                     bool exceeded = caps.maxImageCount > 0 && desired > caps.maxImageCount;
-                    return exceeded ? caps.maxImageCount : desired;
+                    desired = exceeded ? caps.maxImageCount : desired;
+                    if (desired > GraphicsSettings.MaxNumSwapChains)
+                    {
+                        desired = GraphicsSettings.MaxNumSwapChains;
+                    }
+                    return desired;
                 }
             );
 
@@ -246,13 +249,14 @@ internal sealed class VulkanSwapchain : IDisposable
                 VK.vkSetHdrMetadataEXT(_device, 1, &sc, &metadata);
             }
 
-            var swapchainImages = stackalloc VkImage[(int)MAX_SWAPCHAIN_IMAGES];
+            var swapchainImages = stackalloc VkImage[(int)GraphicsSettings.MaxNumSwapChains];
             uint numScImages = 0;
             VK.vkGetSwapchainImagesKHR(_device, _swapchain, &numScImages, null).CheckResult();
-            if (numScImages > MAX_SWAPCHAIN_IMAGES)
+            numScImages = Math.Min(numScImages, GraphicsSettings.MaxNumSwapChains);
+            if (numScImages > GraphicsSettings.MaxNumSwapChains)
             {
-                HxDebug.Assert(numScImages <= MAX_SWAPCHAIN_IMAGES);
-                numScImages = MAX_SWAPCHAIN_IMAGES;
+                HxDebug.Assert(numScImages <= GraphicsSettings.MaxNumSwapChains);
+                numScImages = GraphicsSettings.MaxNumSwapChains;
             }
             VK.vkGetSwapchainImagesKHR(_device, _swapchain, &numScImages, swapchainImages)
                 .CheckResult();

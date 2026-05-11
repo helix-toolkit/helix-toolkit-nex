@@ -46,4 +46,29 @@ public static class GraphicsSettings
     /// other threads. Use higher priorities for time-sensitive uploads and lower priorities to reduce interference with
     /// other tasks.</remarks>
     public static ThreadPriority UploadThreadPriority { get; set; } = ThreadPriority.AboveNormal;
+
+    /// <summary>
+    /// 
+    /// </summary>
+    public static Format IntermediateTargetFormat = Format.RGBA_F16;
+
+    /// <summary>
+    /// 
+    /// </summary>
+    public static Format DepthBufferFormat = Format.Z_F32;
+
+    /// <summary>
+    /// 
+    /// </summary>
+    public const Format MeshIdTexFormat = Format.RG_F32;
+
+    /// <summary>
+    /// 
+    /// </summary>
+    public static uint MaxFrameInFlight = 2;
+
+    /// <summary>
+    /// 
+    /// </summary>
+    public static uint MaxNumSwapChains = 2;
 }
