@@ -692,7 +692,6 @@ internal sealed class VulkanImage : IDisposable
 
         var src = oldImageLayout.GetPipelineStageAccess();
         var dst = newImageLayout.GetPipelineStageAccess();
-
         if (IsDepthAttachment && IsResolveAttachment)
         {
             // https://registry.khronos.org/vulkan/specs/latest/html/vkspec.html#renderpass-resolve-operations
