@@ -63,7 +63,7 @@ internal class LightCullingTest(IContext context, bool largeScene = true) : IDis
             .WithPostEffects(effects =>
             {
                 effects.AddEffect(new BorderHighlightPostEffect());
-                //effects.AddEffect(new WireframePostEffect());
+                effects.AddEffect(new WireframePostEffect());
             })
             .Build();
 

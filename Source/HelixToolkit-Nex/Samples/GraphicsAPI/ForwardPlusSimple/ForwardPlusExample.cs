@@ -675,7 +675,6 @@ public class ForwardPlusExample
             new MeshDrawPushConstant()
             {
                 FpConstAddress = _fpConstBuffer.GpuAddress,
-                MeshDrawId = 0,
                 MeshDrawBufferAddress = _meshDrawBuffer.GpuAddress,
             }
         );
@@ -721,7 +720,6 @@ public class ForwardPlusExample
             new MeshDrawPushConstant()
             {
                 FpConstAddress = _fpConstBuffer.GpuAddress,
-                MeshDrawId = 0,
                 MeshDrawBufferAddress = _meshDrawBuffer.GpuAddress,
             }
         );

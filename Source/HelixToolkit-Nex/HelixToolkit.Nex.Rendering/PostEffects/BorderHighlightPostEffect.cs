@@ -283,7 +283,7 @@ public sealed class BorderHighlightPostEffect : PostEffect
         var fpConstAddress = fpBuffer.GpuAddress(context.Context);
         var dataStreams = context.Data!.DrawStreams;
 
-        foreach (var entry in _entries)
+        foreach (var entry in _entries.AsValueEnumerable())
         {
             var streams = dataStreams.GetStreams(entry.Category);
             foreach (var stream in streams)
@@ -320,8 +320,7 @@ public sealed class BorderHighlightPostEffect : PostEffect
                     new MeshDrawPushConstant
                     {
                         FpConstAddress = fpConstAddress,
-                        DrawCommandIdxOffset = 0,
-                        MeshDrawId = (uint)slot,
+                        DrawCommandIdxOffset = (uint)slot,
                         MeshDrawBufferAddress = stream.Buffer.GpuAddress(Context!),
                     }
                 );

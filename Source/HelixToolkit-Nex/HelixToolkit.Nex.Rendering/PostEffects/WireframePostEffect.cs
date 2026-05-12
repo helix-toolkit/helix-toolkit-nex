@@ -249,8 +249,7 @@ public sealed class WireframePostEffect : PostEffect
                     new MeshDrawPushConstant()
                     {
                         FpConstAddress = fpConstAddress,
-                        DrawCommandIdxOffset = 0,
-                        MeshDrawId = (uint)slot,
+                        DrawCommandIdxOffset = (uint)slot,
                         MeshDrawBufferAddress = stream.Buffer.GpuAddress(Context!),
                     }
                 );

@@ -37,7 +37,12 @@ public sealed class EntityCollection : IEnumerable<Entity>, IDisposable
             }
         }
         ECSEventBus.Register<WorldDisposingEvent>(WorldId, HandleWorldDisposing);
-        ECSEventBus.Register<EntityDisposingEvent>(WorldId, HandleEntityDisposing);
+        ECSEventBus.Register<EntityBeforeDisposeEvent>(WorldId, HandleEntityDisposing);
+    }
+
+    public bool Has(Entity entity)
+    {
+        return _entities.Contains(entity.Id);
     }
 
     private void HandleWorldDisposing(int worldId, WorldDisposingEvent msg)
@@ -45,7 +50,7 @@ public sealed class EntityCollection : IEnumerable<Entity>, IDisposable
         Dispose();
     }
 
-    private void HandleEntityDisposing(int worldId, EntityDisposingEvent msg)
+    private void HandleEntityDisposing(int worldId, EntityBeforeDisposeEvent msg)
     {
         RemoveEntity(msg.EntityId);
     }
@@ -137,7 +142,7 @@ public sealed class EntityCollection : IEnumerable<Entity>, IDisposable
             return;
         }
         _disposed = true;
-        ECSEventBus.Unregister<EntityDisposingEvent>(WorldId, HandleEntityDisposing);
+        ECSEventBus.Unregister<EntityBeforeDisposeEvent>(WorldId, HandleEntityDisposing);
         ECSEventBus.Unregister<WorldDisposingEvent>(WorldId, HandleWorldDisposing);
         EntityAdded = null;
         EntityRemoved = null;

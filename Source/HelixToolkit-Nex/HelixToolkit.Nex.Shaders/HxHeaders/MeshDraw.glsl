@@ -1,8 +1,6 @@
 
-// Draw types must match the enum values in MeshVariant
-#define DRAW_TYPE_DYNAMIC 1
-#define DRAW_TYPE_INSTANCE 2
-#define DRAW_TYPE_HITABLE 4
+// Draw types must match the enum values in DrawStreamCategory
+#define DRAW_TYPE_HITABLE (1 << 6)
 
 
 @code_gen
@@ -32,7 +30,7 @@ struct MeshDrawPushConstant {
     uint64_t meshDrawBufferAddress;
     uint64_t customMaterialBufferAddress; // Address of custom material properties buffer (set per material type)
     uint drawCommandIdxOffset;
-    uint meshDrawId;
+    uint _padding;
 };
 
 

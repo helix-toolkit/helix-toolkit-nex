@@ -43,14 +43,17 @@ public struct MeshComponent
             {
                 variant |= DrawStreamCategory.Instancing;
             }
+
             if (Hitable)
             {
                 variant |= DrawStreamCategory.Hitable;
             }
+
             if (Geometry?.IsDynamic == true)
             {
                 variant |= DrawStreamCategory.Dynamic;
             }
+
             return variant;
         }
     }
