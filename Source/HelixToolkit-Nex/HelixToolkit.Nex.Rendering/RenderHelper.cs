@@ -77,14 +77,13 @@ public static class RenderHelper
                 customMaterialBufferAddress = mat.CustomBufferAddress;
                 if (stream.Categories.HasFlag(DrawStreamCategory.Transparent))
                 {
-                    if (stream.Categories.HasFlag(DrawStreamCategory.NonHitable))
-                    {
-                        // Disable entity ID output for transparent non-hitable meshes to avoid writing to the ID buffer, which is used for picking and should not be affected by transparent objects.
-                        cmdBuf.SetColorWriteEnabled(_colorWriteNoIdOuput);
-                    }
-                    else
+                    if (stream.Categories.HasFlag(DrawStreamCategory.Hitable))
                     {
                         cmdBuf.SetColorWriteEnabled(res.Pass.ColorWrites);
+                    }
+                    else
+                    {// Disable entity ID output for transparent non-hitable meshes to avoid writing to the ID buffer, which is used for picking and should not be affected by transparent objects.
+                        cmdBuf.SetColorWriteEnabled(_colorWriteNoIdOuput);
                     }
                 }
             }
@@ -147,14 +146,13 @@ public static class RenderHelper
                 customMaterialBufferAddress = mat.CustomBufferAddress;
                 if (stream.Categories.HasFlag(DrawStreamCategory.Transparent))
                 {
-                    if (stream.Categories.HasFlag(DrawStreamCategory.NonHitable))
-                    {
-                        // Disable entity ID output for transparent non-hitable meshes to avoid writing to the ID buffer, which is used for picking and should not be affected by transparent objects.
-                        cmdBuf.SetColorWriteEnabled(_colorWriteNoIdOuput);
-                    }
-                    else
+                    if (stream.Categories.HasFlag(DrawStreamCategory.Hitable))
                     {
                         cmdBuf.SetColorWriteEnabled(res.Pass.ColorWrites);
+                    }
+                    else
+                    {// Disable entity ID output for transparent non-hitable meshes to avoid writing to the ID buffer, which is used for picking and should not be affected by transparent objects.
+                        cmdBuf.SetColorWriteEnabled(_colorWriteNoIdOuput);
                     }
                 }
             }
@@ -191,9 +189,8 @@ public static class RenderHelper
                     {
                         FpConstAddress = fpConstAddress,
                         CustomMaterialBufferAddress = customMaterialBufferAddress,
-                        DrawCommandIdxOffset = 0,
+                        DrawCommandIdxOffset = i,
                         MeshDrawBufferAddress = stream.Buffer.GpuAddress(res.RenderContext.Context),
-                        MeshDrawId = i,
                     }
                 );
                 cmdBuf.DrawIndexedIndirect(stream.Buffer, i * stream.Stride, 1, stream.Stride);

@@ -32,6 +32,7 @@ internal sealed class MeshDrawStream : Initializable, IDrawStream
 
     // GPU buffer (ring buffer for multi-frame-in-flight)
     private RingElementBuffer<MeshDraw>? _buffer;
+    private readonly HashSet<Entity> _entities = [];
 
     // CPU-side draw storage grouped by material type for sorted upload
     private readonly Dictionary<MaterialTypeId, FastList<MeshDraw>> _drawsByMaterial = new(
@@ -40,7 +41,6 @@ internal sealed class MeshDrawStream : Initializable, IDrawStream
     private readonly Dictionary<MaterialTypeId, DrawRange> _materialRanges = new(InitialCapacity);
 
     // ECS references
-    private EntityCollection? _entities;
     private Components<MeshComponent> _meshComponents;
     private Components<Renderable> _renderables;
 
@@ -121,14 +121,19 @@ internal sealed class MeshDrawStream : Initializable, IDrawStream
 
     public (MeshDraw Draw, int SlotIndex) GetMeshDraw(Entity entity)
     {
+        if (!_entities.Contains(entity) || !entity.Has<Renderable>())
+        {
+            return (default, -1);
+        }
         ref var renderable = ref _renderables[entity];
-        if (renderable.DrawCmdIndex < 0 || renderable.DrawCategory != (uint)StreamName)
+        if (renderable.DrawCmdIndex < 0 || renderable.DrawCategory != (uint)Categories)
         {
             return (default, -1);
         }
         var drawIndex = renderable.DrawCmdIndex;
         if (TryGetMeshDraw(drawIndex, out var draw))
         {
+            Debug.Assert(draw.EntityId == entity.Id, "Entity Id in MeshDraw does not equal to the requested entity");
             return (draw, drawIndex);
         }
         return (default, -1);
@@ -157,38 +162,12 @@ internal sealed class MeshDrawStream : Initializable, IDrawStream
             debugName: $"MeshStream_{StreamName}"
         );
 
-        var filter = _world
-            .CreateCollection()
-            .Has<NodeInfo>()
-            .Has<MeshComponent>()
-            .Has<WorldTransform>()
-            .Has<Renderable>();
-
-        if (_isTransparent)
-            filter.Has<TransparentComponent>();
-        else
-            filter.NotHas<TransparentComponent>();
-
-        _entities = filter.Build();
-        _entities.EntityAdded += OnEntityAdded;
-        _entities.EntityRemoved += OnEntityRemoved;
-        _entities.EntityChanged += OnEntityChanged;
-        _entities.World.Register<SceneChangedEvents>(OnSceneChanged);
-
         _needsRebuild = true;
         return ResultCode.Ok;
     }
 
     protected override ResultCode OnTearingDown()
     {
-        if (_entities is not null)
-        {
-            _entities.EntityAdded -= OnEntityAdded;
-            _entities.EntityRemoved -= OnEntityRemoved;
-            _entities.EntityChanged -= OnEntityChanged;
-            _entities.World.Unregister<SceneChangedEvents>(OnSceneChanged);
-            Disposer.DisposeAndRemove(ref _entities);
-        }
         Disposer.DisposeAndRemove(ref _buffer);
         _drawsByMaterial.Clear();
         _materialRanges.Clear();
@@ -242,7 +221,7 @@ internal sealed class MeshDrawStream : Initializable, IDrawStream
         foreach (var entity in _entities.AsValueEnumerable())
         {
             ref var meshComp = ref _meshComponents[entity];
-            if (!meshComp.Valid || !EntityMatchesStream(ref meshComp))
+            if (!meshComp.Valid)
                 continue;
 
             var meshDraw = CreateMeshDraw(entity);
@@ -293,7 +272,7 @@ internal sealed class MeshDrawStream : Initializable, IDrawStream
             ref var renderable = ref _renderables[entity];
 
             // Only process if this entity belongs to this stream
-            if (renderable.DrawCategory != (uint)StreamName || renderable.DrawCmdIndex < 0)
+            if (renderable.DrawCategory != (uint)Categories || renderable.DrawCmdIndex < 0)
                 continue;
 
             var newDraw = CreateMeshDraw(entity);
@@ -366,7 +345,6 @@ internal sealed class MeshDrawStream : Initializable, IDrawStream
                 var entity = _world.GetEntity(entityId);
                 ref var renderable = ref _renderables[entity];
                 renderable.DrawCmdIndex = (int)(offset + (uint)i);
-                renderable.DrawCategory = (uint)StreamName;
             }
 
             offset += (uint)list.Count;
@@ -393,41 +371,6 @@ internal sealed class MeshDrawStream : Initializable, IDrawStream
                 byteOffset += list.Count * (int)MeshDraw.SizeInBytes;
             }
         }
-    }
-
-    #endregion
-
-    #region Entity Classification
-
-    /// <summary>
-    /// Checks whether an entity's <see cref="MeshComponent"/> matches this stream's
-    /// property-level post-filters (Dynamic/Static, Instancing, Hitable).
-    /// Archetype-level filters (Opaque/Transparent) are handled by the <see cref="EntityCollection"/>.
-    /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private bool EntityMatchesStream(ref MeshComponent meshComp)
-    {
-        // Dynamic vs Static
-        var isDynamic = meshComp.Geometry?.IsDynamic == true;
-        if (Categories.HasFlag(DrawStreamCategory.Dynamic) && !isDynamic)
-            return false;
-        if (Categories.HasFlag(DrawStreamCategory.Static) && isDynamic)
-            return false;
-
-        // Instancing vs NonInstancing
-        var hasInstancing = meshComp.Instancing is not null;
-        if (Categories.HasFlag(DrawStreamCategory.Instancing) && !hasInstancing)
-            return false;
-        if (!Categories.HasFlag(DrawStreamCategory.Instancing) && hasInstancing)
-            return false;
-
-        // Hitable vs NonHitable (only for transparent streams)
-        if (Categories.HasFlag(DrawStreamCategory.Hitable) && !meshComp.Hitable)
-            return false;
-        if (Categories.HasFlag(DrawStreamCategory.NonHitable) && meshComp.Hitable)
-            return false;
-
-        return true;
     }
 
     #endregion
@@ -470,32 +413,51 @@ internal sealed class MeshDrawStream : Initializable, IDrawStream
 
     #region ECS Event Handlers
 
-    private void OnEntityAdded(object? sender, int entityId)
+    public void EntityAdded(Entity entity)
     {
+        Debug.Assert(GetCategoryFromEntity(entity).HasFlag(Categories));
+        _entities.Add(entity);
+        _renderables[entity].DrawCategory = (uint)Categories; // Pre-set category for O(1) checks during updates
         MarkRebuildNeeded();
     }
 
-    private void OnEntityRemoved(object? sender, int entityId)
+    public void EntityRemoved(Entity entity)
     {
+        Debug.Assert(_entities.Contains(entity));
+        _entities.Remove(entity);
+        _renderables[entity].DrawCategory = 0; // Clear category to indicate it's no longer in any stream
         MarkRebuildNeeded();
     }
 
-    private void OnEntityChanged(object? sender, EntityChangedEvent e)
+    private DrawStreamCategory GetCategoryFromEntity(Entity entity)
     {
-        if (_needsRebuild)
+        ref var comp = ref _meshComponents[entity];
+        var category = comp.Category;
+        if (entity.Has<TransparentComponent>())
+        {
+            category |= DrawStreamCategory.Transparent;
+        }
+        else
+        {
+            category |= DrawStreamCategory.Opaque;
+        }
+        return category;
+    }
+
+    public void EntityChanged(Entity entity, in EntityChangedEvent e)
+    {
+        if (_needsRebuild || !_entities.Contains(entity))
             return;
-
-        var entity = _world.GetEntity(e.EntityId);
         ref var meshComp = ref _meshComponents[entity];
 
         // If the entity doesn't match this stream, ignore
-        if (!meshComp.Valid || !EntityMatchesStream(ref meshComp))
+        if (!meshComp.Valid)
             return;
 
         ref var renderable = ref _renderables[entity];
 
         // If material or category changed, we need a full rebuild (structural change)
-        if (renderable.DrawCategory != (uint)StreamName)
+        if (renderable.DrawCategory != (uint)Categories)
         {
             MarkRebuildNeeded();
             return;
@@ -506,17 +468,17 @@ internal sealed class MeshDrawStream : Initializable, IDrawStream
         _lastDataChangeTicks = Stopwatch.GetTimestamp();
     }
 
-    private void OnSceneChanged(int worldId, SceneChangedEvents message)
-    {
-        MarkRebuildNeeded();
-    }
-
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void MarkRebuildNeeded()
+    public void MarkRebuildNeeded()
     {
         _needsRebuild = true;
         _lastDataChangeTicks = Stopwatch.GetTimestamp();
     }
 
     #endregion
+
+    public bool Has(Entity entity)
+    {
+        return _entities.Contains(entity);
+    }
 }
