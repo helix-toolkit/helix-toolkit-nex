@@ -80,13 +80,6 @@ Console.WriteLine($"Generated {levels} mipmap levels.");
 
 ## Architecture Notes
 
-HelixToolkit.Nex.Graphics.Vulkan is built on several key architectural principles:
-
-- **Entity Component System (ECS):** Utilizes the Arch ECS library for efficient entity management.
-- **Render Graph:** Manages the execution order of rendering nodes, optimizing resource usage and performance.
-- **Vulkan Abstractions:** Provides high-level abstractions over Vulkan constructs, simplifying usage while maintaining performance.
-- **Integration with HelixToolkit-Nex:** Seamlessly integrates with other components of the HelixToolkit-Nex engine, supporting advanced rendering techniques like screen-space mesh picking and dynamic lighting.
-
 Dependencies:
 - HelixToolkit.Nex.Maths
 - HelixToolkit.Nex.Shaders
