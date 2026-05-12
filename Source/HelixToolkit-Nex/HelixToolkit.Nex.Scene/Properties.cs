@@ -1,3 +1,5 @@
+using System.Runtime.InteropServices;
+
 namespace HelixToolkit.Nex.Scene;
 
 public struct NodeInfo : ISortable<NodeInfo>
@@ -187,9 +189,12 @@ public readonly struct Children
 /// <summary>
 /// Represents an object that can be rendered by a graphics or UI system.
 /// </summary>
+[StructLayout(LayoutKind.Sequential, Pack = 4)]
 public struct Renderable()
 {
     public int GPUIndex = -1; // Index of the node data in GPU buffer. Used to retrieve such as transform data from buffer.
     public int UpdateCounter = 0;
     public uint RenderMask = 0xFFFFFFFF; // Bitmask for render layers. Default to all layers.
+    public int DrawCmdIndex = -1; // Draw command index. Set internally, do not change.
+    public uint DrawCategory = 0;// Draw command index. Set internally, do not change.
 }

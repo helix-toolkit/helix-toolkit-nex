@@ -74,19 +74,25 @@ public sealed class BillboardCullNode : ComputeNode
         return _expandPipeline.Valid;
     }
 
-    protected override void OnRender(in RenderResources res)
+    protected override bool CanRender(in RenderResources res)
     {
         if (res.RenderContext is null || res.RenderContext.Data is null)
         {
             _logger.LogWarning("Context.Data is null. Skipping billboard culling.");
-            return;
+            return false;
         }
 
         var billboards = res.RenderContext.Data.BillboardData;
         if (billboards is null || billboards.TotalBillboardCount == 0)
         {
-            return;
+            return false;
         }
+        return true;
+    }
+
+    protected override void OnRender(in RenderResources res)
+    {
+        var billboards = res.RenderContext.Data!.BillboardData!;
 
         // --- Shared camera state ---
         var camera = res.RenderContext.CameraParams;

@@ -39,7 +39,6 @@ internal class DepthPrepassTest(IContext context) : IDisposable
 
     public void Initialize(int width, int height)
     {
-        RenderSettings.LogFPSInDebug = true;
         var services = new ServiceCollection { new ServiceDescriptor(typeof(IContext), _context) };
         services.AddSingleton<IResourceManager, ResourceManager>();
 

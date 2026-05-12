@@ -36,7 +36,7 @@ public class Renderer(IServiceProvider serviceProvider) : Initializable
 
     public IReadOnlyDictionary<string, RenderNode> RenderNodeMap => _renderers;
 
-    public uint NumFrameInFlight => Math.Max(1, Math.Min(Context.GetNumSwapchainImages(), RenderSettings.MaxFrameInFlight));
+    public uint NumFrameInFlight => GraphicsSettings.MaxFrameInFlight;
 
     public bool AddNode(RenderNode renderer)
     {

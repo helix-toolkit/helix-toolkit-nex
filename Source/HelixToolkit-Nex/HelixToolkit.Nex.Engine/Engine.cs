@@ -69,7 +69,7 @@ public class Engine : Initializable
     private readonly IInitializable[] _initializables;
 
     private readonly SubmitHandle[] _submitHandles = new SubmitHandle[
-        (int)RenderSettings.MaxFrameInFlight
+        (int)GraphicsSettings.MaxFrameInFlight
     ];
     private int _frameIndex = 0;
 
@@ -475,7 +475,7 @@ public class Engine : Initializable
             Context.Wait(currHandle);
         }
         _submitHandles[_frameIndex] = Context.Submit(commandBuffer, present, syncInfo);
-        _frameIndex = (_frameIndex + 1) % (int)RenderSettings.MaxFrameInFlight;
+        _frameIndex = (_frameIndex + 1) % (int)GraphicsSettings.MaxFrameInFlight;
     }
 
     /// <summary>

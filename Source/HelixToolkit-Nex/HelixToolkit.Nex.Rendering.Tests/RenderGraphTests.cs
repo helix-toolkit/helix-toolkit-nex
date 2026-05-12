@@ -717,7 +717,7 @@ public class RenderGraphTests
             graph,
             RenderStage.Prepare,
             "DepthPass",
-            [new RenderResource(SystemBufferNames.BufferMeshDrawOpaque, ResourceType.Buffer)],
+            [new RenderResource(SystemBufferNames.BufferMeshDrawPlaceholder, ResourceType.Buffer)],
             [
                 new RenderResource(SystemBufferNames.TextureDepthF32, ResourceType.Texture),
                 new RenderResource(SystemBufferNames.TextureEntityId, ResourceType.Texture),

@@ -9,5 +9,6 @@ global using HelixToolkit.Nex.Repository;
 global using HelixToolkit.Nex.Shaders;
 global using HelixToolkit.Nex.Trace;
 global using Microsoft.Extensions.Logging;
+global using ZLinq;
 global using BufferHandle = HelixToolkit.Nex.Handle<HelixToolkit.Nex.Graphics.Buffer>;
 global using TextureHandle = HelixToolkit.Nex.Handle<HelixToolkit.Nex.Graphics.Texture>;

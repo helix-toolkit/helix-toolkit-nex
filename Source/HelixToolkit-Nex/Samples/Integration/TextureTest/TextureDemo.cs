@@ -265,8 +265,6 @@ internal sealed partial class TextureDemo : IDisposable
         };
         _orbitController = new OrbitCameraController(_camera);
 
-        RenderSettings.LogFPSInDebug = true;
-
         _engine = EngineBuilder
             .Create(_context)
             .WithDefaultNodes(false)

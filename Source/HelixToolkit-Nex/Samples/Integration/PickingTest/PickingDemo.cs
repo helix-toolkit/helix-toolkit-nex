@@ -67,8 +67,6 @@ internal sealed class PickingDemo : IDisposable
         };
         _orbitController = new OrbitCameraController(_camera);
 
-        RenderSettings.LogFPSInDebug = true;
-
         _engine = EngineBuilder
             .Create(_context)
             .WithDefaultNodes()

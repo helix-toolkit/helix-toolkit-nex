@@ -1,3 +1,5 @@
+using HelixToolkit.Nex.Rendering.DrawStreams;
+
 namespace HelixToolkit.Nex.Rendering.RenderNodes;
 
 public sealed class ForwardPlusOpaqueNode : RenderNode
@@ -18,6 +20,16 @@ public sealed class ForwardPlusOpaqueNode : RenderNode
         base.OnTeardown();
     }
 
+    protected override bool CanRender(in RenderResources res)
+    {
+        var context = res.RenderContext;
+        return context.Data is not null
+            && context
+                .Data.DrawStreams.GetStreams(DrawStreamCategory.Opaque)
+                .AsValueEnumerable()
+                .Any(x => x.Count > 0);
+    }
+
     protected override void OnSetupRender(in RenderResources res)
     {
         res.Framebuf.DepthStencil.Texture = res.Textures[SystemBufferNames.TextureDepthF32];
@@ -29,45 +41,32 @@ public sealed class ForwardPlusOpaqueNode : RenderNode
         res.Pass.Colors[0].StoreOp = StoreOp.Store;
 
         res.Framebuf.Colors[1].Texture = res.Textures[SystemBufferNames.TextureEntityId];
-        res.Pass.Colors[1].ClearColor = new Color4(0, 0, 0, 0);
-        res.Pass.Colors[1].LoadOp = LoadOp.Clear;
+        res.Pass.Colors[1].LoadOp = LoadOp.Load;
         res.Pass.Colors[1].StoreOp = StoreOp.Store;
         res.Deps.PushTexture(res.Textures[SystemBufferNames.TextureDepthF32]);
         res.Deps.PushBuffer(res.Buffers[SystemBufferNames.BufferLightGrid]);
         res.Deps.PushBuffer(res.Buffers[SystemBufferNames.BufferLightIndex]);
         res.Deps.PushBuffer(res.Buffers[SystemBufferNames.BufferPBRProperties]);
         res.Deps.PushBuffer(res.Buffers[SystemBufferNames.BufferForwardPlusConstants]);
-    }
-
-    protected override bool BeginRender(in RenderResources res)
-    {
-        var context = res.RenderContext;
-        if (context.Data is null)
-        {
-            _logger.LogWarning("Render context data is null, skipping forward+ opaque pass.");
-            return false;
-        }
-
-        if (res.RenderContext.Data!.MeshDrawsOpaque.Count == 0)
-            return false;
         res.Pass.DepthState = DepthState.ReadOnlyInvZ;
-        return base.BeginRender(in res);
+
+        res.RenderContext.Data!.DrawStreams.GetStreams(DrawStreamCategory.Opaque)
+            .Barrier(res.CmdBuffer);
     }
 
     protected override void OnRender(in RenderResources res)
     {
-        res.RenderContext.Statistics.DrawCalls += RenderHelper.RenderOpaque(
-            in res,
-            res.Buffers[SystemBufferNames.BufferForwardPlusConstants]
-                .GpuAddress(res.RenderContext.Context),
-            false
-        );
-        res.RenderContext.Statistics.DrawCalls += RenderHelper.RenderOpaque(
-            in res,
-            res.Buffers[SystemBufferNames.BufferForwardPlusConstants]
-                .GpuAddress(res.RenderContext.Context),
-            true
-        );
+        var streams = res.RenderContext.Data!.DrawStreams.GetStreams(DrawStreamCategory.Opaque);
+        foreach (var stream in streams)
+        {
+            res.RenderContext.Statistics.DrawCalls += RenderHelper.Render(
+                in res,
+                res.Buffers[SystemBufferNames.BufferForwardPlusConstants]
+                    .GpuAddress(res.RenderContext.Context),
+                streams,
+                MaterialPassType.Opaque
+            );
+        }
     }
 
     public override void AddToGraph(RenderGraph graph)
@@ -87,7 +86,11 @@ public sealed class ForwardPlusOpaqueNode : RenderNode
                     new(SystemBufferNames.BufferPBRProperties, ResourceType.Buffer),
                     new(SystemBufferNames.BufferForwardPlusConstants, ResourceType.Buffer),
                 ],
-                outputs: [new(SystemBufferNames.TextureColorF16A, ResourceType.Texture)],
+                outputs:
+                [
+                    new(SystemBufferNames.TextureColorF16Target, ResourceType.Texture),
+                    new(SystemBufferNames.TextureEntityId, ResourceType.Texture),
+                ],
                 after: [nameof(ForwardPlusLightCulling)]
             );
     }

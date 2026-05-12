@@ -20,7 +20,7 @@ public sealed class ForwardPlusLightCullingNode : ComputeNode
     private static readonly ILogger _logger = LogManager.Create<ForwardPlusLightCullingNode>();
 
     private ComputePipelineResource _pipeline = ComputePipelineResource.Null;
-    private BufferResource _cullingConstantsBuffer = BufferResource.Null;
+    private RingFixSizeBuffer<LightCullingConstants>? _cullingConstantsBuffer;
     private LightCullingConstants _cullingConstants;
     private SamplerRef _depthSampler = SamplerRef.Null;
 
@@ -41,11 +41,10 @@ public sealed class ForwardPlusLightCullingNode : ComputeNode
             return false;
         }
 
-        _cullingConstantsBuffer = Context.CreateBuffer(
-            _cullingConstants,
-            BufferUsageBits.Storage,
-            StorageType.Device,
-            "FP_LightCull"
+        _cullingConstantsBuffer = new(
+            Context,
+            (int)GraphicsSettings.MaxFrameInFlight,
+            debugName: "FP_LightCull"
         );
         _depthSampler = ResourceManager.SamplerRepository.GetOrCreate(SamplerStateDesc.PointClamp);
 
@@ -61,21 +60,16 @@ public sealed class ForwardPlusLightCullingNode : ComputeNode
     protected override void OnTeardown()
     {
         _pipeline.Dispose();
-        _cullingConstantsBuffer.Dispose();
+        Disposer.DisposeAndRemove(ref _cullingConstantsBuffer);
         base.OnTeardown();
     }
 
-    protected override void OnSetupRender(in RenderResources res)
-    {
-        res.Deps.PushTexture(res.Textures[SystemBufferNames.TextureDepthF32]);
-    }
-
-    protected override void OnRender(in RenderResources res)
+    protected override bool CanRender(in RenderResources res)
     {
         if (res.RenderContext.Data is null)
         {
             _logger.LogWarning("Render context data is null, skipping light culling pass.");
-            return;
+            return false;
         }
         Debug.Assert(_pipeline.Valid, "_pipeline is not valid.");
         var renderContext = res.RenderContext;
@@ -83,8 +77,15 @@ public sealed class ForwardPlusLightCullingNode : ComputeNode
         if (renderContext.Data.Lights.Count == 0)
         {
             // No lights, no need to dispatch the compute shader
-            return;
+            return false;
         }
+        return true;
+    }
+
+    protected override void OnSetupRender(in RenderResources res)
+    {
+        res.Deps.PushTexture(res.Textures[SystemBufferNames.TextureDepthF32]);
+        var renderContext = res.RenderContext!;
         var tileCountX = (uint)renderContext.TileCountX;
         var tileCountY = (uint)renderContext.TileCountY;
 
@@ -97,7 +98,7 @@ public sealed class ForwardPlusLightCullingNode : ComputeNode
         );
         _cullingConstants.TileCountX = tileCountX;
         _cullingConstants.TileCountY = tileCountY;
-        _cullingConstants.LightCount = (uint)(renderContext.Data.Lights.Count);
+        _cullingConstants.LightCount = renderContext.Data!.Lights.Count;
         _cullingConstants.ZNear = renderContext.CameraParams.NearPlane;
         _cullingConstants.ZFar = renderContext.CameraParams.FarPlane;
         _cullingConstants.DepthTextureIndex = res.Textures[SystemBufferNames.TextureDepthF32].Index;
@@ -110,9 +111,16 @@ public sealed class ForwardPlusLightCullingNode : ComputeNode
             .GpuAddress(renderContext.Context);
         _cullingConstants.EnableAABBCulling = EnableAABBCulling ? 1u : 0u;
         _cullingConstants.EnableDepthMaskCulling = EnableDepthMaskCulling ? 1u : 0u;
-        res.CmdBuffer.UpdateBuffer(_cullingConstantsBuffer, ref _cullingConstants);
+        _cullingConstantsBuffer!.AdvanceAndUpdate(ref _cullingConstants);
+    }
+
+    protected override void OnRender(in RenderResources res)
+    {
+        var renderContext = res.RenderContext!;
+        var tileCountX = (uint)renderContext.TileCountX;
+        var tileCountY = (uint)renderContext.TileCountY;
         res.CmdBuffer.BindComputePipeline(_pipeline);
-        res.CmdBuffer.PushConstants(_cullingConstantsBuffer.GpuAddress);
+        res.CmdBuffer.PushConstants(_cullingConstantsBuffer!.GpuAddress);
         res.CmdBuffer.DispatchThreadGroups(new Dimensions(tileCountX, tileCountY, 1), res.Deps);
     }
 

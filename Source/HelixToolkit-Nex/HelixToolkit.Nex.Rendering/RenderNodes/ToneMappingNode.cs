@@ -81,7 +81,7 @@ public sealed class ToneMappingNode : RenderNode
             FragmentShader = fs,
         };
         pipelineDesc.Colors[0] = ColorAttachment.CreateOpaque(
-            RenderSettings.IntermediateTargetFormat
+            GraphicsSettings.IntermediateTargetFormat
         );
 
         _pipeline = Context.CreateRenderPipeline(pipelineDesc);
@@ -92,6 +92,11 @@ public sealed class ToneMappingNode : RenderNode
     {
         _pipeline.Dispose();
         base.OnTeardown();
+    }
+
+    protected override bool CanRender(in RenderResources res)
+    {
+        return true;
     }
 
     protected override void OnSetupRender(in RenderResources res) { }

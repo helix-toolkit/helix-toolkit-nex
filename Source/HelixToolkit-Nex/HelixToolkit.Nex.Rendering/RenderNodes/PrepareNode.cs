@@ -13,7 +13,7 @@ public class PrepareNode : RenderNode
             return false;
         _constantsBuffer = new RingFixSizeBuffer<FPConstants>(
             Context,
-            (int)RenderSettings.NumFrameInFlight(Context),
+            (int)GraphicsSettings.MaxFrameInFlight,
             BufferUsageBits.Storage,
             hostVisible: false,
             debugName: "FPConst"
@@ -27,13 +27,13 @@ public class PrepareNode : RenderNode
         base.OnTeardown();
     }
 
+    protected override bool CanRender(in RenderResources res)
+    {
+        return !(res.RenderContext.Data is null || _constantsBuffer is null);
+    }
+
     protected override void OnSetupRender(in RenderResources res)
     {
-        if (res.RenderContext.Data is null || _constantsBuffer is null)
-        {
-            return;
-        }
-
         var context = res.RenderContext!;
         var fpData = new FPConstants
         {
@@ -46,17 +46,17 @@ public class PrepareNode : RenderNode
             InverseView = context.CameraParams.InvView,
             ScreenDimensions = new Vector2(context.WindowSize.Width, context.WindowSize.Height),
             DpiScale = context.DpiScale,
-            NodeInfoBufferAddress = context.Data.NodeInfos.GpuAddress,
-            MeshInfoBufferAddress = context.Data.MeshInfos.GpuAddress,
-            MaterialBufferAddress = context.Data.PBRPropertiesBuffer.Buffer.GpuAddress(
+            NodeInfoBufferAddress = context.Data!.NodeInfos.GpuAddress,
+            MeshInfoBufferAddress = context.Data!.MeshInfos.GpuAddress,
+            MaterialBufferAddress = context.Data!.PBRPropertiesBuffer.Buffer.GpuAddress(
                 context.Context
             ),
             DirectionalLightsBufferAddress =
-                context.Data.DirectionalLights.Count > 0
+                context.Data!.DirectionalLights.Count > 0
                     ? res.Buffers[SystemBufferNames.BufferDirectionalLight]
                         .GpuAddress(context.Context)
                     : 0,
-            LightBufferAddress = context.Data.Lights.GpuAddress,
+            LightBufferAddress = context.Data!.Lights.GpuAddress,
             LightGridBufferAddress =
                 context.Data.Lights.Count > 0
                     ? res.Buffers[SystemBufferNames.BufferLightGrid].GpuAddress(context.Context)
@@ -73,7 +73,7 @@ public class PrepareNode : RenderNode
             PointerRing = context.PointerRing,
         };
 
-        _constantsBuffer.AdvanceAndUpdate(res.CmdBuffer, ref fpData);
+        _constantsBuffer!.AdvanceAndUpdate(ref fpData);
 
         res.Buffers[SystemBufferNames.BufferForwardPlusConstants] = _constantsBuffer!.Current;
 
@@ -87,20 +87,25 @@ public class PrepareNode : RenderNode
             res.RenderContext.RenderParams.BackgroundColor,
             new TextureLayers()
         );
+        res.CmdBuffer.ClearColorImage(
+            res.Textures[SystemBufferNames.TextureEntityId],
+            new Color4(0, 0, 0, 0),
+            new TextureLayers()
+        );
+        res.CmdBuffer.ClearDepthStencilImage(res.Textures[SystemBufferNames.TextureDepthF32]);
 
-        // Default TextureColorF16Current to TextureColorF16Target so that RenderToFinalNode
+        // Default TextureColorF16Target to TextureColorF16A so that RenderToFinalNode
         // has a valid source even when PostEffectsNode is absent from the graph.
-        if (res.RenderContext.ResourceSet is { } resourceSet)
-        {
-            resourceSet.Textures[SystemBufferNames.TextureColorF16Target] = resourceSet.Textures[
-                SystemBufferNames.TextureColorF16A
-            ];
-        }
-        res.Framebuf.DepthStencil.Texture = res.Textures[SystemBufferNames.TextureDepthF32];
-        res.Pass.Depth.ClearDepth = 0f;
-        res.Pass.Depth.LoadOp = LoadOp.Clear;
-        res.Pass.Depth.StoreOp = StoreOp.Store;
+        res.RenderContext.ResourceSet.Textures[SystemBufferNames.TextureColorF16Target] =
+            res.RenderContext.ResourceSet.Textures[SystemBufferNames.TextureColorF16A];
     }
+
+    protected override bool BeginRender(in RenderResources res)
+    {
+        return true;
+    }
+
+    protected override void EndRender(in RenderResources res) { }
 
     protected override void OnRender(in RenderResources res) { }
 
@@ -112,7 +117,7 @@ public class PrepareNode : RenderNode
                 SystemBufferNames.TextureColorF16A,
                 p =>
                     p.Context.Context.CreateTexture2D(
-                        RenderSettings.IntermediateTargetFormat,
+                        GraphicsSettings.IntermediateTargetFormat,
                         (uint)p.Context.WindowSize.Width,
                         (uint)p.Context.WindowSize.Height,
                         TextureUsageBits.Sampled | TextureUsageBits.Attachment,
@@ -124,7 +129,7 @@ public class PrepareNode : RenderNode
                 SystemBufferNames.TextureColorF16B,
                 p =>
                     p.Context.Context.CreateTexture2D(
-                        RenderSettings.IntermediateTargetFormat,
+                        GraphicsSettings.IntermediateTargetFormat,
                         (uint)p.Context.WindowSize.Width,
                         (uint)p.Context.WindowSize.Height,
                         TextureUsageBits.Sampled | TextureUsageBits.Attachment,

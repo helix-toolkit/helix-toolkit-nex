@@ -66,7 +66,7 @@ internal class App : Application
             "Frame Texture"
         );
 
-        _dp._textures[0] = _frameTexture;
+        _dp.PushTexture(_frameTexture);
 
         LoadImageSample();
     }

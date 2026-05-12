@@ -72,6 +72,7 @@
   <Project Path="HelixToolkit.Nex.CodeGen.Tests/HelixToolkit.Nex.CodeGen.Tests.csproj" />
   <Project Path="HelixToolkit.Nex.CodeGen/HelixToolkit.Nex.CodeGen.csproj" />
   <Project Path="HelixToolkit.Nex.Engine/HelixToolkit.Nex.Engine.csproj" />
+  <Project Path="HelixToolkit.Nex.Engine.Tests/HelixToolkit.Nex.Engine.Tests.csproj" />
   <Project Path="HelixToolkit.Nex.EntityComponentSystem.Tests/HelixToolkit.Nex.ECS.Tests.csproj" />
   <Project Path="HelixToolkit.Nex.EntityComponentSystem/HelixToolkit.Nex.ECS.csproj" />
   <Project Path="HelixToolkit.Nex.Geometries.Builders/HelixToolkit.Nex.Geometries.Builders.csproj" />

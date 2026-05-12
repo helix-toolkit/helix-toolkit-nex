@@ -90,8 +90,6 @@ internal sealed class PointsDemo : IDisposable
         };
         _orbitController = new OrbitCameraController(_camera);
 
-        RenderSettings.LogFPSInDebug = true;
-
         // Register custom point material shaders before building the engine
         RegisterCustomPointMaterials();
 
@@ -100,7 +98,7 @@ internal sealed class PointsDemo : IDisposable
             .Create(_context)
             .WithDefaultNodes()
             .WithFPS()
-            .RenderToCustomTarget(RenderSettings.IntermediateTargetFormat)
+            .RenderToCustomTarget(GraphicsSettings.IntermediateTargetFormat)
             .Build();
         _pointCullNode = _engine.GetRenderNode<PointCullNode>();
         _renderContext = _engine.CreateRenderContext();
@@ -110,7 +108,7 @@ internal sealed class PointsDemo : IDisposable
             res =>
             {
                 return _context.CreateRenderTarget2D(
-                    RenderSettings.IntermediateTargetFormat,
+                    GraphicsSettings.IntermediateTargetFormat,
                     (uint)_renderContext.WindowSize.Width,
                     (uint)_renderContext.WindowSize.Height,
                     debugName: ViewportTextureName
@@ -516,7 +514,7 @@ internal sealed class PointsDemo : IDisposable
         // ImGui composite to swapchain
         var swapchainTex = _context.GetCurrentSwapchainTexture();
         _imGuiFramebuffer.Colors[0].Texture = swapchainTex;
-        _imGuiDeps._textures[0] = _renderContext.FinalOutputTexture;
+        using var s1 = _imGuiDeps.PushTextureScoped(_renderContext.FinalOutputTexture);
 
         _imGuiRenderer.Render(cmdBuf, _imGuiPass, _imGuiFramebuffer, _imGuiDeps);
 
