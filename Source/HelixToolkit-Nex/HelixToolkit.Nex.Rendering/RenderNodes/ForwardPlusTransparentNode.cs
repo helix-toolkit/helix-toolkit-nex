@@ -1,3 +1,5 @@
+using HelixToolkit.Nex.Rendering.DrawStreams;
+
 namespace HelixToolkit.Nex.Rendering.RenderNodes;
 
 /// <summary>
@@ -21,6 +23,16 @@ public class ForwardPlusTransparentNode : RenderNode
         base.OnTeardown();
     }
 
+    protected override bool CanRender(in RenderResources res)
+    {
+        var context = res.RenderContext;
+        return context.Data is not null
+            && context
+                .Data.DrawStreams.GetStreams(DrawStreamCategory.Transparent)
+                .AsValueEnumerable()
+                .Any(x => x.Count > 0);
+    }
+
     protected override void OnSetupRender(in RenderResources res)
     {
         res.Framebuf.DepthStencil.Texture = res.Textures[SystemBufferNames.TextureDepthF32];
@@ -39,48 +51,31 @@ public class ForwardPlusTransparentNode : RenderNode
         res.Deps.PushBuffer(res.Buffers[SystemBufferNames.BufferLightIndex]);
         res.Deps.PushBuffer(res.Buffers[SystemBufferNames.BufferPBRProperties]);
         res.Deps.PushBuffer(res.Buffers[SystemBufferNames.BufferForwardPlusConstants]);
-    }
-
-    protected override bool BeginRender(in RenderResources res)
-    {
-        var context = res.RenderContext;
-        if (context.Data is null)
-        {
-            _logger.LogWarning("Render context data is null, skipping forward+ transparent pass.");
-            return false;
-        }
-
-        if (res.RenderContext.Data!.MeshDrawsTransparent.Count == 0)
-            return false;
         res.Pass.DepthState = DepthState.ReadOnlyInvZ;
         res.Framebuf.Colors[1].Texture = res.Textures[SystemBufferNames.TextureEntityId];
         res.Pass.Colors[1].LoadOp = LoadOp.Load;
         res.Pass.Colors[1].StoreOp = StoreOp.Store;
-        res.Pass.ColorWrites[1] = true;
-        return true;
+
+        res.RenderContext.Data!.DrawStreams.GetStreams(DrawStreamCategory.Transparent)
+            .Barrier(res.CmdBuffer);
     }
 
     protected override void OnRender(in RenderResources res)
     {
-        res.CmdBuffer.BeginRendering(res.Pass, res.Framebuf, res.Deps);
-        res.RenderContext.Statistics.DrawCalls += RenderHelper.RenderTransparent(
-            in res,
-            res.Buffers[SystemBufferNames.BufferForwardPlusConstants]
-                .GpuAddress(res.RenderContext.Context),
-            true
+        var streams = res.RenderContext.Data!.DrawStreams.GetStreams(
+            DrawStreamCategory.Transparent
         );
-
-        res.Pass.ColorWrites[1] = false; // Disable writing to entity ID target for non - hitable geometry.
-        res.RenderContext.Statistics.DrawCalls += RenderHelper.RenderTransparent(
-            in res,
-            res.Buffers[SystemBufferNames.BufferForwardPlusConstants]
-                .GpuAddress(res.RenderContext.Context),
-            false
-        );
-        res.CmdBuffer.EndRendering();
+        foreach (var stream in streams)
+        {
+            res.RenderContext.Statistics.DrawCalls += RenderHelper.Render(
+                in res,
+                res.Buffers[SystemBufferNames.BufferForwardPlusConstants]
+                    .GpuAddress(res.RenderContext.Context),
+                streams,
+                MaterialPassType.Transparent
+            );
+        }
     }
-
-    protected override void EndRender(in RenderResources res) { }
 
     public override void AddToGraph(RenderGraph graph)
     {
@@ -98,7 +93,11 @@ public class ForwardPlusTransparentNode : RenderNode
                     new(SystemBufferNames.BufferLightIndex, ResourceType.Buffer),
                     new(SystemBufferNames.BufferPBRProperties, ResourceType.Buffer),
                 ],
-                outputs: [new(SystemBufferNames.TextureColorF16Target, ResourceType.Texture)]
+                outputs:
+                [
+                    new(SystemBufferNames.TextureColorF16Target, ResourceType.Texture),
+                    new(SystemBufferNames.TextureEntityId, ResourceType.Texture),
+                ]
             );
     }
 }

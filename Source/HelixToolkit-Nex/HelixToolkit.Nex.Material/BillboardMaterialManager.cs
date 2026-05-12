@@ -176,26 +176,26 @@ public sealed class BillboardMaterialManager(IContext context, IShaderRepository
             CullMode = CullMode.None,
             FrontFaceWinding = WindingMode.CCW,
             Topology = Topology.TriangleStrip,
-            DepthFormat = RenderSettings.DepthBufferFormat,
+            DepthFormat = GraphicsSettings.DepthBufferFormat,
         };
 
         // Color 0: scene color — premultiplied-alpha blend.
         if (registration.BlendConfig.HasValue)
         {
             pipelineDesc.Colors[0] = registration.BlendConfig.Value;
-            pipelineDesc.Colors[0].Format = RenderSettings.IntermediateTargetFormat;
+            pipelineDesc.Colors[0].Format = GraphicsSettings.IntermediateTargetFormat;
         }
         else
         {
             pipelineDesc.Colors[0] = ColorAttachment.CreateOpaque(
-                RenderSettings.IntermediateTargetFormat
+                GraphicsSettings.IntermediateTargetFormat
             );
         }
 
         // Color 1: entity ID (no blend — closest fragment wins via depth test)
         pipelineDesc.Colors[1] = new ColorAttachment
         {
-            Format = RenderSettings.MeshIdTexFormat,
+            Format = GraphicsSettings.MeshIdTexFormat,
             BlendEnabled = false,
         };
 

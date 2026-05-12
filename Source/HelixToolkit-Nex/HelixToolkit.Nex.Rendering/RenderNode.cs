@@ -79,9 +79,15 @@ public abstract class RenderNode : IDisposable
 
     protected virtual void OnTeardown() { }
 
+    protected abstract bool CanRender(in RenderResources res);
+
     public void Render(in RenderResources res)
     {
         if (!IsAttached)
+        {
+            return;
+        }
+        if (!CanRender(in res))
         {
             return;
         }

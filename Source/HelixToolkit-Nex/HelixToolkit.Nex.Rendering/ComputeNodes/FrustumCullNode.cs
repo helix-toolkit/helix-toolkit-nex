@@ -1,4 +1,4 @@
-using HelixToolkit.Nex.Rendering.Components;
+using HelixToolkit.Nex.Rendering.DrawStreams;
 
 namespace HelixToolkit.Nex.Rendering.ComputeNodes;
 
@@ -30,7 +30,7 @@ public sealed class FrustumCullNode : ComputeNode
         CreateInstancingCullingPipeline();
         _cullBuffer = new RingFixSizeBuffer<CullingConstants>(
             Context!,
-            (int)RenderSettings.MaxFrameInFlight,
+            (int)GraphicsSettings.MaxFrameInFlight,
             debugName: "CullConst"
         );
         return true;
@@ -45,6 +45,15 @@ public sealed class FrustumCullNode : ComputeNode
         base.OnTeardown();
     }
 
+    protected override bool CanRender(in RenderResources res)
+    {
+        if (res.RenderContext.Data is null)
+        {
+            return false;
+        }
+        return true;
+    }
+
     protected override void OnSetupRender(in RenderResources res)
     {
         res.Deps.PushBuffer(res.Buffers[SystemBufferNames.BufferMeshInfo]);
@@ -53,17 +62,6 @@ public sealed class FrustumCullNode : ComputeNode
 
     protected override void OnRender(in RenderResources res)
     {
-        if (res.RenderContext.Data is null)
-        {
-            return;
-        }
-        if (
-            res.RenderContext.Data.MeshDrawsOpaque.Count == 0
-            && res.RenderContext.Data.MeshDrawsTransparent.Count == 0
-        )
-        {
-            return;
-        }
         var context = res.RenderContext;
         var frustum = BoundingFrustum.FromViewProjectInversedZ(context.CameraParams.ViewProjection);
 
@@ -85,189 +83,123 @@ public sealed class FrustumCullNode : ComputeNode
 
         _cullConst.MaxDrawDistance = MaxDrawDistance;
         _cullConst.MinScreenSize = MinScreenSize;
-        _cullConst.MeshInfoBufferAddress = context.Data.MeshInfos.GpuAddress;
+        _cullConst.MeshInfoBufferAddress = context.Data!.MeshInfos.GpuAddress;
         _cullConst.NodeInfoBufferAddress = context.Data.NodeInfos.GpuAddress;
         _cullBuffer!.AdvanceAndUpdate(ref _cullConst);
         res.Deps.PushBuffer(_cullBuffer!.Buffer);
 
-        Cull(context, res.CmdBuffer, context.Data.MeshDrawsOpaque, res.Deps);
-        Cull(context, res.CmdBuffer, context.Data.MeshDrawsTransparent, res.Deps);
+        foreach (var stream in context.Data.DrawStreams.GetStreams(DrawStreamCategory.Opaque))
+        {
+            if (stream.Count == 0)
+            {
+                continue;
+            }
+            stream.Barrier(res.CmdBuffer);
+            using var _ = res.Deps.PushBufferScoped(stream.Buffer);
+            Cull(context, res.CmdBuffer, stream, res.Deps);
+        }
     }
 
     private void Cull(
         RenderContext context,
         ICommandBuffer cmdBuffer,
-        IMeshDrawData data,
+        IDrawStream stream,
         Dependencies deps
     )
     {
-        var variant = MeshVariant.Hitable;
-        CullMeshes(context, cmdBuffer, data, deps, variant);
-
-        variant |= MeshVariant.Dynamic;
-        CullMeshes(context, cmdBuffer, data, deps, variant);
-
-        variant = MeshVariant.Hitable;
-        ResetMeshDrawInstancingCount(context, cmdBuffer, data, variant);
-        CullInstancingMeshes(context, cmdBuffer, data, deps, variant);
-
-        variant |= MeshVariant.Dynamic;
-        ResetMeshDrawInstancingCount(context, cmdBuffer, data, variant);
-        CullInstancingMeshes(context, cmdBuffer, data, deps, variant);
+        if (stream.IsInstancing)
+        {
+            ResetMeshDrawInstancingCount(context, cmdBuffer, stream);
+            CullInstancingMeshes(context, cmdBuffer, stream, deps);
+        }
+        else
+        {
+            CullMeshes(context, cmdBuffer, stream, deps);
+        }
     }
 
     private void CullMeshes(
         RenderContext context,
         ICommandBuffer cmdBuffer,
-        IMeshDrawData data,
-        Dependencies deps,
-        MeshVariant variant
+        IDrawStream stream,
+        Dependencies deps
     )
     {
-        if (!data.HasAny(variant))
-        {
-            return;
-        }
         cmdBuffer.BindComputePipeline(_cullingPipeline);
-        var pc = new FrustumCullPC()
-        {
-            CullingConstAddress = _cullBuffer!.GpuAddress,
-        };
-        cmdBuffer.PushConstants(ref pc);
-
-        {
-            // For opaque static meshes
-            var (buffer, range) = data.GetBuffer(variant);
-            if (range.Count > 0)
+        cmdBuffer.PushConstants(
+            new FrustumCullPC
             {
-                pc.InstanceCount = range.Count;
-                pc.MeshDrawIdxOffset = range.Start;
-                pc.MeshDrawBufferAddress = buffer.GpuAddress(Context!);
-                cmdBuffer.PushConstants(ref pc);
-                deps.PushBuffer(buffer);
-                // Cull all static meshes in one dispatch. Each thread checks one mesh's visibility.
-                cmdBuffer.DispatchThreadGroups(
-                    new Dimensions(GpuFrustumCulling.GetGroupSize(pc.InstanceCount), 1, 1),
-                    deps
-                );
-                deps.PopBuffer();
+                CullingConstAddress = _cullBuffer!.GpuAddress,
+                InstanceCount = stream.Count,
+                MeshDrawIdxOffset = 0,
+                MeshDrawBufferAddress = stream.Buffer.GpuAddress(Context!),
             }
-        }
+        );
+        // Cull all static meshes in one dispatch. Each thread checks one mesh's visibility.
+        cmdBuffer.DispatchThreadGroups(
+            new Dimensions(GpuFrustumCulling.GetGroupSize(stream.Count), 1, 1),
+            deps
+        );
     }
 
     private void ResetMeshDrawInstancingCount(
         RenderContext context,
         ICommandBuffer cmdBuffer,
-        IMeshDrawData data,
-        MeshVariant variant
+        IDrawStream stream
     )
     {
-        variant |= MeshVariant.Instancing;
-        if (!data.HasAny(variant))
-        {
-            return;
-        }
         cmdBuffer.BindComputePipeline(_resetInstanceCountPipeline);
-        { // For static instancing meshes, we need to reset instance count before culling, as the count may change every frame.
-            var (buffer, range) = data.GetBuffer(variant);
-            if (range.Count > 0)
+        // For instancing meshes, we need to reset instance count before culling, as the count may change every frame.
+        cmdBuffer.PushConstants(
+            new ResetMeshDrawInstanceCountPC
             {
-                cmdBuffer.PushConstants(
-                    new ResetMeshDrawInstanceCountPC
-                    {
-                        MeshDrawBufferAddress = buffer.GpuAddress(Context!),
-                        MeshDrawCount = (uint)range.Count,
-                        MeshDrawOffset = range.Start,
-                    }
-                );
-                // Reset all instance count value in mesh draw buffer to 0.
-                cmdBuffer.DispatchThreadGroups(
-                    new Dimensions(GpuFrustumCulling.GetGroupSize(range.Count), 1, 1),
-                    Dependencies.Empty
-                );
+                MeshDrawBufferAddress = stream.Buffer.GpuAddress(Context!),
+                MeshDrawCount = stream.Count,
+                MeshDrawOffset = 0,
             }
-        }
+        );
+        // Reset all instance count value in mesh draw buffer to 0.
+        cmdBuffer.DispatchThreadGroups(
+            new Dimensions(GpuFrustumCulling.GetGroupSize(stream.Count), 1, 1),
+            Dependencies.Empty
+        );
     }
 
     private void CullInstancingMeshes(
         RenderContext context,
         ICommandBuffer cmdBuffer,
-        IMeshDrawData data,
-        Dependencies deps,
-        MeshVariant variant
+        IDrawStream stream,
+        Dependencies deps
     )
     {
-        variant |= MeshVariant.Instancing;
-        if (!data.HasAny(variant))
+        var pc = new FrustumCullInstancingPC()
         {
-            return;
-        }
-        var pc = new FrustumCullInstancingPC() { CullingConstAddress = _cullBuffer!.GpuAddress };
+            CullingConstAddress = _cullBuffer!.GpuAddress,
+            MeshDrawBufferAddress = stream.Buffer.GpuAddress(Context!),
+        };
         // For instancing meshes
         cmdBuffer.BindComputePipeline(_instancingCullingPipeline);
-
+        foreach (var matId in stream.GetMaterialTypes())
         {
-            var (buffer, range) = data.GetBuffer(variant);
-
-            if (range.Count > 0)
+            var subRange = stream.GetRangeByMaterial(matId);
+            for (var i = subRange.Start; i < subRange.End; ++i)
             {
-                pc.MeshDrawBufferAddress = buffer.GpuAddress(Context!);
-                deps.PushBuffer(buffer);
-                var matIds = data.GetMaterialTypes(variant);
-                foreach (var matId in matIds)
+                pc.DrawCommandIdx = i;
+                pc.InstanceCount = stream.TryGetMeshDraw((int)i, out var draw)
+                    ? draw.InstanceCount
+                    : 0;
+                if (pc.InstanceCount == 0)
                 {
-                    var subRange = data.GetRangeByMaterial(variant, matId);
-                    for (var i = subRange.Start; i < subRange.End; i++)
-                    {
-                        pc.DrawCommandIdx = i;
-                        pc.InstanceCount = data.GetMeshDraw(variant, matId, (int)i).InstanceCount;
-                        cmdBuffer.PushConstants(pc);
-                        // Run one thread per instance to check visibility
-                        cmdBuffer.DispatchThreadGroups(
-                            new Dimensions(
-                                GpuFrustumCulling.GetGroupSize((uint)pc.InstanceCount),
-                                1,
-                                1
-                            ),
-                            deps
-                        );
-                    }
+                    continue;
                 }
-                deps.PopBuffer();
+                cmdBuffer.PushConstants(pc);
+                // Run one thread per instance to check visibility
+                cmdBuffer.DispatchThreadGroups(
+                    new Dimensions(GpuFrustumCulling.GetGroupSize((uint)pc.InstanceCount), 1, 1),
+                    deps
+                );
             }
         }
-
-        //{
-        //    varaint |= MeshVariant.Dynamic;
-        //    var (buffer, range) = data.GetBuffer(varaint);
-
-        //    if (range.Count > 0)
-        //    {
-        //        pc.MeshDrawBufferAddress = buffer.GpuAddress(Context!);
-        //        deps.PushBuffer(buffer);
-        //        var matIds = data.GetMaterialTypes(varaint);
-        //        foreach (var matId in matIds)
-        //        {
-        //            var subRange = data.GetRangeByMaterial(varaint, matId);
-        //            for (var i = subRange.Start; i < subRange.End; i++)
-        //            {
-        //                pc.DrawCommandIdx = i;
-        //                pc.InstanceCount = data.GetMeshDraw(varaint, matId, (int)i).InstanceCount;
-        //                cmdBuffer.PushConstants(pc);
-        //                // Run one thread per instance to check visibility
-        //                cmdBuffer.DispatchThreadGroups(
-        //                    new Dimensions(
-        //                        GpuFrustumCulling.GetGroupSize((uint)pc.InstanceCount),
-        //                        1,
-        //                        1
-        //                    ),
-        //                    deps
-        //                );
-        //            }
-        //        }
-        //        deps.PopBuffer();
-        //    }
-        //}
     }
 
     private void CreateCullingPipeline()

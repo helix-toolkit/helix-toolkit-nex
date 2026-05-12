@@ -108,8 +108,6 @@ internal sealed class BillboardDemo : IDisposable
             SprintMultiplier = 2f,
         };
 
-        RenderSettings.LogFPSInDebug = true;
-
         // Register custom SDF material variants before building the engine
         RegisterSDFMaterialVariants();
 
@@ -118,7 +116,7 @@ internal sealed class BillboardDemo : IDisposable
             .Create(_context)
             .WithDefaultNodes()
             .WithSMAA()
-            .RenderToCustomTarget(RenderSettings.IntermediateTargetFormat)
+            .RenderToCustomTarget(GraphicsSettings.IntermediateTargetFormat)
             .WithFPS()
             .Build();
         _billboardCullNode = _engine.GetRenderNode<BillboardCullNode>();
@@ -130,7 +128,7 @@ internal sealed class BillboardDemo : IDisposable
             res =>
             {
                 return _context.CreateRenderTarget2D(
-                    RenderSettings.IntermediateTargetFormat,
+                    GraphicsSettings.IntermediateTargetFormat,
                     (uint)_renderContext.WindowSize.Width,
                     (uint)_renderContext.WindowSize.Height,
                     debugName: ViewportTextureName
@@ -383,7 +381,7 @@ internal sealed class BillboardDemo : IDisposable
         // ImGui composite to swapchain
         var swapchainTex = _context.GetCurrentSwapchainTexture();
         _imGuiFramebuffer.Colors[0].Texture = swapchainTex;
-        _imGuiDeps._textures[0] = _renderContext.FinalOutputTexture;
+        using var s1 = _imGuiDeps.PushTextureScoped(_renderContext.FinalOutputTexture);
 
         _imGuiRenderer.Render(cmdBuf, _imGuiPass, _imGuiFramebuffer, _imGuiDeps);
 

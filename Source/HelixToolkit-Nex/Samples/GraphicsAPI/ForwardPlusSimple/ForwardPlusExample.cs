@@ -39,6 +39,7 @@ public class ForwardPlusExample
     private BufferResource _lightIndexBuffer = BufferResource.Null;
     private BufferResource _directionalLightBuffer = BufferResource.Null;
     private BufferResource _meshInfoBuffer = BufferResource.Null;
+    private BufferResource _nodeInfoBuffer = BufferResource.Null;
 
     // Per-object data buffers
     private BufferResource _pbrPropertiesBuffer = BufferResource.Null;
@@ -82,6 +83,7 @@ public class ForwardPlusExample
 
     private DepthState _depthState = DepthState.DefaultReversedZ;
     private FastList<MeshDraw> _drawParams = new();
+    private FastList<GpuNodeInfo> _nodeInfos = new();
 
     #endregion
 
@@ -174,12 +176,17 @@ public class ForwardPlusExample
             Roughness = 0.2f,
             Ao = 1f,
         };
+        _nodeInfos.Add(new GpuNodeInfo()
+        {
+            Enabled = 1u,
+            Transform = Matrix4x4.Identity,
+        });
         _drawParams.Add(
             new()
             {
                 MaterialId = 0,
                 MeshId = 0,
-                Transform = Matrix4x4.Identity,
+                NodeInfoIndex = (uint)_nodeInfos.Count - 1,
                 IndexCount = _mesh.IndexCount,
                 InstanceCount = 1,
                 MaterialType = (uint)ShadingMode,
@@ -194,12 +201,17 @@ public class ForwardPlusExample
                 Emissive = _lights[i].Color * _lights[i].Intensity,
                 Opacity = 1,
             };
+            _nodeInfos.Add(new GpuNodeInfo()
+            {
+                Enabled = 1u,
+                Transform = Matrix4x4.CreateTranslation(_lights[i].Position),
+            });
             _drawParams.Add(
                 new()
                 {
                     MaterialId = (uint)i + 1,
                     MeshId = 1, // Light mesh
-                    Transform = Matrix4x4.CreateTranslation(_lights[i].Position),
+                    NodeInfoIndex = (uint)_nodeInfos.Count - 1,
                     IndexCount = _lightMesh.IndexCount,
                     InstanceCount = 1,
                     MaterialType = (uint)PBRShadingMode.Unlit,
@@ -304,6 +316,13 @@ public class ForwardPlusExample
             BufferUsageBits.Storage,
             StorageType.Device,
             "MeshInfo"
+        );
+
+        _nodeInfoBuffer = _context.CreateBuffer(
+            _nodeInfos,
+            BufferUsageBits.Storage,
+            StorageType.Device,
+            "NodeInfo"
         );
 
         _pbrPropertiesBuffer = _context.CreateBuffer(
@@ -599,6 +618,7 @@ public class ForwardPlusExample
                 LightIndexBufferAddress = _lightIndexBuffer.GpuAddress,
                 MaterialBufferAddress = _pbrPropertiesBuffer.GpuAddress,
                 DirectionalLightsBufferAddress = _directionalLightBuffer.GpuAddress,
+                NodeInfoBufferAddress = _nodeInfoBuffer.GpuAddress,
                 LightCount = (uint)_lights.Count,
                 TileSize = _config.TileSize,
                 MaxLightsPerTile = _config.MaxLightsPerTile,
@@ -633,7 +653,8 @@ public class ForwardPlusExample
             }
         );
 
-        cmdBuffer.UpdateBuffer(_meshDrawBuffer, _drawParams);
+        //cmdBuffer.UpdateBuffer(_meshDrawBuffer, _drawParams);
+        cmdBuffer.UpdateBuffer(_nodeInfoBuffer, _nodeInfos);
     }
 
     /// <summary>
@@ -676,7 +697,7 @@ public class ForwardPlusExample
 
         cmdBuffer.BindComputePipeline(_cullingPipeline);
         cmdBuffer.PushConstants(_context.GpuAddress(_lightCullingBuffer));
-        _lightCullDeps._textures[0] = _depthBuffer;
+        using var s1 = _lightCullDeps.PushTextureScoped(_depthBuffer);
         cmdBuffer.DispatchThreadGroups(new Dimensions(tileCountX, tileCountY), _lightCullDeps);
     }
 
@@ -689,7 +710,8 @@ public class ForwardPlusExample
     private void RenderPass(ICommandBuffer cmdBuffer)
     {
         _framebuffer.Colors[0].Texture = _f16Framebuffer;
-        _renderDeps._buffers[0] = _lightIndexBuffer;
+        using var s1 = _renderDeps.PushBufferScoped(_lightIndexBuffer);
+        using var s2 = _renderDeps.PushBufferScoped(_nodeInfoBuffer);
         cmdBuffer.BeginRendering(_renderPass, _framebuffer, _renderDeps);
         cmdBuffer.BindDepthState(DepthState.DefaultReversedZ);
         cmdBuffer.BindRenderPipeline(_renderPipelinePBR);
@@ -748,7 +770,7 @@ public class ForwardPlusExample
     {
         _framebuffer.Colors[0].Texture = target;
         _framebuffer.DepthStencil.Texture = TextureResource.Null;
-        _toneMappingDeps._textures[0] = _f16Framebuffer;
+        using var s1 = _toneMappingDeps.PushTextureScoped(_f16Framebuffer);
         cmdBuffer.BeginRendering(_toneMappingPass, _framebuffer, _toneMappingDeps);
         cmdBuffer.BindRenderPipeline(_toneGammePipeline);
         cmdBuffer.BindDepthState(DepthState.Disabled);
@@ -874,7 +896,7 @@ public class ForwardPlusExample
         for (int i = 0; i < NumLights - NumSpotLights; i++)
         {
             _lights.GetInternalArray()[i].Position += new Vector3(_offset, 0, 0);
-            _drawParams.GetInternalArray()[i + 1].Transform = Matrix4x4.CreateTranslation(
+            _nodeInfos.GetInternalArray()[i + 1].Transform = Matrix4x4.CreateTranslation(
                 _lights[i].Position
             );
         }
@@ -902,6 +924,7 @@ public class ForwardPlusExample
         _lightCullingBuffer.Dispose();
         _directionalLightBuffer.Dispose();
         _meshInfoBuffer.Dispose();
+        _nodeInfoBuffer.Dispose();
 
         // Dispose pipelines
         _renderPipelinePBR.Dispose();

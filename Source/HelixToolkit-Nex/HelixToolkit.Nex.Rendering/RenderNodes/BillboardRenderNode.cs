@@ -22,7 +22,7 @@ public sealed class BillboardRenderNode : RenderNode
 
     #region Render
 
-    protected override bool BeginRender(in RenderResources res)
+    protected override bool CanRender(in RenderResources res)
     {
         var context = res.RenderContext;
         if (context.Data is null)
@@ -31,11 +31,11 @@ public sealed class BillboardRenderNode : RenderNode
             return false;
         }
 
-        if (context.Data.BillboardData!.TotalBillboardCount == 0)
+        if (context.Data.BillboardData is null || context.Data.BillboardData.TotalBillboardCount == 0)
         {
             return false;
         }
-        return base.BeginRender(res);
+        return true;
     }
 
     protected override void OnSetupRender(in RenderResources res)

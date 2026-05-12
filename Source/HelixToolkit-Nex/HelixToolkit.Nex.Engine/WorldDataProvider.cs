@@ -1,4 +1,5 @@
 using HelixToolkit.Nex.Engine.Data;
+using HelixToolkit.Nex.Rendering.DrawStreams;
 
 namespace HelixToolkit.Nex.Engine;
 
@@ -9,8 +10,7 @@ public sealed class WorldDataProvider : IRenderDataProvider, IDisposable
     private readonly FastList<IRenderData> _renderDataList = [];
     private readonly RangeLightData _lightData;
     private readonly DirectionalLightData _directionalLightData;
-    private readonly MeshDrawData _meshDrawDataOpaque;
-    private readonly MeshDrawData _meshDrawDataTransparent;
+    private readonly MeshDrawStreamRegistry _drawStreamRegistry;
     private readonly PointCloudData _pointCloudData;
     private readonly BillboardData _billboardData;
     private readonly SceneState _sceneState;
@@ -26,9 +26,7 @@ public sealed class WorldDataProvider : IRenderDataProvider, IDisposable
 
     public IRenderData DirectionalLights => _directionalLightData;
 
-    public IMeshDrawData MeshDrawsOpaque => _meshDrawDataOpaque;
-
-    public IMeshDrawData MeshDrawsTransparent => _meshDrawDataTransparent;
+    public IDrawStreamRegistry DrawStreams => _drawStreamRegistry;
 
     public IPBRPropertyData PBRPropertiesBuffer => ResourceManager.PBRPropertyData;
 
@@ -45,15 +43,12 @@ public sealed class WorldDataProvider : IRenderDataProvider, IDisposable
         ResourceManager = services.GetRequiredService<IResourceManager>();
         _lightData = new RangeLightData(Context, World);
         _directionalLightData = new DirectionalLightData(Context, World);
-        _meshDrawDataOpaque = new MeshDrawData(Context, World, false);
-        _meshDrawDataTransparent = new MeshDrawData(Context, World, true);
+        _drawStreamRegistry = new MeshDrawStreamRegistry(Context, World);
         _pointCloudData = new PointCloudData(Context, World);
         _billboardData = new BillboardData(Context, World);
         _sceneState = new SceneState(Context, World);
         _renderDataList.Add(_lightData);
         _renderDataList.Add(_directionalLightData);
-        _renderDataList.Add(_meshDrawDataOpaque);
-        _renderDataList.Add(_meshDrawDataTransparent);
         _renderDataList.Add(_pointCloudData);
         _renderDataList.Add(_billboardData);
     }
@@ -62,6 +57,10 @@ public sealed class WorldDataProvider : IRenderDataProvider, IDisposable
     {
         using var t = _tracer.BeginScope(nameof(Initialize));
         _sceneState.Initialize();
+        if (_drawStreamRegistry.Initialize().CheckResult() != ResultCode.Ok)
+        {
+            return false;
+        }
         foreach (var item in _renderDataList)
         {
             if (item.Initialize().CheckResult() != ResultCode.Ok)
@@ -83,6 +82,10 @@ public sealed class WorldDataProvider : IRenderDataProvider, IDisposable
             {
                 return false;
             }
+        }
+        if (!_drawStreamRegistry.Update())
+        {
+            return false;
         }
         return true;
     }
@@ -106,6 +109,7 @@ public sealed class WorldDataProvider : IRenderDataProvider, IDisposable
         {
             if (disposing)
             {
+                _drawStreamRegistry.Dispose();
                 _sceneState.Dispose();
                 foreach (var data in _renderDataList)
                 {

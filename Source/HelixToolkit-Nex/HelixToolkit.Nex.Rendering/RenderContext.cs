@@ -51,6 +51,7 @@ public sealed class RenderParams
     public Color4 BackgroundColor = Color.Black;
     public bool EnableLightCulling = true;
     public bool EnableGammaCorrection = false;
+    public static bool LogFPSInDebug { get; set; } = false;
 }
 
 public sealed class RenderContext(IServiceProvider services) : Initializable
@@ -181,6 +182,7 @@ public sealed class RenderContext(IServiceProvider services) : Initializable
     /// the <c>Data</c> object is properly initialized before calling this method.</remarks>
     public void BeginFrame()
     {
+        Statistics.LogFPS = RenderParams.LogFPSInDebug;
         Statistics.BeginFrame();
         if (Data?.Update() == false)
         {

@@ -100,7 +100,6 @@ internal partial class Editor : IDisposable
         _firstPersonController = new FirstPersonCameraController(_camera) { MoveSpeed = 20f };
         _activeController = _orbitController;
 
-        RenderSettings.LogFPSInDebug = true;
 
         // Register Minecraft block material types before the material registry is built
         _scene.RegisterMaterials();
@@ -113,7 +112,7 @@ internal partial class Editor : IDisposable
             .WithSMAA()
             .WithFXAA()
             .WithFPS()
-            .RenderToCustomTarget(RenderSettings.IntermediateTargetFormat)
+            .RenderToCustomTarget(GraphicsSettings.IntermediateTargetFormat)
             .WithPostEffects(effects =>
             {
                 effects.AddEffect(_borderHighlight);
@@ -137,7 +136,7 @@ internal partial class Editor : IDisposable
             res =>
             {
                 return res.Context.Context.CreateRenderTarget2D(
-                    RenderSettings.IntermediateTargetFormat,
+                    GraphicsSettings.IntermediateTargetFormat,
                     (uint)res.Context.WindowSize.Width,
                     (uint)res.Context.WindowSize.Height,
                     debugName: ViewportTextureName

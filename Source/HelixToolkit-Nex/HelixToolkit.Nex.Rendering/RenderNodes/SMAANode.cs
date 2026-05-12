@@ -51,9 +51,15 @@ public sealed class SMAANode : RenderNode
         0.02f, // Ultra
     ];
 
-    private static readonly byte[] _passNameEdgeDetection = Encoding.UTF8.GetBytes("SMAA Edge Detection");
-    private static readonly byte[] _passNameBlendingWeights = Encoding.UTF8.GetBytes("SMAA Blending Weights");
-    private static readonly byte[] _passNameNeighbourhoodBlending = Encoding.UTF8.GetBytes("SMAA Neighbourhood Blending");
+    private static readonly byte[] _passNameEdgeDetection = Encoding.UTF8.GetBytes(
+        "SMAA Edge Detection"
+    );
+    private static readonly byte[] _passNameBlendingWeights = Encoding.UTF8.GetBytes(
+        "SMAA Blending Weights"
+    );
+    private static readonly byte[] _passNameNeighbourhoodBlending = Encoding.UTF8.GetBytes(
+        "SMAA Neighbourhood Blending"
+    );
 
     // One pipeline per SmaaMode specialization constant.
     private RenderPipelineResource _edgePipeline = RenderPipelineResource.Null;
@@ -209,7 +215,7 @@ public sealed class SMAANode : RenderNode
             vs,
             fs,
             SmaaMode.NeighbourhoodBlending,
-            RenderSettings.IntermediateTargetFormat,
+            GraphicsSettings.IntermediateTargetFormat,
             "Smaa_NeighbourhoodBlending"
         );
 
@@ -241,6 +247,11 @@ public sealed class SMAANode : RenderNode
         desc.Colors[0] = ColorAttachment.CreateOpaque(outputFormat);
         desc.WriteSpecInfo(0, (uint)stage);
         return Context!.CreateRenderPipeline(desc);
+    }
+
+    protected override bool CanRender(in RenderResources res)
+    {
+        return true;
     }
 
     protected override void OnSetupRender(in RenderResources res) { }

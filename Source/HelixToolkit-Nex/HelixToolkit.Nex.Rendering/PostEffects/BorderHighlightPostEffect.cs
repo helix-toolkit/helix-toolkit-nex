@@ -1,5 +1,6 @@
 using HelixToolkit.Nex.ECS;
 using HelixToolkit.Nex.Rendering.Components;
+using HelixToolkit.Nex.Rendering.DrawStreams;
 using HelixToolkit.Nex.Rendering.RenderNodes;
 using HelixToolkit.Nex.Scene;
 using HelixToolkit.Nex.Shaders.Frag;
@@ -84,8 +85,7 @@ public sealed class BorderHighlightPostEffect : PostEffect
     private readonly Dependencies _deps = new();
     private readonly Framebuffer _frameBuffer = new();
     private readonly RenderPass _pass = new();
-    private readonly List<HighlightEntry> _entriesOpaque = [];
-    private readonly List<HighlightEntry> _entriesTransparent = [];
+    private readonly List<HighlightEntry> _entries = [];
     public override string Name => nameof(BorderHighlightPostEffect);
     public override Color4 DebugColor => Color.Orange;
     public override uint Priority => (uint)PostEffectPriority.Highlight;
@@ -149,7 +149,7 @@ public sealed class BorderHighlightPostEffect : PostEffect
         // ------------------------------------------------------------------
 
         GatherHighlightedDraws(world, data);
-        if (_entriesOpaque.Count == 0)
+        if (_entries.Count == 0)
         {
             return false;
         }
@@ -164,28 +164,13 @@ public sealed class BorderHighlightPostEffect : PostEffect
         //   Draw all highlighted meshes into TextureHighlightMask as flat white.
         //   The interior is solid white; the exterior stays black (clear colour).
         // ------------------------------------------------------------------
-        if (_entriesOpaque.Count > 0)
+        if (_entries.Count > 0)
         {
             DrawSilhouetteMask(
                 in res,
                 cmdBuffer,
                 maskTex,
-                data,
-                _entriesOpaque,
-                res.Buffers[SystemBufferNames.BufferForwardPlusConstants],
-                data.MeshDrawsOpaque
-            );
-        }
-        if (_entriesTransparent.Count > 0)
-        {
-            DrawSilhouetteMask(
-                in res,
-                cmdBuffer,
-                maskTex,
-                data,
-                _entriesTransparent,
-                res.Buffers[SystemBufferNames.BufferForwardPlusConstants],
-                data.MeshDrawsTransparent
+                res.Buffers[SystemBufferNames.BufferForwardPlusConstants]
             );
         }
 
@@ -196,16 +181,7 @@ public sealed class BorderHighlightPostEffect : PostEffect
         //   colours we do one composite pass per unique colour group, blending
         //   them onto the scene in the ping-pong write slot.
         // ------------------------------------------------------------------
-        DrawComposite(
-            in res,
-            cmdBuffer,
-            maskTex,
-            texelW,
-            texelH,
-            ref readSlot,
-            ref writeSlot,
-            _entriesOpaque
-        );
+        DrawComposite(in res, cmdBuffer, maskTex, texelW, texelH, ref readSlot, ref writeSlot);
         return true;
     }
 
@@ -249,8 +225,7 @@ public sealed class BorderHighlightPostEffect : PostEffect
     /// </summary>
     private void GatherHighlightedDraws(World world, IRenderDataProvider data)
     {
-        _entriesOpaque.Clear();
-        var meshDraws = data.MeshDrawsOpaque;
+        _entries.Clear();
 
         foreach (var entity in world.GetComponentEntities<BorderHighlightComponent>())
         {
@@ -258,11 +233,16 @@ public sealed class BorderHighlightPostEffect : PostEffect
             {
                 continue;
             }
+            ref var renderable = ref entity.Get<Renderable>();
+            if (renderable.GPUIndex < 0 || renderable.DrawCategory == 0)
+            {
+                continue;
+            }
             ref var highlight = ref entity.Get<BorderHighlightComponent>();
-            var entries = entity.Has<TransparentComponent>() ? _entriesTransparent : _entriesOpaque;
-            entries.Add(
+            _entries.Add(
                 new HighlightEntry(
                     entity,
+                    Category: (DrawStreamCategory)renderable.DrawCategory,
                     Color: highlight.Color,
                     Thickness: highlight.Thickness > 0 ? highlight.Thickness : 2f
                 )
@@ -280,10 +260,7 @@ public sealed class BorderHighlightPostEffect : PostEffect
         in RenderResources res,
         ICommandBuffer cmdBuffer,
         TextureHandle maskTex,
-        IRenderDataProvider data,
-        List<HighlightEntry> entries,
-        BufferHandle fpBuffer,
-        IMeshDrawData meshDraws
+        BufferHandle fpBuffer
     )
     {
         var context = res.RenderContext!;
@@ -304,47 +281,58 @@ public sealed class BorderHighlightPostEffect : PostEffect
         using var _ = context.EnableExternalPipelineScoped();
 
         var fpConstAddress = fpBuffer.GpuAddress(context.Context);
+        var dataStreams = context.Data!.DrawStreams;
 
-        foreach (var entry in entries)
+        foreach (var entry in _entries)
         {
-            var (buffer, drawCmd, drawIndex) = meshDraws.GetMeshDraw(entry.Entity);
-            if (buffer == BufferHandle.Null || drawIndex < 0)
+            var streams = dataStreams.GetStreams(entry.Category);
+            foreach (var stream in streams)
             {
-                continue;
-            }
-            var isDynamic = drawCmd.IsDynamic();
-            if (!isDynamic)
-            {
-                cmdBuffer.BindIndexBuffer(data.StaticMeshIndexData.Buffer, IndexFormat.UI32);
-            }
-            else
-            {
-                // Dynamic mesh — bind its own index buffer.
-                var geom = data.GetGeometry(drawCmd.MeshId);
-                if (geom is null)
+                if (stream.Categories != entry.Category)
                 {
                     continue;
                 }
-                cmdBuffer.BindIndexBuffer(geom.IndexBuffer, IndexFormat.UI32);
-            }
-
-            cmdBuffer.PushConstants(
-                new MeshDrawPushConstant
+                var (meshDraw, slot) = stream.GetMeshDraw(entry.Entity);
+                if (slot < 0)
                 {
-                    FpConstAddress = fpConstAddress,
-                    DrawCommandIdxOffset = 0,
-                    MeshDrawId = (uint)drawIndex,
-                    MeshDrawBufferAddress = buffer.GpuAddress(Context!),
-                    NodeInfoBufferAddress = data.NodeInfos.GpuAddress,
+                    continue;
                 }
-            );
 
-            cmdBuffer.DrawIndexedIndirect(
-                buffer,
-                (uint)drawIndex * meshDraws.Stride,
-                1,
-                meshDraws.Stride
-            );
+                if (stream.IndexBufferStrategy == IndexBufferStrategy.Shared)
+                {
+                    cmdBuffer.BindIndexBuffer(
+                        context.Data.StaticMeshIndexData.Buffer,
+                        IndexFormat.UI32
+                    );
+                }
+                else
+                {
+                    // Dynamic mesh — bind its own index buffer.
+                    var geom = context.Data.GetGeometry(meshDraw.MeshId);
+                    if (geom is null)
+                    {
+                        continue;
+                    }
+                    cmdBuffer.BindIndexBuffer(geom.IndexBuffer, IndexFormat.UI32);
+                }
+
+                cmdBuffer.PushConstants(
+                    new MeshDrawPushConstant
+                    {
+                        FpConstAddress = fpConstAddress,
+                        DrawCommandIdxOffset = 0,
+                        MeshDrawId = (uint)slot,
+                        MeshDrawBufferAddress = stream.Buffer.GpuAddress(Context!),
+                    }
+                );
+
+                cmdBuffer.DrawIndexedIndirect(
+                    stream.Buffer,
+                    (uint)slot * stream.Stride,
+                    1,
+                    stream.Stride
+                );
+            }
         }
 
         cmdBuffer.EndRendering();
@@ -361,8 +349,7 @@ public sealed class BorderHighlightPostEffect : PostEffect
         float texelW,
         float texelH,
         ref string readSlot,
-        ref string writeSlot,
-        List<HighlightEntry> entries
+        ref string writeSlot
     )
     {
         var sceneTex = res.Textures[readSlot];
@@ -372,7 +359,7 @@ public sealed class BorderHighlightPostEffect : PostEffect
         // colour).  For the common case (single colour) this is one pass.
         // Group by colour to minimise the number of passes.
         var groups = new Dictionary<(float r, float g, float b, float a, float t), bool>();
-        foreach (var e in entries)
+        foreach (var e in _entries)
         {
             var key = (e.Color.Red, e.Color.Green, e.Color.Blue, e.Color.Alpha, e.Thickness);
             groups[key] = true;
@@ -549,7 +536,9 @@ public sealed class BorderHighlightPostEffect : PostEffect
                 CullMode = CullMode.None,
                 FrontFaceWinding = WindingMode.CCW,
             };
-            desc.Colors[0] = ColorAttachment.CreateOpaque(RenderSettings.IntermediateTargetFormat);
+            desc.Colors[0] = ColorAttachment.CreateOpaque(
+                GraphicsSettings.IntermediateTargetFormat
+            );
             desc.WriteSpecInfo(0, (uint)HighlightMode.Composite);
             _compositePipeline = Context.CreateRenderPipeline(desc);
         }
@@ -567,5 +556,10 @@ public sealed class BorderHighlightPostEffect : PostEffect
     // Internal data
     // -----------------------------------------------------------------------
 
-    private readonly record struct HighlightEntry(Entity Entity, Color4 Color, float Thickness);
+    private readonly record struct HighlightEntry(
+        Entity Entity,
+        DrawStreamCategory Category,
+        Color4 Color,
+        float Thickness
+    );
 }

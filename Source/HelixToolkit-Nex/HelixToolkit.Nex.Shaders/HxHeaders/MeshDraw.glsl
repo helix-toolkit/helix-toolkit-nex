@@ -31,7 +31,6 @@ struct MeshDrawPushConstant {
     uint64_t fpConstAddress;
     uint64_t meshDrawBufferAddress;
     uint64_t customMaterialBufferAddress; // Address of custom material properties buffer (set per material type)
-    uint64_t nodeInfoBufferAddress; // Address of node info buffer, used for fetching per-node data like world matrix and entity id.
     uint drawCommandIdxOffset;
     uint meshDrawId;
 };

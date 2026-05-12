@@ -17,6 +17,8 @@ public sealed class RenderStatistics
 
     public float AverageRenderDurationMs { private set; get; } = 0;
 
+    public bool LogFPS { set; get; } = false;
+
     public float FramesPerSecond =>
         AverageRenderDurationMs > 0 ? 1000f / AverageRenderDurationMs : 0;
 
@@ -62,7 +64,7 @@ public sealed class RenderStatistics
                 prev = ts;
             }
             AverageRenderDurationMs = deltas > 0 ? totalDeltaMs / deltas : 0;
-            if (RenderSettings.LogFPSInDebug)
+            if (LogFPS)
             {
                 _logger.LogDebug("FPS: {FramesPerSecond}", FramesPerSecond);
             }

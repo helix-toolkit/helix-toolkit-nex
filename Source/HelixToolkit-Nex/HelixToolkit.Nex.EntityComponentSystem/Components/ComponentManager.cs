@@ -504,7 +504,7 @@ internal sealed class ComponentManager<T> : IDisposable
     /// </summary>
     /// <returns></returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public Components<T> AsComponents() => new(CompMapping, Storage);
+    public Components<T> AsComponents() => new(World.GetWorldById(WorldId)!, CompMapping, Storage);
 
     /// <summary>
     /// Gets the entities.

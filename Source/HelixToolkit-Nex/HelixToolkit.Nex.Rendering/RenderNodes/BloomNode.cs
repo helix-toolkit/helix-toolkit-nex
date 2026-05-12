@@ -81,6 +81,10 @@ public sealed class BloomNode : RenderNode
     {
     }
 
+    protected override bool CanRender(in RenderResources res)
+    {
+        return true;
+    }
     protected override bool BeginRender(in RenderResources res)
     {
         return true;
@@ -195,7 +199,7 @@ public sealed class BloomNode : RenderNode
             SystemBufferNames.TextureBloomA,
             p =>
                 p.Context.Context.CreateTexture2D(
-                    RenderSettings.IntermediateTargetFormat,
+                    GraphicsSettings.IntermediateTargetFormat,
                     BloomTextureSize(p.Context.WindowSize.Width),
                     BloomTextureSize(p.Context.WindowSize.Height),
                     TextureUsageBits.Sampled | TextureUsageBits.Attachment,
@@ -209,7 +213,7 @@ public sealed class BloomNode : RenderNode
             SystemBufferNames.TextureBloomB,
             p =>
                 p.Context.Context.CreateTexture2D(
-                    RenderSettings.IntermediateTargetFormat,
+                    GraphicsSettings.IntermediateTargetFormat,
                     BloomTextureSize(p.Context.WindowSize.Width),
                     BloomTextureSize(p.Context.WindowSize.Height),
                     TextureUsageBits.Sampled | TextureUsageBits.Attachment,
@@ -371,7 +375,7 @@ public sealed class BloomNode : RenderNode
             CullMode = CullMode.None,
             FrontFaceWinding = WindingMode.CCW,
         };
-        desc.Colors[0] = ColorAttachment.CreateOpaque(RenderSettings.IntermediateTargetFormat);
+        desc.Colors[0] = ColorAttachment.CreateOpaque(GraphicsSettings.IntermediateTargetFormat);
         desc.WriteSpecInfo(0, (uint)stage);
         return Context!.CreateRenderPipeline(desc);
     }
