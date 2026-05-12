@@ -17,23 +17,14 @@ public enum DrawStreamCategory : uint
     /// <summary>Stream contains transparent geometry.</summary>
     Transparent = 1 << 1,
 
-    /// <summary>Stream contains static geometry (shared index buffer).</summary>
-    Static = 1 << 2,
-
     /// <summary>Stream contains dynamic geometry (per-draw index buffer).</summary>
     Dynamic = 1 << 3,
 
     /// <summary>Stream contains instanced geometry.</summary>
     Instancing = 1 << 4,
 
-    /// <summary>Stream contains non-instanced geometry.</summary>
-    NonInstancing = 1 << 5,
-
     /// <summary>Stream contains hitable geometry (writes entity ID for picking).</summary>
     Hitable = 1 << 6,
-
-    /// <summary>Stream contains non-hitable geometry (writes zero entity ID).</summary>
-    NonHitable = 1 << 7,
 }
 
 /// <summary>
@@ -41,8 +32,10 @@ public enum DrawStreamCategory : uint
 /// Each value corresponds to a unique combination of rendering characteristics
 /// (opaque/transparent, static/dynamic, instancing, hitability).
 /// </summary>
-public enum DrawStreamName
+public enum DrawStreamName : int
 {
+    None = -1,
+
     /// <summary>Opaque static geometry using the shared global index buffer.</summary>
     OpaqueStatic,
 
@@ -95,46 +88,46 @@ public static class DrawStreamNameExtensions
     {
         return name switch
         {
-            DrawStreamName.OpaqueStatic => DrawStreamCategory.Opaque | DrawStreamCategory.Static,
+            DrawStreamName.OpaqueStatic => DrawStreamCategory.Opaque,
+
             DrawStreamName.OpaqueDynamic => DrawStreamCategory.Opaque | DrawStreamCategory.Dynamic,
+
             DrawStreamName.OpaqueStaticInstancing => DrawStreamCategory.Opaque
-                | DrawStreamCategory.Static
                 | DrawStreamCategory.Instancing,
+
             DrawStreamName.OpaqueDynamicInstancing => DrawStreamCategory.Opaque
                 | DrawStreamCategory.Dynamic
                 | DrawStreamCategory.Instancing,
+
             DrawStreamName.TransparentStaticHitable => DrawStreamCategory.Transparent
-                | DrawStreamCategory.Static
                 | DrawStreamCategory.Hitable,
+
             DrawStreamName.TransparentDynamicHitable => DrawStreamCategory.Transparent
                 | DrawStreamCategory.Dynamic
                 | DrawStreamCategory.Hitable,
+
             DrawStreamName.TransparentStaticInstancingHitable => DrawStreamCategory.Transparent
-                | DrawStreamCategory.Static
                 | DrawStreamCategory.Instancing
                 | DrawStreamCategory.Hitable,
+
             DrawStreamName.TransparentDynamicInstancingHitable => DrawStreamCategory.Transparent
                 | DrawStreamCategory.Dynamic
                 | DrawStreamCategory.Instancing
                 | DrawStreamCategory.Hitable,
-            DrawStreamName.TransparentStaticNonHitable => DrawStreamCategory.Transparent
-                | DrawStreamCategory.Static
-                | DrawStreamCategory.NonHitable,
+
+            DrawStreamName.TransparentStaticNonHitable => DrawStreamCategory.Transparent,
+
             DrawStreamName.TransparentDynamicNonHitable => DrawStreamCategory.Transparent
-                | DrawStreamCategory.Dynamic
-                | DrawStreamCategory.NonHitable,
+                | DrawStreamCategory.Dynamic,
+
             DrawStreamName.TransparentStaticInstancingNonHitable => DrawStreamCategory.Transparent
-                | DrawStreamCategory.Static
-                | DrawStreamCategory.Instancing
-                | DrawStreamCategory.NonHitable,
+                | DrawStreamCategory.Instancing,
+
             DrawStreamName.TransparentDynamicInstancingNonHitable => DrawStreamCategory.Transparent
                 | DrawStreamCategory.Dynamic
-                | DrawStreamCategory.Instancing
-                | DrawStreamCategory.NonHitable,
-            _ => throw new ArgumentOutOfRangeException(
-                nameof(name),
-                $"Unrecognized draw stream name: {name}"
-            ),
+                | DrawStreamCategory.Instancing,
+
+            _ => DrawStreamCategory.None,
         };
     }
 
@@ -142,36 +135,61 @@ public static class DrawStreamNameExtensions
     {
         return category switch
         {
-            DrawStreamCategory.Opaque | DrawStreamCategory.Static => DrawStreamName.OpaqueStatic,
+            DrawStreamCategory.Opaque => DrawStreamName.OpaqueStatic,
+
             DrawStreamCategory.Opaque | DrawStreamCategory.Dynamic => DrawStreamName.OpaqueDynamic,
-            DrawStreamCategory.Opaque | DrawStreamCategory.Static | DrawStreamCategory.Instancing =>
+
+            DrawStreamCategory.Opaque | DrawStreamCategory.Instancing =>
                 DrawStreamName.OpaqueStaticInstancing,
-            DrawStreamCategory.Opaque | DrawStreamCategory.Dynamic | DrawStreamCategory.Instancing =>
-                DrawStreamName.OpaqueDynamicInstancing,
-            DrawStreamCategory.Transparent | DrawStreamCategory.Static | DrawStreamCategory.Hitable =>
+
+            DrawStreamCategory.Opaque
+                | DrawStreamCategory.Dynamic
+                | DrawStreamCategory.Instancing => DrawStreamName.OpaqueDynamicInstancing,
+
+            DrawStreamCategory.Opaque | DrawStreamCategory.Hitable => DrawStreamName.OpaqueStatic,
+
+            DrawStreamCategory.Opaque | DrawStreamCategory.Dynamic | DrawStreamCategory.Hitable =>
+                DrawStreamName.OpaqueDynamic,
+
+            DrawStreamCategory.Opaque
+                | DrawStreamCategory.Instancing
+                | DrawStreamCategory.Hitable => DrawStreamName.OpaqueStaticInstancing,
+
+            DrawStreamCategory.Opaque
+                | DrawStreamCategory.Dynamic
+                | DrawStreamCategory.Instancing
+                | DrawStreamCategory.Hitable => DrawStreamName.OpaqueDynamicInstancing,
+
+            DrawStreamCategory.Transparent | DrawStreamCategory.Hitable =>
                 DrawStreamName.TransparentStaticHitable,
-            DrawStreamCategory.Transparent | DrawStreamCategory.Dynamic | DrawStreamCategory.Hitable =>
-                DrawStreamName.TransparentDynamicHitable,
-            DrawStreamCategory.Transparent | DrawStreamCategory.Static | DrawStreamCategory.Instancing
-                | DrawStreamCategory.Hitable =>
-                DrawStreamName.TransparentStaticInstancingHitable,
-            DrawStreamCategory.Transparent | DrawStreamCategory.Dynamic | DrawStreamCategory.Instancing
-                | DrawStreamCategory.Hitable =>
-                DrawStreamName.TransparentDynamicInstancingHitable,
-            DrawStreamCategory.Transparent | DrawStreamCategory.Static | DrawStreamCategory.NonHitable =>
-                DrawStreamName.TransparentStaticNonHitable,
-            DrawStreamCategory.Transparent | DrawStreamCategory.Dynamic | DrawStreamCategory.NonHitable =>
+
+            DrawStreamCategory.Transparent
+                | DrawStreamCategory.Dynamic
+                | DrawStreamCategory.Hitable => DrawStreamName.TransparentDynamicHitable,
+
+            DrawStreamCategory.Transparent
+                | DrawStreamCategory.Instancing
+                | DrawStreamCategory.Hitable => DrawStreamName.TransparentStaticInstancingHitable,
+
+            DrawStreamCategory.Transparent
+                | DrawStreamCategory.Dynamic
+                | DrawStreamCategory.Instancing
+                | DrawStreamCategory.Hitable => DrawStreamName.TransparentDynamicInstancingHitable,
+
+            DrawStreamCategory.Transparent => DrawStreamName.TransparentStaticNonHitable,
+
+            DrawStreamCategory.Transparent | DrawStreamCategory.Dynamic =>
                 DrawStreamName.TransparentDynamicNonHitable,
-            DrawStreamCategory.Transparent | DrawStreamCategory.Static | DrawStreamCategory.Instancing
-                | DrawStreamCategory.NonHitable =>
+
+            DrawStreamCategory.Transparent | DrawStreamCategory.Instancing =>
                 DrawStreamName.TransparentStaticInstancingNonHitable,
-            DrawStreamCategory.Transparent | DrawStreamCategory.Dynamic | DrawStreamCategory.Instancing
-                | DrawStreamCategory.NonHitable =>
+
+            DrawStreamCategory.Transparent
+                | DrawStreamCategory.Dynamic
+                | DrawStreamCategory.Instancing =>
                 DrawStreamName.TransparentDynamicInstancingNonHitable,
-            _ => throw new ArgumentOutOfRangeException(
-                nameof(category),
-                $"Unrecognized draw stream category combination: {category}"
-            ),
+
+            _ => DrawStreamName.None,
         };
     }
 }

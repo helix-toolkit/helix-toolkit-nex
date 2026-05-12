@@ -305,6 +305,7 @@ public struct Entity : IDisposable, IEquatable<Entity>
     {
         if (Valid)
         {
+            ECSEventBus.Send(WorldId, new EntityBeforeDisposeEvent(Id, Generation));
             ECSEventBus.Send(WorldId, new EntityDisposingEvent(Id, Generation));
             Generation = default;
             Id = 0;

@@ -29,3 +29,9 @@ internal readonly struct EntityDisposingEvent(in int entityId, in Generation gen
     public readonly int EntityId = entityId;
     public readonly Generation Generation = generation;
 }
+
+internal readonly struct EntityBeforeDisposeEvent(in int entityId, in Generation generation)
+{
+    public readonly int EntityId = entityId;
+    public readonly Generation Generation = generation;
+}
