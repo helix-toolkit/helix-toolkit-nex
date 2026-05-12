@@ -1,3 +1,5 @@
+using HelixToolkit.Nex.Rendering.DrawStreams;
+
 namespace HelixToolkit.Nex.Rendering.RenderNodes;
 
 public sealed class DepthPassNode() : RenderNode
@@ -21,22 +23,23 @@ public sealed class DepthPassNode() : RenderNode
         base.OnTeardown();
     }
 
+    protected override bool CanRender(in RenderResources res)
+    {
+        var context = res.RenderContext;
+        return context.Data is not null
+            && context.Data.DrawStreams.GetStreams(DrawStreamCategory.Opaque).AsValueEnumerable().Any(x => x.Count > 0);
+    }
+
     protected override void OnSetupRender(in RenderResources res)
     {
         res.Deps.PushBuffer(res.Buffers[SystemBufferNames.BufferPBRProperties]);
         res.Deps.PushBuffer(res.Buffers[SystemBufferNames.BufferForwardPlusConstants]);
-    }
-
-    protected override bool BeginRender(in RenderResources res)
-    {
-        var context = res.RenderContext;
-        if (context.Data!.MeshDrawsOpaque.Count == 0)
-            return false;
         res.Framebuf.DepthStencil.Texture = res.Textures[SystemBufferNames.TextureDepthF32];
-        res.Pass.Depth.ClearDepth = 0.0f;
-        res.Pass.Depth.LoadOp = LoadOp.Clear; // Clear depth to 0 (far plane) for reversed Z.
+        res.Pass.Depth.LoadOp = LoadOp.Load;
         res.Pass.Depth.StoreOp = StoreOp.Store;
-        return base.BeginRender(res);
+        res.Pass.DepthState = DepthState.DefaultReversedZ;
+
+        res.RenderContext.Data!.DrawStreams.GetStreams(DrawStreamCategory.Opaque).Barrier(res.CmdBuffer);
     }
 
     protected override void OnRender(in RenderResources res)
@@ -50,19 +53,12 @@ public sealed class DepthPassNode() : RenderNode
         using var _ = res.RenderContext.EnableExternalPipelineScoped();
         res.CmdBuffer.BindRenderPipeline(_pipeline);
 
-        res.CmdBuffer.BindDepthState(DepthState.DefaultReversedZ);
-        res.RenderContext.Statistics.DrawCalls += RenderHelper.RenderOpaque(
+        res.RenderContext.Statistics.DrawCalls += RenderHelper.Render(
             in res,
             res.Buffers[SystemBufferNames.BufferForwardPlusConstants]
                 .GpuAddress(res.RenderContext.Context),
-            false
-        );
-
-        res.RenderContext.Statistics.DrawCalls += RenderHelper.RenderOpaque(
-            in res,
-            res.Buffers[SystemBufferNames.BufferForwardPlusConstants]
-                .GpuAddress(res.RenderContext.Context),
-            true
+            res.RenderContext.Data.DrawStreams.GetStreams(DrawStreamCategory.Opaque),
+            MaterialPassType.Opaque
         );
     }
 
@@ -110,14 +106,9 @@ public sealed class DepthPassNode() : RenderNode
             DebugName = "DepthPass",
             CullMode = CullMode.Back,
             FrontFaceWinding = WindingMode.CCW,
-            DepthFormat = RenderSettings.DepthBufferFormat,
+            DepthFormat = GraphicsSettings.DepthBufferFormat,
             Topology = Topology.Triangle,
         };
-        //pipelineDesc.Colors[0] = new ColorAttachment()
-        //{
-        //    Format = RenderSettings.MeshIdTexFormat,
-        //    BlendEnabled = false,
-        //};
 
         _pipeline = Context.CreateRenderPipeline(pipelineDesc);
         return _pipeline.Valid;
@@ -136,11 +127,7 @@ public sealed class DepthPassNode() : RenderNode
                     new(SystemBufferNames.BufferPBRProperties, ResourceType.Buffer),
                     new(SystemBufferNames.BufferForwardPlusConstants, ResourceType.Buffer),
                 ],
-                outputs:
-                [
-                    new(SystemBufferNames.TextureEntityId, ResourceType.Texture),
-                    new(SystemBufferNames.TextureDepthF32, ResourceType.Texture),
-                ]
+                outputs: [new(SystemBufferNames.TextureDepthF32, ResourceType.Texture)]
             );
     }
 }

@@ -49,6 +49,7 @@ internal class MeshCullingExample : IDisposable
     private readonly FastList<MeshDraw> _meshDraws = [];
     private readonly FastList<Geometry> _meshes = [];
     private readonly FastList<MeshInfo> _meshInfos = [];
+    private readonly FastList<GpuNodeInfo> _nodeInfos = [];
 
     // -- GPU Buffers --
     private BufferResource _cullConstBuffer = BufferResource.Null; // Uniforms for culling
@@ -56,6 +57,7 @@ internal class MeshCullingExample : IDisposable
     private BufferResource _meshInfoBuffer = BufferResource.Null; // MeshInfos
     private BufferResource _meshDrawBuffer = BufferResource.Null; // MeshDraw structs
     private BufferResource _indexBuffer = BufferResource.Null; // Geometry indices
+    private BufferResource _nodeInfoBuffer = BufferResource.Null; // Node Info
 
     // Rendering resources
     private BufferResource _fpConstBuffer = BufferResource.Null;
@@ -116,6 +118,13 @@ internal class MeshCullingExample : IDisposable
             "MeshInfoBuffer"
         );
 
+        _nodeInfoBuffer = _context.CreateBuffer(
+            _nodeInfos,
+            BufferUsageBits.Storage,
+            StorageType.Device,
+            "NodeInfoBuffer"
+        );
+
         _meshDrawBuffer = _context.CreateBuffer(
             _meshDraws,
             BufferUsageBits.Storage | BufferUsageBits.Indirect,
@@ -172,6 +181,7 @@ internal class MeshCullingExample : IDisposable
         );
 
         _cullConst.MeshInfoBufferAddress = _meshInfoBuffer.GpuAddress;
+        _cullConst.NodeInfoBufferAddress = _nodeInfoBuffer.GpuAddress;
 
         // 2.4 Build Pipelines
         CreateCullingPipeline();
@@ -247,7 +257,7 @@ internal class MeshCullingExample : IDisposable
         _renderPass.Depth.ClearDepth = 0.0f; // 0.0f for Reverse-Z
         _renderPass.Depth.LoadOp = LoadOp.Clear;
 
-        _renderDependencies._buffers[0] = _meshDrawBuffer;
+        _renderDependencies.PushBuffer(_meshDrawBuffer);
     }
     #endregion
 
@@ -324,6 +334,7 @@ internal class MeshCullingExample : IDisposable
                 MeshInfoBufferAddress = _meshInfoBuffer.GpuAddress,
                 MaterialBufferAddress = _pbrPropertiesBuffer.GpuAddress,
                 DirectionalLightsBufferAddress = _directionalLightBuffer.GpuAddress,
+                NodeInfoBufferAddress = _nodeInfoBuffer.GpuAddress,
                 LightCount = 0, // No lights in this unlit demo
                 TileSize = 0,
                 ScreenDimensions = new Vector2(width, height),
@@ -422,6 +433,7 @@ internal class MeshCullingExample : IDisposable
         _pBRProperties.Resize(_instanceCount);
         _meshIds.Resize(_instanceCount);
         _meshDraws.Resize(_instanceCount);
+        _nodeInfos.Resize(_instanceCount);
         var rnd = new Random((int)Stopwatch.GetTimestamp());
         int i = 0;
         // First half: Unlit objects
@@ -449,13 +461,17 @@ internal class MeshCullingExample : IDisposable
                 MaterialId = (uint)i,
                 MeshId = _meshIds[i],
                 MaterialType = (uint)PBRShadingMode.Unlit,
-                Transform =
-                    Matrix4x4.CreateRotationX(rnd.NextFloat(0, 180) * MathF.PI / 180)
-                    * Matrix4x4.CreateRotationY(rnd.NextFloat(0, 180) * MathF.PI / 180)
-                    * Matrix4x4.CreateTranslation(position),
+                NodeInfoIndex = (uint)i,
                 IndexCount = (uint)mesh.Indices.Count,
                 InstanceCount = 1,
                 FirstIndex = mesh.IndexOffset,
+            };
+            _nodeInfos[i] = new GpuNodeInfo()
+            {
+                Enabled = 1u,
+                Transform = Matrix4x4.CreateRotationX(rnd.NextFloat(0, 180) * MathF.PI / 180)
+                    * Matrix4x4.CreateRotationY(rnd.NextFloat(0, 180) * MathF.PI / 180)
+                    * Matrix4x4.CreateTranslation(position),
             };
         }
         // Second half: PBR objects
@@ -485,13 +501,17 @@ internal class MeshCullingExample : IDisposable
                 MaterialId = (uint)i,
                 MeshId = _meshIds[i],
                 MaterialType = (uint)PBRShadingMode.PBR,
-                Transform =
-                    Matrix4x4.CreateRotationX(rnd.NextFloat(0, 180) * MathF.PI / 180)
-                    * Matrix4x4.CreateRotationY(rnd.NextFloat(0, 180) * MathF.PI / 180)
-                    * Matrix4x4.CreateTranslation(position),
+                NodeInfoIndex = (uint)i,
                 IndexCount = (uint)mesh.Indices.Count,
                 InstanceCount = 1,
                 FirstIndex = mesh.IndexOffset,
+            };
+            _nodeInfos[i] = new GpuNodeInfo()
+            {
+                Enabled = 1u,
+                Transform = Matrix4x4.CreateRotationX(rnd.NextFloat(0, 180) * MathF.PI / 180)
+                    * Matrix4x4.CreateRotationY(rnd.NextFloat(0, 180) * MathF.PI / 180)
+                    * Matrix4x4.CreateTranslation(position),
             };
         }
     }
@@ -523,6 +543,7 @@ internal class MeshCullingExample : IDisposable
                 _meshDrawBuffer.Dispose();
                 _indexBuffer.Dispose();
                 _directionalLightBuffer.Dispose();
+                _nodeInfoBuffer.Dispose();
 
                 // Dispose pipelines
                 _cullingPipeline.Dispose();

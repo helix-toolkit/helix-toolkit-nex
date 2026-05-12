@@ -74,13 +74,11 @@ internal partial class TransparentDemo : IDisposable
         };
         _orbitController = new OrbitCameraController(_camera);
 
-        RenderSettings.LogFPSInDebug = true;
-
         // --- Build engine with OIT support via EngineBuilder ---
         _engine = EngineBuilder
             .Create(_context)
             .WithDefaultNodes(false)
-            .RenderToCustomTarget(RenderSettings.IntermediateTargetFormat)
+            .RenderToCustomTarget(GraphicsSettings.IntermediateTargetFormat)
             .Build();
 
         // --- Per-viewport state and scene data ---
@@ -92,7 +90,7 @@ internal partial class TransparentDemo : IDisposable
             res =>
             {
                 return res.Context.Context.CreateRenderTarget2D(
-                    RenderSettings.IntermediateTargetFormat,
+                    GraphicsSettings.IntermediateTargetFormat,
                     (uint)res.Context.WindowSize.Width,
                     (uint)res.Context.WindowSize.Height,
                     debugName: ViewportTextureName
@@ -139,7 +137,7 @@ internal partial class TransparentDemo : IDisposable
         _floorMaterial.Properties.Opacity = 1.0f;
         _floorMaterial.NotifyUpdated();
 
-        _floorNode = new Node(_worldDataProvider.World, "Floor");
+        _floorNode = new MeshNode(_worldDataProvider.World, "Floor");
         _floorNode.Transform = new Transform { Translation = new Vector3(0, -0.1f, 0) };
         _floorNode.Entity.Set(new MeshComponent(floorGeo, _floorMaterial));
         _root.AddChild(_floorNode);
@@ -155,7 +153,7 @@ internal partial class TransparentDemo : IDisposable
             sphereGeo,
             materialPool,
             new Vector3(-4, 2, 0),
-            new Vector3(1.0f, 0.1f, 0.1f),
+            new Vector3(1.0f, 0.2f, 0.1f),
             0.4f
         );
         CreateTransparentObject(
@@ -208,7 +206,7 @@ internal partial class TransparentDemo : IDisposable
             "Large Purple Box",
             bigBoxGeo,
             materialPool,
-            new Vector3(0, 1.5f, 1.5f),
+            new Vector3(0, 1.8f, 1.5f),
             new Vector3(0.6f, 0.1f, 0.8f),
             0.25f
         );
@@ -347,7 +345,7 @@ internal partial class TransparentDemo : IDisposable
         // --- Step 2: ImGui composite pass ---
         var swapchainTex = _context.GetCurrentSwapchainTexture();
         _imGuiFramebuffer.Colors[0].Texture = swapchainTex;
-        _imGuiDeps._textures[0] = _renderContext.FinalOutputTexture;
+        using var s1 = _imGuiDeps.PushTextureScoped(_renderContext.FinalOutputTexture);
 
         _imGuiRenderer.Render(cmdBuf, _imGuiPass, _imGuiFramebuffer, _imGuiDeps);
 

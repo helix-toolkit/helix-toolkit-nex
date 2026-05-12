@@ -8,28 +8,20 @@ public sealed class RenderToFinalNode(Format outputFormat)
     public override string Name => nameof(RenderToFinalNode);
     public override Color4 DebugColor => Color.Yellow;
 
+    protected override bool CanRender(in RenderResources res)
+    {
+        return res.RenderContext.FinalOutputTexture.Valid;
+    }
+
     protected override void OnSetupRender(in RenderResources res)
     {
-        if (!res.RenderContext.FinalOutputTexture.Valid)
-        {
-            return;
-        }
         res.Framebuf.Colors[0].Texture = res.RenderContext.FinalOutputTexture;
         res.Pass.Colors[0].ClearColor = Color.Transparent;
         res.Pass.Colors[0].LoadOp = LoadOp.Load;
         res.Pass.Colors[0].StoreOp = StoreOp.Store;
         res.Deps.PushTexture(res.Textures[SystemBufferNames.TextureColorF16Target]);
-    }
-
-    protected override bool BeginRender(in RenderResources res)
-    {
         MinValue = res.RenderContext.CameraParams.NearPlane;
         MaxValue = res.RenderContext.CameraParams.FarPlane;
-        if (!res.RenderContext.FinalOutputTexture.Valid)
-        {
-            return false;
-        }
-        return base.BeginRender(in res);
     }
 
     public override void AddToGraph(RenderGraph graph)
@@ -47,10 +39,15 @@ public sealed class RenderToFinalNode(Format outputFormat)
 }
 
 public sealed class DebugDepthBufferNode()
-    : SampleTextureNode(SampleTextureMode.DebugDepth, RenderSettings.IntermediateTargetFormat)
+    : SampleTextureNode(SampleTextureMode.DebugDepth, GraphicsSettings.IntermediateTargetFormat)
 {
     public override string Name => nameof(DebugDepthBufferNode);
     public override Color4 DebugColor => Color.Red;
+
+    protected override bool CanRender(in RenderResources res)
+    {
+        return true;
+    }
 
     protected override void OnSetupRender(in RenderResources res)
     {
@@ -59,13 +56,8 @@ public sealed class DebugDepthBufferNode()
         res.Pass.Colors[0].LoadOp = LoadOp.Load;
         res.Pass.Colors[0].StoreOp = StoreOp.Store;
         res.Deps.PushTexture(res.Textures[SystemBufferNames.TextureDepthF32]);
-    }
-
-    protected override bool BeginRender(in RenderResources res)
-    {
         MinValue = res.RenderContext.CameraParams.NearPlane;
         MaxValue = res.RenderContext.CameraParams.FarPlane;
-        return base.BeginRender(in res);
     }
 
     public override void AddToGraph(RenderGraph graph)
@@ -80,10 +72,15 @@ public sealed class DebugDepthBufferNode()
 }
 
 public sealed class DebugMeshIdNode()
-    : SampleTextureNode(SampleTextureMode.DebugMeshId, RenderSettings.IntermediateTargetFormat)
+    : SampleTextureNode(SampleTextureMode.DebugMeshId, GraphicsSettings.IntermediateTargetFormat)
 {
     public override string Name => nameof(DebugDepthBufferNode);
     public override Color4 DebugColor => Color.Red;
+
+    protected override bool CanRender(in RenderResources res)
+    {
+        return true;
+    }
 
     protected override void OnSetupRender(in RenderResources res)
     {

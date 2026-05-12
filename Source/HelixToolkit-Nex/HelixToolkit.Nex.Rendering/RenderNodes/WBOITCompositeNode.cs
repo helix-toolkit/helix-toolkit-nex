@@ -1,3 +1,5 @@
+using HelixToolkit.Nex.Rendering.DrawStreams;
+
 namespace HelixToolkit.Nex.Rendering.RenderNodes;
 
 /// <summary>
@@ -24,6 +26,15 @@ public sealed class WBOITCompositeNode : RenderNode
     public override string Name => nameof(WBOITCompositeNode);
     public override Color4 DebugColor => new(0.2f, 0.8f, 0.4f, 1.0f);
 
+    protected override bool CanRender(in RenderResources res)
+    {
+        var context = res.RenderContext;
+        return context.Data is not null
+            && context
+                .Data.DrawStreams.GetStreams(DrawStreamCategory.Transparent)
+                .Any(x => x.Count > 0);
+    }
+
     protected override void OnSetupRender(in RenderResources res)
     {
         // Render onto the main color target (which already has the opaque scene).
@@ -34,22 +45,6 @@ public sealed class WBOITCompositeNode : RenderNode
         // Bind the WBOIT textures as sampled inputs (no depth needed).
         res.Deps.PushTexture(res.Textures[SystemBufferNames.TextureWboitAccum]);
         res.Deps.PushTexture(res.Textures[SystemBufferNames.TextureWboitRevealage]);
-    }
-
-    protected override bool BeginRender(in RenderResources res)
-    {
-        if (res.RenderContext.Data is null)
-        {
-            _logger.LogWarning("Render context data is null, skipping WBOIT composite pass.");
-            return false;
-        }
-        if (res.RenderContext.Data.MeshDrawsTransparent.Count == 0)
-        {
-            // No transparent draws, so no need to composite.
-            return false;
-        }
-        res.CmdBuffer.BeginRendering(res.Pass, res.Framebuf, res.Deps);
-        return true;
     }
 
     protected override void OnRender(in RenderResources res)
@@ -67,11 +62,6 @@ public sealed class WBOITCompositeNode : RenderNode
             }
         );
         cmdBuffer.Draw(3); // Full-screen triangle
-    }
-
-    protected override void EndRender(in RenderResources res)
-    {
-        res.CmdBuffer.EndRendering();
     }
 
     protected override bool OnSetup()
@@ -131,7 +121,7 @@ public sealed class WBOITCompositeNode : RenderNode
         // Output onto the main color buffer with standard alpha blending so the resolved
         // transparent color composites correctly over whatever opaque content is already there.
         pipelineDesc.Colors[0] = ColorAttachment.CreateAlphaBlend(
-            RenderSettings.IntermediateTargetFormat
+            GraphicsSettings.IntermediateTargetFormat
         );
 
         _pipeline = Context.CreateRenderPipeline(pipelineDesc);
@@ -160,7 +150,7 @@ public sealed class WBOITCompositeNode : RenderNode
                 new(SystemBufferNames.TextureWboitRevealage, ResourceType.Texture),
             ],
             outputs: [new(SystemBufferNames.TextureColorF16Target, ResourceType.Texture)],
-            after: [nameof(ForwardPlusTransparentNode)]
+            after: [nameof(ForwardPlusWBOITNode)]
         );
     }
 }

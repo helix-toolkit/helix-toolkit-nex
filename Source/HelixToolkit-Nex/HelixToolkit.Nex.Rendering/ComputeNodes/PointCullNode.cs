@@ -76,22 +76,26 @@ public sealed class PointCullNode : ComputeNode
         return _expandPipeline.Valid;
     }
 
-    protected override void OnSetupRender(in RenderResources res) { }
-
-    protected override void OnRender(in RenderResources res)
+    protected override bool CanRender(in RenderResources res)
     {
         if (res.RenderContext is null || res.RenderContext.Data is null)
         {
             _logger.LogWarning("Context.Data is null. Skipping point culling.");
-            return;
+            return false;
         }
 
         var points = res.RenderContext.Data.PointCloudData;
-        if (points!.TotalPointCount == 0)
+        if (points is null || points.TotalPointCount == 0)
         {
-            return;
+            return false;
         }
+        return true;
+    }
 
+    protected override void OnSetupRender(in RenderResources res) { }
+
+    protected override void OnRender(in RenderResources res)
+    {
         // --- Shared camera state ---
         var camera = res.RenderContext.CameraParams;
         var view = camera.View;
@@ -112,6 +116,7 @@ public sealed class PointCullNode : ComputeNode
         };
         res.CmdBuffer.UpdateBuffer(_pointExpandArgsBuffer, ref expandPC);
         res.Deps.PushBuffer(_pointExpandArgsBuffer);
+        var points = res.RenderContext.Data!.PointCloudData!;
 
         foreach (var entry in points.Data.Values)
         {

@@ -49,7 +49,6 @@ internal class LightCullingTest(IContext context, bool largeScene = true) : IDis
             FarPlane = 1000,
         };
         _initialCameraPosition = new(_scene.WorldSizeX / 4f, 80, -_scene.WorldSizeZ / 4f - 20);
-        RenderSettings.LogFPSInDebug = true;
 
         // Register Minecraft block material types before the material registry is built
         _scene.RegisterMaterials();
@@ -64,7 +63,7 @@ internal class LightCullingTest(IContext context, bool largeScene = true) : IDis
             .WithPostEffects(effects =>
             {
                 effects.AddEffect(new BorderHighlightPostEffect());
-                effects.AddEffect(new WireframePostEffect());
+                //effects.AddEffect(new WireframePostEffect());
             })
             .Build();
 

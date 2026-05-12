@@ -34,16 +34,16 @@ public class PBRMaterialManager(IContext context, IPBRMaterialPropertyManager pr
                 FragmentShader = _uberShaderResults[idx]!.FragmentShader,
                 Topology = Topology.Triangle,
                 CullMode = CullMode.Back,
-                DepthFormat = RenderSettings.DepthBufferFormat,
+                DepthFormat = GraphicsSettings.DepthBufferFormat,
                 PolygonMode = PolygonMode.Fill,
                 DebugName = debugName ?? string.Empty,
             };
             desc.Colors[0] = ColorAttachment.CreateOpaque(
-                RenderSettings.IntermediateTargetFormat
+                GraphicsSettings.IntermediateTargetFormat
             );
             desc.Colors[1] = new ColorAttachment()
             {
-                Format = RenderSettings.MeshIdTexFormat,
+                Format = GraphicsSettings.MeshIdTexFormat,
                 BlendEnabled = false,
             };
             descSets[(int)MaterialPassType.Opaque] = desc;
@@ -61,16 +61,16 @@ public class PBRMaterialManager(IContext context, IPBRMaterialPropertyManager pr
                 FragmentShader = _uberShaderResults[idx]!.FragmentShader,
                 Topology = Topology.Triangle,
                 CullMode = CullMode.None,
-                DepthFormat = RenderSettings.DepthBufferFormat,
+                DepthFormat = GraphicsSettings.DepthBufferFormat,
                 PolygonMode = PolygonMode.Fill,
                 DebugName = debugName ?? string.Empty,
             };
             desc.Colors[0] = ColorAttachment.CreateAlphaBlend(
-                RenderSettings.IntermediateTargetFormat
+                GraphicsSettings.IntermediateTargetFormat
             );
             desc.Colors[1] = new ColorAttachment()
             {
-                Format = RenderSettings.MeshIdTexFormat,
+                Format = GraphicsSettings.MeshIdTexFormat,
                 BlendEnabled = false
             };
             descSets[(int)MaterialPassType.Transparent] = desc;
@@ -89,7 +89,7 @@ public class PBRMaterialManager(IContext context, IPBRMaterialPropertyManager pr
                 FragmentShader = _uberShaderResults[idx]!.FragmentShader,
                 Topology = Topology.Triangle,
                 CullMode = CullMode.None,
-                DepthFormat = RenderSettings.DepthBufferFormat,
+                DepthFormat = GraphicsSettings.DepthBufferFormat,
                 PolygonMode = PolygonMode.Fill,
                 DebugName = debugName ?? string.Empty,
             };
@@ -99,7 +99,7 @@ public class PBRMaterialManager(IContext context, IPBRMaterialPropertyManager pr
             desc.Colors[0] = ColorAttachment.CreateWboitAccumulation(Format.RGBA_F16);
             desc.Colors[1] = new ColorAttachment()
             {
-                Format = RenderSettings.MeshIdTexFormat,
+                Format = GraphicsSettings.MeshIdTexFormat,
                 BlendEnabled = false,
             };
             // WBOIT revealage (R16F): multiplicative blend (ZERO / ONE_MINUS_SRC_COLOR).

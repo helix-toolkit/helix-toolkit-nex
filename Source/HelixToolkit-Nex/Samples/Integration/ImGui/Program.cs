@@ -1,11 +1,8 @@
 // See https://aka.ms/new-console-template for more information
-using System.Data;
 using System.Numerics;
 using HelixToolkit.Nex;
-using HelixToolkit.Nex.Examples;
 using HelixToolkit.Nex.Graphics;
 using HelixToolkit.Nex.Graphics.Vulkan;
-using HelixToolkit.Nex.Maths;
 using HelixToolkit.Nex.Sample.Application;
 using ImGuiNET;
 using ImGuiTest;
@@ -53,6 +50,7 @@ internal class App : Application
             new VulkanContextConfig
             {
                 TerminateOnValidationError = true,
+                ForceIntegratedGPU = false,
                 OnCreateSurface = CreateSurface,
             },
             MainWindow.Instance,

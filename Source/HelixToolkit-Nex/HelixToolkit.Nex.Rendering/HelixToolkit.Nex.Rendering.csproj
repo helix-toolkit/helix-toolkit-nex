@@ -46,4 +46,7 @@
         <EmbeddedResource Include="Assets\*.json" />
         <EmbeddedResource Include="Assets\*.png" />
     </ItemGroup>
+    <ItemGroup>
+      <PackageReference Include="ZLinq" Version="1.5.6" />
+    </ItemGroup>
 </Project>

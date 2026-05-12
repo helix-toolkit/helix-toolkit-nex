@@ -269,7 +269,7 @@ internal class App : Application
             _ctx.CreateRenderPipeline(pipelineDesc, out _cubeRenderPipeline).CheckResult();
         }
 
-        _dependencies._textures[0] = _cubeMap;
+        _dependencies.PushTexture(_cubeMap);
     }
 
     protected override void OnTick()

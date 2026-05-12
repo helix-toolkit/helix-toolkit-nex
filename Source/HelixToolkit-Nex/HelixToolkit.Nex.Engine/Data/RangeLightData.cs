@@ -51,7 +51,7 @@ internal class RangeLightData : Initializable, IRenderData
         _entities.EntityChanged += OnLightChanged;
         _lightBuffer = new RingElementBuffer<Light>(
             Context,
-            (int)RenderSettings.NumFrameInFlight(Context),
+            (int)GraphicsSettings.MaxFrameInFlight,
             InitialBufferSize,
             BufferUsageBits.Storage,
             hostVisible: true,

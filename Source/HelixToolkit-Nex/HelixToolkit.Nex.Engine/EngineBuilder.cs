@@ -220,7 +220,7 @@ public sealed class EngineBuilder
     {
         WithBillBoard();
         WithPointCloud();
-        WithTransparent(TransparentMode.ForwardPlus);
+        WithTransparent(TransparentMode.WBOIT);
 
         _addRenderToFinal = renderToSwapchain && _context.GetNumSwapchainImages() > 0;
         if (renderToSwapchain)
@@ -363,16 +363,16 @@ public sealed class EngineBuilder
         AddNode(new FrustumCullNode());
         AddNode(new ForwardPlusLightCullingNode());
         AddNode(new ForwardPlusOpaqueNode());
-        //if (_withPointCloud)
-        //{
-        //    AddNode(new PointCullNode());
-        //    AddNode(new PointRenderNode());
-        //}
-        //if (_withBillboard)
-        //{
-        //    AddNode(new BillboardCullNode());
-        //    AddNode(new BillboardRenderNode());
-        //}
+        if (_withPointCloud)
+        {
+            AddNode(new PointCullNode());
+            AddNode(new PointRenderNode());
+        }
+        if (_withBillboard)
+        {
+            AddNode(new BillboardCullNode());
+            AddNode(new BillboardRenderNode());
+        }
         if (_transparentMode != TransparentMode.None)
         {
             if (_transparentMode == TransparentMode.ForwardPlus)

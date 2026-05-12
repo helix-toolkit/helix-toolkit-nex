@@ -10,17 +10,21 @@ public readonly struct Components<T>
     private readonly FastList<ComponentManager<T>.ComponentMappingKey> _mapping;
 
     public int Count => _storage.Count;
+    public readonly World World;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="Components{T}" /> struct.
     /// </summary>
+    /// <param name="world">World that components belongs to.</param>
     /// <param name="mapping">The mapping.</param>
     /// <param name="components">The components.</param>
     internal Components(
+        World world,
         FastList<ComponentManager<T>.ComponentMappingKey> mapping,
         FastList<T> components
     )
     {
+        World = world;
         _mapping = mapping;
         _storage = components;
     }
@@ -112,7 +116,8 @@ public readonly struct Components<T>
         public ref T Current
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => ref _storage.GetInternalArray()[_mapping.GetInternalArray()[_index].ComponentIndex];
+            get =>
+                ref _storage.GetInternalArray()[_mapping.GetInternalArray()[_index].ComponentIndex];
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

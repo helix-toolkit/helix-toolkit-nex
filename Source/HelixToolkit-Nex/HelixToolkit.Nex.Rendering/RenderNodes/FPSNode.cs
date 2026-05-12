@@ -29,6 +29,11 @@ public sealed class FPSNode : RenderNode
         base.OnTeardown();
     }
 
+    protected override bool CanRender(in RenderResources res)
+    {
+        return true;
+    }
+
     protected override void OnSetupRender(in RenderResources res)
     {
         res.Deps.PushTexture(res.Textures[SystemBufferNames.TextureColorF16Target]);
@@ -104,7 +109,7 @@ public sealed class FPSNode : RenderNode
         pipelineDesc.VertexShader = vertexShader;
         pipelineDesc.FragmentShader = fragmentShader;
         pipelineDesc.Colors[0] = ColorAttachment.CreateAlphaBlend(
-            RenderSettings.IntermediateTargetFormat
+            GraphicsSettings.IntermediateTargetFormat
         );
         _pipeline = Context.CreateRenderPipeline(pipelineDesc);
         Debug.Assert(_pipeline.Valid);

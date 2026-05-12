@@ -48,6 +48,7 @@ internal class InstancingMeshCullingExample : IDisposable
     private readonly FastList<MeshDraw> _meshDraws = [];
     private readonly FastList<Geometry> _meshes = [];
     private readonly FastList<MeshInfo> _meshInfos = [];
+    private readonly FastList<GpuNodeInfo> _nodeInfos = [];
 
     // -- GPU Buffers --
     // Constant Data
@@ -61,6 +62,8 @@ internal class InstancingMeshCullingExample : IDisposable
 
     // Indirect Draw Data (Modified by GPU)
     private BufferResource _meshDrawBuffer = BufferResource.Null; // Contains MeshDraw structs (pointers to buffers, material IDs)
+
+    private BufferResource _nodeInfoBuffer = BufferResource.Null; // Contains GpuNodeInfo structs (enabled flag, transform) for each instance
 
     // Culling Output (Written by CS, Read by VS)
     private BufferResource _culledInstanceIdxBuffer = BufferResource.Null; // List of indices into _instancingBuffer that survived culling
@@ -151,6 +154,13 @@ internal class InstancingMeshCullingExample : IDisposable
             "MeshDrawBuffer"
         );
 
+        _nodeInfoBuffer = _context.CreateBuffer(
+            _nodeInfos,
+            BufferUsageBits.Storage,
+            StorageType.Device,
+            "NodeInfoBuffer"
+        );
+
         _meshInfoBuffer = _context.CreateBuffer(
             _meshInfos,
             BufferUsageBits.Storage,
@@ -190,6 +200,7 @@ internal class InstancingMeshCullingExample : IDisposable
         );
 
         _cullConst.MeshInfoBufferAddress = _meshInfoBuffer.GpuAddress;
+        _cullConst.NodeInfoBufferAddress = _nodeInfoBuffer.GpuAddress;
 
         // 2.4 Build Pipelines
         CreateCullingPipeline();
@@ -226,7 +237,8 @@ internal class InstancingMeshCullingExample : IDisposable
             "ResetDrawInstanceCount"
         );
         Debug.Assert(_resetInstanceCountPipeline.Valid);
-        _cullDeps._buffers[0] = _meshDrawBuffer;
+        _cullDeps.PushBuffer(_meshDrawBuffer);
+        _cullDeps.PushBuffer(_nodeInfoBuffer);
     }
 
     private void CreateRenderPipeline()
@@ -264,8 +276,9 @@ internal class InstancingMeshCullingExample : IDisposable
 
         // Dependencies ensure memory barriers are placed correctly.
         // We need to wait for the Compute Shader to finish writing to these buffers before Rendering reads them.
-        _renderDependencies._buffers[0] = _culledInstanceIdxBuffer;
-        _renderDependencies._buffers[1] = _meshDrawBuffer;
+        _renderDependencies.PushBuffer(_culledInstanceIdxBuffer);
+        _renderDependencies.PushBuffer(_meshDrawBuffer);
+        _renderDependencies.PushBuffer(_nodeInfoBuffer);
     }
     #endregion
 
@@ -331,7 +344,7 @@ internal class InstancingMeshCullingExample : IDisposable
                 CullingConstAddress = _cullConstBuffer.GpuAddress,
                 DrawCommandIdx = 0,
                 InstanceCount = (uint)_instanceCount,
-                MeshDrawBufferAddress = _meshDrawBuffer.GpuAddress
+                MeshDrawBufferAddress = _meshDrawBuffer.GpuAddress,
             }
         );
 
@@ -355,10 +368,14 @@ internal class InstancingMeshCullingExample : IDisposable
             {
                 ViewProjection = view * proj,
                 InverseViewProjection = invViewProj,
+                View = view,
+                InverseView = invView,
+                DpiScale = 1,
                 CameraPosition = _camera.Position,
                 TimeMs = Time.GetMonoTimeMs(),
                 MaterialBufferAddress = _pbrPropertiesBuffer.GpuAddress,
                 MeshInfoBufferAddress = _meshInfoBuffer.GpuAddress,
+                NodeInfoBufferAddress = _nodeInfoBuffer.GpuAddress,
                 LightCount = 0, // No lights in this unlit demo
                 TileSize = 0,
                 ScreenDimensions = new Vector2(width, height),
@@ -374,7 +391,13 @@ internal class InstancingMeshCullingExample : IDisposable
         cmdBuffer.BeginRendering(_renderPass, _frameBuffer, _renderDependencies);
         cmdBuffer.BindRenderPipeline(_renderPipeline);
         cmdBuffer.BindDepthState(_depthState);
-        cmdBuffer.PushConstants(new MeshDrawPushConstant() { FpConstAddress = _fpConstBuffer.GpuAddress, MeshDrawBufferAddress = _meshDrawBuffer.GpuAddress });
+        cmdBuffer.PushConstants(
+            new MeshDrawPushConstant()
+            {
+                FpConstAddress = _fpConstBuffer.GpuAddress,
+                MeshDrawBufferAddress = _meshDrawBuffer.GpuAddress,
+            }
+        );
         cmdBuffer.BindIndexBuffer(_indexBuffer, IndexFormat.UI32);
 
         // Indirect Draw:
@@ -400,6 +423,7 @@ internal class InstancingMeshCullingExample : IDisposable
         _pBRProperties.Resize(1);
         _meshDraws.Resize(1);
         _meshInfos.Resize(1);
+        _nodeInfos.Resize(1);
         var rnd = new Random((int)Stopwatch.GetTimestamp());
         _pBRProperties[0] = new PBRProperties()
         {
@@ -417,9 +441,10 @@ internal class InstancingMeshCullingExample : IDisposable
             InstanceCount = 0,
             FirstIndex = 0,
             MaterialId = 0,
-            Transform = Matrix4x4.Identity,
+            NodeInfoIndex = 0,
             Cullable = 1,
         };
+        _nodeInfos[0] = new GpuNodeInfo() { Enabled = 1, Transform = Matrix4x4.Identity };
         _meshInfos[0] = new MeshInfo()
         {
             VertexBufferAddress = _boxMesh.VertexBuffer.GpuAddress,
@@ -481,7 +506,7 @@ internal class InstancingMeshCullingExample : IDisposable
                 _instancingBuffer.Dispose();
                 _culledInstanceIdxBuffer.Dispose();
                 _meshInfoBuffer.Dispose();
-
+                _nodeInfoBuffer.Dispose();
                 // Dispose pipelines
                 _cullingPipeline.Dispose();
                 _renderPipeline.Dispose();

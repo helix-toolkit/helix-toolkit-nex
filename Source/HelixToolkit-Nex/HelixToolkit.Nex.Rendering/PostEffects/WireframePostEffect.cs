@@ -1,5 +1,6 @@
 using HelixToolkit.Nex.ECS;
 using HelixToolkit.Nex.Rendering.Components;
+using HelixToolkit.Nex.Rendering.DrawStreams;
 using HelixToolkit.Nex.Rendering.RenderNodes;
 using HelixToolkit.Nex.Scene;
 
@@ -53,8 +54,7 @@ public sealed class WireframePostEffect : PostEffect
     private readonly RenderPass _pass = new();
     private readonly DepthState _depthState = DepthState.DefaultReversedZ.Clone();
 
-    private readonly List<WireframeEntry> _entriesOpaque = [];
-    private readonly List<WireframeEntry> _entriesTransparent = [];
+    private readonly List<WireframeEntry> _entries = [];
 
     public override string Name => nameof(WireframePostEffect);
     public override Color4 DebugColor => Color.Chartreuse;
@@ -113,36 +113,15 @@ public sealed class WireframePostEffect : PostEffect
         }
 
         GatherWireframeDraws(world, data);
-        if (_entriesOpaque.Count == 0)
+        if (_entries.Count == 0)
         {
             return false;
         }
         (readSlot, writeSlot) = (writeSlot, readSlot); // Swap slots so we write into the current texture.
 
-        if (_entriesOpaque.Count > 0)
+        if (_entries.Count > 0)
         {
-            DrawWireframe(
-                in res,
-                res.CmdBuffer,
-                data,
-                ref readSlot,
-                ref writeSlot,
-                _entriesOpaque,
-                data.MeshDrawsOpaque
-            );
-        }
-
-        if (_entriesTransparent.Count > 0)
-        {
-            DrawWireframe(
-                in res,
-                res.CmdBuffer,
-                data,
-                ref readSlot,
-                ref writeSlot,
-                _entriesTransparent,
-                data.MeshDrawsTransparent
-            );
+            DrawWireframe(in res, res.CmdBuffer, data, ref readSlot, ref writeSlot);
         }
 
         return true;
@@ -175,9 +154,7 @@ public sealed class WireframePostEffect : PostEffect
     /// </summary>
     private void GatherWireframeDraws(World world, IRenderDataProvider data)
     {
-        _entriesOpaque.Clear();
-        _entriesTransparent.Clear();
-        var meshDraws = data.MeshDrawsOpaque;
+        _entries.Clear();
 
         foreach (var entity in world.GetComponentEntities<WireframeComponent>())
         {
@@ -187,10 +164,17 @@ public sealed class WireframePostEffect : PostEffect
             }
 
             ref var wireframe = ref entity.Get<WireframeComponent>();
-
-            var entries = entity.Has<TransparentComponent>() ? _entriesTransparent : _entriesOpaque;
-            entries.Add(
-                new WireframeEntry(entity, Color: wireframe.Color)
+            ref var renderable = ref entity.Get<Renderable>();
+            if (renderable.GPUIndex < 0 || renderable.DrawCategory == 0)
+            {
+                continue;
+            }
+            _entries.Add(
+                new WireframeEntry(
+                    entity,
+                    (DrawStreamCategory)renderable.DrawCategory,
+                    wireframe.Color
+                )
             );
         }
     }
@@ -209,9 +193,7 @@ public sealed class WireframePostEffect : PostEffect
         ICommandBuffer cmdBuffer,
         IRenderDataProvider data,
         ref string readSlot,
-        ref string writeSlot,
-        List<WireframeEntry> entries,
-        IMeshDrawData meshDraws
+        ref string writeSlot
     )
     {
         var context = res.RenderContext;
@@ -238,47 +220,50 @@ public sealed class WireframePostEffect : PostEffect
 
         var fpConstAddress = fpBuffer.GpuAddress(res.RenderContext.Context);
 
-        foreach (var entry in entries)
+        foreach (var entry in _entries)
         {
-            var (buffer, drawCmd, index) = meshDraws.GetMeshDraw(entry.Entity);
-            if (buffer == BufferHandle.Null || index < 0)
+            var streams = data.DrawStreams.GetStreams(entry.Category);
+            foreach (var stream in streams)
             {
-                continue;
-            }
-            var isDynamic = drawCmd.IsDynamic();
-            if (!isDynamic)
-            {
-                cmdBuffer.BindIndexBuffer(data.StaticMeshIndexData.Buffer, IndexFormat.UI32);
-            }
-            else
-            {
-                // Dynamic mesh — bind its own index buffer.
-                var geom = data.GetGeometry(drawCmd.MeshId);
-                if (geom is null)
+                if (stream.Categories != entry.Category)
                 {
                     continue;
                 }
-                cmdBuffer.BindIndexBuffer(geom.IndexBuffer, IndexFormat.UI32);
-            }
-
-            cmdBuffer.PushConstants(
-                new MeshDrawPushConstant()
+                var (drawCmd, slot) = stream.GetMeshDraw(entry.Entity);
+                if (stream.IndexBufferStrategy == IndexBufferStrategy.Shared)
                 {
-                    FpConstAddress = fpConstAddress,
-                    DrawCommandIdxOffset = 0,
-                    MeshDrawId = (uint)index,
-                    MeshDrawBufferAddress = buffer.GpuAddress(Context!),
-                    NodeInfoBufferAddress = data.NodeInfos.GpuAddress,
+                    cmdBuffer.BindIndexBuffer(data.StaticMeshIndexData.Buffer, IndexFormat.UI32);
                 }
-            );
-            cmdBuffer.PushConstants(entry.Color, MeshDrawPushConstant.SizeInBytes);
+                else
+                {
+                    // Dynamic mesh — bind its own index buffer.
+                    var geom = data.GetGeometry(drawCmd.MeshId);
+                    if (geom is null)
+                    {
+                        continue;
+                    }
+                    cmdBuffer.BindIndexBuffer(geom.IndexBuffer, IndexFormat.UI32);
+                }
 
-            cmdBuffer.DrawIndexedIndirect(
-                buffer,
-                (uint)index * meshDraws.Stride,
-                1,
-                meshDraws.Stride
-            );
+                cmdBuffer.PushConstants(
+                    new MeshDrawPushConstant()
+                    {
+                        FpConstAddress = fpConstAddress,
+                        DrawCommandIdxOffset = 0,
+                        MeshDrawId = (uint)slot,
+                        MeshDrawBufferAddress = stream.Buffer.GpuAddress(Context!),
+                    }
+                );
+                cmdBuffer.PushConstants(entry.Color, MeshDrawPushConstant.SizeInBytes);
+
+                cmdBuffer.DrawIndexedIndirect(
+                    stream.Buffer,
+                    (uint)slot * stream.Stride,
+                    1,
+                    stream.Stride
+                );
+                break;
+            }
         }
 
         cmdBuffer.EndRendering();
@@ -346,8 +331,8 @@ public sealed class WireframePostEffect : PostEffect
             FrontFaceWinding = WindingMode.CCW,
             PolygonMode = PolygonMode.Line,
         };
-        desc.Colors[0] = ColorAttachment.CreateOpaque(RenderSettings.IntermediateTargetFormat);
-        desc.DepthFormat = RenderSettings.DepthBufferFormat;
+        desc.Colors[0] = ColorAttachment.CreateOpaque(GraphicsSettings.IntermediateTargetFormat);
+        desc.DepthFormat = GraphicsSettings.DepthBufferFormat;
 
         _wireframePipeline = Context.CreateRenderPipeline(desc);
 
@@ -364,5 +349,9 @@ public sealed class WireframePostEffect : PostEffect
     // Internal data
     // -----------------------------------------------------------------------
 
-    private readonly record struct WireframeEntry(Entity Entity, Vector4 Color);
+    private readonly record struct WireframeEntry(
+        Entity Entity,
+        DrawStreamCategory Category,
+        Vector4 Color
+    );
 }

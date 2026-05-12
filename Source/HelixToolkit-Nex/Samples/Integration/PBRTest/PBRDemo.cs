@@ -151,12 +151,11 @@ internal partial class PBRDemo : IDisposable
         };
         _orbitController = new OrbitCameraController(_camera);
 
-        RenderSettings.LogFPSInDebug = true;
 
         _engine = EngineBuilder
             .Create(_context)
             .WithDefaultNodes(false)
-            .RenderToCustomTarget(RenderSettings.IntermediateTargetFormat)
+            .RenderToCustomTarget(GraphicsSettings.IntermediateTargetFormat)
             .Build();
 
         _renderContext = _engine.CreateRenderContext();
@@ -166,7 +165,7 @@ internal partial class PBRDemo : IDisposable
             res =>
             {
                 return _context.CreateRenderTarget2D(
-                    RenderSettings.IntermediateTargetFormat,
+                    GraphicsSettings.IntermediateTargetFormat,
                     (uint)_renderContext.WindowSize.Width,
                     (uint)_renderContext.WindowSize.Height,
                     debugName: ViewportTextureName
@@ -323,7 +322,7 @@ internal partial class PBRDemo : IDisposable
 
         var swapchainTex = _context.GetCurrentSwapchainTexture();
         _imGuiFramebuffer.Colors[0].Texture = swapchainTex;
-        _imGuiDeps._textures[0] = _renderContext.FinalOutputTexture;
+        using var s1 = _imGuiDeps.PushTextureScoped(_renderContext.FinalOutputTexture);
 
         _imGuiRenderer.Render(cmdBuf, _imGuiPass, _imGuiFramebuffer, _imGuiDeps);
 

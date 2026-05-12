@@ -273,9 +273,14 @@ public sealed class FXAANode : RenderNode
             CullMode = CullMode.None,
             FrontFaceWinding = WindingMode.CCW,
         };
-        desc.Colors[0] = ColorAttachment.CreateOpaque(RenderSettings.IntermediateTargetFormat);
+        desc.Colors[0] = ColorAttachment.CreateOpaque(GraphicsSettings.IntermediateTargetFormat);
         desc.WriteSpecInfo(0, (uint)mode);
         return Context!.CreateRenderPipeline(desc);
+    }
+
+    protected override bool CanRender(in RenderResources res)
+    {
+        return true;
     }
 
     protected override void OnSetupRender(in RenderResources res)

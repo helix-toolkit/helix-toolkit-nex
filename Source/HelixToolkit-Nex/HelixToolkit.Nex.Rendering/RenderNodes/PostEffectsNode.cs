@@ -178,6 +178,11 @@ public sealed class PostEffectsNode : RenderNode
         res.Pass.Colors[0].StoreOp = StoreOp.Store;
     }
 
+    protected override bool CanRender(in RenderResources res)
+    {
+        return _effects.Count > 0;
+    }
+
     protected override bool BeginRender(in RenderResources res)
     {
         return true;

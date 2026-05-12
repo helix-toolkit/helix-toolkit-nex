@@ -18,6 +18,22 @@ public sealed class PointRenderNode : RenderNode
 
     #region Render
 
+    protected override bool CanRender(in RenderResources res)
+    {
+        var context = res.RenderContext;
+        if (context.Data is null)
+        {
+            _logger.LogWarning("Render context data is null. Skipping point rendering.");
+            return false;
+        }
+        var points = context.Data.PointCloudData;
+        if (points is null || points.TotalPointCount == 0)
+        {
+            return false;
+        }
+        return true;
+    }
+
     protected override void OnSetupRender(in RenderResources res)
     {
         // Color 0: scene color (load existing opaque content)
@@ -39,21 +55,9 @@ public sealed class PointRenderNode : RenderNode
         res.Deps.PushTexture(res.Textures[SystemBufferNames.TextureColorF16Target]);
         res.Deps.PushTexture(res.Textures[SystemBufferNames.TextureDepthF32]);
         res.Deps.PushBuffer(res.Buffers[SystemBufferNames.BufferForwardPlusConstants]);
-    }
 
-    protected override bool BeginRender(in RenderResources res)
-    {
         var context = res.RenderContext;
-        if (context.Data is null)
-        {
-            _logger.LogWarning("Render context data is null. Skipping point rendering.");
-            return false;
-        }
-        var points = context.Data.PointCloudData;
-        if (points is null || points.TotalPointCount == 0)
-        {
-            return false;
-        }
+        var points = context.Data!.PointCloudData;
         foreach (var entry in points!.Data.Values)
         {
             if (!entry.Valid)
@@ -63,7 +67,6 @@ public sealed class PointRenderNode : RenderNode
             res.CmdBuffer.Barrier(entry.DrawArgsBuffer);
             res.CmdBuffer.Barrier(entry.DrawDataBuffer);
         }
-        return base.BeginRender(res);
     }
 
     protected override void OnRender(in RenderResources res)

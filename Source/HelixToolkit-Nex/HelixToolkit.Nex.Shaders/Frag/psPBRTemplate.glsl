@@ -22,7 +22,11 @@ layout(location = 6) in flat uvec2 fragEntityId;
 // layout(origin_upper_left) in vec4 gl_FragCoord;
 
 layout(location = 0) out vec4 outColor;
+
+#ifdef OUTPUT_DRAW_ID
 layout(location = 1) out vec2 idOut;
+#endif
+
 #ifdef TRANSPARENT_PASS
 layout(location = 2) out float outRevealage;
 #endif
@@ -412,8 +416,6 @@ void main() {
 #ifdef OUTPUT_DRAW_ID
     uint primID = uint(gl_PrimitiveID);
     idOut = packPrimitiveId(fragEntityId, primID);
-#else
-    idOut = vec2(0.0);
 #endif
     vec4 color = outputColor();
 #ifdef TRANSPARENT_PASS
