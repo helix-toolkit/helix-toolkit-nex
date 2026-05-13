@@ -20,7 +20,7 @@ internal sealed class VulkanImage : IDisposable
     public VkImageLayout ImageLayout = VkImageLayout.Undefined;
 
     public bool IsSwapchainImage { get; } = false;
-    public bool IsOwningVkImage { set; get; } = true;
+    public bool IsOwningVkImage { internal set; get; } = true;
     public bool IsResolveAttachment { set; get; } = false; // autoset by cmdBeginRendering() for extra synchronization
 
     public uint32_t NumLevels { private set; get; } = 1u;
@@ -41,8 +41,8 @@ internal sealed class VulkanImage : IDisposable
     public VkImage Image => _vkImage;
 
     // precached image views - owned by this VulkanImage
-    public VkImageView ImageView = VkImageView.Null; // default view with all mip-levels
-    public VkImageView ImageViewStorage = VkImageView.Null; // default view with identity swizzle (all mip-levels)
+    public VkImageView ImageView { set; get; } = VkImageView.Null; // default view with all mip-levels
+    public VkImageView ImageViewStorage { internal set; get; } = VkImageView.Null; // default view with identity swizzle (all mip-levels)
     public nint MappedPtr { get; private set; } = IntPtr.Zero;
     public bool Valid => _ctx is not null && Image != VkImage.Null && UsageFlags != 0;
 
