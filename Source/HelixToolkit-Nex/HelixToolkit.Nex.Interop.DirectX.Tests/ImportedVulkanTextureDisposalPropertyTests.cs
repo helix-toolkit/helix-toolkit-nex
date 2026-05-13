@@ -92,32 +92,6 @@ public class ImportedVulkanTextureDisposalPropertyTests
         VK.vkBindImageMemory(device, image, memory, 0)
             .CheckResult("Failed to bind test memory to image");
 
-        // Create image view
-        VkImageViewCreateInfo imageViewCreateInfo = new()
-        {
-            image = image,
-            viewType = VkImageViewType.Image2D,
-            format = format,
-            components = new VkComponentMapping(
-                VkComponentSwizzle.Identity,
-                VkComponentSwizzle.Identity,
-                VkComponentSwizzle.Identity,
-                VkComponentSwizzle.Identity
-            ),
-            subresourceRange = new VkImageSubresourceRange
-            {
-                aspectMask = VkImageAspectFlags.Color,
-                baseMipLevel = 0,
-                levelCount = 1,
-                baseArrayLayer = 0,
-                layerCount = 1,
-            },
-        };
-
-        VkImageView imageView;
-        VK.vkCreateImageView(device, &imageViewCreateInfo, null, &imageView)
-            .CheckResult("Failed to create test image view");
-
         // Wrap in VulkanImage and register in TexturesPool
         var vulkanImage = new VulkanImage(
             ctx,
@@ -132,7 +106,7 @@ public class ImportedVulkanTextureDisposalPropertyTests
             isOwningVkImage: false,
             debugName: "Test Imported Texture"
         );
-        vulkanImage.ImageView = imageView;
+        var imageView = vulkanImage.CreateImageView(device, VkImageViewType.Image2D, format, VkImageAspectFlags.Color, 0);
 
         TextureHandle textureHandle = ctx.TexturesPool.Create(vulkanImage);
         ctx.AwaitingCreation = true;

@@ -155,9 +155,6 @@ public static class VulkanExternalMemoryImporter
             debugName: "Imported DirectX Texture"
         );
 
-        // Set the image view on the wrapper so the engine can use it
-        vulkanImage.ImageView = imageView;
-
         // 8. Register in TexturesPool to obtain a TextureHandle
         TextureHandle textureHandle = ctx.TexturesPool.Create(vulkanImage);
         ctx.AwaitingCreation = true;

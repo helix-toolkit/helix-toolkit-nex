@@ -1067,7 +1067,7 @@ public class RenderGraphTests
         new ForwardPlusLightCullingNode().AddToGraph(graph);
         new ForwardPlusOpaqueNode().AddToGraph(graph);
         new PointRenderNode().AddToGraph(graph);
-        new ForwardPlusTransparentNode().AddToGraph(graph);
+        new ForwardPlusWBOITNode().AddToGraph(graph);
         new WBOITCompositeNode().AddToGraph(graph);
         new PostEffectsNode().AddToGraph(graph);
         new ToneMappingNode().AddToGraph(graph);
@@ -1117,16 +1117,16 @@ public class RenderGraphTests
 
         // --- Stage: Transparent ---
         Assert.IsTrue(
-            Precedes(names, nameof(PointRenderNode), nameof(ForwardPlusTransparentNode)),
-            "PointRenderNode before ForwardPlusTransparentNode"
+            Precedes(names, nameof(PointRenderNode), nameof(ForwardPlusWBOITNode)),
+            "PointRenderNode before ForwardPlusWBOITNode"
         );
         Assert.IsTrue(
-            Precedes(names, nameof(ForwardPlusOpaqueNode), nameof(ForwardPlusTransparentNode)),
-            "ForwardPlusOpaqueNode before ForwardPlusTransparentNode"
+            Precedes(names, nameof(ForwardPlusOpaqueNode), nameof(ForwardPlusWBOITNode)),
+            "ForwardPlusOpaqueNode before ForwardPlusWBOITNode"
         );
         Assert.IsTrue(
-            Precedes(names, nameof(ForwardPlusTransparentNode), nameof(WBOITCompositeNode)),
-            "ForwardPlusTransparentNode before WBOITCompositeNode"
+            Precedes(names, nameof(ForwardPlusWBOITNode), nameof(WBOITCompositeNode)),
+            "ForwardPlusWBOITNode before WBOITCompositeNode"
         );
 
         // --- Stage: PostProcess → ToneMap ---
@@ -1186,16 +1186,16 @@ public class RenderGraphTests
 
         // Opaque → Transparent
         Assert.IsTrue(
-            Precedes(names, nameof(PointRenderNode), nameof(ForwardPlusTransparentNode)),
-            "PointRenderNode before ForwardPlusTransparentNode"
+            Precedes(names, nameof(PointRenderNode), nameof(ForwardPlusWBOITNode)),
+            "PointRenderNode before ForwardPlusWBOITNode"
         );
         Assert.IsTrue(
-            Precedes(names, nameof(ForwardPlusOpaqueNode), nameof(ForwardPlusTransparentNode)),
-            "ForwardPlusOpaqueNode before ForwardPlusTransparentNode"
+            Precedes(names, nameof(ForwardPlusOpaqueNode), nameof(ForwardPlusWBOITNode)),
+            "ForwardPlusOpaqueNode before ForwardPlusWBOITNode"
         );
         Assert.IsTrue(
-            Precedes(names, nameof(ForwardPlusTransparentNode), nameof(WBOITCompositeNode)),
-            "ForwardPlusTransparentNode before WBOITCompositeNode"
+            Precedes(names, nameof(ForwardPlusWBOITNode), nameof(WBOITCompositeNode)),
+            "ForwardPlusWBOITNode before WBOITCompositeNode"
         );
 
         // Transparent → PostProcess → ToneMap
@@ -1231,7 +1231,7 @@ public class RenderGraphTests
             new ToneMappingNode(),
             new PostEffectsNode(),
             new WBOITCompositeNode(),
-            new ForwardPlusTransparentNode(),
+            new ForwardPlusWBOITNode(),
             new PointRenderNode(),
             new ForwardPlusOpaqueNode(),
             new ForwardPlusLightCullingNode(),
@@ -1254,7 +1254,7 @@ public class RenderGraphTests
     {
         // Transparent-stage nodes are added before opaque-stage nodes.
         var names = CompileNodes([
-            new ForwardPlusTransparentNode(),
+            new ForwardPlusWBOITNode(),
             new WBOITCompositeNode(),
             new PrepareNode(),
             new DepthPassNode(),
@@ -1289,7 +1289,7 @@ public class RenderGraphTests
             new ForwardPlusLightCullingNode(),
             new ForwardPlusOpaqueNode(),
             new PointRenderNode(),
-            new ForwardPlusTransparentNode(),
+            new ForwardPlusWBOITNode(),
             new WBOITCompositeNode(),
         ]);
 
@@ -1312,7 +1312,7 @@ public class RenderGraphTests
             new PrepareNode(), // Prepare
             new WBOITCompositeNode(), // Transparent
             new DepthPassNode(), // Opaque
-            new ForwardPlusTransparentNode(), // Transparent
+            new ForwardPlusWBOITNode(), // Transparent
             new FrustumCullNode(), // Prepare
             new ForwardPlusLightCullingNode(), // Opaque
             new PointCullNode(), // Prepare
@@ -1335,7 +1335,7 @@ public class RenderGraphTests
             new PrepareNode(),
             new FrustumCullNode(),
             new PointCullNode(),
-            new ForwardPlusTransparentNode(),
+            new ForwardPlusWBOITNode(),
             new WBOITCompositeNode(),
             new PostEffectsNode(),
             new ToneMappingNode(),
