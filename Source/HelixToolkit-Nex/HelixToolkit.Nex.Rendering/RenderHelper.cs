@@ -1,4 +1,6 @@
+using HelixToolkit.Nex.ECS;
 using HelixToolkit.Nex.Rendering.DrawStreams;
+using HelixToolkit.Nex.Scene;
 
 namespace HelixToolkit.Nex.Rendering;
 
@@ -82,7 +84,7 @@ public static class RenderHelper
                         cmdBuf.SetColorWriteEnabled(res.Pass.ColorWrites);
                     }
                     else
-                    {// Disable entity ID output for transparent non-hitable meshes to avoid writing to the ID buffer, which is used for picking and should not be affected by transparent objects.
+                    { // Disable entity ID output for transparent non-hitable meshes to avoid writing to the ID buffer, which is used for picking and should not be affected by transparent objects.
                         cmdBuf.SetColorWriteEnabled(_colorWriteNoIdOuput);
                     }
                 }
@@ -151,7 +153,7 @@ public static class RenderHelper
                         cmdBuf.SetColorWriteEnabled(res.Pass.ColorWrites);
                     }
                     else
-                    {// Disable entity ID output for transparent non-hitable meshes to avoid writing to the ID buffer, which is used for picking and should not be affected by transparent objects.
+                    { // Disable entity ID output for transparent non-hitable meshes to avoid writing to the ID buffer, which is used for picking and should not be affected by transparent objects.
                         cmdBuf.SetColorWriteEnabled(_colorWriteNoIdOuput);
                     }
                 }
@@ -198,5 +200,72 @@ public static class RenderHelper
             }
         }
         return drawCount;
+    }
+
+    public static uint RenderEntities(
+        this IEnumerable<Entity> entites,
+        in RenderResources res,
+        BufferHandle fpConst
+    )
+    {
+        if (res.RenderContext.Data is null)
+        {
+            return 0;
+        }
+        var data = res.RenderContext.Data;
+        var cmdBuffer = res.CmdBuffer;
+        var dataStreams = data.DrawStreams;
+        var renderables = data.World.GetComponents<Renderable>();
+        uint counter = 0;
+        foreach (var entity in entites.AsValueEnumerable())
+        {
+            var category = (DrawStreamCategory)renderables[entity].DrawCategory;
+            var streams = dataStreams.GetStreams(category);
+            foreach (var stream in streams)
+            {
+                if (stream.Categories != category)
+                {
+                    continue;
+                }
+                var (meshDraw, slot) = stream.GetMeshDraw(entity);
+                if (slot < 0)
+                {
+                    continue;
+                }
+
+                if (stream.IndexBufferStrategy == IndexBufferStrategy.Shared)
+                {
+                    cmdBuffer.BindIndexBuffer(data.StaticMeshIndexData.Buffer, IndexFormat.UI32);
+                }
+                else
+                {
+                    // Dynamic mesh — bind its own index buffer.
+                    var geom = data.GetGeometry(meshDraw.MeshId);
+                    if (geom is null)
+                    {
+                        continue;
+                    }
+                    cmdBuffer.BindIndexBuffer(geom.IndexBuffer, IndexFormat.UI32);
+                }
+
+                cmdBuffer.PushConstants(
+                    new MeshDrawPushConstant
+                    {
+                        FpConstAddress = fpConst.GpuAddress(res.RenderContext.Context),
+                        DrawCommandIdxOffset = (uint)slot,
+                        MeshDrawBufferAddress = stream.Buffer.GpuAddress(res.RenderContext.Context),
+                    }
+                );
+
+                cmdBuffer.DrawIndexedIndirect(
+                    stream.Buffer,
+                    (uint)slot * stream.Stride,
+                    1,
+                    stream.Stride
+                );
+                ++counter;
+            }
+        }
+        return counter;
     }
 }
