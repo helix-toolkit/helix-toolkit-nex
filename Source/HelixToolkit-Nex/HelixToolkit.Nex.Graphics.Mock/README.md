@@ -12,8 +12,11 @@ The `HelixToolkit.Nex.Graphics.Mock` package is designed to fit seamlessly into 
 - **MockCommandBuffer**: A mock implementation of `ICommandBuffer` for unit testing, allowing the recording and validation of command buffer operations.
   - **DrawCallCount**: Property added to track the number of draw calls made.
   - **DispatchCallCount**: Property added to track the number of dispatch calls made.
-  - **SetCheckpointMarker**: New method added to simulate setting a checkpoint marker.
+  - **SetCheckpointMarker**: Method to simulate setting a checkpoint marker.
   - **Barrier**: Method to simulate a barrier operation on a buffer.
+  - **BindRenderPipeline**: Overloaded method to bind a render pipeline with color write states.
+  - **ClearDepthStencilImage**: Method to simulate clearing a depth-stencil image.
+  - **SetColorWriteEnabled**: Method to enable or disable color writes for attachments.
 - **MockContext**: A mock implementation of `IContext` that simulates a graphics context, providing methods to create and manage mock resources such as buffers, textures, and pipelines.
   - **GenerateMipmap**: Method to simulate mipmap generation for a texture.
   - **WaitAll**: Method to simulate waiting for all operations to complete.
@@ -77,6 +80,27 @@ var commandBuffer = context.AcquireCommandBuffer();
 commandBuffer.SetCheckpointMarker("Checkpoint1".AsSpan());
 ```
 
+#### Bind Render Pipeline with Color Writes
+
+```csharp
+var commandBuffer = context.AcquireCommandBuffer();
+commandBuffer.BindRenderPipeline(renderPipelineHandle, new[] { true, false, true }.AsSpan());
+```
+
+#### Clear Depth Stencil Image
+
+```csharp
+var commandBuffer = context.AcquireCommandBuffer();
+commandBuffer.ClearDepthStencilImage(texture.Handle, depth: 1.0f, stencil: 0);
+```
+
+#### Set Color Write Enabled
+
+```csharp
+var commandBuffer = context.AcquireCommandBuffer();
+commandBuffer.SetColorWriteEnabled(new[] { true, false, true }.AsSpan());
+```
+
 ## Architecture Notes
 
 - **Design Patterns**: The package uses mock objects to simulate the behavior of graphics interfaces, allowing for isolated testing of rendering logic.
@@ -86,5 +110,5 @@ commandBuffer.SetCheckpointMarker("Checkpoint1".AsSpan());
 ## Recent Changes
 
 - **Project Configuration**: Added new build configurations for `LinuxDebug` and `LinuxRelease` to support cross-platform testing and development.
-- **New Methods and Properties**: Added `DrawCallCount`, `DispatchCallCount`, `SetCheckpointMarker`, and updated `CreateSecondaryCommandBuffer` method signature to enhance testing capabilities.
+- **New Methods and Properties**: Added `DrawCallCount`, `DispatchCallCount`, `SetCheckpointMarker`, `BindRenderPipeline` with color writes, `ClearDepthStencilImage`, `SetColorWriteEnabled`, and updated `CreateSecondaryCommandBuffer` method signature to enhance testing capabilities.
 ```

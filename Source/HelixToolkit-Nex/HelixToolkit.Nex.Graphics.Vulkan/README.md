@@ -12,7 +12,7 @@ Key features include:
 - Forward Plus light culling for efficient lighting calculations.
 - GPU-based frustum and instance culling for optimized rendering.
 - Support for Vulkan's advanced features like mesh shaders and dynamic rendering.
-- Enhanced support for Vulkan features such as `shaderSampledImageArrayDynamicIndexing` and `shaderInt64`.
+- Enhanced support for Vulkan features such as `shaderSampledImageArrayDynamicIndexing`, `shaderInt64`, `extendedDynamicState`, and `colorWriteEnable`.
 - Support for Linux configurations with `LinuxDebug` and `LinuxRelease`.
 
 ## Key Types
@@ -76,6 +76,13 @@ context.CreateTexture(textureDesc, out var textureResource, "MyTexture");
 ```csharp
 context.GenerateMipmap(textureResource.Handle, out uint levels);
 Console.WriteLine($"Generated {levels} mipmap levels.");
+```
+
+### Enabling Color Write
+
+```csharp
+var colorWrites = new bool[] { true, false, true }; // Enable/disable color writes for attachments
+commandBuffer.SetColorWriteEnabled(colorWrites);
 ```
 
 ## Architecture Notes

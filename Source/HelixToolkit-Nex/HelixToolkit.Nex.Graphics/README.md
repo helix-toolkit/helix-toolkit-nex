@@ -30,6 +30,7 @@ HelixToolkit.Nex.Graphics is a core component of the HelixToolkit.Nex engine, re
 | `VertexInput`                 | Describes the complete vertex input configuration for a graphics pipeline.  |
 | `TextureResource`             | Represents a GPU texture resource.                                          |
 | `Dependencies`                | Manages dependencies for command buffer submissions.                       |
+| `DependencyScope`             | Provides a scoped management for dependencies.                             |
 | `ElementBuffer<T>`            | Represents a buffer for storing elements of type `T`.                      |
 | `RingElementBuffer<T>`        | Manages a ring buffer for dynamic element storage.                         |
 | `SamplerStateDesc`            | Describes the configuration for a texture sampler.                         |
@@ -120,6 +121,23 @@ var commandBuffer = context.AcquireCommandBuffer();
 commandBuffer.PushDebugGroupLabel("RenderPass", new Color4(0.5f, 0.5f, 0.5f, 1.0f));
 commandBuffer.SetCheckpointMarker("MidFrame");
 commandBuffer.PopDebugGroupLabel();
+```
+
+### Clearing Depth Stencil Image
+
+```csharp
+var commandBuffer = context.AcquireCommandBuffer();
+commandBuffer.ClearDepthStencilImage(textureHandle, depth: 1.0f, stencil: 0);
+```
+
+### Managing Dependencies with Scoped Operations
+
+```csharp
+var dependencies = new Dependencies();
+using (dependencies.PushBufferScoped(bufferHandle))
+{
+    // Perform operations that require the buffer
+}
 ```
 
 ## Architecture Notes
