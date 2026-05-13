@@ -25,6 +25,7 @@ This package fits into the HelixToolkit-Nex engine by providing the foundational
 | `Parent`          | Component that stores a reference to a node's parent entity.                |
 | `Children`        | Manages a list of child nodes for a given node.                             |
 | `SceneSorting`    | Provides static methods for flattening and sorting scene nodes.             |
+| `Renderable`      | Represents an object that can be rendered by a graphics or UI system, with properties for render layers and GPU indexing. |
 
 ## Usage Examples
 
@@ -70,6 +71,17 @@ rootNode.Flatten(null, sortedNodes);
 
 // Update world transformations for all nodes
 sortedNodes.UpdateTransforms();
+```
+
+### Controlling Renderable State
+
+```csharp
+// Set a node as renderable
+childNode.IsRenderable = true;
+
+// Check if a node is renderable
+bool isRenderable = childNode.IsRenderable;
+Console.WriteLine($"Is Child Node Renderable: {isRenderable}");
 ```
 
 ## Architecture Notes

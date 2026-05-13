@@ -23,6 +23,7 @@ HelixToolkit.Nex.ECS is integral to the HelixToolkit.Nex engine, providing a str
 | `RuleBuilder` | Constructs rules for filtering entities based on component presence and state. |
 | `ResultCode` | Enum representing the result of ECS operations, such as `Ok`, `Invalid`, or `NotFound`. |
 | `ISortable<T>` | Interface for defining custom sorting logic for components. |
+| `Components<T>` | Represents a collection of components of type `T` within a world. |
 
 ## Usage Examples
 
@@ -81,9 +82,11 @@ entity.Register<EntityEnableEvent>((worldId, evt) =>
 
 ## Recent Changes
 
-- **New Configurations**: Added support for `LinuxDebug` and `LinuxRelease` configurations in the project file.
-- **Component Sorting**: Enhanced component sorting using Shell Sort for improved performance.
-- **Entity Management**: Improved entity lifecycle management with additional event handling for entity disposal.
+- **ComponentManager Enhancements**: The `AsComponents` method now includes the world context, improving component management across worlds.
+- **Components Struct Update**: `Components<T>` is now a regular struct instead of a ref struct, allowing for more flexible usage patterns.
+- **Entity Lifecycle Events**: Introduced `EntityBeforeDisposeEvent` to handle pre-disposal logic for entities.
+- **EntityCollection Enhancements**: Added `Has` method to check for entity presence in a collection.
+- **Event System**: Updated event handling to use `EntityBeforeDisposeEvent` for more precise lifecycle management.
 
 HelixToolkit.Nex.ECS is designed to be flexible and efficient, making it suitable for a wide range of 3D applications within the HelixToolkit.Nex engine.
 ```

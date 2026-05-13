@@ -33,7 +33,7 @@ This package plays a crucial role in the rendering pipeline, providing the neces
 | `BillboardMaterialRegistry` | Registry for billboard material types and their shader implementations. |
 | `MaterialTypeId` | Represents a unique identifier for material types. |
 | `MaterialPropertyCreator` | Facilitates creation and configuration of material properties. |
-| `RenderSettings` | Provides static render settings including formats and frame configurations. |
+| `GraphicsSettings` | Provides static render settings including formats and frame configurations. |
 
 ## Usage Examples
 
