@@ -81,6 +81,7 @@ void main() {
 
     if (info.enabled == 0) {
         meshDrawBuf.draws[pc.value.drawCommandIdx].instanceCount = 0; // Mark all instances as culled
+        return;
     }
     
     if (draw.instancingBufferAddress == 0) {

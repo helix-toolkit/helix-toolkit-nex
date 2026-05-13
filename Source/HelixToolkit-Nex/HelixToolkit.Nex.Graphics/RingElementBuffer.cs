@@ -33,7 +33,7 @@ public sealed class RingElementBuffer<T> : IDisposable
     /// </summary>
     public int CurrentIndex => _currentIndex;
 
-    public bool HostVisable { get; }
+    public bool HostVisible { get; }
 
     /// <summary>
     /// Gets the <see cref="ElementBuffer{T}"/> that is currently active for writing.
@@ -64,7 +64,7 @@ public sealed class RingElementBuffer<T> : IDisposable
     /// <summary>
     /// Provides a pointer to the mapped memory of the current buffer if it is host-visible;
     /// </summary>
-    public nint MappedPointer => HostVisable ? Current.MappedPointer : nint.Zero;
+    public nint MappedPointer => HostVisible ? Current.MappedPointer : nint.Zero;
 
     /// <summary>
     /// Creates a new ring buffer with the specified number of slots.
@@ -88,7 +88,7 @@ public sealed class RingElementBuffer<T> : IDisposable
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(ringSize, 1, nameof(ringSize));
         ArgumentOutOfRangeException.ThrowIfNegative(initialCapacity, nameof(initialCapacity));
-        HostVisable = hostVisible;
+        HostVisible = hostVisible;
         _buffers = new ElementBuffer<T>[ringSize];
         for (int i = 0; i < ringSize; i++)
         {

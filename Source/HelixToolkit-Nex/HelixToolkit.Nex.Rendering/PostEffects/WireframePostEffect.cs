@@ -230,6 +230,14 @@ public sealed class WireframePostEffect : PostEffect
                     continue;
                 }
                 var (drawCmd, slot) = stream.GetMeshDraw(entry.Entity);
+                if (slot < 0)
+                {
+                    _logger.LogError(
+                        "Failed to get mesh draw for entity {ENTITY} in wireframe pass.",
+                        entry.Entity
+                    );
+                    continue;
+                }
                 if (stream.IndexBufferStrategy == IndexBufferStrategy.Shared)
                 {
                     cmdBuffer.BindIndexBuffer(data.StaticMeshIndexData.Buffer, IndexFormat.UI32);
