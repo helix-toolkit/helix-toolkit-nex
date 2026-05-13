@@ -59,7 +59,7 @@ public sealed class ForwardPlusOpaqueNode : RenderNode
         var streams = res.RenderContext.Data!.DrawStreams.GetStreams(DrawStreamCategory.Opaque);
         foreach (var stream in streams)
         {
-            res.RenderContext.Statistics.DrawCalls += RenderHelper.Render(
+            res.RenderContext.Statistics.DrawCalls += MeshRenderHelper.Render(
                 in res,
                 res.Buffers[SystemBufferNames.BufferForwardPlusConstants]
                     .GpuAddress(res.RenderContext.Context),
