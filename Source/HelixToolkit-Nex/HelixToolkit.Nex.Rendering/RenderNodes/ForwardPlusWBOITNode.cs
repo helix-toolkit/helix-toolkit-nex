@@ -66,16 +66,13 @@ public sealed class ForwardPlusWBOITNode : RenderNode
         var streams = res.RenderContext.Data!.DrawStreams.GetStreams(
             DrawStreamCategory.Transparent
         );
-        foreach (var stream in streams)
-        {
-            res.RenderContext.Statistics.DrawCalls += MeshRenderHelper.Render(
-                in res,
-                res.Buffers[SystemBufferNames.BufferForwardPlusConstants]
-                    .GpuAddress(res.RenderContext.Context),
-                streams,
-                MaterialPassType.WBOIT
-            );
-        }
+        res.RenderContext.Statistics.DrawCalls += MeshRenderHelper.Render(
+            in res,
+            res.Buffers[SystemBufferNames.BufferForwardPlusConstants]
+                .GpuAddress(res.RenderContext.Context),
+            streams,
+            MaterialPassType.WBOIT
+        );
     }
 
     public override void AddToGraph(RenderGraph graph)

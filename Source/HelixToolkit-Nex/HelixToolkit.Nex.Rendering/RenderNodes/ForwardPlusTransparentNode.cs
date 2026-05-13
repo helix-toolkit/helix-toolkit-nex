@@ -65,16 +65,13 @@ public class ForwardPlusTransparentNode : RenderNode
         var streams = res.RenderContext.Data!.DrawStreams.GetStreams(
             DrawStreamCategory.Transparent
         );
-        foreach (var stream in streams)
-        {
-            res.RenderContext.Statistics.DrawCalls += MeshRenderHelper.Render(
-                in res,
-                res.Buffers[SystemBufferNames.BufferForwardPlusConstants]
-                    .GpuAddress(res.RenderContext.Context),
-                streams,
-                MaterialPassType.Transparent
-            );
-        }
+        res.RenderContext.Statistics.DrawCalls += MeshRenderHelper.Render(
+            in res,
+            res.Buffers[SystemBufferNames.BufferForwardPlusConstants]
+                .GpuAddress(res.RenderContext.Context),
+            streams,
+            MaterialPassType.Transparent
+        );
     }
 
     public override void AddToGraph(RenderGraph graph)

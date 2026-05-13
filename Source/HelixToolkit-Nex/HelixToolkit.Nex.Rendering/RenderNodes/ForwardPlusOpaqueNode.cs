@@ -57,16 +57,13 @@ public sealed class ForwardPlusOpaqueNode : RenderNode
     protected override void OnRender(in RenderResources res)
     {
         var streams = res.RenderContext.Data!.DrawStreams.GetStreams(DrawStreamCategory.Opaque);
-        foreach (var stream in streams)
-        {
-            res.RenderContext.Statistics.DrawCalls += MeshRenderHelper.Render(
-                in res,
-                res.Buffers[SystemBufferNames.BufferForwardPlusConstants]
-                    .GpuAddress(res.RenderContext.Context),
-                streams,
-                MaterialPassType.Opaque
-            );
-        }
+        res.RenderContext.Statistics.DrawCalls += MeshRenderHelper.Render(
+            in res,
+            res.Buffers[SystemBufferNames.BufferForwardPlusConstants]
+                .GpuAddress(res.RenderContext.Context),
+            streams,
+            MaterialPassType.Opaque
+        );
     }
 
     public override void AddToGraph(RenderGraph graph)

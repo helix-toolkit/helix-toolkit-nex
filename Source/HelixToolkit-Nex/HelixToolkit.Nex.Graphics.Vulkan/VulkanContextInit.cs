@@ -173,7 +173,8 @@ namespace HelixToolkit.Nex.Graphics.Vulkan
 
             // Get features and properties of the physical device and create the logical device
             // VkPhysicalDeviceMeshShaderFeaturesEXT meshShaderFeatures = new();
-            VkPhysicalDeviceVulkan13Features features1_3 = new() { pNext = null };
+            VkPhysicalDeviceColorWriteEnableFeaturesEXT colorWriteFeatures = new();
+            VkPhysicalDeviceVulkan13Features features1_3 = new() { pNext = &colorWriteFeatures };
             VkPhysicalDeviceVulkan12Features features1_2 = new() { pNext = &features1_3 };
             VkPhysicalDeviceVulkan11Features features1_1 = new() { pNext = &features1_2 };
 
@@ -206,16 +207,6 @@ namespace HelixToolkit.Nex.Graphics.Vulkan
             feature_1_0.pNext = &features1_1;
             features1_1.pNext = &features1_2;
             features1_2.pNext = &features1_3;
-
-            VkPhysicalDeviceExtendedDynamicStateFeaturesEXT dynamicStateFeatures = new()
-            {
-                extendedDynamicState = VK_BOOL.True, // Default to false, will enable if supported
-            };
-
-            VkPhysicalDeviceColorWriteEnableFeaturesEXT colorWriteFeatures = new()
-            {
-                colorWriteEnable = VK_BOOL.True, // Default to false, will enable if supported
-            };
 
             features1_3.pNext = &colorWriteFeatures;
 
