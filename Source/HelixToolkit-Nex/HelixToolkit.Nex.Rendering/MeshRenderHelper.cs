@@ -4,7 +4,7 @@ using HelixToolkit.Nex.Scene;
 
 namespace HelixToolkit.Nex.Rendering;
 
-public static class RenderHelper
+public static class MeshRenderHelper
 {
     private static readonly ILogger _logger = LogManager.Create("RenderHelper");
     private static readonly bool[] _colorWriteNoIdOuput = [true, false, true, true];

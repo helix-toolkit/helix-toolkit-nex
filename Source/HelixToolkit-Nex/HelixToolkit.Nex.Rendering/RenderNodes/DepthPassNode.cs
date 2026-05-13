@@ -53,7 +53,7 @@ public sealed class DepthPassNode() : RenderNode
         using var _ = res.RenderContext.EnableExternalPipelineScoped();
         res.CmdBuffer.BindRenderPipeline(_pipeline);
 
-        res.RenderContext.Statistics.DrawCalls += RenderHelper.Render(
+        res.RenderContext.Statistics.DrawCalls += MeshRenderHelper.Render(
             in res,
             res.Buffers[SystemBufferNames.BufferForwardPlusConstants]
                 .GpuAddress(res.RenderContext.Context),
