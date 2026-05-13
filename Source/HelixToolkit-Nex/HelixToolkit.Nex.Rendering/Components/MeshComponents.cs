@@ -71,10 +71,6 @@ public struct MeshComponent
         bool hitable = true
     )
     {
-        if (geometry?.IsDynamic == true)
-        {
-            throw new InvalidOperationException("Geometry must be static for StaticMeshComponent");
-        }
         Geometry = geometry;
         MaterialProperties = materialProperties;
         Instancing = instancing;
