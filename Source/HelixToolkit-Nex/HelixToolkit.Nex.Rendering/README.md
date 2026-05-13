@@ -53,7 +53,7 @@ HelixToolkit.Nex.Rendering is responsible for managing the rendering pipeline of
 
 ### MeshComponent
 
-- **Validation**: Updated `Valid` property to check `Geometry.Valid` instead of `Geometry.Attached`.
+- **Category Property**: Added `Category` property to determine the draw stream category based on instancing, hitability, and dynamic state.
 
 ### Post-Processing Effects
 

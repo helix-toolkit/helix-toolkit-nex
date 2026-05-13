@@ -34,6 +34,7 @@ This package is integral to the HelixToolkit-Nex engine, facilitating the creati
 | `BillboardInfo`               | Struct containing information for each billboard.                           |
 | `BillboardExpandPC`           | Struct for push constants for the billboard expansion compute shader.       |
 | `BillboardRenderPC`           | Struct for push constants for the billboard render vertex/fragment shaders. |
+| `GpuNodeInfo`                 | Struct containing transformation and state information for nodes, used in culling. |
 
 ## Usage Examples
 

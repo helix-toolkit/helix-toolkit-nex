@@ -31,6 +31,7 @@ HelixToolkit.Nex.Engine is a core component of the HelixToolkit.Nex suite, respo
 | `EngineBuilder`                  | Fluent builder for creating and configuring an `Engine` instance.          |
 | `BillboardData`                  | Manages billboard entities and their data for rendering.                   |
 | `PointCloudData`                 | Manages point cloud entities and their data for rendering.                 |
+| `DynamicMeshDrawData`            | Represents dynamic mesh draw data.                                         |
 
 ## Usage Examples
 
@@ -105,8 +106,7 @@ var billboard = engine.CreateBillboard(
 
 ### New Types
 
-- `BillboardData`: Manages billboard entities and their data for rendering.
-- `PointCloudData`: Manages point cloud entities and their data for rendering.
+- `DynamicMeshDrawData`: Represents dynamic mesh draw data.
 
 ### New Methods in `Engine`
 
