@@ -15,7 +15,7 @@ public class PrepareNode : RenderNode
             Context,
             (int)GraphicsSettings.MaxFrameInFlight,
             BufferUsageBits.Storage,
-            hostVisible: false,
+            hostVisible: true,
             debugName: "FPConst"
         );
         return true;
