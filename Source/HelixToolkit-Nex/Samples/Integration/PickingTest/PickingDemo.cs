@@ -101,7 +101,7 @@ internal sealed class PickingDemo : IDisposable
         // Use a high-res sphere: thetaDiv=1002, phiDiv=1002 gives ~1M triangles
         // Each sphere ring: thetaDiv * 2 triangles, phiDiv rings => ~thetaDiv * phiDiv * 2 triangles
         var meshBuilder = new MeshBuilder(true, true, true);
-        meshBuilder.AddSphere(Vector3.Zero, 10f, 64, 64);
+        meshBuilder.AddSphere(Vector3.Zero, 10f, 128, 128);
         meshBuilder.AddTorus(20, 2, 64, 64);
         var meshGeom3D = meshBuilder.ToMesh();
         _logger.LogInformation(

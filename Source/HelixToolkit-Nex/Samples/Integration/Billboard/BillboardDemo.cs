@@ -5,7 +5,6 @@ using HelixToolkit.Nex.ECS;
 using HelixToolkit.Nex.Engine;
 using HelixToolkit.Nex.Engine.CameraControllers;
 using HelixToolkit.Nex.Engine.Cameras;
-using HelixToolkit.Nex.Engine.Components;
 using HelixToolkit.Nex.Graphics;
 using HelixToolkit.Nex.ImGui;
 using HelixToolkit.Nex.Material;
@@ -15,7 +14,6 @@ using HelixToolkit.Nex.Rendering.Components;
 using HelixToolkit.Nex.Rendering.ComputeNodes;
 using HelixToolkit.Nex.Rendering.SDF;
 using HelixToolkit.Nex.Scene;
-using HelixToolkit.Nex.Shaders;
 using Microsoft.Extensions.Logging;
 using SceneSamples;
 using static HelixToolkit.Nex.Rendering.PostEffects.BorderHighlightPostEffect;
@@ -45,7 +43,7 @@ internal sealed class BillboardDemo : IDisposable
 
     // Camera
     private Camera _camera = new PerspectiveCamera();
-    private FirstPersonCameraController? _firstPersonController;
+    private ICameraController? _cameraController;
     private long _lastTimestamp;
 
     // ImGui composite state
@@ -102,7 +100,7 @@ internal sealed class BillboardDemo : IDisposable
             Target = new Vector3(100f, 0f, 0f),
             FarPlane = 2000,
         };
-        _firstPersonController = new FirstPersonCameraController(_camera)
+        _cameraController = new WalkaroundCameraController(_camera)
         {
             MoveSpeed = 10f,
             SprintMultiplier = 2f,
@@ -218,21 +216,6 @@ internal sealed class BillboardDemo : IDisposable
     {
         var world = _worldDataProvider!.World;
         _root = new Node(world, "Root");
-
-        // Add a directional light (ambient fill)
-        var lightNode = new Node(world, "DirectionalLight");
-        lightNode.Entity.Set(
-            new DirectionalLightComponent
-            {
-                Light = new DirectionalLight
-                {
-                    Direction = Vector3.Normalize(new Vector3(0.5f, -1f, 0.5f)),
-                    Color = new Vector3(1f, 0.98f, 0.95f),
-                    Intensity = 0.8f,
-                },
-            }
-        );
-        _root.AddChild(lightNode);
 
         // Build the solar system scene
         _solarSystemScene = new SolarSystemScene();
@@ -362,7 +345,7 @@ internal sealed class BillboardDemo : IDisposable
         );
         _imGuiRenderer.EndFrame();
 
-        _firstPersonController?.Update(dt);
+        _cameraController?.Update(dt);
 
         // Update min screen size on the cull node
         if (_billboardCullNode is not null)
@@ -515,15 +498,15 @@ internal sealed class BillboardDemo : IDisposable
 
                 // Right-drag: free-look
                 if (Gui.IsMouseClicked(ImGuiNET.ImGuiMouseButton.Right))
-                    _firstPersonController?.OnRotateBegin(rel.X, rel.Y);
+                    _cameraController?.OnRotateBegin(rel.X, rel.Y);
 
                 if (Gui.IsMouseDown(ImGuiNET.ImGuiMouseButton.Right))
-                    _firstPersonController?.OnRotateDelta(rel.X, rel.Y);
+                    _cameraController?.OnRotateDelta(rel.X, rel.Y);
 
                 // Scroll: dolly forward/back
                 var io = Gui.GetIO();
                 if (MathF.Abs(io.MouseWheel) > 0.001f)
-                    _firstPersonController?.OnZoomDelta(io.MouseWheel);
+                    _cameraController?.OnZoomDelta(io.MouseWheel);
             }
         }
         Gui.End();
@@ -771,17 +754,6 @@ internal sealed class BillboardDemo : IDisposable
 
     public void OnKeyboardInput(bool w, bool s, bool a, bool d, bool space, bool ctrl, bool shift)
     {
-        if (_firstPersonController is null)
-            return;
-        _firstPersonController.IsSprinting = shift;
-        _firstPersonController.SetMovementInput(
-            forward: w,
-            backward: s,
-            left: a,
-            right: d,
-            up: space,
-            down: ctrl
-        );
     }
 
     // ------------------------------------------------------------------

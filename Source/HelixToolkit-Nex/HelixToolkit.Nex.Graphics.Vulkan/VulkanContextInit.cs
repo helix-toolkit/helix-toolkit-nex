@@ -142,7 +142,6 @@ namespace HelixToolkit.Nex.Graphics.Vulkan
                 if (_supportedExtensions.Contains(khrDynamicRenderingLocalRead))
                 {
                     _deviceExtensions.Add(VK.VK_KHR_DYNAMIC_RENDERING_LOCAL_READ_EXTENSION_NAME);
-                    SupportsDynamicLocalRead = true;
                 }
             }
 
@@ -191,12 +190,7 @@ namespace HelixToolkit.Nex.Graphics.Vulkan
             }
 
             // Get features and properties of the physical device and create the logical device
-            VkPhysicalDeviceDynamicRenderingLocalReadFeatures localReadFeatures = new()
-            {
-                dynamicRenderingLocalRead = SupportsSubpass
-                    ? VkBool32.True
-                    : VkBool32.False,
-            };
+            VkPhysicalDeviceDynamicRenderingLocalReadFeatures localReadFeatures = new();
 
             VkPhysicalDeviceColorWriteEnableFeaturesEXT colorWriteFeatures = new()
             {
@@ -224,6 +218,10 @@ namespace HelixToolkit.Nex.Graphics.Vulkan
             }
 
             VK.vkGetPhysicalDeviceFeatures2(_vkPhysicalDevice, &feature_1_0);
+            SupportsDynamicLocalRead = localReadFeatures.dynamicRenderingLocalRead == VK_BOOL.True;
+            _logger.LogInformation(
+                $"Physical device supports VK_KHR_dynamic_rendering_local_read: {SupportsDynamicLocalRead}"
+            );
             feature_1_0 = new()
             {
                 features = DeviceFeatures.CreateFeatures10(ref feature_1_0.features),
