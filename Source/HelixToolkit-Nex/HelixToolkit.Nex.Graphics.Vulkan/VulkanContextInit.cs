@@ -113,17 +113,36 @@ namespace HelixToolkit.Nex.Graphics.Vulkan
 
             if (Config.EnableValidation)
             {
-                var extName = new VkUtf8ReadOnlyString(VK.VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME).ToString();
+                var extName = new VkUtf8ReadOnlyString(
+                    VK.VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME
+                ).ToString();
                 if (extName is not null && _supportedExtensions.Contains(extName))
                 {
                     _deviceExtensions.Add(VK.VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME);
                 }
-                extName = new VkUtf8ReadOnlyString(VK.VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME).ToString();
+                extName = new VkUtf8ReadOnlyString(
+                    VK.VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME
+                ).ToString();
                 if (extName is not null && _supportedExtensions.Contains(extName))
                 {
                     _deviceExtensions.Add(VK.VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME);
                     HasExtDeviceFault = true;
                     CheckpointType = CheckpointType.Nvidia;
+                }
+            }
+
+            // Enable VK_KHR_dynamic_rendering_local_read if available.
+            // This allows pipeline barriers (input attachment reads) inside dynamic rendering.
+            // NOTE: Requires Vortice.Vulkan bindings that include the feature struct.
+            // Currently disabled until bindings are updated.
+            {
+                string khrDynamicRenderingLocalRead = new VkUtf8ReadOnlyString(
+                    VK.VK_KHR_DYNAMIC_RENDERING_LOCAL_READ_EXTENSION_NAME
+                ).ToString()!;
+                if (_supportedExtensions.Contains(khrDynamicRenderingLocalRead))
+                {
+                    _deviceExtensions.Add(VK.VK_KHR_DYNAMIC_RENDERING_LOCAL_READ_EXTENSION_NAME);
+                    SupportsDynamicLocalRead = true;
                 }
             }
 
@@ -172,8 +191,17 @@ namespace HelixToolkit.Nex.Graphics.Vulkan
             }
 
             // Get features and properties of the physical device and create the logical device
-            // VkPhysicalDeviceMeshShaderFeaturesEXT meshShaderFeatures = new();
-            VkPhysicalDeviceColorWriteEnableFeaturesEXT colorWriteFeatures = new();
+            VkPhysicalDeviceDynamicRenderingLocalReadFeatures localReadFeatures = new()
+            {
+                dynamicRenderingLocalRead = SupportsSubpass
+                    ? VkBool32.True
+                    : VkBool32.False,
+            };
+
+            VkPhysicalDeviceColorWriteEnableFeaturesEXT colorWriteFeatures = new()
+            {
+                pNext = &localReadFeatures,
+            };
             VkPhysicalDeviceVulkan13Features features1_3 = new() { pNext = &colorWriteFeatures };
             VkPhysicalDeviceVulkan12Features features1_2 = new() { pNext = &features1_3 };
             VkPhysicalDeviceVulkan11Features features1_1 = new() { pNext = &features1_2 };
@@ -316,9 +344,42 @@ namespace HelixToolkit.Nex.Graphics.Vulkan
             }
         }
 
+        /// <summary>
+        /// Probes the physical device memory types for <c>VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT</c>
+        /// support and sets <see cref="GraphicsSettings.SupportsMemorylessAttachments"/> accordingly.
+        /// Defaults to <c>false</c> if the probe fails or throws.
+        /// </summary>
+        private unsafe void ProbeMemorylessAttachmentSupport()
+        {
+            try
+            {
+                VkPhysicalDeviceMemoryProperties2 memProperties = new();
+                VK.vkGetPhysicalDeviceMemoryProperties2(_vkPhysicalDevice, &memProperties);
+
+                for (uint i = 0; i < memProperties.memoryProperties.memoryTypeCount; i++)
+                {
+                    var flags = memProperties.memoryProperties.memoryTypes[(int)i].propertyFlags;
+                    if ((flags & VK.VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT) != 0)
+                    {
+                        SupportsMemorylessAttachments = true;
+                        return;
+                    }
+                }
+
+                SupportsMemorylessAttachments = false;
+            }
+            catch
+            {
+                SupportsMemorylessAttachments = false;
+            }
+        }
+
         private unsafe ResultCode InitDefaultTextureSampler()
         {
-            using var t = _tracer.BeginScope(nameof(InitDefaultTextureSampler), nameof(VulkanContext));
+            using var t = _tracer.BeginScope(
+                nameof(InitDefaultTextureSampler),
+                nameof(VulkanContext)
+            );
             {
                 uint32_t pixel = 0xFF000000;
                 var result = CreateTexture(
@@ -338,7 +399,10 @@ namespace HelixToolkit.Nex.Graphics.Vulkan
                     return result;
                 }
                 _dummyTexture = texture;
-                HxDebug.Assert(TexturesPool.Count == 1, "Dummy texture should be created successfully");
+                HxDebug.Assert(
+                    TexturesPool.Count == 1,
+                    "Dummy texture should be created successfully"
+                );
             }
 
             {

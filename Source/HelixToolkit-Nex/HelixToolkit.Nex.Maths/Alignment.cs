@@ -21,7 +21,7 @@ public static class Alignment
     /// The alignment parameter must be a power of 2 for the calculation to work correctly.
     /// </remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static uint GetAlignedSize(uint value, uint alignment)
+    public static uint GetAlignedSize(this uint value, uint alignment)
     {
         return (value + alignment - 1) & ~(alignment - 1);
     }
@@ -38,7 +38,7 @@ public static class Alignment
     /// The alignment parameter must be a power of 2 for optimal performance.
     /// </remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static ulong GetAlignedAddress(ulong addr, uint align)
+    public static ulong GetAlignedAddress(this ulong addr, uint align)
     {
         ulong offs = addr % align;
         return offs != 0 ? addr + (align - offs) : addr;

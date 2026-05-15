@@ -17,20 +17,20 @@ public enum Bindings : uint8_t
     /// <summary>
     /// Binding point for samplers (set 0, binding 1).
     /// </summary>
-    Samplers = 1,
+    Samplers,
 
     /// <summary>
     /// Binding point for storage images (set 0, binding 2).
     /// </summary>
-    StorageImages = 2,
+    StorageImages,
 
     /// <summary>
     /// Binding point for YUV format images (set 0, binding 3).
     /// </summary>
-    YUVImages = 3,
+    YUVImages,
 
     /// <summary>
     /// Total number of descriptor bindings.
     /// </summary>
-    NumBindings = 4,
+    NumBindings,
 };

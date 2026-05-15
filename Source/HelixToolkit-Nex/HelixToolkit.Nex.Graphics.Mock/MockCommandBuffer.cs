@@ -67,7 +67,9 @@ public class MockCommandBuffer : ICommandBuffer
     /// <inheritdoc/>
     public void InsertDebugEventLabel(ReadOnlySpan<byte> label, Color4 color)
     {
-        _recordedCommands.Add($"InsertDebugEventLabel({System.Text.Encoding.UTF8.GetString(label)})");
+        _recordedCommands.Add(
+            $"InsertDebugEventLabel({System.Text.Encoding.UTF8.GetString(label)})"
+        );
     }
 
     /// <inheritdoc/>
@@ -364,16 +366,29 @@ public class MockCommandBuffer : ICommandBuffer
 
     public void BindRenderPipeline(in RenderPipelineHandle handle, ReadOnlySpan<bool> colorWrites)
     {
-        _recordedCommands.Add($"BindRenderPipeline({handle.Index}, colorWrites=[{string.Join(", ", colorWrites.ToArray())}])");
+        _recordedCommands.Add(
+            $"BindRenderPipeline({handle.Index}, colorWrites=[{string.Join(", ", colorWrites.ToArray())}])"
+        );
     }
 
     public void ClearDepthStencilImage(in TextureHandle tex, float depth = 0, uint stencil = 0)
     {
-        _recordedCommands.Add($"ClearDepthStencilImage(texture={tex.Index}, depth={depth}, stencil={stencil})");
+        _recordedCommands.Add(
+            $"ClearDepthStencilImage(texture={tex.Index}, depth={depth}, stencil={stencil})"
+        );
     }
 
     public void SetColorWriteEnabled(ReadOnlySpan<bool> colorAttachmentStates)
     {
-        _recordedCommands.Add($"SetColorWriteEnabled([{string.Join(", ", colorAttachmentStates.ToArray())}])");
+        _recordedCommands.Add(
+            $"SetColorWriteEnabled([{string.Join(", ", colorAttachmentStates.ToArray())}])"
+        );
+    }
+
+    public void SetColorWriteEnabled(bool c0 = true, bool c1 = true, bool c2 = true, bool c3 = true)
+    {
+        _recordedCommands.Add(
+            $"SetColorWriteEnabled(c0={c0}, c1={c1}, c2={c2}, c3={c3})"
+        );
     }
 }

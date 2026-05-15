@@ -1,9 +1,7 @@
 using System.Numerics;
 using HelixToolkit.Nex;
-using HelixToolkit.Nex.Examples;
 using HelixToolkit.Nex.Graphics;
 using HelixToolkit.Nex.Graphics.Vulkan;
-using HelixToolkit.Nex.Maths;
 using HelixToolkit.Nex.Sample.Application;
 using ImGuiNET;
 using Microsoft.Extensions.Logging;
@@ -41,6 +39,7 @@ internal class App : Application
             {
                 TerminateOnValidationError = true,
                 OnCreateSurface = CreateSurface,
+                ForceIntegratedGPU = false,
             },
             MainWindow.Instance,
             0

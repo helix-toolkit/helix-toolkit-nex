@@ -93,19 +93,27 @@ public class PBRMaterialManager(IContext context, IPBRMaterialPropertyManager pr
                 PolygonMode = PolygonMode.Fill,
                 DebugName = debugName ?? string.Empty,
             };
-            // WBOIT accumulation (RGBA16F): additive blend (ONE / ONE).
-            // Each fragment writes vec4(color.rgb * alpha * w, alpha * w) and all
-            // contributions are summed together.
-            desc.Colors[0] = ColorAttachment.CreateWboitAccumulation(Format.RGBA_F16);
+
+            desc.Colors[0] = new ColorAttachment()
+            {
+                Format = GraphicsSettings.IntermediateTargetFormat,
+                BlendEnabled = false
+            };
+
             desc.Colors[1] = new ColorAttachment()
             {
                 Format = GraphicsSettings.MeshIdTexFormat,
                 BlendEnabled = false,
             };
+
+            // WBOIT accumulation (RGBA16F): additive blend (ONE / ONE).
+            // Each fragment writes vec4(color.rgb * alpha * w, alpha * w) and all
+            // contributions are summed together.
+            desc.Colors[2] = ColorAttachment.CreateWboitAccumulation(GraphicsSettings.IntermediateTargetFormat);
             // WBOIT revealage (R16F): multiplicative blend (ZERO / ONE_MINUS_SRC_COLOR).
             // Buffer is cleared to 1.0; each fragment outputs alpha, and the hardware
             // computes dst = dst * (1 - alpha), yielding the product of all (1 - alpha_i).
-            desc.Colors[2] = ColorAttachment.CreateWboitRevealage(Format.R_F16);
+            desc.Colors[3] = ColorAttachment.CreateWboitRevealage(Format.R_F16);
             descSets[(int)MaterialPassType.WBOIT] = desc;
         }
         return descSets;
