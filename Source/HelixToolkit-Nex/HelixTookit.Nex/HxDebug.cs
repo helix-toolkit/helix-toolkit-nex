@@ -27,6 +27,7 @@ public sealed class HxDebug
     /// This method only executes in DEBUG builds with EnableDebugAssertions == true. If the condition is false, it logs an error
     /// and triggers a debug assertion.
     /// </remarks>
+    [Conditional("DEBUG")]
     public static void Assert(
         bool cond,
         string message = "",
