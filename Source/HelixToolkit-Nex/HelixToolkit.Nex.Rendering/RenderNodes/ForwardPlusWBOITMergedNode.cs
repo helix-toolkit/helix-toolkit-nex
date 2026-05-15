@@ -10,11 +10,6 @@ namespace HelixToolkit.Nex.Rendering.RenderNodes;
 /// color attachments as input attachments within the same dynamic rendering instance,
 /// avoiding the need to end and restart rendering between passes.
 /// </para>
-/// <para>
-/// On GPUs that support lazily-allocated memory (<see cref="GraphicsSettings.SupportsMemorylessAttachments"/>),
-/// the intermediate textures are allocated with <c>StorageType.Memoryless</c> so they never
-/// leave tile-local memory.
-/// </para>
 /// </summary>
 public sealed class ForwardPlusWBOITMergedNode : RenderNode
 {
