@@ -72,7 +72,7 @@ internal partial class Editor : IDisposable
     private CameraControllerMode _cameraMode = CameraControllerMode.Orbit;
     private OrbitCameraController? _orbitController;
     private TurntableCameraController? _turntableController;
-    private FirstPersonCameraController? _firstPersonController;
+    private WalkaroundCameraController? _walkaroundController;
     private ICameraController? _activeController;
 
     // Viewport-relative mouse tracking for camera input
@@ -97,7 +97,7 @@ internal partial class Editor : IDisposable
         // --- Camera controllers ---
         _orbitController = new OrbitCameraController(_camera);
         _turntableController = new TurntableCameraController(_camera);
-        _firstPersonController = new FirstPersonCameraController(_camera) { MoveSpeed = 20f };
+        _walkaroundController = new WalkaroundCameraController(_camera) { MoveSpeed = 20f };
         _activeController = _orbitController;
 
 
@@ -309,7 +309,7 @@ internal partial class Editor : IDisposable
             {
                 CameraControllerMode.Orbit => _orbitController,
                 CameraControllerMode.Turntable => _turntableController,
-                CameraControllerMode.FirstPerson => _firstPersonController,
+                CameraControllerMode.FirstPerson => _walkaroundController,
                 _ => _orbitController,
             };
         }
@@ -331,9 +331,9 @@ internal partial class Editor : IDisposable
     internal TurntableCameraController? TurntableController => _turntableController;
 
     /// <summary>
-    /// Gets the first-person camera controller for property editing in the GUI.
+    /// Gets the walkaround camera controller for property editing in the GUI.
     /// </summary>
-    internal FirstPersonCameraController? FirstPersonController => _firstPersonController;
+    internal WalkaroundCameraController? WalkaroundController => _walkaroundController;
 
     // -------------------------------------------------------------------
     // Input forwarding from the application shell
@@ -410,10 +410,10 @@ internal partial class Editor : IDisposable
         bool sprint
     )
     {
-        if (_firstPersonController is not null && _cameraMode == CameraControllerMode.FirstPerson)
+        if (_walkaroundController is not null && _cameraMode == CameraControllerMode.FirstPerson)
         {
-            _firstPersonController.SetMovementInput(forward, backward, left, right, up, down);
-            _firstPersonController.IsSprinting = sprint;
+            _walkaroundController.SetMovementInput(forward, backward, left, right, up, down);
+            _walkaroundController.IsSprinting = sprint;
         }
     }
 }

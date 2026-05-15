@@ -254,6 +254,7 @@ public sealed class ForwardPlusWBOITMergedNode : RenderNode
         {
             cmdBuffer.PushDebugGroupLabel(_compositePass, Color.OrangeRed);
             cmdBuffer.NextSubpass();
+            cmdBuffer.BindRenderPipeline(_compositePipeline);
         }
         else
         {
@@ -272,7 +273,8 @@ public sealed class ForwardPlusWBOITMergedNode : RenderNode
             res.Pass.Colors[2].LoadOp = LoadOp.Invalid;
             res.Pass.Colors[3].LoadOp = LoadOp.Invalid;
             cmdBuffer.BeginRendering(res.Pass, res.Framebuf, res.Deps);
-
+            // ── Subpass 2: Composite resolve (full-screen triangle) ──
+            cmdBuffer.BindRenderPipeline(_compositePipeline);
             cmdBuffer.PushConstants(
                 new WBOITCompositePushConstants
                 {
@@ -283,8 +285,6 @@ public sealed class ForwardPlusWBOITMergedNode : RenderNode
             );
         }
 
-        // ── Subpass 2: Composite resolve (full-screen triangle) ──
-        cmdBuffer.BindRenderPipeline(_compositePipeline);
         // Now disable other color buffers except 0 for output.
         cmdBuffer.SetColorWriteEnabled(true, false, false, false);
         cmdBuffer.BindDepthState(DepthState.Disabled);

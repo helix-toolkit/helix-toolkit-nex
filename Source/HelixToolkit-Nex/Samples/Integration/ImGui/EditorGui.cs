@@ -638,7 +638,7 @@ internal partial class Editor
 
     private void DrawFirstPersonSettings()
     {
-        if (_firstPersonController is null)
+        if (_walkaroundController is null)
             return;
 
         Gui.TextWrapped(
@@ -646,20 +646,20 @@ internal partial class Editor
         );
         Gui.Spacing();
 
-        float lookSens = _firstPersonController.LookSensitivity;
+        float lookSens = _walkaroundController.LookSensitivity;
         if (Gui.SliderFloat("Look Sens##FP", ref lookSens, 0.001f, 0.01f))
-            _firstPersonController.LookSensitivity = lookSens;
+            _walkaroundController.LookSensitivity = lookSens;
 
-        float moveSpeed = _firstPersonController.MoveSpeed;
+        float moveSpeed = _walkaroundController.MoveSpeed;
         if (Gui.SliderFloat("Move Speed##FP", ref moveSpeed, 1f, 100f))
-            _firstPersonController.MoveSpeed = moveSpeed;
+            _walkaroundController.MoveSpeed = moveSpeed;
 
-        float sprintMul = _firstPersonController.SprintMultiplier;
+        float sprintMul = _walkaroundController.SprintMultiplier;
         if (Gui.SliderFloat("Sprint Multiplier##FP", ref sprintMul, 1f, 10f))
-            _firstPersonController.SprintMultiplier = sprintMul;
+            _walkaroundController.SprintMultiplier = sprintMul;
 
-        bool invertY = _firstPersonController.InvertY;
+        bool invertY = _walkaroundController.InvertY;
         if (Gui.Checkbox("Invert Y##FP", ref invertY))
-            _firstPersonController.InvertY = invertY;
+            _walkaroundController.InvertY = invertY;
     }
 }

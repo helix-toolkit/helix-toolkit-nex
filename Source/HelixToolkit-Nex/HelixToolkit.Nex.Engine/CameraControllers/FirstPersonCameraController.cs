@@ -73,14 +73,14 @@ public class FirstPersonCameraController : ICameraController
     /// <summary>
     /// Gets or sets whether to invert the vertical look direction.
     /// </summary>
-    public bool InvertY { get; set; } = true;
+    public bool InvertY { get; set; } = false;
 
     /// <summary>
     /// Gets or sets a value indicating whether the X axis input is inverted.
     /// </summary>
     /// <remarks>Set this property to <see langword="true"/> to reverse the direction of input along the X
     /// axis. This is commonly used to accommodate user preferences for control schemes.</remarks>
-    public bool InvertX { get; set; } = true;
+    public bool InvertX { get; set; } = false;
 
     /// <summary>
     /// Initializes a new <see cref="FirstPersonCameraController"/> from the current state of the given camera.
