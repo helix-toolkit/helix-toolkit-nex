@@ -23,6 +23,7 @@ HelixToolkit.Nex.Rendering is responsible for managing the rendering pipeline of
 | `FrustumCullNode`                | Executes GPU-based frustum culling.                                         |
 | `PointCullNode`                  | Handles culling of point cloud data.                                        |
 | `BillboardCullNode`              | Handles culling of billboard data.                                          |
+| `ForwardPlusWBOITMergedNode`     | Merges WBOIT transparent rendering and compositing into a single render pass.|
 | `RenderContext`                  | Manages rendering state and resources for a frame.                          |
 | `RenderGraph`                    | Organizes and executes rendering nodes in a defined order.                  |
 | `PostEffect`                     | Base class for post-processing effects.                                     |
@@ -33,6 +34,7 @@ HelixToolkit.Nex.Rendering is responsible for managing the rendering pipeline of
 
 ### New Features
 
+- **ForwardPlusWBOITMergedNode**: Added to merge WBOIT transparent rendering and compositing into a single render pass using Vulkan dynamic rendering local read.
 - **BillboardComponent**: Added to describe billboards attached to an entity, supporting features like axis-constrained mode and MSDF atlas properties.
 - **BillboardCullNode**: Added for GPU-based culling of billboard data.
 - **PointCloudComponent**: Enhanced with additional properties for MSDF atlas configuration.

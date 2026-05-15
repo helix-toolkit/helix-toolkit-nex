@@ -85,6 +85,12 @@ var colorWrites = new bool[] { true, false, true }; // Enable/disable color writ
 commandBuffer.SetColorWriteEnabled(colorWrites);
 ```
 
+### Setting Color Write for Specific Attachments
+
+```csharp
+commandBuffer.SetColorWriteEnabled(true, false, true, false);
+```
+
 ## Architecture Notes
 
 Dependencies:
