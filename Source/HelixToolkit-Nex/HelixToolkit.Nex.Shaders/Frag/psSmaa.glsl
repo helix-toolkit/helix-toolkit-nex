@@ -6,6 +6,9 @@
 //   0 = EDGE_DETECTION      : luminance-based edge detection → RG edge mask
 //   1 = BLENDING_WEIGHTS    : pattern search & weight computation → RGBA weight texture
 //   2 = NEIGHBOURHOOD_BLEND : final colour blend using computed weights
+//
+// Based on the reference SMAA implementation by Jorge Jimenez et al.
+// Uses precomputed AreaTex (160×560, RG8/RG16) and SearchTex (66×33, R8).
 
 #define EDGE_DETECTION      0
 #define BLENDING_WEIGHTS    1
@@ -27,6 +30,10 @@ struct SmaaPushConstants {
     float texelWidth;         // 1.0 / render-target width
     float texelHeight;        // 1.0 / render-target height
     float edgeThreshold;      // luminance contrast threshold for edge detection
+    uint areaTextureId;       // precomputed area texture (160×560, RG)
+    uint areaSamplerId;       // linear sampler for area texture
+    uint searchTextureId;     // precomputed search texture (66×33, R)
+    uint searchSamplerId;     // linear sampler for search texture
     float _pad0;
     float _pad1;
     float _pad2;
@@ -35,6 +42,19 @@ struct SmaaPushConstants {
 layout(push_constant) uniform PushConstants {
     SmaaPushConstants value;
 } pc;
+
+// --------------------------------------------------------------------------
+// SMAA Constants (from reference implementation)
+// --------------------------------------------------------------------------
+
+#define SMAA_MAX_SEARCH_STEPS      16
+#define SMAA_AREATEX_MAX_DISTANCE  16
+#define SMAA_AREATEX_PIXEL_SIZE    (vec2(1.0 / 160.0, 1.0 / 560.0))
+#define SMAA_AREATEX_SUBTEX_SIZE   (1.0 / 7.0)
+#define SMAA_SEARCHTEX_SIZE        vec2(66.0, 33.0)
+#define SMAA_SEARCHTEX_PACKED_SIZE vec2(64.0, 16.0)
+#define SMAA_CORNER_ROUNDING       25
+#define SMAA_CORNER_ROUNDING_NORM  (float(SMAA_CORNER_ROUNDING) / 100.0)
 
 // --------------------------------------------------------------------------
 // Helpers
@@ -47,167 +67,265 @@ float luminance(vec3 c) {
 // --------------------------------------------------------------------------
 // Stage 0 – Luminance Edge Detection
 // --------------------------------------------------------------------------
-// Computes the absolute luminance contrast between the current pixel and its
-// left/top neighbours.  Any edge whose contrast exceeds edgeThreshold is kept;
-// both components are written to the RG channels of the edge mask texture.
+// Reference SMAA luma edge detection with local contrast adaptation.
 //
 // Convention:
-//   R = 1  ⟹  there is an edge on the LEFT  side of this pixel  (between this pixel and its left  neighbour)
-//   G = 1  ⟹  there is an edge on the TOP   side of this pixel  (between this pixel and its top   neighbour)
+//   R = 1  ⟹  there is an edge on the LEFT  side of this pixel
+//   G = 1  ⟹  there is an edge on the TOP   side of this pixel
+
+#define SMAA_LOCAL_CONTRAST_ADAPTATION_FACTOR 2.0
+
 void EdgeDetection() {
     vec2 ts = vec2(pc.value.texelWidth, pc.value.texelHeight);
 
-    float lumC = luminance(textureBindless2D(pc.value.colorTextureId, pc.value.colorSamplerId, inTexCoord).rgb);
-    float lumL = luminance(textureBindless2D(pc.value.colorTextureId, pc.value.colorSamplerId, inTexCoord + vec2(-ts.x, 0.0)).rgb);
-    float lumT = luminance(textureBindless2D(pc.value.colorTextureId, pc.value.colorSamplerId, inTexCoord + vec2( 0.0,-ts.y)).rgb);
+    // Sample luminances: center, left, top
+    float L      = luminance(textureBindless2D(pc.value.colorTextureId, pc.value.colorSamplerId, inTexCoord).rgb);
+    float Lleft  = luminance(textureBindless2D(pc.value.colorTextureId, pc.value.colorSamplerId, inTexCoord + vec2(-ts.x, 0.0)).rgb);
+    float Ltop   = luminance(textureBindless2D(pc.value.colorTextureId, pc.value.colorSamplerId, inTexCoord + vec2(0.0, -ts.y)).rgb);
 
-    float edgeH = step(pc.value.edgeThreshold, abs(lumC - lumL));
-    float edgeV = step(pc.value.edgeThreshold, abs(lumC - lumT));
+    // Initial threshold test
+    vec4 delta;
+    delta.xy = abs(vec2(L) - vec2(Lleft, Ltop));
+    vec2 edges = step(vec2(pc.value.edgeThreshold), delta.xy);
 
-    outColor = vec4(edgeH, edgeV, 0.0, 1.0);
+    // Early discard if no edge
+    if (dot(edges, vec2(1.0)) == 0.0) {
+        outColor = vec4(0.0, 0.0, 0.0, 1.0);
+        return;
+    }
+
+    // Sample right and bottom for local contrast adaptation
+    float Lright  = luminance(textureBindless2D(pc.value.colorTextureId, pc.value.colorSamplerId, inTexCoord + vec2(ts.x, 0.0)).rgb);
+    float Lbottom = luminance(textureBindless2D(pc.value.colorTextureId, pc.value.colorSamplerId, inTexCoord + vec2(0.0, ts.y)).rgb);
+    delta.zw = abs(vec2(L) - vec2(Lright, Lbottom));
+
+    // Maximum delta in direct neighbourhood
+    vec2 maxDelta = max(delta.xy, delta.zw);
+
+    // Sample left-left and top-top
+    float Lleftleft = luminance(textureBindless2D(pc.value.colorTextureId, pc.value.colorSamplerId, inTexCoord + vec2(-2.0 * ts.x, 0.0)).rgb);
+    float Ltoptop   = luminance(textureBindless2D(pc.value.colorTextureId, pc.value.colorSamplerId, inTexCoord + vec2(0.0, -2.0 * ts.y)).rgb);
+    delta.zw = abs(vec2(Lleft, Ltop) - vec2(Lleftleft, Ltoptop));
+
+    // Final maximum delta
+    maxDelta = max(maxDelta, delta.zw);
+    float finalDelta = max(maxDelta.x, maxDelta.y);
+
+    // Local contrast adaptation (reference SMAA formula):
+    // Keep edge only if finalDelta <= FACTOR * edge_delta
+    edges *= step(finalDelta, SMAA_LOCAL_CONTRAST_ADAPTATION_FACTOR * delta.xy);
+
+    outColor = vec4(edges, 0.0, 1.0);
 }
 
 // --------------------------------------------------------------------------
-// Stage 1 – Blending Weight Computation
+// Stage 1 – Blending Weight Computation (Reference SMAA with Area/Search Tex)
 // --------------------------------------------------------------------------
-// For each pixel that was marked as an edge we search along the edge direction
-// for the ends of the line feature, then compute a fractional blending weight
-// based on a simple trapezoid area approximation (simplified MLAA).
+// Uses precomputed AreaTex and SearchTex for accurate weight computation.
 //
 // Weight layout in the output RGBA texture:
-//   R (.x) = weight for blending LEFT   (vertical   edge on left side of this pixel)
-//   G (.y) = weight for blending RIGHT  (always 0 – reserved; the right neighbour's .x carries this)
-//   B (.z) = weight for blending UP     (horizontal edge on top  side of this pixel)
-//   A (.w) = weight for blending DOWN   (always 0 – reserved; the bottom neighbour's .z carries this)
+//   R (.x) = weight for the pixel on the LEFT  side of a vertical edge
+//   G (.y) = weight for the pixel on the RIGHT side of a vertical edge
+//   B (.z) = weight for the pixel on the TOP   side of a horizontal edge
+//   A (.w) = weight for the pixel on the BOTTOM side of a horizontal edge
+
+// Search texture lookup: determines sub-pixel refinement at edge endpoints.
+float SMAASearchLength(vec2 e, float offset) {
+    // The texture is flipped vertically, with left and right cases taking half
+    // of the space horizontally.
+    vec2 scale = SMAA_SEARCHTEX_SIZE * vec2(0.5, -1.0);
+    vec2 bias  = SMAA_SEARCHTEX_SIZE * vec2(offset, 1.0);
+
+    // Scale and bias to access texel centers
+    scale += vec2(-1.0, 1.0);
+    bias  += vec2(0.5, -0.5);
+
+    // Convert from pixel coordinates to texcoords
+    scale *= 1.0 / SMAA_SEARCHTEX_PACKED_SIZE;
+    bias  *= 1.0 / SMAA_SEARCHTEX_PACKED_SIZE;
+
+    return textureBindless2D(pc.value.searchTextureId, pc.value.searchSamplerId, scale * e + bias).r;
+}
+
+// Horizontal search functions
+float SMAASearchXLeft(vec2 texcoord, float end) {
+    vec2 ts = vec2(pc.value.texelWidth, pc.value.texelHeight);
+    vec2 e = vec2(0.0, 1.0);
+    while (texcoord.x > end &&
+           e.g > 0.8281 &&
+           e.r == 0.0) {
+        e = textureBindless2D(pc.value.edgeTextureId, pc.value.edgeSamplerId, texcoord).rg;
+        texcoord -= vec2(2.0, 0.0) * ts;
+    }
+    float offset = -(255.0 / 127.0) * SMAASearchLength(e, 0.0) + 3.25;
+    return ts.x * offset + texcoord.x;
+}
+
+float SMAASearchXRight(vec2 texcoord, float end) {
+    vec2 ts = vec2(pc.value.texelWidth, pc.value.texelHeight);
+    vec2 e = vec2(0.0, 1.0);
+    while (texcoord.x < end &&
+           e.g > 0.8281 &&
+           e.r == 0.0) {
+        e = textureBindless2D(pc.value.edgeTextureId, pc.value.edgeSamplerId, texcoord).rg;
+        texcoord += vec2(2.0, 0.0) * ts;
+    }
+    float offset = -(255.0 / 127.0) * SMAASearchLength(e, 0.5) + 3.25;
+    return -ts.x * offset + texcoord.x;
+}
+
+// Vertical search functions
+float SMAASearchYUp(vec2 texcoord, float end) {
+    vec2 ts = vec2(pc.value.texelWidth, pc.value.texelHeight);
+    vec2 e = vec2(1.0, 0.0);
+    while (texcoord.y > end &&
+           e.r > 0.8281 &&
+           e.g == 0.0) {
+        e = textureBindless2D(pc.value.edgeTextureId, pc.value.edgeSamplerId, texcoord).rg;
+        texcoord -= vec2(0.0, 2.0) * ts;
+    }
+    float offset = -(255.0 / 127.0) * SMAASearchLength(e.gr, 0.0) + 3.25;
+    return ts.y * offset + texcoord.y;
+}
+
+float SMAASearchYDown(vec2 texcoord, float end) {
+    vec2 ts = vec2(pc.value.texelWidth, pc.value.texelHeight);
+    vec2 e = vec2(1.0, 0.0);
+    while (texcoord.y < end &&
+           e.r > 0.8281 &&
+           e.g == 0.0) {
+        e = textureBindless2D(pc.value.edgeTextureId, pc.value.edgeSamplerId, texcoord).rg;
+        texcoord += vec2(0.0, 2.0) * ts;
+    }
+    float offset = -(255.0 / 127.0) * SMAASearchLength(e.gr, 0.5) + 3.25;
+    return -ts.y * offset + texcoord.y;
+}
+
+// Area texture lookup: returns blending weights for a given distance pair
+// and crossing edge configuration.
+vec2 SMAAArea(vec2 dist, float e1, float e2) {
+    vec2 texcoord = vec2(SMAA_AREATEX_MAX_DISTANCE) * round(4.0 * vec2(e1, e2)) + dist;
+
+    // Scale and bias for mapping to texel space
+    texcoord = SMAA_AREATEX_PIXEL_SIZE * texcoord + 0.5 * SMAA_AREATEX_PIXEL_SIZE;
+
+    // Subsample offset (0 for SMAA 1x)
+    texcoord.y += SMAA_AREATEX_SUBTEX_SIZE * 0.0;
+
+    return textureBindless2D(pc.value.areaTextureId, pc.value.areaSamplerId, texcoord).rg;
+}
+
 void BlendingWeights() {
-    vec2 ts    = vec2(pc.value.texelWidth, pc.value.texelHeight);
-    vec2 edges = textureBindless2D(pc.value.edgeTextureId, pc.value.edgeSamplerId, inTexCoord).rg;
+    vec2 ts = vec2(pc.value.texelWidth, pc.value.texelHeight);
+    vec2 pixcoord = inTexCoord / ts; // pixel coordinates
 
-    // Maximum search distance in pixels (quality / performance trade-off).
-    const int MAX_SEARCH = 8;
+    vec2 e = textureBindless2D(pc.value.edgeTextureId, pc.value.edgeSamplerId, inTexCoord).rg;
 
-    float weightL = 0.0;
-    float weightT = 0.0;
+    vec4 weights = vec4(0.0);
 
-    // --- Horizontal edge (G channel: edge on top side of this pixel) ----------
-    // The edge lies between this pixel and the one directly above.  We search
-    // left/right along the row of G-edges to find how long the edge segment is,
-    // then derive a weight that is strongest at the centre of the segment and
-    // fades toward the endpoints (triangle-area approximation).
-    if (edges.g > 0.5) {
-        int searchL = 0;
-        int searchR = 0;
-        for (int i = 1; i <= MAX_SEARCH; ++i) {
-            float e = textureBindless2D(pc.value.edgeTextureId, pc.value.edgeSamplerId,
-                                        inTexCoord + vec2(-float(i) * ts.x, 0.0)).g;
-            if (e < 0.5) break;
-            searchL = i;
-        }
-        for (int i = 1; i <= MAX_SEARCH; ++i) {
-            float e = textureBindless2D(pc.value.edgeTextureId, pc.value.edgeSamplerId,
-                                        inTexCoord + vec2( float(i) * ts.x, 0.0)).g;
-            if (e < 0.5) break;
-            searchR = i;
-        }
-        float span      = float(searchL + searchR) + 1.0;
-        float posInSpan  = (float(searchL) + 0.5) / span;
-        weightT = 0.5 * (1.0 - abs(posInSpan * 2.0 - 1.0));
+    // --- Horizontal edge (G channel: edge at north/top) ---
+    if (e.g > 0.0) {
+        // Compute search offsets (reference SMAA vertex shader precomputation)
+        vec2 searchOffsetL = inTexCoord + vec2(-0.25, -0.125) * ts;
+        vec2 searchOffsetR = inTexCoord + vec2( 1.25, -0.125) * ts;
+        float searchEndL = searchOffsetL.x - 2.0 * float(SMAA_MAX_SEARCH_STEPS) * ts.x;
+        float searchEndR = searchOffsetR.x + 2.0 * float(SMAA_MAX_SEARCH_STEPS) * ts.x;
+
+        // Find distances to left and right endpoints
+        vec2 d;
+        d.x = SMAASearchXLeft(searchOffsetL, searchEndL);
+        d.y = SMAASearchXRight(searchOffsetR, searchEndR);
+
+        // Fetch crossing edges at endpoints
+        float e1 = textureBindless2D(pc.value.edgeTextureId, pc.value.edgeSamplerId,
+                                     vec2(d.x, inTexCoord.y - 0.25 * ts.y)).r;
+        float e2 = textureBindless2D(pc.value.edgeTextureId, pc.value.edgeSamplerId,
+                                     vec2(d.y, inTexCoord.y - 0.25 * ts.y) + vec2(ts.x, 0.0)).r;
+
+        // Convert to pixel distances
+        d = abs(round(vec2(1.0 / ts.x) * d - pixcoord.xx));
+
+        // Area texture lookup (uses sqrt for quadratic compression)
+        vec2 sqrt_d = sqrt(d);
+        weights.rg = SMAAArea(sqrt_d, e1, e2);
     }
 
-    // --- Vertical edge (R channel: edge on left side of this pixel) -----------
-    // The edge lies between this pixel and the one directly to the left.  We
-    // search up/down along the column of R-edges.
-    if (edges.r > 0.5) {
-        int searchU = 0;
-        int searchD = 0;
-        for (int i = 1; i <= MAX_SEARCH; ++i) {
-            float e = textureBindless2D(pc.value.edgeTextureId, pc.value.edgeSamplerId,
-                                        inTexCoord + vec2(0.0, -float(i) * ts.y)).r;
-            if (e < 0.5) break;
-            searchU = i;
-        }
-        for (int i = 1; i <= MAX_SEARCH; ++i) {
-            float e = textureBindless2D(pc.value.edgeTextureId, pc.value.edgeSamplerId,
-                                        inTexCoord + vec2(0.0,  float(i) * ts.y)).r;
-            if (e < 0.5) break;
-            searchD = i;
-        }
-        float span      = float(searchU + searchD) + 1.0;
-        float posInSpan  = (float(searchU) + 0.5) / span;
-        weightL = 0.5 * (1.0 - abs(posInSpan * 2.0 - 1.0));
+    // --- Vertical edge (R channel: edge at west/left) ---
+    if (e.r > 0.0) {
+        // Compute search offsets
+        vec2 searchOffsetU = inTexCoord + vec2(-0.125, -0.25) * ts;
+        vec2 searchOffsetD = inTexCoord + vec2(-0.125,  1.25) * ts;
+        float searchEndU = searchOffsetU.y - 2.0 * float(SMAA_MAX_SEARCH_STEPS) * ts.y;
+        float searchEndD = searchOffsetD.y + 2.0 * float(SMAA_MAX_SEARCH_STEPS) * ts.y;
+
+        // Find distances to top and bottom endpoints
+        vec2 d;
+        d.x = SMAASearchYUp(searchOffsetU, searchEndU);
+        d.y = SMAASearchYDown(searchOffsetD, searchEndD);
+
+        // Fetch crossing edges at endpoints
+        float e1 = textureBindless2D(pc.value.edgeTextureId, pc.value.edgeSamplerId,
+                                     vec2(inTexCoord.x - 0.25 * ts.x, d.x)).g;
+        float e2 = textureBindless2D(pc.value.edgeTextureId, pc.value.edgeSamplerId,
+                                     vec2(inTexCoord.x - 0.25 * ts.x, d.y) + vec2(0.0, ts.y)).g;
+
+        // Convert to pixel distances
+        d = abs(round(vec2(1.0 / ts.y) * d - pixcoord.yy));
+
+        // Area texture lookup
+        vec2 sqrt_d = sqrt(d);
+        weights.ba = SMAAArea(sqrt_d, e1, e2);
     }
 
-    outColor = vec4(weightL, 0.0, weightT, 0.0);
+    outColor = weights;
 }
 
 // --------------------------------------------------------------------------
-// Stage 2 – Neighbourhood Blending
+// Stage 2 – Neighbourhood Blending (Reference SMAA)
 // --------------------------------------------------------------------------
-// Uses the precomputed blending weights to shift the sampling position along
-// the dominant edge direction, producing a single sub-pixel blend instead of
-// a multi-tap weighted average.  This avoids the double-line artefact that
-// occurs when both sides of an edge are independently averaged.
-//
-// For each pixel we gather four weights:
-//   wL = this   pixel's leftward  weight  (weights[P].x)
-//   wR = right  pixel's leftward  weight  (weights[P+(1,0)].x)  – contributes as our rightward pull
-//   wT = this   pixel's upward    weight  (weights[P].z)
-//   wB = bottom pixel's upward    weight  (weights[P+(0,1)].z)  – contributes as our downward pull
-//
-// We choose the dominant axis (horizontal vs vertical) based on which pair
-// has the larger total weight, compute a signed sub-pixel offset, and perform
-// a single texture fetch at the shifted position.
+// Gathers blending weights and produces the final anti-aliased colour.
+// Uses the reference SMAA approach: two offset samples with normalized weights.
+
 void NeighbourhoodBlend() {
     vec2 ts = vec2(pc.value.texelWidth, pc.value.texelHeight);
 
-    // Gather the four relevant weights.
-    vec4 wC = textureBindless2D(pc.value.weightTextureId, pc.value.weightSamplerId, inTexCoord);
-    vec4 wR = textureBindless2D(pc.value.weightTextureId, pc.value.weightSamplerId, inTexCoord + vec2( ts.x, 0.0));
-    vec4 wB = textureBindless2D(pc.value.weightTextureId, pc.value.weightSamplerId, inTexCoord + vec2( 0.0, ts.y));
+    // Fetch blending weights (reference SMAA gathering pattern).
+    // offset.xy = texcoord + (ts.x, 0)  → right neighbour
+    // offset.zw = texcoord + (0, ts.y)  → bottom neighbour
+    vec4 a;
+    a.x = textureBindless2D(pc.value.weightTextureId, pc.value.weightSamplerId, inTexCoord + vec2(ts.x, 0.0)).a;  // Right
+    a.y = textureBindless2D(pc.value.weightTextureId, pc.value.weightSamplerId, inTexCoord + vec2(0.0, ts.y)).g;  // Bottom
+    a.wz = textureBindless2D(pc.value.weightTextureId, pc.value.weightSamplerId, inTexCoord).xz;                  // Current
 
-    float wLeft  = wC.x;   // blend toward left
-    float wRight = wR.x;   // right neighbour blends toward us (= our rightward pull)
-    float wTop   = wC.z;   // blend toward top
-    float wBot   = wB.z;   // bottom neighbour blends toward us (= our downward pull)
-
-    // Horizontal contribution (left/right weights → shift along X).
-    float hWeight = wLeft + wRight;
-    // Vertical contribution (top/bottom weights → shift along Y).
-    float vWeight = wTop + wBot;
-
-    // If no blending is needed, output the original colour directly.
-    if (hWeight + vWeight < 1e-5) {
+    // Early out if no blending needed.
+    if (dot(a, vec4(1.0)) < 1e-5) {
         outColor = vec4(textureBindless2D(pc.value.colorTextureId, pc.value.colorSamplerId, inTexCoord).rgb, 1.0);
         return;
     }
 
-    // Choose the dominant direction and compute a signed sub-pixel offset.
-    vec2 offset = vec2(0.0);
-    float blendFactor = 0.0;
+    // Determine dominant axis: max(horizontal) > max(vertical)
+    bool h = max(a.x, a.z) > max(a.y, a.w);
 
-    if (hWeight >= vWeight) {
-        // Horizontal blending: shift the sample along X.
-        // wRight pulls us rightward (+X), wLeft pulls us leftward (−X).
-        float signedW = wRight - wLeft;
-        offset = vec2(sign(signedW) * ts.x, 0.0);
-        blendFactor = hWeight;
-    } else {
-        // Vertical blending: shift the sample along Y.
-        // wBot pulls us downward (+Y), wTop pulls us upward (−Y).
-        float signedW = wBot - wTop;
-        offset = vec2(0.0, sign(signedW) * ts.y);
-        blendFactor = vWeight;
+    // Calculate blending offsets and weights.
+    vec4 blendingOffset = vec4(0.0, a.y, 0.0, a.w);
+    vec2 blendingWeight = a.yw;
+    if (h) {
+        blendingOffset = vec4(a.x, 0.0, a.z, 0.0);
+        blendingWeight = a.xz;
     }
+    blendingWeight /= dot(blendingWeight, vec2(1.0));
 
-    // Clamp the blend factor to [0, 1] for safety.
-    blendFactor = clamp(blendFactor, 0.0, 1.0);
+    // Calculate texture coordinates (reference: mad(offset, float4(ts, -ts), texcoord.xyxy))
+    vec4 blendingCoord = vec4(
+        inTexCoord + blendingOffset.xy * ts,
+        inTexCoord - blendingOffset.zw * ts
+    );
 
-    // Fetch the original colour and the colour at the shifted position,
-    // then linearly interpolate.
-    vec3 colorC = textureBindless2D(pc.value.colorTextureId, pc.value.colorSamplerId, inTexCoord).rgb;
-    vec3 colorN = textureBindless2D(pc.value.colorTextureId, pc.value.colorSamplerId, inTexCoord + offset).rgb;
+    // Blend using bilinear filtering to mix current pixel with neighbour.
+    vec3 color = blendingWeight.x * textureBindless2D(pc.value.colorTextureId, pc.value.colorSamplerId, blendingCoord.xy).rgb;
+    color += blendingWeight.y * textureBindless2D(pc.value.colorTextureId, pc.value.colorSamplerId, blendingCoord.zw).rgb;
 
-    outColor = vec4(mix(colorC, colorN, blendFactor), 1.0);
+    outColor = vec4(color, 1.0);
 }
 
 // --------------------------------------------------------------------------
