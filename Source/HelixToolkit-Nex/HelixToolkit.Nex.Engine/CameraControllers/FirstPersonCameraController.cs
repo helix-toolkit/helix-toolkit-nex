@@ -76,6 +76,13 @@ public class FirstPersonCameraController : ICameraController
     public bool InvertY { get; set; } = true;
 
     /// <summary>
+    /// Gets or sets a value indicating whether the X axis input is inverted.
+    /// </summary>
+    /// <remarks>Set this property to <see langword="true"/> to reverse the direction of input along the X
+    /// axis. This is commonly used to accommodate user preferences for control schemes.</remarks>
+    public bool InvertX { get; set; } = true;
+
+    /// <summary>
     /// Initializes a new <see cref="FirstPersonCameraController"/> from the current state of the given camera.
     /// The initial yaw and pitch are derived from the camera's look direction
     /// (from <see cref="Camera.Position"/> toward <see cref="Camera.Target"/>).
@@ -136,7 +143,7 @@ public class FirstPersonCameraController : ICameraController
         float dx = x - _lastRotateX;
         float dy = y - _lastRotateY;
 
-        _yaw -= dx * LookSensitivity;
+        _yaw -= (InvertX ? -1f : 1f) * dx * LookSensitivity;
         _pitch += (InvertY ? 1f : -1f) * dy * LookSensitivity;
 
         // Clamp pitch to prevent flipping
