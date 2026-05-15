@@ -8,11 +8,21 @@
 #extension GL_EXT_scalar_block_layout : require
 #extension GL_EXT_buffer_reference2 : require
 
-layout (set = 0, binding = 0) uniform texture2D kTextures2D[];
-layout (set = 0, binding = 0) uniform texture3D kTextures3D[];
-layout (set = 0, binding = 0) uniform textureCube kTexturesCube[];
-layout (set = 0, binding = 0) uniform texture2D kTextures2DShadow[];
-layout (set = 0, binding = 1) uniform sampler kSamplers[];
-layout (set = 0, binding = 1) uniform samplerShadow kSamplersShadow[];
+// Binding slot must be the same as Graphics.Vulkan.Bindings
+#define BindingTextures 0
 
-layout (set = 0, binding = 3) uniform sampler2D kSamplerYUV[];
+#define BindingSamplers 1
+
+#define BindingStorageImages 2
+
+#define BindingYUVImages 3
+
+
+layout (set = 0, binding = BindingTextures) uniform texture2D kTextures2D[];
+layout (set = 0, binding = BindingTextures) uniform texture3D kTextures3D[];
+layout (set = 0, binding = BindingTextures) uniform textureCube kTexturesCube[];
+layout (set = 0, binding = BindingTextures) uniform texture2D kTextures2DShadow[];
+layout (set = 0, binding = BindingSamplers) uniform sampler kSamplers[];
+layout (set = 0, binding = BindingSamplers) uniform samplerShadow kSamplersShadow[];
+
+layout (set = 0, binding = BindingYUVImages) uniform sampler2D kSamplerYUV[];
