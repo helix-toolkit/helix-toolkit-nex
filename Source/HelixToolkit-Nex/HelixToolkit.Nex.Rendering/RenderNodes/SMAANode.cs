@@ -61,13 +61,19 @@ public sealed class SMAANode : RenderNode
         "SMAA Neighbourhood Blending"
     );
 
+    private static readonly string _areaTexDX11Name =
+        "HelixToolkit.Nex.Rendering.Assets.SMAA.AreaTexDX10.dds";
+    private static readonly string _searchTexName =
+        "HelixToolkit.Nex.Rendering.Assets.SMAA.SearchTex.dds";
+
     // One pipeline per SmaaMode specialization constant.
     private RenderPipelineResource _edgePipeline = RenderPipelineResource.Null;
     private RenderPipelineResource _weightPipeline = RenderPipelineResource.Null;
     private RenderPipelineResource _blendPipeline = RenderPipelineResource.Null;
 
     private SamplerRef _linearSampler = SamplerRef.Null;
-    private SamplerRef _pointSampler = SamplerRef.Null;
+    private TextureRef _areaTex = TextureRef.Null;
+    private TextureRef _searchTex = TextureRef.Null;
 
     // Backing field for EdgeThreshold.
     private float _edgeThreshold = _presets[(int)SMAAQuality.Medium];
@@ -120,22 +126,47 @@ public sealed class SMAANode : RenderNode
         _linearSampler = ResourceManager.SamplerRepository.GetOrCreate(
             SamplerStateDesc.LinearClamp
         );
-        _pointSampler = ResourceManager.SamplerRepository.GetOrCreate(SamplerStateDesc.PointClamp);
 
-        if (!_linearSampler.Valid || !_pointSampler.Valid)
+        if (!_linearSampler.Valid)
         {
             return false;
         }
 
+        _areaTex = LoadSMAATextures(_areaTexDX11Name);
+        _searchTex = LoadSMAATextures(_searchTexName);
         return CreatePipelines().CheckResult() == ResultCode.Ok;
     }
 
     protected override void OnTeardown()
     {
+        ResourceManager?.TextureRepository.Remove(_areaTexDX11Name);
+        ResourceManager?.TextureRepository.Remove(_searchTexName);
         _edgePipeline.Dispose();
         _weightPipeline.Dispose();
         _blendPipeline.Dispose();
         base.OnTeardown();
+    }
+
+    private TextureRef LoadSMAATextures(string name)
+    {
+        var assembly = typeof(SMAANode).Assembly;
+        var assemblyName = assembly.GetName().Name;
+        using var ddsStream =
+            assembly.GetManifestResourceStream(name)
+            ?? throw new FileNotFoundException($"Embedded resource '{name}' not found.");
+
+        var textureRepository = ResourceManager!.TextureRepository;
+        var textureRef = textureRepository.GetOrCreateFromStream(
+            name,
+            ddsStream,
+            generateMipmaps: false,
+            debugName: $"SMAA_{name}"
+        );
+        if (!textureRef.Valid)
+        {
+            _logger.LogError("Failed to load SMAA texture '{Name}' from embedded resource.", name);
+        }
+        return textureRef;
     }
 
     /// <summary>
@@ -291,6 +322,10 @@ public sealed class SMAANode : RenderNode
             {
                 ColorTextureId = sceneTex.Index,
                 ColorSamplerId = _linearSampler,
+                AreaTextureId = _areaTex,
+                AreaSamplerId = _linearSampler,
+                SearchTextureId = _searchTex,
+                SearchSamplerId = _linearSampler,
                 TexelWidth = tw,
                 TexelHeight = th,
                 EdgeThreshold = EdgeThreshold,
@@ -311,6 +346,10 @@ public sealed class SMAANode : RenderNode
             {
                 EdgeTextureId = edgeTex.Index,
                 EdgeSamplerId = _linearSampler,
+                AreaTextureId = _areaTex,
+                AreaSamplerId = _linearSampler,
+                SearchTextureId = _searchTex,
+                SearchSamplerId = _linearSampler,
                 TexelWidth = tw,
                 TexelHeight = th,
                 EdgeThreshold = EdgeThreshold,
@@ -331,9 +370,13 @@ public sealed class SMAANode : RenderNode
             new SmaaPushConstants
             {
                 ColorTextureId = sceneTex.Index,
-                ColorSamplerId = _pointSampler,
+                ColorSamplerId = _linearSampler,
                 WeightTextureId = weightTex.Index,
                 WeightSamplerId = _linearSampler,
+                AreaTextureId = _areaTex,
+                AreaSamplerId = _linearSampler,
+                SearchTextureId = _searchTex,
+                SearchSamplerId = _linearSampler,
                 TexelWidth = tw,
                 TexelHeight = th,
                 EdgeThreshold = EdgeThreshold,
