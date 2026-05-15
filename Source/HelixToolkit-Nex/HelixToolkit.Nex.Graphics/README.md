@@ -140,6 +140,13 @@ using (dependencies.PushBufferScoped(bufferHandle))
 }
 ```
 
+### Enabling/Disabling Color Write for Render Targets
+
+```csharp
+var commandBuffer = context.AcquireCommandBuffer();
+commandBuffer.SetColorWriteEnabled(c0: true, c1: false, c2: true, c3: false);
+```
+
 ## Architecture Notes
 
 - **Design Patterns**: The package uses an Entity Component System (ECS) for efficient entity management and a Render Graph to manage render node execution order.

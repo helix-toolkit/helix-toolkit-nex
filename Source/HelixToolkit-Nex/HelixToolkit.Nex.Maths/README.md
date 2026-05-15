@@ -30,6 +30,7 @@ The `HelixToolkit.Nex.Maths` package is integral to the HelixToolkit-Nex engine,
 | `Bool4`               | Represents a four-dimensional vector of boolean values.                     |
 | `Bool32Bit`           | Represents a boolean value with a size of 32 bits.                          |
 | `AngleSingle`         | Represents a unit-independent angle using a single-precision floating-point.|
+| `Alignment`           | Provides utility methods for memory alignment calculations.                 |
 
 ## Usage Examples
 
@@ -118,6 +119,21 @@ float radians = angle.Radians;
 
 // Wrap the angle
 angle.Wrap();
+```
+
+### Memory Alignment Calculations
+
+```csharp
+using HelixToolkit.Nex.Maths;
+
+// Align a size value
+uint size = 13;
+uint alignment = 16;
+uint alignedSize = size.GetAlignedSize(alignment);
+
+// Align a memory address
+ulong address = 1024;
+ulong alignedAddress = address.GetAlignedAddress(alignment);
 ```
 
 ## Architecture Notes
