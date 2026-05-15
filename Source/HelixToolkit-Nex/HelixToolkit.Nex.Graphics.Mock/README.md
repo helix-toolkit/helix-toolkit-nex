@@ -16,13 +16,14 @@ The `HelixToolkit.Nex.Graphics.Mock` package is designed to fit seamlessly into 
   - **Barrier**: Method to simulate a barrier operation on a buffer.
   - **BindRenderPipeline**: Overloaded method to bind a render pipeline with color write states.
   - **ClearDepthStencilImage**: Method to simulate clearing a depth-stencil image.
-  - **SetColorWriteEnabled**: Method to enable or disable color writes for attachments.
+  - **SetColorWriteEnabled**: Overloaded methods to enable or disable color writes for attachments.
 - **MockContext**: A mock implementation of `IContext` that simulates a graphics context, providing methods to create and manage mock resources such as buffers, textures, and pipelines.
   - **GenerateMipmap**: Method to simulate mipmap generation for a texture.
   - **WaitAll**: Method to simulate waiting for all operations to complete.
   - **IsReady**: Method to check if a submit handle is ready.
   - **Wait**: Overloaded method to simulate waiting on a submit handle with an optional reset parameter.
   - **CreateSecondaryCommandBuffer**: Method signature updated to remove `RenderPass` parameter.
+  - **SupportsSubpass**: Property indicating if subpass operations are supported.
 
 ## Usage Examples
 
@@ -99,6 +100,7 @@ commandBuffer.ClearDepthStencilImage(texture.Handle, depth: 1.0f, stencil: 0);
 ```csharp
 var commandBuffer = context.AcquireCommandBuffer();
 commandBuffer.SetColorWriteEnabled(new[] { true, false, true }.AsSpan());
+commandBuffer.SetColorWriteEnabled(c0: true, c1: false, c2: true, c3: false);
 ```
 
 ## Architecture Notes
@@ -111,4 +113,5 @@ commandBuffer.SetColorWriteEnabled(new[] { true, false, true }.AsSpan());
 
 - **Project Configuration**: Added new build configurations for `LinuxDebug` and `LinuxRelease` to support cross-platform testing and development.
 - **New Methods and Properties**: Added `DrawCallCount`, `DispatchCallCount`, `SetCheckpointMarker`, `BindRenderPipeline` with color writes, `ClearDepthStencilImage`, `SetColorWriteEnabled`, and updated `CreateSecondaryCommandBuffer` method signature to enhance testing capabilities.
+- **SupportsSubpass**: Added `SupportsSubpass` property to `MockContext` to indicate subpass support.
 ```

@@ -20,6 +20,7 @@ HelixToolkit.Nex.Engine is a core component of the HelixToolkit.Nex suite, respo
 | `RenderContext`                  | Holds per-viewport state such as window size and camera parameters.         |
 | `WorldDataProvider`              | Provides scene data to the engine, managing ECS-to-GPU data pipelines.      |
 | `FirstPersonCameraController`    | A camera controller for first-person navigation.                           |
+| `WalkaroundCameraController`     | A specialized first-person camera controller with inverted controls.       |
 | `OrbitCameraController`          | A camera controller for orbiting around a target point.                    |
 | `PanZoomCameraController`        | A camera controller for panning and zooming, suitable for orthographic views.|
 | `TurntableCameraController`      | A camera controller for turntable-style rotation around a fixed axis.      |
@@ -64,8 +65,25 @@ var camera = new PerspectiveCamera
 var controller = new FirstPersonCameraController(camera)
 {
     LookSensitivity = 0.005f,
-    MoveSpeed = 10f
+    MoveSpeed = 10f,
+    InvertX = false,
+    InvertY = false
 };
+
+// Update loop
+controller.SetMovementInput(forward: true);
+controller.Update(deltaTime);
+```
+
+### Using a Walkaround Camera Controller
+
+```csharp
+var camera = new PerspectiveCamera
+{
+    Position = new Vector3(0, 0, 10),
+    Target = Vector3.Zero
+};
+var controller = new WalkaroundCameraController(camera);
 
 // Update loop
 controller.SetMovementInput(forward: true);
@@ -106,7 +124,11 @@ var billboard = engine.CreateBillboard(
 
 ### New Types
 
-- `DynamicMeshDrawData`: Represents dynamic mesh draw data.
+- `WalkaroundCameraController`: A specialized first-person camera controller with inverted controls.
+
+### New Properties in `FirstPersonCameraController`
+
+- `InvertX`: Gets or sets a value indicating whether the X axis input is inverted.
 
 ### New Methods in `Engine`
 
