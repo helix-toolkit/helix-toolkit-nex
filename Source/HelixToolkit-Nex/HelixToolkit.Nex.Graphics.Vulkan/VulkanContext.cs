@@ -82,7 +82,7 @@ public sealed class VulkanContextConfig()
 internal sealed partial class VulkanContext
 {
     public const uint32_t KMaxYcbcrConversionData = 256; // maximum number of Ycbcr conversions that can be created in the context
-    public const uint32_t KDescriptorSetInputAttachments = 4;
+    public const uint32_t KDescriptorSetInputAttachments = 1;
     private static readonly ILogger _logger = LogManager.Create<VulkanContext>();
     private static readonly ITracer _tracer = TracerFactory.GetTracer(nameof(VulkanContext));
 
@@ -218,6 +218,11 @@ internal sealed partial class VulkanContext
     public bool HasExtDebugUtils { private set; get; } = false;
 
     public bool HasKHRSwapchainMaintenance1 { private set; get; } = false;
+
+    public bool HasDedicatedTransferQueue => DeviceQueues.HasDedicatedTransferQueue;
+    public bool SupportsDynamicLocalRead { private set; get; } = false;
+
+    public bool SupportsMemorylessAttachments { private set; get; } = false;
 
     public Pool<ShaderModule, ShaderModuleState> ShaderModulesPool { get; } = new();
     public Pool<RenderPipeline, RenderPipelineState> RenderPipelinesPool { get; } = new();
@@ -395,7 +400,11 @@ internal sealed partial class VulkanContext
             {
                 if (Config.UseWayland)
                 {
-                    if (!availableInstanceExtensions.Contains(VK.VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME))
+                    if (
+                        !availableInstanceExtensions.Contains(
+                            VK.VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME
+                        )
+                    )
                     {
                         throw new Exception(
                             "Vulkan: Required instance extension 'VK_KHR_wayland_surface' is not supported by the Vulkan implementation."
@@ -405,7 +414,9 @@ internal sealed partial class VulkanContext
                 }
                 else
                 {
-                    if (!availableInstanceExtensions.Contains(VK.VK_KHR_XLIB_SURFACE_EXTENSION_NAME))
+                    if (
+                        !availableInstanceExtensions.Contains(VK.VK_KHR_XLIB_SURFACE_EXTENSION_NAME)
+                    )
                     {
                         throw new Exception(
                             "Vulkan: Required instance extension 'VK_KHR_xlib_surface' is not supported by the Vulkan implementation."
@@ -755,6 +766,8 @@ internal sealed partial class VulkanContext
         InitPhysicalDevice().CheckResult();
 
         InitDevice().CheckResult();
+
+        ProbeMemorylessAttachmentSupport();
 
         InitImmediateCommands();
 
@@ -1408,13 +1421,13 @@ internal sealed partial class VulkanContext
     {
         unsafe
         {
-            const int length = 4;
+            const int length = (int)(KDescriptorSetInputAttachments + 1);
             VkDescriptorSet* dsets = stackalloc VkDescriptorSet[length];
             for (int i = 0; i < length; ++i)
             {
                 dsets[i] = VkDesSet;
             }
-            VK.vkCmdBindDescriptorSets(cmdBuf, bindPoint, layout, 0, length, &dsets[0], 0, null);
+            VK.vkCmdBindDescriptorSets(cmdBuf, bindPoint, layout, 0, 1, &dsets[0], 0, null);
         }
     }
 
@@ -1820,20 +1833,17 @@ internal sealed partial class VulkanContext
                 var dsls =
                     stackalloc VkDescriptorSetLayout[(int)KDescriptorSetInputAttachments + 1] {
                         VkDesSetLayout,
-                        VkDesSetLayout,
-                        VkDesSetLayout,
-                        VkDesSetLayout,
                         _dslInputAttachments,
                     };
                 VkPushConstantRange range = new()
                 {
                     stageFlags = rps.ShaderStageFlags,
                     offset = 0,
-                    size = pushConstantsSize,
+                    size = pushConstantsSize.GetAlignedSize(16),
                 };
                 VkPipelineLayoutCreateInfo ci = new()
                 {
-                    setLayoutCount = 4,
+                    setLayoutCount = (KDescriptorSetInputAttachments + 1),
                     pSetLayouts = dsls,
                     pushConstantRangeCount = pushConstantsSize > 0 ? 1u : 0u,
                     pPushConstantRanges = pushConstantsSize > 0 ? &range : null,

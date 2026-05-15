@@ -28,7 +28,8 @@ layout(location = 1) out vec2 idOut;
 #endif
 
 #ifdef TRANSPARENT_PASS
-layout(location = 2) out float outRevealage;
+layout(location = 2) out vec4 outAccum;
+layout(location = 3) out float outRevealage;
 #endif
 
 layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer FPBuffer {
@@ -434,7 +435,7 @@ void main() {
         1e-2, 3e3
     );
     // RT0 (accum): additive blend (ONE / ONE). Store premultiplied weighted color and weighted alpha.
-    outColor = vec4(color.rgb * alpha * w, alpha * w);
+    outAccum = vec4(color.rgb * alpha * w, alpha * w);
     // RT1 (revealage): blend is ZERO / ONE_MINUS_SRC_COLOR, buffer cleared to 1.
     // Output alpha so the blend hardware computes: dst = dst * (1 - alpha).
     outRevealage = alpha;

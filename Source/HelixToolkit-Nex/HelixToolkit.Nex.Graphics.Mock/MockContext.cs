@@ -34,6 +34,8 @@ public class MockContext : IContext
     /// </summary>
     public bool IsInitialized => _isInitialized;
 
+    public bool SupportsSubpass { get; private set; } = true;
+
     /// <summary>
     /// Gets whether the context has been disposed.
     /// </summary>

@@ -381,8 +381,7 @@ public sealed class EngineBuilder
             }
             else if (_transparentMode == TransparentMode.WBOIT)
             {
-                AddNode(new ForwardPlusWBOITNode());
-                AddNode(new WBOITCompositeNode());
+                AddNode(new ForwardPlusWBOITMergedNode());
             }
         }
 

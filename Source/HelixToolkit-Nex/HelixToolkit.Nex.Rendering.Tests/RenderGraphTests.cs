@@ -1067,8 +1067,7 @@ public class RenderGraphTests
         new ForwardPlusLightCullingNode().AddToGraph(graph);
         new ForwardPlusOpaqueNode().AddToGraph(graph);
         new PointRenderNode().AddToGraph(graph);
-        new ForwardPlusWBOITNode().AddToGraph(graph);
-        new WBOITCompositeNode().AddToGraph(graph);
+        new ForwardPlusWBOITMergedNode().AddToGraph(graph);
         new PostEffectsNode().AddToGraph(graph);
         new ToneMappingNode().AddToGraph(graph);
 
@@ -1078,9 +1077,9 @@ public class RenderGraphTests
         var names = graph.SortedPasses.Select(p => p.PassName).ToList();
 
         Assert.AreEqual(
-            11,
+            10,
             names.Count,
-            $"Expected 11 passes, got {names.Count}: {string.Join(", ", names)}"
+            $"Expected 10 passes, got {names.Count}: {string.Join(", ", names)}"
         );
 
         // --- Stage: Prepare ---
@@ -1115,24 +1114,20 @@ public class RenderGraphTests
             "ForwardPlusOpaqueNode before PointRenderNode"
         );
 
-        // --- Stage: Transparent ---
+        // --- Stage: Transparent (merged node) ---
         Assert.IsTrue(
-            Precedes(names, nameof(PointRenderNode), nameof(ForwardPlusWBOITNode)),
-            "PointRenderNode before ForwardPlusWBOITNode"
+            Precedes(names, nameof(PointRenderNode), nameof(ForwardPlusWBOITMergedNode)),
+            "PointRenderNode before ForwardPlusWBOITMergedNode"
         );
         Assert.IsTrue(
-            Precedes(names, nameof(ForwardPlusOpaqueNode), nameof(ForwardPlusWBOITNode)),
-            "ForwardPlusOpaqueNode before ForwardPlusWBOITNode"
-        );
-        Assert.IsTrue(
-            Precedes(names, nameof(ForwardPlusWBOITNode), nameof(WBOITCompositeNode)),
-            "ForwardPlusWBOITNode before WBOITCompositeNode"
+            Precedes(names, nameof(ForwardPlusOpaqueNode), nameof(ForwardPlusWBOITMergedNode)),
+            "ForwardPlusOpaqueNode before ForwardPlusWBOITMergedNode"
         );
 
         // --- Stage: PostProcess → ToneMap ---
         Assert.IsTrue(
-            Precedes(names, nameof(WBOITCompositeNode), nameof(PostEffectsNode)),
-            "WBOITCompositeNode before PostEffectsNode"
+            Precedes(names, nameof(ForwardPlusWBOITMergedNode), nameof(PostEffectsNode)),
+            "ForwardPlusWBOITMergedNode before PostEffectsNode"
         );
         Assert.IsTrue(
             Precedes(names, nameof(PostEffectsNode), nameof(ToneMappingNode)),
@@ -1147,9 +1142,9 @@ public class RenderGraphTests
     private static void AssertDefaultPipelineOrder(List<string> names)
     {
         Assert.AreEqual(
-            11,
+            10,
             names.Count,
-            $"Expected 11 passes, got {names.Count}: {string.Join(", ", names)}"
+            $"Expected 10 passes, got {names.Count}: {string.Join(", ", names)}"
         );
 
         // Prepare → Opaque
@@ -1184,24 +1179,20 @@ public class RenderGraphTests
             "ForwardPlusOpaqueNode before PointRenderNode"
         );
 
-        // Opaque → Transparent
+        // Opaque → Transparent (merged node)
         Assert.IsTrue(
-            Precedes(names, nameof(PointRenderNode), nameof(ForwardPlusWBOITNode)),
-            "PointRenderNode before ForwardPlusWBOITNode"
+            Precedes(names, nameof(PointRenderNode), nameof(ForwardPlusWBOITMergedNode)),
+            "PointRenderNode before ForwardPlusWBOITMergedNode"
         );
         Assert.IsTrue(
-            Precedes(names, nameof(ForwardPlusOpaqueNode), nameof(ForwardPlusWBOITNode)),
-            "ForwardPlusOpaqueNode before ForwardPlusWBOITNode"
-        );
-        Assert.IsTrue(
-            Precedes(names, nameof(ForwardPlusWBOITNode), nameof(WBOITCompositeNode)),
-            "ForwardPlusWBOITNode before WBOITCompositeNode"
+            Precedes(names, nameof(ForwardPlusOpaqueNode), nameof(ForwardPlusWBOITMergedNode)),
+            "ForwardPlusOpaqueNode before ForwardPlusWBOITMergedNode"
         );
 
         // Transparent → PostProcess → ToneMap
         Assert.IsTrue(
-            Precedes(names, nameof(WBOITCompositeNode), nameof(PostEffectsNode)),
-            "WBOITCompositeNode before PostEffectsNode"
+            Precedes(names, nameof(ForwardPlusWBOITMergedNode), nameof(PostEffectsNode)),
+            "ForwardPlusWBOITMergedNode before PostEffectsNode"
         );
         Assert.IsTrue(
             Precedes(names, nameof(PostEffectsNode), nameof(ToneMappingNode)),
@@ -1230,8 +1221,7 @@ public class RenderGraphTests
         var names = CompileNodes([
             new ToneMappingNode(),
             new PostEffectsNode(),
-            new WBOITCompositeNode(),
-            new ForwardPlusWBOITNode(),
+            new ForwardPlusWBOITMergedNode(),
             new PointRenderNode(),
             new ForwardPlusOpaqueNode(),
             new ForwardPlusLightCullingNode(),
@@ -1254,8 +1244,7 @@ public class RenderGraphTests
     {
         // Transparent-stage nodes are added before opaque-stage nodes.
         var names = CompileNodes([
-            new ForwardPlusWBOITNode(),
-            new WBOITCompositeNode(),
+            new ForwardPlusWBOITMergedNode(),
             new PrepareNode(),
             new DepthPassNode(),
             new FrustumCullNode(),
@@ -1289,8 +1278,7 @@ public class RenderGraphTests
             new ForwardPlusLightCullingNode(),
             new ForwardPlusOpaqueNode(),
             new PointRenderNode(),
-            new ForwardPlusWBOITNode(),
-            new WBOITCompositeNode(),
+            new ForwardPlusWBOITMergedNode(),
         ]);
 
         AssertDefaultPipelineOrder(names);
@@ -1310,9 +1298,8 @@ public class RenderGraphTests
             new ForwardPlusOpaqueNode(), // Opaque
             new PostEffectsNode(), // PostProcess
             new PrepareNode(), // Prepare
-            new WBOITCompositeNode(), // Transparent
+            new ForwardPlusWBOITMergedNode(), // Transparent
             new DepthPassNode(), // Opaque
-            new ForwardPlusWBOITNode(), // Transparent
             new FrustumCullNode(), // Prepare
             new ForwardPlusLightCullingNode(), // Opaque
             new PointCullNode(), // Prepare
@@ -1335,8 +1322,7 @@ public class RenderGraphTests
             new PrepareNode(),
             new FrustumCullNode(),
             new PointCullNode(),
-            new ForwardPlusWBOITNode(),
-            new WBOITCompositeNode(),
+            new ForwardPlusWBOITMergedNode(),
             new PostEffectsNode(),
             new ToneMappingNode(),
             new DepthPassNode(),

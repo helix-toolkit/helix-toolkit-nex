@@ -55,6 +55,8 @@ internal sealed class VulkanImage : IDisposable
         UsageFlags.HasFlag(VK.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
         | UsageFlags.HasFlag(VK.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
 
+    public bool IsInputAttachment => UsageFlags.HasFlag(VK.VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT);
+
     public VulkanImage() { }
 
     public VulkanImage(

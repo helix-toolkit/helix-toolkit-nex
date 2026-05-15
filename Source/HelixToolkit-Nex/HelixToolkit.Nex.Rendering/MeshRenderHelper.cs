@@ -7,7 +7,7 @@ namespace HelixToolkit.Nex.Rendering;
 public static class MeshRenderHelper
 {
     private static readonly ILogger _logger = LogManager.Create("RenderHelper");
-    private static readonly bool[] _colorWriteNoIdOuput = [true, false, true, true];
+    private const int ColorWriteIndex = 1; // Assuming the second render target (index 1) is the one used for entity ID output.
 
     public static uint Render(
         in RenderResources res,
@@ -85,7 +85,10 @@ public static class MeshRenderHelper
                     }
                     else
                     { // Disable entity ID output for transparent non-hitable meshes to avoid writing to the ID buffer, which is used for picking and should not be affected by transparent objects.
-                        cmdBuf.SetColorWriteEnabled(_colorWriteNoIdOuput);
+                        var value = res.Pass.ColorWrites[ColorWriteIndex];
+                        res.Pass.ColorWrites[ColorWriteIndex] = false;
+                        cmdBuf.SetColorWriteEnabled(res.Pass.ColorWrites);
+                        res.Pass.ColorWrites[ColorWriteIndex] = value;
                     }
                 }
             }
@@ -154,7 +157,10 @@ public static class MeshRenderHelper
                     }
                     else
                     { // Disable entity ID output for transparent non-hitable meshes to avoid writing to the ID buffer, which is used for picking and should not be affected by transparent objects.
-                        cmdBuf.SetColorWriteEnabled(_colorWriteNoIdOuput);
+                        var value = res.Pass.ColorWrites[ColorWriteIndex];
+                        res.Pass.ColorWrites[ColorWriteIndex] = false;
+                        cmdBuf.SetColorWriteEnabled(res.Pass.ColorWrites);
+                        res.Pass.ColorWrites[ColorWriteIndex] = value;
                     }
                 }
             }

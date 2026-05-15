@@ -4,7 +4,7 @@ internal sealed partial class VulkanContext : Initializable, IContext
 {
     #region IContext implementation
 
-    public bool HasDedicatedTransferQueue => DeviceQueues.HasDedicatedTransferQueue;
+    public bool SupportsSubpass => SupportsDynamicLocalRead;
 
     public AsyncUploadHandle<BufferHandle> UploadAsync<T>(
         in BufferHandle handle,

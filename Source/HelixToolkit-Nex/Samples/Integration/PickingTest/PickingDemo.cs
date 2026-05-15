@@ -101,7 +101,7 @@ internal sealed class PickingDemo : IDisposable
         // Use a high-res sphere: thetaDiv=1002, phiDiv=1002 gives ~1M triangles
         // Each sphere ring: thetaDiv * 2 triangles, phiDiv rings => ~thetaDiv * phiDiv * 2 triangles
         var meshBuilder = new MeshBuilder(true, true, true);
-        meshBuilder.AddSphere(Vector3.Zero, 10f, 128, 128);
+        meshBuilder.AddSphere(Vector3.Zero, 10f, 64, 64);
         meshBuilder.AddTorus(20, 2, 64, 64);
         var meshGeom3D = meshBuilder.ToMesh();
         _logger.LogInformation(
@@ -127,7 +127,7 @@ internal sealed class PickingDemo : IDisposable
             Geometry = _largeMeshGeometry,
             MaterialProperties = greyMaterial,
         };
-        meshNode.Entity.Set(new WireframePostEffect.WireframeComponent { Color = Color.Blue });
+        meshNode.Entity.Set(new WireframePostEffect.WireframeComponent { Color = Color.MediumPurple });
         _root.AddChild(meshNode);
 
         var redMaterial = materialPool.Create("PBR");
@@ -143,7 +143,7 @@ internal sealed class PickingDemo : IDisposable
 
         var greenMaterial = materialPool.Create("PBR");
         greenMaterial.Properties.Albedo = new Vector3(0.2f, 0.8f, 0.2f);
-        greenMaterial.Properties.Opacity = 0.5f;
+        greenMaterial.Properties.Opacity = 0.3f;
         meshNode = new MeshNode(world, "LargeSphereTransparentNoHitable")
         {
             Geometry = _largeMeshGeometry,
