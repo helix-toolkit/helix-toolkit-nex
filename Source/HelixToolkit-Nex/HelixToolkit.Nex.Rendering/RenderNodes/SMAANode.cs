@@ -150,7 +150,6 @@ public sealed class SMAANode : RenderNode
     private TextureRef LoadSMAATextures(string name)
     {
         var assembly = typeof(SMAANode).Assembly;
-        var assemblyName = assembly.GetName().Name;
         using var ddsStream =
             assembly.GetManifestResourceStream(name)
             ?? throw new FileNotFoundException($"Embedded resource '{name}' not found.");
