@@ -120,7 +120,9 @@ public class PrepareNode : RenderNode
                         GraphicsSettings.IntermediateTargetFormat,
                         (uint)p.Context.WindowSize.Width,
                         (uint)p.Context.WindowSize.Height,
-                        TextureUsageBits.Sampled | TextureUsageBits.Attachment,
+                        TextureUsageBits.Sampled
+                            | TextureUsageBits.Attachment
+                            | TextureUsageBits.InputAttachment,
                         StorageType.Device,
                         debugName: SystemBufferNames.TextureColorF16A
                     )
@@ -132,7 +134,9 @@ public class PrepareNode : RenderNode
                         GraphicsSettings.IntermediateTargetFormat,
                         (uint)p.Context.WindowSize.Width,
                         (uint)p.Context.WindowSize.Height,
-                        TextureUsageBits.Sampled | TextureUsageBits.Attachment,
+                        TextureUsageBits.Sampled
+                            | TextureUsageBits.Attachment
+                            | TextureUsageBits.InputAttachment,
                         StorageType.Device,
                         debugName: SystemBufferNames.TextureColorF16B
                     )

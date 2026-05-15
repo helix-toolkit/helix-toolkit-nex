@@ -17,6 +17,13 @@ namespace HelixToolkit.Nex.Graphics;
 public interface IContext : IInitializable
 {
     /// <summary>
+    /// Whether the context supports subpass rendering within render passes.
+    /// If true, <see cref="ICommandBuffer.NextSubpass"/> can be used to transition between subpasses without ending the render pass, allowing for more efficient rendering techniques.
+    /// If false, each subpass must be implemented as a separate render pass with explicit synchronization.
+    /// </summary>
+    bool SupportsSubpass { get; }
+
+    /// <summary>
     /// Acquires a command buffer for recording GPU commands.
     /// </summary>
     /// <returns>A command buffer ready for recording.</returns>
@@ -642,7 +649,6 @@ public interface IContext : IInitializable
             return AsyncUploadHandle<TextureHandle>.CreateCompleted(result, handle);
         }
     }
-
 
     /// <summary>
     /// Generates mipmaps for a texture. The texture must have been created with the appropriate usage flags to allow for mipmap generation (e.g., TextureUsageBits.GenerateMips).

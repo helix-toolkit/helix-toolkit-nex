@@ -577,4 +577,20 @@ public interface ICommandBuffer
     /// </summary>
     /// <param name="colorAttachmentStates">A span of boolean values indicating whether color writing is enabled for each attachment.</param>
     void SetColorWriteEnabled(ReadOnlySpan<bool> colorAttachmentStates);
+
+    /// <summary>
+    /// Enables or disables color writing for each of the four render targets.
+    /// </summary>
+    /// <remarks>Disabling color writing for a render target prevents any color data from being written to
+    /// that target during rendering. This can be useful for optimizing performance or for advanced rendering
+    /// techniques.</remarks>
+    /// <param name="c0">A value indicating whether color writing is enabled for render target 0. Set to <see langword="true"/> to enable
+    /// color writing; otherwise, <see langword="false"/>.</param>
+    /// <param name="c1">A value indicating whether color writing is enabled for render target 1. Set to <see langword="true"/> to enable
+    /// color writing; otherwise, <see langword="false"/>.</param>
+    /// <param name="c2">A value indicating whether color writing is enabled for render target 2. Set to <see langword="true"/> to enable
+    /// color writing; otherwise, <see langword="false"/>.</param>
+    /// <param name="c3">A value indicating whether color writing is enabled for render target 3. Set to <see langword="true"/> to enable
+    /// color writing; otherwise, <see langword="false"/>.</param>
+    void SetColorWriteEnabled(bool c0 = true, bool c1 = true, bool c2 = true, bool c3 = true);
 }

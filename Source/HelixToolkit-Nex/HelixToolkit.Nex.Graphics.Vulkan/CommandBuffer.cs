@@ -729,7 +729,7 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
 
         var rps = _ctx.RenderPipelinesPool.Get(handle);
 
-        HxDebug.Assert(rps != null);
+        HxDebug.Assert(rps != null, "Render pipeline state is not valid.");
 
         bool hasDepthAttachmentPipeline = rps!.Desc.DepthFormat != Format.Invalid;
         bool hasDepthAttachmentPass = Framebuffer.DepthStencil.Texture.Valid;
@@ -737,15 +737,12 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
 
         if (hasDepthAttachmentPipeline != hasDepthAttachmentPass)
         {
-            HxDebug.Assert(false);
-            _logger.LogError(
-                "Make sure your render pass and render pipeline both have matching depth attachments"
-            );
+            HxDebug.Assert(false, "Make sure your render pass and render pipeline both have matching depth attachments");
         }
 
         var pipeline = _ctx.GetVkPipeline(handle, ViewMask);
 
-        HxDebug.Assert(pipeline.IsNotNull);
+        HxDebug.Assert(pipeline.IsNotNull, "Pipeline is not valid.");
 
         if (LastPipelineBound != pipeline)
         {
@@ -1531,11 +1528,15 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
     public void NextSubpass()
     {
         HxDebug.Assert(IsRendering);
+        if (!_ctx.SupportsSubpass)
+        {
+            throw new NotSupportedException("Subpass rendering is not supported by the current context.");
+        }
         unsafe
         {
+            // Issue the self-dependency barrier: color-attachment-write → fragment-shader-read.
             VkMemoryBarrier2 memoryBarrier = new()
             {
-                sType = VK.VK_STRUCTURE_TYPE_MEMORY_BARRIER_2,
                 srcStageMask = VkPipelineStageFlags2.ColorAttachmentOutput,
                 srcAccessMask = VkAccessFlags2.ColorAttachmentWrite,
                 dstStageMask = VkPipelineStageFlags2.FragmentShader,
@@ -1544,7 +1545,6 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
 
             VkDependencyInfo dependencyInfo = new()
             {
-                sType = VK.VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
                 dependencyFlags = VK.VK_DEPENDENCY_BY_REGION_BIT,
                 memoryBarrierCount = 1,
                 pMemoryBarriers = &memoryBarrier,
@@ -1865,6 +1865,10 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
     /// <inheritdoc/>
     public void TransitionToRenderingLocalRead(in TextureHandle handle)
     {
+        if (!_ctx.SupportsDynamicLocalRead)
+        {
+            throw new NotSupportedException("Dynamic local read is not supported by the current context.");
+        }
         var img = _ctx.TexturesPool.Get(handle);
         HxDebug.Assert(img is not null && !img.IsSwapchainImage);
         HxDebug.Assert(
@@ -1985,6 +1989,21 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
                 (uint)Math.Min(colorAttachmentStates.Length, Constants.MAX_COLOR_ATTACHMENTS),
                 enabled
             );
+        }
+    }
+    /// <inheritdoc/>
+    public void SetColorWriteEnabled(bool c0, bool c1, bool c2, bool c3)
+    {
+        unsafe
+        {
+            VkBool32* enabled = stackalloc VkBool32[4]
+            {
+                c0 ? VK_BOOL.True : VK_BOOL.False,
+                c1 ? VK_BOOL.True : VK_BOOL.False,
+                c2 ? VK_BOOL.True : VK_BOOL.False,
+                c3 ? VK_BOOL.True : VK_BOOL.False,
+            };
+            VK.vkCmdSetColorWriteEnableEXT(CmdBuffer, 4, enabled);
         }
     }
 
