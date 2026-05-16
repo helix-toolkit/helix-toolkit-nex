@@ -19,6 +19,7 @@ internal sealed class BillboardData(IContext context, World world) : Initializab
     private long _lastBufferUpdateTicks;
     private long _lastDataUpdateTicks = Stopwatch.GetTimestamp();
     private bool _needRebuilt = true;
+    private Components<BillboardComponent> _components;
 
     public IContext Context { get; } = context;
     public World World { get; } = world;
@@ -45,7 +46,9 @@ internal sealed class BillboardData(IContext context, World world) : Initializab
             .Has<NodeInfo>()
             .Has<BillboardComponent>()
             .Has<WorldTransform>()
+            .Has<Renderable>()
             .Build();
+        _components = World.GetComponents<BillboardComponent>();
         _entities.EntityChanged += OnEntityChanged;
         _entities.EntityAdded += OnAddOrRemovedChanged;
         _entities.EntityRemoved += OnAddOrRemovedChanged;
@@ -100,7 +103,7 @@ internal sealed class BillboardData(IContext context, World world) : Initializab
             ref var nodeInfo = ref entity.Get<NodeInfo>();
             if (!nodeInfo.Enabled)
                 continue;
-            ref var bb = ref entity.Get<BillboardComponent>();
+            ref var bb = ref _components[entity];
             if (!bb.Valid)
                 continue;
 
