@@ -50,6 +50,10 @@ struct BillboardExpandArgs {
     float screenHeight;    // Viewport height in pixels
     vec3  cameraUp;        // Camera up vector (world-space)
     float fovY;            // Vertical field of view in radians
+    float maxDistance;      // Maximum distance to render billboards (0 = no limit)
+    uint  _padding0;       // Padding for vec4 alignment
+    uint  _padding1;
+    uint  _padding2;
 };
 
 @code_gen

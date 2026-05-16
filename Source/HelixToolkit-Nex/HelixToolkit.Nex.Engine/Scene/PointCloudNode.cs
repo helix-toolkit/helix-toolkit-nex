@@ -16,7 +16,10 @@ public class PointCloudNode : Node
     }
 
     public PointCloudNode(World world, string name, PointCloudComponent component)
-        : base(world, name)
+        : this(world, name, ref component) { }
+
+    public PointCloudNode(World world, string name, ref PointCloudComponent component)
+        : this(world, name)
     {
         Entity.Set(ref component);
     }
