@@ -119,6 +119,7 @@ internal sealed class BillboardDemo : IDisposable
             .Build();
         _billboardCullNode = _engine.GetRenderNode<BillboardCullNode>();
         _billboardCullNode!.MinScreenSize = _minScreenSize;
+        _billboardCullNode!.MaxDistance = 400f;
         _renderContext = _engine.CreateRenderContext();
         _renderContext.Initialize();
         _renderContext.ResourceSet.AddTexture(

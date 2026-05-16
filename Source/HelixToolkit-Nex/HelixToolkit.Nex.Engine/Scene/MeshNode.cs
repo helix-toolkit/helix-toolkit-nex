@@ -16,11 +16,15 @@ public class MeshNode : Node
     }
 
     public MeshNode(World world, string name, MeshComponent meshComponent)
-        : this(world, name)
+        : this(world, name, ref meshComponent)
     {
-        Entity.Set(meshComponent);
     }
 
+    public MeshNode(World world, string name, ref MeshComponent meshComponent)
+    : this(world, name)
+    {
+        Entity.Set(ref meshComponent);
+    }
     /// <summary>
     /// Gets or sets the geometry resource.
     /// </summary>

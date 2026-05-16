@@ -53,6 +53,11 @@ void main() {
     // For text billboards, the anchor is at local (0,0,0); for non-text billboards
     // with identity worldTransform, this equals (0,0,0) and glyph positions pass through.
     vec4 anchorWorld = info.worldTransform * vec4(0.0, 0.0, 0.0, 1.0);
+    
+    float dist = distance(args.cameraPosition, anchorWorld.xyz);
+    if (args.maxDistance > 0.0) {
+        if (dist > args.maxDistance) return; // Cull billboards beyond max distance
+    }
 
     // Use per-billboard color if alpha > 0, otherwise use uniform color from push constants
     vec4 color = v.color.a > 0.0 ? v.color : info.color;
@@ -73,7 +78,6 @@ void main() {
     // --- Compute screen-space size using anchor distance (shared across all glyphs) ---
     float screenWidth;
     float screenHeight;
-    float dist = distance(args.cameraPosition, anchorWorld.xyz);
     float projFactor = args.screenHeight / (2.0 * tan(args.fovY * 0.5));
     if (info.fixedSize != 0u) {
         // Fixed-size mode: width/height are already in pixels, no perspective projection.

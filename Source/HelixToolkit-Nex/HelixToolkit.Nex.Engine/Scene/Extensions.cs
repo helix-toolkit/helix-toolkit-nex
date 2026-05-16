@@ -1,4 +1,6 @@
+using HelixToolkit.Nex.Engine.Scene;
 using HelixToolkit.Nex.Rendering.Components;
+using HelixToolkit.Nex.Rendering.SDF;
 
 namespace HelixToolkit.Nex.Scene;
 
@@ -16,7 +18,7 @@ public static class Extensions
 
     public static MeshNode CreateMeshNode(this World world, string name, MeshComponent component)
     {
-        return new MeshNode(world, name, component);
+        return new MeshNode(world, name, ref component);
     }
 
     public static PointCloudNode CreatePointCloudNode(this World world, string name)
@@ -30,6 +32,45 @@ public static class Extensions
         PointCloudComponent component
     )
     {
-        return new PointCloudNode(world, name, component);
+        return new PointCloudNode(world, name, ref component);
+    }
+
+    public static BillboardNode CreateBillboardNode(this World world, string name)
+    {
+        return new BillboardNode(world, name);
+    }
+
+    public static BillboardNode CreateBillboardNode(
+        this World world,
+        string name,
+        BillboardComponent component
+    )
+    {
+        return new BillboardNode(world, name, ref component);
+    }
+
+    public static BillboardNode CreateBillboard(
+        this BillboardNode node,
+        string text,
+        SDFFontAtlas atlas,
+        float fontSize,
+        Color4 color,
+        BillboardAnchor anchor = BillboardAnchor.Center,
+        string materialName = "SDFFont",
+        bool fixedSize = true
+    )
+    {
+        var comp = TextLayoutHelper.CreateTextBillboard(
+            text,
+            atlas,
+            fontSize,
+            Vector3.Zero,
+            color,
+            BillboardAnchor.Center,
+            materialName,
+            fixedSize: fixedSize
+        );
+        node.Billboard = comp;
+        return node;
     }
 }
