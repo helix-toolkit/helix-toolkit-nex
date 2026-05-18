@@ -349,7 +349,8 @@ public static class TextLayoutHelper
         BillboardAnchor anchor = BillboardAnchor.BottomLeft,
         string? materialName = "SDFFont",
         bool fixedSize = false,
-        bool isDynamic = false
+        bool isDynamic = false,
+        float cullDistance = 0
     )
     {
         var geo = LayoutGeometry(text, atlas, fontSize, origin, anchor);
@@ -368,6 +369,7 @@ public static class TextLayoutHelper
             SdfAtlasWidth = (float)atlas.TextureWidth,
             SdfAtlasHeight = (float)atlas.TextureHeight,
             Anchor = anchor,
+            CullDistance = cullDistance,
         };
     }
 }

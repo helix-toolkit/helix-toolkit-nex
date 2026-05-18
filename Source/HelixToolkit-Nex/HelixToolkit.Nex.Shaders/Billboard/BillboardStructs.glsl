@@ -50,10 +50,6 @@ struct BillboardExpandArgs {
     float screenHeight;    // Viewport height in pixels
     vec3  cameraUp;        // Camera up vector (world-space)
     float fovY;            // Vertical field of view in radians
-    float maxDistance;      // Maximum distance to render billboards (0 = no limit)
-    uint  _padding0;       // Padding for vec4 alignment
-    uint  _padding1;
-    uint  _padding2;
 };
 
 @code_gen
@@ -76,7 +72,7 @@ struct BillboardInfo {
     float    sdfDistanceRangeMiddle;    // MSDF atlas distance range middle value (msdf-atlas-gen distanceRangeMiddle)
     float    sdfAtlasWidth;             // MSDF atlas texture width in pixels
     float    sdfAtlasHeight;            // MSDF atlas texture height in pixels
-    uint     _padding1;                 // Padding for vec4 alignment
+    float    cullDistance;              // Culling distance. 0 disables the culling.
 
     mat4     worldTransform;            // Entity's WorldTransform matrix (identity for non-text billboards)
 };

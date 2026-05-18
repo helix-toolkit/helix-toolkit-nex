@@ -55,8 +55,9 @@ void main() {
     vec4 anchorWorld = info.worldTransform * vec4(0.0, 0.0, 0.0, 1.0);
     
     float dist = distance(args.cameraPosition, anchorWorld.xyz);
-    if (args.maxDistance > 0.0) {
-        if (dist > args.maxDistance) return; // Cull billboards beyond max distance
+    float cullDistance = info.cullDistance;
+    if (cullDistance > 0.00001 && dist > cullDistance) {
+        return; // Cull billboards beyond max distance
     }
 
     // Use per-billboard color if alpha > 0, otherwise use uniform color from push constants
