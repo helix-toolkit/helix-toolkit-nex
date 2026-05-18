@@ -13,6 +13,7 @@ layout(location = 7) out flat vec3  v_fragWorldPos;
 layout(location = 8) out flat uint  v_sdfAemrangePacked;
 layout(location = 9) out flat uint  v_sdfAtlasSizePacked;
 layout(location = 10) out flat uint v_sdfGlyphCellSizeBits;
+layout(location = 11) out flat uint v_billboardType;
 
 layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer BillboardDrawDataBuffer {
     BillboardDrawData data[];
@@ -87,4 +88,5 @@ void main() {
     v_sdfAemrangePacked    = d.sdfAemrangePacked;
     v_sdfAtlasSizePacked   = d.sdfAtlasSizePacked;
     v_sdfGlyphCellSizeBits = d.sdfGlyphCellSizeBits;
+    v_billboardType = d.type;
 }

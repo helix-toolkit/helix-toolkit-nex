@@ -3,12 +3,16 @@
 
 /// Per-billboard input vertex data stored in a single interleaved buffer.
 /// Written by the CPU (BillboardGeometry), read by the compute expand shader.
+
+#define BILLBOARD_VERT_TYPE_NONE 0 // None
+#define BILLBOARD_VERT_TYPE_UV 1 // Use UV for sampling
+
 @code_gen
 struct BillboardVertex {
     vec4  position;        // xyz = offset based on anchor position, w = unused
     vec2  size;            // x = width, y = height (world-space or pixels if fixedSize)
     uint  infoIndex;       // Index into BillboardInfo buffer, automatically set internally.
-    uint  _padding1;       // Padding for vec4 alignment
+    uint  type;            // Billboard vertex type. 0: Solid color; 1: USE UV
     vec4  uvRect;          // Texture atlas sub-region (u_min, v_min, u_max, v_max)
     vec4  color;           // RGBA per-billboard color (0,0,0,0 = use uniform color from push constants)
 };
@@ -28,7 +32,8 @@ struct BillboardDrawData {
     uint  sdfGlyphCellSizeBits; // floatBitsToUint(glyphCellSize) — glyph cell size
     vec4  uvRect;          // Texture atlas sub-region (u_min, v_min, u_max, v_max)
     vec2  pixelOffset;     // Per-glyph pixel offset from anchor position (in screen pixels)
-    vec2  _drawPadding;    // Padding for vec4 alignment
+    uint  type;            // Billboard vertex type. 0: Solid color; 1: USE UV
+    uint  _drawPadding;    // Padding for alignment
 };
 
 /// Indirect draw arguments for DrawIndirect (triangle strip, 4 verts, N instances).

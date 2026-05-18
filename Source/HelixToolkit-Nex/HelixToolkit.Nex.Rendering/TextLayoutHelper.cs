@@ -13,6 +13,13 @@ public readonly struct TextBounds
 
     /// <summary>Total height: top ascender of first line to bottom descender of last line.</summary>
     public float Height { get; init; }
+
+    /// <summary>
+    /// Y offset from the baseline (origin) to the bottom edge of the bounds.
+    /// This is zero or negative (e.g. -0.2 for glyphs with descenders such as 'y' or 'g').
+    /// Use this to correctly position a background quad so it covers descenders.
+    /// </summary>
+    public float DescenderOffset { get; init; }
 }
 
 /// <summary>
@@ -134,7 +141,7 @@ public static class TextLayoutHelper
         float width = maxLineWidth;
         float height = maxAscender - maxDescender + (lineCount - 1) * fontSize;
 
-        return new TextBounds { Width = width, Height = height };
+        return new TextBounds { Width = width, Height = height, DescenderOffset = maxDescender };
     }
 
     /// <summary>
@@ -263,6 +270,19 @@ public static class TextLayoutHelper
     }
 
     /// <summary>
+    /// Convenience overload of <see cref="LayoutGeometry"/> with default <see cref="BillboardAnchor.BottomLeft"/> anchor.
+    /// </summary>
+    public static BillboardGeometry LayoutGeometry(
+        string text,
+        SDFFontAtlas atlas,
+        float fontSize,
+        Vector3 origin
+    )
+    {
+        return LayoutGeometry(text, atlas, fontSize, origin, BillboardAnchor.BottomLeft, out _, out _);
+    }
+
+    /// <summary>
     /// Lays out glyphs and returns a <see cref="BillboardGeometry"/> with per-glyph positions, sizes, and UV rects.
     /// This is the preferred method for SDF text rendering — one entity per text string.
     /// </summary>
@@ -271,18 +291,26 @@ public static class TextLayoutHelper
     /// <param name="fontSize">Desired font size in world-space units.</param>
     /// <param name="origin">World-space origin position for the first glyph.</param>
     /// <param name="anchor">The anchor point within the text bounding rectangle. Defaults to BottomLeft (preserves legacy behavior).</param>
+    /// <param name="bounds">Output parameter receiving the total bounding dimensions of the laid-out text.</param>
+    /// <param name="anchorOffset">Output parameter receiving the offset from BottomLeft to the named anchor point.</param>
     /// <returns>A <see cref="BillboardGeometry"/> containing per-glyph billboard data.</returns>
     public static BillboardGeometry LayoutGeometry(
         string text,
         SDFFontAtlas atlas,
         float fontSize,
         Vector3 origin,
-        BillboardAnchor anchor = BillboardAnchor.BottomLeft
+        BillboardAnchor anchor,
+        out TextBounds bounds,
+        out Vector3 anchorOffset
     )
     {
         var geo = new BillboardGeometry();
         if (string.IsNullOrEmpty(text))
+        {
+            bounds = default;
+            anchorOffset = default;
             return geo;
+        }
 
         float scale = fontSize / atlas.LineHeight;
         Vector3 cursor = origin;
@@ -315,8 +343,8 @@ public static class TextLayoutHelper
         }
 
         // Compute bounds and anchor offset, then subtract from all glyph positions
-        TextBounds bounds = ComputeBounds(text, atlas, fontSize);
-        Vector3 anchorOffset = ComputeAnchorOffset(anchor, bounds);
+        bounds = ComputeBounds(text, atlas, fontSize);
+        anchorOffset = ComputeAnchorOffset(anchor, bounds);
 
         if (anchorOffset != Vector3.Zero)
         {
@@ -335,10 +363,11 @@ public static class TextLayoutHelper
     /// <param name="fontSize">Desired font size in world-space units.</param>
     /// <param name="origin">World-space origin position for the first glyph.</param>
     /// <param name="color">The text color.</param>
+    /// <param name="background">The optional background color (null for no background quad).</param>
     /// <param name="anchor">The anchor point within the text bounding rectangle. Defaults to BottomLeft (preserves legacy behavior).</param>
     /// <param name="materialName">The billboard material name (e.g., "SDFFont").</param>
     /// <param name="fixedSize">Whether billboard sizes are fixed screen-space pixels.</param>
-    /// <param name="isDynamic">Whether the billboard geometry should use dynamic GPU buffers.</param>
+    /// <param name="cullDistance">The distance beyond which the billboard should be culled (0 for no culling).</param>
     /// <returns>A fully-configured <see cref="BillboardComponent"/>.</returns>
     public static BillboardComponent CreateTextBillboard(
         string text,
@@ -346,14 +375,38 @@ public static class TextLayoutHelper
         float fontSize,
         Vector3 origin,
         Color4 color,
+        Color4? background = null,
         BillboardAnchor anchor = BillboardAnchor.BottomLeft,
+        Vector4? padding = null,
         string? materialName = "SDFFont",
         bool fixedSize = false,
-        bool isDynamic = false,
         float cullDistance = 0
     )
     {
-        var geo = LayoutGeometry(text, atlas, fontSize, origin, anchor);
+        var geo = LayoutGeometry(text, atlas, fontSize, origin, anchor, out var bounds, out var anchorOffset);
+        if (background.HasValue)
+        {
+            // Padding: X = left, Y = bottom, Z = right, W = top
+            float padLeft = padding?.X ?? 0;
+            float padBottom = padding?.Y ?? 0;
+            float padRight = padding?.Z ?? 0;
+            float padTop = padding?.W ?? 0;
+
+            float bgWidth = bounds.Width + padLeft + padRight;
+            float bgHeight = bounds.Height + padBottom + padTop;
+
+            // Center of the text box relative to origin (baseline), accounting for descenders.
+            // DescenderOffset is ≤ 0; the text box spans [DescenderOffset, DescenderOffset + Height] in Y.
+            float textCenterX = bounds.Width / 2f;
+            float textCenterY = bounds.DescenderOffset + bounds.Height / 2f;
+
+            // Shift center by asymmetric padding.
+            float bgCenterX = textCenterX + (padRight - padLeft) / 2f;
+            float bgCenterY = textCenterY + (padTop - padBottom) / 2f;
+
+            Vector3 bgPosition = origin + new Vector3(bgCenterX, bgCenterY, 0) - anchorOffset;
+            geo.Insert(0, bgPosition, bgWidth, bgHeight, background.Value);
+        }
         return new BillboardComponent
         {
             BillboardGeometry = geo,

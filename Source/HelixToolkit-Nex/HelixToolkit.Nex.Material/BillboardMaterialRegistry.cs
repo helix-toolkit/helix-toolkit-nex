@@ -89,7 +89,7 @@ public static class BillboardMaterialRegistry
                     vec4 color = getColor();
 
                     // Sample bindless texture when available
-                    if (getTextureId() > 0u) {
+                    if (getTextureId() > 0u && hasUV()) {
                         vec4 texColor = textureBindless2D(getTextureId(), getSamplerId(), getUV());
                         color *= texColor;
                     }
@@ -109,6 +109,9 @@ public static class BillboardMaterialRegistry
                 TypeId = 1,
                 Name = "SDFFont",
                 OutputColorImplementation = """
+                    if (!hasUV()) {
+                        return getColor(); // No texture, fallback to vertex color
+                    }
                     vec2 aemrange = getSdfAemrange();
                     vec2 atlas_size = getSdfAtlasSize();
                     float glyph_cell_size = getSdfGlyphCellSize();

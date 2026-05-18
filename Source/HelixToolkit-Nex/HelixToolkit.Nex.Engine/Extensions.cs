@@ -32,12 +32,12 @@ public static class BillboardExtensions
         BuildinFontAtlas fontType,
         string text,
         float fontSize,
-        Vector3 origin,
         Color4 color,
+        Color4? background = null,
         BillboardAnchor anchor = BillboardAnchor.Center,
         string materialName = "SDFFont",
         bool fixedSize = true,
-        bool isDynamic = false
+        float cullDistance = 0
     )
     {
         var fontAtlasRepo = engine.ResourceManager.FontAtlasRepository;
@@ -50,12 +50,13 @@ public static class BillboardExtensions
             text,
             atlas,
             fontSize,
-            origin,
+            Vector3.Zero,
             color,
+            background,
             anchor,
             materialName: materialName,
             fixedSize: fixedSize,
-            isDynamic: isDynamic
+            cullDistance: cullDistance
         );
     }
 
@@ -64,12 +65,12 @@ public static class BillboardExtensions
         string fontType,
         string text,
         float fontSize,
-        Vector3 origin,
         Color4 color,
+        Color4? background = null,
         BillboardAnchor anchor = BillboardAnchor.Center,
         string materialName = "SDFFont",
         bool fixedSize = true,
-        bool isDynamic = false
+        float cullDistance = 0
     )
     {
         var fontAtlasRepo = engine.ResourceManager.FontAtlasRepository;
@@ -79,12 +80,13 @@ public static class BillboardExtensions
                 text,
                 atlas!,
                 fontSize,
-                origin,
+                Vector3.Zero,
                 color,
+                background,
                 anchor,
                 materialName: materialName,
                 fixedSize: fixedSize,
-                isDynamic: isDynamic
+                cullDistance: cullDistance
             );
         }
         return null;

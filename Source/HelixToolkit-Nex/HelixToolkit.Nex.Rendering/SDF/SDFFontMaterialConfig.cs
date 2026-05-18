@@ -90,12 +90,15 @@ public struct SDFFontMaterialConfig
     {
         string edgeThresholdStr = FormatFloat(edgeThreshold);
 
-        return $"""
+        return $$"""
+                    if (!hasUV()) {
+                        return getColor(); // No texture, fallback to vertex color
+                    }
                     vec2 aemrange = getSdfAemrange();
                     vec2 atlas_size = getSdfAtlasSize();
                     float glyph_cell_size = getSdfGlyphCellSize();
                     const float SUPERSAMPLE_THRESHOLD = 20.0;
-                    float threshold_em = mix(aemrange[1], aemrange[0], {edgeThresholdStr});
+                    float threshold_em = mix(aemrange[1], aemrange[0], {{edgeThresholdStr}});
 
                     vec2 uv = getUV();
                     float screen_px_scale = max(length(atlas_size * fwidth(uv)), 1.0);
