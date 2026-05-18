@@ -55,9 +55,11 @@ public static class Extensions
         SDFFontAtlas atlas,
         float fontSize,
         Color4 color,
+        Color4? background,
         BillboardAnchor anchor = BillboardAnchor.Center,
         string materialName = "SDFFont",
-        bool fixedSize = true
+        bool fixedSize = true,
+        float cullDistance = 0
     )
     {
         var comp = TextLayoutHelper.CreateTextBillboard(
@@ -66,9 +68,11 @@ public static class Extensions
             fontSize,
             Vector3.Zero,
             color,
+            background,
             BillboardAnchor.Center,
-            materialName,
-            fixedSize: fixedSize
+            materialName: materialName,
+            fixedSize: fixedSize,
+            cullDistance: cullDistance
         );
         node.Billboard = comp;
         return node;

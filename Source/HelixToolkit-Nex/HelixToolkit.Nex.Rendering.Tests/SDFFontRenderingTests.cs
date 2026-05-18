@@ -1,5 +1,7 @@
 using System.Numerics;
+using HelixToolkit.Nex.Geometries;
 using HelixToolkit.Nex.Maths;
+using HelixToolkit.Nex.Rendering;
 using HelixToolkit.Nex.Rendering.SDF;
 using HelixToolkit.Nex.Repository;
 

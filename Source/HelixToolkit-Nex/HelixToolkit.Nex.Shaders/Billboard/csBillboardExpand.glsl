@@ -127,7 +127,7 @@ void main() {
     d.samplerIndex   = info.samplerIndex;
     d.uvRect         = uvRect;
     d.pixelOffset    = pixelOff;
-    d._drawPadding   = vec2(0.0);
+    d.type           = v.type;
 
     // --- Precompute and pack SDF atlas parameters ---
     float halfRange = info.sdfDistanceRange * 0.5;
