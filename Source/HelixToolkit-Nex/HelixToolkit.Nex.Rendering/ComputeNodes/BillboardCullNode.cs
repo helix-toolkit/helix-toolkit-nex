@@ -18,11 +18,6 @@ public sealed class BillboardCullNode : ComputeNode
     /// </summary>
     public float MinScreenSize { get; set; } = 1f;
 
-    /// <summary>
-    /// Gets or sets the maximum distance from the camera beyond which billboards are culled.
-    /// </summary>
-    public float MaxDistance { get; set; } = 0f;
-
     public override string Name => nameof(BillboardCullNode);
 
     public override Color4 DebugColor => Color.CadetBlue;
@@ -116,7 +111,6 @@ public sealed class BillboardCullNode : ComputeNode
             CameraUp = up,
             FovY = fovY,
             MinScreenSize = MinScreenSize,
-            MaxDistance = MaxDistance,
         };
         res.CmdBuffer.UpdateBuffer(_billboardExpandArgsBuffer, ref expandArgs);
         res.Deps.PushBuffer(_billboardExpandArgsBuffer);

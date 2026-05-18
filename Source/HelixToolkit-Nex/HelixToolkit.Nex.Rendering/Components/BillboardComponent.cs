@@ -95,6 +95,13 @@ public struct BillboardComponent()
     public bool Hitable { get; set; } = true;
 
     /// <summary>
+    /// Gets or sets the distance at which objects are culled from rendering.
+    /// </summary>
+    /// <remarks>A higher value increases the range at which objects remain visible, which may impact
+    /// performance. A value of 0 disables culling based on distance.</remarks>
+    public float CullDistance { get; set; } = 0;
+
+    /// <summary>
     /// Gets or sets the name of the billboard material.
     /// If specified, this name is used to look up the material in the <see cref="BillboardMaterialRegistry"/>.
     /// If not found, it falls back to use <see cref="BillboardMaterialId"/>.
@@ -142,6 +149,7 @@ public struct BillboardComponent()
             SdfAtlasWidth = SdfAtlasWidth,
             SdfAtlasHeight = SdfAtlasHeight,
             WorldTransform = worldTransform,
+            CullDistance = CullDistance,
         };
     }
 }
