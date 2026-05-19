@@ -21,6 +21,7 @@ namespace SceneSamples;
 ///  Row 5 – Fixed-size (screen-space) billboards
 ///  Row 6 – Axis-constrained billboards (Y-axis billboard pole)
 ///  Row 7 – Cull-distance demo (labels at increasing distances)
+///  Row 8 – Multi-line Text
 /// </summary>
 public sealed class BillboardShowcaseScene : IScene
 {
