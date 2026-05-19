@@ -1,9 +1,8 @@
 namespace HelixToolkit.Nex.Geometries;
 
-[Flags]
 public enum BillboardVertType : uint
 {
-    None,
+    SolidColor,
     UV = 1,
 }
 
@@ -104,7 +103,7 @@ public partial class BillboardGeometry : HxObservableObject
                 Size = new Vector2(width, height),
                 UvRect = Vector4.Zero,
                 Color = Vector4.Zero, // alpha=0 signals "use uniform color"
-                Type = (uint)BillboardVertType.None,
+                Type = (uint)BillboardVertType.SolidColor,
             }
         );
         _dirty = true;
@@ -128,7 +127,7 @@ public partial class BillboardGeometry : HxObservableObject
                 Size = new Vector2(width, height),
                 UvRect = Vector4.Zero,
                 Color = Vector4.Zero, // alpha=0 signals "use uniform color"
-                Type = (uint)BillboardVertType.None,
+                Type = (uint)BillboardVertType.SolidColor,
             }
         );
         _dirty = true;
@@ -151,7 +150,7 @@ public partial class BillboardGeometry : HxObservableObject
                 Size = new Vector2(width, height),
                 UvRect = Vector4.Zero,
                 Color = color, // alpha=0 signals "use uniform color"
-                Type = (uint)BillboardVertType.None,
+                Type = (uint)BillboardVertType.SolidColor,
             }
         );
         _dirty = true;
@@ -176,7 +175,7 @@ public partial class BillboardGeometry : HxObservableObject
                 Size = new Vector2(width, height),
                 UvRect = Vector4.Zero,
                 Color = color, // alpha=0 signals "use uniform color"
-                Type = (uint)BillboardVertType.None,
+                Type = (uint)BillboardVertType.SolidColor,
             }
         );
         _dirty = true;

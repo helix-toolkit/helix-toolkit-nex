@@ -44,23 +44,33 @@ void main() {
     vec4 clipCenter = FPBuffer(pc.value.fpConstAddress).fpConstants.viewProjection * vec4(d.worldPos, 1.0);
     vec2 ndc = clipCenter.xy / clipCenter.w;
 
-    // Convert NDC to Screen Space (Pixels)
-    vec2 pixelPos = (ndc * 0.5 + 0.5) * screenDims;
+    // 2. Convert NDC to Screen Space (Pixels) to get the raw continuous position
+    vec2 rawPixelPos = (ndc * 0.5 + 0.5) * screenDims;
+    
+    // Apply per-glyph pixel offset
+    rawPixelPos += d.pixelOffset;
 
-    // 2. Snap the anchor position to the nearest pixel center to minimize blurriness
-    pixelPos = pixelPos + 0.5; 
-    // Apply per-glyph pixel offset from anchor
-    pixelPos += d.pixelOffset;
+    // Get exact integer pixel dimensions
+    vec2 size = max(round(vec2(d.screenWidth, d.screenHeight)), vec2(1.0));
+    vec2 halfSize = size * 0.5;
 
-    // Convert back to NDC
-    vec2 snappedNDC = (pixelPos / screenDims) * 2.0 - 1.0;
+    // 3. Snap the corner to a pixel boundary (integer)
+    // This guarantees that both even and odd sized quads perfectly align with pixel edges.
+    vec2 cornerPos = rawPixelPos - halfSize;
+    vec2 snappedCorner = round(cornerPos); 
+    
+    // Re-derive the snapped center from the perfectly aligned corner
+    vec2 snappedCenter = snappedCorner + halfSize;
+
+    // 4. Convert snapped center back to NDC
+    vec2 snappedNDC = (snappedCenter / screenDims) * 2.0 - 1.0;
     
     // Reconstruct clip space position
     clipCenter.xy = snappedNDC * clipCenter.w;
 
-    // Use snapped sizes to keep the texels 1:1 with pixels as much as possible
-    float pixelSizeX = max(round(d.screenWidth), 1.0) / screenDims.x;
-    float pixelSizeY = max(round(d.screenHeight), 1.0) / screenDims.y;
+    // 5. Use the exact snapped sizes for vertex offsets
+    float pixelSizeX = size.x / screenDims.x;
+    float pixelSizeY = size.y / screenDims.y;
 
     vec2 uv = QUAD_UVS[gl_VertexIndex];
     clipCenter.xy += vec2(uv.x * pixelSizeX, uv.y * pixelSizeY) * clipCenter.w;
@@ -73,7 +83,7 @@ void main() {
     v_uv           = vec2(texU, texV);
 
     v_color        = d.color;
-    v_screenDim    = vec2(d.screenWidth, d.screenHeight);
+    v_screenDim    = size; // Use the snapped size here too
     v_entityId     = d.packedEntityId;
     v_fragWorldPos = d.worldPos;
     v_billboardType = d.type;

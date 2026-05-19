@@ -4,7 +4,7 @@
 /// Per-billboard input vertex data stored in a single interleaved buffer.
 /// Written by the CPU (BillboardGeometry), read by the compute expand shader.
 
-#define BILLBOARD_VERT_TYPE_NONE 0 // None
+#define BILLBOARD_VERT_TYPE_SOLID 0 // Solid color
 #define BILLBOARD_VERT_TYPE_UV 1 // Use UV for sampling
 
 @code_gen

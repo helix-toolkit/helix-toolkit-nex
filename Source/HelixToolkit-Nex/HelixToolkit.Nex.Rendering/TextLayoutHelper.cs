@@ -47,45 +47,6 @@ public enum BillboardAnchor
 }
 
 /// <summary>
-/// Describes a single glyph billboard produced by <see cref="TextLayoutHelper"/>.
-/// Contains the world-space position, dimensions, UV coordinates, and texture references
-/// needed to render one glyph as a camera-facing quad.
-/// </summary>
-public readonly struct GlyphBillboardDescriptor
-{
-    /// <summary>
-    /// Gets the world-space position of the glyph billboard.
-    /// </summary>
-    public required Vector3 WorldPosition { get; init; }
-
-    /// <summary>
-    /// Gets the width of the glyph billboard in world-space units.
-    /// </summary>
-    public required float Width { get; init; }
-
-    /// <summary>
-    /// Gets the height of the glyph billboard in world-space units.
-    /// </summary>
-    public required float Height { get; init; }
-
-    /// <summary>
-    /// Gets the UV rectangle (u_min, v_min, u_max, v_max) defining the glyph's
-    /// sub-region in the font atlas texture.
-    /// </summary>
-    public required Vector4 UVRect { get; init; }
-
-    /// <summary>
-    /// Gets the bindless texture index for the SDF font atlas texture.
-    /// </summary>
-    public required uint TextureIndex { get; init; }
-
-    /// <summary>
-    /// Gets the bindless sampler index for the SDF font atlas texture.
-    /// </summary>
-    public required uint SamplerIndex { get; init; }
-}
-
-/// <summary>
 /// Converts a text string and <see cref="SDFFontAtlas"/> into a list of billboard descriptors
 /// for rendering text as camera-facing quads. Supports horizontal left-to-right layout
 /// with multi-line text via newline characters.
@@ -148,7 +109,13 @@ public static class TextLayoutHelper
         float width = maxLineWidth;
         float height = maxAscender - maxDescender + (lineCount - 1) * fontSize;
 
-        return new TextBounds { Width = width, Height = height, DescenderOffset = maxDescender, Ascender = maxAscender };
+        return new TextBounds
+        {
+            Width = width,
+            Height = height,
+            DescenderOffset = maxDescender,
+            Ascender = maxAscender,
+        };
     }
 
     /// <summary>
@@ -187,106 +154,22 @@ public static class TextLayoutHelper
     }
 
     /// <summary>
-    /// Lays out glyphs for the given text string, producing one billboard descriptor per visible glyph.
-    /// </summary>
-    /// <param name="text">The text to lay out.</param>
-    /// <param name="atlas">The SDF font atlas containing glyph metrics.</param>
-    /// <param name="fontSize">Desired font size in world-space units.</param>
-    /// <param name="origin">World-space origin position for the first glyph.</param>
-    /// <param name="anchor">The anchor point within the text bounding rectangle. Defaults to BottomLeft (preserves legacy behavior).</param>
-    /// <returns>A list of billboard descriptors, one per visible (non-newline) glyph.</returns>
-    public static List<GlyphBillboardDescriptor> Layout(
-        string text,
-        SDFFontAtlas atlas,
-        float fontSize,
-        Vector3 origin,
-        BillboardAnchor anchor = BillboardAnchor.BottomLeft
-    )
-    {
-        var descriptors = new List<GlyphBillboardDescriptor>();
-
-        if (string.IsNullOrEmpty(text))
-        {
-            return descriptors;
-        }
-
-        float scale = fontSize / atlas.LineHeight;
-        Vector3 cursor = origin;
-
-        for (int i = 0; i < text.Length; i++)
-        {
-            char c = text[i];
-
-            if (c == '\n')
-            {
-                cursor.Y -= fontSize;
-                cursor.X = origin.X;
-                continue;
-            }
-
-            GlyphMetrics glyph = atlas.GetGlyph(c);
-
-            float width = glyph.GlyphWidth * scale;
-            float height = glyph.GlyphHeight * scale;
-
-            // Position is the CENTER of the glyph quad (billboard expands symmetrically from center)
-            // BearingX is offset from cursor to left edge, BearingY is offset from baseline to top edge
-            Vector3 position = new Vector3(
-                cursor.X + glyph.BearingX * scale + width * 0.5f,
-                cursor.Y + (glyph.BearingY - glyph.GlyphHeight * 0.5f) * scale,
-                cursor.Z
-            );
-
-            descriptors.Add(
-                new GlyphBillboardDescriptor
-                {
-                    WorldPosition = position,
-                    Width = width,
-                    Height = height,
-                    UVRect = glyph.UVRect,
-                    TextureIndex = atlas.Texture,
-                    SamplerIndex = atlas.Sampler,
-                }
-            );
-
-            cursor.X += glyph.AdvanceWidth * scale;
-        }
-
-        // Compute bounds and anchor offset, then subtract from all glyph positions
-        TextBounds bounds = ComputeBounds(text, atlas, fontSize);
-        Vector3 anchorOffset = ComputeAnchorOffset(anchor, bounds);
-
-        if (anchorOffset != Vector3.Zero)
-        {
-            for (int i = 0; i < descriptors.Count; i++)
-            {
-                var desc = descriptors[i];
-                descriptors[i] = new GlyphBillboardDescriptor
-                {
-                    WorldPosition = desc.WorldPosition - anchorOffset,
-                    Width = desc.Width,
-                    Height = desc.Height,
-                    UVRect = desc.UVRect,
-                    TextureIndex = desc.TextureIndex,
-                    SamplerIndex = desc.SamplerIndex,
-                };
-            }
-        }
-
-        return descriptors;
-    }
-
-    /// <summary>
     /// Convenience overload of <see cref="LayoutGeometry"/> with default <see cref="BillboardAnchor.BottomLeft"/> anchor.
     /// </summary>
     public static BillboardGeometry LayoutGeometry(
         string text,
         SDFFontAtlas atlas,
-        float fontSize,
-        Vector3 origin
+        float fontSize
     )
     {
-        return LayoutGeometry(text, atlas, fontSize, origin, BillboardAnchor.BottomLeft, out _, out _);
+        return LayoutGeometry(
+            text,
+            atlas,
+            fontSize,
+            BillboardAnchor.BottomLeft,
+            out _,
+            out _
+        );
     }
 
     /// <summary>
@@ -305,7 +188,6 @@ public static class TextLayoutHelper
         string text,
         SDFFontAtlas atlas,
         float fontSize,
-        Vector3 origin,
         BillboardAnchor anchor,
         out TextBounds bounds,
         out Vector3 anchorOffset
@@ -320,7 +202,7 @@ public static class TextLayoutHelper
         }
 
         float scale = fontSize / atlas.LineHeight;
-        Vector3 cursor = origin;
+        Vector3 cursor = Vector3.Zero;
 
         for (int i = 0; i < text.Length; i++)
         {
@@ -329,7 +211,7 @@ public static class TextLayoutHelper
             if (c == '\n')
             {
                 cursor.Y -= fontSize;
-                cursor.X = origin.X;
+                cursor.X = 0;
                 continue;
             }
 
@@ -368,7 +250,6 @@ public static class TextLayoutHelper
     /// <param name="text">The text to lay out.</param>
     /// <param name="atlas">The SDF font atlas containing glyph metrics and atlas parameters.</param>
     /// <param name="fontSize">Desired font size in world-space units.</param>
-    /// <param name="origin">World-space origin position for the first glyph.</param>
     /// <param name="color">The text color.</param>
     /// <param name="background">The optional background color (null for no background quad).</param>
     /// <param name="anchor">The anchor point within the text bounding rectangle. Defaults to BottomLeft (preserves legacy behavior).</param>
@@ -380,7 +261,6 @@ public static class TextLayoutHelper
         string text,
         SDFFontAtlas atlas,
         float fontSize,
-        Vector3 origin,
         Color4 color,
         Color4? background = null,
         BillboardAnchor anchor = BillboardAnchor.BottomLeft,
@@ -390,7 +270,14 @@ public static class TextLayoutHelper
         float cullDistance = 0
     )
     {
-        var geo = LayoutGeometry(text, atlas, fontSize, origin, anchor, out var bounds, out var anchorOffset);
+        var geo = LayoutGeometry(
+            text,
+            atlas,
+            fontSize,
+            anchor,
+            out var bounds,
+            out var anchorOffset
+        );
         if (background.HasValue)
         {
             // Padding: X = left, Y = bottom, Z = right, W = top
@@ -412,7 +299,7 @@ public static class TextLayoutHelper
             float bgCenterX = textCenterX + (padRight - padLeft) / 2f;
             float bgCenterY = textCenterY + (padTop - padBottom) / 2f;
 
-            Vector3 bgPosition = origin + new Vector3(bgCenterX, bgCenterY, 0) - anchorOffset;
+            Vector3 bgPosition = new Vector3(bgCenterX, bgCenterY, 0) - anchorOffset;
             geo.Insert(0, bgPosition, bgWidth, bgHeight, background.Value);
         }
         return new BillboardComponent

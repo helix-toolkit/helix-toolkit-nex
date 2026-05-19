@@ -69,7 +69,7 @@ public static class Extensions
             Vector3.Zero,
             color,
             background,
-            BillboardAnchor.Center,
+            anchor,
             materialName: materialName,
             fixedSize: fixedSize,
             cullDistance: cullDistance
