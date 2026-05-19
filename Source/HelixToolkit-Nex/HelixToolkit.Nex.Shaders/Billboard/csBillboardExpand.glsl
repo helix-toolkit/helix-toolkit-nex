@@ -63,8 +63,6 @@ void main() {
     // Use per-billboard color if alpha > 0, otherwise use uniform color from push constants
     vec4 color = v.color.a > 0.0 ? v.color : info.color;
 
-    vec4 uvRect = v.uvRect;
-
     // --- Frustum cull using anchor world position (not per-glyph) ---
     // All glyphs in a text string share the same cull decision based on the anchor.
     vec4 clip = args.viewProjection * anchorWorld;
@@ -92,6 +90,9 @@ void main() {
         screenHeight = (height / max(dist, 0.001)) * projFactor;
     }
 
+    // Screen-size cull
+    if (max(screenWidth, screenHeight) < args.minScreenSize) return;
+
     // --- Compute per-glyph pixel offset from anchor ---
     // The local offset (v.position.xyz) is in the text's local coordinate system.
     // Convert it to a pixel offset so the vertex shader can apply it after pixel-snapping the anchor.
@@ -105,9 +106,6 @@ void main() {
         float pixelsPerUnit = projFactor / max(dist, 0.001);
         pixelOff = localOffset.xy * pixelsPerUnit;
     }
-
-    // Screen-size cull
-    if (max(screenWidth, screenHeight) < args.minScreenSize) return;
 
     // --- Pack entity ID ---
     uvec2 objId = packObjectInfo(info.worldId, info.entityId, idx);
@@ -123,19 +121,10 @@ void main() {
     d.color          = color;
     d.packedEntityId = packedId;
     d.screenHeight   = screenHeight;
-    d.textureIndex   = info.textureIndex;
-    d.samplerIndex   = info.samplerIndex;
-    d.uvRect         = uvRect;
+    d.uvRect         = v.uvRect;
     d.pixelOffset    = pixelOff;
     d.type           = v.type;
-
-    // --- Precompute and pack SDF atlas parameters ---
-    float halfRange = info.sdfDistanceRange * 0.5;
-    float aemrangeMin = (info.sdfDistanceRangeMiddle - halfRange) / info.sdfGlyphCellSize;
-    float aemrangeMax = (info.sdfDistanceRangeMiddle + halfRange) / info.sdfGlyphCellSize;
-    d.sdfAemrangePacked    = packHalf2x16(vec2(aemrangeMin, aemrangeMax));
-    d.sdfAtlasSizePacked   = (uint(info.sdfAtlasHeight) << 16) | uint(info.sdfAtlasWidth);
-    d.sdfGlyphCellSizeBits = floatBitsToUint(info.sdfGlyphCellSize);
+    d.infoIndex      = v.infoIndex;
 
     outBuf.data[slot] = d;
 }

@@ -3,17 +3,12 @@
 #include "Billboard/BillboardStructs.glsl"
 
 layout(location = 0) in vec2  v_uv;
-layout(location = 1) in vec4  v_color;
-layout(location = 2) in float v_screenWidth;
-layout(location = 3) in float v_screenHeight;
-layout(location = 4) in flat vec2  v_entityId;
-layout(location = 5) in flat uint  v_textureIndex;
-layout(location = 6) in flat uint  v_samplerIndex;
-layout(location = 7) in flat vec3  v_fragWorldPos;
-layout(location = 8) in flat uint  v_sdfAemrangePacked;
-layout(location = 9) in flat uint  v_sdfAtlasSizePacked;
-layout(location = 10) in flat uint v_sdfGlyphCellSizeBits;
-layout(location = 11) in flat uint v_billboardType;
+layout(location = 1) in flat vec2 v_screenDim;
+layout(location = 2) in flat vec4  v_color;
+layout(location = 3) in flat vec2  v_entityId;
+layout(location = 4) in flat uint v_billboardType;
+layout(location = 5) in flat uint v_infoIndex;
+layout(location = 6) in flat vec3  v_fragWorldPos;
 
 layout(location = 0) out vec4 outColor;
 layout(location = 1) out vec2 outEntityId;
@@ -26,6 +21,21 @@ layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer FP
     FPConstants fpConstants;
 };
 
+layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer BillboardInfoBuffer {
+    BillboardInfo info[];
+};
+
+BillboardInfoBuffer billboardInfoBuf = BillboardInfoBuffer(pc.value.billboardInfoAddress);
+
+BillboardInfo billboardInfo = billboardInfoBuf.info[v_infoIndex];
+
+FPConstants fpConst = FPBuffer(pc.value.fpConstAddress).fpConstants;
+
+float halfRange = billboardInfo.sdfDistanceRange * 0.5;
+float aemrangeMin = (billboardInfo.sdfDistanceRangeMiddle - halfRange) / billboardInfo.sdfGlyphCellSize;
+float aemrangeMax = (billboardInfo.sdfDistanceRangeMiddle + halfRange) / billboardInfo.sdfGlyphCellSize;
+
+/*UTILITY_FUNCTIONS_BEGIN*/
 vec2 getUV() {
     return v_uv;
 }
@@ -35,19 +45,19 @@ vec4 getColor() {
 }
 
 uint getTextureId() {
-    return v_textureIndex;
+    return billboardInfo.textureIndex;
 }
 
 uint getSamplerId() {
-    return v_samplerIndex;
+    return billboardInfo.samplerIndex;
 }
 
 float getBillboardWidth() {
-    return v_screenWidth;
+    return v_screenDim.x;
 }
 
 float getBillboardHeight() {
-    return v_screenHeight;
+    return v_screenDim.y;
 }
 
 bool hasUV() {
@@ -55,20 +65,17 @@ bool hasUV() {
 }
 
 vec2 getSdfAemrange() {
-    return unpackHalf2x16(v_sdfAemrangePacked);
+    return vec2(aemrangeMin, aemrangeMax);
 }
 
 vec2 getSdfAtlasSize() {
-    return vec2(float(v_sdfAtlasSizePacked & 0xFFFFu), float(v_sdfAtlasSizePacked >> 16));
+    return vec2(billboardInfo.sdfAtlasWidth, billboardInfo.sdfAtlasHeight);
 }
 
 float getSdfGlyphCellSize() {
-    return uintBitsToFloat(v_sdfGlyphCellSizeBits);
+    return billboardInfo.sdfGlyphCellSize;
 }
 
-FPConstants fpConst = FPBuffer(pc.value.fpConstAddress).fpConstants;
-
-/*UTILITY_FUNCTIONS_BEGIN*/
 uint64_t getTimeMs() {
     return fpConst.timeMs;
 }
@@ -158,8 +165,8 @@ vec4 outputColor() {
     vec4 color = v_color;
 
     // Optional texture sampling via bindless
-    if (v_textureIndex > 0u) {
-        vec4 texColor = textureBindless2D(v_textureIndex, v_samplerIndex, v_uv);
+    if (getTextureId() > 0u) {
+        vec4 texColor = textureBindless2D(getTextureId(), getSamplerId(), getUV());
         color *= texColor;
     }
 

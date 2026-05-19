@@ -3,17 +3,12 @@
 #include "Billboard/BillboardStructs.glsl"
 
 layout(location = 0) out vec2  v_uv;
-layout(location = 1) out vec4  v_color;
-layout(location = 2) out float v_screenWidth;
-layout(location = 3) out float v_screenHeight;
-layout(location = 4) out flat vec2  v_entityId;
-layout(location = 5) out flat uint  v_textureIndex;
-layout(location = 6) out flat uint  v_samplerIndex;
-layout(location = 7) out flat vec3  v_fragWorldPos;
-layout(location = 8) out flat uint  v_sdfAemrangePacked;
-layout(location = 9) out flat uint  v_sdfAtlasSizePacked;
-layout(location = 10) out flat uint v_sdfGlyphCellSizeBits;
-layout(location = 11) out flat uint v_billboardType;
+layout(location = 1) out flat vec2 v_screenDim;
+layout(location = 2) out flat vec4 v_color;
+layout(location = 3) out flat vec2 v_entityId;
+layout(location = 4) out flat uint v_billboardType;
+layout(location = 5) out flat uint v_infoIndex;
+layout(location = 6) out flat vec3 v_fragWorldPos;
 
 layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer BillboardDrawDataBuffer {
     BillboardDrawData data[];
@@ -79,14 +74,9 @@ void main() {
     v_uv           = vec2(texU, texV);
 
     v_color        = d.color;
-    v_screenWidth  = d.screenWidth;
-    v_screenHeight = d.screenHeight;
+    v_screenDim    = vec2(d.screenWidth, d.screenHeight);
     v_entityId     = d.packedEntityId;
-    v_textureIndex = d.textureIndex;
-    v_samplerIndex = d.samplerIndex;
     v_fragWorldPos = d.worldPos;
-    v_sdfAemrangePacked    = d.sdfAemrangePacked;
-    v_sdfAtlasSizePacked   = d.sdfAtlasSizePacked;
-    v_sdfGlyphCellSizeBits = d.sdfGlyphCellSizeBits;
     v_billboardType = d.type;
+    v_infoIndex    = d.infoIndex;
 }
