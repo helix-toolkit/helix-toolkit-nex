@@ -79,7 +79,7 @@ internal sealed class BillboardDemo : IDisposable
     private MaterialTypeId _shadowMaterialId;
 
     // Solar system scene
-    private SolarSystemScene? _solarSystemScene;
+    private BillboardShowcaseScene? _scene;
     private Node? _solarSystemRoot;
 
     public ImGuiRenderer? ImGui => _imGuiRenderer;
@@ -109,6 +109,11 @@ internal sealed class BillboardDemo : IDisposable
 
         // Register custom SDF material variants before building the engine
         RegisterSDFMaterialVariants();
+
+        // Register showcase scene materials before building the engine so they are
+        // included in the uber-shader compiled by CreatePipelinesFromRegistry()
+        _scene = new BillboardShowcaseScene();
+        _scene.RegisterMaterials();
 
         // Build the engine with billboard rendering nodes
         _engine = EngineBuilder
@@ -218,9 +223,9 @@ internal sealed class BillboardDemo : IDisposable
         var world = _worldDataProvider!.World;
         _root = new Node(world, "Root");
 
-        // Build the solar system scene
-        _solarSystemScene = new SolarSystemScene();
-        _solarSystemRoot = ((IScene)_solarSystemScene).Build(
+        // Build the billboard showcase scene (_scene and its materials were already registered
+        // before the engine was built in Initialize())
+        _solarSystemRoot = ((IScene)_scene!).Build(
             _context,
             _engine!.ResourceManager,
             _worldDataProvider!
@@ -337,7 +342,7 @@ internal sealed class BillboardDemo : IDisposable
             _lastTimestamp = Stopwatch.GetTimestamp();
         float dt = (float)(Stopwatch.GetTimestamp() - _lastTimestamp) / Stopwatch.Frequency;
         _lastTimestamp = Stopwatch.GetTimestamp();
-        _solarSystemScene?.Tick(dt);
+        _scene?.Tick(dt);
         _imGuiRenderer.BeginFrame(new Vector2(width, height));
         DrawUI(
             _renderContext.FinalOutputTexture,

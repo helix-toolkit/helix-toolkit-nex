@@ -212,10 +212,25 @@ public static class BillboardMaterialRegistry
     /// Registers a new billboard material type with an auto-assigned ID.
     /// </summary>
     /// <returns>The assigned type ID.</returns>
+    /// <summary>
+    /// The premultiplied-alpha blend config used by all SDF font materials.
+    /// </summary>
+    public static readonly ColorAttachment SdfFontBlendConfig = new()
+    {
+        BlendEnabled = true,
+        RgbBlendOp = BlendOp.Add,
+        AlphaBlendOp = BlendOp.Add,
+        SrcRGBBlendFactor = BlendFactor.One,
+        SrcAlphaBlendFactor = BlendFactor.One,
+        DstRGBBlendFactor = BlendFactor.OneMinusSrcAlpha,
+        DstAlphaBlendFactor = BlendFactor.OneMinusSrcAlpha,
+    };
+
     public static MaterialTypeId Register(
         string name,
         string outputColorImpl,
-        string? additionalCode = null
+        string? additionalCode = null,
+        ColorAttachment? blendConfig = null
     )
     {
         lock (_lockObj)
@@ -228,6 +243,7 @@ public static class BillboardMaterialRegistry
                 Name = name,
                 OutputColorImplementation = outputColorImpl,
                 AdditionalCode = additionalCode,
+                BlendConfig = blendConfig,
             };
 
             Register(registration);

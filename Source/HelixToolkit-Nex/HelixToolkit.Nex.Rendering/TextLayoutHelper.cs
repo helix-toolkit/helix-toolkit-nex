@@ -20,6 +20,13 @@ public readonly struct TextBounds
     /// Use this to correctly position a background quad so it covers descenders.
     /// </summary>
     public float DescenderOffset { get; init; }
+
+    /// <summary>
+    /// Y offset from the baseline (origin) to the top edge of the bounds (ascender of the first line).
+    /// Always positive. Use together with <see cref="Height"/> to correctly centre a background quad
+    /// over multi-line text: <c>centerY = Ascender - Height / 2</c>.
+    /// </summary>
+    public float Ascender { get; init; }
 }
 
 /// <summary>
@@ -141,7 +148,7 @@ public static class TextLayoutHelper
         float width = maxLineWidth;
         float height = maxAscender - maxDescender + (lineCount - 1) * fontSize;
 
-        return new TextBounds { Width = width, Height = height, DescenderOffset = maxDescender };
+        return new TextBounds { Width = width, Height = height, DescenderOffset = maxDescender, Ascender = maxAscender };
     }
 
     /// <summary>
@@ -395,10 +402,11 @@ public static class TextLayoutHelper
             float bgWidth = bounds.Width + padLeft + padRight;
             float bgHeight = bounds.Height + padBottom + padTop;
 
-            // Center of the text box relative to origin (baseline), accounting for descenders.
-            // DescenderOffset is ≤ 0; the text box spans [DescenderOffset, DescenderOffset + Height] in Y.
+            // Center of the text box relative to origin (first-line baseline), accounting for
+            // descenders and multiple lines. The top edge is at +Ascender and the bottom edge is at
+            // Ascender - Height, so the centre is Ascender - Height/2.
             float textCenterX = bounds.Width / 2f;
-            float textCenterY = bounds.DescenderOffset + bounds.Height / 2f;
+            float textCenterY = bounds.Ascender - bounds.Height / 2f;
 
             // Shift center by asymmetric padding.
             float bgCenterX = textCenterX + (padRight - padLeft) / 2f;
