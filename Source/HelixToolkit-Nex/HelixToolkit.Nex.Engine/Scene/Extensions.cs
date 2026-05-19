@@ -66,7 +66,6 @@ public static class Extensions
             text,
             atlas,
             fontSize,
-            Vector3.Zero,
             color,
             background,
             anchor,
