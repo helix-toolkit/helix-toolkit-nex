@@ -28,17 +28,67 @@ mat3 quatToMat3(in vec4 q) {
 }
 
 mat4 instanceTransfromToMat4(in InstanceTransform inst) {
-    mat3 rot = quatToMat3(inst.quaternion);
-    mat4 m = mat4(rot);
-    m[3].xyz = inst.translation;
-    m[0] *= inst.scale;
-    m[1] *= inst.scale;
-    m[2] *= inst.scale;
-    return m;
+//    mat3 rot = quatToMat3(inst.quaternion);
+//    mat4 m = mat4(rot);
+//    m[3].xyz = inst.translation;
+//    m[0] *= inst.scale;
+//    m[1] *= inst.scale;
+//    m[2] *= inst.scale;
+//    return m;
+    vec4 q = inst.quaternion;
+    
+    // 1. Vectorize the multiplications (Maps to fast FMA hardware instructions)
+    vec3 q2 = q.xyz * 2.0;
+    
+    vec3 wx_wy_wz = q.w * q2;
+    vec3 xx_xy_xz = q.x * q2;
+    vec2 yy_yz    = q.y * q2.yz;
+    float zz      = q.z * q2.z;
+    
+    // 2. Construct the scaled columns directly using vector addition/subtraction
+    vec3 col0 = vec3(
+        1.0 - yy_yz.x - zz,
+        xx_xy_xz.y + wx_wy_wz.z,
+        xx_xy_xz.z - wx_wy_wz.y
+    ) * inst.scale;
+
+    vec3 col1 = vec3(
+        xx_xy_xz.y - wx_wy_wz.z,
+        1.0 - xx_xy_xz.x - zz,
+        yy_yz.y + wx_wy_wz.x
+    ) * inst.scale;
+
+    vec3 col2 = vec3(
+        xx_xy_xz.z + wx_wy_wz.y,
+        yy_yz.y - wx_wy_wz.x,
+        1.0 - xx_xy_xz.x - yy_yz.x
+    ) * inst.scale;
+
+    // 3. Assemble the final mat4 directly with no intermediate copies
+    return mat4(
+        vec4(col0, 0.0),
+        vec4(col1, 0.0),
+        vec4(col2, 0.0),
+        vec4(inst.translation, 1.0)
+    );
 }
 
 vec3 transformCoord(in vec3 wp, in mat3 rot, float scale, in vec3 translation) {
     vec3 scaledPos = wp * scale;
     vec3 rotatedPos = rot * scaledPos;
+    return rotatedPos + translation;
+}
+
+// Optimized quaternion rotation function
+vec3 rotateQuaternion(vec3 v, vec4 q) {
+    // t = 2 * cross(q.xyz, v)
+    vec3 t = 2.0 * cross(q.xyz, v);
+    // v' = v + q.w * t + cross(q.xyz, t)
+    return v + q.w * t + cross(q.xyz, t);
+}
+
+vec3 transformCoordQuaternion(in vec3 wp, in vec4 quaternion, float scale, in vec3 translation) {
+    vec3 scaledPos = wp * scale;
+    vec3 rotatedPos = rotateQuaternion(scaledPos, quaternion);
     return rotatedPos + translation;
 }
