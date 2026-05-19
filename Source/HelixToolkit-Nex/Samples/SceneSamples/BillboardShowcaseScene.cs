@@ -5,7 +5,6 @@ using HelixToolkit.Nex.Engine.Scene;
 using HelixToolkit.Nex.Graphics;
 using HelixToolkit.Nex.Maths;
 using HelixToolkit.Nex.Rendering;
-using HelixToolkit.Nex.Rendering.Components;
 using HelixToolkit.Nex.Rendering.SDF;
 using HelixToolkit.Nex.Scene;
 
@@ -208,7 +207,6 @@ public sealed class BillboardShowcaseScene : IScene
                 $"Pole {i + 1}",
                 google,
                 1.4f,
-                Vector3.Zero,
                 new Color4(0.9f, 0.7f + i * 0.05f, 0.3f, 1f),
                 anchor: BillboardAnchor.Center,
                 materialName: MatPlain,
@@ -263,7 +261,6 @@ public sealed class BillboardShowcaseScene : IScene
             title,
             atlas,
             1.0f,
-            Vector3.Zero,
             new Color4(0.55f, 0.55f, 0.55f, 1f),
             anchor: BillboardAnchor.CenterLeft,
             materialName: MatPlain,
@@ -290,7 +287,6 @@ public sealed class BillboardShowcaseScene : IScene
             text,
             atlas,
             fontSize,
-            Vector3.Zero,
             color,
             background,
             BillboardAnchor.Center,
@@ -319,7 +315,6 @@ public sealed class BillboardShowcaseScene : IScene
             text,
             atlas,
             fontSize,
-            Vector3.Zero,
             color,
             background,
             anchor,
