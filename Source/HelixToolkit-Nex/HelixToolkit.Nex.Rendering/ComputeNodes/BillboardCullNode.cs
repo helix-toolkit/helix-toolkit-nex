@@ -111,6 +111,7 @@ public sealed class BillboardCullNode : ComputeNode
             CameraUp = up,
             FovY = fovY,
             MinScreenSize = MinScreenSize,
+            ScreenWidth = res.RenderContext.WindowSize.Width,
         };
         res.CmdBuffer.UpdateBuffer(_billboardExpandArgsBuffer, ref expandArgs);
         res.Deps.PushBuffer(_billboardExpandArgsBuffer);
