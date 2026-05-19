@@ -42,13 +42,13 @@ public sealed class SolarSystemScene : IScene
     // -----------------------------------------------------------------------
 
     /// <summary>Font size used for planet name labels.</summary>
-    public float PlanetLabelFontSize { get; set; } = 24f;
+    public float PlanetLabelFontSize { get; set; } = 2.4f;
 
     /// <summary>Font size used for fact-ring labels around each planet.</summary>
-    public float FactLabelFontSize { get; set; } = 12f;
+    public float FactLabelFontSize { get; set; } = 1.2f;
 
     /// <summary>Font size used for moon labels.</summary>
-    public float MoonLabelFontSize { get; set; } = 16f;
+    public float MoonLabelFontSize { get; set; } = 1.6f;
 
     // -----------------------------------------------------------------------
     // Planet data
@@ -593,7 +593,7 @@ public sealed class SolarSystemScene : IScene
             background,
             BillboardAnchor.Center,
             materialName: "SDFFont",
-            fixedSize: fixedSize,
+            fixedSize: false,
             cullDistance: cullDistance
         );
 

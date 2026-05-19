@@ -55,6 +55,10 @@ struct BillboardExpandArgs {
     float screenHeight;    // Viewport height in pixels
     vec3  cameraUp;        // Camera up vector (world-space)
     float fovY;            // Vertical field of view in radians
+    float screenWidth;     // Viewport width in pixels
+    float _argsPadding0;   // Padding for alignment
+    float _argsPadding1;   // Padding for alignment
+    float _argsPadding2;   // Padding for alignment
 };
 
 @code_gen

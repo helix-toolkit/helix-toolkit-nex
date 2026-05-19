@@ -46,66 +46,60 @@ void main() {
     float height = v.size.y;
     if (width <= 0.0 || height <= 0.0) return; // Cull zero/negative size billboards early
 
-    IndirectArgsBuffer       cmdBuf = IndirectArgsBuffer(pc.value.indirectArgsAddress);
-    BillboardDrawDataBuffer  outBuf = BillboardDrawDataBuffer(pc.value.drawDataAddress);
+    IndirectArgsBuffer      cmdBuf = IndirectArgsBuffer(pc.value.indirectArgsAddress);
+    BillboardDrawDataBuffer outBuf = BillboardDrawDataBuffer(pc.value.drawDataAddress);
 
-    // Transform the anchor point (origin) to world space.
-    // For text billboards, the anchor is at local (0,0,0); for non-text billboards
-    // with identity worldTransform, this equals (0,0,0) and glyph positions pass through.
-    vec4 anchorWorld = info.worldTransform * vec4(0.0, 0.0, 0.0, 1.0);
-    
-    float dist = distance(args.cameraPosition, anchorWorld.xyz);
+    // The anchor is at local (0,0,0), so worldTransform * (0,0,0,1) = 4th column of the matrix.
+    // Avoids a full mat4×vec4 multiply.
+    vec3 anchorWorldXYZ = info.worldTransform[3].xyz;
+
+    // Distance cull
+    float dist = distance(args.cameraPosition, anchorWorldXYZ);
     float cullDistance = info.cullDistance;
-    if (cullDistance > 0.00001 && dist > cullDistance) {
-        return; // Cull billboards beyond max distance
-    }
+    if (cullDistance > 0.00001 && dist > cullDistance) return;
 
-    // Use per-billboard color if alpha > 0, otherwise use uniform color from push constants
-    vec4 color = v.color.a > 0.0 ? v.color : info.color;
+    // --- Compute projFactor and pixelsPerUnit once ---
+    // projFactor = screenHeight / (2 * tan(fovY/2))  [pixels per unit at unit distance]
+    float projFactor    = args.screenHeight / (2.0 * tan(args.fovY * 0.5));
+    float distSafe      = max(dist, 0.001);
+    float pixelsPerUnit = projFactor / distSafe;
 
-    // --- Frustum cull using anchor world position (not per-glyph) ---
-    // All glyphs in a text string share the same cull decision based on the anchor.
-    vec4 clip = args.viewProjection * anchorWorld;
-    float w = clip.w;
-    // Behind camera (reversed-Z: w < 0 means behind near plane)
-    if (w <= 0.0) return;
-    // Outside frustum (with padding for billboard size)
-    float padding = max(width, height) * 2.0; // generous padding
-    vec4 clipAbs = abs(clip);
-    if (clipAbs.x > w + padding || clipAbs.y > w + padding) return;
-
-    // --- Compute screen-space size using anchor distance (shared across all glyphs) ---
-    float screenWidth;
-    float screenHeight;
-    float projFactor = args.screenHeight / (2.0 * tan(args.fovY * 0.5));
+    // --- Resolve pixel dimensions and pixel offset in one pass ---
+    vec2 localOffsetXY = v.position.xy;
+    float outScreenW, outScreenH;
+    vec2  pixelOff;
+    float halfPixW, halfPixH;
     if (info.fixedSize != 0u) {
-        // Fixed-size mode: width/height are already in pixels, no perspective projection.
-        screenWidth = width;
-        screenHeight = height;
+        outScreenW  = width;
+        outScreenH  = height;
+        pixelOff    = localOffsetXY;
+        halfPixW    = width  * 0.5 + 2.0;
+        halfPixH    = height * 0.5 + 2.0;
     } else {
-        // World-space mode: project world-space dimensions to pixels.
-        // Use anchor distance so all glyphs in a text string get consistent sizing.
-        // screenSize = (worldSize / dist) * (screenHeight / (2 * tan(fovY/2)))
-        screenWidth = (width / max(dist, 0.001)) * projFactor;
-        screenHeight = (height / max(dist, 0.001)) * projFactor;
+        outScreenW  = width  * pixelsPerUnit;
+        outScreenH  = height * pixelsPerUnit;
+        pixelOff    = localOffsetXY * pixelsPerUnit;
+        halfPixW    = outScreenW * 0.5 + 2.0;
+        halfPixH    = outScreenH * 0.5 + 2.0;
     }
 
     // Screen-size cull
-    if (max(screenWidth, screenHeight) < args.minScreenSize) return;
+    if (max(outScreenW, outScreenH) < args.minScreenSize) return;
 
-    // --- Compute per-glyph pixel offset from anchor ---
-    // The local offset (v.position.xyz) is in the text's local coordinate system.
-    // Convert it to a pixel offset so the vertex shader can apply it after pixel-snapping the anchor.
-    vec3 localOffset = v.position.xyz;
-    vec2 pixelOff;
-    if (info.fixedSize != 0u) {
-        // Fixed-size: local offsets are already in pixel units
-        pixelOff = localOffset.xy;
-    } else {
-        // World-space: project local offset to pixels using the same projection factor
-        float pixelsPerUnit = projFactor / max(dist, 0.001);
-        pixelOff = localOffset.xy * pixelsPerUnit;
-    }
+    // --- Frustum cull in screen-pixel space ---
+    // Replicates the vertex shader exactly: project anchor to pixels, then add linear pixel offset.
+    vec4 anchorClip = args.viewProjection * vec4(anchorWorldXYZ, 1.0);
+    float w = anchorClip.w;
+    if (w <= 0.0) return; // Behind camera
+
+    vec2 anchorPixels = (anchorClip.xy / w * 0.5 + 0.5) * vec2(args.screenWidth, args.screenHeight);
+    vec2 glyphPixels  = anchorPixels + pixelOff;
+
+    if (glyphPixels.x + halfPixW < 0.0 || glyphPixels.x - halfPixW > args.screenWidth)  return;
+    if (glyphPixels.y + halfPixH < 0.0 || glyphPixels.y - halfPixH > args.screenHeight) return;
+
+    // Use per-billboard color if alpha > 0, otherwise use uniform color
+    vec4 color = v.color.a > 0.0 ? v.color : info.color;
 
     // --- Pack entity ID ---
     uvec2 objId = packObjectInfo(info.worldId, info.entityId, idx);
@@ -116,11 +110,11 @@ void main() {
 
     // --- Write draw data ---
     BillboardDrawData d;
-    d.worldPos       = anchorWorld.xyz;
-    d.screenWidth    = screenWidth;
+    d.worldPos       = anchorWorldXYZ;
+    d.screenWidth    = outScreenW;
     d.color          = color;
     d.packedEntityId = packedId;
-    d.screenHeight   = screenHeight;
+    d.screenHeight   = outScreenH;
     d.uvRect         = v.uvRect;
     d.pixelOffset    = pixelOff;
     d.type           = v.type;

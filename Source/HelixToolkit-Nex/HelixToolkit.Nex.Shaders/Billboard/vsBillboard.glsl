@@ -44,16 +44,15 @@ void main() {
     vec4 clipCenter = FPBuffer(pc.value.fpConstAddress).fpConstants.viewProjection * vec4(d.worldPos, 1.0);
     vec2 ndc = clipCenter.xy / clipCenter.w;
 
-    // 2. Convert NDC to Screen Space (Pixels)
+    // Convert NDC to Screen Space (Pixels)
     vec2 pixelPos = (ndc * 0.5 + 0.5) * screenDims;
 
-    // 3. SNAP anchor to nearest pixel. This kills the "shaking".
-    pixelPos = floor(pixelPos) + 0.5; 
-
-    // 4. Apply per-glyph pixel offset from anchor
+    // 2. Snap the anchor position to the nearest pixel center to minimize blurriness
+    pixelPos = pixelPos + 0.5; 
+    // Apply per-glyph pixel offset from anchor
     pixelPos += d.pixelOffset;
 
-    // 5. Convert back to NDC
+    // Convert back to NDC
     vec2 snappedNDC = (pixelPos / screenDims) * 2.0 - 1.0;
     
     // Reconstruct clip space position

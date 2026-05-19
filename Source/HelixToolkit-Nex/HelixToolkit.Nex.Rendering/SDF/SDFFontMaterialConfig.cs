@@ -79,7 +79,7 @@ public struct SDFFontMaterialConfig
     public static MaterialTypeId RegisterVariant(string name, SDFFontMaterialConfig config)
     {
         string glsl = GenerateGlsl(config);
-        return BillboardMaterialRegistry.Register(name, glsl);
+        return BillboardMaterialRegistry.Register(name, glsl, blendConfig: BillboardMaterialRegistry.SdfFontBlendConfig);
     }
 
     /// <summary>
