@@ -1,7 +1,6 @@
 using System.Numerics;
 using HelixToolkit.Nex.Geometries;
 using HelixToolkit.Nex.Maths;
-using HelixToolkit.Nex.Rendering;
 using HelixToolkit.Nex.Rendering.SDF;
 using HelixToolkit.Nex.Repository;
 
@@ -256,7 +255,7 @@ public class SDFFontRenderingTests
     public void TextLayoutHelper_EmptyString_ReturnsEmptyList()
     {
         var atlas = CreateTestAtlas();
-        var result = TextLayoutHelper.Layout("", atlas, 1.0f, Vector3.Zero);
+        var result = TextLayoutHelper.LayoutGeometry("", atlas, 1.0f);
 
         Assert.AreEqual(0, result.Count);
     }
@@ -265,7 +264,7 @@ public class SDFFontRenderingTests
     public void TextLayoutHelper_NullString_ReturnsEmptyList()
     {
         var atlas = CreateTestAtlas();
-        var result = TextLayoutHelper.Layout(null!, atlas, 1.0f, Vector3.Zero);
+        var result = TextLayoutHelper.LayoutGeometry(null!, atlas, 1.0f);
 
         Assert.AreEqual(0, result.Count);
     }
@@ -274,19 +273,17 @@ public class SDFFontRenderingTests
     public void TextLayoutHelper_SingleCharacter_ReturnsOneDescriptor()
     {
         var atlas = CreateTestAtlas();
-        var result = TextLayoutHelper.Layout("A", atlas, 1.0f, Vector3.Zero);
+        var result = TextLayoutHelper.LayoutGeometry("A", atlas, 1.0f);
 
         Assert.AreEqual(1, result.Count);
-        Assert.AreEqual(new Vector4(0.1f, 0.2f, 0.3f, 0.4f), result[0].UVRect);
-        Assert.AreEqual(0u, result[0].TextureIndex);
-        Assert.AreEqual(0u, result[0].SamplerIndex);
+        Assert.AreEqual(new Vector4(0.1f, 0.2f, 0.3f, 0.4f), result.Vertices[0].UvRect);
     }
 
     [TestMethod]
     public void TextLayoutHelper_GlyphCountMatchesNonNewlineCharacters()
     {
         var atlas = CreateTestAtlas();
-        var result = TextLayoutHelper.Layout("AB A", atlas, 1.0f, Vector3.Zero);
+        var result = TextLayoutHelper.LayoutGeometry("AB A", atlas, 1.0f);
 
         // 'A', 'B', ' ', 'A' = 4 characters, 4 descriptors
         Assert.AreEqual(4, result.Count);
@@ -296,13 +293,13 @@ public class SDFFontRenderingTests
     public void TextLayoutHelper_HorizontalAdvanceIsIncreasing()
     {
         var atlas = CreateTestAtlas();
-        var result = TextLayoutHelper.Layout("ABA", atlas, 1.0f, Vector3.Zero);
+        var result = TextLayoutHelper.LayoutGeometry("ABA", atlas, 1.0f);
 
         for (int i = 1; i < result.Count; i++)
         {
             Assert.IsTrue(
-                result[i].WorldPosition.X > result[i - 1].WorldPosition.X,
-                $"Glyph {i} X ({result[i].WorldPosition.X}) should be greater than glyph {i - 1} X ({result[i - 1].WorldPosition.X})"
+                result.Vertices[i].Position.X > result.Vertices[i - 1].Position.X,
+                $"Glyph {i} X ({result.Vertices[i].Position.X}) should be greater than glyph {i - 1} X ({result.Vertices[i - 1].Position.X})"
             );
         }
     }
@@ -312,12 +309,12 @@ public class SDFFontRenderingTests
     {
         var atlas = CreateTestAtlas();
         float fontSize = 2.0f;
-        var result = TextLayoutHelper.Layout("A\nB", atlas, fontSize, Vector3.Zero);
+        var result = TextLayoutHelper.LayoutGeometry("A\nB", atlas, fontSize);
 
         Assert.AreEqual(2, result.Count);
 
-        float line1Y = result[0].WorldPosition.Y;
-        float line2Y = result[1].WorldPosition.Y;
+        float line1Y = result.Vertices[0].Position.Y;
+        float line2Y = result.Vertices[1].Position.Y;
         Assert.IsTrue(line2Y < line1Y, $"Line 2 Y ({line2Y}) should be below line 1 Y ({line1Y})");
 
         // The Y gap between lines should be approximately fontSize
@@ -329,43 +326,27 @@ public class SDFFontRenderingTests
         );
     }
 
-    [TestMethod]
-    public void TextLayoutHelper_MultiLine_XResetsToOrigin()
-    {
-        var atlas = CreateTestAtlas();
-        var origin = new Vector3(5.0f, 0f, 0f);
-        var result = TextLayoutHelper.Layout("A\nB", atlas, 1.0f, origin);
-
-        Assert.AreEqual(2, result.Count);
-
-        // After newline, X should reset near origin (with bearing + centering offset)
-        float xDelta = MathF.Abs(result[1].WorldPosition.X - origin.X);
-        Assert.IsTrue(
-            xDelta < 1.0f,
-            $"After newline, X ({result[1].WorldPosition.X}) should be near origin X ({origin.X}), delta={xDelta}"
-        );
-    }
 
     [TestMethod]
     public void TextLayoutHelper_FontSizeScalesDimensions()
     {
         var atlas = CreateTestAtlas();
         float fontSize = 2.0f;
-        var result = TextLayoutHelper.Layout("A", atlas, fontSize, Vector3.Zero);
+        var result = TextLayoutHelper.LayoutGeometry("A", atlas, fontSize);
 
         float scale = fontSize / atlas.LineHeight;
         float expectedWidth = 0.781f * scale;
         float expectedHeight = 0.875f * scale;
 
-        Assert.AreEqual(expectedWidth, result[0].Width, 0.001f);
-        Assert.AreEqual(expectedHeight, result[0].Height, 0.001f);
+        Assert.AreEqual(expectedWidth, result.Vertices[0].Size.X, 0.001f);
+        Assert.AreEqual(expectedHeight, result.Vertices[0].Size.Y, 0.001f);
     }
 
     [TestMethod]
     public void TextLayoutHelper_OnlyNewlines_ReturnsEmptyList()
     {
         var atlas = CreateTestAtlas();
-        var result = TextLayoutHelper.Layout("\n\n\n", atlas, 1.0f, Vector3.Zero);
+        var result = TextLayoutHelper.LayoutGeometry("\n\n\n", atlas, 1.0f);
 
         Assert.AreEqual(0, result.Count, "Newlines produce no visible glyphs.");
     }
@@ -378,7 +359,7 @@ public class SDFFontRenderingTests
     public void TextLayoutHelper_LayoutGeometry_EmptyString_ReturnsEmptyGeometry()
     {
         var atlas = CreateTestAtlas();
-        var geo = TextLayoutHelper.LayoutGeometry("", atlas, 1.0f, Vector3.Zero);
+        var geo = TextLayoutHelper.LayoutGeometry("", atlas, 1.0f);
 
         Assert.AreEqual(0, geo.Count);
     }
@@ -387,7 +368,7 @@ public class SDFFontRenderingTests
     public void TextLayoutHelper_LayoutGeometry_NullString_ReturnsEmptyGeometry()
     {
         var atlas = CreateTestAtlas();
-        var geo = TextLayoutHelper.LayoutGeometry(null!, atlas, 1.0f, Vector3.Zero);
+        var geo = TextLayoutHelper.LayoutGeometry(null!, atlas, 1.0f);
 
         Assert.AreEqual(0, geo.Count);
     }
@@ -396,7 +377,7 @@ public class SDFFontRenderingTests
     public void TextLayoutHelper_LayoutGeometry_SingleCharacter_ReturnsOneEntry()
     {
         var atlas = CreateTestAtlas();
-        var geo = TextLayoutHelper.LayoutGeometry("A", atlas, 1.0f, Vector3.Zero);
+        var geo = TextLayoutHelper.LayoutGeometry("A", atlas, 1.0f);
 
         Assert.AreEqual(1, geo.Count);
         Assert.AreEqual(new Vector4(0.1f, 0.2f, 0.3f, 0.4f), geo.Vertices[0].UvRect);
@@ -406,55 +387,16 @@ public class SDFFontRenderingTests
     public void TextLayoutHelper_LayoutGeometry_GlyphCountMatchesNonNewlineCharacters()
     {
         var atlas = CreateTestAtlas();
-        var geo = TextLayoutHelper.LayoutGeometry("AB A", atlas, 1.0f, Vector3.Zero);
+        var geo = TextLayoutHelper.LayoutGeometry("AB A", atlas, 1.0f);
 
         Assert.AreEqual(4, geo.Count);
-    }
-
-    [TestMethod]
-    public void TextLayoutHelper_LayoutGeometry_MatchesLayoutDescriptors()
-    {
-        var atlas = CreateTestAtlas();
-        float fontSize = 1.5f;
-        var origin = new Vector3(1, 2, 3);
-
-        var descriptors = TextLayoutHelper.Layout("ABA", atlas, fontSize, origin);
-        var geo = TextLayoutHelper.LayoutGeometry("ABA", atlas, fontSize, origin);
-
-        Assert.AreEqual(descriptors.Count, geo.Count);
-        for (int i = 0; i < descriptors.Count; i++)
-        {
-            var desc = descriptors[i];
-            Assert.AreEqual(
-                desc.WorldPosition.X,
-                geo.Vertices[i].Position.X,
-                0.001f,
-                $"Position X mismatch at {i}"
-            );
-            Assert.AreEqual(
-                desc.WorldPosition.Y,
-                geo.Vertices[i].Position.Y,
-                0.001f,
-                $"Position Y mismatch at {i}"
-            );
-            Assert.AreEqual(
-                desc.WorldPosition.Z,
-                geo.Vertices[i].Position.Z,
-                0.001f,
-                $"Position Z mismatch at {i}"
-            );
-            Assert.AreEqual(1f, geo.Vertices[i].Position.W, 0.001f, $"Position W should be 1 at {i}");
-            Assert.AreEqual(desc.Width, geo.Vertices[i].Size.X, 0.001f, $"Width mismatch at {i}");
-            Assert.AreEqual(desc.Height, geo.Vertices[i].Size.Y, 0.001f, $"Height mismatch at {i}");
-            Assert.AreEqual(desc.UVRect, geo.Vertices[i].UvRect, $"UVRect mismatch at {i}");
-        }
     }
 
     [TestMethod]
     public void TextLayoutHelper_LayoutGeometry_ColorsAreZero_WhenNoColorProvided()
     {
         var atlas = CreateTestAtlas();
-        var geo = TextLayoutHelper.LayoutGeometry("AB", atlas, 1.0f, Vector3.Zero);
+        var geo = TextLayoutHelper.LayoutGeometry("AB", atlas, 1.0f);
 
         // When no per-billboard color is provided, color alpha should be 0
         // (signals the compute shader to use the uniform color from push constants)
@@ -685,14 +627,14 @@ public class SDFFontRenderingTests
             TextureRef.Null,
             SamplerRef.Null
         );
-        var result = TextLayoutHelper.Layout("Hello", atlas, 1.0f, Vector3.Zero);
+        var result = TextLayoutHelper.LayoutGeometry("Hello", atlas, 1.0f);
 
         Assert.AreEqual(5, result.Count, "Expected 5 glyph descriptors for 'Hello'");
 
-        foreach (var desc in result)
+        foreach (var desc in result.Vertices)
         {
-            Assert.IsTrue(desc.Width > 0, "Glyph width should be positive");
-            Assert.IsTrue(desc.Height > 0, "Glyph height should be positive");
+            Assert.IsTrue(desc.Size.X > 0, "Glyph width should be positive");
+            Assert.IsTrue(desc.Size.Y > 0, "Glyph height should be positive");
         }
     }
 
