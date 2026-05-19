@@ -22,17 +22,17 @@ struct BillboardVertex {
 struct BillboardDrawData {
     vec3  worldPos;        // World-space anchor position (shared for all glyphs in a text string)
     float screenWidth;     // Projected width in pixels
+
     vec4  color;           // RGBA color
+
     vec2  packedEntityId;  // Packed entity ID for GPU picking
     float screenHeight;    // Projected height in pixels
-    uint  textureIndex;    // Bindless texture index (0 = no texture)
-    uint  samplerIndex;    // Bindless sampler index
-    uint  sdfAemrangePacked;    // packHalf2x16(aemrange) — precomputed MSDF em-range
-    uint  sdfAtlasSizePacked;   // (uint(height) << 16) | uint(width) — atlas dimensions
-    uint  sdfGlyphCellSizeBits; // floatBitsToUint(glyphCellSize) — glyph cell size
-    vec4  uvRect;          // Texture atlas sub-region (u_min, v_min, u_max, v_max)
-    vec2  pixelOffset;     // Per-glyph pixel offset from anchor position (in screen pixels)
     uint  type;            // Billboard vertex type. 0: Solid color; 1: USE UV
+
+    vec4  uvRect;          // Texture atlas sub-region (u_min, v_min, u_max, v_max)
+
+    vec2  pixelOffset;     // Per-glyph pixel offset from anchor position (in screen pixels)
+    uint  infoIndex;       // Index into BillboardInfo buffer, automatically set internally.
     uint  _drawPadding;    // Padding for alignment
 };
 
@@ -101,4 +101,5 @@ struct BillboardExpandPC {
 struct BillboardRenderPC {
     uint64_t drawDataAddress;        // GPU address of BillboardDrawData buffer
     uint64_t fpConstAddress;         // GPU address of FPConstants buffer (for lighting shaders)
+    uint64_t billboardInfoAddress;   // GPU address of BillboardInfo buffer
 };

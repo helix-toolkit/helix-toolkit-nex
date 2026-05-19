@@ -131,7 +131,8 @@ public sealed class BillboardCullNode : ComputeNode
                 FirstInstance = 0,
             };
             res.CmdBuffer.UpdateBuffer(entry.DrawArgsBuffer, ref args);
-            res.Deps.PushBuffer(entry.DrawArgsBuffer);
+            using var s0 = res.Deps.PushBufferScoped(entry.DrawArgsBuffer);
+            using var s1 = res.Deps.PushBufferScoped(entry.InfoBuffer);
             var expandPC = new BillboardExpandPC
             {
                 DrawDataAddress = entry.DrawDataBuffer,
