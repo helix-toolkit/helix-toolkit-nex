@@ -588,7 +588,6 @@ public sealed class SolarSystemScene : IScene
             text,
             atlas,
             fontSize,
-            Vector3.Zero,
             color,
             background,
             BillboardAnchor.Center,
