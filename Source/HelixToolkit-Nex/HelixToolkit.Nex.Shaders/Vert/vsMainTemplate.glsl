@@ -153,18 +153,17 @@ void calVertexOutput(in uint index, out vec4 pos, out vec3 wp, out vec3 normal, 
     }
 
     InstanceTransform instance = getInstancingMatrix(index);
-    mat3 instanceRot = quatToMat3(instance.quaternion);
 
     vec4 worldPos = nodeInfo.transform * position;
-    worldPos = vec4(transformCoord(worldPos.xyz, instanceRot, instance.scale, instance.translation), 1);
+    worldPos = vec4(transformCoordQuaternion(worldPos.xyz, instance.quaternion, instance.scale, instance.translation), 1);
 
     wp = worldPos.xyz;
     pos = fpConst.viewProjection * worldPos;
 #ifndef EXCLUDE_MESH_PROPS
     normal = mat3(nodeInfo.transform) * vertProps.normal;
-    normal = normalize(instanceRot * normal);
+    normal = normalize(rotateQuaternion(normal, instance.quaternion));
     tangent = mat3(nodeInfo.transform) * vertProps.tangent;
-    tangent = normalize(instanceRot * tangent);
+    tangent = normalize(rotateQuaternion(tangent, instance.quaternion));
 
     texCoord = vertProps.texCoord;
 #endif
