@@ -5,6 +5,7 @@ using HelixToolkit.Nex.ECS;
 using HelixToolkit.Nex.Engine;
 using HelixToolkit.Nex.Engine.CameraControllers;
 using HelixToolkit.Nex.Engine.Cameras;
+using HelixToolkit.Nex.Engine.Scene;
 using HelixToolkit.Nex.Graphics;
 using HelixToolkit.Nex.ImGui;
 using HelixToolkit.Nex.Material;
@@ -272,15 +273,15 @@ internal sealed class BillboardDemo : IDisposable
             fontType,
             text,
             fontSize,
-            Vector3.Zero,
             color,
+            null,
             BillboardAnchor.Center,
             materialName,
             _fixedSize
         );
 
         var world = _worldDataProvider!.World;
-        var node = new Node(world) { Name = $"Text_{text}" };
+        var node = new BillboardNode(world, $"Text_{text}");
         _root!.AddChild(node);
         node.Entity.Set(comp);
         node.Transform.Translation = origin;

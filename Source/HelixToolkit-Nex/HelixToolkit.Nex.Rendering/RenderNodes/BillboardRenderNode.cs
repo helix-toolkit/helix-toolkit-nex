@@ -104,6 +104,7 @@ public sealed class BillboardRenderNode : RenderNode
                 {
                     DrawDataAddress = entry.DrawDataBuffer,
                     FpConstAddress = fpConstAddress,
+                    BillboardInfoAddress = entry.InfoBuffer
                 }
             );
 

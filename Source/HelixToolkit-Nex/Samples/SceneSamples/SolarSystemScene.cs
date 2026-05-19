@@ -1,6 +1,8 @@
 using System.Numerics;
 using HelixToolkit.Nex.ECS;
 using HelixToolkit.Nex.Engine;
+using HelixToolkit.Nex.Engine.Components;
+using HelixToolkit.Nex.Engine.Scene;
 using HelixToolkit.Nex.Geometries;
 using HelixToolkit.Nex.Graphics;
 using HelixToolkit.Nex.Maths;
@@ -40,13 +42,13 @@ public sealed class SolarSystemScene : IScene
     // -----------------------------------------------------------------------
 
     /// <summary>Font size used for planet name labels.</summary>
-    public float PlanetLabelFontSize { get; set; } = 0.48f;
+    public float PlanetLabelFontSize { get; set; } = 24f;
 
     /// <summary>Font size used for fact-ring labels around each planet.</summary>
-    public float FactLabelFontSize { get; set; } = 0.35f;
+    public float FactLabelFontSize { get; set; } = 12f;
 
     /// <summary>Font size used for moon labels.</summary>
-    public float MoonLabelFontSize { get; set; } = 0.25f;
+    public float MoonLabelFontSize { get; set; } = 16f;
 
     // -----------------------------------------------------------------------
     // Planet data
@@ -54,11 +56,11 @@ public sealed class SolarSystemScene : IScene
 
     private sealed record PlanetDef(
         string Name,
-        float OrbitRadius,      // from sun (world units)
+        float OrbitRadius, // from sun (world units)
         Color4 LabelColor,
         string MaterialVariant, // SDF material name
         BuildinFontAtlas Font,
-        string[] Facts,         // shown in a ring around the planet
+        string[] Facts, // shown in a ring around the planet
         MoonDef[] Moons,
         // ---- sphere mesh ------------------------------------------------
         float SphereRadius,
@@ -67,20 +69,21 @@ public sealed class SolarSystemScene : IScene
         float SphereRoughness = 0.8f,
         Vector3 SphereEmissive = default,
         // ---- orbit ------------------------------------------------------
-        float OrbitSpeed = 0.5f  // radians per second
+        float OrbitSpeed = 0.5f // radians per second
     );
 
     private sealed record MoonDef(
         string Name,
-        float OrbitRadius,      // from parent planet
+        float OrbitRadius, // from parent planet
         Color4 Color,
         BuildinFontAtlas Font,
         // ---- sphere mesh ------------------------------------------------
         float SphereRadius = 0.5f,
         Vector3 SphereAlbedo = default,
         // ---- orbit ------------------------------------------------------
-        float OrbitSpeed = 2.0f  // radians per second
+        float OrbitSpeed = 2.0f // radians per second
     );
+
     // -----------------------------------------------------------------------
     // Orbit runtime state
     // -----------------------------------------------------------------------
@@ -104,13 +107,20 @@ public sealed class SolarSystemScene : IScene
             new Color4(1.0f, 0.95f, 0.2f, 1f),
             "SDFFont",
             BuildinFontAtlas.GoogleSansRegular,
-            ["G-type main-sequence star", "Age: 4.6 Gyr", "Radius: 695,700 km", "Mass: 1.989e30 kg", "Surface temp: 5,778 K"],
+            [
+                "G-type main-sequence star",
+                "Age: 4.6 Gyr",
+                "Radius: 695,700 km",
+                "Mass: 1.989e30 kg",
+                "Surface temp: 5,778 K",
+            ],
             [],
             SphereRadius: 5.0f,
-            SphereAlbedo: new Vector3(1.0f, 0.95f, 0.2f),
+            SphereAlbedo: new Vector3(1.0f, 0.95f, 0.80f),
             SphereMetallic: 0.0f,
             SphereRoughness: 1.0f,
-            SphereEmissive: new Vector3(1.5f, 1.0f, 0.1f)
+            SphereEmissive: new Vector3(1.5f, 1.0f, 0.1f),
+            OrbitSpeed: 0.0f
         ),
         new PlanetDef(
             "Mercury",
@@ -121,7 +131,7 @@ public sealed class SolarSystemScene : IScene
             ["Closest to Sun", "No atmosphere", "Day: 59 Earth days", "Radius: 2,439 km"],
             [],
             SphereRadius: 0.4f,
-            SphereAlbedo: new Vector3(0.5f, 0.47f, 0.44f),
+            SphereAlbedo: new Vector3(0.45f, 0.43f, 0.40f),
             SphereMetallic: 0.1f,
             SphereRoughness: 0.9f,
             OrbitSpeed: 1.60f
@@ -135,7 +145,7 @@ public sealed class SolarSystemScene : IScene
             ["Hottest planet", "Retrograde rotation", "Thick CO₂ atm.", "Surface: 465 °C"],
             [],
             SphereRadius: 0.95f,
-            SphereAlbedo: new Vector3(0.9f, 0.8f, 0.5f),
+            SphereAlbedo: new Vector3(0.90f, 0.83f, 0.60f),
             SphereRoughness: 0.95f,
             OrbitSpeed: 1.17f
         ),
@@ -145,12 +155,23 @@ public sealed class SolarSystemScene : IScene
             new Color4(0.3f, 0.7f, 1.0f, 1f),
             "SDFFont_Shadow",
             BuildinFontAtlas.GoogleSansRegular,
-            ["Home world", "One large moon", "Liquid water oceans", "Magnetic field", "Radius: 6,371 km"],
             [
-                new MoonDef("Moon", 6f, new Color4(0.9f, 0.9f, 0.9f, 1f), BuildinFontAtlas.GoogleSansRegular),
+                "Home world",
+                "One large moon",
+                "Liquid water oceans",
+                "Magnetic field",
+                "Radius: 6,371 km",
+            ],
+            [
+                new MoonDef(
+                    "Moon",
+                    6f,
+                    new Color4(0.9f, 0.9f, 0.9f, 1f),
+                    BuildinFontAtlas.GoogleSansRegular
+                ),
             ],
             SphereRadius: 1.0f,
-            SphereAlbedo: new Vector3(0.1f, 0.3f, 0.8f),
+            SphereAlbedo: new Vector3(0.20f, 0.40f, 0.65f),
             OrbitSpeed: 1.00f
         ),
         new PlanetDef(
@@ -159,13 +180,29 @@ public sealed class SolarSystemScene : IScene
             new Color4(0.9f, 0.4f, 0.2f, 1f),
             "SDFFont_Outlined",
             BuildinFontAtlas.RobotoSlabRegular,
-            ["The Red Planet", "Olympus Mons: tallest volcano", "Two small moons", "Thin CO₂ atm.", "Day: 24h 37m"],
             [
-                new MoonDef("Phobos", 5f, new Color4(0.7f, 0.65f, 0.6f, 1f), BuildinFontAtlas.GoogleSansRegular),
-                new MoonDef("Deimos", 8f, new Color4(0.65f, 0.60f, 0.55f, 1f), BuildinFontAtlas.RobotoSlabRegular),
+                "The Red Planet",
+                "Olympus Mons: tallest volcano",
+                "Two small moons",
+                "Thin CO₂ atm.",
+                "Day: 24h 37m",
+            ],
+            [
+                new MoonDef(
+                    "Phobos",
+                    5f,
+                    new Color4(0.7f, 0.65f, 0.6f, 1f),
+                    BuildinFontAtlas.GoogleSansRegular
+                ),
+                new MoonDef(
+                    "Deimos",
+                    8f,
+                    new Color4(0.65f, 0.60f, 0.55f, 1f),
+                    BuildinFontAtlas.RobotoSlabRegular
+                ),
             ],
             SphereRadius: 0.53f,
-            SphereAlbedo: new Vector3(0.7f, 0.2f, 0.1f),
+            SphereAlbedo: new Vector3(0.72f, 0.30f, 0.15f),
             SphereRoughness: 0.9f,
             OrbitSpeed: 0.80f
         ),
@@ -175,15 +212,41 @@ public sealed class SolarSystemScene : IScene
             new Color4(1.0f, 0.75f, 0.55f, 1f),
             "SDFFont",
             BuildinFontAtlas.MichromaRegular,
-            ["Largest planet", "Great Red Spot", "95 known moons", "Mass: 318 Earths", "Radius: 69,911 km"],
             [
-                new MoonDef("Io",       7f,  new Color4(1.0f, 0.9f, 0.3f,  1f), BuildinFontAtlas.GoogleSansRegular),
-                new MoonDef("Europa",   10f, new Color4(0.8f, 0.8f, 1.0f,  1f), BuildinFontAtlas.RobotoSlabRegular),
-                new MoonDef("Ganymede", 13f, new Color4(0.7f, 0.65f, 0.6f, 1f), BuildinFontAtlas.MichromaRegular),
-                new MoonDef("Callisto", 17f, new Color4(0.55f, 0.5f, 0.5f, 1f), BuildinFontAtlas.GoogleSansRegular),
+                "Largest planet",
+                "Great Red Spot",
+                "95 known moons",
+                "Mass: 318 Earths",
+                "Radius: 69,911 km",
+            ],
+            [
+                new MoonDef(
+                    "Io",
+                    7f,
+                    new Color4(1.0f, 0.9f, 0.3f, 1f),
+                    BuildinFontAtlas.GoogleSansRegular
+                ),
+                new MoonDef(
+                    "Europa",
+                    10f,
+                    new Color4(0.8f, 0.8f, 1.0f, 1f),
+                    BuildinFontAtlas.RobotoSlabRegular
+                ),
+                new MoonDef(
+                    "Ganymede",
+                    13f,
+                    new Color4(0.7f, 0.65f, 0.6f, 1f),
+                    BuildinFontAtlas.MichromaRegular
+                ),
+                new MoonDef(
+                    "Callisto",
+                    17f,
+                    new Color4(0.55f, 0.5f, 0.5f, 1f),
+                    BuildinFontAtlas.GoogleSansRegular
+                ),
             ],
             SphereRadius: 3.0f,
-            SphereAlbedo: new Vector3(0.9f, 0.65f, 0.45f),
+            SphereAlbedo: new Vector3(0.80f, 0.60f, 0.40f),
             SphereRoughness: 0.85f,
             OrbitSpeed: 0.43f
         ),
@@ -193,14 +256,35 @@ public sealed class SolarSystemScene : IScene
             new Color4(0.95f, 0.90f, 0.65f, 1f),
             "SDFFont_Shadow",
             BuildinFontAtlas.GoogleSansRegular,
-            ["Has iconic rings", "Least dense planet", "145 known moons", "Radius: 58,232 km", "Wind speed: 1,800 km/h"],
             [
-                new MoonDef("Titan",     9f,  new Color4(1.0f, 0.8f, 0.4f, 1f),  BuildinFontAtlas.GoogleSansRegular),
-                new MoonDef("Enceladus", 12f, new Color4(0.9f, 0.95f, 1.0f, 1f), BuildinFontAtlas.RobotoSlabRegular),
-                new MoonDef("Mimas",     6f,  new Color4(0.75f, 0.75f, 0.75f, 1f), BuildinFontAtlas.MichromaRegular),
+                "Has iconic rings",
+                "Least dense planet",
+                "145 known moons",
+                "Radius: 58,232 km",
+                "Wind speed: 1,800 km/h",
+            ],
+            [
+                new MoonDef(
+                    "Titan",
+                    9f,
+                    new Color4(1.0f, 0.8f, 0.4f, 1f),
+                    BuildinFontAtlas.GoogleSansRegular
+                ),
+                new MoonDef(
+                    "Enceladus",
+                    12f,
+                    new Color4(0.9f, 0.95f, 1.0f, 1f),
+                    BuildinFontAtlas.RobotoSlabRegular
+                ),
+                new MoonDef(
+                    "Mimas",
+                    6f,
+                    new Color4(0.75f, 0.75f, 0.75f, 1f),
+                    BuildinFontAtlas.MichromaRegular
+                ),
             ],
             SphereRadius: 2.5f,
-            SphereAlbedo: new Vector3(0.9f, 0.85f, 0.6f),
+            SphereAlbedo: new Vector3(0.85f, 0.75f, 0.50f),
             SphereRoughness: 0.85f,
             OrbitSpeed: 0.32f
         ),
@@ -212,11 +296,21 @@ public sealed class SolarSystemScene : IScene
             BuildinFontAtlas.MichromaRegular,
             ["Rotates on its side", "Ice giant", "27 known moons", "Coldest planet: -224 °C"],
             [
-                new MoonDef("Miranda",  5f, new Color4(0.8f, 0.8f, 0.85f, 1f),  BuildinFontAtlas.GoogleSansRegular),
-                new MoonDef("Ariel",    7f, new Color4(0.85f, 0.82f, 0.80f, 1f), BuildinFontAtlas.RobotoSlabRegular),
+                new MoonDef(
+                    "Miranda",
+                    5f,
+                    new Color4(0.8f, 0.8f, 0.85f, 1f),
+                    BuildinFontAtlas.GoogleSansRegular
+                ),
+                new MoonDef(
+                    "Ariel",
+                    7f,
+                    new Color4(0.85f, 0.82f, 0.80f, 1f),
+                    BuildinFontAtlas.RobotoSlabRegular
+                ),
             ],
             SphereRadius: 1.5f,
-            SphereAlbedo: new Vector3(0.4f, 0.8f, 0.9f),
+            SphereAlbedo: new Vector3(0.60f, 0.82f, 0.87f),
             OrbitSpeed: 0.22f
         ),
         new PlanetDef(
@@ -227,10 +321,15 @@ public sealed class SolarSystemScene : IScene
             BuildinFontAtlas.RobotoSlabRegular,
             ["Strongest winds: 2,100 km/h", "Ice giant", "16 known moons", "Radius: 24,622 km"],
             [
-                new MoonDef("Triton", 7f, new Color4(0.65f, 0.80f, 0.85f, 1f), BuildinFontAtlas.GoogleSansRegular),
+                new MoonDef(
+                    "Triton",
+                    7f,
+                    new Color4(0.65f, 0.80f, 0.85f, 1f),
+                    BuildinFontAtlas.GoogleSansRegular
+                ),
             ],
             SphereRadius: 1.4f,
-            SphereAlbedo: new Vector3(0.15f, 0.25f, 0.9f),
+            SphereAlbedo: new Vector3(0.20f, 0.30f, 0.85f),
             OrbitSpeed: 0.18f
         ),
     ];
@@ -239,7 +338,9 @@ public sealed class SolarSystemScene : IScene
     // IScene
     // -----------------------------------------------------------------------
 
-    public void RegisterMaterials() { /* No custom PBR materials needed */ }
+    public void RegisterMaterials()
+    { /* No custom PBR materials needed */
+    }
 
     public void Tick(float deltaTime)
     {
@@ -297,9 +398,21 @@ public sealed class SolarSystemScene : IScene
 
         var atlases = new Dictionary<BuildinFontAtlas, SDFFontAtlas>
         {
-            [BuildinFontAtlas.GoogleSansRegular] = fontRepo.GetOrCreateBuiltIn(BuildinFontAtlas.GoogleSansRegular, texRepo, samplerRepo),
-            [BuildinFontAtlas.RobotoSlabRegular] = fontRepo.GetOrCreateBuiltIn(BuildinFontAtlas.RobotoSlabRegular, texRepo, samplerRepo),
-            [BuildinFontAtlas.MichromaRegular] = fontRepo.GetOrCreateBuiltIn(BuildinFontAtlas.MichromaRegular, texRepo, samplerRepo),
+            [BuildinFontAtlas.GoogleSansRegular] = fontRepo.GetOrCreateBuiltIn(
+                BuildinFontAtlas.GoogleSansRegular,
+                texRepo,
+                samplerRepo
+            ),
+            [BuildinFontAtlas.RobotoSlabRegular] = fontRepo.GetOrCreateBuiltIn(
+                BuildinFontAtlas.RobotoSlabRegular,
+                texRepo,
+                samplerRepo
+            ),
+            [BuildinFontAtlas.MichromaRegular] = fontRepo.GetOrCreateBuiltIn(
+                BuildinFontAtlas.MichromaRegular,
+                texRepo,
+                samplerRepo
+            ),
         };
 
         foreach (var planet in Planets)
@@ -329,14 +442,29 @@ public sealed class SolarSystemScene : IScene
             );
             // Scale the unit sphere to the planet's visual radius
             sphereNode.Transform.Scale = new Vector3(planet.SphereRadius);
+            if (planet.SphereEmissive != default)
+            {
+                // Attach point light to the planet node (Sun) so it illuminates the scene
+                // from the Sun's position. Range covers Neptune orbit (210) and beyond.
+                planetNode.Entity.Set(
+                    new RangeLightComponent(RangeLightType.Point)
+                    {
+                        Color = new Color4(planet.SphereEmissive, 1f),
+                        Intensity = 5000f,
+                        Range = 1000f,
+                    }
+                );
+            }
             planetNode.AddChild(sphereNode);
 
             // ---- Planet name label (large, above the body) ----------------
             AddLabel(
-                world, planetNode,
+                world,
+                planetNode,
                 planet.Name,
                 new Vector3(0f, 3f, 0f),
                 planet.LabelColor,
+                Color.Red,
                 PlanetLabelFontSize,
                 atlas,
                 planet.MaterialVariant,
@@ -344,36 +472,37 @@ public sealed class SolarSystemScene : IScene
             );
 
             // ---- Fact-ring labels (smaller, arranged in a circle) ---------
-            int factCount = planet.Facts.Length;
-            for (int i = 0; i < factCount; i++)
-            {
-                float angle = MathF.Tau * i / factCount;
-                float ringR = PlanetLabelFontSize * 6f + 1f;
-                var offset = new Vector3(
-                    MathF.Cos(angle) * ringR,
-                    MathF.Sin(angle) * ringR * 0.5f,  // slightly flatten vertically
-                    MathF.Sin(angle) * ringR * 0.4f
-                );
-                // Alternate between the three material variants for visual variety
-                string factMaterial = (i % 3) switch
-                {
-                    0 => "SDFFont",
-                    1 => "SDFFont_Outlined",
-                    _ => "SDFFont_Shadow",
-                };
-                // Alternate between fonts for variety
-                var factAtlas = atlases[(BuildinFontAtlas)(i % 3)];
-                AddLabel(
-                    world, planetNode,
-                    planet.Facts[i],
-                    offset,
-                    ColorWithAlpha(planet.LabelColor, 0.85f),
-                    FactLabelFontSize,
-                    factAtlas,
-                    factMaterial,
-                    false
-                );
-            }
+            //int factCount = planet.Facts.Length;
+            //for (int i = 0; i < factCount; i++)
+            //{
+            //    float angle = MathF.Tau * i / factCount;
+            //    float ringR = MathF.Max(planet.SphereRadius * 1.5f, planet.SphereRadius + 2f);
+            //    var offset = new Vector3(
+            //        MathF.Cos(angle) * ringR,
+            //        MathF.Sin(angle) * ringR * 0.5f, // slightly flatten vertically
+            //        MathF.Sin(angle) * ringR * 0.4f
+            //    );
+            //    // Alternate between the three material variants for visual variety
+            //    string factMaterial = (i % 3) switch
+            //    {
+            //        0 => "SDFFont",
+            //        1 => "SDFFont_Outlined",
+            //        _ => "SDFFont_Shadow",
+            //    };
+            //    // Alternate between fonts for variety
+            //    var factAtlas = atlases[(BuildinFontAtlas)(i % 3)];
+            //    AddLabel(
+            //        world,
+            //        planetNode,
+            //        planet.Facts[i],
+            //        offset,
+            //        ColorWithAlpha(planet.LabelColor, 0.85f),
+            //        FactLabelFontSize,
+            //        factAtlas,
+            //        factMaterial,
+            //        true
+            //    );
+            //}
 
             // ---- Moon labels ----------------------------------------------
             foreach (var moon in planet.Moons)
@@ -387,9 +516,10 @@ public sealed class SolarSystemScene : IScene
                 var moonAtlas = atlases[moon.Font];
 
                 // Moon sphere mesh
-                var moonAlbedo = moon.SphereAlbedo != default
-                    ? moon.SphereAlbedo
-                    : new Vector3(moon.Color.Red, moon.Color.Green, moon.Color.Blue);
+                var moonAlbedo =
+                    moon.SphereAlbedo != default
+                        ? moon.SphereAlbedo
+                        : new Vector3(moon.Color.Red, moon.Color.Green, moon.Color.Blue);
                 var moonMat = materialPool.Create("PBR");
                 moonMat.Albedo = new Color4(moonAlbedo, 1f);
                 moonMat.Metallic = 0.0f;
@@ -404,10 +534,12 @@ public sealed class SolarSystemScene : IScene
                 moonNode.AddChild(moonSphereNode);
 
                 AddLabel(
-                    world, moonNode,
+                    world,
+                    moonNode,
                     moon.Name,
                     new Vector3(0f, 1.5f, 0f),
                     moon.Color,
+                    Color.Blue,
                     MoonLabelFontSize,
                     moonAtlas,
                     "SDFFont",
@@ -416,20 +548,20 @@ public sealed class SolarSystemScene : IScene
 
                 // One extra fact label per moon (distance from parent)
                 AddLabel(
-                    world, moonNode,
+                    world,
+                    moonNode,
                     $"Moon of {planet.Name}",
                     new Vector3(0f, 0.8f, 0f),
                     ColorWithAlpha(moon.Color, 0.7f),
+                    Color.Green,
                     MoonLabelFontSize * 0.8f,
                     moonAtlas,
                     "SDFFont_Outlined",
-                    false
+                    true,
+                    cullDistance: 100
                 );
             }
         }
-
-        // ---- Extra stress-test: asteroid belt labels (many small ones) ----
-        AddAsteroidBelt(world, root, atlases);
 
         return root;
     }
@@ -444,10 +576,12 @@ public sealed class SolarSystemScene : IScene
         string text,
         Vector3 localOffset,
         Color4 color,
+        Color4? background,
         float fontSize,
         SDFFontAtlas atlas,
         string materialName,
-        bool fixedSize
+        bool fixedSize,
+        float cullDistance = 0
     )
     {
         var comp = TextLayoutHelper.CreateTextBillboard(
@@ -456,57 +590,16 @@ public sealed class SolarSystemScene : IScene
             fontSize,
             Vector3.Zero,
             color,
+            background,
             BillboardAnchor.Center,
-            materialName,
-            fixedSize: fixedSize
+            materialName: "SDFFont",
+            fixedSize: fixedSize,
+            cullDistance: cullDistance
         );
 
-        var node = new Node(world, $"Label_{text}");
+        var node = new BillboardNode(world, $"Label_{text}", ref comp);
         node.Transform.Translation = localOffset;
-        node.Entity.Set(comp);
         parent.AddChild(node);
-    }
-
-    /// <summary>
-    /// Adds ~120 asteroid labels arranged in a torus between Mars and Jupiter.
-    /// Uses all three material variants and all three fonts to maximise billboard variety.
-    /// </summary>
-    private void AddAsteroidBelt(
-        World world,
-        Node root,
-        Dictionary<BuildinFontAtlas, SDFFontAtlas> atlases
-    )
-    {
-        const int count = 120;
-        const float innerR = 82f;
-        const float outerR = 96f;
-        var rng = new Random(42);
-        var fontKeys = new[] { BuildinFontAtlas.GoogleSansRegular, BuildinFontAtlas.RobotoSlabRegular, BuildinFontAtlas.MichromaRegular };
-        var materials = new[] { "SDFFont", "SDFFont_Outlined", "SDFFont_Shadow" };
-        var colors = new Color4[]
-        {
-            new(0.8f, 0.75f, 0.65f, 1f),
-            new(0.7f, 0.65f, 0.55f, 1f),
-            new(0.65f, 0.70f, 0.75f, 1f),
-        };
-
-        var beltNode = new Node(world, "AsteroidBelt");
-        root.AddChild(beltNode);
-
-        for (int i = 0; i < count; i++)
-        {
-            float angle = MathF.Tau * i / count + (float)(rng.NextDouble() * 0.15);
-            float r = innerR + (float)(rng.NextDouble() * (outerR - innerR));
-            float y = (float)(rng.NextDouble() * 2.0 - 1.0);
-            var pos = new Vector3(MathF.Cos(angle) * r, y, MathF.Sin(angle) * r);
-
-            string name = $"Asteroid-{i + 1:D3}";
-            var font = fontKeys[i % 3];
-            var material = materials[i % 3];
-            var color = colors[i % 3];
-
-            AddLabel(world, beltNode, name, pos, color, MoonLabelFontSize * 0.75f, atlases[font], material, false);
-        }
     }
 
     private static Color4 ColorWithAlpha(Color4 c, float alpha) =>
