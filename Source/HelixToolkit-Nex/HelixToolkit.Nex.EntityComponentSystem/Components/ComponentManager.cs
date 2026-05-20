@@ -94,6 +94,77 @@ internal readonly struct ComponentIdProxy<T>
     public static T? DefaultValue = default;
 }
 
+internal sealed class TagManager<T>(int worldId)
+{
+    public static readonly ComponentIdProxy<T> Id = new();
+    private static readonly FastList<TagManager<T>?> _managerStorage = [];
+    private static readonly ReaderWriterLockSlim _managerStorageLock = new();
+    public static TagManager<T>? GetOrCreateManager(int worldId)
+    {
+        var manager = GetManager(worldId);
+        if (manager != null || worldId == 0)
+        {
+            return manager;
+        }
+        _managerStorageLock.EnterWriteLock();
+        try
+        {
+            _managerStorage.Resize(Math.Max(_managerStorage.Count, worldId + 1));
+            if (_managerStorage[worldId] == null)
+            {
+                _managerStorage[worldId] = new TagManager<T>(worldId);
+            }
+            return _managerStorage[worldId];
+        }
+        finally
+        {
+            _managerStorageLock.ExitWriteLock();
+        }
+    }
+
+    public static TagManager<T>? GetManager(int worldId)
+    {
+        _managerStorageLock.EnterReadLock();
+        try
+        {
+            if (worldId == 0 || _managerStorage.Count <= worldId)
+            {
+                return null;
+            }
+            return _managerStorage[worldId];
+        }
+        finally
+        {
+            _managerStorageLock.ExitReadLock();
+        }
+    }
+
+
+    public int WorldId { get; } = worldId;
+    public int Count => _count;
+
+    /// <summary>
+    /// Has any tag in this world.
+    /// </summary>
+    /// <returns></returns>
+    public bool HasAny()
+    {
+        return _count > 0;
+    }
+
+    private int _count = 0;
+
+    public void Add()
+    {
+        Interlocked.Increment(ref _count);
+    }
+
+    public void Remove()
+    {
+        Interlocked.Decrement(ref _count);
+    }
+}
+
 internal sealed class ComponentManager<T> : IDisposable
 {
     #region Manager Storage
@@ -401,6 +472,13 @@ internal sealed class ComponentManager<T> : IDisposable
         }
         return true;
     }
+
+    /// <summary>
+    /// Has any component in the storage.
+    /// </summary>
+    /// <returns></returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public bool HasAny() { return Count > 0; }
 
     /// <summary>
     /// Removes the component by specified entity identifier.

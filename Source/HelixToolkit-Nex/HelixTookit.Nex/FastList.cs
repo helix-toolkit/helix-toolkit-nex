@@ -639,6 +639,24 @@ public class FastList<T> : IList<T>, IReadOnlyList<T>, ICollection<T>, IEnumerab
     }
 
     /// <summary>
+    /// Fast add all from another <see cref="FastList{T}"/>.
+    /// </summary>
+    /// <param name="list">The list.</param>
+    public void AddAll(IEnumerable<T> list)
+    {
+        if (list is FastList<T> fastList)
+        {
+            AddAll(fastList);
+        }
+        else
+        {
+            foreach (var item in list)
+            {
+                Add(item);
+            }
+        }
+    }
+    /// <summary>
     /// Gets the internal array used to hold data.
     /// </summary>
     /// <returns></returns>
