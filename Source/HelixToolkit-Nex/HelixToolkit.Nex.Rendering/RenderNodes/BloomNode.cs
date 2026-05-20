@@ -18,6 +18,8 @@ public sealed class BloomNode : RenderNode
 
     private SamplerRef _linearSampler = SamplerRef.Null;
     private SamplerRef _pointSampler = SamplerRef.Null;
+    private readonly RenderPass _pass = new();
+    private readonly Framebuffer _fb = new();
 
     // -----------------------------------------------------------------------
     // Public settings
@@ -247,7 +249,7 @@ public sealed class BloomNode : RenderNode
     /// bloom texture must be read simultaneously.
     /// </para>
     /// </summary>
-    private static void RunFullScreenPass(
+    private void RunFullScreenPass(
         ReadOnlySpan<byte> debugName,
         in RenderResources res,
         RenderPipelineResource pipeline,
@@ -268,14 +270,12 @@ public sealed class BloomNode : RenderNode
             res.Deps.PushTexture(input2Handle);
         }
         var cmdBuffer = res.CmdBuffer;
-        var pass = new RenderPass();
-        pass.Colors[0].LoadOp = LoadOp.Load;
-        pass.Colors[0].StoreOp = StoreOp.Store;
+        _pass.Colors[0].LoadOp = LoadOp.Load;
+        _pass.Colors[0].StoreOp = StoreOp.Store;
 
-        var fb = new Framebuffer();
-        fb.Colors[0].Texture = outputHandle;
+        _fb.Colors[0].Texture = outputHandle;
         cmdBuffer.PushDebugGroupLabel(debugName, Color.AliceBlue);
-        cmdBuffer.BeginRendering(pass, fb, res.Deps);
+        cmdBuffer.BeginRendering(_pass, _fb, res.Deps);
         cmdBuffer.BindRenderPipeline(pipeline);
         cmdBuffer.BindDepthState(DepthState.Disabled);
         cmdBuffer.PushConstants(pc);

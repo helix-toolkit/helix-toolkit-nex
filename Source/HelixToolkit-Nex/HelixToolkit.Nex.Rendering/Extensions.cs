@@ -15,7 +15,7 @@ public static class Extensions
     /// <returns><c>true</c> if the unprojection succeeded; <c>false</c> if the viewport or camera parameters are invalid.</returns>
     public static bool TryUnProject(this RenderContext context, float x, float y, out Ray ray)
     {
-        if (context.WindowSize.Width <= 0 || context.WindowSize.Height <= 0 || context.CameraParams.Equals(CameraParams.Identity))
+        if (context.WindowSize.Width <= 0 || context.WindowSize.Height <= 0 || context.CameraParams.IsIdentity)
         {
             ray = default;
             return false;

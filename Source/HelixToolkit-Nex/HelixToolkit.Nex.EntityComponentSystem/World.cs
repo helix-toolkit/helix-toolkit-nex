@@ -1,5 +1,3 @@
-using System.Reflection;
-
 namespace HelixToolkit.Nex.ECS;
 
 /// <summary>
@@ -812,7 +810,7 @@ public sealed class World : IEnumerable<Entity>, IDisposable
 
     private static bool IsTagType<T>()
     {
-        return typeof(T).GetTypeInfo().IsTagType();
+        return ComponentIdProxy<T>.IsTagType;
     }
 
     #region Disposible

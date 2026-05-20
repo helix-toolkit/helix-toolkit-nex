@@ -87,7 +87,7 @@ internal static class ComponentSorting
 internal readonly struct ComponentIdProxy<T>
 {
     public static readonly ComponentTypeId TypeId = ComponentTypeId.GetNexId();
-    public static bool IsTagType = typeof(T).GetTypeInfo().IsTagType();
+    public static readonly bool IsTagType = typeof(T).GetTypeInfo().IsTagType();
 
     public static implicit operator ComponentTypeId(ComponentIdProxy<T> proxy) => TypeId;
 
