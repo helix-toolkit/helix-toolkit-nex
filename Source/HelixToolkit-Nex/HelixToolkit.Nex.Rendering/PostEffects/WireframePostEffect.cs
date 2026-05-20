@@ -222,7 +222,7 @@ public sealed class WireframePostEffect : PostEffect
 
         foreach (var entry in _entries)
         {
-            var streams = data.DrawStreams.GetStreams(entry.Category);
+            var streams = data.DrawStreams.GetStreamsCore(entry.Category);
             foreach (var stream in streams)
             {
                 if (stream.Categories != entry.Category)

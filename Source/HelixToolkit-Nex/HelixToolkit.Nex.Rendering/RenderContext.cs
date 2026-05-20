@@ -1,3 +1,6 @@
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+
 namespace HelixToolkit.Nex.Rendering;
 
 public readonly record struct DrawRange(uint Start, uint Count)
@@ -9,6 +12,7 @@ public readonly record struct DrawRange(uint Start, uint Count)
     public static readonly DrawRange Zero = new(0, 0);
 }
 
+[StructLayout(LayoutKind.Sequential, Pack = 4)]
 public readonly struct CameraParams(
     Matrix4x4 view,
     Matrix4x4 projection,
@@ -25,13 +29,15 @@ public readonly struct CameraParams(
     public readonly Matrix4x4 Projection = projection;
     public readonly Matrix4x4 InvView = invView;
     public readonly Matrix4x4 InvProjection = invProjection;
-    public readonly Vector3 Position = position;
-    public readonly Vector3 Target = target;
-    public readonly Vector3 Up = up;
-    public readonly float NearPlane = nearPlane;
-    public readonly float FarPlane = farPlane;
     public readonly Matrix4x4 ViewProjection = view * projection;
     public readonly Matrix4x4 InvViewProjection = invProjection * invView;
+    public readonly Vector3 Position = position;
+    public readonly float NearPlane = nearPlane;
+    public readonly Vector3 Target = target;
+    public readonly float FarPlane = farPlane;
+    public readonly Vector3 Up = up;
+
+    public bool IsIdentity => Unsafe.AreSame(ref Unsafe.AsRef(in this), ref Unsafe.AsRef(in Identity));
 
     public static readonly CameraParams Identity = new(
         Matrix4x4.Identity,

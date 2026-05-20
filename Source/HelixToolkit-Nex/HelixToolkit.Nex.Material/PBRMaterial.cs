@@ -2,7 +2,7 @@ using HelixToolkit.Nex.Shaders.Frag;
 
 namespace HelixToolkit.Nex.Material;
 
-public readonly struct MaterialTypeId(uint id) : IComparable<MaterialTypeId>
+public readonly struct MaterialTypeId(uint id) : IComparable<MaterialTypeId>, IEquatable<MaterialTypeId>
 {
     public uint Id { get; } = id;
 
@@ -10,6 +10,16 @@ public readonly struct MaterialTypeId(uint id) : IComparable<MaterialTypeId>
     {
         return Id.CompareTo(other.Id);
     }
+
+    public bool Equals(MaterialTypeId other) => Id == other.Id;
+
+    public override bool Equals(object? obj) => obj is MaterialTypeId other && Equals(other);
+
+    public override int GetHashCode() => Id.GetHashCode();
+
+    public static bool operator ==(MaterialTypeId left, MaterialTypeId right) => left.Id == right.Id;
+
+    public static bool operator !=(MaterialTypeId left, MaterialTypeId right) => left.Id != right.Id;
 
     public static implicit operator uint(MaterialTypeId id) => id.Id;
 

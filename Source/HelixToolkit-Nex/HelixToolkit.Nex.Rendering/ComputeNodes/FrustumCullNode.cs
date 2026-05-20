@@ -88,7 +88,7 @@ public sealed class FrustumCullNode : ComputeNode
         _cullBuffer!.AdvanceAndUpdate(ref _cullConst);
         res.Deps.PushBuffer(_cullBuffer!.Buffer);
 
-        foreach (var stream in context.Data.DrawStreams.GetStreams(DrawStreamCategory.Opaque))
+        foreach (var stream in context.Data.DrawStreams.GetStreamsCore(DrawStreamCategory.Opaque))
         {
             if (stream.Count == 0)
             {

@@ -275,7 +275,7 @@ internal sealed partial class VulkanContext : Initializable, IContext
             "Cannot acquire more than 1 command buffer simultaneously"
         );
         if (
-            RuntimeInformation.OSArchitecture.Equals(Architecture.Arm64)
+            RuntimeInformation.OSArchitecture == Architecture.Arm64
             && RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
         )
         {

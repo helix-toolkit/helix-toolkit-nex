@@ -370,7 +370,7 @@ public class ImGuiRenderer(IContext context, ImGuiConfig config) : IDisposable
             }
         }
 
-        cmdBuf.BindDepthState(new());
+        cmdBuf.BindDepthState(DepthState.Disabled);
         cmdBuf.BindViewport(new() { Width = (uint)size.X, Height = (uint)size.Y });
         float L = drawData.DisplayPos.X;
         float R = drawData.DisplayPos.X + drawData.DisplaySize.X;
