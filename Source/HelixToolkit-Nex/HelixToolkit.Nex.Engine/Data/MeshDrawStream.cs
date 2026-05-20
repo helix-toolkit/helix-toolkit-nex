@@ -40,6 +40,8 @@ internal sealed class MeshDrawStream : Initializable, IDrawStream
     );
     private readonly Dictionary<MaterialTypeId, DrawRange> _materialRanges = new(InitialCapacity);
 
+    private readonly FastList<MaterialTypeId> _materialTypes = new(InitialCapacity);
+
     // ECS references
     private Components<MeshComponent> _meshComponents;
     private Components<Renderable> _renderables;
@@ -90,7 +92,11 @@ internal sealed class MeshDrawStream : Initializable, IDrawStream
     #region IDrawStream Methods
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public IEnumerable<MaterialTypeId> GetMaterialTypes() => _materialRanges.Keys;
+    public IEnumerable<MaterialTypeId> GetMaterialTypes() => _materialTypes;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public ReadOnlySpan<MaterialTypeId> GetMaterialTypesCore() =>
+        _materialTypes.GetInternalArray().AsSpan(0, _materialTypes.Count);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public DrawRange GetRangeByMaterial(MaterialTypeId materialType)
@@ -133,7 +139,10 @@ internal sealed class MeshDrawStream : Initializable, IDrawStream
         var drawIndex = renderable.DrawCmdIndex;
         if (TryGetMeshDraw(drawIndex, out var draw))
         {
-            Debug.Assert(draw.EntityId == entity.Id, "Entity Id in MeshDraw does not equal to the requested entity");
+            Debug.Assert(
+                draw.EntityId == entity.Id,
+                "Entity Id in MeshDraw does not equal to the requested entity"
+            );
             return (draw, drawIndex);
         }
         return (default, -1);
@@ -172,6 +181,7 @@ internal sealed class MeshDrawStream : Initializable, IDrawStream
         _drawsByMaterial.Clear();
         _materialRanges.Clear();
         _pendingUpdates.Clear();
+        _materialTypes.Clear();
         Count = 0;
         return ResultCode.Ok;
     }
@@ -208,6 +218,7 @@ internal sealed class MeshDrawStream : Initializable, IDrawStream
         foreach (var list in _drawsByMaterial.Values.AsValueEnumerable())
             list.Clear();
         _materialRanges.Clear();
+        _materialTypes.Clear();
         Count = 0;
 
         if (_entities is null || _entities.Count == 0)
@@ -238,6 +249,7 @@ internal sealed class MeshDrawStream : Initializable, IDrawStream
             Count++;
         }
 
+        _materialTypes.AddAll(_drawsByMaterial.Keys);
         // Sort each material group by MeshId for better GPU cache coherence
         SortByMeshId();
 

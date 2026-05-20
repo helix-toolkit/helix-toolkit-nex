@@ -3,7 +3,7 @@ namespace HelixToolkit.Nex.ECS;
 /// <summary>
 /// World object. Use World.CreateWorld() to create an new world.
 /// </summary>
-public sealed class World : IEnumerable<Entity>, IDisposable
+public sealed class World : IDisposable
 {
     public const int MaxNumberOfWorlds = byte.MaxValue;
 
@@ -364,7 +364,12 @@ public sealed class World : IEnumerable<Entity>, IDisposable
         {
             if (IsTagType<T>())
             {
-                added = !HasComponent<T>(entity);
+                if (!HasComponent<T>(entity))
+                {
+                    var tagManager = TagManager<T>.GetOrCreateManager(Id);
+                    tagManager?.Add();
+                    added = true;
+                }
                 ret = ResultCode.Ok;
             }
             else
@@ -456,14 +461,13 @@ public sealed class World : IEnumerable<Entity>, IDisposable
         {
             return false;
         }
-        foreach (var entity in this)
+        if (IsTagType<T>())
         {
-            if (entity.Has<T>())
-            {
-                return true;
-            }
+            var tagManager = TagManager<T>.GetManager(Id);
+            return tagManager?.HasAny() ?? false;
         }
-        return false;
+        var componentManager = ComponentManager<T>.GetManager(Id);
+        return componentManager?.HasAny() ?? false;
     }
 
     /// <summary>
@@ -489,6 +493,8 @@ public sealed class World : IEnumerable<Entity>, IDisposable
             {
                 if (IsTagType<T>())
                 {
+                    var tagManager = TagManager<T>.GetOrCreateManager(Id);
+                    tagManager?.Remove();
                     ret = ResultCode.Ok;
                 }
                 else
@@ -758,22 +764,10 @@ public sealed class World : IEnumerable<Entity>, IDisposable
     /// <returns>
     /// An enumerator that can be used to iterate through the collection.
     /// </returns>
-    public IEnumerator<Entity> GetEnumerator()
+    public Enumerator GetEnumerator()
     {
         return new Enumerator(this);
     }
-
-    /// <summary>
-    /// Returns an enumerator that iterates through a collection.
-    /// </summary>
-    /// <returns>
-    /// An <see cref="System.Collections.IEnumerator" /> object that can be used to iterate through the collection.
-    /// </returns>
-    IEnumerator IEnumerable.GetEnumerator()
-    {
-        return GetEnumerator();
-    }
-
     #endregion
 
     #region Event Bus

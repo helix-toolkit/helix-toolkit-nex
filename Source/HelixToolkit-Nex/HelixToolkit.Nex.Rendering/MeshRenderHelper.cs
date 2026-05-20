@@ -59,7 +59,7 @@ public static class MeshRenderHelper
 
         cmdBuf.BindIndexBuffer(context.Data.StaticMeshIndexData.Buffer, IndexFormat.UI32);
 
-        foreach (var materialType in stream.GetMaterialTypes())
+        foreach (var materialType in stream.GetMaterialTypesCore())
         {
             var range = stream.GetRangeByMaterial(materialType);
             if (range.Empty)
@@ -131,7 +131,7 @@ public static class MeshRenderHelper
         var cmdBuf = res.CmdBuffer;
         var context = res.RenderContext;
 
-        foreach (var materialType in stream.GetMaterialTypes())
+        foreach (var materialType in stream.GetMaterialTypesCore())
         {
             var range = stream.GetRangeByMaterial(materialType);
             if (range.Empty)

@@ -39,15 +39,15 @@ internal sealed class MeshDrawStreamRegistry(IContext context, World world)
         }
     }
 
-    public MeshDrawStreamEnumerable GetStreamsCore(DrawStreamCategory category)
-        => new(_streams, category);
-
+    public MeshDrawStreamEnumerable GetStreamsCore(DrawStreamCategory category) =>
+        new(_streams, category);
 
     protected override ResultCode OnInitializing()
     {
         _streams.Resize((int)DrawStreamName.Count);
         _meshStreams.Resize((int)DrawStreamName.Count);
-        _collections = _world.CreateCollection()
+        _collections = _world
+            .CreateCollection()
             .Has<NodeInfo>()
             .Has<MeshComponent>()
             .Has<WorldTransform>()
@@ -168,8 +168,5 @@ internal sealed class MeshDrawStreamRegistry(IContext context, World world)
         }
     }
 
-    private void OnSceneChanged(int worldId, SceneChangedEvents message)
-    {
-    }
+    private void OnSceneChanged(int worldId, SceneChangedEvents message) { }
 }
-
