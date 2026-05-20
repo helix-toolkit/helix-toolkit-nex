@@ -579,5 +579,36 @@ namespace HelixToolkit.Nex
         {
             return Pin(array, 0, array.Length);
         }
+
+        /// <summary>
+        /// Determines whether any flag specified in the second enumeration value is set in the first enumeration value.
+        /// </summary>
+        /// <remarks>This method is intended for use with enumeration types that represent bit fields
+        /// (flags). Both parameters must be of the same enum type.</remarks>
+        /// <typeparam name="E">The enumeration type. Must be an unmanaged enum.</typeparam>
+        /// <param name="lhs">The enumeration value to test for the presence of any specified flags.</param>
+        /// <param name="rhs">The enumeration value that specifies the flags to check for in the first value.</param>
+        /// <returns>true if any flag specified in rhs is set in lhs; otherwise, false.</returns>
+        /// <exception cref="Exception">Thrown if the size of the enumeration type does not match a known enum backing type.</exception>
+        public static bool HasAnyFlag<E>(this E lhs, E rhs) where E : unmanaged, Enum
+        {
+            switch (Unsafe.SizeOf<E>())
+            {
+                case 1:
+                    return (Unsafe.As<E, byte>(ref lhs) & Unsafe.As<E, byte>(ref rhs)) != 0;
+                case 2:
+                    return (Unsafe.As<E, ushort>(ref lhs) & Unsafe.As<E, ushort>(ref rhs)) != 0;
+                case 4:
+                    return (Unsafe.As<E, uint>(ref lhs) & Unsafe.As<E, uint>(ref rhs)) != 0;
+                case 8:
+                    return (Unsafe.As<E, ulong>(ref lhs) & Unsafe.As<E, ulong>(ref rhs)) != 0;
+                default:
+#if DEBUG
+                    throw new Exception("Size does not match a known Enum backing type.");
+#else
+                    return false;
+#endif
+            }
+        }
     }
 }

@@ -63,7 +63,7 @@ internal sealed class VulkanBuffer : IDisposable
             VmaAllocationCreateInfo vmaAllocInfo = new();
 
             // Initialize VmaAllocation Info
-            if (VkMemFlags.HasFlag(VK.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))
+            if (VkMemFlags.HasAnyFlag(VK.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))
             {
                 vmaAllocInfo = new()
                 {
@@ -76,7 +76,7 @@ internal sealed class VulkanBuffer : IDisposable
                 };
             }
 
-            if (VkMemFlags.HasFlag(VK.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))
+            if (VkMemFlags.HasAnyFlag(VK.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))
             {
                 // Check if coherent buffer is available.
                 VkMemoryRequirements requirements = new();
@@ -113,7 +113,7 @@ internal sealed class VulkanBuffer : IDisposable
                 );
 
                 // handle memory-mapped buffers
-                if (VkMemFlags.HasFlag(VK.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))
+                if (VkMemFlags.HasAnyFlag(VK.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))
                 {
                     void* mappedPtr;
                     Vma.vmaMapMemory(_ctx!.VmaAllocator, _vmaAllocation, &mappedPtr);
@@ -158,7 +158,7 @@ internal sealed class VulkanBuffer : IDisposable
                 }
 
                 // handle memory-mapped buffers
-                if (VkMemFlags.HasFlag(VK.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))
+                if (VkMemFlags.HasAnyFlag(VK.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))
                 {
                     void* mappedPtr;
                     VK.vkMapMemory(_ctx!.VkDevice, _vkMemory, 0, BufferSize, 0, &mappedPtr)
@@ -180,7 +180,7 @@ internal sealed class VulkanBuffer : IDisposable
         }
 
         // handle shader access
-        if (VkUsageFlags.HasFlag(VK.VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT))
+        if (VkUsageFlags.HasAnyFlag(VK.VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT))
         {
             VkBufferDeviceAddressInfo ai = new() { buffer = _vkBuffer };
             unsafe

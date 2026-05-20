@@ -77,9 +77,9 @@ public static class MeshRenderHelper
                     continue;
                 }
                 customMaterialBufferAddress = mat.CustomBufferAddress;
-                if (stream.Categories.HasFlag(DrawStreamCategory.Transparent))
+                if (stream.Categories.HasAnyFlag(DrawStreamCategory.Transparent))
                 {
-                    if (stream.Categories.HasFlag(DrawStreamCategory.Hitable))
+                    if (stream.Categories.HasAnyFlag(DrawStreamCategory.Hitable))
                     {
                         cmdBuf.SetColorWriteEnabled(res.Pass.ColorWrites);
                     }
@@ -149,9 +149,9 @@ public static class MeshRenderHelper
                     continue;
                 }
                 customMaterialBufferAddress = mat.CustomBufferAddress;
-                if (stream.Categories.HasFlag(DrawStreamCategory.Transparent))
+                if (stream.Categories.HasAnyFlag(DrawStreamCategory.Transparent))
                 {
-                    if (stream.Categories.HasFlag(DrawStreamCategory.Hitable))
+                    if (stream.Categories.HasAnyFlag(DrawStreamCategory.Hitable))
                     {
                         cmdBuf.SetColorWriteEnabled(res.Pass.ColorWrites);
                     }
