@@ -9,19 +9,19 @@ uint64_t getTimeMs()
 ```glsl
 mat4 getViewProjection()
 ```
-- **Purpose**: Returns the view-projection matrix used for transforming world coordinates to clip space.
+- **Purpose**: Returns the view-projection matrix, which is used to transform world coordinates to clip space.
 - **Return Type**: `mat4`
 
 ```glsl
 mat4 getInvViewProjection()
 ```
-- **Purpose**: Provides the inverse of the view-projection matrix, useful for transforming clip space coordinates back to world space.
+- **Purpose**: Provides the inverse of the view-projection matrix, useful for transforming clip space coordinates back to world coordinates.
 - **Return Type**: `mat4`
 
 ```glsl
 mat4 getView()
 ```
-- **Purpose**: Retrieves the view matrix, which transforms world coordinates to view (camera) space.
+- **Purpose**: Retrieves the view matrix, which transforms world coordinates to view space.
 - **Return Type**: `mat4`
 
 ```glsl
@@ -39,7 +39,7 @@ vec3 getCameraPosition()
 ```glsl
 vec2 getScreenSize()
 ```
-- **Purpose**: Retrieves the dimensions of the screen or viewport in pixels.
+- **Purpose**: Retrieves the dimensions of the screen in pixels.
 - **Return Type**: `vec2`
 
 ```glsl
@@ -51,37 +51,37 @@ bool isPointerRingEnabled()
 ```glsl
 vec3 getPointerRayDirection()
 ```
-- **Purpose**: Returns the direction vector of the pointer ray, used for raycasting from the camera.
+- **Purpose**: Returns the direction of the pointer ray in world space.
 - **Return Type**: `vec3`
 
 ```glsl
 vec3 getPointerRayOrigin()
 ```
-- **Purpose**: Provides the origin point of the pointer ray in world space.
+- **Purpose**: Provides the origin of the pointer ray in world space.
 - **Return Type**: `vec3`
 
 ```glsl
 float getPointerRingOuterDistThreshold()
 ```
-- **Purpose**: Retrieves the outer distance threshold for the pointer ring effect, defining its maximum radius.
+- **Purpose**: Retrieves the outer distance threshold for the pointer ring effect.
 - **Return Type**: `float`
 
 ```glsl
 float getPointerRingInnerDistThreshold()
 ```
-- **Purpose**: Returns the inner distance threshold for the pointer ring effect, defining its minimum radius.
+- **Purpose**: Provides the inner distance threshold for the pointer ring effect.
 - **Return Type**: `float`
 
 ```glsl
 float getPointerRingColorMix()
 ```
-- **Purpose**: Provides the mix factor for blending the pointer ring color with the fragment color.
+- **Purpose**: Returns the mix factor for blending the pointer ring color with the fragment color.
 - **Return Type**: `float`
 
 ```glsl
 vec3 getPointerRingColor()
 ```
-- **Purpose**: Retrieves the color of the pointer ring effect.
+- **Purpose**: Retrieves the color of the pointer ring.
 - **Return Type**: `vec3`
 
 ```glsl
@@ -93,7 +93,7 @@ float getFragToPointerRayDistance()
 ```glsl
 bool isInPointerRing()
 ```
-- **Purpose**: Determines if the current fragment is within the bounds of the pointer ring effect.
+- **Purpose**: Determines if the fragment is within the pointer ring based on distance thresholds.
 - **Return Type**: `bool`
 
 ```glsl

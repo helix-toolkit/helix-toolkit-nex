@@ -27,13 +27,13 @@ This package is integral to the HelixToolkit-Nex engine, facilitating the creati
 | `ShaderBuilder`               | Processes shader source code and includes necessary headers.                |
 | `ShaderCache`                 | Manages a cache of processed shader sources for efficient reuse.            |
 | `ShaderCompiler`              | High-level API for building shaders with automatic header inclusion.        |
-| `BillboardVertex`             | Struct for per-billboard input vertex data.                                 |
-| `BillboardDrawData`           | Struct for per-visible-billboard data written by the compute shader.        |
+| `BillboardVertex`             | Struct for per-billboard input vertex data, now includes a `type` field for vertex type. |
+| `BillboardDrawData`           | Struct for per-visible-billboard data written by the compute shader, now includes a `type` field for vertex type. |
 | `BillboardDrawIndirectArgs`   | Struct for indirect draw arguments for DrawIndirect.                        |
-| `BillboardExpandArgs`         | Struct for shared camera state for the billboard expansion compute shader.  |
-| `BillboardInfo`               | Struct containing information for each billboard.                           |
+| `BillboardExpandArgs`         | Struct for shared camera state for the billboard expansion compute shader, now includes additional padding for alignment. |
+| `BillboardInfo`               | Struct containing information for each billboard, now includes a `cullDistance` field for distance culling. |
 | `BillboardExpandPC`           | Struct for push constants for the billboard expansion compute shader.       |
-| `BillboardRenderPC`           | Struct for push constants for the billboard render vertex/fragment shaders. |
+| `BillboardRenderPC`           | Struct for push constants for the billboard render vertex/fragment shaders, now includes `billboardInfoAddress`. |
 | `GpuNodeInfo`                 | Struct containing transformation and state information for nodes, used in culling. |
 
 ## Usage Examples
