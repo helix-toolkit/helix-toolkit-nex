@@ -157,12 +157,8 @@ internal sealed class VulkanSwapchain : IDisposable
                     VkFormatProperties props = new();
                     VK.vkGetPhysicalDeviceFormatProperties(pd, format, &props);
 
-                    var isStorageSupported = caps.supportedUsageFlags.HasFlag(
-                        VK.VK_IMAGE_USAGE_STORAGE_BIT
-                    );
-                    var isTilingOptimalSupported = props.optimalTilingFeatures.HasFlag(
-                        VK.VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT
-                    );
+                    var isStorageSupported = caps.supportedUsageFlags.HasAnyFlag(VK.VK_IMAGE_USAGE_STORAGE_BIT);
+                    var isTilingOptimalSupported = props.optimalTilingFeatures.HasAnyFlag(VK.VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT);
 
                     if (isStorageSupported && isTilingOptimalSupported)
                     {
@@ -178,9 +174,7 @@ internal sealed class VulkanSwapchain : IDisposable
                 SurfaceFormat.format
             );
             var isCompositeAlphaOpaqueSupported =
-                _ctx.DeviceSurfaceCapabilities.supportedCompositeAlpha.HasFlag(
-                    VK.VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR
-                );
+                _ctx.DeviceSurfaceCapabilities.supportedCompositeAlpha.HasAnyFlag(VK.VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR);
             var graphicsQueueFamilyIndex = _ctx.DeviceQueues.GraphicsQueueFamilyIndex;
             VkSurfaceCapabilitiesKHR capabilities = new();
             VK.vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
