@@ -167,7 +167,7 @@ public static class VulkanExternalMemoryImporter
     /// Returns true when <see cref="VkExternalMemoryFeatureFlags.DedicatedOnly"/> is set.
     /// </summary>
     internal static bool ShouldUseDedicatedAllocation(VkExternalMemoryFeatureFlags featureFlags) =>
-        featureFlags.HasFlag(VkExternalMemoryFeatureFlags.DedicatedOnly);
+        featureFlags.HasAnyFlag(VkExternalMemoryFeatureFlags.DedicatedOnly);
 
     /// <summary>
     /// Queries external memory feature flags for the given format and handle type.

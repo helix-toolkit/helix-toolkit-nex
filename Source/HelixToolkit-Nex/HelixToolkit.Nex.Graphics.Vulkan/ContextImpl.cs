@@ -694,11 +694,11 @@ internal sealed partial class VulkanContext : Initializable, IContext
         VkImageUsageFlags usageFlags =
             (desc.Storage == StorageType.Device) ? VK.VK_IMAGE_USAGE_TRANSFER_DST_BIT : 0;
 
-        if (desc.Usage.HasFlag(TextureUsageBits.Sampled))
+        if (desc.Usage.HasAnyFlag(TextureUsageBits.Sampled))
         {
             usageFlags |= VK.VK_IMAGE_USAGE_SAMPLED_BIT;
         }
-        if (desc.Usage.HasFlag(TextureUsageBits.Storage))
+        if (desc.Usage.HasAnyFlag(TextureUsageBits.Storage))
         {
             if (desc.Format.IsDepthOrStencilFormat())
             {
@@ -714,7 +714,7 @@ internal sealed partial class VulkanContext : Initializable, IContext
             HxDebug.Assert(desc.NumSamples <= 1, "Storage images cannot be multisampled");
             usageFlags |= VK.VK_IMAGE_USAGE_STORAGE_BIT;
         }
-        if (desc.Usage.HasFlag(TextureUsageBits.Attachment))
+        if (desc.Usage.HasAnyFlag(TextureUsageBits.Attachment))
         {
             usageFlags |= desc.Format.IsDepthOrStencilFormat()
                 ? VK.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
@@ -730,7 +730,7 @@ internal sealed partial class VulkanContext : Initializable, IContext
             // For now, always set this flag so we can read it back
             usageFlags |= VK.VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
         }
-        if (desc.Usage.HasFlag(TextureUsageBits.InputAttachment))
+        if (desc.Usage.HasAnyFlag(TextureUsageBits.InputAttachment))
         {
             usageFlags |= VK.VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
         }
@@ -991,7 +991,7 @@ internal sealed partial class VulkanContext : Initializable, IContext
             return ResultCode.RuntimeError;
         }
 
-        if (image.UsageFlags.HasFlag(VK.VK_IMAGE_USAGE_STORAGE_BIT))
+        if (image.UsageFlags.HasAnyFlag(VK.VK_IMAGE_USAGE_STORAGE_BIT))
         {
             if (!desc.Components.Identity())
             {
@@ -1050,15 +1050,15 @@ internal sealed partial class VulkanContext : Initializable, IContext
             return ResultCode.ArgumentError;
         }
 
-        if (desc.Usage.HasFlag(BufferUsageBits.Index))
+        if (desc.Usage.HasAnyFlag(BufferUsageBits.Index))
         {
             usageFlags |= VK.VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
         }
-        if (desc.Usage.HasFlag(BufferUsageBits.Vertex))
+        if (desc.Usage.HasAnyFlag(BufferUsageBits.Vertex))
         {
             usageFlags |= VK.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
         }
-        if (desc.Usage.HasFlag(BufferUsageBits.Uniform))
+        if (desc.Usage.HasAnyFlag(BufferUsageBits.Uniform))
         {
             usageFlags |=
                 VK.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
@@ -1066,7 +1066,7 @@ internal sealed partial class VulkanContext : Initializable, IContext
                 | VK.VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
         }
 
-        if (desc.Usage.HasFlag(BufferUsageBits.Storage))
+        if (desc.Usage.HasAnyFlag(BufferUsageBits.Storage))
         {
             usageFlags |=
                 VK.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
@@ -1075,14 +1075,14 @@ internal sealed partial class VulkanContext : Initializable, IContext
                 | VK.VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
         }
 
-        if (desc.Usage.HasFlag(BufferUsageBits.Indirect))
+        if (desc.Usage.HasAnyFlag(BufferUsageBits.Indirect))
         {
             usageFlags |=
                 VK.VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT
                 | VK.VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
         }
 
-        if (desc.Usage.HasFlag(BufferUsageBits.ShaderBindingTable))
+        if (desc.Usage.HasAnyFlag(BufferUsageBits.ShaderBindingTable))
         {
             usageFlags |=
                 VK.VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR

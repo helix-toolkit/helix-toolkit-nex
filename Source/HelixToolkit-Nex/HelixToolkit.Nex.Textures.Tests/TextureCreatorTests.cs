@@ -42,7 +42,7 @@ public class TextureCreatorTests
         var desc = _context.GetTextureDesc(texture.Handle);
         Assert.IsNotNull(desc);
         Assert.IsTrue(
-            (desc!.Value.Usage & TextureUsageBits.Sampled) != 0,
+            desc!.Value.Usage.HasAnyFlag(TextureUsageBits.Sampled),
             "Default usage should include Sampled"
         );
     }

@@ -757,13 +757,13 @@ internal static class HxVkExtensions
         {
             ResolveMode.None => VkResolveModeFlags.None,
             ResolveMode.SampleZero => VkResolveModeFlags.SampleZero,
-            ResolveMode.Average => supported.HasFlag(VkResolveModeFlags.Average)
+            ResolveMode.Average => supported.HasAnyFlag(VkResolveModeFlags.Average)
                 ? VkResolveModeFlags.Average
                 : VkResolveModeFlags.SampleZero,
-            ResolveMode.Min => supported.HasFlag(VkResolveModeFlags.Min)
+            ResolveMode.Min => supported.HasAnyFlag(VkResolveModeFlags.Min)
                 ? VkResolveModeFlags.Min
                 : VkResolveModeFlags.SampleZero,
-            ResolveMode.Max => supported.HasFlag(VkResolveModeFlags.Average)
+            ResolveMode.Max => supported.HasAnyFlag(VkResolveModeFlags.Average)
                 ? VkResolveModeFlags.Average
                 : VkResolveModeFlags.SampleZero,
             _ => VkResolveModeFlags.SampleZero, // Default to SampleZero if unsupported mode is provided
@@ -835,13 +835,15 @@ internal static class HxVkExtensions
 
     public static bool IsShaderStage(this VkPipelineStageFlags2 stage)
     {
-        return stage.HasFlag(VkPipelineStageFlags2.VertexShader)
-            || stage.HasFlag(VkPipelineStageFlags2.TessellationControlShader)
-            || stage.HasFlag(VkPipelineStageFlags2.TessellationEvaluationShader)
-            || stage.HasFlag(VkPipelineStageFlags2.GeometryShader)
-            || stage.HasFlag(VkPipelineStageFlags2.FragmentShader)
-            || stage.HasFlag(VkPipelineStageFlags2.ComputeShader)
-            || stage.HasFlag(VkPipelineStageFlags2.MeshShaderEXT);
+        return stage.HasAnyFlag(
+            VkPipelineStageFlags2.VertexShader
+            | VkPipelineStageFlags2.TessellationControlShader
+            | VkPipelineStageFlags2.TessellationEvaluationShader
+            | VkPipelineStageFlags2.GeometryShader
+            | VkPipelineStageFlags2.FragmentShader
+            | VkPipelineStageFlags2.ComputeShader
+            | VkPipelineStageFlags2.MeshShaderEXT
+        );
     }
 
     public static void BufferBarrier2(
@@ -866,34 +868,34 @@ internal static class HxVkExtensions
             size = size,
         };
 
-        if (srcStage.HasFlag(VkPipelineStageFlags2.Transfer))
+        if (srcStage.HasAnyFlag(VkPipelineStageFlags2.Transfer))
         {
             barrier.srcAccessMask |= VkAccessFlags2.TransferRead | VkAccessFlags2.TransferWrite;
         }
         else if (
-            srcStage.HasFlag(VkPipelineStageFlags2.AllGraphics | VkPipelineStageFlags2.AllCommands)
+            srcStage.HasAnyFlag(VkPipelineStageFlags2.AllGraphics | VkPipelineStageFlags2.AllCommands)
             || srcStage.IsShaderStage()
         )
         {
             barrier.srcAccessMask |= VkAccessFlags2.ShaderRead | VkAccessFlags2.ShaderWrite;
         }
 
-        if (dstStage.HasFlag(VkPipelineStageFlags2.Transfer))
+        if (dstStage.HasAnyFlag(VkPipelineStageFlags2.Transfer))
         {
             barrier.dstAccessMask |= VkAccessFlags2.TransferRead | VkAccessFlags2.TransferWrite;
         }
         else if (
-            srcStage.HasFlag(VkPipelineStageFlags2.AllGraphics | VkPipelineStageFlags2.AllCommands)
+            srcStage.HasAnyFlag(VkPipelineStageFlags2.AllGraphics | VkPipelineStageFlags2.AllCommands)
             || srcStage.IsShaderStage()
         )
         {
             barrier.dstAccessMask |= VkAccessFlags2.ShaderRead | VkAccessFlags2.ShaderWrite;
         }
-        if (dstStage.HasFlag(VkPipelineStageFlags2.DrawIndirect))
+        if (dstStage.HasAnyFlag(VkPipelineStageFlags2.DrawIndirect))
         {
             barrier.dstAccessMask |= VkAccessFlags2.IndirectCommandRead;
         }
-        if (buf.VkUsageFlags.HasFlag(VkBufferUsageFlags.IndexBuffer))
+        if (buf.VkUsageFlags.HasAnyFlag(VkBufferUsageFlags.IndexBuffer))
         {
             barrier.dstAccessMask |= VkAccessFlags2.IndexRead;
             barrier.dstStageMask |= VkPipelineStageFlags2.IndexInput;

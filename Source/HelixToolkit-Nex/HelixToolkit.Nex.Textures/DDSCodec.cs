@@ -858,8 +858,8 @@ internal static class DDSCodec
         var srcBuffers = srcImage.PixelBuffers;
         var dstBuffers = dstImage.PixelBuffers;
 
-        bool setAlpha = (convFlags & ConversionFlags.NoAlpha) != 0;
-        bool swizzle = (convFlags & ConversionFlags.Swizzle) != 0;
+        bool setAlpha = convFlags.HasAnyFlag(ConversionFlags.NoAlpha);
+        bool swizzle = convFlags.HasAnyFlag(ConversionFlags.Swizzle);
 
         int index = 0;
         int checkSize = dataSize - offset;
@@ -898,13 +898,12 @@ internal static class DDSCodec
 
                         for (int h = 0; h < src.Height; h++)
                         {
-                            if ((convFlags & ConversionFlags.Expand) != 0)
+                            if (convFlags.HasAnyFlag(ConversionFlags.Expand))
                             {
                                 if (
-                                    (
-                                        convFlags
-                                        & (ConversionFlags.Format565 | ConversionFlags.Format5551)
-                                    ) != 0
+                                    convFlags.HasAnyFlag(
+                                        ConversionFlags.Format565 | ConversionFlags.Format5551
+                                    )
                                 )
                                 {
                                     ExpandScanline(
@@ -912,7 +911,7 @@ internal static class DDSCodec
                                         dstPitch,
                                         pSrc,
                                         srcPitch,
-                                        (convFlags & ConversionFlags.Format565) != 0
+                                        convFlags.HasAnyFlag(ConversionFlags.Format565)
                                             ? DxgiFormat.B5G6R5_UNorm
                                             : DxgiFormat.B5G5R5A1_UNorm,
                                         setAlpha
@@ -1251,7 +1250,7 @@ internal static class DDSCodec
         bool setAlpha
     )
     {
-        if ((convFlags & ConversionFlags.Format888) != 0)
+        if (convFlags.HasAnyFlag(ConversionFlags.Format888))
         {
             // 24bpp BGR -> 32bpp RGBA
             var sPtr = (byte*)pSrc;
@@ -1270,7 +1269,7 @@ internal static class DDSCodec
                 sPtr += 3;
             }
         }
-        else if ((convFlags & ConversionFlags.Format332) != 0)
+        else if (convFlags.HasAnyFlag(ConversionFlags.Format332))
         {
             // 8bpp R3G3B2 -> 32bpp RGBA
             var sPtr = (byte*)pSrc;
@@ -1292,7 +1291,7 @@ internal static class DDSCodec
                 *(dPtr++) = (int)(t1 | t2 | t3 | 0xff000000u);
             }
         }
-        else if ((convFlags & ConversionFlags.Format8332) != 0)
+        else if (convFlags.HasAnyFlag(ConversionFlags.Format8332))
         {
             // 16bpp A8R3G3B2 -> 32bpp RGBA
             var sPtr = (short*)pSrc;
@@ -1316,7 +1315,7 @@ internal static class DDSCodec
                 *(dPtr++) = (int)(t1 | t2 | t3 | ta);
             }
         }
-        else if ((convFlags & ConversionFlags.Format4444) != 0)
+        else if (convFlags.HasAnyFlag(ConversionFlags.Format4444))
         {
             // 16bpp A4R4G4B4 -> 32bpp RGBA
             var sPtr = (short*)pSrc;
@@ -1337,7 +1336,7 @@ internal static class DDSCodec
                 *(dPtr++) = (int)(t1 | t2 | t3 | ta);
             }
         }
-        else if ((convFlags & ConversionFlags.Format44) != 0)
+        else if (convFlags.HasAnyFlag(ConversionFlags.Format44))
         {
             // 8bpp A4L4 -> 32bpp RGBA
             var sPtr = (byte*)pSrc;
@@ -1354,9 +1353,9 @@ internal static class DDSCodec
                 *(dPtr++) = (int)(t1 | (t1 << 8) | (t1 << 16) | ta);
             }
         }
-        else if ((convFlags & ConversionFlags.Pal8) != 0 && pal8 != null)
+        else if (convFlags.HasAnyFlag(ConversionFlags.Pal8) && pal8 != null)
         {
-            if ((convFlags & ConversionFlags.FormatA8P8) != 0)
+            if (convFlags.HasAnyFlag(ConversionFlags.FormatA8P8))
             {
                 // 16bpp A8P8 palette
                 var sPtr = (short*)pSrc;

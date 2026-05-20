@@ -96,16 +96,16 @@ public static class PitchCalculator
         else
         {
             int bpp;
-            if ((flags & PitchFlags.Bpp24) != 0)
+            if (flags.HasAnyFlag(PitchFlags.Bpp24))
                 bpp = 24;
-            else if ((flags & PitchFlags.Bpp16) != 0)
+            else if (flags.HasAnyFlag(PitchFlags.Bpp16))
                 bpp = 16;
-            else if ((flags & PitchFlags.Bpp8) != 0)
+            else if (flags.HasAnyFlag(PitchFlags.Bpp8))
                 bpp = 8;
             else
                 bpp = GetBitsPerPixel(fmt);
 
-            if ((flags & PitchFlags.LegacyDword) != 0)
+            if (flags.HasAnyFlag(PitchFlags.LegacyDword))
             {
                 rowPitch = ((width * bpp) + 31) / 32 * 4;
             }

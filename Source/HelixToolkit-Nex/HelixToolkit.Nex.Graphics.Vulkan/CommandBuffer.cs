@@ -708,7 +708,7 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
         var buf = _ctx.BuffersPool.Get(indexBuffer);
 
         HxDebug.Assert(
-            buf is not null && buf.VkUsageFlags.HasFlag(VK.VK_BUFFER_USAGE_INDEX_BUFFER_BIT)
+            buf is not null && buf.VkUsageFlags.HasAnyFlag(VK.VK_BUFFER_USAGE_INDEX_BUFFER_BIT)
         );
 
         var type = indexFormat.ToVk();
@@ -831,7 +831,7 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
             _logger.LogError("Bind vertex buffer failed. Buffer handle is not valid.");
             return;
         }
-        HxDebug.Assert(buf.VkUsageFlags.HasFlag(VK.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT));
+        HxDebug.Assert(buf.VkUsageFlags.HasAnyFlag(VK.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT));
         unsafe
         {
             var vkBuffer = buf.VkBuffer;
@@ -1582,11 +1582,11 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
 
         var dstStage = VkPipelineStageFlags2.VertexShader;
 
-        if (buf.VkUsageFlags.HasFlag(VK.VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT))
+        if (buf.VkUsageFlags.HasAnyFlag(VK.VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT))
         {
             dstStage |= VkPipelineStageFlags2.DrawIndirect;
         }
-        if (buf.VkUsageFlags.HasFlag(VK.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT))
+        if (buf.VkUsageFlags.HasAnyFlag(VK.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT))
         {
             dstStage |= VkPipelineStageFlags2.VertexInput;
         }
@@ -1656,22 +1656,22 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
 
             var srcStage = VkPipelineStageFlags2.VertexShader;
 
-            if (srcBuf.VkUsageFlags.HasFlag(VK.VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT))
+            if (srcBuf.VkUsageFlags.HasAnyFlag(VK.VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT))
             {
                 srcStage |= VkPipelineStageFlags2.DrawIndirect;
             }
-            if (srcBuf.VkUsageFlags.HasFlag(VK.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT))
+            if (srcBuf.VkUsageFlags.HasAnyFlag(VK.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT))
             {
                 srcStage |= VkPipelineStageFlags2.VertexInput;
             }
 
             var dstStage = VkPipelineStageFlags2.VertexShader;
 
-            if (dstBuf.VkUsageFlags.HasFlag(VK.VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT))
+            if (dstBuf.VkUsageFlags.HasAnyFlag(VK.VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT))
             {
                 dstStage |= VkPipelineStageFlags2.DrawIndirect;
             }
-            if (dstBuf.VkUsageFlags.HasFlag(VK.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT))
+            if (dstBuf.VkUsageFlags.HasAnyFlag(VK.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT))
             {
                 dstStage |= VkPipelineStageFlags2.VertexInput;
             }
@@ -1842,7 +1842,7 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
         }
 
         // transition only non-multisampled images - MSAA images cannot be accessed from shaders
-        if (img.SampleCount.HasFlag(VK.VK_SAMPLE_COUNT_1_BIT))
+        if (img.SampleCount.HasAnyFlag(VK.VK_SAMPLE_COUNT_1_BIT))
         {
             VkImageAspectFlags flags = img.GetImageAspectFlags();
             // set the result of the previous render pass
@@ -1872,7 +1872,7 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
         var img = _ctx.TexturesPool.Get(handle);
         HxDebug.Assert(img is not null && !img.IsSwapchainImage);
         HxDebug.Assert(
-            img!.UsageFlags.HasFlag(VK.VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT),
+            img!.UsageFlags.HasAnyFlag(VK.VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT),
             "Input attachment texture must have VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT (lvk::TextureUsageBits_InputAttachment)"
         );
 
@@ -1920,11 +1920,11 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
 
         var dstStage = VkPipelineStageFlags2.VertexShader;
 
-        if (buf.VkUsageFlags.HasFlag(VK.VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT))
+        if (buf.VkUsageFlags.HasAnyFlag(VK.VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT))
         {
             dstStage |= VkPipelineStageFlags2.DrawIndirect;
         }
-        if (buf.VkUsageFlags.HasFlag(VK.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT))
+        if (buf.VkUsageFlags.HasAnyFlag(VK.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT))
         {
             dstStage |= VkPipelineStageFlags2.VertexInput;
         }
@@ -1949,13 +1949,13 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
         var buf = _ctx.BuffersPool.Get(in handle);
         HxDebug.Assert(buf);
         if (
-            buf!.VkUsageFlags.HasFlag(VK.VK_BUFFER_USAGE_INDEX_BUFFER_BIT)
-            || buf.VkUsageFlags.HasFlag(VK.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT)
+            buf!.VkUsageFlags.HasAnyFlag(VK.VK_BUFFER_USAGE_INDEX_BUFFER_BIT)
+            || buf.VkUsageFlags.HasAnyFlag(VK.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT)
         )
         {
             dstStageFlags |= VkPipelineStageFlags2.VertexInput;
         }
-        if (buf.VkUsageFlags.HasFlag(VK.VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT))
+        if (buf.VkUsageFlags.HasAnyFlag(VK.VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT))
         {
             dstStageFlags |= VkPipelineStageFlags2.DrawIndirect;
         }

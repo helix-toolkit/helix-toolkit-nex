@@ -45,7 +45,7 @@ public class DedicatedAllocationPropertyTests
                 Arb.From(GenFeatureFlags),
                 (VkExternalMemoryFeatureFlags flags) =>
                 {
-                    bool expected = flags.HasFlag(VkExternalMemoryFeatureFlags.DedicatedOnly);
+                    bool expected = flags.HasAnyFlag(VkExternalMemoryFeatureFlags.DedicatedOnly);
                     bool actual = VulkanExternalMemoryImporter.ShouldUseDedicatedAllocation(flags);
                     return expected == actual;
                 }
