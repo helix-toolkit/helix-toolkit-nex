@@ -34,10 +34,10 @@ HelixToolkit.Nex.Rendering is responsible for managing the rendering pipeline of
 
 ### New Features
 
-- **ForwardPlusWBOITMergedNode**: Added to merge WBOIT transparent rendering and compositing into a single render pass using Vulkan dynamic rendering local read.
-- **BillboardComponent**: Added to describe billboards attached to an entity, supporting features like axis-constrained mode and MSDF atlas properties.
-- **BillboardCullNode**: Added for GPU-based culling of billboard data.
-- **PointCloudComponent**: Enhanced with additional properties for MSDF atlas configuration.
+- **BillboardGeometry**: Reintroduced with enhanced functionality, including support for solid color and UV types.
+- **BillboardComponent**: Added `CullDistance` property to control distance-based culling.
+- **BillboardCullNode**: Updated to include screen width in rendering parameters for better culling precision.
+- **WireframePostEffect**: Added for rendering wireframe overlays on meshes with customizable color and depth bias.
 
 ### Updated Sampler Handling
 
@@ -96,7 +96,8 @@ var billboardComponent = new BillboardComponent
 {
     BillboardGeometry = new BillboardGeometry(),
     Color = new Color4(1f, 1f, 1f, 1f),
-    FixedSize = false
+    FixedSize = false,
+    CullDistance = 100f // Set culling distance
 };
 ```
 
