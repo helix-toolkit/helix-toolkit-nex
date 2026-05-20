@@ -34,6 +34,7 @@ This package plays a crucial role in the rendering pipeline, providing the neces
 | `MaterialTypeId` | Represents a unique identifier for material types. |
 | `MaterialPropertyCreator` | Facilitates creation and configuration of material properties. |
 | `GraphicsSettings` | Provides static render settings including formats and frame configurations. |
+| `ColorAttachment` | Represents the configuration for color blending in render pipelines. |
 
 ## Usage Examples
 
@@ -85,6 +86,34 @@ int createdPipelines = billboardManager.CreatePipelinesFromRegistry();
 
 // Retrieve a pipeline handle for a specific material type
 var pipelineHandle = billboardManager.GetPipeline(new MaterialTypeId(1)); // Example ID
+```
+
+### Registering a New Billboard Material Type
+
+```csharp
+var blendConfig = new ColorAttachment
+{
+    BlendEnabled = true,
+    RgbBlendOp = BlendOp.Add,
+    AlphaBlendOp = BlendOp.Add,
+    SrcRGBBlendFactor = BlendFactor.One,
+    SrcAlphaBlendFactor = BlendFactor.One,
+    DstRGBBlendFactor = BlendFactor.OneMinusSrcAlpha,
+    DstAlphaBlendFactor = BlendFactor.OneMinusSrcAlpha,
+};
+
+var typeId = BillboardMaterialRegistry.Register(
+    "CustomBillboard",
+    """
+    vec4 color = getColor();
+    if (getTextureId() > 0u && hasUV()) {
+        vec4 texColor = textureBindless2D(getTextureId(), getSamplerId(), getUV());
+        color *= texColor;
+    }
+    return color;
+    """,
+    blendConfig: blendConfig
+);
 ```
 
 ## Architecture Notes

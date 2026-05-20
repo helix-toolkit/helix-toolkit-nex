@@ -33,6 +33,7 @@ HelixToolkit.Nex.Engine is a core component of the HelixToolkit.Nex suite, respo
 | `BillboardData`                  | Manages billboard entities and their data for rendering.                   |
 | `PointCloudData`                 | Manages point cloud entities and their data for rendering.                 |
 | `DynamicMeshDrawData`            | Represents dynamic mesh draw data.                                         |
+| `BillboardNode`                  | Represents a node in the scene graph that contains billboard geometry.     |
 
 ## Usage Examples
 
@@ -107,8 +108,9 @@ var billboard = engine.CreateBillboard(
     BuildinFontAtlas.Default,
     "Hello World",
     12f,
-    new Vector3(0, 0, 0),
-    new Color4(1, 1, 1, 1)
+    new Color4(1, 1, 1, 1),
+    background: new Color4(0, 0, 0, 0.5f),
+    cullDistance: 100f
 );
 ```
 
@@ -124,11 +126,7 @@ var billboard = engine.CreateBillboard(
 
 ### New Types
 
-- `WalkaroundCameraController`: A specialized first-person camera controller with inverted controls.
-
-### New Properties in `FirstPersonCameraController`
-
-- `InvertX`: Gets or sets a value indicating whether the X axis input is inverted.
+- `BillboardNode`: Represents a node in the scene graph that contains billboard geometry.
 
 ### New Methods in `Engine`
 
