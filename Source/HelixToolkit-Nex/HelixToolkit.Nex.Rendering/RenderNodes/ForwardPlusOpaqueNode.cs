@@ -23,11 +23,11 @@ public sealed class ForwardPlusOpaqueNode : RenderNode
     protected override bool CanRender(in RenderResources res)
     {
         var context = res.RenderContext;
-        return context.Data is not null
-            && context
-                .Data.DrawStreams.GetStreams(DrawStreamCategory.Opaque)
-                .AsValueEnumerable()
-                .Any(x => x.Count > 0);
+        if (context.Data is null)
+        {
+            return false;
+        }
+        return context.Data.DrawStreams.GetStreamsCore(DrawStreamCategory.Opaque).HasAny();
     }
 
     protected override void OnSetupRender(in RenderResources res)
@@ -50,13 +50,14 @@ public sealed class ForwardPlusOpaqueNode : RenderNode
         res.Deps.PushBuffer(res.Buffers[SystemBufferNames.BufferForwardPlusConstants]);
         res.Pass.DepthState = DepthState.ReadOnlyInvZ;
 
-        res.RenderContext.Data!.DrawStreams.GetStreams(DrawStreamCategory.Opaque)
-            .Barrier(res.CmdBuffer);
+        var streams = res.RenderContext.Data!.DrawStreams.GetStreamsCore(DrawStreamCategory.Opaque);
+        foreach (var stream in streams)
+            stream.Barrier(res.CmdBuffer);
     }
 
     protected override void OnRender(in RenderResources res)
     {
-        var streams = res.RenderContext.Data!.DrawStreams.GetStreams(DrawStreamCategory.Opaque);
+        var streams = res.RenderContext.Data!.DrawStreams.GetStreamsCore(DrawStreamCategory.Opaque);
         res.RenderContext.Statistics.DrawCalls += MeshRenderHelper.Render(
             in res,
             res.Buffers[SystemBufferNames.BufferForwardPlusConstants]

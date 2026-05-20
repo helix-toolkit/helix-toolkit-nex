@@ -26,11 +26,11 @@ public class ForwardPlusTransparentNode : RenderNode
     protected override bool CanRender(in RenderResources res)
     {
         var context = res.RenderContext;
-        return context.Data is not null
-            && context
-                .Data.DrawStreams.GetStreams(DrawStreamCategory.Transparent)
-                .AsValueEnumerable()
-                .Any(x => x.Count > 0);
+        if (context.Data is null)
+        {
+            return false;
+        }
+        return context.Data.DrawStreams.GetStreamsCore(DrawStreamCategory.Transparent).HasAny();
     }
 
     protected override void OnSetupRender(in RenderResources res)
@@ -56,13 +56,16 @@ public class ForwardPlusTransparentNode : RenderNode
         res.Pass.Colors[1].LoadOp = LoadOp.Load;
         res.Pass.Colors[1].StoreOp = StoreOp.Store;
 
-        res.RenderContext.Data!.DrawStreams.GetStreams(DrawStreamCategory.Transparent)
-            .Barrier(res.CmdBuffer);
+        var streams = res.RenderContext.Data!.DrawStreams.GetStreamsCore(
+            DrawStreamCategory.Transparent
+        );
+        foreach (var stream in streams)
+            stream.Barrier(res.CmdBuffer);
     }
 
     protected override void OnRender(in RenderResources res)
     {
-        var streams = res.RenderContext.Data!.DrawStreams.GetStreams(
+        var streams = res.RenderContext.Data!.DrawStreams.GetStreamsCore(
             DrawStreamCategory.Transparent
         );
         res.RenderContext.Statistics.DrawCalls += MeshRenderHelper.Render(

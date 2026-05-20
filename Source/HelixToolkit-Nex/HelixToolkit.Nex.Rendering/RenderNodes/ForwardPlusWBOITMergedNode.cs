@@ -34,7 +34,9 @@ public sealed class ForwardPlusWBOITMergedNode : RenderNode
                     Format.R_F16,
                     (uint)p.Context.WindowSize.Width,
                     (uint)p.Context.WindowSize.Height,
-                    TextureUsageBits.InputAttachment | TextureUsageBits.Attachment | TextureUsageBits.Sampled,
+                    TextureUsageBits.InputAttachment
+                        | TextureUsageBits.Attachment
+                        | TextureUsageBits.Sampled,
                     StorageType.Device,
                     debugName: SystemBufferNames.TextureWboitRevealage
                 )
@@ -88,7 +90,6 @@ public sealed class ForwardPlusWBOITMergedNode : RenderNode
             "WBOITMergedComposite_VS"
         );
 
-
         var defines = new Dictionary<string, string>();
         if (Context.SupportsSubpass)
         {
@@ -97,10 +98,7 @@ public sealed class ForwardPlusWBOITMergedNode : RenderNode
         // Compile the subpass composite fragment shader (uses subpassLoad).
         var fsResult = shaderCompiler.CompileFragmentShader(
             GlslUtils.GetEmbeddedGlslShader("Frag.psWBOITCompositeSubpass"),
-            new ShaderBuildOptions()
-            {
-                Defines = defines
-            }
+            new ShaderBuildOptions() { Defines = defines }
         );
 
         if (!fsResult.Success)
@@ -168,11 +166,13 @@ public sealed class ForwardPlusWBOITMergedNode : RenderNode
     protected override bool CanRender(in RenderResources res)
     {
         var context = res.RenderContext;
+        if (context.Data is null)
+        {
+            return false;
+        }
+
         return context.Data is not null
-            && context
-                .Data.DrawStreams.GetStreams(DrawStreamCategory.Transparent)
-                .AsValueEnumerable()
-                .Any(x => x.Count > 0);
+            && context.Data.DrawStreams.GetStreamsCore(DrawStreamCategory.Transparent).HasAny();
     }
 
     protected override void OnSetupRender(in RenderResources res)
@@ -212,15 +212,13 @@ public sealed class ForwardPlusWBOITMergedNode : RenderNode
         res.Pass.Colors[3].StoreOp = StoreOp.Store;
 
         if (Context!.SupportsSubpass)
-        {// If subpass load is supported, we can read the accumulation/revealage attachments directly as input attachments in the composite subpass.
+        { // If subpass load is supported, we can read the accumulation/revealage attachments directly as input attachments in the composite subpass.
             res.Pass.Colors[2].StoreOp = StoreOp.DontCare;
             res.Pass.Colors[3].StoreOp = StoreOp.DontCare;
 
             res.Deps.PushInputAttachment(accumTex);
             res.Deps.PushInputAttachment(res.Textures[SystemBufferNames.TextureWboitRevealage]);
         }
-
-
 
         // Resource dependencies for the accumulation subpass.
         res.Deps.PushTexture(res.Textures[SystemBufferNames.TextureDepthF32]);
@@ -231,7 +229,6 @@ public sealed class ForwardPlusWBOITMergedNode : RenderNode
         res.Pass.ColorWrites[0] = false;
     }
 
-
     protected override void OnRender(in RenderResources res)
     {
         var cmdBuffer = res.CmdBuffer;
@@ -239,7 +236,7 @@ public sealed class ForwardPlusWBOITMergedNode : RenderNode
         // Disable color buffer 0 output in first pass since second pass outputs the final color to the buffer 0.
         // cmdBuffer.SetColorWriteEnabled(false);
         // ── Subpass 1: Render transparent geometry into accumulation/revealage ──
-        var streams = res.RenderContext.Data!.DrawStreams.GetStreams(
+        var streams = res.RenderContext.Data!.DrawStreams.GetStreamsCore(
             DrawStreamCategory.Transparent
         );
         res.RenderContext.Statistics.DrawCalls += MeshRenderHelper.Render(

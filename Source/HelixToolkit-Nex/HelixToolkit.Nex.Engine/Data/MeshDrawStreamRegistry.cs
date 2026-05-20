@@ -10,7 +10,8 @@ internal sealed class MeshDrawStreamRegistry(IContext context, World world)
 {
     private readonly IContext _context = context;
     private readonly World _world = world;
-    private readonly FastList<MeshDrawStream> _streams = [];
+    private readonly FastList<IDrawStream> _streams = [];
+    private readonly FastList<MeshDrawStream> _meshStreams = [];
     private EntityCollection? _collections;
     private Components<MeshComponent> _meshComponents = world.GetComponents<MeshComponent>();
     private Components<Renderable> _renderables = world.GetComponents<Renderable>();
@@ -31,19 +32,21 @@ internal sealed class MeshDrawStreamRegistry(IContext context, World world)
 
     public IEnumerable<IDrawStream> GetStreams(DrawStreamCategory category)
     {
-        foreach (var stream in _streams.AsValueEnumerable())
+        foreach (var stream in _streams)
         {
             if (stream.Categories.HasAnyFlag(category))
-            {
                 yield return stream;
-            }
         }
     }
+
+    public MeshDrawStreamEnumerable GetStreamsCore(DrawStreamCategory category)
+        => new(_streams, category);
 
 
     protected override ResultCode OnInitializing()
     {
         _streams.Resize((int)DrawStreamName.Count);
+        _meshStreams.Resize((int)DrawStreamName.Count);
         _collections = _world.CreateCollection()
             .Has<NodeInfo>()
             .Has<MeshComponent>()
@@ -55,7 +58,7 @@ internal sealed class MeshDrawStreamRegistry(IContext context, World world)
         _collections.EntityChanged += OnEntityChanged;
         for (int i = 0; i < _streams.Count; ++i)
         {
-            _streams[i] = new MeshDrawStream(_context, _world, (DrawStreamName)i);
+            _streams[i] = _meshStreams[i] = new MeshDrawStream(_context, _world, (DrawStreamName)i);
             if (_streams[i].Initialize().CheckResult() != ResultCode.Ok)
             {
                 return ResultCode.RuntimeError;
@@ -67,7 +70,7 @@ internal sealed class MeshDrawStreamRegistry(IContext context, World world)
 
     public bool Update()
     {
-        foreach (var stream in AllStreams)
+        foreach (var stream in _meshStreams)
         {
             if (!stream.Update())
             {
@@ -84,14 +87,15 @@ internal sealed class MeshDrawStreamRegistry(IContext context, World world)
             stream.Dispose();
         }
         _streams.Clear();
+        _meshStreams.Clear();
         return ResultCode.Ok;
     }
 
     private MeshDrawStream? GetStreamInternal(DrawStreamCategory category)
     {
         var idx = (int)category.GetStreamName();
-        Debug.Assert(idx >= 0 && idx < _streams.Count, $"Invalid stream category: {category}");
-        return idx >= 0 ? _streams[idx] : null;
+        Debug.Assert(idx >= 0 && idx < _meshStreams.Count, $"Invalid stream category: {category}");
+        return idx >= 0 ? _meshStreams[idx] : null;
     }
 
     private void OnEntityAdded(object? sender, int entityId)
@@ -146,7 +150,7 @@ internal sealed class MeshDrawStreamRegistry(IContext context, World world)
                 else
                 {
                     // In case the entity was not added to any stream before (e.g., it was missing some components), we need to remove it from all streams just in case.
-                    foreach (var s in _streams.AsValueEnumerable())
+                    foreach (var s in _meshStreams)
                     {
                         if (s.Has(entity))
                         {
@@ -168,3 +172,4 @@ internal sealed class MeshDrawStreamRegistry(IContext context, World world)
     {
     }
 }
+

@@ -285,7 +285,7 @@ public sealed class BorderHighlightPostEffect : PostEffect
 
         foreach (var entry in _entries.AsValueEnumerable())
         {
-            var streams = dataStreams.GetStreams(entry.Category);
+            var streams = dataStreams.GetStreamsCore(entry.Category);
             foreach (var stream in streams)
             {
                 if (stream.Categories != entry.Category)

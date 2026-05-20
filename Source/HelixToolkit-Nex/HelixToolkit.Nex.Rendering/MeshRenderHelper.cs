@@ -12,7 +12,7 @@ public static class MeshRenderHelper
     public static uint Render(
         in RenderResources res,
         ulong fpConstAddress,
-        IEnumerable<IDrawStream> streams,
+        in MeshDrawStreamEnumerable streams,
         MaterialPassType passType
     )
     {
@@ -226,7 +226,7 @@ public static class MeshRenderHelper
         foreach (var entity in entites.AsValueEnumerable())
         {
             var category = (DrawStreamCategory)renderables[entity].DrawCategory;
-            var streams = dataStreams.GetStreams(category);
+            var streams = dataStreams.GetStreamsCore(category);
             foreach (var stream in streams)
             {
                 if (stream.Categories != category)

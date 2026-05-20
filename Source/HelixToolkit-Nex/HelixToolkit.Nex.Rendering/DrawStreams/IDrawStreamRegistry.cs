@@ -31,9 +31,61 @@ public interface IDrawStreamRegistry : IInitializable, IDisposable
     IEnumerable<IDrawStream> AllStreams { get; }
 
     /// <summary>
+    /// Zero-allocation overload for internal/engine callers that know the concrete registry type.
+    /// Returns a struct enumerable that avoids the <c>yield return</c> state-machine heap allocation.
+    /// </summary>
+    MeshDrawStreamEnumerable GetStreamsCore(DrawStreamCategory category);
+
+    /// <summary>
     /// Updates all streams by processing pending changes, running compaction where needed,
     /// and rebuilding material-type ordering. Called once per frame before rendering begins.
     /// </summary>
     /// <returns><c>true</c> if all stream updates succeeded; <c>false</c> if any stream failed to update.</returns>
     bool Update();
+}
+
+/// <summary>
+/// Zero-allocation struct enumerable over a <see cref="FastList{MeshDrawStream}"/> filtered by
+/// <see cref="DrawStreamCategory"/>. Use <see cref="MeshDrawStreamRegistry.GetStreamsCore"/> to obtain one.
+/// </summary>
+public readonly struct MeshDrawStreamEnumerable(
+    FastList<IDrawStream> list,
+    DrawStreamCategory category
+)
+{
+    private readonly FastList<IDrawStream> _list = list;
+    private readonly DrawStreamCategory _category = category;
+
+    public Enumerator GetEnumerator() => new(_list, _category);
+
+    public struct Enumerator(FastList<IDrawStream> list, DrawStreamCategory category)
+    {
+        private readonly FastList<IDrawStream> _list = list;
+        private readonly DrawStreamCategory _category = category;
+        private int _index = -1;
+
+        public IDrawStream Current => _list[_index];
+
+        public bool MoveNext()
+        {
+            while (++_index < _list.Count)
+            {
+                if (_list[_index].Categories.HasAnyFlag(_category))
+                    return true;
+            }
+            return false;
+        }
+    }
+
+    public bool HasAny()
+    {
+        foreach (var stream in this)
+        {
+            if (stream.Count > 0)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
 }
