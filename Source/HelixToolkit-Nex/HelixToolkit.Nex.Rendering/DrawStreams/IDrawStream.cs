@@ -52,6 +52,12 @@ public interface IDrawStream : IRenderData, IDisposable
     IEnumerable<MaterialTypeId> GetMaterialTypes();
 
     /// <summary>
+    /// Provides a low-level enumerator over the distinct material types in this stream without heap allocations.
+    /// </summary>
+    /// <returns>A struct enumerator over the distinct material types.</returns>
+    ReadOnlySpan<MaterialTypeId> GetMaterialTypesCore();
+
+    /// <summary>
     /// Gets the draw range (start index and count) for a specific material type within this stream.
     /// Returns <see cref="DrawRange.Zero"/> if the material type is not present.
     /// </summary>

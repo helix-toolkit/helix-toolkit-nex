@@ -179,7 +179,7 @@ public sealed class FrustumCullNode : ComputeNode
         };
         // For instancing meshes
         cmdBuffer.BindComputePipeline(_instancingCullingPipeline);
-        foreach (var matId in stream.GetMaterialTypes())
+        foreach (var matId in stream.GetMaterialTypesCore())
         {
             var subRange = stream.GetRangeByMaterial(matId);
             for (var i = subRange.Start; i < subRange.End; ++i)
