@@ -19,13 +19,13 @@ internal readonly struct Generation(byte worldId, byte worldGeneration, ushort e
     [FieldOffset(2)]
     public readonly ushort EntityGeneration = entityGeneration;
 
-    public bool Valid => Value != 0;
+    public readonly bool Valid => Value != 0;
 
     public uint Value => _value;
 
-    public bool HasWorld => _worldValue > 0;
+    public readonly bool HasWorld => _worldValue > 0;
 
-    public ushort WorldValue => _worldValue;
+    public readonly ushort WorldValue => _worldValue;
 
     static Generation()
     {

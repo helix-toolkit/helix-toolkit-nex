@@ -78,11 +78,11 @@ internal sealed class MeshDrawStream : Initializable, IDrawStream
         _world = world;
         StreamName = name;
         Categories = name.GetCategory();
-        IsInstancing = Categories.HasAnyFlag(DrawStreamCategory.Instancing);
-        IndexBufferStrategy = Categories.HasAnyFlag(DrawStreamCategory.Dynamic)
+        IsInstancing = Categories.HasAllFlags(DrawStreamCategory.Instancing);
+        IndexBufferStrategy = Categories.HasAllFlags(DrawStreamCategory.Dynamic)
             ? IndexBufferStrategy.PerDraw
             : IndexBufferStrategy.Shared;
-        _isTransparent = Categories.HasAnyFlag(DrawStreamCategory.Transparent);
+        _isTransparent = Categories.HasAllFlags(DrawStreamCategory.Transparent);
         Name = name.ToString();
 
         _meshComponents = world.GetComponents<MeshComponent>();
@@ -427,7 +427,7 @@ internal sealed class MeshDrawStream : Initializable, IDrawStream
 
     public void EntityAdded(Entity entity)
     {
-        Debug.Assert(GetCategoryFromEntity(entity).HasAnyFlag(Categories));
+        Debug.Assert(GetCategoryFromEntity(entity).HasAllFlags(Categories));
         _entities.Add(entity);
         _renderables[entity].DrawCategory = (uint)Categories; // Pre-set category for O(1) checks during updates
         MarkRebuildNeeded();

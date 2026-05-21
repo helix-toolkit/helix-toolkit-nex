@@ -46,16 +46,16 @@ internal sealed class VulkanImage : IDisposable
     public nint MappedPtr { get; private set; } = IntPtr.Zero;
     public bool Valid => _ctx is not null && Image != VkImage.Null && UsageFlags != 0;
 
-    public bool IsSampledImage => UsageFlags.HasAnyFlag(VK.VK_IMAGE_USAGE_SAMPLED_BIT);
-    public bool IsStorageImage => UsageFlags.HasAnyFlag(VK.VK_IMAGE_USAGE_STORAGE_BIT);
-    public bool IsColorAttachment => UsageFlags.HasAnyFlag(VK.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
+    public bool IsSampledImage => UsageFlags.HasAllFlags(VK.VK_IMAGE_USAGE_SAMPLED_BIT);
+    public bool IsStorageImage => UsageFlags.HasAllFlags(VK.VK_IMAGE_USAGE_STORAGE_BIT);
+    public bool IsColorAttachment => UsageFlags.HasAllFlags(VK.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
     public bool IsDepthAttachment =>
-        UsageFlags.HasAnyFlag(VK.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
+        UsageFlags.HasAllFlags(VK.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
     public bool IsAttachment =>
-        UsageFlags.HasAnyFlag(VK.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
-        | UsageFlags.HasAnyFlag(VK.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
+        UsageFlags.HasAllFlags(VK.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
+        | UsageFlags.HasAllFlags(VK.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
 
-    public bool IsInputAttachment => UsageFlags.HasAnyFlag(VK.VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT);
+    public bool IsInputAttachment => UsageFlags.HasAllFlags(VK.VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT);
 
     public VulkanImage() { }
 
@@ -165,7 +165,7 @@ internal sealed class VulkanImage : IDisposable
                     &props
                 );
                 if (
-                    !props.formatProperties.optimalTilingFeatures.HasAnyFlag(
+                    !props.formatProperties.optimalTilingFeatures.HasAllFlags(
                         VK.VK_FORMAT_FEATURE_DISJOINT_BIT
                     )
                 )
@@ -207,7 +207,7 @@ internal sealed class VulkanImage : IDisposable
             {
                 VmaAllocationCreateInfo vmaAllocInfo = new()
                 {
-                    usage = memFlags.HasAnyFlag(VK.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
+                    usage = memFlags.HasAllFlags(VK.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
                         ? VmaMemoryUsage.CpuToGpu
                         : VmaMemoryUsage.Auto,
                 };
@@ -232,7 +232,7 @@ internal sealed class VulkanImage : IDisposable
                     return ResultCode.RuntimeError;
                 }
                 // handle memory-mapped buffers
-                if (memFlags.HasAnyFlag(VK.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))
+                if (memFlags.HasAllFlags(VK.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))
                 {
                     void* mappedPtr;
                     Vma.vmaMapMemory(_ctx!.VmaAllocator, _vmaAllocation, &mappedPtr).CheckResult();
@@ -325,7 +325,7 @@ internal sealed class VulkanImage : IDisposable
                     .CheckResult();
 
                 // handle memory-mapped images
-                if (memFlags.HasAnyFlag(VK.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) && numPlanes == 1)
+                if (memFlags.HasAllFlags(VK.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) && numPlanes == 1)
                 {
                     void* mappedPtr;
                     VK.vkMapMemory(_ctx!.VkDevice, _memory[0], 0, VK.VK_WHOLE_SIZE, 0, &mappedPtr)
@@ -384,7 +384,7 @@ internal sealed class VulkanImage : IDisposable
             debugNameImageView
         );
 
-        if (UsageFlags.HasAnyFlag(VK.VK_IMAGE_USAGE_STORAGE_BIT))
+        if (UsageFlags.HasAllFlags(VK.VK_IMAGE_USAGE_STORAGE_BIT))
         {
             if (!mapping.Identity())
             {
@@ -514,7 +514,7 @@ internal sealed class VulkanImage : IDisposable
         // Choose linear filter for color formats if supported by the device, else use nearest filter
         // Choose nearest filter by default for depth/stencil formats
         var isDepthOrStencilFormat = IsDepthFormat || IsStencilFormat;
-        var imageFilterLinear = _formatProperties.optimalTilingFeatures.HasAnyFlag(
+        var imageFilterLinear = _formatProperties.optimalTilingFeatures.HasAllFlags(
             VK.VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT
         );
         var blitFilter = VK.VK_FILTER_NEAREST;

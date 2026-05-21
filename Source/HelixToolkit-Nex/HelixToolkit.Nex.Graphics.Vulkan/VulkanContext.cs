@@ -722,11 +722,11 @@ internal sealed partial class VulkanContext
         uint i = 0;
         foreach (VkQueueFamilyProperties queueFamily in queueFamilies)
         {
-            if (queueFamily.queueFlags.HasAnyFlag(VkQueueFlags.Graphics))
+            if (queueFamily.queueFlags.HasAllFlags(VkQueueFlags.Graphics))
             {
                 graphicsFamily = i;
             }
-            if (queueFamily.queueFlags.HasAnyFlag(VkQueueFlags.Compute))
+            if (queueFamily.queueFlags.HasAllFlags(VkQueueFlags.Compute))
             {
                 computeFamily = i;
             }
@@ -1373,7 +1373,7 @@ internal sealed partial class VulkanContext
         buffer = BufferHandle.Null;
         HxDebug.Assert(bufferSize > 0);
         ref readonly var limits = ref GetVkPhysicalDeviceProperties().limits;
-        if (usageFlags.HasAnyFlag(VK.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT))
+        if (usageFlags.HasAllFlags(VK.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT))
         {
             if (bufferSize > limits.maxUniformBufferRange)
             {
@@ -1521,7 +1521,7 @@ internal sealed partial class VulkanContext
             VkImageView view = img.ImageView;
             VkImageView storageView = img.ImageViewStorage.IsNotNull ? img.ImageViewStorage : view;
             // multisampled images cannot be directly accessed from shaders
-            bool isTextureAvailable = img.SampleCount.HasAnyFlag(VK.VK_SAMPLE_COUNT_1_BIT);
+            bool isTextureAvailable = img.SampleCount.HasAllFlags(VK.VK_SAMPLE_COUNT_1_BIT);
             bool isYUVImage =
                 isTextureAvailable && img.IsSampledImage && img.ImageFormat.GetNumImagePlanes() > 1;
             bool isSampledImage = isTextureAvailable && img.IsSampledImage && !isYUVImage;

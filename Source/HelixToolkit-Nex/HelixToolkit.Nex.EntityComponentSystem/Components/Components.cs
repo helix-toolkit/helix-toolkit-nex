@@ -9,7 +9,7 @@ public readonly struct Components<T>
     private readonly FastList<T> _storage;
     private readonly FastList<ComponentManager<T>.ComponentMappingKey> _mapping;
 
-    public int Count => _storage.Count;
+    public readonly int Count => _storage.Count;
     public readonly World World;
 
     /// <summary>
@@ -70,17 +70,17 @@ public readonly struct Components<T>
         return _storage.GetHashCode();
     }
 
-    public MappingEnumerator GetEnumerator()
+    public readonly MappingEnumerator GetEnumerator()
     {
         return new MappingEnumerator(_mapping, _storage);
     }
 
-    public T[] GetInternalArray()
+    public readonly T[] GetInternalArray()
     {
         return _storage.GetInternalArray();
     }
 
-    public IEnumerable<int> GetEntities()
+    public readonly IEnumerable<int> GetEntities()
     {
         var mappingArray = _mapping.GetInternalArray();
         for (int i = 0; i < _mapping.Count; i++)

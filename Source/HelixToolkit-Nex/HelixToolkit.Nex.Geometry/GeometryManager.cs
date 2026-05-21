@@ -197,12 +197,6 @@ public sealed class GeometryManager(IContext context) : IGeometryManager
         }
     }
 
-    /// <inheritdoc/>
-    public IEnumerable<Geometry> GetAll()
-    {
-        return _pool.Objects.Select(entry => entry.Obj).Where(geometry => geometry is not null)!;
-    }
-
     public Pool<GeometryResourceType, Geometry>.Enumerator GetEnumerator()
     {
         return _pool.GetEnumerator();

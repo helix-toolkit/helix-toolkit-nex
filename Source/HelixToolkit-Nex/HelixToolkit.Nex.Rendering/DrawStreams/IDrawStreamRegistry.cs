@@ -56,7 +56,7 @@ public readonly struct MeshDrawStreamEnumerable(
     private readonly FastList<IDrawStream> _list = list;
     private readonly DrawStreamCategory _category = category;
 
-    public Enumerator GetEnumerator() => new(_list, _category);
+    public readonly Enumerator GetEnumerator() => new(_list, _category);
 
     public struct Enumerator(FastList<IDrawStream> list, DrawStreamCategory category)
     {
@@ -70,14 +70,14 @@ public readonly struct MeshDrawStreamEnumerable(
         {
             while (++_index < _list.Count)
             {
-                if (_list[_index].Categories.HasAnyFlag(_category))
+                if (_list[_index].Categories.HasAllFlags(_category))
                     return true;
             }
             return false;
         }
     }
 
-    public bool HasAny()
+    public readonly bool HasAny()
     {
         foreach (var stream in this)
         {

@@ -158,7 +158,7 @@ public readonly struct WorldTransform(ref Matrix4x4 value)
 
 public readonly struct Parent(Entity parent)
 {
-    public Entity ParentEntity { get; } = parent;
+    public readonly Entity ParentEntity { get; } = parent;
 }
 
 public readonly struct Children
