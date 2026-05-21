@@ -20,8 +20,8 @@ This package fits into the HelixToolkit-Nex engine by providing the foundational
 | `Node`            | Represents a scene graph node, managing transformations and parent-child relationships. |
 | `NodeInfo`        | Stores metadata about a node, including its level in the hierarchy and enabled state. |
 | `NodeName`        | Optional component for storing a display name for a node.                   |
-| `Transform`       | Manages local and world transformations for a node, now includes a `Timestamp` property for tracking updates. |
-| `WorldTransform`  | Represents a node's world transformation matrix, now constructed with a reference to a `Matrix4x4`. |
+| `Transform`       | Manages local and world transformations for a node, includes a `Timestamp` property for tracking updates. |
+| `WorldTransform`  | Represents a node's world transformation matrix, constructed with a reference to a `Matrix4x4`. |
 | `Parent`          | Component that stores a reference to a node's parent entity.                |
 | `Children`        | Manages a list of child nodes for a given node.                             |
 | `SceneSorting`    | Provides static methods for flattening and sorting scene nodes.             |

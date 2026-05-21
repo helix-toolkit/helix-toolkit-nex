@@ -124,10 +124,6 @@ var billboard = engine.CreateBillboard(
 
 ## Recent Additions
 
-### New Types
-
-- `BillboardNode`: Represents a node in the scene graph that contains billboard geometry.
-
 ### New Methods in `Engine`
 
 - `ProcessEvents()`: Processes pending events in the engine's event bus.

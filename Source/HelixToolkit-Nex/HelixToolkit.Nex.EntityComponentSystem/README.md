@@ -11,6 +11,7 @@ HelixToolkit.Nex.ECS is integral to the HelixToolkit.Nex engine, providing a str
 - **Event System**: A robust event bus for handling entity and component lifecycle events.
 - **World Management**: Manage multiple worlds with isolated entity spaces.
 - **Component Sorting**: Sort components efficiently using custom sorting logic.
+- **Tag Components**: Manage tag components (empty structs) efficiently with `TagManager<T>`.
 
 ## Key Types
 
@@ -24,6 +25,7 @@ HelixToolkit.Nex.ECS is integral to the HelixToolkit.Nex engine, providing a str
 | `ResultCode` | Enum representing the result of ECS operations, such as `Ok`, `Invalid`, or `NotFound`. |
 | `ISortable<T>` | Interface for defining custom sorting logic for components. |
 | `Components<T>` | Represents a collection of components of type `T` within a world. |
+| `TagManager<T>` | Manages tag components, which are marker components without data. |
 
 ## Usage Examples
 
@@ -79,11 +81,12 @@ entity.Register<EntityEnableEvent>((worldId, evt) =>
 - **Component Sorting**: Supports custom sorting of components via the `ISortable<T>` interface, allowing for optimized data access patterns.
 - **World Isolation**: Each `World` instance provides a separate namespace for entities, ensuring no interference between different worlds.
 - **Component Type Identification**: Uses `ComponentTypeId` for unique identification of component types, supporting up to 128 unique types.
+- **Tag Components**: Managed using `TagManager<T>`, allowing efficient handling of marker components without data.
 
 ## Recent Changes
 
+- **TagManager Introduction**: Added `TagManager<T>` for efficient management of tag components, which are marker components without data.
 - **ComponentManager Enhancements**: The `AsComponents` method now includes the world context, improving component management across worlds.
-- **Components Struct Update**: `Components<T>` is now a regular struct instead of a ref struct, allowing for more flexible usage patterns.
 - **Entity Lifecycle Events**: Introduced `EntityBeforeDisposeEvent` to handle pre-disposal logic for entities.
 - **EntityCollection Enhancements**: Added `Has` method to check for entity presence in a collection.
 - **Event System**: Updated event handling to use `EntityBeforeDisposeEvent` for more precise lifecycle management.

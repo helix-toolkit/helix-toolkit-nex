@@ -76,15 +76,15 @@ commandBuffer.EndRendering();
 context.Submit(commandBuffer);
 ```
 
-### Using RingElementBuffer with Copy
+### Using RingElementBuffer with State-Based Write
 
 ```csharp
 var ringBuffer = new RingElementBuffer<float>(context, initialCapacity: 1024, isDynamic: true);
 var commandBuffer = context.AcquireCommandBuffer();
-if (ringBuffer.AdvanceWithCopy(commandBuffer))
-{
-    // Proceed with rendering using the new buffer slot
-}
+var state = new { /* state data */ };
+ringBuffer.WriteDynamic(100, state, (ctx, s) => {
+    // Write data using ctx and state s
+});
 ```
 
 ### Creating a Memory Barrier
