@@ -27,7 +27,6 @@ namespace HelixToolkit.Nex.Engine;
 /// </remarks>
 public sealed class ResourceManager : Initializable, IResourceManager
 {
-    private readonly FastList<IRenderData> _renderDatas = [];
     public IContext Context { get; }
     public IPBRMaterialManager PBRMaterialManager { get; }
 
@@ -92,9 +91,6 @@ public sealed class ResourceManager : Initializable, IResourceManager
         StaticMeshIndexData = new StaticMeshIndexData(this);
         PBRPropertyData = new PBRPropertyData(this);
         MeshInfoData = new MeshInfoData(this);
-        _renderDatas.Add(PBRPropertyData);
-        _renderDatas.Add(StaticMeshIndexData);
-        _renderDatas.Add(MeshInfoData);
     }
 
     /// <summary>
@@ -108,31 +104,20 @@ public sealed class ResourceManager : Initializable, IResourceManager
             MaterialCount = PBRMaterialManager.Count,
             MaterialPropertyCount = PBRPropertyManager.Count,
             ShaderCount = ShaderRepository.Count,
-            DirtyGeometryCount = Geometries
-                .GetAll()
-                .Count(g => g.BufferDirty != GeometryBufferType.None),
+            DirtyGeometryCount = Geometries.GetDirtyCount(),
         };
     }
 
     protected override ResultCode OnInitializing()
     {
-        foreach (var renderData in _renderDatas)
-        {
-            var result = renderData.Initialize();
-            if (result != ResultCode.Ok)
-            {
-                return result;
-            }
-        }
+        StaticMeshIndexData.Initialize();
+        PBRPropertyData.Initialize();
+        MeshInfoData.Initialize();
         return ResultCode.Ok;
     }
 
     protected override ResultCode OnTearingDown()
     {
-        foreach (var renderData in _renderDatas)
-        {
-            renderData.Dispose();
-        }
         Geometries.Clear();
         PBRPropertyManager.Clear();
         PBRMaterialManager.Clear();
@@ -143,13 +128,16 @@ public sealed class ResourceManager : Initializable, IResourceManager
         TextureRepository.Clear();
         FontAtlasRepository.Clear();
 
+        StaticMeshIndexData.Teardown();
+        MeshInfoData.Teardown();
+        PBRPropertyData.Teardown();
         return ResultCode.Ok;
     }
 
     public bool Update()
     {
         // BeginFrame all geometries with dirty buffers
-        foreach (var geometry in Geometries.GetAll())
+        foreach (var geometry in Geometries)
         {
             if (geometry.BufferDirty != GeometryBufferType.None)
             {
@@ -157,10 +145,9 @@ public sealed class ResourceManager : Initializable, IResourceManager
             }
             geometry.TryCompletePendingBufferUpdate();
         }
-        foreach (var renderData in _renderDatas)
-        {
-            renderData.Update();
-        }
+        StaticMeshIndexData.Update();
+        PBRPropertyData.Update();
+        MeshInfoData.Update();
         return true;
     }
 }

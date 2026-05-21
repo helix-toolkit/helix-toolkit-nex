@@ -95,7 +95,8 @@ public sealed class PBRPropertyData : Initializable, IPBRPropertyData
         {
             _buffer.WriteDynamic(
                 mgr.Count,
-                ctx =>
+                mgr,
+                static (ctx, mgr) =>
                 {
                     for (var i = 0; i < mgr.Count; ++i)
                     {
@@ -110,9 +111,11 @@ public sealed class PBRPropertyData : Initializable, IPBRPropertyData
             if (
                 _buffer.WriteDynamic(
                     mgr.Count,
-                    ctx =>
+                    (mgr, _updatedProps),
+                    static (ctx, state) =>
                     {
-                        foreach (var index in _updatedProps)
+                        var (mgr, updatedProps) = state;
+                        foreach (var index in updatedProps)
                         {
                             if (index < mgr.Count)
                             {
