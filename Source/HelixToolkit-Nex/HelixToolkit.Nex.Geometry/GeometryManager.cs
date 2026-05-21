@@ -200,7 +200,12 @@ public sealed class GeometryManager(IContext context) : IGeometryManager
     /// <inheritdoc/>
     public IEnumerable<Geometry> GetAll()
     {
-        return _pool;
+        return _pool.Objects.Select(entry => entry.Obj).Where(geometry => geometry is not null)!;
+    }
+
+    public Pool<GeometryResourceType, Geometry>.Enumerator GetEnumerator()
+    {
+        return _pool.GetEnumerator();
     }
 
     /// <inheritdoc/>
@@ -228,6 +233,19 @@ public sealed class GeometryManager(IContext context) : IGeometryManager
             _eventBus.PublishAsync(new GeometryUpdatedEvent(id, GeometryChangeOp.Removed));
             return true;
         }
+    }
+
+    public int GetDirtyCount()
+    {
+        int count = 0;
+        foreach (var geometry in this)
+        {
+            if (geometry.BufferDirty != GeometryBufferType.None)
+            {
+                ++count;
+            }
+        }
+        return count;
     }
 
     #region IDisposable Support

@@ -1,3 +1,5 @@
+using System.Collections;
+
 namespace HelixToolkit.Nex;
 
 /// <summary>
@@ -9,7 +11,7 @@ namespace HelixToolkit.Nex;
 /// This pool uses a free-list algorithm for efficient allocation and deallocation of objects.
 /// Each object is associated with a generation number to prevent the ABA problem and ensure handle validity.
 /// </remarks>
-public sealed class Pool<ObjectType, ImplObjectType> : IEnumerable<ImplObjectType>, IDisposable
+public sealed class Pool<ObjectType, ImplObjectType> : IDisposable
     where ObjectType : new()
 {
     private const uint32_t ListEndSentinel = 0xFFFFFFFF; // Sentinel value to indicate the end of the list
@@ -210,16 +212,9 @@ public sealed class Pool<ObjectType, ImplObjectType> : IEnumerable<ImplObjectTyp
     }
 
     // Add these methods to implement IEnumerable<ImplObjectType> and IEnumerable
-    public IEnumerator<ImplObjectType> GetEnumerator()
+    public Enumerator GetEnumerator()
     {
-        for (int i = 0; i < _objects.Count; i++)
-        {
-            var obj = _objects[i].Obj;
-            if (obj != null)
-            {
-                yield return obj;
-            }
-        }
+        return new(this);
     }
 
     public ref ImplObjectType GetRef(int index)
@@ -229,11 +224,6 @@ public sealed class Pool<ObjectType, ImplObjectType> : IEnumerable<ImplObjectTyp
             throw new ArgumentOutOfRangeException(nameof(index), "Index out of range.");
         }
         return ref _objects.GetInternalArray()[index].Obj!;
-    }
-
-    System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
-    {
-        return GetEnumerator();
     }
 
     private void Dispose(bool disposing)
@@ -263,5 +253,56 @@ public sealed class Pool<ObjectType, ImplObjectType> : IEnumerable<ImplObjectTyp
         // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
         Dispose(disposing: true);
         GC.SuppressFinalize(this);
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct Enumerator : IEnumerator<ImplObjectType>, IDisposable, IEnumerator
+    {
+        private readonly Pool<ObjectType, ImplObjectType> _list;
+        private int _index;
+        private ImplObjectType _current;
+
+        internal Enumerator(Pool<ObjectType, ImplObjectType> list)
+        {
+            _list = list;
+            _index = 0;
+            _current = default!;
+        }
+
+        public void Dispose() { }
+
+        public bool MoveNext()
+        {
+            var list = _list;
+            var totalCount = list._objects.Count;
+            while (_index < totalCount)
+            {
+                var curr = list._objects[_index].Obj;
+                _index++;
+                if (curr is not null)
+                {
+                    _current = curr;
+                    return true;
+                }
+            }
+            return MoveNextRare();
+        }
+
+        private bool MoveNextRare()
+        {
+            _index = _list._objects.Count + 1;
+            _current = default!;
+            return false;
+        }
+
+        public ImplObjectType Current => _current;
+
+        object IEnumerator.Current => Current!;
+
+        void IEnumerator.Reset()
+        {
+            _index = 0;
+            _current = default!;
+        }
     }
 }

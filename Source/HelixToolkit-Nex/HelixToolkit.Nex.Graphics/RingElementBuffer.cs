@@ -180,6 +180,19 @@ public sealed class RingElementBuffer<T> : IDisposable
     }
 
     /// <summary>
+    /// Writes data into the current buffer using a state-based delegate to avoid heap allocations from closures.
+    /// </summary>
+    /// <typeparam name="TState">The type of the state object passed to <paramref name="writeAction"/>.</typeparam>
+    /// <param name="totalCount">Total element count to write.</param>
+    /// <param name="state">The state object to pass to <paramref name="writeAction"/>.</param>
+    /// <param name="writeAction">A callback that performs the actual memory writes.</param>
+    /// <returns><see cref="ResultCode.Ok"/> on success.</returns>
+    public ResultCode WriteDynamic<TState>(int totalCount, TState state, Action<SafeWriteContext, TState> writeAction)
+    {
+        return Current.WriteDynamic(totalCount, state, writeAction);
+    }
+
+    /// <summary>
     /// Uploads a <see cref="FastList{T}"/> to the current buffer.
     /// </summary>
     public ResultCode Upload(FastList<T> data, int offset = 0)
