@@ -3,7 +3,7 @@ namespace HelixToolkit.Nex.ECS;
 /// <summary>
 /// World object. Use World.CreateWorld() to create an new world.
 /// </summary>
-public sealed class World : IDisposable
+public sealed class World : IEnumerable<Entity>, IDisposable
 {
     public const int MaxNumberOfWorlds = byte.MaxValue;
 
@@ -767,6 +767,16 @@ public sealed class World : IDisposable
     public Enumerator GetEnumerator()
     {
         return new Enumerator(this);
+    }
+
+    IEnumerator<Entity> IEnumerable<Entity>.GetEnumerator()
+    {
+        return GetEnumerator();
+    }
+
+    IEnumerator IEnumerable.GetEnumerator()
+    {
+        return GetEnumerator();
     }
     #endregion
 
