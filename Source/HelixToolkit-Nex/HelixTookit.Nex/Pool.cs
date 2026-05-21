@@ -255,7 +255,6 @@ public sealed class Pool<ObjectType, ImplObjectType> : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    [StructLayout(LayoutKind.Sequential)]
     public struct Enumerator : IEnumerator<ImplObjectType>, IDisposable, IEnumerator
     {
         private readonly Pool<ObjectType, ImplObjectType> _list;

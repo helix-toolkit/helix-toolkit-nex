@@ -763,8 +763,8 @@ internal static class HxVkExtensions
             ResolveMode.Min => supported.HasAnyFlag(VkResolveModeFlags.Min)
                 ? VkResolveModeFlags.Min
                 : VkResolveModeFlags.SampleZero,
-            ResolveMode.Max => supported.HasAnyFlag(VkResolveModeFlags.Average)
-                ? VkResolveModeFlags.Average
+            ResolveMode.Max => supported.HasAnyFlag(VkResolveModeFlags.Max)
+                ? VkResolveModeFlags.Max
                 : VkResolveModeFlags.SampleZero,
             _ => VkResolveModeFlags.SampleZero, // Default to SampleZero if unsupported mode is provided
         };
@@ -885,8 +885,8 @@ internal static class HxVkExtensions
             barrier.dstAccessMask |= VkAccessFlags2.TransferRead | VkAccessFlags2.TransferWrite;
         }
         else if (
-            srcStage.HasAnyFlag(VkPipelineStageFlags2.AllGraphics | VkPipelineStageFlags2.AllCommands)
-            || srcStage.IsShaderStage()
+            dstStage.HasAnyFlag(VkPipelineStageFlags2.AllGraphics | VkPipelineStageFlags2.AllCommands)
+            || dstStage.IsShaderStage()
         )
         {
             barrier.dstAccessMask |= VkAccessFlags2.ShaderRead | VkAccessFlags2.ShaderWrite;

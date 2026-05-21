@@ -110,19 +110,19 @@ public sealed class ResourceManager : Initializable, IResourceManager
 
     protected override ResultCode OnInitializing()
     {
-        var result = StaticMeshIndexData.Initialize();
+        var result = StaticMeshIndexData.Initialize().CheckResult();
         if (result != ResultCode.Ok)
         {
             return result;
         }
 
-        result = PBRPropertyData.Initialize();
+        result = PBRPropertyData.Initialize().CheckResult();
         if (result != ResultCode.Ok)
         {
             return result;
         }
 
-        result = MeshInfoData.Initialize();
+        result = MeshInfoData.Initialize().CheckResult();
         if (result != ResultCode.Ok)
         {
             return result;
@@ -143,9 +143,9 @@ public sealed class ResourceManager : Initializable, IResourceManager
         TextureRepository.Clear();
         FontAtlasRepository.Clear();
 
-        StaticMeshIndexData.Teardown();
-        MeshInfoData.Teardown();
-        PBRPropertyData.Teardown();
+        StaticMeshIndexData.Teardown().CheckResult();
+        MeshInfoData.Teardown().CheckResult();
+        PBRPropertyData.Teardown().CheckResult();
         return ResultCode.Ok;
     }
 

@@ -94,7 +94,7 @@ internal readonly struct ComponentIdProxy<T>
     public static T? DefaultValue = default;
 }
 
-internal sealed class TagManager<T>(int worldId)
+internal sealed class TagManager<T>
 {
     public static readonly ComponentIdProxy<T> Id = new();
     private static readonly FastList<TagManager<T>?> _managerStorage = [];
@@ -140,8 +140,15 @@ internal sealed class TagManager<T>(int worldId)
     }
 
 
-    public int WorldId { get; } = worldId;
+    public int WorldId { get; }
     public int Count => _count;
+
+    public TagManager(int worldId)
+    {
+        WorldId = worldId;
+        ECSEventBus.Register<WorldDisposingEvent>(worldId, HandleWorldDisposing);
+        ECSEventBus.Register<EntityBeforeDisposeEvent>(worldId, HandleEntityDisposing);
+    }
 
     /// <summary>
     /// Has any tag in this world.
@@ -162,6 +169,19 @@ internal sealed class TagManager<T>(int worldId)
     public void Remove()
     {
         Interlocked.Decrement(ref _count);
+    }
+
+    private void HandleWorldDisposing(int worldId, WorldDisposingEvent msg)
+    {
+        _count = 0;
+    }
+
+    private void HandleEntityDisposing(int worldId, EntityBeforeDisposeEvent msg)
+    {
+        if (World.GetWorldById(worldId)?.GetEntity(msg.EntityId).Has<T>() == true)
+        {
+            Remove();
+        }
     }
 }
 
@@ -409,7 +429,7 @@ internal sealed class ComponentManager<T> : IDisposable
         EntityMapping = new(defaultCapcity);
         CompMapping = new FastList<ComponentMappingKey>(defaultCapcity);
         ECSEventBus.Register<WorldDisposingEvent>(worldId, HandleWorldDisposing);
-        ECSEventBus.Register<EntityDisposingEvent>(worldId, HandleEntityDisposing);
+        ECSEventBus.Register<EntityBeforeDisposeEvent>(worldId, HandleEntityDisposing);
     }
     #endregion
     #region Public Functions
@@ -659,7 +679,7 @@ internal sealed class ComponentManager<T> : IDisposable
         Dispose();
     }
 
-    private void HandleEntityDisposing(int worldId, EntityDisposingEvent msg)
+    private void HandleEntityDisposing(int worldId, EntityBeforeDisposeEvent msg)
     {
         Remove(msg.EntityId);
     }
@@ -678,7 +698,7 @@ internal sealed class ComponentManager<T> : IDisposable
         var worldId = WorldId;
         WorldId = 0;
         ECSEventBus.Unregister<WorldDisposingEvent>(worldId, HandleWorldDisposing);
-        ECSEventBus.Unregister<EntityDisposingEvent>(worldId, HandleEntityDisposing);
+        ECSEventBus.Unregister<EntityBeforeDisposeEvent>(worldId, HandleEntityDisposing);
         CompMapping.Clear();
         CompMapping.TrimExcess();
         Storage.Clear();

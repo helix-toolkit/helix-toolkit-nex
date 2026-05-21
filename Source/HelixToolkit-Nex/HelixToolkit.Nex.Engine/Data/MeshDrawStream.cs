@@ -249,8 +249,7 @@ internal sealed class MeshDrawStream : Initializable, IDrawStream
             Count++;
         }
 
-        foreach (var kvp in _drawsByMaterial)
-            _materialTypes.Add(kvp.Key);
+        _materialTypes.AddAll(_drawsByMaterial.Keys);
         // Sort each material group by MeshId for better GPU cache coherence
         SortByMeshId();
 

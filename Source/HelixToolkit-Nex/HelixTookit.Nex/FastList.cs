@@ -639,6 +639,24 @@ public class FastList<T> : IList<T>, IReadOnlyList<T>, ICollection<T>, IEnumerab
     }
 
     /// <summary>
+    /// Adds all keys from the specified dictionary key collection to the current collection.
+    /// </summary>
+    /// <remarks>Duplicate keys are ignored. The order in which keys are added is determined by the
+    /// enumeration order of the provided key collection.</remarks>
+    /// <typeparam name="E">The type of the values in the source dictionary whose keys are being added.</typeparam>
+    /// <param name="keys">The collection of keys to add. Cannot be null.</param>
+#pragma warning disable CS8714 // The type cannot be used as type parameter in the generic type or method. Nullability of type argument doesn't match 'notnull' constraint.
+    public void AddAll<E>(Dictionary<T, E>.KeyCollection keys)
+#pragma warning restore CS8714 // The type cannot be used as type parameter in the generic type or method. Nullability of type argument doesn't match 'notnull' constraint.
+    {
+        EnsureCapacity(_size + keys.Count);
+        foreach (var key in keys)
+        {
+            Add(key!);
+        }
+    }
+
+    /// <summary>
     /// Fast add all from another <see cref="FastList{T}"/>.
     /// </summary>
     /// <param name="list">The list.</param>
