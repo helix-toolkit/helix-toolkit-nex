@@ -110,9 +110,24 @@ public sealed class ResourceManager : Initializable, IResourceManager
 
     protected override ResultCode OnInitializing()
     {
-        StaticMeshIndexData.Initialize();
-        PBRPropertyData.Initialize();
-        MeshInfoData.Initialize();
+        var result = StaticMeshIndexData.Initialize();
+        if (result != ResultCode.Ok)
+        {
+            return result;
+        }
+
+        result = PBRPropertyData.Initialize();
+        if (result != ResultCode.Ok)
+        {
+            return result;
+        }
+
+        result = MeshInfoData.Initialize();
+        if (result != ResultCode.Ok)
+        {
+            return result;
+        }
+
         return ResultCode.Ok;
     }
 
