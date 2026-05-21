@@ -31,6 +31,7 @@ The `HelixToolkit.Nex.Maths` package is integral to the HelixToolkit-Nex engine,
 | `Bool32Bit`           | Represents a boolean value with a size of 32 bits.                          |
 | `AngleSingle`         | Represents a unit-independent angle using a single-precision floating-point.|
 | `Alignment`           | Provides utility methods for memory alignment calculations.                 |
+| `Size`                | Represents a two-dimensional size with width and height.                    |
 
 ## Usage Examples
 
@@ -134,6 +135,21 @@ uint alignedSize = size.GetAlignedSize(alignment);
 // Align a memory address
 ulong address = 1024;
 ulong alignedAddress = address.GetAlignedAddress(alignment);
+```
+
+### Working with Size
+
+```csharp
+using HelixToolkit.Nex.Maths;
+
+// Create a Size instance
+Size size = new Size(1920, 1080);
+
+// Check if the size is empty
+bool isEmpty = size.IsEmpty;
+
+// Convert Size to Vector2
+Vector2 vector = size;
 ```
 
 ## Architecture Notes

@@ -84,11 +84,15 @@ var deserializedGeometry = JsonSerializer.Deserialize<Geometry>(json, options);
 
 ## Recent Changes
 
-- **Geometry Class**: The `Attached` property has been renamed to `Valid` to better reflect its purpose.
+- **Geometry Class**: 
+  - The `Attached` property has been renamed to `Valid` to better reflect its purpose.
+  - Updated buffer management logic to use `HasAllFlags` for checking buffer types.
 - **GeometryManager API**: 
   - The `Add` and `AddAsync` methods now return a `Handle<GeometryResourceType>` instead of a boolean and ID tuple, improving the clarity of the API.
   - Introduced `TryAdd` method to attempt adding a geometry and return a handle.
   - Removed the `AddAsync` overload that returned a boolean and ID tuple.
+  - Added `GetDirtyCount` method to retrieve the number of geometries that need buffer updates.
+  - Replaced `GetAll` with `GetEnumerator` for more efficient iteration over geometries.
 - **Asynchronous Event Publishing**: The `Geometry` and `GeometryManager` classes now use `PublishAsync` for event publishing, improving responsiveness and non-blocking operations.
 - **Buffer Management**: The `GeometryManager` now schedules GPU transfers asynchronously, enhancing performance by reducing blocking I/O operations.
 - **Platform Configurations**: Added new build configurations for `LinuxDebug` and `LinuxRelease` to support cross-platform development.

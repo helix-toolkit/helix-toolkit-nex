@@ -61,6 +61,16 @@ HelixToolkit.Nex.Rendering is responsible for managing the rendering pipeline of
 
 - **Bloom, BorderHighlightPostEffect, Fxaa, Smaa**: Updated to use `SamplerRef` for samplers, improving resource management and reducing potential errors.
 
+### Draw Stream Enhancements
+
+- **IDrawStream**: Added `GetMaterialTypesCore` method for zero-allocation material type enumeration.
+- **IDrawStreamRegistry**: Added `GetStreamsCore` method for zero-allocation stream enumeration.
+- **MeshDrawStreamEnumerable**: Introduced for efficient enumeration of draw streams without heap allocations.
+
+### CameraParams
+
+- **Equality and Identity**: Added `Equals` and `IsIdentity` methods for `CameraParams` to facilitate comparison and identity checks.
+
 ## Usage Examples
 
 ### Setting Up a Render Graph

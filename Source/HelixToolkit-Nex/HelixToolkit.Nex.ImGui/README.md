@@ -58,6 +58,7 @@ imguiRenderer.Render(commandBuffer, renderPass, framebuffer, dependencies);
 
 ## Recent Changes
 
-- **Debug Group Label**: The `ImGuiRenderer` now uses a static byte array for the debug group label, improving performance by avoiding repeated string allocations.
-- **Platform Configurations**: The project now includes additional build configurations for Linux (`LinuxDebug` and `LinuxRelease`), enhancing cross-platform support.
+- **Depth State Binding**: The `ImGuiRenderer` now explicitly binds the `DepthState.Disabled` during rendering, ensuring depth testing is disabled for ImGui elements.
+- **Debug Group Label**: The `ImGuiRenderer` uses a static byte array for the debug group label, improving performance by avoiding repeated string allocations.
+- **Platform Configurations**: The project includes additional build configurations for Linux (`LinuxDebug` and `LinuxRelease`), enhancing cross-platform support.
 ```
