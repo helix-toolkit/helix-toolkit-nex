@@ -102,6 +102,6 @@ public interface IGeometryManager : IDisposable
     /// <summary>
     /// Gets the number of geometries that needs to update their GPU buffers. 
     /// </summary>
-    /// <returns>The number of geometries marked as dirty. </returns>
+    /// <returns>The number of geometries marked as dirty.</returns>
     int GetDirtyCount();
 }

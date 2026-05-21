@@ -45,8 +45,8 @@ public interface IDrawStreamRegistry : IInitializable, IDisposable
 }
 
 /// <summary>
-/// Zero-allocation struct enumerable over a <see cref="FastList{MeshDrawStream}"/> filtered by
-/// <see cref="DrawStreamCategory"/>. Use <see cref="MeshDrawStreamRegistry.GetStreamsCore"/> to obtain one.
+/// Zero-allocation struct enumerable over a <see cref="FastList{IDrawStream}"/> filtered by
+/// <see cref="DrawStreamCategory"/>. Use <see cref="IDrawStreamRegistry.GetStreamsCore"/> to obtain one.
 /// </summary>
 public readonly struct MeshDrawStreamEnumerable(
     FastList<IDrawStream> list,
