@@ -371,7 +371,7 @@ public sealed class GeometryBufferCreation
 
         // Initially all buffers are dirty
         Assert.IsTrue(
-            geometry.BufferDirty.HasAnyFlag(GeometryBufferType.Vertex),
+            geometry.BufferDirty.HasAllFlags(GeometryBufferType.Vertex),
             "VertexProperties buffer should be marked as dirty initially"
         );
 
@@ -380,21 +380,21 @@ public sealed class GeometryBufferCreation
 
         // VertexProperties dirty flag should be cleared
         Assert.IsFalse(
-            geometry.BufferDirty.HasAnyFlag(GeometryBufferType.Vertex),
+            geometry.BufferDirty.HasAllFlags(GeometryBufferType.Vertex),
             "VertexProperties buffer dirty flag should be cleared after update"
         );
 
         // Other buffers should still be dirty
         Assert.IsTrue(
-            geometry.BufferDirty.HasAnyFlag(GeometryBufferType.VertexProp),
+            geometry.BufferDirty.HasAllFlags(GeometryBufferType.VertexProp),
             "VertexProperties buffer should still be marked as dirty"
         );
         Assert.IsTrue(
-            geometry.BufferDirty.HasAnyFlag(GeometryBufferType.Index),
+            geometry.BufferDirty.HasAllFlags(GeometryBufferType.Index),
             "Index buffer should still be marked as dirty"
         );
         Assert.IsTrue(
-            geometry.BufferDirty.HasAnyFlag(GeometryBufferType.VertexColor),
+            geometry.BufferDirty.HasAllFlags(GeometryBufferType.VertexColor),
             "VertexColor buffer should still be marked as dirty"
         );
     }
@@ -410,7 +410,7 @@ public sealed class GeometryBufferCreation
 
         // Initially all buffers are dirty
         Assert.IsTrue(
-            geometry.BufferDirty.HasAnyFlag(GeometryBufferType.VertexProp),
+            geometry.BufferDirty.HasAllFlags(GeometryBufferType.VertexProp),
             "VertexProperties buffer should be marked as dirty initially"
         );
 
@@ -419,21 +419,21 @@ public sealed class GeometryBufferCreation
 
         // VertexProperties dirty flag should be cleared
         Assert.IsFalse(
-            geometry.BufferDirty.HasAnyFlag(GeometryBufferType.VertexProp),
+            geometry.BufferDirty.HasAllFlags(GeometryBufferType.VertexProp),
             "VertexProperties buffer dirty flag should be cleared after update"
         );
 
         // Other buffers should still be dirty
         Assert.IsTrue(
-            geometry.BufferDirty.HasAnyFlag(GeometryBufferType.Vertex),
+            geometry.BufferDirty.HasAllFlags(GeometryBufferType.Vertex),
             "Vertex buffer should still be marked as dirty"
         );
         Assert.IsTrue(
-            geometry.BufferDirty.HasAnyFlag(GeometryBufferType.Index),
+            geometry.BufferDirty.HasAllFlags(GeometryBufferType.Index),
             "Index buffer should still be marked as dirty"
         );
         Assert.IsTrue(
-            geometry.BufferDirty.HasAnyFlag(GeometryBufferType.VertexColor),
+            geometry.BufferDirty.HasAllFlags(GeometryBufferType.VertexColor),
             "VertexColor buffer should still be marked as dirty"
         );
     }
@@ -448,7 +448,7 @@ public sealed class GeometryBufferCreation
 
         // Initially all buffers are dirty
         Assert.IsTrue(
-            geometry.BufferDirty.HasAnyFlag(GeometryBufferType.Index),
+            geometry.BufferDirty.HasAllFlags(GeometryBufferType.Index),
             "Index buffer should be marked as dirty initially"
         );
 
@@ -457,21 +457,21 @@ public sealed class GeometryBufferCreation
 
         // Index dirty flag should be cleared
         Assert.IsFalse(
-            geometry.BufferDirty.HasAnyFlag(GeometryBufferType.Index),
+            geometry.BufferDirty.HasAllFlags(GeometryBufferType.Index),
             "Index buffer dirty flag should be cleared after update"
         );
 
         // Other buffers should still be dirty
         Assert.IsTrue(
-            geometry.BufferDirty.HasAnyFlag(GeometryBufferType.VertexProp),
+            geometry.BufferDirty.HasAllFlags(GeometryBufferType.VertexProp),
             "VertexProperties buffer should still be marked as dirty"
         );
         Assert.IsTrue(
-            geometry.BufferDirty.HasAnyFlag(GeometryBufferType.Vertex),
+            geometry.BufferDirty.HasAllFlags(GeometryBufferType.Vertex),
             "VertexProperties buffer should still be marked as dirty"
         );
         Assert.IsTrue(
-            geometry.BufferDirty.HasAnyFlag(GeometryBufferType.VertexColor),
+            geometry.BufferDirty.HasAllFlags(GeometryBufferType.VertexColor),
             "VertexColor buffer should still be marked as dirty"
         );
     }
@@ -487,7 +487,7 @@ public sealed class GeometryBufferCreation
 
         // Initially all buffers are dirty
         Assert.IsTrue(
-            geometry.BufferDirty.HasAnyFlag(GeometryBufferType.VertexColor),
+            geometry.BufferDirty.HasAllFlags(GeometryBufferType.VertexColor),
             "VertexColor buffer should be marked as dirty initially"
         );
 
@@ -496,17 +496,17 @@ public sealed class GeometryBufferCreation
 
         // VertexColor dirty flag should be cleared
         Assert.IsFalse(
-            geometry.BufferDirty.HasAnyFlag(GeometryBufferType.VertexColor),
+            geometry.BufferDirty.HasAllFlags(GeometryBufferType.VertexColor),
             "VertexColor buffer dirty flag should be cleared after update"
         );
 
         // Other buffers should still be dirty
         Assert.IsTrue(
-            geometry.BufferDirty.HasAnyFlag(GeometryBufferType.Vertex),
+            geometry.BufferDirty.HasAllFlags(GeometryBufferType.Vertex),
             "VertexProperties buffer should still be marked as dirty"
         );
         Assert.IsTrue(
-            geometry.BufferDirty.HasAnyFlag(GeometryBufferType.Index),
+            geometry.BufferDirty.HasAllFlags(GeometryBufferType.Index),
             "Index buffer should still be marked as dirty"
         );
     }
@@ -544,7 +544,7 @@ public sealed class GeometryBufferCreation
         // Update buffers to clear dirty flag
         geometry.UpdateBuffers(_vkContext!, GeometryBufferType.All);
         Assert.IsFalse(
-            geometry.BufferDirty.HasAnyFlag(GeometryBufferType.Vertex),
+            geometry.BufferDirty.HasAllFlags(GeometryBufferType.Vertex),
             "VertexProperties buffer dirty flag should be cleared after update"
         );
 
@@ -553,7 +553,7 @@ public sealed class GeometryBufferCreation
 
         // VertexProperties dirty flag should be set again
         Assert.IsTrue(
-            geometry.BufferDirty.HasAnyFlag(GeometryBufferType.Vertex),
+            geometry.BufferDirty.HasAllFlags(GeometryBufferType.Vertex),
             "VertexProperties buffer dirty flag should be set after vertices are modified"
         );
     }
@@ -569,7 +569,7 @@ public sealed class GeometryBufferCreation
         // Update buffers to clear dirty flag
         geometry.UpdateBuffers(_vkContext!, GeometryBufferType.All);
         Assert.IsFalse(
-            geometry.BufferDirty.HasAnyFlag(GeometryBufferType.Index),
+            geometry.BufferDirty.HasAllFlags(GeometryBufferType.Index),
             "Index buffer dirty flag should be cleared after update"
         );
 
@@ -578,7 +578,7 @@ public sealed class GeometryBufferCreation
 
         // Index dirty flag should be set again
         Assert.IsTrue(
-            geometry.BufferDirty.HasAnyFlag(GeometryBufferType.Index),
+            geometry.BufferDirty.HasAllFlags(GeometryBufferType.Index),
             "Index buffer dirty flag should be set after indices are modified"
         );
     }
@@ -595,7 +595,7 @@ public sealed class GeometryBufferCreation
         // Update buffers to clear dirty flag
         geometry.UpdateBuffers(_vkContext!, GeometryBufferType.All);
         Assert.IsFalse(
-            geometry.BufferDirty.HasAnyFlag(GeometryBufferType.VertexColor),
+            geometry.BufferDirty.HasAllFlags(GeometryBufferType.VertexColor),
             "VertexColor buffer dirty flag should be cleared after update"
         );
 
@@ -604,7 +604,7 @@ public sealed class GeometryBufferCreation
 
         // VertexColor dirty flag should be set again
         Assert.IsTrue(
-            geometry.BufferDirty.HasAnyFlag(GeometryBufferType.VertexColor),
+            geometry.BufferDirty.HasAllFlags(GeometryBufferType.VertexColor),
             "VertexColor buffer dirty flag should be set after binormals are modified"
         );
     }
@@ -622,11 +622,11 @@ public sealed class GeometryBufferCreation
         geometry.UpdateBuffers(_vkContext!, GeometryBufferType.Vertex);
 
         Assert.IsFalse(
-            geometry.BufferDirty.HasAnyFlag(GeometryBufferType.Vertex),
+            geometry.BufferDirty.HasAllFlags(GeometryBufferType.Vertex),
             "VertexProperties should not be dirty"
         );
         Assert.IsTrue(
-            geometry.BufferDirty.HasAnyFlag(GeometryBufferType.Index),
+            geometry.BufferDirty.HasAllFlags(GeometryBufferType.Index),
             "Index should be dirty"
         );
 
@@ -636,7 +636,7 @@ public sealed class GeometryBufferCreation
         Assert.AreEqual(ResultCode.Ok, result, "Parameterless update should succeed");
         Assert.IsTrue(geometry.IndexBuffer.Valid, "Index buffer should now be valid");
         Assert.IsFalse(
-            geometry.BufferDirty.HasAnyFlag(GeometryBufferType.Index),
+            geometry.BufferDirty.HasAllFlags(GeometryBufferType.Index),
             "Index dirty flag should be cleared after parameterless update"
         );
     }
@@ -657,11 +657,11 @@ public sealed class GeometryBufferCreation
         geometry.BufferDirty = GeometryBufferType.Vertex;
 
         Assert.IsTrue(
-            geometry.BufferDirty.HasAnyFlag(GeometryBufferType.Vertex),
+            geometry.BufferDirty.HasAllFlags(GeometryBufferType.Vertex),
             "VertexProperties buffer should be manually marked as dirty"
         );
         Assert.IsFalse(
-            geometry.BufferDirty.HasAnyFlag(GeometryBufferType.Index),
+            geometry.BufferDirty.HasAllFlags(GeometryBufferType.Index),
             "Index buffer should not be dirty"
         );
     }
@@ -682,20 +682,20 @@ public sealed class GeometryBufferCreation
         // Modify vertices
         geometry.Vertices = [.. Enumerable.Repeat(new Vector4(4, 5, 6, 1), 32)];
         Assert.IsTrue(
-            geometry.BufferDirty.HasAnyFlag(GeometryBufferType.Vertex),
+            geometry.BufferDirty.HasAllFlags(GeometryBufferType.Vertex),
             "VertexProperties should be dirty"
         );
 
         // Modify indices
         geometry.Indices = [.. Enumerable.Range(0, 32).Select(i => (uint)i)];
         Assert.IsTrue(
-            geometry.BufferDirty.HasAnyFlag(GeometryBufferType.Index),
+            geometry.BufferDirty.HasAllFlags(GeometryBufferType.Index),
             "Index should be dirty"
         );
 
         // Both should be marked as dirty
         Assert.IsTrue(
-            geometry.BufferDirty.HasAnyFlag(GeometryBufferType.Vertex | GeometryBufferType.Index),
+            geometry.BufferDirty.HasAllFlags(GeometryBufferType.Vertex | GeometryBufferType.Index),
             "Both VertexProperties and Index buffers should be dirty"
         );
     }
@@ -710,7 +710,7 @@ public sealed class GeometryBufferCreation
 
         // Dirty flag should still be cleared even though no buffer was created
         Assert.IsFalse(
-            geometry.BufferDirty.HasAnyFlag(GeometryBufferType.Vertex),
+            geometry.BufferDirty.HasAllFlags(GeometryBufferType.Vertex),
             "VertexProperties buffer dirty flag should be cleared even for empty buffer"
         );
     }

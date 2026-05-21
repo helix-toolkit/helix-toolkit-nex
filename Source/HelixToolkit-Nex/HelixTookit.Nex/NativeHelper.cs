@@ -610,5 +610,36 @@ namespace HelixToolkit.Nex
 #endif
             }
         }
+
+        /// <summary>
+        /// Determines whether all flags specified in the second enumeration value are set in the first enumeration value.
+        /// </summary>
+        /// <remarks>This method is intended for use with enumeration types that represent bit fields
+        /// (flags). Both parameters must be of the same enum type.</remarks>
+        /// <typeparam name="E">The enumeration type. Must be an unmanaged enum.</typeparam>
+        /// <param name="lhs">The enumeration value to test for the presence of all specified flags.</param>
+        /// <param name="rhs">The enumeration value that specifies the flags to check for in the first value.</param>
+        /// <returns>true if all flags specified in rhs are set in lhs; otherwise, false.</returns>
+        /// <exception cref="Exception">Thrown if the size of the enumeration type does not match a known enum backing type.</exception>
+        public static bool HasAllFlags<E>(this E lhs, E rhs) where E : unmanaged, Enum
+        {
+            switch (Unsafe.SizeOf<E>())
+            {
+                case 1:
+                    return (Unsafe.As<E, byte>(ref lhs) & Unsafe.As<E, byte>(ref rhs)) == Unsafe.As<E, byte>(ref rhs);
+                case 2:
+                    return (Unsafe.As<E, ushort>(ref lhs) & Unsafe.As<E, ushort>(ref rhs)) == Unsafe.As<E, ushort>(ref rhs);
+                case 4:
+                    return (Unsafe.As<E, uint>(ref lhs) & Unsafe.As<E, uint>(ref rhs)) == Unsafe.As<E, uint>(ref rhs);
+                case 8:
+                    return (Unsafe.As<E, ulong>(ref lhs) & Unsafe.As<E, ulong>(ref rhs)) == Unsafe.As<E, ulong>(ref rhs);
+                default:
+#if DEBUG
+                    throw new Exception("Size does not match a known Enum backing type.");
+#else
+                    return false;
+#endif
+            }
+        }
     }
 }

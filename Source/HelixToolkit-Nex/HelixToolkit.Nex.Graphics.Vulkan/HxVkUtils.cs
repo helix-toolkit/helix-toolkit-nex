@@ -44,7 +44,7 @@ internal class HxVkUtils
         }
 
         // dedicated queue for compute
-        if (flags.HasAnyFlag(VK.VK_QUEUE_COMPUTE_BIT))
+        if (flags.HasAllFlags(VK.VK_QUEUE_COMPUTE_BIT))
         {
             var q = findDedicatedQueueFamilyIndex(flags, VK.VK_QUEUE_GRAPHICS_BIT);
             if (q != DeviceQueues.INVALID)
@@ -52,7 +52,7 @@ internal class HxVkUtils
         }
 
         // dedicated queue for transfer
-        if (flags.HasAnyFlag(VK.VK_QUEUE_TRANSFER_BIT))
+        if (flags.HasAllFlags(VK.VK_QUEUE_TRANSFER_BIT))
         {
             var q = findDedicatedQueueFamilyIndex(flags, VK.VK_QUEUE_GRAPHICS_BIT);
             if (q != DeviceQueues.INVALID)

@@ -21,29 +21,29 @@ public readonly struct Handle<T>(uint index, uint gen)
     /// Gets a value indicating whether this handle is empty (invalid).
     /// </summary>
     /// <value>True if the generation is 0; otherwise, false.</value>
-    public bool Empty => _gen == 0;
+    public readonly bool Empty => _gen == 0;
 
     /// <summary>
     /// Gets a value indicating whether this handle is valid (not empty).
     /// </summary>
     /// <value>True if the generation is not 0; otherwise, false.</value>
-    public bool Valid => _gen != 0;
+    public readonly bool Valid => _gen != 0;
 
     /// <summary>
     /// Gets the index component of this handle.
     /// </summary>
-    public uint Index => _index;
+    public readonly uint Index => _index;
 
     /// <summary>
     /// Gets the generation component of this handle.
     /// </summary>
-    public uint Gen => _gen;
+    public readonly uint Gen => _gen;
 
     /// <summary>
     /// Converts the index to a native pointer-sized integer.
     /// </summary>
     /// <returns>The index as an <see cref="nint"/>.</returns>
-    public nint IndexAsVoid()
+    public readonly nint IndexAsVoid()
     {
         return (nint)_index;
     }

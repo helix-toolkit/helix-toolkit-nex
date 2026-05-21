@@ -5,7 +5,7 @@ public readonly struct MaterialPropertyCreator(MaterialTypeId id, IPBRMaterialPr
     public readonly MaterialTypeId MaterialTypeId = id;
     private readonly IPBRMaterialPropertyManager _pool = pool;
 
-    public PBRMaterialProperties Create()
+    public readonly PBRMaterialProperties Create()
     {
         return _pool.Create(MaterialTypeId);
     }

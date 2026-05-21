@@ -145,12 +145,13 @@ internal sealed class TagManager<T> : IDisposable
         {
             return;
         }
+        TagManager<T>? manager = null;
         _managerStorageLock.EnterWriteLock();
         try
         {
             if (_managerStorage.Count > worldId)
             {
-                _managerStorage[worldId]?.Dispose();
+                manager = _managerStorage[worldId];
                 _managerStorage[worldId] = null;
             }
         }
@@ -158,6 +159,7 @@ internal sealed class TagManager<T> : IDisposable
         {
             _managerStorageLock.ExitWriteLock();
         }
+        manager?.Dispose();
     }
 
     public int WorldId { get; }
@@ -307,12 +309,13 @@ internal sealed class ComponentManager<T> : IDisposable
         {
             return;
         }
+        ComponentManager<T>? manager = null;
         _managerStorageLock.EnterWriteLock();
         try
         {
             if (_managerStorage.Count > worldId)
             {
-                _managerStorage[worldId]?.Dispose();
+                manager = _managerStorage[worldId];
                 _managerStorage[worldId] = null;
             }
         }
@@ -320,6 +323,7 @@ internal sealed class ComponentManager<T> : IDisposable
         {
             _managerStorageLock.ExitWriteLock();
         }
+        manager?.Dispose();
     }
 
     public static int ManagerCount
