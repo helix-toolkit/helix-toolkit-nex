@@ -11,7 +11,7 @@ namespace HelixToolkit.Nex;
 /// This pool uses a free-list algorithm for efficient allocation and deallocation of objects.
 /// Each object is associated with a generation number to prevent the ABA problem and ensure handle validity.
 /// </remarks>
-public sealed class Pool<ObjectType, ImplObjectType> : IDisposable
+public sealed class Pool<ObjectType, ImplObjectType> : IEnumerable<ImplObjectType>, IDisposable
     where ObjectType : new()
 {
     private const uint32_t ListEndSentinel = 0xFFFFFFFF; // Sentinel value to indicate the end of the list
@@ -215,6 +215,16 @@ public sealed class Pool<ObjectType, ImplObjectType> : IDisposable
     public Enumerator GetEnumerator()
     {
         return new(this);
+    }
+
+    IEnumerator<ImplObjectType> IEnumerable<ImplObjectType>.GetEnumerator()
+    {
+        return GetEnumerator();
+    }
+
+    IEnumerator IEnumerable.GetEnumerator()
+    {
+        return GetEnumerator();
     }
 
     public ref ImplObjectType GetRef(int index)
