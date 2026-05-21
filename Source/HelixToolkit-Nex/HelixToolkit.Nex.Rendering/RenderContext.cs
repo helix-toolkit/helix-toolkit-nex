@@ -1,4 +1,3 @@
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace HelixToolkit.Nex.Rendering;
@@ -23,7 +22,7 @@ public readonly struct CameraParams(
     Vector3 up,
     float nearPlane,
     float farPlane
-)
+) : IEquatable<CameraParams>
 {
     public readonly Matrix4x4 View = view;
     public readonly Matrix4x4 Projection = projection;
@@ -37,7 +36,37 @@ public readonly struct CameraParams(
     public readonly float FarPlane = farPlane;
     public readonly Vector3 Up = up;
 
-    public bool IsIdentity => Unsafe.AreSame(ref Unsafe.AsRef(in this), ref Unsafe.AsRef(in Identity));
+    public readonly bool IsIdentity => Equals(Identity);
+
+    public readonly bool Equals(CameraParams other)
+    {
+        return View.Equals(other.View)
+            && Projection.Equals(other.Projection)
+            && InvView.Equals(other.InvView)
+            && InvProjection.Equals(other.InvProjection)
+            && Position.Equals(other.Position)
+            && Target.Equals(other.Target)
+            && Up.Equals(other.Up)
+            && NearPlane == other.NearPlane
+            && FarPlane == other.FarPlane;
+    }
+
+    public override readonly bool Equals(object? obj) => obj is CameraParams other && Equals(other);
+
+    public override readonly int GetHashCode()
+    {
+        HashCode hash = new();
+        hash.Add(View);
+        hash.Add(Projection);
+        hash.Add(InvView);
+        hash.Add(InvProjection);
+        hash.Add(Position);
+        hash.Add(Target);
+        hash.Add(Up);
+        hash.Add(NearPlane);
+        hash.Add(FarPlane);
+        return hash.ToHashCode();
+    }
 
     public static readonly CameraParams Identity = new(
         Matrix4x4.Identity,
