@@ -94,7 +94,7 @@ internal readonly struct ComponentIdProxy<T>
     public static T? DefaultValue = default;
 }
 
-internal sealed class TagManager<T>
+internal sealed class TagManager<T> : IDisposable
 {
     public static readonly ComponentIdProxy<T> Id = new();
     private static readonly FastList<TagManager<T>?> _managerStorage = [];
@@ -139,6 +139,26 @@ internal sealed class TagManager<T>
         }
     }
 
+    public static void RemoveManager(int worldId)
+    {
+        if (worldId == 0)
+        {
+            return;
+        }
+        _managerStorageLock.EnterWriteLock();
+        try
+        {
+            if (_managerStorage.Count > worldId)
+            {
+                _managerStorage[worldId]?.Dispose();
+                _managerStorage[worldId] = null;
+            }
+        }
+        finally
+        {
+            _managerStorageLock.ExitWriteLock();
+        }
+    }
 
     public int WorldId { get; }
     public int Count => _count;
@@ -173,15 +193,39 @@ internal sealed class TagManager<T>
 
     private void HandleWorldDisposing(int worldId, WorldDisposingEvent msg)
     {
-        _count = 0;
+        Dispose();
     }
 
     private void HandleEntityDisposing(int worldId, EntityBeforeDisposeEvent msg)
     {
-        if (World.GetWorldById(worldId)?.GetEntity(msg.EntityId).Has<T>() == true)
+        if (WorldId == 0)
+        {
+            return;
+        }
+        if (
+            World.GetWorldInternal(worldId)?.HasComponentTypeById(
+                msg.EntityId,
+                ComponentIdProxy<T>.TypeId
+            ) == true
+        )
         {
             Remove();
         }
+    }
+
+    private bool _disposed = false;
+
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+        _disposed = true;
+        ECSEventBus.Unregister<WorldDisposingEvent>(WorldId, HandleWorldDisposing);
+        ECSEventBus.Unregister<EntityBeforeDisposeEvent>(WorldId, HandleEntityDisposing);
+        Interlocked.Exchange(ref _count, 0);
+        RemoveManager(WorldId);
     }
 }
 
