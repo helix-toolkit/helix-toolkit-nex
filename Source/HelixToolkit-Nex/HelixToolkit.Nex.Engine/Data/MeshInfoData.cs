@@ -54,8 +54,10 @@ internal sealed class MeshInfoData : Initializable, IRenderData
         var empty = new MeshInfo();
         _buffer.WriteDynamic(
             objects.Count,
-            ctx =>
+            (objects, empty),
+            static (ctx, state) =>
             {
+                var (objects, empty) = state;
                 for (var i = 0; i < objects.Count; ++i)
                 {
                     if (objects[i].Obj is null)

@@ -483,6 +483,53 @@ public sealed class ElementBuffer<T> : IDisposable
     }
 
     /// <summary>
+    /// Writes data to a dynamic buffer using a state-based action to avoid heap allocations from closures.
+    /// </summary>
+    /// <typeparam name="TState">The type of the state object passed to <paramref name="writeAction"/>.</typeparam>
+    /// <param name="totalCount">The total number of elements to write to the buffer. Must be greater than 0.</param>
+    /// <param name="state">The state object to pass to <paramref name="writeAction"/>.</param>
+    /// <param name="writeAction">An action that performs the write operation.</param>
+    /// <returns>A <see cref="ResultCode"/> indicating the outcome of the operation.</returns>
+    public ResultCode WriteDynamic<TState>(int totalCount, TState state, Action<SafeWriteContext, TState> writeAction)
+    {
+        if (!HostVisible)
+        {
+            _logger.LogError("WriteDynamic can only be used with dynamic buffers.");
+            return ResultCode.InvalidState;
+        }
+        if (totalCount <= 0)
+        {
+            return ResultCode.Ok;
+        }
+        var requiredCapacity = totalCount;
+        if (requiredCapacity > Capacity)
+        {
+            var newCapacity = MathUtil.Clamp(
+                (int)(requiredCapacity * 1.5f),
+                (int)requiredCapacity,
+                int.MaxValue
+            );
+            var result = ResizeBuffer(newCapacity);
+            if (result.HasError())
+            {
+                return result;
+            }
+        }
+        unsafe
+        {
+            nint mappedPtr = Context.GetMappedPtr(Buffer.Handle);
+            if (mappedPtr == nint.Zero)
+            {
+                _logger.LogError("Cannot write data: dynamic buffer is not mapped.");
+                return ResultCode.InvalidState;
+            }
+            writeAction(new SafeWriteContext(mappedPtr, Capacity * sizeof(T)), state);
+            Count = totalCount;
+            return ResultCode.Ok;
+        }
+    }
+
+    /// <summary>
     /// Writes an element of type <typeparamref name="T"/> to a specified index in the buffer.
     /// </summary>
     /// <remarks>The method writes the element to the buffer at the specified index, provided there is enough

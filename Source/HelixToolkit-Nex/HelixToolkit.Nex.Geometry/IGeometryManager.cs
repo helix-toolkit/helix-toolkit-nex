@@ -91,4 +91,16 @@ public interface IGeometryManager : IDisposable
     /// <param name="handle"></param>
     /// <returns></returns>
     Geometry? GetGeometry(Handle<GeometryResourceType> handle);
+
+    /// <summary>
+    /// Gets an enumerator that iterates through all active geometries in the pool.
+    /// This is more efficient than using GetAll() as it avoids heap allocations and allows for direct access to the underlying geometry objects.
+    /// </summary>
+    /// <returns></returns>
+    Pool<GeometryResourceType, Geometry>.Enumerator GetEnumerator();
+
+    /// <summary>
+    /// Gets the number of geometries that needs to update their GPU buffers. 
+    /// <returns>The number of geometries marked as dirty. </returns>
+    int GetDirtyCount();
 }
