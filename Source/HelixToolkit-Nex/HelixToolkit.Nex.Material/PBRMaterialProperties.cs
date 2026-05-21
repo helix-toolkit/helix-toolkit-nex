@@ -31,13 +31,13 @@ public readonly struct MaterialPropsUpdatedEvent(
 ) : IEvent
 {
     /// <summary>Gets the identifier of the material type that owns this entry.</summary>
-    public MaterialTypeId MaterialTypeId { get; } = materialTypeId;
+    public readonly MaterialTypeId MaterialTypeId { get; } = materialTypeId;
 
     /// <summary>Gets the pool index of the material property entry that was affected.</summary>
-    public uint Index { get; } = index;
+    public readonly uint Index { get; } = index;
 
     /// <summary>Gets the operation that triggered this event.</summary>
-    public MaterialPropertyOp Operation { get; } = operation;
+    public readonly MaterialPropertyOp Operation { get; } = operation;
 }
 
 /// <summary>

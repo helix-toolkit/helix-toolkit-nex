@@ -9,24 +9,24 @@ namespace HelixToolkit.Nex.Rendering;
 public readonly struct TextBounds
 {
     /// <summary>Total width: max horizontal extent across all lines.</summary>
-    public float Width { get; init; }
+    public readonly float Width { get; init; }
 
     /// <summary>Total height: top ascender of first line to bottom descender of last line.</summary>
-    public float Height { get; init; }
+    public readonly float Height { get; init; }
 
     /// <summary>
     /// Y offset from the baseline (origin) to the bottom edge of the bounds.
     /// This is zero or negative (e.g. -0.2 for glyphs with descenders such as 'y' or 'g').
     /// Use this to correctly position a background quad so it covers descenders.
     /// </summary>
-    public float DescenderOffset { get; init; }
+    public readonly float DescenderOffset { get; init; }
 
     /// <summary>
     /// Y offset from the baseline (origin) to the top edge of the bounds (ascender of the first line).
     /// Always positive. Use together with <see cref="Height"/> to correctly centre a background quad
     /// over multi-line text: <c>centerY = Ascender - Height / 2</c>.
     /// </summary>
-    public float Ascender { get; init; }
+    public readonly float Ascender { get; init; }
 }
 
 /// <summary>

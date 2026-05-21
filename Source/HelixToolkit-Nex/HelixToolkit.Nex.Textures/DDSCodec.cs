@@ -858,8 +858,8 @@ internal static class DDSCodec
         var srcBuffers = srcImage.PixelBuffers;
         var dstBuffers = dstImage.PixelBuffers;
 
-        bool setAlpha = convFlags.HasAnyFlag(ConversionFlags.NoAlpha);
-        bool swizzle = convFlags.HasAnyFlag(ConversionFlags.Swizzle);
+        bool setAlpha = convFlags.HasAllFlags(ConversionFlags.NoAlpha);
+        bool swizzle = convFlags.HasAllFlags(ConversionFlags.Swizzle);
 
         int index = 0;
         int checkSize = dataSize - offset;
@@ -898,7 +898,7 @@ internal static class DDSCodec
 
                         for (int h = 0; h < src.Height; h++)
                         {
-                            if (convFlags.HasAnyFlag(ConversionFlags.Expand))
+                            if (convFlags.HasAllFlags(ConversionFlags.Expand))
                             {
                                 if (
                                     convFlags.HasAnyFlag(
@@ -911,7 +911,7 @@ internal static class DDSCodec
                                         dstPitch,
                                         pSrc,
                                         srcPitch,
-                                        convFlags.HasAnyFlag(ConversionFlags.Format565)
+                                        convFlags.HasAllFlags(ConversionFlags.Format565)
                                             ? DxgiFormat.B5G6R5_UNorm
                                             : DxgiFormat.B5G5R5A1_UNorm,
                                         setAlpha
@@ -1250,7 +1250,7 @@ internal static class DDSCodec
         bool setAlpha
     )
     {
-        if (convFlags.HasAnyFlag(ConversionFlags.Format888))
+        if (convFlags.HasAllFlags(ConversionFlags.Format888))
         {
             // 24bpp BGR -> 32bpp RGBA
             var sPtr = (byte*)pSrc;
@@ -1269,7 +1269,7 @@ internal static class DDSCodec
                 sPtr += 3;
             }
         }
-        else if (convFlags.HasAnyFlag(ConversionFlags.Format332))
+        else if (convFlags.HasAllFlags(ConversionFlags.Format332))
         {
             // 8bpp R3G3B2 -> 32bpp RGBA
             var sPtr = (byte*)pSrc;
@@ -1291,7 +1291,7 @@ internal static class DDSCodec
                 *(dPtr++) = (int)(t1 | t2 | t3 | 0xff000000u);
             }
         }
-        else if (convFlags.HasAnyFlag(ConversionFlags.Format8332))
+        else if (convFlags.HasAllFlags(ConversionFlags.Format8332))
         {
             // 16bpp A8R3G3B2 -> 32bpp RGBA
             var sPtr = (short*)pSrc;
@@ -1315,7 +1315,7 @@ internal static class DDSCodec
                 *(dPtr++) = (int)(t1 | t2 | t3 | ta);
             }
         }
-        else if (convFlags.HasAnyFlag(ConversionFlags.Format4444))
+        else if (convFlags.HasAllFlags(ConversionFlags.Format4444))
         {
             // 16bpp A4R4G4B4 -> 32bpp RGBA
             var sPtr = (short*)pSrc;
@@ -1336,7 +1336,7 @@ internal static class DDSCodec
                 *(dPtr++) = (int)(t1 | t2 | t3 | ta);
             }
         }
-        else if (convFlags.HasAnyFlag(ConversionFlags.Format44))
+        else if (convFlags.HasAllFlags(ConversionFlags.Format44))
         {
             // 8bpp A4L4 -> 32bpp RGBA
             var sPtr = (byte*)pSrc;
@@ -1353,9 +1353,9 @@ internal static class DDSCodec
                 *(dPtr++) = (int)(t1 | (t1 << 8) | (t1 << 16) | ta);
             }
         }
-        else if (convFlags.HasAnyFlag(ConversionFlags.Pal8) && pal8 != null)
+        else if (convFlags.HasAllFlags(ConversionFlags.Pal8) && pal8 != null)
         {
-            if (convFlags.HasAnyFlag(ConversionFlags.FormatA8P8))
+            if (convFlags.HasAllFlags(ConversionFlags.FormatA8P8))
             {
                 // 16bpp A8P8 palette
                 var sPtr = (short*)pSrc;

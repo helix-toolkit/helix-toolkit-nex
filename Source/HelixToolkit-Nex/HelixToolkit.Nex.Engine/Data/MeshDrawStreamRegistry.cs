@@ -34,7 +34,7 @@ internal sealed class MeshDrawStreamRegistry(IContext context, World world)
     {
         foreach (var stream in _streams)
         {
-            if (stream.Categories.HasAnyFlag(category))
+            if (stream.Categories.HasAllFlags(category))
                 yield return stream;
         }
     }

@@ -113,7 +113,7 @@ internal sealed class VulkanPipelineBuilder
                 ? VK_BOOL.True
                 : VK_BOOL.False;
 
-        if (faceMask.HasAnyFlag(VK.VK_STENCIL_FACE_FRONT_BIT))
+        if (faceMask.HasAllFlags(VK.VK_STENCIL_FACE_FRONT_BIT))
         {
             ref VkStencilOpState s = ref _depthStencilState.front;
             s.failOp = failOp;
@@ -122,7 +122,7 @@ internal sealed class VulkanPipelineBuilder
             s.compareOp = compareOp;
         }
 
-        if (faceMask.HasAnyFlag(VK.VK_STENCIL_FACE_BACK_BIT))
+        if (faceMask.HasAllFlags(VK.VK_STENCIL_FACE_BACK_BIT))
         {
             ref VkStencilOpState s = ref _depthStencilState.back;
             s.failOp = failOp;
@@ -140,7 +140,7 @@ internal sealed class VulkanPipelineBuilder
         uint32_t reference
     )
     {
-        if (faceMask.HasAnyFlag(VK.VK_STENCIL_FACE_FRONT_BIT))
+        if (faceMask.HasAllFlags(VK.VK_STENCIL_FACE_FRONT_BIT))
         {
             ref VkStencilOpState s = ref _depthStencilState.front;
             s.compareMask = compareMask;
@@ -148,7 +148,7 @@ internal sealed class VulkanPipelineBuilder
             s.reference = reference;
         }
 
-        if (faceMask.HasAnyFlag(VK.VK_STENCIL_FACE_BACK_BIT))
+        if (faceMask.HasAllFlags(VK.VK_STENCIL_FACE_BACK_BIT))
         {
             ref VkStencilOpState s = ref _depthStencilState.back;
             s.compareMask = compareMask;

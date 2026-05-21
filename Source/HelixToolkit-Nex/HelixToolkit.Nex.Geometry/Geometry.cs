@@ -131,7 +131,7 @@ public partial class Geometry : HxObservableObject, IDisposable
         set
         {
             _bufferDirty = value;
-            if (value.HasAnyFlag(GeometryBufferType.Vertex))
+            if (value.HasAllFlags(GeometryBufferType.Vertex))
             {
                 IsBoundDirty = true;
             }
@@ -287,7 +287,7 @@ public partial class Geometry : HxObservableObject, IDisposable
     {
         using var scope = _tracer.BeginScope(nameof(UpdateBuffers), TRACE_BUFFER);
         var storageType = IsDynamic ? StorageType.HostVisible : StorageType.Device;
-        if (types.HasAnyFlag(GeometryBufferType.Vertex))
+        if (types.HasAllFlags(GeometryBufferType.Vertex))
         {
             if (_vertices.Count == 0)
             {
@@ -307,7 +307,7 @@ public partial class Geometry : HxObservableObject, IDisposable
 
             BufferDirty &= ~GeometryBufferType.Vertex;
         }
-        if (types.HasAnyFlag(GeometryBufferType.VertexProp))
+        if (types.HasAllFlags(GeometryBufferType.VertexProp))
         {
             if (_vertexProps.Count == 0)
             {
@@ -334,7 +334,7 @@ public partial class Geometry : HxObservableObject, IDisposable
 
             BufferDirty &= ~GeometryBufferType.VertexProp;
         }
-        if (types.HasAnyFlag(GeometryBufferType.Index))
+        if (types.HasAllFlags(GeometryBufferType.Index))
         {
             if (_indices.Count == 0)
             {
@@ -366,7 +366,7 @@ public partial class Geometry : HxObservableObject, IDisposable
 
             BufferDirty &= ~GeometryBufferType.Index;
         }
-        if (types.HasAnyFlag(GeometryBufferType.VertexColor))
+        if (types.HasAllFlags(GeometryBufferType.VertexColor))
         {
             if (_vertexColors.Count == 0)
             {
@@ -435,7 +435,7 @@ public partial class Geometry : HxObservableObject, IDisposable
         var pending = new PendingBufferUpdate();
         var hasAnyUpload = false;
 
-        if (types.HasAnyFlag(GeometryBufferType.Vertex))
+        if (types.HasAllFlags(GeometryBufferType.Vertex))
         {
             if (_vertices.Count == 0)
             {
@@ -458,7 +458,7 @@ public partial class Geometry : HxObservableObject, IDisposable
             BufferDirty &= ~GeometryBufferType.Vertex;
         }
 
-        if (types.HasAnyFlag(GeometryBufferType.VertexProp))
+        if (types.HasAllFlags(GeometryBufferType.VertexProp))
         {
             if (_vertexProps.Count == 0)
             {
@@ -488,7 +488,7 @@ public partial class Geometry : HxObservableObject, IDisposable
             BufferDirty &= ~GeometryBufferType.VertexProp;
         }
 
-        if (types.HasAnyFlag(GeometryBufferType.Index) && CanHaveIndexBuffer && IsDynamic)
+        if (types.HasAllFlags(GeometryBufferType.Index) && CanHaveIndexBuffer && IsDynamic)
         {
             if (_indices.Count == 0)
             {
@@ -510,7 +510,7 @@ public partial class Geometry : HxObservableObject, IDisposable
             BufferDirty &= ~GeometryBufferType.Index;
         }
 
-        if (types.HasAnyFlag(GeometryBufferType.VertexColor))
+        if (types.HasAllFlags(GeometryBufferType.VertexColor))
         {
             if (_vertexColors.Count == 0)
             {
@@ -669,22 +669,22 @@ public partial class Geometry : HxObservableObject, IDisposable
 
     private void ApplyPendingBuffersInternal(PendingBufferUpdate pending)
     {
-        if (pending.Types.HasAnyFlag(GeometryBufferType.Vertex))
+        if (pending.Types.HasAllFlags(GeometryBufferType.Vertex))
         {
             BufferDirty &= ~GeometryBufferType.Vertex;
         }
 
-        if (pending.Types.HasAnyFlag(GeometryBufferType.VertexProp))
+        if (pending.Types.HasAllFlags(GeometryBufferType.VertexProp))
         {
             BufferDirty &= ~GeometryBufferType.VertexProp;
         }
 
-        if (pending.Types.HasAnyFlag(GeometryBufferType.Index))
+        if (pending.Types.HasAllFlags(GeometryBufferType.Index))
         {
             BufferDirty &= ~GeometryBufferType.Index;
         }
 
-        if (pending.Types.HasAnyFlag(GeometryBufferType.VertexColor))
+        if (pending.Types.HasAllFlags(GeometryBufferType.VertexColor))
         {
             BufferDirty &= ~GeometryBufferType.VertexColor;
         }

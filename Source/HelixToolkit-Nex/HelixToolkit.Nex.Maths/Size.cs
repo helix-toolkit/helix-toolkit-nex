@@ -7,12 +7,12 @@ public readonly struct Size(int width, int height) : IEquatable<Size>
     public readonly int Height = height;
     public bool IsEmpty => Width <= 0 || Height <= 0;
 
-    public override string ToString()
+    public override readonly string ToString()
     {
         return $"{Width}x{Height}";
     }
 
-    public bool Equals(Size other)
+    public readonly bool Equals(Size other)
     {
         return Width == other.Width && Height == other.Height;
     }
@@ -27,12 +27,12 @@ public readonly struct Size(int width, int height) : IEquatable<Size>
         return new Vector2(size.Width, size.Height);
     }
 
-    public override bool Equals(object? obj)
+    public override readonly bool Equals(object? obj)
     {
         return obj is Size size && Equals(size);
     }
 
-    public override int GetHashCode()
+    public override readonly int GetHashCode()
     {
         return HashCode.Combine(Width, Height);
     }

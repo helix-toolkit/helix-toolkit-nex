@@ -8,47 +8,47 @@ public readonly struct TraceEntry
     /// <summary>
     /// The type of trace entry.
     /// </summary>
-    public TraceEntryType EntryType { get; init; }
+    public readonly TraceEntryType EntryType { get; init; }
 
     /// <summary>
     /// The name of the trace entry.
     /// </summary>
-    public string Name { get; init; }
+    public readonly string Name { get; init; }
 
     /// <summary>
     /// The category of the trace entry (optional).
     /// </summary>
-    public string? Category { get; init; }
+    public readonly string? Category { get; init; }
 
     /// <summary>
     /// The start timestamp in ticks (high-resolution performance counter).
     /// </summary>
-    public long StartTicks { get; init; }
+    public readonly long StartTicks { get; init; }
 
     /// <summary>
     /// The end timestamp in ticks (for scopes only).
     /// </summary>
-    public long EndTicks { get; init; }
+    public readonly long EndTicks { get; init; }
 
     /// <summary>
     /// The numeric value associated with the entry (for events).
     /// </summary>
-    public double Value { get; init; }
+    public readonly double Value { get; init; }
 
     /// <summary>
     /// The thread ID where the trace was recorded.
     /// </summary>
-    public int ThreadId { get; init; }
+    public readonly int ThreadId { get; init; }
 
     /// <summary>
     /// Gets the duration in milliseconds (for scopes only).
     /// </summary>
-    public double DurationMs => (EndTicks - StartTicks) * 1000.0 / Stopwatch.Frequency;
+    public readonly double DurationMs => (EndTicks - StartTicks) * 1000.0 / Stopwatch.Frequency;
 
     /// <summary>
     /// Gets the duration in ticks (for scopes only).
     /// </summary>
-    public long DurationTicks => EndTicks - StartTicks;
+    public readonly long DurationTicks => EndTicks - StartTicks;
 
     /// <summary>
     /// Creates a new trace entry for a scope start.

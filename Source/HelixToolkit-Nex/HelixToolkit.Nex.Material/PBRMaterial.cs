@@ -4,18 +4,17 @@ namespace HelixToolkit.Nex.Material;
 
 public readonly struct MaterialTypeId(uint id) : IComparable<MaterialTypeId>, IEquatable<MaterialTypeId>
 {
-    public uint Id { get; } = id;
+    public readonly uint Id { get; } = id;
 
     public int CompareTo(MaterialTypeId other)
     {
         return Id.CompareTo(other.Id);
     }
 
-    public bool Equals(MaterialTypeId other) => Id == other.Id;
+    public readonly bool Equals(MaterialTypeId other) => Id == other.Id;
 
-    public override bool Equals(object? obj) => obj is MaterialTypeId other && Equals(other);
-
-    public override int GetHashCode() => Id.GetHashCode();
+    public override readonly bool Equals(object? obj) => obj is MaterialTypeId other && Equals(other);
+    public override readonly int GetHashCode() => Id.GetHashCode();
 
     public static bool operator ==(MaterialTypeId left, MaterialTypeId right) => left.Id == right.Id;
 

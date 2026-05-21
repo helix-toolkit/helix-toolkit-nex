@@ -107,23 +107,23 @@ internal sealed class VulkanStagingDevice : IDisposable
                     size = chunkSize,
                 };
                 VkPipelineStageFlags dstMask = VK.VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
-                if (buffer.VkUsageFlags.HasAnyFlag(VK.VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT))
+                if (buffer.VkUsageFlags.HasAllFlags(VK.VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT))
                 {
                     dstMask |= VK.VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT;
                     barrier.dstAccessMask |= VK.VK_ACCESS_INDIRECT_COMMAND_READ_BIT;
                 }
-                if (buffer.VkUsageFlags.HasAnyFlag(VK.VK_BUFFER_USAGE_INDEX_BUFFER_BIT))
+                if (buffer.VkUsageFlags.HasAllFlags(VK.VK_BUFFER_USAGE_INDEX_BUFFER_BIT))
                 {
                     dstMask |= VK.VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
                     barrier.dstAccessMask |= VK.VK_ACCESS_INDEX_READ_BIT;
                 }
-                if (buffer.VkUsageFlags.HasAnyFlag(VK.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT))
+                if (buffer.VkUsageFlags.HasAllFlags(VK.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT))
                 {
                     dstMask |= VK.VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
                     barrier.dstAccessMask |= VK.VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
                 }
                 if (
-                    buffer.VkUsageFlags.HasAnyFlag(VK.VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR)
+                    buffer.VkUsageFlags.HasAllFlags(VK.VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR)
                 )
                 {
                     dstMask |= VK.VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;

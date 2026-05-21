@@ -9,8 +9,8 @@ public enum GeometryChangeOp
 
 public readonly struct GeometryUpdatedEvent(uint geometryId, GeometryChangeOp changeType) : IEvent
 {
-    public uint GeometryId { get; } = geometryId;
-    public GeometryChangeOp ChangeType { get; } = changeType;
+    public readonly uint GeometryId { get; } = geometryId;
+    public readonly GeometryChangeOp ChangeType { get; } = changeType;
 }
 
 /// <summary>
@@ -71,12 +71,6 @@ public interface IGeometryManager : IDisposable
     /// Clears all geometries from the pool and disposes their resources.
     /// </summary>
     void Clear();
-
-    /// <summary>
-    /// Gets all active geometries in the pool.
-    /// </summary>
-    /// <returns>An enumerable of all active geometries.</returns>
-    IEnumerable<Geometry> GetAll();
 
     /// <summary>
     /// Get geometry by its index. Note that the geometry may be null if it has been removed from the pool, so always check for null before using the returned geometry.
