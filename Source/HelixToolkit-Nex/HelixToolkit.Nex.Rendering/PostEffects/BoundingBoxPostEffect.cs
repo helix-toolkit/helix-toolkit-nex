@@ -10,17 +10,13 @@ namespace HelixToolkit.Nex.Rendering.PostEffects;
 ///
 /// For every mesh entity that carries a <see cref="BoundingBoxComponent"/> the
 /// effect draws a wireframe axis-aligned bounding box (AABB) directly from the
-/// existing GPU buffers (<c>MeshInfo</c>, <c>NodeInfo</c>, <c>MeshDraw</c>)
-/// without uploading any additional geometry.
+/// existing mesh bounding box * model transform * instance transform (if exist).
 ///
 /// The vertex shader procedurally generates the 12 edges (24 vertices, line-list)
 /// of each box using <c>gl_VertexIndex</c> to select edge endpoints and
 /// <c>gl_InstanceIndex</c> to select which mesh's bounding box to draw.
-/// Culled meshes (those with <c>instanceCount == 0</c> after frustum culling)
-/// are automatically skipped in the shader.
-///
-/// The effect renders directly into the current write-slot colour texture with
-/// <see cref="LoadOp.Load"/> so it composites on top of the existing scene.
+/// Bounding box is culled against the camera frustum on the CPU before drawing, so only visible boxes cost GPU performance.
+/// Bounding box can still be rendered even the scene node is disabled.
 /// </summary>
 public sealed class BoundingBoxPostEffect : PostEffect
 {
@@ -48,7 +44,7 @@ public sealed class BoundingBoxPostEffect : PostEffect
         /// <summary>
         /// A default green bounding box.
         /// </summary>
-        public static readonly BoundingBoxComponent Default = new(new Color4(0f, 1f, 0f, 0.8f));
+        public static readonly BoundingBoxComponent Default = new(new Color4(0f, 1f, 0f, 1f));
     }
 
     private static readonly ILogger _logger = LogManager.Create<BoundingBoxPostEffect>();
@@ -101,7 +97,7 @@ public sealed class BoundingBoxPostEffect : PostEffect
         // Swap so we write into the current texture (same pattern as WireframePostEffect).
         (readSlot, writeSlot) = (writeSlot, readSlot);
 
-        DrawBoundingBoxes(in res, res.CmdBuffer, data, ref readSlot, ref writeSlot);
+        DrawBoundingBoxes(in res, res.CmdBuffer, data, writeSlot);
         return true;
     }
 
@@ -156,7 +152,10 @@ public sealed class BoundingBoxPostEffect : PostEffect
             ref var bbox = ref entity.Get<BoundingBoxComponent>();
             ref var transform = ref entity.Get<WorldTransform>();
             var transformMatrix = transform.Value;
-            if (mesh.Instancing is not null && bbox.InstanceIndex < mesh.Instancing.Transforms.Count)
+            if (
+                mesh.Instancing is not null
+                && bbox.InstanceIndex < mesh.Instancing.Transforms.Count
+            )
             {
                 transformMatrix *= mesh.Instancing.Transforms[(int)bbox.InstanceIndex].ToMatrix();
             }
@@ -181,8 +180,7 @@ public sealed class BoundingBoxPostEffect : PostEffect
         in RenderResources res,
         ICommandBuffer cmdBuffer,
         IRenderDataProvider data,
-        ref string readSlot,
-        ref string writeSlot
+        string writeSlot
     )
     {
         var fpBuffer = res.Buffers[SystemBufferNames.BufferForwardPlusConstants];
@@ -202,7 +200,6 @@ public sealed class BoundingBoxPostEffect : PostEffect
         cmdBuffer.BindDepthState(UseDepthTest ? DepthState.ReadOnlyInvZ : DepthState.Disabled);
 
         var fpConstAddress = fpBuffer.GpuAddress(res.RenderContext.Context);
-        var dataStreams = data.DrawStreams;
 
         foreach (var entry in _entries)
         {

@@ -174,10 +174,24 @@ public sealed class RenderContext(IServiceProvider services) : Initializable
     public int TileCountY { private set; get; } = 1;
 
     public float DpiScale { set; get; } = 1;
+
+    private CameraParams _cameraParams = CameraParams.Identity;
     /// <summary>
     /// Gets the current camera parameters applied to the view.
     /// </summary>
-    public CameraParams CameraParams { get; private set; } = CameraParams.Identity;
+    public CameraParams CameraParams
+    {
+        set
+        {
+            if (_cameraParams.Equals(value))
+            {
+                return;
+            }
+            _cameraParams = value;
+            CameraFrustum = BoundingFrustum.FromViewProjectInversedZ(CameraParams.ViewProjection);
+        }
+        get => _cameraParams;
+    }
     /// <summary>
     /// Gets the bounding frustum that defines the visible region of the camera or view.
     /// </summary>
@@ -256,7 +270,6 @@ public sealed class RenderContext(IServiceProvider services) : Initializable
         CameraParams = cameraParamsProvider.ToCameraParams(
             (float)WindowSize.Width / WindowSize.Height
         );
-        CameraFrustum = BoundingFrustum.FromViewProjectInversedZ(CameraParams.ViewProjection);
     }
 
     /// <summary>
