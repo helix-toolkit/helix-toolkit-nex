@@ -32,6 +32,7 @@ The `HelixToolkit.Nex.Maths` package is integral to the HelixToolkit-Nex engine,
 | `AngleSingle`         | Represents a unit-independent angle using a single-precision floating-point.|
 | `Alignment`           | Provides utility methods for memory alignment calculations.                 |
 | `Size`                | Represents a two-dimensional size with width and height.                    |
+| `BoundingBoxHelper`   | Provides static methods for operations on bounding boxes.                   |
 
 ## Usage Examples
 
@@ -67,6 +68,18 @@ BoundingSphere sphere = new BoundingSphere(new Vector3(0, 0, 0), 1.0f);
 
 // Check for intersection between box and sphere
 bool intersects = box.Intersects(ref sphere);
+```
+
+### Transforming a Bounding Box
+
+```csharp
+using HelixToolkit.Nex.Maths;
+
+// Define a transformation matrix
+Matrix transform = Matrix.CreateTranslation(new Vector3(1, 1, 1));
+
+// Transform the bounding box
+BoundingBox transformedBox = BoundingBoxHelper.Transform(box, ref transform);
 ```
 
 ### Collision Detection
