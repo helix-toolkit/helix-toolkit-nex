@@ -29,12 +29,13 @@ HelixToolkit.Nex.Rendering is responsible for managing the rendering pipeline of
 | `PostEffect`                     | Base class for post-processing effects.                                     |
 | `Renderer`                       | Manages the lifecycle and execution of render nodes.                        |
 | `RenderParams`                   | Contains render parameters including background color and other settings.   |
+| `BoundingBoxPostEffect`          | Renders wireframe bounding boxes for debugging purposes.                    |
 
 ## Recent Changes
 
 ### New Features
 
-- **BillboardGeometry**: Reintroduced with enhanced functionality, including support for solid color and UV types.
+- **BoundingBoxPostEffect**: Added for rendering wireframe axis-aligned bounding boxes (AABB) around mesh entities with a `BoundingBoxComponent`.
 - **BillboardComponent**: Added `CullDistance` property to control distance-based culling.
 - **BillboardCullNode**: Updated to include screen width in rendering parameters for better culling precision.
 - **WireframePostEffect**: Added for rendering wireframe overlays on meshes with customizable color and depth bias.
@@ -48,6 +49,7 @@ HelixToolkit.Nex.Rendering is responsible for managing the rendering pipeline of
 
 - **Buffer Management**: Updated to include `BufferMeshInfo` as an input and output dependency for better resource tracking and management.
 - **Render Setup**: Added `OnSetupRender` method to manage buffer dependencies.
+- **Camera Frustum**: Now uses `CameraFrustum` from `RenderContext` for culling operations.
 
 ### ForwardPlusLightCullingNode
 
@@ -117,6 +119,16 @@ var billboardComponent = new BillboardComponent
 var postEffectsNode = new PostEffectsNode();
 postEffectsNode.AddEffect(new Bloom { Threshold = 0.8f, Intensity = 2.0f });
 postEffectsNode.AddEffect(new Fxaa { Quality = FxaaQuality.Medium });
+```
+
+### Visualizing Bounding Boxes
+
+```csharp
+var boundingBoxEffect = new BoundingBoxPostEffect
+{
+    UseDepthTest = true
+};
+boundingBoxEffect.Apply(renderResources, ref readSlot, ref writeSlot);
 ```
 
 ## Architecture Notes
