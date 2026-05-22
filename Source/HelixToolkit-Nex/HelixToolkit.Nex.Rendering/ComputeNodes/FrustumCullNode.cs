@@ -63,7 +63,7 @@ public sealed class FrustumCullNode : ComputeNode
     protected override void OnRender(in RenderResources res)
     {
         var context = res.RenderContext;
-        var frustum = BoundingFrustum.FromViewProjectInversedZ(context.CameraParams.ViewProjection);
+        var frustum = context.CameraFrustum;
 
         // BeginFrame Culling Constants
         _cullConst.CullingEnabled = Enabled ? 1u : 0u;
