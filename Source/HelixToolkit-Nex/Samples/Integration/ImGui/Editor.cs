@@ -117,6 +117,7 @@ internal partial class Editor : IDisposable
             {
                 effects.AddEffect(_borderHighlight);
                 effects.AddEffect(_wireframe);
+                effects.AddEffect(new BoundingBoxPostEffect());
             })
             .Build();
 

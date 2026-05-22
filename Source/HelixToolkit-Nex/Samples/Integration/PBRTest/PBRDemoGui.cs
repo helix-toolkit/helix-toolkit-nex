@@ -92,14 +92,14 @@ internal partial class PBRDemo
                 for (int col = GridCols - 1; col >= 0; col--)
                 {
                     int idx = row * GridCols + col;
-                    var isSelected = idx == _selectedIndex;
+                    var isSelected = idx == SelectedIndex;
 
                     if (isSelected)
                         Gui.PushStyleColor(ImGuiCol.Button, new Vector4(0.9f, 0.5f, 0.1f, 1f));
 
                     if (Gui.Button($"##sphere_{idx}", new Vector2(36, 36)))
                     {
-                        _selectedIndex = idx;
+                        SelectedIndex = idx;
                         _spheres[idx].PullFromMaterial();
                     }
 

@@ -11,9 +11,11 @@ using HelixToolkit.Nex.ImGui;
 using HelixToolkit.Nex.Material;
 using HelixToolkit.Nex.Maths;
 using HelixToolkit.Nex.Rendering;
+using HelixToolkit.Nex.Rendering.PostEffects;
 using HelixToolkit.Nex.Scene;
 using HelixToolkit.Nex.Shaders.Frag;
 using Microsoft.Extensions.Logging;
+using static HelixToolkit.Nex.Rendering.PostEffects.BoundingBoxPostEffect;
 
 namespace PBRTest;
 
@@ -130,6 +132,26 @@ internal partial class PBRDemo : IDisposable
 
     // Currently selected sphere index (-1 = none)
     private int _selectedIndex = -1;
+    public int SelectedIndex
+    {
+        set
+        {
+            if (_selectedIndex == value)
+            {
+                return;
+            }
+            if (_selectedIndex != -1)
+            {
+                _spheres[_selectedIndex].Node.Entity.Remove<BoundingBoxComponent>();
+            }
+            _selectedIndex = value;
+            if (_selectedIndex != -1)
+            {
+                _spheres[_selectedIndex].Node.Entity.Set(new BoundingBoxComponent(Color.Green));
+            }
+        }
+        get => _selectedIndex;
+    }
 
     public ImGuiRenderer? ImGui => _imGuiRenderer;
 
@@ -155,6 +177,10 @@ internal partial class PBRDemo : IDisposable
         _engine = EngineBuilder
             .Create(_context)
             .WithDefaultNodes(false)
+            .WithPostEffects(post =>
+            {
+                post.AddEffect(new BoundingBoxPostEffect());
+            })
             .RenderToCustomTarget(GraphicsSettings.IntermediateTargetFormat)
             .Build();
 
@@ -344,7 +370,7 @@ internal partial class PBRDemo : IDisposable
             {
                 return;
             }
-            _selectedIndex = (int)result.Entity.Get<IndexComponent>().Index;
+            SelectedIndex = (int)result.Entity.Get<IndexComponent>().Index;
         }
         else if (button == 1)
         {
