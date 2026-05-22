@@ -900,6 +900,23 @@ public sealed class DepthState()
         CompareOp = CompareOp.GreaterEqual,
         IsDepthWriteEnabled = false,
     };
+
+    /// <summary>
+    /// Represents a depth state configuration where depth comparison is performed using the "greater than or equal to"
+    /// operation, and depth writing is disabled.
+    /// </summary>
+    /// <remarks>This predefined depth state is typically used in scenarios where depth testing is required to
+    /// allow fragments with a depth value greater than or equal to the existing depth, but no changes to the depth
+    /// buffer are permitted.</remarks>
+    public static readonly DepthState ReadOnlyInvZBias = new()
+    {
+        CompareOp = CompareOp.GreaterEqual,
+        IsDepthWriteEnabled = false,
+        DepthBiasConstantFactor = 1.0f,
+        DepthBiasClamp = 0.0f,
+        DepthBiasSlopeFactor = 1.0f,
+        IsDepthBiasEnabled = true,
+    };
 }
 
 /// <summary>

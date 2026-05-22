@@ -181,7 +181,9 @@ public sealed class ForwardPlusWBOITMergedNode : RenderNode
         res.Framebuf.DepthStencil.Texture = res.Textures[SystemBufferNames.TextureDepthF32];
         res.Pass.Depth.LoadOp = LoadOp.Load;
         res.Pass.Depth.StoreOp = StoreOp.None;
-        res.Pass.DepthState = DepthState.ReadOnlyInvZ;
+        res.Pass.DepthState = res.RenderContext.RenderParams.EnableGlobalWireframe
+            ? DepthState.ReadOnlyInvZBias
+            : DepthState.ReadOnlyInvZ;
 
         res.Framebuf.Colors[0].Texture = res.Textures[SystemBufferNames.TextureColorF16Target];
         res.Pass.Colors[0].LoadOp = LoadOp.Load;
@@ -191,6 +193,10 @@ public sealed class ForwardPlusWBOITMergedNode : RenderNode
         res.Pass.Colors[1].LoadOp = LoadOp.Load;
         res.Pass.Colors[1].StoreOp = StoreOp.Store;
 
+        if (res.RenderContext.RenderParams.EnableGlobalWireframe)
+        {
+            return;
+        }
         // Color 2: WBOIT accumulation (RGBA16F).
         // Clear to (0, 0, 0, 0). Blend: ONE / ONE additive.
         // Use the unused color texture as color accumulate texture.
@@ -233,6 +239,29 @@ public sealed class ForwardPlusWBOITMergedNode : RenderNode
     {
         var cmdBuffer = res.CmdBuffer;
         cmdBuffer.PushDebugGroupLabel(_accumPass, Color.Chartreuse);
+        if (res.RenderContext.RenderParams.EnableGlobalWireframe)
+        {
+            var streams = res.RenderContext.Data!.DrawStreams.GetStreamsCore(
+                DrawStreamCategory.Transparent
+            );
+            res.RenderContext.Statistics.DrawCalls += MeshRenderHelper.Render(
+                in res,
+                res.Buffers[SystemBufferNames.BufferForwardPlusConstants]
+                    .GpuAddress(res.RenderContext.Context),
+                streams,
+                MaterialPassType.Wireframe
+            );
+        }
+        else
+        {
+            RenderWBOIT(in res);
+        }
+        cmdBuffer.PopDebugGroupLabel();
+    }
+
+    private void RenderWBOIT(in RenderResources res)
+    {
+        var cmdBuffer = res.CmdBuffer;
         // Disable color buffer 0 output in first pass since second pass outputs the final color to the buffer 0.
         // cmdBuffer.SetColorWriteEnabled(false);
         // ── Subpass 1: Render transparent geometry into accumulation/revealage ──
@@ -286,6 +315,5 @@ public sealed class ForwardPlusWBOITMergedNode : RenderNode
         cmdBuffer.SetColorWriteEnabled(true, false, false, false);
         cmdBuffer.BindDepthState(DepthState.Disabled);
         cmdBuffer.Draw(3); // Full-screen triangle (3 vertices, no index buffer)
-        cmdBuffer.PopDebugGroupLabel();
     }
 }

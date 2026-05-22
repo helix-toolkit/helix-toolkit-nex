@@ -38,13 +38,6 @@ internal partial class Editor
                 Gui.MenuItem("Exit");
                 Gui.EndMenu();
             }
-            if (Gui.BeginMenu("View"))
-            {
-                Gui.MenuItem("Scene");
-                Gui.MenuItem("Properties");
-                Gui.MenuItem("Viewport");
-                Gui.EndMenu();
-            }
             Gui.EndMainMenuBar();
         }
     }
@@ -65,7 +58,12 @@ internal partial class Editor
 
         float thirdHeight = panelHeight / 3f;
 
-        DrawScenePanel(new Vector2(0f, panelY), new Vector2(ScenePanelWidth, panelHeight));
+        DrawScenePanel(new Vector2(0f, panelY), new Vector2(ScenePanelWidth, panelHeight * 3 / 5f));
+        DrawGlobalRenderSettings(
+            new Vector2(0f, panelY + panelHeight * 3 / 5f),
+            new Vector2(ScenePanelWidth, panelHeight * 2 / 5f)
+        );
+
         Draw3DViewport(
             offscreenTex,
             new Vector2(ScenePanelWidth, panelY),
@@ -661,5 +659,27 @@ internal partial class Editor
         bool invertY = _walkaroundController.InvertY;
         if (Gui.Checkbox("Invert Y##FP", ref invertY))
             _walkaroundController.InvertY = invertY;
+    }
+
+    private void DrawGlobalRenderSettings(Vector2 pos, Vector2 size)
+    {
+        if (_renderContext is null)
+        { return; }
+        var windowFlags =
+            ImGuiWindowFlags.NoResize
+            | ImGuiWindowFlags.NoMove
+            | ImGuiWindowFlags.NoCollapse
+            | ImGuiWindowFlags.NoBringToFrontOnFocus;
+
+        Gui.SetNextWindowPos(pos);
+        Gui.SetNextWindowSize(size);
+        Gui.Begin("Global##Render##Settings", windowFlags);
+        Gui.Separator();
+        bool wireframeModeEnabled = _renderContext.RenderParams.EnableGlobalWireframe;
+        if (Gui.Checkbox("Global Wireframe Mode", ref wireframeModeEnabled))
+        {
+            _renderContext.RenderParams.EnableGlobalWireframe = wireframeModeEnabled;
+        }
+        Gui.End();
     }
 }
