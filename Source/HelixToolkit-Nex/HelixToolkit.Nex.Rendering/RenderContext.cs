@@ -86,6 +86,8 @@ public sealed class RenderParams
     public Color4 BackgroundColor = Color.Black;
     public bool EnableLightCulling = true;
     public bool EnableGammaCorrection = false;
+    public bool EnableGlobalWireframe = false;
+    public Color4 GlobalWireframeColor = Color.Gray;
     public static bool LogFPSInDebug { get; set; } = false;
 }
 

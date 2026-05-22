@@ -10,11 +10,16 @@
 layout(location = 0) in vec3 fragWorldPos;
 layout(location = 1) in flat uint materialId;
 layout(location = 2) in vec4 fragColor;
+#ifdef WIREFRAME_PASS
+#else
 #ifndef EXCLUDE_MESH_PROPS
 layout(location = 3) in vec3 fragNormal;
 layout(location = 4) in vec3 fragTangent;
 layout(location = 5) in vec2 fragTexCoord;
 #endif
+#endif
+
+
 #ifdef OUTPUT_DRAW_ID
 layout(location = 6) in flat uvec2 fragEntityId;
 #endif
@@ -378,30 +383,18 @@ vec4 nonLitOutputColor(in PBRMaterial material)
     return vec4(material.albedo + material.emissive, material.opacity);
 }
 
+#ifdef WIREFRAME_PASS
+vec4 wireframeColor() {
+    return fpConst.wireframeColor;
+}
+#endif
+
 
 // Template function to create final color
 vec4 outputColor()
 {
     if (MATERIAL_TYPE == 1u) {
         PBRMaterial material = createPBRMaterial();
-        vec4 color = forwardPlusLighting(material);
-        color.rgb += material.emissive; // Add emissive after lighting
-        return color;
-    }
-    if (MATERIAL_TYPE == 2u) {
-        PBRMaterial material = createPBRMaterial();
-        return nonLitOutputColor(material);
-    }
-    if (MATERIAL_TYPE == 3u) {
-        // Default to PBR lighting
-        return debugTileLighting();
-    }
-    if (MATERIAL_TYPE == 4u) {
-        // Unlit with vertex color
-        return vec4(fragNormal, 1.0);
-    }
-    if (MATERIAL_TYPE == 5u) {
-        PBRMaterial material = createPBRMaterialFlatNormal();
         vec4 color = forwardPlusLighting(material);
         color.rgb += material.emissive; // Add emissive after lighting
         return color;
@@ -418,7 +411,11 @@ void main() {
     uint primID = uint(gl_PrimitiveID);
     idOut = packPrimitiveId(fragEntityId, primID);
 #endif
+#ifdef WIREFRAME_PASS
+    vec4 color = wireframeColor();
+#else
     vec4 color = outputColor();
+#endif
 #ifdef TRANSPARENT_PASS
     // Weighted Blended OIT (McGuire & Bavoil 2013)
     // Weight function uses alpha and view-space depth for depth-sensitive ordering.

@@ -48,7 +48,9 @@ public sealed class ForwardPlusOpaqueNode : RenderNode
         res.Deps.PushBuffer(res.Buffers[SystemBufferNames.BufferLightIndex]);
         res.Deps.PushBuffer(res.Buffers[SystemBufferNames.BufferPBRProperties]);
         res.Deps.PushBuffer(res.Buffers[SystemBufferNames.BufferForwardPlusConstants]);
-        res.Pass.DepthState = DepthState.ReadOnlyInvZ;
+        res.Pass.DepthState = res.RenderContext.RenderParams.EnableGlobalWireframe
+            ? DepthState.ReadOnlyInvZBias
+            : DepthState.ReadOnlyInvZ;
 
         var streams = res.RenderContext.Data!.DrawStreams.GetStreamsCore(DrawStreamCategory.Opaque);
         foreach (var stream in streams)
@@ -63,7 +65,9 @@ public sealed class ForwardPlusOpaqueNode : RenderNode
             res.Buffers[SystemBufferNames.BufferForwardPlusConstants]
                 .GpuAddress(res.RenderContext.Context),
             streams,
-            MaterialPassType.Opaque
+            res.RenderContext.RenderParams.EnableGlobalWireframe
+                ? MaterialPassType.Wireframe
+                : MaterialPassType.Opaque
         );
     }
 
