@@ -563,6 +563,16 @@ namespace HelixToolkit.Nex.Maths
         /// Checks whether the current BoundingFrustum intersects a BoundingSphere.
         /// </summary>
         /// <param name="sphere">The sphere.</param>
+        /// <returns>Type of the containment</returns>
+        public readonly bool Intersects(BoundingSphere sphere)
+        {
+            return Intersects(ref sphere);
+        }
+
+        /// <summary>
+        /// Checks whether the current BoundingFrustum intersects a BoundingSphere.
+        /// </summary>
+        /// <param name="sphere">The sphere.</param>
         /// <param name="result">Set to <c>true</c> if the current BoundingFrustum intersects a BoundingSphere.</param>
         public readonly void Intersects(ref BoundingSphere sphere, out bool result)
         {
@@ -577,6 +587,16 @@ namespace HelixToolkit.Nex.Maths
         public readonly bool Intersects(ref BoundingBox box)
         {
             return Contains(ref box) != ContainmentType.Disjoint;
+        }
+
+        /// <summary>
+        /// Checks whether the current BoundingFrustum intersects a BoundingBox.
+        /// </summary>
+        /// <param name="box">The box.</param>
+        /// <returns><c>true</c> if the current BoundingFrustum intersects a BoundingSphere.</returns>
+        public readonly bool Intersects(BoundingBox box)
+        {
+            return Intersects(ref box);
         }
 
         /// <summary>

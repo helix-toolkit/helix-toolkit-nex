@@ -177,7 +177,14 @@ public sealed class RenderContext(IServiceProvider services) : Initializable
     /// <summary>
     /// Gets the current camera parameters applied to the view.
     /// </summary>
-    public CameraParams CameraParams = CameraParams.Identity;
+    public CameraParams CameraParams { get; private set; } = CameraParams.Identity;
+    /// <summary>
+    /// Gets the bounding frustum that defines the visible region of the camera or view.
+    /// </summary>
+    /// <remarks>The bounding frustum is typically used for view frustum culling and intersection tests in 3D
+    /// graphics applications. The value is updated automatically based on the camera's position and
+    /// orientation.</remarks>
+    public BoundingFrustum CameraFrustum { get; private set; }
     /// <summary>
     /// Gets the pointer ring used to provide recent pointer as ray in world space in shader.
     /// </summary>
@@ -249,6 +256,7 @@ public sealed class RenderContext(IServiceProvider services) : Initializable
         CameraParams = cameraParamsProvider.ToCameraParams(
             (float)WindowSize.Width / WindowSize.Height
         );
+        CameraFrustum = BoundingFrustum.FromViewProjectInversedZ(CameraParams.ViewProjection);
     }
 
     /// <summary>
