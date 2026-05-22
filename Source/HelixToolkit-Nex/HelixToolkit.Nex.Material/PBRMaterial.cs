@@ -36,6 +36,7 @@ public enum MaterialPassType : uint
     Opaque = 0,
     Transparent,
     WBOIT,
+    Wireframe,
     Count
 }
 

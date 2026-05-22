@@ -51,7 +51,9 @@ public class ForwardPlusTransparentNode : RenderNode
         res.Deps.PushBuffer(res.Buffers[SystemBufferNames.BufferLightIndex]);
         res.Deps.PushBuffer(res.Buffers[SystemBufferNames.BufferPBRProperties]);
         res.Deps.PushBuffer(res.Buffers[SystemBufferNames.BufferForwardPlusConstants]);
-        res.Pass.DepthState = DepthState.ReadOnlyInvZ;
+        res.Pass.DepthState = res.RenderContext.RenderParams.EnableGlobalWireframe
+            ? DepthState.ReadOnlyInvZBias
+            : DepthState.ReadOnlyInvZ;
         res.Framebuf.Colors[1].Texture = res.Textures[SystemBufferNames.TextureEntityId];
         res.Pass.Colors[1].LoadOp = LoadOp.Load;
         res.Pass.Colors[1].StoreOp = StoreOp.Store;
@@ -73,7 +75,7 @@ public class ForwardPlusTransparentNode : RenderNode
             res.Buffers[SystemBufferNames.BufferForwardPlusConstants]
                 .GpuAddress(res.RenderContext.Context),
             streams,
-            MaterialPassType.Transparent
+            res.RenderContext.RenderParams.EnableGlobalWireframe ? MaterialPassType.Wireframe : MaterialPassType.Transparent
         );
     }
 

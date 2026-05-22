@@ -11,14 +11,20 @@
 layout(location = 0) out vec3 fragWorldPos;
 layout(location = 1) out flat uint materialId;
 layout(location = 2) out vec4 fragColor;
+
+#ifdef WIREFRAME_PASS
+#else
 #ifndef EXCLUDE_MESH_PROPS
 layout(location = 3) out vec3 fragNormal;
 layout(location = 4) out vec3 fragTangent;
 layout(location = 5) out vec2 fragTexCoord;
 #endif
+#endif
+
 #ifdef OUTPUT_DRAW_ID
 layout(location = 6) out flat uvec2 fragEntityId;
 #endif
+
 
 invariant gl_Position;
 

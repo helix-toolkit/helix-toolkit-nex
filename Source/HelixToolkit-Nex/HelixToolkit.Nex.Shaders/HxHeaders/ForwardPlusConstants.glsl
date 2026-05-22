@@ -44,5 +44,6 @@ struct FPConstants {
     uint64_t nodeInfoBufferAddress;
     uint64_t directionalLightsBufferAddress;
 
+    vec4 wireframeColor; // RGBA color for global mesh wireframe mode (if enabled)
     PointerRing pointerRing;
 };

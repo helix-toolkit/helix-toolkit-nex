@@ -71,6 +71,7 @@ public class PrepareNode : RenderNode
             TileSize = context.FPLightConfig.TileSize,
             MaxLightsPerTile = context.FPLightConfig.MaxLightsPerTile,
             PointerRing = context.PointerRing,
+            WireframeColor = context.RenderParams.GlobalWireframeColor,
         };
 
         _constantsBuffer!.AdvanceAndUpdate(ref fpData);
