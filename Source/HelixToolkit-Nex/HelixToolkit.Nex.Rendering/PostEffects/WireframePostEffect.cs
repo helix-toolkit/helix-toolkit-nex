@@ -1,6 +1,5 @@
 using HelixToolkit.Nex.ECS;
 using HelixToolkit.Nex.Rendering.Components;
-using HelixToolkit.Nex.Rendering.DrawStreams;
 using HelixToolkit.Nex.Rendering.RenderNodes;
 using HelixToolkit.Nex.Scene;
 
@@ -31,17 +30,30 @@ public sealed class WireframePostEffect : PostEffect
         /// <summary>
         /// The colour of the wireframe lines.
         /// </summary>
-        public Color4 Color;
+        public Color4 Color = new(0, 0, 1, 1);
 
-        public WireframeComponent(Color4 color)
+        /// <summary>
+        /// Set to a non-negative value to use a specific instance from the geometry's instancing buffer.
+        /// If negative (default), the entire instance buffer is drawn. This allows selectively drawing individual instances.
+        /// </summary>
+        public int InstancingIndex = -1;
+
+        /// <summary>
+        /// Initializes a new instance of the WireframeComponent class with the specified color and optional instancing
+        /// index.
+        /// </summary>
+        /// <param name="color">The color to use for rendering the wireframe.</param>
+        /// <param name="instancingIndex">The index used for instancing. Specify -1 to indicate that instancing is not used or to draw all instances.</param>
+        public WireframeComponent(Color4 color, int instancingIndex = -1)
         {
             Color = color;
+            InstancingIndex = instancingIndex;
         }
 
         /// <summary>
         /// A default green wireframe.
         /// </summary>
-        public static readonly WireframeComponent Default = new(new Color4(0, 1, 0, 1));
+        public static readonly WireframeComponent Default = new();
     }
 
     private static readonly ILogger _logger = LogManager.Create<WireframePostEffect>();
@@ -52,7 +64,7 @@ public sealed class WireframePostEffect : PostEffect
     private readonly Dependencies _deps = new();
     private readonly Framebuffer _frameBuffer = new();
     private readonly RenderPass _pass = new();
-    private readonly DepthState _depthState = DepthState.DefaultReversedZ.Clone();
+    private readonly DepthState _depthState = DepthState.Disabled;
 
     private readonly List<WireframeEntry> _entries = [];
 
@@ -172,8 +184,9 @@ public sealed class WireframePostEffect : PostEffect
             _entries.Add(
                 new WireframeEntry(
                     entity,
-                    (DrawStreamCategory)renderable.DrawCategory,
-                    wireframe.Color
+                    wireframe.Color,
+                    wireframe.InstancingIndex,
+                    renderable.GPUIndex
                 )
             );
         }
@@ -218,58 +231,62 @@ public sealed class WireframePostEffect : PostEffect
         // Use external-pipeline scope so RenderHelper skips per-material pipeline binding.
         using var _ = context.EnableExternalPipelineScoped();
 
-        var fpConstAddress = fpBuffer.GpuAddress(res.RenderContext.Context);
+        var fpConstAddress = fpBuffer.GpuAddress(context.Context);
+        var sharedIndexBufferAddress =
+            res.RenderContext.Data!.StaticMeshIndexData.Buffer.GpuAddress(context.Context);
 
+        WireframePushConstants pc = new()
+        {
+            FpConstantBufferAddress = fpConstAddress,
+            NodeInfoBufferAddress = context.Data!.NodeInfos.GpuAddress,
+        };
         foreach (var entry in _entries)
         {
-            var streams = data.DrawStreams.GetStreamsCore(entry.Category);
-            foreach (var stream in streams)
+            ref var geo = ref entry.Entity.Get<MeshComponent>();
+
+            if (geo.Geometry is null)
             {
-                if (stream.Categories != entry.Category)
-                {
-                    continue;
-                }
-                var (drawCmd, slot) = stream.GetMeshDraw(entry.Entity);
-                if (slot < 0)
-                {
-                    _logger.LogError(
-                        "Failed to get mesh draw for entity {ENTITY} in wireframe pass.",
-                        entry.Entity
-                    );
-                    continue;
-                }
-                if (stream.IndexBufferStrategy == IndexBufferStrategy.Shared)
-                {
-                    cmdBuffer.BindIndexBuffer(data.StaticMeshIndexData.Buffer, IndexFormat.UI32);
-                }
-                else
-                {
-                    // Dynamic mesh — bind its own index buffer.
-                    var geom = data.GetGeometry(drawCmd.MeshId);
-                    if (geom is null)
-                    {
-                        continue;
-                    }
-                    cmdBuffer.BindIndexBuffer(geom.IndexBuffer, IndexFormat.UI32);
-                }
+                continue;
+            }
 
-                cmdBuffer.PushConstants(
-                    new MeshDrawPushConstant()
-                    {
-                        FpConstAddress = fpConstAddress,
-                        DrawCommandIdxOffset = (uint)slot,
-                        MeshDrawBufferAddress = stream.Buffer.GpuAddress(Context!),
-                    }
-                );
-                cmdBuffer.PushConstants(entry.Color, MeshDrawPushConstant.SizeInBytes);
+            if (geo.Geometry.IsDynamic)
+            {
+                pc.IndexBufferAddress = geo.Geometry.IndexBuffer.GpuAddress;
+            }
+            else
+            {
+                pc.IndexBufferAddress = sharedIndexBufferAddress;
+            }
 
-                cmdBuffer.DrawIndexedIndirect(
-                    stream.Buffer,
-                    (uint)slot * stream.Stride,
-                    1,
-                    stream.Stride
+            uint instanceCount = 1;
+            if (geo.Instancing is not null)
+            {
+                pc.InstancingBufferAddress = geo.Instancing.Buffer!;
+                instanceCount = (uint)geo.Instancing.Transforms.Count;
+            }
+            else
+            {
+                pc.InstancingBufferAddress = 0;
+            }
+
+            pc.VertexBufferAddress = geo.Geometry.VertexBuffer.GpuAddress;
+
+            pc.Color = entry.Color;
+            pc.NodeIndex = (uint)entry.NodeIndex;
+
+            cmdBuffer.PushConstants(pc);
+            if (entry.InstancingIndex >= 0 && pc.InstancingBufferAddress != 0)
+            {
+                cmdBuffer.Draw(
+                    geo.Geometry.IndexCount,
+                    1u,
+                    geo.Geometry.IndexOffset,
+                    (uint)entry.InstancingIndex
                 );
-                break;
+            }
+            else
+            {
+                cmdBuffer.Draw(geo.Geometry.IndexCount, instanceCount, geo.Geometry.IndexOffset, 0);
             }
         }
 
@@ -305,7 +322,7 @@ public sealed class WireframePostEffect : PostEffect
 
         // Vertex shader: standard mesh vertex shader (same as depth pass / highlight mask).
         var vsResult = shaderCompiler.CompileVertexShader(
-            GlslUtils.GetEmbeddedGlslShader("Vert.vsMainTemplate")
+            GlslUtils.GetEmbeddedGlslShader("Vert/vsWireframe.glsl")
         );
         if (!vsResult.Success || vsResult.Source is null)
         {
@@ -319,7 +336,7 @@ public sealed class WireframePostEffect : PostEffect
         using var vs = Renderer!.ShaderRepository.GetOrCreateFromGlsl(
             ShaderStage.Vertex,
             vsResult.Source,
-            [new ShaderDefine(BuildFlags.EXCLUDE_MESH_PROPS)],
+            [],
             "Wireframe_Vertex"
         );
         using var fs = Renderer!.ShaderRepository.GetOrCreateFromGlsl(
@@ -338,7 +355,9 @@ public sealed class WireframePostEffect : PostEffect
             FrontFaceWinding = WindingMode.CCW,
             PolygonMode = PolygonMode.Line,
         };
-        desc.Colors[0] = ColorAttachment.CreateOpaque(GraphicsSettings.IntermediateTargetFormat);
+        desc.Colors[0] = ColorAttachment.CreateAlphaBlend(
+            GraphicsSettings.IntermediateTargetFormat
+        );
         desc.DepthFormat = GraphicsSettings.DepthBufferFormat;
 
         _wireframePipeline = Context.CreateRenderPipeline(desc);
@@ -358,7 +377,8 @@ public sealed class WireframePostEffect : PostEffect
 
     private readonly record struct WireframeEntry(
         Entity Entity,
-        DrawStreamCategory Category,
-        Vector4 Color
+        Vector4 Color,
+        int InstancingIndex,
+        int NodeIndex
     );
 }

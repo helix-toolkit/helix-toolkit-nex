@@ -680,6 +680,7 @@ internal partial class Editor
         {
             _renderContext.RenderParams.EnableGlobalWireframe = wireframeModeEnabled;
         }
+        Gui.Checkbox("Wireframe effect per instance", ref _perInstance);
         Gui.End();
     }
 }
