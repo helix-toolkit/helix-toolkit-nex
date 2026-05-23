@@ -80,6 +80,8 @@ internal partial class Editor : IDisposable
     private bool _isPanning;
     private Vector2 _pointerLocation;
 
+    private bool _perInstance = false;
+
     public Editor(IContext context)
     {
         _context = context;
@@ -99,7 +101,6 @@ internal partial class Editor : IDisposable
         _turntableController = new TurntableCameraController(_camera);
         _walkaroundController = new WalkaroundCameraController(_camera) { MoveSpeed = 20f };
         _activeController = _orbitController;
-
 
         // Register Minecraft block material types before the material registry is built
         _scene.RegisterMaterials();
@@ -253,7 +254,13 @@ internal partial class Editor : IDisposable
         if (_selectedEntity.Valid)
         {
             _selectedEntity.Set(BorderHighlightComponent.Default);
-            _selectedEntity.Set(new WireframeComponent() { Color = new Color4(1f, 0f, 0f, 1f) });
+            _selectedEntity.Set(
+                new WireframeComponent()
+                {
+                    Color = new Color4(1f, 0f, 0f, 1f),
+                    InstancingIndex = _perInstance ? (int)instanceIdx : -1,
+                }
+            );
         }
     }
 

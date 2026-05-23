@@ -16,7 +16,6 @@
         <EmbeddedResource Include="*\*.glsl" />
         <AdditionalFiles Include="*\*.glsl" />
     </ItemGroup>
-
     <ItemGroup>
         <!-- Add source generator reference -->
         <ProjectReference Include="..\HelixTookit.Nex\HelixToolkit.Nex.csproj" />
