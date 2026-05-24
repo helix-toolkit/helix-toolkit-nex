@@ -127,7 +127,9 @@ internal sealed class PickingDemo : IDisposable
             Geometry = _largeMeshGeometry,
             MaterialProperties = greyMaterial,
         };
-        meshNode.Entity.Set(new WireframePostEffect.WireframeComponent { Color = Color.MediumPurple });
+        meshNode.Entity.Set(
+            new WireframePostEffect.WireframeOverlay { Color = Color.MediumPurple }
+        );
         _root.AddChild(meshNode);
 
         var redMaterial = materialPool.Create("PBR");

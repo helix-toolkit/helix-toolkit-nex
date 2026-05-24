@@ -142,12 +142,12 @@ internal partial class PBRDemo : IDisposable
             }
             if (_selectedIndex != -1)
             {
-                _spheres[_selectedIndex].Node.Entity.Remove<BoundingBoxComponent>();
+                _spheres[_selectedIndex].Node.Entity.Remove<BoundingBoxOverlay>();
             }
             _selectedIndex = value;
             if (_selectedIndex != -1)
             {
-                _spheres[_selectedIndex].Node.Entity.Set(new BoundingBoxComponent(Color.Green));
+                _spheres[_selectedIndex].Node.Entity.Set(new BoundingBoxOverlay(Color.Green));
             }
         }
         get => _selectedIndex;
@@ -172,7 +172,6 @@ internal partial class PBRDemo : IDisposable
             FarPlane = 300,
         };
         _orbitController = new OrbitCameraController(_camera);
-
 
         _engine = EngineBuilder
             .Create(_context)

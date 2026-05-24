@@ -8,7 +8,7 @@ namespace HelixToolkit.Nex.Rendering.PostEffects;
 /// <summary>
 /// Bounding-box debug visualization post-processing effect.
 ///
-/// For every mesh entity that carries a <see cref="BoundingBoxComponent"/> the
+/// For every mesh entity that carries a <see cref="BoundingBoxOverlay"/> the
 /// effect draws a wireframe axis-aligned bounding box (AABB) directly from the
 /// existing mesh bounding box * model transform * instance transform (if exist).
 ///
@@ -26,7 +26,7 @@ public sealed class BoundingBoxPostEffect : PostEffect
     /// the <c>BoundingBoxPostEffect</c> will draw a wireframe AABB around the
     /// mesh's local-space bounding box during the post-processing stage.
     /// </summary>
-    public struct BoundingBoxComponent
+    public struct BoundingBoxOverlay
     {
         /// <summary>
         /// The colour of the bounding box wireframe lines.
@@ -35,7 +35,7 @@ public sealed class BoundingBoxPostEffect : PostEffect
 
         public uint InstanceIndex; // For internal use by the post-effect; ignored if set manually.
 
-        public BoundingBoxComponent(Color4 color, uint instanceIndex = 0)
+        public BoundingBoxOverlay(Color4 color, uint instanceIndex = 0)
         {
             Color = color;
             InstanceIndex = instanceIndex;
@@ -44,7 +44,7 @@ public sealed class BoundingBoxPostEffect : PostEffect
         /// <summary>
         /// A default green bounding box.
         /// </summary>
-        public static readonly BoundingBoxComponent Default = new(new Color4(0f, 1f, 0f, 1f));
+        public static readonly BoundingBoxOverlay Default = new(new Color4(0f, 1f, 0f, 1f));
     }
 
     private static readonly ILogger _logger = LogManager.Create<BoundingBoxPostEffect>();
@@ -83,7 +83,7 @@ public sealed class BoundingBoxPostEffect : PostEffect
         }
 
         var world = data.World;
-        if (world is null || !world.HasAnyComponent<BoundingBoxComponent>())
+        if (world is null || !world.HasAnyComponent<BoundingBoxOverlay>())
         {
             return false;
         }
@@ -119,13 +119,13 @@ public sealed class BoundingBoxPostEffect : PostEffect
 
     /// <summary>
     /// Gathers draw commands for every enabled entity that has both a
-    /// <see cref="MeshComponent"/> and a <see cref="BoundingBoxComponent"/>.
+    /// <see cref="MeshComponent"/> and a <see cref="BoundingBoxOverlay"/>.
     /// </summary>
     private void GatherBBoxEntities(World world, RenderContext context)
     {
         _entries.Clear();
         var frustum = context.CameraFrustum;
-        foreach (var entity in world.GetComponentEntities<BoundingBoxComponent>())
+        foreach (var entity in world.GetComponentEntities<BoundingBoxOverlay>())
         {
             if (!entity.Has<MeshComponent>() || !entity.Has<Renderable>())
             {
@@ -149,7 +149,7 @@ public sealed class BoundingBoxPostEffect : PostEffect
                 continue; // Degenerate box — skip.
             }
 
-            ref var bbox = ref entity.Get<BoundingBoxComponent>();
+            ref var bbox = ref entity.Get<BoundingBoxOverlay>();
             ref var transform = ref entity.Get<WorldTransform>();
             var transformMatrix = transform.Value;
             if (
@@ -172,7 +172,7 @@ public sealed class BoundingBoxPostEffect : PostEffect
     // -----------------------------------------------------------------------
 
     /// <summary>
-    /// Draws bounding boxes for each entity that has a <see cref="BoundingBoxComponent"/>.
+    /// Draws bounding boxes for each entity that has a <see cref="BoundingBoxOverlay"/>.
     /// Issues one <c>Draw(24, 1, 0, slot)</c> per entity to render its bounding box
     /// at the correct draw stream slot.
     /// </summary>

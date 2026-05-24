@@ -8,7 +8,7 @@ namespace HelixToolkit.Nex.Rendering.PostEffects;
 /// <summary>
 /// Wireframe post-processing effect.
 ///
-/// For every mesh entity that carries a <see cref="WireframeComponent"/> the
+/// For every mesh entity that carries a <see cref="WireframeOverlay"/> the
 /// effect re-draws the mesh geometry with <c>PolygonMode.Line</c> and a flat
 /// colour fragment shader so all triangle edges are visible as coloured lines
 /// overlaid directly onto the scene colour texture.
@@ -25,7 +25,7 @@ public sealed class WireframePostEffect : PostEffect
     /// the <c>WireframePostEffect</c> will draw the mesh's edges as coloured lines
     /// overlaid on the scene colour during the post-processing stage.
     /// </summary>
-    public struct WireframeComponent
+    public struct WireframeOverlay
     {
         /// <summary>
         /// The colour of the wireframe lines.
@@ -44,15 +44,15 @@ public sealed class WireframePostEffect : PostEffect
         /// </summary>
         public bool EnableDepthTest = false;
 
-        public WireframeComponent() { }
+        public WireframeOverlay() { }
 
         /// <summary>
-        /// Initializes a new instance of the WireframeComponent class with the specified color and optional instancing
+        /// Initializes a new instance of the <see cref="WireframeOverlay"/> struct with the specified color and optional instancing
         /// index.
         /// </summary>
         /// <param name="color">The color to use for rendering the wireframe.</param>
         /// <param name="instancingIndex">The index used for instancing. Specify -1 to indicate that instancing is not used or to draw all instances.</param>
-        public WireframeComponent(Color4 color, int instancingIndex = -1)
+        public WireframeOverlay(Color4 color, int instancingIndex = -1)
         {
             Color = color;
             InstancingIndex = instancingIndex;
@@ -61,7 +61,7 @@ public sealed class WireframePostEffect : PostEffect
         /// <summary>
         /// A default green wireframe.
         /// </summary>
-        public static readonly WireframeComponent Default = new();
+        public static readonly WireframeOverlay Default = new();
     }
 
     private static readonly ILogger _logger = LogManager.Create<WireframePostEffect>();
@@ -95,7 +95,7 @@ public sealed class WireframePostEffect : PostEffect
         }
 
         var world = data.World;
-        if (world is null || !world.HasAnyComponent<WireframeComponent>())
+        if (world is null || !world.HasAnyComponent<WireframeOverlay>())
         {
             // Nothing to draw wireframe for — skip.
             return false;
@@ -139,20 +139,20 @@ public sealed class WireframePostEffect : PostEffect
 
     /// <summary>
     /// Gathers draw commands for every enabled entity that has both a
-    /// <see cref="MeshComponent"/> and a <see cref="WireframeComponent"/>.
+    /// <see cref="MeshComponent"/> and a <see cref="WireframeOverlay"/>.
     /// </summary>
     private void GatherWireframeDraws(World world, IRenderDataProvider data)
     {
         _entries.Clear();
 
-        foreach (var entity in world.GetComponentEntities<WireframeComponent>())
+        foreach (var entity in world.GetComponentEntities<WireframeOverlay>())
         {
             if (!entity.Has<MeshComponent>() || !entity.Has<Renderable>())
             {
                 continue;
             }
 
-            ref var wireframe = ref entity.Get<WireframeComponent>();
+            ref var wireframe = ref entity.Get<WireframeOverlay>();
             ref var renderable = ref entity.Get<Renderable>();
             if (renderable.GPUIndex < 0 || renderable.DrawCategory == 0)
             {
