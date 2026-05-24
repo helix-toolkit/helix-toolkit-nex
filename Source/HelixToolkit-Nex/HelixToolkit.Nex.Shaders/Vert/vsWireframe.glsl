@@ -72,7 +72,7 @@ void main() {
     gl_Position = fpBuffer.value.viewProjection * worldPos;
     
     // Because we are drawing non-indexed, gl_VertexIndex % 3 works perfectly!
-    vec3 barycentrics[3] = vec3[](
+    const vec3 barycentrics[3] = vec3[](
         vec3(1.0, 0.0, 0.0),
         vec3(0.0, 1.0, 0.0),
         vec3(0.0, 0.0, 1.0)
