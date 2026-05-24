@@ -36,6 +36,7 @@ This package is integral to the HelixToolkit-Nex engine, facilitating the creati
 | `BillboardRenderPC`           | Struct for push constants for the billboard render vertex/fragment shaders, now includes `billboardInfoAddress`. |
 | `GpuNodeInfo`                 | Struct containing transformation and state information for nodes, used in culling. |
 | `BBoxPushConstant`            | Struct for push constants for bounding box visualization.                   |
+| `WireframePushConstants`      | Struct for push constants specific to wireframe rendering, including color and buffer addresses. |
 
 ## Usage Examples
 
@@ -93,4 +94,5 @@ if (!cache.TryGet(cacheKey, out var entry))
 - **Dependencies**: It relies on other HelixToolkit-Nex packages for ECS and rendering management.
 - **Shader Management**: The package includes a robust caching mechanism to optimize shader compilation times and resource usage.
 - **Shader Generation**: Provides utilities for generating GLSL shader code with support for various rendering techniques and optimizations.
+- **Wireframe Rendering**: Introduces a new wireframe rendering mode with adaptive line thickness and anti-aliasing, controlled via `WireframePushConstants`.
 ```
