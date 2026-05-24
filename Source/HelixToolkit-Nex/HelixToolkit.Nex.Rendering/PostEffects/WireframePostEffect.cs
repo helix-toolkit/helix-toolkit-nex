@@ -39,6 +39,14 @@ public sealed class WireframePostEffect : PostEffect
         public int InstancingIndex = -1;
 
         /// <summary>
+        /// Enable depth testing for the wireframe pass. When true, wireframe lines will be occluded by scene geometry as expected.
+        /// Default is false to ensure wireframes are always visible, but enabling depth test can improve visual clarity in complex scenes.
+        /// </summary>
+        public bool EnableDepthTest = false;
+
+        public WireframeComponent() { }
+
+        /// <summary>
         /// Initializes a new instance of the WireframeComponent class with the specified color and optional instancing
         /// index.
         /// </summary>
@@ -64,7 +72,6 @@ public sealed class WireframePostEffect : PostEffect
     private readonly Dependencies _deps = new();
     private readonly Framebuffer _frameBuffer = new();
     private readonly RenderPass _pass = new();
-    private readonly DepthState _depthState = DepthState.Disabled;
 
     private readonly List<WireframeEntry> _entries = [];
 
@@ -72,36 +79,6 @@ public sealed class WireframePostEffect : PostEffect
     public override Color4 DebugColor => Color.Chartreuse;
 
     public override uint Priority => (uint)PostEffectPriority.Highlight;
-
-    /// <summary>
-    /// Gets or sets the constant depth bias factor applied to fragment depth values.
-    /// </summary>
-    /// <remarks>This property is typically used to reduce z-fighting artifacts in rendering by adjusting the
-    /// depth values of fragments.  The effect of this property depends on the depth bias settings of the rendering
-    /// pipeline.</remarks>
-    public float DepthBiasConstant
-    {
-        get => _depthState.DepthBiasConstantFactor;
-        set => _depthState.DepthBiasConstantFactor = value;
-    }
-
-    /// <summary>
-    /// Gets or sets the slope scale factor used to apply a depth bias to fragments.
-    /// </summary>
-    /// <remarks>Depth bias is typically used to reduce artifacts such as z-fighting in rendering. Adjust this
-    /// value carefully to achieve the desired visual effect.</remarks>
-    public float DepthBiasSlope
-    {
-        get => _depthState.DepthBiasSlopeFactor;
-        set => _depthState.DepthBiasSlopeFactor = value;
-    }
-
-    public WireframePostEffect()
-    {
-        _depthState.IsDepthBiasEnabled = true;
-        DepthBiasConstant = 1f;
-        DepthBiasSlope = 1f;
-    }
 
     // -----------------------------------------------------------------------
     // PostEffect interface
@@ -186,7 +163,8 @@ public sealed class WireframePostEffect : PostEffect
                     entity,
                     wireframe.Color,
                     wireframe.InstancingIndex,
-                    renderable.GPUIndex
+                    renderable.GPUIndex,
+                    wireframe.EnableDepthTest
                 )
             );
         }
@@ -226,7 +204,6 @@ public sealed class WireframePostEffect : PostEffect
 
         cmdBuffer.BeginRendering(_pass, _frameBuffer, _deps);
         cmdBuffer.BindRenderPipeline(_wireframePipeline);
-        cmdBuffer.BindDepthState(_depthState);
 
         // Use external-pipeline scope so RenderHelper skips per-material pipeline binding.
         using var _ = context.EnableExternalPipelineScoped();
@@ -275,6 +252,16 @@ public sealed class WireframePostEffect : PostEffect
             pc.NodeIndex = (uint)entry.NodeIndex;
 
             cmdBuffer.PushConstants(pc);
+
+            if (entry.EnableDepthTest)
+            {
+                cmdBuffer.BindDepthState(DepthState.ReadOnlyInvZBias);
+            }
+            else
+            {
+                cmdBuffer.BindDepthState(DepthState.Disabled);
+            }
+
             if (entry.InstancingIndex >= 0 && pc.InstancingBufferAddress != 0)
             {
                 cmdBuffer.Draw(
@@ -379,6 +366,7 @@ public sealed class WireframePostEffect : PostEffect
         Entity Entity,
         Vector4 Color,
         int InstancingIndex,
-        int NodeIndex
+        int NodeIndex,
+        bool EnableDepthTest
     );
 }
