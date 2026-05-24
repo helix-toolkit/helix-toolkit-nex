@@ -10,55 +10,41 @@ layout(location = 1) flat in vec4 vColor;
 void main() {
     vec3 d = fwidth(vBarycentric);
 
-    float lineThickness = 1.0; // Base line thickness in pixels// 2. Calculate the anti-aliased edge factor.
+    // Screen-space density metric: how many pixels does one barycentric unit span?
+    // Higher density = triangles are smaller on screen = more prone to moiré.
+    float density = max(max(d.x, d.y), d.z);
 
-    // We use smoothstep to create a gradient exactly 1.5 pixels wide for anti-aliasing.
+    // 1. Adaptive line thickness
+    // Base thickness in pixels. As density grows (triangles shrink on screen),
+    // we reduce effective thickness so lines don't merge into solid fill.
+    float baseThickness = 1.5;
+    // Thin the line when triangles get small. The clamp prevents lines from
+    // disappearing entirely at moderate distances.
+    float adaptiveThickness = baseThickness * clamp(1.0 - density * 2.0, 0.3, 1.0);
 
-    vec3 edgeWidth = d * lineThickness;
-
-    vec3 smoothing = d * 1.5; 
-
-    vec3 a3 = smoothstep(edgeWidth - smoothing, edgeWidth + smoothing, vBarycentric);
-
-    
-
-    // The closest edge determines our wireframe line. 
-
-    // 0.0 means we are exactly on the line, 1.0 means we are inside the triangle.
-
+    // 2. Anti-aliased edge detection
+    vec3 a3 = smoothstep(vec3(0.0), d * adaptiveThickness, vBarycentric);
     float edgeFactor = min(min(a3.x, a3.y), a3.z);
+    float lineAlpha = 1.0 - edgeFactor;
 
-    
+    // 3. Smooth distance/density fade
+    // Use a wider, gentler transition to avoid the abrupt on/off that causes moiré.
+    // When density > ~0.3, the triangle is so small that individual edges are
+    // sub-pixel and should be fully faded out.
+    float fadeStart = 0.08;
+    float fadeEnd = 0.35;
+    float distanceAlpha = 1.0 - smoothstep(fadeStart, fadeEnd, density);
 
-    // 3. Distance/Density Fading (Moiré Prevention)
+    // 4. Final alpha with energy conservation
+    // At high density, lineAlpha approaches 1.0 everywhere (all pixels are "edge").
+    // The distanceAlpha gracefully fades the entire contribution to zero,
+    // preventing the solid-fill moiré look.
+    float finalAlpha = lineAlpha * distanceAlpha;
 
-    // As the triangle gets smaller in screen space (further away), 'd' increases.
+    // 5. Early discard for fully transparent fragments
+    if (finalAlpha < 0.01) {
+        discard;
+    }
 
-    // We sum the derivatives to get a general measure of how small the triangle is.
-
-    float density = length(d);
-
-    
-
-    // Calculate a fade multiplier (1.0 = full wireframe, 0.0 = completely faded out)
-
-    float fadeStart = 0.4;
-
-    float fadeEnd = 0.8;
-
-    float wireAlpha = 1.0 - smoothstep(fadeStart, fadeEnd, density);
-
-    
-
-    // 4. Color Mixing
-
-    // Mix the line color and fill color based on the edge factor
-
-    vec4 baseWireColor = mix(vColor, vec4(0.0), edgeFactor);
-
-    
-
-    // Finally, fade the entire wireframe back into the fill color at extreme distances
-
-    outColor = mix(vColor, baseWireColor, wireAlpha);
+    outColor = vec4(vColor.rgb, finalAlpha);
 }
