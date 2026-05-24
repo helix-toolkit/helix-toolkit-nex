@@ -35,6 +35,7 @@ This package plays a crucial role in the rendering pipeline, providing the neces
 | `MaterialPropertyCreator` | Facilitates creation and configuration of material properties. |
 | `GraphicsSettings` | Provides static render settings including formats and frame configurations. |
 | `ColorAttachment` | Represents the configuration for color blending in render pipelines. |
+| `MaterialPassType` | Enum representing different material pass types, including `Wireframe`. |
 
 ## Usage Examples
 
@@ -114,6 +115,17 @@ var typeId = BillboardMaterialRegistry.Register(
     """,
     blendConfig: blendConfig
 );
+```
+
+### Using Wireframe Material Pass
+
+```csharp
+var wireframeMaterial = new PBRMaterial("WireframeMaterial");
+var wireframePipeline = materialManager.GetMaterialPipeline(wireframeMaterial.MaterialId, MaterialPassType.Wireframe);
+
+// Bind and render with wireframe pipeline
+commandBuffer.BindRenderPipeline(wireframePipeline);
+// ... issue draw calls
 ```
 
 ## Architecture Notes
