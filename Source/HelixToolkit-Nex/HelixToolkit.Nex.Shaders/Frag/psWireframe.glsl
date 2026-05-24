@@ -17,7 +17,7 @@ void main() {
     // 1. Adaptive line thickness
     // Base thickness in pixels. As density grows (triangles shrink on screen),
     // we reduce effective thickness so lines don't merge into solid fill.
-    float baseThickness = 1.5;
+    float baseThickness = 1;
     // Thin the line when triangles get small. The clamp prevents lines from
     // disappearing entirely at moderate distances.
     float adaptiveThickness = baseThickness * clamp(1.0 - density * 2.0, 0.3, 1.0);

@@ -9,9 +9,9 @@ namespace HelixToolkit.Nex.Rendering.PostEffects;
 /// Wireframe post-processing effect.
 ///
 /// For every mesh entity that carries a <see cref="WireframeOverlay"/> the
-/// effect re-draws the mesh geometry with <c>PolygonMode.Line</c> and a flat
-/// colour fragment shader so all triangle edges are visible as coloured lines
-/// overlaid directly onto the scene colour texture.
+/// effect re-draws the mesh geometry with <c>PolygonMode.Fill</c> and a flat
+/// color fragment shader so all triangle edges are visible as colored lines
+/// overlaid directly onto the scene color texture.
 ///
 /// Because the effect renders directly into the current <paramref name="writeSlot"/>
 /// with <see cref="LoadOp.Load"/> it composes naturally with all other post effects
@@ -22,13 +22,13 @@ public sealed class WireframePostEffect : PostEffect
     /// <summary>
     /// Marks a mesh entity for wireframe rendering.
     /// When present on an entity that also has a <see cref="MeshComponent"/>,
-    /// the <c>WireframePostEffect</c> will draw the mesh's edges as coloured lines
-    /// overlaid on the scene colour during the post-processing stage.
+    /// the <c>WireframePostEffect</c> will draw the mesh's edges as colored lines
+    /// overlaid on the scene color during the post-processing stage.
     /// </summary>
     public struct WireframeOverlay
     {
         /// <summary>
-        /// The colour of the wireframe lines.
+        /// The color of the wireframe lines.
         /// </summary>
         public Color4 Color = new(0, 0, 1, 1);
 
@@ -59,14 +59,14 @@ public sealed class WireframePostEffect : PostEffect
         }
 
         /// <summary>
-        /// A default green wireframe.
+        /// A default blue wireframe.
         /// </summary>
         public static readonly WireframeOverlay Default = new();
     }
 
     private static readonly ILogger _logger = LogManager.Create<WireframePostEffect>();
 
-    // Wireframe draw pipeline: standard mesh VS + flat-colour FS with PolygonMode.Line.
+    // Wireframe draw pipeline: standard mesh VS + flat-color FS with PolygonMode.Line.
     private RenderPipelineResource _wireframePipeline = RenderPipelineResource.Null;
 
     private readonly Dependencies _deps = new();
@@ -154,7 +154,8 @@ public sealed class WireframePostEffect : PostEffect
 
             ref var wireframe = ref entity.Get<WireframeOverlay>();
             ref var renderable = ref entity.Get<Renderable>();
-            if (renderable.GPUIndex < 0 || renderable.DrawCategory == 0)
+            ref var mesh = ref entity.Get<MeshComponent>();
+            if (renderable.GPUIndex < 0 || renderable.DrawCategory == 0 || !mesh.Valid)
             {
                 continue;
             }
@@ -177,7 +178,7 @@ public sealed class WireframePostEffect : PostEffect
     /// <summary>
     /// Re-draws every wireframe mesh directly into the current write slot using
     /// <see cref="PolygonMode.Line"/> so that only triangle edges are rasterised.
-    /// The pass loads the existing scene colour so previous rendering is preserved.
+    /// The pass loads the existing scene color so previous rendering is preserved.
     /// </summary>
     private void DrawWireframe(
         in RenderResources res,
@@ -215,20 +216,19 @@ public sealed class WireframePostEffect : PostEffect
         WireframePushConstants pc = new()
         {
             FpConstantBufferAddress = fpConstAddress,
-            NodeInfoBufferAddress = context.Data!.NodeInfos.GpuAddress,
         };
         foreach (var entry in _entries)
         {
-            ref var geo = ref entry.Entity.Get<MeshComponent>();
+            ref var mesh = ref entry.Entity.Get<MeshComponent>();
 
-            if (geo.Geometry is null)
+            if (mesh.Geometry is null)
             {
                 continue;
             }
 
-            if (geo.Geometry.IsDynamic)
+            if (mesh.Geometry.IsDynamic)
             {
-                pc.IndexBufferAddress = geo.Geometry.IndexBuffer.GpuAddress;
+                pc.IndexBufferAddress = mesh.Geometry.IndexBuffer.GpuAddress;
             }
             else
             {
@@ -236,20 +236,23 @@ public sealed class WireframePostEffect : PostEffect
             }
 
             uint instanceCount = 1;
-            if (geo.Instancing is not null)
+            if (mesh.Instancing is not null)
             {
-                pc.InstancingBufferAddress = geo.Instancing.Buffer!;
-                instanceCount = (uint)geo.Instancing.Transforms.Count;
+                pc.InstancingBufferAddress = mesh.Instancing.Buffer!;
+                instanceCount = (uint)mesh.Instancing.Transforms.Count;
             }
             else
             {
                 pc.InstancingBufferAddress = 0;
             }
 
-            pc.VertexBufferAddress = geo.Geometry.VertexBuffer.GpuAddress;
+            pc.VertexBufferAddress = mesh.Geometry.VertexBuffer.GpuAddress;
+            pc.VertexPropsBufferAddress = mesh.Geometry.VertexPropsBuffer.GpuAddress;
 
             pc.Color = entry.Color;
             pc.NodeIndex = (uint)entry.NodeIndex;
+            pc.MaterialId = mesh.MaterialProperties!.Index;
+
 
             cmdBuffer.PushConstants(pc);
 
@@ -264,16 +267,25 @@ public sealed class WireframePostEffect : PostEffect
 
             if (entry.InstancingIndex >= 0 && pc.InstancingBufferAddress != 0)
             {
+                if (entry.InstancingIndex >= instanceCount)
+                {
+                    _logger.LogError(
+                        "Instancing index {INDEX} is out of bounds for mesh with {INSTANCE_COUNT} instances. Skipping.",
+                        entry.InstancingIndex,
+                        instanceCount
+                    );
+                    continue;
+                }
                 cmdBuffer.Draw(
-                    geo.Geometry.IndexCount,
+                    mesh.Geometry.IndexCount,
                     1u,
-                    geo.Geometry.IndexOffset,
+                    mesh.Geometry.IndexOffset,
                     (uint)entry.InstancingIndex
                 );
             }
             else
             {
-                cmdBuffer.Draw(geo.Geometry.IndexCount, instanceCount, geo.Geometry.IndexOffset, 0);
+                cmdBuffer.Draw(mesh.Geometry.IndexCount, instanceCount, mesh.Geometry.IndexOffset, 0);
             }
         }
 
@@ -294,7 +306,7 @@ public sealed class WireframePostEffect : PostEffect
 
         var shaderCompiler = new ShaderCompiler();
 
-        // Fragment shader: flat-colour output.
+        // Fragment shader: flat-color output.
         var fsResult = shaderCompiler.CompileFragmentShader(
             GlslUtils.GetEmbeddedGlslShader("Frag/psWireframe.glsl")
         );
@@ -340,7 +352,7 @@ public sealed class WireframePostEffect : PostEffect
             DebugName = "Wireframe",
             CullMode = CullMode.None,
             FrontFaceWinding = WindingMode.CCW,
-            PolygonMode = PolygonMode.Line,
+            PolygonMode = PolygonMode.Fill,
         };
         desc.Colors[0] = ColorAttachment.CreateAlphaBlend(
             GraphicsSettings.IntermediateTargetFormat
