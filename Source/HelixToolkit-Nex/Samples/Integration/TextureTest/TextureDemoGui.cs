@@ -80,7 +80,8 @@ internal sealed partial class TextureDemo
         DrawMaterialSection();
         Gui.Spacing();
         DrawAnimationSection();
-
+        Gui.Spacing();
+        DrawWireframeToggle();
         Gui.End();
     }
 
@@ -279,6 +280,17 @@ internal sealed partial class TextureDemo
         Gui.Text($"Rotation: {RotationAngle:F1}°");
     }
 
+
+    private void DrawWireframeToggle()
+    {
+        if (!Gui.CollapsingHeader("Wireframe", ImGuiTreeNodeFlags.DefaultOpen))
+            return;
+        var showWireframe = ShowWireframe;
+        if (Gui.Checkbox("Wireframe Mode", ref showWireframe))
+        {
+            ShowWireframe = showWireframe;
+        }
+    }
     // -------------------------------------------------------------------------
     // 3D viewport
     // -------------------------------------------------------------------------

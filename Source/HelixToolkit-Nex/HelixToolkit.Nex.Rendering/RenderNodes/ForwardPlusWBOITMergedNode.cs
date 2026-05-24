@@ -193,37 +193,37 @@ public sealed class ForwardPlusWBOITMergedNode : RenderNode
         res.Pass.Colors[1].LoadOp = LoadOp.Load;
         res.Pass.Colors[1].StoreOp = StoreOp.Store;
 
-        if (res.RenderContext.RenderParams.EnableGlobalWireframe)
+        if (!res.RenderContext.RenderParams.EnableGlobalWireframe)
         {
-            return;
-        }
-        // Color 2: WBOIT accumulation (RGBA16F).
-        // Clear to (0, 0, 0, 0). Blend: ONE / ONE additive.
-        // Use the unused color texture as color accumulate texture.
-        var accumTex =
-            res.RenderContext.TextureColorF16Current
-            == res.Textures[SystemBufferNames.TextureColorF16A]
-                ? res.Textures[SystemBufferNames.TextureColorF16B]
-                : res.Textures[SystemBufferNames.TextureColorF16A];
-        res.Framebuf.Colors[2].Texture = accumTex;
-        res.Pass.Colors[2].ClearColor = new Color4(0, 0, 0, 0);
-        res.Pass.Colors[2].LoadOp = LoadOp.Clear;
-        res.Pass.Colors[2].StoreOp = StoreOp.Store;
+            // Color 2: WBOIT accumulation (RGBA16F).
+            // Clear to (0, 0, 0, 0). Blend: ONE / ONE additive.
+            // Use the unused color texture as color accumulate texture.
+            var accumTex =
+                res.RenderContext.TextureColorF16Current
+                == res.Textures[SystemBufferNames.TextureColorF16A]
+                    ? res.Textures[SystemBufferNames.TextureColorF16B]
+                    : res.Textures[SystemBufferNames.TextureColorF16A];
+            res.Framebuf.Colors[2].Texture = accumTex;
+            res.Pass.Colors[2].ClearColor = new Color4(0, 0, 0, 0);
+            res.Pass.Colors[2].LoadOp = LoadOp.Clear;
+            res.Pass.Colors[2].StoreOp = StoreOp.Store;
 
-        // Color 3: WBOIT revealage (R16F).
-        // Clear to 1.0 (fully transparent). Blend: ZERO / ONE_MINUS_SRC_COLOR.
-        res.Framebuf.Colors[3].Texture = res.Textures[SystemBufferNames.TextureWboitRevealage];
-        res.Pass.Colors[3].ClearColor = new Color4(1, 1, 1, 1);
-        res.Pass.Colors[3].LoadOp = LoadOp.Clear;
-        res.Pass.Colors[3].StoreOp = StoreOp.Store;
+            // Color 3: WBOIT revealage (R16F).
+            // Clear to 1.0 (fully transparent). Blend: ZERO / ONE_MINUS_SRC_COLOR.
+            res.Framebuf.Colors[3].Texture = res.Textures[SystemBufferNames.TextureWboitRevealage];
+            res.Pass.Colors[3].ClearColor = new Color4(1, 1, 1, 1);
+            res.Pass.Colors[3].LoadOp = LoadOp.Clear;
+            res.Pass.Colors[3].StoreOp = StoreOp.Store;
 
-        if (Context!.SupportsSubpass)
-        { // If subpass load is supported, we can read the accumulation/revealage attachments directly as input attachments in the composite subpass.
-            res.Pass.Colors[2].StoreOp = StoreOp.DontCare;
-            res.Pass.Colors[3].StoreOp = StoreOp.DontCare;
+            if (Context!.SupportsSubpass)
+            { // If subpass load is supported, we can read the accumulation/revealage attachments directly as input attachments in the composite subpass.
+                res.Pass.Colors[2].StoreOp = StoreOp.DontCare;
+                res.Pass.Colors[3].StoreOp = StoreOp.DontCare;
 
-            res.Deps.PushInputAttachment(accumTex);
-            res.Deps.PushInputAttachment(res.Textures[SystemBufferNames.TextureWboitRevealage]);
+                res.Deps.PushInputAttachment(accumTex);
+                res.Deps.PushInputAttachment(res.Textures[SystemBufferNames.TextureWboitRevealage]);
+            }
+            res.Pass.ColorWrites[0] = false;
         }
 
         // Resource dependencies for the accumulation subpass.
@@ -232,7 +232,6 @@ public sealed class ForwardPlusWBOITMergedNode : RenderNode
         res.Deps.PushBuffer(res.Buffers[SystemBufferNames.BufferLightIndex]);
         res.Deps.PushBuffer(res.Buffers[SystemBufferNames.BufferPBRProperties]);
         res.Deps.PushBuffer(res.Buffers[SystemBufferNames.BufferForwardPlusConstants]);
-        res.Pass.ColorWrites[0] = false;
     }
 
     protected override void OnRender(in RenderResources res)
