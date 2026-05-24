@@ -30,15 +30,18 @@ HelixToolkit.Nex.Rendering is responsible for managing the rendering pipeline of
 | `Renderer`                       | Manages the lifecycle and execution of render nodes.                        |
 | `RenderParams`                   | Contains render parameters including background color and other settings.   |
 | `BoundingBoxPostEffect`          | Renders wireframe bounding boxes for debugging purposes.                    |
+| `WireframePostEffect`            | Renders wireframe overlays on meshes with customizable color and depth bias.|
+| `BorderHighlightPostEffect`      | Renders colored outlines around mesh silhouettes.                           |
 
 ## Recent Changes
 
 ### New Features
 
-- **BoundingBoxPostEffect**: Added for rendering wireframe axis-aligned bounding boxes (AABB) around mesh entities with a `BoundingBoxComponent`.
+- **BoundingBoxPostEffect**: Added for rendering wireframe axis-aligned bounding boxes (AABB) around mesh entities with a `BoundingBoxOverlay`.
 - **BillboardComponent**: Added `CullDistance` property to control distance-based culling.
 - **BillboardCullNode**: Updated to include screen width in rendering parameters for better culling precision.
 - **WireframePostEffect**: Added for rendering wireframe overlays on meshes with customizable color and depth bias.
+- **BorderHighlightPostEffect**: Added for rendering colored outlines around mesh silhouettes using a `BorderHighlightOverlay`.
 
 ### Updated Sampler Handling
 
@@ -129,6 +132,13 @@ var boundingBoxEffect = new BoundingBoxPostEffect
     UseDepthTest = true
 };
 boundingBoxEffect.Apply(renderResources, ref readSlot, ref writeSlot);
+```
+
+### Highlighting Mesh Borders
+
+```csharp
+var borderHighlightEffect = new BorderHighlightPostEffect();
+borderHighlightEffect.Apply(renderResources, ref readSlot, ref writeSlot);
 ```
 
 ## Architecture Notes
