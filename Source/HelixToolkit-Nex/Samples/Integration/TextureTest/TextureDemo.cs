@@ -11,6 +11,7 @@ using HelixToolkit.Nex.ImGui;
 using HelixToolkit.Nex.Material;
 using HelixToolkit.Nex.Maths;
 using HelixToolkit.Nex.Rendering;
+using HelixToolkit.Nex.Rendering.PostEffects;
 using HelixToolkit.Nex.Repository;
 using HelixToolkit.Nex.Scene;
 using HelixToolkit.Nex.Shaders.Frag;
@@ -244,6 +245,20 @@ internal sealed partial class TextureDemo : IDisposable
     internal Color4 AlbedoTint = Color.White;
     internal float Opacity = 1.0f;
 
+    private bool _showWireframe;
+    internal bool ShowWireframe
+    {
+        set
+        {
+            _showWireframe = value;
+            if (value)
+                _sphereNode?.Entity.Set(new WireframePostEffect.WireframeOverlay() { EnableDepthTest = true });
+            else
+                _sphereNode?.Entity.Remove<WireframePostEffect.WireframeOverlay>();
+        }
+        get => _showWireframe;
+    }
+
     public ImGuiRenderer? ImGui => _imGuiRenderer;
 
     public TextureDemo(IContext context)
@@ -268,6 +283,10 @@ internal sealed partial class TextureDemo : IDisposable
         _engine = EngineBuilder
             .Create(_context)
             .WithDefaultNodes(false)
+            .WithPostEffects(post =>
+            {
+                post.AddEffect(new WireframePostEffect());
+            })
             .RenderToCustomTarget(Format.RGBA_F16)
             .Build();
 

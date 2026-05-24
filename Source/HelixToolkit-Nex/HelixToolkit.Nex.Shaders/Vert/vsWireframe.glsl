@@ -3,6 +3,7 @@
 #include "HxHeaders/ForwardPlusConstants.glsl"
 #include "HxHeaders/NodeInfo.glsl"
 #include "HxHeaders/Instancing.glsl"
+#include "HxHeaders/PBRProperties.glsl"
 
 invariant gl_Position;
 
@@ -14,12 +15,13 @@ struct WireframePushConstants {
 vec4 color;
 
 uint nodeIndex;
+uint materialId;
 uint64_t fpConstantBufferAddress;
 
 uint64_t vertexBufferAddress;
-uint64_t indexBufferAddress;
+uint64_t vertexPropsBufferAddress;
 
-uint64_t nodeInfoBufferAddress;
+uint64_t indexBufferAddress;
 uint64_t instancingBufferAddress;
 };
 
@@ -35,6 +37,10 @@ layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer Ve
     vec4 data[];
 };
 
+layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer VertexPropsBuffer {
+    GpuVertexProps value[];
+};
+
 layout(buffer_reference, std430, buffer_reference_align = 4) readonly buffer IndexBuffer {
     uint data[];
 };
@@ -47,11 +53,40 @@ layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer In
     InstanceTransform instancing[];
 };
 
+layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer MaterialBuffer {
+    PBRProperties materials[];
+};
+
 VertexBuffer vertexBuffer = VertexBuffer(pc.value.vertexBufferAddress);
 IndexBuffer indexBuffer = IndexBuffer(pc.value.indexBufferAddress);
 FPBuffer fpBuffer = FPBuffer(pc.value.fpConstantBufferAddress);
 
 GpuNodeInfo nodeInfo = NodeInfoBuffer(fpBuffer.value.nodeInfoBufferAddress).value[pc.value.nodeIndex];
+
+GpuVertexProps emptyProps;
+
+GpuVertexProps getVertexProps(uint index) {
+    if (pc.value.vertexPropsBufferAddress == 0) {
+        return emptyProps;
+    }
+    VertexPropsBuffer propsBuf = VertexPropsBuffer(pc.value.vertexPropsBufferAddress);
+    return propsBuf.value[index];
+}
+
+void getDisplaceTex(uint materialId, out uint dispTex, out uint dispSampler, out float dispScale, out float dispBase) {
+    if (fpBuffer.value.materialBufferAddress == 0) {
+        dispTex = 0;
+        dispSampler = 0;
+        dispScale = 1.0;
+        dispBase = 0.5;
+        return;
+    }
+    MaterialBuffer materialBuf = MaterialBuffer(fpBuffer.value.materialBufferAddress);
+    dispTex = materialBuf.materials[materialId].displaceTexIndex;
+    dispSampler = materialBuf.materials[materialId].displaceSamplerIndex;
+    dispScale = materialBuf.materials[materialId].displaceScale;
+    dispBase = materialBuf.materials[materialId].displaceBase;
+}
 
 void main() {
     // gl_VertexIndex now increments perfectly from 0 to indexCount
@@ -60,6 +95,19 @@ void main() {
     
     // Fetch the vertex data manually
     vec4 position = vertexBuffer.data[realIndex];
+
+    GpuVertexProps vertProps = getVertexProps(realIndex);
+
+    uint displaceTex = 0; 
+    uint displaceSampler = 0;
+    float displaceScale = 1.0;
+    float displaceBase = 0.5;
+    getDisplaceTex(pc.value.materialId, displaceTex, displaceSampler, displaceScale, displaceBase);
+
+    if (displaceTex != 0 && displaceSampler != 0 && displaceScale != 0) {        
+        float h = textureBindless2D(displaceTex, displaceSampler, vertProps.texCoord).r - displaceBase;
+        position.xyz += vertProps.normal * h * displaceScale;
+    }
 
     vec4 worldPos = nodeInfo.transform * position;
 

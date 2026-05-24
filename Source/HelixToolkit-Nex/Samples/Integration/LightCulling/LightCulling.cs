@@ -165,7 +165,7 @@ internal class LightCullingTest(IContext context, bool largeScene = true) : IDis
         _selectedEntity = _worldDataProvider!.World.GetEntity((int)entityId);
         _logger.LogInformation($"Picked entity {_selectedEntity} (instance {instanceIdx})");
         _selectedEntity.Set(BorderHighlightOverlay.Default);
-        _selectedEntity.Set(new WireframeOverlay());
+        _selectedEntity.Set(new WireframeOverlay() { EnableDepthTest = true });
     }
 
     private bool _disposedValue;
