@@ -388,7 +388,7 @@ internal sealed class BillboardDemo : IDisposable
 
         // Deselect previous
         if (_selectedEntity.Valid)
-            _selectedEntity.Remove<BorderHighlightComponent>();
+            _selectedEntity.Remove<BorderHighlightOverlay>();
 
         if (
             !_context.TryPickRaw(
@@ -420,7 +420,7 @@ internal sealed class BillboardDemo : IDisposable
 
         if (_selectedEntity.Valid)
         {
-            _selectedEntity.Set(BorderHighlightComponent.Default);
+            _selectedEntity.Set(BorderHighlightOverlay.Default);
             _logger.LogInformation("Picked entity {Id} (instance {Idx})", entityId, instanceIdx);
         }
     }
@@ -758,9 +758,16 @@ internal sealed class BillboardDemo : IDisposable
     // Camera input forwarding
     // ------------------------------------------------------------------
 
-    public void OnKeyboardInput(bool w, bool s, bool a, bool d, bool space, bool ctrl, bool shift)
-    {
-    }
+    public void OnKeyboardInput(
+        bool w,
+        bool s,
+        bool a,
+        bool d,
+        bool space,
+        bool ctrl,
+        bool shift
+    )
+    { }
 
     // ------------------------------------------------------------------
     // Dispose

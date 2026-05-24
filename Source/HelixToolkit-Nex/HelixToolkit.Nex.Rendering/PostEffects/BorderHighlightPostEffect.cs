@@ -10,7 +10,7 @@ namespace HelixToolkit.Nex.Rendering.PostEffects;
 /// <summary>
 /// Border-highlight post-processing effect.
 ///
-/// For every mesh entity that carries a <see cref="BorderHighlightComponent"/> the
+/// For every mesh entity that carries a <see cref="BorderHighlightOverlay"/> the
 /// effect draws a coloured outline around the mesh silhouette using a two-stage
 /// pipeline:
 /// <list type="number">
@@ -47,7 +47,7 @@ public sealed class BorderHighlightPostEffect : PostEffect
     /// the <c>BorderHighlightPostEffect</c> will draw a coloured outline around
     /// the mesh silhouette during the post-processing stage.
     /// </summary>
-    public struct BorderHighlightComponent
+    public struct BorderHighlightOverlay
     {
         /// <summary>
         /// The colour of the highlight outline.
@@ -60,7 +60,7 @@ public sealed class BorderHighlightPostEffect : PostEffect
         /// </summary>
         public float Thickness;
 
-        public BorderHighlightComponent(Color4 color, float thickness = 2f)
+        public BorderHighlightOverlay(Color4 color, float thickness = 2f)
         {
             Color = color;
             Thickness = thickness;
@@ -69,7 +69,7 @@ public sealed class BorderHighlightPostEffect : PostEffect
         /// <summary>
         /// A default yellow highlight with 2-texel thickness.
         /// </summary>
-        public static readonly BorderHighlightComponent Default = new(new Color4(1, 1, 0, 1), 2f);
+        public static readonly BorderHighlightOverlay Default = new(new Color4(1, 1, 0, 1), 2f);
     }
 
     private static readonly ILogger _logger = LogManager.Create<BorderHighlightPostEffect>();
@@ -133,7 +133,7 @@ public sealed class BorderHighlightPostEffect : PostEffect
         }
 
         var world = data.World;
-        if (world is null || !world.HasAnyComponent<BorderHighlightComponent>())
+        if (world is null || !world.HasAnyComponent<BorderHighlightOverlay>())
         {
             // Nothing to highlight — skip both passes to avoid unnecessary work.
             return false;
@@ -144,7 +144,7 @@ public sealed class BorderHighlightPostEffect : PostEffect
         // ------------------------------------------------------------------
         // Gather highlighted draw commands and their colours.
         // We iterate over all entities that carry both MeshComponent and
-        // BorderHighlightComponent, collecting each entity's draw-command index
+        // BorderHighlightOverlay, collecting each entity's draw-command index
         // so we can re-dispatch it in the silhouette pass.
         // ------------------------------------------------------------------
 
@@ -221,13 +221,13 @@ public sealed class BorderHighlightPostEffect : PostEffect
     /// <summary>
     /// Gathers draw commands (index in the opaque draw buffer, colour, thickness) for every
     /// enabled entity that has both a <see cref="MeshComponent"/> and a
-    /// <see cref="BorderHighlightComponent"/>.
+    /// <see cref="BorderHighlightOverlay"/>.
     /// </summary>
     private void GatherHighlightedDraws(World world, IRenderDataProvider data)
     {
         _entries.Clear();
 
-        foreach (var entity in world.GetComponentEntities<BorderHighlightComponent>())
+        foreach (var entity in world.GetComponentEntities<BorderHighlightOverlay>())
         {
             if (!entity.Has<MeshComponent>() || !entity.Has<Renderable>())
             {
@@ -238,7 +238,7 @@ public sealed class BorderHighlightPostEffect : PostEffect
             {
                 continue;
             }
-            ref var highlight = ref entity.Get<BorderHighlightComponent>();
+            ref var highlight = ref entity.Get<BorderHighlightOverlay>();
             _entries.Add(
                 new HighlightEntry(
                     entity,

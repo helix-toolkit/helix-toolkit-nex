@@ -223,8 +223,8 @@ internal partial class Editor : IDisposable
             return;
         if (_selectedEntity.Valid)
         {
-            _selectedEntity.Remove<BorderHighlightComponent>();
-            _selectedEntity.Remove<WireframeComponent>();
+            _selectedEntity.Remove<BorderHighlightOverlay>();
+            _selectedEntity.Remove<WireframeOverlay>();
         }
         if (
             !_context.TryPickRaw(
@@ -253,9 +253,9 @@ internal partial class Editor : IDisposable
         // Apply highlight to new selection
         if (_selectedEntity.Valid)
         {
-            _selectedEntity.Set(BorderHighlightComponent.Default);
+            _selectedEntity.Set(BorderHighlightOverlay.Default);
             _selectedEntity.Set(
-                new WireframeComponent()
+                new WireframeOverlay()
                 {
                     Color = new Color4(1f, 0f, 0f, 1f),
                     InstancingIndex = _perInstance ? (int)instanceIdx : -1,

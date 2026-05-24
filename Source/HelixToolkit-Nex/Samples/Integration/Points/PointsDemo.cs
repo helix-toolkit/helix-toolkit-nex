@@ -66,7 +66,6 @@ internal sealed class PointsDemo : IDisposable
     // Custom point material types registered by this demo
     private string[] _materialTypes = [];
 
-
     private PointCullNode? _pointCullNode;
 
     public ImGuiRenderer? ImGui => _imGuiRenderer;
@@ -575,7 +574,7 @@ internal sealed class PointsDemo : IDisposable
             return;
         // Deselect previous
         if (_selectedEntity.Valid)
-            _selectedEntity.Remove<BorderHighlightComponent>();
+            _selectedEntity.Remove<BorderHighlightOverlay>();
         if (
             !_context.TryPickRaw(
                 _renderContext.ResourceSet.Textures[SystemBufferNames.TextureEntityId],
@@ -606,7 +605,7 @@ internal sealed class PointsDemo : IDisposable
 
         if (_selectedEntity.Valid)
         {
-            _selectedEntity.Set(BorderHighlightComponent.Default);
+            _selectedEntity.Set(BorderHighlightOverlay.Default);
             _logger.LogInformation("Picked entity {Id} (instance {Idx})", entityId, instanceIdx);
         }
     }
@@ -783,10 +782,10 @@ internal sealed class PointsDemo : IDisposable
                 if (Gui.IsItemClicked(ImGuiNET.ImGuiMouseButton.Left))
                 {
                     if (_selectedEntity.Valid)
-                        _selectedEntity.Remove<BorderHighlightComponent>();
+                        _selectedEntity.Remove<BorderHighlightOverlay>();
                     _selectedEntity = entry.Node.Entity;
                     if (_selectedEntity.Valid)
-                        _selectedEntity.Set(BorderHighlightComponent.Default);
+                        _selectedEntity.Set(BorderHighlightOverlay.Default);
                 }
 
                 if (open)
