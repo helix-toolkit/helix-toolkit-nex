@@ -487,14 +487,6 @@ internal partial class Editor
             bool wfEnabled = _wireframe.Enabled;
             if (Gui.Checkbox("Enabled##Wireframe", ref wfEnabled))
                 _wireframe.Enabled = wfEnabled;
-
-            float depthBiasConst = _wireframe.DepthBiasConstant;
-            if (Gui.SliderFloat("Depth Bias Const##WF", ref depthBiasConst, -10f, 10f))
-                _wireframe.DepthBiasConstant = depthBiasConst;
-
-            float depthBiasSlope = _wireframe.DepthBiasSlope;
-            if (Gui.SliderFloat("Depth Bias Slope##WF", ref depthBiasSlope, -10f, 10f))
-                _wireframe.DepthBiasSlope = depthBiasSlope;
         }
 
         // --- Show FPS ---
@@ -517,8 +509,8 @@ internal partial class Editor
         // Deselect previous
         if (_selectedEntity.Valid)
         {
-            _selectedEntity.Remove<BorderHighlightComponent>();
-            _selectedEntity.Remove<WireframeComponent>();
+            _selectedEntity.Remove<BorderHighlightOverlay>();
+            _selectedEntity.Remove<WireframeOverlay>();
         }
 
         _selectedEntity = entity;
@@ -526,8 +518,8 @@ internal partial class Editor
         // Apply highlight to new selection
         if (_selectedEntity.Valid)
         {
-            _selectedEntity.Set(BorderHighlightComponent.Default);
-            _selectedEntity.Set(new WireframeComponent() { Color = new Color4(1f, 0f, 0f, 1f) });
+            _selectedEntity.Set(BorderHighlightOverlay.Default);
+            _selectedEntity.Set(new WireframeOverlay() { Color = new Color4(1f, 0f, 0f, 1f) });
         }
     }
 
@@ -664,7 +656,9 @@ internal partial class Editor
     private void DrawGlobalRenderSettings(Vector2 pos, Vector2 size)
     {
         if (_renderContext is null)
-        { return; }
+        {
+            return;
+        }
         var windowFlags =
             ImGuiWindowFlags.NoResize
             | ImGuiWindowFlags.NoMove

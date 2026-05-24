@@ -138,8 +138,8 @@ internal class LightCullingTest(IContext context, bool largeScene = true) : IDis
     {
         if (_selectedEntity.Valid)
         {
-            _selectedEntity.Remove<BorderHighlightComponent>();
-            _selectedEntity.Remove<WireframeComponent>();
+            _selectedEntity.Remove<BorderHighlightOverlay>();
+            _selectedEntity.Remove<WireframeOverlay>();
         }
         if (
             !_context.TryPickRaw(
@@ -164,8 +164,8 @@ internal class LightCullingTest(IContext context, bool largeScene = true) : IDis
         );
         _selectedEntity = _worldDataProvider!.World.GetEntity((int)entityId);
         _logger.LogInformation($"Picked entity {_selectedEntity} (instance {instanceIdx})");
-        _selectedEntity.Set(BorderHighlightComponent.Default);
-        _selectedEntity.Set(new WireframeComponent());
+        _selectedEntity.Set(BorderHighlightOverlay.Default);
+        _selectedEntity.Set(new WireframeOverlay());
     }
 
     private bool _disposedValue;
