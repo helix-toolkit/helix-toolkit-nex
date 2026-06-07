@@ -1,5 +1,3 @@
-using HelixToolkit.Nex.Graphics;
-
 namespace HelixToolkit.Nex.Repository;
 
 /// <summary>
@@ -24,6 +22,7 @@ public interface ISamplerRepository : IDisposable
     /// <summary>
     /// Gets or creates a sampler resource from the given description.
     /// </summary>
+    /// <param name="key">The cache key for this sampler.</param>
     /// <param name="desc">The sampler state description.</param>
     /// <returns>
     /// A <see cref="SamplerRef"/> wrapping the sampler resource, either from cache or newly created.
@@ -32,7 +31,7 @@ public interface ISamplerRepository : IDisposable
     /// </returns>
     /// <exception cref="InvalidOperationException">Thrown if sampler creation fails.</exception>
     /// <exception cref="ObjectDisposedException">Thrown if the repository or context has been disposed.</exception>
-    SamplerRef GetOrCreate(SamplerStateDesc desc);
+    SamplerRef GetOrCreate(string key, SamplerStateDesc desc);
 
     /// <summary>
     /// Removes and disposes the sampler entry associated with the given cache key.

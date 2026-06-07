@@ -171,14 +171,17 @@ internal sealed class VulkanStagingDevice : IDisposable
         uint32_t height = image.Extent.height >> (int)baseMipLevel;
 
         var texFormat = format.ToFormat();
+        if (baseMipLevel > 0)
+        {
+            HxDebug.Assert(
+                imageRegion.offset.x == 0
+                    && imageRegion.offset.y == 0
+                    && imageRegion.extent.width == width
+                    && imageRegion.extent.height == height,
+                "Uploading mip-levels with an image region that is smaller than the base mip level is not supported"
+            );
+        }
 
-        HxDebug.Assert(
-            imageRegion.offset.x == 0
-                && imageRegion.offset.y == 0
-                && imageRegion.extent.width == width
-                && imageRegion.extent.height == height,
-            "Uploading mip-levels with an image region that is smaller than the base mip level is not supported"
-        );
 
         // find the storage size for all mip-levels being uploaded
         uint32_t layerStorageSize = 0;
@@ -544,7 +547,7 @@ internal sealed class VulkanStagingDevice : IDisposable
         // 1. Transition to VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL
         cmdBuf.CmdBuffer.BufferBarrier2(
             buffer,
-            VkPipelineStageFlags2.BottomOfPipe,
+            VkPipelineStageFlags2.AllCommands,
             VkPipelineStageFlags2.Transfer
         );
 
@@ -589,7 +592,7 @@ internal sealed class VulkanStagingDevice : IDisposable
         cmdBuf2.CmdBuffer.BufferBarrier2(
             buffer,
             VkPipelineStageFlags2.Transfer,
-            VkPipelineStageFlags2.TopOfPipe
+            VkPipelineStageFlags2.AllCommands
         );
 
         _ctx.Immediate!.Wait(_ctx.Immediate!.Submit(cmdBuf2));

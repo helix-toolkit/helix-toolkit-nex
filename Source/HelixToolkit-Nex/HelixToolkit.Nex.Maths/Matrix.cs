@@ -78,6 +78,80 @@ namespace HelixToolkit.Nex.Maths
         }
 
         /// <summary>
+        /// Creates a 4x4 matrix from a list of 16 single-precision floating-point values.
+        /// </summary>
+        /// <remarks>The elements in the list are assigned to the matrix in row-major order: the first
+        /// four elements correspond to the first row, the next four to the second row, and so on.</remarks>
+        /// <param name="array">The list of 16 elements representing the matrix values in row-major order.</param>
+        /// <returns>A Matrix instance populated with the values from the specified list.</returns>
+        /// <exception cref="ArgumentException">Thrown if the array does not contain exactly 16 elements.</exception>
+        public static Matrix ToMatrix(this IList<float> array)
+        {
+            if (array.Count != 16)
+            {
+                throw new ArgumentException(
+                    "There must be 16 elements in the array.",
+                    nameof(array)
+                );
+            }
+            return new Matrix
+            {
+                M11 = array[0],
+                M12 = array[1],
+                M13 = array[2],
+                M14 = array[3],
+                M21 = array[4],
+                M22 = array[5],
+                M23 = array[6],
+                M24 = array[7],
+                M31 = array[8],
+                M32 = array[9],
+                M33 = array[10],
+                M34 = array[11],
+                M41 = array[12],
+                M42 = array[13],
+                M43 = array[14],
+                M44 = array[15],
+            };
+        }
+
+        /// <summary>
+        /// Convert the array to a matrix with transposed order. That is, the first 4 elements in the array will be the first column of the matrix, the second 4 elements will be the second column of the matrix, and so on.
+        /// </summary>
+        /// <param name="array">The list of 16 elements representing the matrix values in column-major order.</param>
+        /// <returns>A Matrix instance populated with the values from the specified list in transposed order.</returns>
+        /// <exception cref="ArgumentException">Thrown if the array does not contain exactly 16 elements.</exception>
+        public static Matrix ToMatrixTransposed(this IList<float> array)
+        {
+            if (array.Count != 16)
+            {
+                throw new ArgumentException(
+                    "There must be 16 elements in the array.",
+                    nameof(array)
+                );
+            }
+            return new Matrix
+            {
+                M11 = array[0],
+                M12 = array[4],
+                M13 = array[8],
+                M14 = array[12],
+                M21 = array[1],
+                M22 = array[5],
+                M23 = array[9],
+                M24 = array[13],
+                M31 = array[2],
+                M32 = array[6],
+                M33 = array[10],
+                M34 = array[14],
+                M41 = array[3],
+                M42 = array[7],
+                M43 = array[11],
+                M44 = array[15],
+            };
+        }
+
+        /// <summary>
         /// Gets or sets the down <see cref="Vector3"/> of the matrix; that is -M21, -M22, and -M23.
         /// </summary>
         public static Vector3 Down(this Matrix m)
@@ -459,6 +533,7 @@ namespace HelixToolkit.Nex.Maths
             m.M22 *= value.Y;
             m.M33 *= value.Z;
         }
+
         /// <summary>
         /// Gets or sets the component at the specified index.
         /// </summary>

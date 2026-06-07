@@ -68,7 +68,7 @@ public class OrbitCameraController : ICameraController
     /// <summary>
     /// Gets or sets the minimum orbit radius. Must be greater than 0.
     /// </summary>
-    public float MinRadius { get; set; } = 0.5f;
+    public float MinRadius { get; set; } = 0.05f;
 
     /// <summary>
     /// Gets or sets the maximum orbit radius.
@@ -191,7 +191,9 @@ public class OrbitCameraController : ICameraController
 
         // Additive zoom scaled by current radius for consistent feel at all distances.
         _radius -= delta * ZoomSensitivity * _radius;
-        _radius = MathUtil.Clamp(_radius, MinRadius, MaxRadius);
+        var minRadius = MathF.Max(MinRadius, Camera.NearPlane + 0.001f);
+        var maxRadius = MathF.Min(MaxRadius, Camera.FarPlane - 0.001f);
+        _radius = MathUtil.Clamp(_radius, minRadius, maxRadius);
 
         // When a pick position is provided, shift the orbit target toward the picked
         // point proportionally to the zoom change. This gives "zoom toward cursor" feel.

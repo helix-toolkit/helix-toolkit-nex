@@ -12,7 +12,7 @@ internal static class ECSEventBus
     private static class Subscriptions<T>
     {
         public static readonly MessageContainer<T>[] Containers = new MessageContainer<T>[
-            byte.MaxValue
+            Limits.MaxWorldId + 1
         ];
 
         static Subscriptions()

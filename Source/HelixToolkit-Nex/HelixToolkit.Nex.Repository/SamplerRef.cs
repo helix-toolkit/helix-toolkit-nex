@@ -11,7 +11,7 @@ internal sealed class NullSamplerRepository : ISamplerRepository
 
     public int Count => 0;
 
-    public SamplerRef GetOrCreate(SamplerStateDesc desc) => SamplerRef.Null;
+    public SamplerRef GetOrCreate(string key, SamplerStateDesc desc) => SamplerRef.Null;
 
     public bool Remove(string key) => false;
 
@@ -70,7 +70,10 @@ public sealed class SamplerRef
     internal void DisposeResource()
     {
         Resource.Dispose();
-        OnDisposed?.Invoke();
+        if (!Resource.Valid)
+        {
+            OnDisposed?.Invoke();
+        }
     }
 
     // IDisposable is intentionally NOT implemented on SamplerRef.

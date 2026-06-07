@@ -694,7 +694,7 @@ public sealed class SamplerStateDesc()
         WrapV = SamplerWrap.Repeat,
         WrapW = SamplerWrap.Repeat,
         MipMap = SamplerMip.Linear,
-        DebugName = "LinearRepeat"
+        DebugName = "HxLinearRepeat"
     };
 
     public static readonly SamplerStateDesc LinearClamp = new()
@@ -703,7 +703,7 @@ public sealed class SamplerStateDesc()
         WrapV = SamplerWrap.Clamp,
         WrapW = SamplerWrap.Clamp,
         MipMap = SamplerMip.Linear,
-        DebugName = "LinearClamp",
+        DebugName = "HxLinearClamp",
     };
 
     public static readonly SamplerStateDesc LinearClampNoMipmap = new()
@@ -714,7 +714,7 @@ public sealed class SamplerStateDesc()
         WrapU = SamplerWrap.Clamp,
         WrapV = SamplerWrap.Clamp,
         WrapW = SamplerWrap.Clamp,
-        DebugName = "LinearClampNoMipmap",
+        DebugName = "HxLinearClampNoMipmap",
     };
 
     public static readonly SamplerStateDesc PointRepeat = new()
@@ -724,7 +724,7 @@ public sealed class SamplerStateDesc()
         WrapU = SamplerWrap.Repeat,
         WrapV = SamplerWrap.Repeat,
         WrapW = SamplerWrap.Repeat,
-        DebugName = "PointRepeat",
+        DebugName = "HxPointRepeat",
     };
 
     public static readonly SamplerStateDesc PointClamp = new()
@@ -734,7 +734,7 @@ public sealed class SamplerStateDesc()
         WrapU = SamplerWrap.Clamp,
         WrapV = SamplerWrap.Clamp,
         WrapW = SamplerWrap.Clamp,
-        DebugName = "PointClamp",
+        DebugName = "HxPointClamp",
     };
 
     /// <inheritdoc/>

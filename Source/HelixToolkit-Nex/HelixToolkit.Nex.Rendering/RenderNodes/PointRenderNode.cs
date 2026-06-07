@@ -120,10 +120,13 @@ public sealed class PointRenderNode : RenderNode
             inputs:
             [
                 new(SystemBufferNames.TextureDepthF32, ResourceType.Texture),
-                new(SystemBufferNames.TextureEntityId, ResourceType.Texture),
                 new(SystemBufferNames.BufferForwardPlusConstants, ResourceType.Buffer),
             ],
-            outputs: [new(SystemBufferNames.TextureColorF16Target, ResourceType.Texture)],
+            outputs:
+            [
+                new(SystemBufferNames.TextureColorF16Target, ResourceType.Texture),
+                new(SystemBufferNames.TextureEntityId, ResourceType.Texture),
+            ],
             after: [nameof(ForwardPlusOpaqueNode)]
         );
     }

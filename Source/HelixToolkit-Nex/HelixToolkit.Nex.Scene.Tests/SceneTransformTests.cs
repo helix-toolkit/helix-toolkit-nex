@@ -125,7 +125,11 @@ public sealed class SceneTransformTests
         var expectedParent = Matrix4x4.CreateTranslation(5, 0, 0);
         var expectedChild = expectedParent * Matrix4x4.Identity; // child has identity local
         AssertMatrix4x4Equal(expectedParent, parent.WorldTransform.Value, "Parent world");
-        AssertMatrix4x4Equal(expectedChild, child.WorldTransform.Value, "Child inherits parent translation");
+        AssertMatrix4x4Equal(
+            expectedChild,
+            child.WorldTransform.Value,
+            "Child inherits parent translation"
+        );
     }
 
     [TestMethod]
@@ -142,7 +146,7 @@ public sealed class SceneTransformTests
         SortAndUpdate(world);
 
         var parentWorld = Matrix4x4.CreateTranslation(5, 0, 0);
-        var expectedChild = parentWorld * Matrix4x4.CreateTranslation(0, 3, 0);
+        var expectedChild = Matrix4x4.CreateTranslation(0, 3, 0) * parentWorld;
         AssertMatrix4x4Equal(parentWorld, parent.WorldTransform.Value, "Parent world");
         AssertMatrix4x4Equal(expectedChild, child.WorldTransform.Value, "Child with local offset");
     }
@@ -161,7 +165,11 @@ public sealed class SceneTransformTests
 
         var expectedParent = Matrix4x4.CreateScale(3, 3, 3);
         AssertMatrix4x4Equal(expectedParent, parent.WorldTransform.Value, "Parent scale");
-        AssertMatrix4x4Equal(expectedParent, child.WorldTransform.Value, "Child inherits parent scale");
+        AssertMatrix4x4Equal(
+            expectedParent,
+            child.WorldTransform.Value,
+            "Child inherits parent scale"
+        );
     }
 
     [TestMethod]
@@ -178,7 +186,7 @@ public sealed class SceneTransformTests
         SortAndUpdate(world);
 
         var parentWorld = Matrix4x4.CreateScale(2, 2, 2);
-        var expectedChild = parentWorld * Matrix4x4.CreateScale(3, 3, 3);
+        var expectedChild = Matrix4x4.CreateScale(3, 3, 3) * parentWorld;
         AssertMatrix4x4Equal(parentWorld, parent.WorldTransform.Value, "Parent scale world");
         AssertMatrix4x4Equal(expectedChild, child.WorldTransform.Value, "Child scale multiplied");
     }
@@ -198,7 +206,11 @@ public sealed class SceneTransformTests
 
         var expectedParent = Matrix4x4.CreateFromQuaternion(rotation);
         AssertMatrix4x4Equal(expectedParent, parent.WorldTransform.Value, "Parent rotation world");
-        AssertMatrix4x4Equal(expectedParent, child.WorldTransform.Value, "Child inherits parent rotation");
+        AssertMatrix4x4Equal(
+            expectedParent,
+            child.WorldTransform.Value,
+            "Child inherits parent rotation"
+        );
     }
 
     [TestMethod]
@@ -217,9 +229,13 @@ public sealed class SceneTransformTests
         SortAndUpdate(world);
 
         var parentWorld = Matrix4x4.CreateFromQuaternion(parentRot);
-        var expectedChild = parentWorld * Matrix4x4.CreateFromQuaternion(childRot);
+        var expectedChild = Matrix4x4.CreateFromQuaternion(childRot) * parentWorld;
         AssertMatrix4x4Equal(parentWorld, parent.WorldTransform.Value, "Parent rotation world");
-        AssertMatrix4x4Equal(expectedChild, child.WorldTransform.Value, "Child with local rotation");
+        AssertMatrix4x4Equal(
+            expectedChild,
+            child.WorldTransform.Value,
+            "Child with local rotation"
+        );
     }
 
     [TestMethod]
@@ -245,10 +261,14 @@ public sealed class SceneTransformTests
             Matrix4x4.CreateScale(scale)
             * Matrix4x4.CreateFromQuaternion(rotation)
             * Matrix4x4.CreateTranslation(translation);
-        var expectedChild = parentWorld * Matrix4x4.CreateTranslation(1, 0, 0);
+        var expectedChild = Matrix4x4.CreateTranslation(1, 0, 0) * parentWorld;
 
         AssertMatrix4x4Equal(parentWorld, parent.WorldTransform.Value, "Parent combined TRS");
-        AssertMatrix4x4Equal(expectedChild, child.WorldTransform.Value, "Child with combined parent TRS");
+        AssertMatrix4x4Equal(
+            expectedChild,
+            child.WorldTransform.Value,
+            "Child with combined parent TRS"
+        );
     }
 
     // -------------------------------------------------------------------------
@@ -272,8 +292,8 @@ public sealed class SceneTransformTests
         SortAndUpdate(world);
 
         var rootWorld = Matrix4x4.CreateTranslation(1, 0, 0);
-        var childWorld = rootWorld * Matrix4x4.CreateTranslation(0, 2, 0);
-        var grandChildWorld = childWorld * Matrix4x4.CreateTranslation(0, 0, 3);
+        var childWorld = Matrix4x4.CreateTranslation(0, 2, 0) * rootWorld;
+        var grandChildWorld = Matrix4x4.CreateTranslation(0, 0, 3) * childWorld;
 
         AssertMatrix4x4Equal(rootWorld, root.WorldTransform.Value, "Root world");
         AssertMatrix4x4Equal(childWorld, child.WorldTransform.Value, "Child world");
@@ -297,12 +317,16 @@ public sealed class SceneTransformTests
         SortAndUpdate(world);
 
         var rootWorld = Matrix4x4.CreateScale(2, 2, 2);
-        var childWorld = rootWorld * Matrix4x4.CreateScale(3, 3, 3);
-        var grandChildWorld = childWorld * Matrix4x4.CreateScale(4, 4, 4);
+        var childWorld = Matrix4x4.CreateScale(3, 3, 3) * rootWorld;
+        var grandChildWorld = Matrix4x4.CreateScale(4, 4, 4) * childWorld;
 
         AssertMatrix4x4Equal(rootWorld, root.WorldTransform.Value, "Root scale world");
         AssertMatrix4x4Equal(childWorld, child.WorldTransform.Value, "Child scale world");
-        AssertMatrix4x4Equal(grandChildWorld, grandChild.WorldTransform.Value, "GrandChild scale world");
+        AssertMatrix4x4Equal(
+            grandChildWorld,
+            grandChild.WorldTransform.Value,
+            "GrandChild scale world"
+        );
     }
 
     [TestMethod]
@@ -350,8 +374,8 @@ public sealed class SceneTransformTests
         SortAndUpdate(world);
 
         var rootWorld = Matrix4x4.CreateTranslation(1, 0, 0);
-        var expected1 = rootWorld * Matrix4x4.CreateTranslation(0, 2, 0);
-        var expected2 = rootWorld * Matrix4x4.CreateTranslation(0, -2, 0);
+        var expected1 = Matrix4x4.CreateTranslation(0, 2, 0) * rootWorld;
+        var expected2 = Matrix4x4.CreateTranslation(0, -2, 0) * rootWorld;
 
         AssertMatrix4x4Equal(expected1, child1.WorldTransform.Value, "Child1 independent");
         AssertMatrix4x4Equal(expected2, child2.WorldTransform.Value, "Child2 independent");
@@ -373,8 +397,14 @@ public sealed class SceneTransformTests
 
         SortAndUpdate(world);
 
-        Assert.IsFalse(root.Transform.IsWorldDirty, "Root dirty flag should be cleared after update");
-        Assert.IsFalse(child.Transform.IsWorldDirty, "Child dirty flag should be cleared after update");
+        Assert.IsFalse(
+            root.Transform.IsWorldDirty,
+            "Root dirty flag should be cleared after update"
+        );
+        Assert.IsFalse(
+            child.Transform.IsWorldDirty,
+            "Child dirty flag should be cleared after update"
+        );
     }
 
     [TestMethod]
@@ -396,7 +426,11 @@ public sealed class SceneTransformTests
 
         var expected = Matrix4x4.CreateTranslation(10, 0, 0);
         AssertMatrix4x4Equal(expected, root.WorldTransform.Value, "Root updated");
-        AssertMatrix4x4Equal(expected, child.WorldTransform.Value, "Child re-computed after parent change");
+        AssertMatrix4x4Equal(
+            expected,
+            child.WorldTransform.Value,
+            "Child re-computed after parent change"
+        );
         Assert.IsFalse(root.Transform.IsWorldDirty, "Root should not be dirty after update");
         Assert.IsFalse(child.Transform.IsWorldDirty, "Child should not be dirty after update");
     }
@@ -434,7 +468,11 @@ public sealed class SceneTransformTests
 
         SortAndUpdate(world);
 
-        AssertMatrix4x4Equal(worldTransformBefore, root.WorldTransform.Value, "World transform unchanged");
+        AssertMatrix4x4Equal(
+            worldTransformBefore,
+            root.WorldTransform.Value,
+            "World transform unchanged"
+        );
         Assert.IsFalse(root.Transform.IsWorldDirty);
     }
 
@@ -470,7 +508,11 @@ public sealed class SceneTransformTests
         SortAndUpdate(world);
 
         var expectedUnderB = Matrix4x4.CreateTranslation(0, 10, 0);
-        AssertMatrix4x4Equal(expectedUnderB, leaf.WorldTransform.Value, "Leaf after reparenting to ParentB");
+        AssertMatrix4x4Equal(
+            expectedUnderB,
+            leaf.WorldTransform.Value,
+            "Leaf after reparenting to ParentB"
+        );
     }
 
     [TestMethod]
@@ -486,8 +528,13 @@ public sealed class SceneTransformTests
 
         SortAndUpdate(world);
 
-        var expectedChild = Matrix4x4.CreateTranslation(5, 5, 0) * Matrix4x4.CreateTranslation(1, 0, 0);
-        AssertMatrix4x4Equal(expectedChild, child.WorldTransform.Value, "Child world before detach");
+        var expectedChild =
+            Matrix4x4.CreateTranslation(1, 0, 0) * Matrix4x4.CreateTranslation(5, 5, 0);
+        AssertMatrix4x4Equal(
+            expectedChild,
+            child.WorldTransform.Value,
+            "Child world before detach"
+        );
 
         parent.RemoveChild(child);
 
@@ -495,7 +542,11 @@ public sealed class SceneTransformTests
 
         // After detach, child is root-level: world = identity * local = local
         var expectedAfterDetach = Matrix4x4.CreateTranslation(1, 0, 0);
-        AssertMatrix4x4Equal(expectedAfterDetach, child.WorldTransform.Value, "Child world after detach");
+        AssertMatrix4x4Equal(
+            expectedAfterDetach,
+            child.WorldTransform.Value,
+            "Child world after detach"
+        );
 
         parent.Dispose();
         child.Dispose();
@@ -517,10 +568,14 @@ public sealed class SceneTransformTests
         SortAndUpdate(world);
 
         var childWorld = Matrix4x4.CreateTranslation(1, 0, 0);
-        var grandChildWorld = childWorld * Matrix4x4.CreateTranslation(2, 0, 0);
+        var grandChildWorld = Matrix4x4.CreateTranslation(2, 0, 0) * childWorld;
 
         AssertMatrix4x4Equal(childWorld, child.WorldTransform.Value, "Child initial");
-        AssertMatrix4x4Equal(grandChildWorld, grandChild.WorldTransform.Value, "GrandChild initial");
+        AssertMatrix4x4Equal(
+            grandChildWorld,
+            grandChild.WorldTransform.Value,
+            "GrandChild initial"
+        );
 
         // Move root — entire subtree must update
         root.Transform.Translation = new Vector3(100, 0, 0);
@@ -528,12 +583,16 @@ public sealed class SceneTransformTests
         SortAndUpdate(world);
 
         var rootWorld = Matrix4x4.CreateTranslation(100, 0, 0);
-        var newChildWorld = rootWorld * Matrix4x4.CreateTranslation(1, 0, 0);
-        var newGrandChildWorld = newChildWorld * Matrix4x4.CreateTranslation(2, 0, 0);
+        var newChildWorld = Matrix4x4.CreateTranslation(1, 0, 0) * rootWorld;
+        var newGrandChildWorld = Matrix4x4.CreateTranslation(2, 0, 0) * newChildWorld;
 
         AssertMatrix4x4Equal(rootWorld, root.WorldTransform.Value, "Root moved");
         AssertMatrix4x4Equal(newChildWorld, child.WorldTransform.Value, "Child after root move");
-        AssertMatrix4x4Equal(newGrandChildWorld, grandChild.WorldTransform.Value, "GrandChild after root move");
+        AssertMatrix4x4Equal(
+            newGrandChildWorld,
+            grandChild.WorldTransform.Value,
+            "GrandChild after root move"
+        );
     }
 
     // -------------------------------------------------------------------------
@@ -548,7 +607,11 @@ public sealed class SceneTransformTests
 
         SortAndUpdate(world);
 
-        AssertMatrix4x4Equal(Matrix4x4.Identity, node.WorldTransform.Value, "New node should have identity world transform");
+        AssertMatrix4x4Equal(
+            Matrix4x4.Identity,
+            node.WorldTransform.Value,
+            "New node should have identity world transform"
+        );
     }
 
     [TestMethod]
@@ -562,7 +625,11 @@ public sealed class SceneTransformTests
         SortAndUpdate(world);
 
         AssertMatrix4x4Equal(Matrix4x4.Identity, parent.WorldTransform.Value, "Parent identity");
-        AssertMatrix4x4Equal(Matrix4x4.Identity, child.WorldTransform.Value, "Child of identity parent is identity");
+        AssertMatrix4x4Equal(
+            Matrix4x4.Identity,
+            child.WorldTransform.Value,
+            "Child of identity parent is identity"
+        );
     }
 
     // -------------------------------------------------------------------------
@@ -588,12 +655,16 @@ public sealed class SceneTransformTests
         sortedNodes.UpdateTransforms();
 
         var rootWorld = Matrix4x4.CreateTranslation(1, 0, 0);
-        var childWorld = rootWorld * Matrix4x4.CreateTranslation(0, 2, 0);
-        var grandChildWorld = childWorld * Matrix4x4.CreateTranslation(0, 0, 3);
+        var childWorld = Matrix4x4.CreateTranslation(0, 2, 0) * rootWorld;
+        var grandChildWorld = Matrix4x4.CreateTranslation(0, 0, 3) * childWorld;
 
         AssertMatrix4x4Equal(rootWorld, root.WorldTransform.Value, "Root (flatten-based)");
         AssertMatrix4x4Equal(childWorld, child.WorldTransform.Value, "Child (flatten-based)");
-        AssertMatrix4x4Equal(grandChildWorld, grandChild.WorldTransform.Value, "GrandChild (flatten-based)");
+        AssertMatrix4x4Equal(
+            grandChildWorld,
+            grandChild.WorldTransform.Value,
+            "GrandChild (flatten-based)"
+        );
     }
 
     [TestMethod]

@@ -1872,6 +1872,7 @@ internal sealed partial class VulkanContext
                 // from Vulkan 1.3 or VK_EXT_extended_dynamic_state2
                 .DynamicState(VK.VK_DYNAMIC_STATE_DEPTH_BIAS_ENABLE)
                 .DynamicState(VK.VK_DYNAMIC_STATE_COLOR_WRITE_ENABLE_EXT)
+                .DynamicState(VK.VK_DYNAMIC_STATE_CULL_MODE)
                 .PrimitiveTopology(desc.Topology.ToVk())
                 .RasterizationSamples(
                     HxVkUtils.GetVulkanSampleCountFlags(

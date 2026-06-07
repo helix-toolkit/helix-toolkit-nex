@@ -55,10 +55,17 @@ public sealed class PBRMaterialProperties : IDisposable
     internal static readonly PBRProperties DefaultProperties = new()
     {
         Albedo = new(1, 1, 1),
+        Ambient = new(0.01f, 0.01f, 0.01f),
         Opacity = 1,
         DisplaceScale = 1,
         BumpScale = 1,
         DisplaceBase = 0.5f,
+        Ao = 1,
+        TransmissionDistortion = 0.1f,
+        TransmissionPower = 12.0f,
+        TransmissionScale = 0f,
+        AttenuationDistance = float.PositiveInfinity,
+        AttenuationColor = new(1, 1, 1),
     };
 
     /// <summary>Gets the identifier of the material type that owns this instance.</summary>
@@ -68,10 +75,15 @@ public sealed class PBRMaterialProperties : IDisposable
     public ref PBRProperties Properties => ref _pool!.GetRef(_handle)!;
 
     /// <summary>Gets a value indicating whether this instance is backed by a valid pool entry.</summary>
-    public bool Valid => _pool is not null && _handle.Valid;
+    public bool Valid => _pool is not null && _handle.Valid && _pool.Has(_handle);
 
     /// <summary>Gets the zero-based index of this material's entry within the pool.</summary>
     public uint Index => _handle.Index;
+
+    /// <summary>
+    /// Gets or sets the name of this material instance for debugging and identification purposes.
+    /// </summary>
+    public string Name { set; get; } = string.Empty;
 
     /// <summary>
     /// Gets or sets the base (albedo) color of the material.
@@ -282,7 +294,9 @@ public sealed class PBRMaterialProperties : IDisposable
     private readonly Action _onBumpMapDisposed;
     private readonly Action _onDisplaceMapDisposed;
     private readonly Action _onSamplerDisposed;
+    private readonly Action _onEmissiveMapDisposed;
     private readonly Action _onDisplaceSamplerDisposed;
+    private readonly Action _onThicknessMapDisposed;
 
     private TextureRef _albedoMap = TextureRef.Null;
 
@@ -502,6 +516,151 @@ public sealed class PBRMaterialProperties : IDisposable
         get => Properties.DisplaceScale;
     }
 
+    private TextureRef _emissiveMap = TextureRef.Null;
+
+    /// <summary>
+    /// Gets or sets the emissive texture map that defines per-pixel emissive color contributions.
+    /// </summary>
+    public TextureRef? EmissiveMap
+    {
+        set
+        {
+            if (_emissiveMap == value)
+            {
+                return;
+            }
+            _emissiveMap.OnDisposed -= _onEmissiveMapDisposed;
+            _emissiveMap = value ?? TextureRef.Null;
+            _emissiveMap.OnDisposed += _onEmissiveMapDisposed;
+            Properties.EmissiveTexIndex = _emissiveMap;
+            NotifyUpdated();
+        }
+        get => _emissiveMap;
+    }
+
+    private TextureRef _thicknessMap = TextureRef.Null;
+
+    /// <summary>
+    /// Gets or sets the scalar thickness used when no thickness texture is bound.
+    /// Range [0..1]: 0 = fully thin (maximum transmission scatter), 1 = fully thick (no scatter).
+    /// Defaults to 0 so that materials with <c>transmissionFactor &gt; 0</c> but no texture
+    /// actually scatter light.
+    /// </summary>
+    public float ThicknessFactor
+    {
+        set
+        {
+            if (Properties.ThicknessFactor == value)
+                return;
+            Properties.ThicknessFactor = value;
+            NotifyUpdated();
+        }
+        get => Properties.ThicknessFactor;
+    }
+
+    /// <summary>
+    /// Gets or sets the thickness map texture used for simulating subsurface scattering effects.
+    /// </summary>
+    public TextureRef? ThicknessMap
+    {
+        set
+        {
+            if (_thicknessMap == value)
+            {
+                return;
+            }
+            _thicknessMap.OnDisposed -= _onThicknessMapDisposed;
+            _thicknessMap = value ?? TextureRef.Null;
+            _thicknessMap.OnDisposed += _onThicknessMapDisposed;
+            Properties.ThicknessTexIndex = _thicknessMap;
+            NotifyUpdated();
+        }
+        get => _thicknessMap;
+    }
+
+    /// <summary>
+    /// Gets or sets the normal perturbation factor applied to the back-light direction for
+    /// transmission/subsurface scattering. Range [0..1]; default 0.1.
+    /// </summary>
+    public float TransmissionDistortion
+    {
+        set
+        {
+            if (Properties.TransmissionDistortion == value)
+                return;
+            Properties.TransmissionDistortion = value;
+            NotifyUpdated();
+        }
+        get => Properties.TransmissionDistortion;
+    }
+
+    /// <summary>
+    /// Gets or sets the sharpness of the forward-scatter lobe for transmission.
+    /// Higher values concentrate the scatter more tightly. Range [1..20]; default 12.
+    /// </summary>
+    public float TransmissionPower
+    {
+        set
+        {
+            if (Properties.TransmissionPower == value)
+                return;
+            Properties.TransmissionPower = value;
+            NotifyUpdated();
+        }
+        get => Properties.TransmissionPower;
+    }
+
+    /// <summary>
+    /// Gets or sets the overall brightness scale applied to the transmission/subsurface
+    /// scattering contribution. Range [0..1]; default 0.5.
+    /// </summary>
+    public float TransmissionScale
+    {
+        set
+        {
+            if (Properties.TransmissionScale == value)
+                return;
+            Properties.TransmissionScale = value;
+            NotifyUpdated();
+        }
+        get => Properties.TransmissionScale;
+    }
+
+    /// <summary>
+    /// Gets or sets the mean free path for volumetric absorption in world space (metres).
+    /// Corresponds to <c>attenuationDistance</c> in <c>KHR_materials_volume</c>.
+    /// Default: <c>float.PositiveInfinity</c> (no absorption).
+    /// </summary>
+    public float AttenuationDistance
+    {
+        set
+        {
+            if (Properties.AttenuationDistance == value)
+                return;
+            Properties.AttenuationDistance = value;
+            NotifyUpdated();
+        }
+        get => Properties.AttenuationDistance;
+    }
+
+    /// <summary>
+    /// Gets or sets the color of the medium at <see cref="AttenuationDistance"/>.
+    /// Used for Beer-Lambert volumetric absorption: <c>T(x) = AttenuationColor ^ (x / AttenuationDistance)</c>.
+    /// Default: white (no tint).
+    /// </summary>
+    public Color4 AttenuationColor
+    {
+        set
+        {
+            var v = value.ToVector3();
+            if (Properties.AttenuationColor == v)
+                return;
+            Properties.AttenuationColor = v;
+            NotifyUpdated();
+        }
+        get => new(Properties.AttenuationColor);
+    }
+
     /// <summary>
     /// Initializes a new <see cref="PBRMaterialProperties"/> instance, allocating a pool entry
     /// and publishing a <see cref="MaterialPropertyOp.Create"/> event.
@@ -581,6 +740,22 @@ public sealed class PBRMaterialProperties : IDisposable
                 NotifyUpdated();
             }
         };
+        _onEmissiveMapDisposed = () =>
+        {
+            if (Valid)
+            {
+                Properties.EmissiveTexIndex = 0;
+                NotifyUpdated();
+            }
+        };
+        _onThicknessMapDisposed = () =>
+        {
+            if (Valid)
+            {
+                Properties.ThicknessTexIndex = 0;
+                NotifyUpdated();
+            }
+        };
         _handle = _pool.Create(properties);
         _eventBus.PublishAsync(
             new MaterialPropsUpdatedEvent(MaterialTypeId, Index, MaterialPropertyOp.Create)
@@ -612,6 +787,8 @@ public sealed class PBRMaterialProperties : IDisposable
         _onDisplaceMapDisposed = () => { };
         _onSamplerDisposed = () => { };
         _onDisplaceSamplerDisposed = () => { };
+        _onEmissiveMapDisposed = () => { };
+        _onThicknessMapDisposed = () => { };
     }
 
     private bool _disposedValue;
@@ -631,6 +808,8 @@ public sealed class PBRMaterialProperties : IDisposable
                 _displaceMap.OnDisposed -= _onDisplaceMapDisposed;
                 _sampler.OnDisposed -= _onSamplerDisposed;
                 _displaceSampler.OnDisposed -= _onDisplaceSamplerDisposed;
+                _emissiveMap.OnDisposed -= _onEmissiveMapDisposed;
+                _thicknessMap.OnDisposed -= _onThicknessMapDisposed;
 
                 var index = Index;
                 _pool?.Destroy(_handle);

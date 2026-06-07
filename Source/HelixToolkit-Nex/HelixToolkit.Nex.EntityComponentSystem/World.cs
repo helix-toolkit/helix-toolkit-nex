@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace HelixToolkit.Nex.ECS;
 
 /// <summary>
@@ -5,7 +7,7 @@ namespace HelixToolkit.Nex.ECS;
 /// </summary>
 public sealed class World : IEnumerable<Entity>, IDisposable
 {
-    public const int MaxNumberOfWorlds = byte.MaxValue;
+    public const int MaxNumberOfWorlds = (int)Limits.MaxWorldId + 1;
 
     private struct WorldProxy
     {
@@ -21,7 +23,16 @@ public sealed class World : IEnumerable<Entity>, IDisposable
         public void Reset()
         {
             World = null;
-            ++Generation;
+            // Generation 0 is reserved as "invalid/no world" throughout the ECS
+            // (EntityState.Reset treats worldGeneration==0 as invalid, and
+            // Generation.Valid returns false when the packed value is 0).
+            // Skip 0 so a world slot that has been recycled 255 times never
+            // silently issues generation-0 entities whose Entity.World resolves
+            // to null, causing a NullReferenceException in Entity.Get<T>().
+            if (++Generation == 0)
+            {
+                ++Generation; // wrap 255→0→1, keeping 0 permanently reserved
+            }
         }
     }
 
@@ -56,7 +67,7 @@ public sealed class World : IEnumerable<Entity>, IDisposable
         try
         {
             var nextId = _worldIdGen.GetNextId();
-            if (nextId >= Limits.MaxWorldId)
+            if (nextId > Limits.MaxWorldId)
             {
                 throw new Exception(
                     $"Number of worlds exceeds maximum supported size of {Limits.MaxWorldId}."
@@ -356,7 +367,7 @@ public sealed class World : IEnumerable<Entity>, IDisposable
     /// <param name="added">Is component newly added.</param>
     /// <returns>True: Success. False: Failed.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public ResultCode SetComponent<T>(Entity entity, ref T component, out bool added)
+    public ResultCode SetComponent<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.NonPublicFields)] T>(Entity entity, ref T component, out bool added)
     {
         added = false;
         var ret = ResultCode.Invalid;
@@ -409,7 +420,7 @@ public sealed class World : IEnumerable<Entity>, IDisposable
     /// <param name="entity">The entity.</param>
     /// <returns></returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public ref T GetComponent<T>(Entity entity)
+    public ref T GetComponent<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.NonPublicFields)] T>(Entity entity)
     {
         if (!ValidateEntity(ref entity))
         {
@@ -440,7 +451,7 @@ public sealed class World : IEnumerable<Entity>, IDisposable
     ///   <c>true</c> if the specified entity has component; otherwise, <c>false</c>.
     /// </returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public bool HasComponent<T>(Entity entity)
+    public bool HasComponent<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.NonPublicFields)] T>(Entity entity)
     {
         return ValidateEntity(ref entity)
             && GetState(entity.Id, entity.Generation)
@@ -455,7 +466,7 @@ public sealed class World : IEnumerable<Entity>, IDisposable
     ///   <c>true</c> if [has any speicific type of component]; otherwise, <c>false</c>.
     /// </returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public bool HasAnyComponent<T>()
+    public bool HasAnyComponent<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.NonPublicFields)] T>()
     {
         if (Id == 0)
         {
@@ -478,7 +489,7 @@ public sealed class World : IEnumerable<Entity>, IDisposable
     /// <param name="keepSorted">Keeps the order of the rest of components in storage after removing</param>
     /// <returns></returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public ResultCode RemoveComponent<T>(Entity entity, bool keepSorted = false)
+    public ResultCode RemoveComponent<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.NonPublicFields)] T>(Entity entity, bool keepSorted = false)
     {
         ResultCode ret;
         if (!HasComponent<T>(entity))
@@ -533,7 +544,7 @@ public sealed class World : IEnumerable<Entity>, IDisposable
     /// Trims storage space specific type of component.
     /// </summary>
     /// <typeparam name="T"></typeparam>
-    public void TrimComponentStorage<T>()
+    public void TrimComponentStorage<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.NonPublicFields)] T>()
     {
         if (IsTagType<T>())
         {
@@ -548,7 +559,7 @@ public sealed class World : IEnumerable<Entity>, IDisposable
     /// <typeparam name="T"></typeparam>
     /// <returns></returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public Components<T> GetComponents<T>()
+    public Components<T> GetComponents<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.NonPublicFields)] T>()
     {
         if (IsTagType<T>())
         {
@@ -561,7 +572,7 @@ public sealed class World : IEnumerable<Entity>, IDisposable
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal ComponentManager<T>? GetComponentManager<T>()
+    internal ComponentManager<T>? GetComponentManager<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.NonPublicFields)] T>()
     {
         if (IsTagType<T>())
         {
@@ -576,7 +587,7 @@ public sealed class World : IEnumerable<Entity>, IDisposable
     /// <typeparam name="T"></typeparam>
     /// <returns></returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public ComponentTypeId GetComponentTypeId<T>()
+    public ComponentTypeId GetComponentTypeId<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.NonPublicFields)] T>()
     {
         return ComponentIdProxy<T>.TypeId;
     }
@@ -587,7 +598,7 @@ public sealed class World : IEnumerable<Entity>, IDisposable
     /// </summary>
     /// <typeparam name="T"></typeparam>
     /// <param name="entity"></param>
-    public void NotifyComponentChanged<T>(Entity entity)
+    public void NotifyComponentChanged<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.NonPublicFields)] T>(Entity entity)
     {
         if (!entity.Has<T>())
         {
@@ -604,7 +615,7 @@ public sealed class World : IEnumerable<Entity>, IDisposable
     #endregion
 
     #region Sorting
-    public void SortComponent<T>()
+    public void SortComponent<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.NonPublicFields)] T>()
         where T : ISortable<T>
     {
         var manager = GetComponentManager<T>();
@@ -620,7 +631,7 @@ public sealed class World : IEnumerable<Entity>, IDisposable
     /// Enumerates all entities that have a component of type <typeparamref name="T"/>,
     /// in the same storage order as <see cref="GetComponents{T}"/>.
     /// </summary>
-    public IEnumerable<Entity> GetComponentEntities<T>()
+    public IEnumerable<Entity> GetComponentEntities<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.NonPublicFields)] T>()
     {
         if (IsTagType<T>())
         {
@@ -812,7 +823,7 @@ public sealed class World : IEnumerable<Entity>, IDisposable
     }
     #endregion
 
-    private static bool IsTagType<T>()
+    private static bool IsTagType<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.NonPublicFields)] T>()
     {
         return ComponentIdProxy<T>.IsTagType;
     }

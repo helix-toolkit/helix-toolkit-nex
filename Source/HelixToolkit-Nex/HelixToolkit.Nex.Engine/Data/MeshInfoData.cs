@@ -50,36 +50,7 @@ internal sealed class MeshInfoData : Initializable, IRenderData
         // Make sure GPU is not using the buffer before updating.
         // Must not reset the fence here, engine will handle it.
         Context.WaitAll(reset: false);
-        var objects = _resourceManager.Geometries.Objects;
-        var empty = new MeshInfo();
-        _buffer.WriteDynamic(
-            objects.Count,
-            (objects, empty),
-            static (ctx, state) =>
-            {
-                var (objects, empty) = state;
-                for (var i = 0; i < objects.Count; ++i)
-                {
-                    if (objects[i].Obj is null)
-                    {
-                        ctx.Write(ref empty);
-                        continue;
-                    }
-                    var meshInfo = new MeshInfo
-                    {
-                        BoxMax = objects[i].Obj!.BoundingBoxLocal.Maximum,
-                        BoxMin = objects[i].Obj!.BoundingBoxLocal.Minimum,
-                        SphereCenter = objects[i].Obj!.BoundingSphereLocal.Center,
-                        SphereRadius = objects[i].Obj!.BoundingSphereLocal.Radius,
-                        IndexBufferAddress = objects[i].Obj!.IndexBuffer.GpuAddress,
-                        VertexBufferAddress = objects[i].Obj!.VertexBuffer.GpuAddress,
-                        VertexColorBufferAddress = objects[i].Obj!.VertexColorBuffer.GpuAddress,
-                        VertexPropsBufferAddress = objects[i].Obj!.VertexPropsBuffer.GpuAddress,
-                    };
-                    ctx.Write(ref meshInfo);
-                }
-            }
-        );
+        _resourceManager.Geometries.UploadMeshInfoDynamic(_buffer);
         _lastBufferUpdateTicks = _lastDataUpdateTicks;
         return true;
     }

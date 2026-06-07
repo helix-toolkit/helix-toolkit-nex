@@ -198,7 +198,7 @@ public sealed class GeometrySerialization
         var vertexProps = new VertexProperties(
             new Vector3(0, 1, 0),
             new Vector2(0.5f, 0.75f),
-            new Vector3(0.8f, 0.6f, 0.4f)
+            new Vector4(0.8f, 0.6f, 0.4f, 1.0f)
         );
 
         // Act

@@ -26,7 +26,7 @@
         <DefineConstants>$(DefineConstants);HxWinUI</DefineConstants>
     </PropertyGroup>
     <ItemGroup Condition="!$([MSBuild]::IsOSPlatform('Linux'))">
-        <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.6.250205002">
+        <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.1.3">
             <ExcludeAssets>buildTransitive</ExcludeAssets>
         </PackageReference>
     </ItemGroup>
@@ -36,11 +36,7 @@
         <ProjectReference Include="..\HelixToolkit.Nex.Interop.DirectX\HelixToolkit.Nex.Interop.DirectX.csproj" />
     </ItemGroup>
 
-    <Import
-        Condition="!$([MSBuild]::IsOSPlatform('Linux'))"
-        Project="..\HelixToolkit.Nex.Interop.PlatformShared\HelixToolkit.Nex.Interop.PlatformShared.projitems"
-        Label="Shared"
-    />
+    <Import Condition="!$([MSBuild]::IsOSPlatform('Linux'))" Project="..\HelixToolkit.Nex.Interop.PlatformShared\HelixToolkit.Nex.Interop.PlatformShared.projitems" Label="Shared" />
     <ItemGroup>
         <None Update="README.md">
             <Pack>True</Pack>

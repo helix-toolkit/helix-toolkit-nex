@@ -25,7 +25,7 @@ namespace HelixToolkit.Nex.WinUI;
 public partial class HelixViewport
 {
     private ViewportRenderingEventArgs? _renderArgs;
-    private readonly PickingResult _pickResult = new();
+    private PickingResult _pickResult = default;
 
     private Engine.Engine? _engine;
     private IViewportClient? _viewportClient;
@@ -82,7 +82,7 @@ public partial class HelixViewport
             return;
 
         _activeDrag = action;
-        var hitted = _renderContext.TryPick((int)x, (int)y, _pickResult);
+        var hitted = _renderContext.TryPick((int)x, (int)y, out _pickResult);
         switch (action)
         {
             case ActiveDragAction.Rotate:

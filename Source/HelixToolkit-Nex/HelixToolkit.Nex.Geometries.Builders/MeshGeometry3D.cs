@@ -52,7 +52,8 @@ public sealed class MeshGeometry3D
         {
             var normal = Normals is not null ? Normals[i] : Vector3.Zero;
             var coord = TextureCoordinates is not null ? TextureCoordinates[i] : Vector2.Zero;
-            var tangent = Tangents is not null ? Tangents[i] : Vector3.Zero;
+            var tangentXYZ = Tangents is not null ? Tangents[i] : Vector3.Zero;
+            var tangent = new Vector4(tangentXYZ, 1.0f);
 
             geometry.Vertices.Add(Positions[i].ToVector4(1));
             geometry.VertexProps.Add(

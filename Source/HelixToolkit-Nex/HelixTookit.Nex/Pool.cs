@@ -47,7 +47,12 @@ public sealed class Pool<ObjectType, ImplObjectType> : IEnumerable<ImplObjectTyp
     /// </summary>
     public int32_t Count { private set; get; }
 
-    private readonly FastList<PoolEntry> _objects = new(1024); // Initial capacity of 1024
+    /// <summary>
+    /// Gets the index of the last object in the pool. This is useful for iterating over all objects, including freed ones.
+    /// </summary>
+    public int32_t LastObjectIndex { private set; get; } = -1;
+
+    private readonly FastList<PoolEntry> _objects = new(128); // Initial capacity of 128
 
     /// <summary>
     /// Gets a read-only view of all pool entries (both active and freed).
@@ -76,6 +81,7 @@ public sealed class Pool<ObjectType, ImplObjectType> : IEnumerable<ImplObjectTyp
             _objects.Add(new PoolEntry(obj));
         }
         ++Count;
+        LastObjectIndex = Math.Max(LastObjectIndex, idx);
         return new Handle<ObjectType>((uint32_t)idx, _objects[idx].Gen);
     }
 
@@ -115,6 +121,18 @@ public sealed class Pool<ObjectType, ImplObjectType> : IEnumerable<ImplObjectTyp
         entry.NextFree = _freeListHead;
         _freeListHead = (uint32_t)idx;
         --Count;
+        if (idx == LastObjectIndex)
+        {
+            LastObjectIndex = -1;
+            for (int32_t i = idx - 1; i >= 0; i--)
+            {
+                if (_objects[i].Obj is not null)
+                {
+                    LastObjectIndex = i;
+                    break;
+                }
+            }
+        }
     }
 
     /// <summary>
@@ -154,6 +172,21 @@ public sealed class Pool<ObjectType, ImplObjectType> : IEnumerable<ImplObjectTyp
             throw new ArgumentException("Invalid handle for retrieval.");
         }
         return ref _objects.GetInternalArray()[idx].Obj!;
+    }
+
+    /// <summary>
+    /// Checks if a given handle is valid and corresponds to an active object in the pool.
+    /// </summary>
+    /// <param name="handle"></param>
+    /// <returns></returns>
+    public bool Has(in Handle<ObjectType> handle)
+    {
+        if (handle.Empty)
+        {
+            return false;
+        }
+        int32_t idx = (int32_t)handle.Index;
+        return idx >= 0 && idx < _objects.Count && _objects[idx].Gen == handle.Gen && _objects[idx].Obj is not null;
     }
 
     /// <summary>
@@ -209,6 +242,7 @@ public sealed class Pool<ObjectType, ImplObjectType> : IEnumerable<ImplObjectTyp
         _objects.Clear();
         _freeListHead = ListEndSentinel;
         Count = 0;
+        LastObjectIndex = -1;
     }
 
     // Add these methods to implement IEnumerable<ImplObjectType> and IEnumerable

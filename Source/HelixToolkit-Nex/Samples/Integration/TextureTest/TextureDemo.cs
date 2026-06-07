@@ -41,11 +41,9 @@ internal sealed record TextureSetDesc(
     string? RoughnessFile, // separate roughness (R channel) — or GLOSS (inverted)
     string? DisplaceFile, // displacement map.
     string? BumpFile, // bump map,
-
     bool RoughnessIsGloss, // true → invert roughness channel
-
-    string? AoFile,    // AO
-                       // Default scalar overrides (applied on top of textures)
+    string? AoFile, // AO
+                    // Default scalar overrides (applied on top of textures)
     float DefaultMetallic,
     float DefaultRoughness,
     float DefaultAo,
@@ -252,7 +250,9 @@ internal sealed partial class TextureDemo : IDisposable
         {
             _showWireframe = value;
             if (value)
-                _sphereNode?.Entity.Set(new WireframePostEffect.WireframeOverlay() { EnableDepthTest = true });
+                _sphereNode?.Entity.Set(
+                    new WireframePostEffect.WireframeOverlay() { EnableDepthTest = true }
+                );
             else
                 _sphereNode?.Entity.Remove<WireframePostEffect.WireframeOverlay>();
         }
@@ -341,8 +341,14 @@ internal sealed partial class TextureDemo : IDisposable
         _engine.Add(sphereGeo);
 
         // ---- Shared sampler ----
-        _sampler = samplerRepo.GetOrCreate(SamplerStateDesc.LinearRepeat);
-        _displaceSampler = samplerRepo.GetOrCreate(SamplerStateDesc.PointClamp);
+        _sampler = samplerRepo.GetOrCreate(
+            SamplerStateDesc.LinearRepeat.DebugName,
+            SamplerStateDesc.LinearRepeat
+        );
+        _displaceSampler = samplerRepo.GetOrCreate(
+            SamplerStateDesc.PointClamp.DebugName,
+            SamplerStateDesc.PointClamp
+        );
 
         // ---- Load the initial texture set ----
         var initialSet = LoadTextureSet(ActiveSetIndex);

@@ -652,13 +652,14 @@ public sealed class ElementBuffer<T> : IDisposable
     /// Resizes the buffer by disposing the old buffer and creating a new one with the specified remainSizeInBytes.
     /// </summary>
     /// <param name="newCapacity">The new remainSizeInBytes in number of elements.</param>
+    /// <param name="trim">Trim the buffer size to be exact size of new capacity.</param>
     /// <returns>
     /// A <see cref="ResultCode"/> indicating the result of the resize operation.
     /// </returns>
-    private ResultCode ResizeBuffer(int newCapacity)
+    private ResultCode ResizeBuffer(int newCapacity, bool trim = false)
     {
         // Dispose old buffer
-        if (!Buffer.Empty && Capacity < newCapacity)
+        if ((!Buffer.Empty && Capacity < newCapacity) || trim)
         {
             Buffer.Dispose();
             Buffer = BufferResource.Null;
@@ -763,7 +764,7 @@ public sealed class ElementBuffer<T> : IDisposable
     public void Reset()
     {
         Count = 0;
-        ResizeBuffer(0);
+        ResizeBuffer(0, true);
     }
 
     public static implicit operator BufferResource(ElementBuffer<T> elementBuffer)

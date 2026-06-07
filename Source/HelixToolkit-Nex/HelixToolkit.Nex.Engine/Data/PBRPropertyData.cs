@@ -93,45 +93,12 @@ public sealed class PBRPropertyData : Initializable, IPBRPropertyData
         var mgr = _resourceManager.PBRPropertyManager;
         if (_needFullUpdate)
         {
-            _buffer.WriteDynamic(
-                mgr.Count,
-                mgr,
-                static (ctx, mgr) =>
-                {
-                    for (var i = 0; i < mgr.Count; ++i)
-                    {
-                        ctx.Write(ref mgr.At(i));
-                    }
-                }
-            );
+            mgr.UploadDynamic(_buffer).CheckResult();
             _needFullUpdate = false;
         }
         else
         {
-            if (
-                _buffer.WriteDynamic(
-                    mgr.Count,
-                    (mgr, _updatedProps),
-                    static (ctx, state) =>
-                    {
-                        var (mgr, updatedProps) = state;
-                        foreach (var index in updatedProps)
-                        {
-                            if (index < mgr.Count)
-                            {
-                                if (!ctx.WriteElement(ref mgr.At((int)index), (int)index))
-                                {
-                                    _logger.LogError(
-                                        "Failed to write material property at index {INDEX}",
-                                        index
-                                    );
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                ) != ResultCode.Ok
-            )
+            if (mgr.UploadDynamic(_buffer, _updatedProps) != ResultCode.Ok)
             {
                 _needFullUpdate = true;
             }

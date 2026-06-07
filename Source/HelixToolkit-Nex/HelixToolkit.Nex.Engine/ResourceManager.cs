@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using HelixToolkit.Nex.Engine.Data;
 using HelixToolkit.Nex.Rendering.SDF;
 
@@ -25,6 +26,7 @@ namespace HelixToolkit.Nex.Engine;
 /// - Simple serialization (just save IDs)
 /// </para>
 /// </remarks>
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
 public sealed class ResourceManager : Initializable, IResourceManager
 {
     public IContext Context { get; }

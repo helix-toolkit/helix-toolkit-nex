@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 
 namespace HelixToolkit.Nex.ECS;
@@ -84,7 +85,7 @@ internal static class ComponentSorting
     }
 }
 
-internal readonly struct ComponentIdProxy<T>
+internal readonly struct ComponentIdProxy<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.NonPublicFields)] T>
 {
     public static readonly ComponentTypeId TypeId = ComponentTypeId.GetNexId();
     public static readonly bool IsTagType = typeof(T).GetTypeInfo().IsTagType();
@@ -94,7 +95,7 @@ internal readonly struct ComponentIdProxy<T>
     public static T? DefaultValue = default;
 }
 
-internal sealed class TagManager<T> : IDisposable
+internal sealed class TagManager<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.NonPublicFields)] T> : IDisposable
 {
     public static readonly ComponentIdProxy<T> Id = new();
     private static readonly FastList<TagManager<T>?> _managerStorage = [];
@@ -169,7 +170,7 @@ internal sealed class TagManager<T> : IDisposable
     {
         WorldId = worldId;
         ECSEventBus.Register<WorldDisposingEvent>(worldId, HandleWorldDisposing);
-        ECSEventBus.Register<EntityBeforeDisposeEvent>(worldId, HandleEntityDisposing);
+        ECSEventBus.Register<EntityDisposingEvent>(worldId, HandleEntityDisposing);
     }
 
     /// <summary>
@@ -198,7 +199,7 @@ internal sealed class TagManager<T> : IDisposable
         Dispose();
     }
 
-    private void HandleEntityDisposing(int worldId, EntityBeforeDisposeEvent msg)
+    private void HandleEntityDisposing(int worldId, EntityDisposingEvent msg)
     {
         if (WorldId == 0)
         {
@@ -225,13 +226,13 @@ internal sealed class TagManager<T> : IDisposable
         }
         _disposed = true;
         ECSEventBus.Unregister<WorldDisposingEvent>(WorldId, HandleWorldDisposing);
-        ECSEventBus.Unregister<EntityBeforeDisposeEvent>(WorldId, HandleEntityDisposing);
+        ECSEventBus.Unregister<EntityDisposingEvent>(WorldId, HandleEntityDisposing);
         Interlocked.Exchange(ref _count, 0);
         RemoveManager(WorldId);
     }
 }
 
-internal sealed class ComponentManager<T> : IDisposable
+internal sealed class ComponentManager<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.NonPublicFields)] T> : IDisposable
 {
     #region Manager Storage
     internal static readonly ComponentTypeId TypeId = ComponentIdProxy<T>.TypeId;
@@ -477,7 +478,7 @@ internal sealed class ComponentManager<T> : IDisposable
         EntityMapping = new(defaultCapcity);
         CompMapping = new FastList<ComponentMappingKey>(defaultCapcity);
         ECSEventBus.Register<WorldDisposingEvent>(worldId, HandleWorldDisposing);
-        ECSEventBus.Register<EntityBeforeDisposeEvent>(worldId, HandleEntityDisposing);
+        ECSEventBus.Register<EntityDisposingEvent>(worldId, HandleEntityDisposing);
     }
     #endregion
     #region Public Functions
@@ -727,7 +728,7 @@ internal sealed class ComponentManager<T> : IDisposable
         Dispose();
     }
 
-    private void HandleEntityDisposing(int worldId, EntityBeforeDisposeEvent msg)
+    private void HandleEntityDisposing(int worldId, EntityDisposingEvent msg)
     {
         Remove(msg.EntityId);
     }
@@ -746,7 +747,7 @@ internal sealed class ComponentManager<T> : IDisposable
         var worldId = WorldId;
         WorldId = 0;
         ECSEventBus.Unregister<WorldDisposingEvent>(worldId, HandleWorldDisposing);
-        ECSEventBus.Unregister<EntityBeforeDisposeEvent>(worldId, HandleEntityDisposing);
+        ECSEventBus.Unregister<EntityDisposingEvent>(worldId, HandleEntityDisposing);
         CompMapping.Clear();
         CompMapping.TrimExcess();
         Storage.Clear();
