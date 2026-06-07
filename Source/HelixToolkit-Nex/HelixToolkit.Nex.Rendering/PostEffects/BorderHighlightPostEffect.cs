@@ -194,8 +194,12 @@ public sealed class BorderHighlightPostEffect : PostEffect
             return ResultCode.InvalidState;
         }
 
-        _pointSampler = ResourceManager.SamplerRepository.GetOrCreate(SamplerStateDesc.PointClamp);
+        _pointSampler = ResourceManager.SamplerRepository.GetOrCreate(
+            SamplerStateDesc.PointClamp.DebugName,
+            SamplerStateDesc.PointClamp
+        );
         _linearSampler = ResourceManager.SamplerRepository.GetOrCreate(
+            SamplerStateDesc.LinearClamp.DebugName,
             SamplerStateDesc.LinearClamp
         );
 

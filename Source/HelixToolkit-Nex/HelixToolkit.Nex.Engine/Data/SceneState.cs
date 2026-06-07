@@ -21,6 +21,8 @@ public sealed class SceneState(IContext context, World world) : Initializable, I
 
     public bool SceneGraphDirty { private set; get; } = true;
 
+    public bool TransformUpdated { private set; get; } = true;
+
     public BufferHandle Buffer => _buffer?.Buffer ?? BufferHandle.Null;
 
     public ulong GpuAddress => _buffer?.Buffer?.GpuAddress ?? 0;
@@ -64,7 +66,8 @@ public sealed class SceneState(IContext context, World world) : Initializable, I
         var entity = World.GetEntity(e.EntityId);
         if (entity.Has<Renderable>())
         {
-            entity.Get<Renderable>().UpdateCounter = (int)GraphicsSettings.MaxFrameInFlight;
+            _renderables[entity].UpdateCounter = (int)GraphicsSettings.MaxFrameInFlight;
+            TransformUpdated = true;
         }
     }
 
@@ -83,7 +86,7 @@ public sealed class SceneState(IContext context, World world) : Initializable, I
         var entity = World.GetEntity(e.EntityId);
         if (entity.Has<Renderable>())
         {
-            entity.Get<Renderable>().UpdateCounter = (int)GraphicsSettings.MaxFrameInFlight;
+            _renderables[entity].UpdateCounter = (int)GraphicsSettings.MaxFrameInFlight;
             NodeInfoDirty = true;
         }
     }
@@ -106,12 +109,13 @@ public sealed class SceneState(IContext context, World world) : Initializable, I
         {
             FullUpload();
         }
-        else if (NodeInfoDirty)
+        else if (NodeInfoDirty || TransformUpdated)
         {
             PartialUpdate();
         }
         SceneGraphDirty = false;
         NodeInfoDirty = false;
+        TransformUpdated = false;
         return true;
     }
 

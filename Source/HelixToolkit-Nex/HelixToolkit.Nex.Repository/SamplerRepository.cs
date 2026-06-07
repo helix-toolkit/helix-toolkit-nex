@@ -24,24 +24,22 @@ public sealed class SamplerRepository
         _context = context;
     }
 
-    public static string GenerateCacheKey(SamplerStateDesc desc) =>
-        $"{desc.MinFilter}|{desc.MagFilter}|{desc.MipMap}|{desc.WrapU}|{desc.WrapV}|{desc.WrapW}|{desc.DepthCompareOp}|{desc.MipLodMin}|{desc.MipLodMax}|{desc.MaxAnisotropic}|{desc.DepthCompareEnabled}";
-
-    public SamplerRef GetOrCreate(SamplerStateDesc desc)
+    public SamplerRef GetOrCreate(string key, SamplerStateDesc desc)
     {
         ObjectDisposedException.ThrowIf(_context.IsDisposed, this);
+        ArgumentException.ThrowIfNullOrEmpty(key, nameof(key));
 
-        var cacheKey = GenerateCacheKey(desc);
-
-        if (TryGet(cacheKey, out var cached))
+        if (TryGet(key, out var cached))
+        {
             return cached!.Ref;
+        }
 
         var result = _context.CreateSampler(desc, out var sampler);
         if (result != ResultCode.Ok)
             throw new InvalidOperationException($"Failed to create sampler: {result}");
 
         return StoreEntry(
-            cacheKey,
+            key,
             sampler,
             string.IsNullOrEmpty(desc.DebugName) ? null : desc.DebugName
         );

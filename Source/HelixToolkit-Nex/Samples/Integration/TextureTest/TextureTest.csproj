@@ -6,6 +6,7 @@
         <Nullable>enable</Nullable>
         <RootNamespace>TextureTest</RootNamespace>
         <Configurations>Debug;Release;LinuxDebug;LinuxRelease</Configurations>
+        <PublishAot>True</PublishAot>
     </PropertyGroup>
 
     <ItemGroup>

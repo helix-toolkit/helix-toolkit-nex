@@ -124,6 +124,7 @@ public sealed class SMAANode : RenderNode
         }
 
         _linearSampler = ResourceManager.SamplerRepository.GetOrCreate(
+            SamplerStateDesc.LinearClamp.DebugName,
             SamplerStateDesc.LinearClamp
         );
 

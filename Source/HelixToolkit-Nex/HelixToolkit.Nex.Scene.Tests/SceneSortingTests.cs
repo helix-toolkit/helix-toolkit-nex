@@ -105,7 +105,8 @@ public sealed class SceneSortingTests
         }
         sortedNodes.UpdateTransforms();
 
-        transform *= Matrix4x4.CreateScale(2, 3, 4) * Matrix4x4.CreateTranslation(4, 5, 6);
+        transform =
+            (Matrix4x4.CreateScale(2, 3, 4) * Matrix4x4.CreateTranslation(4, 5, 6)) * transform;
         for (int i = 1; i < sortedNodes.Count; ++i)
         {
             var n = sortedNodes[i];
@@ -159,8 +160,8 @@ public sealed class SceneSortingTests
         {
             Assert.IsTrue(
                 components[i].Level >= prevLevel,
-                $"NodeInfo component at index {i} has level {components[i].Level} " +
-                $"which is less than previous level {prevLevel}."
+                $"NodeInfo component at index {i} has level {components[i].Level} "
+                    + $"which is less than previous level {prevLevel}."
             );
             prevLevel = components[i].Level;
         }
@@ -207,9 +208,9 @@ public sealed class SceneSortingTests
         using var world = World.CreateWorld();
         // root → child1 → grandChild
         //      → child2
-        var root = new Node(world, "Root");          // level 0
-        var child1 = new Node(world, "Child1");      // level 1
-        var child2 = new Node(world, "Child2");      // level 1
+        var root = new Node(world, "Root"); // level 0
+        var child1 = new Node(world, "Child1"); // level 1
+        var child2 = new Node(world, "Child2"); // level 1
         var grandChild = new Node(world, "GrandChild"); // level 2
 
         root.AddChild(child1);
@@ -399,7 +400,7 @@ public sealed class SceneSortingTests
         root.AddChild(a);
         root.AddChild(b);
         a.AddChild(c);
-        a.AddChild(wanderer);   // wanderer starts at level 2
+        a.AddChild(wanderer); // wanderer starts at level 2
 
         // Round 1: sort, then move wanderer under b
         world.SortSceneNodes();
@@ -407,7 +408,7 @@ public sealed class SceneSortingTests
         Assert.AreEqual(2, wanderer.Level);
 
         a.RemoveChild(wanderer);
-        b.AddChild(wanderer);   // level still 2, different parent
+        b.AddChild(wanderer); // level still 2, different parent
 
         // Round 2: sort, then move wanderer under c
         world.SortSceneNodes();
@@ -416,7 +417,7 @@ public sealed class SceneSortingTests
         Assert.AreEqual(b, wanderer.Parent);
 
         b.RemoveChild(wanderer);
-        c.AddChild(wanderer);   // level now 3
+        c.AddChild(wanderer); // level now 3
 
         // Round 3: final sort
         world.SortSceneNodes();
@@ -482,8 +483,11 @@ public sealed class SceneSortingTests
 
         var expectedRootWorld = Matrix4x4.CreateScale(scale);
         Assert.AreEqual(expectedRootWorld, root.WorldTransform.Value);
-        Assert.AreEqual(expectedRootWorld, leaf.WorldTransform.Value,
-            "Leaf under A under Root should inherit root's scale.");
+        Assert.AreEqual(
+            expectedRootWorld,
+            leaf.WorldTransform.Value,
+            "Leaf under A under Root should inherit root's scale."
+        );
 
         // Reparent leaf from A to B; transforms should update correctly after re-sort.
         a.RemoveChild(leaf);
@@ -495,13 +499,19 @@ public sealed class SceneSortingTests
         world.SortSceneNodes();
         world.UpdateTransforms();
 
-        var expectedBWorld = expectedRootWorld * Matrix4x4.CreateScale(bScale);
+        var expectedBWorld = Matrix4x4.CreateScale(bScale) * expectedRootWorld;
         var expectedLeafWorld = expectedBWorld;
 
-        Assert.AreEqual(expectedBWorld, b.WorldTransform.Value,
-            "B's world transform should be root × B's local scale.");
-        Assert.AreEqual(expectedLeafWorld, leaf.WorldTransform.Value,
-            "Leaf (now under B) should inherit B's world transform.");
+        Assert.AreEqual(
+            expectedBWorld,
+            b.WorldTransform.Value,
+            "B's world transform should be root × B's local scale."
+        );
+        Assert.AreEqual(
+            expectedLeafWorld,
+            leaf.WorldTransform.Value,
+            "Leaf (now under B) should inherit B's world transform."
+        );
     }
 
     /// <summary>
@@ -536,8 +546,10 @@ public sealed class SceneSortingTests
             // Every node at `depth` should have a non-dirty transform.
             foreach (var node in currentLevel)
             {
-                Assert.IsFalse(node.Transform.IsWorldDirty,
-                    $"Node '{node.Name}' at depth {depth} should not be dirty after UpdateTransforms.");
+                Assert.IsFalse(
+                    node.Transform.IsWorldDirty,
+                    $"Node '{node.Name}' at depth {depth} should not be dirty after UpdateTransforms."
+                );
             }
         }
     }
@@ -567,8 +579,10 @@ public sealed class SceneSortingTests
         Assert.IsTrue(sortedNodes.Contains(root), "Root should be in the sorted list.");
         Assert.IsTrue(sortedNodes.Contains(enabled), "Enabled node should be in the sorted list.");
         Assert.IsFalse(sortedNodes.Contains(disabled), "Disabled node should be excluded.");
-        Assert.IsFalse(sortedNodes.Contains(childOfDisabled),
-            "Child of disabled node should be excluded.");
+        Assert.IsFalse(
+            sortedNodes.Contains(childOfDisabled),
+            "Child of disabled node should be excluded."
+        );
     }
 
     /// <summary>
@@ -595,7 +609,10 @@ public sealed class SceneSortingTests
         AssertComponentsSortedByLevel(world);
 
         child.Enabled = true;
-        Assert.IsTrue(grandChild.Enabled, "GrandChild should be re-enabled when child is re-enabled.");
+        Assert.IsTrue(
+            grandChild.Enabled,
+            "GrandChild should be re-enabled when child is re-enabled."
+        );
 
         world.SortSceneNodes();
         AssertComponentsSortedByLevel(world);

@@ -231,6 +231,8 @@ internal sealed class MeshDrawStream : Initializable, IDrawStream
         // Collect draws for entities that match this stream's post-filters
         foreach (var entity in _entities.AsValueEnumerable())
         {
+            if (!entity.Valid)
+            { continue; }
             ref var meshComp = ref _meshComponents[entity];
             if (!meshComp.Valid)
                 continue;
@@ -466,10 +468,6 @@ internal sealed class MeshDrawStream : Initializable, IDrawStream
         if (_needsRebuild || !_entities.Contains(entity))
             return;
         ref var meshComp = ref _meshComponents[entity];
-
-        // If the entity doesn't match this stream, ignore
-        if (!meshComp.Valid)
-            return;
 
         ref var renderable = ref _renderables[entity];
 

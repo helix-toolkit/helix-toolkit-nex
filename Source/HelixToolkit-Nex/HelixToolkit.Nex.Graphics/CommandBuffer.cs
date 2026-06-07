@@ -499,6 +499,12 @@ public interface ICommandBuffer
     void SetDepthBiasEnable(bool enable);
 
     /// <summary>
+    /// Sets the culling mode used for rendering geometry.
+    /// </summary>
+    /// <param name="mode">The culling mode to apply. Determines which faces of geometry are culled during rendering.</param>
+    void SetCullMode(CullMode mode);
+
+    /// <summary>
     /// Resets a range of queries in a query pool to an initial state.
     /// </summary>
     /// <param name="pool">The handle to the query pool containing the queries to reset.</param>
@@ -593,4 +599,25 @@ public interface ICommandBuffer
     /// <param name="c3">A value indicating whether color writing is enabled for render target 3. Set to <see langword="true"/> to enable
     /// color writing; otherwise, <see langword="false"/>.</param>
     void SetColorWriteEnabled(bool c0 = true, bool c1 = true, bool c2 = true, bool c3 = true);
+
+    /// <summary>
+    /// Copies a region from a texture into a buffer. The destination buffer must have been
+    /// created with <see cref="StorageType.HostVisible"/> storage so that the GPU can write
+    /// directly to host-accessible memory, enabling zero-stall readbacks when combined with
+    /// <see cref="IContext.IsReady"/>.
+    /// </summary>
+    /// <param name="src">The source texture handle.</param>
+    /// <param name="dst">The destination buffer handle. Must be host-visible for CPU readback.</param>
+    /// <param name="bufferOffset">Byte offset within the destination buffer where the data will be written.</param>
+    /// <param name="srcOffset">Texel offset within the source texture where copying begins.</param>
+    /// <param name="extent">The dimensions (width, height, depth) of the region to copy.</param>
+    /// <param name="layers">The mip level and array layer(s) of the source texture to copy from.</param>
+    void CopyTextureToBuffer(
+        in TextureHandle src,
+        in BufferHandle dst,
+        size_t bufferOffset,
+        Offset3D srcOffset,
+        Dimensions extent,
+        TextureLayers layers
+    );
 }

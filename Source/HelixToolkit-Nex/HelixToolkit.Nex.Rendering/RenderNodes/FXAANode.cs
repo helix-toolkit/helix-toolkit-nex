@@ -1,4 +1,5 @@
 namespace HelixToolkit.Nex.Rendering.RenderNodes;
+
 /// <summary>
 /// Named quality presets for the <see cref="Fxaa"/> post-processing effect.
 /// Each level tunes the three underlying FXAA parameters
@@ -57,6 +58,7 @@ public enum FxaaDebugMode : uint
     /// </summary>
     BlendHeatMap = 2,
 }
+
 public sealed class FXAANode : RenderNode
 {
     private static readonly ILogger _logger = LogManager.Create<FXAANode>();
@@ -166,6 +168,7 @@ public sealed class FXAANode : RenderNode
         }
 
         _linearSampler = ResourceManager.SamplerRepository.GetOrCreate(
+            SamplerStateDesc.LinearClamp.DebugName,
             SamplerStateDesc.LinearClamp
         );
 
@@ -184,6 +187,7 @@ public sealed class FXAANode : RenderNode
         _debugBlendPipeline.Dispose();
         base.OnTeardown();
     }
+
     // -----------------------------------------------------------------------
     // Helpers
     // -----------------------------------------------------------------------

@@ -31,7 +31,10 @@ public sealed class BillboardRenderNode : RenderNode
             return false;
         }
 
-        if (context.Data.BillboardData is null || context.Data.BillboardData.TotalBillboardCount == 0)
+        if (
+            context.Data.BillboardData is null
+            || context.Data.BillboardData.TotalBillboardCount == 0
+        )
         {
             return false;
         }
@@ -95,7 +98,6 @@ public sealed class BillboardRenderNode : RenderNode
             var fpConstAddress = res.Buffers[SystemBufferNames.BufferForwardPlusConstants]
                 .GpuAddress(res.RenderContext.Context);
 
-
             res.CmdBuffer.BindRenderPipeline(pipeline);
             res.CmdBuffer.BindDepthState(DepthState.DefaultReversedZ);
 
@@ -104,7 +106,7 @@ public sealed class BillboardRenderNode : RenderNode
                 {
                     DrawDataAddress = entry.DrawDataBuffer,
                     FpConstAddress = fpConstAddress,
-                    BillboardInfoAddress = entry.InfoBuffer
+                    BillboardInfoAddress = entry.InfoBuffer,
                 }
             );
 
@@ -128,10 +130,13 @@ public sealed class BillboardRenderNode : RenderNode
             inputs:
             [
                 new(SystemBufferNames.TextureDepthF32, ResourceType.Texture),
-                new(SystemBufferNames.TextureEntityId, ResourceType.Texture),
                 new(SystemBufferNames.BufferForwardPlusConstants, ResourceType.Buffer),
             ],
-            outputs: [new(SystemBufferNames.TextureColorF16Target, ResourceType.Texture)],
+            outputs:
+            [
+                new(SystemBufferNames.TextureColorF16Target, ResourceType.Texture),
+                new(SystemBufferNames.TextureEntityId, ResourceType.Texture),
+            ],
             after: [nameof(ForwardPlusOpaqueNode)]
         );
     }

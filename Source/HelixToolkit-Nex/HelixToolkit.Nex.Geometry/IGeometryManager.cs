@@ -1,3 +1,4 @@
+using HelixToolkit.Nex.Shaders;
 namespace HelixToolkit.Nex.Geometries;
 
 public enum GeometryChangeOp
@@ -98,4 +99,11 @@ public interface IGeometryManager : IDisposable
     /// </summary>
     /// <returns>The number of geometries marked as dirty.</returns>
     int GetDirtyCount();
+    /// <summary>
+    /// Uploads the mesh information of all geometries to the GPU. 
+    /// The method returns a <see cref="ResultCode"/> indicating the success or failure of the upload operation.
+    /// </summary>
+    /// <param name="buffer"></param>
+    /// <returns></returns>
+    ResultCode UploadMeshInfoDynamic(ElementBuffer<MeshInfo> buffer);
 }

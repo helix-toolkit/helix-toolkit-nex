@@ -737,7 +737,10 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
 
         if (hasDepthAttachmentPipeline != hasDepthAttachmentPass)
         {
-            HxDebug.Assert(false, "Make sure your render pass and render pipeline both have matching depth attachments");
+            HxDebug.Assert(
+                false,
+                "Make sure your render pass and render pipeline both have matching depth attachments"
+            );
         }
 
         var pipeline = _ctx.GetVkPipeline(handle, ViewMask);
@@ -753,6 +756,7 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
                 VK.VK_PIPELINE_BIND_POINT_GRAPHICS,
                 rps.PipelineLayout
             );
+            VK.vkCmdSetCullMode(CmdBuffer, rps.Desc.CullMode.ToVk());
             unsafe
             {
                 if (_inputAttachments.Count > 0)
@@ -857,6 +861,12 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
         {
             VK.vkCmdSetViewport(CmdBuffer, 0, 1, &vp);
         }
+    }
+
+    /// <inheritdoc/>
+    public void SetCullMode(CullMode mode)
+    {
+        VK.vkCmdSetCullMode(CmdBuffer, mode.ToVk());
     }
 
     /// <inheritdoc/>
@@ -1530,7 +1540,9 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
         HxDebug.Assert(IsRendering);
         if (!_ctx.SupportsSubpass)
         {
-            throw new NotSupportedException("Subpass rendering is not supported by the current context.");
+            throw new NotSupportedException(
+                "Subpass rendering is not supported by the current context."
+            );
         }
         unsafe
         {
@@ -1867,7 +1879,9 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
     {
         if (!_ctx.SupportsDynamicLocalRead)
         {
-            throw new NotSupportedException("Dynamic local read is not supported by the current context.");
+            throw new NotSupportedException(
+                "Dynamic local read is not supported by the current context."
+            );
         }
         var img = _ctx.TexturesPool.Get(handle);
         HxDebug.Assert(img is not null && !img.IsSwapchainImage);
@@ -1991,18 +2005,115 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
             );
         }
     }
+
+    /// <inheritdoc/>
+    public void CopyTextureToBuffer(
+        in TextureHandle src,
+        in BufferHandle dst,
+        size_t bufferOffset,
+        Offset3D srcOffset,
+        Dimensions extent,
+        TextureLayers layers
+    )
+    {
+        var img = _ctx.TexturesPool.Get(src);
+        var buf = _ctx.BuffersPool.Get(dst);
+
+        HxDebug.Assert(img is not null && img.Valid, "Source texture is null or invalid.");
+        HxDebug.Assert(buf is not null && buf.Valid, "Destination buffer is null or invalid.");
+
+        if (img is null || !img.Valid || buf is null || !buf.Valid)
+        {
+            _logger.LogError(
+                "CopyTextureToBuffer: source texture or destination buffer is invalid."
+            );
+            return;
+        }
+
+        VkImageSubresourceRange range = new()
+        {
+            aspectMask = img.GetImageAspectFlags(),
+            baseMipLevel = layers.MipLevel,
+            levelCount = 1,
+            baseArrayLayer = layers.Layer,
+            layerCount = layers.NumLayers,
+        };
+
+        CmdBuffer.ImageMemoryBarrier2(
+            img.Image,
+            new StageAccess2
+            {
+                Stage = VkPipelineStageFlags2.AllCommands,
+                Access = VkAccessFlags2.MemoryRead | VkAccessFlags2.MemoryWrite,
+            },
+            new StageAccess2
+            {
+                Stage = VkPipelineStageFlags2.Transfer,
+                Access = VkAccessFlags2.TransferRead,
+            },
+            img.ImageLayout,
+            VK.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+            range
+        );
+
+        unsafe
+        {
+            VkBufferImageCopy copy = new()
+            {
+                bufferOffset = bufferOffset,
+                bufferRowLength = 0,
+                bufferImageHeight = 0,
+                imageSubresource = new VkImageSubresourceLayers
+                {
+                    aspectMask = range.aspectMask,
+                    mipLevel = layers.MipLevel,
+                    baseArrayLayer = layers.Layer,
+                    layerCount = layers.NumLayers,
+                },
+                imageOffset = new VkOffset3D(srcOffset.X, srcOffset.Y, srcOffset.Z),
+                imageExtent = new VkExtent3D(extent.Width, extent.Height, extent.Depth),
+            };
+
+            VK.vkCmdCopyImageToBuffer(
+                CmdBuffer,
+                img.Image,
+                VK.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                buf.VkBuffer,
+                1,
+                &copy
+            );
+        }
+
+        CmdBuffer.ImageMemoryBarrier2(
+            img.Image,
+            new StageAccess2
+            {
+                Stage = VkPipelineStageFlags2.Transfer,
+                Access = VkAccessFlags2.TransferRead,
+            },
+            new StageAccess2
+            {
+                Stage = VkPipelineStageFlags2.AllCommands,
+                Access = VkAccessFlags2.MemoryRead | VkAccessFlags2.MemoryWrite,
+            },
+            VK.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+            img.ImageLayout,
+            range
+        );
+    }
+
     /// <inheritdoc/>
     public void SetColorWriteEnabled(bool c0, bool c1, bool c2, bool c3)
     {
         unsafe
         {
-            VkBool32* enabled = stackalloc VkBool32[4]
-            {
-                c0 ? VK_BOOL.True : VK_BOOL.False,
-                c1 ? VK_BOOL.True : VK_BOOL.False,
-                c2 ? VK_BOOL.True : VK_BOOL.False,
-                c3 ? VK_BOOL.True : VK_BOOL.False,
-            };
+            VkBool32* enabled =
+                stackalloc VkBool32[4] {
+                    c0 ? VK_BOOL.True : VK_BOOL.False,
+                    c1 ? VK_BOOL.True : VK_BOOL.False,
+                    c2 ? VK_BOOL.True : VK_BOOL.False,
+                    c3 ? VK_BOOL.True : VK_BOOL.False,
+                };
             VK.vkCmdSetColorWriteEnableEXT(CmdBuffer, 4, enabled);
         }
     }

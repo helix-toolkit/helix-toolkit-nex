@@ -180,6 +180,7 @@ internal partial class PBRDemo : IDisposable
             {
                 post.AddEffect(new BoundingBoxPostEffect());
             })
+            .WithSMAA()
             .RenderToCustomTarget(GraphicsSettings.IntermediateTargetFormat)
             .Build();
 
@@ -369,7 +370,7 @@ internal partial class PBRDemo : IDisposable
             {
                 return;
             }
-            SelectedIndex = (int)result.Entity.Get<IndexComponent>().Index;
+            SelectedIndex = result.Value.Entity.Get<IndexComponent>().Index;
         }
         else if (button == 1)
         {

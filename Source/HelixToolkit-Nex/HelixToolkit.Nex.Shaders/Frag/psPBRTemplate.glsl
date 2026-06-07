@@ -14,7 +14,7 @@ layout(location = 2) in vec4 fragColor;
 #else
 #ifndef EXCLUDE_MESH_PROPS
 layout(location = 3) in vec3 fragNormal;
-layout(location = 4) in vec3 fragTangent;
+layout(location = 4) in vec4 fragTangent;
 layout(location = 5) in vec2 fragTexCoord;
 #endif
 #endif
@@ -177,13 +177,50 @@ vec4 forwardPlusLighting(in PBRMaterial material)
     // Forward+ tiled lighting
     vec3 viewDir = normalize(fpConst.cameraPosition - fragWorldPos);
     vec3 finalC = material.ambient * material.albedo * material.ao;
+
+    // Transmission parameters — only relevant for the transparent pass.
+#ifdef TRANSPARENT_PASS
+    PBRProperties props = getPBRProperties();
+    float transmissionDistortion = props.transmissionDistortion;
+    float transmissionPower      = props.transmissionPower;
+    float transmissionScale      = props.transmissionScale;
+    // Only compute transmission for non-opaque, non-metallic fragments that have
+    // a non-zero transmissionScale (set from glTF transmissionFactor).
+    bool hasTransmission = transmissionScale > 0.0 && material.metallic < 0.5;
+    // Per KHR_materials_transmission: transmissionFactor replaces the diffuse lobe.
+    // Scale ambient (which is a diffuse approximation) by (1 - transmissionScale).
+    if (hasTransmission) {
+        finalC *= (1.0 - transmissionScale);
+    }
+    // Beer-Lambert volumetric absorption (KHR_materials_volume):
+    // T(x) = attenuationColor ^ (thickness / attenuationDistance)
+    // The ratio is clamped to prevent complete saturation in thick regions.
+    // attenuationDistance <= 0 means no absorption (transparent glass with no tint).
+    vec3 sssColor = material.albedo;
+    if (hasTransmission && props.attenuationDistance > 0.0) {
+        vec3 ac = clamp(props.attenuationColor, vec3(1e-6), vec3(1.0));
+        // Clamp ratio to keep visible color variation even for thick volumes.
+        // A ratio of 1.0 means the light has traveled exactly one attenuationDistance,
+        // producing attenuationColor as the tint. Values above 1 darken further.
+        float MAX_ABSORPTION_RATIO = 2.0;
+        float ratio = min(material.thickness / props.attenuationDistance, MAX_ABSORPTION_RATIO);
+        sssColor = sssColor * pow(ac, vec3(ratio));
+    }
+#endif
     if (fpConst.lightCount > 0 && fpConst.lightBufferAddress != 0) {
         LightBuffer lightBuf = LightBuffer(fpConst.lightBufferAddress);
         if (fpConst.enabled == 0) {
             for (uint i = 0; i < fpConst.lightCount; ++i) {
                 Light light = lightBuf.lights[i];
-                vec3 lightContribution = calculatePBRLighting(material, light, fragWorldPos, viewDir);
-                finalC += lightContribution;
+#ifdef TRANSPARENT_PASS
+                finalC += hasTransmission
+                    ? calculatePBRLightingTransmissive(material, light, fragWorldPos, viewDir, transmissionScale)
+                    : calculatePBRLighting(material, light, fragWorldPos, viewDir);
+                if (hasTransmission)
+                    finalC += calculateTransmission(material, light, fragWorldPos, viewDir, sssColor, transmissionDistortion, transmissionPower, transmissionScale);
+#else
+                finalC += calculatePBRLighting(material, light, fragWorldPos, viewDir);
+#endif
             }
         } else {
             // Calculate tile coordinates
@@ -206,8 +243,15 @@ vec4 forwardPlusLighting(in PBRMaterial material)
             for (uint i = 0; i < tile.lightCount; ++i) {
                 uint lightIndex = lightIndices.indices[tile.lightIndexOffset + i];
                 Light light = lightBuf.lights[lightIndex];
-                vec3 lightContribution = calculatePBRLighting(material, light, fragWorldPos, viewDir);
-               finalC += lightContribution;
+#ifdef TRANSPARENT_PASS
+                finalC += hasTransmission
+                    ? calculatePBRLightingTransmissive(material, light, fragWorldPos, viewDir, transmissionScale)
+                    : calculatePBRLighting(material, light, fragWorldPos, viewDir);
+                if (hasTransmission)
+                    finalC += calculateTransmission(material, light, fragWorldPos, viewDir, sssColor, transmissionDistortion, transmissionPower, transmissionScale);
+#else
+                finalC += calculatePBRLighting(material, light, fragWorldPos, viewDir);
+#endif
             }
         }
     }
@@ -216,12 +260,33 @@ vec4 forwardPlusLighting(in PBRMaterial material)
         DirectionalLightBuffer dirLightBuf = DirectionalLightBuffer(fpConst.directionalLightsBufferAddress);
         for (uint i = 0; i < dirLightBuf.value.lightCount; ++i) {
             Light dirLight = DirectionLightToLight(dirLightBuf.value.lights[i]);
-            vec3 lightContribution = calculatePBRLighting(material, dirLight, fragWorldPos, viewDir);
-            finalC += lightContribution;
+#ifdef TRANSPARENT_PASS
+            finalC += hasTransmission
+                ? calculatePBRLightingTransmissive(material, dirLight, fragWorldPos, viewDir, transmissionScale)
+                : calculatePBRLighting(material, dirLight, fragWorldPos, viewDir);
+            if (hasTransmission)
+                finalC += calculateTransmission(material, dirLight, fragWorldPos, viewDir, sssColor, transmissionDistortion, transmissionPower, transmissionScale);
+#else
+            finalC += calculatePBRLighting(material, dirLight, fragWorldPos, viewDir);
+#endif
         }
     }
 
+#ifdef TRANSPARENT_PASS
+    // For transmissive materials in WBOIT, reduce opacity so the composite allows
+    // the opaque scene behind to show through. The transmission color contribution
+    // is already in finalC via calculateTransmission.
+    float finalOpacity = material.opacity;
+    if (hasTransmission) {
+        // Thickness modulates how see-through the surface is:
+        // thin (thickness≈0) → more transparent, thick → more opaque.
+        float thicknessFrac = 1.0 / (1.0 + material.thickness);
+        finalOpacity = material.opacity * (1.0 - transmissionScale * thicknessFrac);
+    }
+    return vec4(finalC, finalOpacity);
+#else
     return vec4(finalC, material.opacity);
+#endif
 }
 
 vec4 debugTileLighting()
@@ -272,14 +337,15 @@ PBRMaterial createPBRMaterial()
     material.clearCoatStrength = props.clearCoatStrength;
     material.clearCoatRoughness = props.clearCoatRoughness;
     material.reflectance = max(props.reflectance, 0.0);
+
 #ifndef EXCLUDE_MESH_PROPS
     if (props.albedoTexIndex > 0)
     {
-        material.albedo = material.albedo * texture(sampler2D(kTextures2D[props.albedoTexIndex], kSamplers[props.samplerIndex]), fragTexCoord).rgb;
+        material.albedo = material.albedo * textureBindless2D(props.albedoTexIndex, props.samplerIndex, fragTexCoord).rgb;
     }
     if (props.metallicRoughnessTexIndex > 0)
     {
-        vec2 omr = texture(sampler2D(kTextures2D[props.metallicRoughnessTexIndex], kSamplers[props.samplerIndex]), fragTexCoord).gb;
+        vec2 omr = textureBindless2D(props.metallicRoughnessTexIndex, props.samplerIndex, fragTexCoord).gb;
         // glTF channel packing: G = Roughness, B = Metallic
         material.roughness = omr.x;
         material.metallic  = omr.y;
@@ -287,22 +353,31 @@ PBRMaterial createPBRMaterial()
     if (props.aoTexIndex > 0)
     {
         // glTF channel packing: R = Ambient Occlusion
-        material.ao = material.ao * texture(sampler2D(kTextures2D[props.aoTexIndex], kSamplers[props.samplerIndex]), fragTexCoord).r;
+        material.ao = material.ao * textureBindless2D(props.aoTexIndex, props.samplerIndex, fragTexCoord).r;
     }
+    if (props.emissiveTexIndex > 0)
+    {
+        material.emissive = material.emissive * textureBindless2D(props.emissiveTexIndex, props.samplerIndex, fragTexCoord).rgb;
+    }
+    // Thickness: G channel * thicknessFactor (glTF spec: stored in G, multiplied with factor).
+    // 0 = thin-walled (max transmission), >0 = volumetric. Kept in mesh/world-space units.
+    material.thickness = (props.thicknessTexIndex > 0)
+        ? textureBindless2D(props.thicknessTexIndex, props.samplerIndex, fragTexCoord).g * props.thicknessFactor
+        : props.thicknessFactor;
     vec3 baseNormal = normalize(fragNormal);
     vec3 finalNormal = baseNormal;
 
     if (props.normalTexIndex > 0) {
-        vec3 normalMap = texture(sampler2D(kTextures2D[props.normalTexIndex], kSamplers[props.samplerIndex]), fragTexCoord).xyz * 2.0 - 1.0;
+        vec3 normalMap = textureBindless2D(props.normalTexIndex, props.samplerIndex, fragTexCoord).xyz * 2.0 - 1.0;
         vec3 N = normalize(fragNormal);
-        vec3 T = normalize(fragTangent - dot(fragTangent, N) * N);
-        vec3 B = cross(N, T);
+        vec3 T = normalize(fragTangent.xyz - dot(fragTangent.xyz, N) * N);
+        vec3 B = cross(N, T) * fragTangent.w;
         mat3 TBN = mat3(T, B, N);
         finalNormal = normalize(TBN * normalMap);
     }
     if (props.bumpTexIndex > 0 )
     {
-        float h = texture(sampler2D(kTextures2D[props.bumpTexIndex], kSamplers[props.samplerIndex]), fragTexCoord).r;
+        float h = textureBindless2D(props.bumpTexIndex, props.samplerIndex, fragTexCoord).r;
         // 1. Get screen-space derivatives of world position and height
         vec3 dpdx = dFdx(fragWorldPos);
         vec3 dpdy = dFdy(fragWorldPos);
@@ -358,11 +433,11 @@ PBRMaterial createPBRMaterialFlatNormal()
 #ifndef EXCLUDE_MESH_PROPS
     if (props.albedoTexIndex > 0)
     {
-        material.albedo = material.albedo * texture(sampler2D(kTextures2D[props.albedoTexIndex], kSamplers[props.samplerIndex]), fragTexCoord).rgb;
+        material.albedo = material.albedo * textureBindless2D(props.albedoTexIndex, props.samplerIndex, fragTexCoord).rgb;
     }
     if (props.metallicRoughnessTexIndex > 0)
     {
-        vec2 omr = texture(sampler2D(kTextures2D[props.metallicRoughnessTexIndex], kSamplers[props.samplerIndex]), fragTexCoord).gb;
+        vec2 omr = textureBindless2D(props.metallicRoughnessTexIndex, props.samplerIndex, fragTexCoord).gb;
         // glTF channel packing: G = Roughness, B = Metallic
         material.roughness = omr.x;
         material.metallic  = omr.y;
@@ -370,9 +445,13 @@ PBRMaterial createPBRMaterialFlatNormal()
     if (props.aoTexIndex > 0)
     {
         // glTF channel packing: R = Ambient Occlusion
-        material.ao = material.ao * texture(sampler2D(kTextures2D[props.aoTexIndex], kSamplers[props.samplerIndex]), fragTexCoord).r;
+        material.ao = material.ao * textureBindless2D(props.aoTexIndex, props.samplerIndex, fragTexCoord).r;
     }
+    material.thickness = (props.thicknessTexIndex > 0)
+        ? textureBindless2D(props.thicknessTexIndex, props.samplerIndex, fragTexCoord).g * props.thicknessFactor
+        : props.thicknessFactor;
 #endif
+    // Geometric normal from screen-space derivatives always faces the camera
     material.normal = normalize(cross(dFdy(fragWorldPos), dFdx(fragWorldPos)));
     material.albedo = mix(material.albedo, fragColor.rgb, props.vertexColorMix);
     return material;
@@ -419,6 +498,7 @@ void main() {
 #ifdef TRANSPARENT_PASS
     // Weighted Blended OIT (McGuire & Bavoil 2013)
     // Weight function uses alpha and view-space depth for depth-sensitive ordering.
+    
     float alpha = color.a;
     if (alpha < 1e-4) {
         discard; // Skip fully transparent fragments to avoid polluting the buffers.

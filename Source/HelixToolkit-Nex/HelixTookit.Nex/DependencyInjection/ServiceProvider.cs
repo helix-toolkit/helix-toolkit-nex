@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 
 namespace HelixToolkit.Nex.DependencyInjection;
@@ -126,7 +127,7 @@ public class ServiceProvider : IServiceProvider, IDisposable, IServiceScopeFacto
 
         if (descriptor.ImplementationType != null)
         {
-            var constructors = descriptor.ImplementationType.GetConstructors();
+            var constructors = GetConstructors(descriptor.ImplementationType);
             // Simple selection: pick constructor with most parameters that can be satisfied
             // For now, let's just pick the public constructor. If multiple, assume the one with most parameters.
             var constructor = constructors
@@ -176,6 +177,12 @@ public class ServiceProvider : IServiceProvider, IDisposable, IServiceScopeFacto
         throw new InvalidOperationException(
             $"Invalid service descriptor for {descriptor.ServiceType}"
         );
+    }
+
+    private static ConstructorInfo[] GetConstructors(
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] Type type)
+    {
+        return type.GetConstructors();
     }
 
     private static bool IsNullable(ParameterInfo parameter)

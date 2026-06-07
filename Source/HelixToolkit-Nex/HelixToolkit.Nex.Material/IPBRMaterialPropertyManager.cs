@@ -101,13 +101,24 @@ public interface IPBRMaterialPropertyManager : IDisposable
     /// </summary>
     void Clear();
 
-    IReadOnlyList<PoolEntry> Objects { get; }
+    /// <summary>
+    /// Uploads the dynamic material properties to the GPU buffer. This method should be called after any changes to the material properties
+    /// </summary>
+    /// <param name="buffer"></param>
+    /// <returns></returns>
+    ResultCode UploadDynamic(ElementBuffer<PBRProperties> buffer);
 
     /// <summary>
-    /// Retrieves a reference to the <see cref="PBRMaterialProperties"/> instance at the specified index.
+    /// Uploads the dynamic material properties to the GPU buffer, using the specified indices to determine which properties to upload.
+    /// This method should be called after any changes to the material properties
     /// </summary>
-    /// <param name="index">The zero-based index of the <see cref="PBRMaterialProperties"/> to retrieve. Must be within the valid range of the
-    /// collection.</param>
-    /// <returns>A reference to the <see cref="PBRMaterialProperties"/> at the specified index.</returns>
-    ref PBRProperties At(int index);
+    /// <param name="buffer"></param>
+    /// <param name="indices"></param>
+    /// <returns></returns>
+    ResultCode UploadDynamic(ElementBuffer<PBRProperties> buffer, IEnumerable<uint> indices);
+
+    /// <summary>
+    /// Gets a read-only list of all active material properties in the pool. Each entry in the list contains information about the material resource,
+    /// </summary>
+    IReadOnlyList<PoolEntry> Objects { get; }
 }

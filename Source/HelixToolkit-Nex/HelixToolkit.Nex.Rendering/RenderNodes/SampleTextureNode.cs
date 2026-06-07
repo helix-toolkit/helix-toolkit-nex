@@ -146,7 +146,10 @@ public abstract class SampleTextureNode(SampleTextureMode mode, Format targetFor
             );
             return false;
         }
-        _sampler = ResourceManager.SamplerRepository.GetOrCreate(SamplerStateDesc.PointClamp);
+        _sampler = ResourceManager.SamplerRepository.GetOrCreate(
+            SamplerStateDesc.PointClamp.DebugName,
+            SamplerStateDesc.PointClamp
+        );
         return CreatePipeline();
     }
 

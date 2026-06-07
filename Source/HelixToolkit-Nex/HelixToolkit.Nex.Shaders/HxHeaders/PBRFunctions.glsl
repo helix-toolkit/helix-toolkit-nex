@@ -25,6 +25,7 @@ struct PBRMaterial {
     float clearCoatStrength;   // Clear coat layer strength [0..1]
     float clearCoatRoughness;  // Clear coat layer roughness [0..1]
     float reflectance;         // Fresnel reflectance at normal incidence for dielectrics (default 0.04)
+    float thickness;           // Local object thickness [0..1], used for subsurface/transmission (0 = thin, 1 = thick)
 };
 
 
@@ -88,7 +89,83 @@ float getPointLightAttenuation(in vec3 lightPos, in vec3 fragPos, float range) {
     return attenuation * cutoff;
 }
 
-vec3 calculatePBRLighting(in PBRMaterial material, in Light light, in vec3 fragPos, in vec3 viewDir) {
+// ============================================================================
+// Transmission / Subsurface Scattering (thickness-map driven)
+// ============================================================================
+
+// Transmission approximation for KHR_materials_volume (glTF PBR).
+// Transmits light from behind the surface, attenuated by thickness.
+// Uses a 1/(1+t) curve for gentle thickness-to-transmission mapping, ensuring
+// per-pixel thickness variation from thickness textures is visible.
+//   material.thickness: 0 = thin-walled (full transmission), >0 = volumetric
+//                       (less transmission with increasing thickness, world-space units)
+//   subsurfaceColor: the tint of transmitted light after Beer-Lambert absorption
+//   distortionStrength: how much the surface normal perturbs the back-light direction [0..1]
+//   transmissionPower: sharpness of the forward-scatter lobe [1..20]
+//   transmissionScale: overall transmission brightness from KHR_materials_transmission [0..1]
+vec3 calculateTransmission(in PBRMaterial material, in Light light, in vec3 fragPos,
+                           in vec3 viewDir, in vec3 subsurfaceColor,
+                           float distortionStrength, float transmissionPower, float transmissionScale)
+{
+    vec3 L;
+    float attenuation = 1.0;
+
+    if (light.type == 0) {
+        L = normalize(-light.direction);
+    } else {
+        L = normalize(light.position - fragPos);
+        attenuation = getPointLightAttenuation(light.position, fragPos, light.range);
+        if (light.type == 2) {
+            float theta = dot(L, normalize(-light.direction));
+            float epsilon = light.spotAngles.x - light.spotAngles.y;
+            float spotIntensity = clamp((theta - light.spotAngles.y) / (epsilon + 0.0001), 0.0, 1.0);
+            attenuation *= spotIntensity;
+        }
+    }
+
+    vec3 N = normalize(material.normal);
+    vec3 V = normalize(viewDir);
+
+    // Perturb the back-light direction with the surface normal so curved surfaces
+    // scatter more naturally.
+    vec3 Lback = normalize(L + N * distortionStrength);
+
+    // VdotL in the "back" direction: how directly the camera looks into the light
+    // coming from behind the surface.
+    float VdotLback = max(dot(V, -Lback), 0.0);
+
+    // Thickness-to-transmission mapping.
+    // Beer-Lambert (applied to subsurfaceColor before this function is called) already
+    // handles the thickness-dependent color absorption. Here we only need a mild intensity
+    // reduction for very thick regions to maintain energy plausibility.
+    // When thickness=0 (thin-walled): thicknessFraction=1.0 (full transmission).
+    float thicknessFraction = 1.0 / (1.0 + material.thickness * 0.5);
+
+    // Transmission has two components:
+    // 1. Directional scatter: narrow lobe for light visible through the object (view-dependent)
+    // 2. Diffuse transmission: broad wrap lighting that simulates light diffusing through the volume
+    // For WBOIT with closed meshes, light from any direction can transmit through the
+    // object. Use the absolute NdotL so both front and back lights contribute to
+    // transmission on both face orientations. This prevents the asymmetry where only
+    // back faces show transmitted color.
+    float wrapNdotL = max((abs(dot(N, L)) + 0.5) / 1.5, 0.0);
+
+    float directionalScatter = pow(VdotLback, transmissionPower);
+    float diffuseTransmission = wrapNdotL;
+
+    // Combine: the diffuse wrap term dominates to provide broad volumetric coloring.
+    // The Beer-Lambert tinted subsurfaceColor provides the thickness-dependent color variation.
+    float transmission = (directionalScatter * 0.3 + diffuseTransmission * 0.7) * transmissionScale * thicknessFraction;
+
+    vec3 radiance = light.color * light.intensity * attenuation;
+    return subsurfaceColor * transmission * radiance * PI;
+}
+
+// Per KHR_materials_transmission: transmissionFactor replaces the diffuse lobe with
+// transmission. The diffuse contribution is scaled by (1 - transmissionFactor) so that
+// fully transmissive materials (e.g., colored glass) show no diffuse reflection — only
+// specular reflection and the transmitted light (computed separately via calculateTransmission).
+vec3 calculatePBRLightingTransmissive(in PBRMaterial material, in Light light, in vec3 fragPos, in vec3 viewDir, float transmissionFactor) {
     vec3 L;
     float attenuation = 1.0;
     
@@ -128,8 +205,10 @@ vec3 calculatePBRLighting(in PBRMaterial material, in Light light, in vec3 fragP
     vec3 specular = (NDF * G * F) / (4.0 * NdotV + 0.0001);
 
     // Diffuse Term (Energy Conservation)
+    // Per KHR_materials_transmission: diffuse is reduced by transmissionFactor since that
+    // energy is redirected into the transmission lobe (computed in calculateTransmission).
     vec3 kS = F;
-    vec3 kD = (vec3(1.0) - kS) * (1.0 - material.metallic);
+    vec3 kD = (vec3(1.0) - kS) * (1.0 - material.metallic) * (1.0 - transmissionFactor);
     vec3 diffuse = kD * material.albedo * RECIPROCAL_PI;
 
     vec3 radiance = light.color * light.intensity * attenuation;
@@ -149,6 +228,10 @@ vec3 calculatePBRLighting(in PBRMaterial material, in Light light, in vec3 fragP
     // We only need to multiply diffuse by NdotL.
     // Scale by PI to cancel out the 1/PI factor in the BRDF terms, making intensity=1.0 result in expected brightness
     return ((diffuse * NdotL + specular) * clearCoatAttenuation + clearCoatSpec * material.clearCoatStrength) * radiance * PI;
+}
+
+vec3 calculatePBRLighting(in PBRMaterial material, in Light light, in vec3 fragPos, in vec3 viewDir) {
+    return calculatePBRLightingTransmissive(material, light, fragPos, viewDir, 0.0);
 }
 
 vec3 pbrShadingSimple(PBRMaterial material, vec3 fragPos, vec3 viewDir, 

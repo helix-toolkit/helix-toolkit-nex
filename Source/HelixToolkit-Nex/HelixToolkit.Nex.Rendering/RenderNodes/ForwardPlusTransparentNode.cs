@@ -75,31 +75,30 @@ public class ForwardPlusTransparentNode : RenderNode
             res.Buffers[SystemBufferNames.BufferForwardPlusConstants]
                 .GpuAddress(res.RenderContext.Context),
             streams,
-            res.RenderContext.RenderParams.EnableGlobalWireframe ? MaterialPassType.Wireframe : MaterialPassType.Transparent
+            res.RenderContext.RenderParams.EnableGlobalWireframe
+                ? MaterialPassType.Wireframe
+                : MaterialPassType.Transparent
         );
     }
 
     public override void AddToGraph(RenderGraph graph)
     {
-        graph
-            .AddBuffer(SystemBufferNames.BufferDirectionalLight, null)
-            .AddBuffer(SystemBufferNames.BufferLights, null)
-            .AddPass(
-                RenderStage.Transparent,
-                nameof(ForwardPlusTransparentNode),
-                inputs:
-                [
-                    new(SystemBufferNames.BufferMeshDrawPlaceholder, ResourceType.Buffer),
-                    new(SystemBufferNames.TextureDepthF32, ResourceType.Texture),
-                    new(SystemBufferNames.BufferLightGrid, ResourceType.Buffer),
-                    new(SystemBufferNames.BufferLightIndex, ResourceType.Buffer),
-                    new(SystemBufferNames.BufferPBRProperties, ResourceType.Buffer),
-                ],
-                outputs:
-                [
-                    new(SystemBufferNames.TextureColorF16Target, ResourceType.Texture),
-                    new(SystemBufferNames.TextureEntityId, ResourceType.Texture),
-                ]
-            );
+        graph.AddPass(
+            RenderStage.Transparent,
+            nameof(ForwardPlusTransparentNode),
+            inputs:
+            [
+                new(SystemBufferNames.TextureDepthF32, ResourceType.Texture),
+                new(SystemBufferNames.BufferLightGrid, ResourceType.Buffer),
+                new(SystemBufferNames.BufferLightIndex, ResourceType.Buffer),
+                new(SystemBufferNames.BufferForwardPlusConstants, ResourceType.Buffer),
+                new(SystemBufferNames.BufferMeshDrawPlaceholder, ResourceType.Buffer),
+            ],
+            outputs:
+            [
+                new(SystemBufferNames.TextureColorF16Target, ResourceType.Texture),
+                new(SystemBufferNames.TextureEntityId, ResourceType.Texture),
+            ]
+        );
     }
 }

@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace HelixToolkit.Nex.Scene;
 
 public class Node : IDisposable
@@ -225,6 +227,10 @@ public class Node : IDisposable
     {
         set
         {
+            if (Entity.Has<Renderable>() == value)
+            {
+                return;
+            }
             if (value)
             {
                 Entity.Set(new Renderable());
@@ -324,7 +330,7 @@ public class Node : IDisposable
         Entity.Set(transform);
     }
 
-    public void NotifyComponentChanged<T>()
+    public void NotifyComponentChanged<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.NonPublicFields)] T>()
     {
         Entity.NotifyComponentChanged<T>();
     }

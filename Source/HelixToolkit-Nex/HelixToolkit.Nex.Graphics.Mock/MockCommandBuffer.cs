@@ -387,8 +387,26 @@ public class MockCommandBuffer : ICommandBuffer
 
     public void SetColorWriteEnabled(bool c0 = true, bool c1 = true, bool c2 = true, bool c3 = true)
     {
+        _recordedCommands.Add($"SetColorWriteEnabled(c0={c0}, c1={c1}, c2={c2}, c3={c3})");
+    }
+
+    public void CopyTextureToBuffer(
+        in TextureHandle src,
+        in BufferHandle dst,
+        size_t bufferOffset,
+        Offset3D srcOffset,
+        Dimensions extent,
+        TextureLayers layers
+    )
+    {
         _recordedCommands.Add(
-            $"SetColorWriteEnabled(c0={c0}, c1={c1}, c2={c2}, c3={c3})"
+            $"CopyTextureToBuffer(src={src.Index}, dst={dst.Index}, bufferOffset={bufferOffset}, srcOffset=({srcOffset.X},{srcOffset.Y},{srcOffset.Z}), extent=({extent.Width},{extent.Height},{extent.Depth}))"
         );
+    }
+
+    /// <inheritdoc/>
+    public void SetCullMode(CullMode mode)
+    {
+        _recordedCommands.Add($"SetCullMode({mode})");
     }
 }

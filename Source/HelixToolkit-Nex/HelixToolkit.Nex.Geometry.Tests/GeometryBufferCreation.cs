@@ -253,7 +253,7 @@ public sealed class GeometryBufferCreation
         };
         // Mismatched count - only 256 binormals for 512 vertices
         geometry.VertexColors = [.. Enumerable.Repeat(new Vector4(1, 0, 1, 0), 256)];
-
+        using var _ = HxDebug.TemporarilyDisableAsserts();
         var result = geometry.UpdateBuffers(_vkContext!, GeometryBufferType.VertexColor);
         Assert.AreEqual(ResultCode.Ok, result, "VertexColor buffer update should complete");
         // VertexColor buffer should not be created due to count mismatch

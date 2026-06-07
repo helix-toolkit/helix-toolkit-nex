@@ -16,7 +16,7 @@ layout(location = 2) out vec4 fragColor;
 #else
 #ifndef EXCLUDE_MESH_PROPS
 layout(location = 3) out vec3 fragNormal;
-layout(location = 4) out vec3 fragTangent;
+layout(location = 4) out vec4 fragTangent;
 layout(location = 5) out vec2 fragTexCoord;
 #endif
 #endif
@@ -144,7 +144,7 @@ vec4 getVertexColor() {
 }
 
 // Template function to calculate vertex output
-void calVertexOutput(in uint index, out vec4 pos, out vec3 wp, out vec3 normal, out vec3 tangent, out vec4 color, out vec2 texCoord) {
+void calVertexOutput(in uint index, out vec4 pos, out vec3 wp, out vec3 normal, out vec4 tangent, out vec4 color, out vec2 texCoord) {
 /*TEMPLATE_CALCULATE_VERTEX_OUTPUT_IMPL_START*/
     vec4 position = getVertex();
     uint displaceTex = 0; 
@@ -168,8 +168,9 @@ void calVertexOutput(in uint index, out vec4 pos, out vec3 wp, out vec3 normal, 
 #ifndef EXCLUDE_MESH_PROPS
     normal = mat3(nodeInfo.transform) * vertProps.normal;
     normal = normalize(rotateQuaternion(normal, instance.quaternion));
-    tangent = mat3(nodeInfo.transform) * vertProps.tangent;
-    tangent = normalize(rotateQuaternion(tangent, instance.quaternion));
+    vec3 tangentXYZ = mat3(nodeInfo.transform) * vertProps.tangent.xyz;
+    tangentXYZ = normalize(rotateQuaternion(tangentXYZ, instance.quaternion));
+    tangent = vec4(tangentXYZ, vertProps.tangent.w);
 
     texCoord = vertProps.texCoord;
 #endif
@@ -181,7 +182,7 @@ void main() {
     materialId = meshDraw.materialId;
 #ifdef EXCLUDE_MESH_PROPS
     vec3 fragNormal;
-    vec3 fragTangent;
+    vec4 fragTangent;
     vec2 fragTexCoord;
 #endif
     uint idx = getInstancingIndex();

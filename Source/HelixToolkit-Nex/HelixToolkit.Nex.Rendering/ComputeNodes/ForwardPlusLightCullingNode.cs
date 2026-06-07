@@ -46,7 +46,7 @@ public sealed class ForwardPlusLightCullingNode : ComputeNode
             (int)GraphicsSettings.MaxFrameInFlight,
             debugName: "FP_LightCull"
         );
-        _depthSampler = ResourceManager.SamplerRepository.GetOrCreate(SamplerStateDesc.PointClamp);
+        _depthSampler = ResourceManager.SamplerRepository.GetOrCreate(SamplerStateDesc.PointClamp.DebugName, SamplerStateDesc.PointClamp);
 
         if (!_depthSampler.Valid)
         {

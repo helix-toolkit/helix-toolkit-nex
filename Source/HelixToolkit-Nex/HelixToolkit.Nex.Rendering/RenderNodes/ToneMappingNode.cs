@@ -34,7 +34,10 @@ public sealed class ToneMappingNode : RenderNode
             return false;
         }
 
-        _sampler = ResourceManager.SamplerRepository.GetOrCreate(SamplerStateDesc.PointRepeat);
+        _sampler = ResourceManager.SamplerRepository.GetOrCreate(
+            SamplerStateDesc.PointRepeat.DebugName,
+            SamplerStateDesc.PointRepeat
+        );
 
         var shaderCompiler = new ShaderCompiler();
 

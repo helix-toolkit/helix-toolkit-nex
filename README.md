@@ -20,6 +20,7 @@ Currently in development.
 
 - :white_check_mark: [Vulkan backend implementation](Source/HelixToolkit-Nex/HelixToolkit.Nex.Graphics.Vulkan/README.md)
 - :white_check_mark: Complete bindless descriptor architecture.
+- :white_check_mark: Support AOT compilation.
 - :white_check_mark: Linux support.
 - :white_check_mark: [ImGui integration](Source/HelixToolkit-Nex/Samples/GraphicsAPI/ImGuiTest/README.md)
 - :white_check_mark: [Forward+(Tiled based GPU light culling)](Source/HelixToolkit-Nex/Samples/GraphicsAPI/ForwardPlusSimple/README.md) rendering pipeline.
@@ -32,6 +33,7 @@ Currently in development.
   - :hourglass: Particle System (Planned)
   - :hourglass: Skeletal/Morph Target Animation (Planned)
   - :hourglass: Model importer (Planned)
+    - :white_check_mark: glTF importer. [Demo](Source/HelixToolkit-Nex/Samples/Integration/gltfImporter)
 - :white_check_mark: [GPU Frustum Culling](Source/HelixToolkit-Nex/Samples/GraphicsAPI/MeshCulling/README.md) and [GPU Frustum Culling on Instancing](Source/HelixToolkit-Nex/Samples/GraphicsAPI/InstancingMeshCulling/README.md). (Done)
 - :white_check_mark: ECS based scene management system.
 - :white_check_mark: Engine architecture design.

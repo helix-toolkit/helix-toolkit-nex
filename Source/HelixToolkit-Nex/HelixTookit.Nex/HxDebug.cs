@@ -23,11 +23,6 @@ public sealed class HxDebug
     /// <param name="cond">The condition to check.</param>
     /// <param name="message">Optional message to log if the assertion fails. Defaults to empty string.</param>
     /// <param name="function">The name of the calling function (automatically populated by the compiler).</param>
-    /// <remarks>
-    /// This method only executes in DEBUG builds with EnableDebugAssertions == true. If the condition is false, it logs an error
-    /// and triggers a debug assertion.
-    /// </remarks>
-    [Conditional("DEBUG")]
     public static void Assert(
         bool cond,
         string message = "",
@@ -44,11 +39,33 @@ public sealed class HxDebug
         }
     }
 
+    public static DisableAssertScope TemporarilyDisableAsserts() => new DisableAssertScope();
+
     static HxDebug()
     {
 #if DEBUG
         EnableDebugAssertions = true;
 #endif
         logger.LogInformation("HxDebug initialized. EnableDebugAssertions = {EnableDebugAssertions}", EnableDebugAssertions);
+    }
+
+
+    public struct DisableAssertScope : IDisposable
+    {
+        private bool _previousState;
+
+        public DisableAssertScope()
+        {
+            _previousState = EnableDebugAssertions;
+            if (_previousState)
+            {
+                EnableDebugAssertions = false;
+                logger.LogInformation("Debug assertions temporarily disabled.");
+            }
+        }
+        public void Dispose()
+        {
+            EnableDebugAssertions = _previousState;
+        }
     }
 }

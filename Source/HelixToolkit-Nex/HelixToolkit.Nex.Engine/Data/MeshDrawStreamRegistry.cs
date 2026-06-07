@@ -94,8 +94,7 @@ internal sealed class MeshDrawStreamRegistry(IContext context, World world)
     private MeshDrawStream? GetStreamInternal(DrawStreamCategory category)
     {
         var idx = (int)category.GetStreamName();
-        Debug.Assert(idx >= 0 && idx < _meshStreams.Count, $"Invalid stream category: {category}");
-        return idx >= 0 ? _meshStreams[idx] : null;
+        return (idx >= 0 && idx < _meshStreams.Count) ? _meshStreams[idx] : null;
     }
 
     private void OnEntityAdded(object? sender, int entityId)
@@ -140,7 +139,7 @@ internal sealed class MeshDrawStreamRegistry(IContext context, World world)
         {
             ref var renderable = ref _renderables[entity];
             var oldCategory = (DrawStreamCategory)renderable.DrawCategory;
-            if (oldCategory != DrawStreamCategory.None)
+            if (oldCategory != newCategory)
             {
                 var oldStream = GetStreamInternal(oldCategory);
                 if (oldStream is not null && oldStream.Has(entity))
