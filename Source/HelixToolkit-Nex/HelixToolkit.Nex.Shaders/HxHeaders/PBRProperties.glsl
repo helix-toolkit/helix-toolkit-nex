@@ -25,4 +25,17 @@ struct PBRProperties {
     uint displaceSamplerIndex; // Index into sampler array for displacement map, 0 if not used
     float displaceScale; // Scale of displacement mapping effect, typically [0..1]
     float displaceBase;  // Base height for displacement mapping, typically 0.5
+
+    uint emissiveTexIndex;
+    uint thicknessTexIndex;
+    float thicknessFactor;        // World-space thickness in mesh coordinate space [0, +inf); 0 = thin-walled
+    float transmissionDistortion; // Normal perturbation of back-light direction [0..1]
+
+    float transmissionPower;      // Sharpness of the forward-scatter lobe [1..20]
+    float transmissionScale;      // Overall transmission brightness scale [0..1]
+    float attenuationDistance;    // Mean free path in world space (0, +inf); +inf = no absorption
+    uint _padding1;
+
+    vec3 attenuationColor;        // Color of the medium at attenuationDistance (Beer-Lambert)
+    uint _padding2;
 };

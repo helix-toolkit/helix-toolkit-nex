@@ -1,14 +1,17 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace HelixToolkit.Nex.DependencyInjection;
 
 public class ServiceDescriptor
 {
     public Type ServiceType { get; }
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
     public Type? ImplementationType { get; }
     public object? ImplementationInstance { get; }
     public Func<IServiceProvider, object>? ImplementationFactory { get; }
     public ServiceLifetime Lifetime { get; }
 
-    public ServiceDescriptor(Type serviceType, Type implementationType, ServiceLifetime lifetime)
+    public ServiceDescriptor(Type serviceType, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] Type implementationType, ServiceLifetime lifetime)
     {
         ServiceType = serviceType;
         ImplementationType = implementationType;

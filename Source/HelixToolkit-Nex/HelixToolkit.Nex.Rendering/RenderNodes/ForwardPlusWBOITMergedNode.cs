@@ -56,7 +56,11 @@ public sealed class ForwardPlusWBOITMergedNode : RenderNode
                 new(SystemBufferNames.BufferForwardPlusConstants, ResourceType.Buffer),
                 new(SystemBufferNames.BufferMeshDrawPlaceholder, ResourceType.Buffer),
             ],
-            outputs: [new(SystemBufferNames.TextureColorF16Target, ResourceType.Texture)]
+            outputs:
+            [
+                new(SystemBufferNames.TextureColorF16Target, ResourceType.Texture),
+                new(SystemBufferNames.TextureEntityId, ResourceType.Texture),
+            ]
         );
     }
 
@@ -153,7 +157,10 @@ public sealed class ForwardPlusWBOITMergedNode : RenderNode
             _logger.LogError("Failed to create WBOIT subpass composite pipeline.");
             return false;
         }
-        _sampler = ResourceManager.SamplerRepository.GetOrCreate(SamplerStateDesc.PointClamp);
+        _sampler = ResourceManager.SamplerRepository.GetOrCreate(
+            SamplerStateDesc.PointClamp.DebugName,
+            SamplerStateDesc.PointClamp
+        );
         return true;
     }
 
@@ -224,6 +231,14 @@ public sealed class ForwardPlusWBOITMergedNode : RenderNode
                 res.Deps.PushInputAttachment(res.Textures[SystemBufferNames.TextureWboitRevealage]);
             }
             res.Pass.ColorWrites[0] = false;
+        }
+        else
+        {
+            res.Framebuf.Colors[2].Texture = TextureHandle.Null;
+            res.Framebuf.Colors[3].Texture = TextureHandle.Null;
+            res.Pass.Colors[2].LoadOp = LoadOp.Invalid;
+            res.Pass.Colors[3].LoadOp = LoadOp.Invalid;
+            res.Pass.ColorWrites[0] = true;
         }
 
         // Resource dependencies for the accumulation subpass.

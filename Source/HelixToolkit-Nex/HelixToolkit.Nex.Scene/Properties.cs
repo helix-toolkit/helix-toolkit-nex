@@ -127,7 +127,7 @@ public struct Transform()
             worldTransform = Matrix4x4.Identity;
             return false; // No change in world transform
         }
-        worldTransform = parent * Value;
+        worldTransform = Value * parent;
         _isWorldDirty = false;
         Timestamp = Stopwatch.GetTimestamp();
         return true;
@@ -196,5 +196,5 @@ public struct Renderable()
     internal int GPUIndex = -1; // Index of the node data in GPU buffer. Used to retrieve such as transform data from buffer.
     internal int UpdateCounter = 0;
     internal int DrawCmdIndex = -1; // Draw command index. Set internally, do not change.
-    internal uint DrawCategory = 0;// Draw category. Set internally, do not change.
+    internal uint DrawCategory = 0; // Draw category. Set internally, do not change.
 }

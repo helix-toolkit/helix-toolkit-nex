@@ -4,7 +4,7 @@ namespace HelixToolkit.Nex.Geometries;
 
 [StructLayout(LayoutKind.Sequential, Pack = 16)]
 [JsonConverter(typeof(Serialization.VertexPropsJsonConverter))]
-public struct VertexProperties(Vector3 normal, Vector2 texCoord, Vector3 tangent)
+public struct VertexProperties(Vector3 normal, Vector2 texCoord, Vector4 tangent)
 {
     public static readonly uint SizeInBytes = NativeHelper.SizeOf<VertexProperties>();
 
@@ -33,19 +33,22 @@ public struct VertexProperties(Vector3 normal, Vector2 texCoord, Vector3 tangent
     private readonly float _padding1 = 0;
     public Vector2 TexCoord = texCoord;
     private readonly Vector2 _padding2 = Vector2.Zero;
-    public Vector3 Tangent = tangent;
-    private readonly float _padding3 = 0;
+    /// <summary>
+    /// Tangent vector with handedness in W (+1 or -1), as per glTF spec (TANGENT.w).
+    /// Used to correctly orient the bitangent: B = cross(N, T.xyz) * T.w.
+    /// </summary>
+    public Vector4 Tangent = tangent;
 
     public VertexProperties(Vector3 normal, Vector2 texCoord)
-        : this(normal, texCoord, Vector3.Zero) { }
+        : this(normal, texCoord, Vector4.Zero) { }
 
     public VertexProperties(Vector3 normal)
-        : this(normal, Vector2.Zero, Vector3.Zero) { }
+        : this(normal, Vector2.Zero, Vector4.Zero) { }
 
     public VertexProperties()
-        : this(Vector3.Zero, Vector2.Zero, Vector3.Zero) { }
+        : this(Vector3.Zero, Vector2.Zero, Vector4.Zero) { }
 
-    public static readonly VertexProperties Empty = new(Vector3.Zero, Vector2.Zero, Vector3.Zero);
+    public static readonly VertexProperties Empty = new(Vector3.Zero, Vector2.Zero, Vector4.Zero);
 }
 
 [Flags]

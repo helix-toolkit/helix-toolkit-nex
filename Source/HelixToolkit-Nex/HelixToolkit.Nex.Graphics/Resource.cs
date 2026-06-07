@@ -106,5 +106,13 @@ public abstract class Resource<T> : IDisposable
             GC.SuppressFinalize(this);
         }
     }
+
+    /// <summary>
+    /// Forces disposal of the resource regardless of reference count.
+    public void DisposeForce()
+    {
+        _referenceCount = 1; // Force the reference count to 1 so that Dispose will actually dispose
+        Dispose();
+    }
     #endregion
 }

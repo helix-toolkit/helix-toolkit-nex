@@ -1,3 +1,5 @@
+using HelixToolkit.Nex.Shaders;
+
 namespace HelixToolkit.Nex.Geometries;
 
 /// <summary>
@@ -25,6 +27,8 @@ public sealed class GeometryManager(IContext context) : IGeometryManager
     /// Gets the current number of active geometries in the pool.
     /// </summary>
     public int Count => _pool.Count;
+
+    public int LastIndex => _pool.LastObjectIndex;
 
     public IReadOnlyList<Pool<GeometryResourceType, Geometry>.PoolEntry> Objects => _pool.Objects;
 
@@ -195,6 +199,49 @@ public sealed class GeometryManager(IContext context) : IGeometryManager
                 "_indexCountDict should be empty after Clear."
             );
         }
+    }
+
+    public ResultCode UploadMeshInfoDynamic(ElementBuffer<MeshInfo> buffer)
+    {
+        return buffer.WriteDynamic(
+            _pool.LastObjectIndex + 1,
+            _pool,
+            static (ctx, pool) =>
+            {
+                var empty = new MeshInfo
+                {
+                    BoxMax = Vector3.Zero,
+                    BoxMin = Vector3.Zero,
+                    SphereCenter = Vector3.Zero,
+                    SphereRadius = 0,
+                    IndexBufferAddress = 0,
+                    VertexBufferAddress = 0,
+                    VertexColorBufferAddress = 0,
+                    VertexPropsBufferAddress = 0,
+                };
+                for (var i = 0; i <= pool.LastObjectIndex; ++i)
+                {
+                    if (pool.Objects[i].Obj is null)
+                    {
+                        ctx.Write(ref empty);
+                        continue;
+                    }
+                    var geo = pool.Objects[i].Obj!;
+                    var meshInfo = new MeshInfo
+                    {
+                        BoxMax = geo.BoundingBoxLocal.Maximum,
+                        BoxMin = geo.BoundingBoxLocal.Minimum,
+                        SphereCenter = geo.BoundingSphereLocal.Center,
+                        SphereRadius = geo.BoundingSphereLocal.Radius,
+                        IndexBufferAddress = geo.IndexBuffer.GpuAddress,
+                        VertexBufferAddress = geo.VertexBuffer.GpuAddress,
+                        VertexColorBufferAddress = geo.VertexColorBuffer.GpuAddress,
+                        VertexPropsBufferAddress = geo.VertexPropsBuffer.GpuAddress,
+                    };
+                    ctx.Write(ref meshInfo);
+                }
+            }
+        );
     }
 
     public Pool<GeometryResourceType, Geometry>.Enumerator GetEnumerator()

@@ -5,6 +5,7 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <Configurations>Debug;Release;LinuxDebug;LinuxRelease</Configurations>
+        <PublishAot>True</PublishAot>
     </PropertyGroup>
 
     <ItemGroup>
@@ -12,6 +13,7 @@
         <ProjectReference Include="..\..\..\HelixToolkit.Nex.Geometries.Builders\HelixToolkit.Nex.Geometries.Builders.csproj" />
         <ProjectReference Include="..\..\..\HelixToolkit.Nex.Graphics.Vulkan\HelixToolkit.Nex.Graphics.Vulkan.csproj" />
         <ProjectReference Include="..\..\..\HelixToolkit.Nex.Graphics\HelixToolkit.Nex.Graphics.csproj" />
+        <ProjectReference Include="..\..\..\HelixToolkit.Nex.ImGui\HelixToolkit.Nex.ImGui.csproj" />
         <ProjectReference Include="..\..\Application\Application.csproj" />
     </ItemGroup>
 </Project>

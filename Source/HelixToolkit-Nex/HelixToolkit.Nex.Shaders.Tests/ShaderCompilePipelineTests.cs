@@ -379,7 +379,7 @@ void main() {
     // Missing semicolon
     outColor = vec4(1.0, 0.0, 0.0, 1.0)
 }";
-
+        using var _ = HxDebug.TemporarilyDisableAsserts();
         // Act
         var (buildResult, shaderModule) = _context!.BuildAndCompileShader(
             ShaderStage.Fragment,
@@ -396,6 +396,7 @@ void main() {
     [TestMethod]
     public void TestMissingPBRInclusionPipeline()
     {
+        using var _ = HxDebug.TemporarilyDisableAsserts();
         // Arrange
         string shader =
             @"
@@ -426,7 +427,7 @@ void main() {
     {
         // Arrange
         string shader = "";
-
+        using var _ = HxDebug.TemporarilyDisableAsserts();
         // Act
         var (buildResult, shaderModule) = _context!.BuildAndCompileShader(
             ShaderStage.Fragment,

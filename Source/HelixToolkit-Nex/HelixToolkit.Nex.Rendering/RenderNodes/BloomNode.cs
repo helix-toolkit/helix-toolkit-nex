@@ -5,10 +5,18 @@ namespace HelixToolkit.Nex.Rendering.RenderNodes;
 public sealed class BloomNode : RenderNode
 {
     private static readonly ILogger _logger = LogManager.Create<BloomNode>();
-    private static readonly byte[] _passNameBrightness = System.Text.Encoding.UTF8.GetBytes("Bloom_BrightnessExtract");
-    private static readonly byte[] _passNameBlurH = System.Text.Encoding.UTF8.GetBytes("Bloom_BlurH");
-    private static readonly byte[] _passNameBlurV = System.Text.Encoding.UTF8.GetBytes("Bloom_BlurV");
-    private static readonly byte[] _passNameComposite = System.Text.Encoding.UTF8.GetBytes("Bloom_Composite");
+    private static readonly byte[] _passNameBrightness = System.Text.Encoding.UTF8.GetBytes(
+        "Bloom_BrightnessExtract"
+    );
+    private static readonly byte[] _passNameBlurH = System.Text.Encoding.UTF8.GetBytes(
+        "Bloom_BlurH"
+    );
+    private static readonly byte[] _passNameBlurV = System.Text.Encoding.UTF8.GetBytes(
+        "Bloom_BlurV"
+    );
+    private static readonly byte[] _passNameComposite = System.Text.Encoding.UTF8.GetBytes(
+        "Bloom_Composite"
+    );
 
     // Four pipeline variants, one per BloomMode specialization constant.
     private RenderPipelineResource _brightnessPipeline = RenderPipelineResource.Null;
@@ -47,6 +55,7 @@ public sealed class BloomNode : RenderNode
 
     public override string Name => nameof(BloomNode);
     public override Color4 DebugColor => Color.HotPink;
+
     protected override bool OnSetup()
     {
         if (ResourceManager is null)
@@ -56,9 +65,11 @@ public sealed class BloomNode : RenderNode
         }
 
         _linearSampler = ResourceManager.SamplerRepository.GetOrCreate(
+            SamplerStateDesc.LinearClamp.DebugName,
             SamplerStateDesc.LinearClamp
         );
         _pointSampler = ResourceManager.SamplerRepository.GetOrCreate(
+            SamplerStateDesc.PointClamp.DebugName,
             SamplerStateDesc.PointClamp
         );
 
@@ -79,22 +90,19 @@ public sealed class BloomNode : RenderNode
         base.OnTeardown();
     }
 
-    protected override void OnSetupRender(in RenderResources res)
-    {
-    }
+    protected override void OnSetupRender(in RenderResources res) { }
 
     protected override bool CanRender(in RenderResources res)
     {
         return true;
     }
+
     protected override bool BeginRender(in RenderResources res)
     {
         return true;
     }
 
-    protected override void EndRender(in RenderResources res)
-    {
-    }
+    protected override void EndRender(in RenderResources res) { }
 
     protected override void OnRender(in RenderResources res)
     {
@@ -141,9 +149,9 @@ public sealed class BloomNode : RenderNode
             // Horizontal: bloomA → bloomB
             RunFullScreenPass(
                 _passNameBlurH,
-                 in res,
-                 _blurHPipeline,
-                 inputHandle: in bloomA,
+                in res,
+                _blurHPipeline,
+                inputHandle: in bloomA,
                 outputHandle: in bloomB,
                 new BloomPushConstants
                 {

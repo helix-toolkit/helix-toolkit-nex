@@ -1,6 +1,103 @@
+using System.Runtime.CompilerServices;
 using HelixToolkit.Nex.Rendering.Components;
 
 namespace HelixToolkit.Nex.Engine;
+
+/// <summary>
+/// Holds all GPU-side state required for non-blocking, 1-frame-latency pick readbacks.
+/// <para>
+/// Usage pattern (per viewport / per RenderContext):
+/// <list type="number">
+/// <item>Create one instance and keep it alive alongside your <see cref="RenderContext"/>.</item>
+/// <item>After recording the render graph into a command buffer (but <b>before</b> submitting),
+///       call <see cref="GpuPicking.SchedulePickReadback"/> to copy one pixel from the mesh-id
+///       texture into the internal host-visible buffer via <c>CopyTextureToBuffer</c> —
+///       no GPU stall.</item>
+/// <item>Submit the command buffer and store the returned <see cref="SubmitHandle"/> via
+///       <see cref="SetPendingSubmit"/>.</item>
+/// <item>On the <b>next frame</b> (or any later frame), call <see cref="GpuPicking.TryPickAsync"/>
+///       to poll <c>IsReady</c>. If the GPU has finished, the pixel is read directly from
+///       host-visible buffer memory with zero blocking and a full <see cref="PickingResult"/> is assembled.</item>
+/// </list>
+/// </para>
+/// </summary>
+public sealed class PickingReadbackContext : IDisposable
+{
+    private readonly IContext _context;
+
+    /// <summary>
+    /// 8-byte host-visible buffer that receives one mesh-id pixel (2 × float32 = RG_F32)
+    /// copied from the entity-id texture each frame via <c>CopyTextureToBuffer</c>.
+    /// Kept alive for the lifetime of this object.
+    /// </summary>
+    internal BufferResource StagingBuffer { get; }
+
+    /// <summary>
+    /// The submit handle of the command buffer that contains the last <c>CopyTextureToBuffer</c>.
+    /// <see cref="SubmitHandle.Empty"/> when no readback is in flight.
+    /// </summary>
+    internal SubmitHandle PendingHandle { get; private set; }
+
+    /// <summary>Screen-space X coordinate of the pending pick request.</summary>
+    internal int PendingX { get; private set; }
+
+    /// <summary>Screen-space Y coordinate of the pending pick request.</summary>
+    internal int PendingY { get; private set; }
+
+    /// <summary>
+    /// Whether a readback is scheduled (i.e., a pick coordinate has been enqueued
+    /// and the copy has been recorded into a command buffer).
+    /// </summary>
+    public bool HasPending => !PendingHandle.Empty;
+
+    /// <param name="context">The graphics context that owns the staging buffer.</param>
+    public PickingReadbackContext(IContext context)
+    {
+        _context = context;
+        // 8 bytes — two float32 channels of one RG_F32 pixel
+        context
+            .CreateBuffer(
+                new BufferDesc(
+                    BufferUsageBits.Storage,
+                    StorageType.HostVisible,
+                    nint.Zero,
+                    sizeof(ulong),
+                    "PickingReadbackStagingBuffer"
+                ),
+                out var buf
+            )
+            .CheckResult();
+        StagingBuffer = buf;
+    }
+
+    /// <summary>
+    /// Records the pending pick position and submit handle after the copy command has
+    /// been recorded into the command buffer and the buffer has been submitted.
+    /// </summary>
+    /// <param name="handle">The <see cref="SubmitHandle"/> returned by <see cref="IContext.Submit"/>.</param>
+    /// <param name="x">Screen-space X coordinate that was scheduled.</param>
+    /// <param name="y">Screen-space Y coordinate that was scheduled.</param>
+    public void SetPendingSubmit(SubmitHandle handle, int x, int y)
+    {
+        PendingHandle = handle;
+        PendingX = x;
+        PendingY = y;
+    }
+
+    /// <summary>Clears the pending readback state without consuming the result.</summary>
+    public void ClearPending()
+    {
+        PendingHandle = default;
+        PendingX = 0;
+        PendingY = 0;
+    }
+
+    /// <inheritdoc/>
+    public void Dispose()
+    {
+        StagingBuffer.Dispose();
+    }
+}
 
 public enum PickedGeometryType
 {
@@ -9,24 +106,14 @@ public enum PickedGeometryType
     PointCloud,
 }
 
-public class PickingResult
+public readonly struct PickingResult
 {
-    public Entity Entity { set; get; }
-    public uint InstanceId { get; set; }
-    public uint PrimitiveId { get; set; }
-    public PickedGeometryType PickGeometryType { get; set; }
-    public Vector3 WorldPosition { get; set; }
-    public Ray Ray { set; get; }
-
-    public void Reset()
-    {
-        Entity = default!;
-        InstanceId = 0;
-        PrimitiveId = 0;
-        PickGeometryType = PickedGeometryType.None;
-        WorldPosition = default;
-        Ray = default;
-    }
+    public Entity Entity { get; init; }
+    public uint InstanceId { get; init; }
+    public uint PrimitiveId { get; init; }
+    public PickedGeometryType PickGeometryType { get; init; }
+    public Vector3 WorldPosition { get; init; }
+    public Ray Ray { get; init; }
 }
 
 public static class GpuPicking
@@ -150,11 +237,12 @@ public static class GpuPicking
         {
             return false;
         }
+        var dimem = context.Context.GetDimensions(texture);
         return TryPickRaw(
             context.Context,
             texture,
-            (uint)context.WindowSize.Width,
-            (uint)context.WindowSize.Height,
+            dimem.Width,
+            dimem.Height,
             x,
             y,
             out worldId,
@@ -175,8 +263,7 @@ public static class GpuPicking
     /// <see langword="null"/>.</returns>
     public static PickingResult? Pick(this RenderContext context, int x, int y)
     {
-        var result = new PickingResult();
-        if (context.TryPick(x, y, result))
+        if (context.TryPick(x, y, out var result))
         {
             return result;
         }
@@ -195,8 +282,9 @@ public static class GpuPicking
     /// <param name="result">When this method returns, contains the picking result data if the operation succeeds; otherwise, its contents
     /// are undefined. Must not be null.</param>
     /// <returns>true if an entity was successfully picked at the specified coordinates; otherwise, false.</returns>
-    public static bool TryPick(this RenderContext context, int x, int y, PickingResult result)
+    public static bool TryPick(this RenderContext context, int x, int y, out PickingResult result)
     {
+        result = default;
         if (
             !TryPickRaw(
                 context,
@@ -246,13 +334,15 @@ public static class GpuPicking
             );
             return false;
         }
-
-        result.Entity = entity;
-        result.PrimitiveId = primitiveId;
-        result.InstanceId = instanceId;
-        result.WorldPosition = worldPosition;
-        result.PickGeometryType = pickedType;
-        result.Ray = ray;
+        result = new()
+        {
+            Entity = entity,
+            PrimitiveId = primitiveId,
+            InstanceId = instanceId,
+            WorldPosition = worldPosition,
+            PickGeometryType = pickedType,
+            Ray = ray,
+        };
         return true;
     }
 
@@ -360,6 +450,210 @@ public static class GpuPicking
             return false;
         }
         position = points[(int)primitiveId].ToVector3();
+        return true;
+    }
+
+    /// <summary>
+    /// Records a GPU copy of the single pixel at <paramref name="x"/>,<paramref name="y"/> from
+    /// the mesh-id texture into the host-visible staging buffer inside
+    /// <paramref name="readbackCtx"/> via <c>CopyTextureToBuffer</c>. No GPU stall occurs —
+    /// the copy is simply enqueued in <paramref name="commandBuffer"/> alongside the rest of
+    /// the frame's commands.
+    /// </summary>
+    /// <remarks>
+    /// Call this method <b>after</b> the render graph has been recorded into
+    /// <paramref name="commandBuffer"/> but <b>before</b> the buffer is submitted.
+    /// After submitting, pass the returned <see cref="SubmitHandle"/> to
+    /// <see cref="PickingReadbackContext.SetPendingSubmit"/> so that
+    /// <see cref="TryPickAsync"/> can poll for completion.
+    /// </remarks>
+    /// <param name="commandBuffer">The command buffer that is currently being recorded.</param>
+    /// <param name="renderContext">The render context that owns the entity-id texture.</param>
+    /// <param name="readbackCtx">The readback context that holds the staging buffer.</param>
+    /// <param name="x">Screen-space X coordinate to pick.</param>
+    /// <param name="y">Screen-space Y coordinate to pick.</param>
+    /// <returns>
+    /// <see langword="true"/> if the copy command was successfully recorded;
+    /// <see langword="false"/> if the coordinates are out of range or the entity-id texture
+    /// is not available.
+    /// </returns>
+    public static bool SchedulePickReadback(
+        this ICommandBuffer commandBuffer,
+        RenderContext renderContext,
+        PickingReadbackContext readbackCtx,
+        int x,
+        int y
+    )
+    {
+        if (
+            x < 0
+            || y < 0
+            || x >= renderContext.WindowSize.Width
+            || y >= renderContext.WindowSize.Height
+        )
+        {
+            return false;
+        }
+        if (
+            !renderContext.ResourceSet.Textures.TryGetValue(
+                SystemBufferNames.TextureEntityId,
+                out var srcTexture
+            ) || srcTexture.Empty
+        )
+        {
+            return false;
+        }
+
+        commandBuffer.CopyTextureToBuffer(
+            srcTexture,
+            readbackCtx.StagingBuffer,
+            bufferOffset: 0,
+            srcOffset: new Offset3D(x, y),
+            extent: new Dimensions(1, 1, 1),
+            layers: new TextureLayers()
+        );
+        return true;
+    }
+
+    /// <summary>
+    /// Polls for the completion of a previously scheduled pick readback and, if ready,
+    /// assembles a full <see cref="PickingResult"/> without blocking the CPU.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This method uses Strategy 1+3 to avoid GPU pipeline stalls:
+    /// <list type="bullet">
+    /// <item><b>Strategy 1</b> — The pixel was already copied into a host-visible staging
+    /// texture via <see cref="SchedulePickReadback"/> as part of the previous frame's command
+    /// buffer. No blocking <c>Download</c> on the full device texture is needed.</item>
+    /// <item><b>Strategy 3</b> — <see cref="IContext.IsReady"/> is polled non-blockingly.
+    /// The result is only consumed once the GPU signals completion.</item>
+    /// </list>
+    /// </para>
+    /// <para>
+    /// Typical call site per frame:
+    /// <code>
+    /// // --- record phase (before Submit) ---
+    /// cmdBuf.SchedulePickReadback(renderContext, readbackCtx, mouseX, mouseY);
+    ///
+    /// // --- submit ---
+    /// var handle = context.Submit(cmdBuf, presentTexture);
+    /// readbackCtx.SetPendingSubmit(handle, mouseX, mouseY);
+    ///
+    /// // --- next frame poll ---
+    /// if (readbackCtx.TryPickAsync(renderContext, out var result))
+    /// {
+    ///     // use result
+    /// }
+    /// </code>
+    /// </para>
+    /// </remarks>
+    /// <param name="readbackCtx">The readback context that holds the staging texture and pending state.</param>
+    /// <param name="renderContext">The render context used to resolve entities.</param>
+    /// <param name="result">
+    /// When this method returns <see langword="true"/>, contains the picking result;
+    /// otherwise the value is undefined.
+    /// </param>
+    /// <returns>
+    /// <see langword="true"/> if the GPU readback is complete and a valid entity was found
+    /// at the scheduled coordinates; <see langword="false"/> if the readback is still in
+    /// flight, no readback was scheduled, or no entity was hit.
+    /// </returns>
+    public static bool TryPickAsync(
+        this PickingReadbackContext readbackCtx,
+        RenderContext renderContext,
+        out PickingResult result
+    )
+    {
+        result = default;
+        if (!readbackCtx.HasPending)
+        {
+            return false;
+        }
+
+        if (!renderContext.Context.IsReady(readbackCtx.PendingHandle))
+        {
+            return false;
+        }
+
+        // GPU is done — read the single pixel from the host-visible staging buffer.
+        // Download on a HostVisible buffer is a direct memory read: no staging, no stall.
+        var x = readbackCtx.PendingX;
+        var y = readbackCtx.PendingY;
+        readbackCtx.ClearPending();
+
+        var mappedPtr = renderContext.Context.GetMappedPtr(readbackCtx.StagingBuffer);
+
+        if (mappedPtr == IntPtr.Zero)
+        {
+            _logger.LogError("TryPickAsync: failed to map staging buffer for reading");
+            return false;
+        }
+
+        ulong raw = 0;
+        unsafe
+        {
+            raw = Unsafe.Read<ulong>(mappedPtr.ToPointer());
+        }
+
+        var data0 = (uint)(raw & 0xFFFFFFFF);
+        var data1 = (uint)(raw >> 32);
+        Utils.UnpackMeshInfo(
+            data0,
+            data1,
+            out var worldId,
+            out var entityId,
+            out var instanceId,
+            out var primitiveId
+        );
+
+        if (worldId == 0 || entityId == 0)
+        {
+            return false;
+        }
+
+        var world = World.GetWorldById((int)worldId);
+        if (world is null)
+        {
+            _logger.LogWarning("TryPickAsync: world with ID {WorldId} not found", worldId);
+            return false;
+        }
+
+        var entity = world.GetEntity((int)entityId);
+        if (!renderContext.TryUnProject(x, y, out var ray))
+        {
+            _logger.LogWarning("TryPickAsync: unable to unproject ({X}, {Y})", x, y);
+            return false;
+        }
+
+        if (
+            !entity.TryGetPickPosition(
+                instanceId,
+                primitiveId,
+                ray,
+                out var worldPosition,
+                out var pickedType
+            )
+        )
+        {
+            _logger.LogWarning(
+                "TryPickAsync: unable to retrieve pick position for entity {EntityId}, primitive {PrimitiveId}, instance {InstanceId}",
+                entityId,
+                primitiveId,
+                instanceId
+            );
+            return false;
+        }
+
+        result = new PickingResult
+        {
+            Entity = entity,
+            PrimitiveId = primitiveId,
+            InstanceId = instanceId,
+            WorldPosition = worldPosition,
+            PickGeometryType = pickedType,
+            Ray = ray,
+        };
         return true;
     }
 }

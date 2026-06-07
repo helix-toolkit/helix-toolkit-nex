@@ -745,5 +745,10 @@ namespace HelixToolkit.Nex.Maths
         /// YellowGreen color.
         /// </summary>
         public static readonly Color YellowGreen = Color.FromBgra(0xFF9ACD32);
+
+        /// <summary>
+        /// Charcoal color.
+        /// </summary>
+        public static readonly Color Charcoal = Color.FromBgra(0xFF333333);
     }
 }

@@ -1,8 +1,6 @@
-global using SamplerHandle = HelixToolkit.Nex.Handle<HelixToolkit.Nex.Graphics.Sampler>;
 using FsCheck;
 using FsCheck.Fluent;
 using HelixToolkit.Nex.Graphics.Mock;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace HelixToolkit.Nex.Repository.Tests;
 
@@ -63,8 +61,8 @@ internal sealed class MockSamplerRepository : ISamplerRepository
         return _tryGetResult;
     }
 
-    public SamplerRef GetOrCreate(SamplerStateDesc desc) =>
-        new SamplerRef(SamplerRepository.GenerateCacheKey(desc), this, SamplerResource.Null);
+    public SamplerRef GetOrCreate(string key, SamplerStateDesc desc) =>
+        new SamplerRef(key, this, SamplerResource.Null);
 
     public bool Remove(string key) => false;
 
@@ -199,30 +197,6 @@ public class SamplerRefPropertyTests
                             return false;
                     }
                     return true;
-                }
-            )
-            .QuickCheckThrowOnFailure();
-    }
-
-    // -------------------------------------------------------------------------
-    // Property 5: GetOrCreate returns SamplerRef with matching key and repository
-    // -------------------------------------------------------------------------
-
-    // Feature: sampler-ref-wrapper, Property 5: For any SamplerStateDesc, calling GetOrCreate returns a SamplerRef
-    // whose Key equals SamplerRepository.GenerateCacheKey(desc) and whose Repository is the repository instance.
-    [TestMethod]
-    public void Property5_GetOrCreate_ReturnsSamplerRefWithMatchingKey()
-    {
-        Prop.ForAll(
-                Arb.From(Gen.Elements("sampler1", "sampler2", "my-sampler", "linear", "point")),
-                (string _) =>
-                {
-                    var mockRepo = new MockSamplerRepository();
-                    var desc = new SamplerStateDesc { };
-                    var result = mockRepo.GetOrCreate(desc);
-                    var expectedKey = SamplerRepository.GenerateCacheKey(desc);
-                    return result.Key == expectedKey
-                        && ReferenceEquals(result.Repository, mockRepo);
                 }
             )
             .QuickCheckThrowOnFailure();

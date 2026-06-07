@@ -66,7 +66,10 @@ public sealed class FontAtlasRepository : IFontAtlasRepository
         );
 
         // Create sampler
-        var samplerRef = samplerRepository.GetOrCreate(SamplerStateDesc.LinearClampNoMipmap);
+        var samplerRef = samplerRepository.GetOrCreate(
+            SamplerStateDesc.LinearClampNoMipmap.DebugName,
+            SamplerStateDesc.LinearClampNoMipmap
+        );
 
         // Load descriptor
         var descriptor = SDFFontAtlasLoader.LoadFromEmbeddedResource(jsonResource);
@@ -119,7 +122,10 @@ public sealed class FontAtlasRepository : IFontAtlasRepository
         );
 
         // Create sampler
-        var samplerRef = samplerRepository.GetOrCreate(SamplerStateDesc.LinearClampNoMipmap);
+        var samplerRef = samplerRepository.GetOrCreate(
+            SamplerStateDesc.LinearClampNoMipmap.DebugName,
+            SamplerStateDesc.LinearClampNoMipmap
+        );
 
         // Load descriptor
         using var jsonStream =
@@ -177,7 +183,10 @@ public sealed class FontAtlasRepository : IFontAtlasRepository
         );
 
         // Create sampler
-        var samplerRef = samplerRepository.GetOrCreate(SamplerStateDesc.LinearClampNoMipmap);
+        var samplerRef = samplerRepository.GetOrCreate(
+            SamplerStateDesc.LinearClampNoMipmap.DebugName,
+            SamplerStateDesc.LinearClampNoMipmap
+        );
 
         // Load descriptor
         using var jsonStream = File.OpenRead(jsonFilePath);
