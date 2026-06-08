@@ -299,7 +299,7 @@ internal sealed class PickingDemo : IDisposable
         {
             if (_readbackCtx.TryPickAsync(_renderContext, out var asyncResult))
             {
-                ApplyPickResult(asyncResult);
+                ApplyPickResult(asyncResult, true);
             }
         }
 
@@ -373,13 +373,13 @@ internal sealed class PickingDemo : IDisposable
         {
             return;
         }
-        ApplyPickResult(result);
+        ApplyPickResult(result, false);
     }
 
     /// <summary>
     /// Applies the result of a completed <see cref="PickingResult"/> (async path).
     /// </summary>
-    private void ApplyPickResult(PickingResult result)
+    private void ApplyPickResult(PickingResult result, bool async)
     {
         if (
             _pickedEntityId == result.Entity.Id
@@ -393,14 +393,15 @@ internal sealed class PickingDemo : IDisposable
         _pickedInstanceId = result.InstanceId;
         _pickedPrimitiveId = result.PrimitiveId;
         _logger.LogInformation(
-            "Async pick: entity {Entity}, instance {Instance}, primitive {Primitive}, pos {Pos}",
+            "{MODE} pick: entity {Entity}, instance {Instance}, primitive {Primitive}, pos {Pos}",
+            (async ? "Async" : "Sync"),
             result.Entity,
             result.InstanceId,
             result.PrimitiveId,
             result.WorldPosition
         );
         _lastPickInfo =
-            $"Async | Entity {result.Entity} | Prim {result.PrimitiveId} | {result.PickGeometryType} | {result.WorldPosition:F2}";
+            $"Entity {result.Entity} | Prim {result.PrimitiveId} | {result.PickGeometryType} | {result.WorldPosition:F2}";
         ApplyPickResultRaw(result.Entity, result.InstanceId, result.PrimitiveId);
     }
 
@@ -560,7 +561,6 @@ internal sealed class PickingDemo : IDisposable
             Gui.TextColored(new Vector4(0.4f, 1f, 0.4f, 1f), "Last Pick");
             Gui.TextWrapped(_lastPickInfo);
             Gui.Spacing();
-            Gui.Text($"Pick latency: {_lastPickMs:F2} ms");
 
             if (_useAsyncPicking && _readbackCtx!.HasPending)
             {

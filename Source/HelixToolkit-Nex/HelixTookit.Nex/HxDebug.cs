@@ -18,7 +18,8 @@ public sealed class HxDebug
     public static bool EnableDebugAssertions { get; set; } = false;
 
     /// <summary>
-    /// Asserts that a condition is true. Only active in DEBUG builds.
+    /// Asserts that a condition is true. If the condition is false, an error message is logged and,
+    /// if debug assertions are enabled, a debug assertion failure is triggered.
     /// </summary>
     /// <param name="cond">The condition to check.</param>
     /// <param name="message">Optional message to log if the assertion fails. Defaults to empty string.</param>

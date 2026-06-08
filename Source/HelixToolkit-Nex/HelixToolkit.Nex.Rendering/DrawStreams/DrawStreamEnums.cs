@@ -26,7 +26,7 @@ public enum DrawStreamType : int
 public enum DrawStreamVariants : uint
 {
     /// <summary>Static mesh.</summary>
-    Static = 0,
+    None = 0,
 
     /// <summary>Stream contains dynamic geometry (per-draw index buffer).</summary>
     Dynamic = 1,
@@ -47,28 +47,28 @@ public enum DrawStreamName : int
 {
     None = -1,
 
-    /// <summary>Opaque static geometry using the shared global index buffer.</summary>
+    /// <summary>Opaque static non-hitable geometry using the shared global index buffer.</summary>
     Static,
 
-    /// <summary>Opaque dynamic geometry with per-draw index buffer binding.</summary>
+    /// <summary>Opaque dynamic non-hitable geometry with per-draw index buffer binding.</summary>
     Dynamic,
 
-    /// <summary>Opaque static geometry rendered with GPU instancing.</summary>
+    /// <summary>Opaque static non-hitable geometry rendered with GPU instancing.</summary>
     StaticInstancing,
 
-    /// <summary>Opaque dynamic geometry rendered with GPU instancing.</summary>
+    /// <summary>Opaque dynamic non-hitable geometry rendered with GPU instancing.</summary>
     DynamicInstancing,
 
-    /// <summary>Static non-hitable geometry using the shared global index buffer.</summary>
+    /// <summary>Static hitable geometry using the shared global index buffer.</summary>
     StaticHitable,
 
-    /// <summary>Dynamic non-hitable geometry with per-draw index buffer binding.</summary>
+    /// <summary>Dynamic hitable geometry with per-draw index buffer binding.</summary>
     DynamicHitable,
 
-    /// <summary>Static non-hitable geometry rendered with GPU instancing.</summary>
+    /// <summary>Static hitable geometry rendered with GPU instancing.</summary>
     StaticInstancingHitable,
 
-    /// <summary>Dynamic non-hitable geometry rendered with GPU instancing.</summary>
+    /// <summary>Dynamic hitable geometry rendered with GPU instancing.</summary>
     DynamicInstancingHitable,
 
     /// <summary>
@@ -87,7 +87,7 @@ public static class DrawStreamNameExtensions
     {
         return name switch
         {
-            DrawStreamName.Static => DrawStreamVariants.Static,
+            DrawStreamName.Static => DrawStreamVariants.None,
 
             DrawStreamName.Dynamic => DrawStreamVariants.Dynamic,
 
@@ -104,7 +104,7 @@ public static class DrawStreamNameExtensions
 
             DrawStreamName.DynamicInstancingHitable => DrawStreamVariants.Dynamic | DrawStreamVariants.Instancing | DrawStreamVariants.Hitable,
 
-            _ => DrawStreamVariants.Static,
+            _ => DrawStreamVariants.None,
         };
     }
 
@@ -112,7 +112,7 @@ public static class DrawStreamNameExtensions
     {
         return category switch
         {
-            DrawStreamVariants.Static => DrawStreamName.Static,
+            DrawStreamVariants.None => DrawStreamName.Static,
 
             DrawStreamVariants.Dynamic => DrawStreamName.Dynamic,
 

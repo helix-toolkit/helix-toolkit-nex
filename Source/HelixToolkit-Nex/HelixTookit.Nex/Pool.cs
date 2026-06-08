@@ -25,7 +25,7 @@ public sealed class Pool<ObjectType, ImplObjectType> : IEnumerable<ImplObjectTyp
         /// <summary>
         /// The generation number for this entry, used to detect stale handles.
         /// </summary>
-        public uint32_t Gen = 1;
+        public volatile uint32_t Gen = 1;
 
         /// <summary>
         /// Index of the next free object in the free list, or <see cref="ListEndSentinel"/> if none.
@@ -33,12 +33,16 @@ public sealed class Pool<ObjectType, ImplObjectType> : IEnumerable<ImplObjectTyp
         public uint32_t NextFree = ListEndSentinel; // Index of the next free object in the pool
 
         /// <summary>
+        /// Indicates whether this entry contains a live object (not freed).
+        /// </summary>
+        public bool IsAlive = true;
+
+        /// <summary>
         /// The actual object stored in this pool entry.
         /// </summary>
         public ImplObjectType? Obj = obj; // The actual object in the pool
     }
 
-    private volatile uint32_t _gen = 1;
     private uint32_t _freeListHead = ListEndSentinel;
     private bool _disposedValue;
 
@@ -69,11 +73,12 @@ public sealed class Pool<ObjectType, ImplObjectType> : IEnumerable<ImplObjectTyp
         int idx;
         if (_freeListHead != ListEndSentinel)
         {
-            // No free objects, create a new one
+            // Reuse a freed entry from the free list
             idx = (int32_t)_freeListHead;
             ref var entry = ref _objects.At(idx);
             _freeListHead = entry.NextFree;
             entry.Obj = obj;
+            entry.IsAlive = true;
         }
         else
         {
@@ -117,7 +122,8 @@ public sealed class Pool<ObjectType, ImplObjectType> : IEnumerable<ImplObjectTyp
             disposableObj.Dispose(); // Dispose the object if it implements IDisposable
         }
         entry.Obj = default; // Clear the object reference
-        entry.Gen = Interlocked.Increment(ref _gen);
+        entry.IsAlive = false;
+        entry.Gen = Interlocked.Increment(ref entry.Gen);
         entry.NextFree = _freeListHead;
         _freeListHead = (uint32_t)idx;
         --Count;
@@ -126,7 +132,7 @@ public sealed class Pool<ObjectType, ImplObjectType> : IEnumerable<ImplObjectTyp
             LastObjectIndex = -1;
             for (int32_t i = idx - 1; i >= 0; i--)
             {
-                if (_objects.At(i).Obj is not null)
+                if (_objects.At(i).IsAlive)
                 {
                     LastObjectIndex = i;
                     break;
@@ -186,8 +192,12 @@ public sealed class Pool<ObjectType, ImplObjectType> : IEnumerable<ImplObjectTyp
             return false;
         }
         var idx = (int32_t)handle.Index;
+        if (idx < 0 || idx >= _objects.Count)
+        {
+            return false;
+        }
         ref var entry = ref _objects.At(idx);
-        return idx >= 0 && idx < _objects.Count && entry.Gen == handle.Gen;
+        return entry.Gen == handle.Gen && entry.IsAlive;
     }
 
     /// <summary>
@@ -215,13 +225,11 @@ public sealed class Pool<ObjectType, ImplObjectType> : IEnumerable<ImplObjectTyp
     {
         for (int32_t i = 0; i < _objects.Count; i++)
         {
-            HxDebug.Assert(_objects.At(i).Obj != null, "Object in pool should not be null.");
-#pragma warning disable CS8602 // Dereference of a possibly null reference.
-            if (_objects.At(i).Obj.Equals(obj))
+            ref var entry = ref _objects.At(i);
+            if (entry.IsAlive && EqualityComparer<ImplObjectType>.Default.Equals(entry.Obj!, obj))
             {
-                return new Handle<ObjectType>((uint32_t)i, _objects.At(i).Gen);
+                return new Handle<ObjectType>((uint32_t)i, entry.Gen);
             }
-#pragma warning restore CS8602 // Dereference of a possibly null reference.
         }
         return new Handle<ObjectType>();
     }
@@ -238,6 +246,8 @@ public sealed class Pool<ObjectType, ImplObjectType> : IEnumerable<ImplObjectTyp
             {
                 disposableObj.Dispose(); // Dispose the object if it implements IDisposable
             }
+            entry.IsAlive = false;
+            entry.Gen = Interlocked.Increment(ref entry.Gen);
             entry.Obj = default; // Clear the object reference
         }
         _objects.Clear();
@@ -321,11 +331,11 @@ public sealed class Pool<ObjectType, ImplObjectType> : IEnumerable<ImplObjectTyp
             var totalCount = list._objects.Count;
             while (_index < totalCount)
             {
-                ref var curr = ref list._objects.At(_index).Obj;
+                ref var entry = ref list._objects.At(_index);
                 _index++;
-                if (curr is not null)
+                if (entry.IsAlive)
                 {
-                    _current = curr;
+                    _current = entry.Obj!;
                     return true;
                 }
             }
