@@ -1,0 +1,27 @@
+﻿<Project Sdk="MSTest.Sdk/3.6.4">
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <LangVersion>latest</LangVersion>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <UseVSTest>true</UseVSTest>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <Configurations>Debug;Release;LinuxDebug;LinuxRelease</Configurations>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\HelixToolkit.Nex.glTF\HelixToolkit.Nex.glTF.csproj" />
+        <ProjectReference Include="..\HelixToolkit.Nex.Graphics.Mock\HelixToolkit.Nex.Graphics.Mock.csproj" />
+    </ItemGroup>
+    <ItemGroup>
+        <Content Include="..\..\..\Assets\Models\**\*" Link="Assets\Models\%(RecursiveDir)%(Filename)%(Extension)">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </Content>
+    </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="FsCheck" Version="3.3.3" />
+    </ItemGroup>
+    <ItemGroup>
+      <PackageReference Update="Microsoft.NET.Test.Sdk" Version="18.6.0" />
+    </ItemGroup>
+</Project>

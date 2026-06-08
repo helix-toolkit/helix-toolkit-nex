@@ -1,0 +1,27 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net8.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <RootNamespace>HelixToolkit.Nex.Sample.GltfImporter</RootNamespace>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\..\HelixToolkit.Nex.Engine\HelixToolkit.Nex.Engine.csproj" />
+        <ProjectReference Include="..\..\..\HelixToolkit.Nex.Graphics.Vulkan\HelixToolkit.Nex.Graphics.Vulkan.csproj" />
+        <ProjectReference Include="..\..\..\HelixToolkit.Nex.ImGui\HelixToolkit.Nex.ImGui.csproj" />
+        <ProjectReference Include="..\..\..\HelixToolkit.Nex.glTF\HelixToolkit.Nex.glTF.csproj" />
+        <ProjectReference Include="..\..\Application\Application.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="NativeFileDialogSharp" Version="0.5.0" />
+        <PackageReference Include="System.Net.Http" Version="4.3.4" />
+        <PackageReference Include="System.Text.RegularExpressions" Version="4.3.1" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="Screenshots\" />
+    </ItemGroup>
+</Project>
