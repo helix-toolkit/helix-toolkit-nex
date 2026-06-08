@@ -486,15 +486,6 @@ public static class GpuPicking
     )
     {
         if (
-            x < 0
-            || y < 0
-            || x >= renderContext.WindowSize.Width
-            || y >= renderContext.WindowSize.Height
-        )
-        {
-            return false;
-        }
-        if (
             !renderContext.ResourceSet.Textures.TryGetValue(
                 SystemBufferNames.TextureEntityId,
                 out var srcTexture
@@ -503,6 +494,12 @@ public static class GpuPicking
         {
             return false;
         }
+        var dims = renderContext.Context.GetDimensions(srcTexture);
+        if (x < 0 || y < 0 || x >= (int)dims.Width || y >= (int)dims.Height)
+        {
+            return false;
+        }
+
 
         commandBuffer.CopyTextureToBuffer(
             srcTexture,
