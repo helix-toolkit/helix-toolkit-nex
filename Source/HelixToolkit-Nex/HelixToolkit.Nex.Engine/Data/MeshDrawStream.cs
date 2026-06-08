@@ -172,7 +172,7 @@ internal sealed class MeshDrawStream : Initializable, IDrawStream
             InitialCapacity,
             BufferUsageBits.Storage | BufferUsageBits.Indirect,
             hostVisible: true,
-            debugName: $"MeshDraw_{StreamType}_{StreamName}"
+            debugName: $"{StreamType}_{StreamName}"
         );
 
         _needsRebuild = true;
