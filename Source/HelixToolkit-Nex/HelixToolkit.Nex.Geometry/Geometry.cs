@@ -7,7 +7,7 @@ namespace HelixToolkit.Nex.Geometries;
 public struct VertexProperties(Vector3 normal, Vector2 texCoord, Vector4 tangent)
 {
     public static readonly uint SizeInBytes = NativeHelper.SizeOf<VertexProperties>();
-
+    public static readonly Vector4 DefaultTangent = new(0, 0, 0, 1); // Default tangent with W=1 for right-handed bitangent
     static VertexProperties()
     {
         Debug.Assert(
@@ -40,15 +40,15 @@ public struct VertexProperties(Vector3 normal, Vector2 texCoord, Vector4 tangent
     public Vector4 Tangent = tangent;
 
     public VertexProperties(Vector3 normal, Vector2 texCoord)
-        : this(normal, texCoord, Vector4.Zero) { }
+        : this(normal, texCoord, DefaultTangent) { }
 
     public VertexProperties(Vector3 normal)
-        : this(normal, Vector2.Zero, Vector4.Zero) { }
+        : this(normal, Vector2.Zero, DefaultTangent) { }
 
     public VertexProperties()
-        : this(Vector3.Zero, Vector2.Zero, Vector4.Zero) { }
+        : this(Vector3.Zero, Vector2.Zero, DefaultTangent) { }
 
-    public static readonly VertexProperties Empty = new(Vector3.Zero, Vector2.Zero, Vector4.Zero);
+    public static readonly VertexProperties Empty = new(Vector3.Zero, Vector2.Zero, DefaultTangent);
 }
 
 [Flags]

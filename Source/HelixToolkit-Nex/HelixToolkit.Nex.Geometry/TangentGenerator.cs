@@ -90,11 +90,14 @@ public static class TangentGenerator
             var n = prop.Normal;
             var t = tan1[i];
 
-            // Gram-Schmidt orthogonalize
-            var tangentXYZ = Vector3.Normalize(t - n * Vector3.Dot(n, t));
+            // Gram-Schmidt orthogonalize (guard against zero-length tangent)
+            var tOrtho = t - n * Vector3.Dot(n, t);
+            var tangentXYZ = tOrtho.LengthSquared() > 1e-12f
+                ? Vector3.Normalize(tOrtho)
+                : Vector3.UnitX;
 
             // Handedness: if cross(N,T) and tan2 point in opposite directions, flip
-            float w = Vector3.Dot(Vector3.Cross(n, t), tan2[i]) < 0.0f ? -1.0f : 1.0f;
+            float w = Vector3.Dot(Vector3.Cross(n, tangentXYZ), tan2[i]) < 0.0f ? -1.0f : 1.0f;
 
             prop.Tangent = new Vector4(tangentXYZ, w);
             props[i] = prop;

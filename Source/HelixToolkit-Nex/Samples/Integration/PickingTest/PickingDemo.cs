@@ -319,7 +319,7 @@ internal sealed class PickingDemo : IDisposable
         bool scheduledAsyncPick = false;
         int scheduledX = 0,
             scheduledY = 0;
-        if (_useAsyncPicking && _pendingPickX.HasValue && _pendingPickX.HasValue)
+        if (_useAsyncPicking && _pendingPickX.HasValue && _pendingPickY.HasValue)
         {
             scheduledX = _pendingPickX.Value;
             scheduledY = _pendingPickY.Value;
