@@ -130,14 +130,12 @@ internal class RangeLightData : Initializable, IRenderData
 
     private void OnLightAddRemove(object? sender, int e)
     {
-        _logger.LogTrace("Light added or removed. {ID}", e);
         _lastDataUpdateTicks = Stopwatch.GetTimestamp();
         _needRebuild = true;
     }
 
     private void OnLightChanged(object? sender, EntityChangedEvent e)
     {
-        _logger.LogTrace("Light changed. {ID}", e);
         _lastDataUpdateTicks = Stopwatch.GetTimestamp();
         if (_needRebuild)
         {

@@ -80,16 +80,65 @@ public readonly struct Components<T>
         return _storage.GetInternalArray();
     }
 
-    public readonly IEnumerable<int> GetEntities()
+    public readonly EntityEnumerable GetEntities()
     {
-        var mappingArray = _mapping.GetInternalArray();
-        for (int i = 0; i < _mapping.Count; i++)
+        return new EntityEnumerable(_mapping);
+    }
+
+    /// <summary>
+    /// Provides a struct-based enumerable for iterating over valid entity IDs
+    /// without heap allocation.
+    /// </summary>
+    public readonly struct EntityEnumerable
+    {
+        private readonly FastList<ComponentManager<T>.ComponentMappingKey> _mapping;
+
+        internal EntityEnumerable(FastList<ComponentManager<T>.ComponentMappingKey> mapping)
         {
-            ref var entity = ref mappingArray[i];
-            if (entity.Valid)
+            _mapping = mapping;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public EntityEnumerator GetEnumerator()
+        {
+            return new EntityEnumerator(_mapping);
+        }
+    }
+
+    /// <summary>
+    /// Struct-based enumerator for iterating over valid entity IDs
+    /// without heap allocation.
+    /// </summary>
+    public struct EntityEnumerator
+    {
+        private readonly FastList<ComponentManager<T>.ComponentMappingKey> _mapping;
+        private int _index;
+
+        internal EntityEnumerator(FastList<ComponentManager<T>.ComponentMappingKey> mapping)
+        {
+            _mapping = mapping;
+            _index = -1;
+        }
+
+        public int Current
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => _index;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool MoveNext()
+        {
+            var mappingArray = _mapping.GetInternalArray();
+            var mappingCount = _mapping.Count;
+            while (++_index < mappingCount)
             {
-                yield return i;
+                if (mappingArray[_index].Valid)
+                {
+                    return true;
+                }
             }
+            return false;
         }
     }
 
