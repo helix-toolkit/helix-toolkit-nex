@@ -27,7 +27,7 @@ public class PBRMaterialManager(IContext context, IPBRMaterialPropertyManager pr
                 .WithForwardPlus(true)
                 .WithUberShader()
                 .WithDefine(BuildFlags.OUTPUT_DRAW_ID)
-                .BuildMaterialPipeline(Context, "UberShader_Opaque");
+                .BuildMaterialPipeline(Context, $"Uber_{MaterialPassType.Opaque}");
             var desc = new RenderPipelineDesc
             {
                 VertexShader = _uberShaderResults[idx]!.VertexShader,
@@ -49,12 +49,40 @@ public class PBRMaterialManager(IContext context, IPBRMaterialPropertyManager pr
             descSets[(int)MaterialPassType.Opaque] = desc;
         }
         {
+            var idx = (int)MaterialPassType.AlphaMask;
+            _uberShaderResults[idx] ??= new PBRMaterialShaderBuilder()
+                .WithForwardPlus(true)
+                .WithUberShader()
+                .WithDefine(BuildFlags.OUTPUT_DRAW_ID)
+                .WithDefine(BuildFlags.ALPHA_MASK)
+                .BuildMaterialPipeline(Context, $"Uber_{MaterialPassType.AlphaMask}");
+            var desc = new RenderPipelineDesc
+            {
+                VertexShader = _uberShaderResults[idx]!.VertexShader,
+                FragmentShader = _uberShaderResults[idx]!.FragmentShader,
+                Topology = Topology.Triangle,
+                CullMode = CullMode.None,
+                DepthFormat = GraphicsSettings.DepthBufferFormat,
+                PolygonMode = PolygonMode.Fill,
+                DebugName = debugName ?? string.Empty,
+            };
+            desc.Colors[0] = ColorAttachment.CreateOpaque(
+                GraphicsSettings.IntermediateTargetFormat
+            );
+            desc.Colors[1] = new ColorAttachment()
+            {
+                Format = GraphicsSettings.MeshIdTexFormat,
+                BlendEnabled = false,
+            };
+            descSets[(int)MaterialPassType.AlphaMask] = desc;
+        }
+        {
             var idx = (int)MaterialPassType.Transparent;
             _uberShaderResults[idx] ??= new PBRMaterialShaderBuilder()
                 .WithForwardPlus(true)
                 .WithUberShader()
                 .WithDefine(BuildFlags.OUTPUT_DRAW_ID)
-                .BuildMaterialPipeline(Context, "UberShader_Trans");
+                .BuildMaterialPipeline(Context, $"Uber_{MaterialPassType.Transparent}");
             var desc = new RenderPipelineDesc
             {
                 VertexShader = _uberShaderResults[idx]!.VertexShader,
@@ -82,7 +110,7 @@ public class PBRMaterialManager(IContext context, IPBRMaterialPropertyManager pr
                 .WithUberShader()
                 .WithDefine(BuildFlags.OUTPUT_DRAW_ID)
                 .WithDefine("TRANSPARENT_PASS")
-                .BuildMaterialPipeline(Context, "UberShader_WBOIT");
+                .BuildMaterialPipeline(Context, $"Uber_{MaterialPassType.WBOIT}");
             var desc = new RenderPipelineDesc
             {
                 VertexShader = _uberShaderResults[idx]!.VertexShader,
@@ -125,7 +153,7 @@ public class PBRMaterialManager(IContext context, IPBRMaterialPropertyManager pr
                 .WithUberShader(false)
                 .WithDefine("WIREFRAME_PASS")
                 .WithDefine("EXCLUDE_MESH_PROPS")
-                .BuildMaterialPipeline(Context, "UberShader_Wireframe");
+                .BuildMaterialPipeline(Context, $"Uber_{MaterialPassType.Wireframe}");
             var desc = new RenderPipelineDesc
             {
                 VertexShader = _uberShaderResults[idx]!.VertexShader,

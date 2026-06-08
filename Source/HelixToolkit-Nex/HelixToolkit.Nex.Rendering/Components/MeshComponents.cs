@@ -1,5 +1,3 @@
-using HelixToolkit.Nex.Rendering.DrawStreams;
-
 namespace HelixToolkit.Nex.Rendering.Components;
 
 /// <summary>
@@ -34,24 +32,24 @@ public struct MeshComponent
     public bool Hitable { set; get; }
 
     ///<inheritdoc/>
-    public DrawStreamCategory Category
+    public DrawStreamVariants Variants
     {
         get
         {
-            DrawStreamCategory variant = 0;
+            DrawStreamVariants variant = 0;
             if (Instancing is not null)
             {
-                variant |= DrawStreamCategory.Instancing;
+                variant |= DrawStreamVariants.Instancing;
             }
 
             if (Hitable)
             {
-                variant |= DrawStreamCategory.Hitable;
+                variant |= DrawStreamVariants.Hitable;
             }
 
             if (Geometry?.IsDynamic == true)
             {
-                variant |= DrawStreamCategory.Dynamic;
+                variant |= DrawStreamVariants.Dynamic;
             }
 
             return variant;
@@ -95,8 +93,10 @@ public struct MeshComponent
     public override string ToString()
     {
         return $"GeometryId: {Geometry?.Id}; MaterialType: {MaterialProperties?.MaterialTypeId}; MaterialIndex: {MaterialProperties?.Index}; "
-            + $"Category: {Category}; Cullable: {Cullable};";
+            + $"Category: {Variants}; Cullable: {Cullable};";
     }
 }
 
 public readonly struct TransparentComponent { }
+
+public readonly struct AlphaMaskComponent { }

@@ -155,7 +155,12 @@ public sealed class WireframePostEffect : PostEffect
             ref var wireframe = ref entity.Get<WireframeOverlay>();
             ref var renderable = ref entity.Get<Renderable>();
             ref var mesh = ref entity.Get<MeshComponent>();
-            if (renderable.GPUIndex < 0 || renderable.DrawCategory == 0 || !mesh.Valid)
+            if (
+                renderable.GPUIndex < 0
+                || renderable.DrawType < 0
+                || renderable.DrawVariants == 0
+                || !mesh.Valid
+            )
             {
                 continue;
             }
@@ -213,10 +218,7 @@ public sealed class WireframePostEffect : PostEffect
         var sharedIndexBufferAddress =
             res.RenderContext.Data!.StaticMeshIndexData.Buffer.GpuAddress(context.Context);
 
-        WireframePushConstants pc = new()
-        {
-            FpConstantBufferAddress = fpConstAddress,
-        };
+        WireframePushConstants pc = new() { FpConstantBufferAddress = fpConstAddress };
         foreach (var entry in _entries)
         {
             ref var mesh = ref entry.Entity.Get<MeshComponent>();
@@ -253,7 +255,6 @@ public sealed class WireframePostEffect : PostEffect
             pc.NodeIndex = (uint)entry.NodeIndex;
             pc.MaterialId = mesh.MaterialProperties!.Index;
 
-
             cmdBuffer.PushConstants(pc);
 
             if (entry.EnableDepthTest)
@@ -285,7 +286,12 @@ public sealed class WireframePostEffect : PostEffect
             }
             else
             {
-                cmdBuffer.Draw(mesh.Geometry.IndexCount, instanceCount, mesh.Geometry.IndexOffset, 0);
+                cmdBuffer.Draw(
+                    mesh.Geometry.IndexCount,
+                    instanceCount,
+                    mesh.Geometry.IndexOffset,
+                    0
+                );
             }
         }
 

@@ -34,7 +34,7 @@ struct PBRProperties {
     float transmissionPower;      // Sharpness of the forward-scatter lobe [1..20]
     float transmissionScale;      // Overall transmission brightness scale [0..1]
     float attenuationDistance;    // Mean free path in world space (0, +inf); +inf = no absorption
-    uint _padding1;
+    float alphaCutoff;            // Alpha cutoff threshold during alpha mask mode.
 
     vec3 attenuationColor;        // Color of the medium at attenuationDistance (Beer-Lambert)
     uint _padding2;

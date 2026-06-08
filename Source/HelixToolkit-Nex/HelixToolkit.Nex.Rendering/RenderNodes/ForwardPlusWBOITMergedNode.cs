@@ -1,5 +1,3 @@
-using HelixToolkit.Nex.Rendering.DrawStreams;
-
 namespace HelixToolkit.Nex.Rendering.RenderNodes;
 
 /// <summary>
@@ -179,7 +177,7 @@ public sealed class ForwardPlusWBOITMergedNode : RenderNode
         }
 
         return context.Data is not null
-            && context.Data.DrawStreams.GetStreamsCore(DrawStreamCategory.Transparent).HasAny();
+            && context.Data.DrawStreams.GetStreamsCore(DrawStreamType.Transparent).HasAny();
     }
 
     protected override void OnSetupRender(in RenderResources res)
@@ -256,7 +254,7 @@ public sealed class ForwardPlusWBOITMergedNode : RenderNode
         if (res.RenderContext.RenderParams.EnableGlobalWireframe)
         {
             var streams = res.RenderContext.Data!.DrawStreams.GetStreamsCore(
-                DrawStreamCategory.Transparent
+                DrawStreamType.Transparent
             );
             res.RenderContext.Statistics.DrawCalls += MeshRenderHelper.Render(
                 in res,
@@ -280,7 +278,7 @@ public sealed class ForwardPlusWBOITMergedNode : RenderNode
         // cmdBuffer.SetColorWriteEnabled(false);
         // ── Subpass 1: Render transparent geometry into accumulation/revealage ──
         var streams = res.RenderContext.Data!.DrawStreams.GetStreamsCore(
-            DrawStreamCategory.Transparent
+            DrawStreamType.Transparent
         );
         res.RenderContext.Statistics.DrawCalls += MeshRenderHelper.Render(
             in res,

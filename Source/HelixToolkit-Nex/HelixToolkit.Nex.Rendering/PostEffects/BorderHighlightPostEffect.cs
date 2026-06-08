@@ -1,6 +1,5 @@
 using HelixToolkit.Nex.ECS;
 using HelixToolkit.Nex.Rendering.Components;
-using HelixToolkit.Nex.Rendering.DrawStreams;
 using HelixToolkit.Nex.Rendering.RenderNodes;
 using HelixToolkit.Nex.Scene;
 using HelixToolkit.Nex.Shaders.Frag;
@@ -238,7 +237,7 @@ public sealed class BorderHighlightPostEffect : PostEffect
                 continue;
             }
             ref var renderable = ref entity.Get<Renderable>();
-            if (renderable.GPUIndex < 0 || renderable.DrawCategory == 0)
+            if (renderable.GPUIndex < 0 || renderable.DrawVariants == 0)
             {
                 continue;
             }
@@ -246,7 +245,8 @@ public sealed class BorderHighlightPostEffect : PostEffect
             _entries.Add(
                 new HighlightEntry(
                     entity,
-                    Category: (DrawStreamCategory)renderable.DrawCategory,
+                    Type: (DrawStreamType)renderable.DrawType,
+                    Variants: (DrawStreamVariants)renderable.DrawVariants,
                     Color: highlight.Color,
                     Thickness: highlight.Thickness > 0 ? highlight.Thickness : 2f
                 )
@@ -289,10 +289,10 @@ public sealed class BorderHighlightPostEffect : PostEffect
 
         foreach (var entry in _entries.AsValueEnumerable())
         {
-            var streams = dataStreams.GetStreamsCore(entry.Category);
+            var streams = dataStreams.GetStreamsCore(entry.Type, entry.Variants);
             foreach (var stream in streams)
             {
-                if (stream.Categories != entry.Category)
+                if (stream.StreamType != entry.Type || stream.Variants != entry.Variants)
                 {
                     continue;
                 }
@@ -561,7 +561,8 @@ public sealed class BorderHighlightPostEffect : PostEffect
 
     private readonly record struct HighlightEntry(
         Entity Entity,
-        DrawStreamCategory Category,
+        DrawStreamType Type,
+        DrawStreamVariants Variants,
         Color4 Color,
         float Thickness
     );
