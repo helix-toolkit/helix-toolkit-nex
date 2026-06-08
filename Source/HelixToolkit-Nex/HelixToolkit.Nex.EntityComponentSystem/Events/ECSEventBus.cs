@@ -1,6 +1,6 @@
 namespace HelixToolkit.Nex.ECS.Events;
 
-public delegate void Message<in T>(int worldId, T message);
+public delegate void Message<T>(int worldId, T message);
 
 internal static class ECSEventBus
 {
