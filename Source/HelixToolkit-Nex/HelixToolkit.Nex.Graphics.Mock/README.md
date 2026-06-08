@@ -17,6 +17,8 @@ The `HelixToolkit.Nex.Graphics.Mock` package is designed to fit seamlessly into 
   - **BindRenderPipeline**: Overloaded method to bind a render pipeline with color write states.
   - **ClearDepthStencilImage**: Method to simulate clearing a depth-stencil image.
   - **SetColorWriteEnabled**: Overloaded methods to enable or disable color writes for attachments.
+  - **CopyTextureToBuffer**: Method to simulate copying texture data to a buffer.
+  - **SetCullMode**: Method to simulate setting the cull mode.
 - **MockContext**: A mock implementation of `IContext` that simulates a graphics context, providing methods to create and manage mock resources such as buffers, textures, and pipelines.
   - **GenerateMipmap**: Method to simulate mipmap generation for a texture.
   - **WaitAll**: Method to simulate waiting for all operations to complete.
@@ -103,6 +105,20 @@ commandBuffer.SetColorWriteEnabled(new[] { true, false, true }.AsSpan());
 commandBuffer.SetColorWriteEnabled(c0: true, c1: false, c2: true, c3: false);
 ```
 
+#### Copy Texture to Buffer
+
+```csharp
+var commandBuffer = context.AcquireCommandBuffer();
+commandBuffer.CopyTextureToBuffer(texture.Handle, buffer.Handle, 0, new Offset3D(0, 0, 0), new Dimensions(256, 256, 1), new TextureLayers(0, 1));
+```
+
+#### Set Cull Mode
+
+```csharp
+var commandBuffer = context.AcquireCommandBuffer();
+commandBuffer.SetCullMode(CullMode.Back);
+```
+
 ## Architecture Notes
 
 - **Design Patterns**: The package uses mock objects to simulate the behavior of graphics interfaces, allowing for isolated testing of rendering logic.
@@ -112,6 +128,6 @@ commandBuffer.SetColorWriteEnabled(c0: true, c1: false, c2: true, c3: false);
 ## Recent Changes
 
 - **Project Configuration**: Added new build configurations for `LinuxDebug` and `LinuxRelease` to support cross-platform testing and development.
-- **New Methods and Properties**: Added `DrawCallCount`, `DispatchCallCount`, `SetCheckpointMarker`, `BindRenderPipeline` with color writes, `ClearDepthStencilImage`, `SetColorWriteEnabled`, and updated `CreateSecondaryCommandBuffer` method signature to enhance testing capabilities.
+- **New Methods and Properties**: Added `DrawCallCount`, `DispatchCallCount`, `SetCheckpointMarker`, `BindRenderPipeline` with color writes, `ClearDepthStencilImage`, `SetColorWriteEnabled`, `CopyTextureToBuffer`, `SetCullMode`, and updated `CreateSecondaryCommandBuffer` method signature to enhance testing capabilities.
 - **SupportsSubpass**: Added `SupportsSubpass` property to `MockContext` to indicate subpass support.
 ```

@@ -119,6 +119,15 @@ long endTicks = Stopwatch.GetTimestamp();
 tracer.EndScope("MyOperation", "Category", startTicks, endTicks, Environment.CurrentManagedThreadId);
 ```
 
+### Temporarily Disabling Assertions
+
+```csharp
+using (HxDebug.TemporarilyDisableAsserts())
+{
+    // Code that should not trigger assertions
+}
+```
+
 ## Architecture Notes
 
 - **Entity Component System (ECS)**: HelixToolkit.Nex uses the Arch ECS library for efficient entity management, allowing for flexible and scalable component-based architecture.

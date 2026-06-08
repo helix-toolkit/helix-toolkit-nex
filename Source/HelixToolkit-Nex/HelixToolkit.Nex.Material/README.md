@@ -35,7 +35,7 @@ This package plays a crucial role in the rendering pipeline, providing the neces
 | `MaterialPropertyCreator` | Facilitates creation and configuration of material properties. |
 | `GraphicsSettings` | Provides static render settings including formats and frame configurations. |
 | `ColorAttachment` | Represents the configuration for color blending in render pipelines. |
-| `MaterialPassType` | Enum representing different material pass types, including `Wireframe`. |
+| `MaterialPassType` | Enum representing different material pass types, including `AlphaMask` and `Wireframe`. |
 
 ## Usage Examples
 
@@ -117,14 +117,14 @@ var typeId = BillboardMaterialRegistry.Register(
 );
 ```
 
-### Using Wireframe Material Pass
+### Using AlphaMask Material Pass
 
 ```csharp
-var wireframeMaterial = new PBRMaterial("WireframeMaterial");
-var wireframePipeline = materialManager.GetMaterialPipeline(wireframeMaterial.MaterialId, MaterialPassType.Wireframe);
+var alphaMaskMaterial = new PBRMaterial("AlphaMaskMaterial");
+var alphaMaskPipeline = materialManager.GetMaterialPipeline(alphaMaskMaterial.MaterialId, MaterialPassType.AlphaMask);
 
-// Bind and render with wireframe pipeline
-commandBuffer.BindRenderPipeline(wireframePipeline);
+// Bind and render with alpha mask pipeline
+commandBuffer.BindRenderPipeline(alphaMaskPipeline);
 // ... issue draw calls
 ```
 

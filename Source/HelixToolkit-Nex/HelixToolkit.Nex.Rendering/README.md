@@ -60,14 +60,11 @@ HelixToolkit.Nex.Rendering is responsible for managing the rendering pipeline of
 
 ### MeshComponent
 
-- **Category Property**: Added `Category` property to determine the draw stream category based on instancing, hitability, and dynamic state.
-
-### Post-Processing Effects
-
-- **Bloom, BorderHighlightPostEffect, Fxaa, Smaa**: Updated to use `SamplerRef` for samplers, improving resource management and reducing potential errors.
+- **Variants Property**: Renamed from `Category` to `Variants` to determine the draw stream category based on instancing, hitability, and dynamic state.
 
 ### Draw Stream Enhancements
 
+- **DrawStreamType and DrawStreamVariants**: Introduced to replace `DrawStreamCategory` for more precise control over draw stream characteristics.
 - **IDrawStream**: Added `GetMaterialTypesCore` method for zero-allocation material type enumeration.
 - **IDrawStreamRegistry**: Added `GetStreamsCore` method for zero-allocation stream enumeration.
 - **MeshDrawStreamEnumerable**: Introduced for efficient enumeration of draw streams without heap allocations.

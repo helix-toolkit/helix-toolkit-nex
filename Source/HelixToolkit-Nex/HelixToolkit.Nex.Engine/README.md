@@ -124,6 +124,22 @@ var billboard = engine.CreateBillboard(
 
 ## Recent Additions
 
+### Updates to `OrbitCameraController`
+
+- `MinRadius` default value changed from `0.5f` to `0.05f`.
+- Zoom clamping now considers `Camera.NearPlane` and `Camera.FarPlane` to prevent the camera from zooming too close or too far beyond the scene bounds.
+
+### Changes in `MeshDrawStream`
+
+- Introduced `DrawStreamType` and `DrawStreamVariants` to replace `DrawStreamCategory`.
+- `MeshDrawStream` now uses `DrawStreamType` and `DrawStreamVariants` for entity-to-slot lookup.
+- Improved handling of dynamic data with `RingElementBuffer`.
+
+### Enhancements in `MeshDrawStreamRegistry`
+
+- Streams are now organized by `DrawStreamType` and `DrawStreamName`.
+- Improved stream management and lookup efficiency.
+
 ### New Methods in `Engine`
 
 - `ProcessEvents()`: Processes pending events in the engine's event bus.

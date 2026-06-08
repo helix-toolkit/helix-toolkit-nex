@@ -34,6 +34,17 @@ The `HelixToolkit.Nex.Maths` package is integral to the HelixToolkit-Nex engine,
 | `Size`                | Represents a two-dimensional size with width and height.                    |
 | `BoundingBoxHelper`   | Provides static methods for operations on bounding boxes.                   |
 
+## Recent Additions
+
+### New Colors
+
+- `Charcoal`: A new color added to the `Color` struct, represented in BGRA format as `0xFF333333`.
+
+### New Matrix Methods
+
+- `ToMatrix(IList<float> array)`: Creates a 4x4 matrix from a list of 16 single-precision floating-point values in row-major order.
+- `ToMatrixTransposed(IList<float> array)`: Creates a 4x4 matrix from a list of 16 single-precision floating-point values in column-major order, transposing the order to row-major.
+
 ## Usage Examples
 
 ### Creating and Using Colors
@@ -49,6 +60,28 @@ Color4 color4 = color.ToColor4();
 
 // Adjust color brightness
 Color4 brighterColor = Color4Helper.ChangeIntensity(color4, 1.2f);
+
+// Use the new Charcoal color
+Color charcoalColor = Color.Charcoal;
+```
+
+### Working with Matrices
+
+```csharp
+using HelixToolkit.Nex.Maths;
+
+// Create a matrix from a list of 16 floats in row-major order
+IList<float> matrixValues = new List<float>
+{
+    1, 0, 0, 0,
+    0, 1, 0, 0,
+    0, 0, 1, 0,
+    0, 0, 0, 1
+};
+Matrix matrix = matrixValues.ToMatrix();
+
+// Create a matrix from a list of 16 floats in column-major order, transposed
+Matrix transposedMatrix = matrixValues.ToMatrixTransposed();
 ```
 
 ### Working with Bounding Volumes
