@@ -93,13 +93,11 @@ internal class DirectionalLightData : Initializable, IRenderData
 
     private void OnLightChanged(object? source, int entityId)
     {
-        _logger.LogTrace("Directional Light is changed. {ID}", entityId);
         _lastDataUpdateTicks = Stopwatch.GetTimestamp();
     }
 
     private void OnLightChanged(object? source, EntityChangedEvent msg)
     {
-        _logger.LogTrace("Directional Light is changed. {ID}", msg.EntityId);
         _lastDataUpdateTicks = Stopwatch.GetTimestamp();
     }
 }

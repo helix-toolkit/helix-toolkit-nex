@@ -23,9 +23,8 @@ internal sealed class MeshDrawStream : Initializable, IDrawStream
 {
     private const int InitialCapacity = 4;
 
-    private static readonly ITracer _tracer = TracerFactory.GetTracer(nameof(MeshDrawStream));
     private static readonly ILogger _logger = LogManager.Create<MeshDrawStream>();
-
+    private readonly ITracer _tracer;
     private readonly IContext _context;
     private readonly World _world;
 
@@ -79,6 +78,7 @@ internal sealed class MeshDrawStream : Initializable, IDrawStream
         StreamType = type;
         StreamName = name;
         Variants = name.GetVariants();
+        _tracer = TracerFactory.GetTracer($"{nameof(MeshDrawStream)}_{name}");
         IsInstancing = Variants.HasAllFlags(DrawStreamVariants.Instancing);
         IndexBufferStrategy = Variants.HasAllFlags(DrawStreamVariants.Dynamic)
             ? IndexBufferStrategy.PerDraw
@@ -216,7 +216,7 @@ internal sealed class MeshDrawStream : Initializable, IDrawStream
     /// </summary>
     private bool Rebuild()
     {
-        using var t = _tracer.BeginScope($"{Name}.Rebuild");
+        using var t = _tracer.BeginScope($"Rebuild");
 
         // Clear previous state
         foreach (var list in _drawsByMaterial.Values.AsValueEnumerable())
@@ -289,7 +289,7 @@ internal sealed class MeshDrawStream : Initializable, IDrawStream
             return true;
         }
 
-        using var t = _tracer.BeginScope($"{Name}.IncrementalUpdate");
+        using var t = _tracer.BeginScope("IncrementalUpdate");
 
         foreach (var entityId in _pendingUpdates.AsValueEnumerable())
         {
