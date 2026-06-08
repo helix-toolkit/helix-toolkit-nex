@@ -38,7 +38,7 @@ public sealed class Pool<ObjectType, ImplObjectType> : IEnumerable<ImplObjectTyp
         public ImplObjectType? Obj = obj; // The actual object in the pool
     }
 
-    private uint32_t _gen = 1;
+    private volatile uint32_t _gen = 1;
     private uint32_t _freeListHead = ListEndSentinel;
     private bool _disposedValue;
 
@@ -71,8 +71,8 @@ public sealed class Pool<ObjectType, ImplObjectType> : IEnumerable<ImplObjectTyp
         {
             // No free objects, create a new one
             idx = (int32_t)_freeListHead;
-            _freeListHead = _objects[idx].NextFree;
-            ref var entry = ref _objects.GetInternalArray()[idx];
+            ref var entry = ref _objects.At(idx);
+            _freeListHead = entry.NextFree;
             entry.Obj = obj;
         }
         else
@@ -82,7 +82,7 @@ public sealed class Pool<ObjectType, ImplObjectType> : IEnumerable<ImplObjectTyp
         }
         ++Count;
         LastObjectIndex = Math.Max(LastObjectIndex, idx);
-        return new Handle<ObjectType>((uint32_t)idx, _objects[idx].Gen);
+        return new Handle<ObjectType>((uint32_t)idx, _objects.At(idx).Gen);
     }
 
     /// <summary>
@@ -107,17 +107,17 @@ public sealed class Pool<ObjectType, ImplObjectType> : IEnumerable<ImplObjectTyp
             return;
         }
         int32_t idx = (int32_t)handle.Index;
-        if (idx < 0 || idx >= _objects.Count || _objects[idx].Gen != handle.Gen)
+        if (idx < 0 || idx >= _objects.Count || _objects.At(idx).Gen != handle.Gen)
         {
             throw new ArgumentException("Invalid handle for destruction.");
         }
-        ref var entry = ref _objects.GetInternalArray()[idx];
+        ref var entry = ref _objects.At(idx);
         if (entry.Obj is IDisposable disposableObj)
         {
             disposableObj.Dispose(); // Dispose the object if it implements IDisposable
         }
         entry.Obj = default; // Clear the object reference
-        entry.Gen = _gen++;
+        entry.Gen = Interlocked.Increment(ref _gen);
         entry.NextFree = _freeListHead;
         _freeListHead = (uint32_t)idx;
         --Count;
@@ -126,7 +126,7 @@ public sealed class Pool<ObjectType, ImplObjectType> : IEnumerable<ImplObjectTyp
             LastObjectIndex = -1;
             for (int32_t i = idx - 1; i >= 0; i--)
             {
-                if (_objects[i].Obj is not null)
+                if (_objects.At(i).Obj is not null)
                 {
                     LastObjectIndex = i;
                     break;
@@ -148,9 +148,9 @@ public sealed class Pool<ObjectType, ImplObjectType> : IEnumerable<ImplObjectTyp
             return default;
         }
         int32_t idx = (int32_t)handle.Index;
-        return idx < 0 || idx >= _objects.Count || _objects[idx].Gen != handle.Gen
+        return idx < 0 || idx >= _objects.Count || _objects.At(idx).Gen != handle.Gen
             ? default
-            : _objects.GetInternalArray()[idx].Obj;
+            : _objects.At(idx).Obj;
     }
 
     /// <summary>
@@ -167,11 +167,11 @@ public sealed class Pool<ObjectType, ImplObjectType> : IEnumerable<ImplObjectTyp
             throw new ArgumentException("Invalid handle for retrieval.");
         }
         int32_t idx = (int32_t)handle.Index;
-        if (idx < 0 || idx >= _objects.Count || _objects[idx].Gen != handle.Gen)
+        if (idx < 0 || idx >= _objects.Count || _objects.At(idx).Gen != handle.Gen)
         {
             throw new ArgumentException("Invalid handle for retrieval.");
         }
-        return ref _objects.GetInternalArray()[idx].Obj!;
+        return ref _objects.At(idx).Obj!;
     }
 
     /// <summary>
@@ -185,8 +185,9 @@ public sealed class Pool<ObjectType, ImplObjectType> : IEnumerable<ImplObjectTyp
         {
             return false;
         }
-        int32_t idx = (int32_t)handle.Index;
-        return idx >= 0 && idx < _objects.Count && _objects[idx].Gen == handle.Gen && _objects[idx].Obj is not null;
+        var idx = (int32_t)handle.Index;
+        ref var entry = ref _objects.At(idx);
+        return idx >= 0 && idx < _objects.Count && entry.Gen == handle.Gen;
     }
 
     /// <summary>
@@ -201,7 +202,7 @@ public sealed class Pool<ObjectType, ImplObjectType> : IEnumerable<ImplObjectTyp
         {
             throw new ArgumentOutOfRangeException(nameof(index), "Index out of range.");
         }
-        var entry = _objects[index];
+        ref var entry = ref _objects.At(index);
         return new Handle<ObjectType>((uint32_t)index, entry.Gen);
     }
 
@@ -214,11 +215,11 @@ public sealed class Pool<ObjectType, ImplObjectType> : IEnumerable<ImplObjectTyp
     {
         for (int32_t i = 0; i < _objects.Count; i++)
         {
-            HxDebug.Assert(_objects[i].Obj != null, "Object in pool should not be null.");
+            HxDebug.Assert(_objects.At(i).Obj != null, "Object in pool should not be null.");
 #pragma warning disable CS8602 // Dereference of a possibly null reference.
-            if (_objects[i].Obj.Equals(obj))
+            if (_objects.At(i).Obj.Equals(obj))
             {
-                return new Handle<ObjectType>((uint32_t)i, _objects[i].Gen);
+                return new Handle<ObjectType>((uint32_t)i, _objects.At(i).Gen);
             }
 #pragma warning restore CS8602 // Dereference of a possibly null reference.
         }
@@ -232,7 +233,7 @@ public sealed class Pool<ObjectType, ImplObjectType> : IEnumerable<ImplObjectTyp
     {
         for (int32_t i = 0; i < _objects.Count; i++)
         {
-            ref var entry = ref _objects.GetInternalArray()[i];
+            ref var entry = ref _objects.At(i);
             if (entry.Obj is IDisposable disposableObj)
             {
                 disposableObj.Dispose(); // Dispose the object if it implements IDisposable
@@ -267,7 +268,7 @@ public sealed class Pool<ObjectType, ImplObjectType> : IEnumerable<ImplObjectTyp
         {
             throw new ArgumentOutOfRangeException(nameof(index), "Index out of range.");
         }
-        return ref _objects.GetInternalArray()[index].Obj!;
+        return ref _objects.At(index).Obj!;
     }
 
     private void Dispose(bool disposing)
@@ -320,7 +321,7 @@ public sealed class Pool<ObjectType, ImplObjectType> : IEnumerable<ImplObjectTyp
             var totalCount = list._objects.Count;
             while (_index < totalCount)
             {
-                var curr = list._objects[_index].Obj;
+                ref var curr = ref list._objects.At(_index).Obj;
                 _index++;
                 if (curr is not null)
                 {
