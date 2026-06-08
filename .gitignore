@@ -401,3 +401,6 @@ FodyWeavers.xsd
 
 # Kiro
 .kiro/*
+
+# Publish
+*.pubxml

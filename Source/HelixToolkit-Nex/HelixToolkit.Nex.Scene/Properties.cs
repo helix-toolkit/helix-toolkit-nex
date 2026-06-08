@@ -196,5 +196,6 @@ public struct Renderable()
     internal int GPUIndex = -1; // Index of the node data in GPU buffer. Used to retrieve such as transform data from buffer.
     internal int UpdateCounter = 0;
     internal int DrawCmdIndex = -1; // Draw command index. Set internally, do not change.
-    internal uint DrawCategory = 0; // Draw category. Set internally, do not change.
+    internal int DrawType = -1; // Draw type. Set internally, do not change.
+    internal uint DrawVariants = 0; // Draw category. Set internally, do not change.
 }

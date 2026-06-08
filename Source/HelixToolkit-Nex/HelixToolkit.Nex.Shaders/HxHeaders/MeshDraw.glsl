@@ -1,6 +1,6 @@
 
-// Draw types must match the enum values in DrawStreamCategory
-#define DRAW_TYPE_HITABLE (1 << 6)
+// Draw types must match the enum values in DrawStreamVariants
+#define DRAW_TYPE_HITABLE (1 << 2)
 
 
 @code_gen

@@ -1,12 +1,9 @@
-using HelixToolkit.Nex.Rendering.DrawStreams;
-
 namespace HelixToolkit.Nex.Rendering.RenderNodes;
 
 public sealed class DepthPassNode() : RenderNode
 {
     private static readonly ILogger _logger = LogManager.Create<DepthPassNode>();
-    private RenderPipelineResource _pipeline = RenderPipelineResource.Null;
-
+    private RenderPipelineResource _pipelineOpaque = RenderPipelineResource.Null;
     public override string Name => nameof(DepthPassNode);
 
     public override Color4 DebugColor => Color.Blue;
@@ -19,7 +16,7 @@ public sealed class DepthPassNode() : RenderNode
 
     protected override void OnTeardown()
     {
-        _pipeline.Dispose();
+        _pipelineOpaque.Dispose();
         base.OnTeardown();
     }
 
@@ -30,8 +27,11 @@ public sealed class DepthPassNode() : RenderNode
         {
             return false;
         }
-
-        return context.Data.DrawStreams.GetStreamsCore(DrawStreamCategory.Opaque).HasAny();
+        if (context.RenderParams.EnableGlobalWireframe)
+        {
+            return false;
+        }
+        return context.Data.DrawStreams.GetStreamsCore(DrawStreamType.Opaque).HasAny();
     }
 
     protected override void OnSetupRender(in RenderResources res)
@@ -43,10 +43,13 @@ public sealed class DepthPassNode() : RenderNode
         res.Pass.Depth.StoreOp = StoreOp.Store;
         res.Pass.DepthState = DepthState.DefaultReversedZ;
 
-        var streams = res.RenderContext.Data!.DrawStreams.GetStreamsCore(DrawStreamCategory.Opaque);
+        var streams = res.RenderContext.Data!.DrawStreams.GetStreamsCore(DrawStreamType.Opaque);
         foreach (var stream in streams)
         {
-            stream.Barrier(res.CmdBuffer);
+            if (stream.Count > 0)
+            {
+                stream.Barrier(res.CmdBuffer);
+            }
         }
     }
 
@@ -57,15 +60,15 @@ public sealed class DepthPassNode() : RenderNode
             _logger.LogWarning("Render context data is null, skipping depth pass.");
             return;
         }
-        Debug.Assert(_pipeline.Valid, "_pipeline is not valid.");
+        Debug.Assert(_pipelineOpaque.Valid, "_pipeline is not valid.");
         using var _ = res.RenderContext.EnableExternalPipelineScoped();
-        res.CmdBuffer.BindRenderPipeline(_pipeline);
+        res.CmdBuffer.BindRenderPipeline(_pipelineOpaque);
 
         res.RenderContext.Statistics.DrawCalls += MeshRenderHelper.Render(
             in res,
             res.Buffers[SystemBufferNames.BufferForwardPlusConstants]
                 .GpuAddress(res.RenderContext.Context),
-            res.RenderContext.Data.DrawStreams.GetStreamsCore(DrawStreamCategory.Opaque),
+            res.RenderContext.Data.DrawStreams.GetStreamsCore(DrawStreamType.Opaque),
             MaterialPassType.Opaque
         );
     }
@@ -98,15 +101,6 @@ public sealed class DepthPassNode() : RenderNode
             ],
             "DepthPass_VS"
         );
-        result = shaderCompiler.CompileFragmentShader(
-            GlslUtils.GetEmbeddedGlslShader("Frag.psEntityId")
-        );
-        if (!result.Success)
-        {
-            throw new InvalidOperationException(
-                $"Failed to compile fragment shader: {result.Errors}"
-            );
-        }
 
         var pipelineDesc = new RenderPipelineDesc
         {
@@ -118,8 +112,10 @@ public sealed class DepthPassNode() : RenderNode
             Topology = Topology.Triangle,
         };
 
-        _pipeline = Context.CreateRenderPipeline(pipelineDesc);
-        return _pipeline.Valid;
+        _pipelineOpaque = Context.CreateRenderPipeline(pipelineDesc);
+
+
+        return _pipelineOpaque.Valid;
     }
 
     public override void AddToGraph(RenderGraph graph)

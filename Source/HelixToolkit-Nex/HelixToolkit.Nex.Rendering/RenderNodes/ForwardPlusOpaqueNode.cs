@@ -1,5 +1,3 @@
-using HelixToolkit.Nex.Rendering.DrawStreams;
-
 namespace HelixToolkit.Nex.Rendering.RenderNodes;
 
 public sealed class ForwardPlusOpaqueNode : RenderNode
@@ -27,7 +25,7 @@ public sealed class ForwardPlusOpaqueNode : RenderNode
         {
             return false;
         }
-        return context.Data.DrawStreams.GetStreamsCore(DrawStreamCategory.Opaque).HasAny();
+        return context.Data.DrawStreams.GetStreamsCore(DrawStreamType.Opaque).HasAny();
     }
 
     protected override void OnSetupRender(in RenderResources res)
@@ -52,14 +50,18 @@ public sealed class ForwardPlusOpaqueNode : RenderNode
             ? DepthState.ReadOnlyInvZBias
             : DepthState.ReadOnlyInvZ;
 
-        var streams = res.RenderContext.Data!.DrawStreams.GetStreamsCore(DrawStreamCategory.Opaque);
+        var streams = res.RenderContext.Data!.DrawStreams.GetStreamsCore(DrawStreamType.Opaque);
         foreach (var stream in streams)
+        {
+            if (stream.Count == 0)
+            { continue; }
             stream.Barrier(res.CmdBuffer);
+        }
     }
 
     protected override void OnRender(in RenderResources res)
     {
-        var streams = res.RenderContext.Data!.DrawStreams.GetStreamsCore(DrawStreamCategory.Opaque);
+        var streams = res.RenderContext.Data!.DrawStreams.GetStreamsCore(DrawStreamType.Opaque);
         res.RenderContext.Statistics.DrawCalls += MeshRenderHelper.Render(
             in res,
             res.Buffers[SystemBufferNames.BufferForwardPlusConstants]

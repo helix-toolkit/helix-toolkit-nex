@@ -14,6 +14,11 @@ public static class BuildFlags
     public const string OUTPUT_DRAW_ID = "OUTPUT_DRAW_ID";
 
     /// <summary>
+    /// Used to compile fragment shaders for alpha masked rendering.
+    /// </summary>
+    public const string ALPHA_MASK = "ALPHA_MASK";
+
+    /// <summary>
     /// Used to compile shaders for depth pre-pass rendering.
     /// This can be used to optimize rendering by performing a depth-only pass before the main rendering pass, allowing for early depth testing and reducing overdraw.
     /// </summary>

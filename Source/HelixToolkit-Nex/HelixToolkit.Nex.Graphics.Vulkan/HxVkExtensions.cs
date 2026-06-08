@@ -837,12 +837,12 @@ internal static class HxVkExtensions
     {
         return stage.HasAnyFlag(
             VkPipelineStageFlags2.VertexShader
-            | VkPipelineStageFlags2.TessellationControlShader
-            | VkPipelineStageFlags2.TessellationEvaluationShader
-            | VkPipelineStageFlags2.GeometryShader
-            | VkPipelineStageFlags2.FragmentShader
-            | VkPipelineStageFlags2.ComputeShader
-            | VkPipelineStageFlags2.MeshShaderEXT
+                | VkPipelineStageFlags2.TessellationControlShader
+                | VkPipelineStageFlags2.TessellationEvaluationShader
+                | VkPipelineStageFlags2.GeometryShader
+                | VkPipelineStageFlags2.FragmentShader
+                | VkPipelineStageFlags2.ComputeShader
+                | VkPipelineStageFlags2.MeshShaderEXT
         );
     }
 
@@ -867,12 +867,15 @@ internal static class HxVkExtensions
             offset = offset,
             size = size,
         };
-
+        var nonShaderStages =
+            VkPipelineStageFlags2.Transfer
+            | VkPipelineStageFlags2.DrawIndirect
+            | VkPipelineStageFlags2.VertexInput;
         if (srcStage.HasAllFlags(VkPipelineStageFlags2.Transfer))
         {
             barrier.srcAccessMask |= VkAccessFlags2.TransferRead | VkAccessFlags2.TransferWrite;
         }
-        else
+        if (srcStage.HasAnyFlag(~nonShaderStages))
         {
             barrier.srcAccessMask |= VkAccessFlags2.ShaderRead | VkAccessFlags2.ShaderWrite;
         }
@@ -881,7 +884,7 @@ internal static class HxVkExtensions
         {
             barrier.dstAccessMask |= VkAccessFlags2.TransferRead | VkAccessFlags2.TransferWrite;
         }
-        else
+        if (dstStage.HasAnyFlag(~nonShaderStages))
         {
             barrier.dstAccessMask |= VkAccessFlags2.ShaderRead | VkAccessFlags2.ShaderWrite;
         }

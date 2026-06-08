@@ -109,6 +109,7 @@ public abstract class Resource<T> : IDisposable
 
     /// <summary>
     /// Forces disposal of the resource regardless of reference count.
+    /// </summary>
     public void DisposeForce()
     {
         _referenceCount = 1; // Force the reference count to 1 so that Dispose will actually dispose

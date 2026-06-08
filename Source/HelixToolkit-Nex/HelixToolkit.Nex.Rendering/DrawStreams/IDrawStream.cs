@@ -15,10 +15,15 @@ public interface IDrawStream : IRenderData, IDisposable
     DrawStreamName StreamName { get; }
 
     /// <summary>
+    /// Gets the stream type.
+    /// </summary>
+    DrawStreamType StreamType { get; }
+
+    /// <summary>
     /// Gets the categories this stream belongs to, used for batch queries
     /// (e.g., retrieve all opaque streams, all instancing streams).
     /// </summary>
-    DrawStreamCategory Categories { get; }
+    DrawStreamVariants Variants { get; }
 
     /// <summary>
     /// Gets a value indicating whether this stream uses GPU instancing.

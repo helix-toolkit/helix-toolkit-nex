@@ -284,8 +284,8 @@ internal sealed class PickingDemo : IDisposable
         if (_engine is null || _renderContext is null || _imGuiRenderer is null)
             return;
 
-        _orbitController!.ViewportHeight = _viewportSize.Width;
-        _orbitController!.ViewportWidth = _viewportSize.Height;
+        _orbitController!.ViewportHeight = _viewportSize.Height;
+        _orbitController!.ViewportWidth = _viewportSize.Width;
         _lightNode!.Entity.Update<DirectionalLightComponent>(light =>
         {
             light.Direction = _camera.LookDir;
@@ -319,10 +319,10 @@ internal sealed class PickingDemo : IDisposable
         bool scheduledAsyncPick = false;
         int scheduledX = 0,
             scheduledY = 0;
-        if (_useAsyncPicking && _pendingPickX.HasValue)
+        if (_useAsyncPicking && _pendingPickX.HasValue && _pendingPickX.HasValue)
         {
             scheduledX = _pendingPickX.Value;
-            scheduledY = _pendingPickY!.Value;
+            scheduledY = _pendingPickY.Value;
             _pendingPickX = null;
             _pendingPickY = null;
             scheduledAsyncPick = cmdBuf.SchedulePickReadback(

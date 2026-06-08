@@ -129,4 +129,23 @@ public class MeshNode : Node
             }
         }
     }
+
+    /// <summary>
+    /// Marks this mesh as an alpha mask by adding the <see cref="AlphaMaskComponent"/> tag.
+    /// </summary>
+    public bool IsAlphaMask
+    {
+        get => Entity.Has<AlphaMaskComponent>();
+        set
+        {
+            if (value)
+            {
+                Entity.Tag<AlphaMaskComponent>();
+            }
+            else
+            {
+                Entity.Remove<AlphaMaskComponent>();
+            }
+        }
+    }
 }

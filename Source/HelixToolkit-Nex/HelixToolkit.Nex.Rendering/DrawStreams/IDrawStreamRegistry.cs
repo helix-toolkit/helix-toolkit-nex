@@ -10,20 +10,22 @@ public interface IDrawStreamRegistry : IInitializable, IDisposable
     /// <summary>
     /// Gets a stream by its registered name.
     /// </summary>
+    /// <param name="type">The type of the draw stream.</param>
     /// <param name="name">The unique name identifying the desired stream.</param>
     /// <returns>The <see cref="IDrawStream"/> registered under the specified name.</returns>
     /// <exception cref="ArgumentOutOfRangeException">
     /// Thrown if <paramref name="name"/> does not correspond to a registered stream.
     /// </exception>
-    IDrawStream GetStream(DrawStreamName name);
+    IDrawStream GetStream(DrawStreamType type, DrawStreamName name);
 
     /// <summary>
-    /// Gets all streams whose <see cref="IDrawStream.Categories"/> include the specified category flags.
+    /// Gets all streams whose <see cref="IDrawStream.Variants"/> include the specified category flags.
     /// Returns an empty enumerable if no streams match.
     /// </summary>
-    /// <param name="category">The category flag mask to match against.</param>
-    /// <returns>All streams that have the specified category flags set.</returns>
-    IEnumerable<IDrawStream> GetStreams(DrawStreamCategory category);
+    /// <param name="type">The type of the draw stream.</param>
+    /// <param name="variants">The variant flag mask to match against.</param>
+    /// <returns>All streams that have the specified variant flags set.</returns>
+    IEnumerable<IDrawStream> GetStreams(DrawStreamType type, DrawStreamVariants variants);
 
     /// <summary>
     /// Gets all registered streams in the registry.
@@ -34,7 +36,13 @@ public interface IDrawStreamRegistry : IInitializable, IDisposable
     /// Zero-allocation overload for internal/engine callers that know the concrete registry type.
     /// Returns a struct enumerable that avoids the <c>yield return</c> state-machine heap allocation.
     /// </summary>
-    MeshDrawStreamEnumerable GetStreamsCore(DrawStreamCategory category);
+    MeshDrawStreamEnumerable GetStreamsCore(DrawStreamType type, DrawStreamVariants category);
+
+    /// <summary>
+    /// Zero-allocation overload for internal/engine callers that know the concrete registry type.
+    /// Returns a struct enumerable that avoids the <c>yield return</c> state-machine heap allocation.
+    /// </summary>
+    MeshDrawStreamEnumerable GetStreamsCore(DrawStreamType type);
 
     /// <summary>
     /// Updates all streams by processing pending changes, running compaction where needed,
@@ -46,22 +54,22 @@ public interface IDrawStreamRegistry : IInitializable, IDisposable
 
 /// <summary>
 /// Zero-allocation struct enumerable over a <see cref="FastList{IDrawStream}"/> filtered by
-/// <see cref="DrawStreamCategory"/>. Use <see cref="IDrawStreamRegistry.GetStreamsCore"/> to obtain one.
+/// <see cref="DrawStreaVariants"/>. Use <see cref="IDrawStreamRegistry.GetStreamsCore"/> to obtain one.
 /// </summary>
 public readonly struct MeshDrawStreamEnumerable(
     FastList<IDrawStream> list,
-    DrawStreamCategory category
+    DrawStreamVariants? category
 )
 {
     private readonly FastList<IDrawStream> _list = list;
-    private readonly DrawStreamCategory _category = category;
+    private readonly DrawStreamVariants? _category = category;
 
     public readonly Enumerator GetEnumerator() => new(_list, _category);
 
-    public struct Enumerator(FastList<IDrawStream> list, DrawStreamCategory category)
+    public struct Enumerator(FastList<IDrawStream> list, DrawStreamVariants? category)
     {
         private readonly FastList<IDrawStream> _list = list;
-        private readonly DrawStreamCategory _category = category;
+        private readonly DrawStreamVariants? _category = category;
         private int _index = -1;
 
         public IDrawStream Current => _list[_index];
@@ -70,7 +78,7 @@ public readonly struct MeshDrawStreamEnumerable(
         {
             while (++_index < _list.Count)
             {
-                if (_list[_index].Categories.HasAllFlags(_category))
+                if (_category == null || _list[_index].Variants.HasAllFlags(_category.Value))
                     return true;
             }
             return false;

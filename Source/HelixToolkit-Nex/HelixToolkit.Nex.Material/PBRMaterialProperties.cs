@@ -66,6 +66,7 @@ public sealed class PBRMaterialProperties : IDisposable
         TransmissionScale = 0f,
         AttenuationDistance = float.PositiveInfinity,
         AttenuationColor = new(1, 1, 1),
+        AlphaCutoff = 0,
     };
 
     /// <summary>Gets the identifier of the material type that owns this instance.</summary>
@@ -102,6 +103,23 @@ public sealed class PBRMaterialProperties : IDisposable
             NotifyUpdated();
         }
         get => new(Properties.Albedo);
+    }
+
+    /// <summary>
+    /// Gets or sets the alpha cutoff threshold for alpha-masked rendering.
+    /// </summary>
+    public float AlphaCutoff
+    {
+        set
+        {
+            if (Properties.AlphaCutoff == value)
+            {
+                return;
+            }
+            Properties.AlphaCutoff = value;
+            NotifyUpdated();
+        }
+        get => Properties.AlphaCutoff;
     }
 
     /// <summary>
@@ -542,9 +560,11 @@ public sealed class PBRMaterialProperties : IDisposable
 
     /// <summary>
     /// Gets or sets the scalar thickness used when no thickness texture is bound.
-    /// Range [0..1]: 0 = fully thin (maximum transmission scatter), 1 = fully thick (no scatter).
-    /// Defaults to 0 so that materials with <c>transmissionFactor &gt; 0</c> but no texture
-    /// actually scatter light.
+    /// Minimum Value (0.0): This represents a "thin-walled" object (like a hollow glass ornament or a lightbulb).
+    /// Setting it to exactly 0.0 disables volume calculations and refraction.
+    /// Maximum Value (+inf): There is no hard cap or upper limit enforced by the glTF schema.
+    /// However, because the unit is in meters, setting excessively massive values will yield an entirely solid,
+    /// opaque object due to extreme light absorption.
     /// </summary>
     public float ThicknessFactor
     {
@@ -612,7 +632,7 @@ public sealed class PBRMaterialProperties : IDisposable
 
     /// <summary>
     /// Gets or sets the overall brightness scale applied to the transmission/subsurface
-    /// scattering contribution. Range [0..1]; default 0.5.
+    /// scattering contribution. Range [0..1]; default 0.
     /// </summary>
     public float TransmissionScale
     {

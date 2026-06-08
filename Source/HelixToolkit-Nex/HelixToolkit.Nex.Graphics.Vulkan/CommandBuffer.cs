@@ -1271,7 +1271,7 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
             CmdBuffer.BufferBarrier2(
                 buf,
                 VkPipelineStageFlags2.VertexShader | VkPipelineStageFlags2.FragmentShader,
-                VkPipelineStageFlags2.ComputeShader
+                VkPipelineStageFlags2.ComputeShader | VkPipelineStageFlags2.Transfer
             );
         }
 

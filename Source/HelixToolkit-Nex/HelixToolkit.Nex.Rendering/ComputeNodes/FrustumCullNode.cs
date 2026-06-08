@@ -1,5 +1,3 @@
-using HelixToolkit.Nex.Rendering.DrawStreams;
-
 namespace HelixToolkit.Nex.Rendering.ComputeNodes;
 
 public sealed class FrustumCullNode : ComputeNode
@@ -87,16 +85,19 @@ public sealed class FrustumCullNode : ComputeNode
         _cullConst.NodeInfoBufferAddress = context.Data.NodeInfos.GpuAddress;
         _cullBuffer!.AdvanceAndUpdate(ref _cullConst);
         res.Deps.PushBuffer(_cullBuffer!.Buffer);
-
-        foreach (var stream in context.Data.DrawStreams.GetStreamsCore(DrawStreamCategory.Opaque))
+        for (int i = 0; i < (int)DrawStreamType.Count; ++i)
         {
-            if (stream.Count == 0)
+            var streamType = (DrawStreamType)i;
+            foreach (var stream in context.Data.DrawStreams.GetStreamsCore(streamType))
             {
-                continue;
+                if (stream.Count == 0)
+                {
+                    continue;
+                }
+                stream.Barrier(res.CmdBuffer);
+                using var _ = res.Deps.PushBufferScoped(stream.Buffer);
+                Cull(context, res.CmdBuffer, stream, res.Deps);
             }
-            stream.Barrier(res.CmdBuffer);
-            using var _ = res.Deps.PushBufferScoped(stream.Buffer);
-            Cull(context, res.CmdBuffer, stream, res.Deps);
         }
     }
 
