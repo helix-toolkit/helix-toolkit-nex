@@ -62,9 +62,12 @@ public partial class Instancing : HxObservableObject, IDisposable
 
     public bool IsDynamic { get; }
 
-    public Instancing(bool isDynamic)
+    public string Name { get; }
+
+    public Instancing(bool isDynamic, string? name = null)
     {
         IsDynamic = isDynamic;
+        Name = name ?? $"Instancing_{GetHashCode():X}";
         PropertyChanged += Instancing_PropertyChanged;
     }
 
@@ -93,14 +96,16 @@ public partial class Instancing : HxObservableObject, IDisposable
             context,
             _transforms.Count,
             BufferUsageBits.Storage,
-            IsDynamic
+            IsDynamic,
+            debugName: Name
         );
         Buffer.Upload(_transforms);
         CulledIndicesBuffer ??= new ElementBuffer<uint>(
             context,
             _transforms.Count,
             BufferUsageBits.Storage,
-            IsDynamic
+            IsDynamic,
+            debugName: $"{Name}_CulledInstIndices"
         );
         CulledIndicesBuffer.EnsureCapacity(_transforms.Count);
         _dirty = false;

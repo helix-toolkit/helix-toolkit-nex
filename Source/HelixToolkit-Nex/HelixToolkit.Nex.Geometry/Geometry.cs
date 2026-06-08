@@ -303,7 +303,7 @@ public partial class Geometry : HxObservableObject, IDisposable
                     _vertices.Count,
                     BufferUsageBits.Vertex | BufferUsageBits.Storage,
                     IsDynamic,
-                    debugName: $"Geo_{Id}_Vert"
+                    debugName: $"Vert_{Id}_{Name}"
                 );
                 _vertexBuffer.Upload(_vertices);
             }
@@ -329,7 +329,7 @@ public partial class Geometry : HxObservableObject, IDisposable
                         _vertexProps.Count,
                         BufferUsageBits.Vertex | BufferUsageBits.Storage,
                         IsDynamic,
-                        debugName: $"Geo_{Id}_VertProps"
+                        debugName: $"VertProps_{Id}_{Name}"
                     );
                     _vertexPropsBuffer.Upload(_vertexProps);
                 }
@@ -361,7 +361,7 @@ public partial class Geometry : HxObservableObject, IDisposable
                         _indices.Count,
                         BufferUsageBits.Index | BufferUsageBits.Storage,
                         IsDynamic,
-                        debugName: $"Geo_{Id}_Index"
+                        debugName: $"Indices_{Id}_{Name}"
                     );
                     _indexBuffer.Upload(_indices);
                 }
@@ -388,7 +388,7 @@ public partial class Geometry : HxObservableObject, IDisposable
                         _vertexColors.Count,
                         BufferUsageBits.Vertex | BufferUsageBits.Storage,
                         IsDynamic,
-                        debugName: $"Geo_{Id}_VertColor"
+                        debugName: $"VertColor_{Id}_{Name}"
                     );
                     _vertColorsBuffer.Upload(_vertexColors);
                 }
