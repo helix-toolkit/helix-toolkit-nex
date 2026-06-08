@@ -91,5 +91,17 @@ Console.WriteLine($"Is Child Node Renderable: {isRenderable}");
 - **Dependencies:** This package depends on `HelixToolkit.Nex.ECS` for ECS functionality and `HelixToolkit.Nex.Maths` for mathematical operations.
 - **Thread Safety:** Node operations are designed to be thread-safe across different worlds, with each world being accessed by a single thread at a time.
 
+## Recent Changes
+
+- **Node Class Enhancements:**
+  - The `IsRenderable` property now checks if the `Renderable` component is already present before adding or removing it, preventing unnecessary operations.
+  - The `NotifyComponentChanged<T>()` method now uses the `[DynamicallyAccessedMembers]` attribute to specify the required member types for `T`.
+
+- **Transform Updates:**
+  - The `UpdateWorldTransform` method in `Transform` now multiplies the local transformation matrix with the parent matrix in the correct order, ensuring accurate world transformations.
+
+- **Renderable Structure:**
+  - Added `DrawType` and `DrawVariants` fields to the `Renderable` struct for enhanced rendering control.
+
 The `HelixToolkit.Nex.Scene` package is an essential part of the HelixToolkit-Nex engine, providing the necessary infrastructure for managing complex 3D scenes efficiently.
 ```

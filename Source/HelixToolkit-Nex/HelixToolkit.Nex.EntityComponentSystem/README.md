@@ -85,11 +85,10 @@ entity.Register<EntityEnableEvent>((worldId, evt) =>
 
 ## Recent Changes
 
-- **TagManager Introduction**: Added `TagManager<T>` for efficient management of tag components, which are marker components without data.
-- **ComponentManager Enhancements**: The `AsComponents` method now includes the world context, improving component management across worlds.
-- **Entity Lifecycle Events**: Introduced `EntityBeforeDisposeEvent` to handle pre-disposal logic for entities.
-- **EntityCollection Enhancements**: Added `Has` method to check for entity presence in a collection.
-- **Event System**: Updated event handling to use `EntityBeforeDisposeEvent` for more precise lifecycle management.
+- **Entity Lifecycle Events**: Updated to use `EntityDisposingEvent` instead of `EntityBeforeDisposeEvent` for handling pre-disposal logic for entities.
+- **Event System Enhancements**: The `ECSEventBus` now supports a broader range of world IDs, improving scalability.
+- **Type Safety Improvements**: Introduced `[DynamicallyAccessedMembers]` attribute to enhance type safety and reflection capabilities.
+- **World Management**: Adjusted `MaxNumberOfWorlds` to align with `Limits.MaxWorldId`, ensuring consistent world ID management.
 
 HelixToolkit.Nex.ECS is designed to be flexible and efficient, making it suitable for a wide range of 3D applications within the HelixToolkit.Nex engine.
 ```

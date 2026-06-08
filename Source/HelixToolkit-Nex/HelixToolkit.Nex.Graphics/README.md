@@ -148,6 +148,27 @@ var commandBuffer = context.AcquireCommandBuffer();
 commandBuffer.SetColorWriteEnabled(c0: true, c1: false, c2: true, c3: false);
 ```
 
+### Setting Cull Mode
+
+```csharp
+var commandBuffer = context.AcquireCommandBuffer();
+commandBuffer.SetCullMode(CullMode.Back);
+```
+
+### Copying Texture to Buffer
+
+```csharp
+var commandBuffer = context.AcquireCommandBuffer();
+commandBuffer.CopyTextureToBuffer(
+    src: textureHandle,
+    dst: bufferHandle,
+    bufferOffset: 0,
+    srcOffset: new Offset3D(0, 0, 0),
+    extent: new Dimensions(1920, 1080, 1),
+    layers: new TextureLayers(0, 1)
+);
+```
+
 ## Architecture Notes
 
 - **Design Patterns**: The package uses an Entity Component System (ECS) for efficient entity management and a Render Graph to manage render node execution order.
