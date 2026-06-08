@@ -137,11 +137,11 @@ public sealed class PBRMaterialPropertyManager : IPBRMaterialPropertyManager
                     var (pool, indices) = values;
                     foreach (var index in indices)
                     {
-                        if (index < 0 || index > pool.LastObjectIndex)
+                        if (index > pool.LastObjectIndex)
                         {
                             throw new ArgumentOutOfRangeException(
                                 nameof(indices),
-                                $"Index {index} is out of range. Valid range is 0 to {pool.LastObjectIndex - 1}."
+                                $"Index {index} is out of range. Valid range is 0 to {pool.LastObjectIndex}."
                             );
                         }
                         ctx.WriteElement(ref pool.GetRef((int)index), (int)index);
