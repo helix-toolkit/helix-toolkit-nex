@@ -81,11 +81,11 @@ public sealed class PBRMaterialPropertyManager : IPBRMaterialPropertyManager
     public ref PBRProperties At(int index)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        if (_pool.LastObjectIndex < index || index < 0)
+        if (index > _pool.LastObjectIndex || index < 0)
         {
             throw new ArgumentOutOfRangeException(
                 nameof(index),
-                $"Index {index} is out of range. Valid range is 0 to {_pool.LastObjectIndex - 1}."
+                $"Index {index} is out of range. Valid range is 0 to {_pool.LastObjectIndex}."
             );
         }
         return ref _pool.GetRef(index);
@@ -144,7 +144,7 @@ public sealed class PBRMaterialPropertyManager : IPBRMaterialPropertyManager
                                 $"Index {index} is out of range. Valid range is 0 to {pool.LastObjectIndex - 1}."
                             );
                         }
-                        ctx.Write(ref pool.GetRef((int)index));
+                        ctx.WriteElement(ref pool.GetRef((int)index), (int)index);
                     }
                 }
             );

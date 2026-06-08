@@ -34,6 +34,7 @@ public readonly struct MaterialTypeId(uint id) : IComparable<MaterialTypeId>, IE
 public enum MaterialPassType : uint
 {
     Opaque = 0,
+    AlphaMask,
     Transparent,
     WBOIT,
     Wireframe,

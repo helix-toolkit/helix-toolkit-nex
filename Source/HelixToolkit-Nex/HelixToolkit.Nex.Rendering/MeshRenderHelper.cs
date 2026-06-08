@@ -77,9 +77,9 @@ public static class MeshRenderHelper
                     continue;
                 }
                 customMaterialBufferAddress = mat.CustomBufferAddress;
-                if (stream.Categories.HasAllFlags(DrawStreamCategory.Transparent))
+                if (stream.StreamType == DrawStreamType.Transparent)
                 {
-                    if (stream.Categories.HasAllFlags(DrawStreamCategory.Hitable))
+                    if (stream.Variants.HasAllFlags(DrawStreamVariants.Hitable))
                     {
                         cmdBuf.SetColorWriteEnabled(res.Pass.ColorWrites);
                     }
@@ -149,9 +149,9 @@ public static class MeshRenderHelper
                     continue;
                 }
                 customMaterialBufferAddress = mat.CustomBufferAddress;
-                if (stream.Categories.HasAllFlags(DrawStreamCategory.Transparent))
+                if (stream.StreamType == DrawStreamType.Transparent)
                 {
-                    if (stream.Categories.HasAllFlags(DrawStreamCategory.Hitable))
+                    if (stream.Variants.HasAllFlags(DrawStreamVariants.Hitable))
                     {
                         cmdBuf.SetColorWriteEnabled(res.Pass.ColorWrites);
                     }
@@ -225,11 +225,12 @@ public static class MeshRenderHelper
         uint counter = 0;
         foreach (var entity in entites.AsValueEnumerable())
         {
-            var category = (DrawStreamCategory)renderables[entity].DrawCategory;
-            var streams = dataStreams.GetStreamsCore(category);
+            var category = (DrawStreamVariants)renderables[entity].DrawVariants;
+            var type = (DrawStreamType)renderables[entity].DrawType;
+            var streams = dataStreams.GetStreamsCore(type, category);
             foreach (var stream in streams)
             {
-                if (stream.Categories != category)
+                if (stream.StreamType != type || stream.Variants != category)
                 {
                     continue;
                 }

@@ -11,7 +11,7 @@ namespace HelixToolkit.Nex.Engine.Data;
 /// sharing the same rendering characteristics. Draws are grouped by material type for
 /// efficient batched rendering.
 /// <para>
-/// Uses <see cref="Renderable.DrawCmdIndex"/> and <see cref="Renderable.DrawCategory"/>
+/// Uses <see cref="Renderable.DrawCmdIndex"/>, <see cref="Renderable.DrawType"/> and <see cref="Renderable.DrawVariants"/>
 /// on each entity for O(1) entity-to-slot lookup without maintaining a separate dictionary.
 /// </para>
 /// <para>
@@ -21,14 +21,13 @@ namespace HelixToolkit.Nex.Engine.Data;
 /// </summary>
 internal sealed class MeshDrawStream : Initializable, IDrawStream
 {
-    private const int InitialCapacity = 32;
+    private const int InitialCapacity = 4;
 
     private static readonly ITracer _tracer = TracerFactory.GetTracer(nameof(MeshDrawStream));
     private static readonly ILogger _logger = LogManager.Create<MeshDrawStream>();
 
     private readonly IContext _context;
     private readonly World _world;
-    private readonly bool _isTransparent;
 
     // GPU buffer (ring buffer for multi-frame-in-flight)
     private RingElementBuffer<MeshDraw>? _buffer;
@@ -55,7 +54,8 @@ internal sealed class MeshDrawStream : Initializable, IDrawStream
     #region IDrawStream Properties
 
     public DrawStreamName StreamName { get; }
-    public DrawStreamCategory Categories { get; }
+    public DrawStreamType StreamType { get; }
+    public DrawStreamVariants Variants { get; }
     public bool IsInstancing { get; }
     public IndexBufferStrategy IndexBufferStrategy { get; }
     public float FragmentationThreshold { get; set; } = 0.5f;
@@ -72,17 +72,17 @@ internal sealed class MeshDrawStream : Initializable, IDrawStream
 
     #endregion
 
-    public MeshDrawStream(IContext context, World world, DrawStreamName name)
+    public MeshDrawStream(IContext context, World world, DrawStreamType type, DrawStreamName name)
     {
         _context = context;
         _world = world;
+        StreamType = type;
         StreamName = name;
-        Categories = name.GetCategory();
-        IsInstancing = Categories.HasAllFlags(DrawStreamCategory.Instancing);
-        IndexBufferStrategy = Categories.HasAllFlags(DrawStreamCategory.Dynamic)
+        Variants = name.GetVariants();
+        IsInstancing = Variants.HasAllFlags(DrawStreamVariants.Instancing);
+        IndexBufferStrategy = Variants.HasAllFlags(DrawStreamVariants.Dynamic)
             ? IndexBufferStrategy.PerDraw
             : IndexBufferStrategy.Shared;
-        _isTransparent = Categories.HasAllFlags(DrawStreamCategory.Transparent);
         Name = name.ToString();
 
         _meshComponents = world.GetComponents<MeshComponent>();
@@ -132,7 +132,11 @@ internal sealed class MeshDrawStream : Initializable, IDrawStream
             return (default, -1);
         }
         ref var renderable = ref _renderables[entity];
-        if (renderable.DrawCmdIndex < 0 || renderable.DrawCategory != (uint)Categories)
+        if (
+            renderable.DrawCmdIndex < 0
+            || renderable.DrawVariants != (uint)Variants
+            || renderable.DrawType != (uint)StreamType
+        )
         {
             return (default, -1);
         }
@@ -168,7 +172,7 @@ internal sealed class MeshDrawStream : Initializable, IDrawStream
             InitialCapacity,
             BufferUsageBits.Storage | BufferUsageBits.Indirect,
             hostVisible: true,
-            debugName: $"MeshStream_{StreamName}"
+            debugName: $"MeshDraw_{StreamType}_{StreamName}"
         );
 
         _needsRebuild = true;
@@ -232,7 +236,9 @@ internal sealed class MeshDrawStream : Initializable, IDrawStream
         foreach (var entity in _entities.AsValueEnumerable())
         {
             if (!entity.Valid)
-            { continue; }
+            {
+                continue;
+            }
             ref var meshComp = ref _meshComponents[entity];
             if (!meshComp.Valid)
                 continue;
@@ -291,7 +297,11 @@ internal sealed class MeshDrawStream : Initializable, IDrawStream
             ref var renderable = ref _renderables[entity];
 
             // Only process if this entity belongs to this stream
-            if (renderable.DrawCategory != (uint)Categories || renderable.DrawCmdIndex < 0)
+            if (
+                renderable.DrawType != (int)StreamType
+                || renderable.DrawVariants != (uint)Variants
+                || renderable.DrawCmdIndex < 0
+            )
                 continue;
 
             var newDraw = CreateMeshDraw(entity);
@@ -424,7 +434,7 @@ internal sealed class MeshDrawStream : Initializable, IDrawStream
                 ? (uint)meshComp.Instancing.Transforms.Count
                 : 1u,
             Cullable = meshComp.Cullable ? 1u : 0u,
-            DrawType = (uint)meshComp.Category,
+            DrawType = (uint)meshComp.Variants,
         };
     }
 
@@ -434,9 +444,11 @@ internal sealed class MeshDrawStream : Initializable, IDrawStream
 
     public void EntityAdded(Entity entity)
     {
-        Debug.Assert(GetCategoryFromEntity(entity).HasAllFlags(Categories));
+        var (type, variants) = GetVariantsFromEntity(entity);
+        Debug.Assert(variants.HasAllFlags(Variants));
         _entities.Add(entity);
-        _renderables[entity].DrawCategory = (uint)Categories; // Pre-set category for O(1) checks during updates
+        _renderables[entity].DrawVariants = (uint)Variants; // Pre-set category for O(1) checks during updates
+        _renderables[entity].DrawType = (int)StreamType;
         MarkRebuildNeeded();
     }
 
@@ -444,23 +456,25 @@ internal sealed class MeshDrawStream : Initializable, IDrawStream
     {
         Debug.Assert(_entities.Contains(entity));
         _entities.Remove(entity);
-        _renderables[entity].DrawCategory = 0; // Clear category to indicate it's no longer in any stream
+        _renderables[entity].DrawVariants = 0; // Clear category to indicate it's no longer in any stream
+        _renderables[entity].DrawType = (int)DrawStreamType.None;
         MarkRebuildNeeded();
     }
 
-    private DrawStreamCategory GetCategoryFromEntity(Entity entity)
+    private (DrawStreamType, DrawStreamVariants) GetVariantsFromEntity(Entity entity)
     {
         ref var comp = ref _meshComponents[entity];
-        var category = comp.Category;
+        var category = comp.Variants;
+        var type = DrawStreamType.Opaque;
         if (entity.Has<TransparentComponent>())
         {
-            category |= DrawStreamCategory.Transparent;
+            type = DrawStreamType.Transparent;
         }
-        else
+        else if (entity.Has<AlphaMaskComponent>())
         {
-            category |= DrawStreamCategory.Opaque;
+            type = DrawStreamType.AlphaMask;
         }
-        return category;
+        return (type, category);
     }
 
     public void EntityChanged(Entity entity, in EntityChangedEvent e)
@@ -472,7 +486,7 @@ internal sealed class MeshDrawStream : Initializable, IDrawStream
         ref var renderable = ref _renderables[entity];
 
         // If material or category changed, we need a full rebuild (structural change)
-        if (renderable.DrawCategory != (uint)Categories)
+        if (renderable.DrawVariants != (uint)Variants || renderable.DrawType != (int)StreamType)
         {
             MarkRebuildNeeded();
             return;

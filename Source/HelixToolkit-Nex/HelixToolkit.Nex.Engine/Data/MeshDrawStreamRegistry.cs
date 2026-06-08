@@ -10,42 +10,62 @@ internal sealed class MeshDrawStreamRegistry(IContext context, World world)
 {
     private readonly IContext _context = context;
     private readonly World _world = world;
-    private readonly FastList<IDrawStream> _streams = [];
-    private readonly FastList<MeshDrawStream> _meshStreams = [];
+    private readonly FastList<FastList<IDrawStream>> _streamsByType = new(
+        (int)DrawStreamType.Count
+    );
     private EntityCollection? _collections;
     private Components<MeshComponent> _meshComponents = world.GetComponents<MeshComponent>();
     private Components<Renderable> _renderables = world.GetComponents<Renderable>();
 
-    public IEnumerable<IDrawStream> AllStreams => _streams;
+    public IEnumerable<IDrawStream> AllStreams
+    {
+        get
+        {
+            foreach (var stream in _streamsByType.AsValueEnumerable())
+            {
+                if (stream is not null)
+                {
+                    foreach (var s in stream.AsValueEnumerable())
+                    {
+                        yield return s;
+                    }
+                }
+            }
+        }
+    }
 
     public override string Name => nameof(MeshDrawStreamRegistry);
 
-    public IDrawStream GetStream(DrawStreamName name)
+    public IDrawStream GetStream(DrawStreamType type, DrawStreamName name)
     {
-        return _streams[(int)name];
+        return _streamsByType[(int)type]![(int)name];
     }
 
-    public IDrawStream GetStream(DrawStreamCategory category)
+    public IDrawStream GetStream(DrawStreamType type, DrawStreamVariants category)
     {
-        return GetStream(category.GetStreamName());
+        return GetStream(type, category.GetStreamName());
     }
 
-    public IEnumerable<IDrawStream> GetStreams(DrawStreamCategory category)
+    public IEnumerable<IDrawStream> GetStreams(DrawStreamType type, DrawStreamVariants category)
     {
-        foreach (var stream in _streams)
+        var streams = _streamsByType[(int)type];
+        foreach (var stream in streams)
         {
-            if (stream.Categories.HasAllFlags(category))
+            if (stream.Variants.HasAllFlags(category))
                 yield return stream;
         }
     }
 
-    public MeshDrawStreamEnumerable GetStreamsCore(DrawStreamCategory category) =>
-        new(_streams, category);
+    public MeshDrawStreamEnumerable GetStreamsCore(
+        DrawStreamType type,
+        DrawStreamVariants category
+    ) => new(_streamsByType[(int)type], category);
+
+    public MeshDrawStreamEnumerable GetStreamsCore(DrawStreamType type) =>
+        new(_streamsByType[(int)type], null);
 
     protected override ResultCode OnInitializing()
     {
-        _streams.Resize((int)DrawStreamName.Count);
-        _meshStreams.Resize((int)DrawStreamName.Count);
         _collections = _world
             .CreateCollection()
             .Has<NodeInfo>()
@@ -56,12 +76,20 @@ internal sealed class MeshDrawStreamRegistry(IContext context, World world)
         _collections.EntityAdded += OnEntityAdded;
         _collections.EntityRemoved += OnEntityRemoved;
         _collections.EntityChanged += OnEntityChanged;
-        for (int i = 0; i < _streams.Count; ++i)
+
+        _streamsByType.Resize((int)DrawStreamType.Count);
+        for (int i = 0; i < _streamsByType.Count; ++i)
         {
-            _streams[i] = _meshStreams[i] = new MeshDrawStream(_context, _world, (DrawStreamName)i);
-            if (_streams[i].Initialize().CheckResult() != ResultCode.Ok)
+            _streamsByType[i] = new FastList<IDrawStream>((int)DrawStreamName.Count);
+            _streamsByType[i].Resize((int)DrawStreamName.Count);
+            for (var j = 0; j < (int)DrawStreamName.Count; ++j)
             {
-                return ResultCode.RuntimeError;
+                _streamsByType[i][j] = new MeshDrawStream(_context, _world, (DrawStreamType)i, (DrawStreamName)j);
+                var ret = _streamsByType[i][j].Initialize().CheckResult();
+                if (ret != ResultCode.Ok)
+                {
+                    return ret;
+                }
             }
         }
         _world.Register<SceneChangedEvents>(OnSceneChanged);
@@ -70,11 +98,14 @@ internal sealed class MeshDrawStreamRegistry(IContext context, World world)
 
     public bool Update()
     {
-        foreach (var stream in _meshStreams)
+        foreach (var streams in _streamsByType)
         {
-            if (!stream.Update())
+            foreach (var stream in streams)
             {
-                return false;
+                if (!stream.Update())
+                {
+                    return false;
+                }
             }
         }
         return true;
@@ -82,50 +113,53 @@ internal sealed class MeshDrawStreamRegistry(IContext context, World world)
 
     protected override ResultCode OnTearingDown()
     {
-        foreach (var stream in _streams)
+        foreach (var streams in _streamsByType)
         {
-            stream.Dispose();
+            foreach (var stream in streams)
+            {
+                stream.Dispose();
+            }
+            streams.Clear();
         }
-        _streams.Clear();
-        _meshStreams.Clear();
+        _streamsByType.Clear();
         return ResultCode.Ok;
     }
 
-    private MeshDrawStream? GetStreamInternal(DrawStreamCategory category)
+    private MeshDrawStream? GetStreamInternal(DrawStreamType type, DrawStreamVariants category)
     {
-        var idx = (int)category.GetStreamName();
-        return (idx >= 0 && idx < _meshStreams.Count) ? _meshStreams[idx] : null;
+        return GetStream(type, category) is MeshDrawStream mesh ? mesh : null;
     }
 
     private void OnEntityAdded(object? sender, int entityId)
     {
         var entity = _world.GetEntity(entityId);
-        var category = GetCategoryFromEntity(entity);
-        var stream = GetStreamInternal(category);
+        var (type, category) = GetCategoryFromEntity(entity);
+        var stream = GetStreamInternal(type, category);
         stream!.EntityAdded(entity);
     }
 
     private void OnEntityRemoved(object? sender, int entityId)
     {
         var entity = _world.GetEntity(entityId);
-        var category = GetCategoryFromEntity(entity);
-        var stream = GetStreamInternal(category);
+        var (type, category) = GetCategoryFromEntity(entity);
+        var stream = GetStreamInternal(type, category);
         stream!.EntityRemoved(entity);
     }
 
-    private DrawStreamCategory GetCategoryFromEntity(Entity entity)
+    private (DrawStreamType, DrawStreamVariants) GetCategoryFromEntity(Entity entity)
     {
         ref var comp = ref _meshComponents[entity];
-        var category = comp.Category;
+        var category = comp.Variants;
+        var type = DrawStreamType.Opaque;
         if (entity.Has<TransparentComponent>())
         {
-            category |= DrawStreamCategory.Transparent;
+            type = DrawStreamType.Transparent;
         }
-        else
+        else if (entity.Has<AlphaMaskComponent>())
         {
-            category |= DrawStreamCategory.Opaque;
+            type = DrawStreamType.AlphaMask;
         }
-        return category;
+        return (type, category);
     }
 
     private void OnEntityChanged(object? sender, EntityChangedEvent e)
@@ -133,15 +167,16 @@ internal sealed class MeshDrawStreamRegistry(IContext context, World world)
         var entity = _world.GetEntity(e.EntityId);
         ref var meshComp = ref _meshComponents[entity];
 
-        var newCategory = GetCategoryFromEntity(entity);
-        var stream = GetStreamInternal(newCategory);
+        var (type, category) = GetCategoryFromEntity(entity);
+        var stream = GetStreamInternal(type, category);
         if (!stream!.Has(entity))
         {
             ref var renderable = ref _renderables[entity];
-            var oldCategory = (DrawStreamCategory)renderable.DrawCategory;
-            if (oldCategory != newCategory)
+            var oldCategory = (DrawStreamVariants)renderable.DrawVariants;
+            var oldType = (DrawStreamType)renderable.DrawType;
+            if (oldType != type || oldCategory != category)
             {
-                var oldStream = GetStreamInternal(oldCategory);
+                var oldStream = GetStreamInternal(oldType, oldCategory);
                 if (oldStream is not null && oldStream.Has(entity))
                 {
                     oldStream.EntityRemoved(entity);
@@ -149,12 +184,15 @@ internal sealed class MeshDrawStreamRegistry(IContext context, World world)
                 else
                 {
                     // In case the entity was not added to any stream before (e.g., it was missing some components), we need to remove it from all streams just in case.
-                    foreach (var s in _meshStreams)
+                    foreach (var streams in _streamsByType)
                     {
-                        if (s.Has(entity))
+                        foreach (MeshDrawStream s in streams)
                         {
-                            s.EntityRemoved(entity);
-                            break;
+                            if (s.Has(entity))
+                            {
+                                s.EntityRemoved(entity);
+                                break;
+                            }
                         }
                     }
                 }

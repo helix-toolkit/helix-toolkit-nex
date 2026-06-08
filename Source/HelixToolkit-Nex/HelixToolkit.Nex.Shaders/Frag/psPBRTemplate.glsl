@@ -19,6 +19,8 @@ layout(location = 5) in vec2 fragTexCoord;
 #endif
 #endif
 
+// Forces the GPU to check if a pixel is visible *before* running this expensive lighting shader
+layout(early_fragment_tests) in; 
 
 #ifdef OUTPUT_DRAW_ID
 layout(location = 6) in flat uvec2 fragEntityId;
@@ -341,7 +343,14 @@ PBRMaterial createPBRMaterial()
 #ifndef EXCLUDE_MESH_PROPS
     if (props.albedoTexIndex > 0)
     {
-        material.albedo = material.albedo * textureBindless2D(props.albedoTexIndex, props.samplerIndex, fragTexCoord).rgb;
+        vec4 albedo = textureBindless2D(props.albedoTexIndex, props.samplerIndex, fragTexCoord);
+#ifdef ALPHA_MASK
+        if (albedo.a < props.alphaCutoff)
+        {
+            discard;
+        }
+#endif
+        material.albedo = material.albedo * albedo.rgb;
     }
     if (props.metallicRoughnessTexIndex > 0)
     {

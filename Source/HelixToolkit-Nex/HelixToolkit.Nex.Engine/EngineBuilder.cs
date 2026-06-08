@@ -363,6 +363,7 @@ public sealed class EngineBuilder
         AddNode(new FrustumCullNode());
         AddNode(new ForwardPlusLightCullingNode());
         AddNode(new ForwardPlusOpaqueNode());
+        AddNode(new ForwardPlusMaskNode());
         if (_withPointCloud)
         {
             AddNode(new PointCullNode());

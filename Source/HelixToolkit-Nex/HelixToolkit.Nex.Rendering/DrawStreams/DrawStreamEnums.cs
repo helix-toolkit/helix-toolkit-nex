@@ -1,30 +1,41 @@
 namespace HelixToolkit.Nex.Rendering.DrawStreams;
 
 /// <summary>
-/// Flags enum for categorizing draw streams. Used by the registry to support
-/// batch queries (e.g., retrieve all opaque streams, all instancing streams).
-/// Multiple flags can be combined to narrow or broaden a category query.
+/// Specifies the rendering type of a draw stream, which determines the rendering order and blending mode.
+/// </summary>
+public enum DrawStreamType : int
+{
+    None = -1,
+    /// <summary>Draw stream for rendering opaque geometry.</summary>
+    Opaque = 0,
+    /// <summary>Draw stream for rendering alpha masked geometry.</summary>
+    AlphaMask,
+    /// <summary>Draw stream for rendering transparent geometry.</summary>
+    Transparent,
+
+    /// <summary>
+    /// Total stream count
+    /// </summary>
+    Count,
+}
+
+/// <summary>
+/// Flags representing various characteristics of a draw stream, such as whether it contains dynamic geometry, instanced geometry, or hitable geometry.
 /// </summary>
 [Flags]
-public enum DrawStreamCategory : uint
+public enum DrawStreamVariants : uint
 {
-    /// <summary>No category.</summary>
-    None = 0,
-
-    /// <summary>Stream contains opaque geometry.</summary>
-    Opaque = 1,
-
-    /// <summary>Stream contains transparent geometry.</summary>
-    Transparent = 1 << 1,
+    /// <summary>Static mesh.</summary>
+    Static = 0,
 
     /// <summary>Stream contains dynamic geometry (per-draw index buffer).</summary>
-    Dynamic = 1 << 3,
+    Dynamic = 1,
 
     /// <summary>Stream contains instanced geometry.</summary>
-    Instancing = 1 << 4,
+    Instancing = 1 << 1,
 
     /// <summary>Stream contains hitable geometry (writes entity ID for picking).</summary>
-    Hitable = 1 << 6,
+    Hitable = 1 << 2,
 }
 
 /// <summary>
@@ -37,40 +48,28 @@ public enum DrawStreamName : int
     None = -1,
 
     /// <summary>Opaque static geometry using the shared global index buffer.</summary>
-    OpaqueStatic,
+    Static,
 
     /// <summary>Opaque dynamic geometry with per-draw index buffer binding.</summary>
-    OpaqueDynamic,
+    Dynamic,
 
     /// <summary>Opaque static geometry rendered with GPU instancing.</summary>
-    OpaqueStaticInstancing,
+    StaticInstancing,
 
     /// <summary>Opaque dynamic geometry rendered with GPU instancing.</summary>
-    OpaqueDynamicInstancing,
+    DynamicInstancing,
 
-    /// <summary>Transparent static hitable geometry using the shared global index buffer.</summary>
-    TransparentStaticHitable,
+    /// <summary>Static non-hitable geometry using the shared global index buffer.</summary>
+    StaticHitable,
 
-    /// <summary>Transparent dynamic hitable geometry with per-draw index buffer binding.</summary>
-    TransparentDynamicHitable,
+    /// <summary>Dynamic non-hitable geometry with per-draw index buffer binding.</summary>
+    DynamicHitable,
 
-    /// <summary>Transparent static hitable geometry rendered with GPU instancing.</summary>
-    TransparentStaticInstancingHitable,
+    /// <summary>Static non-hitable geometry rendered with GPU instancing.</summary>
+    StaticInstancingHitable,
 
-    /// <summary>Transparent dynamic hitable geometry rendered with GPU instancing.</summary>
-    TransparentDynamicInstancingHitable,
-
-    /// <summary>Transparent static non-hitable geometry using the shared global index buffer.</summary>
-    TransparentStaticNonHitable,
-
-    /// <summary>Transparent dynamic non-hitable geometry with per-draw index buffer binding.</summary>
-    TransparentDynamicNonHitable,
-
-    /// <summary>Transparent static non-hitable geometry rendered with GPU instancing.</summary>
-    TransparentStaticInstancingNonHitable,
-
-    /// <summary>Transparent dynamic non-hitable geometry rendered with GPU instancing.</summary>
-    TransparentDynamicInstancingNonHitable,
+    /// <summary>Dynamic non-hitable geometry rendered with GPU instancing.</summary>
+    DynamicInstancingHitable,
 
     /// <summary>
     /// Total number of predefined stream names. Used for validation and array sizing in the registry.
@@ -84,110 +83,50 @@ public static class DrawStreamNameExtensions
     /// Gets the category flags associated with a given <see cref="DrawStreamName"/>.
     /// This mapping is based on the predefined combinations of characteristics for each stream name.
     /// </summary>
-    public static DrawStreamCategory GetCategory(this DrawStreamName name)
+    public static DrawStreamVariants GetVariants(this DrawStreamName name)
     {
         return name switch
         {
-            DrawStreamName.OpaqueStatic => DrawStreamCategory.Opaque,
+            DrawStreamName.Static => DrawStreamVariants.Static,
 
-            DrawStreamName.OpaqueDynamic => DrawStreamCategory.Opaque | DrawStreamCategory.Dynamic,
+            DrawStreamName.Dynamic => DrawStreamVariants.Dynamic,
 
-            DrawStreamName.OpaqueStaticInstancing => DrawStreamCategory.Opaque
-                | DrawStreamCategory.Instancing,
+            DrawStreamName.StaticInstancing => DrawStreamVariants.Instancing,
 
-            DrawStreamName.OpaqueDynamicInstancing => DrawStreamCategory.Opaque
-                | DrawStreamCategory.Dynamic
-                | DrawStreamCategory.Instancing,
+            DrawStreamName.DynamicInstancing => DrawStreamVariants.Dynamic | DrawStreamVariants.Instancing,
 
-            DrawStreamName.TransparentStaticHitable => DrawStreamCategory.Transparent
-                | DrawStreamCategory.Hitable,
+            DrawStreamName.StaticHitable => DrawStreamVariants.Hitable,
 
-            DrawStreamName.TransparentDynamicHitable => DrawStreamCategory.Transparent
-                | DrawStreamCategory.Dynamic
-                | DrawStreamCategory.Hitable,
+            DrawStreamName.DynamicHitable => DrawStreamVariants.Dynamic | DrawStreamVariants.Hitable,
 
-            DrawStreamName.TransparentStaticInstancingHitable => DrawStreamCategory.Transparent
-                | DrawStreamCategory.Instancing
-                | DrawStreamCategory.Hitable,
+            DrawStreamName.StaticInstancingHitable =>
+                DrawStreamVariants.Instancing | DrawStreamVariants.Hitable,
 
-            DrawStreamName.TransparentDynamicInstancingHitable => DrawStreamCategory.Transparent
-                | DrawStreamCategory.Dynamic
-                | DrawStreamCategory.Instancing
-                | DrawStreamCategory.Hitable,
+            DrawStreamName.DynamicInstancingHitable => DrawStreamVariants.Dynamic | DrawStreamVariants.Instancing | DrawStreamVariants.Hitable,
 
-            DrawStreamName.TransparentStaticNonHitable => DrawStreamCategory.Transparent,
-
-            DrawStreamName.TransparentDynamicNonHitable => DrawStreamCategory.Transparent
-                | DrawStreamCategory.Dynamic,
-
-            DrawStreamName.TransparentStaticInstancingNonHitable => DrawStreamCategory.Transparent
-                | DrawStreamCategory.Instancing,
-
-            DrawStreamName.TransparentDynamicInstancingNonHitable => DrawStreamCategory.Transparent
-                | DrawStreamCategory.Dynamic
-                | DrawStreamCategory.Instancing,
-
-            _ => DrawStreamCategory.None,
+            _ => DrawStreamVariants.Static,
         };
     }
 
-    public static DrawStreamName GetStreamName(this DrawStreamCategory category)
+    public static DrawStreamName GetStreamName(this DrawStreamVariants category)
     {
         return category switch
         {
-            DrawStreamCategory.Opaque => DrawStreamName.OpaqueStatic,
+            DrawStreamVariants.Static => DrawStreamName.Static,
 
-            DrawStreamCategory.Opaque | DrawStreamCategory.Dynamic => DrawStreamName.OpaqueDynamic,
+            DrawStreamVariants.Dynamic => DrawStreamName.Dynamic,
 
-            DrawStreamCategory.Opaque | DrawStreamCategory.Instancing =>
-                DrawStreamName.OpaqueStaticInstancing,
+            DrawStreamVariants.Instancing => DrawStreamName.StaticInstancing,
 
-            DrawStreamCategory.Opaque
-                | DrawStreamCategory.Dynamic
-                | DrawStreamCategory.Instancing => DrawStreamName.OpaqueDynamicInstancing,
+            DrawStreamVariants.Dynamic | DrawStreamVariants.Instancing => DrawStreamName.DynamicInstancing,
 
-            DrawStreamCategory.Opaque | DrawStreamCategory.Hitable => DrawStreamName.OpaqueStatic,
+            DrawStreamVariants.Hitable => DrawStreamName.StaticHitable,
 
-            DrawStreamCategory.Opaque | DrawStreamCategory.Dynamic | DrawStreamCategory.Hitable =>
-                DrawStreamName.OpaqueDynamic,
+            DrawStreamVariants.Dynamic | DrawStreamVariants.Hitable => DrawStreamName.DynamicHitable,
 
-            DrawStreamCategory.Opaque
-                | DrawStreamCategory.Instancing
-                | DrawStreamCategory.Hitable => DrawStreamName.OpaqueStaticInstancing,
+            DrawStreamVariants.Instancing | DrawStreamVariants.Hitable => DrawStreamName.StaticInstancingHitable,
 
-            DrawStreamCategory.Opaque
-                | DrawStreamCategory.Dynamic
-                | DrawStreamCategory.Instancing
-                | DrawStreamCategory.Hitable => DrawStreamName.OpaqueDynamicInstancing,
-
-            DrawStreamCategory.Transparent | DrawStreamCategory.Hitable =>
-                DrawStreamName.TransparentStaticHitable,
-
-            DrawStreamCategory.Transparent
-                | DrawStreamCategory.Dynamic
-                | DrawStreamCategory.Hitable => DrawStreamName.TransparentDynamicHitable,
-
-            DrawStreamCategory.Transparent
-                | DrawStreamCategory.Instancing
-                | DrawStreamCategory.Hitable => DrawStreamName.TransparentStaticInstancingHitable,
-
-            DrawStreamCategory.Transparent
-                | DrawStreamCategory.Dynamic
-                | DrawStreamCategory.Instancing
-                | DrawStreamCategory.Hitable => DrawStreamName.TransparentDynamicInstancingHitable,
-
-            DrawStreamCategory.Transparent => DrawStreamName.TransparentStaticNonHitable,
-
-            DrawStreamCategory.Transparent | DrawStreamCategory.Dynamic =>
-                DrawStreamName.TransparentDynamicNonHitable,
-
-            DrawStreamCategory.Transparent | DrawStreamCategory.Instancing =>
-                DrawStreamName.TransparentStaticInstancingNonHitable,
-
-            DrawStreamCategory.Transparent
-                | DrawStreamCategory.Dynamic
-                | DrawStreamCategory.Instancing =>
-                DrawStreamName.TransparentDynamicInstancingNonHitable,
+            DrawStreamVariants.Dynamic | DrawStreamVariants.Instancing | DrawStreamVariants.Hitable => DrawStreamName.DynamicInstancingHitable,
 
             _ => DrawStreamName.None,
         };
