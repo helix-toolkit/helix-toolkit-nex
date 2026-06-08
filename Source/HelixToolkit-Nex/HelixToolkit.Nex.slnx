@@ -27,6 +27,10 @@
       <Build Solution="Debug|x86" Project="false" />
     </Project>
     <Project Path="Samples/Integration/DepthPrepassRenderer/DepthPrepassRenderer.csproj" />
+    <Project Path="Samples/Integration/gltfImporter/gltfImporter.csproj" Id="be0113e7-bc27-4810-9cae-980af56945e0">
+      <BuildType Solution="LinuxDebug|*" Project="Release" />
+      <BuildType Solution="LinuxRelease|*" Project="Release" />
+    </Project>
     <Project Path="Samples/Integration/ImGui/ImGui.csproj" />
     <Project Path="Samples/Integration/LightCulling/LightCulling.csproj" />
     <Project Path="Samples/Integration/PBRTest/PBRTest.csproj" />
@@ -71,13 +75,18 @@
   <Project Path="HelixTookit.Nex/HelixToolkit.Nex.csproj" />
   <Project Path="HelixToolkit.Nex.CodeGen.Tests/HelixToolkit.Nex.CodeGen.Tests.csproj" />
   <Project Path="HelixToolkit.Nex.CodeGen/HelixToolkit.Nex.CodeGen.csproj" />
-  <Project Path="HelixToolkit.Nex.Engine/HelixToolkit.Nex.Engine.csproj" />
   <Project Path="HelixToolkit.Nex.Engine.Tests/HelixToolkit.Nex.Engine.Tests.csproj" />
+  <Project Path="HelixToolkit.Nex.Engine/HelixToolkit.Nex.Engine.csproj" />
   <Project Path="HelixToolkit.Nex.EntityComponentSystem.Tests/HelixToolkit.Nex.ECS.Tests.csproj" />
   <Project Path="HelixToolkit.Nex.EntityComponentSystem/HelixToolkit.Nex.ECS.csproj" />
   <Project Path="HelixToolkit.Nex.Geometries.Builders/HelixToolkit.Nex.Geometries.Builders.csproj" />
   <Project Path="HelixToolkit.Nex.Geometry.Tests/HelixToolkit.Nex.Geometries.Tests.csproj" />
   <Project Path="HelixToolkit.Nex.Geometry/HelixToolkit.Nex.Geometries.csproj" />
+  <Project Path="HelixToolkit.Nex.glTF.Tests/HelixToolkit.Nex.glTF.Tests.csproj" />
+  <Project Path="HelixToolkit.Nex.glTF/HelixToolkit.Nex.glTF.csproj" Id="7a19d4d0-87c9-409a-ba85-0e6c750eae88">
+    <BuildType Solution="LinuxDebug|*" Project="Release" />
+    <BuildType Solution="LinuxRelease|*" Project="Release" />
+  </Project>
   <Project Path="HelixToolkit.Nex.Graphics.Mock/HelixToolkit.Nex.Graphics.Mock.csproj" />
   <Project Path="HelixToolkit.Nex.Graphics.Vulkan.Tests/HelixToolkit.Nex.Graphics.Vulkan.Tests.csproj" />
   <Project Path="HelixToolkit.Nex.Graphics.Vulkan/HelixToolkit.Nex.Graphics.Vulkan.csproj" />
