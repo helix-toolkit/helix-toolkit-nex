@@ -7,7 +7,7 @@ The `HelixToolkit.Nex.Geometries` package is a core component of the HelixToolki
 
 The `HelixToolkit.Nex.Geometries` package is responsible for:
 - Managing geometric data through the `Geometry` class, which includes vertices, indices, and vertex properties.
-- Providing utilities for normal calculation and buffer management.
+- Providing utilities for normal calculation, tangent generation, and buffer management.
 - Supporting serialization and deserialization of geometric data.
 - Implementing octree structures for efficient spatial queries and hit testing.
 - Integrating with the HelixToolkit-Nex ECS architecture for dynamic and static geometry management.
@@ -25,6 +25,7 @@ The `HelixToolkit.Nex.Geometries` package is responsible for:
 | `IOctreeBasic`                | Interface for basic octree operations, used for spatial queries and hit testing.                      |
 | `StaticMeshGeometryOctree`    | Static octree implementation for mesh geometries, optimizing spatial queries and hit tests.           |
 | `GeometryJsonConverter`       | JSON converter for serializing and deserializing `Geometry` objects.                                  |
+| `TangentGenerator`            | Static class for generating tangent vectors for geometries that lack them.                            |
 
 ## Usage Examples
 
@@ -42,6 +43,7 @@ var indices = new FastList<uint> { 0, 1, 2 };
 
 var geometry = new Geometry(vertices, indices, Topology.Triangle);
 geometry.UpdateNormals();
+TangentGenerator.ComputeTangents(geometry);
 ```
 
 ### Performing a Hit Test
@@ -84,16 +86,18 @@ var deserializedGeometry = JsonSerializer.Deserialize<Geometry>(json, options);
 
 ## Recent Changes
 
+- **VertexProperties Struct**: 
+  - The `Tangent` field has been updated to a `Vector4` to include handedness information, aligning with the glTF specification.
+  - Introduced `DefaultTangent` for initializing tangents with a default right-handed bitangent.
 - **Geometry Class**: 
-  - The `Attached` property has been renamed to `Valid` to better reflect its purpose.
   - Updated buffer management logic to use `HasAllFlags` for checking buffer types.
+  - Buffer debug names have been updated for clarity.
 - **GeometryManager API**: 
-  - The `Add` and `AddAsync` methods now return a `Handle<GeometryResourceType>` instead of a boolean and ID tuple, improving the clarity of the API.
-  - Introduced `TryAdd` method to attempt adding a geometry and return a handle.
-  - Removed the `AddAsync` overload that returned a boolean and ID tuple.
-  - Added `GetDirtyCount` method to retrieve the number of geometries that need buffer updates.
-  - Replaced `GetAll` with `GetEnumerator` for more efficient iteration over geometries.
-- **Asynchronous Event Publishing**: The `Geometry` and `GeometryManager` classes now use `PublishAsync` for event publishing, improving responsiveness and non-blocking operations.
-- **Buffer Management**: The `GeometryManager` now schedules GPU transfers asynchronously, enhancing performance by reducing blocking I/O operations.
+  - Introduced `UploadMeshInfoDynamic` method for uploading mesh information to the GPU.
+  - Added `LastIndex` property to track the last object index in the pool.
+- **TangentGenerator Class**: 
+  - New static class for generating tangent vectors for geometries using the Lengyel algorithm.
+- **Serialization**: 
+  - Updated `VertexPropsJsonConverter` to handle `Vector4` tangents.
 - **Platform Configurations**: Added new build configurations for `LinuxDebug` and `LinuxRelease` to support cross-platform development.
 ```

@@ -72,7 +72,7 @@ var samplerDesc = new SamplerStateDesc
     WrapV = WrapMode.Repeat
 };
 
-var samplerRef = samplerRepo.GetOrCreate(samplerDesc);
+var samplerRef = samplerRepo.GetOrCreate("uniqueSamplerKey", samplerDesc);
 ```
 
 ### Asynchronously Caching a Texture from a File

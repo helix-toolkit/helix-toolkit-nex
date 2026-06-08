@@ -67,4 +67,17 @@ MeshGeometry3D simplifiedMesh = meshSimplification.Simplify(targetCount: 100);
 - **Integration**: It integrates seamlessly with the HelixToolkit-Nex engine's ECS and Render Graph systems, allowing for efficient rendering and manipulation of 3D objects.
 
 This package is crucial for developers working with the HelixToolkit-Nex engine, providing the tools necessary to create and manipulate 3D geometries efficiently.
+
+## Recent Changes
+
+### MeshGeometry3D
+
+- **Tangent Calculation Update**: The tangent vector in `MeshGeometry3D` is now represented as a `Vector4`, with the W component set to `1.0f`. This change ensures compatibility with shaders that expect a 4D tangent vector.
+
+```csharp
+var tangentXYZ = Tangents is not null ? Tangents[i] : Vector3.Zero;
+var tangent = new Vector4(tangentXYZ, 1.0f);
+```
+
+This change affects how tangents are stored and should be considered when interfacing with shaders or other systems that utilize tangent data.
 ```

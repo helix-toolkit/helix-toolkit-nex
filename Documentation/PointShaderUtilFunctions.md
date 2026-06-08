@@ -3,91 +3,91 @@
 ```glsl
 uint64_t getTimeMs()
 ```
-- **Purpose**: Retrieves the current time in milliseconds.
+- **Purpose**: Retrieves the current time in milliseconds from the shader's constant buffer.
 - **Return Type**: `uint64_t`
 
 ```glsl
 mat4 getViewProjection()
 ```
-- **Purpose**: Returns the view-projection matrix, which is used to transform coordinates from world space to clip space.
+- **Purpose**: Returns the view-projection matrix, which transforms world coordinates to clip space.
 - **Return Type**: `mat4`
 
 ```glsl
 mat4 getInvViewProjection()
 ```
-- **Purpose**: Provides the inverse of the view-projection matrix, useful for transforming coordinates from clip space back to world space.
+- **Purpose**: Provides the inverse of the view-projection matrix, useful for transforming clip space coordinates back to world coordinates.
 - **Return Type**: `mat4`
 
 ```glsl
 mat4 getView()
 ```
-- **Purpose**: Retrieves the view matrix, which is used to transform coordinates from world space to view space.
+- **Purpose**: Retrieves the view matrix, which transforms world coordinates to view space.
 - **Return Type**: `mat4`
 
 ```glsl
 mat4 getInvView()
 ```
-- **Purpose**: Returns the inverse of the view matrix, allowing transformation from view space back to world space.
+- **Purpose**: Returns the inverse of the view matrix, allowing transformation from view space back to world coordinates.
 - **Return Type**: `mat4`
 
 ```glsl
 vec3 getCameraPosition()
 ```
-- **Purpose**: Obtains the position of the camera in world space.
+- **Purpose**: Provides the world position of the camera.
 - **Return Type**: `vec3`
 
 ```glsl
 vec2 getScreenSize()
 ```
-- **Purpose**: Provides the dimensions of the screen in pixels.
+- **Purpose**: Returns the dimensions of the screen in pixels.
 - **Return Type**: `vec2`
 
 ```glsl
 bool isPointerRingEnabled()
 ```
-- **Purpose**: Checks if the pointer ring feature is enabled.
+- **Purpose**: Checks if the pointer ring effect is enabled.
 - **Return Type**: `bool`
 
 ```glsl
 vec3 getPointerRayDirection()
 ```
-- **Purpose**: Retrieves the direction of the pointer ray in world space.
+- **Purpose**: Retrieves the direction vector of the pointer ray in world space.
 - **Return Type**: `vec3`
 
 ```glsl
 vec3 getPointerRayOrigin()
 ```
-- **Purpose**: Returns the origin point of the pointer ray in world space.
+- **Purpose**: Provides the origin point of the pointer ray in world space.
 - **Return Type**: `vec3`
 
 ```glsl
 float getPointerRingOuterDistThreshold()
 ```
-- **Purpose**: Provides the outer distance threshold for the pointer ring effect.
+- **Purpose**: Returns the outer distance threshold for the pointer ring effect.
 - **Return Type**: `float`
 
 ```glsl
 float getPointerRingInnerDistThreshold()
 ```
-- **Purpose**: Returns the inner distance threshold for the pointer ring effect.
+- **Purpose**: Retrieves the inner distance threshold for the pointer ring effect.
 - **Return Type**: `float`
 
 ```glsl
 float getPointerRingColorMix()
 ```
-- **Purpose**: Retrieves the mix factor used to blend the pointer ring color with the fragment color.
+- **Purpose**: Provides the mix factor for blending the pointer ring color with the fragment color.
 - **Return Type**: `float`
 
 ```glsl
 vec3 getPointerRingColor()
 ```
-- **Purpose**: Provides the color of the pointer ring.
+- **Purpose**: Returns the color of the pointer ring.
 - **Return Type**: `vec3`
 
 ```glsl
 float getFragToPointerRayDistance()
 ```
-- **Purpose**: Calculates the distance from the fragment position to the closest point on the pointer ray.
+- **Purpose**: Calculates the distance from the fragment's world position to the closest point on the pointer ray.
 - **Return Type**: `float`
 
 ```glsl
@@ -99,5 +99,5 @@ bool isInPointerRing()
 ```glsl
 vec4 mixWithPointerRing(in vec4 color)
 ```
-- **Purpose**: Blends the input color with the pointer ring color if the fragment is within the pointer ring and the feature is enabled.
+- **Purpose**: Blends the fragment color with the pointer ring color if the pointer ring effect is enabled and the fragment is within the ring.
 - **Return Type**: `vec4`

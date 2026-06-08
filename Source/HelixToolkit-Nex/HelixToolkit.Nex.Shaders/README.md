@@ -14,7 +14,7 @@ This package is integral to the HelixToolkit-Nex engine, facilitating the creati
 
 | Type                          | Description                                                                 |
 |-------------------------------|-----------------------------------------------------------------------------|
-| `BuildFlags`                  | Contains constants for shader build options, such as excluding mesh properties and enabling depth pre-pass. |
+| `BuildFlags`                  | Contains constants for shader build options, such as excluding mesh properties, enabling depth pre-pass, and alpha masked rendering. |
 | `ForwardPlusLightCulling`     | Generates compute shaders for Forward+ light culling.                       |
 | `GpuFrustumCulling`           | Provides methods for generating compute shaders for GPU-based frustum culling. |
 | `Helpers`                     | Utility methods for creating and updating culling constants.                |
@@ -54,7 +54,7 @@ Console.WriteLine(shaderSource);
 var options = new ShaderBuildOptions
 {
     StripComments = true,
-    Defines = new Dictionary<string, string> { { "EXCLUDE_MESH_PROPS", "" }, { "DEPTH_PREPASS", "" } }
+    Defines = new Dictionary<string, string> { { "EXCLUDE_MESH_PROPS", "" }, { "DEPTH_PREPASS", "" }, { "ALPHA_MASK", "" } }
 };
 
 var compiler = new ShaderCompiler();

@@ -91,6 +91,25 @@ commandBuffer.SetColorWriteEnabled(colorWrites);
 commandBuffer.SetColorWriteEnabled(true, false, true, false);
 ```
 
+### Copying Texture to Buffer
+
+```csharp
+commandBuffer.CopyTextureToBuffer(
+    srcTextureHandle,
+    dstBufferHandle,
+    bufferOffset: 0,
+    srcOffset: new Offset3D(0, 0, 0),
+    extent: new Dimensions(512, 512, 1),
+    layers: new TextureLayers(0, 1, 0, 1)
+);
+```
+
+### Setting Cull Mode
+
+```csharp
+commandBuffer.SetCullMode(CullMode.Back);
+```
+
 ## Architecture Notes
 
 Dependencies:

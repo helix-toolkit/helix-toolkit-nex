@@ -58,6 +58,7 @@ viewport.PointerPressed += (sender, e) =>
 - **Gamma Correction**: The `HelixViewport` now enables gamma correction by default in the render context. This ensures more accurate color representation.
 - **Rendering Event Handling**: The `CompositionTarget.Rendering` event is now directly used without the namespace prefix, simplifying the event subscription and unsubscription process.
 - **Resource Management**: Improved resource management with the `EnsureSize` method to handle viewport resizing more efficiently. The `Engine.WaitForIdle()` method is now used to ensure the engine is idle before releasing resources.
+- **Microsoft Windows App SDK Update**: Updated the package reference for `Microsoft.WindowsAppSDK` to version `2.1.3`.
 
 ## Architecture Notes
 
