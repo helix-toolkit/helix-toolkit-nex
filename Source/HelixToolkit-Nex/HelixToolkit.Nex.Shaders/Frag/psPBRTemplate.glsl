@@ -482,8 +482,11 @@ PBRMaterial createPBRMaterial()
     if (props.albedoTexIndex > 0)
     {
         vec4 albedo = textureBindless2D(props.albedoTexIndex, props.samplerIndex, fragTexCoord);
+        // Per glTF spec: final alpha = baseColorFactor.a * baseColorTexture.a
+        // Apply texture alpha to material opacity for correct alpha masking/blending
+        material.opacity = material.opacity * albedo.a;
 #ifdef ALPHA_MASK
-        if (albedo.a < props.alphaCutoff)
+        if (material.opacity < props.alphaCutoff)
         {
             discard;
         }
