@@ -27,10 +27,7 @@
       <Build Solution="Debug|x86" Project="false" />
     </Project>
     <Project Path="Samples/Integration/DepthPrepassRenderer/DepthPrepassRenderer.csproj" />
-    <Project Path="Samples/Integration/gltfImporter/gltfImporter.csproj" Id="be0113e7-bc27-4810-9cae-980af56945e0">
-      <BuildType Solution="LinuxDebug|*" Project="Release" />
-      <BuildType Solution="LinuxRelease|*" Project="Release" />
-    </Project>
+    <Project Path="Samples/Integration/gltfImporter/gltfImporter.csproj" />
     <Project Path="Samples/Integration/ImGui/ImGui.csproj" />
     <Project Path="Samples/Integration/LightCulling/LightCulling.csproj" />
     <Project Path="Samples/Integration/PBRTest/PBRTest.csproj" />
@@ -83,10 +80,7 @@
   <Project Path="HelixToolkit.Nex.Geometry.Tests/HelixToolkit.Nex.Geometries.Tests.csproj" />
   <Project Path="HelixToolkit.Nex.Geometry/HelixToolkit.Nex.Geometries.csproj" />
   <Project Path="HelixToolkit.Nex.glTF.Tests/HelixToolkit.Nex.glTF.Tests.csproj" />
-  <Project Path="HelixToolkit.Nex.glTF/HelixToolkit.Nex.glTF.csproj" Id="7a19d4d0-87c9-409a-ba85-0e6c750eae88">
-    <BuildType Solution="LinuxDebug|*" Project="Release" />
-    <BuildType Solution="LinuxRelease|*" Project="Release" />
-  </Project>
+  <Project Path="HelixToolkit.Nex.glTF/HelixToolkit.Nex.glTF.csproj" />
   <Project Path="HelixToolkit.Nex.Graphics.Mock/HelixToolkit.Nex.Graphics.Mock.csproj" />
   <Project Path="HelixToolkit.Nex.Graphics.Vulkan.Tests/HelixToolkit.Nex.Graphics.Vulkan.Tests.csproj" />
   <Project Path="HelixToolkit.Nex.Graphics.Vulkan/HelixToolkit.Nex.Graphics.Vulkan.csproj" />
