@@ -39,7 +39,7 @@ internal class GltfImporterApp : ApplicationBase
 
     // Camera
     private Camera _camera = new PerspectiveCamera();
-    private OrbitCameraController? _cameraController;
+    private ICameraController? _cameraController;
 
     // UI panels
     private SelectionManager? _selectionManager;
@@ -76,6 +76,12 @@ internal class GltfImporterApp : ApplicationBase
 
     // Timing
     private long _lastTimestamp = 0;
+
+    // Importer config
+    private readonly ImporterConfig _importConfig = new()
+    {
+        DefaultShadingMode = Shaders.Frag.PBRShadingMode.CAD,
+    };
 
     public override string Name => "glTF Importer";
 
@@ -123,7 +129,7 @@ internal class GltfImporterApp : ApplicationBase
         _engine = EngineBuilder
             .Create(_context)
             .WithDefaultNodes(false)
-            .WithSMAA()
+            .WithFXAA()
             .WithTransparent(Engine.TransparentMode.WBOIT)
             .RenderToCustomTarget(GraphicsSettings.IntermediateTargetFormat)
             .WithPostEffects(effects =>
@@ -464,7 +470,7 @@ internal class GltfImporterApp : ApplicationBase
             return;
 
         var importer = new Importer();
-        var result = importer.Import(filePath, _worldDataProvider);
+        var result = importer.Import(filePath, _worldDataProvider, _importConfig);
 
         if (!result.Success)
         {

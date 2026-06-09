@@ -221,6 +221,43 @@ public class FirstPersonCameraController : ICameraController
         UpdateCameraTarget();
     }
 
+    /// <inheritdoc />
+    public void FocusOn(Vector3 target, float? distance = null)
+    {
+        // Calculate the direction from target to camera position
+        var toTarget = target - Camera.Position;
+        var currentDistance = toTarget.Length();
+
+        // Use the provided distance or preserve the current one
+        var newDistance = distance ?? currentDistance;
+
+        // Ensure we have a valid distance
+        if (newDistance < MathUtil.ZeroTolerance)
+        {
+            newDistance = 1.0f;
+        }
+
+        // If we're very close to the target, move back along the current forward direction
+        if (currentDistance < MathUtil.ZeroTolerance)
+        {
+            var forward = GetForwardDirection();
+            Camera.Position = target - forward * newDistance;
+        }
+        else
+        {
+            // Position the camera at the specified distance from the target
+            var directionToTarget = toTarget / currentDistance;
+            Camera.Position = target - directionToTarget * newDistance;
+
+            // Update yaw and pitch to look at the target
+            _yaw = MathF.Atan2(directionToTarget.X, directionToTarget.Z);
+            _pitch = MathF.Asin(MathUtil.Clamp(directionToTarget.Y, -1f, 1f));
+            _pitch = MathUtil.Clamp(_pitch, MinPitch, MaxPitch);
+        }
+
+        UpdateCameraTarget();
+    }
+
     /// <summary>
     /// Computes the forward direction from the current yaw and pitch angles.
     /// </summary>

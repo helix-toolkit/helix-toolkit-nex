@@ -19,7 +19,7 @@ namespace HelixToolkit.Nex.Sample.GltfImporter;
 internal class ViewportPanel
 {
     private readonly SelectionManager _selectionManager;
-    private readonly OrbitCameraController _cameraController;
+    private readonly ICameraController _cameraController;
     private Size _contentSize = new(1, 1);
     private bool _isRotating;
     private bool _isPanning;
@@ -27,7 +27,7 @@ internal class ViewportPanel
     /// <summary>Gets the current content region size for render target allocation.</summary>
     public Size ContentSize => _contentSize;
 
-    public ViewportPanel(SelectionManager selectionManager, OrbitCameraController controller)
+    public ViewportPanel(SelectionManager selectionManager, ICameraController controller)
     {
         _selectionManager =
             selectionManager ?? throw new ArgumentNullException(nameof(selectionManager));
