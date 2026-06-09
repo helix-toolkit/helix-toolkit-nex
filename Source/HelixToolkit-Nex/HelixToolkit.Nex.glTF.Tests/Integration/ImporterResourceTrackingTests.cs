@@ -512,7 +512,7 @@ public class ImporterResourceTrackingTests
         // the root node is disposed.
         try
         {
-            var result = await _importer.ImportAsync(filePath, worldData, cts.Token);
+            var result = await _importer.ImportAsync(filePath, worldData, cancellationToken: cts.Token);
 
             // If we get here, cancellation didn't fire at the right time.
             // The import succeeded normally — this is acceptable for a timing-based test.
@@ -561,7 +561,7 @@ public class ImporterResourceTrackingTests
 
         // Act & Assert
         await Assert.ThrowsExceptionAsync<OperationCanceledException>(() =>
-            _importer.ImportAsync(filePath, worldData, cts.Token)
+            _importer.ImportAsync(filePath, worldData, cancellationToken: cts.Token)
         );
 
         // Verify no resources were leaked

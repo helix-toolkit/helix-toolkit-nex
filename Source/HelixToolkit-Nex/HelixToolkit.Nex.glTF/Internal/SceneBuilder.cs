@@ -117,6 +117,21 @@ internal sealed class SceneBuilder
     /// <returns>The created Node.</returns>
     internal Node BuildNode(Gltf model, int nodeIndex, Node? parent)
     {
+        if (model.Nodes == null || nodeIndex < 0 || nodeIndex >= model.Nodes.Length)
+        {
+            _diagnostics.Add(
+                new ImportDiagnostic(
+                    DiagnosticSeverity.Warning,
+                    $"Scene references node index {nodeIndex} which is out of range.",
+                    "Node",
+                    nodeIndex
+                )
+            );
+
+            var placeholder = new Node(_world, $"InvalidNode_{nodeIndex}");
+            parent?.AddChild(placeholder);
+            return placeholder;
+        }
         var gltfNode = model.Nodes[nodeIndex];
 
         // Create the engine node

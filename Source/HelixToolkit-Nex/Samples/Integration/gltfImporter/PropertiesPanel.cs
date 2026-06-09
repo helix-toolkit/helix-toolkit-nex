@@ -49,8 +49,8 @@ internal class PropertiesPanel
                 var wireframe = _renderContext.RenderParams.EnableGlobalWireframe;
                 Gui.Checkbox("Wireframe Mode", ref wireframe);
                 _renderContext.RenderParams.EnableGlobalWireframe = wireframe;
-                Gui.EndChild();
             }
+            Gui.EndChild();
             if (Gui.BeginChild("Properties"))
             {
                 if (!_selectionManager.HasSelection)
@@ -61,11 +61,10 @@ internal class PropertiesPanel
                 {
                     DrawEntityProperties();
                 }
-                Gui.EndChild();
             }
-
-            Gui.End();
+            Gui.EndChild();
         }
+        Gui.End();
     }
 
     private void DrawEntityProperties()

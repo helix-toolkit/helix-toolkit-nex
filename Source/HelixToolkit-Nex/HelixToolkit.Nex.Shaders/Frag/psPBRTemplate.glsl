@@ -291,6 +291,144 @@ vec4 forwardPlusLighting(in PBRMaterial material)
 #endif
 }
 
+// ============================================================================
+// CAD-Style Shading
+// ============================================================================
+// Provides a clean, technical visualization style commonly used in CAD/CAM software.
+// Features:
+// - Simplified Blinn-Phong lighting model
+// - Two-sided lighting (normal already flipped for back faces)
+// - Camera-aligned head light for consistent illumination
+// - Optional rim/silhouette enhancement for better shape perception
+// - Flat or smooth shading support
+
+vec4 cadStyleLighting(in PBRMaterial material)
+{
+    vec3 N = normalize(material.normal);
+    vec3 V = normalize(fpConst.cameraPosition - fragWorldPos);
+
+    // CAD lighting parameters (can be made configurable via uniforms)
+    float ambientStrength = 0.3;
+    float diffuseStrength = 0.6;
+    float specularStrength = 0.4;
+    float specularShininess = 32.0;
+    float rimStrength = 0.15;       // Silhouette/rim light intensity
+    float rimPower = 3.0;           // Rim light falloff
+
+    // -------------------------------------------------------------------------
+    // Head Light (camera-aligned directional light)
+    // -------------------------------------------------------------------------
+    // This ensures the model is always lit from the viewer's perspective,
+    // which is standard in CAD applications for consistent visualization.
+    vec3 headLightDir = V; // Light comes from camera direction
+
+    // Lambertian diffuse
+    float NdotL = max(dot(N, headLightDir), 0.0);
+    vec3 diffuse = material.albedo * NdotL * diffuseStrength;
+
+    // Blinn-Phong specular
+    vec3 H = normalize(V + headLightDir);
+    float NdotH = max(dot(N, H), 0.0);
+    float spec = pow(NdotH, specularShininess);
+    vec3 specular = vec3(spec) * specularStrength;
+
+    // -------------------------------------------------------------------------
+    // Secondary Fill Light (from opposite direction, softer)
+    // -------------------------------------------------------------------------
+    // Provides subtle fill to prevent completely dark areas
+    vec3 fillLightDir = normalize(-V + vec3(0.3, 0.5, 0.0)); // Offset from behind
+    float fillNdotL = max(dot(N, fillLightDir), 0.0);
+    vec3 fillDiffuse = material.albedo * fillNdotL * 0.15;
+
+    // -------------------------------------------------------------------------
+    // Rim/Silhouette Enhancement
+    // -------------------------------------------------------------------------
+    // Highlights edges and silhouettes for better shape perception
+    float NdotV = max(dot(N, V), 0.0);
+    float rim = pow(1.0 - NdotV, rimPower) * rimStrength;
+    vec3 rimColor = material.albedo * rim;
+
+    // -------------------------------------------------------------------------
+    // Ambient
+    // -------------------------------------------------------------------------
+    vec3 ambient = material.albedo * material.ambient * ambientStrength * material.ao;
+
+    // -------------------------------------------------------------------------
+    // Combine all lighting components
+    // -------------------------------------------------------------------------
+    vec3 finalColor = ambient + diffuse + fillDiffuse + specular + rimColor + material.emissive;
+
+    return vec4(finalColor, material.opacity);
+}
+
+// CAD-style lighting with configurable parameters
+vec4 cadStyleLightingAdvanced(in PBRMaterial material, 
+                               float ambientStrength,
+                               float diffuseStrength,
+                               float specularStrength,
+                               float specularShininess,
+                               float rimStrength,
+                               float rimPower,
+                               vec3 headLightColor,
+                               vec3 fillLightColor)
+{
+    vec3 N = normalize(material.normal);
+    vec3 V = normalize(fpConst.cameraPosition - fragWorldPos);
+
+    // -------------------------------------------------------------------------
+    // Head Light (camera-aligned directional light)
+    // -------------------------------------------------------------------------
+    vec3 headLightDir = V;
+
+    // Lambertian diffuse
+    float NdotL = max(dot(N, headLightDir), 0.0);
+    vec3 diffuse = material.albedo * headLightColor * NdotL * diffuseStrength;
+
+    // Blinn-Phong specular
+    vec3 H = normalize(V + headLightDir);
+    float NdotH = max(dot(N, H), 0.0);
+    float spec = pow(NdotH, specularShininess);
+    vec3 specular = headLightColor * spec * specularStrength;
+
+    // -------------------------------------------------------------------------
+    // Secondary Fill Light
+    // -------------------------------------------------------------------------
+    vec3 fillLightDir = normalize(-V + vec3(0.3, 0.5, 0.0));
+    float fillNdotL = max(dot(N, fillLightDir), 0.0);
+    vec3 fillDiffuse = material.albedo * fillLightColor * fillNdotL * 0.2;
+
+    // -------------------------------------------------------------------------
+    // Rim/Silhouette Enhancement
+    // -------------------------------------------------------------------------
+    float NdotV = max(dot(N, V), 0.0);
+    float rim = pow(1.0 - NdotV, rimPower) * rimStrength;
+    vec3 rimColor = material.albedo * rim;
+
+    // -------------------------------------------------------------------------
+    // Ambient
+    // -------------------------------------------------------------------------
+    vec3 ambient = material.albedo * material.ambient * ambientStrength * material.ao;
+
+    // -------------------------------------------------------------------------
+    // Combine all lighting components
+    // -------------------------------------------------------------------------
+    vec3 finalColor = ambient + diffuse + fillDiffuse + specular + rimColor + material.emissive;
+
+    return vec4(finalColor, material.opacity);
+}
+
+// Flat shaded CAD-style lighting (uses geometric normal instead of interpolated normal)
+vec4 cadStyleLightingFlat(in PBRMaterial material)
+{
+    // Override normal with geometric (flat) normal
+    PBRMaterial flatMaterial = material;
+    vec3 geomNormal = normalize(cross(dFdy(fragWorldPos), dFdx(fragWorldPos)));
+    // Flip for back faces
+    flatMaterial.normal = gl_FrontFacing ? geomNormal : -geomNormal;
+
+    return cadStyleLighting(flatMaterial);
+}
+
 vec4 debugTileLighting()
 {
     // Calculate tile coordinates — flip in pixel space to match compute shader
@@ -413,10 +551,16 @@ PBRMaterial createPBRMaterial()
         // by the bump gradient calculated from the vertex normal basis.
         finalNormal = normalize(finalNormal - props.bumpScale * grad);
     }
+    // Flip normal for back faces to support double-sided rendering
+    if (!gl_FrontFacing) {
+        finalNormal = -finalNormal;
+    }
     material.normal = finalNormal;
 #else
     {
-        material.normal = normalize(cross(dFdy(fragWorldPos), dFdx(fragWorldPos)));
+        vec3 geomNormal = normalize(cross(dFdy(fragWorldPos), dFdx(fragWorldPos)));
+        // Flip normal for back faces to support double-sided rendering
+        material.normal = gl_FrontFacing ? geomNormal : -geomNormal;
     }
 #endif
     material.albedo = mix(material.albedo, fragColor.rgb, props.vertexColorMix);
@@ -461,7 +605,9 @@ PBRMaterial createPBRMaterialFlatNormal()
         : props.thicknessFactor;
 #endif
     // Geometric normal from screen-space derivatives always faces the camera
-    material.normal = normalize(cross(dFdy(fragWorldPos), dFdx(fragWorldPos)));
+    vec3 geomNormal = normalize(cross(dFdy(fragWorldPos), dFdx(fragWorldPos)));
+    // Flip normal for back faces to support double-sided rendering
+    material.normal = gl_FrontFacing ? geomNormal : -geomNormal;
     material.albedo = mix(material.albedo, fragColor.rgb, props.vertexColorMix);
     return material;
 }

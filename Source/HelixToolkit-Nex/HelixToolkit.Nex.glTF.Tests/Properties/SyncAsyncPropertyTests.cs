@@ -441,7 +441,7 @@ public class SyncAsyncPropertyTests
 
                     // Act: Import asynchronously
                     var asyncResult = importer
-                        .ImportAsync(filePath, asyncWorldData, CancellationToken.None)
+                        .ImportAsync(filePath, asyncWorldData, cancellationToken: CancellationToken.None)
                         .GetAwaiter()
                         .GetResult();
 

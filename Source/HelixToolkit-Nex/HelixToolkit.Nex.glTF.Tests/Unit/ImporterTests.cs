@@ -369,7 +369,7 @@ public class ImporterTests
 
         // Act & Assert
         await Assert.ThrowsExceptionAsync<OperationCanceledException>(() =>
-            _importer.ImportAsync("any_path.gltf", null!, cts.Token)
+            _importer.ImportAsync("any_path.gltf", null!, cancellationToken: cts.Token)
         );
     }
 

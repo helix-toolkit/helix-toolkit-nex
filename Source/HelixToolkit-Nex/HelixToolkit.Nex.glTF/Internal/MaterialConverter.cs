@@ -2,6 +2,7 @@ using glTFLoader.Schema;
 using HelixToolkit.Nex.Material;
 using HelixToolkit.Nex.Maths;
 using HelixToolkit.Nex.Repository;
+using HelixToolkit.Nex.Shaders.Frag;
 using Newtonsoft.Json.Linq;
 
 namespace HelixToolkit.Nex.glTF.Internal;
@@ -16,6 +17,7 @@ internal sealed class MaterialConverter
     private readonly TextureLoader _textureLoader;
     private readonly List<ImportDiagnostic> _diagnostics;
     private readonly ResourceManifest _manifest;
+    private readonly PBRShadingMode _defaultShadingMode;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="MaterialConverter"/> class.
@@ -24,11 +26,13 @@ internal sealed class MaterialConverter
     /// <param name="textureLoader">The texture loader for resolving and loading glTF textures.</param>
     /// <param name="diagnostics">The diagnostics list to append warnings/errors to.</param>
     /// <param name="manifest">The resource manifest to register created materials with.</param>
+    /// <param name="defaultShadingMode">The default shading mode to apply to imported materials.</param>
     public MaterialConverter(
         IPBRMaterialPropertyManager materialManager,
         TextureLoader textureLoader,
         List<ImportDiagnostic> diagnostics,
-        ResourceManifest manifest
+        ResourceManifest manifest,
+        PBRShadingMode defaultShadingMode = PBRShadingMode.PBR
     )
     {
         _materialManager =
@@ -37,6 +41,7 @@ internal sealed class MaterialConverter
         _diagnostics = diagnostics ?? throw new ArgumentNullException(nameof(diagnostics));
         ArgumentNullException.ThrowIfNull(manifest);
         _manifest = manifest;
+        _defaultShadingMode = defaultShadingMode;
     }
 
     /// <summary>
@@ -75,8 +80,15 @@ internal sealed class MaterialConverter
         var gltfMaterial = model.Materials[materialIndex];
         string materialName = gltfMaterial.Name ?? $"Material_{materialIndex}";
 
-        // Create the material via the manager
-        var material = _materialManager.Create(Shaders.Frag.PBRShadingMode.PBR.ToString());
+        // Determine shading mode - use Unlit if glTF material specifies KHR_materials_unlit extension
+        var shadingMode = _defaultShadingMode;
+        if (gltfMaterial.Extensions?.ContainsKey("KHR_materials_unlit") == true)
+        {
+            shadingMode = PBRShadingMode.Unlit;
+        }
+
+        // Create the material via the manager with the determined shading mode
+        var material = _materialManager.Create(shadingMode.ToString());
         material.Name = materialName;
 
         // glTF materials default to non-transmissive (no KHR_materials_transmission).
@@ -149,8 +161,16 @@ internal sealed class MaterialConverter
         var gltfMaterial = model.Materials[materialIndex];
         string materialName = gltfMaterial.Name ?? $"Material_{materialIndex}";
 
-        // Create the material via the manager
-        var material = _materialManager.Create(materialName);
+        // Determine shading mode - use Unlit if glTF material specifies KHR_materials_unlit extension
+        var shadingMode = _defaultShadingMode;
+        if (gltfMaterial.Extensions?.ContainsKey("KHR_materials_unlit") == true)
+        {
+            shadingMode = PBRShadingMode.Unlit;
+        }
+
+        // Create the material via the manager with the determined shading mode
+        var material = _materialManager.Create(shadingMode.ToString());
+        material.Name = materialName;
 
         // glTF materials default to non-transmissive (no KHR_materials_transmission).
         // Override the engine default (0.5) so that only materials with the extension get transmission.
@@ -182,7 +202,8 @@ internal sealed class MaterialConverter
     /// Albedo(1,1,1), Metallic 1.0, Roughness 1.0, Opacity 1.0, Emissive(0,0,0).</returns>
     public PBRMaterialProperties GetDefaultMaterial()
     {
-        var material = _materialManager.Create("Default");
+        var material = _materialManager.Create(_defaultShadingMode.ToString());
+        material.Name = "Default";
 
         // glTF default values
         material.Albedo = new Color4(1.0f, 1.0f, 1.0f, 1.0f);
