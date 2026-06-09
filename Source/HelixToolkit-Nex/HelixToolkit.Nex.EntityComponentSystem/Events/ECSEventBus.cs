@@ -12,7 +12,7 @@ internal static class ECSEventBus
         {
             for (var i = 0; i < Containers.Length; ++i)
             {
-                Containers[i] = new SubscriptionHandler<T>(i);
+                Containers[i] = new SubscriptionHandler<T>();
                 Register<WorldDisposedEvent>(i, OnWorldDisposed);
             }
         }
@@ -52,19 +52,13 @@ internal static class ECSEventBus
         return Subscriptions<TMessage>.Containers[worldId].Subscribe(action);
     }
 
-    internal static void Unregister(int worldId, int index)
-    {
-        Subscriptions<World>.Containers[worldId].Unsubscribe(index);
-    }
-
     /// <summary>
     /// A high-performance, array-based subscription handler with sender context that avoids heap allocations
     /// during publish operations. Supports struct-based subscription handles for easy unsubscription.
     /// </summary>
     /// <typeparam name="TMessage">The type of message to handle.</typeparam>
-    public sealed class SubscriptionHandler<TMessage>(int worldId)
+    public sealed class SubscriptionHandler<TMessage>
     {
-        private readonly int _worldId = worldId;
         private Action<World, TMessage>?[] _handlers = [];
         private int _count;
         private readonly object _lock = new();
@@ -92,7 +86,7 @@ internal static class ECSEventBus
                     {
                         _handlers[i] = action;
                         _count++;
-                        return new Subscription(_worldId, i);
+                        return new Subscription.SubscriptionT<TMessage>(this, i);
                     }
                 }
 
@@ -102,7 +96,7 @@ internal static class ECSEventBus
                 Array.Resize(ref _handlers, newSize);
                 _handlers[newIndex] = action;
                 _count++;
-                return new Subscription(_worldId, newIndex);
+                return new Subscription.SubscriptionT<TMessage>(this, newIndex);
             }
         }
 
@@ -128,7 +122,7 @@ internal static class ECSEventBus
         {
             lock (_lock)
             {
-                Array.Clear(_handlers);
+                Array.Clear(_handlers, 0, _handlers.Length);
                 _count = 0;
             }
         }
@@ -150,17 +144,17 @@ internal static class ECSEventBus
 /// <summary>
 /// A struct-based subscription handle that can be disposed to unsubscribe.
 /// </summary>
-public sealed class Subscription : IDisposable
+public abstract class Subscription : IDisposable
 {
-    private readonly int _worldId;
     private readonly int _index;
     private bool _disposed = false;
 
-    internal Subscription(int worldId, int index)
+    internal Subscription(int index)
     {
-        _worldId = worldId;
         _index = index;
     }
+
+    protected abstract void OnDispose();
 
     /// <summary>
     /// Unsubscribes from the subscription handler.
@@ -171,7 +165,23 @@ public sealed class Subscription : IDisposable
         {
             return;
         }
-        ECSEventBus.Unregister(_worldId, _index);
+        OnDispose();
         _disposed = true;
+    }
+
+    internal sealed class SubscriptionT<TMessage> : Subscription
+    {
+        private readonly ECSEventBus.SubscriptionHandler<TMessage> _handler;
+
+        internal SubscriptionT(ECSEventBus.SubscriptionHandler<TMessage> handler, int index)
+            : base(index)
+        {
+            _handler = handler;
+        }
+
+        protected override void OnDispose()
+        {
+            _handler.Unsubscribe(_index);
+        }
     }
 }
