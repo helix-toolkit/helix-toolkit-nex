@@ -1,17 +1,10 @@
 namespace HelixToolkit.Nex.ECS.Events;
 
-public delegate void Message<T>(int worldId, T message);
-
 internal static class ECSEventBus
 {
-    private struct MessageContainer<T>
-    {
-        public Message<T>? Handlers;
-    }
-
     private static class Subscriptions<T>
     {
-        public static readonly MessageContainer<T>[] Containers = new MessageContainer<T>[
+        public static readonly SubscriptionHandler<T>[] Containers = new SubscriptionHandler<T>[
             Limits.MaxWorldId + 1
         ];
 
@@ -19,32 +12,166 @@ internal static class ECSEventBus
         {
             for (var i = 0; i < Containers.Length; ++i)
             {
+                Containers[i] = new SubscriptionHandler<T>(i);
                 Register<WorldDisposedEvent>(i, OnWorldDisposed);
             }
         }
 
-        private static void OnWorldDisposed(int worldId, WorldDisposedEvent msg)
+        private static void OnWorldDisposed(World world, WorldDisposedEvent msg)
         {
-            Debug.Assert(worldId < byte.MaxValue);
-            Containers[worldId].Handlers = null;
+            Containers[world.Id].Clear();
         }
+    }
+
+    public static void Send<TMessage>(World world, TMessage message)
+    {
+        Subscriptions<TMessage>.Containers[world.Id].Publish(world, message);
     }
 
     public static void Send<TMessage>(int worldId, TMessage message)
     {
-        Debug.Assert(worldId < byte.MaxValue);
-        Subscriptions<TMessage>.Containers[worldId].Handlers?.Invoke(worldId, message);
+        var world = World.GetWorldById(worldId);
+        if (world == null)
+        {
+            return;
+        }
+        Subscriptions<TMessage>.Containers[worldId].Publish(world, message);
     }
 
-    public static void Register<TMessage>(int worldId, Message<TMessage> action)
+    public static Subscription Register<TMessage>(World world, Action<World, TMessage> action)
     {
-        Debug.Assert(worldId < byte.MaxValue);
-        Subscriptions<TMessage>.Containers[worldId].Handlers += action;
+        return Subscriptions<TMessage>.Containers[world.Id].Subscribe(action);
     }
 
-    public static void Unregister<TMessage>(int worldId, Message<TMessage> action)
+    public static Subscription Register<TMessage>(int worldId, Action<World, TMessage> action)
     {
-        Debug.Assert(worldId < byte.MaxValue);
-        Subscriptions<TMessage>.Containers[worldId].Handlers -= action;
+        Debug.Assert(
+            worldId >= 0 && worldId <= Limits.MaxWorldId,
+            $"World ID {worldId} is out of bounds."
+        );
+        return Subscriptions<TMessage>.Containers[worldId].Subscribe(action);
+    }
+
+    internal static void Unregister(int worldId, int index)
+    {
+        Subscriptions<World>.Containers[worldId].Unsubscribe(index);
+    }
+
+    /// <summary>
+    /// A high-performance, array-based subscription handler with sender context that avoids heap allocations
+    /// during publish operations. Supports struct-based subscription handles for easy unsubscription.
+    /// </summary>
+    /// <typeparam name="TMessage">The type of message to handle.</typeparam>
+    public sealed class SubscriptionHandler<TMessage>(int worldId)
+    {
+        private readonly int _worldId = worldId;
+        private Action<World, TMessage>?[] _handlers = [];
+        private int _count;
+        private readonly object _lock = new();
+
+        /// <summary>
+        /// Gets the number of active subscriptions.
+        /// </summary>
+        public int Count => _count;
+
+        /// <summary>
+        /// Subscribes an action to receive messages.
+        /// </summary>
+        /// <param name="action">The action to invoke when a message is received.</param>
+        /// <returns>A subscription handle that can be disposed to unsubscribe.</returns>
+        public Subscription Subscribe(Action<World, TMessage> action)
+        {
+            ArgumentNullException.ThrowIfNull(action);
+
+            lock (_lock)
+            {
+                // Find an empty slot or expand
+                for (var i = 0; i < _handlers.Length; i++)
+                {
+                    if (_handlers[i] is null)
+                    {
+                        _handlers[i] = action;
+                        _count++;
+                        return new Subscription(_worldId, i);
+                    }
+                }
+
+                // No empty slot, expand array
+                var newIndex = _handlers.Length;
+                var newSize = Math.Max(4, _handlers.Length * 2);
+                Array.Resize(ref _handlers, newSize);
+                _handlers[newIndex] = action;
+                _count++;
+                return new Subscription(_worldId, newIndex);
+            }
+        }
+
+        /// <summary>
+        /// Publishes a message to all subscribed handlers.
+        /// </summary>
+        /// <param name="sender">The sender of the message.</param>
+        /// <param name="message">The message to publish.</param>
+        public void Publish(World sender, TMessage message)
+        {
+            // Take a local reference to avoid issues if array is resized during iteration
+            var handlers = _handlers;
+            for (var i = 0; i < handlers.Length; i++)
+            {
+                handlers[i]?.Invoke(sender, message);
+            }
+        }
+
+        /// <summary>
+        /// Removes all subscriptions.
+        /// </summary>
+        public void Clear()
+        {
+            lock (_lock)
+            {
+                Array.Clear(_handlers);
+                _count = 0;
+            }
+        }
+
+        internal void Unsubscribe(int index)
+        {
+            lock (_lock)
+            {
+                if (index >= 0 && index < _handlers.Length && _handlers[index] is not null)
+                {
+                    _handlers[index] = null;
+                    _count--;
+                }
+            }
+        }
+    }
+}
+
+/// <summary>
+/// A struct-based subscription handle that can be disposed to unsubscribe.
+/// </summary>
+public sealed class Subscription : IDisposable
+{
+    private readonly int _worldId;
+    private readonly int _index;
+    private bool _disposed = false;
+
+    internal Subscription(int worldId, int index)
+    {
+        _worldId = worldId;
+        _index = index;
+    }
+
+    /// <summary>
+    /// Unsubscribes from the subscription handler.
+    /// </summary>
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+        ECSEventBus.Unregister(_worldId, _index);
+        _disposed = true;
     }
 }

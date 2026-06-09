@@ -273,7 +273,7 @@ public struct Entity : IDisposable, IEquatable<Entity>
     /// </summary>
     /// <typeparam name="TMessage"></typeparam>
     /// <param name="message"></param>
-    public void Send<TMessage>(in TMessage message)
+    public readonly void Send<TMessage>(in TMessage message)
     {
         World?.Send(message);
     }
@@ -283,19 +283,9 @@ public struct Entity : IDisposable, IEquatable<Entity>
     /// </summary>
     /// <typeparam name="TMessage"></typeparam>
     /// <param name="action"></param>
-    public void Register<TMessage>(Message<TMessage> action)
+    public readonly Subscription Register<TMessage>(Action<World, TMessage> action)
     {
-        World?.Register(action);
-    }
-
-    /// <summary>
-    /// Unregister an event callback
-    /// </summary>
-    /// <typeparam name="TMessage"></typeparam>
-    /// <param name="action"></param>
-    public void Unregister<TMessage>(Message<TMessage> action)
-    {
-        World?.Unregister(action);
+        return World!.Register(action);
     }
     #endregion
 
