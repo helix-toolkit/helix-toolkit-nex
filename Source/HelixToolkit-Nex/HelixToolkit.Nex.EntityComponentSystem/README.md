@@ -26,6 +26,8 @@ HelixToolkit.Nex.ECS is integral to the HelixToolkit.Nex engine, providing a str
 | `ISortable<T>` | Interface for defining custom sorting logic for components. |
 | `Components<T>` | Represents a collection of components of type `T` within a world. |
 | `TagManager<T>` | Manages tag components, which are marker components without data. |
+| `EntityEnumerable` | Provides a struct-based enumerable for iterating over valid entity IDs without heap allocation. |
+| `EntityEnumerator` | Struct-based enumerator for iterating over valid entity IDs without heap allocation. |
 
 ## Usage Examples
 
@@ -89,6 +91,7 @@ entity.Register<EntityEnableEvent>((worldId, evt) =>
 - **Event System Enhancements**: The `ECSEventBus` now supports a broader range of world IDs, improving scalability.
 - **Type Safety Improvements**: Introduced `[DynamicallyAccessedMembers]` attribute to enhance type safety and reflection capabilities.
 - **World Management**: Adjusted `MaxNumberOfWorlds` to align with `Limits.MaxWorldId`, ensuring consistent world ID management.
+- **EntityEnumerable and EntityEnumerator**: Introduced `EntityEnumerable` and `EntityEnumerator` for efficient iteration over entity IDs without heap allocation.
 
 HelixToolkit.Nex.ECS is designed to be flexible and efficient, making it suitable for a wide range of 3D applications within the HelixToolkit.Nex engine.
 ```

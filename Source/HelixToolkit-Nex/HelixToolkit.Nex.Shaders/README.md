@@ -20,10 +20,10 @@ This package is integral to the HelixToolkit-Nex engine, facilitating the creati
 | `Helpers`                     | Utility methods for creating and updating culling constants.                |
 | `BloomMode`                   | Enum for selecting the active stage of the bloom shader.                    |
 | `HighlightMode`               | Enum for selecting the active stage of the border-highlight shader.         |
-| `PBRShadingMode`              | Enum for different PBR shading modes.                                       |
+| `PBRShadingMode`              | Enum for different PBR shading modes, now includes `CAD` for CAD-style shading. |
 | `SampleTextureMode`           | Enum for texture sampling modes, including debug modes.                     |
 | `SmaaMode`                    | Enum for selecting the active stage of the SMAA shader.                     |
-| `ToneMappingMode`             | Enum for different tone mapping modes.                                      |
+| `ToneMappingMode`             | Enum for different tone mapping modes, with `Reinhard` now extended to support `maxWhiteLuminance`. |
 | `ShaderBuilder`               | Processes shader source code and includes necessary headers.                |
 | `ShaderCache`                 | Manages a cache of processed shader sources for efficient reuse.            |
 | `ShaderCompiler`              | High-level API for building shaders with automatic header inclusion.        |
