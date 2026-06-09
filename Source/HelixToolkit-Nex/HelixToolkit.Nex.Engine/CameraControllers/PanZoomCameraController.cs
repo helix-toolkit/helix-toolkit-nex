@@ -227,6 +227,19 @@ public class PanZoomCameraController : ICameraController
         UpdateCameraPosition();
     }
 
+    /// <inheritdoc />
+    public void FocusOn(Vector3 target, float? distance = null)
+    {
+        Camera.Target = target;
+
+        if (distance.HasValue)
+        {
+            _distance = MathUtil.Clamp(distance.Value, MinDistance, MaxDistance);
+        }
+
+        UpdateCameraPosition();
+    }
+
     private void UpdateCameraPosition()
     {
         float cosPitch = MathF.Cos(_pitch);

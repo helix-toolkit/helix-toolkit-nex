@@ -73,4 +73,14 @@ public interface ICameraController
     /// Resets the controller to its default state.
     /// </summary>
     void Reset();
+
+    /// <summary>
+    /// Re-centers the camera on a new target point and optionally adjusts the distance.
+    /// Use this to focus the camera on a specific object or point.
+    /// </summary>
+    /// <param name="target">The new look-at point / focus target.</param>
+    /// <param name="distance">
+    /// Optional distance from the new target. If <c>null</c>, the current distance is preserved.
+    /// </param>
+    void FocusOn(Vector3 target, float? distance = null);
 }

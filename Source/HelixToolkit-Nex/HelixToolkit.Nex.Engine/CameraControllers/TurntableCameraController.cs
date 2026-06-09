@@ -242,17 +242,13 @@ public class TurntableCameraController : ICameraController
         UpdateCameraPosition();
     }
 
-    /// <summary>
-    /// Focuses the camera on a specific point at a given distance.
-    /// </summary>
-    /// <param name="target">The world-space point to focus on.</param>
-    /// <param name="distance">The desired distance from the target. If zero or negative, the current radius is kept.</param>
-    public void FocusOn(Vector3 target, float distance = 0)
+    /// <inheritdoc />
+    public void FocusOn(Vector3 target, float? distance = null)
     {
         Camera.Target = target;
-        if (distance > 0)
+        if (distance.HasValue)
         {
-            _radius = MathUtil.Clamp(distance, MinRadius, MaxRadius);
+            _radius = MathUtil.Clamp(distance.Value, MinRadius, MaxRadius);
         }
 
         UpdateCameraPosition();
