@@ -28,6 +28,7 @@ HelixToolkit.Nex.ECS is integral to the HelixToolkit.Nex engine, providing a str
 | `TagManager<T>` | Manages tag components, which are marker components without data. |
 | `EntityEnumerable` | Provides a struct-based enumerable for iterating over valid entity IDs without heap allocation. |
 | `EntityEnumerator` | Struct-based enumerator for iterating over valid entity IDs without heap allocation. |
+| `Subscription` | Represents a handle for event subscriptions, allowing for easy unsubscription. |
 
 ## Usage Examples
 
@@ -70,10 +71,13 @@ foreach (var e in collection)
 ### Handling Events
 
 ```csharp
-entity.Register<EntityEnableEvent>((worldId, evt) =>
+var subscription = entity.Register<EntityEnableEvent>((world, evt) =>
 {
     Console.WriteLine($"Entity {evt.EntityId} enabled state changed to {evt.Enabled}");
 });
+
+// To unsubscribe
+subscription.Dispose();
 ```
 
 ## Architecture Notes
@@ -92,6 +96,6 @@ entity.Register<EntityEnableEvent>((worldId, evt) =>
 - **Type Safety Improvements**: Introduced `[DynamicallyAccessedMembers]` attribute to enhance type safety and reflection capabilities.
 - **World Management**: Adjusted `MaxNumberOfWorlds` to align with `Limits.MaxWorldId`, ensuring consistent world ID management.
 - **EntityEnumerable and EntityEnumerator**: Introduced `EntityEnumerable` and `EntityEnumerator` for efficient iteration over entity IDs without heap allocation.
-
-HelixToolkit.Nex.ECS is designed to be flexible and efficient, making it suitable for a wide range of 3D applications within the HelixToolkit.Nex engine.
+- **Subscription Management**: Introduced `Subscription` class for managing event subscriptions, allowing for easy unsubscription and avoiding memory leaks.
+- **Event Registration**: Updated event registration methods to return `Subscription` handles for better management of event listeners.
 ```
