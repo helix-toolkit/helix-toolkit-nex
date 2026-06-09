@@ -206,6 +206,18 @@ public static class PBRMaterialTypeRegistry
                     ",
             }
         ).WithPointerRingSupport();
+
+        // CAD visualization
+        Register(new PBRMaterialRegistration
+        {
+            TypeId = PBRShadingMode.CAD,
+            Name = PBRShadingMode.CAD.ToString(),
+            OutputColorImplementation =
+                @"
+                PBRMaterial material = createPBRMaterial();
+                return cadStyleLightingFlat(material);         
+                ",
+        }).WithPointerRingSupport();
     }
 
     /// <summary>

@@ -190,7 +190,11 @@ internal class ViewportPanel
             _selectionManager.Deselect();
             return;
         }
-
+        if (worldId != worldData.World.Id)
+        {
+            _selectionManager.Deselect();
+            return;
+        }
         // Pick hit: select the entity (Req 4.1)
         var entity = worldData.World.GetEntity((int)entityId);
         if (!entity.Valid)

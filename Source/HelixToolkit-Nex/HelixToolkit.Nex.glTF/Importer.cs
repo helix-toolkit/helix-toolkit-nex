@@ -25,8 +25,9 @@ public class Importer
     /// </summary>
     /// <param name="filePath">The path to the .gltf or .glb file to import.</param>
     /// <param name="worldData">The world data provider containing the ECS world and resource managers.</param>
+    /// <param name="config">Optional configuration for the import operation. If null, default settings are used.</param>
     /// <returns>An <see cref="ImportResult"/> containing the root scene node and diagnostics.</returns>
-    public ImportResult Import(string filePath, WorldDataProvider worldData)
+    public ImportResult Import(string filePath, WorldDataProvider worldData, ImporterConfig? config = null)
     {
         var sessionId = GenerateSessionId();
         var diagnostics = new List<ImportDiagnostic>();
@@ -95,7 +96,10 @@ public class Importer
         // 4. Determine scene index
         int sceneIndex = model.Scene ?? 0;
 
-        // 5. Create pipeline components
+        // 5. Apply default configuration if not provided
+        config ??= ImporterConfig.Default;
+
+        // 6. Create pipeline components
         var resourceManager = worldData.ResourceManager;
         var manifest = new ResourceManifest(sessionId);
         var accessorReader = new AccessorReader(model, bufferData);
@@ -119,7 +123,8 @@ public class Importer
             resourceManager.PBRPropertyManager,
             textureLoader,
             diagnostics,
-            manifest
+            manifest,
+            config.DefaultShadingMode
         );
         var sceneBuilder = new SceneBuilder(
             worldData.World,
@@ -128,7 +133,7 @@ public class Importer
             diagnostics
         );
 
-        // 6. Build scene
+        // 7. Build scene
         Node rootNode;
         try
         {
@@ -153,7 +158,7 @@ public class Importer
             };
         }
 
-        // 7. Return ImportResult
+        // 8. Return ImportResult
         return new ImportResult
         {
             RootNode = rootNode,
@@ -167,11 +172,13 @@ public class Importer
     /// </summary>
     /// <param name="filePath">The path to the .gltf or .glb file to import.</param>
     /// <param name="worldData">The world data provider containing the ECS world and resource managers.</param>
+    /// <param name="config">Optional configuration for the import operation. If null, default settings are used.</param>
     /// <param name="cancellationToken">A cancellation token to cancel the import operation.</param>
     /// <returns>A task containing an <see cref="ImportResult"/> with the root scene node and diagnostics.</returns>
     public async Task<ImportResult> ImportAsync(
         string filePath,
         WorldDataProvider worldData,
+        ImporterConfig? config = null,
         CancellationToken cancellationToken = default
     )
     {
@@ -260,7 +267,10 @@ public class Importer
         // 7. Determine scene index
         int sceneIndex = model.Scene ?? 0;
 
-        // 8. Create pipeline components
+        // 8. Apply default configuration if not provided
+        config ??= ImporterConfig.Default;
+
+        // 9. Create pipeline components
         var resourceManager = worldData.ResourceManager;
         var manifest = new ResourceManifest(sessionId);
         var accessorReader = new AccessorReader(model, bufferData);
@@ -284,7 +294,8 @@ public class Importer
             resourceManager.PBRPropertyManager,
             textureLoader,
             diagnostics,
-            manifest
+            manifest,
+            config.DefaultShadingMode
         );
         var sceneBuilder = new SceneBuilder(
             worldData.World,
@@ -293,7 +304,7 @@ public class Importer
             diagnostics
         );
 
-        // 9. Build scene (sync — the heavy async work was in buffer loading)
+        // 10. Build scene (sync — the heavy async work was in buffer loading)
         Node rootNode;
         try
         {
@@ -318,7 +329,7 @@ public class Importer
             };
         }
 
-        // 10. Final cancellation check — if cancelled after scene build, dispose and throw
+        // 11. Final cancellation check — if cancelled after scene build, dispose and throw
         if (cancellationToken.IsCancellationRequested)
         {
             rootNode.Dispose();
@@ -326,7 +337,7 @@ public class Importer
             throw new OperationCanceledException(cancellationToken);
         }
 
-        // 11. Return ImportResult
+        // 12. Return ImportResult
         return new ImportResult
         {
             RootNode = rootNode,

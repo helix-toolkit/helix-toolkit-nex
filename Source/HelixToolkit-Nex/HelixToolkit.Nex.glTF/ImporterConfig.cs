@@ -1,0 +1,30 @@
+using HelixToolkit.Nex.Shaders.Frag;
+
+namespace HelixToolkit.Nex.glTF;
+
+/// <summary>
+/// Configuration options for the glTF importer.
+/// </summary>
+public sealed class ImporterConfig
+{
+    /// <summary>
+    /// Gets or sets the default PBR shading mode for imported materials.
+    /// </summary>
+    /// <remarks>
+    /// This setting determines the default shading mode applied to all materials
+    /// during import. Individual materials may override this if specified in the glTF file.
+    /// <list type="bullet">
+    ///   <item><description><see cref="PBRShadingMode.PBR"/> - Full physically-based rendering (default)</description></item>
+    ///   <item><description><see cref="PBRShadingMode.Unlit"/> - No lighting calculations, albedo only</description></item>
+    ///   <item><description><see cref="PBRShadingMode.CAD"/> - CAD-style shading with head light and rim enhancement</description></item>
+    ///   <item><description><see cref="PBRShadingMode.Flat"/> - Flat shading using geometric normals</description></item>
+    ///   <item><description><see cref="PBRShadingMode.Normal"/> - Visualize normals as colors</description></item>
+    /// </list>
+    /// </remarks>
+    public PBRShadingMode DefaultShadingMode { get; set; } = PBRShadingMode.PBR;
+
+    /// <summary>
+    /// Gets a default configuration with standard settings.
+    /// </summary>
+    public static ImporterConfig Default => new();
+}
