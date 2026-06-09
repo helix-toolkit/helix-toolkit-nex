@@ -42,12 +42,22 @@ vec3 Uncharted2ToneMap(in vec3 x) {
     return ((x * (A * x + C * B) + D * E) / (x * (A * x + B) + D * F)) - E / F;
 }
 
-vec3 Reinhard(in vec3 x) {
+vec3 ReinhardExtended(in vec3 x, float maxWhiteLuminance) {
+    // 1. Calculate relative luminance using ITU-R BT.709 coefficients
     float luminance = dot(x, vec3(0.2126, 0.7152, 0.0722));
-    if (luminance <= 0.000001) {
-        return x; // Avoid division by zero, return original color if black
+    
+    // Smooth branchless safeguard against division by zero
+    if (luminance < 1e-5) {
+        return x; 
     }
-    float mappedLuminance = luminance / (1.0 + luminance);
+    
+    // 2. Extended Reinhard formula
+    // maxWhiteLuminance determines the threshold where colors blow out to pure white.
+    // For CAD, a value between 1.5 and 2.5 works beautifully.
+    float l2 = maxWhiteLuminance * maxWhiteLuminance;
+    float mappedLuminance = (luminance * (1.0 + (luminance / l2))) / (1.0 + luminance);
+    
+    // 3. Rescale the original RGB color by the compressed luminance ratio
     return x * (mappedLuminance / luminance);
 }
 
@@ -69,7 +79,7 @@ void main() {
             mapped = ACESFilm(hdrColor.rgb);
             break;
         case 1u:
-            mapped = Reinhard(hdrColor.rgb);
+            mapped = ReinhardExtended(hdrColor.rgb, 2.0);
             break;
         case 2u:
             const float exposureBias = 2.0;
