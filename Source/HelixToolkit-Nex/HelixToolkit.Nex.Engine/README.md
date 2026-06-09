@@ -34,6 +34,7 @@ HelixToolkit.Nex.Engine is a core component of the HelixToolkit.Nex suite, respo
 | `PointCloudData`                 | Manages point cloud entities and their data for rendering.                 |
 | `DynamicMeshDrawData`            | Represents dynamic mesh draw data.                                         |
 | `BillboardNode`                  | Represents a node in the scene graph that contains billboard geometry.     |
+| `CameraExtensions`               | Provides extension methods for camera operations, such as focusing on targets. |
 
 ## Usage Examples
 
@@ -114,6 +115,12 @@ var billboard = engine.CreateBillboard(
 );
 ```
 
+### Focusing the Camera on a Target
+
+```csharp
+camera.FocusOn(new Vector3(0, 0, 0), 10f);
+```
+
 ## Architecture Notes
 
 - **Entity Component System (ECS):** The engine uses an ECS architecture based on the Arch ECS library, allowing for flexible and efficient scene management.
@@ -124,10 +131,13 @@ var billboard = engine.CreateBillboard(
 
 ## Recent Additions
 
-### Updates to `OrbitCameraController`
+### Updates to Camera Controllers
 
-- `MinRadius` default value changed from `0.5f` to `0.05f`.
-- Zoom clamping now considers `Camera.NearPlane` and `Camera.FarPlane` to prevent the camera from zooming too close or too far beyond the scene bounds.
+- Added `FocusOn(Vector3 target, float? distance = null)` method to `ICameraController` and all implementing classes (`FirstPersonCameraController`, `OrbitCameraController`, `PanZoomCameraController`, `TurntableCameraController`) to re-center the camera on a new target point and optionally adjust the distance.
+
+### New `CameraExtensions` Class
+
+- Provides extension methods for focusing cameras on specific targets or bounding volumes, enhancing usability for camera manipulation.
 
 ### Changes in `MeshDrawStream`
 
