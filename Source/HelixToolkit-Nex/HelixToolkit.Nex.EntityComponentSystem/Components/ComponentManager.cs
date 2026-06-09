@@ -85,7 +85,12 @@ internal static class ComponentSorting
     }
 }
 
-internal readonly struct ComponentIdProxy<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.NonPublicFields)] T>
+internal readonly struct ComponentIdProxy<
+    [DynamicallyAccessedMembers(
+        DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.NonPublicFields
+    )]
+T
+>
 {
     public static readonly ComponentTypeId TypeId = ComponentTypeId.GetNexId();
     public static readonly bool IsTagType = typeof(T).GetTypeInfo().IsTagType();
@@ -95,11 +100,17 @@ internal readonly struct ComponentIdProxy<[DynamicallyAccessedMembers(Dynamicall
     public static T? DefaultValue = default;
 }
 
-internal sealed class TagManager<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.NonPublicFields)] T> : IDisposable
+internal sealed class TagManager<
+    [DynamicallyAccessedMembers(
+        DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.NonPublicFields
+    )]
+T
+> : IDisposable
 {
     public static readonly ComponentIdProxy<T> Id = new();
     private static readonly FastList<TagManager<T>?> _managerStorage = [];
     private static readonly ReaderWriterLockSlim _managerStorageLock = new();
+
     public static TagManager<T>? GetOrCreateManager(int worldId)
     {
         var manager = GetManager(worldId);
@@ -166,11 +177,16 @@ internal sealed class TagManager<[DynamicallyAccessedMembers(DynamicallyAccessed
     public int WorldId { get; }
     public int Count => _count;
 
+    private readonly FastList<Subscription> _subscriptions = [];
+
     public TagManager(int worldId)
     {
         WorldId = worldId;
-        ECSEventBus.Register<WorldDisposingEvent>(worldId, HandleWorldDisposing);
-        ECSEventBus.Register<EntityDisposingEvent>(worldId, HandleEntityDisposing);
+        var world = World.GetWorldById(worldId) ?? throw new ArgumentException($"World id {worldId} is invalid.");
+        _subscriptions.Add(ECSEventBus.Register<WorldDisposingEvent>(world, HandleWorldDisposing));
+        _subscriptions.Add(
+            ECSEventBus.Register<EntityDisposingEvent>(world, HandleEntityDisposing)
+        );
     }
 
     /// <summary>
@@ -194,23 +210,18 @@ internal sealed class TagManager<[DynamicallyAccessedMembers(DynamicallyAccessed
         Interlocked.Decrement(ref _count);
     }
 
-    private void HandleWorldDisposing(int worldId, WorldDisposingEvent msg)
+    private void HandleWorldDisposing(World world, WorldDisposingEvent msg)
     {
         Dispose();
     }
 
-    private void HandleEntityDisposing(int worldId, EntityDisposingEvent msg)
+    private void HandleEntityDisposing(World world, EntityDisposingEvent msg)
     {
         if (WorldId == 0)
         {
             return;
         }
-        if (
-            World.GetWorldInternal(worldId)?.HasComponentTypeById(
-                msg.EntityId,
-                ComponentIdProxy<T>.TypeId
-            ) == true
-        )
+        if (world.HasComponentTypeById(msg.EntityId, ComponentIdProxy<T>.TypeId) == true)
         {
             Remove();
         }
@@ -224,15 +235,23 @@ internal sealed class TagManager<[DynamicallyAccessedMembers(DynamicallyAccessed
         {
             return;
         }
+        foreach (var sub in _subscriptions)
+        {
+            sub.Dispose();
+        }
+        _subscriptions.Clear();
         _disposed = true;
-        ECSEventBus.Unregister<WorldDisposingEvent>(WorldId, HandleWorldDisposing);
-        ECSEventBus.Unregister<EntityDisposingEvent>(WorldId, HandleEntityDisposing);
         Interlocked.Exchange(ref _count, 0);
         RemoveManager(WorldId);
     }
 }
 
-internal sealed class ComponentManager<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.NonPublicFields)] T> : IDisposable
+internal sealed class ComponentManager<
+    [DynamicallyAccessedMembers(
+        DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.NonPublicFields
+    )]
+T
+> : IDisposable
 {
     #region Manager Storage
     internal static readonly ComponentTypeId TypeId = ComponentIdProxy<T>.TypeId;
@@ -440,6 +459,7 @@ internal sealed class ComponentManager<[DynamicallyAccessedMembers(DynamicallyAc
     internal readonly FastList<ComponentMappingKey> CompMapping;
     internal readonly FastList<EntityMappingKey> EntityMapping;
     private int _lastChangedIndex = 0;
+    private readonly FastList<Subscription> _subs = [];
     #endregion
 
     #region Public Properties
@@ -474,11 +494,12 @@ internal sealed class ComponentManager<[DynamicallyAccessedMembers(DynamicallyAc
     public ComponentManager(int worldId, in int defaultCapcity = 128)
     {
         WorldId = worldId;
+        var world = World.GetWorldById(worldId) ?? throw new ArgumentException($"World id {worldId} is invalid.");
         Storage = new(defaultCapcity);
         EntityMapping = new(defaultCapcity);
         CompMapping = new FastList<ComponentMappingKey>(defaultCapcity);
-        ECSEventBus.Register<WorldDisposingEvent>(worldId, HandleWorldDisposing);
-        ECSEventBus.Register<EntityDisposingEvent>(worldId, HandleEntityDisposing);
+        _subs.Add(ECSEventBus.Register<WorldDisposingEvent>(world, HandleWorldDisposing));
+        _subs.Add(ECSEventBus.Register<EntityDisposingEvent>(world, HandleEntityDisposing));
     }
     #endregion
     #region Public Functions
@@ -547,7 +568,10 @@ internal sealed class ComponentManager<[DynamicallyAccessedMembers(DynamicallyAc
     /// </summary>
     /// <returns></returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public bool HasAny() { return Count > 0; }
+    public bool HasAny()
+    {
+        return Count > 0;
+    }
 
     /// <summary>
     /// Removes the component by specified entity identifier.
@@ -723,12 +747,12 @@ internal sealed class ComponentManager<[DynamicallyAccessedMembers(DynamicallyAc
         return WorldId != 0;
     }
 
-    private void HandleWorldDisposing(int worldId, WorldDisposingEvent msg)
+    private void HandleWorldDisposing(World _, WorldDisposingEvent msg)
     {
         Dispose();
     }
 
-    private void HandleEntityDisposing(int worldId, EntityDisposingEvent msg)
+    private void HandleEntityDisposing(World _, EntityDisposingEvent msg)
     {
         Remove(msg.EntityId);
     }
@@ -746,8 +770,11 @@ internal sealed class ComponentManager<[DynamicallyAccessedMembers(DynamicallyAc
         }
         var worldId = WorldId;
         WorldId = 0;
-        ECSEventBus.Unregister<WorldDisposingEvent>(worldId, HandleWorldDisposing);
-        ECSEventBus.Unregister<EntityDisposingEvent>(worldId, HandleEntityDisposing);
+        foreach (var sub in _subs)
+        {
+            sub.Dispose();
+        }
+        _subs.Clear();
         CompMapping.Clear();
         CompMapping.TrimExcess();
         Storage.Clear();

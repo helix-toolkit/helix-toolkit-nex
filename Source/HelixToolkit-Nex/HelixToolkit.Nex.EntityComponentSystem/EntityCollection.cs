@@ -13,6 +13,7 @@ public sealed class EntityCollection : IEnumerable<Entity>, IDisposable
 
     private readonly RuleBuilder _builder;
     private readonly HashSet<int> _entities = [];
+    private readonly FastList<Subscription> _subscriptions = [];
     public World World => _builder.World;
 
     internal int WorldId => World.Id;
@@ -36,8 +37,10 @@ public sealed class EntityCollection : IEnumerable<Entity>, IDisposable
                 AddEntity(entity.Id);
             }
         }
-        ECSEventBus.Register<WorldDisposingEvent>(WorldId, HandleWorldDisposing);
-        ECSEventBus.Register<EntityBeforeDisposeEvent>(WorldId, HandleEntityDisposing);
+        _subscriptions.Add(ECSEventBus.Register<WorldDisposingEvent>(World, HandleWorldDisposing));
+        _subscriptions.Add(
+            ECSEventBus.Register<EntityBeforeDisposeEvent>(World, HandleEntityDisposing)
+        );
     }
 
     public bool Has(Entity entity)
@@ -45,12 +48,12 @@ public sealed class EntityCollection : IEnumerable<Entity>, IDisposable
         return _entities.Contains(entity.Id);
     }
 
-    private void HandleWorldDisposing(int worldId, WorldDisposingEvent msg)
+    private void HandleWorldDisposing(World _, WorldDisposingEvent msg)
     {
         Dispose();
     }
 
-    private void HandleEntityDisposing(int worldId, EntityBeforeDisposeEvent msg)
+    private void HandleEntityDisposing(World _, EntityBeforeDisposeEvent msg)
     {
         RemoveEntity(msg.EntityId);
     }
@@ -142,8 +145,11 @@ public sealed class EntityCollection : IEnumerable<Entity>, IDisposable
             return;
         }
         _disposed = true;
-        ECSEventBus.Unregister<EntityBeforeDisposeEvent>(WorldId, HandleEntityDisposing);
-        ECSEventBus.Unregister<WorldDisposingEvent>(WorldId, HandleWorldDisposing);
+        foreach (var sub in _subscriptions)
+        {
+            sub.Dispose();
+        }
+        _subscriptions.Clear();
         EntityAdded = null;
         EntityRemoved = null;
         EntityChanged = null;

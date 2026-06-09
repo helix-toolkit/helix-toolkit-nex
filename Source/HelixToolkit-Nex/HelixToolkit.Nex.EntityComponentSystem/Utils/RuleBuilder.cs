@@ -46,8 +46,8 @@ public sealed class RuleBuilder : IDisposable
     internal RuleBuilder(World world)
     {
         _world = world;
-        _entityDisposingSubscription = Publisher.Subscribe<EntityDisposingEvent>(
-            WorldId,
+        _entityDisposingSubscription = ECSEventBus.Register<EntityDisposingEvent>(
+            world,
             (w, msg) => EntityRemoved?.Invoke(this, msg.EntityId)
         );
     }
@@ -86,8 +86,8 @@ public sealed class RuleBuilder : IDisposable
     {
         if (_entityEnabledSubscription == null)
         {
-            _entityEnabledSubscription = Publisher.Subscribe<EntityEnableEvent>(
-                World.Id,
+            _entityEnabledSubscription = ECSEventBus.Register<EntityEnableEvent>(
+                World,
                 (w, msg) => OnEnableChanged(msg.EntityId, msg.Enabled)
             );
         }
@@ -97,8 +97,8 @@ public sealed class RuleBuilder : IDisposable
     private RuleBuilder AddOrRemove<T>(OpType op)
     {
         var id = ComponentIdProxy<T>.TypeId;
-        var subObj = Publisher.Subscribe<ComponentChangedEvent<T>>(
-            World.Id,
+        var subObj = ECSEventBus.Register<ComponentChangedEvent<T>>(
+            World,
             (w, msg) => OnComponentChanged(msg)
         );
         var info = new FilterInfo(op, id, subObj);

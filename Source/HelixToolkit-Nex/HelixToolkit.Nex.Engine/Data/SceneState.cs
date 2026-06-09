@@ -11,7 +11,7 @@ public sealed class SceneState(IContext context, World world) : Initializable, I
     private Components<Renderable> _renderables;
     private Components<NodeInfo> _nodeInfos;
     private Components<WorldTransform> _worldTransforms;
-
+    private readonly FastList<Subscription> _subscriptions = [];
 
     public override string Name => nameof(SceneState);
 
@@ -37,31 +37,31 @@ public sealed class SceneState(IContext context, World world) : Initializable, I
         _renderables = World.GetComponents<Renderable>();
         _worldTransforms = World.GetComponents<WorldTransform>();
         _nodeInfos = World.GetComponents<NodeInfo>();
-        World.Register<ComponentChangedEvent<Transform>>(OnTransformChanged);
-        World.Register<ComponentChangedEvent<WorldTransform>>(OnWorldTransformChanged);
-        World.Register<ComponentChangedEvent<Parent>>(OnParentChanged);
-        World.Register<ComponentChangedEvent<Renderable>>(OnRenderableChanged);
-        World.Register<ComponentChangedEvent<NodeInfo>>(OnNodeInfoChanged);
+        _subscriptions.Add(World.Register<ComponentChangedEvent<Transform>>(OnTransformChanged));
+        _subscriptions.Add(World.Register<ComponentChangedEvent<WorldTransform>>(OnWorldTransformChanged));
+        _subscriptions.Add(World.Register<ComponentChangedEvent<Parent>>(OnParentChanged));
+        _subscriptions.Add(World.Register<ComponentChangedEvent<Renderable>>(OnRenderableChanged));
+        _subscriptions.Add(World.Register<ComponentChangedEvent<NodeInfo>>(OnNodeInfoChanged));
         return ResultCode.Ok;
     }
 
     protected override ResultCode OnTearingDown()
     {
-        World.Unregister<ComponentChangedEvent<Transform>>(OnTransformChanged);
-        World.Unregister<ComponentChangedEvent<WorldTransform>>(OnWorldTransformChanged);
-        World.Unregister<ComponentChangedEvent<Renderable>>(OnRenderableChanged);
-        World.Unregister<ComponentChangedEvent<Parent>>(OnParentChanged);
-        World.Unregister<ComponentChangedEvent<NodeInfo>>(OnNodeInfoChanged);
+        foreach (var subscription in _subscriptions)
+        {
+            subscription.Dispose();
+        }
+        _subscriptions.Clear();
         Disposer.DisposeAndRemove(ref _buffer);
         return ResultCode.Ok;
     }
 
-    private void OnTransformChanged(int worldId, ComponentChangedEvent<Transform> e)
+    private void OnTransformChanged(World _, ComponentChangedEvent<Transform> e)
     {
         NodeInfoDirty = true;
     }
 
-    private void OnWorldTransformChanged(int worldId, ComponentChangedEvent<WorldTransform> e)
+    private void OnWorldTransformChanged(World _, ComponentChangedEvent<WorldTransform> e)
     {
         var entity = World.GetEntity(e.EntityId);
         if (entity.Has<Renderable>())
@@ -71,17 +71,17 @@ public sealed class SceneState(IContext context, World world) : Initializable, I
         }
     }
 
-    private void OnParentChanged(int worldId, ComponentChangedEvent<Parent> e)
+    private void OnParentChanged(World _, ComponentChangedEvent<Parent> e)
     {
         SceneGraphDirty = true;
     }
 
-    private void OnRenderableChanged(int worldId, ComponentChangedEvent<Renderable> e)
+    private void OnRenderableChanged(World _, ComponentChangedEvent<Renderable> e)
     {
         SceneGraphDirty = true;
     }
 
-    private void OnNodeInfoChanged(int worldId, ComponentChangedEvent<NodeInfo> e)
+    private void OnNodeInfoChanged(World _, ComponentChangedEvent<NodeInfo> e)
     {
         var entity = World.GetEntity(e.EntityId);
         if (entity.Has<Renderable>())
