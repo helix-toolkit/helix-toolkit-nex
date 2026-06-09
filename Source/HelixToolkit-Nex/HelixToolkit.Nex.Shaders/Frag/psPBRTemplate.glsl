@@ -361,72 +361,105 @@ vec4 cadStyleLighting(in PBRMaterial material)
     return vec4(finalColor, material.opacity);
 }
 
-// CAD-style lighting with configurable parameters
+// CAD-style lighting with advanced shape definition and energy conservation
 vec4 cadStyleLightingAdvanced(in PBRMaterial material, 
-                               float ambientStrength,
-                               float diffuseStrength,
-                               float specularStrength,
-                               float specularShininess,
-                               float rimStrength,
-                               float rimPower,
-                               vec3 headLightColor,
-                               vec3 fillLightColor)
+                              float ambientStrength,
+                              float diffuseStrength,
+                              float specularStrength,
+                              float specularShininess,
+                              float rimStrength,
+                              float rimPower,
+                              vec3 headLightColor,
+                              vec3 fillLightColor)
 {
     vec3 N = normalize(material.normal);
     vec3 V = normalize(fpConst.cameraPosition - fragWorldPos);
-
-    // -------------------------------------------------------------------------
-    // Head Light (camera-aligned directional light)
-    // -------------------------------------------------------------------------
-    vec3 headLightDir = V;
-
-    // Lambertian diffuse
-    float NdotL = max(dot(N, headLightDir), 0.0);
-    vec3 diffuse = material.albedo * headLightColor * NdotL * diffuseStrength;
-
-    // Blinn-Phong specular
-    vec3 H = normalize(V + headLightDir);
-    float NdotH = max(dot(N, H), 0.0);
-    float spec = pow(NdotH, specularShininess);
-    vec3 specular = headLightColor * spec * specularStrength;
-
-    // -------------------------------------------------------------------------
-    // Secondary Fill Light
-    // -------------------------------------------------------------------------
-    vec3 fillLightDir = normalize(-V + vec3(0.3, 0.5, 0.0));
-    float fillNdotL = max(dot(N, fillLightDir), 0.0);
-    vec3 fillDiffuse = material.albedo * fillLightColor * fillNdotL * 0.2;
-
-    // -------------------------------------------------------------------------
-    // Rim/Silhouette Enhancement
-    // -------------------------------------------------------------------------
     float NdotV = max(dot(N, V), 0.0);
-    float rim = pow(1.0 - NdotV, rimPower) * rimStrength;
-    vec3 rimColor = material.albedo * rim;
 
     // -------------------------------------------------------------------------
-    // Ambient
+    // 1. Better Light Rigging: Over-the-shoulder Key Light & Fill Light
     // -------------------------------------------------------------------------
+    // Offsetting the headlight slightly from V prevents flat specular blowouts
+    vec3 keyLightDir = normalize(V + vec3(-0.2, 0.2, 0.1)); 
+    vec3 fillLightDir = normalize(-V + vec3(0.5, 0.6, -0.2));
+
+    // -------------------------------------------------------------------------
+    // 2. Gooch-style Diffuse Wrap (Warm / Cool Shading)
+    // -------------------------------------------------------------------------
+    float keyHalfDot = dot(N, keyLightDir) * 0.5 + 0.5; // Map [-1, 1] to [0, 1]
+    vec3 coolTone = vec3(0.15, 0.2, 0.3) * fillLightColor;
+    vec3 warmTone = headLightColor * diffuseStrength;
+    
+    // Blend the base albedo through the Gooch ramp
+    vec3 diffuseTerm = mix(coolTone, warmTone, keyHalfDot) * material.albedo;
+
+    // Secondary soft fill
+    float fillNdotL = max(dot(N, fillLightDir), 0.0);
+    vec3 fillDiffuse = material.albedo * fillLightColor * fillNdotL * 0.25;
+
+    // -------------------------------------------------------------------------
+    // 3. Energy Conserving Blinn-Phong Specular
+    // -------------------------------------------------------------------------
+    vec3 H = normalize(V + keyLightDir);
+    float NdotH = max(dot(N, H), 0.0);
+    
+    // Normalization factor for Blinn-Phong energy conservation
+    float normFactor = (specularShininess + 2.0) / 8.0;
+    float spec = pow(NdotH, specularShininess) * normFactor;
+    
+    // Simple Fresnel approximation for a crisp metallic edge look if specified
+    float F0 = mix(0.04, 0.6, material.metallic); 
+    float fresnel = F0 + (1.0 - F0) * pow(1.0 - NdotV, 5.0);
+    
+    vec3 specularTerm = headLightColor * spec * specularStrength * fresnel;
+
+    // -------------------------------------------------------------------------
+    // 4. Rim Enhancement (Darken or Lighten edges depending on CAD mode)
+    // -------------------------------------------------------------------------
+    // Tip: In CAD, a *dark* rim can act as a cheap silhouette pencil line 
+    // if you don't have a post-processing pass. Let's make it an edge highlight here.
+    float rim = pow(1.0 - NdotV, rimPower) * rimStrength;
+    vec3 rimColor = mix(vec3(1.0), material.albedo, 0.5) * rim * (1.0 - material.metallic);
+
+    // -------------------------------------------------------------------------
+    // 5. Ambient & Emissive
+    // -------------------------------------------------------------------------
+    // Metallic surfaces drop their diffuse component
+    vec3 finalDiffuse = (diffuseTerm + fillDiffuse) * (1.0 - material.metallic);
     vec3 ambient = material.albedo * material.ambient * ambientStrength * material.ao;
 
-    // -------------------------------------------------------------------------
-    // Combine all lighting components
-    // -------------------------------------------------------------------------
-    vec3 finalColor = ambient + diffuse + fillDiffuse + specular + rimColor + material.emissive;
+    // Combine with safe clamping/energy distribution
+    vec3 finalColor = ambient + finalDiffuse + specularTerm + rimColor + material.emissive;
 
     return vec4(finalColor, material.opacity);
 }
 
 // Flat shaded CAD-style lighting (uses geometric normal instead of interpolated normal)
-vec4 cadStyleLightingFlat(in PBRMaterial material)
-{
-    // Override normal with geometric (flat) normal
+vec4 cadStyleLightingFlat(in PBRMaterial material){
     PBRMaterial flatMaterial = material;
-    vec3 geomNormal = normalize(cross(dFdy(fragWorldPos), dFdx(fragWorldPos)));
-    // Flip for back faces
-    flatMaterial.normal = gl_FrontFacing ? geomNormal : -geomNormal;
-
-    return cadStyleLighting(flatMaterial);
+    
+    // More robust screen-space geometric normal extraction
+    vec3 dX = dFdx(fragWorldPos);
+    vec3 dY = dFdy(fragWorldPos);
+    vec3 geomNormal = normalize(cross(dX, dY));
+    
+    // Ensure the generated face normal points toward the viewer
+    vec3 V = normalize(fpConst.cameraPosition - fragWorldPos);
+    if (dot(geomNormal, V) < 0.0) {
+        geomNormal = -geomNormal;
+    }
+    
+    flatMaterial.normal = geomNormal;
+    return cadStyleLightingAdvanced(flatMaterial,
+                                    0.15,               // ambientStrength
+                                    0.80,               // diffuseStrength
+                                    0.40,               // specularStrength
+                                    32.0,               // specularShininess
+                                    0.30,               // rimStrength
+                                    4.0,                // rimPower
+                                    vec3(1.0),          // headLightColor (White)
+                                    vec3(0.8,0.85,0.95) // fillLightColor (Soft Ice Blue)
+                                    );
 }
 
 vec4 debugTileLighting()
