@@ -74,7 +74,6 @@ internal sealed class PickingDemo : IDisposable
 
     // --- GUI state ---
     private string _lastPickInfo = "No pick yet";
-    private double _lastPickMs = 0;
     private bool _continuousPicking = false;
 
     public PickingDemo(IContext context)
