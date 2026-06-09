@@ -6,6 +6,41 @@ namespace HelixToolkit.Nex.Scene;
 
 public static class Extensions
 {
+    public static BoundingBox GetMeshBound(this Node node)
+    {
+        var world = node.World;
+        var nodeInfos = world.GetComponents<NodeInfo>();
+        var worldTransforms = world.GetComponents<WorldTransform>();
+        var meshes = world.GetComponents<MeshComponent>();
+        var mergedBound = BoundingBox.Empty;
+        for (int i = 0; i < nodeInfos.Count; ++i)
+        {
+            ref var nodeInfo = ref nodeInfos[i];
+            var entity = world.GetEntity(nodeInfo.EntityId);
+            if (!entity.Valid || !entity.Has<MeshComponent>())
+            {
+                continue;
+            }
+            ref var mesh = ref meshes[entity];
+            if (!mesh.Valid)
+            {
+                continue;
+            }
+            ref var transform = ref worldTransforms[entity];
+            var bound = mesh.Geometry!.BoundingBoxLocal.Transform(transform.Value);
+            if (mergedBound.IsEmpty)
+            {
+                mergedBound = bound;
+            }
+            else
+            {
+                mergedBound.Minimum = Vector3.Min(mergedBound.Minimum, bound.Minimum);
+                mergedBound.Maximum = Vector3.Max(mergedBound.Maximum, bound.Maximum);
+            }
+        }
+        return mergedBound;
+    }
+
     public static Node CreateNode(this World world, string name)
     {
         return new Node(world, name);

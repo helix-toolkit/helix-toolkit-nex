@@ -82,6 +82,7 @@ public sealed class EngineBuilder
     private bool _withBloom;
     private bool _withFPS;
     private TransparentMode _transparentMode = TransparentMode.ForwardPlus;
+    private ToneMappingMode _toneMappingMode = ToneMappingMode.ACESFilm;
     private bool _withBillboard;
     private bool _withPointCloud;
     private Action<IResourceManager>? _onResourceManagerReady;
@@ -272,6 +273,12 @@ public sealed class EngineBuilder
         return this;
     }
 
+    public EngineBuilder WithToneMappingMode(ToneMappingMode toneMappingMode)
+    {
+        _toneMappingMode = toneMappingMode;
+        return this;
+    }
+
     /// <summary>
     /// Configures the engine builder to target Windows Presentation Foundation (WPF) interop.
     /// </summary>
@@ -403,7 +410,7 @@ public sealed class EngineBuilder
             AddNode(new FPSNode());
         }
 
-        AddNode(new ToneMappingNode());
+        AddNode(new ToneMappingNode() { Mode = _toneMappingMode });
         // --- Apply deferred node configurations ---
         foreach (var configurator in _nodeConfigurators)
         {

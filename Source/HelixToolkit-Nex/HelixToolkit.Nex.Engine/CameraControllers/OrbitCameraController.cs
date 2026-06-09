@@ -22,7 +22,6 @@ public class OrbitCameraController : ICameraController
     private readonly float _initialTheta;
     private readonly float _initialPhi;
     private readonly float _initialRadius;
-    private readonly Vector3 _initialTarget;
 
     /// <summary>
     /// Gets the camera being controlled.
@@ -108,7 +107,6 @@ public class OrbitCameraController : ICameraController
         _initialTheta = _theta;
         _initialPhi = _phi;
         _initialRadius = _radius;
-        _initialTarget = camera.Target;
 
         UpdateCameraPosition();
     }
@@ -219,7 +217,7 @@ public class OrbitCameraController : ICameraController
         _theta = _initialTheta;
         _phi = _initialPhi;
         _radius = _initialRadius;
-        Camera.Target = _initialTarget;
+        Camera.Target = Vector3.Zero;
 
         UpdateCameraPosition();
     }

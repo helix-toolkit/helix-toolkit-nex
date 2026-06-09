@@ -35,7 +35,7 @@ internal class GltfImporterApp : ApplicationBase
     private RenderContext? _renderContext;
     private WorldDataProvider? _worldDataProvider;
     private ImGuiRenderer? _imGuiRenderer;
-    private Color4 _background = Color.Charcoal;
+    private Color4 _background = new(0.01f, 0.01f, 0.01f, 1);
 
     // Camera
     private Camera _camera = new PerspectiveCamera();
@@ -130,6 +130,7 @@ internal class GltfImporterApp : ApplicationBase
             .Create(_context)
             .WithDefaultNodes(false)
             .WithFXAA()
+            .WithToneMappingMode(Shaders.ToneMappingMode.Reinhard)
             .WithTransparent(Engine.TransparentMode.WBOIT)
             .RenderToCustomTarget(GraphicsSettings.IntermediateTargetFormat)
             .WithPostEffects(effects =>
@@ -492,7 +493,8 @@ internal class GltfImporterApp : ApplicationBase
         _currentModelRoot = result.RootNode;
         _currentResourceManifest = result.Resources;
         _mainRoot?.AddChild(_currentModelRoot!);
-
+        _worldDataProvider.World.SortSceneNodes();
+        _worldDataProvider.World.UpdateTransforms();
         // Compute bounding volume and frame the camera
         ComputeBoundsAndFrameCamera(_currentModelRoot!);
 
@@ -538,84 +540,16 @@ internal class GltfImporterApp : ApplicationBase
     /// </summary>
     private void ComputeBoundsAndFrameCamera(Node rootNode)
     {
-        var min = new Vector3(float.MaxValue);
-        var max = new Vector3(float.MinValue);
-        bool hasPoints = false;
+        var bound = rootNode.GetMeshBound();
 
-        CollectBounds(rootNode, ref min, ref max, ref hasPoints);
-
-        if (!hasPoints)
-        {
-            // Degenerate case — no geometry positions found, use node translations
-            CollectNodeTranslations(rootNode, ref min, ref max, ref hasPoints);
-        }
-
-        if (!hasPoints)
-        {
-            // Fallback: center at origin
-            _cameraController!.FocusOn(Vector3.Zero, 5f);
-            return;
-        }
-
-        var center = (min + max) * 0.5f;
-        var extents = max - min;
+        var center = (bound.Minimum + bound.Maximum) * 0.5f;
+        //rootNode.Transform.Translation = -center;
+        var extents = bound.Maximum - bound.Minimum;
         float radius = extents.Length() * 0.5f;
 
         // Set orbit distance to frame the model (use 2x radius for comfortable framing)
         float distance = Math.Max(radius * 2f, 1f);
         _cameraController!.FocusOn(center, distance);
-    }
-
-    /// <summary>
-    /// Recursively collects node translation positions to approximate bounding volume.
-    /// </summary>
-    private static void CollectNodeTranslations(
-        Node node,
-        ref Vector3 min,
-        ref Vector3 max,
-        ref bool hasPoints
-    )
-    {
-        var translation = node.Transform.Translation;
-        min = Vector3.Min(min, translation);
-        max = Vector3.Max(max, translation);
-        hasPoints = true;
-
-        var children = node.Children;
-        if (children is null)
-            return;
-
-        for (int i = 0; i < children.Count; i++)
-        {
-            CollectNodeTranslations(children[i], ref min, ref max, ref hasPoints);
-        }
-    }
-
-    /// <summary>
-    /// Recursively collects world-space positions from mesh geometry bounds.
-    /// Falls back to node translations if no geometry data is available.
-    /// </summary>
-    private static void CollectBounds(
-        Node node,
-        ref Vector3 min,
-        ref Vector3 max,
-        ref bool hasPoints
-    )
-    {
-        // Use the node's world transform translation as a point in the bounding volume
-        var translation = node.Transform.Translation;
-        min = Vector3.Min(min, translation);
-        max = Vector3.Max(max, translation);
-        hasPoints = true;
-
-        var children = node.Children;
-        if (children is null)
-            return;
-
-        for (int i = 0; i < children.Count; i++)
-        {
-            CollectBounds(children[i], ref min, ref max, ref hasPoints);
-        }
     }
 
     // -------------------------------------------------------------------
