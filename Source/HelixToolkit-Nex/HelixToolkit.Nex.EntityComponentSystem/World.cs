@@ -43,6 +43,8 @@ public sealed class World : IEnumerable<Entity>, IDisposable
     private readonly FastList<EntityState> _entityState = new(1024);
     private readonly IdHelper _entityIdGen = new();
     private readonly object _lock = new();
+    private readonly Subscription _entityDisposingSub;
+
     public byte Generation { private set; get; }
 
     public byte Id { private set; get; }
@@ -79,10 +81,10 @@ public sealed class World : IEnumerable<Entity>, IDisposable
             Debug.Assert(worldArray[nextId].World == null);
             worldArray[nextId].Reset();
             var generation = worldArray[nextId].Generation;
-            worldArray[nextId].World = new World((byte)nextId, generation);
-            ECSEventBus.Send(nextId, new WorldCreatedEvent());
-            return worldArray[nextId].World
-                ?? throw new InvalidOperationException($"Failed to create an new world.");
+            var world = new World((byte)nextId, generation);
+            worldArray[nextId].World = world;
+            ECSEventBus.Send(world, new WorldCreatedEvent());
+            return world;
         }
         finally
         {
@@ -180,7 +182,7 @@ public sealed class World : IEnumerable<Entity>, IDisposable
     {
         Id = id;
         Generation = generation;
-        RegisterEvents();
+        _entityDisposingSub = ECSEventBus.Register<EntityDisposingEvent>(this, HandleEntityDisposing);
     }
 
     #region Entity
@@ -659,12 +661,7 @@ public sealed class World : IEnumerable<Entity>, IDisposable
     }
 
     #region Event Handling
-    private void RegisterEvents()
-    {
-        ECSEventBus.Register<EntityDisposingEvent>(Id, HandleEntityDisposing);
-    }
-
-    private void HandleEntityDisposing(int worldId, EntityDisposingEvent msg)
+    private void HandleEntityDisposing(World world, EntityDisposingEvent msg)
     {
         lock (_lock)
         {
@@ -807,19 +804,10 @@ public sealed class World : IEnumerable<Entity>, IDisposable
     /// </summary>
     /// <typeparam name="TMessage"></typeparam>
     /// <param name="action"></param>
-    public void Register<TMessage>(Message<TMessage> action)
+    /// <returns>Subscription handle</returns>
+    public Subscription Register<TMessage>(Action<World, TMessage> action)
     {
-        ECSEventBus.Register(Id, action);
-    }
-
-    /// <summary>
-    /// Unregister an event callback for this world
-    /// </summary>
-    /// <typeparam name="TMessage"></typeparam>
-    /// <param name="action"></param>
-    public void Unregister<TMessage>(Message<TMessage> action)
-    {
-        ECSEventBus.Unregister(Id, action);
+        return ECSEventBus.Register(this, action);
     }
     #endregion
 
@@ -848,6 +836,7 @@ public sealed class World : IEnumerable<Entity>, IDisposable
         var oldId = Id;
         Id = 0;
         Generation = 0;
+        _entityDisposingSub.Dispose();
         RemoveWorld(oldId);
         _disposed = true;
         ECSEventBus.Send(oldId, new WorldDisposedEvent());

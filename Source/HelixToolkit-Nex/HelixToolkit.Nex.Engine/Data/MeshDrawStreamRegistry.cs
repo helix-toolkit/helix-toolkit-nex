@@ -84,7 +84,12 @@ internal sealed class MeshDrawStreamRegistry(IContext context, World world)
             _streamsByType[i].Resize((int)DrawStreamName.Count);
             for (var j = 0; j < (int)DrawStreamName.Count; ++j)
             {
-                _streamsByType[i][j] = new MeshDrawStream(_context, _world, (DrawStreamType)i, (DrawStreamName)j);
+                _streamsByType[i][j] = new MeshDrawStream(
+                    _context,
+                    _world,
+                    (DrawStreamType)i,
+                    (DrawStreamName)j
+                );
                 var ret = _streamsByType[i][j].Initialize().CheckResult();
                 if (ret != ResultCode.Ok)
                 {
@@ -92,7 +97,6 @@ internal sealed class MeshDrawStreamRegistry(IContext context, World world)
                 }
             }
         }
-        _world.Register<SceneChangedEvents>(OnSceneChanged);
         return ResultCode.Ok;
     }
 
@@ -204,6 +208,4 @@ internal sealed class MeshDrawStreamRegistry(IContext context, World world)
             stream.EntityChanged(entity, in e);
         }
     }
-
-    private void OnSceneChanged(int worldId, SceneChangedEvents message) { }
 }
