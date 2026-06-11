@@ -137,7 +137,7 @@ public sealed class PointCullNode : ComputeNode
             res.Deps.PushBuffer(entry.DrawArgsBuffer);
             foreach (var entity in entry.Entities)
             {
-                ref var comp = ref entity.Get<PointCloudComponent>();
+                ref var comp = ref entity.Get<PointCloudDrawInfo>();
                 if (comp.PointCount == 0)
                 {
                     continue;

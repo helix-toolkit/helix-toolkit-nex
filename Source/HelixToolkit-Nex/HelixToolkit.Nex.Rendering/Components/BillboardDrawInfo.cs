@@ -5,12 +5,12 @@ namespace HelixToolkit.Nex.Rendering.Components;
 /// <summary>
 /// ECS component that describes one or more billboards attached to an entity.
 /// <para>
-/// Each entity with a <see cref="BillboardComponent"/> contributes its billboards to the
+/// Each entity with a <see cref="BillboardDrawInfo"/> contributes its billboards to the
 /// GPU billboard buffer managed by the billboard data provider. The component stores CPU-side
 /// billboard data that is collected and uploaded each frame.
 /// </para>
 /// </summary>
-public struct BillboardComponent()
+public struct BillboardDrawInfo()
 {
     /// <summary>
     /// Gets or sets the billboard geometry containing per-billboard instance data

@@ -645,7 +645,7 @@ public class SDFFontRenderingTests
     [TestMethod]
     public void BillboardComponent_DefaultValues()
     {
-        var comp = new Components.BillboardComponent();
+        var comp = new Components.BillboardDrawInfo();
 
         Assert.AreEqual(new Color4(1f, 1f, 1f, 1f), comp.Color);
         Assert.IsFalse(comp.FixedSize);
@@ -667,7 +667,7 @@ public class SDFFontRenderingTests
         geo.Add(Vector3.Zero, 1f, 1f, Vector4.One);
         geo.Add(Vector3.One, 2f, 2f, Vector4.Zero);
 
-        var comp = new Components.BillboardComponent { BillboardGeometry = geo };
+        var comp = new Components.BillboardDrawInfo { BillboardGeometry = geo };
 
         Assert.AreEqual(2, comp.BillboardCount);
         Assert.IsTrue(comp.Valid);
@@ -678,7 +678,7 @@ public class SDFFontRenderingTests
     {
         var geo = new BillboardGeometry();
 
-        var comp = new Components.BillboardComponent { BillboardGeometry = geo };
+        var comp = new Components.BillboardDrawInfo { BillboardGeometry = geo };
 
         Assert.AreEqual(0, comp.BillboardCount);
         Assert.IsFalse(comp.Valid);

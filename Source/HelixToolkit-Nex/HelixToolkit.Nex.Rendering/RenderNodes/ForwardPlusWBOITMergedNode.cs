@@ -177,7 +177,7 @@ public sealed class ForwardPlusWBOITMergedNode : RenderNode
         }
 
         return context.Data is not null
-            && context.Data.DrawStreams.GetStreamsCore(DrawStreamType.Transparent).HasAny();
+            && context.Data.MeshDrawStreams.GetStreamsCore(DrawStreamType.Transparent).HasAny();
     }
 
     protected override void OnSetupRender(in RenderResources res)
@@ -253,7 +253,7 @@ public sealed class ForwardPlusWBOITMergedNode : RenderNode
         cmdBuffer.PushDebugGroupLabel(_accumPass, Color.Chartreuse);
         if (res.RenderContext.RenderParams.EnableGlobalWireframe)
         {
-            var streams = res.RenderContext.Data!.DrawStreams.GetStreamsCore(
+            var streams = res.RenderContext.Data!.MeshDrawStreams.GetStreamsCore(
                 DrawStreamType.Transparent
             );
             res.RenderContext.Statistics.DrawCalls += MeshRenderHelper.Render(
@@ -277,7 +277,7 @@ public sealed class ForwardPlusWBOITMergedNode : RenderNode
         // Disable color buffer 0 output in first pass since second pass outputs the final color to the buffer 0.
         // cmdBuffer.SetColorWriteEnabled(false);
         // ── Subpass 1: Render transparent geometry into accumulation/revealage ──
-        var streams = res.RenderContext.Data!.DrawStreams.GetStreamsCore(
+        var streams = res.RenderContext.Data!.MeshDrawStreams.GetStreamsCore(
             DrawStreamType.Transparent
         );
         res.RenderContext.Statistics.DrawCalls += MeshRenderHelper.Render(

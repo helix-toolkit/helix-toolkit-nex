@@ -39,7 +39,7 @@ public sealed class PointCloudDataEntry : IDisposable
     public void AddEntity(Entity entity)
     {
         Entities.Add(entity);
-        ref var comp = ref entity.Get<PointCloudComponent>();
+        ref var comp = ref entity.Get<PointCloudDrawInfo>();
         PointCount += comp.PointCount;
     }
 

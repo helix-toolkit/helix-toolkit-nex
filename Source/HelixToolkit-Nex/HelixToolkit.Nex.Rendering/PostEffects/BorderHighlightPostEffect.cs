@@ -42,7 +42,7 @@ public sealed class BorderHighlightPostEffect : PostEffect
 {
     /// <summary>
     /// Marks a mesh entity for border-highlight rendering.
-    /// When present on an entity that also has a <see cref="MeshComponent"/>,
+    /// When present on an entity that also has a <see cref="MeshDrawInfo"/>,
     /// the <c>BorderHighlightPostEffect</c> will draw a coloured outline around
     /// the mesh silhouette during the post-processing stage.
     /// </summary>
@@ -223,7 +223,7 @@ public sealed class BorderHighlightPostEffect : PostEffect
 
     /// <summary>
     /// Gathers draw commands (index in the opaque draw buffer, colour, thickness) for every
-    /// enabled entity that has both a <see cref="MeshComponent"/> and a
+    /// enabled entity that has both a <see cref="MeshDrawInfo"/> and a
     /// <see cref="BorderHighlightOverlay"/>.
     /// </summary>
     private void GatherHighlightedDraws(World world, IRenderDataProvider data)
@@ -232,7 +232,7 @@ public sealed class BorderHighlightPostEffect : PostEffect
 
         foreach (var entity in world.GetComponentEntities<BorderHighlightOverlay>())
         {
-            if (!entity.Has<MeshComponent>() || !entity.Has<Renderable>())
+            if (!entity.Has<MeshDrawInfo>() || !entity.Has<Renderable>())
             {
                 continue;
             }
@@ -285,7 +285,7 @@ public sealed class BorderHighlightPostEffect : PostEffect
         using var _ = context.EnableExternalPipelineScoped();
 
         var fpConstAddress = fpBuffer.GpuAddress(context.Context);
-        var dataStreams = context.Data!.DrawStreams;
+        var dataStreams = context.Data!.MeshDrawStreams;
 
         foreach (var entry in _entries.AsValueEnumerable())
         {
@@ -296,7 +296,7 @@ public sealed class BorderHighlightPostEffect : PostEffect
                 {
                     continue;
                 }
-                var (meshDraw, slot) = stream.GetMeshDraw(entry.Entity);
+                var (meshDraw, slot) = stream.GetDraw(entry.Entity);
                 if (slot < 0)
                 {
                     continue;

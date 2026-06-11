@@ -7,14 +7,14 @@ public class BillboardNode : Node
     public BillboardNode(World world, string name)
         : base(world, name)
     {
-        Entity.Set(new BillboardComponent());
+        Entity.Set(new BillboardDrawInfo());
         IsRenderable = true;
     }
 
-    public BillboardNode(World world, string name, BillboardComponent component)
+    public BillboardNode(World world, string name, BillboardDrawInfo component)
         : this(world, name, ref component) { }
 
-    public BillboardNode(World world, string name, ref BillboardComponent component)
+    public BillboardNode(World world, string name, ref BillboardDrawInfo component)
         : this(world, name)
     {
         Entity.Set(ref component);
@@ -23,9 +23,9 @@ public class BillboardNode : Node
     /// <summary>
     /// Gets or sets the billboard geometry.
     /// </summary>
-    public BillboardComponent Billboard
+    public BillboardDrawInfo Billboard
     {
-        get => Entity.Get<BillboardComponent>();
+        get => Entity.Get<BillboardDrawInfo>();
         set
         {
             Entity.Set(ref value);
@@ -35,5 +35,5 @@ public class BillboardNode : Node
     /// <summary>
     /// Gets or sets the number of billboards to render for this node.
     /// </summary>
-    public int BillboardCount => Entity.Get<BillboardComponent>().BillboardCount;
+    public int BillboardCount => Entity.Get<BillboardDrawInfo>().BillboardCount;
 }

@@ -1393,5 +1393,10 @@ namespace HelixToolkit.Nex.Maths
                 : 255
             );
         }
+
+        public readonly uint PackToRGBA()
+        {
+            return ((uint)A << 24) | ((uint)B << 16) | ((uint)G << 8) | (uint)R;
+        }
     }
 }

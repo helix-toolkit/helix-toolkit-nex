@@ -36,6 +36,19 @@ public partial class BillboardGeometry : HxObservableObject
         set => _dirty = value;
     }
 
+    public BillboardGeometry()
+    {
+        PropertyChanged += BillboardGeometry_PropertyChanged;
+    }
+
+    private void BillboardGeometry_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(Vertices))
+        {
+            MarkDirty();
+        }
+    }
+
     /// <summary>
     /// Marks the GPU buffer as needing re-upload.
     /// </summary>

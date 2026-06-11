@@ -224,6 +224,15 @@ namespace HelixToolkit.Nex.Maths
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static uint EncodeToUInt(this Color4 color)
+        {
+            return ((uint)(MathF.Min(1, color.Alpha) * 255) << 24)
+                | ((uint)(MathF.Min(1, color.Blue) * 255) << 16)
+                | ((uint)(MathF.Min(1, color.Green) * 255) << 8)
+                | (uint)(MathF.Min(1, color.Red) * 255);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float Encode2FloatToFloat(float a, float b)
         {
             var aScaled = (uint)a * 0xFFFF;

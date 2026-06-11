@@ -21,7 +21,7 @@ public sealed class WireframePostEffect : PostEffect
 {
     /// <summary>
     /// Marks a mesh entity for wireframe rendering.
-    /// When present on an entity that also has a <see cref="MeshComponent"/>,
+    /// When present on an entity that also has a <see cref="MeshDrawInfo"/>,
     /// the <c>WireframePostEffect</c> will draw the mesh's edges as colored lines
     /// overlaid on the scene color during the post-processing stage.
     /// </summary>
@@ -139,7 +139,7 @@ public sealed class WireframePostEffect : PostEffect
 
     /// <summary>
     /// Gathers draw commands for every enabled entity that has both a
-    /// <see cref="MeshComponent"/> and a <see cref="WireframeOverlay"/>.
+    /// <see cref="MeshDrawInfo"/> and a <see cref="WireframeOverlay"/>.
     /// </summary>
     private void GatherWireframeDraws(World world, IRenderDataProvider data)
     {
@@ -147,14 +147,14 @@ public sealed class WireframePostEffect : PostEffect
 
         foreach (var entity in world.GetComponentEntities<WireframeOverlay>())
         {
-            if (!entity.Has<MeshComponent>() || !entity.Has<Renderable>())
+            if (!entity.Has<MeshDrawInfo>() || !entity.Has<Renderable>())
             {
                 continue;
             }
 
             ref var wireframe = ref entity.Get<WireframeOverlay>();
             ref var renderable = ref entity.Get<Renderable>();
-            ref var mesh = ref entity.Get<MeshComponent>();
+            ref var mesh = ref entity.Get<MeshDrawInfo>();
             if (
                 renderable.GPUIndex < 0
                 || renderable.DrawType < 0
@@ -221,7 +221,7 @@ public sealed class WireframePostEffect : PostEffect
         WireframePushConstants pc = new() { FpConstantBufferAddress = fpConstAddress };
         foreach (var entry in _entries)
         {
-            ref var mesh = ref entry.Entity.Get<MeshComponent>();
+            ref var mesh = ref entry.Entity.Get<MeshDrawInfo>();
 
             if (mesh.Geometry is null)
             {

@@ -746,7 +746,7 @@ internal sealed class PointsDemo : IDisposable
                 Gui.Text($"Entity ID: {_pickedEntityId}");
                 Gui.Text($"Instance Idx: {_pickedInstanceIdx}");
 
-                if (_selectedEntity.TryGet<PointCloudComponent>(out var pc2))
+                if (_selectedEntity.TryGet<PointCloudDrawInfo>(out var pc2))
                     Gui.Text($"Point Count: {pc2.PointCount}");
             }
             else
@@ -808,7 +808,7 @@ internal sealed class PointsDemo : IDisposable
                         )
                     )
                     {
-                        entry.Node.Entity.Update<PointCloudComponent>(x =>
+                        entry.Node.Entity.Update<PointCloudDrawInfo>(x =>
                         {
                             x.PointMaterialName = _materialTypes[entry.MaterialNameIndex];
                             return x;
@@ -848,7 +848,7 @@ internal sealed class PointsDemo : IDisposable
     {
         foreach (var entry in _pointClouds)
         {
-            entry.Node.Entity.Update<PointCloudComponent>(x =>
+            entry.Node.Entity.Update<PointCloudDrawInfo>(x =>
             {
                 x.FixedSize = _fixedSize;
                 x.Size = _globalPointSize;

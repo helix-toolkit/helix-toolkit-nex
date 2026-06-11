@@ -605,10 +605,10 @@ internal sealed class BillboardDemo : IDisposable
                     if (
                         entry.Node is not null
                         && entry.Node.Entity.Valid
-                        && entry.Node.Entity.Has<BillboardComponent>()
+                        && entry.Node.Entity.Has<BillboardDrawInfo>()
                     )
                     {
-                        ref var comp = ref entry.Node.Entity.Get<BillboardComponent>();
+                        ref var comp = ref entry.Node.Entity.Get<BillboardDrawInfo>();
                         glyphCount = comp.BillboardCount;
                     }
                     Gui.Text($"Glyphs: {glyphCount}");
@@ -685,10 +685,10 @@ internal sealed class BillboardDemo : IDisposable
                     entry.Enabled
                     && entry.Node is not null
                     && entry.Node.Entity.Valid
-                    && entry.Node.Entity.Has<BillboardComponent>()
+                    && entry.Node.Entity.Has<BillboardDrawInfo>()
                 )
                 {
-                    ref var comp = ref entry.Node.Entity.Get<BillboardComponent>();
+                    ref var comp = ref entry.Node.Entity.Get<BillboardDrawInfo>();
                     totalGlyphs += comp.BillboardCount;
                 }
             }
@@ -725,7 +725,7 @@ internal sealed class BillboardDemo : IDisposable
         {
             if (entry.Node is not null)
             {
-                entry.Node.Entity.Update<BillboardComponent>(comp =>
+                entry.Node.Entity.Update<BillboardDrawInfo>(comp =>
                 {
                     comp.FixedSize = _fixedSize;
                     return comp;
@@ -738,7 +738,7 @@ internal sealed class BillboardDemo : IDisposable
     {
         if (entry.Node is not null)
         {
-            entry.Node.Entity.Update<BillboardComponent>(comp =>
+            entry.Node.Entity.Update<BillboardDrawInfo>(comp =>
             {
                 comp.Color = entry.Color;
                 return comp;

@@ -11,13 +11,13 @@ public static class Extensions
         var world = node.World;
         var nodeInfos = world.GetComponents<NodeInfo>();
         var worldTransforms = world.GetComponents<WorldTransform>();
-        var meshes = world.GetComponents<MeshComponent>();
+        var meshes = world.GetComponents<MeshDrawInfo>();
         var mergedBound = BoundingBox.Empty;
         for (int i = 0; i < nodeInfos.Count; ++i)
         {
             ref var nodeInfo = ref nodeInfos[i];
             var entity = world.GetEntity(nodeInfo.EntityId);
-            if (!entity.Valid || !entity.Has<MeshComponent>())
+            if (!entity.Valid || !entity.Has<MeshDrawInfo>())
             {
                 continue;
             }
@@ -51,7 +51,7 @@ public static class Extensions
         return new MeshNode(world, name);
     }
 
-    public static MeshNode CreateMeshNode(this World world, string name, MeshComponent component)
+    public static MeshNode CreateMeshNode(this World world, string name, MeshDrawInfo component)
     {
         return new MeshNode(world, name, ref component);
     }
@@ -64,7 +64,7 @@ public static class Extensions
     public static PointCloudNode CreatePointCloudNode(
         this World world,
         string name,
-        PointCloudComponent component
+        PointCloudDrawInfo component
     )
     {
         return new PointCloudNode(world, name, ref component);
@@ -78,7 +78,7 @@ public static class Extensions
     public static BillboardNode CreateBillboardNode(
         this World world,
         string name,
-        BillboardComponent component
+        BillboardDrawInfo component
     )
     {
         return new BillboardNode(world, name, ref component);

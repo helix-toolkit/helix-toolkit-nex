@@ -3,7 +3,7 @@ using HelixToolkit.Nex.Rendering.Components;
 namespace HelixToolkit.Nex.Scene;
 
 /// <summary>
-/// A scene node that wraps a <see cref="MeshComponent"/>, exposing all of its
+/// A scene node that wraps a <see cref="MeshDrawInfo"/>, exposing all of its
 /// properties individually so callers never need to manage the component directly.
 /// </summary>
 public class MeshNode : Node
@@ -11,16 +11,16 @@ public class MeshNode : Node
     public MeshNode(World world, string name)
         : base(world, name)
     {
-        Entity.Set(MeshComponent.Empty);
+        Entity.Set(MeshDrawInfo.Empty);
         IsRenderable = true;
     }
 
-    public MeshNode(World world, string name, MeshComponent meshComponent)
+    public MeshNode(World world, string name, MeshDrawInfo meshComponent)
         : this(world, name, ref meshComponent)
     {
     }
 
-    public MeshNode(World world, string name, ref MeshComponent meshComponent)
+    public MeshNode(World world, string name, ref MeshDrawInfo meshComponent)
     : this(world, name)
     {
         Entity.Set(ref meshComponent);
@@ -30,10 +30,10 @@ public class MeshNode : Node
     /// </summary>
     public Geometry? Geometry
     {
-        get => Entity.Get<MeshComponent>().Geometry;
+        get => Entity.Get<MeshDrawInfo>().Geometry;
         set
         {
-            Entity.Update<MeshComponent>(comp =>
+            Entity.Update<MeshDrawInfo>(comp =>
             {
                 comp.Geometry = value;
                 return comp;
@@ -46,10 +46,10 @@ public class MeshNode : Node
     /// </summary>
     public PBRMaterialProperties? MaterialProperties
     {
-        get => Entity.Get<MeshComponent>().MaterialProperties;
+        get => Entity.Get<MeshDrawInfo>().MaterialProperties;
         set
         {
-            Entity.Update<MeshComponent>(comp =>
+            Entity.Update<MeshDrawInfo>(comp =>
             {
                 comp.MaterialProperties = value;
                 return comp;
@@ -62,10 +62,10 @@ public class MeshNode : Node
     /// </summary>
     public Instancing? Instancing
     {
-        get => Entity.Get<MeshComponent>().Instancing;
+        get => Entity.Get<MeshDrawInfo>().Instancing;
         set
         {
-            Entity.Update<MeshComponent>(comp =>
+            Entity.Update<MeshDrawInfo>(comp =>
             {
                 comp.Instancing = value;
                 return comp;
@@ -78,10 +78,10 @@ public class MeshNode : Node
     /// </summary>
     public bool Cullable
     {
-        get => Entity.Get<MeshComponent>().Cullable;
+        get => Entity.Get<MeshDrawInfo>().Cullable;
         set
         {
-            Entity.Update<MeshComponent>(comp =>
+            Entity.Update<MeshDrawInfo>(comp =>
             {
                 comp.Cullable = value;
                 return comp;
@@ -94,10 +94,10 @@ public class MeshNode : Node
     /// </summary>
     public bool Hitable
     {
-        get => Entity.Get<MeshComponent>().Hitable;
+        get => Entity.Get<MeshDrawInfo>().Hitable;
         set
         {
-            Entity.Update<MeshComponent>(comp =>
+            Entity.Update<MeshDrawInfo>(comp =>
             {
                 comp.Hitable = value;
                 return comp;
@@ -106,10 +106,10 @@ public class MeshNode : Node
     }
 
     /// <summary>
-    /// Gets whether the underlying <see cref="MeshComponent"/> is valid
+    /// Gets whether the underlying <see cref="MeshDrawInfo"/> is valid
     /// (has both geometry and material assigned).
     /// </summary>
-    public bool IsMeshValid => Entity.Get<MeshComponent>().Valid;
+    public bool IsMeshValid => Entity.Get<MeshDrawInfo>().Valid;
 
     /// <summary>
     /// Marks this mesh as transparent by adding the <see cref="TransparentComponent"/> tag.
