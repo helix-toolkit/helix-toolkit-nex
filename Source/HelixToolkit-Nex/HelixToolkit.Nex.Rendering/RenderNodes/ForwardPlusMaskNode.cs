@@ -25,7 +25,7 @@ public sealed class ForwardPlusMaskNode : RenderNode
         {
             return false;
         }
-        return context.Data.DrawStreams.GetStreamsCore(DrawStreamType.AlphaMask).HasAny();
+        return context.Data.MeshDrawStreams.GetStreamsCore(DrawStreamType.AlphaMask).HasAny();
     }
 
     protected override void OnSetupRender(in RenderResources res)
@@ -50,7 +50,7 @@ public sealed class ForwardPlusMaskNode : RenderNode
             ? DepthState.ReadOnlyInvZBias
             : DepthState.DefaultReversedZ;
 
-        var streams = res.RenderContext.Data!.DrawStreams.GetStreamsCore(DrawStreamType.AlphaMask);
+        var streams = res.RenderContext.Data!.MeshDrawStreams.GetStreamsCore(DrawStreamType.AlphaMask);
         foreach (var stream in streams)
         {
             if (stream.Count == 0)
@@ -61,7 +61,7 @@ public sealed class ForwardPlusMaskNode : RenderNode
 
     protected override void OnRender(in RenderResources res)
     {
-        var streams = res.RenderContext.Data!.DrawStreams.GetStreamsCore(DrawStreamType.AlphaMask);
+        var streams = res.RenderContext.Data!.MeshDrawStreams.GetStreamsCore(DrawStreamType.AlphaMask);
         res.RenderContext.Statistics.DrawCalls += MeshRenderHelper.Render(
             in res,
             res.Buffers[SystemBufferNames.BufferForwardPlusConstants]

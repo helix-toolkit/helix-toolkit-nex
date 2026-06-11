@@ -3,12 +3,12 @@ namespace HelixToolkit.Nex.Rendering.Components;
 /// <summary>
 /// ECS component that describes a point cloud attached to an entity.
 /// <para>
-/// Each entity with a <see cref="PointCloudComponent"/> contributes its points to the
+/// Each entity with a <see cref="PointCloudDrawInfo"/> contributes its points to the
 /// GPU point buffer managed by the point data provider. The component stores CPU-side
 /// point data that is collected and uploaded each frame.
 /// </para>
 /// </summary>
-public struct PointCloudComponent
+public struct PointCloudDrawInfo
 {
     /// <summary>
     /// Gets points to be rendered as a point cloud. The geometry must contain a vertex
@@ -76,9 +76,9 @@ public struct PointCloudComponent
     /// </summary>
     public uint SamplerIndex { set; get; }
 
-    public PointCloudComponent() { }
+    public PointCloudDrawInfo() { }
 
-    public PointCloudComponent(
+    public PointCloudDrawInfo(
         Geometry geometry,
         Color4 color,
         bool hitable = true,

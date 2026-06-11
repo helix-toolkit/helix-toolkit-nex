@@ -238,9 +238,9 @@ internal partial class Editor
         {
             Gui.BeginTooltip();
             Gui.Text($"Entity: {node.Entity.Id}  Level: {node.Level}");
-            if (node.Entity.Has<MeshComponent>())
+            if (node.Entity.Has<MeshDrawInfo>())
             {
-                Gui.Text($"Mesh: {node.Entity.Get<MeshComponent>()}");
+                Gui.Text($"Mesh: {node.Entity.Get<MeshDrawInfo>()}");
             }
             if (node.Entity.Has<RangeLightComponent>())
             {
@@ -307,7 +307,7 @@ internal partial class Editor
         }
 
         // --- Mesh component ---
-        if (_selectedEntity.TryGet<MeshComponent>(out var mesh))
+        if (_selectedEntity.TryGet<MeshDrawInfo>(out var mesh))
         {
             if (Gui.CollapsingHeader("Mesh Component"))
             {

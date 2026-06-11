@@ -357,7 +357,7 @@ public static class GpuPicking
     {
         position = default;
         geometryType = PickedGeometryType.None;
-        if (entity.Has<MeshComponent>())
+        if (entity.Has<MeshDrawInfo>())
         {
             if (entity.TryGetTriangleFromMesh(primitiveId, out var p0, out var p1, out var p2))
             {
@@ -368,7 +368,7 @@ public static class GpuPicking
                     p1 = Vector3.Transform(p1, transform.Value);
                     p2 = Vector3.Transform(p2, transform.Value);
                 }
-                ref var meshComponent = ref entity.Get<MeshComponent>();
+                ref var meshComponent = ref entity.Get<MeshDrawInfo>();
                 if (meshComponent.Instancing is not null)
                 {
                     if (instanceId >= meshComponent.Instancing.Transforms.Count)
@@ -387,7 +387,7 @@ public static class GpuPicking
                 return true;
             }
         }
-        else if (entity.Has<PointCloudComponent>())
+        else if (entity.Has<PointCloudDrawInfo>())
         {
             if (entity.TryGetPointFromPointCloud(primitiveId, out var point))
             {
@@ -410,11 +410,11 @@ public static class GpuPicking
         p0 = default;
         p1 = default;
         p2 = default;
-        if (!entity.Has<MeshComponent>())
+        if (!entity.Has<MeshDrawInfo>())
         {
             return false;
         }
-        var mesh = entity.Get<MeshComponent>().Geometry;
+        var mesh = entity.Get<MeshDrawInfo>().Geometry;
         if (mesh is null)
         {
             return false;
@@ -435,11 +435,11 @@ public static class GpuPicking
     )
     {
         position = default;
-        if (!entity.Has<PointCloudComponent>())
+        if (!entity.Has<PointCloudDrawInfo>())
         {
             return false;
         }
-        var pointCloud = entity.Get<PointCloudComponent>().Geometry;
+        var pointCloud = entity.Get<PointCloudDrawInfo>().Geometry;
         if (pointCloud is null)
         {
             return false;

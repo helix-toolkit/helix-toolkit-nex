@@ -5,7 +5,7 @@ using HelixToolkit.Nex.Rendering.DataEntries;
 namespace HelixToolkit.Nex.Engine.Data;
 
 /// <summary>
-/// Collects all <see cref="PointCloudComponent"/> entities from the ECS world each frame,
+/// Collects all <see cref="PointCloudDrawInfo"/> entities from the ECS world each frame,
 /// packs their <see cref="PointData"/> into a contiguous GPU buffer, and exposes per-entity
 /// dispatch information so the <c>PointRenderNode</c> compute shader can frustum-cull
 /// and stamp the correct entity ID on each point.
@@ -43,7 +43,7 @@ internal sealed class PointCloudData(IContext context, World world) : Initializa
         _entities = World
             .CreateCollection()
             .Has<NodeInfo>()
-            .Has<PointCloudComponent>()
+            .Has<PointCloudDrawInfo>()
             .Has<WorldTransform>()
             .Build();
         _entities.EntityChanged += OnEntityChanged;
@@ -101,7 +101,7 @@ internal sealed class PointCloudData(IContext context, World world) : Initializa
             ref var nodeInfo = ref entity.Get<NodeInfo>();
             if (!nodeInfo.Enabled)
                 continue;
-            ref var pc = ref entity.Get<PointCloudComponent>();
+            ref var pc = ref entity.Get<PointCloudDrawInfo>();
             if (!pc.Valid)
                 continue;
             TotalPointCount += (uint)pc.PointCount;

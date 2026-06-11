@@ -228,7 +228,7 @@ public class MinecraftScene : IScene
             instancings[b].UpdateBuffer(context);
             var blockNode = worldDataProvider.World.CreateMeshNode(
                 $"Block_{(BlockType)b}",
-                new MeshComponent(cube, matProps[b], instancings[b])
+                new MeshDrawInfo(cube, matProps[b], instancings[b])
             );
             blocksNode.AddChild(blockNode);
         }
@@ -288,7 +288,7 @@ public class MinecraftScene : IScene
             inst.UpdateBuffer(context);
             var sphereNode = worldDataProvider.World.CreateMeshNode(
                 $"LightSpheres_{color}",
-                new MeshComponent(lightSphere, mat, inst)
+                new MeshDrawInfo(lightSphere, mat, inst)
             );
             lightSpheresNode.AddChild(sphereNode);
         }

@@ -1,8 +1,5 @@
-using System.Runtime.CompilerServices;
-using HelixToolkit.Nex.ECS.Utils;
 using HelixToolkit.Nex.Rendering.Components;
 using HelixToolkit.Nex.Rendering.DrawStreams;
-using DrawRange = HelixToolkit.Nex.Rendering.DrawRange;
 
 namespace HelixToolkit.Nex.Engine.Data;
 
@@ -19,397 +16,20 @@ namespace HelixToolkit.Nex.Engine.Data;
 /// pattern as <see cref="MeshDrawData"/>, but scoped to a single stream category.
 /// </para>
 /// </summary>
-internal sealed class MeshDrawStream : Initializable, IDrawStream
+internal sealed class MeshDrawStream : DrawStreamBase<MeshDraw, MeshDrawInfo>
 {
     private const int InitialCapacity = 4;
 
     private static readonly ILogger _logger = LogManager.Create<MeshDrawStream>();
-    private readonly ITracer _tracer;
-    private readonly IContext _context;
-    private readonly World _world;
 
-    // GPU buffer (ring buffer for multi-frame-in-flight)
-    private RingElementBuffer<MeshDraw>? _buffer;
-    private readonly HashSet<Entity> _entities = [];
-
-    // CPU-side draw storage grouped by material type for sorted upload
-    private readonly Dictionary<MaterialTypeId, FastList<MeshDraw>> _drawsByMaterial = new(
-        InitialCapacity
-    );
-    private readonly Dictionary<MaterialTypeId, DrawRange> _materialRanges = new(InitialCapacity);
-
-    private readonly FastList<MaterialTypeId> _materialTypes = new(InitialCapacity);
-
-    // ECS references
-    private Components<MeshComponent> _meshComponents;
-    private Components<Renderable> _renderables;
-
-    // Change tracking
-    private readonly HashSet<int> _pendingUpdates = [];
-    private long _lastDataChangeTicks = Stopwatch.GetTimestamp();
-    private long _lastBufferUploadTicks = 0;
-    private bool _needsRebuild = true;
-
-    #region IDrawStream Properties
-
-    public DrawStreamName StreamName { get; }
-    public DrawStreamType StreamType { get; }
-    public DrawStreamVariants Variants { get; }
-    public bool IsInstancing { get; }
-    public IndexBufferStrategy IndexBufferStrategy { get; }
-    public float FragmentationThreshold { get; set; } = 0.5f;
-    public float Fragmentation => 0f; // No fragmentation — full rebuild on structural changes
-    #endregion
-
-    #region IRenderData Properties
-
-    public BufferHandle Buffer => _buffer?.Buffer ?? BufferHandle.Null;
-    public ulong GpuAddress => _buffer?.GpuAddress ?? 0;
-    public uint Stride => MeshDraw.SizeInBytes;
-    public uint Count { get; private set; }
-    public override string Name { get; }
-
-    #endregion
+    public override uint Stride => MeshDraw.SizeInBytes;
 
     public MeshDrawStream(IContext context, World world, DrawStreamType type, DrawStreamName name)
+        : base(context, world, type, name, _logger, InitialCapacity) { }
+
+    protected override MeshDraw CreateDrawInfo(Entity entity)
     {
-        _context = context;
-        _world = world;
-        StreamType = type;
-        StreamName = name;
-        Variants = name.GetVariants();
-        _tracer = TracerFactory.GetTracer($"{nameof(MeshDrawStream)}_{name}");
-        IsInstancing = Variants.HasAllFlags(DrawStreamVariants.Instancing);
-        IndexBufferStrategy = Variants.HasAllFlags(DrawStreamVariants.Dynamic)
-            ? IndexBufferStrategy.PerDraw
-            : IndexBufferStrategy.Shared;
-        Name = name.ToString();
-
-        _meshComponents = world.GetComponents<MeshComponent>();
-        _renderables = world.GetComponents<Renderable>();
-    }
-
-    #region IDrawStream Methods
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public IEnumerable<MaterialTypeId> GetMaterialTypes() => _materialTypes;
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public ReadOnlySpan<MaterialTypeId> GetMaterialTypesCore() =>
-        _materialTypes.GetInternalArray().AsSpan(0, _materialTypes.Count);
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public DrawRange GetRangeByMaterial(MaterialTypeId materialType)
-    {
-        return _materialRanges.TryGetValue(materialType, out var range) ? range : DrawRange.Zero;
-    }
-
-    public bool TryGetMeshDraw(int drawIndex, out MeshDraw meshDraw)
-    {
-        if (drawIndex < 0 || drawIndex >= (int)Count)
-        {
-            meshDraw = default;
-            return false;
-        }
-        // Walk material ranges to find which list contains this index
-        foreach (var (matId, range) in _materialRanges.AsValueEnumerable())
-        {
-            if (drawIndex >= (int)range.Start && drawIndex < (int)range.End)
-            {
-                var list = _drawsByMaterial[matId];
-                meshDraw = list[drawIndex - (int)range.Start];
-                return true;
-            }
-        }
-        meshDraw = default;
-        return false;
-    }
-
-    public (MeshDraw Draw, int SlotIndex) GetMeshDraw(Entity entity)
-    {
-        if (!_entities.Contains(entity) || !entity.Has<Renderable>())
-        {
-            return (default, -1);
-        }
-        ref var renderable = ref _renderables[entity];
-        if (
-            renderable.DrawCmdIndex < 0
-            || renderable.DrawVariants != (uint)Variants
-            || renderable.DrawType != (uint)StreamType
-        )
-        {
-            return (default, -1);
-        }
-        var drawIndex = renderable.DrawCmdIndex;
-        if (TryGetMeshDraw(drawIndex, out var draw))
-        {
-            Debug.Assert(
-                draw.EntityId == entity.Id,
-                "Entity Id in MeshDraw does not equal to the requested entity"
-            );
-            return (draw, drawIndex);
-        }
-        return (default, -1);
-    }
-
-    public void Barrier(ICommandBuffer cmdBuf)
-    {
-        if (Count > 0 && _buffer is not null)
-        {
-            cmdBuf.Barrier(_buffer.Buffer);
-        }
-    }
-
-    #endregion
-
-    #region Lifecycle
-
-    protected override ResultCode OnInitializing()
-    {
-        _buffer = new RingElementBuffer<MeshDraw>(
-            _context,
-            (int)GraphicsSettings.MaxFrameInFlight,
-            InitialCapacity,
-            BufferUsageBits.Storage | BufferUsageBits.Indirect,
-            hostVisible: true,
-            debugName: $"{StreamType}_{StreamName}"
-        );
-
-        _needsRebuild = true;
-        return ResultCode.Ok;
-    }
-
-    protected override ResultCode OnTearingDown()
-    {
-        Disposer.DisposeAndRemove(ref _buffer);
-        _drawsByMaterial.Clear();
-        _materialRanges.Clear();
-        _pendingUpdates.Clear();
-        _materialTypes.Clear();
-        Count = 0;
-        return ResultCode.Ok;
-    }
-
-    #endregion
-
-    #region Update
-
-    public bool Update()
-    {
-        if (_lastDataChangeTicks <= _lastBufferUploadTicks && !_needsRebuild)
-        {
-            return true;
-        }
-
-        if (_needsRebuild)
-        {
-            _pendingUpdates.Clear();
-            return Rebuild();
-        }
-
-        return ApplyIncrementalUpdates();
-    }
-
-    /// <summary>
-    /// Full rebuild: re-collects all entities matching this stream, sorts by material,
-    /// uploads to GPU. O(N) where N = entity count in this stream.
-    /// </summary>
-    private bool Rebuild()
-    {
-        using var t = _tracer.BeginScope($"Rebuild");
-
-        // Clear previous state
-        foreach (var list in _drawsByMaterial.Values.AsValueEnumerable())
-            list.Clear();
-        _materialRanges.Clear();
-        _materialTypes.Clear();
-        Count = 0;
-
-        if (_entities is null || _entities.Count == 0)
-        {
-            _needsRebuild = false;
-            _lastBufferUploadTicks = _lastDataChangeTicks;
-            return true;
-        }
-
-        // Collect draws for entities that match this stream's post-filters
-        foreach (var entity in _entities.AsValueEnumerable())
-        {
-            if (!entity.Valid)
-            {
-                continue;
-            }
-            ref var meshComp = ref _meshComponents[entity];
-            if (!meshComp.Valid)
-                continue;
-
-            var meshDraw = CreateMeshDraw(entity);
-            if (meshDraw.EntityId == 0)
-                continue;
-
-            var matType = meshDraw.MaterialType;
-            if (!_drawsByMaterial.TryGetValue(matType, out var list))
-            {
-                list = new FastList<MeshDraw>(InitialCapacity);
-                _drawsByMaterial[matType] = list;
-            }
-            list.Add(meshDraw);
-            Count++;
-        }
-
-        foreach (var kvp in _drawsByMaterial.AsValueEnumerable())
-        {
-            if (kvp.Value.Count > 0)
-                _materialTypes.Add(kvp.Key);
-        }
-
-        // Sort each material group by MeshId for better GPU cache coherence
-        SortByMeshId();
-
-        // Compute material ranges and write DrawCmdIndex/DrawCategory back to entities
-        ComputeRangesAndWriteBack();
-
-        // Upload to GPU
-        UploadToGpu();
-
-        _needsRebuild = false;
-        _lastBufferUploadTicks = _lastDataChangeTicks;
-        return true;
-    }
-
-    /// <summary>
-    /// Incremental update: only re-uploads draws whose entity data changed (e.g., transform update
-    /// causing NodeInfoIndex change). Does NOT handle structural changes (add/remove/material change).
-    /// </summary>
-    private bool ApplyIncrementalUpdates()
-    {
-        if (_pendingUpdates.Count == 0)
-        {
-            _lastBufferUploadTicks = _lastDataChangeTicks;
-            return true;
-        }
-
-        using var t = _tracer.BeginScope("IncrementalUpdate");
-
-        foreach (var entityId in _pendingUpdates.AsValueEnumerable())
-        {
-            var entity = _world.GetEntity(entityId);
-            ref var renderable = ref _renderables[entity];
-
-            // Only process if this entity belongs to this stream
-            if (
-                renderable.DrawType != (int)StreamType
-                || renderable.DrawVariants != (uint)Variants
-                || renderable.DrawCmdIndex < 0
-            )
-                continue;
-
-            var newDraw = CreateMeshDraw(entity);
-            var drawIndex = renderable.DrawCmdIndex;
-
-            // Find the material list and local index
-            if (_materialRanges.TryGetValue(newDraw.MaterialType, out var range))
-            {
-                var localIndex = drawIndex - (int)range.Start;
-                var list = _drawsByMaterial[newDraw.MaterialType];
-                if (localIndex >= 0 && localIndex < list.Count)
-                {
-                    list[localIndex] = newDraw;
-                    _buffer!.WriteElement(newDraw, drawIndex);
-                }
-            }
-        }
-
-        _pendingUpdates.Clear();
-        _lastBufferUploadTicks = _lastDataChangeTicks;
-        return true;
-    }
-
-    #endregion
-
-    #region GPU Upload
-
-    /// <summary>
-    /// Sorts each material group by MeshId for better GPU cache coherence during rendering.
-    /// Uses parallel sort for large lists.
-    /// </summary>
-    private void SortByMeshId()
-    {
-        Parallel.ForEach(
-            _drawsByMaterial,
-            kv =>
-            {
-                if (kv.Value.Count <= 1)
-                    return;
-                var arr = kv.Value.GetInternalArray();
-                Array.Sort(
-                    arr,
-                    0,
-                    kv.Value.Count,
-                    Comparer<MeshDraw>.Create((a, b) => a.MeshId.CompareTo(b.MeshId))
-                );
-            }
-        );
-    }
-
-    /// <summary>
-    /// Computes contiguous material ranges and writes DrawCmdIndex/DrawCategory
-    /// back to each entity's <see cref="Renderable"/> component for O(1) lookup.
-    /// </summary>
-    private void ComputeRangesAndWriteBack()
-    {
-        var offset = 0u;
-        foreach (var (matId, list) in _drawsByMaterial.AsValueEnumerable())
-        {
-            if (list.Count == 0)
-                continue;
-
-            var range = new DrawRange(offset, (uint)list.Count);
-            _materialRanges[matId] = range;
-
-            // Write back DrawCmdIndex and DrawCategory to each entity's Renderable
-            for (var i = 0; i < list.Count; i++)
-            {
-                var entityId = (int)list[i].EntityId;
-                var entity = _world.GetEntity(entityId);
-                ref var renderable = ref _renderables[entity];
-                renderable.DrawCmdIndex = (int)(offset + (uint)i);
-            }
-
-            offset += (uint)list.Count;
-        }
-    }
-
-    /// <summary>
-    /// Advances the ring buffer and uploads all draw commands contiguously, sorted by material.
-    /// </summary>
-    private void UploadToGpu()
-    {
-        if (_buffer is null || Count == 0)
-            return;
-
-        _buffer.Advance();
-        _buffer.EnsureCapacity((int)Count);
-
-        var byteOffset = 0;
-        foreach (var (_, list) in _drawsByMaterial)
-        {
-            if (list.Count > 0)
-            {
-                _buffer.Upload(list, byteOffset);
-                byteOffset += list.Count * (int)MeshDraw.SizeInBytes;
-            }
-        }
-    }
-
-    #endregion
-
-    #region MeshDraw Construction
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private MeshDraw CreateMeshDraw(Entity entity)
-    {
-        ref var meshComp = ref _meshComponents[entity];
+        ref var meshComp = ref _components[entity];
         if (!meshComp.Valid)
             return default;
 
@@ -438,76 +58,28 @@ internal sealed class MeshDrawStream : Initializable, IDrawStream
         };
     }
 
-    #endregion
-
-    #region ECS Event Handlers
-
-    public void EntityAdded(Entity entity)
+    protected override bool IsValid(ref MeshDrawInfo comp)
     {
-        var (type, variants) = GetVariantsFromEntity(entity);
-        Debug.Assert(variants.HasAllFlags(Variants));
-        _entities.Add(entity);
-        _renderables[entity].DrawVariants = (uint)Variants; // Pre-set category for O(1) checks during updates
-        _renderables[entity].DrawType = (int)StreamType;
-        MarkRebuildNeeded();
+        return comp.Valid;
     }
 
-    public void EntityRemoved(Entity entity)
+    protected override uint GetMaterialType(ref MeshDraw draw)
     {
-        Debug.Assert(_entities.Contains(entity));
-        _entities.Remove(entity);
-        _renderables[entity].DrawVariants = 0; // Clear category to indicate it's no longer in any stream
-        _renderables[entity].DrawType = (int)DrawStreamType.None;
-        MarkRebuildNeeded();
+        return draw.MaterialType;
     }
 
-    private (DrawStreamType, DrawStreamVariants) GetVariantsFromEntity(Entity entity)
+    protected override uint GetMeshId(ref MeshDraw draw)
     {
-        ref var comp = ref _meshComponents[entity];
-        var category = comp.Variants;
-        var type = DrawStreamType.Opaque;
-        if (entity.Has<TransparentComponent>())
-        {
-            type = DrawStreamType.Transparent;
-        }
-        else if (entity.Has<AlphaMaskComponent>())
-        {
-            type = DrawStreamType.AlphaMask;
-        }
-        return (type, category);
+        return draw.MeshId;
     }
 
-    public void EntityChanged(Entity entity, in EntityChangedEvent e)
+    protected override uint GetEntityId(ref MeshDraw draw)
     {
-        if (_needsRebuild || !_entities.Contains(entity))
-            return;
-        ref var meshComp = ref _meshComponents[entity];
-
-        ref var renderable = ref _renderables[entity];
-
-        // If material or category changed, we need a full rebuild (structural change)
-        if (renderable.DrawVariants != (uint)Variants || renderable.DrawType != (int)StreamType)
-        {
-            MarkRebuildNeeded();
-            return;
-        }
-
-        // Otherwise, queue an incremental update (e.g., transform changed → NodeInfoIndex)
-        _pendingUpdates.Add(e.EntityId);
-        _lastDataChangeTicks = Stopwatch.GetTimestamp();
+        return draw.EntityId;
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void MarkRebuildNeeded()
+    protected override DrawStreamVariants GetVariant(ref MeshDrawInfo comp)
     {
-        _needsRebuild = true;
-        _lastDataChangeTicks = Stopwatch.GetTimestamp();
-    }
-
-    #endregion
-
-    public bool Has(Entity entity)
-    {
-        return _entities.Contains(entity);
+        return comp.Variants;
     }
 }

@@ -244,7 +244,7 @@ public static class TextLayoutHelper
     }
 
     /// <summary>
-    /// Creates a <see cref="BillboardComponent"/> with text layout and all SDF atlas parameters set
+    /// Creates a <see cref="BillboardDrawInfo"/> with text layout and all SDF atlas parameters set
     /// from the given <see cref="SDFFontAtlas"/>.
     /// </summary>
     /// <param name="text">The text to lay out.</param>
@@ -256,8 +256,8 @@ public static class TextLayoutHelper
     /// <param name="materialName">The billboard material name (e.g., "SDFFont").</param>
     /// <param name="fixedSize">Whether billboard sizes are fixed screen-space pixels.</param>
     /// <param name="cullDistance">The distance beyond which the billboard should be culled (0 for no culling).</param>
-    /// <returns>A fully-configured <see cref="BillboardComponent"/>.</returns>
-    public static BillboardComponent CreateTextBillboard(
+    /// <returns>A fully-configured <see cref="BillboardDrawInfo"/>.</returns>
+    public static BillboardDrawInfo CreateTextBillboard(
         string text,
         SDFFontAtlas atlas,
         float fontSize,
@@ -302,7 +302,7 @@ public static class TextLayoutHelper
             Vector3 bgPosition = new Vector3(bgCenterX, bgCenterY, 0) - anchorOffset;
             geo.Insert(0, bgPosition, bgWidth, bgHeight, background.Value);
         }
-        return new BillboardComponent
+        return new BillboardDrawInfo
         {
             BillboardGeometry = geo,
             Color = color,

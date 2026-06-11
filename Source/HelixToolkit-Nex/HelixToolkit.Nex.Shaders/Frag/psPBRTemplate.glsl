@@ -301,9 +301,7 @@ vec4 cadStyleLightingFlat(in PBRMaterial material){
     // -------------------------------------------------------------------------
     // 1. Geometric Normal Extraction
     // -------------------------------------------------------------------------
-    vec3 dX = dFdx(fragWorldPos);
-    vec3 dY = dFdy(fragWorldPos);
-    vec3 geomNormal = normalize(cross(dX, dY));
+    vec3 geomNormal = material.normal;
 
     vec3 V = normalize(fpConst.cameraPosition - fragWorldPos);
     // Ensure the generated face normal points toward the viewer
@@ -534,43 +532,11 @@ PBRMaterial createPBRMaterial()
 PBRMaterial createPBRMaterialFlatNormal()
 {
     PBRProperties props = getPBRProperties();
-    PBRMaterial material;
-    material.albedo = props.albedo;
-    material.roughness = props.roughness;
-    material.metallic = props.metallic;
-    material.ao = props.ao;
-    material.emissive = props.emissive;
-    material.opacity = props.opacity;
-    material.ambient = props.ambient;
-    material.clearCoatStrength = props.clearCoatStrength;
-    material.clearCoatRoughness = props.clearCoatRoughness;
-    material.reflectance = max(props.reflectance, 0.0);
-#ifndef EXCLUDE_MESH_PROPS
-    if (props.albedoTexIndex > 0)
-    {
-        material.albedo = material.albedo * textureBindless2D(props.albedoTexIndex, props.samplerIndex, fragTexCoord).rgb;
-    }
-    if (props.metallicRoughnessTexIndex > 0)
-    {
-        vec2 omr = textureBindless2D(props.metallicRoughnessTexIndex, props.samplerIndex, fragTexCoord).gb;
-        // glTF channel packing: G = Roughness, B = Metallic
-        material.roughness = omr.x;
-        material.metallic  = omr.y;
-    }
-    if (props.aoTexIndex > 0)
-    {
-        // glTF channel packing: R = Ambient Occlusion
-        material.ao = material.ao * textureBindless2D(props.aoTexIndex, props.samplerIndex, fragTexCoord).r;
-    }
-    material.thickness = (props.thicknessTexIndex > 0)
-        ? textureBindless2D(props.thicknessTexIndex, props.samplerIndex, fragTexCoord).g * props.thicknessFactor
-        : props.thicknessFactor;
-#endif
-    // Geometric normal from screen-space derivatives always faces the camera
-    vec3 geomNormal = normalize(cross(dFdy(fragWorldPos), dFdx(fragWorldPos)));
-    // Flip normal for back faces to support double-sided rendering
-    material.normal = gl_FrontFacing ? geomNormal : -geomNormal;
-    material.albedo = mix(material.albedo, fragColor.rgb, props.vertexColorMix);
+    PBRMaterial material = createPBRMaterial();
+    // Override the normal with the geometric normal for flat shading
+    material.normal = gl_FrontFacing
+        ? normalize(cross(dFdy(fragWorldPos), dFdx(fragWorldPos)))
+        : -normalize(cross(dFdy(fragWorldPos), dFdx(fragWorldPos)));
     return material;
 }
 

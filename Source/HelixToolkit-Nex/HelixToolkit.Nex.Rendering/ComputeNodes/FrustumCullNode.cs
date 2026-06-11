@@ -85,10 +85,10 @@ public sealed class FrustumCullNode : ComputeNode
         _cullConst.NodeInfoBufferAddress = context.Data.NodeInfos.GpuAddress;
         _cullBuffer!.AdvanceAndUpdate(ref _cullConst);
         res.Deps.PushBuffer(_cullBuffer!.Buffer);
-        for (int i = 0; i < (int)DrawStreamType.Count; ++i)
+        for (int i = 0; i < (int)DrawStreamType.MeshStreamTypeCount; ++i)
         {
             var streamType = (DrawStreamType)i;
-            foreach (var stream in context.Data.DrawStreams.GetStreamsCore(streamType))
+            foreach (var stream in context.Data.MeshDrawStreams.GetStreamsCore(streamType))
             {
                 if (stream.Count == 0)
                 {
@@ -104,7 +104,7 @@ public sealed class FrustumCullNode : ComputeNode
     private void Cull(
         RenderContext context,
         ICommandBuffer cmdBuffer,
-        IDrawStream stream,
+        IDrawStream<MeshDraw> stream,
         Dependencies deps
     )
     {
@@ -122,7 +122,7 @@ public sealed class FrustumCullNode : ComputeNode
     private void CullMeshes(
         RenderContext context,
         ICommandBuffer cmdBuffer,
-        IDrawStream stream,
+        IDrawStream<MeshDraw> stream,
         Dependencies deps
     )
     {
@@ -146,7 +146,7 @@ public sealed class FrustumCullNode : ComputeNode
     private void ResetMeshDrawInstancingCount(
         RenderContext context,
         ICommandBuffer cmdBuffer,
-        IDrawStream stream
+        IDrawStream<MeshDraw> stream
     )
     {
         cmdBuffer.BindComputePipeline(_resetInstanceCountPipeline);
@@ -169,7 +169,7 @@ public sealed class FrustumCullNode : ComputeNode
     private void CullInstancingMeshes(
         RenderContext context,
         ICommandBuffer cmdBuffer,
-        IDrawStream stream,
+        IDrawStream<MeshDraw> stream,
         Dependencies deps
     )
     {
@@ -186,7 +186,7 @@ public sealed class FrustumCullNode : ComputeNode
             for (var i = subRange.Start; i < subRange.End; ++i)
             {
                 pc.DrawCommandIdx = i;
-                pc.InstanceCount = stream.TryGetMeshDraw((int)i, out var draw)
+                pc.InstanceCount = stream.TryGetDraw((int)i, out var draw)
                     ? draw.InstanceCount
                     : 0;
                 if (pc.InstanceCount == 0)

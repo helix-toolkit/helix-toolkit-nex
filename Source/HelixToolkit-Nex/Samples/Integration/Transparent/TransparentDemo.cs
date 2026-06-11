@@ -139,7 +139,7 @@ internal partial class TransparentDemo : IDisposable
 
         _floorNode = new MeshNode(_worldDataProvider.World, "Floor");
         _floorNode.Transform = new Transform { Translation = new Vector3(0, -0.1f, 0) };
-        _floorNode.Entity.Set(new MeshComponent(floorGeo, _floorMaterial));
+        _floorNode.Entity.Set(new MeshDrawInfo(floorGeo, _floorMaterial));
         _root.AddChild(_floorNode);
 
         // --- Transparent spheres at various positions ---

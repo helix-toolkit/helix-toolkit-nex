@@ -9,4 +9,5 @@ public enum PBRShadingMode : uint
     Normal,
     Flat,
     CAD,
+    CADFlat,
 }

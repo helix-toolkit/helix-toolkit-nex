@@ -13,10 +13,12 @@ public enum DrawStreamType : int
     /// <summary>Draw stream for rendering transparent geometry.</summary>
     Transparent,
 
+    MeshStreamTypeCount,
+
     /// <summary>
-    /// Total stream count
+    /// Draw stream for rendering point/lines.
     /// </summary>
-    Count,
+    PointLine,
 }
 
 /// <summary>
