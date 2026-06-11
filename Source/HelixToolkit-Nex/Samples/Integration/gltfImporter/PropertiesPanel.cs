@@ -99,7 +99,7 @@ internal class PropertiesPanel
         }
 
         // --- Mesh component ---
-        if (entity.TryGet<MeshComponent>(out var mesh))
+        if (entity.TryGet<MeshDrawInfo>(out var mesh))
         {
             if (mesh.Geometry is not null && mesh.MaterialProperties is not null)
             {

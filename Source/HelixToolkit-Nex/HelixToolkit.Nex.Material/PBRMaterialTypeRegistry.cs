@@ -138,33 +138,35 @@ public static class PBRMaterialTypeRegistry
     {
         // PBR material type (default)
         Register(
-            new PBRMaterialRegistration
-            {
-                TypeId = PBRShadingMode.PBR,
-                Name = PBRShadingMode.PBR.ToString(),
-                OutputColorImplementation =
-                    @"
+                new PBRMaterialRegistration
+                {
+                    TypeId = PBRShadingMode.PBR,
+                    Name = PBRShadingMode.PBR.ToString(),
+                    OutputColorImplementation =
+                        @"
                     PBRMaterial material = createPBRMaterial();
                     vec4 color = forwardPlusLighting(material);
                     color.rgb += material.emissive; // Add emissive after lighting
                     return color;
                     ",
-            }
-        ).WithPointerRingSupport();
+                }
+            )
+            .WithPointerRingSupport();
 
         // Unlit material type
         Register(
-            new PBRMaterialRegistration
-            {
-                TypeId = PBRShadingMode.Unlit,
-                Name = PBRShadingMode.Unlit.ToString(),
-                OutputColorImplementation =
-                    @"
+                new PBRMaterialRegistration
+                {
+                    TypeId = PBRShadingMode.Unlit,
+                    Name = PBRShadingMode.Unlit.ToString(),
+                    OutputColorImplementation =
+                        @"
                     PBRMaterial material = createPBRMaterial();
                     return nonLitOutputColor(material);
                     ",
-            }
-        ).WithPointerRingSupport();
+                }
+            )
+            .WithPointerRingSupport();
 
         // Debug tile light count visualization
         Register(
@@ -193,31 +195,48 @@ public static class PBRMaterialTypeRegistry
         );
 
         Register(
-            new PBRMaterialRegistration
-            {
-                TypeId = PBRShadingMode.Flat,
-                Name = PBRShadingMode.Flat.ToString(),
-                OutputColorImplementation =
-                    @"
+                new PBRMaterialRegistration
+                {
+                    TypeId = PBRShadingMode.Flat,
+                    Name = PBRShadingMode.Flat.ToString(),
+                    OutputColorImplementation =
+                        @"
                     PBRMaterial material = createPBRMaterialFlatNormal();
                     vec4 color = forwardPlusLighting(material);
                     color.rgb += material.emissive; // Add emissive after lighting
                     return color;
                     ",
-            }
-        ).WithPointerRingSupport();
+                }
+            )
+            .WithPointerRingSupport();
 
         // CAD visualization
-        Register(new PBRMaterialRegistration
-        {
-            TypeId = PBRShadingMode.CAD,
-            Name = PBRShadingMode.CAD.ToString(),
-            OutputColorImplementation =
-                @"
+        Register(
+                new PBRMaterialRegistration
+                {
+                    TypeId = PBRShadingMode.CAD,
+                    Name = PBRShadingMode.CAD.ToString(),
+                    OutputColorImplementation =
+                        @"
                 PBRMaterial material = createPBRMaterial();
                 return cadStyleLightingFlat(material);         
                 ",
-        }).WithPointerRingSupport();
+                }
+            )
+            .WithPointerRingSupport();
+        Register(
+                new PBRMaterialRegistration
+                {
+                    TypeId = PBRShadingMode.CADFlat,
+                    Name = PBRShadingMode.CADFlat.ToString(),
+                    OutputColorImplementation =
+                        @"
+                PBRMaterial material = createPBRMaterialFlatNormal();
+                return cadStyleLightingFlat(material);         
+                ",
+                }
+            )
+            .WithPointerRingSupport();
     }
 
     /// <summary>

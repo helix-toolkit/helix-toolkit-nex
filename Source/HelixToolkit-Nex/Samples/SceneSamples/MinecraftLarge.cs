@@ -356,7 +356,7 @@ public class MinecraftLargeScene : IScene
             instancings[b].UpdateBuffer(context);
             var blockNode = worldDataProvider.World.CreateMeshNode(
                 $"Block_{(BlockType)b}",
-                new MeshComponent(cube, matProps[b], instancings[b])
+                new MeshDrawInfo(cube, matProps[b], instancings[b])
             );
             blocksNode.AddChild(blockNode);
         }
@@ -416,7 +416,7 @@ public class MinecraftLargeScene : IScene
             inst.UpdateBuffer(context);
             var sphereNode = worldDataProvider.World.CreateMeshNode(
                 $"LightSpheres_{color}",
-                new MeshComponent(lightSphere, mat, inst)
+                new MeshDrawInfo(lightSphere, mat, inst)
             );
             lightSpheresNode.AddChild(sphereNode);
         }
@@ -533,7 +533,7 @@ public class MinecraftLargeScene : IScene
 
                 var animalNode = worldDataProvider.World.CreateMeshNode(
                     $"Animal_{animalTypes[a]}_{i}",
-                    new MeshComponent(animalMeshes[a], animalMatProps[a])
+                    new MeshDrawInfo(animalMeshes[a], animalMatProps[a])
                 );
                 animalNode.Transform.Translation = spawnPos;
                 animalNode.Transform.Rotation = Quaternion.CreateFromAxisAngle(
@@ -609,7 +609,7 @@ public class MinecraftLargeScene : IScene
 
             var lightNode = worldDataProvider.World.CreateMeshNode(
                 $"SpotLight_{i}",
-                new MeshComponent(coneMesh, coneMat)
+                new MeshDrawInfo(coneMesh, coneMat)
             );
             lightNode.Transform = new Transform { Translation = basePos };
 

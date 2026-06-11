@@ -5,7 +5,7 @@ using HelixToolkit.Nex.Rendering.DataEntries;
 namespace HelixToolkit.Nex.Engine.Data;
 
 /// <summary>
-/// Collects all <see cref="BillboardComponent"/> entities from the ECS world each frame,
+/// Collects all <see cref="BillboardDrawInfo"/> entities from the ECS world each frame,
 /// packs their data into GPU buffers grouped by material type, and exposes per-material
 /// dispatch information so the <c>BillboardCullNode</c> compute shader can frustum-cull
 /// and stamp the correct entity ID on each billboard.
@@ -19,7 +19,7 @@ internal sealed class BillboardData(IContext context, World world) : Initializab
     private long _lastBufferUpdateTicks;
     private long _lastDataUpdateTicks = Stopwatch.GetTimestamp();
     private bool _needRebuilt = true;
-    private Components<BillboardComponent> _components;
+    private Components<BillboardDrawInfo> _components;
 
     public IContext Context { get; } = context;
     public World World { get; } = world;
@@ -44,11 +44,11 @@ internal sealed class BillboardData(IContext context, World world) : Initializab
         _entities = World
             .CreateCollection()
             .Has<NodeInfo>()
-            .Has<BillboardComponent>()
+            .Has<BillboardDrawInfo>()
             .Has<WorldTransform>()
             .Has<Renderable>()
             .Build();
-        _components = World.GetComponents<BillboardComponent>();
+        _components = World.GetComponents<BillboardDrawInfo>();
         _entities.EntityChanged += OnEntityChanged;
         _entities.EntityAdded += OnAddOrRemovedChanged;
         _entities.EntityRemoved += OnAddOrRemovedChanged;

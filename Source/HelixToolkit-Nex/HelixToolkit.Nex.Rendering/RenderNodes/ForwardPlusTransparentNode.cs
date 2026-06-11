@@ -28,7 +28,7 @@ public class ForwardPlusTransparentNode : RenderNode
         {
             return false;
         }
-        return context.Data.DrawStreams.GetStreamsCore(DrawStreamType.Transparent).HasAny();
+        return context.Data.MeshDrawStreams.GetStreamsCore(DrawStreamType.Transparent).HasAny();
     }
 
     protected override void OnSetupRender(in RenderResources res)
@@ -56,7 +56,7 @@ public class ForwardPlusTransparentNode : RenderNode
         res.Pass.Colors[1].LoadOp = LoadOp.Load;
         res.Pass.Colors[1].StoreOp = StoreOp.Store;
 
-        var streams = res.RenderContext.Data!.DrawStreams.GetStreamsCore(
+        var streams = res.RenderContext.Data!.MeshDrawStreams.GetStreamsCore(
             DrawStreamType.Transparent
         );
         foreach (var stream in streams)
@@ -65,7 +65,7 @@ public class ForwardPlusTransparentNode : RenderNode
 
     protected override void OnRender(in RenderResources res)
     {
-        var streams = res.RenderContext.Data!.DrawStreams.GetStreamsCore(
+        var streams = res.RenderContext.Data!.MeshDrawStreams.GetStreamsCore(
             DrawStreamType.Transparent
         );
         res.RenderContext.Statistics.DrawCalls += MeshRenderHelper.Render(

@@ -27,7 +27,7 @@ public static class Extensions
 
 public static class BillboardExtensions
 {
-    public static BillboardComponent CreateBillboard(
+    public static BillboardDrawInfo CreateBillboard(
         this Engine engine,
         BuildinFontAtlas fontType,
         string text,
@@ -59,7 +59,7 @@ public static class BillboardExtensions
         );
     }
 
-    public static BillboardComponent? CreateBillboard(
+    public static BillboardDrawInfo? CreateBillboard(
         this Engine engine,
         string fontType,
         string text,

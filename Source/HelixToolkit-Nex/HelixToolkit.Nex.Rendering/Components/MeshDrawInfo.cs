@@ -14,25 +14,37 @@ namespace HelixToolkit.Nex.Rendering.Components;
 /// </list>
 /// The actual geometry and material data are stored in resource pools managed by the engine.
 /// </remarks>
-public struct MeshComponent
+public struct MeshDrawInfo
 {
-    ///<inheritdoc/>
+    /// <summary>
+    /// Gets or sets the geometry resource associated with this mesh. The geometry contains vertex buffers, index buffers, and draw parameters.
+    /// </summary>
     public Geometry? Geometry { set; get; }
 
-    ///<inheritdoc/>
+    /// <summary>
+    /// Gets or sets the material properties resource associated with this mesh. The material properties determine which shader pipeline is used and provide material parameters (e.g., albedo color, metallic/roughness values) for rendering.
+    /// </summary>
     public PBRMaterialProperties? MaterialProperties { set; get; }
 
-    ///<inheritdoc/>
+    /// <summary>
+    /// Gets or sets the instancing data for this mesh. If not null, this mesh will be rendered using GPU instancing with the provided per-instance data.
+    /// </summary>
     public Instancing? Instancing { set; get; }
 
-    ///<inheritdoc/>
-    public bool Cullable { set; get; }
+    /// <summary>
+    /// Gets or sets a value indicating whether this mesh is cullable.
+    /// </summary>
+    public bool Cullable { set; get; } = true;
 
-    ///<inheritdoc/>
-    public bool Hitable { set; get; }
+    /// <summary>
+    /// Gets or sets a value indicating whether this mesh is hitable.
+    /// </summary>
+    public bool Hitable { set; get; } = true;
 
-    ///<inheritdoc/>
-    public DrawStreamVariants Variants
+    /// <summary>
+    /// Gets the draw stream variants for this mesh based on its properties.
+    /// </summary>
+    public readonly DrawStreamVariants Variants
     {
         get
         {
@@ -57,11 +69,11 @@ public struct MeshComponent
     }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="MeshComponent"/> struct.
+    /// Initializes a new instance of the <see cref="MeshDrawInfo"/> struct.
     /// </summary>
     /// <param name="geometry">Geometry resource.</param>
     /// <param name="materialProperties">Material property resource.</param>
-    public MeshComponent(
+    public MeshDrawInfo(
         Geometry? geometry = null,
         PBRMaterialProperties? materialProperties = null,
         Instancing? instancing = null,
@@ -79,18 +91,18 @@ public struct MeshComponent
     /// <summary>
     /// Creates an empty MeshComponent with null handles.
     /// </summary>
-    public static readonly MeshComponent Empty = new(null, null);
+    public static readonly MeshDrawInfo Empty = new(null, null);
 
     /// <summary>
     /// Gets a value indicating whether this MeshComponent has valid handles.
     /// </summary>
-    public bool Valid =>
+    public readonly bool Valid =>
         Geometry is not null
         && MaterialProperties is not null
         && Geometry.Valid
         && MaterialProperties.Valid;
 
-    public override string ToString()
+    public override readonly string ToString()
     {
         return $"GeometryId: {Geometry?.Id}; MaterialType: {MaterialProperties?.MaterialTypeId}; MaterialIndex: {MaterialProperties?.Index}; "
             + $"Category: {Variants}; Cullable: {Cullable};";

@@ -22,7 +22,7 @@ public sealed class BoundingBoxPostEffect : PostEffect
 {
     /// <summary>
     /// Marks a mesh entity for bounding box visualization.
-    /// When present on an entity that also has a <see cref="MeshComponent"/>,
+    /// When present on an entity that also has a <see cref="MeshDrawInfo"/>,
     /// the <c>BoundingBoxPostEffect</c> will draw a wireframe AABB around the
     /// mesh's local-space bounding box during the post-processing stage.
     /// </summary>
@@ -119,7 +119,7 @@ public sealed class BoundingBoxPostEffect : PostEffect
 
     /// <summary>
     /// Gathers draw commands for every enabled entity that has both a
-    /// <see cref="MeshComponent"/> and a <see cref="BoundingBoxOverlay"/>.
+    /// <see cref="MeshDrawInfo"/> and a <see cref="BoundingBoxOverlay"/>.
     /// </summary>
     private void GatherBBoxEntities(World world, RenderContext context)
     {
@@ -127,7 +127,7 @@ public sealed class BoundingBoxPostEffect : PostEffect
         var frustum = context.CameraFrustum;
         foreach (var entity in world.GetComponentEntities<BoundingBoxOverlay>())
         {
-            if (!entity.Has<MeshComponent>() || !entity.Has<Renderable>())
+            if (!entity.Has<MeshDrawInfo>() || !entity.Has<Renderable>())
             {
                 continue;
             }
@@ -137,7 +137,7 @@ public sealed class BoundingBoxPostEffect : PostEffect
                 continue;
             }
 
-            ref var mesh = ref entity.Get<MeshComponent>();
+            ref var mesh = ref entity.Get<MeshDrawInfo>();
             if (!mesh.Valid)
             {
                 continue;

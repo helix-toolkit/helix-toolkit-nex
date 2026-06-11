@@ -3,11 +3,11 @@ using HelixToolkit.Nex.ECS;
 namespace HelixToolkit.Nex.Rendering.DrawStreams;
 
 /// <summary>
-/// Represents a named draw stream that owns a GPU buffer of <see cref="MeshDraw"/> commands
-/// sharing the same rendering characteristics (index buffer strategy, culling granularity, hitability).
+/// Represents a named draw stream that owns a GPU buffer of <see cref="DRAW_TYPE"/> commands
+/// or <see cref="LineDraw"/> commands) sharing the same rendering characteristics (index buffer strategy, culling granularity, hitability).
 /// Each stream manages stable slot assignment, lazy compaction, and material-type sub-ranges.
 /// </summary>
-public interface IDrawStream : IRenderData, IDisposable
+public interface IDrawStream<DRAW_TYPE> : IRenderData, IDisposable where DRAW_TYPE : unmanaged
 {
     /// <summary>
     /// Gets the registered name of this stream.
@@ -37,19 +37,6 @@ public interface IDrawStream : IRenderData, IDisposable
     IndexBufferStrategy IndexBufferStrategy { get; }
 
     /// <summary>
-    /// Gets or sets the fragmentation threshold (0.0–1.0).
-    /// Compaction is triggered when <see cref="Fragmentation"/> exceeds this value.
-    /// Default is 0.25 (25% free slots).
-    /// </summary>
-    float FragmentationThreshold { get; set; }
-
-    /// <summary>
-    /// Gets the current fragmentation ratio (free slots / total allocated slots).
-    /// A value of 0 means no fragmentation; higher values indicate more wasted buffer space.
-    /// </summary>
-    float Fragmentation { get; }
-
-    /// <summary>
     /// Enumerates all distinct material types present in this stream.
     /// Returns an empty enumerable if the stream contains no draws.
     /// </summary>
@@ -71,20 +58,20 @@ public interface IDrawStream : IRenderData, IDisposable
     DrawRange GetRangeByMaterial(MaterialTypeId materialType);
 
     /// <summary>
-    /// Attempts to retrieve the <see cref="MeshDraw"/> command at the given draw index.
+    /// Attempts to retrieve the <see cref="DRAW_TYPE"/> command at the given draw index.
     /// </summary>
     /// <param name="drawIndex">The slot index to look up.</param>
-    /// <param name="meshDraw">When this method returns <c>true</c>, contains the draw command at the specified index.</param>
+    /// <param name="draw">When this method returns <c>true</c>, contains the draw command at the specified index.</param>
     /// <returns><c>true</c> if a valid draw command exists at the specified index; otherwise, <c>false</c>.</returns>
-    bool TryGetMeshDraw(int drawIndex, out MeshDraw meshDraw);
+    bool TryGetDraw(int drawIndex, out DRAW_TYPE draw);
 
     /// <summary>
-    /// Gets the <see cref="MeshDraw"/> command and slot index for a specific entity.
-    /// Returns a default <see cref="MeshDraw"/> with <c>SlotIndex == -1</c> if the entity is not in this stream.
+    /// Gets the <see cref="DRAW_TYPE"/> command and slot index for a specific entity.
+    /// Returns a default <see cref="DRAW_TYPE"/> with <c>SlotIndex == -1</c> if the entity is not in this stream.
     /// </summary>
     /// <param name="entity">The entity to look up.</param>
     /// <returns>A tuple containing the draw command and its stable slot index.</returns>
-    (MeshDraw Draw, int SlotIndex) GetMeshDraw(Entity entity);
+    (DRAW_TYPE Draw, int SlotIndex) GetDraw(Entity entity);
 
     /// <summary>
     /// Inserts a buffer memory barrier on this stream's GPU buffer for synchronization
@@ -97,7 +84,7 @@ public interface IDrawStream : IRenderData, IDisposable
 
 public static class DrawStreamExtensions
 {
-    public static void Barrier(this IEnumerable<IDrawStream> streams, ICommandBuffer cmdBuf)
+    public static void Barrier<DRAW_TYPE>(this IEnumerable<IDrawStream<DRAW_TYPE>> streams, ICommandBuffer cmdBuf) where DRAW_TYPE : unmanaged
     {
         foreach (var stream in streams)
         {

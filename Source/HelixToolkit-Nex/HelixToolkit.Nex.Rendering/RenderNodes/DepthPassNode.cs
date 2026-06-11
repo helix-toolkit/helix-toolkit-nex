@@ -31,7 +31,7 @@ public sealed class DepthPassNode() : RenderNode
         {
             return false;
         }
-        return context.Data.DrawStreams.GetStreamsCore(DrawStreamType.Opaque).HasAny();
+        return context.Data.MeshDrawStreams.GetStreamsCore(DrawStreamType.Opaque).HasAny();
     }
 
     protected override void OnSetupRender(in RenderResources res)
@@ -43,7 +43,7 @@ public sealed class DepthPassNode() : RenderNode
         res.Pass.Depth.StoreOp = StoreOp.Store;
         res.Pass.DepthState = DepthState.DefaultReversedZ;
 
-        var streams = res.RenderContext.Data!.DrawStreams.GetStreamsCore(DrawStreamType.Opaque);
+        var streams = res.RenderContext.Data!.MeshDrawStreams.GetStreamsCore(DrawStreamType.Opaque);
         foreach (var stream in streams)
         {
             if (stream.Count > 0)
@@ -68,7 +68,7 @@ public sealed class DepthPassNode() : RenderNode
             in res,
             res.Buffers[SystemBufferNames.BufferForwardPlusConstants]
                 .GpuAddress(res.RenderContext.Context),
-            res.RenderContext.Data.DrawStreams.GetStreamsCore(DrawStreamType.Opaque),
+            res.RenderContext.Data.MeshDrawStreams.GetStreamsCore(DrawStreamType.Opaque),
             MaterialPassType.Opaque
         );
     }

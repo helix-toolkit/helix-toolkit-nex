@@ -410,9 +410,9 @@ internal sealed class PickingDemo : IDisposable
     private void ApplyPickResultRaw(Entity pickedEntity, uint instanceIdx, uint primitiveId)
     {
         // --- Point cloud picking ---
-        if (pickedEntity.Has<PointCloudComponent>())
+        if (pickedEntity.Has<PointCloudDrawInfo>())
         {
-            var pointComp = pickedEntity.Get<PointCloudComponent>();
+            var pointComp = pickedEntity.Get<PointCloudDrawInfo>();
             var pointGeo = pointComp.Geometry;
             if (pointGeo is not null && primitiveId < pointGeo.Vertices.Count)
             {
@@ -432,9 +432,9 @@ internal sealed class PickingDemo : IDisposable
         }
 
         // --- Mesh picking ---
-        if (pickedEntity.Has<MeshComponent>())
+        if (pickedEntity.Has<MeshDrawInfo>())
         {
-            var meshComp = pickedEntity.Get<MeshComponent>();
+            var meshComp = pickedEntity.Get<MeshDrawInfo>();
             var geometry = meshComp.Geometry;
             if (geometry is null)
                 return;

@@ -1,6 +1,5 @@
 using HelixToolkit.Nex.ECS;
 using HelixToolkit.Nex.Rendering.DataEntries;
-using HelixToolkit.Nex.Rendering.DrawStreams;
 
 namespace HelixToolkit.Nex.Rendering;
 
@@ -97,9 +96,14 @@ public interface IRenderDataProvider
     IRenderData MeshInfos { get; }
 
     /// <summary>
-    /// Gets the draw stream registry that manages all draw streams for rendering mesh geometry.
+    /// Gets the mesh draw stream registry that manages all draw streams for rendering mesh geometry.
     /// </summary>
-    IDrawStreamRegistry DrawStreams { get; }
+    IDrawStreamRegistry<MeshDraw> MeshDrawStreams { get; }
+
+    /// <summary>
+    /// Gets the line draw stream registry that manages all draw streams for rendering lines.
+    /// </summary>
+    IDrawStreamRegistry<LineDraw> LineDrawStreams { get; }
 
     /// <summary>
     /// Gets the shared index buffer used for rendering static mesh geometry.

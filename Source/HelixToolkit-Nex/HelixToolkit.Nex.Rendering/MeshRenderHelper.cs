@@ -1,5 +1,4 @@
 using HelixToolkit.Nex.ECS;
-using HelixToolkit.Nex.Rendering.DrawStreams;
 using HelixToolkit.Nex.Scene;
 
 namespace HelixToolkit.Nex.Rendering;
@@ -12,7 +11,7 @@ public static class MeshRenderHelper
     public static uint Render(
         in RenderResources res,
         ulong fpConstAddress,
-        in MeshDrawStreamEnumerable streams,
+        in DrawStreamEnumerable<MeshDraw> streams,
         MaterialPassType passType
     )
     {
@@ -37,7 +36,7 @@ public static class MeshRenderHelper
     public static uint RenderStatic(
         in RenderResources res,
         ulong fpConstAddress,
-        IDrawStream stream,
+        IDrawStream<MeshDraw> stream,
         MaterialPassType passType
     )
     {
@@ -115,7 +114,7 @@ public static class MeshRenderHelper
     public static uint RenderDynamic(
         in RenderResources res,
         ulong fpConstAddress,
-        IDrawStream stream,
+        IDrawStream<MeshDraw> stream,
         MaterialPassType passType
     )
     {
@@ -167,7 +166,7 @@ public static class MeshRenderHelper
 
             for (var i = range.Start; i < range.Start + range.Count; ++i)
             {
-                if (!stream.TryGetMeshDraw((int)i, out var meshDraw))
+                if (!stream.TryGetDraw((int)i, out var meshDraw))
                 {
                     continue;
                 }
@@ -220,7 +219,7 @@ public static class MeshRenderHelper
         }
         var data = res.RenderContext.Data;
         var cmdBuffer = res.CmdBuffer;
-        var dataStreams = data.DrawStreams;
+        var dataStreams = data.MeshDrawStreams;
         var renderables = data.World.GetComponents<Renderable>();
         uint counter = 0;
         foreach (var entity in entites.AsValueEnumerable())
@@ -234,7 +233,7 @@ public static class MeshRenderHelper
                 {
                     continue;
                 }
-                var (meshDraw, slot) = stream.GetMeshDraw(entity);
+                var (meshDraw, slot) = stream.GetDraw(entity);
                 if (slot < 0)
                 {
                     continue;

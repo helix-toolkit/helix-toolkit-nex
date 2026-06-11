@@ -10,7 +10,8 @@ public sealed class WorldDataProvider : IRenderDataProvider, IDisposable
     private readonly FastList<IRenderData> _renderDataList = [];
     private readonly RangeLightData _lightData;
     private readonly DirectionalLightData _directionalLightData;
-    private readonly MeshDrawStreamRegistry _drawStreamRegistry;
+    private readonly MeshDrawStreamRegistry _meshDrawStreamRegistry;
+    private readonly LineDrawStreamRegistry _lineDrawStreamRegistry;
     private readonly PointCloudData _pointCloudData;
     private readonly BillboardData _billboardData;
     private readonly SceneState _sceneState;
@@ -26,7 +27,9 @@ public sealed class WorldDataProvider : IRenderDataProvider, IDisposable
 
     public IRenderData DirectionalLights => _directionalLightData;
 
-    public IDrawStreamRegistry DrawStreams => _drawStreamRegistry;
+    public IDrawStreamRegistry<MeshDraw> MeshDrawStreams => _meshDrawStreamRegistry;
+
+    public IDrawStreamRegistry<LineDraw> LineDrawStreams => _lineDrawStreamRegistry;
 
     public IPBRPropertyData PBRPropertiesBuffer => ResourceManager.PBRPropertyData;
 
@@ -43,7 +46,8 @@ public sealed class WorldDataProvider : IRenderDataProvider, IDisposable
         ResourceManager = services.GetRequiredService<IResourceManager>();
         _lightData = new RangeLightData(Context, World);
         _directionalLightData = new DirectionalLightData(Context, World);
-        _drawStreamRegistry = new MeshDrawStreamRegistry(Context, World);
+        _meshDrawStreamRegistry = new MeshDrawStreamRegistry(Context, World);
+        _lineDrawStreamRegistry = new LineDrawStreamRegistry(Context, World);
         _pointCloudData = new PointCloudData(Context, World);
         _billboardData = new BillboardData(Context, World);
         _sceneState = new SceneState(Context, World);
@@ -57,7 +61,11 @@ public sealed class WorldDataProvider : IRenderDataProvider, IDisposable
     {
         using var t = _tracer.BeginScope(nameof(Initialize));
         _sceneState.Initialize();
-        if (_drawStreamRegistry.Initialize().CheckResult() != ResultCode.Ok)
+        if (_meshDrawStreamRegistry.Initialize().CheckResult() != ResultCode.Ok)
+        {
+            return false;
+        }
+        if (_lineDrawStreamRegistry.Initialize().CheckResult() != ResultCode.Ok)
         {
             return false;
         }
@@ -83,7 +91,7 @@ public sealed class WorldDataProvider : IRenderDataProvider, IDisposable
                 return false;
             }
         }
-        if (!_drawStreamRegistry.Update())
+        if (!_meshDrawStreamRegistry.Update() || !_lineDrawStreamRegistry.Update())
         {
             return false;
         }
@@ -109,7 +117,8 @@ public sealed class WorldDataProvider : IRenderDataProvider, IDisposable
         {
             if (disposing)
             {
-                _drawStreamRegistry.Dispose();
+                _meshDrawStreamRegistry.Dispose();
+                _lineDrawStreamRegistry.Dispose();
                 _sceneState.Dispose();
                 foreach (var data in _renderDataList)
                 {

@@ -4,80 +4,84 @@ using HelixToolkit.Nex.Rendering.DrawStreams;
 
 namespace HelixToolkit.Nex.Engine.Data;
 
-internal sealed class MeshDrawStreamRegistry(IContext context, World world)
+internal sealed class LineDrawStreamRegistry(IContext context, World world)
     : Initializable,
-        IDrawStreamRegistry<MeshDraw>
+        IDrawStreamRegistry<LineDraw>
 {
     private readonly IContext _context = context;
     private readonly World _world = world;
-    private readonly FastList<FastList<IDrawStream<MeshDraw>?>> _streamsByType = new(
-        (int)DrawStreamType.MeshStreamTypeCount
-    );
+    private readonly FastList<IDrawStream<LineDraw>?> _streams = [];
     private EntityCollection? _collections;
-    private Components<MeshDrawInfo> _meshComponents = world.GetComponents<MeshDrawInfo>();
+    private Components<LineDrawInfo> _lineComponents = world.GetComponents<LineDrawInfo>();
     private Components<Renderable> _renderables = world.GetComponents<Renderable>();
 
-    public AllStreamsEnumerable<MeshDraw> AllStreams => new(_streamsByType!);
+    public AllStreamsEnumerable<LineDraw> AllStreams => new(_streams);
 
-    public override string Name => nameof(MeshDrawStreamRegistry);
+    public override string Name => nameof(LineDrawStreamRegistry);
 
-    public IDrawStream<MeshDraw>? GetStream(DrawStreamType type, DrawStreamName name)
+    public IDrawStream<LineDraw>? GetStream(DrawStreamType type, DrawStreamName name)
     {
-        return _streamsByType[(int)type]![(int)name];
+        if (type != DrawStreamType.PointLine)
+        {
+            throw new ArgumentException(
+                $"Invalid stream type {type} for line draw stream registry."
+            );
+        }
+        return _streams[(int)name];
     }
 
-    public IDrawStream<MeshDraw>? GetStream(DrawStreamType type, DrawStreamVariants category)
+    public IDrawStream<LineDraw>? GetStream(DrawStreamType type, DrawStreamVariants category)
     {
         return GetStream(type, category.GetStreamName());
     }
 
-    public DrawStreamEnumerable<MeshDraw> GetStreams(
+    public DrawStreamEnumerable<LineDraw> GetStreams(
         DrawStreamType type,
         DrawStreamVariants category
     )
     {
-        return new DrawStreamEnumerable<MeshDraw>(_streamsByType[(int)type], category);
+        if (type != DrawStreamType.PointLine)
+        {
+            throw new ArgumentException(
+                $"Invalid stream type {type} for line draw stream registry."
+            );
+        }
+        return new DrawStreamEnumerable<LineDraw>(_streams, category);
     }
 
-    public DrawStreamEnumerable<MeshDraw> GetStreamsCore(
+    public DrawStreamEnumerable<LineDraw> GetStreamsCore(
         DrawStreamType type,
         DrawStreamVariants category
-    ) => new(_streamsByType[(int)type], category);
+    ) => new(_streams, category);
 
-    public DrawStreamEnumerable<MeshDraw> GetStreamsCore(DrawStreamType type) =>
-        new(_streamsByType[(int)type], null);
+    public DrawStreamEnumerable<LineDraw> GetStreamsCore(DrawStreamType type) =>
+        new(_streams, null);
 
     protected override ResultCode OnInitializing()
     {
         _collections = _world
             .CreateCollection()
             .Has<NodeInfo>()
-            .Has<MeshDrawInfo>()
+            .Has<LineDrawInfo>()
             .Has<WorldTransform>()
             .Has<Renderable>()
             .Build();
         _collections.EntityAdded += OnEntityAdded;
         _collections.EntityRemoved += OnEntityRemoved;
         _collections.EntityChanged += OnEntityChanged;
-
-        _streamsByType.Resize((int)DrawStreamType.MeshStreamTypeCount);
-        for (int i = 0; i < _streamsByType.Count; ++i)
+        _streams.Resize((int)DrawStreamName.Count);
+        for (var i = 0; i < (int)DrawStreamName.Count; ++i)
         {
-            _streamsByType[i] = new FastList<IDrawStream<MeshDraw>?>((int)DrawStreamName.Count);
-            _streamsByType[i].Resize((int)DrawStreamName.Count);
-            for (var j = 0; j < (int)DrawStreamName.Count; ++j)
+            _streams[i] = new LineDrawStream(
+                _context,
+                _world,
+                DrawStreamType.PointLine,
+                (DrawStreamName)i
+            );
+            var ret = _streams[i]!.Initialize().CheckResult();
+            if (ret != ResultCode.Ok)
             {
-                _streamsByType[i][j] = new MeshDrawStream(
-                    _context,
-                    _world,
-                    (DrawStreamType)i,
-                    (DrawStreamName)j
-                );
-                var ret = _streamsByType[i][j]!.Initialize().CheckResult();
-                if (ret != ResultCode.Ok)
-                {
-                    return ret;
-                }
+                return ret;
             }
         }
         return ResultCode.Ok;
@@ -85,14 +89,15 @@ internal sealed class MeshDrawStreamRegistry(IContext context, World world)
 
     public bool Update()
     {
-        foreach (var streams in _streamsByType)
+        foreach (var stream in _streams.AsValueEnumerable())
         {
-            foreach (var stream in streams)
+            if (stream == null)
             {
-                if (!stream!.Update())
-                {
-                    return false;
-                }
+                continue;
+            }
+            if (!stream.Update())
+            {
+                return false;
             }
         }
         return true;
@@ -100,21 +105,17 @@ internal sealed class MeshDrawStreamRegistry(IContext context, World world)
 
     protected override ResultCode OnTearingDown()
     {
-        foreach (var streams in _streamsByType)
+        foreach (var stream in _streams.AsValueEnumerable())
         {
-            foreach (var stream in streams)
-            {
-                stream?.Dispose();
-            }
-            streams.Clear();
+            stream?.Dispose();
         }
-        _streamsByType.Clear();
+        _streams.Clear();
         return ResultCode.Ok;
     }
 
-    private MeshDrawStream? GetStreamInternal(DrawStreamType type, DrawStreamVariants category)
+    private LineDrawStream? GetStreamInternal(DrawStreamType type, DrawStreamVariants category)
     {
-        return GetStream(type, category) is MeshDrawStream mesh ? mesh : null;
+        return GetStream(type, category) is LineDrawStream line ? line : null;
     }
 
     private void OnEntityAdded(object? sender, int entityId)
@@ -135,24 +136,15 @@ internal sealed class MeshDrawStreamRegistry(IContext context, World world)
 
     private (DrawStreamType, DrawStreamVariants) GetCategoryFromEntity(Entity entity)
     {
-        ref var comp = ref _meshComponents[entity];
+        ref var comp = ref _lineComponents[entity];
         var category = comp.Variants;
-        var type = DrawStreamType.Opaque;
-        if (entity.Has<TransparentComponent>())
-        {
-            type = DrawStreamType.Transparent;
-        }
-        else if (entity.Has<AlphaMaskComponent>())
-        {
-            type = DrawStreamType.AlphaMask;
-        }
-        return (type, category);
+        return (DrawStreamType.PointLine, category);
     }
 
     private void OnEntityChanged(object? sender, EntityChangedEvent e)
     {
         var entity = _world.GetEntity(e.EntityId);
-        ref var meshComp = ref _meshComponents[entity];
+        ref var lineComp = ref _lineComponents[entity];
 
         var (type, category) = GetCategoryFromEntity(entity);
         var stream = GetStreamInternal(type, category);
@@ -171,15 +163,12 @@ internal sealed class MeshDrawStreamRegistry(IContext context, World world)
                 else
                 {
                     // In case the entity was not added to any stream before (e.g., it was missing some components), we need to remove it from all streams just in case.
-                    foreach (var streams in _streamsByType)
+                    foreach (var s in _streams.AsValueEnumerable().Cast<LineDrawStream?>())
                     {
-                        foreach (var s in streams.Cast<MeshDrawStream?>())
+                        if (s?.Has(entity) == true)
                         {
-                            if (s?.Has(entity) == true)
-                            {
-                                s.EntityRemoved(entity);
-                                break;
-                            }
+                            s.EntityRemoved(entity);
+                            break;
                         }
                     }
                 }

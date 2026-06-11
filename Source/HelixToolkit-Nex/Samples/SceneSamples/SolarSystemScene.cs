@@ -438,7 +438,7 @@ public sealed class SolarSystemScene : IScene
 
             var sphereNode = world.CreateMeshNode(
                 $"{planet.Name}_Sphere",
-                new MeshComponent(sphereGeo, planetMat)
+                new MeshDrawInfo(sphereGeo, planetMat)
             );
             // Scale the unit sphere to the planet's visual radius
             sphereNode.Transform.Scale = new Vector3(planet.SphereRadius);
@@ -528,7 +528,7 @@ public sealed class SolarSystemScene : IScene
 
                 var moonSphereNode = world.CreateMeshNode(
                     $"{moon.Name}_Sphere",
-                    new MeshComponent(sphereGeo, moonMat)
+                    new MeshDrawInfo(sphereGeo, moonMat)
                 );
                 moonSphereNode.Transform.Scale = new Vector3(moon.SphereRadius);
                 moonNode.AddChild(moonSphereNode);

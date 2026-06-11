@@ -44,7 +44,7 @@ public sealed class BillboardDataEntry : IDisposable
 
     public void AddEntity(Entity entity)
     {
-        ref var comp = ref entity.Get<BillboardComponent>();
+        ref var comp = ref entity.Get<BillboardDrawInfo>();
         if (comp.BillboardGeometry is null || comp.BillboardCount == 0)
         {
             return;
@@ -59,7 +59,7 @@ public sealed class BillboardDataEntry : IDisposable
         {
             for (int i = 0; i < Entities.Count; ++i)
             {
-                ref var comp = ref Entities[i].Get<BillboardComponent>();
+                ref var comp = ref Entities[i].Get<BillboardDrawInfo>();
                 if (comp.BillboardGeometry is null || comp.BillboardCount == 0)
                 {
                     continue;
@@ -72,7 +72,7 @@ public sealed class BillboardDataEntry : IDisposable
         {
             for (int i = 0; i < Entities.Count; ++i)
             {
-                ref var comp = ref Entities[i].Get<BillboardComponent>();
+                ref var comp = ref Entities[i].Get<BillboardDrawInfo>();
                 if (comp.BillboardGeometry is null || comp.BillboardCount == 0)
                 {
                     continue;
