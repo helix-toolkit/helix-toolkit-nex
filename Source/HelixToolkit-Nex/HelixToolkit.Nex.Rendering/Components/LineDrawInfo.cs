@@ -10,7 +10,11 @@ public struct LineDrawInfo(
     public Geometry? Geometry { get; set; } = geometry;
     public Color4 LineColor { set; get; } = Color4.White;
 
-    public float LineThickness { set; get; }
+    /// <summary>
+    /// Screen-space line width in pixels. The line vertex shader clamps the value to
+    /// the valid range [1.0, 64.0] (Requirement 2.3). Defaults to 1.0.
+    /// </summary>
+    public float LineThickness { set; get; } = 1.0f;
 
     public readonly int LineCount => Geometry?.Vertices.Count / 2 ?? 0;
 
@@ -69,5 +73,6 @@ public struct LineDrawInfo(
     /// <summary>
     /// Gets a value indicating whether this LineDrawInfo has valid handles.
     /// </summary>
-    public readonly bool Valid => Geometry is not null && Geometry.Valid && !string.IsNullOrEmpty(LineMaterialName);
+    public readonly bool Valid =>
+        Geometry is not null && Geometry.Valid && !string.IsNullOrEmpty(LineMaterialName);
 }

@@ -226,7 +226,7 @@ public static class MeshRenderHelper
         {
             var category = (DrawStreamVariants)renderables[entity].DrawVariants;
             var type = (DrawStreamType)renderables[entity].DrawType;
-            var streams = dataStreams.GetStreamsCore(type, category);
+            var streams = dataStreams.GetStreams(type, category);
             foreach (var stream in streams)
             {
                 if (stream.StreamType != type || stream.Variants != category)

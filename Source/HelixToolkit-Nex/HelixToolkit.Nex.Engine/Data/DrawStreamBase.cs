@@ -20,6 +20,9 @@ internal abstract class DrawStreamBase<DRAW_TYPE, COMP_TYPE> : Initializable, ID
 
     // CPU-side draw storage grouped by material type for sorted upload
     private readonly Dictionary<MaterialTypeId, FastList<DRAW_TYPE>> _drawsByMaterial = [];
+    protected IReadOnlyDictionary<MaterialTypeId, FastList<DRAW_TYPE>> DrawsByMaterial =>
+        _drawsByMaterial;
+
     private readonly Dictionary<MaterialTypeId, DrawRange> _materialRanges = [];
 
     private readonly FastList<MaterialTypeId> _materialTypes = [];
@@ -321,24 +324,7 @@ internal abstract class DrawStreamBase<DRAW_TYPE, COMP_TYPE> : Initializable, ID
     /// Sorts each material group by MeshId for better GPU cache coherence during rendering.
     /// Uses parallel sort for large lists.
     /// </summary>
-    private void SortByMeshId()
-    {
-        Parallel.ForEach(
-            _drawsByMaterial,
-            kv =>
-            {
-                if (kv.Value.Count <= 1)
-                    return;
-                var arr = kv.Value.GetInternalArray();
-                Array.Sort(
-                    arr,
-                    0,
-                    kv.Value.Count,
-                    Comparer<MeshDraw>.Create((a, b) => a.MeshId.CompareTo(b.MeshId))
-                );
-            }
-        );
-    }
+    protected abstract void SortByMeshId();
 
     /// <summary>
     /// Computes contiguous material ranges and writes DrawCmdIndex/DrawCategory
@@ -385,7 +371,7 @@ internal abstract class DrawStreamBase<DRAW_TYPE, COMP_TYPE> : Initializable, ID
             if (list.Count > 0)
             {
                 _buffer.Upload(list, byteOffset);
-                byteOffset += list.Count * (int)MeshDraw.SizeInBytes;
+                byteOffset += list.Count * (int)GetDrawCommandSize();
             }
         }
     }
@@ -478,4 +464,6 @@ internal abstract class DrawStreamBase<DRAW_TYPE, COMP_TYPE> : Initializable, ID
     protected abstract uint GetEntityId(ref DRAW_TYPE draw);
 
     protected abstract DrawStreamVariants GetVariant(ref COMP_TYPE comp);
+
+    protected abstract uint GetDrawCommandSize();
 }

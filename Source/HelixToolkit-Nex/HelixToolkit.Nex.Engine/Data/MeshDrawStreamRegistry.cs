@@ -39,12 +39,7 @@ internal sealed class MeshDrawStreamRegistry(IContext context, World world)
         return new DrawStreamEnumerable<MeshDraw>(_streamsByType[(int)type], category);
     }
 
-    public DrawStreamEnumerable<MeshDraw> GetStreamsCore(
-        DrawStreamType type,
-        DrawStreamVariants category
-    ) => new(_streamsByType[(int)type], category);
-
-    public DrawStreamEnumerable<MeshDraw> GetStreamsCore(DrawStreamType type) =>
+    public DrawStreamEnumerable<MeshDraw> GetStreams(DrawStreamType type) =>
         new(_streamsByType[(int)type], null);
 
     protected override ResultCode OnInitializing()

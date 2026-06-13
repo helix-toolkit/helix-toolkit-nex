@@ -103,7 +103,9 @@ public enum PickedGeometryType
 {
     None,
     Mesh,
-    PointCloud,
+    Point,
+    Line,
+    Billboard,
 }
 
 public readonly struct PickingResult
@@ -392,7 +394,18 @@ public static class GpuPicking
             if (entity.TryGetPointFromPointCloud(primitiveId, out var point))
             {
                 position = point;
-                geometryType = PickedGeometryType.PointCloud;
+                geometryType = PickedGeometryType.Point;
+                return true;
+            }
+        }
+        else if (entity.Has<LineDrawInfo>())
+        {
+            // For simplicity, we treat line primitives as points for picking purposes.
+            // A more robust implementation might compute the nearest point on the line segment to the ray.
+            if (entity.TryGetLine(instanceId, out var p0, out var p1))
+            {
+                ray.GetRayToLineDistance(p0, p1, out position, out _, out _, out _);
+                geometryType = PickedGeometryType.Line; // Reuse PointCloud type for lines
                 return true;
             }
         }
@@ -450,6 +463,29 @@ public static class GpuPicking
             return false;
         }
         position = points[(int)primitiveId].ToVector3();
+        return true;
+    }
+
+    public static bool TryGetLine(this Entity entity, uint instanceId, out Vector3 p0, out Vector3 p1)
+    {
+        p0 = default;
+        p1 = default;
+        if (!entity.Has<LineDrawInfo>())
+        {
+            return false;
+        }
+        var lineGeo = entity.Get<LineDrawInfo>().Geometry;
+        if (lineGeo is null)
+        {
+            return false;
+        }
+        var vertices = lineGeo.Vertices;
+        if (instanceId * 2 >= vertices.Count)
+        {
+            return false;
+        }
+        p0 = vertices[(int)instanceId * 2].ToVector3();
+        p1 = vertices[(int)instanceId * 2 + 1].ToVector3();
         return true;
     }
 

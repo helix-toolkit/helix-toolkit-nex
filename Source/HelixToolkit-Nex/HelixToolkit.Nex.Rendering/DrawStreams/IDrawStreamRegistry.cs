@@ -38,16 +38,7 @@ public interface IDrawStreamRegistry<DRAW_TYPE> : IInitializable, IDisposable
     /// Zero-allocation overload for internal/engine callers that know the concrete registry type.
     /// Returns a struct enumerable that avoids the <c>yield return</c> state-machine heap allocation.
     /// </summary>
-    DrawStreamEnumerable<DRAW_TYPE> GetStreamsCore(
-        DrawStreamType type,
-        DrawStreamVariants category
-    );
-
-    /// <summary>
-    /// Zero-allocation overload for internal/engine callers that know the concrete registry type.
-    /// Returns a struct enumerable that avoids the <c>yield return</c> state-machine heap allocation.
-    /// </summary>
-    DrawStreamEnumerable<DRAW_TYPE> GetStreamsCore(DrawStreamType type);
+    DrawStreamEnumerable<DRAW_TYPE> GetStreams(DrawStreamType type);
 
     /// <summary>
     /// Updates all streams by processing pending changes, running compaction where needed,
@@ -59,7 +50,7 @@ public interface IDrawStreamRegistry<DRAW_TYPE> : IInitializable, IDisposable
 
 /// <summary>
 /// Zero-allocation struct enumerable over a <see cref="FastList{IDrawStream}"/> filtered by
-/// <see cref="DrawStreaVariants"/>. Use <see cref="IDrawStreamRegistry.GetStreamsCore"/> to obtain one.
+/// <see cref="DrawStreaVariants"/>. 
 /// </summary>
 public readonly struct DrawStreamEnumerable<DRAW_TYPE>(
     FastList<IDrawStream<DRAW_TYPE>?> list,
