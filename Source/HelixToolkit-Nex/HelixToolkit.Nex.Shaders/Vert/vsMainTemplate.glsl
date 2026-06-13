@@ -7,6 +7,7 @@
 #include "HxHeaders/HeaderPackEntity.glsl"
 #include "HxHeaders/PBRProperties.glsl"
 #include "HxHeaders/NodeInfo.glsl"
+#include "HxHeaders/DrawTypeCheck.glsl"
 
 layout(location = 0) out vec3 fragWorldPos;
 layout(location = 1) out flat uint materialId;

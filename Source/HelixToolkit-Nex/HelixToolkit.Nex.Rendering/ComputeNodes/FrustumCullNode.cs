@@ -4,6 +4,7 @@ public sealed class FrustumCullNode : ComputeNode
 {
     private ComputePipelineResource _cullingPipeline = ComputePipelineResource.Null;
     private ComputePipelineResource _instancingCullingPipeline = ComputePipelineResource.Null;
+    private ComputePipelineResource _lineCullingPipeline = ComputePipelineResource.Null;
     private ComputePipelineResource _resetInstanceCountPipeline = ComputePipelineResource.Null;
     private RingFixSizeBuffer<CullingConstants>? _cullBuffer;
     private CullingConstants _cullConst = new();
@@ -26,6 +27,7 @@ public sealed class FrustumCullNode : ComputeNode
     {
         CreateCullingPipeline();
         CreateInstancingCullingPipeline();
+        CreateLineCullingPipeline();
         _cullBuffer = new RingFixSizeBuffer<CullingConstants>(
             Context!,
             (int)GraphicsSettings.MaxFrameInFlight,
@@ -40,6 +42,7 @@ public sealed class FrustumCullNode : ComputeNode
         _cullingPipeline.Dispose();
         _instancingCullingPipeline.Dispose();
         _resetInstanceCountPipeline.Dispose();
+        _lineCullingPipeline.Dispose();
         base.OnTeardown();
     }
 
@@ -85,19 +88,26 @@ public sealed class FrustumCullNode : ComputeNode
         _cullConst.NodeInfoBufferAddress = context.Data.NodeInfos.GpuAddress;
         _cullBuffer!.AdvanceAndUpdate(ref _cullConst);
         res.Deps.PushBuffer(_cullBuffer!.Buffer);
-        for (int i = 0; i < (int)DrawStreamType.MeshStreamTypeCount; ++i)
+        foreach (var stream in context.Data.MeshDrawStreams.AllStreams)
         {
-            var streamType = (DrawStreamType)i;
-            foreach (var stream in context.Data.MeshDrawStreams.GetStreamsCore(streamType))
+            if (stream.Count == 0)
             {
-                if (stream.Count == 0)
-                {
-                    continue;
-                }
-                stream.Barrier(res.CmdBuffer);
-                using var _ = res.Deps.PushBufferScoped(stream.Buffer);
-                Cull(context, res.CmdBuffer, stream, res.Deps);
+                continue;
             }
+            stream.Barrier(res.CmdBuffer);
+            using var _ = res.Deps.PushBufferScoped(stream.Buffer);
+            Cull(context, res.CmdBuffer, stream, res.Deps);
+        }
+
+        foreach (var stream in context.Data.LineDrawStreams.AllStreams)
+        {
+            if (stream.Count == 0)
+            {
+                continue;
+            }
+            stream.Barrier(res.CmdBuffer);
+            using var _ = res.Deps.PushBufferScoped(stream.Buffer);
+            CullMeshes(context, res.CmdBuffer, stream, res.Deps);
         }
     }
 
@@ -119,12 +129,13 @@ public sealed class FrustumCullNode : ComputeNode
         }
     }
 
-    private void CullMeshes(
+    private void CullMeshes<DRAW_TYPE>(
         RenderContext context,
         ICommandBuffer cmdBuffer,
-        IDrawStream<MeshDraw> stream,
+        IDrawStream<DRAW_TYPE> stream,
         Dependencies deps
     )
+        where DRAW_TYPE : unmanaged
     {
         cmdBuffer.BindComputePipeline(_cullingPipeline);
         cmdBuffer.PushConstants(
@@ -186,9 +197,7 @@ public sealed class FrustumCullNode : ComputeNode
             for (var i = subRange.Start; i < subRange.End; ++i)
             {
                 pc.DrawCommandIdx = i;
-                pc.InstanceCount = stream.TryGetDraw((int)i, out var draw)
-                    ? draw.InstanceCount
-                    : 0;
+                pc.InstanceCount = stream.TryGetDraw((int)i, out var draw) ? draw.InstanceCount : 0;
                 if (pc.InstanceCount == 0)
                 {
                     continue;
@@ -252,6 +261,28 @@ public sealed class FrustumCullNode : ComputeNode
             resetModule,
             "ResetDrawInstanceCount"
         );
+    }
+
+    private void CreateLineCullingPipeline()
+    {
+        if (Context is null)
+        {
+            throw new InvalidOperationException("Context is null, cannot create culling pipeline.");
+        }
+        // Generates the compute shader code for frustum checking.
+        // Mode 'MultiMeshSingleInstance' means each thread processes one unique object/DrawCommand.
+        var cullingShader = GpuFrustumCulling.GenerateComputeShader(
+            GpuFrustumCulling.CullMode.MultiLineSingleInstance
+        );
+        using var cullingModule = Context.CreateShaderModuleGlsl(
+            cullingShader,
+            ShaderStage.Compute,
+            "LineCulling"
+        );
+        _cullingPipeline = Context.CreateComputePipeline(
+            new ComputePipelineDesc { ComputeShader = cullingModule }
+        );
+        Debug.Assert(_cullingPipeline.Valid);
     }
 
     public override void AddToGraph(RenderGraph graph)

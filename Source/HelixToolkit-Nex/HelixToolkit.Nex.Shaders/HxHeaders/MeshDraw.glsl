@@ -1,8 +1,3 @@
-
-// Draw types must match the enum values in DrawStreamVariants
-#define DRAW_TYPE_HITABLE (1 << 2)
-
-
 @code_gen
 struct MeshDraw {
     uint indexCount;
@@ -32,8 +27,3 @@ struct MeshDrawPushConstant {
     uint drawCommandIdxOffset;
     uint _padding;
 };
-
-
-bool isHitable(uint drawType) {
-    return (drawType & DRAW_TYPE_HITABLE) != 0;
-}

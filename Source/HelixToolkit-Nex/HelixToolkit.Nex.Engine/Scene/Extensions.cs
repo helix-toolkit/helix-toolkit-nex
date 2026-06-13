@@ -70,6 +70,16 @@ public static class Extensions
         return new PointCloudNode(world, name, ref component);
     }
 
+    public static LineNode CreateLineNode(this World world, string name)
+    {
+        return new LineNode(world, name);
+    }
+
+    public static LineNode CreateLineNode(this World world, string name, LineDrawInfo component)
+    {
+        return new LineNode(world, name, ref component);
+    }
+
     public static BillboardNode CreateBillboardNode(this World world, string name)
     {
         return new BillboardNode(world, name);

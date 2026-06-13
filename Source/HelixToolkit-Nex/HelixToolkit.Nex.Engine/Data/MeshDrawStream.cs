@@ -82,4 +82,28 @@ internal sealed class MeshDrawStream : DrawStreamBase<MeshDraw, MeshDrawInfo>
     {
         return comp.Variants;
     }
+
+    protected override uint GetDrawCommandSize()
+    {
+        return MeshDraw.SizeInBytes;
+    }
+
+    protected override void SortByMeshId()
+    {
+        Parallel.ForEach(
+            DrawsByMaterial,
+            kv =>
+            {
+                if (kv.Value.Count <= 1)
+                    return;
+                var arr = kv.Value.GetInternalArray();
+                Array.Sort(
+                    arr,
+                    0,
+                    kv.Value.Count,
+                    Comparer<MeshDraw>.Create((a, b) => a.MeshId.CompareTo(b.MeshId))
+                );
+            }
+        );
+    }
 }

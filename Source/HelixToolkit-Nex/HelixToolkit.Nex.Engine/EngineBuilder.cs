@@ -85,6 +85,7 @@ public sealed class EngineBuilder
     private ToneMappingMode _toneMappingMode = ToneMappingMode.ACESFilm;
     private bool _withBillboard;
     private bool _withPointCloud;
+    private bool _withLine;
     private Action<IResourceManager>? _onResourceManagerReady;
 
     private EngineBuilder(IContext context)
@@ -221,6 +222,7 @@ public sealed class EngineBuilder
     {
         WithBillBoard();
         WithPointCloud();
+        WithLine();
         WithTransparent(TransparentMode.WBOIT);
 
         _addRenderToFinal = renderToSwapchain && _context.GetNumSwapchainImages() > 0;
@@ -240,6 +242,16 @@ public sealed class EngineBuilder
     public EngineBuilder WithPointCloud()
     {
         _withPointCloud = true;
+        return this;
+    }
+
+    /// <summary>
+    /// Enables GPU line rendering. Adds a <see cref="LineRenderNode"/> to the pipeline.
+    /// Line culling reuses the default <see cref="FrustumCullNode"/>, so no extra cull node is added.
+    /// </summary>
+    public EngineBuilder WithLine()
+    {
+        _withLine = true;
         return this;
     }
 
@@ -364,6 +376,7 @@ public sealed class EngineBuilder
         engine.ResourceManager.PBRMaterialManager.CreatePBRMaterialsFromRegistry();
         engine.ResourceManager.PointMaterialManager.CreatePipelinesFromRegistry();
         engine.ResourceManager.BillboardMaterialManager.CreatePipelinesFromRegistry();
+        engine.ResourceManager.LineMaterialManager.CreatePipelinesFromRegistry();
         _onResourceManagerReady?.Invoke(engine.ResourceManager);
         AddNode(new PrepareNode());
         AddNode(new DepthPassNode());
@@ -375,6 +388,13 @@ public sealed class EngineBuilder
         {
             AddNode(new PointCullNode());
             AddNode(new PointRenderNode());
+        }
+        if (_withLine)
+        {
+            // Lines reuse the default FrustumCullNode for culling, so only the render node
+            // is added. LineRenderNode.CanRender returns false when there are no line
+            // streams, so adding it to the default pipeline is safe for line-free scenes.
+            AddNode(new LineRenderNode());
         }
         if (_withBillboard)
         {
