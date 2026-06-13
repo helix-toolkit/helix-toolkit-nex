@@ -49,12 +49,7 @@ internal sealed class LineDrawStreamRegistry(IContext context, World world)
         return new DrawStreamEnumerable<LineDraw>(_streams, category);
     }
 
-    public DrawStreamEnumerable<LineDraw> GetStreamsCore(
-        DrawStreamType type,
-        DrawStreamVariants category
-    ) => new(_streams, category);
-
-    public DrawStreamEnumerable<LineDraw> GetStreamsCore(DrawStreamType type) =>
+    public DrawStreamEnumerable<LineDraw> GetStreams(DrawStreamType type) =>
         new(_streams, null);
 
     protected override ResultCode OnInitializing()

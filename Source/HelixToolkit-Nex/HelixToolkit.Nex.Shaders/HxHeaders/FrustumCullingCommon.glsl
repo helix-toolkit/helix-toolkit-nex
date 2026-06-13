@@ -1,5 +1,13 @@
 #include "HxHeaders/MeshInfo.glsl"
 
+@code_gen
+struct FrustumCullPC {
+    uint64_t cullingConstAddress;
+    uint64_t meshDrawBufferAddress;
+    uint instanceCount;     // Total instances to process   
+    uint meshDrawIdxOffset; // Offset in MeshDraw buffer for this culling batch (if processing in chunks)
+};
+
 // Culling Constants
 @code_gen
 struct CullingConstants {

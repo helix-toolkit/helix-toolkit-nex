@@ -389,14 +389,13 @@ namespace HelixToolkit.Nex.Maths
         /// <summary>
         /// Calculates the shortest distance between this ray and a line segment defined by two points (t0 and t1).
         /// </summary>
-        /// <param name="ray"></param>
-        /// <param name="t0"></param>
-        /// <param name="t1"></param>
-        /// <param name="sp"></param>
-        /// <param name="tp"></param>
-        /// <param name="sc"></param>
-        /// <param name="tc"></param>
-        /// <returns></returns>
+        /// <param name="t0">The first point of the line segment.</param>
+        /// <param name="t1">The second point of the line segment.</param>
+        /// <param name="sp">The closest point on the ray.</param>
+        /// <param name="tp">The closest point on the line segment.</param>
+        /// <param name="sc">The parameter along the ray.</param>
+        /// <param name="tc">The parameter along the line segment.</param>
+        /// <returns>The shortest distance between the ray and the line segment.</returns>
         public float GetRayToLineDistance(
             Vector3 t0,
             Vector3 t1,
@@ -412,13 +411,13 @@ namespace HelixToolkit.Nex.Maths
         /// <summary>
         /// Calculates the shortest distance between this ray and a line segment defined by two points (t0 and t1).
         /// </summary>
-        /// <param name="t0"></param>
-        /// <param name="t1"></param>
-        /// <param name="sp"></param>
-        /// <param name="tp"></param>
-        /// <param name="sc"></param>
-        /// <param name="tc"></param>
-        /// <returns></returns>
+        /// <param name="t0">The first point of the line segment.</param>
+        /// <param name="t1">The second point of the line segment.</param>
+        /// <param name="sp">The closest point on the ray.</param>
+        /// <param name="tp">The closest point on the line segment.</param>
+        /// <param name="sc">The parameter along the ray.</param>
+        /// <param name="tc">The parameter along the line segment.</param>
+        /// <returns>The shortest distance between the ray and the line segment.</returns>
         public float GetRayToLineDistance(
             ref Vector3 t0,
             ref Vector3 t1,

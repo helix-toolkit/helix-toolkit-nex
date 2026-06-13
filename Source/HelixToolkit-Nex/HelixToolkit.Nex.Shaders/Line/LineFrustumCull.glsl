@@ -1,5 +1,5 @@
 #include "HxHeaders/HeaderCompute.glsl"
-#include "HxHeaders/MeshDraw.glsl"
+#include "Line/LineStructs.glsl"
 #include "HxHeaders/FrustumCullingCommon.glsl"
 #include "HxHeaders/NodeInfo.glsl"
 // Enable subgroup extensions for efficient output compaction if allowed
@@ -23,8 +23,8 @@ layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer No
     GpuNodeInfo value[];
 };
 
-layout(buffer_reference, std430, buffer_reference_align = 16) buffer MeshDrawBuffer {
-    MeshDraw draws[];
+layout(buffer_reference, std430, buffer_reference_align = 16) buffer DrawBuffer {
+    LineDraw draws[];
 };
 
 // ------------------------------------------------------------------
@@ -36,7 +36,7 @@ layout(push_constant) uniform CullingPC {
 } pc;
 
 CullingConstBuffer cullingConst = CullingConstBuffer(pc.value.cullingConstAddress);
-MeshDrawBuffer meshDrawBuf = MeshDrawBuffer(pc.value.meshDrawBufferAddress);
+DrawBuffer meshDrawBuf = DrawBuffer(pc.value.meshDrawBufferAddress);
 
 MeshInfoBuffer meshInfoBuf = MeshInfoBuffer(cullingConst.value.meshInfoBufferAddress);
 NodeInfoBuffer nodeInfoBuf = NodeInfoBuffer(cullingConst.value.nodeInfoBufferAddress);
@@ -64,14 +64,9 @@ void main() {
   
     uint drawIdx = gID + pc.value.meshDrawIdxOffset;
     
-    MeshDraw draw = meshDrawBuf.draws[drawIdx];
+    LineDraw draw = meshDrawBuf.draws[drawIdx];
 
     GpuNodeInfo info = nodeInfoBuf.value[draw.nodeInfoIndex];
-
-    if (draw.instancingBufferAddress != 0) {
-        // For instanced draws, we handle seperately.
-        return;
-    }
 
     if (info.enabled == 0) {
         // If node is disabled, we can skip culling and set instance count to 0
@@ -80,8 +75,9 @@ void main() {
     }   
 
     if (draw.cullable == 0) {
-        // If not cullable, we can skip culling and set instance count to 1 (or keep as is)
-        meshDrawBuf.draws[drawIdx].instanceCount = 1;
+        // Not cullable: render every segment. One quad instance per disjoint 2-vertex
+        // segment, so instanceCount = lineCount.
+        meshDrawBuf.draws[drawIdx].instanceCount = draw.lineCount;
         return;
     }
 
@@ -138,6 +134,6 @@ void main() {
     // }
     // ---------------------------------------------------------
 
-    // Output visibility
-    meshDrawBuf.draws[drawIdx].instanceCount = isVisible ? 1 : 0;
+    // Output visibility: one quad instance per disjoint 2-vertex segment.
+    meshDrawBuf.draws[drawIdx].instanceCount = isVisible ? draw.lineCount : 0;
 }
