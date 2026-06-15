@@ -16,9 +16,17 @@ public enum DrawStreamType : int
     MeshStreamTypeCount,
 
     /// <summary>
-    /// Draw stream for rendering point/lines.
+    /// Draw stream for rendering lines.
     /// </summary>
-    PointLine,
+    Line,
+    /// <summary>
+    /// Draw stream for rendering point.
+    /// </summary>
+    Point,
+    /// <summary>
+    /// Draw stream for billboards.
+    /// </summary>
+    Billboard,
 }
 
 /// <summary>

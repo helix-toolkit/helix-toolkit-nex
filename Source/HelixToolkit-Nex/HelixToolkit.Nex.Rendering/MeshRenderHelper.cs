@@ -76,19 +76,13 @@ public static class MeshRenderHelper
                     continue;
                 }
                 customMaterialBufferAddress = mat.CustomBufferAddress;
-                if (stream.StreamType == DrawStreamType.Transparent)
+                if (res.RenderContext.PickingConfig.IsPickThroughEnabled(stream.StreamType, stream.Variants))
                 {
-                    if (stream.Variants.HasAllFlags(DrawStreamVariants.Hitable))
-                    {
-                        cmdBuf.SetColorWriteEnabled(res.Pass.ColorWrites);
-                    }
-                    else
-                    { // Disable entity ID output for transparent non-hitable meshes to avoid writing to the ID buffer, which is used for picking and should not be affected by transparent objects.
-                        var value = res.Pass.ColorWrites[ColorWriteIndex];
-                        res.Pass.ColorWrites[ColorWriteIndex] = false;
-                        cmdBuf.SetColorWriteEnabled(res.Pass.ColorWrites);
-                        res.Pass.ColorWrites[ColorWriteIndex] = value;
-                    }
+                    // If pick-through is enabled for this stream type and variant, disable color writes to the entity ID buffer to allow picking through this object.
+                    var value = res.Pass.ColorWrites[ColorWriteIndex];
+                    res.Pass.ColorWrites[ColorWriteIndex] = false;
+                    cmdBuf.SetColorWriteEnabled(res.Pass.ColorWrites);
+                    res.Pass.ColorWrites[ColorWriteIndex] = value;
                 }
             }
             cmdBuf.PushConstants(
@@ -148,19 +142,13 @@ public static class MeshRenderHelper
                     continue;
                 }
                 customMaterialBufferAddress = mat.CustomBufferAddress;
-                if (stream.StreamType == DrawStreamType.Transparent)
+                if (res.RenderContext.PickingConfig.IsPickThroughEnabled(stream.StreamType, stream.Variants))
                 {
-                    if (stream.Variants.HasAllFlags(DrawStreamVariants.Hitable))
-                    {
-                        cmdBuf.SetColorWriteEnabled(res.Pass.ColorWrites);
-                    }
-                    else
-                    { // Disable entity ID output for transparent non-hitable meshes to avoid writing to the ID buffer, which is used for picking and should not be affected by transparent objects.
-                        var value = res.Pass.ColorWrites[ColorWriteIndex];
-                        res.Pass.ColorWrites[ColorWriteIndex] = false;
-                        cmdBuf.SetColorWriteEnabled(res.Pass.ColorWrites);
-                        res.Pass.ColorWrites[ColorWriteIndex] = value;
-                    }
+                    // If pick-through is enabled for this stream type and variant, disable color writes to the entity ID buffer to allow picking through this object.
+                    var value = res.Pass.ColorWrites[ColorWriteIndex];
+                    res.Pass.ColorWrites[ColorWriteIndex] = false;
+                    cmdBuf.SetColorWriteEnabled(res.Pass.ColorWrites);
+                    res.Pass.ColorWrites[ColorWriteIndex] = value;
                 }
             }
 

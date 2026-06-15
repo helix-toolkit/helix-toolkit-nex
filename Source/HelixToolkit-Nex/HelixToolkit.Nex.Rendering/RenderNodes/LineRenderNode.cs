@@ -25,7 +25,7 @@ public sealed class LineRenderNode : RenderNode
         {
             return false;
         }
-        return context.Data.LineDrawStreams.GetStreams(DrawStreamType.PointLine).HasAny();
+        return context.Data.LineDrawStreams.GetStreams(DrawStreamType.Line).HasAny();
     }
 
     protected override void OnSetupRender(in RenderResources res)
@@ -48,7 +48,7 @@ public sealed class LineRenderNode : RenderNode
         res.Deps.PushBuffer(res.Buffers[SystemBufferNames.BufferForwardPlusConstants]);
         res.Pass.DepthState = DepthState.DefaultReversedZ;
 
-        var streams = res.RenderContext.Data!.LineDrawStreams.GetStreams(DrawStreamType.PointLine);
+        var streams = res.RenderContext.Data!.LineDrawStreams.GetStreams(DrawStreamType.Line);
         foreach (var stream in streams)
         {
             if (stream.Count == 0)
@@ -61,7 +61,7 @@ public sealed class LineRenderNode : RenderNode
 
     protected override void OnRender(in RenderResources res)
     {
-        var streams = res.RenderContext.Data!.LineDrawStreams.GetStreams(DrawStreamType.PointLine);
+        var streams = res.RenderContext.Data!.LineDrawStreams.GetStreams(DrawStreamType.Line);
         res.RenderContext.Statistics.DrawCalls += LineRenderHelper.Render(
             in res,
             res.Buffers[SystemBufferNames.BufferForwardPlusConstants]
