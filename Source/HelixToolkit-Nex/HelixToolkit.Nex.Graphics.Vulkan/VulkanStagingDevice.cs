@@ -123,7 +123,9 @@ internal sealed class VulkanStagingDevice : IDisposable
                     barrier.dstAccessMask |= VK.VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
                 }
                 if (
-                    buffer.VkUsageFlags.HasAllFlags(VK.VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR)
+                    buffer.VkUsageFlags.HasAllFlags(
+                        VK.VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR
+                    )
                 )
                 {
                     dstMask |= VK.VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
@@ -142,7 +144,7 @@ internal sealed class VulkanStagingDevice : IDisposable
                     null
                 );
                 desc.Handle = _ctx.Immediate!.Submit(cmdBuf);
-                _regions.Add(desc);
+                InsertRegion(desc);
 
                 size -= chunkSize;
                 data = (nint)((uint8_t*)data + chunkSize);
@@ -181,7 +183,6 @@ internal sealed class VulkanStagingDevice : IDisposable
                 "Uploading mip-levels with an image region that is smaller than the base mip level is not supported"
             );
         }
-
 
         // find the storage size for all mip-levels being uploaded
         uint32_t layerStorageSize = 0;
@@ -393,7 +394,7 @@ internal sealed class VulkanStagingDevice : IDisposable
         image.ImageLayout = VK.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
         desc.Handle = _ctx.Immediate!.Submit(cmdBuf);
-        _regions.Add(desc);
+        InsertRegion(desc);
         return ResultCode.Ok;
     }
 
@@ -411,103 +412,135 @@ internal sealed class VulkanStagingDevice : IDisposable
             (offset.x == 0) && (offset.y == 0) && (offset.z == 0),
             "Can upload only full-size 3D images"
         );
-        uint32_t storageSize =
+        uint64_t sliceBytes64 =
             extent.width * extent.height * extent.depth * format.GetBytesPerPixel();
 
-        EnsureStagingBufferSize(storageSize, out _);
+        HxDebug.Assert(
+            sliceBytes64 <= uint.MaxValue,
+            "Staging buffer does not support images larger than 4GB in size"
+        );
+
+        uint32_t sliceBytes = (uint32_t)sliceBytes64;
+        uint32_t maxSlicesPerBatch = Math.Max(
+            1u,
+            (uint32_t)(_ctx.Config.MaxStagingBufferSize / sliceBytes)
+        );
+        EnsureStagingBufferSize(sliceBytes * maxSlicesPerBatch, out _);
 
         HxDebug.Assert(
-            storageSize <= _stagingBufferSize,
+            sliceBytes <= _stagingBufferSize,
             "No support for copying image in multiple smaller chunk sizes"
         );
 
-        // get next staging buffer free offset
-        MemoryRegionDesc desc = GetNextFreeOffset(storageSize, out _);
+        uint32_t remainingSlices = extent.depth;
+        uint32_t currentZ = (uint)offset.z;
 
-        // No support for copying image in multiple smaller chunk sizes.
-        // If we get smaller buffer size than storageSize, we will wait for GPU idle and get a bigger chunk.
-        if (desc.Size < storageSize)
+        var stagingBuffer = _ctx.BuffersPool.Get(_stagingBuffer.Handle);
+
+        while (remainingSlices > 0)
         {
-            WaitAndReset();
-            desc = GetNextFreeOffset(storageSize, out _);
-        }
-
-        HxDebug.Assert(desc.Size >= storageSize);
-
-        var stagingBuffer = _ctx.BuffersPool.Get(this._stagingBuffer.Handle);
-
-        HxDebug.Assert(stagingBuffer, "Staging buffer is not valid, cannot upload image data.");
-        if (!stagingBuffer)
-        {
-            _logger.LogError("Staging buffer is not valid, cannot upload image data.");
-            return ResultCode.InvalidState;
-        }
-
-        // 1. Copy the pixel data into the host visible staging buffer
-        stagingBuffer!.BufferSubData(desc.Offset, storageSize, data);
-
-        var cmdBuf = _ctx.Immediate!.Acquire();
-        // 1. Transition initial image layout into TRANSFER_DST_OPTIMAL
-        cmdBuf.CmdBuffer.ImageMemoryBarrier2(
-            image.Image,
-            new StageAccess2
+            uint32_t batchSlices = Math.Min(remainingSlices, maxSlicesPerBatch);
+            uint batchBytes = sliceBytes * batchSlices;
+            MemoryRegionDesc desc = GetNextFreeOffset(batchBytes, out _);
+            if (desc.Size < batchBytes)
             {
-                Stage = VkPipelineStageFlags2.TopOfPipe,
-                Access = VkAccessFlags2.None,
-            },
-            new StageAccess2
-            {
-                Stage = VkPipelineStageFlags2.Transfer,
-                Access = VkAccessFlags2.TransferWrite,
-            },
-            VK.VK_IMAGE_LAYOUT_UNDEFINED,
-            VK.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-            new VkImageSubresourceRange(VK.VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1)
-        );
+                WaitAndReset();
+                desc = GetNextFreeOffset(batchBytes, out _);
+            }
 
-        // 2. Copy the pixel data from the staging buffer into the image
-        VkBufferImageCopy copy = new()
-        {
-            bufferOffset = desc.Offset,
-            bufferRowLength = 0,
-            bufferImageHeight = 0,
-            imageSubresource = new VkImageSubresourceLayers(VK.VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1),
-            imageOffset = offset,
-            imageExtent = extent,
-        };
-        unsafe
-        {
-            VK.vkCmdCopyBufferToImage(
-                cmdBuf.CmdBuffer,
-                stagingBuffer.VkBuffer,
-                image.Image,
-                VK.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                1,
-                &copy
+            HxDebug.Assert(
+                desc.Size >= batchBytes,
+                "Staging buffer is not large enough to hold a batch of image data."
             );
+
+            stagingBuffer!.BufferSubData(desc.Offset, batchBytes, data);
+
+            var cmdBuf = _ctx.Immediate!.Acquire();
+            if (remainingSlices == extent.depth)
+            {
+                // For the first batch, we need to transition the image layout before copying any data
+                cmdBuf.CmdBuffer.ImageMemoryBarrier2(
+                    image.Image,
+                    new StageAccess2
+                    {
+                        Stage = VkPipelineStageFlags2.TopOfPipe,
+                        Access = VkAccessFlags2.None,
+                    },
+                    new StageAccess2
+                    {
+                        Stage = VkPipelineStageFlags2.Transfer,
+                        Access = VkAccessFlags2.TransferWrite,
+                    },
+                    VK.VK_IMAGE_LAYOUT_UNDEFINED,
+                    VK.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                    new VkImageSubresourceRange(VK.VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1)
+                );
+            }
+            unsafe
+            {
+                VkBufferImageCopy2 copy = new()
+                {
+                    bufferOffset = desc.Offset,
+                    bufferRowLength = 0,
+                    bufferImageHeight = 0,
+                    imageSubresource = new VkImageSubresourceLayers(
+                        VK.VK_IMAGE_ASPECT_COLOR_BIT,
+                        0,
+                        0,
+                        1
+                    ),
+                    imageOffset = new VkOffset3D
+                    {
+                        x = offset.x,
+                        y = offset.y,
+                        z = (int32_t)currentZ,
+                    },
+                    imageExtent = new VkExtent3D
+                    {
+                        width = extent.width,
+                        height = extent.height,
+                        depth = batchSlices,
+                    },
+                };
+
+                VkCopyBufferToImageInfo2 copyInfo = new()
+                {
+                    srcBuffer = stagingBuffer!.VkBuffer,
+                    dstImage = image.Image,
+                    dstImageLayout = VK.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                    regionCount = 1,
+                    pRegions = &copy,
+                };
+                VK.vkCmdCopyBufferToImage2(cmdBuf.CmdBuffer, &copyInfo);
+            }
+
+            if (remainingSlices == batchSlices)
+            {
+                cmdBuf.CmdBuffer.ImageMemoryBarrier2(
+                    image.Image,
+                    new StageAccess2
+                    {
+                        Stage = VkPipelineStageFlags2.Transfer,
+                        Access = VkAccessFlags2.TransferWrite,
+                    },
+                    new StageAccess2
+                    {
+                        Stage = VkPipelineStageFlags2.AllCommands,
+                        Access = VkAccessFlags2.MemoryRead | VkAccessFlags2.MemoryWrite,
+                    },
+                    VK.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                    VK.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                    new VkImageSubresourceRange(VK.VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1)
+                );
+            }
+
+            desc.Handle = _ctx.Immediate!.Submit(cmdBuf);
+            InsertRegion(desc);
+            data += (nint)batchBytes;
+            currentZ += batchSlices;
+            remainingSlices -= batchSlices;
         }
-        // 3. Transition TRANSFER_DST_OPTIMAL into SHADER_READ_ONLY_OPTIMAL
-        cmdBuf.CmdBuffer.ImageMemoryBarrier2(
-            image.Image,
-            new StageAccess2
-            {
-                Stage = VkPipelineStageFlags2.Transfer,
-                Access = VkAccessFlags2.TransferWrite,
-            },
-            new StageAccess2
-            {
-                Stage = VkPipelineStageFlags2.AllCommands,
-                Access = VkAccessFlags2.MemoryRead | VkAccessFlags2.MemoryWrite,
-            },
-            VK.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-            VK.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-            new VkImageSubresourceRange(VK.VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1)
-        );
-
         image.ImageLayout = VK.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
-        desc.Handle = _ctx.Immediate!.Submit(cmdBuf);
-        _regions.Add(desc);
         return ResultCode.Ok;
     }
 
@@ -570,7 +603,7 @@ internal sealed class VulkanStagingDevice : IDisposable
         }
 
         desc.Handle = _ctx.Immediate!.Submit(cmdBuf);
-        _regions.Add(desc);
+        InsertRegion(desc);
 
         WaitAndReset();
 
@@ -690,7 +723,7 @@ internal sealed class VulkanStagingDevice : IDisposable
         }
 
         desc.Handle = _ctx.Immediate!.Submit(cmdBuf);
-        _regions.Add(desc);
+        InsertRegion(desc);
 
         WaitAndReset();
 
@@ -738,14 +771,37 @@ internal sealed class VulkanStagingDevice : IDisposable
 
         HxDebug.Assert(_regions.Count > 0);
 
+        if (_regions.Count > 1)
+        {
+            size_t write = 0;
+            bool curReady = _ctx.Immediate!.IsReady(_regions[0].Handle);
+            for (size_t read = 1; read < _regions.Count; ++read)
+            {
+                ref var cur = ref _regions.At((int)write);
+                ref var next = ref _regions.At((int)read);
+                bool nextReady = _ctx.Immediate!.IsReady(next.Handle);
+                if (curReady && nextReady && cur.Offset + cur.Size == next.Offset)
+                {
+                    cur.Size += next.Size;
+                    cur.Handle = new SubmitHandle(); // the merged region is free, so `curReady` stays true
+                }
+                else
+                {
+                    _regions[(int)++write] = next;
+                    curReady = nextReady;
+                }
+            }
+            _regions.Resize((int)write + 1);
+        }
+
         // if we can't find an available region that is big enough to store requestedAlignedSize, return whatever we could find, which will be
         // stored in bestNextIt
-        int bestNextRegion = _regions.Count;
+        int bestNextRegion = _regions.Count - 1;
         uint32_t unusedSize = 0;
         uint32_t unusedOffset = 0;
         for (int i = 0; i < _regions.Count; ++i)
         {
-            ref var region = ref _regions.GetInternalArray()[i];
+            ref var region = ref _regions.At(i);
             if (_ctx.Immediate!.IsReady(region.Handle))
             {
                 // This region is free, but is it big enough?
@@ -761,9 +817,13 @@ internal sealed class VulkanStagingDevice : IDisposable
                         _regions.RemoveAt(i);
                         if (unusedSize > 0)
                         {
-                            _regions.Insert(
-                                0,
-                                new MemoryRegionDesc { Offset = unusedOffset, Size = unusedSize }
+                            InsertRegion(
+                                new MemoryRegionDesc
+                                {
+                                    Offset = unusedOffset,
+                                    Size = unusedSize,
+                                    Handle = new SubmitHandle(),
+                                }
                             );
                         }
                     });
@@ -772,10 +832,14 @@ internal sealed class VulkanStagingDevice : IDisposable
                     {
                         Offset = region.Offset,
                         Size = requestedAlignedSize,
+                        Handle = new SubmitHandle(),
                     };
                 }
                 // cache the largest available region that isn't as big as the one we're looking for
-                if (region.Size > _regions[i].Size)
+                if (
+                    bestNextRegion == _regions.Count - 1
+                    || region.Size > _regions[bestNextRegion].Size
+                )
                 {
                     bestNextRegion = i;
                 }
@@ -814,11 +878,24 @@ internal sealed class VulkanStagingDevice : IDisposable
         if (unusedSize > 0)
         {
             unusedOffset = _stagingBufferSize - unusedSize;
-            _regions.Insert(0, new MemoryRegionDesc { Offset = unusedOffset, Size = unusedSize });
+            _regions.Insert(
+                0,
+                new MemoryRegionDesc
+                {
+                    Offset = unusedOffset,
+                    Size = unusedSize,
+                    Handle = new SubmitHandle(),
+                }
+            );
         }
 
         // ...and then return the smallest free region that can hold the requested size
-        return new MemoryRegionDesc { Offset = 0, Size = _stagingBufferSize - unusedSize };
+        return new MemoryRegionDesc
+        {
+            Offset = 0,
+            Size = _stagingBufferSize - unusedSize,
+            Handle = new SubmitHandle(),
+        };
     }
 
     public void EnsureStagingBufferSize(uint32_t sizeNeeded, out bool bufferChanged)
@@ -892,6 +969,22 @@ internal sealed class VulkanStagingDevice : IDisposable
 
         _regions.Clear();
         _regions.Add(new MemoryRegionDesc(0, _stagingBufferSize));
+    }
+
+    private void InsertRegion(MemoryRegionDesc region)
+    {
+        // keep regions_ sorted by offset so adjacent free regions can be merged
+        for (int i = 0; i < _regions.Count; i++)
+        {
+            ref var r = ref _regions.At(i);
+            if (r.Offset < region.Offset)
+            {
+                continue;
+            }
+            _regions.Insert(i, region);
+            return;
+        }
+        _regions.Add(region);
     }
 
     #region Dispose

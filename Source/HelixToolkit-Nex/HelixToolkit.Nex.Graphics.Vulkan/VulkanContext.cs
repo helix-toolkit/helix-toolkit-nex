@@ -77,6 +77,11 @@ public sealed class VulkanContextConfig()
     /// Force to use integrated GPU if available. This is useful for testing and debugging on systems with both integrated and discrete GPUs, but should be used with caution as it may lead to suboptimal performance. Default false.
     /// </summary>
     public bool ForceIntegratedGPU = false;
+
+    /// <summary>
+    /// Maximum staging buffer size. Default is 128MB.
+    /// </summary>
+    public uint MaxStagingBufferSize = 128u * 1024u * 1024u;
 };
 
 internal sealed partial class VulkanContext
