@@ -70,7 +70,6 @@ internal sealed class PickingDemo : IDisposable
 
     // --- Picking mode ---
     private bool _useAsyncPicking = false;
-    private PickingReadbackContext? _readbackCtx;
 
     // --- GUI state ---
     private string _lastPickInfo = "No pick yet";
@@ -122,9 +121,6 @@ internal sealed class PickingDemo : IDisposable
         _renderContext.PointerRing.InnerDistThreshold = 0.4f;
         _worldDataProvider = _engine.CreateWorldDataProvider();
         _worldDataProvider.Initialize();
-
-        // Async picking readback context (1×1 host-visible staging texture)
-        _readbackCtx = new PickingReadbackContext(_context);
 
         // ImGui
         _imGuiRenderer = new ImGuiRenderer(_context, new ImGuiConfig());
@@ -293,67 +289,28 @@ internal sealed class PickingDemo : IDisposable
         _renderContext.Update(_viewportSize, _camera);
         _renderContext.SetPointer(_pointerLocation);
 
-        // --- Poll for async pick result from the previous frame ---
-        if (_useAsyncPicking && _readbackCtx!.HasPending)
-        {
-            if (_readbackCtx.TryPickAsync(_renderContext, out var asyncResult))
-            {
-                ApplyPickResult(asyncResult, true);
-            }
-        }
-
         // --- ImGui frame ---
         _imGuiRenderer.BeginFrame(new Vector2(width, height));
         DrawGui(width, height, _renderContext.FinalOutputTexture);
         _imGuiRenderer.EndFrame();
-
+        _engine.BeginFrame();
         // --- 3D scene (offscreen) ---
         var cmdBuf = _engine.RenderOffscreen(
             _renderContext,
             _worldDataProvider!,
             ViewportTextureName
         );
-
-        // --- Schedule async pick copy before submit ---
-        bool scheduledAsyncPick = false;
-        int scheduledX = 0,
-            scheduledY = 0;
-        if (_useAsyncPicking && _pendingPickX.HasValue && _pendingPickY.HasValue)
-        {
-            scheduledX = _pendingPickX.Value;
-            scheduledY = _pendingPickY.Value;
-            _pendingPickX = null;
-            _pendingPickY = null;
-            scheduledAsyncPick = cmdBuf.SchedulePickReadback(
-                _renderContext,
-                _readbackCtx!,
-                scheduledX,
-                scheduledY
-            );
-        }
-
         // --- ImGui composite pass ---
         var swapchain = _context.GetCurrentSwapchainTexture();
         _imGuiFramebuffer.Colors[0].Texture = swapchain;
         _imGuiDeps.PushTexture(_renderContext.FinalOutputTexture);
         _imGuiRenderer.Render(cmdBuf, _imGuiPass, _imGuiFramebuffer, _imGuiDeps);
 
-        // Submit — bypass Engine.Submit when we need the SubmitHandle for async picking
-        if (scheduledAsyncPick)
-        {
-            var handle = _context.Submit(cmdBuf, swapchain);
-            _readbackCtx!.SetPendingSubmit(handle, scheduledX, scheduledY);
-        }
-        else
-        {
-            _engine.Submit(cmdBuf, swapchain);
-        }
+        _engine.Submit(cmdBuf, swapchain);
         _imGuiDeps.PopTexture();
     }
 
     // Coordinates of a click that should be scheduled for async readback on the next render
-    private int? _pendingPickX;
-    private int? _pendingPickY;
     private uint _pickedEntityId;
     private uint _pickedInstanceId;
     private uint _pickedPrimitiveId;
@@ -362,9 +319,11 @@ internal sealed class PickingDemo : IDisposable
     {
         if (_useAsyncPicking)
         {
-            // Schedule the GPU copy to happen during the next Render call
-            _pendingPickX = x;
-            _pendingPickY = y;
+            _engine?.CreatePickingRequest(
+                _renderContext!,
+                new Vector2(x, y),
+                HandleAsyncPickResult
+            );
             return;
         }
         // --- Synchronous path ---
@@ -373,6 +332,16 @@ internal sealed class PickingDemo : IDisposable
             return;
         }
         ApplyPickResult(result, false);
+    }
+
+    private void HandleAsyncPickResult(RenderContext context, Vector2 coord, ulong id)
+    {
+        if (!context.TryGetPickFromId(coord, id, out var result))
+        {
+            _logger.LogWarning("Failed to get async pick result for ID {Id}", id);
+            return;
+        }
+        ApplyPickResult(result, true);
     }
 
     /// <summary>
@@ -559,13 +528,6 @@ internal sealed class PickingDemo : IDisposable
 
             Gui.TextColored(new Vector4(0.4f, 1f, 0.4f, 1f), "Last Pick");
             Gui.TextWrapped(_lastPickInfo);
-            Gui.Spacing();
-
-            if (_useAsyncPicking && _readbackCtx!.HasPending)
-            {
-                Gui.Spacing();
-                Gui.TextColored(new Vector4(1f, 0.6f, 0.1f, 1f), "Readback in flight...");
-            }
 
             Gui.Spacing();
             Gui.Separator();
@@ -727,7 +689,6 @@ internal sealed class PickingDemo : IDisposable
         if (_disposed)
             return;
         _disposed = true;
-        _readbackCtx?.Dispose();
         _imGuiRenderer?.Dispose();
         _worldDataProvider?.Dispose();
         _renderContext?.Teardown();

@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 
 namespace HelixToolkit.Nex.Scene;
@@ -28,34 +29,16 @@ public class Node : IDisposable
     // The inner dictionary is accessed exclusively on the owning world's thread,
     // so it needs no synchronization at all.
 
-    private static readonly Dictionary<byte, Dictionary<int, Node>> _worldRegistries = [];
-    private static readonly object _registryLock = new();
+    private static readonly ConcurrentDictionary<byte, ConcurrentDictionary<int, Node>> _worldRegistries = [];
 
-    private static Dictionary<int, Node> GetOrCreateWorldRegistry(byte worldId)
+    private static ConcurrentDictionary<int, Node> GetOrCreateWorldRegistry(byte worldId)
     {
-        // Fast path — world registry already exists (no lock needed for read
-        // because world creation itself is serialized by World.CreateWorld).
-        if (_worldRegistries.TryGetValue(worldId, out var registry))
-        {
-            return registry;
-        }
-        lock (_registryLock)
-        {
-            if (!_worldRegistries.TryGetValue(worldId, out registry))
-            {
-                registry = new Dictionary<int, Node>();
-                _worldRegistries[worldId] = registry;
-            }
-            return registry;
-        }
+        return _worldRegistries.GetOrAdd(worldId, _ => new ConcurrentDictionary<int, Node>());
     }
 
     private static void RemoveWorldRegistry(byte worldId)
     {
-        lock (_registryLock)
-        {
-            _worldRegistries.Remove(worldId);
-        }
+        _worldRegistries.TryRemove(worldId, out _);
     }
 
     // Called only from within this world's thread — no lock required.
@@ -67,6 +50,20 @@ public class Node : IDisposable
             return node;
         }
         return null;
+    }
+
+    /// <summary>
+    /// Finds the Node associated with the given Entity, if any. Returns null if the entity is not valid or does not have an associated Node.
+    /// </summary>
+    /// <param name="entity">The entity to find the associated Node for.</param>
+    /// <returns>The Node associated with the given Entity, or null if not found.</returns>
+    public static Node? FindNode(Entity entity)
+    {
+        if (!entity.Valid)
+        {
+            return null;
+        }
+        return FindNode(entity.World!.Id, entity.Id);
     }
 
     // -------------------------------------------------------------------------
@@ -260,7 +257,8 @@ public class Node : IDisposable
 
         // Register in the per-world lookup. GetOrCreateWorldRegistry is only
         // called once per world (subsequent calls hit the fast non-locking path).
-        GetOrCreateWorldRegistry(world.Id)[Entity.Id] = this;
+        var ret = GetOrCreateWorldRegistry(world.Id).TryAdd(Entity.Id, this);
+        Debug.Assert(ret, "Entity ID collision in world registry — this should never happen");
 
         // Clean up the per-world registry when the world is disposed.
         world.Disposing += OnWorldDisposing;
@@ -330,7 +328,13 @@ public class Node : IDisposable
         Entity.Set(transform);
     }
 
-    public void NotifyComponentChanged<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.NonPublicFields)] T>()
+    public void NotifyComponentChanged<
+        [DynamicallyAccessedMembers(
+            DynamicallyAccessedMemberTypes.PublicFields
+                | DynamicallyAccessedMemberTypes.NonPublicFields
+        )]
+    T
+    >()
     {
         Entity.NotifyComponentChanged<T>();
     }
@@ -404,7 +408,7 @@ public class Node : IDisposable
                 // is disposed, so individual removes are skipped in that case.
                 if (_worldRegistries.TryGetValue(World.Id, out var registry))
                 {
-                    registry.Remove(Entity.Id);
+                    registry.TryRemove(Entity.Id, out _);
                 }
 
                 Entity.Dispose();

@@ -360,6 +360,8 @@ internal sealed class BillboardDemo : IDisposable
         // Render context setup
         _renderContext!.Update(_viewportSize, _camera);
 
+        _engine.BeginFrame();
+
         // 3D render (offscreen)
         var cmdBuf = _engine.RenderOffscreen(
             _renderContext,

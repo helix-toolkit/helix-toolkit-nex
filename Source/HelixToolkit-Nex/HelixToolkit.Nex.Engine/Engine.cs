@@ -71,7 +71,13 @@ public class Engine : Initializable
     private readonly SubmitHandle[] _submitHandles = new SubmitHandle[
         (int)GraphicsSettings.MaxFrameInFlight
     ];
-    private int _frameIndex = 0;
+    private readonly PendingPicking[] _pendingPickings = new PendingPicking[
+        GraphicsSettings.MaxFrameInFlight
+    ];
+    private uint _frameIndex = 0;
+    private bool _frameBegun = false;
+
+    public uint FrameIndex => _frameIndex;
 
     /// <summary>
     /// Gets the GPU graphics context.
@@ -352,13 +358,8 @@ public class Engine : Initializable
         _bus.ProcessEvents();
     }
 
-    /// <summary>
-    ///
-    /// </summary>
-    /// <param name="context"></param>
-    public void EnsureResources(RenderContext context)
+    private void EnsureResources(RenderContext context)
     {
-        ProcessEvents();
         RenderGraph.EnsureResources(context);
     }
 
@@ -381,6 +382,7 @@ public class Engine : Initializable
         EnsureResources(renderContext);
         renderContext.FinalOutputTexture = Context.GetCurrentSwapchainTexture();
         var cmdBuf = Renderer.Render(renderContext, RenderGraph);
+        renderContext.PickingContext.SendCommand(cmdBuf, renderContext);
         Submit(cmdBuf, renderContext.FinalOutputTexture);
     }
 
@@ -410,6 +412,7 @@ public class Engine : Initializable
         renderContext.Data = dataProvider;
         renderContext.FinalOutputTexture = target;
         var cmd = Renderer.Render(renderContext, RenderGraph);
+        renderContext.PickingContext.SendCommand(cmd, renderContext);
         return cmd;
     }
 
@@ -429,7 +432,6 @@ public class Engine : Initializable
     )
     {
         EnsureResources(renderContext);
-        renderContext.Data = dataProvider;
         if (!renderContext.ResourceSet.TryGetTexture(targetName, out var handle))
         {
             _logger.LogError(
@@ -440,9 +442,43 @@ public class Engine : Initializable
                 $"RenderOffscreen target texture '{targetName}' was not found."
             );
         }
-        renderContext.FinalOutputTexture = handle;
-        var cmd = Renderer.Render(renderContext, RenderGraph);
-        return cmd;
+        return RenderOffscreen(renderContext, dataProvider, handle);
+    }
+
+    /// <summary>
+    /// Prepares the engine for a new frame. This should be called once per frame before any rendering
+    /// </summary>
+    /// <returns>The current frame index, which can be used for frame-synced operations like picking.</returns>
+    public uint BeginFrame()
+    {
+        ++_frameIndex;
+        var frameIndex = _frameIndex % GraphicsSettings.MaxFrameInFlight;
+        var currHandle = _submitHandles[frameIndex];
+        if (!currHandle.Empty)
+        {
+            Context.Wait(currHandle);
+        }
+        if (_pendingPickings[frameIndex].IsValid)
+        {
+            var pending = _pendingPickings[frameIndex];
+            var pickingResult = pending.Context!.PickingContext.ReadResult(pending.Id);
+            _pendingPickings[frameIndex] = PendingPicking.Empty;
+            if (pickingResult != 0)
+            {
+                pending.Callback?.Invoke(
+                    new PickingResponse
+                    {
+                        Context = pending.Context!,
+                        Coord = pending.Coord,
+                        Data = pickingResult,
+                        RequestId = pending.Id,
+                    }
+                );
+            }
+        }
+        ProcessEvents();
+        _frameBegun = true;
+        return frameIndex;
     }
 
     /// <summary>
@@ -469,13 +505,15 @@ public class Engine : Initializable
         KeyedMutexSyncInfo syncInfo
     )
     {
-        var currHandle = _submitHandles[_frameIndex];
-        if (!currHandle.Empty)
+        if (!_frameBegun)
         {
-            Context.Wait(currHandle);
+            throw new InvalidOperationException(
+                "Submit called before BeginFrame. Please call BeginFrame at the start of each frame."
+            );
         }
-        _submitHandles[_frameIndex] = Context.Submit(commandBuffer, present, syncInfo);
-        _frameIndex = (_frameIndex + 1) % (int)GraphicsSettings.MaxFrameInFlight;
+        var frameIndex = _frameIndex % GraphicsSettings.MaxFrameInFlight;
+        _submitHandles[frameIndex] = Context.Submit(commandBuffer, present, syncInfo);
+        _frameBegun = false;
     }
 
     /// <summary>
@@ -493,5 +531,40 @@ public class Engine : Initializable
             }
             _submitHandles[i] = default;
         }
+    }
+
+    public uint CreatePickingRequest(
+        RenderContext context,
+        Vector2 coord,
+        Action<PickingResponse> responseCallback
+    )
+    {
+        var frameId = _frameIndex;
+        var submitIndex = frameId % _pendingPickings.Length;
+        var requestId = context.SendPicking(coord);
+        _pendingPickings[submitIndex] = new PendingPicking
+        {
+            Context = context,
+            Coord = coord,
+            Id = requestId,
+            Callback = responseCallback,
+        };
+        return requestId;
+    }
+
+    private readonly struct PendingPicking
+    {
+        public RenderContext? Context { get; init; }
+        public Vector2 Coord { get; init; }
+        public uint Id { get; init; }
+        public Action<PickingResponse>? Callback { get; init; }
+        public bool IsValid => Context is not null && Callback is not null;
+        public static readonly PendingPicking Empty = new()
+        {
+            Id = uint.MaxValue,
+            Coord = default,
+            Context = null,
+            Callback = null,
+        };
     }
 }
