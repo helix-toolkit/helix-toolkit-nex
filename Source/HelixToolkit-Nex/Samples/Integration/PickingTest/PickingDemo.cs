@@ -334,11 +334,11 @@ internal sealed class PickingDemo : IDisposable
         ApplyPickResult(result, false);
     }
 
-    private void HandleAsyncPickResult(RenderContext context, Vector2 coord, ulong id)
+    private void HandleAsyncPickResult(PickingResponse response)
     {
-        if (!context.TryGetPickFromId(coord, id, out var result))
+        if (!response.TryGetPickingResult(out var result))
         {
-            _logger.LogWarning("Failed to get async pick result for ID {Id}", id);
+            _logger.LogWarning("Failed to get async pick result");
             return;
         }
         ApplyPickResult(result, true);
