@@ -18,14 +18,12 @@ namespace HelixToolkit.Nex.Engine.Data;
 /// </summary>
 internal sealed class MeshDrawStream : DrawStreamBase<MeshDraw, MeshDrawInfo>
 {
-    private const int InitialCapacity = 4;
-
     private static readonly ILogger _logger = LogManager.Create<MeshDrawStream>();
 
     public override uint Stride => MeshDraw.SizeInBytes;
 
     public MeshDrawStream(IContext context, World world, DrawStreamType type, DrawStreamName name)
-        : base(context, world, type, name, _logger, InitialCapacity) { }
+        : base(context, world, type, name, _logger) { }
 
     protected override MeshDraw CreateDrawInfo(Entity entity)
     {

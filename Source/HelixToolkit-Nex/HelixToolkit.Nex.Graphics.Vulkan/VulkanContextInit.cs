@@ -126,8 +126,16 @@ namespace HelixToolkit.Nex.Graphics.Vulkan
                 if (extName is not null && _supportedExtensions.Contains(extName))
                 {
                     _deviceExtensions.Add(VK.VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME);
-                    HasExtDeviceFault = true;
+                    HasDiagnosticCheckPoints = true;
                     CheckpointType = CheckpointType.Nvidia;
+                }
+                string extDeviceFault = new VkUtf8ReadOnlyString(
+                    VK.VK_EXT_DEVICE_FAULT_EXTENSION_NAME
+                ).ToString()!;
+                if (_supportedExtensions.Contains(extDeviceFault))
+                {
+                    _deviceExtensions.Add(VK.VK_EXT_DEVICE_FAULT_EXTENSION_NAME);
+                    HasExtDeviceFault = true;
                 }
             }
 

@@ -11,7 +11,6 @@ public readonly record struct DrawRange(uint Start, uint Count)
     public static readonly DrawRange Zero = new(0, 0);
 }
 
-
 [StructLayout(LayoutKind.Sequential, Pack = 4)]
 public readonly struct CameraParams(
     Matrix4x4 view,
@@ -92,6 +91,32 @@ public sealed class RenderParams
     public static bool LogFPSInDebug { get; set; } = false;
 }
 
+public sealed class PickingConfig
+{
+    public bool EnableOpaqueMeshPickThrough = false;
+    public bool EnableTransparentMeshPickThrough = false;
+    public bool EnablePointCloudPickThrough = false;
+    public bool EnableLinePickThrough = false;
+    public bool EnableBillboardPickThrough = false;
+
+    public bool IsPickThroughEnabled(DrawStreamType type, DrawStreamVariants variant)
+    {
+        if (variant.HasAllFlags(DrawStreamVariants.Hitable))
+        {
+            return false;
+        }
+        return type switch
+        {
+            DrawStreamType.Opaque => EnableOpaqueMeshPickThrough,
+            DrawStreamType.Transparent => EnableTransparentMeshPickThrough,
+            DrawStreamType.Line => EnableLinePickThrough,
+            DrawStreamType.Point => EnablePointCloudPickThrough,
+            DrawStreamType.Billboard => EnableBillboardPickThrough,
+            _ => false,
+        };
+    }
+}
+
 public sealed class RenderContext(IServiceProvider services) : Initializable
 {
     private static readonly ILogger _logger = LogManager.Create<RenderContext>();
@@ -130,10 +155,18 @@ public sealed class RenderContext(IServiceProvider services) : Initializable
     /// <see cref="RenderContext"/> and disposed when the context is torn down.
     /// </summary>
     public RenderGraphResourceSet ResourceSet { get; } = new();
+
     /// <summary>
     /// Render parameters including background color and other settings.
     /// </summary>
     public RenderParams RenderParams { get; } = new();
+
+    /// <summary>
+    /// Picking configuration that controls the behavior of the picking system,
+    /// such as whether to allow picking through certain types of geometry (opaque meshes, transparent meshes, point clouds, lines, billboards, etc.).
+    /// Adjust these settings to enable or disable pick-through behavior for different geometry types in the scene.
+    /// </summary>
+    public PickingConfig PickingConfig { get; } = new();
 
     private Size _windowSize = DefaultWindowSize;
 
@@ -182,6 +215,7 @@ public sealed class RenderContext(IServiceProvider services) : Initializable
     public float DpiScale { set; get; } = 1;
 
     private CameraParams _cameraParams = CameraParams.Identity;
+
     /// <summary>
     /// Gets the current camera parameters applied to the view.
     /// </summary>
@@ -198,6 +232,7 @@ public sealed class RenderContext(IServiceProvider services) : Initializable
         }
         get => _cameraParams;
     }
+
     /// <summary>
     /// Gets the bounding frustum that defines the visible region of the camera or view.
     /// </summary>
@@ -205,11 +240,19 @@ public sealed class RenderContext(IServiceProvider services) : Initializable
     /// graphics applications. The value is updated automatically based on the camera's position and
     /// orientation.</remarks>
     public BoundingFrustum CameraFrustum { get; private set; }
+
     /// <summary>
     /// Gets the pointer ring used to provide recent pointer as ray in world space in shader.
     /// </summary>
     public PointerRing PointerRing = new()
-    { Enabled = 0, Color = Color.Yellow.ToColor3(), ColorMix = 0.8f, OuterDistThreshold = 1f, InnerDistThreshold = 0.8f };
+    {
+        Enabled = 0,
+        Color = Color.Yellow.ToColor3(),
+        ColorMix = 0.8f,
+        OuterDistThreshold = 1f,
+        InnerDistThreshold = 0.8f,
+    };
+
     /// <summary>
     /// Current mouse pointer position in screen space (pixels), with (0,0) at the top-left corner of the window.
     /// </summary>
@@ -235,7 +278,8 @@ public sealed class RenderContext(IServiceProvider services) : Initializable
     /// Gets the current Intermidiate Color Buffer texture handle, which is expected to be in R16G16B16A16_Float format.
     /// This texture is used for rendering the scene with high dynamic range (HDR) color precision.
     /// </summary>
-    public TextureHandle TextureColorF16Current => ResourceSet?.Textures[SystemBufferNames.TextureColorF16Target] ?? TextureHandle.Null;
+    public TextureHandle TextureColorF16Current =>
+        ResourceSet?.Textures[SystemBufferNames.TextureColorF16Target] ?? TextureHandle.Null;
 
     /// <summary>
     /// Initiates the rendering process for a new frame.
@@ -296,7 +340,12 @@ public sealed class RenderContext(IServiceProvider services) : Initializable
     public void SetPointer(float x, float y)
     {
         Pointer = new Vector2(x, y);
-        if (Pointer.X < 0 || Pointer.Y < 0 || Pointer.X > WindowSize.Width || Pointer.Y > WindowSize.Height)
+        if (
+            Pointer.X < 0
+            || Pointer.Y < 0
+            || Pointer.X > WindowSize.Width
+            || Pointer.Y > WindowSize.Height
+        )
         {
             PointerRing.RayDirection = Vector3.Zero;
             PointerRing.RayOrigin = Vector3.Zero;
@@ -347,11 +396,15 @@ public sealed class RenderContext(IServiceProvider services) : Initializable
         }
         if (temp == ResourceSet.Textures[SystemBufferNames.TextureColorF16A])
         {
-            ResourceSet.Textures[SystemBufferNames.TextureColorF16Target] = ResourceSet.Textures[SystemBufferNames.TextureColorF16B];
+            ResourceSet.Textures[SystemBufferNames.TextureColorF16Target] = ResourceSet.Textures[
+                SystemBufferNames.TextureColorF16B
+            ];
         }
         else
         {
-            ResourceSet.Textures[SystemBufferNames.TextureColorF16Target] = ResourceSet.Textures[SystemBufferNames.TextureColorF16A];
+            ResourceSet.Textures[SystemBufferNames.TextureColorF16Target] = ResourceSet.Textures[
+                SystemBufferNames.TextureColorF16A
+            ];
         }
     }
 
@@ -369,4 +422,3 @@ public sealed class RenderContext(IServiceProvider services) : Initializable
         base.Dispose(disposing);
     }
 }
-

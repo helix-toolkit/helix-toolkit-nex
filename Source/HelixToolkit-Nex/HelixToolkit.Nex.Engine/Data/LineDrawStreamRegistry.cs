@@ -21,7 +21,7 @@ internal sealed class LineDrawStreamRegistry(IContext context, World world)
 
     public IDrawStream<LineDraw>? GetStream(DrawStreamType type, DrawStreamName name)
     {
-        if (type != DrawStreamType.PointLine)
+        if (type != DrawStreamType.Line)
         {
             throw new ArgumentException(
                 $"Invalid stream type {type} for line draw stream registry."
@@ -40,7 +40,7 @@ internal sealed class LineDrawStreamRegistry(IContext context, World world)
         DrawStreamVariants category
     )
     {
-        if (type != DrawStreamType.PointLine)
+        if (type != DrawStreamType.Line)
         {
             throw new ArgumentException(
                 $"Invalid stream type {type} for line draw stream registry."
@@ -70,7 +70,7 @@ internal sealed class LineDrawStreamRegistry(IContext context, World world)
             _streams[i] = new LineDrawStream(
                 _context,
                 _world,
-                DrawStreamType.PointLine,
+                DrawStreamType.Line,
                 (DrawStreamName)i
             );
             var ret = _streams[i]!.Initialize().CheckResult();
@@ -133,7 +133,7 @@ internal sealed class LineDrawStreamRegistry(IContext context, World world)
     {
         ref var comp = ref _lineComponents[entity];
         var category = comp.Variants;
-        return (DrawStreamType.PointLine, category);
+        return (DrawStreamType.Line, category);
     }
 
     private void OnEntityChanged(object? sender, EntityChangedEvent e)
