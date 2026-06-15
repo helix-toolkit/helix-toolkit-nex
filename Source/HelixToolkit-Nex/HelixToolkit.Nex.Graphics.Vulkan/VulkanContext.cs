@@ -1984,6 +1984,7 @@ internal sealed partial class VulkanContext
                 .DepthAttachmentFormat(desc.DepthFormat.ToVk())
                 .StencilAttachmentFormat(desc.StencilFormat.ToVk())
                 .PatchControlPoints(desc.PatchControlPoints)
+                .AlphaToCoverage(desc.AlphaToCoverageEnabled)
                 .Build(_vkDevice, PipelineCache, layout, out pipeline, desc.DebugName);
 
             rps.Pipeline = pipeline;

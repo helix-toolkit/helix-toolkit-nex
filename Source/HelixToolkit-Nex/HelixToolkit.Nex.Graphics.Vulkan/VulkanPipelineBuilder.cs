@@ -225,6 +225,12 @@ internal sealed class VulkanPipelineBuilder
         return this;
     }
 
+    public VulkanPipelineBuilder AlphaToCoverage(bool enable)
+    {
+        _multisampleState.alphaToCoverageEnable = enable ? VK_BOOL.True : VK_BOOL.False;
+        return this;
+    }
+
     public VkResult Build(
         in VkDevice device,
         in VkPipelineCache pipelineCache,
