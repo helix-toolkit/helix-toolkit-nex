@@ -279,10 +279,10 @@ public sealed class FrustumCullNode : ComputeNode
             ShaderStage.Compute,
             "LineCulling"
         );
-        _cullingPipeline = Context.CreateComputePipeline(
+        _lineCullingPipeline = Context.CreateComputePipeline(
             new ComputePipelineDesc { ComputeShader = cullingModule }
         );
-        Debug.Assert(_cullingPipeline.Valid);
+        Debug.Assert(_lineCullingPipeline.Valid);
     }
 
     public override void AddToGraph(RenderGraph graph)
