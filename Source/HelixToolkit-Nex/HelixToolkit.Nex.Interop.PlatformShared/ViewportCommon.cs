@@ -194,6 +194,7 @@ public partial class HelixViewport
         _renderContext.SetPointer(_pointerLocation);
 
         // Render offscreen
+        Engine.BeginFrame();
         var cmdBuf = Engine.RenderOffscreen(_renderContext, dataProvider, target);
 #if HxWPF
         Engine.Submit(cmdBuf, TextureHandle.Null);
