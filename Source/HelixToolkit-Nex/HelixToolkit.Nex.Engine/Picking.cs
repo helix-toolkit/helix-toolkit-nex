@@ -45,6 +45,8 @@ public static class GpuPicking
 
     /// <summary>
     /// Attempts to retrieve mesh picking information at the specified pixel coordinates from the given texture.
+    /// This method directly samples the provided mesh ID texture, which will stall the CPU until the GPU has completed rendering and the texture data is available.
+    /// Use this method for low-frequency picking operations where up-to-date information is required, and consider caching results for repeated picks at the same coordinates to minimize performance impact.
     /// </summary>
     /// <remarks>If the specified coordinates are outside the bounds of the texture, the method returns <see
     /// langword="false"/> and all output parameters are set to zero. Output identifiers are only valid if the method
@@ -122,6 +124,8 @@ public static class GpuPicking
 
     /// <summary>
     /// Attempts to retrieve picking information for a specified screen coordinate from the current render context.
+    /// This method directly samples the provided mesh ID texture, which will stall the CPU until the GPU has completed rendering and the texture data is available.
+    /// Use this method for low-frequency picking operations where up-to-date information is required, and consider caching results for repeated picks at the same coordinates to minimize performance impact.
     /// </summary>
     /// <remarks>This method returns false if the picking texture is unavailable or empty. Output parameters
     /// are set to zero if picking fails.</remarks>
@@ -178,6 +182,8 @@ public static class GpuPicking
     /// <summary>
     /// Attempts to perform a picking operation at the specified screen coordinates and returns the result if
     /// successful.
+    /// This method directly samples the provided mesh ID texture, which will stall the CPU until the GPU has completed rendering and the texture data is available.
+    /// Use this method for low-frequency picking operations where up-to-date information is required, and consider caching results for repeated picks at the same coordinates to minimize performance impact.
     /// </summary>
     /// <param name="context">The render context in which the picking operation is performed. Cannot be null.</param>
     /// <param name="x">The x-coordinate, in screen space, where the picking operation is attempted.</param>
@@ -195,6 +201,8 @@ public static class GpuPicking
 
     /// <summary>
     /// Attempts to identify and retrieve picking information for a rendered entity at the specified screen coordinates.
+    /// This method directly samples the provided mesh ID texture, which will stall the CPU until the GPU has completed rendering and the texture data is available.
+    /// Use this method for low-frequency picking operations where up-to-date information is required, and consider caching results for repeated picks at the same coordinates to minimize performance impact.
     /// </summary>
     /// <remarks>This method does not throw exceptions for missing entities or invalid coordinates; it returns
     /// false if picking fails for any reason. The contents of the result parameter are only valid if the method returns
@@ -274,14 +282,14 @@ public static class GpuPicking
     /// </summary>
     /// <param name="context">The rendering context in which the picking operation is performed. Cannot be null.</param>
     /// <param name="coord">The screen coordinates of the point to pick.</param>
-    /// <param name="id">The pre-encoded picking ID.</param>
+    /// <param name="data">The pre-encoded picking data.</param>
     /// <param name="result">When this method returns, contains the picking result data if the operation succeeds; otherwise, its contents
     /// are undefined. Must not be null.</param>
     /// <returns>true if an entity was successfully picked at the specified coordinates; otherwise, false.</returns>
     public static bool TryGetPickFromId(
         this RenderContext context,
         Vector2 coord,
-        ulong id,
+        ulong data,
         out PickingResult result
     )
     {
@@ -290,7 +298,7 @@ public static class GpuPicking
             result = default;
             return false;
         }
-        return TryGetPickFromId(context, (int)coord.X, (int)coord.Y, id, out result);
+        return TryGetPickFromId(context, (int)coord.X, (int)coord.Y, data, out result);
     }
 
     /// <summary>
@@ -302,6 +310,7 @@ public static class GpuPicking
     /// <param name="context">The rendering context in which the picking operation is performed. Cannot be null.</param>
     /// <param name="x">The x-coordinate, in screen space, of the point to pick.</param>
     /// <param name="y">The y-coordinate, in screen space, of the point to pick.</param>
+    /// <param name="data">The pre-encoded picking data.</param>
     /// <param name="result">When this method returns, contains the picking result data if the operation succeeds; otherwise, its contents
     /// are undefined. Must not be null.</param>
     /// <returns>true if an entity was successfully picked at the specified coordinates; otherwise, false.</returns>
@@ -309,17 +318,17 @@ public static class GpuPicking
         this RenderContext context,
         int x,
         int y,
-        ulong id,
+        ulong data,
         out PickingResult result
     )
     {
         result = default;
-        if (id == 0)
+        if (data == 0)
         {
             return false;
         }
         Utils.UnpackMeshInfo(
-            id,
+            data,
             out var worldId,
             out var entityId,
             out var instanceId,
