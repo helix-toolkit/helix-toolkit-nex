@@ -267,11 +267,11 @@ internal class GltfImporterApp : ApplicationBase
         );
 
         _viewportPanel.Draw(
+            _engine,
             _renderContext.FinalOutputTexture,
             new Vector2(ScenePanelWidth, panelY),
             new Vector2(viewportWidth, panelHeight),
             _renderContext,
-            _context,
             _worldDataProvider,
             _currentModelRoot
         );
@@ -351,6 +351,7 @@ internal class GltfImporterApp : ApplicationBase
         _renderContext.SetPointer(_pointerLocation);
 
         // --- Step 1: Execute 3D render graph (offscreen) ---
+        _engine.BeginFrame();
         var cmdBuf = _engine.RenderOffscreen(
             _renderContext,
             _worldDataProvider,

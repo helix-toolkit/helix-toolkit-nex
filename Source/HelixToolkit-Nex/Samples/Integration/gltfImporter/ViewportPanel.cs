@@ -1,8 +1,6 @@
 using System.Numerics;
-using HelixToolkit.Nex.ECS;
 using HelixToolkit.Nex.Engine;
 using HelixToolkit.Nex.Engine.CameraControllers;
-using HelixToolkit.Nex.Graphics;
 using HelixToolkit.Nex.Maths;
 using HelixToolkit.Nex.Rendering;
 using HelixToolkit.Nex.Scene;
@@ -41,19 +39,19 @@ internal class ViewportPanel
     /// - Middle-drag: pan camera
     /// - Scroll wheel: zoom
     /// </summary>
+    /// <param name="engine">The engine instance for creating picking requests.</param>
     /// <param name="offscreenTexture">The offscreen render target texture handle.</param>
     /// <param name="position">The ImGui window position.</param>
     /// <param name="size">The ImGui window size.</param>
     /// <param name="renderContext">The render context for picking operations.</param>
-    /// <param name="context">The graphics context for raw pick operations.</param>
     /// <param name="worldData">The world data provider for entity lookup.</param>
     /// <param name="rootNode">The root node of the scene graph (null if no model loaded).</param>
     public void Draw(
+        Engine.Engine engine,
         TextureHandle offscreenTexture,
         Vector2 position,
         Vector2 size,
         RenderContext renderContext,
-        IContext context,
         WorldDataProvider worldData,
         Node? rootNode = null
     )
@@ -99,14 +97,7 @@ internal class ViewportPanel
             // Left-click: picking (Req 4.1, 4.4)
             if (Gui.IsMouseClicked(ImGuiMouseButton.Left))
             {
-                PerformPick(
-                    (int)relativePos.X,
-                    (int)relativePos.Y,
-                    renderContext,
-                    context,
-                    worldData,
-                    rootNode
-                );
+                PerformPick(engine, renderContext, (int)relativePos.X, (int)relativePos.Y);
             }
 
             // Camera input only works when a model is loaded (Req 5.5)
@@ -158,79 +149,22 @@ internal class ViewportPanel
         Gui.End();
     }
 
-    /// <summary>
-    /// Performs a pick operation at the given viewport-relative coordinates.
-    /// On hit: selects the entity. On miss: deselects.
-    /// </summary>
-    private void PerformPick(
-        int x,
-        int y,
-        RenderContext renderContext,
-        IContext context,
-        WorldDataProvider worldData,
-        Node? rootNode
-    )
+    private void PerformPick(Engine.Engine engine, RenderContext context, int x, int y)
     {
-        if (renderContext.ResourceSet is null)
-            return;
-
-        // Use the RenderContext extension method for picking
-        if (
-            !renderContext.TryPickRaw(
-                x,
-                y,
-                out var worldId,
-                out var entityId,
-                out var instanceIdx,
-                out var primitiveId
-            )
-        )
-        {
-            // Pick miss: deselect (Req 4.4)
-            _selectionManager.Deselect();
-            return;
-        }
-        if (worldId != worldData.World.Id)
-        {
-            _selectionManager.Deselect();
-            return;
-        }
-        // Pick hit: select the entity (Req 4.1)
-        var entity = worldData.World.GetEntity((int)entityId);
-        if (!entity.Valid)
-        {
-            _selectionManager.Deselect();
-            return;
-        }
-
-        // Find the corresponding Node for the entity by traversing the scene tree
-        var node = FindNodeByEntity(rootNode, entity);
-        _selectionManager.Select(entity, node);
+        engine.CreatePickingRequest(context, new Vector2(x, y), HandlePickingResponse);
     }
 
-    /// <summary>
-    /// Recursively searches the scene tree for a node matching the given entity.
-    /// Returns null if no matching node is found.
-    /// </summary>
-    private static Node? FindNodeByEntity(Node? root, Entity entity)
+    private void HandlePickingResponse(PickingResponse response)
     {
-        if (root is null)
-            return null;
-
-        if (root.Entity == entity)
-            return root;
-
-        var children = root.Children;
-        if (children is null)
-            return null;
-
-        for (int i = 0; i < children.Count; i++)
+        _selectionManager.Deselect();
+        if (response.TryGetPickingResult(out var result))
         {
-            var found = FindNodeByEntity(children[i], entity);
-            if (found is not null)
-                return found;
+            var entity = result.Entity;
+            if (entity.Valid)
+            {
+                var node = Node.FindNode(entity);
+                _selectionManager.Select(entity, node);
+            }
         }
-
-        return null;
     }
 }

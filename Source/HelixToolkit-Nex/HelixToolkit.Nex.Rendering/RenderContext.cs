@@ -11,6 +11,7 @@ public readonly record struct DrawRange(uint Start, uint Count)
     public static readonly DrawRange Zero = new(0, 0);
 }
 
+
 [StructLayout(LayoutKind.Sequential, Pack = 4)]
 public readonly struct CameraParams(
     Matrix4x4 view,
@@ -95,6 +96,10 @@ public sealed class RenderContext(IServiceProvider services) : Initializable
 {
     private static readonly ILogger _logger = LogManager.Create<RenderContext>();
 
+    private static readonly Size DefaultWindowSize = new(1, 1);
+
+    internal readonly PickingContext PickingContext = new(services.GetRequiredService<IContext>());
+
     public readonly IContext Context = services.GetRequiredService<IContext>();
 
     public readonly ForwardPlusLightCulling.Config FPLightConfig = ForwardPlusLightCulling
@@ -130,7 +135,6 @@ public sealed class RenderContext(IServiceProvider services) : Initializable
     /// </summary>
     public RenderParams RenderParams { get; } = new();
 
-    private static readonly Size DefaultWindowSize = new(1, 1);
     private Size _windowSize = DefaultWindowSize;
 
     public Size WindowSize
@@ -350,4 +354,19 @@ public sealed class RenderContext(IServiceProvider services) : Initializable
             ResourceSet.Textures[SystemBufferNames.TextureColorF16Target] = ResourceSet.Textures[SystemBufferNames.TextureColorF16A];
         }
     }
+
+    public uint SendPicking(Vector2 screenPos)
+    {
+        return PickingContext.SetPendingSubmit(screenPos);
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            PickingContext.Dispose();
+        }
+        base.Dispose(disposing);
+    }
 }
+

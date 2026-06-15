@@ -89,6 +89,7 @@ internal class LightCullingTest(IContext context, bool largeScene = true) : IDis
         _scene.Tick(delta);
         RotateCamera();
         _renderContext!.Update(new Size(width, height), _camera);
+        _engine!.BeginFrame();
         _engine!.Render(_renderContext, _worldDataProvider!);
     }
 
@@ -136,36 +137,33 @@ internal class LightCullingTest(IContext context, bool largeScene = true) : IDis
 
     public void Pick(int x, int y)
     {
+        _engine!.CreatePickingRequest(_renderContext!, new Vector2(x, y), HandlePicking);
+    }
+
+    private void HandlePicking(PickingResponse response)
+    {
         if (_selectedEntity.Valid)
         {
             _selectedEntity.Remove<BorderHighlightOverlay>();
             _selectedEntity.Remove<WireframeOverlay>();
         }
-        if (
-            !_context.TryPickRaw(
-                _renderContext!.ResourceSet!.Textures[SystemBufferNames.TextureEntityId],
-                (uint)_renderContext.WindowSize.Width,
-                (uint)_renderContext.WindowSize.Height,
-                x,
-                y,
-                out var worldId,
-                out var entityId,
-                out var instanceIdx,
-                out var primitiveId
-            )
-        )
+        if (response.TryGetPickingResult(out var result))
         {
-            _logger.LogInformation("No entity picked");
-            return;
+            Debug.Assert(
+                _worldDataProvider!.World.Id == result.Entity.WorldId,
+                "Picked world ID does not match current world"
+            );
+            _selectedEntity = result.Entity;
+            _logger.LogInformation(
+                $"Picked entity {_selectedEntity} (instance {result.InstanceId})"
+            );
+            _selectedEntity.Set(BorderHighlightOverlay.Default);
+            _selectedEntity.Set(new WireframeOverlay() { EnableDepthTest = true });
         }
-        Debug.Assert(
-            _worldDataProvider!.World.Id == worldId,
-            "Picked world ID does not match current world"
-        );
-        _selectedEntity = _worldDataProvider!.World.GetEntity((int)entityId);
-        _logger.LogInformation($"Picked entity {_selectedEntity} (instance {instanceIdx})");
-        _selectedEntity.Set(BorderHighlightOverlay.Default);
-        _selectedEntity.Set(new WireframeOverlay() { EnableDepthTest = true });
+        else
+        {
+            _logger.LogInformation("Picking failed: no geometry at picked pixel");
+        }
     }
 
     private bool _disposedValue;

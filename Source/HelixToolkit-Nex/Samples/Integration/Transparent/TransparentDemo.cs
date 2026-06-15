@@ -336,6 +336,7 @@ internal partial class TransparentDemo : IDisposable
         _renderContext!.Update(_viewportSize, _camera);
 
         // --- Step 1: Execute 3D render graph (offscreen) ---
+        _engine.BeginFrame();
         var cmdBuf = _engine.RenderOffscreen(
             _renderContext,
             _worldDataProvider!,

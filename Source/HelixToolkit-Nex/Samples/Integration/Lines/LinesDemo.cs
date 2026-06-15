@@ -484,6 +484,7 @@ internal sealed class LinesDemo : IDisposable
         _renderContext!.Update(_viewportSize, _camera);
 
         // 3D render (offscreen)
+        _engine.BeginFrame();
         var cmdBuf = _engine.RenderOffscreen(
             _renderContext,
             _worldDataProvider,
@@ -520,41 +521,23 @@ internal sealed class LinesDemo : IDisposable
     {
         if (_renderContext?.ResourceSet is null || _worldDataProvider is null)
             return;
-        // Deselect previous
-        if (_selectedEntity.Valid)
-            _selectedEntity.Remove<BorderHighlightOverlay>();
-        if (
-            !_context.TryPickRaw(
-                _renderContext.ResourceSet.Textures[SystemBufferNames.TextureEntityId],
-                (uint)_renderContext.WindowSize.Width,
-                (uint)_renderContext.WindowSize.Height,
-                x,
-                y,
-                out var worldId,
-                out var entityId,
-                out var instanceIdx,
-                out var primitiveId
-            )
-        )
-        {
-            _logger.LogInformation("No entity picked at ({X}, {Y})", x, y);
-            return;
-        }
-
-        _pickedEntityId = (int)entityId;
-
-        Debug.Assert(
-            _worldDataProvider.World.Id == worldId,
-            "Picked world ID does not match current world"
+        _engine!.CreatePickingRequest(
+            _renderContext,
+            new Vector2(x, y),
+            result =>
+            {
+                if (result.TryGetPickingResult(out var pickingResult))
+                {
+                    _pickedEntityId = pickingResult.Entity.Id;
+                    _selectedEntity = pickingResult.Entity;
+                }
+                else
+                {
+                    _pickedEntityId = 0;
+                    _selectedEntity = Entity.Null;
+                }
+            }
         );
-        var entity = _worldDataProvider.World.GetEntity((int)entityId);
-        _selectedEntity = entity;
-
-        if (_selectedEntity.Valid)
-        {
-            _selectedEntity.Set(BorderHighlightOverlay.Default);
-            _logger.LogInformation("Picked entity {Id} (instance {Idx})", entityId, instanceIdx);
-        }
     }
 
     // ------------------------------------------------------------------

@@ -339,6 +339,7 @@ internal partial class PBRDemo : IDisposable
         _orbitController?.Update(delta);
 
         _renderContext.Update(_viewportSize, _camera);
+        _engine.BeginFrame();
 
         var cmdBuf = _engine.RenderOffscreen(
             _renderContext,
@@ -365,12 +366,15 @@ internal partial class PBRDemo : IDisposable
             return;
         if (button == 0)
         {
-            var result = _renderContext!.Pick((int)vx, (int)vy);
-            if (result is null)
+            _engine!.CreatePickingRequest(_renderContext!, new Vector2(vx, vy), result =>
             {
-                return;
-            }
-            SelectedIndex = result.Value.Entity.Get<IndexComponent>().Index;
+                if (result.TryGetPickingResult(out var pickingResult))
+                {
+                    SelectedIndex = pickingResult.Entity.Get<IndexComponent>().Index;
+                    return;
+                }
+                SelectedIndex = -1;
+            });
         }
         else if (button == 1)
         {

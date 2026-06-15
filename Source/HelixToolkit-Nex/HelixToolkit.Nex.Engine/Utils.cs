@@ -1,5 +1,3 @@
-using HelixToolkit.Nex.Rendering.Components;
-
 namespace HelixToolkit.Nex.Engine;
 
 
@@ -76,5 +74,26 @@ public static class Utils
 
         // Extract Primitive ID
         primitiveId = (g >> LimitsShaderConstants.PrimitiveIdShift);
+    }
+
+    /// <summary>
+    /// Unpacks mesh information from a single 64-bit unsigned integer, where the lower 32 bits represent the red channel and the upper 32 bits represent the green channel.
+    /// </summary>
+    /// <param name="id">The 64-bit packed mesh information.</param>
+    /// <param name="worldId">The unpacked world ID.</param>
+    /// <param name="entityId">The unpacked entity ID.</param>
+    /// <param name="instanceId">The unpacked instance ID.</param>
+    /// <param name="primitiveId">The unpacked primitive ID.</param>
+    public static void UnpackMeshInfo(
+        ulong id,
+        out uint worldId,
+        out uint entityId,
+        out uint instanceId,
+        out uint primitiveId
+    )
+    {
+        uint r = (uint)(id & 0xFFFFFFFF);
+        uint g = (uint)(id >> 32);
+        UnpackMeshInfo(r, g, out worldId, out entityId, out instanceId, out primitiveId);
     }
 }

@@ -201,6 +201,7 @@ internal partial class Editor : IDisposable
         _renderContext.SetPointer(_pointerLocation);
 
         // --- Step 1: Execute 3D render graph (offscreen) ---
+        _engine.BeginFrame();
         var cmdBuf = _engine.RenderOffscreen(
             _renderContext,
             _worldDataProvider!,
@@ -221,35 +222,22 @@ internal partial class Editor : IDisposable
     {
         if (_renderContext?.ResourceSet is null || _worldDataProvider is null)
             return;
+        _engine!.CreatePickingRequest(_renderContext, new Vector2(x, y), HandlePickingResponse);
+    }
+
+    private void HandlePickingResponse(PickingResponse response)
+    {
         if (_selectedEntity.Valid)
         {
             _selectedEntity.Remove<BorderHighlightOverlay>();
             _selectedEntity.Remove<WireframeOverlay>();
         }
-        if (
-            !_context.TryPickRaw(
-                _renderContext.ResourceSet.Textures[SystemBufferNames.TextureEntityId],
-                (uint)_renderContext.WindowSize.Width,
-                (uint)_renderContext.WindowSize.Height,
-                x,
-                y,
-                out var worldId,
-                out var entityId,
-                out var instanceIdx,
-                out var primitiveId
-            )
-        )
+        if (!response.TryGetPickingResult(out var result))
         {
             return;
         }
-        Debug.Assert(
-            _worldDataProvider.World.Id == worldId,
-            "Picked world ID does not match current world"
-        );
-        var entity = _worldDataProvider.World.GetEntity((int)entityId);
-        _logger.LogInformation($"Picked entity {entity} (instance {instanceIdx})");
-        _selectedEntity = entity;
-
+        _logger.LogInformation($"Picked entity {result.Entity} (primitive {result.PrimitiveId})");
+        _selectedEntity = result.Entity;
         // Apply highlight to new selection
         if (_selectedEntity.Valid)
         {
@@ -258,7 +246,7 @@ internal partial class Editor : IDisposable
                 new WireframeOverlay()
                 {
                     Color = new Color4(1f, 0f, 0f, 1f),
-                    InstancingIndex = _perInstance ? (int)instanceIdx : -1,
+                    InstancingIndex = _perInstance ? (int)result.InstanceId : -1,
                 }
             );
         }
