@@ -133,7 +133,9 @@ internal sealed class VulkanImage : IDisposable
         VkMemoryPropertyFlags memFlags,
         in VkComponentMapping mapping,
         VkImageViewType vkImageViewType,
-        VkSamplerYcbcrConversionInfo? samplerYcbcrInfo
+        VkSamplerYcbcrConversionInfo? samplerYcbcrInfo,
+        bool isDisjoint,
+        bool isMultiPlanar
     )
     {
         if (!IsOwningVkImage)
@@ -145,43 +147,8 @@ internal sealed class VulkanImage : IDisposable
             return ResultCode.InvalidState;
         }
         uint32_t numPlanes = ImageFormat.GetNumImagePlanes();
-        bool isDisjoint = numPlanes > 1;
         string debugNameImage = $"Image: {_debugName ?? string.Empty}";
         string debugNameImageView = $"ImageView: {_debugName ?? string.Empty}";
-
-        if (isDisjoint)
-        {
-            // some constraints for multiplanar image formats
-            HxDebug.Assert(ImageType == VK.VK_IMAGE_TYPE_2D);
-            HxDebug.Assert(SampleCount == VK.VK_SAMPLE_COUNT_1_BIT);
-            HxDebug.Assert(NumLayers == 1);
-            HxDebug.Assert(NumLevels == 1);
-            VkFormatProperties2 props = new();
-            unsafe
-            {
-                VK.vkGetPhysicalDeviceFormatProperties2(
-                    _ctx!.VkPhysicalDevice,
-                    ImageFormat,
-                    &props
-                );
-                if (
-                    !props.formatProperties.optimalTilingFeatures.HasAllFlags(
-                        VK.VK_FORMAT_FEATURE_DISJOINT_BIT
-                    )
-                )
-                {
-                    _logger.LogWarning(
-                        "VK_FORMAT_FEATURE_DISJOINT_BIT is not supported for VkFormat = {FORMAT}",
-                        ImageFormat
-                    );
-                }
-            }
-            vkCreateFlags |=
-                VK.VK_IMAGE_CREATE_DISJOINT_BIT
-                | VK.VK_IMAGE_CREATE_ALIAS_BIT
-                | VK.VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
-            _ctx!.AwaitingNewImmutableSamplers = true;
-        }
 
         VkImageCreateInfo ci = new()
         {
@@ -207,9 +174,10 @@ internal sealed class VulkanImage : IDisposable
             {
                 VmaAllocationCreateInfo vmaAllocInfo = new()
                 {
-                    usage = memFlags.HasAllFlags(VK.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
-                        ? VmaMemoryUsage.CpuToGpu
-                        : VmaMemoryUsage.Auto,
+                    usage = VmaMemoryUsage.AutoPreferDevice,
+                    flags = memFlags.HasAllFlags(VK.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
+                        ? VmaAllocationCreateFlags.HostAccessRandom
+                        : VmaAllocationCreateFlags.None,
                 };
 
                 var ret = Vma.vmaCreateImage(
@@ -277,14 +245,15 @@ internal sealed class VulkanImage : IDisposable
                 {
                     imgRequirements[i] = new VkImageMemoryRequirementsInfo2
                     {
-                        pNext =
-                            i < numPlanes
-                                ? &((VkImagePlaneMemoryRequirementsInfo*)pPlanes.Pointer)[i]
-                                : null,
+                        pNext = isDisjoint
+                            ? &((VkImagePlaneMemoryRequirementsInfo*)pPlanes.Pointer)[i]
+                            : null,
                         image = _vkImage,
                     };
                 }
-                for (uint32_t p = 0; p != numPlanes; p++)
+
+                uint numMemoryAllocations = isMultiPlanar ? numPlanes : 1;
+                for (uint32_t p = 0; p != numMemoryAllocations; p++)
                 {
                     VK.vkGetImageMemoryRequirements2(
                         _ctx!.VkDevice,
@@ -319,7 +288,7 @@ internal sealed class VulkanImage : IDisposable
 
                 VK.vkBindImageMemory2(
                         _ctx!.VkDevice,
-                        numPlanes,
+                        numMemoryAllocations,
                         (VkBindImageMemoryInfo*)pBindInfo.Pointer
                     )
                     .CheckResult();

@@ -1151,15 +1151,16 @@ internal sealed partial class VulkanContext
             return null;
         }
         var vkFormat = format.ToVk();
-        VkFormatProperties props;
+        VkFormatProperties2 props = new();
         unsafe
         {
-            VK.vkGetPhysicalDeviceFormatProperties(_vkPhysicalDevice, vkFormat, &props);
+            VK.vkGetPhysicalDeviceFormatProperties2(_vkPhysicalDevice, vkFormat, &props);
         }
         bool cosited =
-            (props.optimalTilingFeatures & VK.VK_FORMAT_FEATURE_COSITED_CHROMA_SAMPLES_BIT) != 0;
+            (props.formatProperties.optimalTilingFeatures & VK.VK_FORMAT_FEATURE_COSITED_CHROMA_SAMPLES_BIT) != 0;
         bool midpoint =
-            (props.optimalTilingFeatures & VK.VK_FORMAT_FEATURE_MIDPOINT_CHROMA_SAMPLES_BIT) != 0;
+            (props.formatProperties.optimalTilingFeatures & VK.VK_FORMAT_FEATURE_MIDPOINT_CHROMA_SAMPLES_BIT) != 0;
+        bool isDisjoint = (props.formatProperties.optimalTilingFeatures & VK.VK_FORMAT_FEATURE_DISJOINT_BIT) != 0;
         if (!cosited && !midpoint)
         {
             HxDebug.Assert(false, "Ycbcr samplers are not supported for this format.");
@@ -1202,7 +1203,7 @@ internal sealed partial class VulkanContext
                 type = VK.VK_IMAGE_TYPE_2D,
                 tiling = VK.VK_IMAGE_TILING_OPTIMAL,
                 usage = VK.VK_IMAGE_USAGE_SAMPLED_BIT,
-                flags = VK.VK_IMAGE_CREATE_DISJOINT_BIT,
+                flags = isDisjoint ? VK.VK_IMAGE_CREATE_DISJOINT_BIT : VkImageCreateFlags.None,
             };
             VK.vkGetPhysicalDeviceImageFormatProperties2(
                     VkPhysicalDevice,
