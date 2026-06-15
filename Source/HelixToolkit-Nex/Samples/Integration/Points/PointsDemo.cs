@@ -504,6 +504,7 @@ internal sealed class PointsDemo : IDisposable
         _renderContext!.Update(_viewportSize, _camera);
 
         // 3D render (offscreen)
+        _engine.BeginFrame();
         var cmdBuf = _engine.RenderOffscreen(
             _renderContext,
             _worldDataProvider,
@@ -572,42 +573,28 @@ internal sealed class PointsDemo : IDisposable
     {
         if (_renderContext?.ResourceSet is null || _worldDataProvider is null)
             return;
-        // Deselect previous
-        if (_selectedEntity.Valid)
-            _selectedEntity.Remove<BorderHighlightOverlay>();
-        if (
-            !_context.TryPickRaw(
-                _renderContext.ResourceSet.Textures[SystemBufferNames.TextureEntityId],
-                (uint)_renderContext.WindowSize.Width,
-                (uint)_renderContext.WindowSize.Height,
-                x,
-                y,
-                out var worldId,
-                out var entityId,
-                out var instanceIdx,
-                out var primitiveId
-            )
-        )
+        _engine!.CreatePickingRequest(_renderContext, new Vector2(x, y), response =>
         {
-            _logger.LogInformation("No entity picked at ({X}, {Y})", x, y);
-            return;
-        }
+            // Deselect previous
+            if (_selectedEntity.Valid)
+                _selectedEntity.Remove<BorderHighlightOverlay>();
+            if (response.TryGetPickingResult(out var result))
+            {
+                _pickedEntityId = (int)result.Entity.Id;
+                _pickedInstanceIdx = result.InstanceId;
 
-        _pickedEntityId = (int)entityId;
-        _pickedInstanceIdx = instanceIdx;
+                Debug.Assert(
+                    _worldDataProvider.World.Id == result.Entity.WorldId,
+                    "Picked world ID does not match current world"
+                );
+                _selectedEntity = result.Entity;
 
-        Debug.Assert(
-            _worldDataProvider.World.Id == worldId,
-            "Picked world ID does not match current world"
-        );
-        var entity = _worldDataProvider.World.GetEntity((int)entityId);
-        _selectedEntity = entity;
-
-        if (_selectedEntity.Valid)
-        {
-            _selectedEntity.Set(BorderHighlightOverlay.Default);
-            _logger.LogInformation("Picked entity {Id} (instance {Idx})", entityId, instanceIdx);
-        }
+                if (_selectedEntity.Valid)
+                {
+                    _selectedEntity.Set(BorderHighlightOverlay.Default);
+                }
+            }
+        });
     }
 
     // ------------------------------------------------------------------

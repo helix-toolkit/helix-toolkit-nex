@@ -634,7 +634,7 @@ internal sealed partial class TextureDemo : IDisposable
         _orbitController?.Update(delta);
 
         _renderContext.Update(_viewportSize, _camera);
-
+        _engine.BeginFrame();
         var cmdBuf = _engine.RenderOffscreen(
             _renderContext,
             _worldDataProvider!,
