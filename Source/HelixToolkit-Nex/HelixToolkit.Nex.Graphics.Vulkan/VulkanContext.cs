@@ -215,6 +215,7 @@ internal sealed partial class VulkanContext
     public bool HasExtSwapchainMaintenance1 { private set; get; } = false;
     public bool HasExtHdrMetadata { private set; get; } = false;
     public bool HasExtDeviceFault { private set; get; } = false;
+    public bool HasDiagnosticCheckPoints { private set; get; } = false;
     public bool HasExtDebugUtils { private set; get; } = false;
 
     public bool HasKHRSwapchainMaintenance1 { private set; get; } = false;

@@ -6,6 +6,7 @@ namespace HelixToolkit.Nex.Rendering;
 public static class LineRenderHelper
 {
     private static readonly ILogger _logger = LogManager.Create("RenderHelper");
+    private const int ColorWriteIndex = 1; // Assuming the second render target (index 1) is the one used for entity ID output.
 
     public static uint Render(
         in RenderResources res,
@@ -48,8 +49,23 @@ public static class LineRenderHelper
                 continue;
             if (!context.UseExternalPipeline)
             {
-                var pipeline = context.Data.ResourceManager.LineMaterialManager.GetPipeline(materialType);
+                var pipeline = context.Data.ResourceManager.LineMaterialManager.GetPipeline(
+                    materialType
+                );
                 cmdBuf.BindRenderPipeline(pipeline);
+                if (
+                    res.RenderContext.PickingConfig.IsPickThroughEnabled(
+                        stream.StreamType,
+                        stream.Variants
+                    )
+                )
+                {
+                    // If pick-through is enabled for this stream type and variant, disable color writes to the entity ID buffer to allow picking through this object.
+                    var value = res.Pass.ColorWrites[ColorWriteIndex];
+                    res.Pass.ColorWrites[ColorWriteIndex] = false;
+                    cmdBuf.SetColorWriteEnabled(res.Pass.ColorWrites);
+                    res.Pass.ColorWrites[ColorWriteIndex] = value;
+                }
             }
             cmdBuf.PushConstants(
                 new MeshDrawPushConstant
@@ -127,12 +143,7 @@ public static class LineRenderHelper
                     }
                 );
 
-                cmdBuffer.DrawIndirect(
-                    stream.Buffer,
-                    (uint)slot * stream.Stride,
-                    1,
-                    stream.Stride
-                );
+                cmdBuffer.DrawIndirect(stream.Buffer, (uint)slot * stream.Stride, 1, stream.Stride);
                 ++counter;
             }
         }
