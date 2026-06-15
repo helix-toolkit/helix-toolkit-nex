@@ -312,6 +312,7 @@ internal static class HxVkExtensions
             VK.VK_FORMAT_D32_SFLOAT_S8_UINT => Format.Z_F32_S_UI8,
             VK.VK_FORMAT_G8_B8R8_2PLANE_420_UNORM => Format.YUV_NV12,
             VK.VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM => Format.YUV_420p,
+            VK.VK_FORMAT_A8_UNORM => Format.A_UN8,
             _ => throw new NotSupportedException($"VkFormat [{format}] is not supported."),
         };
     }
@@ -352,6 +353,7 @@ internal static class HxVkExtensions
             Format.Z_F32_S_UI8 => VK.VK_FORMAT_D32_SFLOAT_S8_UINT,
             Format.YUV_NV12 => VK.VK_FORMAT_G8_B8R8_2PLANE_420_UNORM,
             Format.YUV_420p => VK.VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM,
+            Format.A_UN8 => VK.VK_FORMAT_A8_UNORM,
             _ => throw new NotSupportedException($"Format [{format}] is not supported."),
         };
     }

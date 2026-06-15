@@ -45,6 +45,7 @@ public sealed class RenderPipelineDesc
     public uint32_t SamplesCount = 1u;
     public uint32_t PatchControlPoints = 0;
     public float MinSampleShading = 0.0f;
+    public bool AlphaToCoverageEnabled = false;
 
     public string DebugName = string.Empty;
 

@@ -336,6 +336,11 @@ public enum Format : uint8_t
     /// </summary>
     A2R10G10B10_UN,
 
+    /// <summary>
+    /// Packed format: 8 bits alpha, 24 bits unused (unsigned normalized).
+    /// </summary>
+    A_UN8,
+
     // Compressed formats
     /// <summary>
     /// ETC2 compressed RGB format (8 bits per pixel).
