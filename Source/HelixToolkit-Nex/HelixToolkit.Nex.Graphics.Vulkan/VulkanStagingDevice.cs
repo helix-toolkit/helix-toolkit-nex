@@ -159,7 +159,7 @@ internal sealed class VulkanStagingDevice : IDisposable
         in VkRect2D imageRegion,
         uint32_t baseMipLevel,
         uint32_t numMipLevels,
-        uint32_t layer,
+        uint32_t baseLayer,
         uint32_t numLayers,
         VkFormat format,
         nint data,
@@ -240,7 +240,7 @@ internal sealed class VulkanStagingDevice : IDisposable
 
         if (numPlanes > 1)
         {
-            HxDebug.Assert(layer == 0 && baseMipLevel == 0);
+            HxDebug.Assert(baseLayer == 0 && baseMipLevel == 0);
             HxDebug.Assert(numLayers == 1 && numMipLevels == 1);
             HxDebug.Assert(imageRegion.offset.x == 0 && imageRegion.offset.y == 0);
             HxDebug.Assert(image.ImageType == VK.VK_IMAGE_TYPE_2D);
@@ -267,12 +267,13 @@ internal sealed class VulkanStagingDevice : IDisposable
         // https://registry.khronos.org/KTX/specs/1.0/ktxspec.v1.html
         for (uint32_t mipLevel = 0; mipLevel < numMipLevels; ++mipLevel)
         {
-            for (uint32_t layer1 = 0; layer1 != numLayers; layer1++)
+            for (uint32_t layer = 0; layer < numLayers; ++layer)
             {
                 uint32_t currentMipLevel = baseMipLevel + mipLevel;
-
+                uint32_t currentLayer = baseLayer + layer;
                 HxDebug.Assert(currentMipLevel < image.NumLevels);
                 HxDebug.Assert(mipLevel < image.NumLevels);
+                HxDebug.Assert(currentLayer < image.NumLayers);
 
                 // 1. Transition initial image layout into TRANSFER_DST_OPTIMAL
                 cmdBuf.CmdBuffer.ImageMemoryBarrier2(
@@ -289,7 +290,7 @@ internal sealed class VulkanStagingDevice : IDisposable
                     },
                     VK.VK_IMAGE_LAYOUT_UNDEFINED,
                     VK.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                    new VkImageSubresourceRange(imageAspect, currentMipLevel, 1, layer1, 1)
+                    new VkImageSubresourceRange(imageAspect, currentMipLevel, 1, currentLayer, 1)
                 );
 
                 // 2. Copy the pixel data from the staging buffer into the image
@@ -329,7 +330,7 @@ internal sealed class VulkanStagingDevice : IDisposable
                                     )
                                     : imageAspect,
                             mipLevel = currentMipLevel,
-                            baseArrayLayer = layer1,
+                            baseArrayLayer = currentLayer,
                             layerCount = 1,
                         },
                         imageOffset =
@@ -379,7 +380,7 @@ internal sealed class VulkanStagingDevice : IDisposable
                     },
                     VK.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                     VK.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                    new VkImageSubresourceRange(imageAspect, currentMipLevel, 1, layer, 1)
+                    new VkImageSubresourceRange(imageAspect, currentMipLevel, 1, currentLayer, 1)
                 );
 
                 offset += HxVkUtils.GetTextureBytesPerLayer(
