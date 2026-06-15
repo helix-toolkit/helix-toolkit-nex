@@ -20,9 +20,15 @@ internal sealed class VulkanSwapchain : IDisposable
 
     public VkSurfaceFormatKHR SurfaceFormat { get; }
 
-    public readonly TextureHandle[] SwapchainTextures = new TextureHandle[GraphicsSettings.MaxNumSwapChains];
-    public readonly VkSemaphore[] AcquireSemaphore = new VkSemaphore[GraphicsSettings.MaxNumSwapChains];
-    public readonly VkSemaphore[] RenderCompleteSemaphore = new VkSemaphore[GraphicsSettings.MaxNumSwapChains];
+    public readonly TextureHandle[] SwapchainTextures = new TextureHandle[
+        GraphicsSettings.MaxNumSwapChains
+    ];
+    public readonly VkSemaphore[] AcquireSemaphore = new VkSemaphore[
+        GraphicsSettings.MaxNumSwapChains
+    ];
+    public readonly VkSemaphore[] RenderCompleteSemaphore = new VkSemaphore[
+        GraphicsSettings.MaxNumSwapChains
+    ];
     public readonly VkFence[] PresentFence = new VkFence[GraphicsSettings.MaxNumSwapChains];
     public readonly uint64_t[] TimelineWaitValues = new uint64_t[GraphicsSettings.MaxNumSwapChains];
     public bool Valid =>
@@ -138,27 +144,46 @@ internal sealed class VulkanSwapchain : IDisposable
                 }
             );
 
+            VkSurfaceCapabilitiesKHR caps = new();
+            VkFormatProperties2 props = new();
+            unsafe
+            {
+                VK.vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
+                        _ctx.GetVkPhysicalDevice(),
+                        _ctx.VkSurface,
+                        &caps
+                    )
+                    .CheckResult();
+                VK.vkGetPhysicalDeviceFormatProperties2(
+                    _ctx.GetVkPhysicalDevice(),
+                    SurfaceFormat.format,
+                    &props
+                );
+            }
+
+            Width = Math.Min(Width, caps.currentExtent.width);
+            Height = Math.Min(Height, caps.currentExtent.height);
+
             var chooseUsageFlags = new Func<
-                VkPhysicalDevice,
-                VkSurfaceKHR,
+                VkSurfaceCapabilitiesKHR,
+                VkFormatProperties2,
                 VkFormat,
                 VkImageUsageFlags
             >(
-                (pd, surface, format) =>
+                (caps, props, format) =>
                 {
                     VkImageUsageFlags usageFlags =
                         VK.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
                         | VK.VK_IMAGE_USAGE_TRANSFER_DST_BIT
                         | VK.VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 
-                    VkSurfaceCapabilitiesKHR caps = new();
-                    VK.vkGetPhysicalDeviceSurfaceCapabilitiesKHR(pd, surface, &caps).CheckResult();
-
-                    VkFormatProperties props = new();
-                    VK.vkGetPhysicalDeviceFormatProperties(pd, format, &props);
-
-                    var isStorageSupported = caps.supportedUsageFlags.HasAllFlags(VK.VK_IMAGE_USAGE_STORAGE_BIT);
-                    var isTilingOptimalSupported = props.optimalTilingFeatures.HasAllFlags(VK.VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT);
+                    var isStorageSupported = caps.supportedUsageFlags.HasAllFlags(
+                        VK.VK_IMAGE_USAGE_STORAGE_BIT
+                    );
+                    var isTilingOptimalSupported =
+                        props.formatProperties.optimalTilingFeatures.HasAllFlags(
+                            VK.VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT
+                        );
 
                     if (isStorageSupported && isTilingOptimalSupported)
                     {
@@ -168,13 +193,11 @@ internal sealed class VulkanSwapchain : IDisposable
                     return usageFlags;
                 }
             );
-            var usageFlags = chooseUsageFlags(
-                _ctx.GetVkPhysicalDevice(),
-                _ctx.VkSurface,
-                SurfaceFormat.format
-            );
+            var usageFlags = chooseUsageFlags(caps, props, SurfaceFormat.format);
             var isCompositeAlphaOpaqueSupported =
-                _ctx.DeviceSurfaceCapabilities.supportedCompositeAlpha.HasAllFlags(VK.VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR);
+                _ctx.DeviceSurfaceCapabilities.supportedCompositeAlpha.HasAllFlags(
+                    VK.VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR
+                );
             var graphicsQueueFamilyIndex = _ctx.DeviceQueues.GraphicsQueueFamilyIndex;
             VkSurfaceCapabilitiesKHR capabilities = new();
             VK.vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
