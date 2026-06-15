@@ -823,26 +823,40 @@ internal sealed partial class VulkanContext : Initializable, IContext
         };
 
         uint32_t numPlanes = desc.Format.GetNumImagePlanes();
+        bool isMultiplanar = numPlanes > 1;
         bool isDisjoint = numPlanes > 1;
 
-        if (isDisjoint)
+        if (isMultiplanar)
         {
             // some constraints for multiplanar image formats
             HxDebug.Assert(vkImageType == VK.VK_IMAGE_TYPE_2D);
             HxDebug.Assert(vkSamples == VK.VK_SAMPLE_COUNT_1_BIT);
             HxDebug.Assert(numLayers == 1);
             HxDebug.Assert(numLevels == 1);
-            vkCreateFlags |=
-                VK.VK_IMAGE_CREATE_DISJOINT_BIT
-                | VK.VK_IMAGE_CREATE_ALIAS_BIT
-                | VK.VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
+            VkFormatProperties2 props = new();
+            unsafe
+            {
+                VK.vkGetPhysicalDeviceFormatProperties2(
+                    VkPhysicalDevice,
+                    vkFormat,
+                    &props
+                );
+                isDisjoint = props.formatProperties.optimalTilingFeatures.HasAllFlags(
+                    VK.VK_FORMAT_FEATURE_DISJOINT_BIT
+                );
+                if (isDisjoint)
+                {
+                    vkCreateFlags |= VK.VK_IMAGE_CREATE_DISJOINT_BIT;
+                }
+            }
+            vkCreateFlags |= VK.VK_IMAGE_CREATE_ALIAS_BIT | VK.VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
             AwaitingNewImmutableSamplers = true;
         }
 
-        VkSamplerYcbcrConversionInfo? ycbcrInfo = isDisjoint
+        VkSamplerYcbcrConversionInfo? ycbcrInfo = isMultiplanar
             ? GetOrCreateYcbcrConversionInfo(desc.Format)
             : null;
-        var ret = image.Create(vkCreateFlags, memFlags, mapping, vkImageViewType, ycbcrInfo);
+        var ret = image.Create(vkCreateFlags, memFlags, mapping, vkImageViewType, ycbcrInfo, isDisjoint, isMultiplanar);
 
         if (ret.HasError())
         {
