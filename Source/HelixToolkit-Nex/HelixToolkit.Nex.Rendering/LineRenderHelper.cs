@@ -41,7 +41,20 @@ public static class LineRenderHelper
         uint drawCount = 0;
         var cmdBuf = res.CmdBuffer;
         var context = res.RenderContext;
-
+        if (
+            res.RenderContext.PickingConfig.IsPickThroughEnabled(stream.StreamType, stream.Variants)
+        )
+        {
+            // If pick-through is enabled for this stream type and variant, disable color writes to the entity ID buffer to allow picking through this object.
+            var value = res.Pass.ColorWrites[ColorWriteIndex];
+            res.Pass.ColorWrites[ColorWriteIndex] = false;
+            cmdBuf.SetColorWriteEnabled(res.Pass.ColorWrites);
+            res.Pass.ColorWrites[ColorWriteIndex] = value;
+        }
+        else
+        {
+            cmdBuf.SetColorWriteEnabled(res.Pass.ColorWrites);
+        }
         foreach (var materialType in stream.GetMaterialTypesCore())
         {
             var range = stream.GetRangeByMaterial(materialType);
@@ -52,28 +65,14 @@ public static class LineRenderHelper
                 var pipeline = context.Data.ResourceManager.LineMaterialManager.GetPipeline(
                     materialType
                 );
-                cmdBuf.BindRenderPipeline(pipeline);
-                if (
-                    res.RenderContext.PickingConfig.IsPickThroughEnabled(
-                        stream.StreamType,
-                        stream.Variants
-                    )
-                )
-                {
-                    // If pick-through is enabled for this stream type and variant, disable color writes to the entity ID buffer to allow picking through this object.
-                    var value = res.Pass.ColorWrites[ColorWriteIndex];
-                    res.Pass.ColorWrites[ColorWriteIndex] = false;
-                    cmdBuf.SetColorWriteEnabled(res.Pass.ColorWrites);
-                    res.Pass.ColorWrites[ColorWriteIndex] = value;
-                }
+                cmdBuf.BindRenderPipeline(pipeline, default);
             }
             cmdBuf.PushConstants(
-                new MeshDrawPushConstant
+                new LineRenderPC
                 {
                     FpConstAddress = fpConstAddress,
-                    CustomMaterialBufferAddress = 0,
-                    DrawCommandIdxOffset = range.Start,
                     MeshDrawBufferAddress = stream.Buffer.GpuAddress(res.RenderContext.Context),
+                    DrawCommandIdxOffset = range.Start,
                 }
             );
             cmdBuf.DrawIndirect(

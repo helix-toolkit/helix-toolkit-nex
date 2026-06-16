@@ -145,6 +145,8 @@ public interface ICommandBuffer
     /// </summary>
     /// <param name="handle">The handle to the render pipeline to bind.</param>
     /// <param name="colorWrites">A span indicating which color attachments should be written to.</param>
+    /// <remarks>If colorWrites is provided, it will override the current color write settings for the specified attachments.
+    /// If null or empty, color writes settings are not modified (Skipped).</remarks>
     void BindRenderPipeline(in RenderPipelineHandle handle, ReadOnlySpan<bool> colorWrites);
 
     /// <summary>

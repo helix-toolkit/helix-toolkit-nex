@@ -97,11 +97,11 @@ internal abstract class DrawStreamBase<DRAW_TYPE, COMP_TYPE> : Initializable, ID
         return _materialRanges.TryGetValue(materialType, out var range) ? range : DrawRange.Zero;
     }
 
-    public bool TryGetDraw(int drawIndex, out DRAW_TYPE DRAW_TYPE)
+    public bool TryGetDraw(int drawIndex, out DRAW_TYPE draw)
     {
         if (drawIndex < 0 || drawIndex >= (int)Count)
         {
-            DRAW_TYPE = default;
+            draw = default;
             return false;
         }
         // Walk material ranges to find which list contains this index
@@ -110,11 +110,11 @@ internal abstract class DrawStreamBase<DRAW_TYPE, COMP_TYPE> : Initializable, ID
             if (drawIndex >= (int)range.Start && drawIndex < (int)range.End)
             {
                 var list = _drawsByMaterial[matId];
-                DRAW_TYPE = list[drawIndex - (int)range.Start];
+                draw = list[drawIndex - (int)range.Start];
                 return true;
             }
         }
-        DRAW_TYPE = default;
+        draw = default;
         return false;
     }
 

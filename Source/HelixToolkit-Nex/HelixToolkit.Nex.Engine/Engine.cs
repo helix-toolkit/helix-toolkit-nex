@@ -463,18 +463,15 @@ public class Engine : Initializable
             var pending = _pendingPickings[frameIndex];
             var pickingResult = pending.Context!.PickingContext.ReadResult(pending.Id);
             _pendingPickings[frameIndex] = PendingPicking.Empty;
-            if (pickingResult != 0)
-            {
-                pending.Callback?.Invoke(
-                    new PickingResponse
-                    {
-                        Context = pending.Context!,
-                        Coord = pending.Coord,
-                        Data = pickingResult,
-                        RequestId = pending.Id,
-                    }
-                );
-            }
+            pending.Callback?.Invoke(
+                new PickingResponse
+                {
+                    Context = pending.Context!,
+                    Coord = pending.Coord,
+                    Data = pickingResult,
+                    RequestId = pending.Id,
+                }
+            );
         }
         ProcessEvents();
         _frameBegun = true;

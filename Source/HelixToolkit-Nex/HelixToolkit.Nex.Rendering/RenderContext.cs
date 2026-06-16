@@ -91,14 +91,48 @@ public sealed class RenderParams
     public static bool LogFPSInDebug { get; set; } = false;
 }
 
+/// <summary>
+/// Configuration settings for the picking system that control how picking interacts with different types of geometry in the scene.
+/// </summary>
 public sealed class PickingConfig
 {
-    public bool EnableOpaqueMeshPickThrough = false;
+    /// <summary>
+    /// When enabled, allows picking to "pass through" transparent meshes,
+    /// meaning that clicks on transparent areas of the mesh will not register as hits,
+    /// allowing objects behind them to be selected instead.
+    /// This is useful for improving the user experience when interacting with scenes that contain transparent materials,
+    /// as it prevents accidental selection of transparent geometry when the user intends to select something behind it.
+    /// </summary>
     public bool EnableTransparentMeshPickThrough = false;
+
+    /// <summary>
+    /// When enabled, allows picking to "pass through" point clouds,
+    /// meaning that clicks on points will not register as hits,
+    /// allowing objects behind them to be selected instead.
+    /// </summary>
     public bool EnablePointCloudPickThrough = false;
+
+    /// <summary>
+    /// When enabled, allows picking to "pass through" lines,
+    /// meaning that clicks on lines will not register as hits,
+    /// allowing objects behind them to be selected instead.
+    /// </summary>
     public bool EnableLinePickThrough = false;
+
+    /// <summary>
+    /// When enabled, allows picking to "pass through" billboards,
+    /// meaning that clicks on billboards will not register as hits,
+    /// allowing objects behind them to be selected instead.
+    /// </summary>
     public bool EnableBillboardPickThrough = false;
 
+    /// <summary>
+    /// Determines whether picking should be allowed to pass through geometry based on the specified draw stream type and variants.
+    /// </summary>
+    /// <param name="type">The type of the draw stream.</param>
+    /// <param name="variant">The variants of the draw stream.</param>
+    /// <returns>True if picking should pass through the geometry; otherwise, false.</returns>
+    /// <remarks>Opaque geometry is never pick-through.</remarks>
     public bool IsPickThroughEnabled(DrawStreamType type, DrawStreamVariants variant)
     {
         if (variant.HasAllFlags(DrawStreamVariants.Hitable))
@@ -107,13 +141,25 @@ public sealed class PickingConfig
         }
         return type switch
         {
-            DrawStreamType.Opaque => EnableOpaqueMeshPickThrough,
+            DrawStreamType.Opaque => false,
             DrawStreamType.Transparent => EnableTransparentMeshPickThrough,
             DrawStreamType.Line => EnableLinePickThrough,
             DrawStreamType.Point => EnablePointCloudPickThrough,
             DrawStreamType.Billboard => EnableBillboardPickThrough,
             _ => false,
         };
+    }
+
+    /// <summary>
+    /// Enables or disables pick-through behavior for all geometry types at once.
+    /// </summary>
+    /// <param name="enabled">True to enable pick-through for all geometry types; false to disable.</param>
+    public void SetAllPickThrough(bool enabled)
+    {
+        EnableTransparentMeshPickThrough = enabled;
+        EnablePointCloudPickThrough = enabled;
+        EnableLinePickThrough = enabled;
+        EnableBillboardPickThrough = enabled;
     }
 }
 
