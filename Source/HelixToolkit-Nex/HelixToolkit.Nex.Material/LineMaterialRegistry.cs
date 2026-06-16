@@ -140,7 +140,7 @@ public static class LineMaterialRegistry
     /// <returns>The assigned type ID.</returns>
     public static MaterialTypeId Register(
         string name,
-        string getPointColorImpl,
+        string getLineColorImpl,
         string? additionalCode = null
     )
     {
@@ -152,7 +152,7 @@ public static class LineMaterialRegistry
             {
                 TypeId = typeId,
                 Name = name,
-                OutputColorImplementation = getPointColorImpl,
+                OutputColorImplementation = getLineColorImpl,
                 AdditionalCode = additionalCode,
             };
 

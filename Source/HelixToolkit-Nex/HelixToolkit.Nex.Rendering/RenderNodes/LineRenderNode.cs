@@ -42,9 +42,6 @@ public sealed class LineRenderNode : RenderNode
         res.Pass.Colors[1].LoadOp = LoadOp.Load;
         res.Pass.Colors[1].StoreOp = StoreOp.Store;
         res.Deps.PushTexture(res.Textures[SystemBufferNames.TextureDepthF32]);
-        res.Deps.PushBuffer(res.Buffers[SystemBufferNames.BufferLightGrid]);
-        res.Deps.PushBuffer(res.Buffers[SystemBufferNames.BufferLightIndex]);
-        res.Deps.PushBuffer(res.Buffers[SystemBufferNames.BufferPBRProperties]);
         res.Deps.PushBuffer(res.Buffers[SystemBufferNames.BufferForwardPlusConstants]);
         res.Pass.DepthState = DepthState.DefaultReversedZ;
 
