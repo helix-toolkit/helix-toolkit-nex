@@ -17,7 +17,14 @@ public class LineNode : Node
     {
         // LineDrawInfo.Valid requires a non-empty LineMaterialName, so default it to
         // "Default" so a freshly created LineNode with geometry is immediately valid.
-        Entity.Set(new LineDrawInfo { LineMaterialName = "Default" });
+        Entity.Set(
+            new LineDrawInfo
+            {
+                LineMaterialName = "Default",
+                Cullable = true,
+                Hitable = true,
+            }
+        );
         IsRenderable = true;
     }
 
