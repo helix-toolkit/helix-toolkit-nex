@@ -354,12 +354,6 @@ namespace HelixToolkit.Nex.Maths
 #endif
 
             points.MinMax(out var min, out var max);
-            if (min == max)
-            {
-                float offset = 0.0005f;
-                min = new Vector4(min.X - offset, min.Y - offset, min.Z - offset, min.W - offset);
-                max = new Vector4(max.X + offset, max.Y + offset, max.Z + offset, max.W + offset);
-            }
             result = new BoundingBox(min.ToVector3(), max.ToVector3());
         }
 
