@@ -110,7 +110,11 @@ internal sealed class LineDrawStreamRegistry(IContext context, World world)
 
     private LineDrawStream? GetStreamInternal(DrawStreamType type, DrawStreamVariants category)
     {
-        return GetStream(type, category) is LineDrawStream line ? line : null;
+        if (type != DrawStreamType.Line)
+        {
+            return null;
+        }
+        return GetStream(type, category) as LineDrawStream;
     }
 
     private void OnEntityAdded(object? sender, int entityId)

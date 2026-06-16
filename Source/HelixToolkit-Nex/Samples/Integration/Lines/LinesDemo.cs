@@ -152,7 +152,7 @@ internal sealed class LinesDemo : IDisposable
         // 1. Gradient — colorize along the segment using v_uv.x (in [-1,1] -> [0,1]).
         LineMaterialRegistry.Register(
             name: "Gradient",
-            getPointColorImpl: """
+            getLineColorImpl: """
                 float t = clamp(getUV().x * 0.5 + 0.5, 0.0, 1.0);
                 vec4 c = getColor();
                 // Blend from the base color toward a complementary hue along the segment.
@@ -171,7 +171,7 @@ internal sealed class LinesDemo : IDisposable
         // 2. Dashed — discard fragments based on an animated dash pattern along v_uv.x.
         LineMaterialRegistry.Register(
             name: "Dashed",
-            getPointColorImpl: """
+            getLineColorImpl: """
                 float t = getUV().x * 0.5 + 0.5;                 // [0,1] along the segment
                 float timeMs = float(getTimeMs() % 100000) / 1000.0;
                 float pattern = fract(t * 16.0 - timeMs * 2.0);  // scrolling dashes
@@ -191,7 +191,7 @@ internal sealed class LinesDemo : IDisposable
         // 3. Glow — boost brightness toward the segment center (small |v_uv.y|).
         LineMaterialRegistry.Register(
             name: "Glow",
-            getPointColorImpl: """
+            getLineColorImpl: """
                 vec4 c = getColor();
                 float center = 1.0 - clamp(abs(getUV().y), 0.0, 1.0);
                 float glow = pow(center, 2.0);
