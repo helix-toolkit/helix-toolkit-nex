@@ -440,6 +440,10 @@ SHADER_UTIL_CONFIGS: list[tuple[str, str]] = [
         "Source/HelixToolkit-Nex/HelixToolkit.Nex.Shaders/Point/psPointTemplate.glsl",
         "Documentation/PointShaderUtilFunctions.md",
     ),
+    (
+        "Source/HelixToolkit-Nex/HelixToolkit.Nex.Shaders/Line/psLineTemplate.glsl",
+        "Documentation/LineShaderUtilFunctions.md",
+    ),
 ]
 
 
