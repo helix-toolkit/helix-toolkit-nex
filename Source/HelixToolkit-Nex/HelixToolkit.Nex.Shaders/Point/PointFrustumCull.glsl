@@ -52,10 +52,6 @@ void main() {
     uint gID = gl_GlobalInvocationID.x;
 
     // Access Constants
-    
-    if (cullingConst.value.cullingEnabled == 0) { // Early out if culling is disabled
-       return;
-    }
     if (gID >= pc.value.instanceCount) { // Ensure valid access
         return;
     }
@@ -74,7 +70,7 @@ void main() {
         return;
     }   
 
-    if (draw.cullable == 0) {
+    if (cullingConst.value.cullingEnabled == 0 || draw.cullable == 0) {
         // Not cullable: render every segment. One quad instance per disjoint 2-vertex
         // segment, so instanceCount = pointCount.
         meshDrawBuf.draws[drawIdx].instanceCount = draw.pointCount;
