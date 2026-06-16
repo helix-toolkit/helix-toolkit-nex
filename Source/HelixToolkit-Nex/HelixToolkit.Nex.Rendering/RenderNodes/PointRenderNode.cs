@@ -2,8 +2,6 @@ namespace HelixToolkit.Nex.Rendering.RenderNodes;
 
 public sealed class PointRenderNode : RenderNode
 {
-    private static readonly ILogger _logger = LogManager.Create<PointRenderNode>();
-
     public override string Name => nameof(PointRenderNode);
     public override Color4 DebugColor => Color.Cornsilk;
 

@@ -2,7 +2,6 @@ namespace HelixToolkit.Nex.Rendering;
 
 public static class PointRenderHelper
 {
-    private static readonly ILogger _logger = LogManager.Create("PointRenderHelper");
     private const int ColorWriteIndex = 1; // The second render target (index 1) is the one used for entity ID output.
 
     public static uint Render(

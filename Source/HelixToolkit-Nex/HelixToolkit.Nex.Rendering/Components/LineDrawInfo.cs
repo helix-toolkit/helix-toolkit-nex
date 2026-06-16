@@ -2,7 +2,7 @@ namespace HelixToolkit.Nex.Rendering.Components;
 
 public struct LineDrawInfo(
     Geometry? geometry = null,
-    string materialTypeName = "",
+    string materialTypeName = "Default",
     bool cullable = true,
     bool hitable = true
 )

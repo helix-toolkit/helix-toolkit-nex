@@ -12,6 +12,7 @@ public readonly record struct RenderResources(
 
 public abstract class RenderNode : IDisposable
 {
+    private static readonly ILogger _logger = LogManager.Create<RenderNode>();
     protected Renderer? Renderer { private set; get; }
 
     public abstract string Name { get; }
@@ -53,11 +54,13 @@ public abstract class RenderNode : IDisposable
                 "RenderNode is already attached to another Renderer."
             );
         }
+        _logger.LogInformation("Setting up RenderNode: {Name}", Name);
         _tracer = TracerFactory.GetTracer($"{nameof(RenderNode)}[{Name}]");
         using var scope = _tracer.BeginScope($"Attaching renderer: {Name}");
         NameBytes = System.Text.Encoding.UTF8.GetBytes(Name);
         Renderer = renderer;
         _isAttached = OnSetup();
+        _logger.LogInformation("RenderNode {Name} setup complete. Attached: {IsAttached}", Name, IsAttached);
         return IsAttached;
     }
 
@@ -69,12 +72,14 @@ public abstract class RenderNode : IDisposable
         {
             return;
         }
+        _logger.LogInformation("Tearing down RenderNode: {Name}", Name);
         // Mark as detached before calling into teardown logic to prevent re-entrant calls.
         _isAttached = false;
         using var scope = _tracer?.BeginScope($"Detaching renderer: {Name}");
         OnTeardown();
         Renderer?.RemoveNode(this);
         Renderer = null;
+        _logger.LogInformation("RenderNode {Name} teardown complete.", Name);
     }
 
     protected virtual void OnTeardown() { }

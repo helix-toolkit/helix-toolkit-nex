@@ -178,9 +178,6 @@ public sealed class LineMaterialManager(IContext context, IShaderRepository shad
             DepthFormat = GraphicsSettings.DepthBufferFormat,
         };
 
-        // Color 0: scene color — premultiplied-alpha blend.
-        // The fragment shader outputs (rgb * a, a), so source factor is One
-        // (not SrcAlpha) to avoid double-multiplication.
         if (registration.BlendConfig.HasValue)
         {
             pipelineDesc.Colors[0] = registration.BlendConfig.Value;
