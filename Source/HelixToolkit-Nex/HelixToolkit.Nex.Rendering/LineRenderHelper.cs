@@ -41,20 +41,24 @@ public static class LineRenderHelper
         uint drawCount = 0;
         var cmdBuf = res.CmdBuffer;
         var context = res.RenderContext;
-        if (
-            res.RenderContext.PickingConfig.IsPickThroughEnabled(stream.StreamType, stream.Variants)
-        )
+        if (!context.UseExternalPipeline)
         {
-            // If pick-through is enabled for this stream type and variant, disable color writes to the entity ID buffer to allow picking through this object.
-            var value = res.Pass.ColorWrites[ColorWriteIndex];
-            res.Pass.ColorWrites[ColorWriteIndex] = false;
-            cmdBuf.SetColorWriteEnabled(res.Pass.ColorWrites);
-            res.Pass.ColorWrites[ColorWriteIndex] = value;
+            if (
+                res.RenderContext.PickingConfig.IsPickThroughEnabled(stream.StreamType, stream.Variants)
+            )
+            {
+                // If pick-through is enabled for this stream type and variant, disable color writes to the entity ID buffer to allow picking through this object.
+                var value = res.Pass.ColorWrites[ColorWriteIndex];
+                res.Pass.ColorWrites[ColorWriteIndex] = false;
+                cmdBuf.SetColorWriteEnabled(res.Pass.ColorWrites);
+                res.Pass.ColorWrites[ColorWriteIndex] = value;
+            }
+            else
+            {
+                cmdBuf.SetColorWriteEnabled(res.Pass.ColorWrites);
+            }
         }
-        else
-        {
-            cmdBuf.SetColorWriteEnabled(res.Pass.ColorWrites);
-        }
+
         foreach (var materialType in stream.GetMaterialTypesCore())
         {
             var range = stream.GetRangeByMaterial(materialType);
