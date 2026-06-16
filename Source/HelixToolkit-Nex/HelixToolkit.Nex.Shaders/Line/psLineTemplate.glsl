@@ -161,8 +161,6 @@ vec4 outputColor() {
         : smoothstep(0.0, feather, edge);  // 1.0 inner -> 0.0 at the outer band edge
     color.a *= alpha;
 
-    // Premultiplied-alpha output (Requirement 5.3). main() discards when color.a < 1e-4
-    // (Requirements 4.5, 5.2), which the preserved alpha channel keeps consistent.
     return color;
 }
 

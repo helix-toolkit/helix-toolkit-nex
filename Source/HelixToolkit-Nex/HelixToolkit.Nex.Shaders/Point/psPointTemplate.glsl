@@ -146,9 +146,6 @@ vec4 getCircularSDFColor() {
     }
 
     color.a *= alpha;
-    // Premultiplied-alpha output (Requirement 4.5): scale RGB by the final alpha so the
-    // result composites correctly. main() discards when color.a < 1e-4 (Requirement 4.4),
-    // which the preserved alpha channel keeps consistent.
     return color;
 }
 // Returns the point color. Override this in a custom shader to sample textures, apply lighting, etc.

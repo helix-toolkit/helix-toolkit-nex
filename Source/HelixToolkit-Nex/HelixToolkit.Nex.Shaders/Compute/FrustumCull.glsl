@@ -52,10 +52,6 @@ void main() {
     uint gID = gl_GlobalInvocationID.x;
 
     // Access Constants
-    
-    if (cullingConst.value.cullingEnabled == 0) { // Early out if culling is disabled
-       return;
-    }
     if (gID >= pc.value.instanceCount) { // Ensure valid access
         return;
     }
@@ -79,7 +75,7 @@ void main() {
         return;
     }   
 
-    if (draw.cullable == 0) {
+    if (cullingConst.value.cullingEnabled == 0 || draw.cullable == 0) {
         // If not cullable, we can skip culling and set instance count to 1 (or keep as is)
         meshDrawBuf.draws[drawIdx].instanceCount = 1;
         return;

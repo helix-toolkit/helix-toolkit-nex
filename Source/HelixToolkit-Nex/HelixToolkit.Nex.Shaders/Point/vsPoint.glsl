@@ -7,8 +7,8 @@
 #include "HxHeaders/DrawTypeCheck.glsl"    // isHitable() (Req 6.1)
 
 layout(location = 0) out vec2  v_uv;            // Quad_Corner_UV in [-1,1]
-layout(location = 1) out vec4  v_color;         // interpolated RGBA endpoint color
-layout(location = 2) out float v_screenSize;    // clamped Line_Width in pixels
+layout(location = 1) out vec4  v_color;         // resolved point RGBA color
+layout(location = 2) out float v_screenSize;    // clamped point diameter in pixels
 layout(location = 3) out flat uvec2  v_entityId;       // packed GPU-picking entity id
 layout(location = 4) out flat uint  v_textureIndex;   // bindless texture index (0 = none)
 layout(location = 5) out flat uint  v_samplerIndex;   // bindless sampler index
