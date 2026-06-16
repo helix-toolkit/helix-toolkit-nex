@@ -249,7 +249,6 @@ internal sealed class PickingDemo : IDisposable
         _highlightPointGeometry.Vertices.Add(
             new Vector4(float.MaxValue, float.MaxValue, float.MaxValue, 1)
         );
-        _highlightPointGeometry.VertexColors.Add(new Vector4(1, 0, 0, 1));
         _highlightPointGeometry.UpdateBounds();
         succ = geometryManager.Add(_highlightPointGeometry);
         Debug.Assert(succ, "Failed to add highlight point geometry");
@@ -257,8 +256,10 @@ internal sealed class PickingDemo : IDisposable
         _highlightPointNode = new PointCloudNode(world, "HighlightPoint")
         {
             Geometry = _highlightPointGeometry,
-            Size = 0.4f,
+            Size = 10f,
             Color = new Color4(1f, 0f, 0f, 1f),
+            Hitable = false,
+            FixedSize = true,
         };
         _root.AddChild(_highlightPointNode);
 
@@ -384,17 +385,16 @@ internal sealed class PickingDemo : IDisposable
         {
             var pointComp = pickedEntity.Get<PointDrawInfo>();
             var pointGeo = pointComp.Geometry;
-            if (pointGeo is not null && primitiveId < pointGeo.Vertices.Count)
+            if (pointGeo is not null && instanceIdx < pointGeo.Vertices.Count)
             {
-                var pointPos = pointGeo.Vertices[(int)primitiveId];
-                _logger.LogInformation("Picked point {Id} at ({Pos})", primitiveId, pointPos);
+                var pointPos = pointGeo.Vertices[(int)instanceIdx];
+                _logger.LogInformation("Picked point {Id} at ({Pos})", instanceIdx, pointPos);
                 _lastPickInfo =
-                    $"Point {primitiveId} @ ({pointPos.X:F2}, {pointPos.Y:F2}, {pointPos.Z:F2})";
+                    $"Point {instanceIdx} @ ({pointPos.X:F2}, {pointPos.Y:F2}, {pointPos.Z:F2})";
 
                 _highlightPointGeometry!.Vertices[0] = pointPos;
-                _highlightPointGeometry.VertexColors[0] = new Vector4(1, 0, 0, 1);
                 _highlightPointGeometry.MarkDirty(
-                    GeometryBufferType.Vertex | GeometryBufferType.VertexColor
+                    GeometryBufferType.Vertex
                 );
                 _highlightPointGeometry.UpdateBounds();
             }
