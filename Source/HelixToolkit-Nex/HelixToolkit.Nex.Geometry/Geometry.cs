@@ -196,10 +196,6 @@ public partial class Geometry : HxObservableObject, IDisposable
                 {
                     BufferDirty |= GeometryBufferType.VertexColor;
                 }
-                if (BufferDirty != GeometryBufferType.None && Valid)
-                {
-                    EventBus.Instance.PublishAsync(new GeometryUpdatedEvent(Id, GeometryChangeOp.Updated));
-                }
             };
         }
     }
@@ -290,6 +286,7 @@ public partial class Geometry : HxObservableObject, IDisposable
     {
         using var scope = _tracer.BeginScope(nameof(UpdateBuffers), TRACE_BUFFER);
         var storageType = IsDynamic ? StorageType.HostVisible : StorageType.Device;
+        bool dirty = types != GeometryBufferType.None;
         if (types.HasAllFlags(GeometryBufferType.Vertex))
         {
             if (_vertices.Count == 0)
@@ -395,6 +392,10 @@ public partial class Geometry : HxObservableObject, IDisposable
             }
 
             BufferDirty &= ~GeometryBufferType.VertexColor;
+        }
+        if (dirty && Valid)
+        {
+            EventBus.Instance.PublishAsync(new GeometryUpdatedEvent(Id, GeometryChangeOp.Updated));
         }
         return ResultCode.Ok;
     }
