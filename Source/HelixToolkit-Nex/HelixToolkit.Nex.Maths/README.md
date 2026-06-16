@@ -45,6 +45,11 @@ The `HelixToolkit.Nex.Maths` package is integral to the HelixToolkit-Nex engine,
 - `ToMatrix(IList<float> array)`: Creates a 4x4 matrix from a list of 16 single-precision floating-point values in row-major order.
 - `ToMatrixTransposed(IList<float> array)`: Creates a 4x4 matrix from a list of 16 single-precision floating-point values in column-major order, transposing the order to row-major.
 
+### New Methods
+
+- `Color.PackToRGBA()`: Packs the color into a 32-bit unsigned integer in RGBA format.
+- `Color4Helper.EncodeToUInt(Color4 color)`: Encodes a `Color4` into a 32-bit unsigned integer in RGBA format.
+
 ## Usage Examples
 
 ### Creating and Using Colors
@@ -63,6 +68,9 @@ Color4 brighterColor = Color4Helper.ChangeIntensity(color4, 1.2f);
 
 // Use the new Charcoal color
 Color charcoalColor = Color.Charcoal;
+
+// Pack color to RGBA
+uint packedColor = color.PackToRGBA();
 ```
 
 ### Working with Matrices

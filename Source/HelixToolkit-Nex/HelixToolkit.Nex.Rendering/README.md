@@ -16,9 +16,10 @@ HelixToolkit.Nex.Rendering is responsible for managing the rendering pipeline of
 | Type                             | Description                                                                 |
 |----------------------------------|-----------------------------------------------------------------------------|
 | `IIndexable`                     | Interface for components that can be indexed.                               |
-| `MeshComponent`                  | Represents a mesh render component with geometry and material associations. |
-| `PointCloudComponent`            | Describes a point cloud attached to an entity.                              |
-| `BillboardComponent`             | Describes one or more billboards attached to an entity.                     |
+| `MeshDrawInfo`                   | Represents a mesh render component with geometry and material associations. |
+| `PointCloudDrawInfo`             | Describes a point cloud attached to an entity.                              |
+| `BillboardDrawInfo`              | Describes one or more billboards attached to an entity.                     |
+| `LineDrawInfo`                   | Describes line geometry attached to an entity.                              |
 | `ForwardPlusLightCullingNode`    | Performs tiled Forward+ light culling.                                      |
 | `FrustumCullNode`                | Executes GPU-based frustum culling.                                         |
 | `PointCullNode`                  | Handles culling of point cloud data.                                        |
@@ -37,11 +38,12 @@ HelixToolkit.Nex.Rendering is responsible for managing the rendering pipeline of
 
 ### New Features
 
-- **BoundingBoxPostEffect**: Added for rendering wireframe axis-aligned bounding boxes (AABB) around mesh entities with a `BoundingBoxOverlay`.
-- **BillboardComponent**: Added `CullDistance` property to control distance-based culling.
-- **BillboardCullNode**: Updated to include screen width in rendering parameters for better culling precision.
-- **WireframePostEffect**: Added for rendering wireframe overlays on meshes with customizable color and depth bias.
-- **BorderHighlightPostEffect**: Added for rendering colored outlines around mesh silhouettes using a `BorderHighlightOverlay`.
+- **LineDrawInfo**: Added for describing line geometry attached to an entity.
+- **BillboardDrawInfo**: Renamed from `BillboardComponent` to better reflect its purpose.
+- **MeshDrawInfo**: Renamed from `MeshComponent` to better reflect its purpose.
+- **PointCloudDrawInfo**: Renamed from `PointCloudComponent` to better reflect its purpose.
+- **FrustumCullNode**: Added line culling pipeline to handle line geometry.
+- **DrawStream Enhancements**: Introduced `DrawStreamType` and `DrawStreamVariants` for more precise control over draw stream characteristics.
 
 ### Updated Sampler Handling
 
@@ -58,7 +60,7 @@ HelixToolkit.Nex.Rendering is responsible for managing the rendering pipeline of
 
 - **Render Setup**: Added `OnSetupRender` method to manage texture dependencies.
 
-### MeshComponent
+### MeshDrawInfo
 
 - **Variants Property**: Renamed from `Category` to `Variants` to determine the draw stream category based on instancing, hitability, and dynamic state.
 
@@ -94,7 +96,7 @@ renderGraph
 ### Adding a Mesh Component
 
 ```csharp
-var meshComponent = new MeshComponent(
+var meshDrawInfo = new MeshDrawInfo(
     geometry: myGeometry,
     materialProperties: myMaterialProperties,
     instancing: myInstancing
@@ -104,7 +106,7 @@ var meshComponent = new MeshComponent(
 ### Adding a Billboard Component
 
 ```csharp
-var billboardComponent = new BillboardComponent
+var billboardDrawInfo = new BillboardDrawInfo
 {
     BillboardGeometry = new BillboardGeometry(),
     Color = new Color4(1f, 1f, 1f, 1f),
