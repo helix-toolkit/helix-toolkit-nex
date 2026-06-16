@@ -1,17 +1,20 @@
 #include "HxHeaders/HeaderFrag.glsl"
 #include "HxHeaders/ForwardPlusConstants.glsl"
 #include "Point/PointStructs.glsl"
+#include "HxHeaders/HeaderPackEntity.glsl"
 
 layout(location = 0) in vec2  v_uv;
 layout(location = 1) in vec4  v_color;
 layout(location = 2) in float v_screenSize;
-layout(location = 3) in flat vec2  v_entityId;
+layout(location = 3) in flat uvec2 v_entityId;
 layout(location = 4) in flat uint  v_textureIndex;
 layout(location = 5) in flat uint  v_samplerIndex;
-layout(location = 6) in flat vec3  v_fragWorldPos;
+layout(location = 6) in vec3  v_fragWorldPos;
 
 layout(location = 0) out vec4 outColor;
+#ifdef OUTPUT_DRAW_ID
 layout(location = 1) out vec2 outEntityId;
+#endif
 
 layout(push_constant) uniform PC {
     PointRenderPC value;
@@ -123,7 +126,7 @@ vec4 mixWithPointerRing(in vec4 color) {
 }
 /*UTILITY_FUNCTIONS_END*/
 
-layout (constant_id = 0) const uint MATERIAL_TYPE = 0; 
+layout (constant_id = 0) const uint MATERIAL_TYPE = 0u; 
 // --- User-overridable functions ---
 
 vec4 getCircularSDFColor() {
@@ -143,6 +146,9 @@ vec4 getCircularSDFColor() {
     }
 
     color.a *= alpha;
+    // Premultiplied-alpha output (Requirement 4.5): scale RGB by the final alpha so the
+    // result composites correctly. main() discards when color.a < 1e-4 (Requirement 4.4),
+    // which the preserved alpha channel keeps consistent.
     return color;
 }
 // Returns the point color. Override this in a custom shader to sample textures, apply lighting, etc.
@@ -158,6 +164,9 @@ void main() {
     if (color.a < 1e-4) discard;
 
     outColor    = color;
-    outEntityId = v_entityId;
+#ifdef OUTPUT_DRAW_ID
+    uint primID = uint(gl_PrimitiveID);
+    outEntityId = packPrimitiveId(v_entityId, primID);
+#endif
 }
 /*TEMPLATE_CUSTOM_MAIN_END*/

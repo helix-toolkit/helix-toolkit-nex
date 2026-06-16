@@ -1063,7 +1063,6 @@ public class RenderGraphTests
         new PrepareNode().AddToGraph(graph);
         new DepthPassNode().AddToGraph(graph);
         new FrustumCullNode().AddToGraph(graph);
-        new PointCullNode().AddToGraph(graph);
         new ForwardPlusLightCullingNode().AddToGraph(graph);
         new ForwardPlusOpaqueNode().AddToGraph(graph);
         new PointRenderNode().AddToGraph(graph);
@@ -1077,9 +1076,9 @@ public class RenderGraphTests
         var names = graph.SortedPasses.Select(p => p.PassName).ToList();
 
         Assert.AreEqual(
-            10,
+            9,
             names.Count,
-            $"Expected 10 passes, got {names.Count}: {string.Join(", ", names)}"
+            $"Expected 9 passes, got {names.Count}: {string.Join(", ", names)}"
         );
 
         // --- Stage: Prepare ---
@@ -1092,8 +1091,8 @@ public class RenderGraphTests
             "FrustumCullNode before ForwardPlusOpaqueNode"
         );
         Assert.IsTrue(
-            Precedes(names, nameof(PointCullNode), nameof(PointRenderNode)),
-            "PointCullNode before PointRenderNode"
+            Precedes(names, nameof(FrustumCullNode), nameof(PointRenderNode)),
+            "FrustumCullNode before PointRenderNode"
         );
 
         // --- Stage: Opaque ---
@@ -1142,9 +1141,9 @@ public class RenderGraphTests
     private static void AssertDefaultPipelineOrder(List<string> names)
     {
         Assert.AreEqual(
-            10,
+            9,
             names.Count,
-            $"Expected 10 passes, got {names.Count}: {string.Join(", ", names)}"
+            $"Expected 9 passes, got {names.Count}: {string.Join(", ", names)}"
         );
 
         // Prepare → Opaque
@@ -1157,8 +1156,8 @@ public class RenderGraphTests
             "FrustumCullNode before ForwardPlusOpaqueNode"
         );
         Assert.IsTrue(
-            Precedes(names, nameof(PointCullNode), nameof(PointRenderNode)),
-            "PointCullNode before PointRenderNode"
+            Precedes(names, nameof(FrustumCullNode), nameof(PointRenderNode)),
+            "FrustumCullNode before PointRenderNode"
         );
 
         // Opaque ordering
@@ -1225,7 +1224,6 @@ public class RenderGraphTests
             new PointRenderNode(),
             new ForwardPlusOpaqueNode(),
             new ForwardPlusLightCullingNode(),
-            new PointCullNode(),
             new FrustumCullNode(),
             new DepthPassNode(),
             new PrepareNode(),
@@ -1248,7 +1246,6 @@ public class RenderGraphTests
             new PrepareNode(),
             new DepthPassNode(),
             new FrustumCullNode(),
-            new PointCullNode(),
             new ForwardPlusLightCullingNode(),
             new ForwardPlusOpaqueNode(),
             new PointRenderNode(),
@@ -1273,7 +1270,6 @@ public class RenderGraphTests
             new PostEffectsNode(),
             new PrepareNode(),
             new FrustumCullNode(),
-            new PointCullNode(),
             new DepthPassNode(),
             new ForwardPlusLightCullingNode(),
             new ForwardPlusOpaqueNode(),
@@ -1302,7 +1298,6 @@ public class RenderGraphTests
             new DepthPassNode(), // Opaque
             new FrustumCullNode(), // Prepare
             new ForwardPlusLightCullingNode(), // Opaque
-            new PointCullNode(), // Prepare
             new PointRenderNode(), // Opaque
         ]);
 
@@ -1321,7 +1316,6 @@ public class RenderGraphTests
         var names = CompileNodes([
             new PrepareNode(),
             new FrustumCullNode(),
-            new PointCullNode(),
             new ForwardPlusWBOITMergedNode(),
             new PostEffectsNode(),
             new ToneMappingNode(),

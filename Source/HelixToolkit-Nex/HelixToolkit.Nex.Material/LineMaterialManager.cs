@@ -188,7 +188,7 @@ public sealed class LineMaterialManager(IContext context, IShaderRepository shad
         }
         else
         {
-            pipelineDesc.Colors[0] = ColorAttachment.CreateOpaque(
+            pipelineDesc.Colors[0] = ColorAttachment.CreateAlphaBlend(
                 GraphicsSettings.IntermediateTargetFormat
             );
         }

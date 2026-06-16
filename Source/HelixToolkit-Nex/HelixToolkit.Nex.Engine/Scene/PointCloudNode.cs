@@ -3,7 +3,7 @@ using HelixToolkit.Nex.Rendering.Components;
 namespace HelixToolkit.Nex.Scene;
 
 /// <summary>
-/// A scene node that wraps a <see cref="PointCloudDrawInfo"/>, exposing all of its
+/// A scene node that wraps a <see cref="PointDrawInfo"/>, exposing all of its
 /// properties individually so callers never need to manage the component directly.
 /// </summary>
 public class PointCloudNode : Node
@@ -11,14 +11,21 @@ public class PointCloudNode : Node
     public PointCloudNode(World world, string name)
         : base(world, name)
     {
-        Entity.Set(new PointCloudDrawInfo());
+        Entity.Set(
+            new PointDrawInfo()
+            {
+                Cullable = true,
+                Hitable = true,
+                PointMaterialName = "Default",
+            }
+        );
         IsRenderable = true;
     }
 
-    public PointCloudNode(World world, string name, PointCloudDrawInfo component)
+    public PointCloudNode(World world, string name, PointDrawInfo component)
         : this(world, name, ref component) { }
 
-    public PointCloudNode(World world, string name, ref PointCloudDrawInfo component)
+    public PointCloudNode(World world, string name, ref PointDrawInfo component)
         : this(world, name)
     {
         Entity.Set(ref component);
@@ -29,10 +36,10 @@ public class PointCloudNode : Node
     /// </summary>
     public Geometry? Geometry
     {
-        get => Entity.Get<PointCloudDrawInfo>().Geometry;
+        get => Entity.Get<PointDrawInfo>().Geometry;
         set
         {
-            Entity.Update<PointCloudDrawInfo>(comp =>
+            Entity.Update<PointDrawInfo>(comp =>
             {
                 comp.Geometry = value;
                 return comp;
@@ -45,12 +52,28 @@ public class PointCloudNode : Node
     /// </summary>
     public bool Hitable
     {
-        get => Entity.Get<PointCloudDrawInfo>().Hitable;
+        get => Entity.Get<PointDrawInfo>().Hitable;
         set
         {
-            Entity.Update<PointCloudDrawInfo>(comp =>
+            Entity.Update<PointDrawInfo>(comp =>
             {
                 comp.Hitable = value;
+                return comp;
+            });
+        }
+    }
+
+    /// <summary>
+    /// Gets or sets whether this point cloud can be frustum-culled.
+    /// </summary>
+    public bool Cullable
+    {
+        get => Entity.Get<PointDrawInfo>().Cullable;
+        set
+        {
+            Entity.Update<PointDrawInfo>(comp =>
+            {
+                comp.Cullable = value;
                 return comp;
             });
         }
@@ -61,10 +84,10 @@ public class PointCloudNode : Node
     /// </summary>
     public bool FixedSize
     {
-        get => Entity.Get<PointCloudDrawInfo>().FixedSize;
+        get => Entity.Get<PointDrawInfo>().FixedSize;
         set
         {
-            Entity.Update<PointCloudDrawInfo>(comp =>
+            Entity.Update<PointDrawInfo>(comp =>
             {
                 comp.FixedSize = value;
                 return comp;
@@ -75,12 +98,12 @@ public class PointCloudNode : Node
     /// <summary>
     /// Gets or sets the point material name used for shader lookup.
     /// </summary>
-    public string? PointMaterialName
+    public string PointMaterialName
     {
-        get => Entity.Get<PointCloudDrawInfo>().PointMaterialName;
+        get => Entity.Get<PointDrawInfo>().PointMaterialName;
         set
         {
-            Entity.Update<PointCloudDrawInfo>(comp =>
+            Entity.Update<PointDrawInfo>(comp =>
             {
                 comp.PointMaterialName = value;
                 return comp;
@@ -93,10 +116,10 @@ public class PointCloudNode : Node
     /// </summary>
     public MaterialTypeId PointMaterialId
     {
-        get => Entity.Get<PointCloudDrawInfo>().PointMaterialId;
+        get => Entity.Get<PointDrawInfo>().PointMaterialId;
         set
         {
-            Entity.Update<PointCloudDrawInfo>(comp =>
+            Entity.Update<PointDrawInfo>(comp =>
             {
                 comp.PointMaterialId = value;
                 return comp;
@@ -109,12 +132,12 @@ public class PointCloudNode : Node
     /// </summary>
     public float Size
     {
-        get => Entity.Get<PointCloudDrawInfo>().Size;
+        get => Entity.Get<PointDrawInfo>().PointSize;
         set
         {
-            Entity.Update<PointCloudDrawInfo>(comp =>
+            Entity.Update<PointDrawInfo>(comp =>
             {
-                comp.Size = value;
+                comp.PointSize = value;
                 return comp;
             });
         }
@@ -125,12 +148,12 @@ public class PointCloudNode : Node
     /// </summary>
     public Color4 Color
     {
-        get => Entity.Get<PointCloudDrawInfo>().Color;
+        get => Entity.Get<PointDrawInfo>().PointColor;
         set
         {
-            Entity.Update<PointCloudDrawInfo>(comp =>
+            Entity.Update<PointDrawInfo>(comp =>
             {
-                comp.Color = value;
+                comp.PointColor = value;
                 return comp;
             });
         }
@@ -141,10 +164,10 @@ public class PointCloudNode : Node
     /// </summary>
     public uint TextureIndex
     {
-        get => Entity.Get<PointCloudDrawInfo>().TextureIndex;
+        get => Entity.Get<PointDrawInfo>().TextureIndex;
         set
         {
-            Entity.Update<PointCloudDrawInfo>(comp =>
+            Entity.Update<PointDrawInfo>(comp =>
             {
                 comp.TextureIndex = value;
                 return comp;
@@ -157,10 +180,10 @@ public class PointCloudNode : Node
     /// </summary>
     public uint SamplerIndex
     {
-        get => Entity.Get<PointCloudDrawInfo>().SamplerIndex;
+        get => Entity.Get<PointDrawInfo>().SamplerIndex;
         set
         {
-            Entity.Update<PointCloudDrawInfo>(comp =>
+            Entity.Update<PointDrawInfo>(comp =>
             {
                 comp.SamplerIndex = value;
                 return comp;
@@ -171,10 +194,10 @@ public class PointCloudNode : Node
     /// <summary>
     /// Gets the number of valid points.
     /// </summary>
-    public int PointCount => Entity.Get<PointCloudDrawInfo>().PointCount;
+    public int PointCount => Entity.Get<PointDrawInfo>().PointCount;
 
     /// <summary>
-    /// Gets whether the underlying <see cref="PointCloudDrawInfo"/> has valid point data.
+    /// Gets whether the underlying <see cref="PointDrawInfo"/> has valid point data.
     /// </summary>
-    public bool IsPointCloudValid => Entity.Get<PointCloudDrawInfo>().Valid;
+    public bool IsPointCloudValid => Entity.Get<PointDrawInfo>().Valid;
 }

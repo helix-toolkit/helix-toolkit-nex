@@ -23,28 +23,6 @@ public interface IStaticMeshIndexData : IRenderData
 }
 
 /// <summary>
-/// Provides access to collected point cloud data for GPU rendering.
-/// <para>
-/// The data provider collects all <c>PointCloudComponent</c> entities each frame,
-/// packs their <c>PointData</c> into a contiguous GPU buffer, and tracks per-entity
-/// dispatch information so the compute shader can stamp the correct entity ID.
-/// </para>
-/// </summary>
-public interface IPointCloudData : IRenderData
-{
-    /// <summary>
-    /// Gets the dictionary which contains per-entity dispatch records describing each point cloud's offset,
-    /// count, entity identity, and per-point entity flag by their material id as key.
-    /// </summary>
-    IReadOnlyDictionary<MaterialTypeId, PointCloudDataEntry> Data { get; }
-
-    /// <summary>
-    /// Gets the total number of points in the collection.
-    /// </summary>
-    uint TotalPointCount { get; }
-}
-
-/// <summary>
 /// Provides access to collected billboard data for GPU rendering.
 /// <para>
 /// The data provider collects all <c>BillboardComponent</c> entities each frame,
@@ -106,6 +84,11 @@ public interface IRenderDataProvider
     IDrawStreamRegistry<LineDraw> LineDrawStreams { get; }
 
     /// <summary>
+    /// Gets the point draw stream registry that manages all draw streams for rendering points.
+    /// </summary>
+    IDrawStreamRegistry<PointDraw> PointDrawStreams { get; }
+
+    /// <summary>
     /// Gets the shared index buffer used for rendering static mesh geometry.
     /// </summary>
     IStaticMeshIndexData StaticMeshIndexData { get; }
@@ -114,12 +97,6 @@ public interface IRenderDataProvider
     /// Gets the buffer containing all physically based rendering (PBR) material properties for use in rendering operations.
     /// </summary>
     IPBRPropertyData PBRPropertiesBuffer { get; }
-
-    /// <summary>
-    /// Gets the point cloud data collected from all <c>PointCloudComponent</c> entities.
-    /// Returns <see langword="null"/> if no point cloud data provider is registered.
-    /// </summary>
-    IPointCloudData? PointCloudData { get; }
 
     /// <summary>
     /// Gets the billboard data collected from all <c>BillboardComponent</c> entities.

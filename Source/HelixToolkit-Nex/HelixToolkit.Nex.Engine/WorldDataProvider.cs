@@ -12,7 +12,7 @@ public sealed class WorldDataProvider : IRenderDataProvider, IDisposable
     private readonly DirectionalLightData _directionalLightData;
     private readonly MeshDrawStreamRegistry _meshDrawStreamRegistry;
     private readonly LineDrawStreamRegistry _lineDrawStreamRegistry;
-    private readonly PointCloudData _pointCloudData;
+    private readonly PointDrawStreamRegistry _pointDrawStreamRegistry;
     private readonly BillboardData _billboardData;
     private readonly SceneState _sceneState;
 
@@ -31,11 +31,11 @@ public sealed class WorldDataProvider : IRenderDataProvider, IDisposable
 
     public IDrawStreamRegistry<LineDraw> LineDrawStreams => _lineDrawStreamRegistry;
 
+    public IDrawStreamRegistry<PointDraw> PointDrawStreams => _pointDrawStreamRegistry;
+
     public IPBRPropertyData PBRPropertiesBuffer => ResourceManager.PBRPropertyData;
 
     public IStaticMeshIndexData StaticMeshIndexData => ResourceManager.StaticMeshIndexData;
-
-    public IPointCloudData? PointCloudData => _pointCloudData;
 
     public IBillboardData? BillboardData => _billboardData;
 
@@ -48,12 +48,11 @@ public sealed class WorldDataProvider : IRenderDataProvider, IDisposable
         _directionalLightData = new DirectionalLightData(Context, World);
         _meshDrawStreamRegistry = new MeshDrawStreamRegistry(Context, World);
         _lineDrawStreamRegistry = new LineDrawStreamRegistry(Context, World);
-        _pointCloudData = new PointCloudData(Context, World);
+        _pointDrawStreamRegistry = new PointDrawStreamRegistry(Context, World);
         _billboardData = new BillboardData(Context, World);
         _sceneState = new SceneState(Context, World);
         _renderDataList.Add(_lightData);
         _renderDataList.Add(_directionalLightData);
-        _renderDataList.Add(_pointCloudData);
         _renderDataList.Add(_billboardData);
     }
 
@@ -66,6 +65,10 @@ public sealed class WorldDataProvider : IRenderDataProvider, IDisposable
             return false;
         }
         if (_lineDrawStreamRegistry.Initialize().CheckResult() != ResultCode.Ok)
+        {
+            return false;
+        }
+        if (_pointDrawStreamRegistry.Initialize().CheckResult() != ResultCode.Ok)
         {
             return false;
         }
@@ -91,7 +94,11 @@ public sealed class WorldDataProvider : IRenderDataProvider, IDisposable
                 return false;
             }
         }
-        if (!_meshDrawStreamRegistry.Update() || !_lineDrawStreamRegistry.Update())
+        if (
+            !_meshDrawStreamRegistry.Update()
+            || !_lineDrawStreamRegistry.Update()
+            || !_pointDrawStreamRegistry.Update()
+        )
         {
             return false;
         }
@@ -119,6 +126,7 @@ public sealed class WorldDataProvider : IRenderDataProvider, IDisposable
             {
                 _meshDrawStreamRegistry.Dispose();
                 _lineDrawStreamRegistry.Dispose();
+                _pointDrawStreamRegistry.Dispose();
                 _sceneState.Dispose();
                 foreach (var data in _renderDataList)
                 {
