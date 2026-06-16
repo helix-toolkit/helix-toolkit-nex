@@ -203,16 +203,12 @@ void main() {
     //     RGBA vec4 via unpackUnorm4x8 — this matches LineShaderMirror.UnpackColor exactly
     //     (R = lowest byte, A = highest byte) — and the single color is applied to both
     //     endpoints.
-    vec4 startColor;
-    vec4 endColor;
+    vec4 startColor = unpackUnorm4x8(meshDraw.lineColor);
+    vec4 endColor = startColor;   // default to the same color for both endpoints
     if (meshInfo.vertexColorBufferAddress != 0) {
         VertexColorBuffer vcolors = VertexColorBuffer(meshInfo.vertexColorBufferAddress);
-        startColor = vcolors.colors[2u * s];        // start endpoint color
-        endColor   = vcolors.colors[2u * s + 1u];   // end endpoint color
-    } else {
-        vec4 c = unpackUnorm4x8(meshDraw.lineColor);
-        startColor = c;
-        endColor   = c;
+        startColor *= vcolors.colors[2u * s];        // start endpoint color
+        endColor   *= vcolors.colors[2u * s + 1u];   // end endpoint color
     }
 
     // Set up v_color so the fragment receives mix(startColor, endColor, t) with

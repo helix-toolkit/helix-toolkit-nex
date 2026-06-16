@@ -64,7 +64,7 @@ public static class Extensions
     public static PointCloudNode CreatePointCloudNode(
         this World world,
         string name,
-        PointCloudDrawInfo component
+        PointDrawInfo component
     )
     {
         return new PointCloudNode(world, name, ref component);

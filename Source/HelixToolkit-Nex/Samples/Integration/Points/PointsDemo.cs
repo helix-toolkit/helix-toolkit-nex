@@ -66,8 +66,6 @@ internal sealed class PointsDemo : IDisposable
     // Custom point material types registered by this demo
     private string[] _materialTypes = [];
 
-    private PointCullNode? _pointCullNode;
-
     public ImGuiRenderer? ImGui => _imGuiRenderer;
 
     public PointsDemo(IContext context)
@@ -99,7 +97,6 @@ internal sealed class PointsDemo : IDisposable
             .WithFPS()
             .RenderToCustomTarget(GraphicsSettings.IntermediateTargetFormat)
             .Build();
-        _pointCullNode = _engine.GetRenderNode<PointCullNode>();
         _renderContext = _engine.CreateRenderContext();
         _renderContext.Initialize();
         _renderContext.ResourceSet.AddTexture(
@@ -496,9 +493,6 @@ internal sealed class PointsDemo : IDisposable
 
         // Animate the wave point cloud
         UpdateWave();
-        // Update min screen size on the render node
-        if (_pointCullNode is not null)
-            _pointCullNode.MinScreenSize = _minScreenSize;
 
         // Render context setup
         _renderContext!.Update(_viewportSize, _camera);
@@ -573,28 +567,32 @@ internal sealed class PointsDemo : IDisposable
     {
         if (_renderContext?.ResourceSet is null || _worldDataProvider is null)
             return;
-        _engine!.CreatePickingRequest(_renderContext, new Vector2(x, y), response =>
-        {
-            // Deselect previous
-            if (_selectedEntity.Valid)
-                _selectedEntity.Remove<BorderHighlightOverlay>();
-            if (response.TryGetPickingResult(out var result))
+        _engine!.CreatePickingRequest(
+            _renderContext,
+            new Vector2(x, y),
+            response =>
             {
-                _pickedEntityId = (int)result.Entity.Id;
-                _pickedInstanceIdx = result.InstanceId;
-
-                Debug.Assert(
-                    _worldDataProvider.World.Id == result.Entity.WorldId,
-                    "Picked world ID does not match current world"
-                );
-                _selectedEntity = result.Entity;
-
+                // Deselect previous
                 if (_selectedEntity.Valid)
+                    _selectedEntity.Remove<BorderHighlightOverlay>();
+                if (response.TryGetPickingResult(out var result))
                 {
-                    _selectedEntity.Set(BorderHighlightOverlay.Default);
+                    _pickedEntityId = (int)result.Entity.Id;
+                    _pickedInstanceIdx = result.InstanceId;
+
+                    Debug.Assert(
+                        _worldDataProvider.World.Id == result.Entity.WorldId,
+                        "Picked world ID does not match current world"
+                    );
+                    _selectedEntity = result.Entity;
+
+                    if (_selectedEntity.Valid)
+                    {
+                        _selectedEntity.Set(BorderHighlightOverlay.Default);
+                    }
                 }
             }
-        });
+        );
     }
 
     // ------------------------------------------------------------------
@@ -733,7 +731,7 @@ internal sealed class PointsDemo : IDisposable
                 Gui.Text($"Entity ID: {_pickedEntityId}");
                 Gui.Text($"Instance Idx: {_pickedInstanceIdx}");
 
-                if (_selectedEntity.TryGet<PointCloudDrawInfo>(out var pc2))
+                if (_selectedEntity.TryGet<PointDrawInfo>(out var pc2))
                     Gui.Text($"Point Count: {pc2.PointCount}");
             }
             else
@@ -795,7 +793,7 @@ internal sealed class PointsDemo : IDisposable
                         )
                     )
                     {
-                        entry.Node.Entity.Update<PointCloudDrawInfo>(x =>
+                        entry.Node.Entity.Update<PointDrawInfo>(x =>
                         {
                             x.PointMaterialName = _materialTypes[entry.MaterialNameIndex];
                             return x;
@@ -820,11 +818,18 @@ internal sealed class PointsDemo : IDisposable
             Gui.Text($"Total active points: {totalPoints:N0}");
             Gui.Text($"Point cloud entities: {_pointClouds.Count}");
 
-            var data = _worldDataProvider?.PointCloudData;
-            if (data is not null)
+            var streams = _worldDataProvider?.PointDrawStreams;
+            if (streams is not null)
             {
-                Gui.Text($"GPU buffer points: {data.TotalPointCount:N0}");
-                Gui.Text($"Entity count: {data.Count}");
+                int streamCount = 0;
+                uint drawCount = 0;
+                foreach (var s in streams.AllStreams)
+                {
+                    ++streamCount;
+                    drawCount += s.Count;
+                }
+                Gui.Text($"Point draw streams: {streamCount}");
+                Gui.Text($"Point draw commands: {drawCount}");
             }
         }
 
@@ -835,10 +840,10 @@ internal sealed class PointsDemo : IDisposable
     {
         foreach (var entry in _pointClouds)
         {
-            entry.Node.Entity.Update<PointCloudDrawInfo>(x =>
+            entry.Node.Entity.Update<PointDrawInfo>(x =>
             {
                 x.FixedSize = _fixedSize;
-                x.Size = _globalPointSize;
+                x.PointSize = _globalPointSize;
                 return x;
             });
         }
