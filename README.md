@@ -29,7 +29,7 @@ Currently in development.
   - :white_check_mark: Point cloud
   - :white_check_mark: Billboard ([MSDF based Font support](https://github.com/chlumsky/msdfgen))
   - :white_check_mark: Material registry and shader generation system.
-  - :hourglass: Line (Planned)  
+  - :white_check_mark: Line
   - :hourglass: Particle System (Planned)
   - :hourglass: Skeletal/Morph Target Animation (Planned)
   - :hourglass: Model importer (Planned)
