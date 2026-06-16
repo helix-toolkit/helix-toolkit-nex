@@ -784,17 +784,20 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
                         writes
                     );
                 }
-                var attachmentWrites = stackalloc VK_BOOL[Constants.MAX_COLOR_ATTACHMENTS];
-                attachmentWrites[0] = false; // avoid validation error when numOutputAttachments is 0
-                for (var i = 0; i < numOutputAttachments && i < colorWrites.Length; i++)
+                if (colorWrites.Length > 0)
                 {
-                    attachmentWrites[i] = colorWrites[i] ? VK_BOOL.True : VK_BOOL.False;
+                    var attachmentWrites = stackalloc VK_BOOL[Constants.MAX_COLOR_ATTACHMENTS];
+                    attachmentWrites[0] = false; // avoid validation error when numOutputAttachments is 0
+                    for (var i = 0; i < numOutputAttachments && i < colorWrites.Length; i++)
+                    {
+                        attachmentWrites[i] = colorWrites[i] ? VK_BOOL.True : VK_BOOL.False;
+                    }
+                    VK.vkCmdSetColorWriteEnableEXT(
+                        CmdBuffer,
+                        Math.Max(numOutputAttachments, 1), // avoid validation error when numOutputAttachments is 0
+                        attachmentWrites
+                    );
                 }
-                VK.vkCmdSetColorWriteEnableEXT(
-                    CmdBuffer,
-                    Math.Max(numOutputAttachments, 1), // avoid validation error when numOutputAttachments is 0
-                    attachmentWrites
-                );
             }
         }
     }

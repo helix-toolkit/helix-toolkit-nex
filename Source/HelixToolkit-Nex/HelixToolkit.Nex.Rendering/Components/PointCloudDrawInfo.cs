@@ -35,15 +35,14 @@ public struct PointCloudDrawInfo
     /// <summary>
     /// Gets or sets the name of the point material.
     /// If specified, this name is used to look up the material in the <see cref="PointMaterialRegistry"/>.
-    /// If not found, it falls back to use <see cref="PointMaterialId"/>.
-    /// If both are not specified, it defaults to the default point material."/>
+    /// If not found, it falls back to use default material.
     /// </summary>
     public string? PointMaterialName { get; set; }
 
     /// <summary>
     /// The point material type ID that determines which fragment shader pipeline is used
-    /// for rendering this point cloud. Defaults to 0, which corresponds to the default point material (e.g., a simple
-    /// (circle SDF). Register custom materials via <see cref="PointMaterialRegistry"/>.
+    /// for rendering this point cloud. Defaults to 0, which corresponds to the default point material.
+    /// Register custom materials via <see cref="PointMaterialRegistry"/>.
     /// </summary>
     public MaterialTypeId PointMaterialId { get; internal set; }
 

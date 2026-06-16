@@ -57,7 +57,21 @@ public static class MeshRenderHelper
         var context = res.RenderContext;
 
         cmdBuf.BindIndexBuffer(context.Data.StaticMeshIndexData.Buffer, IndexFormat.UI32);
-
+        if (!context.UseExternalPipeline)
+        {
+            if (res.RenderContext.PickingConfig.IsPickThroughEnabled(stream.StreamType, stream.Variants))
+            {
+                // If pick-through is enabled for this stream type and variant, disable color writes to the entity ID buffer to allow picking through this object.
+                var value = res.Pass.ColorWrites[ColorWriteIndex];
+                res.Pass.ColorWrites[ColorWriteIndex] = false;
+                cmdBuf.SetColorWriteEnabled(res.Pass.ColorWrites);
+                res.Pass.ColorWrites[ColorWriteIndex] = value;
+            }
+            else
+            {
+                cmdBuf.SetColorWriteEnabled(res.Pass.ColorWrites);
+            }
+        }
         foreach (var materialType in stream.GetMaterialTypesCore())
         {
             var range = stream.GetRangeByMaterial(materialType);
@@ -67,7 +81,7 @@ public static class MeshRenderHelper
             if (!context.UseExternalPipeline)
             {
                 var mat = context.Data.GetMaterial(materialType);
-                if (mat == null || !mat.Bind(cmdBuf, passType))
+                if (mat == null || !mat.Bind(cmdBuf, passType, default))
                 {
                     _logger.LogError(
                         "Failed to bind material of type {MaterialType} for rendering",
@@ -76,14 +90,6 @@ public static class MeshRenderHelper
                     continue;
                 }
                 customMaterialBufferAddress = mat.CustomBufferAddress;
-                if (res.RenderContext.PickingConfig.IsPickThroughEnabled(stream.StreamType, stream.Variants))
-                {
-                    // If pick-through is enabled for this stream type and variant, disable color writes to the entity ID buffer to allow picking through this object.
-                    var value = res.Pass.ColorWrites[ColorWriteIndex];
-                    res.Pass.ColorWrites[ColorWriteIndex] = false;
-                    cmdBuf.SetColorWriteEnabled(res.Pass.ColorWrites);
-                    res.Pass.ColorWrites[ColorWriteIndex] = value;
-                }
             }
             cmdBuf.PushConstants(
                 new MeshDrawPushConstant
@@ -123,7 +129,21 @@ public static class MeshRenderHelper
         uint drawCount = 0;
         var cmdBuf = res.CmdBuffer;
         var context = res.RenderContext;
-
+        if (!context.UseExternalPipeline)
+        {
+            if (res.RenderContext.PickingConfig.IsPickThroughEnabled(stream.StreamType, stream.Variants))
+            {
+                // If pick-through is enabled for this stream type and variant, disable color writes to the entity ID buffer to allow picking through this object.
+                var value = res.Pass.ColorWrites[ColorWriteIndex];
+                res.Pass.ColorWrites[ColorWriteIndex] = false;
+                cmdBuf.SetColorWriteEnabled(res.Pass.ColorWrites);
+                res.Pass.ColorWrites[ColorWriteIndex] = value;
+            }
+            else
+            {
+                cmdBuf.SetColorWriteEnabled(res.Pass.ColorWrites);
+            }
+        }
         foreach (var materialType in stream.GetMaterialTypesCore())
         {
             var range = stream.GetRangeByMaterial(materialType);
@@ -133,7 +153,8 @@ public static class MeshRenderHelper
             if (!context.UseExternalPipeline)
             {
                 var mat = context.Data.GetMaterial(materialType);
-                if (mat == null || !mat.Bind(cmdBuf, passType))
+
+                if (mat == null || !mat.Bind(cmdBuf, passType, default))
                 {
                     _logger.LogError(
                         "Failed to bind material of type {MaterialType} for rendering",
@@ -142,14 +163,6 @@ public static class MeshRenderHelper
                     continue;
                 }
                 customMaterialBufferAddress = mat.CustomBufferAddress;
-                if (res.RenderContext.PickingConfig.IsPickThroughEnabled(stream.StreamType, stream.Variants))
-                {
-                    // If pick-through is enabled for this stream type and variant, disable color writes to the entity ID buffer to allow picking through this object.
-                    var value = res.Pass.ColorWrites[ColorWriteIndex];
-                    res.Pass.ColorWrites[ColorWriteIndex] = false;
-                    cmdBuf.SetColorWriteEnabled(res.Pass.ColorWrites);
-                    res.Pass.ColorWrites[ColorWriteIndex] = value;
-                }
             }
 
             for (var i = range.Start; i < range.Start + range.Count; ++i)

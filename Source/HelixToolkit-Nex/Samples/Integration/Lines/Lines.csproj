@@ -17,6 +17,5 @@
 
     <ItemGroup>
         <Folder Include="Screenshots\" />
-        <Folder Include="Screenshots\" />
     </ItemGroup>
 </Project>

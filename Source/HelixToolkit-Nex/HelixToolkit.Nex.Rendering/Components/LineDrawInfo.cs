@@ -21,15 +21,14 @@ public struct LineDrawInfo(
     /// <summary>
     /// Gets or sets the name of the line material.
     /// If specified, this name is used to look up the material in the <see cref="LineMaterialRegistry"/>.
-    /// If not found, it falls back to use <see cref="LineMaterialId"/>.
-    /// If both are not specified, it defaults to the default line material."/>
+    /// If not found, it falls back to use default material.
     /// </summary>
-    public string? LineMaterialName { get; set; } = materialTypeName;
+    public string LineMaterialName { get; set; } = materialTypeName;
 
     /// <summary>
     /// The line material type ID that determines which fragment shader pipeline is used
-    /// for rendering this line object. Defaults to 0, which corresponds to the default line material (e.g., a simple
-    /// (circle SDF). Register custom materials via <see cref="LineMaterialRegistry"/>.
+    /// for rendering this line object. Defaults to 0, which corresponds to the default line material.
+    /// Register custom materials via <see cref="LineMaterialRegistry"/>.
     /// </summary>
     public MaterialTypeId LineMaterialId { get; internal set; }
 

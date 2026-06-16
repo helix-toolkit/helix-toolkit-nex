@@ -2,7 +2,9 @@ using HelixToolkit.Nex.Shaders.Frag;
 
 namespace HelixToolkit.Nex.Material;
 
-public readonly struct MaterialTypeId(uint id) : IComparable<MaterialTypeId>, IEquatable<MaterialTypeId>
+public readonly struct MaterialTypeId(uint id)
+    : IComparable<MaterialTypeId>,
+        IEquatable<MaterialTypeId>
 {
     public readonly uint Id { get; } = id;
 
@@ -13,12 +15,16 @@ public readonly struct MaterialTypeId(uint id) : IComparable<MaterialTypeId>, IE
 
     public readonly bool Equals(MaterialTypeId other) => Id == other.Id;
 
-    public override readonly bool Equals(object? obj) => obj is MaterialTypeId other && Equals(other);
+    public override readonly bool Equals(object? obj) =>
+        obj is MaterialTypeId other && Equals(other);
+
     public override readonly int GetHashCode() => Id.GetHashCode();
 
-    public static bool operator ==(MaterialTypeId left, MaterialTypeId right) => left.Id == right.Id;
+    public static bool operator ==(MaterialTypeId left, MaterialTypeId right) =>
+        left.Id == right.Id;
 
-    public static bool operator !=(MaterialTypeId left, MaterialTypeId right) => left.Id != right.Id;
+    public static bool operator !=(MaterialTypeId left, MaterialTypeId right) =>
+        left.Id != right.Id;
 
     public static implicit operator uint(MaterialTypeId id) => id.Id;
 
@@ -38,7 +44,7 @@ public enum MaterialPassType : uint
     Transparent,
     WBOIT,
     Wireframe,
-    Count
+    Count,
 }
 
 /// <summary>
@@ -105,19 +111,27 @@ public class PBRMaterial : IDisposable
         return Pipelines.Take(pipelineDescSets.Count).All(pipeline => pipeline.Valid);
     }
 
-    public bool Bind(ICommandBuffer cmdBuf, MaterialPassType passType)
+    public bool Bind(
+        ICommandBuffer cmdBuf,
+        MaterialPassType passType,
+        ReadOnlySpan<bool> colorWrites = default
+    )
     {
-        return OnBind(cmdBuf, passType);
+        return OnBind(cmdBuf, passType, colorWrites);
     }
 
-    protected virtual bool OnBind(ICommandBuffer cmdBuf, MaterialPassType passType)
+    protected virtual bool OnBind(
+        ICommandBuffer cmdBuf,
+        MaterialPassType passType,
+        ReadOnlySpan<bool> colorWrites
+    )
     {
         var pipeline = Pipelines[(int)passType];
         if (!pipeline.Valid)
         {
             return false;
         }
-        cmdBuf.BindRenderPipeline(pipeline);
+        cmdBuf.BindRenderPipeline(pipeline, colorWrites);
         return true;
     }
 

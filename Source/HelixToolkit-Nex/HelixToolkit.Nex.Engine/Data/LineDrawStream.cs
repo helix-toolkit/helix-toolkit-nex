@@ -19,8 +19,8 @@ internal sealed class LineDrawStream : DrawStreamBase<LineDraw, LineDrawInfo>
             return default;
 
         ref var renderable = ref _renderables[entity];
-        lineComp.LineMaterialId = LineMaterialRegistry.TryGetById(
-            lineComp.LineMaterialId,
+        lineComp.LineMaterialId = LineMaterialRegistry.TryGetByName(
+            lineComp.LineMaterialName,
             out var matReg
         )
             ? matReg!.TypeId

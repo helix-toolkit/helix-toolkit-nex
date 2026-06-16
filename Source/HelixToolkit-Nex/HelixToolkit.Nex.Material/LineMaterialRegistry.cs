@@ -101,7 +101,7 @@ public static class LineMaterialRegistry
         if (string.IsNullOrWhiteSpace(registration.Name))
         {
             throw new ArgumentException(
-                "Point material type name cannot be null or empty.",
+                "Line material type name cannot be null or empty.",
                 nameof(registration)
             );
         }
@@ -111,7 +111,7 @@ public static class LineMaterialRegistry
             if (_registrations.ContainsKey(registration.Name))
             {
                 throw new ArgumentException(
-                    $"Point material type '{registration.Name}' is already registered.",
+                    $"Line material type '{registration.Name}' is already registered.",
                     nameof(registration)
                 );
             }
@@ -119,7 +119,7 @@ public static class LineMaterialRegistry
             if (_idToName.ContainsKey(registration.TypeId))
             {
                 throw new ArgumentException(
-                    $"Point material type ID '{registration.TypeId}' is already used by '{_idToName[registration.TypeId]}'.",
+                    $"Line material type ID '{registration.TypeId}' is already used by '{_idToName[registration.TypeId]}'.",
                     nameof(registration)
                 );
             }
