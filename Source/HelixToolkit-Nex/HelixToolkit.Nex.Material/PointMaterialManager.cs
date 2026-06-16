@@ -109,12 +109,14 @@ public sealed class PointMaterialManager(IContext context, IShaderRepository sha
 
         using var vsModule = _shaderRepository.GetOrCreateFromGlsl(
             ShaderStage.Vertex,
-            vsResult.Source!
+            vsResult.Source!,
+            defines: [new ShaderDefine(BuildFlags.OUTPUT_DRAW_ID)]
         );
 
         using var psModule = _shaderRepository.GetOrCreateFromGlsl(
             ShaderStage.Fragment,
-            psResult.Source!
+            psResult.Source!,
+            defines: [new ShaderDefine(BuildFlags.OUTPUT_DRAW_ID)]
         );
 
         if (!vsModule.Valid || !psModule.Valid)
@@ -186,7 +188,7 @@ public sealed class PointMaterialManager(IContext context, IShaderRepository sha
         }
         else
         {
-            pipelineDesc.Colors[0] = ColorAttachment.CreateOpaque(
+            pipelineDesc.Colors[0] = ColorAttachment.CreateAlphaBlend(
                 GraphicsSettings.IntermediateTargetFormat
             );
         }

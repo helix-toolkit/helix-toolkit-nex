@@ -72,18 +72,6 @@ public static class SystemBufferNames
     public const string TextureSmaaWeights = "TexSmaaWeights";
 
     /// <summary>
-    /// GPU buffer holding <c>PointDrawData</c> structs written by the point expansion
-    /// compute shader and read by the point vertex shader.
-    /// </summary>
-    public const string BufferPointDrawData = "BufPointDrawData";
-
-    /// <summary>
-    /// GPU buffer holding <c>PointDrawIndirectArgs</c> for the point rendering draw call.
-    /// The compute shader atomically increments <c>instanceCount</c>.
-    /// </summary>
-    public const string BufferPointIndirectArgs = "BufPointIndirectArgs";
-
-    /// <summary>
     /// GPU buffer holding <c>BillboardDrawData</c> structs written by the billboard expansion
     /// compute shader and read by the billboard vertex shader.
     /// </summary>

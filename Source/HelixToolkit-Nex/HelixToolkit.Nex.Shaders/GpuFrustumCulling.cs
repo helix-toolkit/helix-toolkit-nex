@@ -6,6 +6,7 @@ public static class GpuFrustumCulling
     public const string CullInstancingShaderPath = "Compute/FrustumCullInstancing.glsl";
     public const string ResetInstanceCountShaderPath = "Compute/ResetMeshDrawInstanceCount.glsl";
     public const string CullMultiLineShaderPath = "Line/LineFrustumCull.glsl";
+    public const string CullMultiPointShaderPath = "Point/PointFrustumCull.glsl";
 
     public const uint WorkGroupSize = 64;
 
@@ -15,6 +16,7 @@ public static class GpuFrustumCulling
         SingleMeshInstancing,
         ResetInstanceCount,
         MultiLineSingleInstance,
+        MultiPointSingleInstance,
     }
 
     public static uint GetGroupSize(uint itemCount)
@@ -30,6 +32,7 @@ public static class GpuFrustumCulling
             CullMode.SingleMeshInstancing => CullInstancingShaderPath,
             CullMode.ResetInstanceCount => ResetInstanceCountShaderPath,
             CullMode.MultiLineSingleInstance => CullMultiLineShaderPath,
+            CullMode.MultiPointSingleInstance => CullMultiPointShaderPath,
             _ => throw new NotImplementedException(),
         };
 

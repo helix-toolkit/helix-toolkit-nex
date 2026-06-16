@@ -427,7 +427,7 @@ public static class GpuPicking
                 return true;
             }
         }
-        else if (entity.Has<PointCloudDrawInfo>())
+        else if (entity.Has<PointDrawInfo>())
         {
             if (entity.TryGetPointFromPointCloud(primitiveId, out var point))
             {
@@ -486,11 +486,11 @@ public static class GpuPicking
     )
     {
         position = default;
-        if (!entity.Has<PointCloudDrawInfo>())
+        if (!entity.Has<PointDrawInfo>())
         {
             return false;
         }
-        var pointCloud = entity.Get<PointCloudDrawInfo>().Geometry;
+        var pointCloud = entity.Get<PointDrawInfo>().Geometry;
         if (pointCloud is null)
         {
             return false;

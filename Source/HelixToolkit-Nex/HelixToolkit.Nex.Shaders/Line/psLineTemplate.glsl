@@ -163,7 +163,7 @@ vec4 outputColor() {
 
     // Premultiplied-alpha output (Requirement 5.3). main() discards when color.a < 1e-4
     // (Requirements 4.5, 5.2), which the preserved alpha channel keeps consistent.
-    return vec4(color.rgb * color.a, color.a);
+    return color;
 }
 
 // --- Main ---
@@ -175,7 +175,7 @@ void main() {
     outColor    = color;
 #ifdef OUTPUT_DRAW_ID
     uint primID = uint(gl_PrimitiveID);
-    outEntityId = packPrimitiveId(v_entityId, primID);;
+    outEntityId = packPrimitiveId(v_entityId, primID);
 #endif
 }
 /*TEMPLATE_CUSTOM_MAIN_END*/

@@ -386,7 +386,8 @@ public sealed class EngineBuilder
         AddNode(new ForwardPlusMaskNode());
         if (_withPointCloud)
         {
-            AddNode(new PointCullNode());
+            // Points reuse the default FrustumCullNode for culling (point-stream integration),
+            // so only the render node is added.
             AddNode(new PointRenderNode());
         }
         if (_withLine)
