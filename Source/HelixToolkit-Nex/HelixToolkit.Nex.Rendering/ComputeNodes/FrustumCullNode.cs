@@ -107,7 +107,7 @@ public sealed class FrustumCullNode : ComputeNode
             }
             stream.Barrier(res.CmdBuffer);
             using var _ = res.Deps.PushBufferScoped(stream.Buffer);
-            CullMeshes(context, res.CmdBuffer, stream, res.Deps);
+            CullMeshes(context, res.CmdBuffer, stream, res.Deps, _lineCullingPipeline);
         }
     }
 
@@ -125,7 +125,7 @@ public sealed class FrustumCullNode : ComputeNode
         }
         else
         {
-            CullMeshes(context, cmdBuffer, stream, deps);
+            CullMeshes(context, cmdBuffer, stream, deps, _cullingPipeline);
         }
     }
 
@@ -133,11 +133,12 @@ public sealed class FrustumCullNode : ComputeNode
         RenderContext context,
         ICommandBuffer cmdBuffer,
         IDrawStream<DRAW_TYPE> stream,
-        Dependencies deps
+        Dependencies deps,
+        ComputePipelineResource pipeline
     )
         where DRAW_TYPE : unmanaged
     {
-        cmdBuffer.BindComputePipeline(_cullingPipeline);
+        cmdBuffer.BindComputePipeline(pipeline);
         cmdBuffer.PushConstants(
             new FrustumCullPC
             {
