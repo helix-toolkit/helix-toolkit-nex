@@ -88,58 +88,52 @@ void main() {
         return;
     }
 
-    if (cullingConst.value.cullingEnabled == 0) {
-       return;
-    }
-
-    if (draw.cullable == 0) {
-        // If not cullable, we can skip culling.
-        return;
-    }
-
     bool isVisible = true;
-    
-    InstancingBuffer instBuf = InstancingBuffer(draw.instancingBufferAddress);
 
-    MeshInfo bound = meshInfoBuf.value[draw.meshId];
+    if (cullingConst.value.cullingEnabled > 0 && draw.cullable > 0) {
+        InstancingBuffer instBuf = InstancingBuffer(draw.instancingBufferAddress);
 
-    // Frustum Culling
-    mat4 worldMatrix = instanceTransfromToMat4(instBuf.instances[gID]) * info.transform;
-    // 1. Sphere Culling (Cheap, fast reject)
-    // Transform local sphere center to world
-    // Note: Scale is baked into world matrix rows, so simple mult works for uniform scale
-    // For non-uniform scale, this approximation might require max scale component
+        MeshInfo bound = meshInfoBuf.value[draw.meshId];
+
+        // Frustum Culling
+        mat4 worldMatrix = instanceTransfromToMat4(instBuf.instances[gID]) * info.transform;
+        // 1. Sphere Culling (Cheap, fast reject)
+        // Transform local sphere center to world
+        // Note: Scale is baked into world matrix rows, so simple mult works for uniform scale
+        // For non-uniform scale, this approximation might require max scale component
         
-    vec3 worldSphereCenter = (worldMatrix * vec4(bound.sphereCenter, 1.0)).xyz;
+        vec3 worldSphereCenter = (worldMatrix * vec4(bound.sphereCenter, 1.0)).xyz;
         
-    // Extract max scale from world matrix for radius scaling
-    float maxScale = max(max(length(worldMatrix[0].xyz), length(worldMatrix[1].xyz)), length(worldMatrix[2].xyz));
-    float worldRadius = bound.sphereRadius * maxScale;
+        // Extract max scale from world matrix for radius scaling
+        float maxScale = max(max(length(worldMatrix[0].xyz), length(worldMatrix[1].xyz)), length(worldMatrix[2].xyz));
+        float worldRadius = bound.sphereRadius * maxScale;
 
-    // Use planeCount from constants (default to 6 if not set properly, but usually 5 for infinite far)
-    uint pCount = cullingConst.value.planeCount == 0 ? 6 : cullingConst.value.planeCount;
+        // Use planeCount from constants (default to 6 if not set properly, but usually 5 for infinite far)
+        uint pCount = cullingConst.value.planeCount == 0 ? 6 : cullingConst.value.planeCount;
 
-    // Transform to View Space for Distance/ScreenSize checks
-    vec3 viewSphereCenter = (cullingConst.value.viewMatrix * vec4(worldSphereCenter, 1.0)).xyz;
+        // Transform to View Space for Distance/ScreenSize checks
+        vec3 viewSphereCenter = (cullingConst.value.viewMatrix * vec4(worldSphereCenter, 1.0)).xyz;
 
-    if (!IsVisibleByDistance(viewSphereCenter, worldRadius, cullingConst.value.maxDrawDistance)) {
-        isVisible = false;
-    }
-    else if (!IsVisibleByScreenSize(viewSphereCenter, worldRadius, cullingConst.value.minScreenSize, 1.0)) {
-        isVisible = false;
-    }
-    else if (!IsSphereVisible(worldSphereCenter, worldRadius, cullingConst.value.frustumPlanes, pCount)) {
-        isVisible = false;
-    } 
-    else {
-        // 2. Box Culling (More accurate for elongated objects)
-        vec3 boxCenter = (bound.boxMin + bound.boxMax) * 0.5;
-        vec3 boxExtents = (bound.boxMax - bound.boxMin) * 0.5;
-            
-        if (!IsBoxVisible(boxCenter, boxExtents, worldMatrix, cullingConst.value.frustumPlanes, pCount)) {
+        if (!IsVisibleByDistance(viewSphereCenter, worldRadius, cullingConst.value.maxDrawDistance)) {
             isVisible = false;
         }
+        else if (!IsVisibleByScreenSize(viewSphereCenter, worldRadius, cullingConst.value.minScreenSize, 1.0)) {
+            isVisible = false;
+        }
+        else if (!IsSphereVisible(worldSphereCenter, worldRadius, cullingConst.value.frustumPlanes, pCount)) {
+            isVisible = false;
+        } 
+        else {
+            // 2. Box Culling (More accurate for elongated objects)
+            vec3 boxCenter = (bound.boxMin + bound.boxMax) * 0.5;
+            vec3 boxExtents = (bound.boxMax - bound.boxMin) * 0.5;
+            
+            if (!IsBoxVisible(boxCenter, boxExtents, worldMatrix, cullingConst.value.frustumPlanes, pCount)) {
+                isVisible = false;
+            }
+        }
     }
+    
     // Occlusion Culling (Placeholder / Suggestion)
     // ---------------------------------------------------------
     // if (isVisible && cullingConst.value.occlusionEnabled != 0) {
