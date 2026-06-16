@@ -39,7 +39,8 @@ var config = new VulkanContextConfig
     EnableVma = true,
     TerminateOnValidationError = false,
     PreferredPresentMode = VkPresentModeKHR.FifoRelaxed,
-    ForceIntegratedGPU = false // New property added
+    ForceIntegratedGPU = false, // New property added
+    MaxStagingBufferSize = 128u * 1024u * 1024u // New property added
 };
 
 var context = VulkanBuilder.Create(config, windowHandle, displayHandle);

@@ -35,6 +35,7 @@ HelixToolkit.Nex.Graphics is a core component of the HelixToolkit.Nex engine, re
 | `RingElementBuffer<T>`        | Manages a ring buffer for dynamic element storage.                         |
 | `SamplerStateDesc`            | Describes the configuration for a texture sampler.                         |
 | `DepthState`                  | Describes depth test configuration, including new `ReadOnlyInvZBias`.      |
+| `Format`                      | Enum describing texture and buffer formats, including new `A_UN8`.         |
 
 ## Usage Examples
 

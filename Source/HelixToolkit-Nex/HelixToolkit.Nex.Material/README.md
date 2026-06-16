@@ -1,7 +1,7 @@
 ```markdown
 # HelixToolkit.Nex.Material
 
-The `HelixToolkit.Nex.Material` package provides a comprehensive framework for managing materials in the HelixToolkit-Nex 3D graphics engine. It supports the creation, management, and rendering of Physically Based Rendering (PBR) materials, custom material buffers, point materials, and billboard materials, integrating seamlessly with the Vulkan API through the HelixToolkit-Nex engine.
+The `HelixToolkit.Nex.Material` package provides a comprehensive framework for managing materials in the HelixToolkit-Nex 3D graphics engine. It supports the creation, management, and rendering of Physically Based Rendering (PBR) materials, custom material buffers, point materials, billboard materials, and line materials, integrating seamlessly with the Vulkan API through the HelixToolkit-Nex engine.
 
 ## Overview
 
@@ -10,6 +10,7 @@ The `HelixToolkit.Nex.Material` package is responsible for:
 - Supporting custom material buffers for advanced shading techniques.
 - Handling point materials for point cloud rendering.
 - Managing billboard materials for efficient billboard rendering.
+- Managing line materials for line rendering.
 - Integrating with the HelixToolkit-Nex ECS and Render Graph systems.
 
 This package plays a crucial role in the rendering pipeline, providing the necessary abstractions and implementations to handle various material types and their associated shaders.
@@ -31,6 +32,8 @@ This package plays a crucial role in the rendering pipeline, providing the neces
 | `PointMaterialRegistry` | Registry for point material types and their shader implementations. |
 | `BillboardMaterialManager` | Manages billboard render pipelines. |
 | `BillboardMaterialRegistry` | Registry for billboard material types and their shader implementations. |
+| `LineMaterialManager` | Manages line render pipelines. |
+| `LineMaterialRegistry` | Registry for line material types and their shader implementations. |
 | `MaterialTypeId` | Represents a unique identifier for material types. |
 | `MaterialPropertyCreator` | Facilitates creation and configuration of material properties. |
 | `GraphicsSettings` | Provides static render settings including formats and frame configurations. |
@@ -89,7 +92,19 @@ int createdPipelines = billboardManager.CreatePipelinesFromRegistry();
 var pipelineHandle = billboardManager.GetPipeline(new MaterialTypeId(1)); // Example ID
 ```
 
-### Registering a New Billboard Material Type
+### Managing Line Materials
+
+```csharp
+var lineManager = new LineMaterialManager(context, shaderRepository);
+
+// Create pipelines for all registered line materials
+int createdPipelines = lineManager.CreatePipelinesFromRegistry();
+
+// Retrieve a pipeline handle for a specific line material type
+var pipelineHandle = lineManager.GetPipeline(new MaterialTypeId(1)); // Example ID
+```
+
+### Registering a New Line Material Type
 
 ```csharp
 var blendConfig = new ColorAttachment
@@ -103,14 +118,10 @@ var blendConfig = new ColorAttachment
     DstAlphaBlendFactor = BlendFactor.OneMinusSrcAlpha,
 };
 
-var typeId = BillboardMaterialRegistry.Register(
-    "CustomBillboard",
+var typeId = LineMaterialRegistry.Register(
+    "CustomLine",
     """
-    vec4 color = getColor();
-    if (getTextureId() > 0u && hasUV()) {
-        vec4 texColor = textureBindless2D(getTextureId(), getSamplerId(), getUV());
-        color *= texColor;
-    }
+    vec4 color = getLineColor();
     return color;
     """,
     blendConfig: blendConfig

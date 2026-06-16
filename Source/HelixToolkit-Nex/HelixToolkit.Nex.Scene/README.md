@@ -96,12 +96,17 @@ Console.WriteLine($"Is Child Node Renderable: {isRenderable}");
 - **Node Class Enhancements:**
   - The `IsRenderable` property now checks if the `Renderable` component is already present before adding or removing it, preventing unnecessary operations.
   - The `NotifyComponentChanged<T>()` method now uses the `[DynamicallyAccessedMembers]` attribute to specify the required member types for `T`.
+  - Introduced `FindNode(Entity entity)` method to find a node associated with a given entity.
 
 - **Transform Updates:**
   - The `UpdateWorldTransform` method in `Transform` now multiplies the local transformation matrix with the parent matrix in the correct order, ensuring accurate world transformations.
 
 - **Renderable Structure:**
   - Added `DrawType` and `DrawVariants` fields to the `Renderable` struct for enhanced rendering control.
+
+- **Registry Improvements:**
+  - Replaced the inner dictionary of `_worldRegistries` with `ConcurrentDictionary` to improve thread safety and simplify the code by removing explicit locks.
+  - Added `FindNode(Entity entity)` method to easily retrieve a node from an entity.
 
 The `HelixToolkit.Nex.Scene` package is an essential part of the HelixToolkit-Nex engine, providing the necessary infrastructure for managing complex 3D scenes efficiently.
 ```
