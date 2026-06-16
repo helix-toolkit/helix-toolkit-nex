@@ -88,7 +88,7 @@ public class LineNode : Node
         {
             Entity.Update<LineDrawInfo>(comp =>
             {
-                comp.LineMaterialName = value;
+                comp.LineMaterialName = value ?? string.Empty;
                 return comp;
             });
         }
