@@ -16,11 +16,11 @@ This package is integral to the HelixToolkit-Nex engine, facilitating the creati
 |-------------------------------|-----------------------------------------------------------------------------|
 | `BuildFlags`                  | Contains constants for shader build options, such as excluding mesh properties, enabling depth pre-pass, and alpha masked rendering. |
 | `ForwardPlusLightCulling`     | Generates compute shaders for Forward+ light culling.                       |
-| `GpuFrustumCulling`           | Provides methods for generating compute shaders for GPU-based frustum culling. |
+| `GpuFrustumCulling`           | Provides methods for generating compute shaders for GPU-based frustum culling, now includes support for multi-line culling. |
 | `Helpers`                     | Utility methods for creating and updating culling constants.                |
 | `BloomMode`                   | Enum for selecting the active stage of the bloom shader.                    |
 | `HighlightMode`               | Enum for selecting the active stage of the border-highlight shader.         |
-| `PBRShadingMode`              | Enum for different PBR shading modes, now includes `CAD` for CAD-style shading. |
+| `PBRShadingMode`              | Enum for different PBR shading modes, now includes `CADFlat` for flat CAD-style shading. |
 | `SampleTextureMode`           | Enum for texture sampling modes, including debug modes.                     |
 | `SmaaMode`                    | Enum for selecting the active stage of the SMAA shader.                     |
 | `ToneMappingMode`             | Enum for different tone mapping modes, with `Reinhard` now extended to support `maxWhiteLuminance`. |

@@ -35,6 +35,7 @@ HelixToolkit.Nex.Engine is a core component of the HelixToolkit.Nex suite, respo
 | `DynamicMeshDrawData`            | Represents dynamic mesh draw data.                                         |
 | `BillboardNode`                  | Represents a node in the scene graph that contains billboard geometry.     |
 | `CameraExtensions`               | Provides extension methods for camera operations, such as focusing on targets. |
+| `DrawStreamBase`                 | Abstract base class for managing GPU draw streams with material grouping.  |
 
 ## Usage Examples
 
