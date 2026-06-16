@@ -13,7 +13,6 @@ using HelixToolkit.Nex.Material;
 using HelixToolkit.Nex.Maths;
 using HelixToolkit.Nex.Rendering;
 using HelixToolkit.Nex.Rendering.Components;
-using HelixToolkit.Nex.Rendering.ComputeNodes;
 using HelixToolkit.Nex.Scene;
 using HelixToolkit.Nex.Shaders;
 using Microsoft.Extensions.Logging;
@@ -59,7 +58,6 @@ internal sealed class PointsDemo : IDisposable
 
     // Global tunables
     private float _globalPointSize = 0.1f;
-    private float _minScreenSize = 1f;
     private float _animTime;
     private bool _fixedSize = false;
 
@@ -700,7 +698,6 @@ internal sealed class PointsDemo : IDisposable
             var range = _fixedSize ? (1f, 5f) : (0.1f, 0.5f);
             if (Gui.SliderFloat("Point Size", ref _globalPointSize, range.Item1, range.Item2))
                 ApplyGlobalPointSize();
-            Gui.SliderFloat("Min Screen Size (px)", ref _minScreenSize, 0.05f, 10f);
             if (Gui.Checkbox("Fixed Size (no perspective scaling)", ref _fixedSize))
             {
                 _globalPointSize = _fixedSize ? 2 : 0.1f; // reset to default when toggling

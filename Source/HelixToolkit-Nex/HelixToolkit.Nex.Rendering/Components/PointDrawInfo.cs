@@ -7,7 +7,7 @@ namespace HelixToolkit.Nex.Rendering.Components;
 /// </summary>
 public struct PointDrawInfo(
     Geometry? geometry = null,
-    string materialTypeName = "",
+    string materialTypeName = "Default",
     bool cullable = true,
     bool hitable = true
 )
