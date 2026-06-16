@@ -90,7 +90,10 @@ namespace HelixToolkit.Nex.Maths
 
             //Find the real distance from the DistanceSquared.
             radius = (float)Math.Sqrt(radius);
-
+            if (radius < 0.0001f)
+            {
+                radius = 0.0001f;
+            }
             //Construct the sphere.
             return new BoundingSphere(center, radius);
         }
