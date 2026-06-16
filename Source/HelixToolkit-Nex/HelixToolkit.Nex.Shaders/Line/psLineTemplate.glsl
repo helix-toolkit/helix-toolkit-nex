@@ -24,6 +24,9 @@ layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer FP
     FPConstants fpConstants;
 };
 
+FPConstants fpConst = FPBuffer(pc.value.fpConstAddress).fpConstants;
+
+/*UTILITY_FUNCTIONS_BEGIN*/
 vec2 getUV() {
     return v_uv;
 }
@@ -44,9 +47,6 @@ uint getSamplerId() {
     return v_samplerIndex;
 }
 
-FPConstants fpConst = FPBuffer(pc.value.fpConstAddress).fpConstants;
-
-/*UTILITY_FUNCTIONS_BEGIN*/
 uint64_t getTimeMs() {
     return fpConst.timeMs;
 }
