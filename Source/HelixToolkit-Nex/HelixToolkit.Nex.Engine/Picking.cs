@@ -13,6 +13,7 @@ public enum PickedGeometryType
 
 public readonly struct PickingResponse
 {
+    public readonly bool Success => Data != 0;
     public RenderContext Context { get; init; }
     public Vector2 Coord { get; init; }
     public ulong Data { get; init; }
@@ -21,7 +22,7 @@ public readonly struct PickingResponse
     public readonly bool TryGetPickingResult(out PickingResult result)
     {
         result = default;
-        if (!Context.TryGetPickFromId(Coord, Data, out result))
+        if (!Success || !Context.TryGetPickFromId(Coord, Data, out result))
         {
             return false;
         }

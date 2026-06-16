@@ -74,6 +74,7 @@ internal sealed class PickingDemo : IDisposable
     // --- GUI state ---
     private string _lastPickInfo = "No pick yet";
     private bool _continuousPicking = false;
+    private bool _enablePickThrough = false;
 
     public PickingDemo(IContext context)
     {
@@ -523,6 +524,10 @@ internal sealed class PickingDemo : IDisposable
 
             Gui.Spacing();
             Gui.Checkbox("Continuous Picking", ref _continuousPicking);
+            if (Gui.Checkbox("Enable Pick-Through (hit through non-hitable objects)", ref _enablePickThrough))
+            {
+                _renderContext!.PickingConfig.SetAllPickThrough(_enablePickThrough);
+            }
             Gui.Separator();
             Gui.Spacing();
 
