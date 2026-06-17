@@ -124,7 +124,10 @@ jobs:
         run: dotnet test Source/HelixToolkit-Nex/HelixToolkit.Nex.slnx --configuration LinuxRelease --no-build --verbosity normal --filter "TestCategory!=GPURequired"
 
   publish:
-    if: github.repository == 'helix-toolkit/helix-toolkit-nex' && github.event_name != 'pull_request'
+    if: github.repository == 'helix-toolkit/helix-toolkit-nex' && github.event_name == 'push' && (startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/develop')
+    permissions:
+       contents: read
+       packages: write
     runs-on: windows-latest
     needs: [ build-windows, build-linux ]
     steps:
@@ -144,4 +147,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          dotnet nuget push **/*.nupkg -s https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json -k $env:GITHUB_TOKEN --skip-duplicate
+           $packages = Get-ChildItem -Path . -Recurse -Filter *.nupkg
+           if (-not $packages) { throw 'No .nupkg files found to publish.' }
+           foreach ($pkg in $packages) {
+             dotnet nuget push $pkg.FullName -s "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" -k $env:GITHUB_TOKEN --skip-duplicate
+           }
