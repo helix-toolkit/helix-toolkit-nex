@@ -1,103 +1,133 @@
 # psPointTemplate.glsl Utility Functions
 
 ```glsl
+vec2 getUV()
+```
+- **Description**: Retrieves the UV coordinates for the current fragment.
+- **Return Type**: `vec2`
+
+```glsl
+vec4 getColor()
+```
+- **Description**: Retrieves the color associated with the current fragment.
+- **Return Type**: `vec4`
+
+```glsl
+float getPointSize()
+```
+- **Description**: Retrieves the screen size of the point being rendered.
+- **Return Type**: `float`
+
+```glsl
+uint getTextureId()
+```
+- **Description**: Retrieves the texture ID used for the current fragment.
+- **Return Type**: `uint`
+
+```glsl
+uint getSamplerId()
+```
+- **Description**: Retrieves the sampler ID used for the current fragment.
+- **Return Type**: `uint`
+
+```glsl
 uint64_t getTimeMs()
 ```
-- **Purpose**: Retrieves the current time in milliseconds.
+- **Description**: Retrieves the current time in milliseconds from the frame parameters.
 - **Return Type**: `uint64_t`
 
 ```glsl
 mat4 getViewProjection()
 ```
-- **Purpose**: Returns the view-projection matrix used for transforming world coordinates to clip space.
+- **Description**: Retrieves the view-projection matrix from the frame parameters.
 - **Return Type**: `mat4`
 
 ```glsl
 mat4 getInvViewProjection()
 ```
-- **Purpose**: Provides the inverse of the view-projection matrix, useful for transforming clip space coordinates back to world coordinates.
+- **Description**: Retrieves the inverse of the view-projection matrix from the frame parameters.
 - **Return Type**: `mat4`
 
 ```glsl
 mat4 getView()
 ```
-- **Purpose**: Retrieves the view matrix, which transforms world coordinates to view (camera) space.
+- **Description**: Retrieves the view matrix from the frame parameters.
 - **Return Type**: `mat4`
 
 ```glsl
 mat4 getInvView()
 ```
-- **Purpose**: Returns the inverse view matrix, allowing transformation from view space back to world coordinates.
+- **Description**: Retrieves the inverse of the view matrix from the frame parameters.
 - **Return Type**: `mat4`
 
 ```glsl
 vec3 getCameraPosition()
 ```
-- **Purpose**: Provides the position of the camera in world space.
+- **Description**: Retrieves the camera position from the frame parameters.
 - **Return Type**: `vec3`
 
 ```glsl
 vec2 getScreenSize()
 ```
-- **Purpose**: Retrieves the dimensions of the screen or viewport.
+- **Description**: Retrieves the screen dimensions from the frame parameters.
 - **Return Type**: `vec2`
 
 ```glsl
 bool isPointerRingEnabled()
 ```
-- **Purpose**: Checks if the pointer ring effect is enabled.
+- **Description**: Checks if the pointer ring effect is enabled.
 - **Return Type**: `bool`
 
 ```glsl
 vec3 getPointerRayDirection()
 ```
-- **Purpose**: Returns the direction vector of the pointer ray in world space.
+- **Description**: Retrieves the direction of the pointer ray from the frame parameters.
 - **Return Type**: `vec3`
 
 ```glsl
 vec3 getPointerRayOrigin()
 ```
-- **Purpose**: Provides the origin point of the pointer ray in world space.
+- **Description**: Retrieves the origin of the pointer ray from the frame parameters.
 - **Return Type**: `vec3`
 
 ```glsl
 float getPointerRingOuterDistThreshold()
 ```
-- **Purpose**: Retrieves the outer distance threshold for the pointer ring effect.
+- **Description**: Retrieves the outer distance threshold for the pointer ring effect.
 - **Return Type**: `float`
 
 ```glsl
 float getPointerRingInnerDistThreshold()
 ```
-- **Purpose**: Returns the inner distance threshold for the pointer ring effect.
+- **Description**: Retrieves the inner distance threshold for the pointer ring effect.
 - **Return Type**: `float`
 
 ```glsl
 float getPointerRingColorMix()
 ```
-- **Purpose**: Provides the mix factor for blending the pointer ring color with the fragment color.
+- **Description**: Retrieves the color mix factor for the pointer ring effect.
 - **Return Type**: `float`
 
 ```glsl
 vec3 getPointerRingColor()
 ```
-- **Purpose**: Retrieves the color used for the pointer ring effect.
+- **Description**: Retrieves the color used for the pointer ring effect.
 - **Return Type**: `vec3`
 
 ```glsl
 float getFragToPointerRayDistance()
 ```
-- **Purpose**: Calculates the distance from the fragment position to the closest point on the pointer ray.
+- **Description**: Calculates the distance from the fragment to the closest point on the pointer ray.
 - **Return Type**: `float`
 
 ```glsl
 bool isInPointerRing()
 ```
-- **Purpose**: Determines if the current fragment is within the pointer ring based on distance thresholds.
+- **Description**: Determines if the fragment is within the pointer ring's distance thresholds.
 - **Return Type**: `bool`
 
 ```glsl
 vec4 mixWithPointerRing(in vec4 color)
 ```
-- **Purpose**: Blends the input color with the pointer ring color if the pointer ring effect is enabled and the fragment is within the ring.
+- **Description**: Mixes the input color with the pointer ring color if the pointer ring effect is enabled and the fragment is within the ring.
 - **Return Type**: `vec4`

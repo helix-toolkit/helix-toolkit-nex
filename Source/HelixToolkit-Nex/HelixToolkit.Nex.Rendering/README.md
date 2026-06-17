@@ -17,13 +17,11 @@ HelixToolkit.Nex.Rendering is responsible for managing the rendering pipeline of
 |----------------------------------|-----------------------------------------------------------------------------|
 | `IIndexable`                     | Interface for components that can be indexed.                               |
 | `MeshDrawInfo`                   | Represents a mesh render component with geometry and material associations. |
-| `PointCloudDrawInfo`             | Describes a point cloud attached to an entity.                              |
+| `PointDrawInfo`                  | Describes a point cloud attached to an entity.                              |
 | `BillboardDrawInfo`              | Describes one or more billboards attached to an entity.                     |
 | `LineDrawInfo`                   | Describes line geometry attached to an entity.                              |
 | `ForwardPlusLightCullingNode`    | Performs tiled Forward+ light culling.                                      |
-| `FrustumCullNode`                | Executes GPU-based frustum culling.                                         |
-| `PointCullNode`                  | Handles culling of point cloud data.                                        |
-| `BillboardCullNode`              | Handles culling of billboard data.                                          |
+| `FrustumCullNode`                | Executes GPU-based frustum culling, including line and point culling.       |
 | `ForwardPlusWBOITMergedNode`     | Merges WBOIT transparent rendering and compositing into a single render pass.|
 | `RenderContext`                  | Manages rendering state and resources for a frame.                          |
 | `RenderGraph`                    | Organizes and executes rendering nodes in a defined order.                  |
@@ -39,11 +37,16 @@ HelixToolkit.Nex.Rendering is responsible for managing the rendering pipeline of
 ### New Features
 
 - **LineDrawInfo**: Added for describing line geometry attached to an entity.
+- **PointDrawInfo**: Introduced to replace `PointCloudDrawInfo` for describing point clouds.
 - **BillboardDrawInfo**: Renamed from `BillboardComponent` to better reflect its purpose.
 - **MeshDrawInfo**: Renamed from `MeshComponent` to better reflect its purpose.
-- **PointCloudDrawInfo**: Renamed from `PointCloudComponent` to better reflect its purpose.
-- **FrustumCullNode**: Added line culling pipeline to handle line geometry.
+- **FrustumCullNode**: Updated to include line and point culling pipelines.
 - **DrawStream Enhancements**: Introduced `DrawStreamType` and `DrawStreamVariants` for more precise control over draw stream characteristics.
+
+### Removed Features
+
+- **PointCloudDrawInfo**: Removed and replaced by `PointDrawInfo`.
+- **PointCullNode**: Removed and its functionality integrated into `FrustumCullNode`.
 
 ### Updated Sampler Handling
 
