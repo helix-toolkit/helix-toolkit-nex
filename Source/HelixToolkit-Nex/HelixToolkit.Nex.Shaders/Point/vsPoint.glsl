@@ -50,7 +50,7 @@ layout(push_constant) uniform PC {
 // ------------------------------------------------------------------
 FPConstants fpConst = FPBuffer(pc.value.fpConstAddress).fpConstants;
 
-// Read this draw's LineDraw record at gl_DrawID + drawCommandIdxOffset (Req 9.5).
+// Read this draw's PointDraw record at gl_DrawID + drawCommandIdxOffset (Req 9.5).
 uint drawIndex = gl_DrawID + pc.value.drawCommandIdxOffset;
 
 PointDraw meshDraw = PointDrawBuffer(pc.value.meshDrawBufferAddress).draws[drawIndex];
