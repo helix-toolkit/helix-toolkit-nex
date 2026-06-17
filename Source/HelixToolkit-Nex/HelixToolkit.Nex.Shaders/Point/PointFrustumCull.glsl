@@ -71,8 +71,8 @@ void main() {
     }   
 
     if (cullingConst.value.cullingEnabled == 0 || draw.cullable == 0) {
-        // Not cullable: render every segment. One quad instance per disjoint 2-vertex
-        // segment, so instanceCount = pointCount.
+         // Not cullable: render every point. One quad instance per point,
+         // so instanceCount = pointCount.
         meshDrawBuf.draws[drawIdx].instanceCount = draw.pointCount;
         return;
     }
@@ -127,6 +127,6 @@ void main() {
     // }
     // ---------------------------------------------------------
 
-    // Output visibility: one quad instance per disjoint 2-vertex segment.
+    // Output visibility: one quad instance per point. If not visible, set instance count to 0 to skip rendering.
     meshDrawBuf.draws[drawIdx].instanceCount = isVisible ? draw.pointCount : 0;
 }
