@@ -46,6 +46,9 @@ jobs:
         with:
           versionSpec: '6.2.x'
           
+      - name: Validate GitVersion config
+        run: dotnet-gitversion /config gitversion.yml /showConfig
+
       - name: Determine Version
         id: version_step # step id used as reference for output values
         uses: gittools/actions/gitversion/execute@v3.2.0
@@ -101,6 +104,9 @@ jobs:
         uses: gittools/actions/gitversion/setup@v3.2.0
         with:
           versionSpec: '6.2.x'
+
+      - name: Validate GitVersion config
+        run: dotnet-gitversion /config gitversion.yml /showConfig
 
       - name: Determine Version
         id: version_step
