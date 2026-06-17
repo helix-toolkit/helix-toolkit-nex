@@ -3,6 +3,6 @@ next-version: 0.0.1
 
 branches:
   develop:
-    deployment-mode: ContinuousDeployment
+    mode: ContinuousDeployment
   main:
-    deployment-mode: ContinuousDelivery
+    mode: ContinuousDelivery
