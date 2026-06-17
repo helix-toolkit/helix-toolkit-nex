@@ -31,11 +31,12 @@ HelixToolkit.Nex.Engine is a core component of the HelixToolkit.Nex suite, respo
 | `RangeLightComponent`            | Represents a point or spot light in the scene.                             |
 | `EngineBuilder`                  | Fluent builder for creating and configuring an `Engine` instance.          |
 | `BillboardData`                  | Manages billboard entities and their data for rendering.                   |
-| `PointCloudData`                 | Manages point cloud entities and their data for rendering.                 |
 | `DynamicMeshDrawData`            | Represents dynamic mesh draw data.                                         |
 | `BillboardNode`                  | Represents a node in the scene graph that contains billboard geometry.     |
 | `CameraExtensions`               | Provides extension methods for camera operations, such as focusing on targets. |
 | `DrawStreamBase`                 | Abstract base class for managing GPU draw streams with material grouping.  |
+| `PointDrawStream`                | Manages point draw commands for rendering point clouds.                    |
+| `PointDrawStreamRegistry`        | Registry for managing point draw streams.                                  |
 
 ## Usage Examples
 
@@ -167,7 +168,7 @@ camera.FocusOn(new Vector3(0, 0, 0), 10f);
 
 - `RenderToCustomTarget(Format targetFormat)`: Configures the engine to render to a custom target format.
 - Improved interop support with `WithWpf()` and `WithWinUI()` methods for WPF and WinUI applications.
-- New methods for enabling specific rendering features: `WithBillBoard()`, `WithPointCloud()`, `WithTransparent()`, `WithFXAA()`, `WithSMAA()`, `WithBloom()`, `WithFPS()`.
+- New methods for enabling specific rendering features: `WithBillBoard()`, `WithTransparent()`, `WithFXAA()`, `WithSMAA()`, `WithBloom()`, `WithFPS()`.
 
 ### Buffer Management Updates
 
@@ -177,6 +178,11 @@ camera.FocusOn(new Vector3(0, 0, 0), 10f);
 ### Light Data Management
 
 - Updated `DirectionalLightData` and `RangeLightData` to use `RingFixSizeBuffer` and `RingElementBuffer` respectively, improving resource management and update efficiency.
+
+### New `PointDrawStream` and `PointDrawStreamRegistry`
+
+- Introduced `PointDrawStream` for managing point draw commands, replacing the removed `PointCloudData`.
+- `PointDrawStreamRegistry` manages point draw streams, organizing them by `DrawStreamType` and `DrawStreamName`.
 
 HelixToolkit.Nex.Engine is designed to be a robust and flexible foundation for building 3D applications, offering a rich set of features and a modular architecture that can be tailored to specific needs.
 ```
