@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main, develop, release* ]
     tags:
       - 'v*'
     paths-ignore:
@@ -15,6 +15,10 @@ on:
       - '**.md'
       - 'LICENSE'
       - '.gitignore'
+
+permissions:
+  contents: read
+  packages: write
 
 jobs:
   build-windows:
@@ -64,6 +68,15 @@ jobs:
       - name: Test Release
         run: dotnet test Source/HelixToolkit-Nex/HelixToolkit.Nex.slnx --configuration Release --no-build --verbosity normal --filter "TestCategory!=GPURequired"
 
+      - name: Upload artifacts
+        if: github.event_name != 'pull_request' # Skip this step for pull requests
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts
+          path: |
+              Source/HelixToolkit-Nex/**/bin/Release/**/*.nupkg
+
+
   build-linux:
     runs-on: ubuntu-latest
     steps:
@@ -107,3 +120,26 @@ jobs:
 
       - name: Test LinuxRelease
         run: dotnet test Source/HelixToolkit-Nex/HelixToolkit.Nex.slnx --configuration LinuxRelease --no-build --verbosity normal --filter "TestCategory!=GPURequired"
+
+  publish:
+    if: github.repository == 'helix-toolkit/helix-toolkit-nex' && github.event_name != 'pull_request'
+    runs-on: windows-latest
+    needs: build-windows
+    steps:
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 8.0.x
+        
+    - name: Download artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: build-artifacts
+
+    - name: Publish to GitHub Packages
+      # Stable releases publish only on version tags (v*); develop publishes pre-release builds.
+      if: github.event_name == 'push' && (startsWith(github.ref, 'refs/tags/') || startsWith(github.ref, 'refs/heads/develop'))
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        dotnet nuget push **/*.nupkg -s https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json -k $env:GITHUB_TOKEN --skip-duplicate
