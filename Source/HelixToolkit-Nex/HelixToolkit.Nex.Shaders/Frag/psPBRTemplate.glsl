@@ -196,16 +196,15 @@ vec4 forwardPlusLighting(in PBRMaterial material)
     }
     // Beer-Lambert volumetric absorption (KHR_materials_volume):
     // T(x) = attenuationColor ^ (thickness / attenuationDistance)
-    // The ratio is clamped to prevent complete saturation in thick regions.
-    // attenuationDistance <= 0 means no absorption (transparent glass with no tint).
+    // glTF-consistent sentinel: an infinite distance (+Infinity) means no absorption
+    // (transparent glass with no tint) and skips the block. Any finite positive distance
+    // enables Beer-Lambert absorption.
     vec3 sssColor = material.albedo;
-    if (hasTransmission && props.attenuationDistance > 0.0) {
+    if (hasTransmission && props.attenuationDistance > 0.0 && !isinf(props.attenuationDistance)) {
         vec3 ac = clamp(props.attenuationColor, vec3(1e-6), vec3(1.0));
-        // Clamp ratio to keep visible color variation even for thick volumes.
         // A ratio of 1.0 means the light has traveled exactly one attenuationDistance,
         // producing attenuationColor as the tint. Values above 1 darken further.
-        float MAX_ABSORPTION_RATIO = 2.0;
-        float ratio = min(material.thickness / props.attenuationDistance, MAX_ABSORPTION_RATIO);
+        float ratio = material.thickness / props.attenuationDistance;
         sssColor = sssColor * pow(ac, vec3(ratio));
     }
 #endif
@@ -247,9 +246,9 @@ vec4 forwardPlusLighting(in PBRMaterial material)
             // lightIndexOffset region, with the opaque indices written as a strict prefix of the
             // transparent indices. Select the active sub-count at compile time per render pass.
 #if defined(FP_USE_TRANSPARENT_LIGHT_LIST) || defined(TRANSPARENT_PASS) || defined(ALPHA_MASK)
-            uint activeLightCount = (tile.lightCount & 0xFF00u) >> 8u;   // transparent / union sub-count
+            uint activeLightCount = unpackTransparentLightCount(tile.lightCount);   // transparent / union sub-count
 #else
-            uint activeLightCount = tile.lightCount & 0x00FFu;          // opaque sub-count
+            uint activeLightCount = unpackOpaqueLightCount(tile.lightCount);        // opaque sub-count
 #endif
             // Process lights in this tile
             for (uint i = 0; i < activeLightCount; ++i) {
@@ -290,10 +289,19 @@ vec4 forwardPlusLighting(in PBRMaterial material)
     // is already in finalC via calculateTransmission.
     float finalOpacity = material.opacity;
     if (hasTransmission) {
+        // Minimum alpha required for surface specular/Fresnel highlights to
+        // survive WBOIT compositing. Per KHR_materials_transmission, transmission
+        // replaces only the diffuse lobe; specular/Fresnel reflections must remain
+        // visible, so alpha must never collapse fully to zero for these fragments.
+        const float ALPHA_FLOOR = 0.05;
         // Thickness modulates how see-through the surface is:
         // thin (thickness≈0) → more transparent, thick → more opaque.
         float thicknessFrac = 1.0 / (1.0 + material.thickness);
         finalOpacity = material.opacity * (1.0 - transmissionScale * thicknessFrac);
+        // Raise alpha to a protective floor so thin-walled, fully transmissive
+        // surfaces keep their specular/Fresnel highlights. Bound by material.opacity
+        // so an intentionally faint material is never forced more opaque than authored.
+        finalOpacity = max(finalOpacity, min(material.opacity, ALPHA_FLOOR));
     }
     return vec4(finalC, finalOpacity);
 #else
@@ -412,9 +420,9 @@ vec4 debugTileLighting()
     // sub-count with the SAME compile-time selection as the lighting loop so the packed high
     // byte does not corrupt the heat-map normalization.
 #if defined(FP_USE_TRANSPARENT_LIGHT_LIST) || defined(TRANSPARENT_PASS) || defined(ALPHA_MASK)
-    uint activeLightCount = (tile.lightCount & 0xFF00u) >> 8u;   // transparent / union sub-count
+    uint activeLightCount = unpackTransparentLightCount(tile.lightCount);   // transparent / union sub-count
 #else
-    uint activeLightCount = tile.lightCount & 0x00FFu;          // opaque sub-count
+    uint activeLightCount = unpackOpaqueLightCount(tile.lightCount);        // opaque sub-count
 #endif
     // Visualize number of lights in the tile
     float lightCountNormalized = float(activeLightCount) / float(fpConst.maxLightsPerTile);

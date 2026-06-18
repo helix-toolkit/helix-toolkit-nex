@@ -24,6 +24,23 @@ public sealed class ImporterConfig
     public PBRShadingMode DefaultShadingMode { get; set; } = PBRShadingMode.PBR;
 
     /// <summary>
+    /// Gets or sets the default range for point lights when the glTF file does not specify a range.
+    /// </summary>
+    public float DefaultPointLightRange { get; set; } = 10f;
+
+    /// <summary>
+    /// Gets or sets the default range for spot lights when the glTF file does not specify a range.
+    /// </summary>
+    public float DefaultSpotLightRange { get; set; } = 10f;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether point light meshes should be created.
+    /// </summary>
+    public bool CreatePointLightMeshes { get; set; } = true;
+
+    public float PointLightMeshSize { get; set; } = 0.1f;
+
+    /// <summary>
     /// Gets a default configuration with standard settings.
     /// </summary>
     public static ImporterConfig Default => new();

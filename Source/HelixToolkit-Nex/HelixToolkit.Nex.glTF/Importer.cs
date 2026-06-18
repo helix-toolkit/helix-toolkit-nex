@@ -27,7 +27,11 @@ public class Importer
     /// <param name="worldData">The world data provider containing the ECS world and resource managers.</param>
     /// <param name="config">Optional configuration for the import operation. If null, default settings are used.</param>
     /// <returns>An <see cref="ImportResult"/> containing the root scene node and diagnostics.</returns>
-    public ImportResult Import(string filePath, WorldDataProvider worldData, ImporterConfig? config = null)
+    public ImportResult Import(
+        string filePath,
+        WorldDataProvider worldData,
+        ImporterConfig? config = null
+    )
     {
         var sessionId = GenerateSessionId();
         var diagnostics = new List<ImportDiagnostic>();
@@ -126,11 +130,14 @@ public class Importer
             manifest,
             config.DefaultShadingMode
         );
+        var lightConverter = new LightConverter(diagnostics, config);
         var sceneBuilder = new SceneBuilder(
             worldData.World,
             meshConverter,
             materialConverter,
-            diagnostics
+            lightConverter,
+            diagnostics,
+            config
         );
 
         // 7. Build scene
@@ -297,11 +304,14 @@ public class Importer
             manifest,
             config.DefaultShadingMode
         );
+        var lightConverter = new LightConverter(diagnostics, config);
         var sceneBuilder = new SceneBuilder(
             worldData.World,
             meshConverter,
             materialConverter,
-            diagnostics
+            lightConverter,
+            diagnostics,
+            config
         );
 
         // 10. Build scene (sync — the heavy async work was in buffer loading)

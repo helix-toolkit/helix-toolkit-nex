@@ -20,8 +20,8 @@ public sealed class ImportResult : IDisposable
     /// </summary>
     public ResourceManifest Resources { get; init; } = ResourceManifest.Empty;
 
-    /// <summary>True if the import completed (possibly with warnings). False if a critical error occurred.</summary>
-    public bool Success => RootNode is not null;
+    /// <summary>True if the import completed (possibly with warnings) and produced no Error-severity diagnostics. False if a critical error occurred or any Error diagnostic was reported.</summary>
+    public bool Success => RootNode is not null && !HasErrors;
 
     /// <summary>True if any diagnostics have Error severity.</summary>
     public bool HasErrors => Diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error);

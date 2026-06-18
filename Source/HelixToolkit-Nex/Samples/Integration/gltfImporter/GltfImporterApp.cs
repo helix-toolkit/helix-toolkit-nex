@@ -2,11 +2,11 @@ using System.Diagnostics;
 using System.Numerics;
 using HelixToolkit.Nex.Engine.CameraControllers;
 using HelixToolkit.Nex.Engine.Cameras;
-using HelixToolkit.Nex.Engine.Components;
 using HelixToolkit.Nex.glTF;
 using HelixToolkit.Nex.Graphics;
 using HelixToolkit.Nex.Graphics.Vulkan;
 using HelixToolkit.Nex.ImGui;
+using HelixToolkit.Nex.Lights;
 using HelixToolkit.Nex.Maths;
 using HelixToolkit.Nex.Rendering;
 using HelixToolkit.Nex.Rendering.PostEffects;
@@ -51,7 +51,7 @@ internal class GltfImporterApp : ApplicationBase
     private Node? _currentModelRoot;
     private ResourceManifest? _currentResourceManifest;
     private Node? _mainRoot;
-    private Node? _lightNode;
+    private DirectionalLightNode? _dirLight;
     private Size _viewportSize = new(1, 1);
 
     // Import diagnostics state (consumed by error/warning windows in task 9.1)
@@ -80,10 +80,12 @@ internal class GltfImporterApp : ApplicationBase
     // Importer config
     private readonly ImporterConfig _importConfig = new()
     {
-        DefaultShadingMode = Shaders.Frag.PBRShadingMode.CAD,
+        DefaultShadingMode = Shaders.Frag.PBRShadingMode.PBR,
     };
 
     public override string Name => "glTF Importer";
+
+    public DirectionalLightNode DirectionalLight => _dirLight ?? throw new InvalidOperationException("Light node is not initialized.");
 
     public GltfImporterApp()
         : base(
@@ -118,7 +120,10 @@ internal class GltfImporterApp : ApplicationBase
         // Initialize camera
         _camera = new PerspectiveCamera()
         {
-            Position = new Vector3(0, 2, -5),
+            // Initialize camera on the +Z side so the orbit controller's sign
+            // conventions produce same-direction orbit and the conventional
+            // glTF front faces are visible (Requirements 3.1, 3.2, 4.1).
+            Position = new Vector3(0, 2, 5),
             Target = new Vector3(0, 0, 0),
             FarPlane = 10000,
             NearPlane = 0.01f,
@@ -178,7 +183,8 @@ internal class GltfImporterApp : ApplicationBase
         _propertiesPanel = new PropertiesPanel(
             _selectionManager,
             _worldDataProvider,
-            _renderContext
+            _renderContext,
+            this
         );
         _viewportPanel = new ViewportPanel(_selectionManager, _cameraController);
 
@@ -190,11 +196,12 @@ internal class GltfImporterApp : ApplicationBase
         if (_worldDataProvider is null)
             return;
         // Add a directional light to the scene
-        _lightNode = new Node(_worldDataProvider.World, "DirectionalLight");
-        _lightNode.Entity.Set(
-            new DirectionalLightComponent() { Color = Color.White, Intensity = 1.0f }
-        );
-        _mainRoot?.AddChild(_lightNode);
+        _dirLight = new DirectionalLightNode(_worldDataProvider.World, "Directional Light")
+        {
+            Color = Color.WhiteSmoke,
+            Intensity = 0.8f
+        };
+        _mainRoot?.AddChild(_dirLight);
     }
 
     protected override void HandleResize(int width, int height)
@@ -341,9 +348,7 @@ internal class GltfImporterApp : ApplicationBase
         _cameraController.Update(delta);
 
         // --- Update light direction to match camera (optional, for better default lighting) ---
-        ref var dirLight = ref _lightNode!.Entity.Get<DirectionalLightComponent>();
-        dirLight.Direction = Vector3.Normalize(_camera.LookDir);
-        _lightNode.NotifyComponentChanged<DirectionalLightComponent>();
+        _dirLight!.Direction = Vector3.Normalize(_camera.LookDir);
 
         // --- Update render context for the 3D viewport ---
         _renderContext.RenderParams.BackgroundColor = _background;

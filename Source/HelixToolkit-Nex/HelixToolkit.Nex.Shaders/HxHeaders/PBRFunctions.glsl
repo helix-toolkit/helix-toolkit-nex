@@ -158,7 +158,7 @@ vec3 calculateTransmission(in PBRMaterial material, in Light light, in vec3 frag
     float transmission = (directionalScatter * 0.3 + diffuseTransmission * 0.7) * transmissionScale * thicknessFraction;
 
     vec3 radiance = light.color * light.intensity * attenuation;
-    return subsurfaceColor * transmission * radiance * PI;
+    return subsurfaceColor * transmission * radiance;
 }
 
 // Per KHR_materials_transmission: transmissionFactor replaces the diffuse lobe with

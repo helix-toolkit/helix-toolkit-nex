@@ -13,7 +13,7 @@ namespace HelixToolkit.Nex.glTF.Internal;
 /// </summary>
 internal sealed class MaterialConverter
 {
-    private readonly IPBRMaterialPropertyManager _materialManager;
+    private readonly IPBRMaterialPropertyManager _materialPropsManager;
     private readonly TextureLoader _textureLoader;
     private readonly List<ImportDiagnostic> _diagnostics;
     private readonly ResourceManifest _manifest;
@@ -35,7 +35,7 @@ internal sealed class MaterialConverter
         PBRShadingMode defaultShadingMode = PBRShadingMode.PBR
     )
     {
-        _materialManager =
+        _materialPropsManager =
             materialManager ?? throw new ArgumentNullException(nameof(materialManager));
         _textureLoader = textureLoader ?? throw new ArgumentNullException(nameof(textureLoader));
         _diagnostics = diagnostics ?? throw new ArgumentNullException(nameof(diagnostics));
@@ -88,7 +88,7 @@ internal sealed class MaterialConverter
         }
 
         // Create the material via the manager with the determined shading mode
-        var material = _materialManager.Create(shadingMode.ToString());
+        var material = _materialPropsManager.Create(shadingMode.ToString());
         material.Name = materialName;
 
         // glTF materials default to non-transmissive (no KHR_materials_transmission).
@@ -169,7 +169,7 @@ internal sealed class MaterialConverter
         }
 
         // Create the material via the manager with the determined shading mode
-        var material = _materialManager.Create(shadingMode.ToString());
+        var material = _materialPropsManager.Create(shadingMode.ToString());
         material.Name = materialName;
 
         // glTF materials default to non-transmissive (no KHR_materials_transmission).
@@ -202,7 +202,7 @@ internal sealed class MaterialConverter
     /// Albedo(1,1,1), Metallic 1.0, Roughness 1.0, Opacity 1.0, Emissive(0,0,0).</returns>
     public PBRMaterialProperties GetDefaultMaterial()
     {
-        var material = _materialManager.Create(_defaultShadingMode.ToString());
+        var material = _materialPropsManager.Create(_defaultShadingMode.ToString());
         material.Name = "Default";
 
         // glTF default values
@@ -218,6 +218,14 @@ internal sealed class MaterialConverter
 
         _manifest.AddMaterial(material);
 
+        return material;
+    }
+
+    public PBRMaterialProperties CreateMaterialProps(string materialName)
+    {
+        var material = _materialPropsManager.Create(materialName);
+        material.Name = materialName;
+        _manifest.AddMaterial(material);
         return material;
     }
 

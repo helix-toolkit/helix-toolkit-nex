@@ -1,5 +1,6 @@
 using System.Numerics;
 using HelixToolkit.Nex.Material;
+using HelixToolkit.Nex.Maths;
 using HelixToolkit.Nex.Rendering;
 using HelixToolkit.Nex.Rendering.Components;
 using HelixToolkit.Nex.Scene;
@@ -19,11 +20,13 @@ internal class PropertiesPanel
     private readonly SelectionManager _selectionManager;
     private readonly WorldDataProvider _worldDataProvider;
     private readonly RenderContext _renderContext;
+    private readonly GltfImporterApp _app;
 
     public PropertiesPanel(
         SelectionManager selectionManager,
         WorldDataProvider worldDataProvider,
-        RenderContext context
+        RenderContext context,
+        GltfImporterApp app
     )
     {
         _selectionManager =
@@ -31,6 +34,7 @@ internal class PropertiesPanel
         _worldDataProvider =
             worldDataProvider ?? throw new ArgumentNullException(nameof(worldDataProvider));
         _renderContext = context ?? throw new ArgumentNullException(nameof(context));
+        _app = app ?? throw new ArgumentNullException(nameof(app));
     }
 
     /// <summary>
@@ -44,11 +48,24 @@ internal class PropertiesPanel
         Gui.SetNextWindowSize(size);
         if (Gui.Begin("Settings", ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove))
         {
-            if (Gui.BeginChild("SettingsContent", new Vector2(0, 30)))
+            if (Gui.BeginChild("SettingsContent"))
             {
                 var wireframe = _renderContext.RenderParams.EnableGlobalWireframe;
                 Gui.Checkbox("Wireframe Mode", ref wireframe);
                 _renderContext.RenderParams.EnableGlobalWireframe = wireframe;
+                Gui.Spacing();
+                Gui.Text("Directional Light Settings");
+                var light = _app.DirectionalLight;
+                var intensity = light.Intensity;
+                if (Gui.SliderFloat("Intensity", ref intensity, 0.0f, 10.0f))
+                {
+                    light.Intensity = intensity;
+                }
+                var color = light.Color.ToVector3();
+                if (Gui.ColorEdit3("Color", ref color))
+                {
+                    light.Color = color.ToColor4(1);
+                }
             }
             Gui.EndChild();
             if (Gui.BeginChild("Properties"))

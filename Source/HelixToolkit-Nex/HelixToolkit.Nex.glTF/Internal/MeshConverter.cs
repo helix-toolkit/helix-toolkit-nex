@@ -2,7 +2,6 @@ using System.Numerics;
 using glTFLoader.Schema;
 using HelixToolkit.Nex.Geometries;
 using HelixToolkit.Nex.Graphics;
-using Vertex = System.Numerics.Vector4;
 
 namespace HelixToolkit.Nex.glTF.Internal;
 
@@ -162,8 +161,7 @@ internal sealed class MeshConverter
         }
 
         // Compute bounding volumes from vertex positions
-        geometry.CreateBoundingBox();
-        geometry.CreateBoundingSphere();
+        geometry.UpdateBounds();
 
         // Register with geometry manager
         var handle = _geometryManager.Add(geometry);
@@ -336,5 +334,20 @@ internal sealed class MeshConverter
                 or MeshPrimitive.ModeEnum.LINES
                 or MeshPrimitive.ModeEnum.TRIANGLES
                 or MeshPrimitive.ModeEnum.TRIANGLE_STRIP;
+    }
+
+    private Geometry? _sphere;
+
+    public Geometry GetSphereMesh()
+    {
+        if (_sphere == null)
+        {
+            var builder = new MeshBuilder();
+            builder.AddSphere(Vector3.Zero, 0.5f);
+            _sphere = builder.ToMesh().ToGeometry();
+            _manifest.AddGeometry(_sphere);
+            _geometryManager.Add(_sphere);
+        }
+        return _sphere;
     }
 }

@@ -65,10 +65,12 @@ public class RenderablePropertyTests
             throw new NotImplementedException();
 
         public int GetDirtyCount() => 0;
+
         public ResultCode UploadMeshInfoDynamic(ElementBuffer<MeshInfo> buffer)
         {
             return ResultCode.Ok;
         }
+
         public void Dispose() { }
     }
 
@@ -102,10 +104,12 @@ public class RenderablePropertyTests
             throw new NotImplementedException();
 
         public int GetDirtyCount() => 0;
+
         public ResultCode UploadMeshInfoDynamic(ElementBuffer<MeshInfo> buffer)
         {
             return ResultCode.Ok;
         }
+
         public void Dispose() { }
     }
 
@@ -138,14 +142,20 @@ public class RenderablePropertyTests
             _inner.Objects;
 
         public ref PBRProperties At(int index) => ref _inner.At(index);
+
         public ResultCode UploadDynamic(ElementBuffer<PBRProperties> buffer)
         {
             return ResultCode.Ok;
         }
-        public ResultCode UploadDynamic(ElementBuffer<PBRProperties> buffer, IEnumerable<uint> indices)
+
+        public ResultCode UploadDynamic(
+            ElementBuffer<PBRProperties> buffer,
+            IEnumerable<uint> indices
+        )
         {
             return ResultCode.Ok;
         }
+
         public void Dispose() => _inner.Dispose();
     }
 
@@ -420,7 +430,9 @@ public class RenderablePropertyTests
                         world,
                         meshConverter,
                         materialConverter,
-                        diagnostics
+                        new LightConverter(diagnostics, ImporterConfig.Default),
+                        diagnostics,
+                        ImporterConfig.Default
                     );
 
                     // Act
@@ -504,7 +516,9 @@ public class RenderablePropertyTests
                         world,
                         meshConverter,
                         materialConverter,
-                        diagnostics
+                        new LightConverter(diagnostics, ImporterConfig.Default),
+                        diagnostics,
+                        ImporterConfig.Default
                     );
 
                     // Act
