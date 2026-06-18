@@ -55,7 +55,6 @@ public class PBRMaterialManager(IContext context, IPBRMaterialPropertyManager pr
                 .WithUberShader()
                 .WithDefine(BuildFlags.OUTPUT_DRAW_ID)
                 .WithDefine(BuildFlags.ALPHA_MASK)
-                .WithDefine(BuildFlags.FP_USE_TRANSPARENT_LIGHT_LIST)
                 .BuildMaterialPipeline(Context, $"Uber_{MaterialPassType.AlphaMask}");
             var desc = new RenderPipelineDesc
             {
@@ -111,8 +110,7 @@ public class PBRMaterialManager(IContext context, IPBRMaterialPropertyManager pr
                 .WithForwardPlus(true)
                 .WithUberShader()
                 .WithDefine(BuildFlags.OUTPUT_DRAW_ID)
-                .WithDefine("TRANSPARENT_PASS")
-                .WithDefine(BuildFlags.FP_USE_TRANSPARENT_LIGHT_LIST)
+                .WithDefine(BuildFlags.TRANSPARENT_PASS)
                 .BuildMaterialPipeline(Context, $"Uber_{MaterialPassType.WBOIT}");
             var desc = new RenderPipelineDesc
             {
