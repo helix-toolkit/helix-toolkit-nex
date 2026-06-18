@@ -241,8 +241,18 @@ vec4 forwardPlusLighting(in PBRMaterial material)
             LightGridBuffer lightGrid = LightGridBuffer(fpConst.lightGridBufferAddress);
             LightIndexBuffer lightIndices = LightIndexBuffer(fpConst.lightIndexBufferAddress);
             LightGridTile tile = lightGrid.tiles[tileIndex];
+            // tile.lightCount is a PACKED value: the opaque sub-count occupies the low byte
+            // (tile.lightCount & 0x00FFu) and the transparent/union sub-count occupies the high
+            // byte ((tile.lightCount & 0xFF00u) >> 8). Both sub-lists share the same
+            // lightIndexOffset region, with the opaque indices written as a strict prefix of the
+            // transparent indices. Select the active sub-count at compile time per render pass.
+#if defined(FP_USE_TRANSPARENT_LIGHT_LIST) || defined(TRANSPARENT_PASS) || defined(ALPHA_MASK)
+            uint activeLightCount = (tile.lightCount & 0xFF00u) >> 8u;   // transparent / union sub-count
+#else
+            uint activeLightCount = tile.lightCount & 0x00FFu;          // opaque sub-count
+#endif
             // Process lights in this tile
-            for (uint i = 0; i < tile.lightCount; ++i) {
+            for (uint i = 0; i < activeLightCount; ++i) {
                 uint lightIndex = lightIndices.indices[tile.lightIndexOffset + i];
                 Light light = lightBuf.lights[lightIndex];
 #ifdef TRANSPARENT_PASS
@@ -397,9 +407,18 @@ vec4 debugTileLighting()
     LightGridBuffer lightGrid = LightGridBuffer(fpConst.lightGridBufferAddress);
     LightIndexBuffer lightIndices = LightIndexBuffer(fpConst.lightIndexBufferAddress);
     LightGridTile tile = lightGrid.tiles[tileIndex];
+    // tile.lightCount is PACKED: opaque sub-count in the low byte (& 0x00FFu) and the
+    // transparent/union sub-count in the high byte ((& 0xFF00u) >> 8). Mask out the active
+    // sub-count with the SAME compile-time selection as the lighting loop so the packed high
+    // byte does not corrupt the heat-map normalization.
+#if defined(FP_USE_TRANSPARENT_LIGHT_LIST) || defined(TRANSPARENT_PASS) || defined(ALPHA_MASK)
+    uint activeLightCount = (tile.lightCount & 0xFF00u) >> 8u;   // transparent / union sub-count
+#else
+    uint activeLightCount = tile.lightCount & 0x00FFu;          // opaque sub-count
+#endif
     // Visualize number of lights in the tile
-    float lightCountNormalized = float(tile.lightCount) / float(fpConst.maxLightsPerTile);
-    if (tile.lightCount == 0) {
+    float lightCountNormalized = float(activeLightCount) / float(fpConst.maxLightsPerTile);
+    if (activeLightCount == 0) {
         return vec4(0.0, 0.0, 0.0, 1.0);
     } else {
         // Gradient: Blue -> Green -> Red
