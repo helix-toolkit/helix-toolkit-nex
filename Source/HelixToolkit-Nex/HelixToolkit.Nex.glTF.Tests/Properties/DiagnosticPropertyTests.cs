@@ -18,6 +18,7 @@ using Mesh = glTFLoader.Schema.Mesh;
 using MeshPrimitive = glTFLoader.Schema.MeshPrimitive;
 using NexImage = HelixToolkit.Nex.Textures.Image;
 using TextureInfo = glTFLoader.Schema.TextureInfo;
+
 namespace HelixToolkit.Nex.glTF.Tests.Properties;
 
 // Feature: gltf-importer, Property 14: Diagnostic completeness
@@ -68,10 +69,12 @@ public class DiagnosticPropertyTests
             throw new NotImplementedException();
 
         public int GetDirtyCount() => 0;
+
         public ResultCode UploadMeshInfoDynamic(ElementBuffer<MeshInfo> buffer)
         {
             return ResultCode.Ok;
         }
+
         public void Dispose() { }
     }
 
@@ -108,14 +111,20 @@ public class DiagnosticPropertyTests
         public ref HelixToolkit.Nex.Shaders.PBRProperties At(int index) => ref _inner.At(index);
 
         public void Clear() => _inner.Clear();
+
         public ResultCode UploadDynamic(ElementBuffer<PBRProperties> buffer)
         {
             return ResultCode.Ok;
         }
-        public ResultCode UploadDynamic(ElementBuffer<PBRProperties> buffer, IEnumerable<uint> indices)
+
+        public ResultCode UploadDynamic(
+            ElementBuffer<PBRProperties> buffer,
+            IEnumerable<uint> indices
+        )
         {
             return ResultCode.Ok;
         }
+
         public void Dispose() => _inner.Dispose();
     }
 
@@ -572,7 +581,14 @@ public class DiagnosticPropertyTests
             manifest
         );
 
-        var sceneBuilder = new SceneBuilder(world, meshConverter, materialConverter, diagnostics);
+        var sceneBuilder = new SceneBuilder(
+            world,
+            meshConverter,
+            materialConverter,
+            new LightConverter(diagnostics, ImporterConfig.Default),
+            diagnostics,
+            ImporterConfig.Default
+        );
 
         // Build the scene — this triggers all the error conditions
         var rootNode = sceneBuilder.BuildScene(model, 0);

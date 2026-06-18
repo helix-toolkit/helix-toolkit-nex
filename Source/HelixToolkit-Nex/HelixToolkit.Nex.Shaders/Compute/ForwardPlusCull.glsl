@@ -486,7 +486,7 @@ void main() {
         // byte and the transparent (union) count the high byte.
         LightGridBuffer lightGridBuffer = LightGridBuffer(cullingConst.value.lightGridBufferAddress);
         LightGridTile tile;
-        tile.lightCount = (opaqueCount & 0xFFu) | ((transparentCount & 0xFFu) << 8);
+        tile.lightCount = packLightCount(opaqueCount, transparentCount);
         tile.lightIndexOffset = offset;
         lightGridBuffer.tiles[tileIdx] = tile;
     }

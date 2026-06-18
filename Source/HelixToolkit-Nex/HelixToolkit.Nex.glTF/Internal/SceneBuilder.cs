@@ -1,8 +1,11 @@
 using System.Numerics;
 using glTFLoader.Schema;
 using HelixToolkit.Nex.ECS;
+using HelixToolkit.Nex.Lights;
 using HelixToolkit.Nex.Maths;
 using HelixToolkit.Nex.Scene;
+using HelixToolkit.Nex.Shaders.Frag;
+using Newtonsoft.Json.Linq;
 using GltfNode = glTFLoader.Schema.Node;
 using Node = HelixToolkit.Nex.Scene.Node;
 
@@ -17,7 +20,25 @@ internal sealed class SceneBuilder
     private readonly World _world;
     private readonly MeshConverter _meshConverter;
     private readonly MaterialConverter _materialConverter;
+    private readonly LightConverter _lightConverter;
     private readonly List<ImportDiagnostic> _diagnostics;
+    private readonly ImporterConfig _config;
+
+    /// <summary>
+    /// The lights parsed from the document-level <c>KHR_lights_punctual</c> extension for the
+    /// current build, positionally parallel to the glTF lights array. A <c>null</c> entry means
+    /// the definition at that index was not convertible and must not be attached. Populated once
+    /// per <see cref="BuildScene"/> call.
+    /// </summary>
+    private IReadOnlyList<ParsedLight?> _parsedLights = [];
+
+    /// <summary>
+    /// The minimum length the transformed local -Z axis must have for the light direction to be
+    /// normalizable. When the transformed axis is shorter than this threshold (e.g. a degenerate,
+    /// zero/near-zero scale node transform), the direction cannot be normalized and is left at the
+    /// component default instead of writing a <c>NaN</c> direction (Requirement 2.5).
+    /// </summary>
+    private const float DirectionNormalizeEpsilon = 1e-5f;
 
     /// <summary>
     /// The identity matrix in column-major order as stored by glTF2Loader.
@@ -48,19 +69,24 @@ internal sealed class SceneBuilder
     /// <param name="world">The ECS world to create nodes in.</param>
     /// <param name="meshConverter">The mesh converter for creating geometry.</param>
     /// <param name="materialConverter">The material converter for creating materials.</param>
+    /// <param name="lightConverter">The light converter for parsing KHR_lights_punctual lights.</param>
     /// <param name="diagnostics">The diagnostics list to report warnings/errors to.</param>
     public SceneBuilder(
         World world,
         MeshConverter meshConverter,
         MaterialConverter materialConverter,
-        List<ImportDiagnostic> diagnostics
+        LightConverter lightConverter,
+        List<ImportDiagnostic> diagnostics,
+        ImporterConfig config
     )
     {
         _world = world ?? throw new ArgumentNullException(nameof(world));
         _meshConverter = meshConverter ?? throw new ArgumentNullException(nameof(meshConverter));
         _materialConverter =
             materialConverter ?? throw new ArgumentNullException(nameof(materialConverter));
+        _lightConverter = lightConverter ?? throw new ArgumentNullException(nameof(lightConverter));
         _diagnostics = diagnostics ?? throw new ArgumentNullException(nameof(diagnostics));
+        _config = config;
     }
 
     /// <summary>
@@ -74,6 +100,11 @@ internal sealed class SceneBuilder
     /// <returns>The root Node of the imported scene.</returns>
     public Node BuildScene(Gltf model, int sceneIndex)
     {
+        // Parse the document-level KHR_lights_punctual lights once for the duration of this build.
+        // Per-node attachment (later tasks) reads from this parsed list. When the extension is
+        // absent or the lights array is empty/absent, this is an empty list (no diagnostics).
+        _parsedLights = _lightConverter.ParseLights(model);
+
         // Determine which scene to import
         int resolvedSceneIndex = sceneIndex;
         if (resolvedSceneIndex < 0)
@@ -100,7 +131,7 @@ internal sealed class SceneBuilder
         {
             foreach (int nodeIndex in scene.Nodes)
             {
-                BuildNode(model, nodeIndex, rootNode);
+                BuildNode(model, nodeIndex, rootNode, Matrix4x4.Identity);
             }
         }
 
@@ -114,8 +145,13 @@ internal sealed class SceneBuilder
     /// <param name="model">The deserialized glTF model.</param>
     /// <param name="nodeIndex">The index of the node in the glTF Nodes array.</param>
     /// <param name="parent">The parent Node to attach this node to, or null for root-level nodes.</param>
+    /// <param name="parentWorld">
+    /// The accumulated world matrix of the parent node. Pass <see cref="Matrix4x4.Identity"/> for
+    /// root-level nodes. The node's world matrix is computed as <c>local * parentWorld</c> and
+    /// threaded into child recursion so world-space transforms are available at attachment time.
+    /// </param>
     /// <returns>The created Node.</returns>
-    internal Node BuildNode(Gltf model, int nodeIndex, Node? parent)
+    internal Node BuildNode(Gltf model, int nodeIndex, Node? parent, Matrix4x4 parentWorld)
     {
         if (model.Nodes == null || nodeIndex < 0 || nodeIndex >= model.Nodes.Length)
         {
@@ -146,6 +182,13 @@ internal sealed class SceneBuilder
         // Apply transform
         ApplyTransform(node, gltfNode, nodeIndex);
 
+        // Compose the accumulated world matrix (row-vector convention: child-local * parent-world).
+        // This matches the engine's scene-graph transform composition (see Scene.Transform.Value
+        // and the world resolution in SceneTransformTests) and makes world-space position/
+        // orientation available to light attachment (later tasks) without waiting for the ECS
+        // transform system to run.
+        var world = node.Transform.Value * parentWorld;
+
         // Attach to parent (preserves child ordering)
         parent?.AddChild(node);
 
@@ -155,12 +198,16 @@ internal sealed class SceneBuilder
             BuildMeshNodes(model, gltfNode.Mesh.Value, node);
         }
 
+        // Resolve and (if valid) attach a KHR_lights_punctual light referenced by this node.
+        // Uses the world matrix computed above so world-space position/orientation are available.
+        TryAttachLight(gltfNode, nodeIndex, node, world);
+
         // Recursively process children, preserving order
         if (gltfNode.Children != null)
         {
             foreach (int childIndex in gltfNode.Children)
             {
-                BuildNode(model, childIndex, node);
+                BuildNode(model, childIndex, node, world);
             }
         }
 
@@ -168,7 +215,180 @@ internal sealed class SceneBuilder
     }
 
     /// <summary>
-    /// Builds MeshNode(s) for a glTF mesh referenced by a node.
+    /// The per-node property name (within the <c>KHR_lights_punctual</c> node extension object)
+    /// that references a light by its index in the document-level lights array.
+    /// </summary>
+    private const string LightReferencePropertyName = "light";
+
+    /// <summary>
+    /// Resolves and validates the <c>KHR_lights_punctual</c> light reference on a glTF node and,
+    /// when the reference is valid and convertible, hands off to <see cref="AttachLightComponent"/>
+    /// to materialize and attach the engine light component.
+    /// </summary>
+    /// <remarks>
+    /// Resolution and validation rules:
+    /// <list type="bullet">
+    /// <item>
+    /// The node has no <c>KHR_lights_punctual</c> extension, or the extension lacks a valid integer
+    /// <c>light</c> reference: the node output is left unchanged (Requirement 7.4).
+    /// </item>
+    /// <item>
+    /// The reference index is negative or greater than or equal to the length of the lights array:
+    /// a Warning diagnostic identifying the node is added and no light is attached (Requirement 6.1).
+    /// </item>
+    /// <item>
+    /// The reference index is in range but the parsed light slot is <c>null</c> (e.g. the definition
+    /// had an unknown type and was not convertible): an Error diagnostic identifying the node and the
+    /// unresolved reference is added and no light is attached (Requirement 5.7).
+    /// </item>
+    /// </list>
+    /// </remarks>
+    /// <param name="gltfNode">The source glTF node.</param>
+    /// <param name="nodeIndex">The index of the node in the glTF Nodes array (used in diagnostics).</param>
+    /// <param name="node">The engine node created for <paramref name="gltfNode"/>.</param>
+    /// <param name="world">The accumulated world matrix of the node.</param>
+    private void TryAttachLight(GltfNode gltfNode, int nodeIndex, Node node, Matrix4x4 world)
+    {
+        // Requirement 7.4: a node without the KHR_lights_punctual extension is unchanged.
+        if (
+            gltfNode.Extensions is null
+            || !gltfNode.Extensions.TryGetValue(LightConverter.ExtensionName, out var extensionRaw)
+            || extensionRaw is not JObject extensionObj
+        )
+        {
+            return;
+        }
+
+        // Requirement 7.4: the extension object must carry an integer `light` reference. When the
+        // property is absent or is not an integer, there is no light to attach and the node output
+        // is left unchanged.
+        var lightToken = extensionObj[LightReferencePropertyName];
+        if (lightToken is not { Type: JTokenType.Integer })
+        {
+            return;
+        }
+
+        var lightIndex = lightToken.Value<int>();
+
+        // Requirement 6.1: a reference that is negative or >= the lights array length is out of
+        // range → Warning diagnostic identifying the node, no attach. The parsed list is positionally
+        // parallel to the document-level lights array, so its count is that array's length.
+        if (lightIndex < 0 || lightIndex >= _parsedLights.Count)
+        {
+            _diagnostics.Add(
+                new ImportDiagnostic(
+                    DiagnosticSeverity.Warning,
+                    $"Node {nodeIndex} references KHR_lights_punctual light index {lightIndex} which is out of range. No light was attached.",
+                    "Node",
+                    nodeIndex
+                )
+            );
+            return;
+        }
+
+        // Requirement 5.7: a reference that is in range but points at a non-convertible definition
+        // (null slot, e.g. unknown light type) → Error diagnostic identifying the node and the
+        // unresolved reference, no attach.
+        var parsedLight = _parsedLights[lightIndex];
+        if (parsedLight is null)
+        {
+            _diagnostics.Add(
+                new ImportDiagnostic(
+                    DiagnosticSeverity.Error,
+                    $"Node {nodeIndex} references KHR_lights_punctual light index {lightIndex} which could not be converted (unknown or invalid light definition). No light was attached.",
+                    "Node",
+                    nodeIndex
+                )
+            );
+            return;
+        }
+
+        // The reference is valid and the definition is convertible: hand off the non-null parsed
+        // light for component construction and attachment.
+        AttachLightComponent(node, nodeIndex, parsedLight.Value, world, lightIndex);
+    }
+
+    /// <summary>
+    /// Materializes the engine light component for a resolved, convertible <see cref="ParsedLight"/>
+    /// and attaches it to the node, deriving world-space position/direction from the node transform.
+    /// </summary>
+    /// <remarks>
+    /// World-space position and direction are derived from the node transform (Requirements 5.2,
+    /// 5.3). Directional lights use direction only and have no position, so the non-finite-position
+    /// guard does not apply to them. For point and spot lights, if any component of the world
+    /// position is non-finite (<c>NaN</c> or <c>±Infinity</c>), the position is not set — the range
+    /// component is constructed without a <c>Position</c> initializer (leaving it at its default) —
+    /// the node and any other attached components are retained, and a single Error diagnostic
+    /// identifying the node by its glTF node index is added (Requirement 5.6).
+    /// </remarks>
+    /// <param name="node">The engine node to attach the light component to.</param>
+    /// <param name="nodeIndex">The index of the node in the glTF Nodes array (used in diagnostics).</param>
+    /// <param name="light">The resolved, convertible parsed light to materialize.</param>
+    /// <param name="world">The accumulated world matrix used to derive position and direction.</param>
+    /// <param name="lightIndex">
+    /// The index of the referenced light in the document-level lights array (used in the
+    /// degenerate-direction diagnostic to identify the offending light).
+    /// </param>
+    private void AttachLightComponent(
+        Node node,
+        int nodeIndex,
+        ParsedLight light,
+        Matrix4x4 world,
+        int lightIndex
+    )
+    {
+        var color = new Color4(light.Color);
+
+        switch (light.Kind)
+        {
+            case LightKind.Directional:
+                node.AddChild(new DirectionalLightNode(_world)
+                {
+                    Direction = -Vector3.UnitZ,
+                    Color = color,
+                    Intensity = light.Intensity,
+                });
+                break;
+
+            case LightKind.Point:
+                node.AddChild(new PointLightNode(_world)
+                {
+                    Color = color,
+                    Intensity = light.Intensity,
+                    Range = light.Range,
+                });
+                if (_config.CreatePointLightMeshes)
+                {
+                    // Create a small sphere mesh to visualize the point light position
+                    var sphereMesh = _meshConverter.GetSphereMesh();
+                    var sphereNode = new MeshNode(_world, $"PointLightMesh_{nodeIndex}")
+                    {
+                        Geometry = sphereMesh,
+                        MaterialProperties = _materialConverter.CreateMaterialProps(PBRShadingMode.Unlit.ToString())
+                    };
+                    sphereNode.MaterialProperties.Emissive = color;
+                    sphereNode.Transform.Scale = new Vector3(_config.PointLightMeshSize);
+                    node.AddChild(sphereNode);
+                }
+                break;
+
+            case LightKind.Spot:
+                // When the world position is non-finite, the spot component is still attached (with
+                // its direction and cone angles) but without a Position initializer (Requirement 5.6).
+                // When the direction is non-normalizable, Direction is left at the component default.
+                var spotAngles = new Vector2(light.InnerConeAngle, light.OuterConeAngle);
+                node.AddChild(new SpotLightNode(_world)
+                {
+                    Color = color,
+                    Intensity = light.Intensity,
+                    Range = light.Range,
+                    SpotAngles = spotAngles,
+                    Direction = -Vector3.UnitZ,
+                });
+                break;
+        }
+    }
+
     /// Single primitive: creates a MeshNode directly as a child of the parent node.
     /// Multiple primitives: creates a parent Node (named after the mesh) with a child MeshNode per primitive.
     /// Skips primitives with invalid geometry handles. Omits the parent Node if all primitives are skipped.
@@ -334,7 +554,7 @@ internal sealed class SceneBuilder
         }
 
         // DoubleSided == true → disable backface culling
-        if (metadata.DoubleSided)
+        if (metadata.DoubleSided && !meshNode.IsTransparent)
         {
             meshNode.IsAlphaMask = true; // Use alpha mask mode to disable backface culling (since our engine doesn't have a separate culling property)
         }
