@@ -345,7 +345,7 @@ internal sealed class VulkanTransferQueue : IDisposable
             request.Complete(ResultCode.InvalidState);
             return;
         }
-
+        var dstVersion = destBuffer.DirtyVersion;
         int slotIndex = AcquireSlot();
         ref var slot = ref _slots[slotIndex];
 
@@ -423,7 +423,6 @@ internal sealed class VulkanTransferQueue : IDisposable
                     pBufferMemoryBarriers = &releaseBarrier,
                 };
                 VK.vkCmdPipelineBarrier2(slot.CommandBuffer, &depInfo);
-                destBuffer.ClearDirty();
             }
             else
             {
@@ -446,7 +445,6 @@ internal sealed class VulkanTransferQueue : IDisposable
                     pBufferMemoryBarriers = &barrier,
                 };
                 VK.vkCmdPipelineBarrier2(slot.CommandBuffer, &depInfo);
-                destBuffer.ClearDirty();
             }
 
             VK.vkEndCommandBuffer(slot.CommandBuffer).CheckResult();
@@ -478,7 +476,7 @@ internal sealed class VulkanTransferQueue : IDisposable
         {
             slot.InUse = false;
         }
-
+        destBuffer.TryClearDirty(dstVersion);
         request.Complete(ResultCode.Ok);
     }
 

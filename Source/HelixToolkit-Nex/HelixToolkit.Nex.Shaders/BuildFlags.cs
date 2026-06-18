@@ -25,6 +25,11 @@ public static class BuildFlags
     public const string DEPTH_PREPASS = "DEPTH_PREPASS";
 
     /// <summary>
+    /// Used to compile fragment shaders for transparent pass.
+    /// </summary>
+    public const string TRANSPARENT_PASS = "TRANSPARENT_PASS";
+
+    /// <summary>
     /// Used to compile Forward+ fragment shaders that should read the transparent (high-byte) per-tile light sub-count from the packed <c>LightGridTile.lightCount</c>, selecting the transparent light sub-list instead of the opaque (low-byte) one.
     /// </summary>
     public const string FP_USE_TRANSPARENT_LIGHT_LIST = "FP_USE_TRANSPARENT_LIGHT_LIST";
