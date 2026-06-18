@@ -221,6 +221,17 @@ public class MockContext : IContext
         return ResultCode.Ok;
     }
 
+    /// <summary>
+    /// Gets the <see cref="BufferDesc"/> that was used to create the buffer with the given handle.
+    /// Returns null if the handle is not found.
+    /// </summary>
+    public BufferDesc? GetBufferDesc(in BufferHandle handle)
+    {
+        if (_buffers.TryGetValue(handle, out var data))
+            return data.Desc;
+        return null;
+    }
+
     public ResultCode CreateSampler(SamplerStateDesc desc, out SamplerResource sampler)
     {
         var handle = AllocateHandle<Sampler>();
@@ -432,6 +443,11 @@ public class MockContext : IContext
         // Mock: no-op
     }
 
+    public void MarkDirty(BufferHandle handle)
+    {
+        // Mock: no-op — there is no GPU-side dirty tracking in the mock context.
+    }
+
     public uint GetMaxStorageBufferRange()
     {
         return MaxStorageBufferRange;
@@ -584,18 +600,14 @@ public class MockContext : IContext
         levels = 0;
     }
 
-    public void WaitAll(bool reset)
-    {
-    }
+    public void WaitAll(bool reset) { }
 
     public bool IsReady(in SubmitHandle handle)
     {
         return true;
     }
 
-    public void Wait(in SubmitHandle handle, bool reset = true)
-    {
-    }
+    public void Wait(in SubmitHandle handle, bool reset = true) { }
 
     // Mock data structures
     private class MockBufferData

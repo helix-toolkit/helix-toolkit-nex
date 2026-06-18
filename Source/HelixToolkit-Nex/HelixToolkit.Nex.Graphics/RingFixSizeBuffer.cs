@@ -148,6 +148,7 @@ public sealed class RingFixSizeBuffer<T> : IDisposable
             {
                 *(T*)_mappedPtr[_currentIndex] = value;
             }
+            _context.MarkDirty(Current);
             return ResultCode.Ok;
         }
         return _context.Upload(Current, 0, ref value);
