@@ -33,5 +33,6 @@
     </ItemGroup>
     <ItemGroup>
         <ProjectReference Include="..\HelixToolkit.Nex.Engine\HelixToolkit.Nex.Engine.csproj" />
+        <ProjectReference Include="..\HelixToolkit.Nex.Geometries.Builders\HelixToolkit.Nex.Geometries.Builders.csproj" />
     </ItemGroup>
 </Project>

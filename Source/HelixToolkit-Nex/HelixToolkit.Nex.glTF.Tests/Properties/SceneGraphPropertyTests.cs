@@ -76,10 +76,12 @@ public class SceneGraphPropertyTests
             throw new NotImplementedException();
 
         public int GetDirtyCount() => 0;
+
         public ResultCode UploadMeshInfoDynamic(ElementBuffer<MeshInfo> buffer)
         {
             return ResultCode.Ok;
         }
+
         public void Dispose() { }
     }
 
@@ -294,7 +296,9 @@ public class SceneGraphPropertyTests
                         world,
                         meshConverter,
                         materialConverter,
-                        diagnostics
+                        new LightConverter(diagnostics, ImporterConfig.Default),
+                        diagnostics,
+                        ImporterConfig.Default
                     );
 
                     // Act: build the scene
@@ -551,7 +555,9 @@ public class SceneGraphPropertyTests
                         world,
                         meshConverter,
                         materialConverter,
-                        diagnostics
+                        new LightConverter(diagnostics, ImporterConfig.Default),
+                        diagnostics,
+                        ImporterConfig.Default
                     );
 
                     // Build glTF nodes with the generated names as top-level scene nodes
@@ -729,7 +735,9 @@ public class SceneGraphPropertyTests
                         world,
                         meshConverter,
                         materialConverter,
-                        diagnostics
+                        new LightConverter(diagnostics, ImporterConfig.Default),
+                        diagnostics,
+                        ImporterConfig.Default
                     );
 
                     // Act: Build the scene

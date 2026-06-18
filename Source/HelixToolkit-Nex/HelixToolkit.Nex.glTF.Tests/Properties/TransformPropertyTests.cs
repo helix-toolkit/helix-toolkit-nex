@@ -58,10 +58,12 @@ public class TransformPropertyTests
             throw new NotImplementedException();
 
         public int GetDirtyCount() => 0;
+
         public ResultCode UploadMeshInfoDynamic(ElementBuffer<MeshInfo> buffer)
         {
             return ResultCode.Ok;
         }
+
         public void Dispose() { }
     }
 
@@ -94,6 +96,7 @@ public class TransformPropertyTests
             _inner.Objects;
 
         public ref PBRProperties At(int index) => ref _inner.At(index);
+
         public ResultCode UploadDynamic(ElementBuffer<PBRProperties> buffer)
         {
             return ResultCode.Ok;
@@ -106,6 +109,7 @@ public class TransformPropertyTests
         {
             return ResultCode.Ok;
         }
+
         public void Dispose() => _inner.Dispose();
     }
 
@@ -365,10 +369,12 @@ public class TransformPropertyTests
                         world,
                         meshConverter,
                         materialConverter,
-                        diagnostics
+                        new LightConverter(diagnostics, ImporterConfig.Default),
+                        diagnostics,
+                        ImporterConfig.Default
                     );
 
-                    var resultNode = sceneBuilder.BuildNode(model, 0, null);
+                    var resultNode = sceneBuilder.BuildNode(model, 0, null, Matrix4x4.Identity);
 
                     // Step 5: Verify the resulting node's Transform
                     var resultTransform = resultNode.Transform;
