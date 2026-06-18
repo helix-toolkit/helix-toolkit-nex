@@ -353,7 +353,7 @@ public class MockCommandBuffer : ICommandBuffer
         _recordedCommands.Add($"GenerateMipmap(texture={handle.Index})");
     }
 
-    public bool Barrier(in BufferHandle buffer)
+    public bool Barrier(in BufferHandle buffer, bool force)
     {
         _recordedCommands.Add($"Barrier(buffer={buffer.Index})");
         return true;

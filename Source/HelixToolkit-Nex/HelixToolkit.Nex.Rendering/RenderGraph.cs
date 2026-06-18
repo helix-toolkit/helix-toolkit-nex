@@ -55,6 +55,25 @@ public sealed class RenderGraph : Initializable
         /// for ping-pong passes; <see langword="null"/> for regular passes).
         /// </summary>
         public string? PingPongWriteSlot { get; internal set; }
+
+        /// <summary>
+        /// Mark buffer dirty for output buffers so they get barriered correctly.
+        /// </summary>
+        /// <param name="res"></param>
+        public void MarkOutputDirty(in RenderResources res)
+        {
+            var context = res.RenderContext.Context;
+            foreach (var output in Outputs.AsValueEnumerable())
+            {
+                if (
+                    output.Type == ResourceType.Buffer
+                    && res.Buffers.TryGetValue(output.Name, out var buffer)
+                )
+                {
+                    context.MarkDirty(buffer);
+                }
+            }
+        }
     }
 
     // -----------------------------------------------------------------------
@@ -648,17 +667,17 @@ public sealed class RenderGraph : Initializable
             {
                 continue;
             }
-            node.Render(
-                new RenderResources(
-                    context,
-                    cmdBuf,
-                    pass.Pass,
-                    pass.Framebuffer,
-                    pass.Dependencies,
-                    context.ResourceSet.Textures,
-                    context.ResourceSet.Buffers
-                )
+            var res = new RenderResources(
+                context,
+                cmdBuf,
+                pass.Pass,
+                pass.Framebuffer,
+                pass.Dependencies,
+                context.ResourceSet.Textures,
+                context.ResourceSet.Buffers
             );
+            node.Render(in res);
+            pass.MarkOutputDirty(in res);
             ++counter;
         }
         return counter;

@@ -317,12 +317,15 @@ internal sealed class VulkanBuffer : IDisposable
 
     public void ClearDirty()
     {
-        Interlocked.Exchange(ref _syncVersion, _dirtyVersion);
+        Interlocked.Exchange(ref _syncVersion, DirtyVersion);
     }
 
     public void TryClearDirty(ulong version)
     {
-        Interlocked.Exchange(ref _syncVersion, Math.Min(version, _dirtyVersion));
+        Interlocked.Exchange(
+            ref _syncVersion,
+            Math.Max(SyncVersion, Math.Min(version, DirtyVersion))
+        );
     }
 
     public void MarkDirty()

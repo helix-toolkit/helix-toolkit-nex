@@ -19,7 +19,11 @@
     </ItemGroup>
 
     <ItemGroup>
+        <PackageReference Include="Evergine.Bindings.Draco" Version="2025.10.14.20" />
         <PackageReference Include="glTF2Loader" Version="1.0.0" />
+        <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+        <PackageReference Include="System.Net.Http" Version="4.3.4" />
+        <PackageReference Include="System.Text.RegularExpressions" Version="4.3.1" />
     </ItemGroup>
     <ItemGroup>
         <None Update="README.md">
