@@ -240,7 +240,7 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
         }
         foreach (var buf in deps.BufferSpan)
         {
-            if (!Barrier(in buf))
+            if (!Barrier(in buf, false))
             {
                 HxDebug.Assert(
                     false,
@@ -1696,7 +1696,7 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
             CmdBuffer.BufferBarrier2(srcBuf!, VkPipelineStageFlags2.Transfer, srcStage);
             CmdBuffer.BufferBarrier2(dstBuf!, VkPipelineStageFlags2.Transfer, dstStage);
         }
-        dstBuf.ClearDirty();
+        dstBuf?.ClearDirty();
     }
 
     /// <inheritdoc/>
@@ -1963,7 +1963,7 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
     }
 
     /// <inheritdoc/>
-    public bool Barrier(in BufferHandle handle)
+    public bool Barrier(in BufferHandle handle, bool force)
     {
         var buf = _ctx.BuffersPool.Get(in handle);
         HxDebug.Assert(
@@ -1977,7 +1977,7 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
             );
             return false;
         }
-        if (!buf.IsDirty)
+        if (!buf.IsDirty && !force)
         {
             return true; // no need for a barrier if the buffer is not dirty
         }
