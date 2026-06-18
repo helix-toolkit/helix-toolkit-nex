@@ -33,9 +33,11 @@ internal sealed class VulkanBuffer : IDisposable
         && (_vkBuffer != VkBuffer.Null || _vkMemory != VkDeviceMemory.Null)
         && BufferSize > 0;
 
-    public ulong DirtyVersion { get; private set; } = 1;
+    private ulong _dirtyVersion = 1;
+    public ulong DirtyVersion => Interlocked.Read(ref _dirtyVersion);
 
-    public ulong SyncVersion { get; private set; } = 0;
+    private ulong _syncVersion = 0;
+    public ulong SyncVersion => Interlocked.Read(ref _syncVersion);
 
     public bool IsDirty => DirtyVersion != SyncVersion;
 
@@ -283,7 +285,6 @@ internal sealed class VulkanBuffer : IDisposable
                 VK.vkFlushMappedMemoryRanges(_ctx!.GetVkDevice(), 1, &range);
             }
         }
-        MarkDirty();
     }
 
     public void InvalidateMappedMemory(VkDeviceSize offset, VkDeviceSize size)
@@ -312,17 +313,21 @@ internal sealed class VulkanBuffer : IDisposable
                 VK.vkInvalidateMappedMemoryRanges(_ctx!.GetVkDevice(), 1, &range);
             }
         }
-        MarkDirty();
     }
 
     public void ClearDirty()
     {
-        SyncVersion = DirtyVersion;
+        Interlocked.Exchange(ref _syncVersion, _dirtyVersion);
+    }
+
+    public void TryClearDirty(ulong version)
+    {
+        Interlocked.Exchange(ref _syncVersion, Math.Min(version, _dirtyVersion));
     }
 
     public void MarkDirty()
     {
-        ++DirtyVersion;
+        Interlocked.Increment(ref _dirtyVersion);
     }
 
     #region IDisposable Support
