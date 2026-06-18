@@ -483,7 +483,7 @@ internal sealed class MaterialConverter
                 transElem.TryGetValue("transmissionTexture", out var ttProp)
                 && ttProp.Type == JTokenType.Object
                 && ttProp["index"] != null
-                && int.TryParse(ttProp["index"].ToString(), out int ttIdx)
+                && int.TryParse(ttProp["index"]!.ToString(), out int ttIdx)
             )
             {
                 var textureRef = _textureLoader.LoadTexture(ttIdx);
@@ -522,7 +522,7 @@ internal sealed class MaterialConverter
                 volElem.TryGetValue("thicknessTexture", out var thickTexProp)
                 && thickTexProp.Type == JTokenType.Object
                 && thickTexProp["index"] != null
-                && int.TryParse(thickTexProp["index"].ToString(), out int thickTexIdx)
+                && int.TryParse(thickTexProp["index"]!.ToString(), out int thickTexIdx)
             )
             {
                 var textureRef = _textureLoader.LoadTexture(thickTexIdx);

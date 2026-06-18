@@ -148,7 +148,7 @@ internal class RangeLightData : Initializable, IRenderData
         {
             _pendingEntities.Add(e.EntityId);
         }
-        else
+        else if (e.Type == World.GetComponentTypeId<NodeInfo>())
         {
             _needRebuild = true;
         }

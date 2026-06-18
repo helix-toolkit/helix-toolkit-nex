@@ -483,11 +483,11 @@ internal sealed class LightConverter
         // A present angle is usable only when it is a finite numeric value.
         float? innerValue =
             innerPresent && IsNumeric(innerToken) && !float.IsNaN(innerToken!.Value<float>())
-                ? innerToken.Value<float>()
+                ? innerToken!.Value<float>()
                 : null;
         float? outerValue =
             outerPresent && IsNumeric(outerToken) && !float.IsNaN(outerToken!.Value<float>())
-                ? outerToken.Value<float>()
+                ? outerToken!.Value<float>()
                 : null;
 
         // The validity of each angle depends on the other. Compare against the provided value of

@@ -571,8 +571,9 @@ public interface ICommandBuffer
     /// Create a GPU memory barrier to ensure proper ordering of memory operations on a buffer.
     /// </summary>
     /// <param name="buffer">The handle to the buffer for which to create the memory barrier.</param>
+    /// <param name="force">If set to <see langword="true"/>, the barrier will be created even if the buffer is not dirty.</param>
     /// <returns>True if the barrier was successfully created; false if the buffer handle is invalid or the barrier could not be created.</returns>
-    bool Barrier(in BufferHandle buffer);
+    bool Barrier(in BufferHandle buffer, bool force = false);
 
     /// <summary>
     /// Sets a checkpoint marker with the specified label to identify a position or state in the process.

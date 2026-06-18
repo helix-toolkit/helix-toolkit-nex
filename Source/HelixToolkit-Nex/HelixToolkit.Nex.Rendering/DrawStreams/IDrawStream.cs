@@ -78,7 +78,8 @@ public interface IDrawStream<DRAW_TYPE> : IRenderData, IDisposable where DRAW_TY
     /// between compute passes and subsequent draw passes.
     /// </summary>
     /// <param name="cmdBuf">The command buffer in which to record the barrier.</param>
-    void Barrier(ICommandBuffer cmdBuf);
+    /// <param name="force">If set to <see langword="true"/>, the barrier will be created even if the buffer is not dirty.</param>
+    void Barrier(ICommandBuffer cmdBuf, bool force = false);
 }
 
 
