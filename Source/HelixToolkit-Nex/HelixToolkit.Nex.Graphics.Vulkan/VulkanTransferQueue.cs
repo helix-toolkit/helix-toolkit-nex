@@ -423,6 +423,7 @@ internal sealed class VulkanTransferQueue : IDisposable
                     pBufferMemoryBarriers = &releaseBarrier,
                 };
                 VK.vkCmdPipelineBarrier2(slot.CommandBuffer, &depInfo);
+                destBuffer.ClearDirty();
             }
             else
             {
@@ -445,6 +446,7 @@ internal sealed class VulkanTransferQueue : IDisposable
                     pBufferMemoryBarriers = &barrier,
                 };
                 VK.vkCmdPipelineBarrier2(slot.CommandBuffer, &depInfo);
+                destBuffer.ClearDirty();
             }
 
             VK.vkEndCommandBuffer(slot.CommandBuffer).CheckResult();

@@ -656,4 +656,13 @@ public interface IContext : IInitializable
     /// <param name="texture">The texture handle for which to generate mipmaps.</param>
     /// <param name="levels">The number of mipmap levels generated.</param>
     void GenerateMipmap(in TextureHandle texture, out uint levels);
+
+    /// <summary>
+    /// Marks a buffer as dirty, indicating that its contents have been modified and may need to be re-uploaded to the GPU before the next use.
+    /// This is typically used for buffers that are updated frequently on the CPU and used for rendering, such as dynamic vertex or uniform buffers.
+    /// The exact behavior of marking a buffer as dirty may depend on the underlying graphics API and memory management strategy,
+    /// but it generally serves as a hint to optimize data synchronization between the CPU and GPU.
+    /// </summary>
+    /// <param name="handle">The handle of the buffer to mark as dirty.</param>
+    void MarkDirty(BufferHandle handle);
 }

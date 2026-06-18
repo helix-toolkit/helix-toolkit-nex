@@ -470,14 +470,14 @@ public sealed class ElementBuffer<T> : IDisposable
         }
         unsafe
         {
-            nint mappedPtr = Context.GetMappedPtr(Buffer.Handle);
-            if (mappedPtr == nint.Zero)
+            if (_pinnedMappedPtr == nint.Zero)
             {
                 _logger.LogError("Cannot write data: dynamic buffer is not mapped.");
                 return ResultCode.InvalidState;
             }
-            writeAction(new SafeWriteContext(mappedPtr, Capacity * sizeof(T)));
+            writeAction(new SafeWriteContext(_pinnedMappedPtr, Capacity * sizeof(T)));
             Count = totalCount;
+            Context.MarkDirty(Buffer);
             return ResultCode.Ok;
         }
     }
@@ -490,7 +490,11 @@ public sealed class ElementBuffer<T> : IDisposable
     /// <param name="state">The state object to pass to <paramref name="writeAction"/>.</param>
     /// <param name="writeAction">An action that performs the write operation.</param>
     /// <returns>A <see cref="ResultCode"/> indicating the outcome of the operation.</returns>
-    public ResultCode WriteDynamic<TState>(int totalCount, TState state, Action<SafeWriteContext, TState> writeAction)
+    public ResultCode WriteDynamic<TState>(
+        int totalCount,
+        TState state,
+        Action<SafeWriteContext, TState> writeAction
+    )
     {
         if (!HostVisible)
         {
@@ -517,14 +521,14 @@ public sealed class ElementBuffer<T> : IDisposable
         }
         unsafe
         {
-            nint mappedPtr = Context.GetMappedPtr(Buffer.Handle);
-            if (mappedPtr == nint.Zero)
+            if (_pinnedMappedPtr == nint.Zero)
             {
                 _logger.LogError("Cannot write data: dynamic buffer is not mapped.");
                 return ResultCode.InvalidState;
             }
-            writeAction(new SafeWriteContext(mappedPtr, Capacity * sizeof(T)), state);
+            writeAction(new SafeWriteContext(_pinnedMappedPtr, Capacity * sizeof(T)), state);
             Count = totalCount;
+            Context.MarkDirty(Buffer);
             return ResultCode.Ok;
         }
     }
@@ -543,7 +547,9 @@ public sealed class ElementBuffer<T> : IDisposable
     public ResultCode WriteElement(ref T data, int index)
     {
         if (!HostVisible)
-        { return ResultCode.InvalidState; }
+        {
+            return ResultCode.InvalidState;
+        }
         unsafe
         {
             if (index >= Capacity)
@@ -552,9 +558,11 @@ public sealed class ElementBuffer<T> : IDisposable
             }
             var ptr = (T*)((byte*)MappedPointer + index * sizeof(T));
             *ptr = data;
+            Context.MarkDirty(Buffer);
             return ResultCode.Ok;
         }
     }
+
     /// <summary>
     /// Ensures the buffer has at least the specified remainSizeInBytes, resizing if necessary.
     /// </summary>
@@ -664,6 +672,7 @@ public sealed class ElementBuffer<T> : IDisposable
             Buffer.Dispose();
             Buffer = BufferResource.Null;
             _pinnedMappedPtr = nint.Zero;
+            Capacity = 0;
         }
         if (newCapacity == 0)
         {
@@ -729,7 +738,6 @@ public sealed class ElementBuffer<T> : IDisposable
             if (HostVisible)
             {
                 // For dynamic buffers, use mapped memory for direct CPU writes
-
                 if (_pinnedMappedPtr == nint.Zero)
                 {
                     _logger.LogError("Cannot upload data: dynamic buffer is not mapped.");
@@ -740,7 +748,7 @@ public sealed class ElementBuffer<T> : IDisposable
                 using var pinnedData = data.Pin();
                 var srcPtr = (nint)pinnedData.Pointer + start * sizeof(T);
                 NativeHelper.MemoryCopy(mappedPtr, srcPtr, dataSize);
-
+                Context.MarkDirty(Buffer);
                 return ResultCode.Ok;
             }
             else

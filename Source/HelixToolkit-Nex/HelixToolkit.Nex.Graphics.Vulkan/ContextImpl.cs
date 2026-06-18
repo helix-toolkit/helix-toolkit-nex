@@ -1448,6 +1448,17 @@ internal sealed partial class VulkanContext : Initializable, IContext
         levels = tex.NumLevels;
     }
 
+    public void MarkDirty(BufferHandle handle)
+    {
+        var buf = BuffersPool.Get(handle);
+        if (buf is null || !buf.Valid)
+        {
+            _logger.LogError("Buffer handle is invalid for marking dirty: {HANDLE}", handle.ToString());
+            return;
+        }
+        buf.MarkDirty();
+    }
+
     public void Wait(in SubmitHandle handle, bool reset = true)
     {
         using var t = _tracer.BeginScope(nameof(Wait), nameof(IContext));
