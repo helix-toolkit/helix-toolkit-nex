@@ -17,6 +17,41 @@ public enum ResourceType
 }
 
 /// <summary>
+/// Thrown when a render-graph resource fails to allocate while the
+/// <see cref="RenderGraphResourceSet"/> is building its buffers/textures.
+/// <para>
+/// When a buffer allocation fails, buffer setup is aborted and any buffers that were
+/// already allocated during the same setup pass are released before this exception is
+/// surfaced. The failed resource is identified by its logical name via
+/// <see cref="ResourceName"/> (e.g. <c>BufLightIndexT</c>) so callers can diagnose which
+/// allocation aborted setup.
+/// </para>
+/// </summary>
+public sealed class RenderGraphResourceAllocationException : Exception
+{
+    /// <summary>The logical name of the resource whose allocation failed.</summary>
+    public string ResourceName { get; }
+
+    /// <summary>The kind of resource (buffer or texture) that failed to allocate.</summary>
+    public ResourceType ResourceType { get; }
+
+    public RenderGraphResourceAllocationException(
+        string resourceName,
+        ResourceType resourceType,
+        Exception? innerException = null
+    )
+        : base(
+            $"Failed to allocate render graph {resourceType.ToString().ToLowerInvariant()} '{resourceName}'. "
+                + "Buffer setup was aborted and partially allocated buffers were released.",
+            innerException
+        )
+    {
+        ResourceName = resourceName;
+        ResourceType = resourceType;
+    }
+}
+
+/// <summary>
 /// Holds GPU resources (textures and buffers) used by a <see cref="RenderGraph"/>.
 /// <para>
 /// The resource set is decoupled from the graph topology so that the same compiled
@@ -207,6 +242,12 @@ public sealed class RenderGraphResourceSet : IDisposable
         var resourceParams = new ResourceBuildParams(context);
         Buffers.Clear();
         Textures.Clear();
+
+        // Track buffers successfully allocated during THIS setup so they can be released
+        // if a later allocation fails. If any buffer allocation fails, buffer setup is
+        // aborted, the partially allocated buffers are released, and an error identifying
+        // the failed buffer by its logical name is surfaced (Requirement 6.7).
+        var allocatedThisSetup = new List<BufferResource>();
         foreach (var builder in _bufferBuilders)
         {
             if (builder.Value == null)
@@ -214,7 +255,31 @@ public sealed class RenderGraphResourceSet : IDisposable
                 Buffers[builder.Key] = BufferHandle.Null;
                 continue;
             }
-            var buf = builder.Value.Value.Func(resourceParams);
+
+            BufferResource buf;
+            try
+            {
+                buf = builder.Value.Value.Func(resourceParams);
+            }
+            catch (Exception ex) when (ex is not RenderGraphResourceAllocationException)
+            {
+                AbortBufferSetup(allocatedThisSetup, builder.Key, ex);
+                throw new RenderGraphResourceAllocationException(
+                    builder.Key,
+                    ResourceType.Buffer,
+                    ex
+                );
+            }
+
+            // A null or empty (invalid-handle) buffer indicates the allocation failed even
+            // though no exception was thrown.
+            if (buf is null || buf.Empty)
+            {
+                AbortBufferSetup(allocatedThisSetup, builder.Key, null);
+                throw new RenderGraphResourceAllocationException(builder.Key, ResourceType.Buffer);
+            }
+
+            allocatedThisSetup.Add(buf);
             _bufferResources[builder.Key] = buf;
             Buffers[builder.Key] = buf;
         }
@@ -230,6 +295,41 @@ public sealed class RenderGraphResourceSet : IDisposable
             Textures[builder.Key] = tex;
         }
         _resourcesCreated = true;
+    }
+
+    /// <summary>
+    /// Aborts an in-progress buffer setup: releases every buffer that was successfully
+    /// allocated during the current setup pass and clears the partially populated resource
+    /// dictionaries so a half-initialized buffer set is never bound. Used when a buffer
+    /// allocation fails (Requirement 6.7).
+    /// </summary>
+    /// <param name="allocatedThisSetup">Buffers allocated so far in the current setup pass.</param>
+    /// <param name="failedName">The logical name of the buffer whose allocation failed.</param>
+    /// <param name="error">The exception that caused the failure, if any.</param>
+    private void AbortBufferSetup(
+        List<BufferResource> allocatedThisSetup,
+        string failedName,
+        Exception? error
+    )
+    {
+        _logger.LogError(
+            error,
+            "Allocation of render graph buffer '{BUFFER}' failed. Aborting buffer setup and "
+                + "releasing {COUNT} partially allocated buffer(s).",
+            failedName,
+            allocatedThisSetup.Count
+        );
+
+        foreach (var buf in allocatedThisSetup)
+        {
+            buf.Dispose();
+        }
+        allocatedThisSetup.Clear();
+
+        // Drop the partially populated set so nothing half-built can be bound.
+        Buffers.Clear();
+        Textures.Clear();
+        _resourcesCreated = false;
     }
 
     private void OnScreenSizeChanged(RenderContext context)

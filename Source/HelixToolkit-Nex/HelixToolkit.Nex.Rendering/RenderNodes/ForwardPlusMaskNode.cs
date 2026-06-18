@@ -54,7 +54,9 @@ public sealed class ForwardPlusMaskNode : RenderNode
         foreach (var stream in streams)
         {
             if (stream.Count == 0)
-            { continue; }
+            {
+                continue;
+            }
             stream.Barrier(res.CmdBuffer);
         }
     }

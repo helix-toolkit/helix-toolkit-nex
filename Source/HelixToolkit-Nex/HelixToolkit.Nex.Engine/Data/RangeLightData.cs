@@ -122,7 +122,7 @@ internal class RangeLightData : Initializable, IRenderData
                 _lights.At(lightComp.Index) = light;
             }
         }
-        _lightBuffer.Upload(_lights);
+        _lightBuffer.Upload(_lights).CheckResult();
         _lastBufferUpdateTicks = _lastDataUpdateTicks;
         _pendingEntities.Clear();
         return true;
@@ -148,7 +148,7 @@ internal class RangeLightData : Initializable, IRenderData
         {
             _pendingEntities.Add(e.EntityId);
         }
-        else if (e.Type == World.GetComponentTypeId<NodeInfo>())
+        else
         {
             _needRebuild = true;
         }

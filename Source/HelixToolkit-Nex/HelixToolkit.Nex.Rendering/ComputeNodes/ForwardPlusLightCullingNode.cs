@@ -46,7 +46,10 @@ public sealed class ForwardPlusLightCullingNode : ComputeNode
             (int)GraphicsSettings.MaxFrameInFlight,
             debugName: "FP_LightCull"
         );
-        _depthSampler = ResourceManager.SamplerRepository.GetOrCreate(SamplerStateDesc.PointClamp.DebugName, SamplerStateDesc.PointClamp);
+        _depthSampler = ResourceManager.SamplerRepository.GetOrCreate(
+            SamplerStateDesc.PointClamp.DebugName,
+            SamplerStateDesc.PointClamp
+        );
 
         if (!_depthSampler.Valid)
         {
@@ -98,7 +101,24 @@ public sealed class ForwardPlusLightCullingNode : ComputeNode
         );
         _cullingConstants.TileCountX = tileCountX;
         _cullingConstants.TileCountY = tileCountY;
-        _cullingConstants.LightCount = renderContext.Data!.Lights.Count;
+        // Constrain the global range-light set to the 16-bit range before culling so that every
+        // stored light index fits in a ushort (<= 65535). The cull shader writes one light index
+        // per stored entry, so capping the iterated light count guarantees no stored index can
+        // exceed 65535. If the scene exceeds the limit we keep the first 65535 lights and warn,
+        // rather than silently producing out-of-range indices.
+        var sceneLightCount = renderContext.Data!.Lights.Count;
+        if (sceneLightCount > Limits.MaxRangeLightCount)
+        {
+            _logger.LogWarning(
+                "Scene range-light count {LightCount} exceeds the 16-bit limit of {MaxRangeLightCount}; "
+                    + "culling will only consider the first {MaxRangeLightCount} lights so every stored index fits in a ushort.",
+                sceneLightCount,
+                Limits.MaxRangeLightCount,
+                Limits.MaxRangeLightCount
+            );
+            sceneLightCount = Limits.MaxRangeLightCount;
+        }
+        _cullingConstants.LightCount = sceneLightCount;
         _cullingConstants.ZNear = renderContext.CameraParams.NearPlane;
         _cullingConstants.ZFar = renderContext.CameraParams.FarPlane;
         _cullingConstants.DepthTextureIndex = res.Textures[SystemBufferNames.TextureDepthF32].Index;
@@ -112,6 +132,7 @@ public sealed class ForwardPlusLightCullingNode : ComputeNode
         _cullingConstants.EnableAABBCulling = EnableAABBCulling ? 1u : 0u;
         _cullingConstants.EnableDepthMaskCulling = EnableDepthMaskCulling ? 1u : 0u;
         _cullingConstantsBuffer!.AdvanceAndUpdate(ref _cullingConstants);
+        res.CmdBuffer.Barrier(_cullingConstantsBuffer.Current);
     }
 
     protected override void OnRender(in RenderResources res)

@@ -12,6 +12,8 @@ public static class ForwardPlusLightCulling
     /// </summary>
     public sealed class Config
     {
+        private uint _maxLightsPerTile = 12;
+
         /// <summary>
         /// Size of each tile in pixels (typically 16x16 or 32x32).
         /// </summary>
@@ -19,8 +21,17 @@ public static class ForwardPlusLightCulling
 
         /// <summary>
         /// Maximum number of lights per tile.
+        /// <para>
+        /// Clamped to <see cref="Limits.MaxLightsPerTileLimit"/> (255) because each per-tile sub-count
+        /// (opaque and transparent) is packed into a single byte of the
+        /// <c>LightGridTile.lightCount</c> value; a value above 255 cannot be represented.
+        /// </para>
         /// </summary>
-        public uint MaxLightsPerTile = 12;
+        public uint MaxLightsPerTile
+        {
+            get => _maxLightsPerTile;
+            set => _maxLightsPerTile = Math.Min(value, Limits.MaxLightsPerTileLimit);
+        }
 
         public static Config Default => new();
     }
