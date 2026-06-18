@@ -37,7 +37,7 @@ struct LightCullingConstants {
     uint64_t lightBufferAddress;
     uint64_t lightGridBufferAddress;
     uint64_t lightIndexBufferAddress;
-    uint64_t _padding;
+    uint64_t _padding; // keeps the struct 16-byte aligned (272 bytes total)
 };
 
 layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer LightCullingConst {
@@ -78,6 +78,18 @@ shared uint sharedDepthMask;
 shared uint sharedLightIndices[MAX_LIGHTS_PER_TILE];
 shared AABB sharedTileAABB;
 shared vec4 sharedFrustumPlanes[4]; // Left, Right, Top, Bottom
+
+// Transparent-only (frustum-only, full-depth-range) accumulator.
+// Holds the frustum-visible Range_Light indices that are NOT in the opaque set,
+// built from the same tile frustum planes spanning the full near-to-far depth
+// range, completely independent of the depth buffer. At write-out this list is
+// emitted directly after the opaque prefix so the combined region holds the full
+// frustum-visible union (opaque-visible first, then transparent-only).
+shared uint sharedLightCountTransparent;
+shared uint sharedLightIndicesTransparent[MAX_LIGHTS_PER_TILE];
+// Tile bound spanning the full frustum depth range (zNear..zFar), used by the
+// transparent spot-cone test so it never depends on the opaque depth data.
+shared AABB sharedTileAABBFull;
 
 // --- Helper Functions ---
 
@@ -121,6 +133,75 @@ bool sqSphereAABBIntersect(in vec3 center, float radius, in AABB tile) {
     float sqDist = dot(d, d);
     return sqDist <= (radius * radius);
 }
+
+// Spot-cone visibility test against an arbitrary tile bound.
+// Returns false only when the bounding sphere of the tile is provably outside
+// the spot light's outer cone. Passing a larger bound (e.g. the full-depth tile
+// bound) makes the test strictly more permissive, which preserves the
+// containment relationship between the opaque and transparent lists.
+bool spotConeVisible(in vec3 lightPosView, in Light light, in AABB bound) {
+    vec3 boundCenter = (bound.minBounds + bound.maxBounds) * 0.5;
+    float boundRadius = length(bound.maxBounds - boundCenter);
+
+    vec3 lightDirView = normalize(mat3(cullingConst.value.viewMatrix) * light.direction);
+    vec3 V = boundCenter - lightPosView;
+    float d2 = dot(V, V);
+    float d = sqrt(d2);
+
+    if (d > boundRadius) {
+        float cosTheta = dot(V / d, lightDirView);
+        float cosPhi = light.spotAngles.y; // Outer cone cosine
+
+        float sinPhi = sqrt(max(0.0, 1.0 - cosPhi * cosPhi));
+        float sinAlpha = boundRadius / d;
+        float cosAlpha = sqrt(max(0.0, 1.0 - sinAlpha * sinAlpha));
+
+        if (cosTheta < (cosPhi * cosAlpha - sinPhi * sinAlpha)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+// 2.5D depth-mask overlap test (opaque list only).
+// Returns true when the light's view-space depth extent overlaps at least one
+// set slice of the tile's segmented depth mask. Matches the legacy behavior of
+// leaving the light visible when the light range falls outside the tile range or
+// when the tile depth range is degenerate.
+bool depthMaskOverlap(in vec3 lightPosView, float range) {
+    // Light bounds in view space Z (view-space Z is negative looking down -Z).
+    float lightZNear = lightPosView.z + range; // Closer to camera
+    float lightZFar = lightPosView.z - range;  // Farther from camera
+
+    float d1 = viewZToDepth(lightZNear);
+    float d2 = viewZToDepth(lightZFar);
+
+    float lightDepthMin = min(d1, d2);
+    float lightDepthMax = max(d1, d2);
+
+    float tMin = uintBitsToFloat(sharedMinDepth);
+    float tMax = uintBitsToFloat(sharedMaxDepth);
+
+    // Intersect light depth range with tile depth range.
+    float intersectionMin = max(lightDepthMin, tMin);
+    float intersectionMax = min(lightDepthMax, tMax);
+
+    if (intersectionMin <= intersectionMax) {
+        float range2 = tMax - tMin;
+        if (range2 > 1e-6) {
+            uint bitMin = uint(clamp((intersectionMin - tMin) / range2 * 32.0, 0.0, 31.0));
+            uint bitMax = uint(clamp((intersectionMax - tMin) / range2 * 32.0, 0.0, 31.0));
+
+            uint numBits = bitMax - bitMin + 1;
+            uint lightMask = (numBits == 32) ? 0xFFFFFFFF : ((1u << numBits) - 1u) << bitMin;
+
+            if ((sharedDepthMask & lightMask) == 0u) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
 // ------------------------------------------------------------------
 // MAIN
 // ------------------------------------------------------------------
@@ -137,6 +218,7 @@ void main() {
         sharedMaxDepth = 0;          // Initialize with 0 (acts as 0.0 for max reduction)
         sharedLightCount = 0;
         sharedDepthMask = 0;
+        sharedLightCountTransparent = 0;
     }
 
     // Calculate view-space frustum planes for the tile (Thread 0-3)
@@ -250,6 +332,27 @@ void main() {
                                   max(max(p0.y, p1.y), max(p2.y, p3.y)),
                                   viewZNear); // View-Z is negative, so Near is Max (-small)
         sharedTileAABB = tileAABB;
+
+        // Build a second tile bound that spans the FULL frustum depth range
+        // (camera near..far), independent of the depth buffer. This is the bound
+        // used by the transparent list's spot-cone test so it never depends on the
+        // opaque depth reduction.
+        float viewZNearFull = -cullingConst.value.zNear; // View-Z is negative
+        float viewZFarFull = -cullingConst.value.zFar;
+
+        vec3 f0 = screenToView(tilePixelsMin, viewZNearFull);
+        vec3 f1 = screenToView(tilePixelsMax, viewZNearFull);
+        vec3 f2 = screenToView(tilePixelsMin, viewZFarFull);
+        vec3 f3 = screenToView(tilePixelsMax, viewZFarFull);
+
+        AABB tileAABBFull;
+        tileAABBFull.minBounds = vec3(min(min(f0.x, f1.x), min(f2.x, f3.x)),
+                                      min(min(f0.y, f1.y), min(f2.y, f3.y)),
+                                      viewZFarFull); // Far is Min (-large)
+        tileAABBFull.maxBounds = vec3(max(max(f0.x, f1.x), max(f2.x, f3.x)),
+                                      max(max(f0.y, f1.y), max(f2.y, f3.y)),
+                                      viewZNearFull); // Near is Max (-small)
+        sharedTileAABBFull = tileAABBFull;
     }
     barrier();
     
@@ -260,147 +363,144 @@ void main() {
     // TILE_SIZE*TILE_SIZE is the total number of threads in the workgroup
     for (uint i = threadIdx; i < cullingConst.value.lightCount; i += (TILE_SIZE * TILE_SIZE)) {
         Light light = lightBuffer.lights[i];
-        
-        bool visible = false;
-        if (light.type != 0) { // Skip Directional Light (0)
+
+        // frustumVisible drives the transparent list (frustum planes + spot cone over
+        // the full-depth tile bound, depth-buffer independent).
+        // opaqueVisible drives the opaque list and additionally applies the toggle-gated
+        // AABB and depth-mask tests plus the tile-AABB spot-cone test.
+        bool frustumVisible = false;
+        bool opaqueVisible = false;
+
+        if (light.type != 0) { // Skip Directional Light (0) for both lists
             // Convert Range Light Position (World) to Frustum Space (View)
             vec3 lightPosView = (cullingConst.value.viewMatrix * vec4(light.position, 1.0)).xyz;
 
-            // Cull lights against tile frustum
+            // Shared test: cull lights against the tile frustum side planes.
             bool insideFrustum = frustumSphereIntersect(lightPosView, light.range, sharedFrustumPlanes);
 
-            // Test against Tile AABB (Depth bounds)
-            if (insideFrustum && (cullingConst.value.enableAABBCulling == 0 || sqSphereAABBIntersect(lightPosView, light.range, sharedTileAABB))) {
-
-                // 3.5 Segmented Bitmask Test
-                // Transform light's depth range (view space Z) back to depth buffer space [0, 1]
-                // and check intersection with the depth mask.
-                    
-                bool maskVisible = true;
-                if (cullingConst.value.enableDepthMaskCulling > 0) {
-                    // Light bounds in view space Z: (lightPosView.z - radius, lightPosView.z + radius)
-                    // Note: ViewSpace Z is negative looking down -Z.
-                    float lightZNear = lightPosView.z + light.range; // Closer to camera (larger negative / less negative) -> larger depth value? No.
-                    float lightZFar = lightPosView.z - light.range;  // Farther from camera
-                    
-                    // Reversed-Z Depth Buffer:
-                    // ViewZNear (e.g. -1.0) -> Depth 1.0 (Near Plane)
-                    // ViewZFar (e.g. -100.0) -> Depth 0.0 (Far Plane)
-                    // Equation: depth = -P32/z - P22
-                    
-                    // We need to find the depth values corresponding to the light's Z extent AND CLAMP them to the tile's min/max depth.
-                    float d1 = viewZToDepth(lightZNear);
-                    float d2 = viewZToDepth(lightZFar);
-                    
-                    float lightDepthMin = min(d1, d2);
-                    float lightDepthMax = max(d1, d2);
-                    
-                    // Intersect light depth range with tile depth range
-                    float tMin = uintBitsToFloat(sharedMinDepth);
-                    float tMax = uintBitsToFloat(sharedMaxDepth);
-                    
-                    // If light range is completely outside tile range, it should have been culled by AABB/Frustum tests,
-                    // but let's be safe and clamp to tile bounds for bitmask generation.
-                    float intersectionMin = max(lightDepthMin, tMin);
-                    float intersectionMax = min(lightDepthMax, tMax);
-                    
-                    if (intersectionMin <= intersectionMax) {
-                        float range = tMax - tMin;
-                            if (range > 1e-6) {
-                            // Determine bit range [bitMin, bitMax] covered by the light
-                            uint bitMin = uint(clamp((intersectionMin - tMin) / range * 32.0, 0.0, 31.0));
-                            uint bitMax = uint(clamp((intersectionMax - tMin) / range * 32.0, 0.0, 31.0));
-                            
-                            // Create a mask for the light's range
-                            // E.g. bitMin=2, bitMax=4. We want bits 2, 3, 4 set.
-                            // Method: ((1 << (max - min + 1)) - 1) << min
-                            // Handle 32-bit shift case (which is UB in GLSL if shift >= 32)
-                            uint numBits = bitMax - bitMin + 1;
-                            uint lightMask = (numBits == 32) ? 0xFFFFFFFF : ((1u << numBits) - 1u) << bitMin;
-                            
-                            if ((sharedDepthMask & lightMask) == 0u) {
-                                maskVisible = false;
-                            }
-                        }
-                    }
+            if (insideFrustum) {
+                // --- Transparent path ---
+                // Spot cone evaluated against the full-depth tile bound (depth independent).
+                frustumVisible = true;
+                if (light.type == 2) { // Spot Light
+                    frustumVisible = spotConeVisible(lightPosView, light, sharedTileAABBFull);
                 }
-                    
-                if (maskVisible) {
-                    visible = true;
 
-                    if (light.type == 2) { // Spot Light
-                        vec3 aabbCenter = (sharedTileAABB.minBounds + sharedTileAABB.maxBounds) * 0.5;
-                        float tileRadius = length(sharedTileAABB.maxBounds - aabbCenter);
-                            
-                        vec3 lightDirView = normalize(mat3(cullingConst.value.viewMatrix) * light.direction);
-                        vec3 V = aabbCenter - lightPosView;
-                        float d2 = dot(V, V);
-                        float d = sqrt(d2);
-                            
-                        if (d > tileRadius) {
-                            float cosTheta = dot(V / d, lightDirView);
-                            float cosPhi = light.spotAngles.y; // Outer cone cosine
-                                
-                            float sinPhi = sqrt(max(0.0, 1.0 - cosPhi * cosPhi));
-                            float sinAlpha = tileRadius / d;
-                            float cosAlpha = sqrt(max(0.0, 1.0 - sinAlpha * sinAlpha));
-                                
-                            if (cosTheta < (cosPhi * cosAlpha - sinPhi * sinAlpha)) {
-                                visible = false;
-                            }
-                        }
-                    }
+                // --- Opaque path ---
+                // opaqueVisible = frustumVisible && AABB (toggle) && depthMask (toggle) && tile-AABB spot cone.
+                opaqueVisible = frustumVisible;
+
+                if (opaqueVisible && cullingConst.value.enableAABBCulling != 0) {
+                    opaqueVisible = sqSphereAABBIntersect(lightPosView, light.range, sharedTileAABB);
+                }
+
+                if (opaqueVisible && cullingConst.value.enableDepthMaskCulling != 0) {
+                    opaqueVisible = depthMaskOverlap(lightPosView, light.range);
+                }
+
+                // Opaque list keeps its tile-AABB-based spot-cone test.
+                if (opaqueVisible && light.type == 2) {
+                    opaqueVisible = spotConeVisible(lightPosView, light, sharedTileAABB);
                 }
             }
         }
 
-        // --- Subgroup Optimization ---
-        // Instead of atomicAdd per active thread, we aggregate active threads in the subgroup
-        // and perform a single atomicAdd per subgroup.
-        
-        uvec4 ballot = subgroupBallot(visible);
-        uint count = subgroupBallotBitCount(ballot);
-        uint indexInSubgroup = subgroupBallotExclusiveBitCount(ballot);
-        
-        uint baseIndex = 0;
-        // The first active lane in the subgroup performs the atomic allocation
-        if (subgroupElect()) {
-            if (count > 0) {
-                baseIndex = atomicAdd(sharedLightCount, count);
+        // --- Subgroup Optimization (independent compaction per list) ---
+        // Instead of atomicAdd per active thread, aggregate active threads in the
+        // subgroup and perform a single atomicAdd per subgroup, separately for each list.
+
+        // Transparent-only list compaction (frustum-visible but NOT opaque-visible).
+        // Classifying here lets the write-out emit the opaque list followed by the
+        // transparent-only list as a single combined region where the opaque sub-list
+        // is a strict prefix and the union (opaque + transparent-only) equals the full
+        // frustum-visible set with no duplicates.
+        bool transparentOnly = frustumVisible && !opaqueVisible;
+        {
+            uvec4 ballotT = subgroupBallot(transparentOnly);
+            uint countT = subgroupBallotBitCount(ballotT);
+            uint indexInSubgroupT = subgroupBallotExclusiveBitCount(ballotT);
+
+            uint baseIndexT = 0;
+            if (subgroupElect()) {
+                if (countT > 0) {
+                    baseIndexT = atomicAdd(sharedLightCountTransparent, countT);
+                }
+            }
+            baseIndexT = subgroupBroadcastFirst(baseIndexT);
+
+            if (transparentOnly) {
+                uint dstIndex = baseIndexT + indexInSubgroupT;
+                if (dstIndex < MAX_LIGHTS_PER_TILE) {
+                    sharedLightIndicesTransparent[dstIndex] = i;
+                }
             }
         }
-        // Broadcast the base index to all lanes in the subgroup
-        baseIndex = subgroupBroadcastFirst(baseIndex);
-        
-        if (visible) {
-            uint dstIndex = baseIndex + indexInSubgroup;
-            if (dstIndex < MAX_LIGHTS_PER_TILE) {
-                sharedLightIndices[dstIndex] = i;
+
+        // Opaque list compaction (driven by opaqueVisible).
+        {
+            uvec4 ballot = subgroupBallot(opaqueVisible);
+            uint count = subgroupBallotBitCount(ballot);
+            uint indexInSubgroup = subgroupBallotExclusiveBitCount(ballot);
+
+            uint baseIndex = 0;
+            // The first active lane in the subgroup performs the atomic allocation
+            if (subgroupElect()) {
+                if (count > 0) {
+                    baseIndex = atomicAdd(sharedLightCount, count);
+                }
+            }
+            // Broadcast the base index to all lanes in the subgroup
+            baseIndex = subgroupBroadcastFirst(baseIndex);
+
+            if (opaqueVisible) {
+                uint dstIndex = baseIndex + indexInSubgroup;
+                if (dstIndex < MAX_LIGHTS_PER_TILE) {
+                    sharedLightIndices[dstIndex] = i;
+                }
             }
         }
     }
     barrier();
 
-    // 4. Write Light Grid
-    // Parallelize the write of indices to global memory instead of using a single thread
+    // 4. Write Light Grid (single combined region)
+    // The opaque-visible indices are written as a strict prefix, immediately
+    // followed by the transparent-only indices, so the per-tile region holds the
+    // full frustum-visible union ordered opaque-first. Both sub-counts are packed
+    // into the single LightGridTile.lightCount (opaque in the low byte, transparent
+    // union total in the high byte). Everything lives in one
+    // [tileIdx*MAX_LIGHTS_PER_TILE, +MAX_LIGHTS_PER_TILE) range.
     uint tileIdx = tileID.y * cullingConst.value.tileCountX + tileID.x;
-    uint visibleCount = min(sharedLightCount, MAX_LIGHTS_PER_TILE);
+    uint offset = tileIdx * MAX_LIGHTS_PER_TILE;
+
+    // Opaque count, truncated to the tile capacity.
+    uint opaqueCount = min(sharedLightCount, MAX_LIGHTS_PER_TILE);
+    // Transparent-only entries stored after the opaque prefix, clamped to the
+    // remaining capacity so the combined region never exceeds MAX_LIGHTS_PER_TILE.
+    uint remainingCapacity = MAX_LIGHTS_PER_TILE - opaqueCount;
+    uint transparentOnlyCount = min(sharedLightCountTransparent, remainingCapacity);
+    // Transparent (union) total: opaque prefix + transparent-only suffix.
+    uint transparentCount = opaqueCount + transparentOnlyCount;
 
     if (threadIdx == 0) {
-        // Only thread 0 writes the tile header (count and offset)
+        // Only thread 0 writes the tile header. The opaque count occupies the low
+        // byte and the transparent (union) count the high byte.
         LightGridBuffer lightGridBuffer = LightGridBuffer(cullingConst.value.lightGridBufferAddress);
-        
         LightGridTile tile;
-        tile.lightCount = visibleCount;
-        tile.lightIndexOffset = tileIdx * MAX_LIGHTS_PER_TILE;
+        tile.lightCount = (opaqueCount & 0xFFu) | ((transparentCount & 0xFFu) << 8);
+        tile.lightIndexOffset = offset;
         lightGridBuffer.tiles[tileIdx] = tile;
     }
 
-    // All threads participate in writing the indices
+    // All threads participate in writing the combined index region.
     LightIndexBuffer lightIndexBuffer = LightIndexBuffer(cullingConst.value.lightIndexBufferAddress);
-    uint globalOffset = tileIdx * MAX_LIGHTS_PER_TILE;
 
-    for (uint i = threadIdx; i < visibleCount; i += (TILE_SIZE * TILE_SIZE)) {
-        lightIndexBuffer.indices[globalOffset + i] = sharedLightIndices[i];
+    // Opaque-visible indices -> [offset, offset + opaqueCount).
+    for (uint i = threadIdx; i < opaqueCount; i += (TILE_SIZE * TILE_SIZE)) {
+        lightIndexBuffer.indices[offset + i] = sharedLightIndices[i];
+    }
+
+    // Transparent-only indices -> [offset + opaqueCount, offset + transparentCount).
+    for (uint i = threadIdx; i < transparentOnlyCount; i += (TILE_SIZE * TILE_SIZE)) {
+        lightIndexBuffer.indices[offset + opaqueCount + i] = sharedLightIndicesTransparent[i];
     }
 }

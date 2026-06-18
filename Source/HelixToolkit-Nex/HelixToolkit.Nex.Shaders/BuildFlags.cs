@@ -23,4 +23,9 @@ public static class BuildFlags
     /// This can be used to optimize rendering by performing a depth-only pass before the main rendering pass, allowing for early depth testing and reducing overdraw.
     /// </summary>
     public const string DEPTH_PREPASS = "DEPTH_PREPASS";
+
+    /// <summary>
+    /// Used to compile Forward+ fragment shaders that should read the transparent (high-byte) per-tile light sub-count from the packed <c>LightGridTile.lightCount</c>, selecting the transparent light sub-list instead of the opaque (low-byte) one.
+    /// </summary>
+    public const string FP_USE_TRANSPARENT_LIGHT_LIST = "FP_USE_TRANSPARENT_LIGHT_LIST";
 }
