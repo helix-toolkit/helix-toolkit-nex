@@ -1276,6 +1276,7 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
                 VkPipelineStageFlags2.VertexShader | VkPipelineStageFlags2.FragmentShader,
                 VkPipelineStageFlags2.ComputeShader | VkPipelineStageFlags2.Transfer
             );
+            buf.ClearDirty();
         }
 
         VK.vkCmdDispatch(
@@ -1607,6 +1608,7 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
         }
 
         CmdBuffer.BufferBarrier2(buf, VkPipelineStageFlags2.Transfer, dstStage);
+        buf.ClearDirty();
     }
 
     /// <inheritdoc/>
@@ -1694,6 +1696,7 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
             CmdBuffer.BufferBarrier2(srcBuf!, VkPipelineStageFlags2.Transfer, srcStage);
             CmdBuffer.BufferBarrier2(dstBuf!, VkPipelineStageFlags2.Transfer, dstStage);
         }
+        dstBuf.ClearDirty();
     }
 
     /// <inheritdoc/>
@@ -1947,6 +1950,7 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
         }
 
         CmdBuffer.BufferBarrier2(buf, VkPipelineStageFlags2.Transfer, dstStage);
+        buf.ClearDirty();
         return ResultCode.Ok;
     }
 
@@ -1964,18 +1968,6 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
         VkPipelineStageFlags2 dstStageFlags =
             VkPipelineStageFlags2.VertexShader | VkPipelineStageFlags2.FragmentShader;
         var buf = _ctx.BuffersPool.Get(in handle);
-        HxDebug.Assert(buf);
-        if (
-            buf!.VkUsageFlags.HasAllFlags(VK.VK_BUFFER_USAGE_INDEX_BUFFER_BIT)
-            || buf.VkUsageFlags.HasAllFlags(VK.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT)
-        )
-        {
-            dstStageFlags |= VkPipelineStageFlags2.VertexInput;
-        }
-        if (buf.VkUsageFlags.HasAllFlags(VK.VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT))
-        {
-            dstStageFlags |= VkPipelineStageFlags2.DrawIndirect;
-        }
         HxDebug.Assert(
             buf,
             "Buffer is null. Make sure the buffer is created before binding it to the command buffer."
@@ -1987,7 +1979,24 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
             );
             return false;
         }
+        if (!buf.IsDirty)
+        {
+            return true; // no need for a barrier if the buffer is not dirty
+        }
+        if (
+            buf!.VkUsageFlags.HasAllFlags(VK.VK_BUFFER_USAGE_INDEX_BUFFER_BIT)
+            || buf.VkUsageFlags.HasAllFlags(VK.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT)
+        )
+        {
+            dstStageFlags |= VkPipelineStageFlags2.VertexInput;
+        }
+        if (buf.VkUsageFlags.HasAllFlags(VK.VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT))
+        {
+            dstStageFlags |= VkPipelineStageFlags2.DrawIndirect;
+        }
+
         CmdBuffer.BufferBarrier2(buf, VkPipelineStageFlags2.ComputeShader, dstStageFlags);
+        buf.ClearDirty();
         return true;
     }
 
@@ -2103,6 +2112,7 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
             img.ImageLayout,
             range
         );
+        buf.ClearDirty();
     }
 
     /// <inheritdoc/>
