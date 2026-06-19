@@ -403,12 +403,7 @@ public class RenderablePropertyTests
                     var diagnostics = new List<ImportDiagnostic>();
                     var accessorReader = new AccessorReader(model, [buffer]);
                     var manifest = new ResourceManifest();
-                    var meshConverter = new MeshConverter(
-                        geoManager,
-                        accessorReader,
-                        diagnostics,
-                        manifest
-                    );
+                    var meshConverter = new MeshConverter(geoManager, accessorReader, diagnostics, manifest, MeshConverterTestDefaults.Config, MeshConverterTestDefaults.Decoder, false);
                     var textureLoader = new TextureLoader(
                         textureRepo,
                         samplerRepo,
@@ -489,12 +484,7 @@ public class RenderablePropertyTests
                     var diagnostics = new List<ImportDiagnostic>();
                     var accessorReader = new AccessorReader(model, [buffer]);
                     var manifest = new ResourceManifest();
-                    var meshConverter = new MeshConverter(
-                        geoManager,
-                        accessorReader,
-                        diagnostics,
-                        manifest
-                    );
+                    var meshConverter = new MeshConverter(geoManager, accessorReader, diagnostics, manifest, MeshConverterTestDefaults.Config, MeshConverterTestDefaults.Decoder, false);
                     var textureLoader = new TextureLoader(
                         textureRepo,
                         samplerRepo,

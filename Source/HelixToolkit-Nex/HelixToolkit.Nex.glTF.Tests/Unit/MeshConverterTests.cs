@@ -148,7 +148,7 @@ public class MeshConverterTests
         var reader = new AccessorReader(model, [buffer]);
         var diagnostics = new List<ImportDiagnostic>();
         var geoManager = new MockGeometryManager();
-        var converter = new MeshConverter(geoManager, reader, diagnostics, new ResourceManifest());
+        var converter = new MeshConverter(geoManager, reader, diagnostics, new ResourceManifest(), MeshConverterTestDefaults.Config, MeshConverterTestDefaults.Decoder, false);
 
         var primitive = CreatePrimitiveWithPosition();
         var (geometry, handle) = converter.ConvertPrimitive(model, primitive, 0, 0);
@@ -167,7 +167,7 @@ public class MeshConverterTests
         var reader = new AccessorReader(model, [buffer]);
         var diagnostics = new List<ImportDiagnostic>();
         var geoManager = new MockGeometryManager();
-        var converter = new MeshConverter(geoManager, reader, diagnostics, new ResourceManifest());
+        var converter = new MeshConverter(geoManager, reader, diagnostics, new ResourceManifest(), MeshConverterTestDefaults.Config, MeshConverterTestDefaults.Decoder, false);
 
         // Primitive with no POSITION attribute
         var primitive = new MeshPrimitive
@@ -192,7 +192,7 @@ public class MeshConverterTests
         var reader = new AccessorReader(model, [buffer]);
         var diagnostics = new List<ImportDiagnostic>();
         var geoManager = new MockGeometryManager();
-        var converter = new MeshConverter(geoManager, reader, diagnostics, new ResourceManifest());
+        var converter = new MeshConverter(geoManager, reader, diagnostics, new ResourceManifest(), MeshConverterTestDefaults.Config, MeshConverterTestDefaults.Decoder, false);
 
         // Use LINE_LOOP (mode 2) which is unsupported
         var primitive = CreatePrimitiveWithPosition(mode: MeshPrimitive.ModeEnum.LINE_LOOP);
@@ -213,7 +213,7 @@ public class MeshConverterTests
         var reader = new AccessorReader(model, [buffer]);
         var diagnostics = new List<ImportDiagnostic>();
         var geoManager = new MockGeometryManager();
-        var converter = new MeshConverter(geoManager, reader, diagnostics, new ResourceManifest());
+        var converter = new MeshConverter(geoManager, reader, diagnostics, new ResourceManifest(), MeshConverterTestDefaults.Config, MeshConverterTestDefaults.Decoder, false);
 
         // Use TRIANGLE_FAN (mode 6) which is unsupported
         var primitive = CreatePrimitiveWithPosition(mode: MeshPrimitive.ModeEnum.TRIANGLE_FAN);
@@ -240,7 +240,7 @@ public class MeshConverterTests
         var reader = new AccessorReader(model, [buffer]);
         var diagnostics = new List<ImportDiagnostic>();
         var geoManager = new MockGeometryManager();
-        var converter = new MeshConverter(geoManager, reader, diagnostics, new ResourceManifest());
+        var converter = new MeshConverter(geoManager, reader, diagnostics, new ResourceManifest(), MeshConverterTestDefaults.Config, MeshConverterTestDefaults.Decoder, false);
 
         var primitive = CreatePrimitiveWithPosition(mode: mode);
         var (geometry, handle) = converter.ConvertPrimitive(model, primitive, 0, 0);
@@ -399,7 +399,7 @@ public class MeshConverterTests
         var reader = new AccessorReader(model, [byteBuffer]);
         var diagnostics = new List<ImportDiagnostic>();
         var geoManager = new MockGeometryManager();
-        var converter = new MeshConverter(geoManager, reader, diagnostics, new ResourceManifest());
+        var converter = new MeshConverter(geoManager, reader, diagnostics, new ResourceManifest(), MeshConverterTestDefaults.Config, MeshConverterTestDefaults.Decoder, false);
 
         var primitive = new MeshPrimitive
         {
@@ -434,7 +434,7 @@ public class MeshConverterTests
         var reader = new AccessorReader(model, [buffer]);
         var diagnostics = new List<ImportDiagnostic>();
         var geoManager = new MockGeometryManager();
-        var converter = new MeshConverter(geoManager, reader, diagnostics, new ResourceManifest());
+        var converter = new MeshConverter(geoManager, reader, diagnostics, new ResourceManifest(), MeshConverterTestDefaults.Config, MeshConverterTestDefaults.Decoder, false);
 
         var primitive = CreatePrimitiveWithPosition();
         var (geometry, handle) = converter.ConvertPrimitive(model, primitive, 0, 0);
@@ -459,7 +459,7 @@ public class MeshConverterTests
         var reader = new AccessorReader(model, [buffer]);
         var diagnostics = new List<ImportDiagnostic>();
         var geoManager = new FailingGeometryManager();
-        var converter = new MeshConverter(geoManager, reader, diagnostics, new ResourceManifest());
+        var converter = new MeshConverter(geoManager, reader, diagnostics, new ResourceManifest(), MeshConverterTestDefaults.Config, MeshConverterTestDefaults.Decoder, false);
 
         var primitive = CreatePrimitiveWithPosition();
         var (geometry, handle) = converter.ConvertPrimitive(model, primitive, 0, 0);
@@ -475,7 +475,7 @@ public class MeshConverterTests
         var reader = new AccessorReader(model, [buffer]);
         var diagnostics = new List<ImportDiagnostic>();
         var geoManager = new MockGeometryManager();
-        var converter = new MeshConverter(geoManager, reader, diagnostics, new ResourceManifest());
+        var converter = new MeshConverter(geoManager, reader, diagnostics, new ResourceManifest(), MeshConverterTestDefaults.Config, MeshConverterTestDefaults.Decoder, false);
 
         var primitive = CreatePrimitiveWithPosition();
         var (geometry, handle) = await converter.ConvertPrimitiveAsync(model, primitive, 0, 0);
@@ -493,7 +493,7 @@ public class MeshConverterTests
         var reader = new AccessorReader(model, [buffer]);
         var diagnostics = new List<ImportDiagnostic>();
         var geoManager = new FailingGeometryManager();
-        var converter = new MeshConverter(geoManager, reader, diagnostics, new ResourceManifest());
+        var converter = new MeshConverter(geoManager, reader, diagnostics, new ResourceManifest(), MeshConverterTestDefaults.Config, MeshConverterTestDefaults.Decoder, false);
 
         var primitive = CreatePrimitiveWithPosition();
         var (geometry, handle) = await converter.ConvertPrimitiveAsync(model, primitive, 0, 0);
@@ -509,7 +509,7 @@ public class MeshConverterTests
         var reader = new AccessorReader(model, [buffer]);
         var diagnostics = new List<ImportDiagnostic>();
         var geoManager = new MockGeometryManager();
-        var converter = new MeshConverter(geoManager, reader, diagnostics, new ResourceManifest());
+        var converter = new MeshConverter(geoManager, reader, diagnostics, new ResourceManifest(), MeshConverterTestDefaults.Config, MeshConverterTestDefaults.Decoder, false);
 
         // Primitive with null Attributes
         var primitive = new MeshPrimitive { Mode = MeshPrimitive.ModeEnum.TRIANGLES };
@@ -529,7 +529,7 @@ public class MeshConverterTests
         var reader = new AccessorReader(model, [buffer]);
         var diagnostics = new List<ImportDiagnostic>();
         var geoManager = new MockGeometryManager();
-        var converter = new MeshConverter(geoManager, reader, diagnostics, new ResourceManifest());
+        var converter = new MeshConverter(geoManager, reader, diagnostics, new ResourceManifest(), MeshConverterTestDefaults.Config, MeshConverterTestDefaults.Decoder, false);
 
         // MeshPrimitive.Mode defaults to TRIANGLES (4) per glTF spec
         var primitive = new MeshPrimitive

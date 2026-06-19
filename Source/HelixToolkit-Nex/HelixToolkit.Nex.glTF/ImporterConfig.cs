@@ -38,7 +38,16 @@ public sealed class ImporterConfig
     /// </summary>
     public bool CreatePointLightMeshes { get; set; } = true;
 
+    /// <summary>
+    /// Gets or sets the world-space scale applied to the point-light visualization sphere mesh.
+    /// </summary>
     public float PointLightMeshSize { get; set; } = 0.1f;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether the importer decodes
+    /// <c>KHR_draco_mesh_compression</c> primitives. Defaults to <see langword="true"/>.
+    /// </summary>
+    public bool EnableDracoDecompression { get; set; } = true;
 
     /// <summary>
     /// Gets a default configuration with standard settings.

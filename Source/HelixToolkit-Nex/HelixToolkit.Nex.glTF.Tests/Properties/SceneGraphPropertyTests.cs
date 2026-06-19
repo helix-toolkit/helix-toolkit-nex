@@ -265,12 +265,7 @@ public class SceneGraphPropertyTests
                     var geoManager = new MockGeometryManager();
                     var accessorReader = new AccessorReader(model, []);
                     var manifest = new ResourceManifest();
-                    var meshConverter = new MeshConverter(
-                        geoManager,
-                        accessorReader,
-                        diagnostics,
-                        manifest
-                    );
+                    var meshConverter = new MeshConverter(geoManager, accessorReader, diagnostics, manifest, MeshConverterTestDefaults.Config, MeshConverterTestDefaults.Decoder, false);
 
                     using var materialManager = new PBRMaterialPropertyManager();
                     using var textureRepo = new StubTextureRepository();
@@ -523,12 +518,7 @@ public class SceneGraphPropertyTests
                     var accessorReader = new AccessorReader(emptyModel, []);
                     var geoManager = new MockGeometryManager();
                     var manifest = new ResourceManifest();
-                    var meshConverter = new MeshConverter(
-                        geoManager,
-                        accessorReader,
-                        diagnostics,
-                        manifest
-                    );
+                    var meshConverter = new MeshConverter(geoManager, accessorReader, diagnostics, manifest, MeshConverterTestDefaults.Config, MeshConverterTestDefaults.Decoder, false);
 
                     using var textureRepo = new StubTextureRepository();
                     using var samplerRepo = new StubSamplerRepository();
@@ -704,12 +694,7 @@ public class SceneGraphPropertyTests
                     var geoManager = new MockGeometryManager();
                     var accessorReader = new AccessorReader(model, [buffer]);
                     var manifest = new ResourceManifest();
-                    var meshConverter = new MeshConverter(
-                        geoManager,
-                        accessorReader,
-                        diagnostics,
-                        manifest
-                    );
+                    var meshConverter = new MeshConverter(geoManager, accessorReader, diagnostics, manifest, MeshConverterTestDefaults.Config, MeshConverterTestDefaults.Decoder, false);
 
                     using var materialManager = new MockMaterialPropertyManager();
                     using var textureRepo = new StubTextureRepository();

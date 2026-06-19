@@ -337,12 +337,7 @@ public class TransformPropertyTests
 
                     var accessorReader = new AccessorReader(model, []);
                     using var geoManager = new StubGeometryManager();
-                    var meshConverter = new MeshConverter(
-                        geoManager,
-                        accessorReader,
-                        diagnostics,
-                        new ResourceManifest()
-                    );
+                    var meshConverter = new MeshConverter(geoManager, accessorReader, diagnostics, new ResourceManifest(), MeshConverterTestDefaults.Config, MeshConverterTestDefaults.Decoder, false);
 
                     using var textureRepo = new StubTextureRepository();
                     using var samplerRepo = new StubSamplerRepository();
@@ -374,7 +369,7 @@ public class TransformPropertyTests
                         ImporterConfig.Default
                     );
 
-                    var resultNode = sceneBuilder.BuildNode(model, 0, null, Matrix4x4.Identity);
+                    var resultNode = sceneBuilder.BuildNode(model, 0, null);
 
                     // Step 5: Verify the resulting node's Transform
                     var resultTransform = resultNode.Transform;

@@ -7,33 +7,41 @@ using HelixToolkit.Nex.Graphics;
 using HelixToolkit.Nex.Graphics.Mock;
 using HelixToolkit.Nex.Material;
 using HelixToolkit.Nex.Repository;
+using HelixToolkit.Nex.Scene;
 using HelixToolkit.Nex.Shaders;
 using Newtonsoft.Json.Linq;
 using Gltf = glTFLoader.Schema.Gltf;
 using GltfNode = glTFLoader.Schema.Node;
 using GltfScene = glTFLoader.Schema.Scene;
 using NexImage = HelixToolkit.Nex.Textures.Image;
+using Node = HelixToolkit.Nex.Scene.Node;
 
 namespace HelixToolkit.Nex.glTF.Tests.Properties;
 
-// Feature: gltf-directionallight-render-fix, Property 2: Light direction is the normalized local −Z axis under rotation and scale
+// Feature: gltf-light-import-cr-fixes — directional light placement is driven by the node transform.
 
 /// <summary>
-/// Property-based test for Property 2 of the gltf-directionallight-render-fix feature.
-/// For any node world transform whose local −Z image is normalizable, the attached directional
-/// light's <c>Direction</c> equals <c>normalize(TransformNormal((0,0,-1), world))</c>, is a unit
-/// vector within <c>1e-5</c>, equals the node rotation applied to <c>(0,0,-1)</c> (for identity
-/// rotation, <c>(0,0,-1)</c>), and is invariant to the translation component of the transform.
-/// Mirrors the existing <see cref="TransformPropertyTests"/> /
-/// <see cref="WorldTransformHierarchyPropertyTests"/> pattern: build an in-memory <see cref="Gltf"/>
-/// model carrying a <c>KHR_lights_punctual</c> directional light, run the import against a
-/// <see cref="World"/> with mock managers, and read back the <see cref="DirectionalLightComponent"/>.
+/// Property-based test for the node-transform-driven directional light model of the
+/// gltf-light-import-cr-fixes feature. The importer does NOT derive the light direction from a world
+/// matrix; instead it attaches the <see cref="DirectionalLightComponent"/> to the referencing node's
+/// own entity, leaving <c>Direction</c> at the component default <c>-Vector3.UnitZ</c>, and the
+/// engine's node transform drives the light's effective orientation. For any node TRS, this test
+/// asserts the attached directional light keeps the default <c>-Vector3.UnitZ</c> direction (no
+/// importer-set/ world-derived direction) and that the node's engine-observable world transform
+/// equals the authored TRS composition.
+/// Build an in-memory <see cref="Gltf"/> model carrying a <c>KHR_lights_punctual</c> directional
+/// light, run the import against a <see cref="World"/> with mock managers, and read back the
+/// component and node transform.
 /// </summary>
 [TestClass]
 public class LightDirectionPropertyTests
 {
-    private static readonly Config FsCheckConfig = Config.Default.WithMaxTest(100);
+    // Use QuickThrowOnFailure so a falsified property actually throws (and fails the test).
+    private static readonly Config FsCheckConfig = Config.QuickThrowOnFailure;
     private const float Tolerance = 1e-5f;
+
+    // Looser tolerance for the engine-observable world transform (TRS composition accumulation).
+    private const float MatrixTolerance = 1e-3f;
 
     #region Mock Infrastructure
 
@@ -213,13 +221,16 @@ public class LightDirectionPropertyTests
     /// <summary>
     /// Builds an in-memory glTF model with a single document-level <c>KHR_lights_punctual</c>
     /// directional light (index 0) and a single node (index 0) referencing it via the node-level
-    /// extension, carrying the given TRS, then imports it and returns the attached directional
-    /// light's world-space <c>Direction</c>.
+    /// extension, carrying the given TRS, then imports it against the supplied (live)
+    /// <paramref name="world"/> and returns the engine node the directional light was attached to.
+    /// The transform hierarchy is updated so the node's engine-observable world transform reflects
+    /// the authored TRS. The <paramref name="world"/> must outlive the returned node.
     /// </summary>
-    private static Vector3 BuildAndReadDirection(
+    private static Node BuildAndReadLightNode(
         Vector3 translation,
         Quaternion rotation,
-        Vector3 scale
+        Vector3 scale,
+        World world
     )
     {
         // Document-level KHR_lights_punctual extension carrying one directional light.
@@ -253,13 +264,12 @@ public class LightDirectionPropertyTests
             },
         };
 
-        using var world = World.CreateWorld();
         var diagnostics = new List<ImportDiagnostic>();
 
         var accessorReader = new AccessorReader(model, []);
         using var geoManager = new StubGeometryManager();
         var manifest = new ResourceManifest();
-        var meshConverter = new MeshConverter(geoManager, accessorReader, diagnostics, manifest);
+        var meshConverter = new MeshConverter(geoManager, accessorReader, diagnostics, manifest, MeshConverterTestDefaults.Config, MeshConverterTestDefaults.Decoder, false);
 
         using var textureRepo = new StubTextureRepository();
         using var samplerRepo = new StubSamplerRepository();
@@ -291,16 +301,40 @@ public class LightDirectionPropertyTests
         );
 
         // BuildScene populates the parsed-lights list (BuildNode alone does not), so light
-        // attachment is exercised. The scene's single root-level node is the light node.
+        // attachment is exercised.
         var root = sceneBuilder.BuildScene(model, 0);
-        var lightNode = root!.Children![0]!;
 
-        Assert.IsTrue(
-            lightNode.Entity.TryGet<DirectionalLightComponent>(out var dirLight),
-            "Expected a DirectionalLightComponent to be attached to the light node."
+        // Update the transform hierarchy so the node's engine-observable world transform is current.
+        world.SortSceneNodes();
+        world.UpdateTransforms();
+
+        // Robust node mapping: find the node carrying the directional light component.
+        var lightNode = FindNodeWithDirectionalLight(root);
+        Assert.IsNotNull(
+            lightNode,
+            "Expected a DirectionalLightComponent on the referencing node's own entity."
         );
+        return lightNode!;
+    }
 
-        return dirLight.Direction;
+    private static Node? FindNodeWithDirectionalLight(Node node)
+    {
+        if (node.Entity.TryGet<DirectionalLightComponent>(out _))
+        {
+            return node;
+        }
+        if (node.Children != null)
+        {
+            foreach (var child in node.Children)
+            {
+                var found = FindNodeWithDirectionalLight(child);
+                if (found != null)
+                {
+                    return found;
+                }
+            }
+        }
+        return null;
     }
 
     private static bool ApproxEqual(Vector3 a, Vector3 b, float tolerance) =>
@@ -308,18 +342,36 @@ public class LightDirectionPropertyTests
         && MathF.Abs(a.Y - b.Y) <= tolerance
         && MathF.Abs(a.Z - b.Z) <= tolerance;
 
+    private static bool MatrixApproxEqual(Matrix4x4 a, Matrix4x4 b, float tolerance) =>
+        MathF.Abs(a.M11 - b.M11) <= tolerance
+        && MathF.Abs(a.M12 - b.M12) <= tolerance
+        && MathF.Abs(a.M13 - b.M13) <= tolerance
+        && MathF.Abs(a.M14 - b.M14) <= tolerance
+        && MathF.Abs(a.M21 - b.M21) <= tolerance
+        && MathF.Abs(a.M22 - b.M22) <= tolerance
+        && MathF.Abs(a.M23 - b.M23) <= tolerance
+        && MathF.Abs(a.M24 - b.M24) <= tolerance
+        && MathF.Abs(a.M31 - b.M31) <= tolerance
+        && MathF.Abs(a.M32 - b.M32) <= tolerance
+        && MathF.Abs(a.M33 - b.M33) <= tolerance
+        && MathF.Abs(a.M34 - b.M34) <= tolerance
+        && MathF.Abs(a.M41 - b.M41) <= tolerance
+        && MathF.Abs(a.M42 - b.M42) <= tolerance
+        && MathF.Abs(a.M43 - b.M43) <= tolerance
+        && MathF.Abs(a.M44 - b.M44) <= tolerance;
+
     #endregion
 
     /// <summary>
-    /// Property 2: Light direction is the normalized local −Z axis under rotation and scale.
-    /// For any node world transform whose local −Z image is normalizable, the computed
-    /// <c>Light_Direction</c> equals <c>normalize(TransformNormal((0,0,-1), world))</c>, is a unit
-    /// vector within <c>1e-5</c>, equals the node rotation applied to <c>(0,0,-1)</c>, and is
-    /// invariant to the translation component of the transform.
-    /// **Validates: Requirements 2.1, 2.2, 2.3, 2.4**
+    /// Directional light placement is driven by the node transform. For any node TRS, the attached
+    /// directional light keeps the component default <c>Direction == -Vector3.UnitZ</c> (the importer
+    /// sets no world-derived direction), and the node's engine-observable world transform equals the
+    /// authored TRS composition (Scale * Rotation * Translation), so orientation is delegated to the
+    /// node transform.
+    /// **Validates: Requirements 2.1, 2.3**
     /// </summary>
     [TestMethod]
-    public void LightDirection_IsNormalizedLocalNegativeZ_UnderRotationAndScale()
+    public void DirectionalLight_KeepsDefaultDirection_AndNodeTransformDrivesPlacement()
     {
         // Translation: arbitrary, bounded range.
         var translationGen =
@@ -338,8 +390,7 @@ public class LightDirectionPropertyTests
             where raw.Length() > 0.001f
             select Quaternion.Normalize(raw);
 
-        // Scale: positive components (0.1 .. 10) so the local −Z image is normalizable and the
-        // transform is non-degenerate.
+        // Scale: positive components (0.1 .. 10) so the transform is non-degenerate.
         var scaleGen =
             from x in Gen.Choose(10, 1000).Select(i => i / 100.0f)
             from y in Gen.Choose(10, 1000).Select(i => i / 100.0f)
@@ -356,57 +407,41 @@ public class LightDirectionPropertyTests
                 Arb.From(inputGen),
                 ((Vector3 translation, Quaternion rotation, Vector3 scale) input) =>
                 {
-                    var direction = BuildAndReadDirection(
+                    // Keep the ECS world alive while reading the component and node transform.
+                    using var world = World.CreateWorld();
+                    var node = BuildAndReadLightNode(
                         input.translation,
                         input.rotation,
-                        input.scale
+                        input.scale,
+                        world
                     );
 
-                    // The world matrix the importer derives uses the same row-vector TRS
-                    // composition (Scale * Rotation * Translation) with parentWorld = Identity.
-                    var world =
+                    Assert.IsTrue(
+                        node.Entity.TryGet<DirectionalLightComponent>(out var dirLight),
+                        "Expected a DirectionalLightComponent on the referencing node."
+                    );
+
+                    // (a) The importer sets no per-light direction: Direction stays at the component
+                    // default -Vector3.UnitZ regardless of the node's rotation/scale.
+                    bool keepsDefaultDirection = ApproxEqual(
+                        dirLight.Direction,
+                        -Vector3.UnitZ,
+                        Tolerance
+                    );
+
+                    // (b) The node's engine-observable world transform equals the authored TRS
+                    // composition, so the node transform drives the light's placement/orientation.
+                    var expectedWorld =
                         Matrix4x4.CreateScale(input.scale)
                         * Matrix4x4.CreateFromQuaternion(input.rotation)
                         * Matrix4x4.CreateTranslation(input.translation);
-
-                    // (a) Direction equals normalize(TransformNormal((0,0,-1), world)).
-                    var expectedFromTransform = Vector3.Normalize(
-                        Vector3.TransformNormal(-Vector3.UnitZ, world)
-                    );
-                    bool matchesTransformNormal = ApproxEqual(
-                        direction,
-                        expectedFromTransform,
-                        Tolerance
+                    bool nodeTransformDrivesPlacement = MatrixApproxEqual(
+                        node.WorldTransform.Value,
+                        expectedWorld,
+                        MatrixTolerance
                     );
 
-                    // (b) Direction is a unit vector within 1e-5.
-                    bool isUnitLength = MathF.Abs(direction.Length() - 1.0f) <= Tolerance;
-
-                    // (c) Direction equals the node rotation applied to (0,0,-1). Because a positive,
-                    // possibly non-uniform scale applied to the pure −Z axis only scales the Z
-                    // component (which normalization removes), the normalized direction equals the
-                    // rotation applied to (0,0,-1).
-                    var expectedFromRotation = Vector3.Transform(-Vector3.UnitZ, input.rotation);
-                    bool matchesRotation = ApproxEqual(direction, expectedFromRotation, Tolerance);
-
-                    // (d) Direction is invariant to the translation component of the transform:
-                    // rebuilding with zero translation (same rotation/scale) yields the same
-                    // direction.
-                    var directionNoTranslation = BuildAndReadDirection(
-                        Vector3.Zero,
-                        input.rotation,
-                        input.scale
-                    );
-                    bool translationInvariant = ApproxEqual(
-                        direction,
-                        directionNoTranslation,
-                        Tolerance
-                    );
-
-                    return matchesTransformNormal
-                        && isUnitLength
-                        && matchesRotation
-                        && translationInvariant;
+                    return keepsDefaultDirection && nodeTransformDrivesPlacement;
                 }
             )
             .Check(FsCheckConfig);
