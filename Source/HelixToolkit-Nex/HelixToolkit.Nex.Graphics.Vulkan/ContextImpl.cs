@@ -836,11 +836,7 @@ internal sealed partial class VulkanContext : Initializable, IContext
             VkFormatProperties2 props = new();
             unsafe
             {
-                VK.vkGetPhysicalDeviceFormatProperties2(
-                    VkPhysicalDevice,
-                    vkFormat,
-                    &props
-                );
+                VK.vkGetPhysicalDeviceFormatProperties2(VkPhysicalDevice, vkFormat, &props);
                 isDisjoint = props.formatProperties.optimalTilingFeatures.HasAllFlags(
                     VK.VK_FORMAT_FEATURE_DISJOINT_BIT
                 );
@@ -856,7 +852,15 @@ internal sealed partial class VulkanContext : Initializable, IContext
         VkSamplerYcbcrConversionInfo? ycbcrInfo = isMultiplanar
             ? GetOrCreateYcbcrConversionInfo(desc.Format)
             : null;
-        var ret = image.Create(vkCreateFlags, memFlags, mapping, vkImageViewType, ycbcrInfo, isDisjoint, isMultiplanar);
+        var ret = image.Create(
+            vkCreateFlags,
+            memFlags,
+            mapping,
+            vkImageViewType,
+            ycbcrInfo,
+            isDisjoint,
+            isMultiplanar
+        );
 
         if (ret.HasError())
         {
@@ -1453,7 +1457,7 @@ internal sealed partial class VulkanContext : Initializable, IContext
         var buf = BuffersPool.Get(handle);
         if (buf is null || !buf.Valid)
         {
-            _logger.LogError("Buffer handle is invalid for marking dirty: {HANDLE}", handle.ToString());
+            _logger.LogError("Buffer handle is invalid for marking dirty: {HANDLE}", handle);
             return;
         }
         buf.MarkDirty();
