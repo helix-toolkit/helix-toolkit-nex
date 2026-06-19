@@ -356,7 +356,7 @@ internal sealed class LightConverter
         var value = intensityToken.Value<float>();
 
         // Requirements 2.7 / 6.5: NaN or negative intensity is invalid → diagnostic + default.
-        if (float.IsNaN(value) || value < 0.0f)
+        if (float.IsNaN(value) || float.IsInfinity(value) || value < 0.0f)
         {
             AddInvalidIntensityDiagnostic(index);
             return ParsedLight.DefaultIntensity;
@@ -426,7 +426,7 @@ internal sealed class LightConverter
 
         var value = rangeToken.Value<float>();
 
-        if (float.IsNaN(value) || value <= 0.0f)
+        if (float.IsNaN(value) || float.IsInfinity(value) || value <= 0.0f)
         {
             AddInvalidRangeDiagnostic(index);
             return kind == LightKind.Point

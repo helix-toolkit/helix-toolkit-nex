@@ -443,7 +443,7 @@ public class MockContext : IContext
         // Mock: no-op
     }
 
-    public void MarkDirty(BufferHandle handle)
+    public void MarkDirty(in BufferHandle handle)
     {
         // Mock: no-op — there is no GPU-side dirty tracking in the mock context.
     }
