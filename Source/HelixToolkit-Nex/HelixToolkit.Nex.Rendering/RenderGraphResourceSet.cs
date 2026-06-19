@@ -250,6 +250,7 @@ public sealed class RenderGraphResourceSet : IDisposable
             }
             catch (Exception ex) when (ex is not RenderGraphResourceAllocationException)
             {
+                DisposeResources();
                 throw new RenderGraphResourceAllocationException(
                     builder.Key,
                     ResourceType.Buffer,
@@ -261,6 +262,7 @@ public sealed class RenderGraphResourceSet : IDisposable
             // though no exception was thrown.
             if (buf is null || buf.Empty)
             {
+                DisposeResources();
                 throw new RenderGraphResourceAllocationException(builder.Key, ResourceType.Buffer);
             }
             _bufferResources[builder.Key] = buf;
@@ -281,6 +283,7 @@ public sealed class RenderGraphResourceSet : IDisposable
             }
             catch (Exception ex) when (ex is not RenderGraphResourceAllocationException)
             {
+                DisposeResources();
                 throw new RenderGraphResourceAllocationException(
                     builder.Key,
                     ResourceType.Texture,
@@ -289,6 +292,7 @@ public sealed class RenderGraphResourceSet : IDisposable
             }
             if (tex is null || tex.Empty)
             {
+                DisposeResources();
                 throw new RenderGraphResourceAllocationException(builder.Key, ResourceType.Texture);
             }
             _textureResources[builder.Key] = tex;

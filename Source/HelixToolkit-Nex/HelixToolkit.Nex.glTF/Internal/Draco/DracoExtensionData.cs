@@ -82,12 +82,13 @@ internal sealed record DracoExtensionData(
         }
 
         var attributes = new Dictionary<string, int>(StringComparer.Ordinal);
-        foreach (var property in attributesObj.Properties())
+        foreach (
+            var property in attributesObj
+                .Properties()
+                .Where(x => x.Value.Type == JTokenType.Integer)
+        )
         {
-            if (property.Value.Type == JTokenType.Integer)
-            {
-                attributes[property.Name] = property.Value.Value<int>();
-            }
+            attributes[property.Name] = property.Value.Value<int>();
         }
 
         if (attributes.Count == 0)

@@ -926,31 +926,33 @@ internal sealed class MeshConverter
         // the decoded mesh shares the POSITION vertex count. A mismatch skips the primitive with a
         // single Error and never registers a partially-populated geometry.
         foreach (
-            string semantic in new[]
+            var mismatch in new[]
             {
                 NormalSemantic,
                 TexCoordSemantic,
                 TangentSemantic,
                 ColorSemantic,
             }
+                .Select(semantic =>
+                    (
+                        semantic,
+                        found: decoded.Attributes.TryGetValue(semantic, out var consumed),
+                        consumed
+                    )
+                )
+                .Where(x => x.found && x.consumed.ElementCount != vertexCount)
         )
         {
-            if (
-                decoded.Attributes.TryGetValue(semantic, out var consumed)
-                && consumed.ElementCount != vertexCount
-            )
-            {
-                _diagnostics.Add(
-                    new ImportDiagnostic(
-                        DiagnosticSeverity.Error,
-                        $"Mesh {meshIndex} primitive {primIndex}: decoded {semantic} attribute has "
-                            + $"{consumed.ElementCount} elements but POSITION has {vertexCount}; skipping primitive.",
-                        "Mesh",
-                        meshIndex
-                    )
-                );
-                return (null, Handle<GeometryResourceType>.Null);
-            }
+            _diagnostics.Add(
+                new ImportDiagnostic(
+                    DiagnosticSeverity.Error,
+                    $"Mesh {meshIndex} primitive {primIndex}: decoded {mismatch.semantic} attribute has "
+                        + $"{mismatch.consumed.ElementCount} elements but POSITION has {vertexCount}; skipping primitive.",
+                    "Mesh",
+                    meshIndex
+                )
+            );
+            return (null, Handle<GeometryResourceType>.Null);
         }
 
         var geometry = new Geometry(topology);

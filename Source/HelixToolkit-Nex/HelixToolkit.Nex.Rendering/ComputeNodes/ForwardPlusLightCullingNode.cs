@@ -107,18 +107,7 @@ public sealed class ForwardPlusLightCullingNode : ComputeNode
         // per stored entry, so capping the iterated light count guarantees no stored index can
         // exceed 65535. If the scene exceeds the limit we keep the first 65535 lights and warn,
         // rather than silently producing out-of-range indices.
-        var sceneLightCount = renderContext.Data!.Lights.Count;
-        if (sceneLightCount > Limits.MaxRangeLightCount)
-        {
-            _logger.LogWarning(
-                "Scene range-light count {LightCount} exceeds the 16-bit limit of {MaxRangeLightCount}; "
-                    + "culling will only consider the first {MaxRangeLightCount} lights so every stored index fits in a ushort.",
-                sceneLightCount,
-                Limits.MaxRangeLightCount,
-                Limits.MaxRangeLightCount
-            );
-            sceneLightCount = Limits.MaxRangeLightCount;
-        }
+        var sceneLightCount = Math.Min(Limits.MaxRangeLightCount, renderContext.Data!.Lights.Count);
         _cullingConstants.LightCount = sceneLightCount;
         _cullingConstants.ZNear = renderContext.CameraParams.NearPlane;
         _cullingConstants.ZFar = renderContext.CameraParams.FarPlane;

@@ -1452,7 +1452,7 @@ internal sealed partial class VulkanContext : Initializable, IContext
         levels = tex.NumLevels;
     }
 
-    public void MarkDirty(BufferHandle handle)
+    public void MarkDirty(in BufferHandle handle)
     {
         var buf = BuffersPool.Get(handle);
         if (buf is null || !buf.Valid)

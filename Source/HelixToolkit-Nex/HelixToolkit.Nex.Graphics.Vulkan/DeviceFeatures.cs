@@ -77,7 +77,7 @@ internal static class DeviceFeatures
         return new VkPhysicalDeviceVulkan12Features()
         {
             samplerMirrorClampToEdge = VkBool32.True,
-            drawIndirectCount = VkBool32.True, // enable if supported
+            drawIndirectCount = VkBool32.True, // required feature
             descriptorIndexing = VkBool32.True,
             shaderSampledImageArrayNonUniformIndexing = VkBool32.True,
             descriptorBindingSampledImageUpdateAfterBind = VkBool32.True,

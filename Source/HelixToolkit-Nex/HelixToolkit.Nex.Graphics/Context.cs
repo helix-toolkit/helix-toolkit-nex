@@ -664,5 +664,5 @@ public interface IContext : IInitializable
     /// but it generally serves as a hint to optimize data synchronization between the CPU and GPU.
     /// </summary>
     /// <param name="handle">The handle of the buffer to mark as dirty.</param>
-    void MarkDirty(BufferHandle handle);
+    void MarkDirty(in BufferHandle handle);
 }

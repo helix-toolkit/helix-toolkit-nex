@@ -80,7 +80,7 @@ internal class GltfImporterApp : ApplicationBase
     // Importer config
     private readonly ImporterConfig _importConfig = new()
     {
-        DefaultShadingMode = Shaders.Frag.PBRShadingMode.PBR,
+        DefaultShadingMode = Shaders.Frag.PBRShadingMode.CAD,
     };
 
     public override string Name => "glTF Importer";
