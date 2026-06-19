@@ -85,10 +85,7 @@ internal abstract class DrawStreamBase<DRAW_TYPE, COMP_TYPE> : Initializable, ID
     #region IDrawStream Methods
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public IEnumerable<MaterialTypeId> GetMaterialTypes() => _materialTypes;
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public ReadOnlySpan<MaterialTypeId> GetMaterialTypesCore() =>
+    public ReadOnlySpan<MaterialTypeId> GetMaterialTypes() =>
         _materialTypes.GetInternalArray().AsSpan(0, _materialTypes.Count);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

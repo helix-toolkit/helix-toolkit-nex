@@ -88,6 +88,7 @@ public sealed class ForwardPlusLightCullingNode : ComputeNode
     protected override void OnSetupRender(in RenderResources res)
     {
         res.Deps.PushTexture(res.Textures[SystemBufferNames.TextureDepthF32]);
+        res.Deps.PushBuffer(res.Buffers[SystemBufferNames.BufferLights]);
         var renderContext = res.RenderContext!;
         var tileCountX = (uint)renderContext.TileCountX;
         var tileCountY = (uint)renderContext.TileCountY;
@@ -202,8 +203,13 @@ public sealed class ForwardPlusLightCullingNode : ComputeNode
                     return p.Context.Context.CreateBuffer(
                         new BufferDesc
                         {
-                            DataSize = (uint)(
-                                totalTiles * p.Context.FPLightConfig.MaxLightsPerTile * sizeof(uint)
+                            DataSize = (
+                                Alignment.GetAlignedSize(
+                                    (uint)totalTiles
+                                        * p.Context.FPLightConfig.MaxLightsPerTile
+                                        * sizeof(ushort),
+                                    32
+                                )
                             ),
                             Usage = BufferUsageBits.Storage,
                             Storage = StorageType.Device,

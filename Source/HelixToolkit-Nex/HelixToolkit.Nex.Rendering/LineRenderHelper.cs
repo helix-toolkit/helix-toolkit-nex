@@ -59,7 +59,7 @@ public static class LineRenderHelper
             }
         }
 
-        foreach (var materialType in stream.GetMaterialTypesCore())
+        foreach (var materialType in stream.GetMaterialTypes())
         {
             var range = stream.GetRangeByMaterial(materialType);
             if (range.Empty)

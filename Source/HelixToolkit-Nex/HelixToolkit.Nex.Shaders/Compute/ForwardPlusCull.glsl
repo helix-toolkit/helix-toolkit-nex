@@ -5,7 +5,6 @@
 #extension GL_KHR_shader_subgroup_ballot : enable
 #extension GL_KHR_shader_subgroup_arithmetic : enable
 #extension GL_EXT_debug_printf : enable
-
 /*
  * Forward+ Light Culling Compute Shader
  * -------------------------------------
@@ -44,12 +43,12 @@ layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer Li
     LightCullingConstants value;
 };
 
-layout(buffer_reference, scalar) buffer LightGridBuffer {
+layout(buffer_reference, scalar, buffer_reference_align = 8) buffer LightGridBuffer {
     LightGridTile tiles[];
 };
 
-layout(buffer_reference, scalar) buffer LightIndexBuffer {
-    uint indices[];
+layout(buffer_reference, scalar, buffer_reference_align = 2) buffer LightIndexBuffer {
+    uint16_t indices[];
 };
 
 layout(buffer_reference, scalar) buffer GlobalCounterBuffer {
@@ -63,6 +62,10 @@ layout(push_constant) uniform LightCullingPC {
 layout(local_size_x = TILE_SIZE, local_size_y = TILE_SIZE, local_size_z = 1) in;
 
 LightCullingConst cullingConst = LightCullingConst(pc.lightCullingConstAddress);
+
+LightBuffer lightBuffer = LightBuffer(cullingConst.value.lightBufferAddress);
+LightIndexBuffer lightIndexBuffer = LightIndexBuffer(cullingConst.value.lightIndexBufferAddress);
+LightGridBuffer lightGridBuffer = LightGridBuffer(cullingConst.value.lightGridBufferAddress);
 
 struct AABB {
     vec3 minBounds;
@@ -357,7 +360,7 @@ void main() {
     barrier();
     
 
-    LightBuffer lightBuffer = LightBuffer(cullingConst.value.lightBufferAddress);
+
 
     // Iterate over lights in parallel
     // TILE_SIZE*TILE_SIZE is the total number of threads in the workgroup
@@ -483,8 +486,7 @@ void main() {
 
     if (threadIdx == 0) {
         // Only thread 0 writes the tile header. The opaque count occupies the low
-        // byte and the transparent (union) count the high byte.
-        LightGridBuffer lightGridBuffer = LightGridBuffer(cullingConst.value.lightGridBufferAddress);
+        // byte and the transparent (union) count the high byte.     
         LightGridTile tile;
         tile.lightCount = packLightCount(opaqueCount, transparentCount);
         tile.lightIndexOffset = offset;
@@ -492,15 +494,15 @@ void main() {
     }
 
     // All threads participate in writing the combined index region.
-    LightIndexBuffer lightIndexBuffer = LightIndexBuffer(cullingConst.value.lightIndexBufferAddress);
+
 
     // Opaque-visible indices -> [offset, offset + opaqueCount).
     for (uint i = threadIdx; i < opaqueCount; i += (TILE_SIZE * TILE_SIZE)) {
-        lightIndexBuffer.indices[offset + i] = sharedLightIndices[i];
+        lightIndexBuffer.indices[offset + i] = uint16_t(sharedLightIndices[i]);
     }
 
     // Transparent-only indices -> [offset + opaqueCount, offset + transparentCount).
     for (uint i = threadIdx; i < transparentOnlyCount; i += (TILE_SIZE * TILE_SIZE)) {
-        lightIndexBuffer.indices[offset + opaqueCount + i] = sharedLightIndicesTransparent[i];
+        lightIndexBuffer.indices[offset + opaqueCount + i] = uint16_t(sharedLightIndicesTransparent[i]);
     }
 }
