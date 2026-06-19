@@ -1,6 +1,7 @@
 using System.Numerics;
 using glTFLoader.Schema;
 using HelixToolkit.Nex.Geometries;
+using HelixToolkit.Nex.glTF.Internal.Draco;
 using Vertex = System.Numerics.Vector4;
 
 namespace HelixToolkit.Nex.glTF.Internal;
@@ -63,6 +64,34 @@ internal sealed class AccessorReader
     public int GetAccessorCount(int accessorIndex)
     {
         return _model.Accessors[accessorIndex].Count;
+    }
+
+    /// <summary>
+    /// Resolves a Draco extension's <c>bufferView</c> index to a concrete byte slice
+    /// (<paramref name="buffer"/>, <paramref name="offset"/>, <paramref name="length"/>) using the
+    /// already-loaded buffer data, without requiring an accessor. Delegates to
+    /// <see cref="DracoBufferViewResolver"/> so the loaded buffer data stays encapsulated here.
+    /// </summary>
+    /// <param name="bufferViewIndex">The <c>bufferView</c> index declared by the Draco extension.</param>
+    /// <param name="buffer">The backing buffer byte array on success; otherwise <see langword="null"/>.</param>
+    /// <param name="offset">The byte offset of the slice within <paramref name="buffer"/> on success; otherwise 0.</param>
+    /// <param name="length">The byte length of the slice on success; otherwise 0.</param>
+    /// <returns><see langword="true"/> when the slice resolves within bounds; otherwise <see langword="false"/>.</returns>
+    public bool TryResolveDracoBufferView(
+        int bufferViewIndex,
+        out byte[]? buffer,
+        out int offset,
+        out int length
+    )
+    {
+        return DracoBufferViewResolver.TryResolve(
+            _model,
+            _bufferData,
+            bufferViewIndex,
+            out buffer,
+            out offset,
+            out length
+        );
     }
 
     /// <summary>

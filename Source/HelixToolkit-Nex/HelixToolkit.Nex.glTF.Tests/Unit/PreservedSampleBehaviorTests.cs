@@ -23,24 +23,25 @@ namespace HelixToolkit.Nex.glTF.Tests.Unit;
 // Feature: gltf-directionallight-render-fix — unit/example tests for preserved sample behavior (task 7.2).
 
 /// <summary>
-/// Unit/example tests for behavior that must be preserved by the render fix:
+/// Unit/example tests for behavior that must be preserved by the fix:
 /// <list type="bullet">
 /// <item>
-/// Requirement 6.3 — when a glTF document carries no <c>KHR_lights_punctual</c> lights, the importer
-/// attaches no punctual light component (and emits no light diagnostics), so the sample's hard-coded
-/// fallback straight-down gray light remains the sole active light. The fallback light itself is
-/// defined in the sample app (<c>GltfImporterApp.SetupLighting</c>) with the literal values
-/// <c>Color = Color.Gray</c>, <c>Intensity = 1.0f</c>, <c>Direction = -Vector3.UnitY</c>; because that
-/// lives in the Samples project (no importer/test seam), the expected fallback values are locked here
-/// at the <see cref="DirectionalLightComponent"/> level using the same literals the sample uses.
+/// When a glTF document carries no <c>KHR_lights_punctual</c> lights, the importer attaches no
+/// punctual light component (and emits no light diagnostics), so the sample's configured lighting
+/// remains the sole active light. The sample light is defined in the sample app
+/// (<c>GltfImporterApp.SetupLighting</c>) with the current values <c>Color = Color.WhiteSmoke</c>,
+/// <c>Intensity = 0.8f</c>, and no fixed direction (so the <see cref="DirectionalLightComponent"/>
+/// keeps its default <c>Direction == -Vector3.UnitZ</c>); because that lives in the Samples project
+/// (no importer/test seam), the expected lighting configuration is locked here at the
+/// <see cref="DirectionalLightComponent"/> level using the same literals the sample uses.
 /// </item>
 /// <item>
-/// Requirement 4.3 — a double-sided material disables backface culling on the produced mesh node. The
-/// engine has no dedicated culling flag, so <see cref="SceneBuilder"/> represents the disabled-culling
-/// state via <see cref="MeshNode.IsAlphaMask"/>; these tests assert that current code behavior.
+/// A double-sided material disables backface culling on the produced mesh node. The engine has no
+/// dedicated culling flag, so <see cref="SceneBuilder"/> represents the disabled-culling state via
+/// <see cref="MeshNode.IsAlphaMask"/>; these tests assert that current code behavior.
 /// </item>
 /// </list>
-/// **Validates: Requirements 4.3, 6.3**
+/// **Validates: Requirements 2.10, 3.1**
 /// </summary>
 [TestClass]
 public class PreservedSampleBehaviorTests
@@ -312,7 +313,7 @@ public class PreservedSampleBehaviorTests
         var manifest = new ResourceManifest();
         var accessorReader = new AccessorReader(model, [buffer]);
         using var geoManager = new MockGeometryManager();
-        var meshConverter = new MeshConverter(geoManager, accessorReader, diagnostics, manifest);
+        var meshConverter = new MeshConverter(geoManager, accessorReader, diagnostics, manifest, MeshConverterTestDefaults.Config, MeshConverterTestDefaults.Decoder, false);
 
         using var textureRepo = new StubTextureRepository();
         using var samplerRepo = new StubSamplerRepository();
@@ -395,16 +396,15 @@ public class PreservedSampleBehaviorTests
     #endregion
 
     // -------------------------------------------------------------------------
-    // Requirement 6.3 — fallback gray straight-down light preserved
+    // Sample lighting configuration preserved (no-lights document + SetupLighting values)
     // -------------------------------------------------------------------------
 
     /// <summary>
-    /// Requirement 6.3 (importer-side precondition): a glTF document with no
-    /// <c>KHR_lights_punctual</c> lights produces a scene in which no node carries a punctual light
-    /// component and no light diagnostic is emitted. This is the condition under which the sample's
-    /// hard-coded fallback straight-down gray light stays the only active light, so the fix does not
-    /// disturb the existing fallback lighting for no-lights documents.
-    /// **Validates: Requirements 6.3**
+    /// A glTF document with no <c>KHR_lights_punctual</c> lights produces a scene in which no node
+    /// carries a punctual light component and no light diagnostic is emitted. This is the condition
+    /// under which the sample's configured directional light stays the only active light, so the fix
+    /// does not disturb the existing lighting for no-lights documents.
+    /// **Validates: Requirements 3.1**
     /// </summary>
     [TestMethod]
     public void NoLightsDocument_AttachesNoPunctualLight_AndEmitsNoLightDiagnostics()
@@ -429,65 +429,59 @@ public class PreservedSampleBehaviorTests
     }
 
     /// <summary>
-    /// Requirement 6.3 (fallback values unchanged): the sample's fallback light is defined in
-    /// <c>GltfImporterApp.SetupLighting</c> as <c>Color = Color.Gray</c>, <c>Intensity = 1.0f</c>,
-    /// <c>Direction = -Vector3.UnitY</c>. That code lives in the Samples project with no importer/test
-    /// seam, so this test locks the expected fallback values at the component level by constructing the
-    /// same <see cref="DirectionalLightComponent"/> the sample builds and asserting it carries those
-    /// values unchanged (gray color, unit intensity, straight-down direction).
-    /// **Validates: Requirements 6.3**
+    /// The sample's directional light is defined in <c>GltfImporterApp.SetupLighting</c> as
+    /// <c>Color = Color.WhiteSmoke</c>, <c>Intensity = 0.8f</c>, with no fixed direction (so the
+    /// <see cref="DirectionalLightComponent"/> keeps its default <c>Direction == -Vector3.UnitZ</c>).
+    /// That code lives in the Samples project with no importer/test seam, so this test locks the
+    /// expected configuration at the component level by constructing the same
+    /// <see cref="DirectionalLightComponent"/> the sample builds and asserting it carries those
+    /// values (white-smoke color, 0.8 intensity, default -Z direction).
+    /// **Validates: Requirements 2.10**
     /// </summary>
     [TestMethod]
-    public void FallbackDirectionalLight_HasGrayColor_UnitIntensity_StraightDownDirection()
+    public void SampleDirectionalLight_HasWhiteSmokeColor_PointEightIntensity_DefaultDirection()
     {
-        // Construct the fallback light exactly as the sample does.
-        var fallback = new DirectionalLightComponent
+        // Construct the directional light exactly as the sample's SetupLighting does: Color and
+        // Intensity are set; Direction is left at the component default (no fixed direction).
+        var sampleLight = new DirectionalLightComponent
         {
-            Color = Color.Gray,
-            Intensity = 1.0f,
-            Direction = -Vector3.UnitY,
+            Color = Color.WhiteSmoke,
+            Intensity = 0.8f,
         };
 
-        // Direction is the world straight-down axis (0, -1, 0).
-        Assert.AreEqual(0.0f, fallback.Direction.X, Tolerance, "Fallback Direction.X should be 0.");
+        // No fixed direction: the component keeps its default -Vector3.UnitZ.
+        Assert.AreEqual(0.0f, sampleLight.Direction.X, Tolerance, "Direction.X should be 0.");
+        Assert.AreEqual(0.0f, sampleLight.Direction.Y, Tolerance, "Direction.Y should be 0.");
         Assert.AreEqual(
             -1.0f,
-            fallback.Direction.Y,
+            sampleLight.Direction.Z,
             Tolerance,
-            "Fallback Direction.Y should be -1 (straight down)."
+            "Direction.Z should be the component default -1 (no fixed direction)."
         );
-        Assert.AreEqual(0.0f, fallback.Direction.Z, Tolerance, "Fallback Direction.Z should be 0.");
 
-        // Intensity unchanged at 1.
-        Assert.AreEqual(1.0f, fallback.Intensity, Tolerance, "Fallback Intensity should be 1.");
+        // Intensity is 0.8f.
+        Assert.AreEqual(0.8f, sampleLight.Intensity, Tolerance, "Intensity should be 0.8.");
 
-        // Color is gray: Color.Gray (0xFF808080) → each linear RGB channel ≈ 128/255.
-        var grayChannel = 0x80 / 255.0f;
-        var color = fallback.Color;
-        Assert.AreEqual(grayChannel, color.Red, Tolerance, "Fallback color Red should be gray.");
+        // Color is WhiteSmoke (0xFFF5F5F5) → each linear RGB channel ≈ 0xF5/255.
+        var whiteSmokeChannel = 0xF5 / 255.0f;
+        var color = sampleLight.Color;
+        Assert.AreEqual(whiteSmokeChannel, color.Red, Tolerance, "Color Red should be WhiteSmoke.");
         Assert.AreEqual(
-            grayChannel,
+            whiteSmokeChannel,
             color.Green,
             Tolerance,
-            "Fallback color Green should be gray."
-        );
-        Assert.AreEqual(grayChannel, color.Blue, Tolerance, "Fallback color Blue should be gray.");
-        Assert.AreEqual(
-            color.Red,
-            color.Green,
-            Tolerance,
-            "Fallback color must be neutral gray (R == G)."
+            "Color Green should be WhiteSmoke."
         );
         Assert.AreEqual(
-            color.Green,
+            whiteSmokeChannel,
             color.Blue,
             Tolerance,
-            "Fallback color must be neutral gray (G == B)."
+            "Color Blue should be WhiteSmoke."
         );
     }
 
     // -------------------------------------------------------------------------
-    // Requirement 4.3 — double-sided material disables backface culling
+    // Double-sided material disables backface culling
     // -------------------------------------------------------------------------
 
     /// <summary>
