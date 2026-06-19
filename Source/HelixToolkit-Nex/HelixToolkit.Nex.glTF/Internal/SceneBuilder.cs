@@ -1,6 +1,7 @@
 using System.Numerics;
 using glTFLoader.Schema;
 using HelixToolkit.Nex.ECS;
+using HelixToolkit.Nex.Engine.Components;
 using HelixToolkit.Nex.Lights;
 using HelixToolkit.Nex.Maths;
 using HelixToolkit.Nex.Scene;
@@ -33,14 +34,6 @@ internal sealed class SceneBuilder
     private IReadOnlyList<ParsedLight?> _parsedLights = [];
 
     /// <summary>
-    /// The minimum length the transformed local -Z axis must have for the light direction to be
-    /// normalizable. When the transformed axis is shorter than this threshold (e.g. a degenerate,
-    /// zero/near-zero scale node transform), the direction cannot be normalized and is left at the
-    /// component default instead of writing a <c>NaN</c> direction (Requirement 2.5).
-    /// </summary>
-    private const float DirectionNormalizeEpsilon = 1e-5f;
-
-    /// <summary>
     /// The identity matrix in column-major order as stored by glTF2Loader.
     /// </summary>
     private static readonly float[] IdentityMatrixColumnMajor =
@@ -71,6 +64,7 @@ internal sealed class SceneBuilder
     /// <param name="materialConverter">The material converter for creating materials.</param>
     /// <param name="lightConverter">The light converter for parsing KHR_lights_punctual lights.</param>
     /// <param name="diagnostics">The diagnostics list to report warnings/errors to.</param>
+    /// <param name="config">The importer configuration providing default light ranges and mesh settings.</param>
     public SceneBuilder(
         World world,
         MeshConverter meshConverter,
@@ -86,7 +80,7 @@ internal sealed class SceneBuilder
             materialConverter ?? throw new ArgumentNullException(nameof(materialConverter));
         _lightConverter = lightConverter ?? throw new ArgumentNullException(nameof(lightConverter));
         _diagnostics = diagnostics ?? throw new ArgumentNullException(nameof(diagnostics));
-        _config = config;
+        _config = config ?? throw new ArgumentNullException(nameof(config));
     }
 
     /// <summary>
@@ -131,7 +125,7 @@ internal sealed class SceneBuilder
         {
             foreach (int nodeIndex in scene.Nodes)
             {
-                BuildNode(model, nodeIndex, rootNode, Matrix4x4.Identity);
+                BuildNode(model, nodeIndex, rootNode);
             }
         }
 
@@ -145,13 +139,8 @@ internal sealed class SceneBuilder
     /// <param name="model">The deserialized glTF model.</param>
     /// <param name="nodeIndex">The index of the node in the glTF Nodes array.</param>
     /// <param name="parent">The parent Node to attach this node to, or null for root-level nodes.</param>
-    /// <param name="parentWorld">
-    /// The accumulated world matrix of the parent node. Pass <see cref="Matrix4x4.Identity"/> for
-    /// root-level nodes. The node's world matrix is computed as <c>local * parentWorld</c> and
-    /// threaded into child recursion so world-space transforms are available at attachment time.
-    /// </param>
     /// <returns>The created Node.</returns>
-    internal Node BuildNode(Gltf model, int nodeIndex, Node? parent, Matrix4x4 parentWorld)
+    internal Node BuildNode(Gltf model, int nodeIndex, Node? parent)
     {
         if (model.Nodes == null || nodeIndex < 0 || nodeIndex >= model.Nodes.Length)
         {
@@ -182,13 +171,6 @@ internal sealed class SceneBuilder
         // Apply transform
         ApplyTransform(node, gltfNode, nodeIndex);
 
-        // Compose the accumulated world matrix (row-vector convention: child-local * parent-world).
-        // This matches the engine's scene-graph transform composition (see Scene.Transform.Value
-        // and the world resolution in SceneTransformTests) and makes world-space position/
-        // orientation available to light attachment (later tasks) without waiting for the ECS
-        // transform system to run.
-        var world = node.Transform.Value * parentWorld;
-
         // Attach to parent (preserves child ordering)
         parent?.AddChild(node);
 
@@ -199,15 +181,16 @@ internal sealed class SceneBuilder
         }
 
         // Resolve and (if valid) attach a KHR_lights_punctual light referenced by this node.
-        // Uses the world matrix computed above so world-space position/orientation are available.
-        TryAttachLight(gltfNode, nodeIndex, node, world);
+        // The light's effective position/direction are driven by the node transform, so no world
+        // matrix is threaded here.
+        TryAttachLight(gltfNode, nodeIndex, node);
 
         // Recursively process children, preserving order
         if (gltfNode.Children != null)
         {
             foreach (int childIndex in gltfNode.Children)
             {
-                BuildNode(model, childIndex, node, world);
+                BuildNode(model, childIndex, node);
             }
         }
 
@@ -246,8 +229,7 @@ internal sealed class SceneBuilder
     /// <param name="gltfNode">The source glTF node.</param>
     /// <param name="nodeIndex">The index of the node in the glTF Nodes array (used in diagnostics).</param>
     /// <param name="node">The engine node created for <paramref name="gltfNode"/>.</param>
-    /// <param name="world">The accumulated world matrix of the node.</param>
-    private void TryAttachLight(GltfNode gltfNode, int nodeIndex, Node node, Matrix4x4 world)
+    private void TryAttachLight(GltfNode gltfNode, int nodeIndex, Node node)
     {
         // Requirement 7.4: a node without the KHR_lights_punctual extension is unchanged.
         if (
@@ -305,66 +287,61 @@ internal sealed class SceneBuilder
 
         // The reference is valid and the definition is convertible: hand off the non-null parsed
         // light for component construction and attachment.
-        AttachLightComponent(node, nodeIndex, parsedLight.Value, world, lightIndex);
+        AttachLightComponent(node, nodeIndex, parsedLight.Value, lightIndex);
     }
 
     /// <summary>
     /// Materializes the engine light component for a resolved, convertible <see cref="ParsedLight"/>
-    /// and attaches it to the node, deriving world-space position/direction from the node transform.
+    /// and attaches it to the referencing node's own entity. The light's effective position and
+    /// direction are driven by the node transform, so the importer does not set per-light
+    /// position/direction (directional and range <c>Direction</c> stay at the component default
+    /// <c>-Vector3.UnitZ</c>, and range <c>Position</c> stays at the component default).
     /// </summary>
-    /// <remarks>
-    /// World-space position and direction are derived from the node transform (Requirements 5.2,
-    /// 5.3). Directional lights use direction only and have no position, so the non-finite-position
-    /// guard does not apply to them. For point and spot lights, if any component of the world
-    /// position is non-finite (<c>NaN</c> or <c>±Infinity</c>), the position is not set — the range
-    /// component is constructed without a <c>Position</c> initializer (leaving it at its default) —
-    /// the node and any other attached components are retained, and a single Error diagnostic
-    /// identifying the node by its glTF node index is added (Requirement 5.6).
-    /// </remarks>
     /// <param name="node">The engine node to attach the light component to.</param>
     /// <param name="nodeIndex">The index of the node in the glTF Nodes array (used in diagnostics).</param>
     /// <param name="light">The resolved, convertible parsed light to materialize.</param>
-    /// <param name="world">The accumulated world matrix used to derive position and direction.</param>
     /// <param name="lightIndex">
-    /// The index of the referenced light in the document-level lights array (used in the
-    /// degenerate-direction diagnostic to identify the offending light).
+    /// The index of the referenced light in the document-level lights array (used in diagnostics to
+    /// identify the offending light).
     /// </param>
-    private void AttachLightComponent(
-        Node node,
-        int nodeIndex,
-        ParsedLight light,
-        Matrix4x4 world,
-        int lightIndex
-    )
+    private void AttachLightComponent(Node node, int nodeIndex, ParsedLight light, int lightIndex)
     {
         var color = new Color4(light.Color);
 
         switch (light.Kind)
         {
             case LightKind.Directional:
-                node.AddChild(new DirectionalLightNode(_world)
-                {
-                    Direction = -Vector3.UnitZ,
-                    Color = color,
-                    Intensity = light.Intensity,
-                });
+                // Attach the directional light component to the referencing node's own entity.
+                // Position/direction are driven by the node transform, so Direction is left at the
+                // component default (-Vector3.UnitZ).
+                node.Entity.Set(
+                    new DirectionalLightComponent { Color = color, Intensity = light.Intensity }
+                );
                 break;
 
             case LightKind.Point:
-                node.AddChild(new PointLightNode(_world)
-                {
-                    Color = color,
-                    Intensity = light.Intensity,
-                    Range = light.Range,
-                });
+                // Attach the point (range) light component to the referencing node's own entity.
+                node.Entity.Set(
+                    new RangeLightComponent(RangeLightType.Point)
+                    {
+                        Color = color,
+                        Intensity = light.Intensity,
+                        Range = light.Range,
+                    }
+                );
                 if (_config.CreatePointLightMeshes)
                 {
-                    // Create a small sphere mesh to visualize the point light position
+                    // Create a small sphere mesh to visualize the point light position. The
+                    // visualization mesh stays a child of the node (preservation 3.5); only the
+                    // light component lives on the node's own entity.
                     var sphereMesh = _meshConverter.GetSphereMesh();
                     var sphereNode = new MeshNode(_world, $"PointLightMesh_{nodeIndex}")
                     {
                         Geometry = sphereMesh,
-                        MaterialProperties = _materialConverter.CreateMaterialProps(PBRShadingMode.Unlit.ToString())
+                        MaterialProperties = _materialConverter.CreateMaterialProps(
+                            PBRShadingMode.Unlit,
+                            $"PointLightMesh_{nodeIndex}"
+                        ),
                     };
                     sphereNode.MaterialProperties.Emissive = color;
                     sphereNode.Transform.Scale = new Vector3(_config.PointLightMeshSize);
@@ -373,22 +350,39 @@ internal sealed class SceneBuilder
                 break;
 
             case LightKind.Spot:
-                // When the world position is non-finite, the spot component is still attached (with
-                // its direction and cone angles) but without a Position initializer (Requirement 5.6).
-                // When the direction is non-normalizable, Direction is left at the component default.
+                // Attach the spot (range) light component to the referencing node's own entity.
+                // Position/direction are driven by the node transform, so Direction is left at the
+                // component default (-Vector3.UnitZ).
                 var spotAngles = new Vector2(light.InnerConeAngle, light.OuterConeAngle);
-                node.AddChild(new SpotLightNode(_world)
-                {
-                    Color = color,
-                    Intensity = light.Intensity,
-                    Range = light.Range,
-                    SpotAngles = spotAngles,
-                    Direction = -Vector3.UnitZ,
-                });
+                node.Entity.Set(
+                    new RangeLightComponent(RangeLightType.Spot)
+                    {
+                        Color = color,
+                        Intensity = light.Intensity,
+                        Range = light.Range,
+                        SpotAngles = spotAngles,
+                    }
+                );
+                break;
+
+            default:
+                // An unrecognized LightKind cannot be materialized into an engine light component.
+                // Emit a diagnostic identifying the node and the referenced light index, and attach
+                // no light.
+                _diagnostics.Add(
+                    new ImportDiagnostic(
+                        DiagnosticSeverity.Warning,
+                        $"Node {nodeIndex} references KHR_lights_punctual light index {lightIndex} with an unrecognized light kind '{light.Kind}'. No light was attached.",
+                        "Node",
+                        nodeIndex
+                    )
+                );
                 break;
         }
     }
 
+    /// <summary>
+    /// Builds the mesh node(s) for the specified glTF mesh and attaches them to the parent node.
     /// Single primitive: creates a MeshNode directly as a child of the parent node.
     /// Multiple primitives: creates a parent Node (named after the mesh) with a child MeshNode per primitive.
     /// Skips primitives with invalid geometry handles. Omits the parent Node if all primitives are skipped.

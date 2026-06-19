@@ -221,9 +221,20 @@ internal sealed class MaterialConverter
         return material;
     }
 
-    public PBRMaterialProperties CreateMaterialProps(string materialName)
+    /// <summary>
+    /// Creates a <see cref="PBRMaterialProperties"/> whose shading mode is derived from
+    /// <paramref name="shadingMode"/> and whose display name is set independently to
+    /// <paramref name="materialName"/>, then registers it with the resource manifest.
+    /// </summary>
+    /// <param name="shadingMode">The shading mode used to create the material via the manager.</param>
+    /// <param name="materialName">The display name assigned to the created material.</param>
+    /// <returns>The created and registered <see cref="PBRMaterialProperties"/> instance.</returns>
+    public PBRMaterialProperties CreateMaterialProps(
+        PBRShadingMode shadingMode,
+        string materialName
+    )
     {
-        var material = _materialPropsManager.Create(materialName);
+        var material = _materialPropsManager.Create(shadingMode.ToString());
         material.Name = materialName;
         _manifest.AddMaterial(material);
         return material;

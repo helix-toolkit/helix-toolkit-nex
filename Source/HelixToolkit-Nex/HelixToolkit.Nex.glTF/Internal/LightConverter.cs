@@ -201,8 +201,8 @@ internal sealed class LightConverter
         var intensity = ParseIntensity(lightObj, index);
 
         // Requirements 3.6-3.7 / 6.6: parse range (point/spot only) with defaulting/validation.
-        // Directional lights have no range; the InfiniteRange sentinel is used and no range
-        // diagnostic is emitted for them.
+        // Directional lights have no range; they return 0 and no range diagnostic is emitted for
+        // them.
         var range = ParseRange(lightObj, index, kind);
 
         // Spot cone angles (Requirements 4.2-4.8 / 6.3). Cone angles apply only to spot lights;
@@ -382,18 +382,18 @@ internal sealed class LightConverter
     }
 
     /// <summary>
-    /// Parses the optional <c>range</c> scalar (point and spot lights only) with defaulting and
-    /// validation.
+    /// Parses the optional <c>range</c> scalar with defaulting and validation. Range applies only to point and spot lights; directional lights ignore it.
     /// </summary>
     /// <param name="lightObj">The light definition object.</param>
     /// <param name="index">The light definition index, used in diagnostics.</param>
     /// <param name="kind">The light kind; range applies only to point and spot lights.</param>
     /// <returns>
-    /// The parsed range when <c>range</c> is numeric and <c>&gt; 0</c>;
-    /// <see cref="ParsedLight.InfiniteRange"/> when <c>range</c> is omitted (no diagnostic);
-    /// or <see cref="ParsedLight.InfiniteRange"/> with a Warning diagnostic when the value is
-    /// <c>&lt;= 0</c>. Directional lights always return <see cref="ParsedLight.InfiniteRange"/>
-    /// without parsing or emitting a diagnostic.
+    /// The parsed range when <c>range</c> is numeric and <c>&gt; 0</c>; the configured finite
+    /// default (<c>DefaultPointLightRange</c> for point lights, <c>DefaultSpotLightRange</c> for
+    /// spot lights) when <c>range</c> is omitted (no diagnostic); or that same configured finite
+    /// default with a Warning diagnostic when the value is <c>&lt;= 0</c> or non-numeric.
+    /// Directional lights always return <c>0</c> without parsing or emitting a diagnostic, since
+    /// range does not apply to them.
     /// </returns>
     private float ParseRange(JObject lightObj, int index, LightKind kind)
     {
@@ -406,18 +406,22 @@ internal sealed class LightConverter
 
         var rangeToken = lightObj[RangePropertyName];
 
-        // Requirement 3.7: omitted (or explicit null) range defaults to the infinite-range
-        // sentinel silently.
+        // Requirement 3.7: omitted (or explicit null) range defaults to the configured finite
+        // default for the light kind silently.
         if (rangeToken is null || rangeToken.Type == JTokenType.Null)
         {
-            return kind == LightKind.Point ? _config.DefaultPointLightRange : _config.DefaultSpotLightRange;
+            return kind == LightKind.Point
+                ? _config.DefaultPointLightRange
+                : _config.DefaultSpotLightRange;
         }
 
-        // Requirement 6.6: a non-numeric or non-positive range is invalid → diagnostic + sentinel.
+        // Requirement 6.6: a non-numeric or non-positive range is invalid → diagnostic + configured default.
         if (!IsNumeric(rangeToken))
         {
             AddInvalidRangeDiagnostic(index);
-            return kind == LightKind.Point ? _config.DefaultPointLightRange : _config.DefaultSpotLightRange;
+            return kind == LightKind.Point
+                ? _config.DefaultPointLightRange
+                : _config.DefaultSpotLightRange;
         }
 
         var value = rangeToken.Value<float>();
@@ -425,7 +429,9 @@ internal sealed class LightConverter
         if (float.IsNaN(value) || value <= 0.0f)
         {
             AddInvalidRangeDiagnostic(index);
-            return kind == LightKind.Point ? _config.DefaultPointLightRange : _config.DefaultSpotLightRange;
+            return kind == LightKind.Point
+                ? _config.DefaultPointLightRange
+                : _config.DefaultSpotLightRange;
         }
 
         // Requirement 3.6: numeric and > 0 → use the value.
@@ -440,7 +446,7 @@ internal sealed class LightConverter
         _diagnostics.Add(
             new ImportDiagnostic(
                 DiagnosticSeverity.Warning,
-                $"KHR_lights_punctual light at index {index} has an invalid 'range'; expected a numeric value > 0. Using infinite range.",
+                $"KHR_lights_punctual light at index {index} has an invalid 'range'; expected a numeric value > 0. Using the configured default range.",
                 "Light",
                 index
             )
@@ -537,6 +543,19 @@ internal sealed class LightConverter
             outer = ParsedLight.DefaultOuterConeAngle;
         }
 
+        // Requirement 2.7: the independent inner/outer validation above compares each angle
+        // against the counterpart's value-or-default, so a provided angle accepted against an
+        // invalid counterpart (later reset to its small default) can leave the resulting pair with
+        // inner >= outer. Re-validate the resolved pair and fall back to the documented defaults
+        // (0.0, PI/4) when the invariant is violated so the returned (inner, outer) always
+        // satisfies inner < outer. Valid pairs with inner < outer are preserved verbatim.
+        if (inner >= outer)
+        {
+            AddInvalidConeAnglePairDiagnostic(index);
+            inner = ParsedLight.DefaultInnerConeAngle;
+            outer = ParsedLight.DefaultOuterConeAngle;
+        }
+
         return (inner, outer);
     }
 
@@ -564,6 +583,23 @@ internal sealed class LightConverter
             new ImportDiagnostic(
                 DiagnosticSeverity.Warning,
                 $"KHR_lights_punctual light at index {index} has an invalid 'spot.outerConeAngle'; expected a numeric value > innerConeAngle and <= PI/2. Using default outer cone angle PI/4.",
+                "Light",
+                index
+            )
+        );
+    }
+
+    /// <summary>
+    /// Adds the standard Warning diagnostic for a resolved spot cone-angle pair that violates the
+    /// <c>inner &lt; outer</c> invariant after independent validation, indicating the documented
+    /// defaults <c>(0.0, PI/4)</c> were applied.
+    /// </summary>
+    private void AddInvalidConeAnglePairDiagnostic(int index)
+    {
+        _diagnostics.Add(
+            new ImportDiagnostic(
+                DiagnosticSeverity.Warning,
+                $"KHR_lights_punctual light at index {index} has spot cone angles where innerConeAngle is not less than outerConeAngle. Using default cone angles (0.0, PI/4).",
                 "Light",
                 index
             )

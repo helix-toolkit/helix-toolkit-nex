@@ -20,9 +20,10 @@ namespace HelixToolkit.Nex.glTF.Internal;
 /// candela (lm/sr) for point and spot lights.
 /// </param>
 /// <param name="Range">
-/// Distance cutoff for point and spot lights, &gt; 0, or
-/// <see cref="ParsedLight.InfiniteRange"/> when no cutoff applies. Ignored for
-/// directional lights.
+/// Distance cutoff for point and spot lights, &gt; 0. When <c>range</c> is omitted,
+/// point and spot lights fall back to the configured finite default
+/// (<c>DefaultPointLightRange</c> / <c>DefaultSpotLightRange</c>). Directional lights
+/// use <c>0</c> and ignore this value.
 /// </param>
 /// <param name="InnerConeAngle">
 /// Spot light inner cone angle in radians. Ignored for non-spot lights.
