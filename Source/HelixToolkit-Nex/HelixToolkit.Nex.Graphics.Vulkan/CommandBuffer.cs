@@ -1271,12 +1271,7 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
                 );
                 continue;
             }
-            CmdBuffer.BufferBarrier2(
-                buf,
-                VkPipelineStageFlags2.VertexShader | VkPipelineStageFlags2.FragmentShader,
-                VkPipelineStageFlags2.ComputeShader | VkPipelineStageFlags2.Transfer
-            );
-            buf.ClearDirty();
+            Barrier(handle, false);
         }
 
         VK.vkCmdDispatch(
@@ -1682,7 +1677,7 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
                 srcStage |= VkPipelineStageFlags2.VertexInput;
             }
 
-            var dstStage = VkPipelineStageFlags2.VertexShader;
+            var dstStage = VkPipelineStageFlags2.VertexShader | VkPipelineStageFlags2.ComputeShader;
 
             if (dstBuf.VkUsageFlags.HasAllFlags(VK.VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT))
             {
@@ -1938,7 +1933,7 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
             VK.vkCmdUpdateBuffer(CmdBuffer, buf!.VkBuffer, bufferOffset, size, (void*)data);
         }
 
-        var dstStage = VkPipelineStageFlags2.VertexShader;
+        var dstStage = VkPipelineStageFlags2.VertexShader | VkPipelineStageFlags2.ComputeShader;
 
         if (buf.VkUsageFlags.HasAllFlags(VK.VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT))
         {
