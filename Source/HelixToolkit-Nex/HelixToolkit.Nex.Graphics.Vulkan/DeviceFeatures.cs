@@ -46,6 +46,7 @@ internal static class DeviceFeatures
             multiview = supported.multiview,
             samplerYcbcrConversion = supported.samplerYcbcrConversion,
             shaderDrawParameters = VkBool32.True,
+            storageBuffer16BitAccess = VkBool32.True,
         };
     }
 

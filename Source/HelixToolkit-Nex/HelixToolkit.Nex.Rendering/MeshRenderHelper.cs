@@ -72,7 +72,7 @@ public static class MeshRenderHelper
                 cmdBuf.SetColorWriteEnabled(res.Pass.ColorWrites);
             }
         }
-        foreach (var materialType in stream.GetMaterialTypesCore())
+        foreach (var materialType in stream.GetMaterialTypes())
         {
             var range = stream.GetRangeByMaterial(materialType);
             if (range.Empty)
@@ -144,7 +144,7 @@ public static class MeshRenderHelper
                 cmdBuf.SetColorWriteEnabled(res.Pass.ColorWrites);
             }
         }
-        foreach (var materialType in stream.GetMaterialTypesCore())
+        foreach (var materialType in stream.GetMaterialTypes())
         {
             var range = stream.GetRangeByMaterial(materialType);
             if (range.Empty)

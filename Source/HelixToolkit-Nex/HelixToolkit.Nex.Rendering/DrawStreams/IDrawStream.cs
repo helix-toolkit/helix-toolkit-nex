@@ -41,13 +41,7 @@ public interface IDrawStream<DRAW_TYPE> : IRenderData, IDisposable where DRAW_TY
     /// Returns an empty enumerable if the stream contains no draws.
     /// </summary>
     /// <returns>The distinct set of <see cref="MaterialTypeId"/> values across all active draws.</returns>
-    IEnumerable<MaterialTypeId> GetMaterialTypes();
-
-    /// <summary>
-    /// Provides a low-level enumerator over the distinct material types in this stream without heap allocations.
-    /// </summary>
-    /// <returns>A struct enumerator over the distinct material types.</returns>
-    ReadOnlySpan<MaterialTypeId> GetMaterialTypesCore();
+    ReadOnlySpan<MaterialTypeId> GetMaterialTypes();
 
     /// <summary>
     /// Gets the draw range (start index and count) for a specific material type within this stream.

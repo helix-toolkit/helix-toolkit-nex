@@ -1977,7 +1977,7 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
             );
             return false;
         }
-        if (!buf.IsDirty && !force)
+        if (!buf.IsDirty && !force && _ctx.Config.EnableLazyBufferBarrier)
         {
             return true; // no need for a barrier if the buffer is not dirty
         }

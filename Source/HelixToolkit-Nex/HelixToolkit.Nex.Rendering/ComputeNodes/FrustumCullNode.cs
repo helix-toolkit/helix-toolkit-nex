@@ -167,6 +167,7 @@ public sealed class FrustumCullNode : ComputeNode
             new Dimensions(GpuFrustumCulling.GetGroupSize(stream.Count), 1, 1),
             deps
         );
+        context.Context.MarkDirty(stream.Buffer); // Mark the buffer as dirty to ensure the GPU sees the updated visibility flags after culling.
     }
 
     private void ResetMeshDrawInstancingCount(
@@ -190,6 +191,7 @@ public sealed class FrustumCullNode : ComputeNode
             new Dimensions(GpuFrustumCulling.GetGroupSize(stream.Count), 1, 1),
             Dependencies.Empty
         );
+        stream.Barrier(cmdBuffer, force: true); // Ensure the reset is completed before culling.
     }
 
     private void CullInstancingMeshes(
@@ -206,7 +208,7 @@ public sealed class FrustumCullNode : ComputeNode
         };
         // For instancing meshes
         cmdBuffer.BindComputePipeline(_instancingCullingPipeline);
-        foreach (var matId in stream.GetMaterialTypesCore())
+        foreach (var matId in stream.GetMaterialTypes())
         {
             var subRange = stream.GetRangeByMaterial(matId);
             for (var i = subRange.Start; i < subRange.End; ++i)
@@ -225,6 +227,7 @@ public sealed class FrustumCullNode : ComputeNode
                 );
             }
         }
+        context.Context.MarkDirty(stream.Buffer); // Mark the buffer as dirty to ensure the GPU sees the updated instance counts after culling.
     }
 
     private void CreateCullingPipeline()
