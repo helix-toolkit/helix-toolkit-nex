@@ -35,7 +35,8 @@ namespace HelixToolkit.Nex.glTF.Tests.Properties;
 [TestClass]
 public class InvalidLightReferencePropertyTests
 {
-    private static readonly Config FsCheckConfig = Config.Default.WithMaxTest(100);
+    // Use QuickThrowOnFailure so a falsified property actually throws (and fails the test).
+    private static readonly Config FsCheckConfig = Config.QuickThrowOnFailure;
 
     /// <summary>An invalid <c>type</c> string that <see cref="LightConverter"/> cannot convert,
     /// yielding a <c>null</c> parsed slot at that index.</summary>
@@ -228,7 +229,8 @@ public class InvalidLightReferencePropertyTests
     /// </summary>
     private static (Node node, List<ImportDiagnostic> Diagnostics) BuildAndImport(
         bool[] slotValidity,
-        int referencedLightIndex
+        int referencedLightIndex,
+        World world
     )
     {
         // Document-level KHR_lights_punctual extension: one light entry per slot. A valid slot is a
@@ -269,13 +271,12 @@ public class InvalidLightReferencePropertyTests
             },
         };
 
-        using var world = World.CreateWorld();
         var diagnostics = new List<ImportDiagnostic>();
 
         var accessorReader = new AccessorReader(model, []);
         using var geoManager = new StubGeometryManager();
         var manifest = new ResourceManifest();
-        var meshConverter = new MeshConverter(geoManager, accessorReader, diagnostics, manifest);
+        var meshConverter = new MeshConverter(geoManager, accessorReader, diagnostics, manifest, MeshConverterTestDefaults.Config, MeshConverterTestDefaults.Decoder, false);
 
         using var textureRepo = new StubTextureRepository();
         using var samplerRepo = new StubSamplerRepository();
@@ -307,11 +308,37 @@ public class InvalidLightReferencePropertyTests
         );
 
         // BuildScene populates the parsed-lights list (BuildNode alone does not), so reference
-        // resolution/validation is exercised. The scene's single root-level node is the light node.
+        // resolution/validation is exercised. Robust node mapping: find the referencing node by its
+        // glTF name rather than assuming a fixed child index (no light is attached for invalid
+        // references, so the node cannot be found by a light component).
         var root = sceneBuilder.BuildScene(model, 0);
-        var lightNode = root!.Children![0]!;
+        var lightNode = FindNodeByName(root, "LightReferenceNode");
+        Assert.IsNotNull(lightNode, "Expected the referencing node to be present in the scene.");
 
-        return (lightNode, diagnostics);
+        return (lightNode!, diagnostics);
+    }
+
+    /// <summary>
+    /// Recursively finds the first node with the given name, or <c>null</c> if none matches.
+    /// </summary>
+    private static Node? FindNodeByName(Node node, string name)
+    {
+        if (string.Equals(node.Name, name, StringComparison.Ordinal))
+        {
+            return node;
+        }
+        if (node.Children != null)
+        {
+            foreach (var child in node.Children)
+            {
+                var found = FindNodeByName(child, name);
+                if (found != null)
+                {
+                    return found;
+                }
+            }
+        }
+        return null;
     }
 
     /// <summary>
@@ -359,7 +386,9 @@ public class InvalidLightReferencePropertyTests
                 Arb.From(inputGen),
                 ((bool[] slots, int index) input) =>
                 {
-                    var (node, diagnostics) = BuildAndImport(input.slots, input.index);
+                    // Keep the ECS world alive while reading components/diagnostics.
+                    using var world = World.CreateWorld();
+                    var (node, diagnostics) = BuildAndImport(input.slots, input.index, world);
 
                     // (a) No punctual light component is attached, regardless of failure mode.
                     if (HasAnyLightComponent(node))

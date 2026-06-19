@@ -318,12 +318,7 @@ public class ImportContinuationPropertyTests
                     var accessorReader = new AccessorReader(model, []);
                     using var geoManager = new StubGeometryManager();
                     var manifest = new ResourceManifest();
-                    var meshConverter = new MeshConverter(
-                        geoManager,
-                        accessorReader,
-                        diagnostics,
-                        manifest
-                    );
+                    var meshConverter = new MeshConverter(geoManager, accessorReader, diagnostics, manifest, MeshConverterTestDefaults.Config, MeshConverterTestDefaults.Decoder, false);
 
                     using var textureRepo = new StubTextureRepository();
                     using var samplerRepo = new StubSamplerRepository();

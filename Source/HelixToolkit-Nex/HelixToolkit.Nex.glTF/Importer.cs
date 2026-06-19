@@ -2,6 +2,7 @@ using glTFLoader;
 using glTFLoader.Schema;
 using HelixToolkit.Nex.Engine;
 using HelixToolkit.Nex.glTF.Internal;
+using HelixToolkit.Nex.glTF.Internal.Draco;
 using Node = HelixToolkit.Nex.Scene.Node;
 
 namespace HelixToolkit.Nex.glTF;
@@ -107,11 +108,16 @@ public class Importer
         var resourceManager = worldData.ResourceManager;
         var manifest = new ResourceManifest(sessionId);
         var accessorReader = new AccessorReader(model, bufferData);
+        bool dracoRequired = IsDracoRequired(model);
+        var dracoDecoder = new DracoDecoder();
         var meshConverter = new MeshConverter(
             resourceManager.Geometries,
             accessorReader,
             diagnostics,
-            manifest
+            manifest,
+            config,
+            dracoDecoder,
+            dracoRequired
         );
         var textureLoader = new TextureLoader(
             resourceManager.TextureRepository,
@@ -281,11 +287,16 @@ public class Importer
         var resourceManager = worldData.ResourceManager;
         var manifest = new ResourceManifest(sessionId);
         var accessorReader = new AccessorReader(model, bufferData);
+        bool dracoRequired = IsDracoRequired(model);
+        var dracoDecoder = new DracoDecoder();
         var meshConverter = new MeshConverter(
             resourceManager.Geometries,
             accessorReader,
             diagnostics,
-            manifest
+            manifest,
+            config,
+            dracoDecoder,
+            dracoRequired
         );
         var textureLoader = new TextureLoader(
             resourceManager.TextureRepository,
@@ -354,6 +365,41 @@ public class Importer
             Diagnostics = diagnostics,
             Resources = manifest,
         };
+    }
+
+    /// <summary>
+    /// Determines whether <c>KHR_draco_mesh_compression</c> is listed in the model's
+    /// <c>extensionsRequired</c> array. This governs the diagnostic severity used when a Draco
+    /// primitive cannot be decoded (Error when required, Warning otherwise).
+    /// </summary>
+    /// <param name="model">The deserialized glTF model.</param>
+    /// <returns>
+    /// <see langword="true"/> when <c>KHR_draco_mesh_compression</c> appears in
+    /// <c>extensionsRequired</c>; otherwise <see langword="false"/>.
+    /// </returns>
+    private static bool IsDracoRequired(Gltf model)
+    {
+        var required = model.ExtensionsRequired;
+        if (required == null)
+        {
+            return false;
+        }
+
+        for (int i = 0; i < required.Length; i++)
+        {
+            if (
+                string.Equals(
+                    required[i],
+                    DracoExtensionData.ExtensionName,
+                    StringComparison.Ordinal
+                )
+            )
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>

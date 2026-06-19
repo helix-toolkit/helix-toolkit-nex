@@ -7,6 +7,7 @@ using HelixToolkit.Nex.Graphics;
 using HelixToolkit.Nex.Graphics.Mock;
 using HelixToolkit.Nex.Material;
 using HelixToolkit.Nex.Repository;
+using HelixToolkit.Nex.Scene;
 using HelixToolkit.Nex.Shaders;
 using Newtonsoft.Json.Linq;
 using Gltf = glTFLoader.Schema.Gltf;
@@ -17,24 +18,28 @@ using Node = HelixToolkit.Nex.Scene.Node;
 
 namespace HelixToolkit.Nex.glTF.Tests.Properties;
 
-// Feature: gltf-directionallight-render-fix — unit/example tests for light direction edge cases.
+// Feature: gltf-light-import-cr-fixes — unit/example tests for node-transform-driven light direction.
 
 /// <summary>
-/// Unit/example tests for the light-direction derivation edge cases in
-/// <see cref="SceneBuilder"/> (task 1.3). Mirrors the <c>TransformPropertyTests</c> build
-/// pattern: an in-memory <see cref="Gltf"/> model carrying a <c>KHR_lights_punctual</c>
-/// directional light is built via <see cref="SceneBuilder.BuildNode"/> against a
-/// <see cref="World"/> with mock managers, then the attached
+/// Unit/example tests for the node-transform-driven directional light model in
+/// <see cref="SceneBuilder"/>. The importer attaches the <see cref="DirectionalLightComponent"/> to
+/// the referencing node's own entity and leaves <c>Direction</c> at the component default
+/// <c>-Vector3.UnitZ</c>; orientation is delegated to the node transform. Mirrors the
+/// <c>TransformPropertyTests</c> build pattern: an in-memory <see cref="Gltf"/> model carrying a
+/// <c>KHR_lights_punctual</c> directional light is built via <see cref="SceneBuilder.BuildScene"/>
+/// against a <see cref="World"/> with mock managers, then the attached
 /// <see cref="DirectionalLightComponent"/> and emitted diagnostics are asserted.
 /// <para>
 /// Covered cases:
 /// <list type="bullet">
-/// <item>Identity rotation yields direction ≈ <c>(0,0,-1)</c> (Requirement 2.2 anchor).</item>
-/// <item>Degenerate (zero-scale) transform leaves direction at the component default with no
-/// <c>NaN</c> and emits an error diagnostic naming the node and light index (Requirement 2.5).</item>
+/// <item>An identity-transform directional light keeps the component default direction
+/// <c>(0,0,-1)</c> and emits no error diagnostic.</item>
+/// <item>A rotated/degenerate transform does not cause the importer to derive or write a
+/// per-light direction (no NaN, no epsilon-normalization, no error diagnostic): the component keeps
+/// the default <c>-Vector3.UnitZ</c> and the node transform drives orientation.</item>
 /// </list>
 /// </para>
-/// **Validates: Requirements 2.2, 2.5**
+/// **Validates: Requirements 2.1, 2.3**
 /// </summary>
 [TestClass]
 public class LightDirectionEdgeCaseTests
@@ -259,7 +264,7 @@ public class LightDirectionEdgeCaseTests
         var manifest = new ResourceManifest();
         var accessorReader = new AccessorReader(model, []);
         using var geoManager = new StubGeometryManager();
-        var meshConverter = new MeshConverter(geoManager, accessorReader, diagnostics, manifest);
+        var meshConverter = new MeshConverter(geoManager, accessorReader, diagnostics, manifest, MeshConverterTestDefaults.Config, MeshConverterTestDefaults.Decoder, false);
 
         using var textureRepo = new StubTextureRepository();
         using var samplerRepo = new StubSamplerRepository();
@@ -291,23 +296,53 @@ public class LightDirectionEdgeCaseTests
         );
 
         // BuildScene (not BuildNode) is used so the document-level KHR_lights_punctual lights are
-        // parsed into the builder before per-node attachment runs. The light node (glTF index 0)
-        // carries no mesh, so it is attached directly as the first child of the scene root.
+        // parsed into the builder before per-node attachment runs.
         var root = sceneBuilder.BuildScene(model, -1);
-        var node = root.Children![0];
-        return (node, diagnostics);
+
+        // Update the transform hierarchy so the node's engine-observable world transform is current.
+        world.SortSceneNodes();
+        world.UpdateTransforms();
+
+        // Robust node mapping: find the node carrying the directional light component rather than
+        // assuming a fixed child index.
+        var node = FindNodeWithDirectionalLight(root);
+        Assert.IsNotNull(
+            node,
+            "Expected a DirectionalLightComponent on the referencing node's own entity."
+        );
+        return (node!, diagnostics);
+    }
+
+    private static Node? FindNodeWithDirectionalLight(Node node)
+    {
+        if (node.Entity.TryGet<DirectionalLightComponent>(out _))
+        {
+            return node;
+        }
+        if (node.Children != null)
+        {
+            foreach (var child in node.Children)
+            {
+                var found = FindNodeWithDirectionalLight(child);
+                if (found != null)
+                {
+                    return found;
+                }
+            }
+        }
+        return null;
     }
 
     #endregion
 
     /// <summary>
-    /// Requirement 2.2 anchor: a directional light on a node with identity rotation produces a
-    /// Light_Direction equal to the world <c>-Z</c> axis <c>(0, 0, -1)</c> within <c>1e-5</c> per
-    /// component, and no error diagnostic is emitted.
-    /// **Validates: Requirements 2.2**
+    /// A directional light on a node with identity rotation keeps the component default
+    /// <c>Direction == (0, 0, -1)</c> (the importer sets no world-derived direction), with no
+    /// <c>NaN</c> and no error diagnostic.
+    /// **Validates: Requirements 2.1, 2.3**
     /// </summary>
     [TestMethod]
-    public void IdentityRotation_ProducesNegativeZDirection()
+    public void IdentityRotation_KeepsDefaultNegativeZDirection()
     {
         using var world = World.CreateWorld();
 
@@ -318,7 +353,7 @@ public class LightDirectionEdgeCaseTests
 
         Assert.IsTrue(
             node.Entity.TryGet<DirectionalLightComponent>(out var light),
-            "Expected a DirectionalLightComponent to be attached to the node."
+            "Expected a DirectionalLightComponent to be attached to the referencing node."
         );
 
         var direction = light.Direction;
@@ -329,9 +364,14 @@ public class LightDirectionEdgeCaseTests
         );
         Assert.AreEqual(0.0f, direction.X, Tolerance, "Direction.X should be 0.");
         Assert.AreEqual(0.0f, direction.Y, Tolerance, "Direction.Y should be 0.");
-        Assert.AreEqual(-1.0f, direction.Z, Tolerance, "Direction.Z should be -1 (world -Z axis).");
+        Assert.AreEqual(
+            -1.0f,
+            direction.Z,
+            Tolerance,
+            "Direction.Z should be -1 (component default -Z)."
+        );
 
-        // The light is well-formed; no degenerate-direction error should be emitted.
+        // The light is well-formed; no diagnostic is emitted.
         Assert.IsFalse(
             diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error),
             "No error diagnostic should be emitted for a valid identity-rotation light."
@@ -339,64 +379,64 @@ public class LightDirectionEdgeCaseTests
     }
 
     /// <summary>
-    /// Requirement 2.5: when the node world transform is degenerate (zero/near-zero scale) so the
-    /// transformed local <c>-Z</c> axis has length below the normalize epsilon, the attached
-    /// directional light's Direction is left unchanged at the component default (no <c>NaN</c>
-    /// written), the component is still attached, and a single error diagnostic naming the node
-    /// index and the offending light index is emitted.
-    /// **Validates: Requirements 2.5**
+    /// A rotated node does NOT cause the importer to derive or write a per-light direction: the
+    /// attached directional light keeps the component default <c>-Vector3.UnitZ</c> (no
+    /// world-derivation, no NaN, no epsilon normalization, no error diagnostic), while the node's
+    /// engine-observable world transform carries the rotation. Orientation is delegated to the node
+    /// transform.
+    /// **Validates: Requirements 2.1, 2.3**
     /// </summary>
     [TestMethod]
-    public void DegenerateTransform_LeavesDirectionAtDefault_NoNaN_EmitsErrorDiagnostic()
+    public void RotatedNode_KeepsDefaultDirection_NoNaN_NoErrorDiagnostic_NodeTransformCarriesRotation()
     {
         using var world = World.CreateWorld();
 
-        // Zero scale makes the upper-left 3x3 of the world matrix zero, so TransformNormal(-Z)
-        // yields a zero-length vector that cannot be normalized (the degenerate path).
+        // A 90° rotation about Y. Under the abandoned world-derivation model this would have changed
+        // the light's Direction; under the node-transform model the component keeps its default.
+        var rotation = Quaternion.CreateFromAxisAngle(Vector3.UnitY, MathF.PI / 2.0f);
         var gltfNode = new GltfNode
         {
-            Name = "DegenerateSun",
+            Name = "RotatedSun",
             Translation = [0f, 0f, 0f],
-            Rotation = [0f, 0f, 0f, 1f],
-            Scale = [0f, 0f, 0f],
+            Rotation = [rotation.X, rotation.Y, rotation.Z, rotation.W],
+            Scale = [1f, 1f, 1f],
         };
 
         var (node, diagnostics) = BuildSingleLightNode(gltfNode, world);
 
-        // The component is still attached despite the degenerate transform.
         Assert.IsTrue(
             node.Entity.TryGet<DirectionalLightComponent>(out var light),
-            "The directional light component should still be attached for a degenerate transform."
+            "The directional light component should be attached to the referencing node."
         );
 
         var direction = light.Direction;
 
-        // Direction must be left at the component default (Vector3.Zero), never NaN.
+        // No NaN and the direction stays at the component default (no world-derived value).
         Assert.IsFalse(
             float.IsNaN(direction.X) || float.IsNaN(direction.Y) || float.IsNaN(direction.Z),
-            "Direction must not contain NaN for a degenerate transform."
+            "Direction must not contain NaN."
         );
+        Assert.AreEqual(0.0f, direction.X, Tolerance, "Direction.X should remain default 0.");
+        Assert.AreEqual(0.0f, direction.Y, Tolerance, "Direction.Y should remain default 0.");
         Assert.AreEqual(
-            Vector3.Zero,
-            direction,
-            "Direction should be left unchanged at the component default (0,0,0)."
+            -1.0f,
+            direction.Z,
+            Tolerance,
+            "Direction.Z should remain the component default -1 (no world-derived direction)."
         );
 
-        // Exactly one error diagnostic, naming the node index (0) and the offending light index (0).
-        var errors = diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ToList();
-        Assert.AreEqual(
-            1,
-            errors.Count,
-            "Exactly one error diagnostic should be emitted for the degenerate transform."
+        // The importer emits no error diagnostic: there is no degenerate-direction/NaN-guard path.
+        Assert.IsFalse(
+            diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error),
+            "No error diagnostic should be emitted; direction is delegated to the node transform."
         );
 
-        var error = errors[0];
-        Assert.AreEqual("Node", error.ElementType, "Diagnostic should reference the node element.");
-        Assert.AreEqual(0, error.ElementIndex, "Diagnostic should name node index 0.");
-        StringAssert.Contains(
-            error.Message,
-            "light index 0",
-            "Diagnostic message should name the offending light index (0)."
-        );
+        // The node transform carries the rotation (engine-observable world transform), so orientation
+        // is driven by the node, not by an importer-set component direction.
+        var rotationRow = node.Transform.Rotation;
+        Assert.AreEqual(rotation.X, rotationRow.X, Tolerance, "Node rotation X should match.");
+        Assert.AreEqual(rotation.Y, rotationRow.Y, Tolerance, "Node rotation Y should match.");
+        Assert.AreEqual(rotation.Z, rotationRow.Z, Tolerance, "Node rotation Z should match.");
+        Assert.AreEqual(rotation.W, rotationRow.W, Tolerance, "Node rotation W should match.");
     }
 }

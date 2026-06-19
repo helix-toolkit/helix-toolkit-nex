@@ -291,12 +291,7 @@ public class WorldTransformHierarchyPropertyTests
                     var accessorReader = new AccessorReader(model, []);
                     using var geoManager = new StubGeometryManager();
                     var manifest = new ResourceManifest();
-                    var meshConverter = new MeshConverter(
-                        geoManager,
-                        accessorReader,
-                        diagnostics,
-                        manifest
-                    );
+                    var meshConverter = new MeshConverter(geoManager, accessorReader, diagnostics, manifest, MeshConverterTestDefaults.Config, MeshConverterTestDefaults.Decoder, false);
 
                     using var textureRepo = new StubTextureRepository();
                     using var samplerRepo = new StubSamplerRepository();
@@ -327,8 +322,10 @@ public class WorldTransformHierarchyPropertyTests
                         ImporterConfig.Default
                     );
 
-                    // Build the node tree directly from the root (parentWorld = Identity).
-                    var engineRoot = sceneBuilder.BuildNode(model, 0, null, Matrix4x4.Identity);
+                    // Build the node tree directly from the root. The engine-observable world
+                    // transform is verified below by composing each node's local transform against
+                    // its parent's world (parentWorld = Identity at the root).
+                    var engineRoot = sceneBuilder.BuildNode(model, 0, null);
 
                     // Verify hierarchy, child ordering, local transform, and world composition.
                     return Verify(engineRoot, root, Matrix4x4.Identity, Matrix4x4.Identity);
