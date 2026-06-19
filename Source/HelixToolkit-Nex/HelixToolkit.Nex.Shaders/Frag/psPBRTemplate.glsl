@@ -51,12 +51,12 @@ layout(buffer_reference, std430, buffer_reference_align = 4) readonly buffer Dir
     DirectionalLights value;
 };
 
-layout(buffer_reference, scalar) readonly buffer LightGridBuffer {
+layout(buffer_reference, scalar, buffer_reference_align = 8) readonly buffer LightGridBuffer {
     LightGridTile tiles[];
 };
 
-layout(buffer_reference, scalar) readonly buffer LightIndexBuffer {
-    uint indices[];
+layout(buffer_reference, scalar, buffer_reference_align = 2) readonly buffer LightIndexBuffer {
+    uint16_t indices[];
 };
 
 
@@ -252,7 +252,7 @@ vec4 forwardPlusLighting(in PBRMaterial material)
 #endif
             // Process lights in this tile
             for (uint i = 0; i < activeLightCount; ++i) {
-                uint lightIndex = lightIndices.indices[tile.lightIndexOffset + i];
+                uint lightIndex = uint(lightIndices.indices[tile.lightIndexOffset + i]);
                 Light light = lightBuf.lights[lightIndex];
 #ifdef TRANSPARENT_PASS
                 finalC += hasTransmission

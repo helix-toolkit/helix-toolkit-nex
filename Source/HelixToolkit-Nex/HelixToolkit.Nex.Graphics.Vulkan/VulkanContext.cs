@@ -82,6 +82,13 @@ public sealed class VulkanContextConfig()
     /// Maximum staging buffer size. Default is 128MB.
     /// </summary>
     public uint MaxStagingBufferSize = 128u * 1024u * 1024u;
+
+    /// <summary>
+    /// When true, enables a lazy buffer barrier strategy, where buffer memory barriers are only inserted when necessary based on dirty state tracking.
+    /// This can improve performance by reducing redundant barriers, but may lead to subtle synchronization issues if not used carefully. Default true.
+    /// Disable this if you encounter synchronization issues or want to ensure maximum correctness at the cost of potential performance overhead from extra barriers.
+    /// </summary>
+    public bool EnableLazyBufferBarrier = true;
 };
 
 internal sealed partial class VulkanContext
