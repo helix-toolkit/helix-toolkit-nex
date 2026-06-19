@@ -39,8 +39,22 @@ internal static class DeviceFeatures
         };
     }
 
-    public static VkPhysicalDeviceVulkan11Features CreateFeatures11(ref VkPhysicalDeviceVulkan11Features supported)
+    public static VkPhysicalDeviceVulkan11Features CreateFeatures11(
+        ref VkPhysicalDeviceVulkan11Features supported
+    )
     {
+        if (!supported.storageBuffer16BitAccess)
+        {
+            throw new NotSupportedException(
+                "Required Vulkan feature 'storageBuffer16BitAccess' is not supported by this device."
+            );
+        }
+        if (!supported.shaderDrawParameters)
+        {
+            throw new NotSupportedException(
+                "Required Vulkan feature 'shaderDrawParameters' is not supported by this device."
+            );
+        }
         return new VkPhysicalDeviceVulkan11Features()
         {
             multiview = supported.multiview,
@@ -50,12 +64,20 @@ internal static class DeviceFeatures
         };
     }
 
-    public static VkPhysicalDeviceVulkan12Features CreateFeatures12(ref VkPhysicalDeviceVulkan12Features supported)
+    public static VkPhysicalDeviceVulkan12Features CreateFeatures12(
+        ref VkPhysicalDeviceVulkan12Features supported
+    )
     {
+        if (!supported.drawIndirectCount)
+        {
+            throw new NotSupportedException(
+                "Required Vulkan feature 'drawIndirectCount' is not supported by this device."
+            );
+        }
         return new VkPhysicalDeviceVulkan12Features()
         {
             samplerMirrorClampToEdge = VkBool32.True,
-            drawIndirectCount = supported.drawIndirectCount, // enable if supported
+            drawIndirectCount = VkBool32.True, // enable if supported
             descriptorIndexing = VkBool32.True,
             shaderSampledImageArrayNonUniformIndexing = VkBool32.True,
             descriptorBindingSampledImageUpdateAfterBind = VkBool32.True,
@@ -74,7 +96,9 @@ internal static class DeviceFeatures
         };
     }
 
-    public static VkPhysicalDeviceVulkan13Features CreateFeatures13(ref VkPhysicalDeviceVulkan13Features supported)
+    public static VkPhysicalDeviceVulkan13Features CreateFeatures13(
+        ref VkPhysicalDeviceVulkan13Features supported
+    )
     {
         return new VkPhysicalDeviceVulkan13Features()
         {
