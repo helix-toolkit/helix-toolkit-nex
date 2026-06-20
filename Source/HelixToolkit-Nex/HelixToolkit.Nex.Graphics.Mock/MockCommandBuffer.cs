@@ -359,6 +359,14 @@ public class MockCommandBuffer : ICommandBuffer
         return true;
     }
 
+    public bool Barrier(ReadOnlySpan<BufferHandle> handles, bool force)
+    {
+        _recordedCommands.Add(
+            $"Barrier(buffers=[{string.Join(", ", handles.ToArray().Select(h => h.Index))}])"
+        );
+        return true;
+    }
+
     public void SetCheckpointMarker(ReadOnlySpan<byte> label)
     {
         _recordedCommands.Add($"SetCheckpointMarker({System.Text.Encoding.UTF8.GetString(label)})");
