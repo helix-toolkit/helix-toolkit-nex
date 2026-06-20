@@ -2032,6 +2032,11 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
                     offset = 0,
                     size = VK.VK_WHOLE_SIZE,
                 };
+                if (srcStage.HasAllFlags(VkPipelineStageFlags2.Host))
+                {
+                    barrier.srcAccessMask |=
+                        VkAccessFlags2.HostRead | VkAccessFlags2.HostWrite;
+                }
                 if (srcStage.HasAllFlags(VkPipelineStageFlags2.Transfer))
                 {
                     barrier.srcAccessMask |=
@@ -2061,6 +2066,10 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
                 }
                 barriers[validCount++] = barrier;
                 buf.ClearDirty();
+            }
+            if (validCount == 0)
+            {
+                return true;
             }
             VkDependencyInfo depInfo = new()
             {

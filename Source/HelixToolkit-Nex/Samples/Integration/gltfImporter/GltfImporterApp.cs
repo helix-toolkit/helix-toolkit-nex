@@ -78,7 +78,7 @@ internal class GltfImporterApp : ApplicationBase
     private long _lastTimestamp = 0;
 
     // Importer config
-    private readonly ImporterConfig _importConfig = new()
+    public readonly ImporterConfig ImportConfig = new()
     {
         DefaultShadingMode = Shaders.Frag.PBRShadingMode.CAD,
     };
@@ -477,7 +477,7 @@ internal class GltfImporterApp : ApplicationBase
             return;
 
         var importer = new Importer();
-        var result = importer.Import(filePath, _worldDataProvider, _importConfig);
+        var result = importer.Import(filePath, _worldDataProvider, ImportConfig);
 
         if (!result.Success)
         {

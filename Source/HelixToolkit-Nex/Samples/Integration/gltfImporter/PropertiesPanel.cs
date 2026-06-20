@@ -4,6 +4,7 @@ using HelixToolkit.Nex.Maths;
 using HelixToolkit.Nex.Rendering;
 using HelixToolkit.Nex.Rendering.Components;
 using HelixToolkit.Nex.Scene;
+using HelixToolkit.Nex.Shaders.Frag;
 using ImGuiNET;
 using Gui = ImGuiNET.ImGui;
 using WorldDataProvider = HelixToolkit.Nex.Engine.WorldDataProvider;
@@ -65,6 +66,23 @@ internal class PropertiesPanel
                 if (Gui.ColorEdit3("Color", ref color))
                 {
                     light.Color = color.ToColor4(1);
+                }
+                var mode = _app.ImportConfig.DefaultShadingMode;
+                if (Gui.BeginCombo("Default Shading Mode", mode.ToString()))
+                {
+                    foreach (var value in Enum.GetValues<PBRShadingMode>())
+                    {
+                        var isSelected = value == mode;
+                        if (Gui.Selectable(value.ToString(), isSelected))
+                        {
+                            _app.ImportConfig.DefaultShadingMode = value;
+                        }
+                        if (isSelected)
+                        {
+                            Gui.SetItemDefaultFocus();
+                        }
+                    }
+                    Gui.EndCombo();
                 }
             }
             Gui.EndChild();
