@@ -31,6 +31,7 @@ HelixToolkit.Nex.Rendering is responsible for managing the rendering pipeline of
 | `BoundingBoxPostEffect`          | Renders wireframe bounding boxes for debugging purposes.                    |
 | `WireframePostEffect`            | Renders wireframe overlays on meshes with customizable color and depth bias.|
 | `BorderHighlightPostEffect`      | Renders colored outlines around mesh silhouettes.                           |
+| `RenderGraphResourceAllocationException` | Exception thrown when a render-graph resource fails to allocate. |
 
 ## Recent Changes
 
@@ -42,6 +43,7 @@ HelixToolkit.Nex.Rendering is responsible for managing the rendering pipeline of
 - **MeshDrawInfo**: Renamed from `MeshComponent` to better reflect its purpose.
 - **FrustumCullNode**: Updated to include line and point culling pipelines.
 - **DrawStream Enhancements**: Introduced `DrawStreamType` and `DrawStreamVariants` for more precise control over draw stream characteristics.
+- **RenderGraphResourceAllocationException**: Added to handle resource allocation failures in the render graph.
 
 ### Removed Features
 
@@ -62,6 +64,7 @@ HelixToolkit.Nex.Rendering is responsible for managing the rendering pipeline of
 ### ForwardPlusLightCullingNode
 
 - **Render Setup**: Added `OnSetupRender` method to manage texture dependencies.
+- **Light Count Limiting**: Added logic to cap the number of lights processed to prevent out-of-range indices.
 
 ### MeshDrawInfo
 
@@ -70,7 +73,7 @@ HelixToolkit.Nex.Rendering is responsible for managing the rendering pipeline of
 ### Draw Stream Enhancements
 
 - **DrawStreamType and DrawStreamVariants**: Introduced to replace `DrawStreamCategory` for more precise control over draw stream characteristics.
-- **IDrawStream**: Added `GetMaterialTypesCore` method for zero-allocation material type enumeration.
+- **IDrawStream**: Updated `GetMaterialTypes` method for zero-allocation material type enumeration.
 - **IDrawStreamRegistry**: Added `GetStreamsCore` method for zero-allocation stream enumeration.
 - **MeshDrawStreamEnumerable**: Introduced for efficient enumeration of draw streams without heap allocations.
 

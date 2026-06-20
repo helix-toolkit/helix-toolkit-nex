@@ -10,6 +10,7 @@ The `HelixToolkit.Nex.glTF` package is responsible for:
 - Handling the conversion of glTF materials to the engine's PBR material properties.
 - Managing GPU resources such as textures, samplers, and geometries created during the import process.
 - Providing diagnostics information about the import process, including warnings and errors.
+- Supporting Draco mesh compression for efficient geometry storage and transmission.
 
 This package fits into the HelixToolkit-Nex engine by enabling the integration of glTF assets, which are widely used in 3D graphics applications, into the engine's ECS-based architecture and rendering pipeline.
 
@@ -21,7 +22,7 @@ This package fits into the HelixToolkit-Nex engine by enabling the integration o
 | `ImportResult` | Contains the root node of the imported scene, diagnostics, and resource manifest. Implements `IDisposable` for cleanup. |
 | `ImportDiagnostic` | Represents a diagnostic entry with severity, message, and reference to the glTF element. |
 | `DiagnosticSeverity` | Enum indicating the severity level of an import diagnostic (Warning, Error). |
-| `ImporterConfig` | Configuration options for the glTF importer, including default shading mode. |
+| `ImporterConfig` | Configuration options for the glTF importer, including default shading mode and Draco decompression settings. |
 
 ## Usage Examples
 
@@ -102,4 +103,5 @@ asyncResult.Dispose();
 - **Dependencies**: Relies on the `HelixToolkit.Nex.Scene` for node and mesh management, `HelixToolkit.Nex.Material` for material properties, and `HelixToolkit.Nex.Repository` for managing GPU resources.
 - **Resource Management**: Utilizes `ResourceManifest` to track and dispose of GPU resources created during the import process.
 - **ECS Integration**: The package integrates with the HelixToolkit-Nex ECS architecture, allowing imported assets to be managed within the engine's entity-component system.
+- **Draco Compression**: Supports `KHR_draco_mesh_compression` for efficient mesh data storage and transmission. The importer can decode Draco-compressed meshes if the `EnableDracoDecompression` option is set in `ImporterConfig`.
 ```

@@ -93,11 +93,29 @@ ringBuffer.WriteDynamic(100, state, (ctx, s) => {
 
 ```csharp
 var commandBuffer = context.AcquireCommandBuffer();
-bool barrierCreated = commandBuffer.Barrier(buffer.Handle);
+bool barrierCreated = commandBuffer.Barrier(buffer.Handle, force: true);
 if (!barrierCreated)
 {
     // Handle error
 }
+```
+
+### Creating Multiple Memory Barriers
+
+```csharp
+var commandBuffer = context.AcquireCommandBuffer();
+var buffers = new BufferHandle[] { buffer1.Handle, buffer2.Handle };
+bool allBarriersCreated = commandBuffer.Barrier(buffers, force: true);
+if (!allBarriersCreated)
+{
+    // Handle error
+}
+```
+
+### Marking a Buffer as Dirty
+
+```csharp
+context.MarkDirty(buffer.Handle);
 ```
 
 ### Waiting for Command Buffer Completion
