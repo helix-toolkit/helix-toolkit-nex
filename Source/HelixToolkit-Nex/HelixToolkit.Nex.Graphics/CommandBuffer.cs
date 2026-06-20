@@ -576,6 +576,14 @@ public interface ICommandBuffer
     bool Barrier(in BufferHandle buffer, bool force = false);
 
     /// <summary>
+    /// Create GPU memory barriers for multiple buffers to ensure proper ordering of memory operations.
+    /// </summary>
+    /// <param name="buffers">A span of buffer handles for which to create the memory barriers.</param>
+    /// <param name="force">If set to <see langword="true"/>, the barriers will be created even if the buffers are not dirty.</param>
+    /// <returns>True if all barriers were successfully created; false if any buffer handle is invalid or a barrier could not be created.</returns>
+    bool Barrier(ReadOnlySpan<BufferHandle> buffers, bool force = false);
+
+    /// <summary>
     /// Sets a checkpoint marker with the specified label to identify a position or state in the process.
     /// </summary>
     /// <param name="label">The label that identifies the checkpoint marker. Cannot be null or empty.</param>

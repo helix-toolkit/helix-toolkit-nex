@@ -911,6 +911,73 @@ internal static class HxVkExtensions
         }
     }
 
+    public static void BufferBarrier2(
+        this VkCommandBuffer cmdbuffer,
+        ReadOnlySpan<VulkanBuffer> buf,
+        VkPipelineStageFlags2 srcStage,
+        VkPipelineStageFlags2 dstStage,
+        VkDeviceSize offset = 0,
+        VkDeviceSize size = VK.VK_WHOLE_SIZE
+    )
+    {
+        unsafe
+        {
+            var barriers = stackalloc VkBufferMemoryBarrier2[buf.Length];
+            var nonShaderStages =
+                VkPipelineStageFlags2.Transfer
+                | VkPipelineStageFlags2.DrawIndirect
+                | VkPipelineStageFlags2.VertexInput;
+            for (int i = 0; i < buf.Length; i++)
+            {
+                var b = buf[i];
+                var barrier = new VkBufferMemoryBarrier2()
+                {
+                    srcStageMask = srcStage,
+                    srcAccessMask = 0,
+                    dstStageMask = dstStage,
+                    dstAccessMask = 0,
+                    srcQueueFamilyIndex = VK.VK_QUEUE_FAMILY_IGNORED,
+                    dstQueueFamilyIndex = VK.VK_QUEUE_FAMILY_IGNORED,
+                    buffer = b.VkBuffer,
+                    offset = offset,
+                    size = size,
+                };
+                if (srcStage.HasAllFlags(VkPipelineStageFlags2.Transfer))
+                {
+                    barrier.srcAccessMask |= VkAccessFlags2.TransferRead | VkAccessFlags2.TransferWrite;
+                }
+                if (srcStage.HasAnyFlag(~nonShaderStages))
+                {
+                    barrier.srcAccessMask |= VkAccessFlags2.ShaderRead | VkAccessFlags2.ShaderWrite;
+                }
+                if (dstStage.HasAllFlags(VkPipelineStageFlags2.Transfer))
+                {
+                    barrier.dstAccessMask |= VkAccessFlags2.TransferRead | VkAccessFlags2.TransferWrite;
+                }
+                if (dstStage.HasAnyFlag(~nonShaderStages))
+                {
+                    barrier.dstAccessMask |= VkAccessFlags2.ShaderRead | VkAccessFlags2.ShaderWrite;
+                }
+                if (dstStage.HasAllFlags(VkPipelineStageFlags2.DrawIndirect))
+                {
+                    barrier.dstAccessMask |= VkAccessFlags2.IndirectCommandRead;
+                }
+                if (b.VkUsageFlags.HasAllFlags(VkBufferUsageFlags.IndexBuffer))
+                {
+                    barrier.dstAccessMask |= VkAccessFlags2.IndexRead;
+                    barrier.dstStageMask |= VkPipelineStageFlags2.IndexInput;
+                }
+                barriers[i] = barrier;
+            }
+            VkDependencyInfo depInfo = new()
+            {
+                bufferMemoryBarrierCount = (uint)buf.Length,
+                pBufferMemoryBarriers = barriers,
+            };
+            VK.vkCmdPipelineBarrier2(cmdbuffer, &depInfo);
+        }
+    }
+
     public static void TransitionToColorAttachment(
         this VkCommandBuffer buffer,
         VulkanImage colorTex

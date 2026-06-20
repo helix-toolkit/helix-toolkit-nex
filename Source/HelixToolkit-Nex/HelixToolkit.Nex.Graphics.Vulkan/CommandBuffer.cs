@@ -238,18 +238,7 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
         {
             TransitionToShaderReadOnly(tex);
         }
-        foreach (var buf in deps.BufferSpan)
-        {
-            if (!Barrier(in buf, false))
-            {
-                HxDebug.Assert(
-                    false,
-                    "Buffer is null or invalid. Make sure the buffer is created before using it in render pass."
-                );
-                continue;
-            }
-        }
-
+        Barrier(deps.BufferSpan, false);
         uint32_t numFbColorAttachments = fb.GetNumColorAttachments();
         uint32_t numPassColorAttachments = renderPass.GetNumColorAttachments();
 
@@ -1260,19 +1249,7 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
         {
             UseComputeTexture(handle, VkPipelineStageFlags2.ComputeShader);
         }
-        foreach (var handle in deps.BufferSpan)
-        {
-            var buf = _ctx.BuffersPool.Get(handle);
-            if (buf is null || !buf.Valid)
-            {
-                HxDebug.Assert(
-                    false,
-                    "Buffer is null or invalid. Make sure the buffer is created before using it as a compute shader resource."
-                );
-                continue;
-            }
-            Barrier(handle, false);
-        }
+        Barrier(deps.BufferSpan, false);
 
         VK.vkCmdDispatch(
             CmdBuffer,
@@ -1998,6 +1975,100 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
             dstStageFlags
         );
         buf.ClearDirty();
+        return true;
+    }
+
+    /// <inheritdoc/>
+    public bool Barrier(ReadOnlySpan<BufferHandle> buffers, bool force = false)
+    {
+        unsafe
+        {
+            var barriers = stackalloc VkBufferMemoryBarrier2[buffers.Length];
+            var validCount = 0;
+            var nonShaderStages =
+                VkPipelineStageFlags2.Transfer
+                | VkPipelineStageFlags2.DrawIndirect
+                | VkPipelineStageFlags2.VertexInput;
+            var srcStage = VkPipelineStageFlags2.Host | VkPipelineStageFlags2.ComputeShader;
+            for (var i = 0; i < buffers.Length; i++)
+            {
+                var buf = _ctx.BuffersPool.Get(buffers[i]);
+                if (buf is null || !buf.Valid)
+                {
+                    _logger.LogError(
+                        "Buffer at index {INDEX} is null or invalid. Make sure the buffer is created before binding it to the command buffer.",
+                        i
+                    );
+                    continue;
+                }
+                if (!buf.IsDirty && !force && _ctx.Config.EnableLazyBufferBarrier)
+                {
+                    continue; // no need for a barrier if the buffer is not dirty
+                }
+                var dstStage =
+                    VkPipelineStageFlags2.VertexShader
+                    | VkPipelineStageFlags2.FragmentShader
+                    | VkPipelineStageFlags2.ComputeShader;
+                if (
+                    buf.VkUsageFlags.HasAllFlags(VK.VK_BUFFER_USAGE_INDEX_BUFFER_BIT)
+                    || buf.VkUsageFlags.HasAllFlags(VK.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT)
+                )
+                {
+                    dstStage |= VkPipelineStageFlags2.VertexInput;
+                }
+                if (buf.VkUsageFlags.HasAllFlags(VK.VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT))
+                {
+                    dstStage |= VkPipelineStageFlags2.DrawIndirect;
+                }
+                var barrier = new VkBufferMemoryBarrier2()
+                {
+                    srcStageMask = srcStage,
+                    srcAccessMask = 0,
+                    dstStageMask = dstStage,
+                    dstAccessMask = 0,
+                    srcQueueFamilyIndex = VK.VK_QUEUE_FAMILY_IGNORED,
+                    dstQueueFamilyIndex = VK.VK_QUEUE_FAMILY_IGNORED,
+                    buffer = buf.VkBuffer,
+                    offset = 0,
+                    size = VK.VK_WHOLE_SIZE,
+                };
+                if (srcStage.HasAllFlags(VkPipelineStageFlags2.Transfer))
+                {
+                    barrier.srcAccessMask |=
+                        VkAccessFlags2.TransferRead | VkAccessFlags2.TransferWrite;
+                }
+                if (srcStage.HasAnyFlag(~nonShaderStages))
+                {
+                    barrier.srcAccessMask |= VkAccessFlags2.ShaderRead | VkAccessFlags2.ShaderWrite;
+                }
+                if (dstStage.HasAllFlags(VkPipelineStageFlags2.Transfer))
+                {
+                    barrier.dstAccessMask |=
+                        VkAccessFlags2.TransferRead | VkAccessFlags2.TransferWrite;
+                }
+                if (dstStage.HasAnyFlag(~nonShaderStages))
+                {
+                    barrier.dstAccessMask |= VkAccessFlags2.ShaderRead | VkAccessFlags2.ShaderWrite;
+                }
+                if (dstStage.HasAllFlags(VkPipelineStageFlags2.DrawIndirect))
+                {
+                    barrier.dstAccessMask |= VkAccessFlags2.IndirectCommandRead;
+                }
+                if (buf.VkUsageFlags.HasAllFlags(VkBufferUsageFlags.IndexBuffer))
+                {
+                    barrier.dstAccessMask |= VkAccessFlags2.IndexRead;
+                    barrier.dstStageMask |= VkPipelineStageFlags2.IndexInput;
+                }
+                barriers[validCount++] = barrier;
+                buf.ClearDirty();
+            }
+            VkDependencyInfo depInfo = new()
+            {
+                bufferMemoryBarrierCount = (uint)validCount,
+                pBufferMemoryBarriers = barriers,
+            };
+            VK.vkCmdPipelineBarrier2(CmdBuffer, &depInfo);
+        }
         return true;
     }
 
