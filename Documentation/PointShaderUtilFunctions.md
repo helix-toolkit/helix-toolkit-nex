@@ -21,13 +21,13 @@ float getPointSize()
 ```glsl
 uint getTextureId()
 ```
-- **Description**: Retrieves the texture ID used for the current fragment.
+- **Description**: Retrieves the texture ID for the current fragment.
 - **Return Type**: `uint`
 
 ```glsl
 uint getSamplerId()
 ```
-- **Description**: Retrieves the sampler ID used for the current fragment.
+- **Description**: Retrieves the sampler ID for the current fragment.
 - **Return Type**: `uint`
 
 ```glsl
@@ -81,13 +81,13 @@ bool isPointerRingEnabled()
 ```glsl
 vec3 getPointerRayDirection()
 ```
-- **Description**: Retrieves the direction of the pointer ray from the frame parameters.
+- **Description**: Retrieves the direction of the pointer ray.
 - **Return Type**: `vec3`
 
 ```glsl
 vec3 getPointerRayOrigin()
 ```
-- **Description**: Retrieves the origin of the pointer ray from the frame parameters.
+- **Description**: Retrieves the origin of the pointer ray.
 - **Return Type**: `vec3`
 
 ```glsl
@@ -111,7 +111,7 @@ float getPointerRingColorMix()
 ```glsl
 vec3 getPointerRingColor()
 ```
-- **Description**: Retrieves the color used for the pointer ring effect.
+- **Description**: Retrieves the color of the pointer ring effect.
 - **Return Type**: `vec3`
 
 ```glsl
@@ -123,11 +123,11 @@ float getFragToPointerRayDistance()
 ```glsl
 bool isInPointerRing()
 ```
-- **Description**: Determines if the fragment is within the pointer ring's distance thresholds.
+- **Description**: Determines if the fragment is within the pointer ring effect's distance thresholds.
 - **Return Type**: `bool`
 
 ```glsl
 vec4 mixWithPointerRing(in vec4 color)
 ```
-- **Description**: Mixes the input color with the pointer ring color if the pointer ring effect is enabled and the fragment is within the ring.
+- **Description**: Mixes the fragment color with the pointer ring color if the effect is enabled and the fragment is within the ring.
 - **Return Type**: `vec4`

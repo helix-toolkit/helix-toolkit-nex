@@ -13,7 +13,7 @@ The `HelixToolkit.Nex.Graphics.Mock` package is designed to fit seamlessly into 
   - **DrawCallCount**: Property added to track the number of draw calls made.
   - **DispatchCallCount**: Property added to track the number of dispatch calls made.
   - **SetCheckpointMarker**: Method to simulate setting a checkpoint marker.
-  - **Barrier**: Method to simulate a barrier operation on a buffer.
+  - **Barrier**: Overloaded methods to simulate a barrier operation on one or multiple buffers.
   - **BindRenderPipeline**: Overloaded method to bind a render pipeline with color write states.
   - **ClearDepthStencilImage**: Method to simulate clearing a depth-stencil image.
   - **SetColorWriteEnabled**: Overloaded methods to enable or disable color writes for attachments.
@@ -26,6 +26,8 @@ The `HelixToolkit.Nex.Graphics.Mock` package is designed to fit seamlessly into 
   - **Wait**: Overloaded method to simulate waiting on a submit handle with an optional reset parameter.
   - **CreateSecondaryCommandBuffer**: Method signature updated to remove `RenderPass` parameter.
   - **SupportsSubpass**: Property indicating if subpass operations are supported.
+  - **GetBufferDesc**: Method to retrieve the `BufferDesc` used to create a buffer.
+  - **MarkDirty**: Method to mark a buffer as dirty, though no-op in mock context.
 
 ## Usage Examples
 
@@ -66,7 +68,8 @@ context.CreateTexture(new TextureDesc { Dimensions = new Dimensions(256, 256, 1)
 
 ```csharp
 var commandBuffer = context.AcquireCommandBuffer();
-commandBuffer.Barrier(buffer.Handle);
+commandBuffer.Barrier(buffer.Handle, force: true);
+commandBuffer.Barrier(new[] { buffer.Handle }.AsSpan(), force: true);
 ```
 
 #### Mipmap Generation
@@ -130,4 +133,7 @@ commandBuffer.SetCullMode(CullMode.Back);
 - **Project Configuration**: Added new build configurations for `LinuxDebug` and `LinuxRelease` to support cross-platform testing and development.
 - **New Methods and Properties**: Added `DrawCallCount`, `DispatchCallCount`, `SetCheckpointMarker`, `BindRenderPipeline` with color writes, `ClearDepthStencilImage`, `SetColorWriteEnabled`, `CopyTextureToBuffer`, `SetCullMode`, and updated `CreateSecondaryCommandBuffer` method signature to enhance testing capabilities.
 - **SupportsSubpass**: Added `SupportsSubpass` property to `MockContext` to indicate subpass support.
+- **GetBufferDesc**: Added method to `MockContext` to retrieve the `BufferDesc` used to create a buffer.
+- **MarkDirty**: Added method to `MockContext` to mark a buffer as dirty, though it is a no-op in the mock context.
+- **Barrier Overloads**: Added overloads to `MockCommandBuffer` for barrier operations on multiple buffers.
 ```

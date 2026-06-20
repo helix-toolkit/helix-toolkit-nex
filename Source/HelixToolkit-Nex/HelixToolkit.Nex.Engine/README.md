@@ -29,6 +29,9 @@ HelixToolkit.Nex.Engine is a core component of the HelixToolkit.Nex suite, respo
 | `PerspectiveCamera`              | A camera with a perspective projection.                                    |
 | `DirectionalLightComponent`      | Represents a directional light in the scene.                               |
 | `RangeLightComponent`            | Represents a point or spot light in the scene.                             |
+| `DirectionalLightNode`           | Represents a directional light node in the scene graph.                    |
+| `PointLightNode`                 | Represents a point light node in the scene graph.                          |
+| `SpotLightNode`                  | Represents a spotlight node in the scene graph.                            |
 | `EngineBuilder`                  | Fluent builder for creating and configuring an `Engine` instance.          |
 | `BillboardData`                  | Manages billboard entities and their data for rendering.                   |
 | `DynamicMeshDrawData`            | Represents dynamic mesh draw data.                                         |
@@ -184,5 +187,7 @@ camera.FocusOn(new Vector3(0, 0, 0), 10f);
 - Introduced `PointDrawStream` for managing point draw commands, replacing the removed `PointCloudData`.
 - `PointDrawStreamRegistry` manages point draw streams, organizing them by `DrawStreamType` and `DrawStreamName`.
 
-HelixToolkit.Nex.Engine is designed to be a robust and flexible foundation for building 3D applications, offering a rich set of features and a modular architecture that can be tailored to specific needs.
+### New Light Nodes
+
+- `DirectionalLightNode`, `PointLightNode`, and `SpotLightNode` added to represent light sources in the scene graph, allowing for more intuitive scene management and light manipulation.
 ```

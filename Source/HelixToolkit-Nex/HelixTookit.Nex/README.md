@@ -55,6 +55,13 @@ HelixToolkit.Nex is part of the HelixToolkit suite, focusing on providing a robu
 | `TracerConfiguration`         | Configuration settings for tracer instances.                               |
 | `TracerFactory`               | Factory for creating and managing tracer instances.                        |
 
+## Updated Limits
+
+The `Limits` class has been updated to include new constants for managing light culling:
+
+- `MaxLightsPerTileLimit`: The maximum number of lights per tile, constrained to 255 due to byte storage.
+- `MaxRangeLightCount`: The maximum number of range lights considered for culling, limited to 65535 due to ushort storage.
+
 ## Usage Examples
 
 ### Logging with DebugLogger
