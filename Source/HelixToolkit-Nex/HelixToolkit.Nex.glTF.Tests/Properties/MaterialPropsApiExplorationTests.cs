@@ -19,10 +19,10 @@ namespace HelixToolkit.Nex.glTF.Tests.Properties;
 // materialName). A caller therefore cannot choose a shading mode and a human-readable display name
 // independently: the resulting material's Name is forced to equal the shading-mode identifier.
 //
-// To keep the whole test PROJECT compiling (the fixed two-arg overload
-// CreateMaterialProps(PBRShadingMode, string) does not exist yet, so calling it would be a compile
-// error that breaks every other test), this test exercises the CURRENT single-arg API. It asks for
-// a material whose shading mode is derived from `shadingMode` (so it passes the shading-mode
+// This test exercises the fixed two-argument API:
+// CreateMaterialProps(PBRShadingMode shadingMode, string materialName).
+// On earlier versions (single-argument API), the material's display Name was forced to equal the
+// shading-mode identifier, which violates the property being asserted below.
 // identifier `shadingMode.ToString()`, the only value that yields the correct shading mode) and
 // then asserts that the display Name independently equals `materialName`. On the unfixed code the
 // Name is conflated with the shading-mode identifier (Name == shadingMode.ToString() != materialName),

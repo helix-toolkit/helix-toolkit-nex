@@ -974,9 +974,18 @@ internal sealed class MeshConverter
         }
 
         // Determine the source (decoded vs accessor) for each engine vertex-property semantic.
-        bool normalDecoded = decoded.Attributes.ContainsKey(NormalSemantic);
-        bool texCoordDecoded = decoded.Attributes.ContainsKey(TexCoordSemantic);
-        bool tangentDecoded = decoded.Attributes.ContainsKey(TangentSemantic);
+        bool normalDecoded = decoded.Attributes.TryGetValue(
+            NormalSemantic,
+            out var normalDecodedAttribute
+        );
+        bool texCoordDecoded = decoded.Attributes.TryGetValue(
+            TexCoordSemantic,
+            out var texCoordDecodedAttribute
+        );
+        bool tangentDecoded = decoded.Attributes.TryGetValue(
+            TangentSemantic,
+            out var tangentDecodedAttribute
+        );
 
         bool normalAccessor = TryGetAccessorFallback(
             primitive,
@@ -1014,7 +1023,7 @@ internal sealed class MeshConverter
             // NORMAL (Requirement 3.2 / 5.6).
             if (normalDecoded)
             {
-                WriteDecodedNormals(decoded.Attributes[NormalSemantic], geometry.VertexProps);
+                WriteDecodedNormals(normalDecodedAttribute, geometry.VertexProps);
             }
             else if (normalAccessor)
             {
@@ -1024,7 +1033,7 @@ internal sealed class MeshConverter
             // TEXCOORD_0 (Requirement 3.2 / 5.6).
             if (texCoordDecoded)
             {
-                WriteDecodedTexCoords(decoded.Attributes[TexCoordSemantic], geometry.VertexProps);
+                WriteDecodedTexCoords(texCoordDecodedAttribute, geometry.VertexProps);
             }
             else if (texCoordAccessor)
             {
@@ -1038,7 +1047,7 @@ internal sealed class MeshConverter
             // TANGENT (Requirement 3.2 / 5.6).
             if (tangentDecoded)
             {
-                WriteDecodedTangents(decoded.Attributes[TangentSemantic], geometry.VertexProps);
+                WriteDecodedTangents(tangentDecodedAttribute, geometry.VertexProps);
             }
             else if (tangentAccessor)
             {
