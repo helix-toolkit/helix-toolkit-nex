@@ -23,7 +23,7 @@ public sealed class ForwardPlusLightCullingNode : ComputeNode
     private RingFixSizeBuffer<LightCullingConstants>? _cullingConstantsBuffer;
     private LightCullingConstants _cullingConstants;
     private SamplerRef _depthSampler = SamplerRef.Null;
-    private static uint _lightCountLogLimiter = 0;
+    private uint _lightCountLogLimiter = 0;
 
     public override string Name => nameof(ForwardPlusLightCullingNode);
     public override Color4 DebugColor => Color.Gold;
@@ -108,17 +108,15 @@ public sealed class ForwardPlusLightCullingNode : ComputeNode
         // per stored entry, so capping the iterated light count guarantees no stored index can
         // exceed 65535. If the scene exceeds the limit we keep the first 65535 lights and warn,
         // rather than silently producing out-of-range indices.
-        if (renderContext.Data!.Lights.Count > Limits.MaxRangeLightCount)
+        if (renderContext.Data!.Lights.Count > Limits.MaxRangeLightCount && _lightCountLogLimiter++ % 128 == 0)
         {
-            if (_lightCountLogLimiter++ % 128 == 0)
-            {
-                _logger.LogWarning(
-                    "Scene has {LightCount} lights, exceeding the Forward+ culling limit of {MaxLights}. Capping to the first {MaxLights} lights, which may cause incorrect rendering.",
-                    renderContext.Data.Lights.Count,
-                    Limits.MaxRangeLightCount,
-                    Limits.MaxRangeLightCount
-                );
-            }
+            _logger.LogWarning(
+                "Scene has {LightCount} lights, exceeding the Forward+ culling limit of {MaxLights}." +
+                " Capping to the first {MaxLights} lights, which may cause incorrect rendering.",
+                renderContext.Data.Lights.Count,
+                Limits.MaxRangeLightCount,
+                Limits.MaxRangeLightCount
+            );
         }
 
         var sceneLightCount = Math.Min(Limits.MaxRangeLightCount, renderContext.Data!.Lights.Count);
