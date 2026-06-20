@@ -17,7 +17,12 @@ internal static class DeviceFeatures
                 "Required Vulkan feature 'shaderInt64' is not supported by this device."
             );
         }
-
+        if (supported.shaderInt16 != VkBool32.True)
+        {
+            throw new NotSupportedException(
+                "Required Vulkan feature 'shaderInt16' is not supported by this device."
+            );
+        }
         return new VkPhysicalDeviceFeatures()
         {
             geometryShader = supported.geometryShader,
@@ -36,6 +41,7 @@ internal static class DeviceFeatures
             textureCompressionBC = supported.textureCompressionBC,
             shaderStorageImageMultisample = supported.shaderStorageImageMultisample,
             independentBlend = supported.independentBlend,
+            shaderInt16 = VkBool32.True,
         };
     }
 
@@ -74,6 +80,78 @@ internal static class DeviceFeatures
                 "Required Vulkan feature 'drawIndirectCount' is not supported by this device."
             );
         }
+        if (!supported.descriptorIndexing)
+        {
+            throw new NotSupportedException(
+                "Required Vulkan feature 'descriptorIndexing' is not supported by this device."
+            );
+        }
+        if (!supported.shaderSampledImageArrayNonUniformIndexing)
+        {
+            throw new NotSupportedException(
+                "Required Vulkan feature 'shaderSampledImageArrayNonUniformIndexing' is not supported by this device."
+            );
+        }
+        if (!supported.descriptorBindingSampledImageUpdateAfterBind)
+        {
+            throw new NotSupportedException(
+                "Required Vulkan feature 'descriptorBindingSampledImageUpdateAfterBind' is not supported by this device."
+            );
+        }
+        if (!supported.descriptorBindingStorageImageUpdateAfterBind)
+        {
+            throw new NotSupportedException(
+                "Required Vulkan feature 'descriptorBindingStorageImageUpdateAfterBind' is not supported by this device."
+            );
+        }
+        if (!supported.descriptorBindingUpdateUnusedWhilePending)
+        {
+            throw new NotSupportedException(
+                "Required Vulkan feature 'descriptorBindingUpdateUnusedWhilePending' is not supported by this device."
+            );
+        }
+        if (!supported.descriptorBindingPartiallyBound)
+        {
+            throw new NotSupportedException(
+                "Required Vulkan feature 'descriptorBindingPartiallyBound' is not supported by this device."
+            );
+        }
+        if (!supported.descriptorBindingVariableDescriptorCount)
+        {
+            throw new NotSupportedException(
+                "Required Vulkan feature 'descriptorBindingVariableDescriptorCount' is not supported by this device."
+            );
+        }
+        if (!supported.runtimeDescriptorArray)
+        {
+            throw new NotSupportedException(
+                "Required Vulkan feature 'runtimeDescriptorArray' is not supported by this device."
+            );
+        }
+        if (!supported.scalarBlockLayout)
+        {
+            throw new NotSupportedException(
+                "Required Vulkan feature 'scalarBlockLayout' is not supported by this device."
+            );
+        }
+        if (!supported.uniformBufferStandardLayout)
+        {
+            throw new NotSupportedException(
+                "Required Vulkan feature 'uniformBufferStandardLayout' is not supported by this device."
+            );
+        }
+        if (!supported.timelineSemaphore)
+        {
+            throw new NotSupportedException(
+                "Required Vulkan feature 'timelineSemaphore' is not supported by this device."
+            );
+        }
+        if (!supported.bufferDeviceAddress)
+        {
+            throw new NotSupportedException(
+                "Required Vulkan feature 'bufferDeviceAddress' is not supported by this device."
+            );
+        }
         return new VkPhysicalDeviceVulkan12Features()
         {
             samplerMirrorClampToEdge = VkBool32.True,
@@ -100,6 +178,30 @@ internal static class DeviceFeatures
         ref VkPhysicalDeviceVulkan13Features supported
     )
     {
+        if (!supported.subgroupSizeControl)
+        {
+            throw new NotSupportedException(
+                "Required Vulkan feature 'subgroupSizeControl' is not supported by this device."
+            );
+        }
+        if (!supported.synchronization2)
+        {
+            throw new NotSupportedException(
+                "Required Vulkan feature 'synchronization2' is not supported by this device."
+            );
+        }
+        if (!supported.dynamicRendering)
+        {
+            throw new NotSupportedException(
+                "Required Vulkan feature 'dynamicRendering' is not supported by this device."
+            );
+        }
+        if (!supported.maintenance4)
+        {
+            throw new NotSupportedException(
+                "Required Vulkan feature 'maintenance4' is not supported by this device."
+            );
+        }
         return new VkPhysicalDeviceVulkan13Features()
         {
             shaderDemoteToHelperInvocation = supported.shaderDemoteToHelperInvocation, // enable if supported
