@@ -12,7 +12,7 @@ Key features include:
 - Forward Plus light culling for efficient lighting calculations.
 - GPU-based frustum and instance culling for optimized rendering.
 - Support for Vulkan's advanced features like mesh shaders and dynamic rendering.
-- Enhanced support for Vulkan features such as `shaderSampledImageArrayDynamicIndexing`, `shaderInt64`, `extendedDynamicState`, and `colorWriteEnable`.
+- Enhanced support for Vulkan features such as `shaderSampledImageArrayDynamicIndexing`, `shaderInt64`, `shaderInt16`, `extendedDynamicState`, and `colorWriteEnable`.
 - Support for Linux configurations with `LinuxDebug` and `LinuxRelease`.
 
 ## Key Types
@@ -39,8 +39,8 @@ var config = new VulkanContextConfig
     EnableVma = true,
     TerminateOnValidationError = false,
     PreferredPresentMode = VkPresentModeKHR.FifoRelaxed,
-    ForceIntegratedGPU = false, // New property added
-    MaxStagingBufferSize = 128u * 1024u * 1024u // New property added
+    ForceIntegratedGPU = false,
+    MaxStagingBufferSize = 128u * 1024u * 1024u
 };
 
 var context = VulkanBuilder.Create(config, windowHandle, displayHandle);
@@ -109,6 +109,12 @@ commandBuffer.CopyTextureToBuffer(
 
 ```csharp
 commandBuffer.SetCullMode(CullMode.Back);
+```
+
+### Marking a Buffer as Dirty
+
+```csharp
+context.MarkDirty(bufferHandle);
 ```
 
 ## Architecture Notes
