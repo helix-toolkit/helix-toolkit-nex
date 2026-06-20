@@ -68,6 +68,7 @@ public sealed class RenderGraph : Initializable
                 if (
                     output.Type == ResourceType.Buffer
                     && res.Buffers.TryGetValue(output.Name, out var buffer)
+                    && buffer.Valid
                 )
                 {
                     context.MarkDirty(buffer);

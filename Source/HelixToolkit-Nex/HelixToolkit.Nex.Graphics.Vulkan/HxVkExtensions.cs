@@ -873,6 +873,10 @@ internal static class HxVkExtensions
             VkPipelineStageFlags2.Transfer
             | VkPipelineStageFlags2.DrawIndirect
             | VkPipelineStageFlags2.VertexInput;
+        if (srcStage.HasAllFlags(VkPipelineStageFlags2.Host))
+        {
+            barrier.srcAccessMask |= VkAccessFlags2.HostRead | VkAccessFlags2.HostWrite;
+        }
         if (srcStage.HasAllFlags(VkPipelineStageFlags2.Transfer))
         {
             barrier.srcAccessMask |= VkAccessFlags2.TransferRead | VkAccessFlags2.TransferWrite;

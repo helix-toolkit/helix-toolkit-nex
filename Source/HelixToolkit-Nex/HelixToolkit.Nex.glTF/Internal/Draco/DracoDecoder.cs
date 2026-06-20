@@ -193,28 +193,20 @@ internal sealed class DracoDecoder : IDracoDecoder
     }
 
     /// <summary>
-    /// Computes how many scalars can be safely read from a native data block. The native
-    /// <c>dataSize</c> is interpreted as either a byte count or an element count; whichever
-    /// interpretation applies, this returns a count that never reads past the smaller of the two
-    /// possible buffer sizes, capped at <paramref name="expected"/>.
+    /// Computes how many scalars can be safely read from a native data block.
+    /// The Draco binding reports <c>dataSize</c> in bytes, so this clamps the read to the
+    /// number of whole elements that fit in the buffer, capped at <paramref name="expected"/>.
     /// </summary>
     private static int SafeScalarCount(int expected, long dataSize, EvDraco.DataType dataType)
     {
-        if (dataSize <= 0)
+        if (dataSize <= 0 || expected <= 0)
         {
             return 0;
         }
 
-        // dataSize reported directly as an element count.
-        if (dataSize >= expected)
-        {
-            return expected;
-        }
-
-        // Otherwise interpret dataSize as a byte count.
         var elementSize = Math.Max(1, (int)EvDraco.GetSize(dataType));
         var maxFromBytes = dataSize / elementSize;
-        return (int)Math.Min(expected, maxFromBytes);
+        return (int)Math.Min((long)expected, maxFromBytes);
     }
 
     private static unsafe void ConvertToFloats(
