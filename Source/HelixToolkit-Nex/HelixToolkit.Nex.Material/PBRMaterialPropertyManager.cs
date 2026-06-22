@@ -32,39 +32,9 @@ public sealed class PBRMaterialPropertyManager : IPBRMaterialPropertyManager
 
     public PBRMaterialProperties Create(string materialName, ref PBRProperties properties)
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
-        ArgumentNullException.ThrowIfNullOrEmpty(materialName);
-        if (!PBRMaterialTypeRegistry.TryGetByName(materialName, out var registration))
-        {
-            throw new ArgumentException(
-                $"Material type '{materialName}' is not registered.",
-                nameof(materialName)
-            );
-        }
         lock (_lock)
         {
-            return new PBRMaterialProperties(registration!.TypeId, ref properties, _pool);
-        }
-    }
-
-    public PBRMaterialProperties Create(MaterialTypeId materialTypeId)
-    {
-        return Create(materialTypeId, ref _defaultProperties);
-    }
-
-    public PBRMaterialProperties Create(MaterialTypeId materialTypeId, ref PBRProperties properties)
-    {
-        ObjectDisposedException.ThrowIf(_disposed, this);
-        if (!PBRMaterialTypeRegistry.HasTypeId(materialTypeId))
-        {
-            throw new ArgumentException(
-                $"Material type ID '{materialTypeId.Id}' is not registered.",
-                nameof(materialTypeId)
-            );
-        }
-        lock (_lock)
-        {
-            return new PBRMaterialProperties(materialTypeId, ref properties, _pool);
+            return new PBRMaterialProperties(materialName, ref properties, _pool);
         }
     }
 

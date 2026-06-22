@@ -235,7 +235,7 @@ internal abstract class DrawStreamBase<DRAW_TYPE, COMP_TYPE> : Initializable, ID
             if (GetEntityId(ref draw) == 0)
                 continue;
 
-            var matType = GetMaterialType(ref draw);
+            var matType = GetCurrentMaterialTypeId(ref draw);
             if (!_drawsByMaterial.TryGetValue(matType, out var list))
             {
                 list = new FastList<DRAW_TYPE>(_initialCapacity);
@@ -294,7 +294,7 @@ internal abstract class DrawStreamBase<DRAW_TYPE, COMP_TYPE> : Initializable, ID
 
             var newDraw = CreateDrawInfo(entity);
             var drawIndex = renderable.DrawCmdIndex;
-            var newMatType = GetMaterialType(ref newDraw);
+            var newMatType = GetCurrentMaterialTypeId(ref newDraw);
             // Find the material list and local index
             if (_materialRanges.TryGetValue(newMatType, out var range))
             {
@@ -432,6 +432,17 @@ internal abstract class DrawStreamBase<DRAW_TYPE, COMP_TYPE> : Initializable, ID
             MarkRebuildNeeded();
             return;
         }
+        var exist = TryGetDraw(renderable.DrawCmdIndex, out var drawCmd);
+        if (!IsValid(ref meshComp) && exist)
+        {
+            MarkRebuildNeeded();
+            return;
+        }
+        if (GetActualMaterialTypeId(ref meshComp) != GetCurrentMaterialTypeId(ref drawCmd))
+        {
+            MarkRebuildNeeded();
+            return;
+        }
 
         // Otherwise, queue an incremental update (e.g., transform changed → NodeInfoIndex)
         _pendingUpdates.Add(e.EntityId);
@@ -454,7 +465,9 @@ internal abstract class DrawStreamBase<DRAW_TYPE, COMP_TYPE> : Initializable, ID
 
     protected abstract bool IsValid(ref COMP_TYPE comp);
 
-    protected abstract uint GetMaterialType(ref DRAW_TYPE draw);
+    protected abstract uint GetCurrentMaterialTypeId(ref DRAW_TYPE draw);
+
+    protected abstract uint GetActualMaterialTypeId(ref COMP_TYPE comp);
 
     protected abstract uint GetMeshId(ref DRAW_TYPE draw);
 

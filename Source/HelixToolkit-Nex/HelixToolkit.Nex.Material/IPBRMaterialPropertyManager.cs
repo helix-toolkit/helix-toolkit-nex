@@ -72,31 +72,6 @@ public interface IPBRMaterialPropertyManager : IDisposable
         Create(shadingMode.ToString(), ref properties);
 
     /// <summary>
-    /// Creates a new <see cref="PBRMaterialProperties"/> instance configured for the specified physically based rendering
-    /// </summary>
-    /// <param name="materialTypeId">Material Id</param>
-    /// <returns></returns>
-    PBRMaterialProperties Create(MaterialTypeId materialTypeId);
-
-    /// <summary>
-    /// Creates a new material with the specified material type and physical-based rendering (PBR) properties.
-    /// </summary>
-    /// <param name="materialTypeId">The identifier of the material type to create.</param>
-    /// <param name="properties">The physical-based rendering (PBR) properties to apply to the material.</param>
-    /// <returns>A <see cref="PBRMaterialProperties"/> instance representing the created material.</returns>
-    PBRMaterialProperties Create(MaterialTypeId materialTypeId, PBRProperties properties) =>
-        Create(materialTypeId, ref properties);
-
-    /// <summary>
-    /// Creates a new material with the specified type and properties.
-    /// </summary>
-    /// <param name="materialTypeId">The identifier representing the type of material to create.</param>
-    /// <param name="properties">The physical-based rendering (PBR) properties to apply to the material. This parameter is passed by reference
-    /// and may be modified during the creation process.</param>
-    /// <returns>A <see cref="PBRMaterialProperties"/> instance representing the created material.</returns>
-    PBRMaterialProperties Create(MaterialTypeId materialTypeId, ref PBRProperties properties);
-
-    /// <summary>
     /// Removes all material properties from the pool.
     /// </summary>
     void Clear();

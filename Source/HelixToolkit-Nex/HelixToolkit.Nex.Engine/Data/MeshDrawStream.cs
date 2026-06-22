@@ -19,11 +19,38 @@ namespace HelixToolkit.Nex.Engine.Data;
 internal sealed class MeshDrawStream : DrawStreamBase<MeshDraw, MeshDrawInfo>
 {
     private static readonly ILogger _logger = LogManager.Create<MeshDrawStream>();
-
+    private static readonly EventBus _eventBus = EventBus.Instance;
     public override uint Stride => MeshDraw.SizeInBytes;
+    private IEventSubscription? _sub;
 
     public MeshDrawStream(IContext context, World world, DrawStreamType type, DrawStreamName name)
         : base(context, world, type, name, _logger) { }
+
+    protected override ResultCode OnInitializing()
+    {
+        _sub = _eventBus.Subscribe<MaterialPropsUpdatedEvent>(
+            (e) =>
+            {
+                _logger.LogTrace(
+                    "Material Props is changed. Index: {INDEX}; Op: {OP};",
+                    e.Index,
+                    e.Operation
+                );
+
+                if (e.Operation == MaterialPropertyOp.TypeChange)
+                {
+                    MarkRebuildNeeded();
+                }
+            }
+        );
+        return base.OnInitializing();
+    }
+
+    protected override ResultCode OnTearingDown()
+    {
+        Disposer.DisposeAndRemove(ref _sub);
+        return base.OnTearingDown();
+    }
 
     protected override MeshDraw CreateDrawInfo(Entity entity)
     {
@@ -61,9 +88,18 @@ internal sealed class MeshDrawStream : DrawStreamBase<MeshDraw, MeshDrawInfo>
         return comp.Valid;
     }
 
-    protected override uint GetMaterialType(ref MeshDraw draw)
+    protected override uint GetCurrentMaterialTypeId(ref MeshDraw draw)
     {
         return draw.MaterialType;
+    }
+
+    protected override uint GetActualMaterialTypeId(ref MeshDrawInfo info)
+    {
+        if (info.MaterialProperties == null)
+        {
+            return 0;
+        }
+        return info.MaterialProperties.MaterialTypeId;
     }
 
     protected override uint GetMeshId(ref MeshDraw draw)
