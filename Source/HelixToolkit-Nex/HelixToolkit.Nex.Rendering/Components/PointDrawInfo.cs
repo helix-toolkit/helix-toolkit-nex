@@ -61,13 +61,6 @@ public struct PointDrawInfo(
     public string PointMaterialName { get; set; } = materialTypeName;
 
     /// <summary>
-    /// The point material type ID that determines which fragment shader pipeline is used
-    /// for rendering this point cloud. Defaults to 0, which corresponds to the default point material.
-    /// Register custom materials via <see cref="PointMaterialRegistry"/>.
-    /// </summary>
-    public MaterialTypeId PointMaterialId { get; internal set; }
-
-    /// <summary>
     /// Gets or sets a value indicating whether this point object is hitable.
     /// </summary>
     public bool Hitable { set; get; } = hitable;

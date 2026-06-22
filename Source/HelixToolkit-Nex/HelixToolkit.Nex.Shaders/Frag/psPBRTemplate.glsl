@@ -406,6 +406,9 @@ vec4 cadStyleLightingFlat(in PBRMaterial material){
 
 vec4 debugTileLighting()
 {
+    if (fpConst.lightCount == 0 || fpConst.lightBufferAddress == 0) {
+        return vec4(0.0, 0.0, 0.0, 1.0);
+    }
     // Calculate tile coordinates — flip in pixel space to match compute shader
     uvec2 flippedPixel = uvec2(gl_FragCoord.x, fpConst.screenDimensions.y - 1.0 - gl_FragCoord.y);
     uvec2 tileCoord = flippedPixel / uvec2(fpConst.tileSize);

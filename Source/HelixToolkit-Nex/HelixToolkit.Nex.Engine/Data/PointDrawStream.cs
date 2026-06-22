@@ -19,18 +19,11 @@ internal sealed class PointDrawStream : DrawStreamBase<PointDraw, PointDrawInfo>
             return default;
 
         ref var renderable = ref _renderables[entity];
-        pointComp.PointMaterialId = PointMaterialRegistry.TryGetByName(
-            pointComp.PointMaterialName,
-            out var matReg
-        )
-            ? matReg!.TypeId
-            : 0; // Fallback to a default material if the specified one is not found.
-
         var pointCount = (uint)pointComp.Geometry!.Vertices.Count;
         return new PointDraw
         {
             MeshId = pointComp.Geometry!.Id,
-            MaterialType = pointComp.PointMaterialId,
+            MaterialType = GetActualMaterialTypeId(ref pointComp),
             NodeInfoIndex = (uint)renderable.GPUIndex,
             EntityId = (uint)entity.Id,
             // A single Point_Quad emits 4 vertices (triangle-strip quad).
@@ -54,9 +47,16 @@ internal sealed class PointDrawStream : DrawStreamBase<PointDraw, PointDrawInfo>
         return draw.EntityId;
     }
 
-    protected override uint GetMaterialType(ref PointDraw draw)
+    protected override uint GetCurrentMaterialTypeId(ref PointDraw draw)
     {
         return draw.MaterialType;
+    }
+
+    protected override uint GetActualMaterialTypeId(ref PointDrawInfo comp)
+    {
+        return PointMaterialRegistry.TryGetByName(comp.PointMaterialName, out var matReg)
+            ? matReg!.TypeId
+            : 0; // Fallback to a default material if the specified one is not found.
     }
 
     protected override uint GetMeshId(ref PointDraw draw)

@@ -51,11 +51,27 @@ internal class PropertiesPanel
         {
             if (Gui.BeginChild("SettingsContent"))
             {
-                var wireframe = _renderContext.RenderParams.EnableGlobalWireframe;
-                Gui.Checkbox("Wireframe Mode", ref wireframe);
-                _renderContext.RenderParams.EnableGlobalWireframe = wireframe;
+                Gui.Text("Importer Settings");
+                var mode = _app.ImportConfig.DefaultShadingMode;
+                if (Gui.BeginCombo("Default Shading Mode", mode.ToString()))
+                {
+                    foreach (var value in Enum.GetValues<PBRShadingMode>())
+                    {
+                        var isSelected = value == mode;
+                        if (Gui.Selectable(value.ToString(), isSelected))
+                        {
+                            _app.ImportConfig.DefaultShadingMode = value;
+                            _app.UpdateShadingMode();
+                        }
+                        if (isSelected)
+                        {
+                            Gui.SetItemDefaultFocus();
+                        }
+                    }
+                    Gui.EndCombo();
+                }
                 Gui.Spacing();
-                Gui.Text("Directional Light Settings");
+                Gui.Text("Directional Light");
                 var light = _app.DirectionalLight;
                 var intensity = light.Intensity;
                 if (Gui.SliderFloat("Intensity", ref intensity, 0.0f, 10.0f))
@@ -67,23 +83,10 @@ internal class PropertiesPanel
                 {
                     light.Color = color.ToColor4(1);
                 }
-                var mode = _app.ImportConfig.DefaultShadingMode;
-                if (Gui.BeginCombo("Default Shading Mode", mode.ToString()))
-                {
-                    foreach (var value in Enum.GetValues<PBRShadingMode>())
-                    {
-                        var isSelected = value == mode;
-                        if (Gui.Selectable(value.ToString(), isSelected))
-                        {
-                            _app.ImportConfig.DefaultShadingMode = value;
-                        }
-                        if (isSelected)
-                        {
-                            Gui.SetItemDefaultFocus();
-                        }
-                    }
-                    Gui.EndCombo();
-                }
+                Gui.Spacing();
+                var wireframe = _renderContext.RenderParams.EnableGlobalWireframe;
+                Gui.Checkbox("Wireframe Mode", ref wireframe);
+                _renderContext.RenderParams.EnableGlobalWireframe = wireframe;
             }
             Gui.EndChild();
             if (Gui.BeginChild("Properties"))

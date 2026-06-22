@@ -198,7 +198,7 @@ public class PBRMaterialManager(IContext context, IPBRMaterialPropertyManager pr
             throw new InvalidOperationException("Failed to add material to repository");
         }
         _nameToId.TryAdd(name, material.MaterialId);
-        return new MaterialPropertyCreator(material.MaterialId, MaterialPropertyManager);
+        return new MaterialPropertyCreator(name, MaterialPropertyManager);
     }
 
     public int CreatePBRMaterialsFromRegistry()
