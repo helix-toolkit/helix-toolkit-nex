@@ -24,7 +24,7 @@ namespace HelixToolkit.Nex.glTF.Tests.Properties;
 /// Property-based test for Property 1 of the gltf-light-import-cr-fixes feature.
 /// For any resolvable, convertible <see cref="ParsedLight"/> and any node transform, attaching it
 /// produces exactly one engine light component of the matching kind (directional →
-/// <see cref="DirectionalLightComponent"/>; point/spot → <see cref="RangeLightComponent"/>) on the
+/// <see cref="DirectionalLightInfo"/>; point/spot → <see cref="RangeLightInfo"/>) on the
 /// referencing node's own entity, whose color and intensity equal the parsed values within
 /// <c>1e-5</c> per component, whose range (point/spot) equals the parsed range, and whose cone
 /// angles (spot) equal the parsed inner/outer angles in radians with inner ≤ outer. The importer
@@ -444,8 +444,8 @@ public class LightAttachmentValuePropertyTests
     private static Node? FindNodeWithLight(Node node)
     {
         if (
-            node.Entity.TryGet<DirectionalLightComponent>(out _)
-            || node.Entity.TryGet<RangeLightComponent>(out _)
+            node.Entity.TryGet<DirectionalLightInfo>(out _)
+            || node.Entity.TryGet<RangeLightInfo>(out _)
         )
         {
             return node;
@@ -533,10 +533,10 @@ public class LightAttachmentValuePropertyTests
                         return false;
                     }
 
-                    bool hasDirectional = node.Entity.TryGet<DirectionalLightComponent>(
+                    bool hasDirectional = node.Entity.TryGet<DirectionalLightInfo>(
                         out var dirLight
                     );
-                    bool hasRange = node.Entity.TryGet<RangeLightComponent>(out var rangeLight);
+                    bool hasRange = node.Entity.TryGet<RangeLightInfo>(out var rangeLight);
 
                     switch (c.Kind)
                     {

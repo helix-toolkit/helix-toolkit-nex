@@ -22,13 +22,13 @@ namespace HelixToolkit.Nex.glTF.Tests.Properties;
 
 /// <summary>
 /// Unit/example tests for the node-transform-driven directional light model in
-/// <see cref="SceneBuilder"/>. The importer attaches the <see cref="DirectionalLightComponent"/> to
+/// <see cref="SceneBuilder"/>. The importer attaches the <see cref="DirectionalLightInfo"/> to
 /// the referencing node's own entity and leaves <c>Direction</c> at the component default
 /// <c>-Vector3.UnitZ</c>; orientation is delegated to the node transform. Mirrors the
 /// <c>TransformPropertyTests</c> build pattern: an in-memory <see cref="Gltf"/> model carrying a
 /// <c>KHR_lights_punctual</c> directional light is built via <see cref="SceneBuilder.BuildScene"/>
 /// against a <see cref="World"/> with mock managers, then the attached
-/// <see cref="DirectionalLightComponent"/> and emitted diagnostics are asserted.
+/// <see cref="DirectionalLightInfo"/> and emitted diagnostics are asserted.
 /// <para>
 /// Covered cases:
 /// <list type="bullet">
@@ -315,7 +315,7 @@ public class LightDirectionEdgeCaseTests
 
     private static Node? FindNodeWithDirectionalLight(Node node)
     {
-        if (node.Entity.TryGet<DirectionalLightComponent>(out _))
+        if (node.Entity.TryGet<DirectionalLightInfo>(out _))
         {
             return node;
         }
@@ -352,7 +352,7 @@ public class LightDirectionEdgeCaseTests
         var (node, diagnostics) = BuildSingleLightNode(gltfNode, world);
 
         Assert.IsTrue(
-            node.Entity.TryGet<DirectionalLightComponent>(out var light),
+            node.Entity.TryGet<DirectionalLightInfo>(out var light),
             "Expected a DirectionalLightComponent to be attached to the referencing node."
         );
 
@@ -405,7 +405,7 @@ public class LightDirectionEdgeCaseTests
         var (node, diagnostics) = BuildSingleLightNode(gltfNode, world);
 
         Assert.IsTrue(
-            node.Entity.TryGet<DirectionalLightComponent>(out var light),
+            node.Entity.TryGet<DirectionalLightInfo>(out var light),
             "The directional light component should be attached to the referencing node."
         );
 

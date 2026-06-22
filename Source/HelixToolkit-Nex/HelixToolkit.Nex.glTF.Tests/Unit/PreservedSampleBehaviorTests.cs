@@ -30,10 +30,10 @@ namespace HelixToolkit.Nex.glTF.Tests.Unit;
 /// punctual light component (and emits no light diagnostics), so the sample's configured lighting
 /// remains the sole active light. The sample light is defined in the sample app
 /// (<c>GltfImporterApp.SetupLighting</c>) with the current values <c>Color = Color.WhiteSmoke</c>,
-/// <c>Intensity = 0.8f</c>, and no fixed direction (so the <see cref="DirectionalLightComponent"/>
+/// <c>Intensity = 0.8f</c>, and no fixed direction (so the <see cref="DirectionalLightInfo"/>
 /// keeps its default <c>Direction == -Vector3.UnitZ</c>); because that lives in the Samples project
 /// (no importer/test seam), the expected lighting configuration is locked here at the
-/// <see cref="DirectionalLightComponent"/> level using the same literals the sample uses.
+/// <see cref="DirectionalLightInfo"/> level using the same literals the sample uses.
 /// </item>
 /// <item>
 /// A double-sided material disables backface culling on the produced mesh node. The engine has no
@@ -371,8 +371,8 @@ public class PreservedSampleBehaviorTests
     }
 
     private static bool NodeHasPunctualLight(Node node) =>
-        node.Entity.TryGet<DirectionalLightComponent>(out _)
-        || node.Entity.TryGet<RangeLightComponent>(out _);
+        node.Entity.TryGet<DirectionalLightInfo>(out _)
+        || node.Entity.TryGet<RangeLightInfo>(out _);
 
     private static bool AnyNodeHasPunctualLight(Node root)
     {
@@ -431,10 +431,10 @@ public class PreservedSampleBehaviorTests
     /// <summary>
     /// The sample's directional light is defined in <c>GltfImporterApp.SetupLighting</c> as
     /// <c>Color = Color.WhiteSmoke</c>, <c>Intensity = 0.8f</c>, with no fixed direction (so the
-    /// <see cref="DirectionalLightComponent"/> keeps its default <c>Direction == -Vector3.UnitZ</c>).
+    /// <see cref="DirectionalLightInfo"/> keeps its default <c>Direction == -Vector3.UnitZ</c>).
     /// That code lives in the Samples project with no importer/test seam, so this test locks the
     /// expected configuration at the component level by constructing the same
-    /// <see cref="DirectionalLightComponent"/> the sample builds and asserting it carries those
+    /// <see cref="DirectionalLightInfo"/> the sample builds and asserting it carries those
     /// values (white-smoke color, 0.8 intensity, default -Z direction).
     /// **Validates: Requirements 2.10**
     /// </summary>
@@ -443,7 +443,7 @@ public class PreservedSampleBehaviorTests
     {
         // Construct the directional light exactly as the sample's SetupLighting does: Color and
         // Intensity are set; Direction is left at the component default (no fixed direction).
-        var sampleLight = new DirectionalLightComponent
+        var sampleLight = new DirectionalLightInfo
         {
             Color = Color.WhiteSmoke,
             Intensity = 0.8f,

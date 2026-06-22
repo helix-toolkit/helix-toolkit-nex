@@ -374,7 +374,7 @@ internal sealed partial class TextureDemo : IDisposable
         // ---- Lighting ----
         var sunNode = new Node(_worldDataProvider.World, "Sun");
         sunNode.Entity.Set(
-            new DirectionalLightComponent
+            new DirectionalLightInfo
             {
                 Direction = Vector3.Normalize(new Vector3(-1f, -1f, 0.5f)),
                 Color = new Color4(1.0f, 0.95f, 0.85f, 1f),
@@ -386,7 +386,7 @@ internal sealed partial class TextureDemo : IDisposable
 
         var fillNode = new Node(_worldDataProvider.World, "FillLight");
         fillNode.Entity.Set(
-            new RangeLightComponent(RangeLightType.Point)
+            new RangeLightInfo(RangeLightType.Point)
             {
                 Position = new Vector3(-3.5f, 0f, 0f),
                 Color = new Color4(1f, 0, 1.0f, 1f),

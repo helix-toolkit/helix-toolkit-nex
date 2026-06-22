@@ -54,7 +54,7 @@ internal sealed class PointDrawStream : DrawStreamBase<PointDraw, PointDrawInfo>
 
     protected override uint GetActualMaterialTypeId(ref PointDrawInfo comp)
     {
-        return PointMaterialRegistry.TryGetByName(comp.PointMaterialName, out var matReg)
+        return PointMaterialRegistry.TryGetByName(comp.PointMaterialTypeName, out var matReg)
             ? matReg!.TypeId
             : 0; // Fallback to a default material if the specified one is not found.
     }

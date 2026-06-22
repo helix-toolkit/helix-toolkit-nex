@@ -43,7 +43,7 @@ internal class RangeLightData : Initializable, IRenderData
         _entities = World
             .CreateCollection()
             .Has<NodeInfo>()
-            .Has<RangeLightComponent>()
+            .Has<RangeLightInfo>()
             .Has<WorldTransform>()
             .Build();
         _entities.EntityAdded += OnLightAddRemove;
@@ -96,7 +96,7 @@ internal class RangeLightData : Initializable, IRenderData
             var idx = 0;
             foreach (var entity in _entities)
             {
-                ref var lightComp = ref entity.Get<RangeLightComponent>();
+                ref var lightComp = ref entity.Get<RangeLightInfo>();
                 ref var transform = ref entity.Get<WorldTransform>();
                 var light = lightComp.Light;
                 light.Direction = Vector3.TransformNormal(light.Direction, transform.Value);
@@ -112,7 +112,7 @@ internal class RangeLightData : Initializable, IRenderData
             foreach (var entityId in _pendingEntities)
             {
                 var entity = World.GetEntity(entityId);
-                ref var lightComp = ref entity.Get<RangeLightComponent>();
+                ref var lightComp = ref entity.Get<RangeLightInfo>();
                 ref var transform = ref entity.Get<WorldTransform>();
                 var light = lightComp.Light;
                 light.Direction = Vector3.TransformNormal(light.Direction, transform.Value);
@@ -143,7 +143,7 @@ internal class RangeLightData : Initializable, IRenderData
         }
         if (
             e.Type == World.GetComponentTypeId<WorldTransform>()
-            || e.Type == World.GetComponentTypeId<RangeLightComponent>()
+            || e.Type == World.GetComponentTypeId<RangeLightInfo>()
         )
         {
             _pendingEntities.Add(e.EntityId);

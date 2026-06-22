@@ -315,14 +315,14 @@ internal sealed class SceneBuilder
                 // Position/direction are driven by the node transform, so Direction is left at the
                 // component default (-Vector3.UnitZ).
                 node.Entity.Set(
-                    new DirectionalLightComponent { Color = color, Intensity = light.Intensity }
+                    new DirectionalLightInfo { Color = color, Intensity = light.Intensity }
                 );
                 break;
 
             case LightKind.Point:
                 // Attach the point (range) light component to the referencing node's own entity.
                 node.Entity.Set(
-                    new RangeLightComponent(RangeLightType.Point)
+                    new RangeLightInfo(RangeLightType.Point)
                     {
                         Color = color,
                         Intensity = light.Intensity,
@@ -355,7 +355,7 @@ internal sealed class SceneBuilder
                 // component default (-Vector3.UnitZ).
                 var spotAngles = new Vector2(light.InnerConeAngle, light.OuterConeAngle);
                 node.Entity.Set(
-                    new RangeLightComponent(RangeLightType.Spot)
+                    new RangeLightInfo(RangeLightType.Spot)
                     {
                         Color = color,
                         Intensity = light.Intensity,

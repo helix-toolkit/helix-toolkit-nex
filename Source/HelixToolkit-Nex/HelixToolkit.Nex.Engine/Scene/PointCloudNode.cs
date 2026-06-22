@@ -16,7 +16,7 @@ public class PointCloudNode : Node
             {
                 Cullable = true,
                 Hitable = true,
-                PointMaterialName = "Default",
+                PointMaterialTypeName = "Default",
             }
         );
         IsRenderable = true;
@@ -100,12 +100,12 @@ public class PointCloudNode : Node
     /// </summary>
     public string PointMaterialName
     {
-        get => Entity.Get<PointDrawInfo>().PointMaterialName;
+        get => Entity.Get<PointDrawInfo>().PointMaterialTypeName;
         set
         {
             Entity.Update<PointDrawInfo>(comp =>
             {
-                comp.PointMaterialName = value;
+                comp.PointMaterialTypeName = value;
                 return comp;
             });
         }

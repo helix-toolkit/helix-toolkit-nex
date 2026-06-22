@@ -345,8 +345,8 @@ public class InvalidLightReferencePropertyTests
     /// Returns whether the node carries any punctual light component (directional, point, or spot).
     /// </summary>
     private static bool HasAnyLightComponent(Node node) =>
-        node.Entity.TryGet<DirectionalLightComponent>(out _)
-        || node.Entity.TryGet<RangeLightComponent>(out _);
+        node.Entity.TryGet<DirectionalLightInfo>(out _)
+        || node.Entity.TryGet<RangeLightInfo>(out _);
 
     /// <summary>
     /// Finds the single reference-resolution diagnostic the Scene_Builder adds for the referencing

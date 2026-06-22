@@ -271,7 +271,7 @@ internal partial class PBRDemo : IDisposable
         // Directional light from upper-left
         var sunNode = new Node(_worldDataProvider.World, "Sun");
         sunNode.Entity.Set(
-            new DirectionalLightComponent
+            new DirectionalLightInfo
             {
                 Direction = Vector3.Normalize(new Vector3(-1f, -1.5f, 1f)),
                 Color = new Color4(1f, 0.98f, 0.9f, 1f),
@@ -284,7 +284,7 @@ internal partial class PBRDemo : IDisposable
         // Fill light from the right
         var fillNode = new Node(_worldDataProvider.World, "FillLight");
         fillNode.Entity.Set(
-            new RangeLightComponent(RangeLightType.Point)
+            new RangeLightInfo(RangeLightType.Point)
             {
                 Position = new Vector3(gridWidth + 6f, gridDepth * 0.5f, -8f),
                 Color = new Color4(0.4f, 0.6f, 1f, 1f),
@@ -301,7 +301,7 @@ internal partial class PBRDemo : IDisposable
         // Rim light from behind
         var rimNode = new Node(_worldDataProvider.World, "RimLight");
         rimNode.Entity.Set(
-            new RangeLightComponent(RangeLightType.Point)
+            new RangeLightInfo(RangeLightType.Point)
             {
                 Position = new Vector3(gridWidth * 0.5f, gridDepth + 4f, 10f),
                 Color = new Color4(1f, 0.85f, 0.5f, 1f),

@@ -23,7 +23,7 @@ public struct LineDrawInfo(
     /// If specified, this name is used to look up the material in the <see cref="LineMaterialRegistry"/>.
     /// If not found, it falls back to use default material.
     /// </summary>
-    public string LineMaterialName { get; set; } = materialTypeName;
+    public string LineMaterialTypeName { get; set; } = materialTypeName;
 
     /// <summary>
     /// Gets or sets a value indicating whether this line object is hitable.
@@ -66,5 +66,5 @@ public struct LineDrawInfo(
     /// Gets a value indicating whether this LineDrawInfo has valid handles.
     /// </summary>
     public readonly bool Valid =>
-        Geometry is not null && Geometry.Valid && !string.IsNullOrEmpty(LineMaterialName);
+        Geometry is not null && Geometry.Valid && !string.IsNullOrEmpty(LineMaterialTypeName);
 }

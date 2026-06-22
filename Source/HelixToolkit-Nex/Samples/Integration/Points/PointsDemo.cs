@@ -267,7 +267,7 @@ internal sealed class PointsDemo : IDisposable
         // toggles on a mesh later.
         var lightNode = new Node(world) { Name = "DirectionalLight" };
         lightNode.Entity.Set(
-            new DirectionalLightComponent
+            new DirectionalLightInfo
             {
                 Light = new DirectionalLight
                 {
@@ -792,7 +792,7 @@ internal sealed class PointsDemo : IDisposable
                     {
                         entry.Node.Entity.Update<PointDrawInfo>(x =>
                         {
-                            x.PointMaterialName = _materialTypes[entry.MaterialNameIndex];
+                            x.PointMaterialTypeName = _materialTypes[entry.MaterialNameIndex];
                             return x;
                         });
                     }
