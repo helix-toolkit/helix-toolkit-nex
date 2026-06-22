@@ -112,22 +112,6 @@ public class PointCloudNode : Node
     }
 
     /// <summary>
-    /// Gets or sets the point material type ID.
-    /// </summary>
-    public MaterialTypeId PointMaterialId
-    {
-        get => Entity.Get<PointDrawInfo>().PointMaterialId;
-        set
-        {
-            Entity.Update<PointDrawInfo>(comp =>
-            {
-                comp.PointMaterialId = value;
-                return comp;
-            });
-        }
-    }
-
-    /// <summary>
     /// Gets or sets the size of each point.
     /// </summary>
     public float Size

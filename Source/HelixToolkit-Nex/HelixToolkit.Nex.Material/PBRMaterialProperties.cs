@@ -1,3 +1,5 @@
+using HelixToolkit.Nex.Shaders.Frag;
+
 namespace HelixToolkit.Nex.Material;
 
 /// <summary>
@@ -15,6 +17,9 @@ public enum MaterialPropertyOp
 
     /// <summary>An existing material property entry was updated.</summary>
     Update,
+
+    /// <summary>An existing material property entry had its material type changed.</summary>
+    TypeChange,
 
     /// <summary>An existing material property entry was destroyed.</summary>
     Destroy,
@@ -70,7 +75,36 @@ public sealed class PBRMaterialProperties : IDisposable
     };
 
     /// <summary>Gets the identifier of the material type that owns this instance.</summary>
-    public readonly MaterialTypeId MaterialTypeId = 0;
+    public MaterialTypeId MaterialTypeId { private set; get; }
+
+    private string _materialTypeName = PBRShadingMode.PBR.ToString();
+
+    /// <summary>
+    /// Gets or sets the name of the material type.
+    /// Changing this property will update the <see cref="MaterialTypeId"/> accordingly.
+    /// Material type names must be registered in the <see cref="PBRMaterialTypeRegistry"/> before they can be used.
+    /// </summary>
+    public string MaterialTypeName
+    {
+        set
+        {
+            if (_materialTypeName == value)
+            {
+                return;
+            }
+            if (!PBRMaterialTypeRegistry.TryGetByName(value, out var registration))
+            {
+                throw new ArgumentException(
+                    $"Material type '{value}' is not registered.",
+                    nameof(value)
+                );
+            }
+            _materialTypeName = value;
+            MaterialTypeId = registration!.TypeId;
+            NotifyUpdated(MaterialPropertyOp.TypeChange);
+        }
+        get => _materialTypeName;
+    }
 
     /// <summary>Gets a reference to the underlying <see cref="PBRProperties"/> stored in the pool.</summary>
     public ref PBRProperties Properties => ref _pool!.GetRef(_handle)!;
@@ -685,16 +719,17 @@ public sealed class PBRMaterialProperties : IDisposable
     /// Initializes a new <see cref="PBRMaterialProperties"/> instance, allocating a pool entry
     /// and publishing a <see cref="MaterialPropertyOp.Create"/> event.
     /// </summary>
+    /// <param name="materialTypeName">Name of the material type.</param>
     /// <param name="materialTypeId">The identifier of the owning material type.</param>
     /// <param name="properties">Initial property values to store in the pool.</param>
     /// <param name="pool">The pool that manages <see cref="PBRProperties"/> entries.</param>
     internal PBRMaterialProperties(
-        MaterialTypeId materialTypeId,
+        string materialTypeName,
         ref PBRProperties properties,
         Pool<MaterialPropertyResource, PBRProperties> pool
     )
     {
-        MaterialTypeId = materialTypeId;
+        MaterialTypeName = materialTypeName;
         _pool = pool;
         _onAlbedoMapDisposed = () =>
         {
@@ -783,16 +818,16 @@ public sealed class PBRMaterialProperties : IDisposable
     }
 
     /// <summary>
-    /// Publishes a <see cref="MaterialPropertyOp.Update"/> event on the <see cref="EventBus"/>
+    /// Publishes a <see cref="MaterialPropertyOp"/> event on the <see cref="EventBus"/>
     /// to notify listeners that one or more properties have changed.
     /// Does nothing if this instance is not <see cref="Valid"/>.
     /// </summary>
-    public void NotifyUpdated()
+    public void NotifyUpdated(MaterialPropertyOp op = MaterialPropertyOp.Update)
     {
         if (Valid)
         {
             _eventBus.PublishAsync(
-                new MaterialPropsUpdatedEvent(MaterialTypeId, Index, MaterialPropertyOp.Update)
+                new MaterialPropsUpdatedEvent(MaterialTypeId, Index, op)
             );
         }
     }

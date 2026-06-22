@@ -9,6 +9,7 @@ using HelixToolkit.Nex.ImGui;
 using HelixToolkit.Nex.Lights;
 using HelixToolkit.Nex.Maths;
 using HelixToolkit.Nex.Rendering;
+using HelixToolkit.Nex.Rendering.Components;
 using HelixToolkit.Nex.Rendering.PostEffects;
 using HelixToolkit.Nex.Scene;
 using ImGuiNET;
@@ -85,7 +86,8 @@ internal class GltfImporterApp : ApplicationBase
 
     public override string Name => "glTF Importer";
 
-    public DirectionalLightNode DirectionalLight => _dirLight ?? throw new InvalidOperationException("Light node is not initialized.");
+    public DirectionalLightNode DirectionalLight =>
+        _dirLight ?? throw new InvalidOperationException("Light node is not initialized.");
 
     public GltfImporterApp()
         : base(
@@ -199,7 +201,7 @@ internal class GltfImporterApp : ApplicationBase
         _dirLight = new DirectionalLightNode(_worldDataProvider.World, "Directional Light")
         {
             Color = Color.WhiteSmoke,
-            Intensity = 0.8f
+            Intensity = 0.8f,
         };
         _mainRoot?.AddChild(_dirLight);
     }
@@ -556,6 +558,20 @@ internal class GltfImporterApp : ApplicationBase
         // Set orbit distance to frame the model (use 2x radius for comfortable framing)
         float distance = Math.Max(radius * 2f, 1f);
         _cameraController!.FocusOn(center, distance);
+    }
+
+    public void UpdateShadingMode()
+    {
+        if (_currentResourceManifest is null || _worldDataProvider is null)
+        {
+            return;
+        }
+        foreach (var materialProp in _currentResourceManifest.Materials)
+        {
+            materialProp.MaterialTypeName = ImportConfig.DefaultShadingMode.ToString();
+        }
+        var comps = _worldDataProvider.World.GetComponents<MeshDrawInfo>();
+
     }
 
     // -------------------------------------------------------------------

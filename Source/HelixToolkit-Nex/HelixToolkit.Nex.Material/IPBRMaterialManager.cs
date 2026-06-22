@@ -1,13 +1,13 @@
 namespace HelixToolkit.Nex.Material;
 
-public readonly struct MaterialPropertyCreator(MaterialTypeId id, IPBRMaterialPropertyManager pool)
+public readonly struct MaterialPropertyCreator(string materialTypeName, IPBRMaterialPropertyManager pool)
 {
-    public readonly MaterialTypeId MaterialTypeId = id;
+    public readonly string MaterialTypeName = materialTypeName;
     private readonly IPBRMaterialPropertyManager _pool = pool;
 
     public readonly PBRMaterialProperties Create()
     {
-        return _pool.Create(MaterialTypeId);
+        return _pool.Create(MaterialTypeName);
     }
 }
 

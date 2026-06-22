@@ -19,19 +19,13 @@ internal sealed class LineDrawStream : DrawStreamBase<LineDraw, LineDrawInfo>
             return default;
 
         ref var renderable = ref _renderables[entity];
-        lineComp.LineMaterialId = LineMaterialRegistry.TryGetByName(
-            lineComp.LineMaterialName,
-            out var matReg
-        )
-            ? matReg!.TypeId
-            : 0; // Fallback to a default material if the specified one is not found.
         return new LineDraw
         {
             MeshId = lineComp.Geometry!.Id,
-            MaterialType = lineComp.LineMaterialId,
+            MaterialType = GetActualMaterialTypeId(ref lineComp),
             NodeInfoIndex = (uint)renderable.GPUIndex,
             EntityId = (uint)entity.Id,
-            InstanceCount = (uint)(lineComp.Geometry.Vertices.Count / 2),
+            InstanceCount = (uint)(lineComp.Geometry!.Vertices.Count / 2),
             Cullable = lineComp.Cullable ? 1u : 0u,
             VertexCount = 4,
             LineCount = (uint)(lineComp.Geometry.Vertices.Count / 2),
@@ -48,9 +42,16 @@ internal sealed class LineDrawStream : DrawStreamBase<LineDraw, LineDrawInfo>
         return draw.EntityId;
     }
 
-    protected override uint GetMaterialType(ref LineDraw draw)
+    protected override uint GetCurrentMaterialTypeId(ref LineDraw draw)
     {
         return draw.MaterialType;
+    }
+
+    protected override uint GetActualMaterialTypeId(ref LineDrawInfo comp)
+    {
+        return LineMaterialRegistry.TryGetByName(comp.LineMaterialName, out var matReg)
+            ? matReg!.TypeId
+            : 0; // Fallback to a default material if the specified one is not found.
     }
 
     protected override uint GetMeshId(ref LineDraw draw)

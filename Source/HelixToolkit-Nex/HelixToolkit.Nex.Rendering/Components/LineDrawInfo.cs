@@ -26,13 +26,6 @@ public struct LineDrawInfo(
     public string LineMaterialName { get; set; } = materialTypeName;
 
     /// <summary>
-    /// The line material type ID that determines which fragment shader pipeline is used
-    /// for rendering this line object. Defaults to 0, which corresponds to the default line material.
-    /// Register custom materials via <see cref="LineMaterialRegistry"/>.
-    /// </summary>
-    public MaterialTypeId LineMaterialId { get; internal set; }
-
-    /// <summary>
     /// Gets or sets a value indicating whether this line object is hitable.
     /// </summary>
     public bool Hitable { set; get; } = hitable;

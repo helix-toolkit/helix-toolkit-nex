@@ -13,7 +13,7 @@ public sealed class PBRPropertyData : Initializable, IPBRPropertyData
 
     private long _lastBufferUpdateTicks = 0;
     private long _lastDataUpdateTicks = Stopwatch.GetTimestamp();
-    private readonly IEventSubscription _sub;
+    private IEventSubscription? _sub;
     private readonly HashSet<uint> _updatedProps = [];
     private bool _needFullUpdate = true;
 
@@ -31,6 +31,17 @@ public sealed class PBRPropertyData : Initializable, IPBRPropertyData
     {
         _context = resourceManager.Context;
         _resourceManager = resourceManager;
+    }
+
+    protected override ResultCode OnInitializing()
+    {
+        _buffer = new ElementBuffer<PBRProperties>(
+            _context,
+            InitialBufferSize,
+            BufferUsageBits.Storage,
+            true,
+            "PBRProperties"
+        );
         _sub = _eventBus.Subscribe<MaterialPropsUpdatedEvent>(
             (e) =>
             {
@@ -46,32 +57,23 @@ public sealed class PBRPropertyData : Initializable, IPBRPropertyData
                 }
                 if (!_needFullUpdate)
                 {
-                    if (e.Operation == MaterialPropertyOp.Update)
+                    if (
+                        e.Operation == MaterialPropertyOp.Update
+                        || e.Operation == MaterialPropertyOp.TypeChange
+                    )
                     {
                         _updatedProps.Add(e.Index);
                     }
                 }
             }
         );
-    }
-
-    protected override ResultCode OnInitializing()
-    {
-        _buffer = new ElementBuffer<PBRProperties>(
-            _context,
-            InitialBufferSize,
-            BufferUsageBits.Storage,
-            true,
-            "PBRProperties"
-        );
         return ResultCode.Ok;
     }
 
     protected override ResultCode OnTearingDown()
     {
-        _sub.Dispose();
-        _buffer?.Dispose();
-        _buffer = null;
+        Disposer.DisposeAndRemove(ref _sub);
+        Disposer.DisposeAndRemove(ref _buffer);
         return ResultCode.Ok;
     }
 
