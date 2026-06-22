@@ -58,7 +58,7 @@ public struct PointDrawInfo(
     /// If specified, this name is used to look up the material in the <see cref="PointMaterialRegistry"/>.
     /// If not found, it falls back to use default material.
     /// </summary>
-    public string PointMaterialName { get; set; } = materialTypeName;
+    public string PointMaterialTypeName { get; set; } = materialTypeName;
 
     /// <summary>
     /// Gets or sets a value indicating whether this point object is hitable.
@@ -105,5 +105,5 @@ public struct PointDrawInfo(
         Geometry is not null
         && Geometry.Valid
         && PointCount > 0
-        && !string.IsNullOrEmpty(PointMaterialName);
+        && !string.IsNullOrEmpty(PointMaterialTypeName);
 }

@@ -7,7 +7,7 @@ public abstract class RangeLightNode : Node
     public RangeLightNode(World world, string name, RangeLightType type)
         : base(world, name)
     {
-        Entity.Set(new RangeLightComponent(type));
+        Entity.Set(new RangeLightInfo(type));
     }
 
     /// <summary>
@@ -15,10 +15,10 @@ public abstract class RangeLightNode : Node
     /// </summary>
     public Vector3 Position
     {
-        get => Entity.Get<RangeLightComponent>().Position;
+        get => Entity.Get<RangeLightInfo>().Position;
         set
         {
-            Entity.Update<RangeLightComponent>(comp =>
+            Entity.Update<RangeLightInfo>(comp =>
             {
                 comp.Position = value;
                 return comp;
@@ -31,10 +31,10 @@ public abstract class RangeLightNode : Node
     /// </summary>
     public Color4 Color
     {
-        get => Entity.Get<RangeLightComponent>().Color;
+        get => Entity.Get<RangeLightInfo>().Color;
         set
         {
-            Entity.Update<RangeLightComponent>(comp =>
+            Entity.Update<RangeLightInfo>(comp =>
             {
                 comp.Color = value;
                 return comp;
@@ -47,10 +47,10 @@ public abstract class RangeLightNode : Node
     /// </summary>
     public float Intensity
     {
-        get => Entity.Get<RangeLightComponent>().Intensity;
+        get => Entity.Get<RangeLightInfo>().Intensity;
         set
         {
-            Entity.Update<RangeLightComponent>(comp =>
+            Entity.Update<RangeLightInfo>(comp =>
             {
                 comp.Intensity = value;
                 return comp;
@@ -63,10 +63,10 @@ public abstract class RangeLightNode : Node
     /// </summary>
     public float Range
     {
-        get => Entity.Get<RangeLightComponent>().Range;
+        get => Entity.Get<RangeLightInfo>().Range;
         set
         {
-            Entity.Update<RangeLightComponent>(comp =>
+            Entity.Update<RangeLightInfo>(comp =>
             {
                 comp.Range = value;
                 return comp;
@@ -97,10 +97,10 @@ public class SpotLightNode : RangeLightNode
     /// </summary>
     public Vector3 Direction
     {
-        get => Entity.Get<RangeLightComponent>().Direction;
+        get => Entity.Get<RangeLightInfo>().Direction;
         set
         {
-            Entity.Update<RangeLightComponent>(comp =>
+            Entity.Update<RangeLightInfo>(comp =>
             {
                 comp.Direction = value;
                 return comp;
@@ -113,10 +113,10 @@ public class SpotLightNode : RangeLightNode
     /// </summary>
     public Vector2 SpotAngles
     {
-        get => Entity.Get<RangeLightComponent>().SpotAngles;
+        get => Entity.Get<RangeLightInfo>().SpotAngles;
         set
         {
-            Entity.Update<RangeLightComponent>(comp =>
+            Entity.Update<RangeLightInfo>(comp =>
             {
                 comp.SpotAngles = value;
                 return comp;

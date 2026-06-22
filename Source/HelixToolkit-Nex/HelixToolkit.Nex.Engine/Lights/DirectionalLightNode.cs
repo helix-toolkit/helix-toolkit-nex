@@ -8,12 +8,12 @@ namespace HelixToolkit.Nex.Lights;
 public class DirectionalLightNode : Node
 {
     public DirectionalLightNode(World world, string name = "DirectionalLight")
-        : this(world, name, new DirectionalLightComponent()) { }
+        : this(world, name, new DirectionalLightInfo()) { }
 
-    public DirectionalLightNode(World world, string name, DirectionalLightComponent component)
+    public DirectionalLightNode(World world, string name, DirectionalLightInfo component)
         : this(world, name, ref component) { }
 
-    public DirectionalLightNode(World world, string name, ref DirectionalLightComponent component)
+    public DirectionalLightNode(World world, string name, ref DirectionalLightInfo component)
         : base(world, name)
     {
         Entity.Set(ref component);
@@ -24,10 +24,10 @@ public class DirectionalLightNode : Node
     /// </summary>
     public Vector3 Direction
     {
-        get => Entity.Get<DirectionalLightComponent>().Direction;
+        get => Entity.Get<DirectionalLightInfo>().Direction;
         set
         {
-            Entity.Update<DirectionalLightComponent>(comp =>
+            Entity.Update<DirectionalLightInfo>(comp =>
             {
                 comp.Direction = value;
                 return comp;
@@ -40,10 +40,10 @@ public class DirectionalLightNode : Node
     /// </summary>
     public Color4 Color
     {
-        get => Entity.Get<DirectionalLightComponent>().Color;
+        get => Entity.Get<DirectionalLightInfo>().Color;
         set
         {
-            Entity.Update<DirectionalLightComponent>(comp =>
+            Entity.Update<DirectionalLightInfo>(comp =>
             {
                 comp.Color = value;
                 return comp;
@@ -56,10 +56,10 @@ public class DirectionalLightNode : Node
     /// </summary>
     public float Intensity
     {
-        get => Entity.Get<DirectionalLightComponent>().Intensity;
+        get => Entity.Get<DirectionalLightInfo>().Intensity;
         set
         {
-            Entity.Update<DirectionalLightComponent>(comp =>
+            Entity.Update<DirectionalLightInfo>(comp =>
             {
                 comp.Intensity = value;
                 return comp;

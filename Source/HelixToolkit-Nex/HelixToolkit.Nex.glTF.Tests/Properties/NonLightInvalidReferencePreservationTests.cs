@@ -321,8 +321,8 @@ public class NonLightInvalidReferencePreservationTests
     /// on its own entity.
     /// </summary>
     private static bool HasAnyLightComponent(Node node) =>
-        node.Entity.TryGet<DirectionalLightComponent>(out _)
-        || node.Entity.TryGet<RangeLightComponent>(out _);
+        node.Entity.TryGet<DirectionalLightInfo>(out _)
+        || node.Entity.TryGet<RangeLightInfo>(out _);
 
     /// <summary>
     /// Finds the single reference-resolution diagnostic the SceneBuilder adds for the referencing

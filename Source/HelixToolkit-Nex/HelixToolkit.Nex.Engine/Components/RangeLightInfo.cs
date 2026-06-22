@@ -8,13 +8,13 @@ public enum RangeLightType : uint
     Spot = 2,
 }
 
-public sealed class RangeLightComponent : IIndexable
+public sealed class RangeLightInfo : IIndexable
 {
     internal Light Light = new() { Direction = -Vector3.UnitZ };
 
     public RangeLightType Type { get; }
 
-    public RangeLightComponent(RangeLightType type)
+    public RangeLightInfo(RangeLightType type)
     {
         Type = type;
         Light.Type = (uint)type;

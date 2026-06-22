@@ -49,7 +49,7 @@ internal sealed class LineDrawStream : DrawStreamBase<LineDraw, LineDrawInfo>
 
     protected override uint GetActualMaterialTypeId(ref LineDrawInfo comp)
     {
-        return LineMaterialRegistry.TryGetByName(comp.LineMaterialName, out var matReg)
+        return LineMaterialRegistry.TryGetByName(comp.LineMaterialTypeName, out var matReg)
             ? matReg!.TypeId
             : 0; // Fallback to a default material if the specified one is not found.
     }

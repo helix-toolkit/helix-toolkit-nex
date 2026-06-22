@@ -263,7 +263,7 @@ public class MinecraftScene : IScene
             var lightNode = worldDataProvider.World.CreateNode($"PointLight_{i}");
             lightNode.Transform = new Transform { Translation = pos };
             lightNode.Entity.Set(
-                new RangeLightComponent(RangeLightType.Point)
+                new RangeLightInfo(RangeLightType.Point)
                 {
                     Position = Vector3.Zero, // Use node's world transform for light position
                     Color = col,
@@ -297,7 +297,7 @@ public class MinecraftScene : IScene
         // Sun-like directional light
         // ------------------------------------------------------------------
         sunNode.Entity.Set(
-            new DirectionalLightComponent
+            new DirectionalLightInfo
             {
                 Color = new Color(1.0f, 0.95f, 0.8f),
                 Intensity = 0.05f,

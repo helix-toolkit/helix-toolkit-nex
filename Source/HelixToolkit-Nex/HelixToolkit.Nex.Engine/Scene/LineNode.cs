@@ -20,7 +20,7 @@ public class LineNode : Node
         Entity.Set(
             new LineDrawInfo
             {
-                LineMaterialName = "Default",
+                LineMaterialTypeName = "Default",
                 Cullable = true,
                 Hitable = true,
             }
@@ -90,12 +90,12 @@ public class LineNode : Node
     /// </summary>
     public string? LineMaterialName
     {
-        get => Entity.Get<LineDrawInfo>().LineMaterialName;
+        get => Entity.Get<LineDrawInfo>().LineMaterialTypeName;
         set
         {
             Entity.Update<LineDrawInfo>(comp =>
             {
-                comp.LineMaterialName = value ?? string.Empty;
+                comp.LineMaterialTypeName = value ?? string.Empty;
                 return comp;
             });
         }

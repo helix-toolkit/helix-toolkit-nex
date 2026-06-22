@@ -447,7 +447,7 @@ public sealed class SolarSystemScene : IScene
                 // Attach point light to the planet node (Sun) so it illuminates the scene
                 // from the Sun's position. Range covers Neptune orbit (210) and beyond.
                 planetNode.Entity.Set(
-                    new RangeLightComponent(RangeLightType.Point)
+                    new RangeLightInfo(RangeLightType.Point)
                     {
                         Color = new Color4(planet.SphereEmissive, 1f),
                         Intensity = 5000f,

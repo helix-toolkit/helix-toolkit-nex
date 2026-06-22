@@ -242,9 +242,9 @@ internal partial class Editor
             {
                 Gui.Text($"Mesh: {node.Entity.Get<MeshDrawInfo>()}");
             }
-            if (node.Entity.Has<RangeLightComponent>())
+            if (node.Entity.Has<RangeLightInfo>())
             {
-                var light = node.Entity.Get<RangeLightComponent>();
+                var light = node.Entity.Get<RangeLightInfo>();
                 Gui.Text($"Light: {light.Type}  Range: {light.Range:F1}");
             }
             Gui.EndTooltip();
@@ -320,7 +320,7 @@ internal partial class Editor
         }
 
         // --- Light component ---
-        if (_selectedEntity.TryGet<RangeLightComponent>(out var light))
+        if (_selectedEntity.TryGet<RangeLightInfo>(out var light))
         {
             if (light is not null && Gui.CollapsingHeader("Range Light"))
             {
@@ -337,7 +337,7 @@ internal partial class Editor
         }
 
         // --- Directional light ---
-        if (_selectedEntity.TryGet<DirectionalLightComponent>(out var dirLight))
+        if (_selectedEntity.TryGet<DirectionalLightInfo>(out var dirLight))
         {
             if (Gui.CollapsingHeader("Directional Light"))
             {

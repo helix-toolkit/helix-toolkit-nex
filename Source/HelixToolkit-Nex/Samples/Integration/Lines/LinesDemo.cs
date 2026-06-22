@@ -227,7 +227,7 @@ internal sealed class LinesDemo : IDisposable
         // Directional light so any future meshes are lit.
         var lightNode = new Node(world) { Name = "DirectionalLight" };
         lightNode.Entity.Set(
-            new DirectionalLightComponent
+            new DirectionalLightInfo
             {
                 Light = new DirectionalLight
                 {
