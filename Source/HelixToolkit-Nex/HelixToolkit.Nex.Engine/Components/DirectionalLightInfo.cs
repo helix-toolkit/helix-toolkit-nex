@@ -1,6 +1,6 @@
 namespace HelixToolkit.Nex.Engine.Components;
 
-public struct DirectionalLightComponent()
+public struct DirectionalLightInfo()
 {
     public DirectionalLight Light = new() { Direction = -Vector3.UnitZ };
 

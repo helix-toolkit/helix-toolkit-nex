@@ -23,7 +23,7 @@ namespace HelixToolkit.Nex.glTF.Tests.Properties;
 /// <summary>
 /// Property-based test for the node-transform-driven directional light model of the
 /// gltf-light-import-cr-fixes feature. The importer does NOT derive the light direction from a world
-/// matrix; instead it attaches the <see cref="DirectionalLightComponent"/> to the referencing node's
+/// matrix; instead it attaches the <see cref="DirectionalLightInfo"/> to the referencing node's
 /// own entity, leaving <c>Direction</c> at the component default <c>-Vector3.UnitZ</c>, and the
 /// engine's node transform drives the light's effective orientation. For any node TRS, this test
 /// asserts the attached directional light keeps the default <c>-Vector3.UnitZ</c> direction (no
@@ -319,7 +319,7 @@ public class LightDirectionPropertyTests
 
     private static Node? FindNodeWithDirectionalLight(Node node)
     {
-        if (node.Entity.TryGet<DirectionalLightComponent>(out _))
+        if (node.Entity.TryGet<DirectionalLightInfo>(out _))
         {
             return node;
         }
@@ -417,7 +417,7 @@ public class LightDirectionPropertyTests
                     );
 
                     Assert.IsTrue(
-                        node.Entity.TryGet<DirectionalLightComponent>(out var dirLight),
+                        node.Entity.TryGet<DirectionalLightInfo>(out var dirLight),
                         "Expected a DirectionalLightComponent on the referencing node."
                     );
 

@@ -391,7 +391,7 @@ public class MinecraftLargeScene : IScene
             var lightNode = worldDataProvider.World.CreateNode($"PointLight_{i}");
             lightNode.Transform = new Transform { Translation = pos };
             lightNode.Entity.Set(
-                new RangeLightComponent(RangeLightType.Point)
+                new RangeLightInfo(RangeLightType.Point)
                 {
                     Position = Vector3.Zero,
                     Color = col,
@@ -442,7 +442,7 @@ public class MinecraftLargeScene : IScene
         // Sun-like directional light
         // ------------------------------------------------------------------
         sunNode.Entity.Set(
-            new DirectionalLightComponent()
+            new DirectionalLightInfo()
             {
                 Color = new Color(1.0f, 0.95f, 0.8f),
                 Intensity = 0.1f,
@@ -617,7 +617,7 @@ public class MinecraftLargeScene : IScene
             // The engine applies the node's world transform via TransformNormal,
             // so the actual world-space beam direction is driven entirely by the node rotation.
             lightNode.Entity.Set(
-                new RangeLightComponent(RangeLightType.Spot)
+                new RangeLightInfo(RangeLightType.Spot)
                 {
                     Position = Vector3.Zero,
                     Direction = -Vector3.UnitY, // local-space: straight down
@@ -666,7 +666,7 @@ public class MinecraftLargeScene : IScene
 
     /// <summary>
     /// Advances the sweep phase of every spot light and writes the new direction directly into
-    /// each light's <see cref="RangeLightComponent"/>, plus rotates the matching cone mesh.
+    /// each light's <see cref="RangeLightInfo"/>, plus rotates the matching cone mesh.
     /// </summary>
     private void UpdateSpotLights(float deltaTime)
     {

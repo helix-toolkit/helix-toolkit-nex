@@ -214,7 +214,7 @@ internal partial class TransparentDemo : IDisposable
         // --- Directional light ---
         var lightNode = new Node(_worldDataProvider.World, "DirectionalLight");
         lightNode.Entity.Set(
-            new DirectionalLightComponent()
+            new DirectionalLightInfo()
             {
                 Direction = Vector3.Normalize(new Vector3(-0.5f, -1f, 0.5f)),
                 Color = new Color4(1f, 1f, 1f, 1f),
@@ -295,7 +295,7 @@ internal partial class TransparentDemo : IDisposable
         var lightNode = new Node(_worldDataProvider!.World, name);
         lightNode.Transform = new Transform { Translation = position };
         lightNode.Entity.Set(
-            new RangeLightComponent(RangeLightType.Point)
+            new RangeLightInfo(RangeLightType.Point)
             {
                 Position = position,
                 Color = color,

@@ -409,21 +409,21 @@ public class PlacementMeshMaterialPreservationTests
     }
 
     /// <summary>
-    /// Collects every <see cref="RangeLightComponent"/> attached to <paramref name="node"/>'s own
+    /// Collects every <see cref="RangeLightInfo"/> attached to <paramref name="node"/>'s own
     /// entity or any of its descendant node entities. This is robust to whether the importer places
     /// the light component on the referencing node (fixed code) or on an added child light node
     /// (unfixed code).
     /// </summary>
-    private static List<RangeLightComponent> CollectRangeLights(Node node)
+    private static List<RangeLightInfo> CollectRangeLights(Node node)
     {
-        var result = new List<RangeLightComponent>();
+        var result = new List<RangeLightInfo>();
         CollectRangeLightsRecursive(node, result);
         return result;
     }
 
-    private static void CollectRangeLightsRecursive(Node node, List<RangeLightComponent> acc)
+    private static void CollectRangeLightsRecursive(Node node, List<RangeLightInfo> acc)
     {
-        if (node.Entity.TryGet<RangeLightComponent>(out var light) && light is not null)
+        if (node.Entity.TryGet<RangeLightInfo>(out var light) && light is not null)
         {
             acc.Add(light);
         }

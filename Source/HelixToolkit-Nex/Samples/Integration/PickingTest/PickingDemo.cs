@@ -266,7 +266,7 @@ internal sealed class PickingDemo : IDisposable
         // --- Add a directional light ---
         _lightNode = new Node(world, "Sun");
         _lightNode.Entity.Set(
-            new DirectionalLightComponent
+            new DirectionalLightInfo
             {
                 Color = new Color(1.0f, 1.0f, 1.0f),
                 Intensity = 2.0f,
@@ -283,7 +283,7 @@ internal sealed class PickingDemo : IDisposable
 
         _orbitController!.ViewportHeight = _viewportSize.Height;
         _orbitController!.ViewportWidth = _viewportSize.Width;
-        _lightNode!.Entity.Update<DirectionalLightComponent>(light =>
+        _lightNode!.Entity.Update<DirectionalLightInfo>(light =>
         {
             light.Direction = _camera.LookDir;
             return light;

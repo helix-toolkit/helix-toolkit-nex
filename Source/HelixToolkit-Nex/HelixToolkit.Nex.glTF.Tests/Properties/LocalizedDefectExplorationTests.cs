@@ -347,8 +347,8 @@ public class LocalizedDefectExplorationTests
         attach!.Invoke(builder, [node, 0, parsedLight, 0]);
 
         bool diagnosticEmitted = diagnostics.Count > diagnosticsBefore;
-        bool noDirectional = !node.Entity.TryGet<DirectionalLightComponent>(out _);
-        bool noRange = !node.Entity.TryGet<RangeLightComponent>(out _);
+        bool noDirectional = !node.Entity.TryGet<DirectionalLightInfo>(out _);
+        bool noRange = !node.Entity.TryGet<RangeLightInfo>(out _);
 
         // Expected (fixed) behavior: a diagnostic is emitted AND no light is attached.
         Assert.IsTrue(

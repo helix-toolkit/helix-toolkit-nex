@@ -33,15 +33,15 @@ namespace HelixToolkit.Nex.glTF.Tests.Properties;
 /// For any resolvable, convertible <see cref="ParsedLight"/> (directional/point/spot) and any
 /// well-formed node transform, the importer SHALL attach exactly one engine light component of the
 /// matching kind to the <em>referencing node's own entity</em> — a
-/// <see cref="DirectionalLightComponent"/> for directional lights, or a
-/// <see cref="RangeLightComponent"/> of the matching <see cref="RangeLightType"/> (Point/Spot) for
+/// <see cref="DirectionalLightInfo"/> for directional lights, or a
+/// <see cref="RangeLightInfo"/> of the matching <see cref="RangeLightType"/> (Point/Spot) for
 /// point/spot lights — such that <c>node.Entity.TryGet&lt;…&gt;(out _)</c> on the referencing node
 /// returns <c>true</c>. The component's color and intensity equal the parsed values (within 1e-5),
 /// the range equals the parsed range (point/spot), and the spot cone angles equal the parsed
 /// inner/outer angles. The importer SHALL NOT set per-light position/direction from a world matrix:
-/// directional <see cref="DirectionalLightComponent.Direction"/> and range
-/// <see cref="RangeLightComponent.Direction"/> remain at the component default
-/// <c>-Vector3.UnitZ</c>, and range <see cref="RangeLightComponent.Position"/> remains at the
+/// directional <see cref="DirectionalLightInfo.Direction"/> and range
+/// <see cref="RangeLightInfo.Direction"/> remain at the component default
+/// <c>-Vector3.UnitZ</c>, and range <see cref="RangeLightInfo.Position"/> remains at the
 /// component default (<c>Vector3.Zero</c>) — including the rotated-directional case.
 ///
 /// Mirrors the <c>LightAttachmentValuePropertyTests</c> build harness: build an in-memory
@@ -457,10 +457,10 @@ public class LightAttachmentTargetExplorationTests
                     var (world, node) = BuildAndReadLightNode(c);
                     try
                     {
-                        bool hasDirectional = node.Entity.TryGet<DirectionalLightComponent>(
+                        bool hasDirectional = node.Entity.TryGet<DirectionalLightInfo>(
                             out var dirLight
                         );
-                        bool hasRange = node.Entity.TryGet<RangeLightComponent>(out var rangeLight);
+                        bool hasRange = node.Entity.TryGet<RangeLightInfo>(out var rangeLight);
 
                         switch (c.Kind)
                         {

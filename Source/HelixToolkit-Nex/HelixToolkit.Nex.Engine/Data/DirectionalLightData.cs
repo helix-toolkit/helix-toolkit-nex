@@ -36,7 +36,7 @@ internal class DirectionalLightData : Initializable, IRenderData
     {
         _entities = World
             .CreateCollection()
-            .Has<DirectionalLightComponent>()
+            .Has<DirectionalLightInfo>()
             .Has<WorldTransform>()
             .Build();
         _entities.EntityChanged += OnLightChanged;
@@ -75,7 +75,7 @@ internal class DirectionalLightData : Initializable, IRenderData
         var lights = new DirectionalLights { LightCount = 0 };
         foreach (var entity in _entities)
         {
-            ref var lightComp = ref entity.Get<DirectionalLightComponent>();
+            ref var lightComp = ref entity.Get<DirectionalLightInfo>();
             ref var transform = ref entity.Get<WorldTransform>();
             var light = lightComp.Light;
             light.Direction = Vector3.TransformNormal(light.Direction, transform.Value);
