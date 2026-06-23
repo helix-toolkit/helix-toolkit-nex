@@ -27,83 +27,83 @@ mat4 getInvViewProjection()
 ```glsl
 mat4 getView()
 ```
-- **Description**: Returns the view matrix, which transforms world coordinates to camera space. This matrix is essential for rendering scenes from the camera's perspective.
+- **Description**: Returns the view matrix, which transforms world coordinates to view (camera) space.
 - **Return Type**: `mat4`
 
 ```glsl
 mat4 getInvView()
 ```
-- **Description**: Provides the inverse of the view matrix, allowing transformation from camera space back to world coordinates.
+- **Description**: Returns the inverse of the view matrix. This can be used to transform coordinates from view space back to world space.
 - **Return Type**: `mat4`
 
 ```glsl
 vec3 getCameraPosition()
 ```
-- **Description**: Retrieves the current position of the camera in world space. This is often used for lighting calculations and effects that depend on the viewer's position.
+- **Description**: Retrieves the position of the camera in world space. This is often used for lighting calculations and effects that depend on the camera's location.
 - **Return Type**: `vec3`
 
 ```glsl
 vec2 getScreenSize()
 ```
-- **Description**: Returns the dimensions of the screen or viewport. This information is crucial for screen-space effects and calculations.
+- **Description**: Returns the dimensions of the screen or viewport. This is useful for calculations that depend on screen size, such as screen-space effects.
 - **Return Type**: `vec2`
 
 ```glsl
 bool isPointerRingEnabled()
 ```
-- **Description**: Checks if the pointer ring effect is enabled. This effect is typically used for highlighting or interacting with objects in the scene.
+- **Description**: Checks if the pointer ring effect is enabled. This effect is typically used for highlighting or selecting objects in the scene.
 - **Return Type**: `bool`
 
 ```glsl
 vec3 getPointerRayDirection()
 ```
-- **Description**: Retrieves the direction of the pointer ray in world space. This is used for raycasting or determining interactions with objects.
+- **Description**: Retrieves the direction of the pointer ray in world space. This is used for raycasting or determining the direction of pointer-based effects.
 - **Return Type**: `vec3`
 
 ```glsl
 vec3 getPointerRayOrigin()
 ```
-- **Description**: Returns the origin of the pointer ray in world space. This point is the starting position for raycasting operations.
+- **Description**: Returns the origin of the pointer ray in world space. This is the starting point for raycasting operations.
 - **Return Type**: `vec3`
 
 ```glsl
 float getPointerRingOuterDistThreshold()
 ```
-- **Description**: Provides the outer distance threshold for the pointer ring effect. This defines the maximum distance from the pointer ray at which the effect is visible.
+- **Description**: Retrieves the outer distance threshold for the pointer ring effect. This defines the maximum distance from the ray at which the effect is visible.
 - **Return Type**: `float`
 
 ```glsl
 float getPointerRingInnerDistThreshold()
 ```
-- **Description**: Returns the inner distance threshold for the pointer ring effect. This defines the minimum distance from the pointer ray at which the effect begins.
+- **Description**: Retrieves the inner distance threshold for the pointer ring effect. This defines the minimum distance from the ray at which the effect begins.
 - **Return Type**: `float`
 
 ```glsl
 float getPointerRingColorMix()
 ```
-- **Description**: Retrieves the mix factor for blending the pointer ring color with the base color. This controls the intensity of the pointer ring effect.
+- **Description**: Returns the mix factor for blending the pointer ring color with the underlying color. This controls the intensity of the pointer ring effect.
 - **Return Type**: `float`
 
 ```glsl
 vec3 getPointerRingColor()
 ```
-- **Description**: Returns the color of the pointer ring effect. This color is blended with the base color of the fragment when the effect is active.
+- **Description**: Retrieves the color of the pointer ring effect. This color is used to highlight or indicate selection in the scene.
 - **Return Type**: `vec3`
 
 ```glsl
 float getFragToPointerRayDistance()
 ```
-- **Description**: Calculates the distance from the current fragment to the closest point on the pointer ray. This is used to determine if the fragment is within the pointer ring.
+- **Description**: Calculates the distance from the fragment's world position to the closest point on the pointer ray. This is used to determine if a fragment is within the pointer ring's influence.
 - **Return Type**: `float`
 
 ```glsl
 bool isInPointerRing()
 ```
-- **Description**: Determines if the current fragment is within the bounds of the pointer ring effect, based on its distance to the pointer ray.
+- **Description**: Determines if the current fragment is within the pointer ring effect based on its distance to the pointer ray and the defined thresholds.
 - **Return Type**: `bool`
 
 ```glsl
 vec4 mixWithPointerRing(in vec4 color)
 ```
-- **Description**: Blends the input color with the pointer ring color if the pointer ring effect is enabled and the fragment is within the ring. This function modulates the ring's brightness based on the surface normal and view direction.
+- **Description**: Blends the input color with the pointer ring color if the pointer ring effect is enabled and the fragment is within the ring. This function modulates the ring brightness based on surface normals and view direction for natural shading.
 - **Return Type**: `vec4`

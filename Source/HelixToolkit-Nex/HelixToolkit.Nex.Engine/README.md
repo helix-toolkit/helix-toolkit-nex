@@ -27,8 +27,8 @@ HelixToolkit.Nex.Engine is a core component of the HelixToolkit.Nex suite, respo
 | `Camera`                         | Base class for camera implementations, supporting view and projection matrices. |
 | `OrthographicCamera`             | A camera with an orthographic projection.                                  |
 | `PerspectiveCamera`              | A camera with a perspective projection.                                    |
-| `DirectionalLightComponent`      | Represents a directional light in the scene.                               |
-| `RangeLightComponent`            | Represents a point or spot light in the scene.                             |
+| `DirectionalLightInfo`           | Represents a directional light in the scene.                               |
+| `RangeLightInfo`                 | Represents a point or spot light in the scene.                             |
 | `DirectionalLightNode`           | Represents a directional light node in the scene graph.                    |
 | `PointLightNode`                 | Represents a point light node in the scene graph.                          |
 | `SpotLightNode`                  | Represents a spotlight node in the scene graph.                            |
@@ -190,4 +190,9 @@ camera.FocusOn(new Vector3(0, 0, 0), 10f);
 ### New Light Nodes
 
 - `DirectionalLightNode`, `PointLightNode`, and `SpotLightNode` added to represent light sources in the scene graph, allowing for more intuitive scene management and light manipulation.
+
+### Renaming of Light Components
+
+- `DirectionalLightComponent` has been renamed to `DirectionalLightInfo`.
+- `RangeLightComponent` has been renamed to `RangeLightInfo`.
 ```

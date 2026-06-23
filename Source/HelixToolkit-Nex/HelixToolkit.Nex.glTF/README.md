@@ -23,6 +23,8 @@ This package fits into the HelixToolkit-Nex engine by enabling the integration o
 | `ImportDiagnostic` | Represents a diagnostic entry with severity, message, and reference to the glTF element. |
 | `DiagnosticSeverity` | Enum indicating the severity level of an import diagnostic (Warning, Error). |
 | `ImporterConfig` | Configuration options for the glTF importer, including default shading mode and Draco decompression settings. |
+| `DirectionalLightInfo` | Represents directional light properties for ECS integration. |
+| `RangeLightInfo` | Represents range light properties (Point and Spot) for ECS integration. |
 
 ## Usage Examples
 
@@ -104,4 +106,5 @@ asyncResult.Dispose();
 - **Resource Management**: Utilizes `ResourceManifest` to track and dispose of GPU resources created during the import process.
 - **ECS Integration**: The package integrates with the HelixToolkit-Nex ECS architecture, allowing imported assets to be managed within the engine's entity-component system.
 - **Draco Compression**: Supports `KHR_draco_mesh_compression` for efficient mesh data storage and transmission. The importer can decode Draco-compressed meshes if the `EnableDracoDecompression` option is set in `ImporterConfig`.
+- **Lighting Integration**: The package now uses `DirectionalLightInfo` and `RangeLightInfo` for integrating light components into the ECS, replacing the previous `DirectionalLightComponent` and `RangeLightComponent`.
 ```
