@@ -36,6 +36,12 @@ HelixToolkit.Nex.Graphics is a core component of the HelixToolkit.Nex engine, re
 | `SamplerStateDesc`            | Describes the configuration for a texture sampler.                         |
 | `DepthState`                  | Describes depth test configuration, including new `ReadOnlyInvZBias`.      |
 | `Format`                      | Enum describing texture and buffer formats, including new `A_UN8`.         |
+| `PipelineStageFlags`          | Enum for backend-agnostic pipeline stage flags for GPU memory barriers.    |
+| `AccessFlags`                 | Enum for backend-agnostic memory access flags for GPU memory barriers.     |
+| `TextureLayout`               | Enum for backend-agnostic image layouts used by image/texture barriers.    |
+| `BarrierDescriptor`           | Describes a fully custom GPU memory barrier.                               |
+| `BarrierPreset`               | Enum for predefined buffer barrier configurations.                         |
+| `ImageTransition`             | Enum for named image/texture layout transitions.                           |
 
 ## Usage Examples
 
@@ -78,6 +84,45 @@ commandBuffer.EndRendering();
 context.Submit(commandBuffer);
 ```
 
+### Creating a Memory Barrier with Presets
+
+```csharp
+var commandBuffer = context.AcquireCommandBuffer();
+bool barrierCreated = commandBuffer.Barrier(buffer.Handle, BarrierPreset.ComputeWriteToShaderRead, force: true);
+if (!barrierCreated)
+{
+    // Handle error
+}
+```
+
+### Creating a Custom Memory Barrier
+
+```csharp
+var commandBuffer = context.AcquireCommandBuffer();
+var descriptor = new BarrierDescriptor(
+    PipelineStageFlags.ComputeShader,
+    PipelineStageFlags.FragmentShader,
+    AccessFlags.ShaderWrite,
+    AccessFlags.ShaderRead
+);
+bool barrierCreated = commandBuffer.Barrier(buffer.Handle, descriptor, force: true);
+if (!barrierCreated)
+{
+    // Handle error
+}
+```
+
+### Transitioning Texture Layouts
+
+```csharp
+var commandBuffer = context.AcquireCommandBuffer();
+bool transitionCreated = commandBuffer.ImageBarrier(textureHandle, ImageTransition.ToShaderReadOnly);
+if (!transitionCreated)
+{
+    // Handle error
+}
+```
+
 ### Using RingElementBuffer with State-Based Write
 
 ```csharp
@@ -89,23 +134,12 @@ ringBuffer.WriteDynamic(100, state, (ctx, s) => {
 });
 ```
 
-### Creating a Memory Barrier
-
-```csharp
-var commandBuffer = context.AcquireCommandBuffer();
-bool barrierCreated = commandBuffer.Barrier(buffer.Handle, force: true);
-if (!barrierCreated)
-{
-    // Handle error
-}
-```
-
 ### Creating Multiple Memory Barriers
 
 ```csharp
 var commandBuffer = context.AcquireCommandBuffer();
 var buffers = new BufferHandle[] { buffer1.Handle, buffer2.Handle };
-bool allBarriersCreated = commandBuffer.Barrier(buffers, force: true);
+bool allBarriersCreated = commandBuffer.Barrier(buffers, BarrierPreset.TransferWriteToShaderRead, force: true);
 if (!allBarriersCreated)
 {
     // Handle error

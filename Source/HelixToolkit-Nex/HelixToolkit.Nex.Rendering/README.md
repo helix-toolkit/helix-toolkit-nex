@@ -32,6 +32,7 @@ HelixToolkit.Nex.Rendering is responsible for managing the rendering pipeline of
 | `WireframePostEffect`            | Renders wireframe overlays on meshes with customizable color and depth bias.|
 | `BorderHighlightPostEffect`      | Renders colored outlines around mesh silhouettes.                           |
 | `RenderGraphResourceAllocationException` | Exception thrown when a render-graph resource fails to allocate. |
+| `PickingContext`                 | Manages GPU-based picking operations by reading entity information from a texture.|
 
 ## Recent Changes
 
@@ -45,6 +46,7 @@ HelixToolkit.Nex.Rendering is responsible for managing the rendering pipeline of
 - **DrawStream Enhancements**: Introduced `DrawStreamType` and `DrawStreamVariants` for more precise control over draw stream characteristics.
 - **RenderGraphResourceAllocationException**: Added to handle resource allocation failures in the render graph.
 - **Material Type Name Properties**: Updated `LineDrawInfo` and `PointDrawInfo` to use `LineMaterialTypeName` and `PointMaterialTypeName` respectively for material lookup.
+- **PickingContext**: Enhanced to use `GetBufferData` for reading results, improving resource management.
 
 ### Removed Features
 
