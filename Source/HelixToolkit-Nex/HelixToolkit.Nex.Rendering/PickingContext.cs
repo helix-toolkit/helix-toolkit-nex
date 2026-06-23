@@ -88,12 +88,9 @@ internal sealed class PickingContext : IDisposable
     {
         var submitIndex = requestId % _pendingCoords.Length;
         var buf = _stagingBuffer[submitIndex];
-        unsafe
-        {
-            var mapped = _context.GetMappedPtr(buf);
-            ulong result = *(ulong*)mapped;
-            return result;
-        }
+        ulong result = 0;
+        _context.GetBufferData(buf, ref result).CheckResult();
+        return result;
     }
 
     /// <inheritdoc/>
