@@ -706,4 +706,16 @@ public interface IContext : IInitializable
     /// </summary>
     /// <param name="handle">The handle of the buffer to mark as dirty.</param>
     void MarkDirty(in BufferHandle handle);
+
+    /// <summary>
+    /// Commits an in-place CPU write to a host-visible buffer's mapped memory. Call this after writing
+    /// directly through the buffer's mapped pointer (e.g. via <see cref="GetMappedPtr"/>). The backend
+    /// flushes the affected range when the memory is non-coherent and records the write as a host write
+    /// so the buffer's dirty state and barrier source scope are set correctly. Prefer <see cref="Upload(in BufferHandle, size_t, nint, size_t)"/>
+    /// when you have the source data on hand; use this only for genuine in-place writes.
+    /// </summary>
+    /// <param name="handle">The handle of the host-visible buffer that was written.</param>
+    /// <param name="offset">Byte offset of the written region.</param>
+    /// <param name="size">Size of the written region in bytes.</param>
+    void MarkHostWrite(in BufferHandle handle, size_t offset, size_t size);
 }

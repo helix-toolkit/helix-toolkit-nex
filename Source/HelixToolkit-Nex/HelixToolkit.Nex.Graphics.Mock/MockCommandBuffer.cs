@@ -403,6 +403,32 @@ public class MockCommandBuffer : ICommandBuffer
         return true;
     }
 
+    public bool Barrier(
+        in BufferHandle buffer,
+        PipelineStageFlags dstStages,
+        AccessFlags dstAccess,
+        bool force = false
+    )
+    {
+        _recordedCommands.Add(
+            $"Barrier(buffer={buffer.Index}, dstStages={dstStages}, dstAccess={dstAccess})"
+        );
+        return true;
+    }
+
+    public bool Barrier(
+        ReadOnlySpan<BufferHandle> buffers,
+        PipelineStageFlags dstStages,
+        AccessFlags dstAccess,
+        bool force = false
+    )
+    {
+        _recordedCommands.Add(
+            $"Barrier(buffers=[{string.Join(", ", buffers.ToArray().Select(h => h.Index))}], dstStages={dstStages}, dstAccess={dstAccess})"
+        );
+        return true;
+    }
+
     public bool ImageBarrier(in TextureHandle texture, ImageTransition transition)
     {
         _recordedCommands.Add($"ImageBarrier(texture={texture.Index}, transition={transition})");

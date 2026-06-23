@@ -1257,6 +1257,19 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
             threadgroupCount.Height,
             threadgroupCount.Depth
         );
+
+        // Conservatively treat every buffer the dispatch depends on as potentially written by the
+        // compute shader: record a ComputeShader/ShaderWrite source and mark dirty, so the next read
+        // of the buffer emits a correctly-sourced barrier. (The engine cannot otherwise observe shader
+        // writes; buffers a dispatch writes must be listed in deps, which is the existing contract.)
+        foreach (var handle in deps.BufferSpan)
+        {
+            var buf = _ctx.BuffersPool.Get(handle);
+            if (buf is not null && buf.Valid)
+            {
+                buf.RecordWrite(PipelineStageFlags.ComputeShader, AccessFlags.ShaderWrite);
+            }
+        }
         ++DispatchCallCount;
     }
 
@@ -2285,6 +2298,29 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
         return BarrierCore(buffers, in descriptor, force);
     }
 
+    /// <inheritdoc/>
+    public bool Barrier(
+        in BufferHandle buffer,
+        PipelineStageFlags dstStages,
+        AccessFlags dstAccess,
+        bool force = false
+    )
+    {
+        var single = MemoryMarshal.CreateReadOnlySpan(ref Unsafe.AsRef(in buffer), 1);
+        return BarrierAutoCore(single, dstStages, dstAccess, force);
+    }
+
+    /// <inheritdoc/>
+    public bool Barrier(
+        ReadOnlySpan<BufferHandle> buffers,
+        PipelineStageFlags dstStages,
+        AccessFlags dstAccess,
+        bool force = false
+    )
+    {
+        return BarrierAutoCore(buffers, dstStages, dstAccess, force);
+    }
+
     /// <summary>
     /// Single emission worker shared by the preset and custom-descriptor buffer-barrier paths.
     /// Resolves each handle, applies the lazy/dirty/force emit decision, maps the backend-agnostic
@@ -2336,37 +2372,123 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
                 continue;
             }
 
-            if (
-                BarrierPlanner.Decide(_ctx.Config.EnableLazyBufferBarrier, buf.IsDirty, force)
-                == BarrierEmitDecision.Skip
-            )
+            if (!TryEmitBufferBarrier(i, buf, in desc, force))
             {
-                continue; // redundant under lazy mode; leave dirty state unchanged
+                result = false;
             }
+        }
 
-            if (!VulkanBarrierMapping.TryMap(in desc, out var mapped))
+        return result;
+    }
+
+    /// <summary>
+    /// Auto-sourced buffer-barrier worker. The caller supplies only the destination (consumer) scope;
+    /// each buffer's source scope is taken from its most recently recorded write
+    /// (<see cref="VulkanBuffer.LastWriteStages"/> / <see cref="VulkanBuffer.LastWriteAccess"/>).
+    /// </summary>
+    /// <param name="buffers">The buffer handles to barrier, processed in the supplied order.</param>
+    /// <param name="dstStages">The destination pipeline stages that will consume the buffers.</param>
+    /// <param name="dstAccess">The destination access flags describing how the buffers will be consumed.</param>
+    /// <param name="force">Whether emission is forced regardless of dirty state.</param>
+    /// <returns>
+    /// <see langword="true"/> when no invalid handle and no mapping failure occurred (including the empty-span
+    /// case); otherwise <see langword="false"/>. Valid handles are still processed on partial failure.
+    /// </returns>
+    private bool BarrierAutoCore(
+        ReadOnlySpan<BufferHandle> buffers,
+        PipelineStageFlags dstStages,
+        AccessFlags dstAccess,
+        bool force
+    )
+    {
+        if (buffers.IsEmpty)
+        {
+            return true; // no handles, no barrier, no error (Requirement 7.5)
+        }
+
+        if (dstStages == PipelineStageFlags.None)
+        {
+            _logger.LogError(
+                "Barrier: invalid destination scope (DstStages=None); the consumer pipeline stages must be non-empty. No barrier was emitted."
+            );
+            return false;
+        }
+
+        var result = true;
+        for (var i = 0; i < buffers.Length; i++)
+        {
+            var buf = _ctx.BuffersPool.Get(buffers[i]);
+            if (buf is null || !buf.Valid)
             {
                 _logger.LogError(
-                    "Barrier: buffer at index {INDEX} produced an empty native stage scope after omitting unmapped flags (unmapped src={SRC}, dst={DST}). No barrier was emitted for this buffer.",
-                    i,
-                    mapped.UnmappedSrcStages,
-                    mapped.UnmappedDstStages
+                    "Barrier: buffer at index {INDEX} is null or invalid. Make sure the buffer is created before adding a barrier for it.",
+                    i
                 );
                 result = false;
                 continue;
             }
 
-            CmdBuffer.BufferBarrier2Explicit(
-                buf,
-                mapped.SrcStage,
-                mapped.DstStage,
-                mapped.SrcAccess,
-                mapped.DstAccess
+            // Source comes from the buffer's tracked last write; destination is caller-supplied.
+            var desc = new BarrierDescriptor(
+                buf.LastWriteStages,
+                dstStages,
+                buf.LastWriteAccess,
+                dstAccess
             );
-            buf.ClearDirty();
+            if (!TryEmitBufferBarrier(i, buf, in desc, force))
+            {
+                result = false;
+            }
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// Applies the lazy/dirty/force emit decision to a single buffer, maps the descriptor onto native
+    /// flags, emits the barrier with verbatim access masks, and clears the buffer's dirty state.
+    /// Shared by the preset/custom (<see cref="BarrierCore"/>) and auto-sourced
+    /// (<see cref="BarrierAutoCore"/>) paths.
+    /// </summary>
+    /// <returns>
+    /// <see langword="true"/> when the handle was processed without error (emitted or legitimately
+    /// skipped under lazy mode); <see langword="false"/> when mapping left an empty native stage scope.
+    /// </returns>
+    private bool TryEmitBufferBarrier(
+        int index,
+        VulkanBuffer buf,
+        in BarrierDescriptor desc,
+        bool force
+    )
+    {
+        if (
+            BarrierPlanner.Decide(_ctx.Config.EnableLazyBufferBarrier, buf.IsDirty, force)
+            == BarrierEmitDecision.Skip
+        )
+        {
+            return true; // redundant under lazy mode; leave dirty state unchanged
+        }
+
+        if (!VulkanBarrierMapping.TryMap(in desc, out var mapped))
+        {
+            _logger.LogError(
+                "Barrier: buffer at index {INDEX} produced an empty native stage scope after omitting unmapped flags (unmapped src={SRC}, dst={DST}). No barrier was emitted for this buffer.",
+                index,
+                mapped.UnmappedSrcStages,
+                mapped.UnmappedDstStages
+            );
+            return false;
+        }
+
+        CmdBuffer.BufferBarrier2Explicit(
+            buf,
+            mapped.SrcStage,
+            mapped.DstStage,
+            mapped.SrcAccess,
+            mapped.DstAccess
+        );
+        buf.ClearDirty();
+        return true;
     }
 
     /// <inheritdoc/>
