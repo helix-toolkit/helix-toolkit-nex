@@ -1995,20 +1995,34 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
             return false;
         }
 
-        // Map the backend-agnostic descriptor onto native stages/access (omit-unmapped semantics) and
-        // resolve the target layout. Emit the transition from the texture's current layout, then update
+        // Map the backend-agnostic descriptor onto native stages/access (omit-unmapped semantics).
+        // If omitting unmapped flags leaves an empty source or destination stage scope, the resulting
+        // barrier would be invalid/no-op; reject it and leave the tracked layout unchanged so later
+        // transitions still compute the correct old layout.
+        if (!VulkanBarrierMapping.TryMap(in desc, out var mapped))
+        {
+            _logger.LogError(
+                "ImageBarrier: descriptor for texture '{HANDLE}' produced an empty native stage scope after omitting unmapped flags "
+                    + "(unmapped src stages={SRCSTAGES}, dst stages={DSTSTAGES}, src access={SRCACCESS}, dst access={DSTACCESS}). "
+                    + "No image barrier was emitted and the layout is unchanged.",
+                texture,
+                mapped.UnmappedSrcStages,
+                mapped.UnmappedDstStages,
+                mapped.UnmappedSrcAccess,
+                mapped.UnmappedDstAccess
+            );
+            return false;
+        }
+
+        // Resolve the target layout, emit the transition from the texture's current layout, then update
         // the tracked current layout so subsequent transitions compute the correct old layout.
-        var srcStage = VulkanBarrierMapping.MapStages(desc.SrcStages, out _);
-        var dstStage = VulkanBarrierMapping.MapStages(desc.DstStages, out _);
-        var srcAccess = VulkanBarrierMapping.MapAccess(desc.SrcAccess, out _);
-        var dstAccess = VulkanBarrierMapping.MapAccess(desc.DstAccess, out _);
         var newLayout = VulkanBarrierMapping.MapLayout(targetLayout);
         var aspect = img.GetImageAspectFlags();
 
         CmdBuffer.ImageMemoryBarrier2(
             img.Image,
-            new StageAccess2 { Stage = srcStage, Access = srcAccess },
-            new StageAccess2 { Stage = dstStage, Access = dstAccess },
+            new StageAccess2 { Stage = mapped.SrcStage, Access = mapped.SrcAccess },
+            new StageAccess2 { Stage = mapped.DstStage, Access = mapped.DstAccess },
             img.ImageLayout,
             newLayout,
             new VkImageSubresourceRange(
@@ -2233,7 +2247,7 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
             return false;
         }
         var single = MemoryMarshal.CreateReadOnlySpan(ref Unsafe.AsRef(in buffer), 1);
-        return BarrierCore(single, in desc, force, deriveFromUsage: false);
+        return BarrierCore(single, in desc, force);
     }
 
     /// <inheritdoc/>
@@ -2251,14 +2265,14 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
             );
             return false;
         }
-        return BarrierCore(buffers, in desc, force, deriveFromUsage: false);
+        return BarrierCore(buffers, in desc, force);
     }
 
     /// <inheritdoc/>
     public bool Barrier(in BufferHandle buffer, in BarrierDescriptor descriptor, bool force = false)
     {
         var single = MemoryMarshal.CreateReadOnlySpan(ref Unsafe.AsRef(in buffer), 1);
-        return BarrierCore(single, in descriptor, force, deriveFromUsage: false);
+        return BarrierCore(single, in descriptor, force);
     }
 
     /// <inheritdoc/>
@@ -2268,24 +2282,18 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
         bool force = false
     )
     {
-        return BarrierCore(buffers, in descriptor, force, deriveFromUsage: false);
+        return BarrierCore(buffers, in descriptor, force);
     }
 
     /// <summary>
-    /// Single emission worker shared by all buffer-barrier paths (preset, custom-descriptor, and
-    /// the usage-derived default). Resolves each handle, applies the lazy/dirty/force emit decision,
-    /// maps the backend-agnostic descriptor onto native Vulkan flags, and emits the barrier with the
-    /// caller-supplied access masks verbatim.
+    /// Single emission worker shared by the preset and custom-descriptor buffer-barrier paths.
+    /// Resolves each handle, applies the lazy/dirty/force emit decision, maps the backend-agnostic
+    /// descriptor onto native Vulkan flags, and emits the barrier with the caller-supplied access
+    /// masks verbatim.
     /// </summary>
     /// <param name="buffers">The buffer handles to barrier, processed in the supplied order.</param>
-    /// <param name="desc">
-    /// The barrier descriptor to apply when <paramref name="deriveFromUsage"/> is <see langword="false"/>.
-    /// </param>
+    /// <param name="desc">The barrier descriptor to apply to every handle.</param>
     /// <param name="force">Whether emission is forced regardless of dirty state.</param>
-    /// <param name="deriveFromUsage">
-    /// When <see langword="true"/>, the per-buffer descriptor is derived from the buffer's usage flags via
-    /// <see cref="BarrierPlanner.DeriveDefaultDescriptor"/> and <paramref name="desc"/> is ignored.
-    /// </param>
     /// <returns>
     /// <see langword="true"/> when no invalid handle and no mapping failure occurred (including the empty-span
     /// case); otherwise <see langword="false"/>. Valid handles are still processed even when an earlier handle
@@ -2294,8 +2302,7 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
     private bool BarrierCore(
         ReadOnlySpan<BufferHandle> buffers,
         in BarrierDescriptor desc,
-        bool force,
-        bool deriveFromUsage
+        bool force
     )
     {
         if (buffers.IsEmpty)
@@ -2303,15 +2310,9 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
             return true; // no handles, no barrier, no error (Requirement 7.5)
         }
 
-        // When using a supplied descriptor, validate stage scopes up front. An empty source or
-        // destination stage scope is invalid: log once, emit nothing, leave dirty state unchanged.
-        if (
-            !deriveFromUsage
-            && (
-                desc.SrcStages == PipelineStageFlags.None
-                || desc.DstStages == PipelineStageFlags.None
-            )
-        )
+        // Validate stage scopes up front. An empty source or destination stage scope is invalid:
+        // log once, emit nothing, leave dirty state unchanged.
+        if (desc.SrcStages == PipelineStageFlags.None || desc.DstStages == PipelineStageFlags.None)
         {
             _logger.LogError(
                 "Barrier: invalid BarrierDescriptor (SrcStages={SRC}, DstStages={DST}); source and destination stages must be non-empty. No barrier was emitted.",
@@ -2335,12 +2336,6 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
                 continue;
             }
 
-            var d = deriveFromUsage
-                ? BarrierPlanner.DeriveDefaultDescriptor(
-                    MapVkUsageToBufferUsageBits(buf.VkUsageFlags)
-                )
-                : desc;
-
             if (
                 BarrierPlanner.Decide(_ctx.Config.EnableLazyBufferBarrier, buf.IsDirty, force)
                 == BarrierEmitDecision.Skip
@@ -2349,7 +2344,7 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
                 continue; // redundant under lazy mode; leave dirty state unchanged
             }
 
-            if (!VulkanBarrierMapping.TryMap(in d, out var mapped))
+            if (!VulkanBarrierMapping.TryMap(in desc, out var mapped))
             {
                 _logger.LogError(
                     "Barrier: buffer at index {INDEX} produced an empty native stage scope after omitting unmapped flags (unmapped src={SRC}, dst={DST}). No barrier was emitted for this buffer.",
@@ -2372,28 +2367,6 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
         }
 
         return result;
-    }
-
-    /// <summary>
-    /// Maps native <see cref="VkBufferUsageFlags"/> back onto the backend-agnostic
-    /// <see cref="BufferUsageBits"/> needed by <see cref="BarrierPlanner.DeriveDefaultDescriptor"/>.
-    /// </summary>
-    private static BufferUsageBits MapVkUsageToBufferUsageBits(VkBufferUsageFlags vk)
-    {
-        var usage = BufferUsageBits.None;
-        if (vk.HasAllFlags(VK.VK_BUFFER_USAGE_INDEX_BUFFER_BIT))
-        {
-            usage |= BufferUsageBits.Index;
-        }
-        if (vk.HasAllFlags(VK.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT))
-        {
-            usage |= BufferUsageBits.Vertex;
-        }
-        if (vk.HasAllFlags(VK.VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT))
-        {
-            usage |= BufferUsageBits.Indirect;
-        }
-        return usage;
     }
 
     /// <inheritdoc/>

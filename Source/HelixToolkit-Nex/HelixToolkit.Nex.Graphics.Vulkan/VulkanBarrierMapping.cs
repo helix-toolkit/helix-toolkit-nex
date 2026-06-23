@@ -11,13 +11,17 @@ namespace HelixToolkit.Nex.Graphics.Vulkan;
 /// <param name="DstAccess">The mapped native destination access flags.</param>
 /// <param name="UnmappedSrcStages">The source stage flags that had no native counterpart.</param>
 /// <param name="UnmappedDstStages">The destination stage flags that had no native counterpart.</param>
+/// <param name="UnmappedSrcAccess">The source access flags that had no native counterpart.</param>
+/// <param name="UnmappedDstAccess">The destination access flags that had no native counterpart.</param>
 internal readonly record struct MappedStageAccess(
     VkPipelineStageFlags2 SrcStage,
     VkPipelineStageFlags2 DstStage,
     VkAccessFlags2 SrcAccess,
     VkAccessFlags2 DstAccess,
     PipelineStageFlags UnmappedSrcStages,
-    PipelineStageFlags UnmappedDstStages
+    PipelineStageFlags UnmappedDstStages,
+    AccessFlags UnmappedSrcAccess,
+    AccessFlags UnmappedDstAccess
 );
 
 /// <summary>
@@ -172,8 +176,8 @@ internal static class VulkanBarrierMapping
             desc.DstStages,
             out PipelineStageFlags unmappedDstStages
         );
-        VkAccessFlags2 srcAccess = MapAccess(desc.SrcAccess, out _);
-        VkAccessFlags2 dstAccess = MapAccess(desc.DstAccess, out _);
+        VkAccessFlags2 srcAccess = MapAccess(desc.SrcAccess, out AccessFlags unmappedSrcAccess);
+        VkAccessFlags2 dstAccess = MapAccess(desc.DstAccess, out AccessFlags unmappedDstAccess);
 
         mapped = new MappedStageAccess(
             srcStage,
@@ -181,7 +185,9 @@ internal static class VulkanBarrierMapping
             srcAccess,
             dstAccess,
             unmappedSrcStages,
-            unmappedDstStages
+            unmappedDstStages,
+            unmappedSrcAccess,
+            unmappedDstAccess
         );
 
         return srcStage != VkPipelineStageFlags2.None && dstStage != VkPipelineStageFlags2.None;
