@@ -1,13 +1,13 @@
 using HelixToolkit.Nex.ECS;
 using HelixToolkit.Nex.Geometries;
 using HelixToolkit.Nex.glTF.Internal;
+using HelixToolkit.Nex.glTF.Tests.Mocks;
 using HelixToolkit.Nex.Graphics;
 using HelixToolkit.Nex.Graphics.Mock;
 using HelixToolkit.Nex.Material;
 using HelixToolkit.Nex.Repository;
 using HelixToolkit.Nex.Scene;
 using HelixToolkit.Nex.Shaders;
-using HelixToolkit.Nex.Shaders.Frag;
 using HelixToolkit.Nex.Textures;
 using Accessor = glTFLoader.Schema.Accessor;
 using BufferView = glTFLoader.Schema.BufferView;
@@ -97,19 +97,10 @@ public class SceneGraphPropertyTests
         public IReadOnlyList<Pool<MaterialPropertyResource, PBRProperties>.PoolEntry> Objects =>
             _inner.Objects;
 
-        public PBRMaterialProperties Create(string materialName) =>
-            _inner.Create(PBRShadingMode.PBR);
+        public PBRMaterialProperties Create(string materialName) => _inner.Create(materialName);
 
         public PBRMaterialProperties Create(string materialName, ref PBRProperties properties) =>
-            _inner.Create(PBRShadingMode.PBR, ref properties);
-
-        public PBRMaterialProperties Create(MaterialTypeId materialTypeId) =>
-            _inner.Create(materialTypeId);
-
-        public PBRMaterialProperties Create(
-            MaterialTypeId materialTypeId,
-            ref PBRProperties properties
-        ) => _inner.Create(materialTypeId, ref properties);
+            _inner.Create(materialName, ref properties);
 
         public ref PBRProperties At(int index) => ref _inner.At(index);
 
@@ -129,112 +120,6 @@ public class SceneGraphPropertyTests
         public void Clear() => _inner.Clear();
 
         public void Dispose() => _inner.Dispose();
-    }
-
-    /// <summary>
-    /// A minimal mock ITextureRepository. Not called in this test.
-    /// </summary>
-    private sealed class StubTextureRepository : ITextureRepository
-    {
-        public int Count => 0;
-
-        public TextureRef GetOrCreateFromStream(
-            string name,
-            Stream stream,
-            bool generateMipmaps = true,
-            string? debugName = null
-        ) => TextureRef.Null;
-
-        public TextureRef GetOrCreateFromFile(
-            string filePath,
-            bool generateMipmaps = true,
-            string? debugName = null
-        ) => TextureRef.Null;
-
-        public TextureRef GetOrCreateFromImage(
-            string name,
-            Image image,
-            bool generateMipmaps = true
-        ) => TextureRef.Null;
-
-        public Task<TextureRef> GetOrCreateFromStreamAsync(
-            string name,
-            Stream stream,
-            bool generateMipmaps = true,
-            string? debugName = null
-        ) => Task.FromResult(TextureRef.Null);
-
-        public Task<TextureRef> GetOrCreateFromFileAsync(
-            string filePath,
-            bool generateMipmaps = true,
-            string? debugName = null
-        ) => Task.FromResult(TextureRef.Null);
-
-        public Task<TextureRef> GetOrCreateFromImageAsync(
-            string name,
-            Image image,
-            bool generateMipmaps = true
-        ) => Task.FromResult(TextureRef.Null);
-
-        public bool Remove(string key) => false;
-
-        public bool TryGet(string cacheKey, out TextureCacheEntry? entry)
-        {
-            entry = null;
-            return false;
-        }
-
-        public void Clear() { }
-
-        public int CleanupExpired() => 0;
-
-        public RepositoryStatistics GetStatistics() =>
-            new()
-            {
-                TotalEntries = 0,
-                MaxEntries = 0,
-                TotalHits = 0,
-                TotalMisses = 0,
-            };
-
-        public void Dispose() { }
-    }
-
-    /// <summary>
-    /// A minimal mock ISamplerRepository. Not called in this test.
-    /// </summary>
-    private sealed class StubSamplerRepository : ISamplerRepository
-    {
-        private readonly MockContext _context = new();
-        private readonly SamplerRepository _inner;
-
-        public StubSamplerRepository()
-        {
-            _context.Initialize();
-            _inner = new SamplerRepository(_context);
-        }
-
-        public int Count => _inner.Count;
-
-        public SamplerRef GetOrCreate(string key, SamplerStateDesc desc) =>
-            _inner.GetOrCreate(key, desc);
-
-        public bool Remove(string key) => _inner.Remove(key);
-
-        public bool TryGet(string cacheKey, out SamplerModuleCacheEntry? entry) =>
-            _inner.TryGet(cacheKey, out entry);
-
-        public void Clear() => _inner.Clear();
-
-        public int CleanupExpired() => _inner.CleanupExpired();
-
-        public RepositoryStatistics GetStatistics() => _inner.GetStatistics();
-
-        public void Dispose()
-        {
-            _inner.Dispose();
-            _context.Dispose();
-        }
     }
 
     #endregion
@@ -265,11 +150,21 @@ public class SceneGraphPropertyTests
                     var geoManager = new MockGeometryManager();
                     var accessorReader = new AccessorReader(model, []);
                     var manifest = new ResourceManifest();
-                    var meshConverter = new MeshConverter(geoManager, accessorReader, diagnostics, manifest, MeshConverterTestDefaults.Config, MeshConverterTestDefaults.Decoder, false);
+                    var meshConverter = new MeshConverter(
+                        geoManager,
+                        accessorReader,
+                        diagnostics,
+                        manifest,
+                        MeshConverterTestDefaults.Config,
+                        MeshConverterTestDefaults.Decoder,
+                        false
+                    );
 
                     using var materialManager = new PBRMaterialPropertyManager();
                     using var textureRepo = new StubTextureRepository();
-                    using var samplerRepo = new StubSamplerRepository();
+                    using var samplerRepo = new StubSamplerRepository(
+                        StubSamplerRepositoryMode.MockContextBacked
+                    );
                     var textureLoader = new TextureLoader(
                         textureRepo,
                         samplerRepo,
@@ -518,10 +413,20 @@ public class SceneGraphPropertyTests
                     var accessorReader = new AccessorReader(emptyModel, []);
                     var geoManager = new MockGeometryManager();
                     var manifest = new ResourceManifest();
-                    var meshConverter = new MeshConverter(geoManager, accessorReader, diagnostics, manifest, MeshConverterTestDefaults.Config, MeshConverterTestDefaults.Decoder, false);
+                    var meshConverter = new MeshConverter(
+                        geoManager,
+                        accessorReader,
+                        diagnostics,
+                        manifest,
+                        MeshConverterTestDefaults.Config,
+                        MeshConverterTestDefaults.Decoder,
+                        false
+                    );
 
                     using var textureRepo = new StubTextureRepository();
-                    using var samplerRepo = new StubSamplerRepository();
+                    using var samplerRepo = new StubSamplerRepository(
+                        StubSamplerRepositoryMode.MockContextBacked
+                    );
                     using var materialManager = new PBRMaterialPropertyManager();
 
                     var textureLoader = new TextureLoader(
@@ -694,11 +599,21 @@ public class SceneGraphPropertyTests
                     var geoManager = new MockGeometryManager();
                     var accessorReader = new AccessorReader(model, [buffer]);
                     var manifest = new ResourceManifest();
-                    var meshConverter = new MeshConverter(geoManager, accessorReader, diagnostics, manifest, MeshConverterTestDefaults.Config, MeshConverterTestDefaults.Decoder, false);
+                    var meshConverter = new MeshConverter(
+                        geoManager,
+                        accessorReader,
+                        diagnostics,
+                        manifest,
+                        MeshConverterTestDefaults.Config,
+                        MeshConverterTestDefaults.Decoder,
+                        false
+                    );
 
                     using var materialManager = new MockMaterialPropertyManager();
                     using var textureRepo = new StubTextureRepository();
-                    using var samplerRepo = new StubSamplerRepository();
+                    using var samplerRepo = new StubSamplerRepository(
+                        StubSamplerRepositoryMode.MockContextBacked
+                    );
                     var textureLoader = new TextureLoader(
                         textureRepo,
                         samplerRepo,

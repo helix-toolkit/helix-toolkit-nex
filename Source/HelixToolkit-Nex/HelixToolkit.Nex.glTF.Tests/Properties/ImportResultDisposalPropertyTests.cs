@@ -253,7 +253,7 @@ public class ImportResultDisposalPropertyTests
                     for (int i = 0; i < materialCount; i++)
                     {
                         manifest.AddMaterial(
-                            materialManager.Create(Shaders.Frag.PBRShadingMode.PBR)
+                            materialManager.Create(Shaders.Frag.PBRShadingMode.PBR.ToString())
                         );
                     }
 
@@ -374,7 +374,7 @@ public class ImportResultDisposalPropertyTests
                     for (int i = 0; i < materialCount; i++)
                     {
                         manifest.AddMaterial(
-                            materialManager.Create(Shaders.Frag.PBRShadingMode.PBR)
+                            materialManager.Create(Shaders.Frag.PBRShadingMode.PBR.ToString())
                         );
                     }
 

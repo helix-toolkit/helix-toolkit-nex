@@ -240,7 +240,7 @@ public class ResourceManifestIdempotentDisposalPropertyTests
                     // Add materials
                     for (int i = 0; i < materialCount; i++)
                     {
-                        var material = materialManager.Create(Shaders.Frag.PBRShadingMode.PBR);
+                        var material = materialManager.Create(Shaders.Frag.PBRShadingMode.PBR.ToString());
                         manifest.AddMaterial(material);
                     }
 

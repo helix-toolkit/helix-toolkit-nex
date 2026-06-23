@@ -1,9 +1,9 @@
 using HelixToolkit.Nex.Geometries;
+using HelixToolkit.Nex.glTF.Tests.Mocks;
 using HelixToolkit.Nex.Graphics;
 using HelixToolkit.Nex.Material;
 using HelixToolkit.Nex.Repository;
 using HelixToolkit.Nex.Shaders.Frag;
-using NexImage = HelixToolkit.Nex.Textures.Image;
 
 namespace HelixToolkit.Nex.glTF.Tests.Unit;
 
@@ -14,118 +14,6 @@ namespace HelixToolkit.Nex.glTF.Tests.Unit;
 [TestClass]
 public class ResourceManifestTests
 {
-    /// <summary>
-    /// A stub ITextureRepository that tracks Remove calls for verification.
-    /// </summary>
-    private sealed class StubTextureRepository : ITextureRepository
-    {
-        public int Count => 0;
-        public List<string> RemovedKeys { get; } = [];
-
-        public TextureRef GetOrCreateFromStream(
-            string name,
-            Stream stream,
-            bool generateMipmaps = true,
-            string? debugName = null
-        ) => TextureRef.Null;
-
-        public TextureRef GetOrCreateFromFile(
-            string filePath,
-            bool generateMipmaps = true,
-            string? debugName = null
-        ) => TextureRef.Null;
-
-        public TextureRef GetOrCreateFromImage(
-            string name,
-            NexImage image,
-            bool generateMipmaps = true
-        ) => TextureRef.Null;
-
-        public Task<TextureRef> GetOrCreateFromStreamAsync(
-            string name,
-            Stream stream,
-            bool generateMipmaps = true,
-            string? debugName = null
-        ) => Task.FromResult(TextureRef.Null);
-
-        public Task<TextureRef> GetOrCreateFromFileAsync(
-            string filePath,
-            bool generateMipmaps = true,
-            string? debugName = null
-        ) => Task.FromResult(TextureRef.Null);
-
-        public Task<TextureRef> GetOrCreateFromImageAsync(
-            string name,
-            NexImage image,
-            bool generateMipmaps = true
-        ) => Task.FromResult(TextureRef.Null);
-
-        public bool Remove(string key)
-        {
-            RemovedKeys.Add(key);
-            return true;
-        }
-
-        public bool TryGet(string cacheKey, out TextureCacheEntry? entry)
-        {
-            entry = null;
-            return false;
-        }
-
-        public void Clear() { }
-
-        public int CleanupExpired() => 0;
-
-        public RepositoryStatistics GetStatistics() =>
-            new()
-            {
-                TotalEntries = 0,
-                MaxEntries = 0,
-                TotalHits = 0,
-                TotalMisses = 0,
-            };
-
-        public void Dispose() { }
-    }
-
-    /// <summary>
-    /// A stub ISamplerRepository that tracks Remove calls for verification.
-    /// </summary>
-    private sealed class StubSamplerRepository : ISamplerRepository
-    {
-        public int Count => 0;
-        public List<string> RemovedKeys { get; } = [];
-
-        public SamplerRef GetOrCreate(string key, SamplerStateDesc desc) => SamplerRef.Null;
-
-        public bool Remove(string key)
-        {
-            RemovedKeys.Add(key);
-            return true;
-        }
-
-        public bool TryGet(string cacheKey, out SamplerModuleCacheEntry? entry)
-        {
-            entry = null;
-            return false;
-        }
-
-        public void Clear() { }
-
-        public int CleanupExpired() => 0;
-
-        public RepositoryStatistics GetStatistics() =>
-            new()
-            {
-                TotalEntries = 0,
-                MaxEntries = 0,
-                TotalHits = 0,
-                TotalMisses = 0,
-            };
-
-        public void Dispose() { }
-    }
-
     private StubTextureRepository _textureRepo = null!;
     private StubSamplerRepository _samplerRepo = null!;
     private PBRMaterialPropertyManager _materialManager = null!;
@@ -133,8 +21,8 @@ public class ResourceManifestTests
     [TestInitialize]
     public void Setup()
     {
-        _textureRepo = new StubTextureRepository();
-        _samplerRepo = new StubSamplerRepository();
+        _textureRepo = new StubTextureRepository(StubTextureRepositoryMode.RemoveTracking);
+        _samplerRepo = new StubSamplerRepository(StubSamplerRepositoryMode.RemoveTracking);
         _materialManager = new PBRMaterialPropertyManager();
     }
 
@@ -158,7 +46,7 @@ public class ResourceManifestTests
 
     private PBRMaterialProperties CreateMaterial()
     {
-        return _materialManager.Create(PBRShadingMode.PBR);
+        return _materialManager.Create(PBRShadingMode.PBR.ToString());
     }
 
     // =========================================================================

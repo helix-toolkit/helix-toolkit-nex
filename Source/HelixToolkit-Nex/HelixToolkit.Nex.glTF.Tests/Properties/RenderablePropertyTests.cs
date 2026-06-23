@@ -2,6 +2,7 @@ using glTFLoader.Schema;
 using HelixToolkit.Nex.ECS;
 using HelixToolkit.Nex.Geometries;
 using HelixToolkit.Nex.glTF.Internal;
+using HelixToolkit.Nex.glTF.Tests.Mocks;
 using HelixToolkit.Nex.Graphics;
 using HelixToolkit.Nex.Graphics.Mock;
 using HelixToolkit.Nex.Material;
@@ -123,18 +124,10 @@ public class RenderablePropertyTests
 
         public int Count => _inner.Count;
 
-        public PBRMaterialProperties Create(string materialName) => _inner.Create("PBR");
+        public PBRMaterialProperties Create(string materialName) => _inner.Create(materialName);
 
         public PBRMaterialProperties Create(string materialName, ref PBRProperties properties) =>
-            _inner.Create("PBR", ref properties);
-
-        public PBRMaterialProperties Create(MaterialTypeId materialTypeId) =>
-            _inner.Create(materialTypeId);
-
-        public PBRMaterialProperties Create(
-            MaterialTypeId materialTypeId,
-            ref PBRProperties properties
-        ) => _inner.Create(materialTypeId, ref properties);
+            _inner.Create(materialName, ref properties);
 
         public void Clear() => _inner.Clear();
 
@@ -157,112 +150,6 @@ public class RenderablePropertyTests
         }
 
         public void Dispose() => _inner.Dispose();
-    }
-
-    /// <summary>
-    /// A stub ITextureRepository (not used for material creation, but required by TextureLoader constructor).
-    /// </summary>
-    private sealed class StubTextureRepository : ITextureRepository
-    {
-        public int Count => 0;
-
-        public TextureRef GetOrCreateFromStream(
-            string name,
-            Stream stream,
-            bool generateMipmaps = true,
-            string? debugName = null
-        ) => TextureRef.Null;
-
-        public TextureRef GetOrCreateFromFile(
-            string filePath,
-            bool generateMipmaps = true,
-            string? debugName = null
-        ) => TextureRef.Null;
-
-        public TextureRef GetOrCreateFromImage(
-            string name,
-            NexImage image,
-            bool generateMipmaps = true
-        ) => TextureRef.Null;
-
-        public Task<TextureRef> GetOrCreateFromStreamAsync(
-            string name,
-            Stream stream,
-            bool generateMipmaps = true,
-            string? debugName = null
-        ) => Task.FromResult(TextureRef.Null);
-
-        public Task<TextureRef> GetOrCreateFromFileAsync(
-            string filePath,
-            bool generateMipmaps = true,
-            string? debugName = null
-        ) => Task.FromResult(TextureRef.Null);
-
-        public Task<TextureRef> GetOrCreateFromImageAsync(
-            string name,
-            NexImage image,
-            bool generateMipmaps = true
-        ) => Task.FromResult(TextureRef.Null);
-
-        public bool Remove(string key) => false;
-
-        public bool TryGet(string cacheKey, out TextureCacheEntry? entry)
-        {
-            entry = null;
-            return false;
-        }
-
-        public void Clear() { }
-
-        public int CleanupExpired() => 0;
-
-        public RepositoryStatistics GetStatistics() =>
-            new()
-            {
-                TotalEntries = 0,
-                MaxEntries = 0,
-                TotalHits = 0,
-                TotalMisses = 0,
-            };
-
-        public void Dispose() { }
-    }
-
-    /// <summary>
-    /// A stub ISamplerRepository.
-    /// </summary>
-    private sealed class StubSamplerRepository : ISamplerRepository
-    {
-        private readonly MockContext _context = new();
-        private readonly SamplerRepository _inner;
-
-        public StubSamplerRepository()
-        {
-            _context.Initialize();
-            _inner = new SamplerRepository(_context);
-        }
-
-        public int Count => _inner.Count;
-
-        public SamplerRef GetOrCreate(string key, SamplerStateDesc desc) =>
-            _inner.GetOrCreate(key, desc);
-
-        public bool Remove(string key) => _inner.Remove(key);
-
-        public bool TryGet(string cacheKey, out SamplerModuleCacheEntry? entry) =>
-            _inner.TryGet(cacheKey, out entry);
-
-        public void Clear() => _inner.Clear();
-
-        public int CleanupExpired() => _inner.CleanupExpired();
-
-        public RepositoryStatistics GetStatistics() => _inner.GetStatistics();
-
-        public void Dispose()
-        {
-            _inner.Dispose();
-            _context.Dispose();
-        }
     }
 
     #endregion
@@ -393,7 +280,9 @@ public class RenderablePropertyTests
                     using var geoManager = new MockGeometryManager();
                     using var materialManager = new MockPBRMaterialPropertyManager();
                     using var textureRepo = new StubTextureRepository();
-                    using var samplerRepo = new StubSamplerRepository();
+                    using var samplerRepo = new StubSamplerRepository(
+                        StubSamplerRepositoryMode.MockContextBacked
+                    );
 
                     var (model, buffer) = CreateGltfModelWithMesh(
                         primitiveCount,
@@ -403,7 +292,15 @@ public class RenderablePropertyTests
                     var diagnostics = new List<ImportDiagnostic>();
                     var accessorReader = new AccessorReader(model, [buffer]);
                     var manifest = new ResourceManifest();
-                    var meshConverter = new MeshConverter(geoManager, accessorReader, diagnostics, manifest, MeshConverterTestDefaults.Config, MeshConverterTestDefaults.Decoder, false);
+                    var meshConverter = new MeshConverter(
+                        geoManager,
+                        accessorReader,
+                        diagnostics,
+                        manifest,
+                        MeshConverterTestDefaults.Config,
+                        MeshConverterTestDefaults.Decoder,
+                        false
+                    );
                     var textureLoader = new TextureLoader(
                         textureRepo,
                         samplerRepo,
@@ -474,7 +371,9 @@ public class RenderablePropertyTests
                     using var geoManager = new FailingGeometryManager();
                     using var materialManager = new MockPBRMaterialPropertyManager();
                     using var textureRepo = new StubTextureRepository();
-                    using var samplerRepo = new StubSamplerRepository();
+                    using var samplerRepo = new StubSamplerRepository(
+                        StubSamplerRepositoryMode.MockContextBacked
+                    );
 
                     var (model, buffer) = CreateGltfModelWithMesh(
                         primitiveCount,
@@ -484,7 +383,15 @@ public class RenderablePropertyTests
                     var diagnostics = new List<ImportDiagnostic>();
                     var accessorReader = new AccessorReader(model, [buffer]);
                     var manifest = new ResourceManifest();
-                    var meshConverter = new MeshConverter(geoManager, accessorReader, diagnostics, manifest, MeshConverterTestDefaults.Config, MeshConverterTestDefaults.Decoder, false);
+                    var meshConverter = new MeshConverter(
+                        geoManager,
+                        accessorReader,
+                        diagnostics,
+                        manifest,
+                        MeshConverterTestDefaults.Config,
+                        MeshConverterTestDefaults.Decoder,
+                        false
+                    );
                     var textureLoader = new TextureLoader(
                         textureRepo,
                         samplerRepo,

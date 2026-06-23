@@ -222,7 +222,7 @@ public class ResourceManifestDisposeAllPropertyTests
                     var materials = new List<PBRMaterialProperties>();
                     for (int i = 0; i < materialCount; i++)
                     {
-                        var material = materialManager.Create(Shaders.Frag.PBRShadingMode.PBR);
+                        var material = materialManager.Create(Shaders.Frag.PBRShadingMode.PBR.ToString());
                         manifest.AddMaterial(material);
                         materials.Add(material);
                     }

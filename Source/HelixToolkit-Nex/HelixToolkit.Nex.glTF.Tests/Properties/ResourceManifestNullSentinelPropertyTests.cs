@@ -1,4 +1,5 @@
 using HelixToolkit.Nex.Geometries;
+using HelixToolkit.Nex.glTF.Tests.Mocks;
 using HelixToolkit.Nex.Graphics;
 using HelixToolkit.Nex.Repository;
 using HelixToolkit.Nex.Textures;
@@ -17,109 +18,6 @@ namespace HelixToolkit.Nex.glTF.Tests.Properties;
 public class ResourceManifestNullSentinelPropertyTests
 {
     private static readonly Config FsCheckConfig = Config.Default.WithMaxTest(100);
-
-    /// <summary>
-    /// A minimal mock ITextureRepository for creating valid TextureRef instances.
-    /// </summary>
-    private sealed class StubTextureRepository : ITextureRepository
-    {
-        public int Count => 0;
-
-        public TextureRef GetOrCreateFromStream(
-            string name,
-            Stream stream,
-            bool generateMipmaps = true,
-            string? debugName = null
-        ) => new TextureRef(name, this, TextureResource.Null);
-
-        public TextureRef GetOrCreateFromFile(
-            string filePath,
-            bool generateMipmaps = true,
-            string? debugName = null
-        ) => new TextureRef(filePath, this, TextureResource.Null);
-
-        public TextureRef GetOrCreateFromImage(
-            string name,
-            Image image,
-            bool generateMipmaps = true
-        ) => new TextureRef(name, this, TextureResource.Null);
-
-        public Task<TextureRef> GetOrCreateFromStreamAsync(
-            string name,
-            Stream stream,
-            bool generateMipmaps = true,
-            string? debugName = null
-        ) => Task.FromResult(new TextureRef(name, this, TextureResource.Null));
-
-        public Task<TextureRef> GetOrCreateFromFileAsync(
-            string filePath,
-            bool generateMipmaps = true,
-            string? debugName = null
-        ) => Task.FromResult(new TextureRef(filePath, this, TextureResource.Null));
-
-        public Task<TextureRef> GetOrCreateFromImageAsync(
-            string name,
-            Image image,
-            bool generateMipmaps = true
-        ) => Task.FromResult(new TextureRef(name, this, TextureResource.Null));
-
-        public bool Remove(string key) => false;
-
-        public bool TryGet(string cacheKey, out TextureCacheEntry? entry)
-        {
-            entry = null;
-            return false;
-        }
-
-        public void Clear() { }
-
-        public int CleanupExpired() => 0;
-
-        public RepositoryStatistics GetStatistics() =>
-            new()
-            {
-                TotalEntries = 0,
-                MaxEntries = 0,
-                TotalHits = 0,
-                TotalMisses = 0,
-            };
-
-        public void Dispose() { }
-    }
-
-    /// <summary>
-    /// A minimal mock ISamplerRepository for creating valid SamplerRef instances.
-    /// </summary>
-    private sealed class StubSamplerRepository : ISamplerRepository
-    {
-        public int Count => 0;
-
-        public SamplerRef GetOrCreate(string key, SamplerStateDesc desc) =>
-            new SamplerRef(key, this, SamplerResource.Null);
-
-        public bool Remove(string key) => false;
-
-        public bool TryGet(string cacheKey, out SamplerModuleCacheEntry? entry)
-        {
-            entry = null;
-            return false;
-        }
-
-        public void Clear() { }
-
-        public int CleanupExpired() => 0;
-
-        public RepositoryStatistics GetStatistics() =>
-            new()
-            {
-                TotalEntries = 0,
-                MaxEntries = 0,
-                TotalHits = 0,
-                TotalMisses = 0,
-            };
-
-        public void Dispose() { }
-    }
 
     /// <summary>
     /// Property 3: For any sequence of Add operations that mixes valid resources with

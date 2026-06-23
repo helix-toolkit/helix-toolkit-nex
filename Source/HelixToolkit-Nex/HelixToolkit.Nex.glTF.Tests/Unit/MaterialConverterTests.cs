@@ -4,7 +4,6 @@ using HelixToolkit.Nex.Graphics;
 using HelixToolkit.Nex.Material;
 using HelixToolkit.Nex.Repository;
 using HelixToolkit.Nex.Shaders;
-using HelixToolkit.Nex.Shaders.Frag;
 using Newtonsoft.Json.Linq;
 using static HelixToolkit.Nex.Pool<
     HelixToolkit.Nex.Material.MaterialPropertyResource,
@@ -35,26 +34,12 @@ public class MaterialConverterTests
 
         public PBRMaterialProperties Create(string materialName)
         {
-            // Always use the registered PBR shading mode regardless of the name
-            return _inner.Create(PBRShadingMode.PBR);
+            return _inner.Create(materialName);
         }
 
         public PBRMaterialProperties Create(string materialName, ref PBRProperties properties)
         {
-            return _inner.Create(PBRShadingMode.PBR, ref properties);
-        }
-
-        public PBRMaterialProperties Create(MaterialTypeId materialTypeId)
-        {
-            return _inner.Create(materialTypeId);
-        }
-
-        public PBRMaterialProperties Create(
-            MaterialTypeId materialTypeId,
-            ref PBRProperties properties
-        )
-        {
-            return _inner.Create(materialTypeId, ref properties);
+            return _inner.Create(materialName, ref properties);
         }
 
         public ref PBRProperties At(int index) => ref _inner.At(index);
