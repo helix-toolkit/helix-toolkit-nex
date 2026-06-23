@@ -50,6 +50,16 @@ The `HelixToolkit.Nex.Maths` package is integral to the HelixToolkit-Nex engine,
 - `Color.PackToRGBA()`: Packs the color into a 32-bit unsigned integer in RGBA format.
 - `Color4Helper.EncodeToUInt(Color4 color)`: Encodes a `Color4` into a 32-bit unsigned integer in RGBA format.
 
+### Updated Methods
+
+- `BoundingFrustum.Intersects(BoundingSphere sphere)`: Added overload for intersecting with `BoundingSphere`.
+- `BoundingFrustum.Intersects(BoundingBox box)`: Added overload for intersecting with `BoundingBox`.
+
+### Extension Methods
+
+- `GetAlignedSize(this uint value, uint alignment)`: Extension method for aligning a size value.
+- `GetAlignedAddress(this ulong addr, uint align)`: Extension method for aligning a memory address.
+
 ## Usage Examples
 
 ### Creating and Using Colors

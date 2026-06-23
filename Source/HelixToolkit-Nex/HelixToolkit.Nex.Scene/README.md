@@ -108,5 +108,9 @@ Console.WriteLine($"Is Child Node Renderable: {isRenderable}");
   - Replaced the inner dictionary of `_worldRegistries` with `ConcurrentDictionary` to improve thread safety and simplify the code by removing explicit locks.
   - Added `FindNode(Entity entity)` method to easily retrieve a node from an entity.
 
+- **Project Configuration:**
+  - Added `icon.png` to the package for better visual representation in package managers.
+  - Updated project configurations to include `LinuxDebug` and `LinuxRelease` builds.
+
 The `HelixToolkit.Nex.Scene` package is an essential part of the HelixToolkit-Nex engine, providing the necessary infrastructure for managing complex 3D scenes efficiently.
 ```

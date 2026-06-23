@@ -10,8 +10,8 @@ The `HelixToolkit.Nex.Graphics.Mock` package is designed to fit seamlessly into 
 ## Key Types
 
 - **MockCommandBuffer**: A mock implementation of `ICommandBuffer` for unit testing, allowing the recording and validation of command buffer operations.
-  - **DrawCallCount**: Property added to track the number of draw calls made.
-  - **DispatchCallCount**: Property added to track the number of dispatch calls made.
+  - **DrawCallCount**: Property to track the number of draw calls made.
+  - **DispatchCallCount**: Property to track the number of dispatch calls made.
   - **SetCheckpointMarker**: Method to simulate setting a checkpoint marker.
   - **Barrier**: Overloaded methods to simulate a barrier operation on one or multiple buffers.
   - **BindRenderPipeline**: Overloaded method to bind a render pipeline with color write states.
@@ -19,6 +19,8 @@ The `HelixToolkit.Nex.Graphics.Mock` package is designed to fit seamlessly into 
   - **SetColorWriteEnabled**: Overloaded methods to enable or disable color writes for attachments.
   - **CopyTextureToBuffer**: Method to simulate copying texture data to a buffer.
   - **SetCullMode**: Method to simulate setting the cull mode.
+  - **PushDebugGroupLabel**: Method to simulate pushing a debug group label.
+  - **InsertDebugEventLabel**: Method to simulate inserting a debug event label.
 - **MockContext**: A mock implementation of `IContext` that simulates a graphics context, providing methods to create and manage mock resources such as buffers, textures, and pipelines.
   - **GenerateMipmap**: Method to simulate mipmap generation for a texture.
   - **WaitAll**: Method to simulate waiting for all operations to complete.
@@ -27,6 +29,7 @@ The `HelixToolkit.Nex.Graphics.Mock` package is designed to fit seamlessly into 
   - **CreateSecondaryCommandBuffer**: Method signature updated to remove `RenderPass` parameter.
   - **SupportsSubpass**: Property indicating if subpass operations are supported.
   - **GetBufferDesc**: Method to retrieve the `BufferDesc` used to create a buffer.
+  - **GetTextureDesc**: Method to retrieve the `TextureDesc` used to create a texture.
   - **MarkDirty**: Method to mark a buffer as dirty, though no-op in mock context.
 
 ## Usage Examples
@@ -134,6 +137,8 @@ commandBuffer.SetCullMode(CullMode.Back);
 - **New Methods and Properties**: Added `DrawCallCount`, `DispatchCallCount`, `SetCheckpointMarker`, `BindRenderPipeline` with color writes, `ClearDepthStencilImage`, `SetColorWriteEnabled`, `CopyTextureToBuffer`, `SetCullMode`, and updated `CreateSecondaryCommandBuffer` method signature to enhance testing capabilities.
 - **SupportsSubpass**: Added `SupportsSubpass` property to `MockContext` to indicate subpass support.
 - **GetBufferDesc**: Added method to `MockContext` to retrieve the `BufferDesc` used to create a buffer.
+- **GetTextureDesc**: Added method to `MockContext` to retrieve the `TextureDesc` used to create a texture.
 - **MarkDirty**: Added method to `MockContext` to mark a buffer as dirty, though it is a no-op in the mock context.
 - **Barrier Overloads**: Added overloads to `MockCommandBuffer` for barrier operations on multiple buffers.
+- **Debug Labels**: Updated `PushDebugGroupLabel` and `InsertDebugEventLabel` to use `ReadOnlySpan<byte>` for labels.
 ```

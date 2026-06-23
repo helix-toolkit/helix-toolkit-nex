@@ -93,6 +93,7 @@ var deserializedGeometry = JsonSerializer.Deserialize<Geometry>(json, options);
   - Updated buffer management logic to use `HasAllFlags` for checking buffer types.
   - Buffer debug names have been updated for clarity.
   - Removed redundant event publishing logic from property change handlers.
+  - Introduced asynchronous buffer update methods using a double-buffering strategy for GPU uploads.
 - **GeometryManager API**: 
   - Introduced `UploadMeshInfoDynamic` method for uploading mesh information to the GPU.
   - Added `LastIndex` property to track the last object index in the pool.

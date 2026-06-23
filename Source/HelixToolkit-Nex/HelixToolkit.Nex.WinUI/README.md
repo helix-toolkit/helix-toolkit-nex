@@ -59,6 +59,7 @@ viewport.PointerPressed += (sender, e) =>
 - **Rendering Event Handling**: The `CompositionTarget.Rendering` event is now directly used without the namespace prefix, simplifying the event subscription and unsubscription process.
 - **Resource Management**: Improved resource management with the `EnsureSize` method to handle viewport resizing more efficiently. The `Engine.WaitForIdle()` method is now used to ensure the engine is idle before releasing resources.
 - **Microsoft Windows App SDK Update**: Updated the package reference for `Microsoft.WindowsAppSDK` to version `2.1.3`.
+- **New HelixProperty Class**: Added `HelixProperty` class to facilitate the registration of dependency properties and attached properties with options for two-way binding and change callbacks.
 
 ## Architecture Notes
 

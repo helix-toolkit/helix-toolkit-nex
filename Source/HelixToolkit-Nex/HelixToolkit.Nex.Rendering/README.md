@@ -45,6 +45,9 @@ HelixToolkit.Nex.Rendering is responsible for managing the rendering pipeline of
 - **DrawStream Enhancements**: Introduced `DrawStreamType` and `DrawStreamVariants` for more precise control over draw stream characteristics.
 - **RenderGraphResourceAllocationException**: Added to handle resource allocation failures in the render graph.
 - **Material Type Name Properties**: Updated `LineDrawInfo` and `PointDrawInfo` to use `LineMaterialTypeName` and `PointMaterialTypeName` respectively for material lookup.
+- **BillboardCullNode**: Added for culling billboards based on screen size and distance.
+- **SMAA Textures**: Added `AreaTexDX10.dds` and `SearchTex.dds` for SMAA anti-aliasing support.
+- **MSDF Font Support**: Added support for MSDF font rendering with `google-sans-regular.json`.
 
 ### Removed Features
 

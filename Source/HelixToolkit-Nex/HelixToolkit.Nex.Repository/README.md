@@ -102,4 +102,9 @@ The project now supports additional build configurations for Linux:
 - `LinuxRelease`
 
 These configurations allow for building and testing the repository package on Linux platforms, expanding the versatility and deployment options for the HelixToolkit.Nex engine.
+
+## Additional Notes
+
+- **Internals Visibility**: The assembly exposes its internals to specific test projects for unit testing purposes.
+- **Global Usings**: The package utilizes global usings for common namespaces to simplify code and reduce boilerplate.
 ```

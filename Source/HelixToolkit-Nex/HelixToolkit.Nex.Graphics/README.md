@@ -19,6 +19,7 @@ HelixToolkit.Nex.Graphics is a core component of the HelixToolkit.Nex engine, re
 |-------------------------------|-----------------------------------------------------------------------------|
 | `IAsyncUploadHandle`          | Interface for asynchronous GPU upload operations.                           |
 | `AsyncUploadHandle`           | Represents the result of an asynchronous GPU upload operation.              |
+| `AsyncUploadHandle<THandle>`  | Represents the result of an asynchronous GPU upload operation with a specific resource handle. |
 | `BufferDesc`                  | Describes the properties required to create a GPU buffer.                   |
 | `ICommandBuffer`              | Interface for recording GPU commands in a rendering pipeline.               |
 | `ComputePipelineDesc`         | Describes the configuration for creating a compute pipeline.                |

@@ -91,6 +91,9 @@ subscription.Dispose();
 
 ## Recent Changes
 
+- **ComponentManager Enhancements**: Introduced `ComponentManager<T>` with methods for managing components, including `Set`, `Remove`, and `Get`.
+- **TagManager Enhancements**: Improved `TagManager<T>` to handle tag components more efficiently with methods like `Add`, `Remove`, and `HasAny`.
+- **Component Sorting**: Added `ComponentSorting` class for sorting components using Shell Sort, enhancing performance for large datasets.
 - **Entity Lifecycle Events**: Updated to use `EntityDisposingEvent` instead of `EntityBeforeDisposeEvent` for handling pre-disposal logic for entities.
 - **Event System Enhancements**: The `ECSEventBus` now supports a broader range of world IDs, improving scalability.
 - **Type Safety Improvements**: Introduced `[DynamicallyAccessedMembers]` attribute to enhance type safety and reflection capabilities.

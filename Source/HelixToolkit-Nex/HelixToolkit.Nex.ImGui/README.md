@@ -53,7 +53,7 @@ imguiRenderer.Render(commandBuffer, renderPass, framebuffer, dependencies);
 ## Architecture Notes
 
 - **Design Patterns**: The `ImGuiRenderer` utilizes the IDisposable pattern to manage resources effectively, ensuring that Vulkan resources are properly released.
-- **Dependencies**: This package depends on the `HelixToolkit.Nex.Graphics` and `HelixToolkit.Nex.Shaders` packages for rendering and shader management.
+- **Dependencies**: This package depends on the `HelixToolkit.Nex.Graphics`, `HelixToolkit.Nex.Shaders`, and `HelixToolkit.Nex.Rendering` packages for rendering and shader management.
 - **Integration**: The renderer is designed to fit into the HelixToolkit.Nex's ECS and render graph architecture, allowing for efficient and organized rendering of ImGui elements alongside other 3D content.
 
 ## Recent Changes
@@ -61,4 +61,6 @@ imguiRenderer.Render(commandBuffer, renderPass, framebuffer, dependencies);
 - **Depth State Binding**: The `ImGuiRenderer` now explicitly binds the `DepthState.Disabled` during rendering, ensuring depth testing is disabled for ImGui elements.
 - **Debug Group Label**: The `ImGuiRenderer` uses a static byte array for the debug group label, improving performance by avoiding repeated string allocations.
 - **Platform Configurations**: The project includes additional build configurations for Linux (`LinuxDebug` and `LinuxRelease`), enhancing cross-platform support.
+- **Pipeline Initialization**: The `Initialize` method now requires a `Format` parameter to specify the target format for the render pipeline.
+- **Rendering Method**: The `Render` method has been updated to handle rendering operations, including debug group labeling and command buffer management.
 ```

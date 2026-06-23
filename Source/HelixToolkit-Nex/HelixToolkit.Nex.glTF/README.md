@@ -107,4 +107,5 @@ asyncResult.Dispose();
 - **ECS Integration**: The package integrates with the HelixToolkit-Nex ECS architecture, allowing imported assets to be managed within the engine's entity-component system.
 - **Draco Compression**: Supports `KHR_draco_mesh_compression` for efficient mesh data storage and transmission. The importer can decode Draco-compressed meshes if the `EnableDracoDecompression` option is set in `ImporterConfig`.
 - **Lighting Integration**: The package now uses `DirectionalLightInfo` and `RangeLightInfo` for integrating light components into the ECS, replacing the previous `DirectionalLightComponent` and `RangeLightComponent`.
+- **Import Diagnostics**: The `ImportDiagnostic` class provides detailed information about issues encountered during the import process, including the severity and the specific glTF element involved.
 ```

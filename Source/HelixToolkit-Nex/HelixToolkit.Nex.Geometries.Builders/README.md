@@ -80,4 +80,9 @@ var tangent = new Vector4(tangentXYZ, 1.0f);
 ```
 
 This change affects how tangents are stored and should be considered when interfacing with shaders or other systems that utilize tangent data.
+
+### Project Configuration
+
+- **Package Icon**: Added `icon.png` as the package icon.
+- **Build Configurations**: Added new build configurations `LinuxDebug` and `LinuxRelease` to support cross-platform development.
 ```
