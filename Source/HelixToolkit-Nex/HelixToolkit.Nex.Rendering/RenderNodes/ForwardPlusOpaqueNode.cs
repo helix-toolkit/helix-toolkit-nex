@@ -53,9 +53,7 @@ public sealed class ForwardPlusOpaqueNode : RenderNode
         var streams = res.RenderContext.Data!.MeshDrawStreams.GetStreams(DrawStreamType.Opaque);
         foreach (var stream in streams)
         {
-            if (stream.Count == 0)
-            { continue; }
-            stream.Barrier(res.CmdBuffer);
+            stream.Barrier(res.CmdBuffer, BarrierPreset.ComputeWriteToShaderRead);
         }
     }
 

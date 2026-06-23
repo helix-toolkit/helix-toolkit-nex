@@ -134,7 +134,7 @@ public sealed class ForwardPlusLightCullingNode : ComputeNode
         _cullingConstants.EnableAABBCulling = EnableAABBCulling ? 1u : 0u;
         _cullingConstants.EnableDepthMaskCulling = EnableDepthMaskCulling ? 1u : 0u;
         _cullingConstantsBuffer!.AdvanceAndUpdate(ref _cullingConstants);
-        res.CmdBuffer.Barrier(_cullingConstantsBuffer.Current);
+        res.CmdBuffer.Barrier(_cullingConstantsBuffer.Current, BarrierPreset.HostWriteToShaderRead);
     }
 
     protected override void OnRender(in RenderResources res)

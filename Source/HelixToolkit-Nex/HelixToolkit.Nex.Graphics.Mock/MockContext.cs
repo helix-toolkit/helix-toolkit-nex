@@ -448,6 +448,11 @@ public class MockContext : IContext
         // Mock: no-op — there is no GPU-side dirty tracking in the mock context.
     }
 
+    public void MarkHostWrite(in BufferHandle handle, size_t offset, size_t size)
+    {
+        // Mock: no-op — there is no GPU-side dirty tracking or mapped-memory flushing in the mock context.
+    }
+
     public uint GetMaxStorageBufferRange()
     {
         return MaxStorageBufferRange;

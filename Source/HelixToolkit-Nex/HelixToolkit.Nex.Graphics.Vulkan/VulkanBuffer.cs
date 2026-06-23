@@ -41,6 +41,19 @@ internal sealed class VulkanBuffer : IDisposable
 
     public bool IsDirty => DirtyVersion != SyncVersion;
 
+    // Tracks the scope of the most recent *observed* write to this buffer, used as the source scope
+    // when auto-deriving a barrier so callers don't have to specify it. The engine can only observe
+    // host writes (BufferSubData) and command-recorded writes (transfer/compute via dispatch deps);
+    // it cannot see arbitrary shader writes. The default therefore mirrors the historical conservative
+    // source (Host | ComputeShader / HostWrite | ShaderWrite) so an auto-sourced barrier is never less
+    // safe than before until a tighter write is actually recorded.
+    private PipelineStageFlags _lastWriteStages =
+        PipelineStageFlags.Host | PipelineStageFlags.ComputeShader;
+    public PipelineStageFlags LastWriteStages => _lastWriteStages;
+
+    private AccessFlags _lastWriteAccess = AccessFlags.HostWrite | AccessFlags.ShaderWrite;
+    public AccessFlags LastWriteAccess => _lastWriteAccess;
+
     private VulkanBuffer() { }
 
     public VulkanBuffer(
@@ -230,7 +243,8 @@ internal sealed class VulkanBuffer : IDisposable
         {
             FlushMappedMemory(offset, size);
         }
-        MarkDirty();
+        // Host (CPU) write: record the source scope so a later auto-sourced barrier syncs Host->consumer.
+        RecordWrite(PipelineStageFlags.Host, AccessFlags.HostWrite);
         return ResultCode.Ok;
     }
 
@@ -331,6 +345,37 @@ internal sealed class VulkanBuffer : IDisposable
     public void MarkDirty()
     {
         Interlocked.Increment(ref _dirtyVersion);
+    }
+
+    /// <summary>
+    /// Records the pipeline stage/access scope of a write to this buffer and marks it dirty.
+    /// The recorded scope becomes the source scope used by auto-sourced barriers, so callers only
+    /// need to specify where the buffer will next be read (the destination), not where it was written.
+    /// </summary>
+    /// <param name="stages">The pipeline stages that performed the write.</param>
+    /// <param name="access">The access flags of the write.</param>
+    public void RecordWrite(PipelineStageFlags stages, AccessFlags access)
+    {
+        _lastWriteStages = stages;
+        _lastWriteAccess = access;
+        MarkDirty();
+    }
+
+    /// <summary>
+    /// Commits an in-place CPU write that was made directly through this buffer's mapped pointer:
+    /// flushes the written range when the memory is non-coherent, then records a host write
+    /// (<see cref="PipelineStageFlags.Host"/> / <see cref="AccessFlags.HostWrite"/>) and marks the
+    /// buffer dirty so a later auto-sourced barrier synchronizes Host -> consumer correctly.
+    /// </summary>
+    /// <param name="offset">Byte offset of the written region.</param>
+    /// <param name="size">Size of the written region in bytes.</param>
+    public void CommitHostWrite(VkDeviceSize offset, VkDeviceSize size)
+    {
+        if (IsMapped && !_isCoherentMemory)
+        {
+            FlushMappedMemory(offset, size);
+        }
+        RecordWrite(PipelineStageFlags.Host, AccessFlags.HostWrite);
     }
 
     #region IDisposable Support

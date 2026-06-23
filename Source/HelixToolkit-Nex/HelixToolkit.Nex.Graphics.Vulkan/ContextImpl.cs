@@ -1149,13 +1149,21 @@ internal sealed partial class VulkanContext : Initializable, IContext
         buf.FlushMappedMemory(offset, size);
     }
 
-    public ResultCode GetBufferSubData(in BufferHandle handle, size_t offset, size_t size, nint data)
+    public ResultCode GetBufferSubData(
+        in BufferHandle handle,
+        size_t offset,
+        size_t size,
+        nint data
+    )
     {
         var buf = BuffersPool.Get(handle);
         HxDebug.Assert(buf is not null);
         if (buf == null)
         {
-            _logger.LogError("Buffer handle is invalid for GetBufferSubData: {HANDLE}", handle.ToString());
+            _logger.LogError(
+                "Buffer handle is invalid for GetBufferSubData: {HANDLE}",
+                handle.ToString()
+            );
             return ResultCode.ArgumentError;
         }
         HxDebug.Assert(buf.Valid);
@@ -1474,6 +1482,17 @@ internal sealed partial class VulkanContext : Initializable, IContext
             return;
         }
         buf.MarkDirty();
+    }
+
+    public void MarkHostWrite(in BufferHandle handle, size_t offset, size_t size)
+    {
+        var buf = BuffersPool.Get(handle);
+        if (buf is null || !buf.Valid)
+        {
+            _logger.LogError("Buffer handle is invalid for marking host write: {HANDLE}", handle);
+            return;
+        }
+        buf.CommitHostWrite(offset, size);
     }
 
     public void Wait(in SubmitHandle handle, bool reset = true)

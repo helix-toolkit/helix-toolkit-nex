@@ -138,11 +138,11 @@ internal abstract class DrawStreamBase<DRAW_TYPE, COMP_TYPE> : Initializable, ID
         return (default, -1);
     }
 
-    public void Barrier(ICommandBuffer cmdBuf, bool force)
+    public void Barrier(ICommandBuffer cmdBuf, BarrierPreset preset, bool force)
     {
         if (Count > 0 && _buffer is not null)
         {
-            cmdBuf.Barrier(_buffer.Buffer, force);
+            cmdBuf.Barrier(_buffer.Buffer, preset, force);
         }
     }
 
