@@ -145,7 +145,7 @@ jobs:
 
       - name: Publish to GitHub Packages
         # Stable releases publish only on version tags (v*); develop publishes pre-release builds.
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        if: github.event_name == 'push' && (startsWith(github.ref, 'refs/tags/') || startsWith(github.ref, 'refs/heads/develop')) 
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |

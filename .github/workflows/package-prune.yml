@@ -1,0 +1,46 @@
+name: Prune Old Alpha Packages
+
+on:
+  push:
+    branches:
+      - develop
+
+jobs:
+  delete_old_alphas:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        # Manually define each sub-package here
+        package: [
+            HelixToolkit.Nex, 
+            HelixToolkit.Nex.Engine, 
+            HelixToolkit.Nex.ECS, 
+            HelixToolkit.Nex.Material, 
+            HelixToolkit.Nex.Wpf, 
+            HelixToolkit.Nex.Graphics.Vulkan,
+            HelixToolkit.Nex.Interop.DirectX,
+            HelixToolkit.Nex.ImGui,
+            HelixToolkit.Nex.Shaders,
+            HelixToolkit.Nex.Scene,
+            HelixToolkit.Nex.Geometries.Builders,
+            HelixToolkit.Nex.Graphics,
+            HelixToolkit.Nex.Textures,
+            HelixToolkit.Nex.Rendering,
+            HelixToolkit.Nex.Geometries,
+            HelixToolkit.Nex.Repository,
+            HelixToolkit.Nex.glTF,
+            HelixToolkit.Nex.WinUI,
+            HelixToolkit.Nex.Maths
+            ]
+    steps:
+      - name: Delete old package versions
+        uses: actions/delete-package-versions@v5
+        with:
+          package-name: ${{ matrix.package }}
+          package-type: 'nuget'
+          min-versions-to-keep: 5
+          delete-only-pre-release-versions: 'true'
+          token: ${{ secrets.GITHUB_TOKEN }}
