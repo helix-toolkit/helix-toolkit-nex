@@ -1,5 +1,6 @@
 using glTFLoader.Schema;
 using HelixToolkit.Nex.glTF.Internal;
+using HelixToolkit.Nex.glTF.Tests.Mocks;
 using HelixToolkit.Nex.Graphics;
 using HelixToolkit.Nex.Graphics.Mock;
 using HelixToolkit.Nex.Material;
@@ -60,75 +61,6 @@ public class MaterialPropertyTests
             _inner.Dispose();
             _context.Dispose();
         }
-    }
-
-    /// <summary>
-    /// A minimal mock ITextureRepository (not used by LoadSampler, but required by TextureLoader constructor).
-    /// </summary>
-    private sealed class StubTextureRepository : ITextureRepository
-    {
-        public int Count => 0;
-
-        public TextureRef GetOrCreateFromStream(
-            string name,
-            Stream stream,
-            bool generateMipmaps = true,
-            string? debugName = null
-        ) => TextureRef.Null;
-
-        public TextureRef GetOrCreateFromFile(
-            string filePath,
-            bool generateMipmaps = true,
-            string? debugName = null
-        ) => TextureRef.Null;
-
-        public TextureRef GetOrCreateFromImage(
-            string name,
-            NexImage image,
-            bool generateMipmaps = true
-        ) => TextureRef.Null;
-
-        public Task<TextureRef> GetOrCreateFromStreamAsync(
-            string name,
-            Stream stream,
-            bool generateMipmaps = true,
-            string? debugName = null
-        ) => Task.FromResult(TextureRef.Null);
-
-        public Task<TextureRef> GetOrCreateFromFileAsync(
-            string filePath,
-            bool generateMipmaps = true,
-            string? debugName = null
-        ) => Task.FromResult(TextureRef.Null);
-
-        public Task<TextureRef> GetOrCreateFromImageAsync(
-            string name,
-            NexImage image,
-            bool generateMipmaps = true
-        ) => Task.FromResult(TextureRef.Null);
-
-        public bool Remove(string key) => false;
-
-        public bool TryGet(string cacheKey, out TextureCacheEntry? entry)
-        {
-            entry = null;
-            return false;
-        }
-
-        public void Clear() { }
-
-        public int CleanupExpired() => 0;
-
-        public RepositoryStatistics GetStatistics() =>
-            new()
-            {
-                TotalEntries = 0,
-                MaxEntries = 0,
-                TotalHits = 0,
-                TotalMisses = 0,
-            };
-
-        public void Dispose() { }
     }
 
     /// <summary>
@@ -313,26 +245,12 @@ public class MaterialPropertyTests
 
         public PBRMaterialProperties Create(string materialName)
         {
-            // Always use the built-in "PBR" type regardless of the requested name
-            return _inner.Create("PBR");
+            return _inner.Create(materialName);
         }
 
         public PBRMaterialProperties Create(string materialName, ref PBRProperties properties)
         {
-            return _inner.Create("PBR", ref properties);
-        }
-
-        public PBRMaterialProperties Create(MaterialTypeId materialTypeId)
-        {
-            return _inner.Create(materialTypeId);
-        }
-
-        public PBRMaterialProperties Create(
-            MaterialTypeId materialTypeId,
-            ref PBRProperties properties
-        )
-        {
-            return _inner.Create(materialTypeId, ref properties);
+            return _inner.Create(materialName, ref properties);
         }
 
         public void Clear() => _inner.Clear();
@@ -341,14 +259,20 @@ public class MaterialPropertyTests
             _inner.Objects;
 
         public ref PBRProperties At(int index) => ref _inner.At(index);
+
         public ResultCode UploadDynamic(ElementBuffer<PBRProperties> buffer)
         {
             return ResultCode.Ok;
         }
-        public ResultCode UploadDynamic(ElementBuffer<PBRProperties> buffer, IEnumerable<uint> indices)
+
+        public ResultCode UploadDynamic(
+            ElementBuffer<PBRProperties> buffer,
+            IEnumerable<uint> indices
+        )
         {
             return ResultCode.Ok;
         }
+
         public void Dispose() => _inner.Dispose();
     }
 

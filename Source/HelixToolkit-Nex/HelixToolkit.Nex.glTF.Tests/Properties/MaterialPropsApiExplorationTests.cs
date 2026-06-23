@@ -1,4 +1,5 @@
 using HelixToolkit.Nex.glTF.Internal;
+using HelixToolkit.Nex.glTF.Tests.Mocks;
 using HelixToolkit.Nex.Graphics;
 using HelixToolkit.Nex.Graphics.Mock;
 using HelixToolkit.Nex.Material;
@@ -51,110 +52,6 @@ public class MaterialPropsApiExplorationTests
     // counterexample fails the test instead of only being printed to the console.
     private static readonly Config FsCheckConfig = Config.QuickThrowOnFailure.WithMaxTest(100);
 
-    #region Mock Infrastructure
-
-    private sealed class StubTextureRepository : ITextureRepository
-    {
-        public int Count => 0;
-
-        public TextureRef GetOrCreateFromStream(
-            string name,
-            Stream stream,
-            bool generateMipmaps = true,
-            string? debugName = null
-        ) => TextureRef.Null;
-
-        public TextureRef GetOrCreateFromFile(
-            string filePath,
-            bool generateMipmaps = true,
-            string? debugName = null
-        ) => TextureRef.Null;
-
-        public TextureRef GetOrCreateFromImage(
-            string name,
-            NexImage image,
-            bool generateMipmaps = true
-        ) => TextureRef.Null;
-
-        public Task<TextureRef> GetOrCreateFromStreamAsync(
-            string name,
-            Stream stream,
-            bool generateMipmaps = true,
-            string? debugName = null
-        ) => Task.FromResult(TextureRef.Null);
-
-        public Task<TextureRef> GetOrCreateFromFileAsync(
-            string filePath,
-            bool generateMipmaps = true,
-            string? debugName = null
-        ) => Task.FromResult(TextureRef.Null);
-
-        public Task<TextureRef> GetOrCreateFromImageAsync(
-            string name,
-            NexImage image,
-            bool generateMipmaps = true
-        ) => Task.FromResult(TextureRef.Null);
-
-        public bool Remove(string key) => false;
-
-        public bool TryGet(string cacheKey, out TextureCacheEntry? entry)
-        {
-            entry = null;
-            return false;
-        }
-
-        public void Clear() { }
-
-        public int CleanupExpired() => 0;
-
-        public RepositoryStatistics GetStatistics() =>
-            new()
-            {
-                TotalEntries = 0,
-                MaxEntries = 0,
-                TotalHits = 0,
-                TotalMisses = 0,
-            };
-
-        public void Dispose() { }
-    }
-
-    private sealed class StubSamplerRepository : ISamplerRepository
-    {
-        private readonly MockContext _context = new();
-        private readonly SamplerRepository _inner;
-
-        public StubSamplerRepository()
-        {
-            _context.Initialize();
-            _inner = new SamplerRepository(_context);
-        }
-
-        public int Count => _inner.Count;
-
-        public SamplerRef GetOrCreate(string key, SamplerStateDesc desc) =>
-            _inner.GetOrCreate(key, desc);
-
-        public bool Remove(string key) => _inner.Remove(key);
-
-        public bool TryGet(string cacheKey, out SamplerModuleCacheEntry? entry) =>
-            _inner.TryGet(cacheKey, out entry);
-
-        public void Clear() => _inner.Clear();
-
-        public int CleanupExpired() => _inner.CleanupExpired();
-
-        public RepositoryStatistics GetStatistics() => _inner.GetStatistics();
-
-        public void Dispose()
-        {
-            _inner.Dispose();
-            _context.Dispose();
-        }
-    }
-
-    #endregion
-
     #region Case model + generators
 
     private readonly record struct MaterialPropsCase(
@@ -200,7 +97,7 @@ public class MaterialPropsApiExplorationTests
         var materialManager = new PBRMaterialPropertyManager();
 
         var textureRepo = new StubTextureRepository();
-        var samplerRepo = new StubSamplerRepository();
+        var samplerRepo = new StubSamplerRepository(StubSamplerRepositoryMode.MockContextBacked);
         var textureLoader = new TextureLoader(
             textureRepo,
             samplerRepo,
