@@ -731,7 +731,6 @@ public sealed class PBRMaterialProperties : IDisposable
     /// and publishing a <see cref="MaterialPropertyOp.Create"/> event.
     /// </summary>
     /// <param name="materialTypeName">Name of the material type.</param>
-    /// <param name="materialTypeId">The identifier of the owning material type.</param>
     /// <param name="properties">Initial property values to store in the pool.</param>
     /// <param name="pool">The pool that manages <see cref="PBRProperties"/> entries.</param>
     internal PBRMaterialProperties(
