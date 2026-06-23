@@ -1,20 +1,13 @@
 using System.Numerics;
 using HelixToolkit.Nex.ECS;
 using HelixToolkit.Nex.Engine.Components;
-using HelixToolkit.Nex.Geometries;
 using HelixToolkit.Nex.glTF.Internal;
 using HelixToolkit.Nex.glTF.Tests.Mocks;
-using HelixToolkit.Nex.Graphics;
-using HelixToolkit.Nex.Graphics.Mock;
-using HelixToolkit.Nex.Material;
-using HelixToolkit.Nex.Repository;
 using HelixToolkit.Nex.Scene;
-using HelixToolkit.Nex.Shaders;
 using Newtonsoft.Json.Linq;
 using Gltf = glTFLoader.Schema.Gltf;
 using GltfNode = glTFLoader.Schema.Node;
 using GltfScene = glTFLoader.Schema.Scene;
-using NexImage = HelixToolkit.Nex.Textures.Image;
 using Node = HelixToolkit.Nex.Scene.Node;
 
 namespace HelixToolkit.Nex.glTF.Tests.Properties;
@@ -146,7 +139,7 @@ public class LightDirectionEdgeCaseTests
         var node = FindNodeWithDirectionalLight(root);
         Assert.IsNotNull(
             node,
-            "Expected a DirectionalLightComponent on the referencing node's own entity."
+            "Expected a DirectionalLightInfo on the referencing node's own entity."
         );
         return (node!, diagnostics);
     }
@@ -191,7 +184,7 @@ public class LightDirectionEdgeCaseTests
 
         Assert.IsTrue(
             node.Entity.TryGet<DirectionalLightInfo>(out var light),
-            "Expected a DirectionalLightComponent to be attached to the referencing node."
+            "Expected a DirectionalLightInfo to be attached to the referencing node."
         );
 
         var direction = light.Direction;

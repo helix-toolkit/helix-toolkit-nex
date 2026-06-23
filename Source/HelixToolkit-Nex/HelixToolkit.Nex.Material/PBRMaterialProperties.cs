@@ -106,11 +106,12 @@ public sealed class PBRMaterialProperties : IDisposable
     /// </summary>
     private void ResolveMaterialType(string value)
     {
+        ArgumentException.ThrowIfNullOrEmpty(value);
         if (!PBRMaterialTypeRegistry.TryGetByName(value, out var registration))
         {
             throw new ArgumentException(
                 $"Material type '{value}' is not registered.",
-                nameof(value)
+                nameof(MaterialTypeName)
             );
         }
         _materialTypeName = value;
