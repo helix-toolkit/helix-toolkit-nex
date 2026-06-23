@@ -137,7 +137,16 @@ public class DuplicateStubInventoryExplorationTests
             {
                 var normalized = p.Replace('\\', '/');
                 // Exclude build output directories.
-                return !normalized.Contains("/bin/") && !normalized.Contains("/obj/");
+                if (normalized.Contains("/bin/") || normalized.Contains("/obj/"))
+                {
+                    return false;
+                }
+                // Exclude the canonical shared mock definitions themselves: they legitimately
+                // declare the Stub* types in the HelixToolkit.Nex.glTF.Tests.Mocks namespace and
+                // are the consolidation target, not duplicates. (Their doc comments also mention
+                // the former `private sealed class Stub*` declarations, which would otherwise be
+                // false-positive matches.) The bug condition is scoped to Unit/ and Properties/.
+                return !normalized.Contains("/Mocks/");
             })
             .OrderBy(p => p, StringComparer.Ordinal);
 

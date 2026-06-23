@@ -436,6 +436,7 @@ internal abstract class DrawStreamBase<DRAW_TYPE, COMP_TYPE> : Initializable, ID
         if (!exist)
         {
             MarkRebuildNeeded();
+            return;
         }
         if (!IsValid(ref meshComp))
         {
