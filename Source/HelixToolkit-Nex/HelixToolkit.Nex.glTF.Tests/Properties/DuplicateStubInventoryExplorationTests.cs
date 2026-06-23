@@ -58,19 +58,36 @@ public class DuplicateStubInventoryExplorationTests
         RegexOptions.Compiled
     );
 
+    // Matches the actual `using HelixToolkit.Nex.glTF.Tests.Mocks;` directive on a using line so
+    // that a mere mention of the namespace in a comment or string does not count as a reference.
+    private static readonly Regex SharedMockUsingDirective = new(
+        @"^\s*using\s+HelixToolkit\.Nex\.glTF\.Tests\.Mocks\s*;",
+        RegexOptions.Multiline | RegexOptions.Compiled
+    );
+
     /// <summary>
     /// Resolves the test project root directory from this source file's compile-time path so the
     /// inventory can scan the on-disk sources regardless of the working directory at run time.
+    /// Returns <see langword="null"/> when the source tree is unavailable (e.g. CI runs the compiled
+    /// binaries on a machine that does not have the <c>.cs</c> sources on disk), so the caller can
+    /// degrade gracefully instead of erroring.
     /// </summary>
-    private static string GetTestProjectRoot([CallerFilePath] string thisFilePath = "")
+    private static string? TryGetTestProjectRoot([CallerFilePath] string thisFilePath = "")
     {
         // thisFilePath = .../HelixToolkit.Nex.glTF.Tests/Properties/DuplicateStubInventoryExplorationTests.cs
-        var propertiesDir = Path.GetDirectoryName(thisFilePath)!;
-        var projectRoot = Path.GetDirectoryName(propertiesDir)!;
-        Assert.IsTrue(
-            File.Exists(Path.Combine(projectRoot, "HelixToolkit.Nex.glTF.Tests.csproj")),
-            $"Expected to resolve the test project root, but no .csproj was found at '{projectRoot}'."
-        );
+        if (string.IsNullOrEmpty(thisFilePath) || !File.Exists(thisFilePath))
+        {
+            return null;
+        }
+        var propertiesDir = Path.GetDirectoryName(thisFilePath);
+        var projectRoot = propertiesDir is null ? null : Path.GetDirectoryName(propertiesDir);
+        if (
+            projectRoot is null
+            || !File.Exists(Path.Combine(projectRoot, "HelixToolkit.Nex.glTF.Tests.csproj"))
+        )
+        {
+            return null;
+        }
         return projectRoot;
     }
 
@@ -82,20 +99,20 @@ public class DuplicateStubInventoryExplorationTests
     );
 
     private static bool ReferencesSharedMock(string content) =>
-        content.Contains(SharedMockNamespace, StringComparison.Ordinal);
+        SharedMockUsingDirective.IsMatch(content);
 
     private static IReadOnlyList<string> DetectVariants(string content)
     {
         var variants = new List<string>();
-        if (Regex.IsMatch(content, @"RemovedKeys"))
+        if (Regex.IsMatch(content, @"\bRemovedKeys\b"))
         {
             variants.Add("remove-tracking (RemovedKeys)");
         }
-        if (Regex.IsMatch(content, @"new\s+SamplerRepository\(_context\)"))
+        if (Regex.IsMatch(content, @"new\s+SamplerRepository\(\s*_context\s*\)"))
         {
             variants.Add("MockContext-backed (new SamplerRepository(_context))");
         }
-        if (Regex.IsMatch(content, @"static\s+readonly\s+Stub\w+\s+Instance"))
+        if (Regex.IsMatch(content, @"\bstatic\s+readonly\s+Stub\w+\s+Instance\b"))
         {
             variants.Add("static Instance");
         }
@@ -172,7 +189,17 @@ public class DuplicateStubInventoryExplorationTests
     [TestMethod]
     public void NoTestFileDeclaresDuplicatePrivateStub()
     {
-        var projectRoot = GetTestProjectRoot();
+        var projectRoot = TryGetTestProjectRoot();
+        if (projectRoot is null)
+        {
+            Assert.Inconclusive(
+                "Test project sources are not available on disk (the .cs files are not copied to "
+                    + "the test output), so the structural duplicate-stub inventory cannot run in this "
+                    + "environment. Run this test from a source checkout to validate the consolidation."
+            );
+            return;
+        }
+
         var offenders = CollectBugConditionFiles(projectRoot);
 
         if (offenders.Count > 0)

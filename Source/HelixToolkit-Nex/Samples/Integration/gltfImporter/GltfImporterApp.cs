@@ -570,8 +570,17 @@ internal class GltfImporterApp : ApplicationBase
         {
             materialProp.MaterialTypeName = ImportConfig.DefaultShadingMode.ToString();
         }
-        var comps = _worldDataProvider.World.GetComponents<MeshDrawInfo>();
 
+        // Changing MaterialTypeName updates each material's MaterialTypeId, but the draw streams
+        // group draws by material type and only re-evaluate on an EntityChanged notification.
+        // Re-set every MeshDrawInfo component so the streams observe the new material type id and
+        // rebuild their GPU draw commands for the already-rendered meshes.
+        var world = _worldDataProvider.World;
+        var comps = world.GetComponents<MeshDrawInfo>();
+        foreach (var entityId in comps.GetEntities())
+        {
+            world.GetEntity(entityId).Update<MeshDrawInfo>(static m => m);
+        }
     }
 
     // -------------------------------------------------------------------
