@@ -915,6 +915,48 @@ internal static class HxVkExtensions
         }
     }
 
+    /// <summary>
+    /// Emits a single buffer memory barrier using the caller-supplied access masks verbatim,
+    /// i.e. the source/destination access flags are taken exactly as provided and are NOT
+    /// re-derived from the pipeline stages (unlike <see cref="BufferBarrier2(VkCommandBuffer, in VulkanBuffer, VkPipelineStageFlags2, VkPipelineStageFlags2, VkDeviceSize, VkDeviceSize)"/>).
+    /// Used by the preset/custom-descriptor barrier paths where access masks come from a
+    /// <c>BarrierDescriptor</c>.
+    /// </summary>
+    public static void BufferBarrier2Explicit(
+        this VkCommandBuffer cmd,
+        in VulkanBuffer buf,
+        VkPipelineStageFlags2 srcStage,
+        VkPipelineStageFlags2 dstStage,
+        VkAccessFlags2 srcAccess,
+        VkAccessFlags2 dstAccess,
+        VkDeviceSize offset = 0,
+        VkDeviceSize size = VK.VK_WHOLE_SIZE
+    )
+    {
+        VkBufferMemoryBarrier2 barrier = new()
+        {
+            srcStageMask = srcStage,
+            srcAccessMask = srcAccess,
+            dstStageMask = dstStage,
+            dstAccessMask = dstAccess,
+            srcQueueFamilyIndex = VK.VK_QUEUE_FAMILY_IGNORED,
+            dstQueueFamilyIndex = VK.VK_QUEUE_FAMILY_IGNORED,
+            buffer = buf!.VkBuffer,
+            offset = offset,
+            size = size,
+        };
+        unsafe
+        {
+            VkDependencyInfo depInfo = new()
+            {
+                bufferMemoryBarrierCount = 1,
+                pBufferMemoryBarriers = &barrier,
+            };
+
+            VK.vkCmdPipelineBarrier2(cmd, &depInfo);
+        }
+    }
+
     public static void BufferBarrier2(
         this VkCommandBuffer cmdbuffer,
         ReadOnlySpan<VulkanBuffer> buf,
@@ -948,7 +990,8 @@ internal static class HxVkExtensions
                 };
                 if (srcStage.HasAllFlags(VkPipelineStageFlags2.Transfer))
                 {
-                    barrier.srcAccessMask |= VkAccessFlags2.TransferRead | VkAccessFlags2.TransferWrite;
+                    barrier.srcAccessMask |=
+                        VkAccessFlags2.TransferRead | VkAccessFlags2.TransferWrite;
                 }
                 if (srcStage.HasAnyFlag(~nonShaderStages))
                 {
@@ -956,7 +999,8 @@ internal static class HxVkExtensions
                 }
                 if (dstStage.HasAllFlags(VkPipelineStageFlags2.Transfer))
                 {
-                    barrier.dstAccessMask |= VkAccessFlags2.TransferRead | VkAccessFlags2.TransferWrite;
+                    barrier.dstAccessMask |=
+                        VkAccessFlags2.TransferRead | VkAccessFlags2.TransferWrite;
                 }
                 if (dstStage.HasAnyFlag(~nonShaderStages))
                 {

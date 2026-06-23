@@ -367,6 +367,60 @@ public class MockCommandBuffer : ICommandBuffer
         return true;
     }
 
+    public bool Barrier(in BufferHandle buffer, BarrierPreset preset, bool force = false)
+    {
+        _recordedCommands.Add($"Barrier(buffer={buffer.Index}, preset={preset})");
+        return true;
+    }
+
+    public bool Barrier(
+        ReadOnlySpan<BufferHandle> buffers,
+        BarrierPreset preset,
+        bool force = false
+    )
+    {
+        _recordedCommands.Add(
+            $"Barrier(buffers=[{string.Join(", ", buffers.ToArray().Select(h => h.Index))}], preset={preset})"
+        );
+        return true;
+    }
+
+    public bool Barrier(in BufferHandle buffer, in BarrierDescriptor descriptor, bool force = false)
+    {
+        _recordedCommands.Add($"Barrier(buffer={buffer.Index}, descriptor)");
+        return true;
+    }
+
+    public bool Barrier(
+        ReadOnlySpan<BufferHandle> buffers,
+        in BarrierDescriptor descriptor,
+        bool force = false
+    )
+    {
+        _recordedCommands.Add(
+            $"Barrier(buffers=[{string.Join(", ", buffers.ToArray().Select(h => h.Index))}], descriptor)"
+        );
+        return true;
+    }
+
+    public bool ImageBarrier(in TextureHandle texture, ImageTransition transition)
+    {
+        _recordedCommands.Add($"ImageBarrier(texture={texture.Index}, transition={transition})");
+        return true;
+    }
+
+    public bool ImageBarrier(
+        in TextureHandle texture,
+        in BarrierDescriptor descriptor,
+        TextureLayout targetLayout
+    )
+    {
+        _recordedCommands.Add(
+            $"ImageBarrier(texture={texture.Index}, descriptor, targetLayout={targetLayout})"
+        );
+        return true;
+    }
+
     public void SetCheckpointMarker(ReadOnlySpan<byte> label)
     {
         _recordedCommands.Add($"SetCheckpointMarker({System.Text.Encoding.UTF8.GetString(label)})");

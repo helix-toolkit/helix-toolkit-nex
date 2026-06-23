@@ -1883,6 +1883,147 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
     }
 
     /// <inheritdoc/>
+    public bool ImageBarrier(in TextureHandle texture, ImageTransition transition)
+    {
+        if (!TryResolveImageTransition(transition, out var targetLayout, out var desc))
+        {
+            _logger.LogError(
+                "ImageBarrier: undefined ImageTransition value '{TRANSITION}'. No barrier was emitted.",
+                transition
+            );
+            return false;
+        }
+        return ImageBarrierCore(in texture, in desc, targetLayout);
+    }
+
+    /// <inheritdoc/>
+    public bool ImageBarrier(
+        in TextureHandle texture,
+        in BarrierDescriptor descriptor,
+        TextureLayout targetLayout
+    )
+    {
+        return ImageBarrierCore(in texture, in descriptor, targetLayout);
+    }
+
+    /// <summary>
+    /// Resolves a named <see cref="ImageTransition"/> onto its target <see cref="TextureLayout"/> and
+    /// the backend-agnostic <see cref="BarrierDescriptor"/> describing the stages/access used to move
+    /// the texture into that layout.
+    /// </summary>
+    /// <param name="transition">The named image transition to resolve.</param>
+    /// <param name="target">When this method returns, the target layout for the transition.</param>
+    /// <param name="desc">When this method returns, the descriptor describing the transition's stages/access.</param>
+    /// <returns>
+    /// <see langword="true"/> for every defined <see cref="ImageTransition"/> member; otherwise
+    /// <see langword="false"/> for any value that is not a defined member.
+    /// </returns>
+    private static bool TryResolveImageTransition(
+        ImageTransition transition,
+        out TextureLayout target,
+        out BarrierDescriptor desc
+    )
+    {
+        // Source scope is conservative (all prior commands, all memory) so the transition is safe
+        // regardless of how the texture was previously used; the destination scope honors the target.
+        const PipelineStageFlags shaders =
+            PipelineStageFlags.ComputeShader
+            | PipelineStageFlags.VertexShader
+            | PipelineStageFlags.FragmentShader;
+
+        switch (transition)
+        {
+            case ImageTransition.ToShaderReadOnly:
+                target = TextureLayout.ShaderReadOnly;
+                desc = new BarrierDescriptor(
+                    PipelineStageFlags.AllCommands,
+                    shaders,
+                    AccessFlags.MemoryRead | AccessFlags.MemoryWrite,
+                    AccessFlags.ShaderRead
+                );
+                return true;
+            case ImageTransition.ToTransferSource:
+                target = TextureLayout.TransferSource;
+                desc = new BarrierDescriptor(
+                    PipelineStageFlags.AllCommands,
+                    PipelineStageFlags.Transfer,
+                    AccessFlags.MemoryRead | AccessFlags.MemoryWrite,
+                    AccessFlags.TransferRead
+                );
+                return true;
+            case ImageTransition.ToTransferDestination:
+                target = TextureLayout.TransferDestination;
+                desc = new BarrierDescriptor(
+                    PipelineStageFlags.AllCommands,
+                    PipelineStageFlags.Transfer,
+                    AccessFlags.MemoryRead | AccessFlags.MemoryWrite,
+                    AccessFlags.TransferWrite
+                );
+                return true;
+            default:
+                target = TextureLayout.Undefined;
+                desc = default;
+                return false;
+        }
+    }
+
+    /// <summary>
+    /// Shared image-barrier worker. Resolves the texture, transitions it from its current layout to
+    /// <paramref name="targetLayout"/> using the supplied descriptor's stages/access, and updates the
+    /// texture's tracked current layout.
+    /// </summary>
+    /// <param name="texture">The texture handle to barrier.</param>
+    /// <param name="desc">The descriptor supplying the source/destination stages and access flags.</param>
+    /// <param name="targetLayout">The layout to transition the texture into.</param>
+    /// <returns>
+    /// <see langword="true"/> when the barrier was emitted; <see langword="false"/> when the texture
+    /// handle is null/invalid (in which case nothing is emitted and the current layout is unchanged).
+    /// </returns>
+    private bool ImageBarrierCore(
+        in TextureHandle texture,
+        in BarrierDescriptor desc,
+        TextureLayout targetLayout
+    )
+    {
+        var img = _ctx.TexturesPool.Get(texture);
+        if (img is null || !img.Valid)
+        {
+            _logger.LogError(
+                "ImageBarrier: texture handle '{HANDLE}' is null or invalid. No image barrier was emitted.",
+                texture
+            );
+            return false;
+        }
+
+        // Map the backend-agnostic descriptor onto native stages/access (omit-unmapped semantics) and
+        // resolve the target layout. Emit the transition from the texture's current layout, then update
+        // the tracked current layout so subsequent transitions compute the correct old layout.
+        var srcStage = VulkanBarrierMapping.MapStages(desc.SrcStages, out _);
+        var dstStage = VulkanBarrierMapping.MapStages(desc.DstStages, out _);
+        var srcAccess = VulkanBarrierMapping.MapAccess(desc.SrcAccess, out _);
+        var dstAccess = VulkanBarrierMapping.MapAccess(desc.DstAccess, out _);
+        var newLayout = VulkanBarrierMapping.MapLayout(targetLayout);
+        var aspect = img.GetImageAspectFlags();
+
+        CmdBuffer.ImageMemoryBarrier2(
+            img.Image,
+            new StageAccess2 { Stage = srcStage, Access = srcAccess },
+            new StageAccess2 { Stage = dstStage, Access = dstAccess },
+            img.ImageLayout,
+            newLayout,
+            new VkImageSubresourceRange(
+                aspect,
+                0,
+                VK.VK_REMAINING_MIP_LEVELS,
+                0,
+                VK.VK_REMAINING_ARRAY_LAYERS
+            )
+        );
+        img.ImageLayout = newLayout;
+        return true;
+    }
+
+    /// <inheritdoc/>
     public ResultCode UpdateBuffer(in BufferHandle buffer, uint bufferOffset, uint size, nint data)
     {
         HxDebug.Assert(buffer);
@@ -2034,8 +2175,7 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
                 };
                 if (srcStage.HasAllFlags(VkPipelineStageFlags2.Host))
                 {
-                    barrier.srcAccessMask |=
-                        VkAccessFlags2.HostRead | VkAccessFlags2.HostWrite;
+                    barrier.srcAccessMask |= VkAccessFlags2.HostRead | VkAccessFlags2.HostWrite;
                 }
                 if (srcStage.HasAllFlags(VkPipelineStageFlags2.Transfer))
                 {
@@ -2079,6 +2219,181 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
             VK.vkCmdPipelineBarrier2(CmdBuffer, &depInfo);
         }
         return true;
+    }
+
+    /// <inheritdoc/>
+    public bool Barrier(in BufferHandle buffer, BarrierPreset preset, bool force = false)
+    {
+        if (!HelixToolkit.Nex.Graphics.BarrierPresets.TryGetDescriptor(preset, out var desc))
+        {
+            _logger.LogError(
+                "Barrier: undefined BarrierPreset value '{PRESET}'. No barrier was emitted.",
+                preset
+            );
+            return false;
+        }
+        var single = MemoryMarshal.CreateReadOnlySpan(ref Unsafe.AsRef(in buffer), 1);
+        return BarrierCore(single, in desc, force, deriveFromUsage: false);
+    }
+
+    /// <inheritdoc/>
+    public bool Barrier(
+        ReadOnlySpan<BufferHandle> buffers,
+        BarrierPreset preset,
+        bool force = false
+    )
+    {
+        if (!HelixToolkit.Nex.Graphics.BarrierPresets.TryGetDescriptor(preset, out var desc))
+        {
+            _logger.LogError(
+                "Barrier: undefined BarrierPreset value '{PRESET}'. No barrier was emitted.",
+                preset
+            );
+            return false;
+        }
+        return BarrierCore(buffers, in desc, force, deriveFromUsage: false);
+    }
+
+    /// <inheritdoc/>
+    public bool Barrier(in BufferHandle buffer, in BarrierDescriptor descriptor, bool force = false)
+    {
+        var single = MemoryMarshal.CreateReadOnlySpan(ref Unsafe.AsRef(in buffer), 1);
+        return BarrierCore(single, in descriptor, force, deriveFromUsage: false);
+    }
+
+    /// <inheritdoc/>
+    public bool Barrier(
+        ReadOnlySpan<BufferHandle> buffers,
+        in BarrierDescriptor descriptor,
+        bool force = false
+    )
+    {
+        return BarrierCore(buffers, in descriptor, force, deriveFromUsage: false);
+    }
+
+    /// <summary>
+    /// Single emission worker shared by all buffer-barrier paths (preset, custom-descriptor, and
+    /// the usage-derived default). Resolves each handle, applies the lazy/dirty/force emit decision,
+    /// maps the backend-agnostic descriptor onto native Vulkan flags, and emits the barrier with the
+    /// caller-supplied access masks verbatim.
+    /// </summary>
+    /// <param name="buffers">The buffer handles to barrier, processed in the supplied order.</param>
+    /// <param name="desc">
+    /// The barrier descriptor to apply when <paramref name="deriveFromUsage"/> is <see langword="false"/>.
+    /// </param>
+    /// <param name="force">Whether emission is forced regardless of dirty state.</param>
+    /// <param name="deriveFromUsage">
+    /// When <see langword="true"/>, the per-buffer descriptor is derived from the buffer's usage flags via
+    /// <see cref="BarrierPlanner.DeriveDefaultDescriptor"/> and <paramref name="desc"/> is ignored.
+    /// </param>
+    /// <returns>
+    /// <see langword="true"/> when no invalid handle and no mapping failure occurred (including the empty-span
+    /// case); otherwise <see langword="false"/>. Valid handles are still processed even when an earlier handle
+    /// failed (partial success).
+    /// </returns>
+    private bool BarrierCore(
+        ReadOnlySpan<BufferHandle> buffers,
+        in BarrierDescriptor desc,
+        bool force,
+        bool deriveFromUsage
+    )
+    {
+        if (buffers.IsEmpty)
+        {
+            return true; // no handles, no barrier, no error (Requirement 7.5)
+        }
+
+        // When using a supplied descriptor, validate stage scopes up front. An empty source or
+        // destination stage scope is invalid: log once, emit nothing, leave dirty state unchanged.
+        if (
+            !deriveFromUsage
+            && (
+                desc.SrcStages == PipelineStageFlags.None
+                || desc.DstStages == PipelineStageFlags.None
+            )
+        )
+        {
+            _logger.LogError(
+                "Barrier: invalid BarrierDescriptor (SrcStages={SRC}, DstStages={DST}); source and destination stages must be non-empty. No barrier was emitted.",
+                desc.SrcStages,
+                desc.DstStages
+            );
+            return false;
+        }
+
+        var result = true;
+        for (var i = 0; i < buffers.Length; i++)
+        {
+            var buf = _ctx.BuffersPool.Get(buffers[i]);
+            if (buf is null || !buf.Valid)
+            {
+                _logger.LogError(
+                    "Barrier: buffer at index {INDEX} is null or invalid. Make sure the buffer is created before adding a barrier for it.",
+                    i
+                );
+                result = false;
+                continue;
+            }
+
+            var d = deriveFromUsage
+                ? BarrierPlanner.DeriveDefaultDescriptor(
+                    MapVkUsageToBufferUsageBits(buf.VkUsageFlags)
+                )
+                : desc;
+
+            if (
+                BarrierPlanner.Decide(_ctx.Config.EnableLazyBufferBarrier, buf.IsDirty, force)
+                == BarrierEmitDecision.Skip
+            )
+            {
+                continue; // redundant under lazy mode; leave dirty state unchanged
+            }
+
+            if (!VulkanBarrierMapping.TryMap(in d, out var mapped))
+            {
+                _logger.LogError(
+                    "Barrier: buffer at index {INDEX} produced an empty native stage scope after omitting unmapped flags (unmapped src={SRC}, dst={DST}). No barrier was emitted for this buffer.",
+                    i,
+                    mapped.UnmappedSrcStages,
+                    mapped.UnmappedDstStages
+                );
+                result = false;
+                continue;
+            }
+
+            CmdBuffer.BufferBarrier2Explicit(
+                buf,
+                mapped.SrcStage,
+                mapped.DstStage,
+                mapped.SrcAccess,
+                mapped.DstAccess
+            );
+            buf.ClearDirty();
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Maps native <see cref="VkBufferUsageFlags"/> back onto the backend-agnostic
+    /// <see cref="BufferUsageBits"/> needed by <see cref="BarrierPlanner.DeriveDefaultDescriptor"/>.
+    /// </summary>
+    private static BufferUsageBits MapVkUsageToBufferUsageBits(VkBufferUsageFlags vk)
+    {
+        var usage = BufferUsageBits.None;
+        if (vk.HasAllFlags(VK.VK_BUFFER_USAGE_INDEX_BUFFER_BIT))
+        {
+            usage |= BufferUsageBits.Index;
+        }
+        if (vk.HasAllFlags(VK.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT))
+        {
+            usage |= BufferUsageBits.Vertex;
+        }
+        if (vk.HasAllFlags(VK.VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT))
+        {
+            usage |= BufferUsageBits.Indirect;
+        }
+        return usage;
     }
 
     /// <inheritdoc/>
@@ -2149,6 +2464,16 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
             range
         );
 
+        // Order the upcoming transfer write after any prior use of the destination buffer
+        // (avoids WAR/WAW hazards with earlier reads/writes).
+        CmdBuffer.BufferBarrier2Explicit(
+            buf,
+            VkPipelineStageFlags2.AllCommands,
+            VkPipelineStageFlags2.Transfer,
+            VkAccessFlags2.MemoryRead | VkAccessFlags2.MemoryWrite,
+            VkAccessFlags2.TransferWrite
+        );
+
         unsafe
         {
             VkBufferImageCopy copy = new()
@@ -2192,6 +2517,18 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
             VK.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
             img.ImageLayout,
             range
+        );
+
+        // Make the transfer write to the destination buffer available/visible to its consumer.
+        // For HostVisible readback this must reach the Host stage with HostRead access, otherwise
+        // a subsequent CPU map can observe stale data. AllCommands/MemoryRead also covers any
+        // later GPU read of the buffer.
+        CmdBuffer.BufferBarrier2Explicit(
+            buf,
+            VkPipelineStageFlags2.Transfer,
+            VkPipelineStageFlags2.Host | VkPipelineStageFlags2.AllCommands,
+            VkAccessFlags2.TransferWrite,
+            VkAccessFlags2.HostRead | VkAccessFlags2.MemoryRead
         );
         buf.ClearDirty();
     }

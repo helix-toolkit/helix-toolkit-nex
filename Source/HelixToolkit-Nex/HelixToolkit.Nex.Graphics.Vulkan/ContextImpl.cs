@@ -1149,6 +1149,19 @@ internal sealed partial class VulkanContext : Initializable, IContext
         buf.FlushMappedMemory(offset, size);
     }
 
+    public ResultCode GetBufferSubData(in BufferHandle handle, size_t offset, size_t size, nint data)
+    {
+        var buf = BuffersPool.Get(handle);
+        HxDebug.Assert(buf is not null);
+        if (buf == null)
+        {
+            _logger.LogError("Buffer handle is invalid for GetBufferSubData: {HANDLE}", handle.ToString());
+            return ResultCode.ArgumentError;
+        }
+        HxDebug.Assert(buf.Valid);
+        return buf.GetBufferSubData(offset, size, data);
+    }
+
     public float GetAspectRatio(in TextureHandle handle)
     {
         if (!handle.Valid)

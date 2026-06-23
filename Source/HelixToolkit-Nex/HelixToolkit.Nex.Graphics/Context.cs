@@ -398,6 +398,47 @@ public interface IContext : IInitializable
     void FlushMappedMemory(in BufferHandle handle, size_t offset, size_t size);
 
     /// <summary>
+    /// Downloads a portion of a buffer's data into a provided memory location.
+    /// </summary>
+    /// <param name="offset">Byte offset within the buffer. Defaults to 0.</param>
+    /// <param name="size">Size of the data to download in bytes.</param>
+    /// <param name="data">Pointer to the destination buffer.</param>
+    /// <returns>A <see cref="ResultCode"/> indicating success or failure.</returns>
+    ResultCode GetBufferSubData(in BufferHandle handle, size_t offset, size_t size, nint data);
+
+    /// <summary>
+    /// Downloads the entire contents of a buffer into a provided memory location.
+    /// </summary>
+    /// <param name="handle"></param>
+    /// <param name="data"></param>
+    /// <param name="size">Size of the data to download in bytes.</param>
+    /// <returns>A <see cref="ResultCode"/> indicating success or failure.</returns>
+    ResultCode GetBufferData(in BufferHandle handle, nint data, size_t size)
+    {
+        return GetBufferSubData(handle, 0, size, data);
+    }
+
+    /// <summary>
+    /// Downloads the entire contents of a buffer into a provided unmanaged type.
+    /// </summary>
+    /// <typeparam name="T">The type of the unmanaged data.</typeparam>
+    /// <param name="handle">The buffer handle.</param>
+    /// <param name="data">Reference to the unmanaged data.</param>
+    /// <returns>A <see cref="ResultCode"/> indicating success or failure.</returns>
+    ResultCode GetBufferData<T>(in BufferHandle handle, ref T data)
+        where T : unmanaged
+    {
+        unsafe
+        {
+            var size = (size_t)sizeof(T);
+            fixed (T* ptr = &data)
+            {
+                return GetBufferData(handle, (nint)ptr, size);
+            }
+        }
+    }
+
+    /// <summary>
     /// Gets the maximum storage buffer range supported by the device.
     /// </summary>
     /// <returns>The maximum range in bytes.</returns>
