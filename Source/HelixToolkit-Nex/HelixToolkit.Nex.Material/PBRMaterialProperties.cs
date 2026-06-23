@@ -88,22 +88,33 @@ public sealed class PBRMaterialProperties : IDisposable
     {
         set
         {
-            if (_materialTypeName == value)
+            if (string.Equals(_materialTypeName, value, StringComparison.OrdinalIgnoreCase))
             {
                 return;
             }
-            if (!PBRMaterialTypeRegistry.TryGetByName(value, out var registration))
-            {
-                throw new ArgumentException(
-                    $"Material type '{value}' is not registered.",
-                    nameof(value)
-                );
-            }
-            _materialTypeName = value;
-            MaterialTypeId = registration!.TypeId;
+            ResolveMaterialType(value);
             NotifyUpdated(MaterialPropertyOp.TypeChange);
         }
         get => _materialTypeName;
+    }
+
+    /// <summary>
+    /// Resolves and assigns <see cref="MaterialTypeName"/> and <see cref="MaterialTypeId"/> from the
+    /// <see cref="PBRMaterialTypeRegistry"/>. Unlike the property setter, this always resolves the id
+    /// (even when the name matches the current value), so it is safe to call during construction where
+    /// the default name <c>"PBR"</c> must still map to its registered id.
+    /// </summary>
+    private void ResolveMaterialType(string value)
+    {
+        if (!PBRMaterialTypeRegistry.TryGetByName(value, out var registration))
+        {
+            throw new ArgumentException(
+                $"Material type '{value}' is not registered.",
+                nameof(value)
+            );
+        }
+        _materialTypeName = value;
+        MaterialTypeId = registration!.TypeId;
     }
 
     /// <summary>Gets a reference to the underlying <see cref="PBRProperties"/> stored in the pool.</summary>
@@ -729,7 +740,7 @@ public sealed class PBRMaterialProperties : IDisposable
         Pool<MaterialPropertyResource, PBRProperties> pool
     )
     {
-        MaterialTypeName = materialTypeName;
+        ResolveMaterialType(materialTypeName);
         _pool = pool;
         _onAlbedoMapDisposed = () =>
         {
@@ -826,9 +837,7 @@ public sealed class PBRMaterialProperties : IDisposable
     {
         if (Valid)
         {
-            _eventBus.PublishAsync(
-                new MaterialPropsUpdatedEvent(MaterialTypeId, Index, op)
-            );
+            _eventBus.PublishAsync(new MaterialPropsUpdatedEvent(MaterialTypeId, Index, op));
         }
     }
 

@@ -256,7 +256,7 @@ public class LightDirectionPropertyTests
 
                     Assert.IsTrue(
                         node.Entity.TryGet<DirectionalLightInfo>(out var dirLight),
-                        "Expected a DirectionalLightComponent on the referencing node."
+                        "Expected a DirectionalLightInfo on the referencing node."
                     );
 
                     // (a) The importer sets no per-light direction: Direction stays at the component

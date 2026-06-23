@@ -233,9 +233,12 @@ public class MaterialPropertyTests
     // Feature: gltf-importer, Property 8: PBR factor clamping
 
     /// <summary>
-    /// A mock IPBRMaterialPropertyManager that delegates to the real PBRMaterialPropertyManager
-    /// using the built-in "PBR" registered material type, regardless of the requested name.
-    /// This allows MaterialConverter to create materials with arbitrary glTF material names.
+    /// A mock IPBRMaterialPropertyManager that delegates directly to the real
+    /// PBRMaterialPropertyManager, forwarding the requested material name to
+    /// <c>_inner.Create(materialName)</c>. Arbitrary glTF material names are passed through as-is,
+    /// so the name must be registered in <see cref="PBRMaterialTypeRegistry"/>; otherwise
+    /// <see cref="PBRMaterialProperties"/>' <c>MaterialTypeName</c> resolution throws
+    /// <see cref="ArgumentException"/>.
     /// </summary>
     private sealed class MockPBRMaterialPropertyManager : IPBRMaterialPropertyManager
     {
