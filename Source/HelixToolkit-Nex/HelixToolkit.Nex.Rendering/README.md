@@ -19,7 +19,7 @@ HelixToolkit.Nex.Rendering is responsible for managing the rendering pipeline of
 | `MeshDrawInfo`                   | Represents a mesh render component with geometry and material associations. |
 | `PointDrawInfo`                  | Describes a point cloud attached to an entity.                              |
 | `BillboardDrawInfo`              | Describes one or more billboards attached to an entity.                     |
-| `LineDrawInfo`                   | Describes line geometry attached to an entity.                              |
+| `LineDrawInfo`                   | Describes line geometry attached to an entity.                             |
 | `ForwardPlusLightCullingNode`    | Performs tiled Forward+ light culling.                                      |
 | `FrustumCullNode`                | Executes GPU-based frustum culling, including line and point culling.       |
 | `ForwardPlusWBOITMergedNode`     | Merges WBOIT transparent rendering and compositing into a single render pass.|
@@ -44,6 +44,7 @@ HelixToolkit.Nex.Rendering is responsible for managing the rendering pipeline of
 - **FrustumCullNode**: Updated to include line and point culling pipelines.
 - **DrawStream Enhancements**: Introduced `DrawStreamType` and `DrawStreamVariants` for more precise control over draw stream characteristics.
 - **RenderGraphResourceAllocationException**: Added to handle resource allocation failures in the render graph.
+- **Material Type Name Properties**: Updated `LineDrawInfo` and `PointDrawInfo` to use `LineMaterialTypeName` and `PointMaterialTypeName` respectively for material lookup.
 
 ### Removed Features
 
