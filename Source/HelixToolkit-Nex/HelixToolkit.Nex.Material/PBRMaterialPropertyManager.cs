@@ -32,6 +32,8 @@ public sealed class PBRMaterialPropertyManager : IPBRMaterialPropertyManager
 
     public PBRMaterialProperties Create(string materialName, ref PBRProperties properties)
     {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentException.ThrowIfNullOrEmpty(materialName);
         lock (_lock)
         {
             return new PBRMaterialProperties(materialName, ref properties, _pool);
@@ -120,6 +122,7 @@ public sealed class PBRMaterialPropertyManager : IPBRMaterialPropertyManager
             );
         }
     }
+
     #region IDisposable Support
 
     private bool _disposed;

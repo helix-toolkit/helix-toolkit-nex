@@ -433,7 +433,11 @@ internal abstract class DrawStreamBase<DRAW_TYPE, COMP_TYPE> : Initializable, ID
             return;
         }
         var exist = TryGetDraw(renderable.DrawCmdIndex, out var drawCmd);
-        if (!IsValid(ref meshComp) && exist)
+        if (!exist)
+        {
+            MarkRebuildNeeded();
+        }
+        if (!IsValid(ref meshComp))
         {
             MarkRebuildNeeded();
             return;
