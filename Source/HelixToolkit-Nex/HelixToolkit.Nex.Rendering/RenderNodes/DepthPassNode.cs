@@ -46,7 +46,7 @@ public sealed class DepthPassNode() : RenderNode
         var streams = res.RenderContext.Data!.MeshDrawStreams.GetStreams(DrawStreamType.Opaque);
         foreach (var stream in streams)
         {
-            stream.Barrier(res.CmdBuffer, BarrierPreset.ComputeWriteToShaderRead);
+            stream.Barrier(res.CmdBuffer);
         }
     }
 

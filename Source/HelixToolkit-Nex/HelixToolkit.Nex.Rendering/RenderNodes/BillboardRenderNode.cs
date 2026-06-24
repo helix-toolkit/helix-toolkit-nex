@@ -73,7 +73,7 @@ public sealed class BillboardRenderNode : RenderNode
             }
             _bufHandles[0] = entry.DrawDataBuffer;
             _bufHandles[1] = entry.DrawArgsBuffer;
-            res.CmdBuffer.Barrier(_bufHandles, BarrierPreset.ComputeWriteToShaderRead);
+            res.CmdBuffer.Barrier(_bufHandles, BarrierPreset.WriteToIndirectDrawRead);
         }
     }
 

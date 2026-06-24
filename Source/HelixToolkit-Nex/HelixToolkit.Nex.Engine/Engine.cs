@@ -462,7 +462,6 @@ public class Engine : Initializable
         {
             var pending = _pendingPickings[frameIndex];
             var pickingResult = pending.Context!.PickingContext.ReadResult(pending.Id);
-            _pendingPickings[frameIndex] = PendingPicking.Empty;
             pending.Callback?.Invoke(
                 new PickingResponse
                 {
@@ -472,6 +471,7 @@ public class Engine : Initializable
                     RequestId = pending.Id,
                 }
             );
+            _pendingPickings[frameIndex] = PendingPicking.Empty;
         }
         ProcessEvents();
         _frameBegun = true;

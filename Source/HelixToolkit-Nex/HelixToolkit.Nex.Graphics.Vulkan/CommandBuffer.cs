@@ -2307,7 +2307,12 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
     )
     {
         var single = MemoryMarshal.CreateReadOnlySpan(ref Unsafe.AsRef(in buffer), 1);
-        return BarrierAutoCore(single, dstStages, dstAccess, force);
+        // No explicit source: the per-buffer source is supplied from each buffer's tracked last write.
+        return BarrierCore(
+            single,
+            new BarrierDescriptor(PipelineStageFlags.None, dstStages, AccessFlags.None, dstAccess),
+            force
+        );
     }
 
     /// <inheritdoc/>
@@ -2318,17 +2323,33 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
         bool force = false
     )
     {
-        return BarrierAutoCore(buffers, dstStages, dstAccess, force);
+        // No explicit source: the per-buffer source is supplied from each buffer's tracked last write.
+        return BarrierCore(
+            buffers,
+            new BarrierDescriptor(PipelineStageFlags.None, dstStages, AccessFlags.None, dstAccess),
+            force
+        );
     }
 
     /// <summary>
-    /// Single emission worker shared by the preset and custom-descriptor buffer-barrier paths.
-    /// Resolves each handle, applies the lazy/dirty/force emit decision, maps the backend-agnostic
-    /// descriptor onto native Vulkan flags, and emits the barrier with the caller-supplied access
-    /// masks verbatim.
+    /// Single emission worker shared by every buffer-barrier path (preset, custom-descriptor, and the
+    /// destination-only auto-sourced overloads). Resolves each handle, applies the lazy/dirty/force
+    /// emit decision, maps the backend-agnostic descriptor onto native Vulkan flags, and emits the
+    /// barrier.
     /// </summary>
+    /// <remarks>
+    /// The descriptor's source scope is optional: <see cref="TryEmitBufferBarrier"/> always unions it
+    /// with each buffer's tracked last write (<see cref="VulkanBuffer.LastWriteStages"/> /
+    /// <see cref="VulkanBuffer.LastWriteAccess"/>). Callers that want a purely tracked source pass
+    /// <see cref="PipelineStageFlags.None"/> / <see cref="AccessFlags.None"/> as the source; callers
+    /// that supply an explicit source (presets/custom descriptors) still have the tracked write folded
+    /// in. Only the destination scope must be non-empty.
+    /// </remarks>
     /// <param name="buffers">The buffer handles to barrier, processed in the supplied order.</param>
-    /// <param name="desc">The barrier descriptor to apply to every handle.</param>
+    /// <param name="desc">
+    /// The barrier descriptor applied to every handle. <see cref="BarrierDescriptor.SrcStages"/> /
+    /// <see cref="BarrierDescriptor.SrcAccess"/> may be <c>None</c> to use only the tracked source.
+    /// </param>
     /// <param name="force">Whether emission is forced regardless of dirty state.</param>
     /// <returns>
     /// <see langword="true"/> when no invalid handle and no mapping failure occurred (including the empty-span
@@ -2346,67 +2367,9 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
             return true; // no handles, no barrier, no error (Requirement 7.5)
         }
 
-        // Validate stage scopes up front. An empty source or destination stage scope is invalid:
-        // log once, emit nothing, leave dirty state unchanged.
-        if (desc.SrcStages == PipelineStageFlags.None || desc.DstStages == PipelineStageFlags.None)
-        {
-            _logger.LogError(
-                "Barrier: invalid BarrierDescriptor (SrcStages={SRC}, DstStages={DST}); source and destination stages must be non-empty. No barrier was emitted.",
-                desc.SrcStages,
-                desc.DstStages
-            );
-            return false;
-        }
-
-        var result = true;
-        for (var i = 0; i < buffers.Length; i++)
-        {
-            var buf = _ctx.BuffersPool.Get(buffers[i]);
-            if (buf is null || !buf.Valid)
-            {
-                _logger.LogError(
-                    "Barrier: buffer at index {INDEX} is null or invalid. Make sure the buffer is created before adding a barrier for it.",
-                    i
-                );
-                result = false;
-                continue;
-            }
-
-            if (!TryEmitBufferBarrier(i, buf, in desc, force))
-            {
-                result = false;
-            }
-        }
-
-        return result;
-    }
-
-    /// <summary>
-    /// Auto-sourced buffer-barrier worker. The caller supplies only the destination (consumer) scope;
-    /// each buffer's source scope is taken from its most recently recorded write
-    /// (<see cref="VulkanBuffer.LastWriteStages"/> / <see cref="VulkanBuffer.LastWriteAccess"/>).
-    /// </summary>
-    /// <param name="buffers">The buffer handles to barrier, processed in the supplied order.</param>
-    /// <param name="dstStages">The destination pipeline stages that will consume the buffers.</param>
-    /// <param name="dstAccess">The destination access flags describing how the buffers will be consumed.</param>
-    /// <param name="force">Whether emission is forced regardless of dirty state.</param>
-    /// <returns>
-    /// <see langword="true"/> when no invalid handle and no mapping failure occurred (including the empty-span
-    /// case); otherwise <see langword="false"/>. Valid handles are still processed on partial failure.
-    /// </returns>
-    private bool BarrierAutoCore(
-        ReadOnlySpan<BufferHandle> buffers,
-        PipelineStageFlags dstStages,
-        AccessFlags dstAccess,
-        bool force
-    )
-    {
-        if (buffers.IsEmpty)
-        {
-            return true; // no handles, no barrier, no error (Requirement 7.5)
-        }
-
-        if (dstStages == PipelineStageFlags.None)
+        // The destination (consumer) scope must be specified; the source may be empty because it is
+        // augmented per-buffer from the tracked last write in TryEmitBufferBarrier.
+        if (desc.DstStages == PipelineStageFlags.None)
         {
             _logger.LogError(
                 "Barrier: invalid destination scope (DstStages=None); the consumer pipeline stages must be non-empty. No barrier was emitted."
@@ -2428,13 +2391,6 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
                 continue;
             }
 
-            // Source comes from the buffer's tracked last write; destination is caller-supplied.
-            var desc = new BarrierDescriptor(
-                buf.LastWriteStages,
-                dstStages,
-                buf.LastWriteAccess,
-                dstAccess
-            );
             if (!TryEmitBufferBarrier(i, buf, in desc, force))
             {
                 result = false;
@@ -2447,9 +2403,16 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
     /// <summary>
     /// Applies the lazy/dirty/force emit decision to a single buffer, maps the descriptor onto native
     /// flags, emits the barrier with verbatim access masks, and clears the buffer's dirty state.
-    /// Shared by the preset/custom (<see cref="BarrierCore"/>) and auto-sourced
-    /// (<see cref="BarrierAutoCore"/>) paths.
+    /// Shared by every buffer-barrier path via <see cref="BarrierCore"/>.
     /// </summary>
+    /// <remarks>
+    /// The source scope is always unioned with the buffer's tracked last write
+    /// (<see cref="VulkanBuffer.LastWriteStages"/> / <see cref="VulkanBuffer.LastWriteAccess"/>), even
+    /// when the caller supplied an explicit source via a preset or custom descriptor. Unioning the
+    /// recorded producer scope can only widen the source side of the dependency (it never narrows it),
+    /// so the barrier always covers the buffer's actual last write and can never under-synchronize
+    /// because of an incomplete caller-supplied source.
+    /// </remarks>
     /// <returns>
     /// <see langword="true"/> when the handle was processed without error (emitted or legitimately
     /// skipped under lazy mode); <see langword="false"/> when mapping left an empty native stage scope.
@@ -2469,7 +2432,17 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
             return true; // redundant under lazy mode; leave dirty state unchanged
         }
 
-        if (!VulkanBarrierMapping.TryMap(in desc, out var mapped))
+        // Always fold the buffer's tracked last-write scope into the source, even when the caller gave
+        // an explicit source. This is a safe union (widening the producer scope only) that guarantees
+        // the barrier covers the actual last write.
+        var effective = new BarrierDescriptor(
+            desc.SrcStages | buf.LastWriteStages,
+            desc.DstStages,
+            desc.SrcAccess | buf.LastWriteAccess,
+            desc.DstAccess
+        );
+
+        if (!VulkanBarrierMapping.TryMap(in effective, out var mapped))
         {
             _logger.LogError(
                 "Barrier: buffer at index {INDEX} produced an empty native stage scope after omitting unmapped flags (unmapped src={SRC}, dst={DST}). No barrier was emitted for this buffer.",
