@@ -50,7 +50,6 @@ internal class App : Application
             new VulkanContextConfig
             {
                 TerminateOnValidationError = true,
-                ForceIntegratedGPU = false,
                 OnCreateSurface = CreateSurface,
             },
             MainWindow.Instance,
