@@ -216,8 +216,8 @@ public sealed class ElementBuffer<T> : IDisposable
     /// <param name="context">The graphics or computation context in which the buffer will be used. This cannot be <see langword="null"/>.</param>
     /// <param name="data">The initial data to populate the buffer. The buffer size is determined by the number of elements in this
     /// collection.</param>
-    /// <param name="usage">Specifies the intended usage pattern of the buffer, such as <see cref="BufferUsageBits.Storage"/> or <see
-    /// cref="BufferUsageBits.DynamicDraw"/>. The default is <see cref="BufferUsageBits.Storage"/>.</param>
+    /// <param name="usage">Specifies the intended usage pattern of the buffer, such as <see cref="BufferUsageBits.Storage"/> or 
+    /// <see cref="BufferUsageBits.Indirect"/>. The default is <see cref="BufferUsageBits.Storage"/>.</param>
     /// <param name="hostVisible">Indicates whether the buffer is dynamic, allowing for frequent updates. The default is <see langword="false"/>.</param>
     /// <param name="debugName">An optional name for debugging purposes. This can be <see langword="null"/>.</param>
     public ElementBuffer(

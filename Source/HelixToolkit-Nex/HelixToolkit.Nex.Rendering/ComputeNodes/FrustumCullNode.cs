@@ -188,7 +188,7 @@ public sealed class FrustumCullNode : ComputeNode
             new Dimensions(GpuFrustumCulling.GetGroupSize(stream.Count), 1, 1),
             Dependencies.Empty
         );
-        stream.Barrier(cmdBuffer, BarrierPreset.ComputeWriteToShaderRead, force: true); // Ensure the reset is completed before culling.
+        stream.Barrier(cmdBuffer, BarrierPreset.ComputeWriteToShaderRW, force: true); // Ensure the reset is completed before culling.
     }
 
     private void CullInstancingMeshes(

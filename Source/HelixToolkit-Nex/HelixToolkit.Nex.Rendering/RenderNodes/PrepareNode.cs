@@ -50,7 +50,7 @@ public class PrepareNode : RenderNode
         }
         res.CmdBuffer.Barrier(
             _handles.GetInternalArray().AsSpan(0, _handles.Count),
-            BarrierPreset.HostWriteToShaderRead
+            BarrierPreset.HostWriteToShaderRW
         );
 
         var fpData = new FPConstants

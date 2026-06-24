@@ -54,7 +54,7 @@ public enum DrawStreamVariants : uint
 }
 
 /// <summary>
-/// Identifies a named draw stream in the <see cref="IDrawStreamRegistry"/>.
+/// Identifies a named draw stream in the <see cref="IDrawStreamRegistry{DRAW_TYPE}"/>.
 /// Each value corresponds to a unique combination of rendering characteristics
 /// (opaque/transparent, static/dynamic, instancing, hitability).
 /// </summary>

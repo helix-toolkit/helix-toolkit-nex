@@ -44,8 +44,8 @@ public struct VertexInputBinding()
     /// Specifies the rate at which vertex data is consumed by the input assembler.
     /// </summary>
     /// <remarks>This value determines whether the vertex data is processed per-vertex or per-instance. Common
-    /// values include <see cref="VertexInputRate.PerVertex"/> for per-vertex processing  and <see
-    /// cref="VertexInputRate.PerInstance"/> for per-instance processing.</remarks>
+    /// values include <see cref="VertexInputRate.Vertex"/> for per-vertex processing  and <see
+    /// cref="VertexInputRate.Instance"/> for per-instance processing.</remarks>
     public VertexInputRate InputRate;
 }
 

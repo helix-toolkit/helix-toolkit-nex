@@ -34,7 +34,7 @@ public static class SystemBufferNames
     public const string BufferPBRProperties = "BufPBRProps";
 
     /// <summary>
-    /// Intermediate texture A used by the <see cref="PostEffects.Bloom"/> effect for the
+    /// Intermediate texture A used by the <see cref="RenderNodes.BloomNode"/> effect for the
     /// brightness-extract output and the final blurred result.
     /// Allocated at a reduced resolution determined by <c>Bloom.DownsampleFactor</c>
     /// (default: quarter of screen size).
@@ -42,7 +42,7 @@ public static class SystemBufferNames
     public const string TextureBloomA = "TexBloomA";
 
     /// <summary>
-    /// Intermediate texture B used by the <see cref="PostEffects.Bloom"/> effect as the
+    /// Intermediate texture B used by the <see cref="RenderNodes.BloomNode"/> effect as the
     /// horizontal-blur target during the ping-pong blur passes.
     /// Allocated at a reduced resolution determined by <c>Bloom.DownsampleFactor</c>
     /// (default: quarter of screen size).

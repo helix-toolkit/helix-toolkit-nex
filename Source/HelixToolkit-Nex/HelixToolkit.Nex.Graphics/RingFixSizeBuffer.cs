@@ -110,7 +110,7 @@ public sealed class RingFixSizeBuffer<T> : IDisposable
 
     /// <summary>
     /// Advances to the next ring slot then writes a single <typeparamref name="T"/> value.
-    /// Equivalent to calling <see cref="Advance"/> followed by <see cref="Write"/>.
+    /// Equivalent to calling <see cref="Advance"/> followed by <see cref="Update"/>.
     /// </summary>
     /// <param name="cmdBuffer">The command buffer to record the update command into.</param>
     /// <param name="value">The value to upload.</param>

@@ -54,7 +54,7 @@ public struct ShaderModuleDesc()
     public ShaderStage Stage;
 
     /// <summary>
-    /// The type of shader data provided. Defaults to <see cref="ShaderDataType.Auto"/>.
+    /// The type of shader data provided. Defaults to <see cref="ShaderDataType.Glsl"/>.
     /// </summary>
     public ShaderDataType DataType = ShaderDataType.Glsl;
 
@@ -77,7 +77,7 @@ public struct ShaderModuleDesc()
     /// Array of preprocessor defines to apply during shader compilation.
     /// </summary>
     /// <remarks>
-    /// Only applicable when <see cref="DataType"/> is <see cref="ShaderDataType.Glsl"/> or <see cref="ShaderDataType.Auto"/> with GLSL source.
+    /// Only applicable when <see cref="DataType"/> is <see cref="ShaderDataType.Glsl"/> with GLSL source.
     /// </remarks>
     public ShaderDefine[] Defines = [];
 
