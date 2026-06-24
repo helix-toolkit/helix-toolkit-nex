@@ -4,7 +4,7 @@ using HelixToolkit.Nex.Shaders.Frag;
 namespace HelixToolkit.Nex.Rendering.RenderNodes;
 
 /// <summary>
-/// Named quality presets for the <see cref="Smaa"/> post-processing effect.
+/// Named quality presets for the <see cref="SMAANode"/> post-processing effect.
 /// Each level maps to a recommended luminance-contrast <c>edgeThreshold</c> value
 /// from the standard SMAA quality ladder.
 /// </summary>
@@ -104,7 +104,7 @@ public sealed class SMAANode : RenderNode
     /// Lower values detect more edges (sharper AA, more fill-rate cost).
     /// Setting this property does not change <see cref="Quality"/>; it acts as a
     /// fine-grained override on top of the last applied preset.
-    /// Defaults to <c>0.1</c> (the <see cref="SmaaQuality.Medium"/> preset value).
+    /// Defaults to <c>0.1</c> (the <see cref="SMAAQuality.Medium"/> preset value).
     /// </summary>
     public float EdgeThreshold
     {

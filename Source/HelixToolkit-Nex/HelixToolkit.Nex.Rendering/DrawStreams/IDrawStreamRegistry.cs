@@ -1,7 +1,7 @@
 namespace HelixToolkit.Nex.Rendering.DrawStreams;
 
 /// <summary>
-/// Central registry that owns all <see cref="IDrawStream"/> instances and provides
+/// Central registry that owns all <see cref="IDrawStream{DRAW_TYPE}"/> instances and provides
 /// lookup by stream name or category. The registry manages the lifecycle of all streams,
 /// coordinates per-frame updates, and supports batch GPU synchronization barriers.
 /// </summary>
@@ -13,14 +13,14 @@ public interface IDrawStreamRegistry<DRAW_TYPE> : IInitializable, IDisposable
     /// </summary>
     /// <param name="type">The type of the draw stream.</param>
     /// <param name="name">The unique name identifying the desired stream.</param>
-    /// <returns>The <see cref="IDrawStream"/> registered under the specified name.</returns>
+    /// <returns>The <see cref="IDrawStream{DRAW_TYPE}"/> registered under the specified name.</returns>
     /// <exception cref="ArgumentOutOfRangeException">
     /// Thrown if <paramref name="name"/> does not correspond to a registered stream.
     /// </exception>
     IDrawStream<DRAW_TYPE>? GetStream(DrawStreamType type, DrawStreamName name);
 
     /// <summary>
-    /// Gets all streams whose <see cref="IDrawStream.Variants"/> include the specified category flags.
+    /// Gets all streams whose <see cref="IDrawStream{DRAW_TYPE}.StreamType"/> include the specified variant flags.
     /// Returns an empty enumerable if no streams match.
     /// </summary>
     /// <param name="type">The type of the draw stream.</param>
@@ -50,7 +50,7 @@ public interface IDrawStreamRegistry<DRAW_TYPE> : IInitializable, IDisposable
 
 /// <summary>
 /// Zero-allocation struct enumerable over a <see cref="FastList{IDrawStream}"/> filtered by
-/// <see cref="DrawStreaVariants"/>. 
+/// <see cref="DrawStreamVariants"/>. 
 /// </summary>
 public readonly struct DrawStreamEnumerable<DRAW_TYPE>(
     FastList<IDrawStream<DRAW_TYPE>?> list,

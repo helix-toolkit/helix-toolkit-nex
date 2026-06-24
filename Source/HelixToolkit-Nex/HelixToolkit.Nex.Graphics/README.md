@@ -15,33 +15,33 @@ HelixToolkit.Nex.Graphics is a core component of the HelixToolkit.Nex engine, re
 
 ## Key Types
 
-| Type                          | Description                                                                 |
-|-------------------------------|-----------------------------------------------------------------------------|
-| `IAsyncUploadHandle`          | Interface for asynchronous GPU upload operations.                           |
-| `AsyncUploadHandle`           | Represents the result of an asynchronous GPU upload operation.              |
-| `BufferDesc`                  | Describes the properties required to create a GPU buffer.                   |
-| `ICommandBuffer`              | Interface for recording GPU commands in a rendering pipeline.               |
-| `ComputePipelineDesc`         | Describes the configuration for creating a compute pipeline.                |
-| `IContext`                    | Interface for creating and managing GPU resources.                         |
-| `BufferUsageBits`             | Enum describing buffer usage flags.                                         |
-| `TextureDesc`                 | Describes the properties required to create a GPU texture.                  |
-| `RenderPipelineDesc`          | Represents the configuration for a render pipeline.                        |
-| `ShaderModuleDesc`            | Describes the properties required to create a shader module.                |
-| `VertexInput`                 | Describes the complete vertex input configuration for a graphics pipeline.  |
-| `TextureResource`             | Represents a GPU texture resource.                                          |
-| `Dependencies`                | Manages dependencies for command buffer submissions.                       |
-| `DependencyScope`             | Provides a scoped management for dependencies.                             |
-| `ElementBuffer<T>`            | Represents a buffer for storing elements of type `T`.                      |
-| `RingElementBuffer<T>`        | Manages a ring buffer for dynamic element storage.                         |
-| `SamplerStateDesc`            | Describes the configuration for a texture sampler.                         |
-| `DepthState`                  | Describes depth test configuration, including new `ReadOnlyInvZBias`.      |
-| `Format`                      | Enum describing texture and buffer formats, including new `A_UN8`.         |
-| `PipelineStageFlags`          | Enum for backend-agnostic pipeline stage flags for GPU memory barriers.    |
-| `AccessFlags`                 | Enum for backend-agnostic memory access flags for GPU memory barriers.     |
-| `TextureLayout`               | Enum for backend-agnostic image layouts used by image/texture barriers.    |
-| `BarrierDescriptor`           | Describes a fully custom GPU memory barrier.                               |
-| `BarrierPreset`               | Enum for predefined buffer barrier configurations.                         |
-| `ImageTransition`             | Enum for named image/texture layout transitions.                           |
+| Type                   | Description                                                                |
+| ---------------------- | -------------------------------------------------------------------------- |
+| `IAsyncUploadHandle`   | Interface for asynchronous GPU upload operations.                          |
+| `AsyncUploadHandle`    | Represents the result of an asynchronous GPU upload operation.             |
+| `BufferDesc`           | Describes the properties required to create a GPU buffer.                  |
+| `ICommandBuffer`       | Interface for recording GPU commands in a rendering pipeline.              |
+| `ComputePipelineDesc`  | Describes the configuration for creating a compute pipeline.               |
+| `IContext`             | Interface for creating and managing GPU resources.                         |
+| `BufferUsageBits`      | Enum describing buffer usage flags.                                        |
+| `TextureDesc`          | Describes the properties required to create a GPU texture.                 |
+| `RenderPipelineDesc`   | Represents the configuration for a render pipeline.                        |
+| `ShaderModuleDesc`     | Describes the properties required to create a shader module.               |
+| `VertexInput`          | Describes the complete vertex input configuration for a graphics pipeline. |
+| `TextureResource`      | Represents a GPU texture resource.                                         |
+| `Dependencies`         | Manages dependencies for command buffer submissions.                       |
+| `DependencyScope`      | Provides a scoped management for dependencies.                             |
+| `ElementBuffer<T>`     | Represents a buffer for storing elements of type `T`.                      |
+| `RingElementBuffer<T>` | Manages a ring buffer for dynamic element storage.                         |
+| `SamplerStateDesc`     | Describes the configuration for a texture sampler.                         |
+| `DepthState`           | Describes depth test configuration, including new `ReadOnlyInvZBias`.      |
+| `Format`               | Enum describing texture and buffer formats, including new `A_UN8`.         |
+| `PipelineStageFlags`   | Enum for backend-agnostic pipeline stage flags for GPU memory barriers.    |
+| `AccessFlags`          | Enum for backend-agnostic memory access flags for GPU memory barriers.     |
+| `TextureLayout`        | Enum for backend-agnostic image layouts used by image/texture barriers.    |
+| `BarrierDescriptor`    | Describes a fully custom GPU memory barrier.                               |
+| `BarrierPreset`        | Enum for predefined buffer barrier configurations.                         |
+| `ImageTransition`      | Enum for named image/texture layout transitions.                           |
 
 ## Usage Examples
 
@@ -88,7 +88,7 @@ context.Submit(commandBuffer);
 
 ```csharp
 var commandBuffer = context.AcquireCommandBuffer();
-bool barrierCreated = commandBuffer.Barrier(buffer.Handle, BarrierPreset.ComputeWriteToShaderRead, force: true);
+bool barrierCreated = commandBuffer.Barrier(buffer.Handle, BarrierPreset.ComputeWriteToShaderRW, force: true);
 if (!barrierCreated)
 {
     // Handle error
@@ -139,7 +139,7 @@ ringBuffer.WriteDynamic(100, state, (ctx, s) => {
 ```csharp
 var commandBuffer = context.AcquireCommandBuffer();
 var buffers = new BufferHandle[] { buffer1.Handle, buffer2.Handle };
-bool allBarriersCreated = commandBuffer.Barrier(buffers, BarrierPreset.TransferWriteToShaderRead, force: true);
+bool allBarriersCreated = commandBuffer.Barrier(buffers, BarrierPreset.TransferWriteToShaderRW, force: true);
 if (!allBarriersCreated)
 {
     // Handle error

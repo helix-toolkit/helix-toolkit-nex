@@ -3,8 +3,8 @@ using HelixToolkit.Nex.ECS;
 namespace HelixToolkit.Nex.Rendering.DrawStreams;
 
 /// <summary>
-/// Represents a named draw stream that owns a GPU buffer of <see cref="DRAW_TYPE"/> commands
-/// or <see cref="LineDraw"/> commands) sharing the same rendering characteristics (index buffer strategy, culling granularity, hitability).
+/// Represents a named draw stream that owns a GPU buffer of <c>DRAW_TYPE</c> commands
+/// sharing the same rendering characteristics (index buffer strategy, culling granularity, hitability).
 /// Each stream manages stable slot assignment, lazy compaction, and material-type sub-ranges.
 /// </summary>
 public interface IDrawStream<DRAW_TYPE> : IRenderData, IDisposable where DRAW_TYPE : unmanaged
@@ -52,7 +52,7 @@ public interface IDrawStream<DRAW_TYPE> : IRenderData, IDisposable where DRAW_TY
     DrawRange GetRangeByMaterial(MaterialTypeId materialType);
 
     /// <summary>
-    /// Attempts to retrieve the <see cref="DRAW_TYPE"/> command at the given draw index.
+    /// Attempts to retrieve the <c>DRAW_TYPE</c> command at the given draw index.
     /// </summary>
     /// <param name="drawIndex">The slot index to look up.</param>
     /// <param name="draw">When this method returns <c>true</c>, contains the draw command at the specified index.</param>
@@ -60,8 +60,8 @@ public interface IDrawStream<DRAW_TYPE> : IRenderData, IDisposable where DRAW_TY
     bool TryGetDraw(int drawIndex, out DRAW_TYPE draw);
 
     /// <summary>
-    /// Gets the <see cref="DRAW_TYPE"/> command and slot index for a specific entity.
-    /// Returns a default <see cref="DRAW_TYPE"/> with <c>SlotIndex == -1</c> if the entity is not in this stream.
+    /// Gets the <c>DRAW_TYPE</c> command and slot index for a specific entity.
+    /// Returns a default <c>DRAW_TYPE</c> with <c>SlotIndex == -1</c> if the entity is not in this stream.
     /// </summary>
     /// <param name="entity">The entity to look up.</param>
     /// <returns>A tuple containing the draw command and its stable slot index.</returns>
