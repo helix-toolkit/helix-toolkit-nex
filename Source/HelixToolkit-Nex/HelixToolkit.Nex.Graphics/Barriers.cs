@@ -143,17 +143,17 @@ public readonly record struct BarrierDescriptor(
 /// </summary>
 public enum BarrierPreset : uint
 {
-    /// <summary>Compute-shader write to shader read (compute, vertex, fragment).</summary>
-    ComputeWriteToShaderRead,
+    /// <summary>Compute-shader write to shader read-write (RW) in compute, vertex, and fragment stages.</summary>
+    ComputeWriteToShaderRW,
 
     /// <summary>Transfer write to vertex-input read (including index reads).</summary>
     TransferWriteToVertexInputRead,
 
-    /// <summary>Transfer write to shader read (compute, vertex, fragment).</summary>
-    TransferWriteToShaderRead,
+    /// <summary>Transfer write to shader read-write (RW) in compute, vertex, and fragment stages.</summary>
+    TransferWriteToShaderRW,
 
-    /// <summary>Host write to shader read (compute, vertex, fragment).</summary>
-    HostWriteToShaderRead,
+    /// <summary>Host write to shader read-write (RW) in compute, vertex, and fragment stages.</summary>
+    HostWriteToShaderRW,
 
     /// <summary>Shader write to indirect draw/dispatch argument read.</summary>
     WriteToIndirectDrawRead,
@@ -208,12 +208,12 @@ public static class BarrierPresets
     {
         switch (preset)
         {
-            case BarrierPreset.ComputeWriteToShaderRead:
+            case BarrierPreset.ComputeWriteToShaderRW:
                 descriptor = new BarrierDescriptor(
                     PipelineStageFlags.ComputeShader,
                     Shaders,
                     AccessFlags.ShaderWrite,
-                    AccessFlags.ShaderRead
+                    AccessFlags.ShaderRead | AccessFlags.ShaderWrite
                 );
                 return true;
 
@@ -226,21 +226,21 @@ public static class BarrierPresets
                 );
                 return true;
 
-            case BarrierPreset.TransferWriteToShaderRead:
+            case BarrierPreset.TransferWriteToShaderRW:
                 descriptor = new BarrierDescriptor(
                     PipelineStageFlags.Transfer,
                     Shaders,
                     AccessFlags.TransferWrite,
-                    AccessFlags.ShaderRead
+                    AccessFlags.ShaderRead | AccessFlags.ShaderWrite
                 );
                 return true;
 
-            case BarrierPreset.HostWriteToShaderRead:
+            case BarrierPreset.HostWriteToShaderRW:
                 descriptor = new BarrierDescriptor(
                     PipelineStageFlags.Host,
                     Shaders,
                     AccessFlags.HostWrite,
-                    AccessFlags.ShaderRead
+                    AccessFlags.ShaderRead | AccessFlags.ShaderWrite
                 );
                 return true;
 
