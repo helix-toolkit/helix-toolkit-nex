@@ -74,7 +74,7 @@ public interface IDrawStream<DRAW_TYPE> : IRenderData, IDisposable where DRAW_TY
     /// <param name="cmdBuf">The command buffer in which to record the barrier.</param>
     /// <param name="preset">The barrier preset to use.</param>
     /// <param name="force">If set to <see langword="true"/>, the barrier will be created even if the buffer is not dirty.</param>
-    void Barrier(ICommandBuffer cmdBuf, BarrierPreset preset = BarrierPreset.HostWriteToShaderRead, bool force = false);
+    void Barrier(ICommandBuffer cmdBuf, BarrierPreset preset = BarrierPreset.WriteToIndirectDrawRead, bool force = false);
 }
 
 
@@ -86,7 +86,7 @@ public static class DrawStreamExtensions
         {
             if (stream.Count == 0)
             { continue; }
-            stream.Barrier(cmdBuf, BarrierPreset.HostWriteToShaderRead);
+            stream.Barrier(cmdBuf, BarrierPreset.WriteToIndirectDrawRead);
         }
     }
 }

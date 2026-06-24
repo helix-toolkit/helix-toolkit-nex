@@ -250,7 +250,7 @@ public sealed class ForwardPlusWBOITMergedNode : RenderNode
         );
         foreach (var stream in streams)
         {
-            stream.Barrier(res.CmdBuffer, BarrierPreset.ComputeWriteToShaderRead);
+            stream.Barrier(res.CmdBuffer);
         }
     }
 
