@@ -97,7 +97,6 @@ public sealed class FrustumCullNode : ComputeNode
             {
                 continue;
             }
-            stream.Barrier(res.CmdBuffer);
             using var _ = res.Deps.PushBufferScoped(stream.Buffer);
             Cull(context, res.CmdBuffer, stream, res.Deps);
         }
@@ -108,7 +107,6 @@ public sealed class FrustumCullNode : ComputeNode
             {
                 continue;
             }
-            stream.Barrier(res.CmdBuffer);
             using var _ = res.Deps.PushBufferScoped(stream.Buffer);
             CullMeshes(context, res.CmdBuffer, stream, res.Deps, _lineCullingPipeline);
         }
@@ -119,7 +117,6 @@ public sealed class FrustumCullNode : ComputeNode
             {
                 continue;
             }
-            stream.Barrier(res.CmdBuffer);
             using var _ = res.Deps.PushBufferScoped(stream.Buffer);
             CullMeshes(context, res.CmdBuffer, stream, res.Deps, _pointCullingPipeline);
         }
@@ -191,7 +188,7 @@ public sealed class FrustumCullNode : ComputeNode
             new Dimensions(GpuFrustumCulling.GetGroupSize(stream.Count), 1, 1),
             Dependencies.Empty
         );
-        stream.Barrier(cmdBuffer, force: true); // Ensure the reset is completed before culling.
+        stream.Barrier(cmdBuffer, BarrierPreset.ComputeWriteToShaderRead, force: true); // Ensure the reset is completed before culling.
     }
 
     private void CullInstancingMeshes(

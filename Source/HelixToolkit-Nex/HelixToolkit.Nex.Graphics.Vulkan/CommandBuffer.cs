@@ -2377,31 +2377,11 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
             return false;
         }
 
-        var result = true;
-        for (var i = 0; i < buffers.Length; i++)
-        {
-            var buf = _ctx.BuffersPool.Get(buffers[i]);
-            if (buf is null || !buf.Valid)
-            {
-                _logger.LogError(
-                    "Barrier: buffer at index {INDEX} is null or invalid. Make sure the buffer is created before adding a barrier for it.",
-                    i
-                );
-                result = false;
-                continue;
-            }
-
-            if (!TryEmitBufferBarrier(i, buf, in desc, force))
-            {
-                result = false;
-            }
-        }
-
-        return result;
+        return TryEmitBufferBarrier(buffers, in desc, force);
     }
 
     /// <summary>
-    /// Applies the lazy/dirty/force emit decision to a single buffer, maps the descriptor onto native
+    /// Applies the lazy/dirty/force emit decision to multiple buffers, maps the descriptor onto native
     /// flags, emits the barrier with verbatim access masks, and clears the buffer's dirty state.
     /// Shared by every buffer-barrier path via <see cref="BarrierCore"/>.
     /// </summary>
@@ -2418,49 +2398,81 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
     /// skipped under lazy mode); <see langword="false"/> when mapping left an empty native stage scope.
     /// </returns>
     private bool TryEmitBufferBarrier(
-        int index,
-        VulkanBuffer buf,
+        ReadOnlySpan<BufferHandle> buffers,
         in BarrierDescriptor desc,
         bool force
     )
     {
-        if (
-            BarrierPlanner.Decide(_ctx.Config.EnableLazyBufferBarrier, buf.IsDirty, force)
-            == BarrierEmitDecision.Skip
-        )
+        unsafe
         {
-            return true; // redundant under lazy mode; leave dirty state unchanged
+            var barriers = stackalloc VkBufferMemoryBarrier2[buffers.Length];
+            var count = 0;
+            for (var i = 0; i < buffers.Length; i++)
+            {
+                var buf = _ctx.BuffersPool.Get(buffers[i]);
+                if (buf is null || !buf.Valid)
+                {
+                    _logger.LogError(
+                        "Barrier: buffer at index {INDEX} is null or invalid. Make sure the buffer is created before adding a barrier for it.",
+                        i
+                    );
+                    continue;
+                }
+                if (
+                    BarrierPlanner.Decide(_ctx.Config.EnableLazyBufferBarrier, buf.IsDirty, force)
+                    == BarrierEmitDecision.Skip
+                )
+                {
+                    continue;
+                }
+
+                // Always fold the buffer's tracked last-write scope into the source, even when the caller gave
+                // an explicit source. This is a safe union (widening the producer scope only) that guarantees
+                // the barrier covers the actual last write.
+                var effective = new BarrierDescriptor(
+                    desc.SrcStages | buf.LastWriteStages,
+                    desc.DstStages,
+                    desc.SrcAccess | buf.LastWriteAccess,
+                    desc.DstAccess
+                );
+
+                if (!VulkanBarrierMapping.TryMap(in effective, out var mapped))
+                {
+                    _logger.LogError(
+                        "Barrier: buffer at index {INDEX} produced an empty native stage scope after omitting unmapped flags (unmapped src={SRC}, dst={DST}). No barrier was emitted for this buffer.",
+                        i,
+                        mapped.UnmappedSrcStages,
+                        mapped.UnmappedDstStages
+                    );
+                    return false;
+                }
+                barriers[count++] = new()
+                {
+                    srcStageMask = mapped.SrcStage,
+                    srcAccessMask = mapped.SrcAccess,
+                    dstStageMask = mapped.DstStage,
+                    dstAccessMask = mapped.DstAccess,
+                    srcQueueFamilyIndex = VK.VK_QUEUE_FAMILY_IGNORED,
+                    dstQueueFamilyIndex = VK.VK_QUEUE_FAMILY_IGNORED,
+                    buffer = buf!.VkBuffer,
+                    offset = 0,
+                    size = VK.VK_WHOLE_SIZE,
+                };
+                buf.ClearDirty();
+            }
+            if (count == 0)
+            {
+                return true; // all handles were skipped under lazy mode, no error
+            }
+            VkDependencyInfo depInfo = new()
+            {
+                bufferMemoryBarrierCount = (uint)count,
+                pBufferMemoryBarriers = barriers,
+            };
+
+            VK.vkCmdPipelineBarrier2(CmdBuffer, &depInfo);
         }
 
-        // Always fold the buffer's tracked last-write scope into the source, even when the caller gave
-        // an explicit source. This is a safe union (widening the producer scope only) that guarantees
-        // the barrier covers the actual last write.
-        var effective = new BarrierDescriptor(
-            desc.SrcStages | buf.LastWriteStages,
-            desc.DstStages,
-            desc.SrcAccess | buf.LastWriteAccess,
-            desc.DstAccess
-        );
-
-        if (!VulkanBarrierMapping.TryMap(in effective, out var mapped))
-        {
-            _logger.LogError(
-                "Barrier: buffer at index {INDEX} produced an empty native stage scope after omitting unmapped flags (unmapped src={SRC}, dst={DST}). No barrier was emitted for this buffer.",
-                index,
-                mapped.UnmappedSrcStages,
-                mapped.UnmappedDstStages
-            );
-            return false;
-        }
-
-        CmdBuffer.BufferBarrier2Explicit(
-            buf,
-            mapped.SrcStage,
-            mapped.DstStage,
-            mapped.SrcAccess,
-            mapped.DstAccess
-        );
-        buf.ClearDirty();
         return true;
     }
 
