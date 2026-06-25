@@ -414,17 +414,19 @@ public class Engine : Initializable
     /// dispose this object.
     /// </param>
     /// <param name="target">The offscreen render target.</param>
+    /// <param name="commandBuffer">Optional command buffer to record into. If <c>null</c>, a new command buffer is created.</param>
     /// <returns>The command buffer with recorded render graph commands.</returns>
     public ICommandBuffer RenderOffscreen(
         RenderContext renderContext,
         IRenderDataProvider dataProvider,
-        TextureHandle target
+        TextureHandle target,
+        ICommandBuffer? commandBuffer = null
     )
     {
         EnsureResources(renderContext);
         renderContext.Data = dataProvider;
         renderContext.FinalOutputTexture = target;
-        var cmd = Renderer.Render(renderContext, RenderGraph);
+        var cmd = Renderer.Render(renderContext, RenderGraph, commandBuffer);
         var copiedRequestId = renderContext.PickingContext.SendCommand(cmd, renderContext);
         if (copiedRequestId.HasValue)
         {
@@ -441,11 +443,13 @@ public class Engine : Initializable
     /// <param name="renderContext"></param>
     /// <param name="dataProvider"></param>
     /// <param name="targetName"></param>
+    /// <param name="commandBuffer"></param>
     /// <returns></returns>
     public ICommandBuffer RenderOffscreen(
         RenderContext renderContext,
         IRenderDataProvider dataProvider,
-        string targetName
+        string targetName,
+        ICommandBuffer? commandBuffer = null
     )
     {
         EnsureResources(renderContext);
@@ -459,7 +463,7 @@ public class Engine : Initializable
                 $"RenderOffscreen target texture '{targetName}' was not found."
             );
         }
-        return RenderOffscreen(renderContext, dataProvider, handle);
+        return RenderOffscreen(renderContext, dataProvider, handle, commandBuffer);
     }
 
     /// <summary>
