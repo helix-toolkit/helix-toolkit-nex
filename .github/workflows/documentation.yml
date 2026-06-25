@@ -40,6 +40,9 @@ jobs:
     - name: Build Solution
       run: dotnet build Source/HelixToolkit-Nex/HelixToolkit.Nex.slnx --configuration Release
       
+    - name: Generate API index
+      run: pwsh Documentation/generate-api-index.ps1
+
     - name: Build Documentation
       run: |
         cd Documentation
