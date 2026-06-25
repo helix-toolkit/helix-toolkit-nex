@@ -52,7 +52,7 @@ if ($Clean) {
 Write-Host "Configuring projects for XML documentation generation..." -ForegroundColor Yellow
 
 $projects = Get-ChildItem -Path "..\Source\HelixToolkit-Nex" -Recurse -Filter "*.csproj" |
-    Where-Object { $_.FullName -notmatch '\\Samples\\' -and $_.BaseName -notlike '*.Tests' } |
+    Where-Object { $_.FullName -notmatch '\\Samples\\' -and $_.BaseName -notlike '*.Tests' -and $_.BaseName -notlike '*.CodeGen' } |
     Select-Object -ExpandProperty FullName
 
 foreach ($project in $projects) {

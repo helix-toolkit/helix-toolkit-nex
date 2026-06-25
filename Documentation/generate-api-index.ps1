@@ -4,7 +4,7 @@
 $projectsRoot = "$PSScriptRoot\..\Source\HelixToolkit-Nex"
 
 $assemblies = Get-ChildItem -Path $projectsRoot -Recurse -Filter "*.csproj" |
-    Where-Object { $_.FullName -notmatch '\\Samples\\' -and $_.BaseName -notlike '*.Tests' } |
+    Where-Object { $_.FullName -notmatch '\\Samples\\' -and $_.BaseName -notlike '*.Tests' -and $_.BaseName -notlike '*.CodeGen' } |
     Select-Object -ExpandProperty BaseName |
     Sort-Object
 
