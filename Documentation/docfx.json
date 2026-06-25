@@ -19,10 +19,7 @@
       "dest": "api",
       "disableGitFeatures": false,
       "disableDefaultFilter": false,
-      "includePrivateMembers": false,
-      "properties": {
-        "TargetFramework": "net8.0"
-      }
+      "includePrivateMembers": false
     }
   ],
   "build": {
