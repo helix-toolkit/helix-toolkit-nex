@@ -20,7 +20,7 @@ public interface IDrawStreamRegistry<DRAW_TYPE> : IInitializable, IDisposable
     IDrawStream<DRAW_TYPE>? GetStream(DrawStreamType type, DrawStreamName name);
 
     /// <summary>
-    /// Gets all streams whose <see cref="IDrawStream{DRAW_TYPE}.StreamType"/> include the specified variant flags.
+    /// Gets all streams whose <see cref="IDrawStream{DRAW_TYPE}.StreamType"/> equals the specified variant flags.
     /// Returns an empty enumerable if no streams match.
     /// </summary>
     /// <param name="type">The type of the draw stream.</param>

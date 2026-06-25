@@ -2403,6 +2403,7 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
         bool force
     )
     {
+        bool succ = true;
         unsafe
         {
             var barriers = stackalloc VkBufferMemoryBarrier2[buffers.Length];
@@ -2416,6 +2417,7 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
                         "Barrier: buffer at index {INDEX} is null or invalid. Make sure the buffer is created before adding a barrier for it.",
                         i
                     );
+                    succ = false;
                     continue;
                 }
                 if (
@@ -2444,7 +2446,8 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
                         mapped.UnmappedSrcStages,
                         mapped.UnmappedDstStages
                     );
-                    return false;
+                    succ = false;
+                    continue;
                 }
                 barriers[count++] = new()
                 {
@@ -2462,7 +2465,7 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
             }
             if (count == 0)
             {
-                return true; // all handles were skipped under lazy mode, no error
+                return succ; // all handles were skipped under lazy mode, no error
             }
             VkDependencyInfo depInfo = new()
             {
@@ -2473,7 +2476,7 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
             VK.vkCmdPipelineBarrier2(CmdBuffer, &depInfo);
         }
 
-        return true;
+        return succ;
     }
 
     /// <inheritdoc/>
