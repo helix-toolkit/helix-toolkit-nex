@@ -195,4 +195,8 @@ camera.FocusOn(new Vector3(0, 0, 0), 10f);
 
 - `DirectionalLightComponent` has been renamed to `DirectionalLightInfo`.
 - `RangeLightComponent` has been renamed to `RangeLightInfo`.
+
+### Updated `DrawStreamBase`
+
+- `Barrier(ICommandBuffer cmdBuf, BarrierPreset preset, bool force)` method now includes a `BarrierPreset` parameter for more flexible barrier configuration.
 ```

@@ -118,6 +118,12 @@ commandBuffer.SetCullMode(CullMode.Back);
 context.MarkDirty(bufferHandle);
 ```
 
+### Marking a Buffer for Host Write
+
+```csharp
+context.MarkHostWrite(bufferHandle, offset: 0, size: 1024);
+```
+
 ### Using Image Barriers
 
 ```csharp
@@ -126,6 +132,12 @@ if (commandBuffer.ImageBarrier(textureHandle, transition))
 {
     Console.WriteLine("Image barrier applied successfully.");
 }
+```
+
+### Using Buffer Barriers
+
+```csharp
+commandBuffer.Barrier(bufferHandle, PipelineStageFlags.FragmentShader, AccessFlags.ShaderRead);
 ```
 
 ## Architecture Notes
