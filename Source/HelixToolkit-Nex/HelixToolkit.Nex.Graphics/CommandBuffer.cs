@@ -584,6 +584,102 @@ public interface ICommandBuffer
     bool Barrier(ReadOnlySpan<BufferHandle> buffers, bool force = false);
 
     /// <summary>
+    /// Creates a GPU memory barrier for a buffer using a predefined <see cref="BarrierPreset"/>.
+    /// </summary>
+    /// <param name="buffer">The handle to the buffer for which to create the memory barrier.</param>
+    /// <param name="preset">The predefined barrier configuration to apply.</param>
+    /// <param name="force">If set to <see langword="true"/>, the barrier will be created even if the buffer is not dirty.</param>
+    /// <returns>True if the barrier was successfully created; false if the buffer handle is invalid, the preset is undefined, or the barrier could not be created.</returns>
+    bool Barrier(in BufferHandle buffer, BarrierPreset preset, bool force = false);
+
+    /// <summary>
+    /// Creates GPU memory barriers for multiple buffers using a predefined <see cref="BarrierPreset"/>.
+    /// </summary>
+    /// <param name="buffers">A span of buffer handles for which to create the memory barriers.</param>
+    /// <param name="preset">The predefined barrier configuration to apply to each buffer.</param>
+    /// <param name="force">If set to <see langword="true"/>, the barriers will be created even if the buffers are not dirty.</param>
+    /// <returns>True if all barriers were successfully created; false if any buffer handle is invalid, the preset is undefined, or a barrier could not be created.</returns>
+    bool Barrier(ReadOnlySpan<BufferHandle> buffers, BarrierPreset preset, bool force = false);
+
+    /// <summary>
+    /// Creates a GPU memory barrier for a buffer using an explicit <see cref="BarrierDescriptor"/>.
+    /// </summary>
+    /// <param name="buffer">The handle to the buffer for which to create the memory barrier.</param>
+    /// <param name="descriptor">The custom barrier configuration describing source/destination stages and access masks.</param>
+    /// <param name="force">If set to <see langword="true"/>, the barrier will be created even if the buffer is not dirty.</param>
+    /// <returns>True if the barrier was successfully created; false if the buffer handle is invalid, the descriptor is invalid, or the barrier could not be created.</returns>
+    bool Barrier(in BufferHandle buffer, in BarrierDescriptor descriptor, bool force = false);
+
+    /// <summary>
+    /// Creates GPU memory barriers for multiple buffers using an explicit <see cref="BarrierDescriptor"/>.
+    /// </summary>
+    /// <param name="buffers">A span of buffer handles for which to create the memory barriers.</param>
+    /// <param name="descriptor">The custom barrier configuration describing source/destination stages and access masks.</param>
+    /// <param name="force">If set to <see langword="true"/>, the barriers will be created even if the buffers are not dirty.</param>
+    /// <returns>True if all barriers were successfully created; false if any buffer handle is invalid, the descriptor is invalid, or a barrier could not be created.</returns>
+    bool Barrier(
+        ReadOnlySpan<BufferHandle> buffers,
+        in BarrierDescriptor descriptor,
+        bool force = false
+    );
+
+    /// <summary>
+    /// Creates a GPU memory barrier for a buffer where only the destination (consumer) scope is
+    /// specified; the source (producer) scope is taken automatically from the buffer's most recently
+    /// recorded write. Use this when you know how the buffer is about to be used but do not want to
+    /// track where it was last written.
+    /// </summary>
+    /// <param name="buffer">The handle to the buffer for which to create the memory barrier.</param>
+    /// <param name="dstStages">The destination pipeline stages that will consume the buffer.</param>
+    /// <param name="dstAccess">The destination access flags describing how the buffer will be consumed.</param>
+    /// <param name="force">If set to <see langword="true"/>, the barrier will be created even if the buffer is not dirty.</param>
+    /// <returns>True if the barrier was successfully created; false if the buffer handle is invalid, the destination scope is empty, or the barrier could not be created.</returns>
+    bool Barrier(
+        in BufferHandle buffer,
+        PipelineStageFlags dstStages,
+        AccessFlags dstAccess,
+        bool force = false
+    );
+
+    /// <summary>
+    /// Creates GPU memory barriers for multiple buffers where only the destination (consumer) scope is
+    /// specified; each buffer's source (producer) scope is taken automatically from that buffer's most
+    /// recently recorded write.
+    /// </summary>
+    /// <param name="buffers">A span of buffer handles for which to create the memory barriers.</param>
+    /// <param name="dstStages">The destination pipeline stages that will consume the buffers.</param>
+    /// <param name="dstAccess">The destination access flags describing how the buffers will be consumed.</param>
+    /// <param name="force">If set to <see langword="true"/>, the barriers will be created even if the buffers are not dirty.</param>
+    /// <returns>True if all barriers were successfully created; false if any buffer handle is invalid, the destination scope is empty, or a barrier could not be created.</returns>
+    bool Barrier(
+        ReadOnlySpan<BufferHandle> buffers,
+        PipelineStageFlags dstStages,
+        AccessFlags dstAccess,
+        bool force = false
+    );
+
+    /// <summary>
+    /// Creates an image/texture memory barrier using a predefined <see cref="ImageTransition"/>.
+    /// </summary>
+    /// <param name="texture">The handle to the texture to transition.</param>
+    /// <param name="transition">The named layout transition to apply, moving the texture from its current layout to the transition's target layout.</param>
+    /// <returns>True if the barrier was successfully created; false if the texture handle is invalid or the barrier could not be created.</returns>
+    bool ImageBarrier(in TextureHandle texture, ImageTransition transition);
+
+    /// <summary>
+    /// Creates an image/texture memory barrier using an explicit <see cref="BarrierDescriptor"/> and a target <see cref="TextureLayout"/>.
+    /// </summary>
+    /// <param name="texture">The handle to the texture to transition.</param>
+    /// <param name="descriptor">The custom barrier configuration describing source/destination stages and access masks.</param>
+    /// <param name="targetLayout">The layout to transition the texture to from its current layout.</param>
+    /// <returns>True if the barrier was successfully created; false if the texture handle is invalid or the barrier could not be created.</returns>
+    bool ImageBarrier(
+        in TextureHandle texture,
+        in BarrierDescriptor descriptor,
+        TextureLayout targetLayout
+    );
+
+    /// <summary>
     /// Sets a checkpoint marker with the specified label to identify a position or state in the process.
     /// </summary>
     /// <param name="label">The label that identifies the checkpoint marker. Cannot be null or empty.</param>

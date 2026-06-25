@@ -86,6 +86,7 @@
   <Project Path="HelixToolkit.Nex.Graphics.Vulkan.Tests/HelixToolkit.Nex.Graphics.Vulkan.Tests.csproj" />
   <Project Path="HelixToolkit.Nex.Graphics.Vulkan/HelixToolkit.Nex.Graphics.Vulkan.csproj" />
   <Project Path="HelixToolkit.Nex.Graphics/HelixToolkit.Nex.Graphics.csproj" />
+  <Project Path="HelixToolkit.Nex.Graphics.Tests/HelixToolkit.Nex.Graphics.Tests.csproj" />
   <Project Path="HelixToolkit.Nex.ImGui/HelixToolkit.Nex.ImGui.csproj" />
   <Project Path="HelixToolkit.Nex.Interop.DirectX.Tests/HelixToolkit.Nex.Interop.DirectX.Tests.csproj">
     <Build Solution="LinuxDebug|Any CPU" Project="false" />

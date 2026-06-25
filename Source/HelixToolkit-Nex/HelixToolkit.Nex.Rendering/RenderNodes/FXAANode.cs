@@ -1,7 +1,7 @@
 namespace HelixToolkit.Nex.Rendering.RenderNodes;
 
 /// <summary>
-/// Named quality presets for the <see cref="Fxaa"/> post-processing effect.
+/// Named quality presets for the <see cref="FXAANode"/> anti-aliasing effect.
 /// Each level tunes the three underlying FXAA parameters
 /// (<c>contrastThreshold</c>, <c>relativeThreshold</c>, <c>subpixelBlending</c>)
 /// according to the standard Timothy Lottes quality ladder.
@@ -37,7 +37,7 @@ public enum FxaaQuality
 }
 
 /// <summary>
-/// Shader-level debug visualisation modes for <see cref="Fxaa"/>.
+/// Shader-level debug visualisation modes for <see cref="FXAANode"/>.
 /// Maps to specialization constant 0 (<c>FXAA_DEBUG_MODE</c>) in <c>psFxaa.glsl</c>.
 /// </summary>
 public enum FxaaDebugMode : uint
@@ -53,8 +53,6 @@ public enum FxaaDebugMode : uint
 
     /// <summary>
     /// Renders the per-pixel blend amount as a blue (no blend) → red (max blend) heat map.
-    /// Use this to verify the span search is producing non-trivial offsets after the
-    /// <see cref="lumaLocalAvg"/> bug fix.
     /// </summary>
     BlendHeatMap = 2,
 }

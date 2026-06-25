@@ -51,15 +51,9 @@ if ($Clean) {
 # Ensure XML documentation is generated for all projects
 Write-Host "Configuring projects for XML documentation generation..." -ForegroundColor Yellow
 
-$projects = @(
-  "..\Source\HelixToolkit-Nex\HelixToolkit.Nex.Graphics\HelixToolkit.Nex.Graphics.csproj",
-    "..\Source\HelixToolkit-Nex\HelixToolkit.Nex.Graphics.Vulkan\HelixToolkit.Nex.Graphics.Vulkan.csproj",
-    "..\Source\HelixToolkit-Nex\HelixToolkit.Nex.Maths\HelixToolkit.Nex.Maths.csproj",
-    "..\Source\HelixToolkit-Nex\HelixTookit.Nex\HelixToolkit.Nex.csproj",
-    "..\Source\HelixToolkit-Nex\HelixToolkit.Nex.Scene\HelixToolkit.Nex.Scene.csproj",
-    "..\Source\HelixToolkit-Nex\HelixToolkit.Nex.Rendering\HelixToolkit.Nex.Rendering.csproj",
-    "..\Source\HelixToolkit-Nex\HelixToolkit.Nex.ImGui\HelixToolkit.Nex.ImGui.csproj"
-)
+$projects = Get-ChildItem -Path "..\Source\HelixToolkit-Nex" -Recurse -Filter "*.csproj" |
+    Where-Object { $_.FullName -notmatch '\\Samples\\' -and $_.BaseName -notlike '*.Tests' } |
+    Select-Object -ExpandProperty FullName
 
 foreach ($project in $projects) {
     if (Test-Path $project) {
@@ -120,6 +114,9 @@ Write-Host "Build completed successfully!" -ForegroundColor Green
 Write-Host ""
 
 # Build documentation with DocFX
+Write-Host "Generating API index..." -ForegroundColor Yellow
+& "$PSScriptRoot\generate-api-index.ps1"
+
 Write-Host "Building documentation with DocFX..." -ForegroundColor Yellow
 
 $docfxArgs = @()

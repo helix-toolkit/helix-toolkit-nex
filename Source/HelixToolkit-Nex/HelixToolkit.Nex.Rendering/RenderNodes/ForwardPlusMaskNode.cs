@@ -53,10 +53,6 @@ public sealed class ForwardPlusMaskNode : RenderNode
         var streams = res.RenderContext.Data!.MeshDrawStreams.GetStreams(DrawStreamType.AlphaMask);
         foreach (var stream in streams)
         {
-            if (stream.Count == 0)
-            {
-                continue;
-            }
             stream.Barrier(res.CmdBuffer);
         }
     }

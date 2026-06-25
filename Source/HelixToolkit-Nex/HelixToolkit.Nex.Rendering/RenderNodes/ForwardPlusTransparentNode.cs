@@ -60,7 +60,7 @@ public class ForwardPlusTransparentNode : RenderNode
             DrawStreamType.Transparent
         );
         foreach (var stream in streams)
-            stream.Barrier(res.CmdBuffer);
+        { stream.Barrier(res.CmdBuffer); }
     }
 
     protected override void OnRender(in RenderResources res)

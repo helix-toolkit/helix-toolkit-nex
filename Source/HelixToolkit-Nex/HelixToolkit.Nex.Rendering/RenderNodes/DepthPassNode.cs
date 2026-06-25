@@ -46,10 +46,7 @@ public sealed class DepthPassNode() : RenderNode
         var streams = res.RenderContext.Data!.MeshDrawStreams.GetStreams(DrawStreamType.Opaque);
         foreach (var stream in streams)
         {
-            if (stream.Count > 0)
-            {
-                stream.Barrier(res.CmdBuffer);
-            }
+            stream.Barrier(res.CmdBuffer);
         }
     }
 
@@ -113,7 +110,6 @@ public sealed class DepthPassNode() : RenderNode
         };
 
         _pipelineOpaque = Context.CreateRenderPipeline(pipelineDesc);
-
 
         return _pipelineOpaque.Valid;
     }

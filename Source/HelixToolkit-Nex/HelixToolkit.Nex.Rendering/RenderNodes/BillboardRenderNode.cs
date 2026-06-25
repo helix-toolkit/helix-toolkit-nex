@@ -3,6 +3,7 @@ namespace HelixToolkit.Nex.Rendering.RenderNodes;
 public sealed class BillboardRenderNode : RenderNode
 {
     private static readonly ILogger _logger = LogManager.Create<BillboardRenderNode>();
+    private readonly BufferHandle[] _bufHandles = new BufferHandle[2];
 
     public override string Name => nameof(BillboardRenderNode);
     public override Color4 DebugColor => Color.CadetBlue;
@@ -70,8 +71,9 @@ public sealed class BillboardRenderNode : RenderNode
             {
                 continue;
             }
-            res.CmdBuffer.Barrier(entry.DrawDataBuffer);
-            res.CmdBuffer.Barrier(entry.DrawArgsBuffer);
+            _bufHandles[0] = entry.DrawDataBuffer;
+            _bufHandles[1] = entry.DrawArgsBuffer;
+            res.CmdBuffer.Barrier(_bufHandles, BarrierPreset.WriteToIndirectDrawRead);
         }
     }
 

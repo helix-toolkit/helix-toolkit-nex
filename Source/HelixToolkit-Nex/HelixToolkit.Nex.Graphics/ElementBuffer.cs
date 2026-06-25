@@ -216,8 +216,8 @@ public sealed class ElementBuffer<T> : IDisposable
     /// <param name="context">The graphics or computation context in which the buffer will be used. This cannot be <see langword="null"/>.</param>
     /// <param name="data">The initial data to populate the buffer. The buffer size is determined by the number of elements in this
     /// collection.</param>
-    /// <param name="usage">Specifies the intended usage pattern of the buffer, such as <see cref="BufferUsageBits.Storage"/> or <see
-    /// cref="BufferUsageBits.DynamicDraw"/>. The default is <see cref="BufferUsageBits.Storage"/>.</param>
+    /// <param name="usage">Specifies the intended usage pattern of the buffer, such as <see cref="BufferUsageBits.Storage"/> or 
+    /// <see cref="BufferUsageBits.Indirect"/>. The default is <see cref="BufferUsageBits.Storage"/>.</param>
     /// <param name="hostVisible">Indicates whether the buffer is dynamic, allowing for frequent updates. The default is <see langword="false"/>.</param>
     /// <param name="debugName">An optional name for debugging purposes. This can be <see langword="null"/>.</param>
     public ElementBuffer(
@@ -390,26 +390,19 @@ public sealed class ElementBuffer<T> : IDisposable
     public AsyncUploadHandle<BufferHandle> UploadAsync(FastList<T> data, int dstOffset = 0)
     {
         if (HostVisible)
-        { // For dynamic buffers, use mapped memory for direct CPU writes
+        { // Host-visible: copy through the interface (into mapped memory) so the write is recorded;
+            // this completes synchronously.
             unsafe
             {
-                nint mappedPtr = Context.GetMappedPtr(Buffer.Handle);
-                if (mappedPtr == nint.Zero)
-                {
-                    _logger.LogError("Cannot upload data: dynamic buffer is not mapped.");
-                    return AsyncUploadHandle<BufferHandle>.CreateCompleted(
-                        ResultCode.InvalidState,
-                        Buffer.Handle
-                    );
-                }
-                mappedPtr += dstOffset * sizeof(T);
                 using var pinnedData = data.GetInternalArray().Pin();
                 var srcPtr = (nint)pinnedData.Pointer;
-                NativeHelper.MemoryCopy(mappedPtr, srcPtr, (uint)(data.Count * sizeof(T)));
-                return AsyncUploadHandle<BufferHandle>.CreateCompleted(
-                    ResultCode.Ok,
-                    Buffer.Handle
+                var uploadResult = Context.Upload(
+                    Buffer.Handle,
+                    (uint)(dstOffset * sizeof(T)),
+                    srcPtr,
+                    (uint)(data.Count * sizeof(T))
                 );
+                return AsyncUploadHandle<BufferHandle>.CreateCompleted(uploadResult, Buffer.Handle);
             }
         }
         var requiredCapacity = data.Count;
@@ -477,7 +470,8 @@ public sealed class ElementBuffer<T> : IDisposable
             }
             writeAction(new SafeWriteContext(_pinnedMappedPtr, Capacity * sizeof(T)));
             Count = totalCount;
-            Context.MarkDirty(Buffer);
+            // Commit the in-place mapped write: flush (if non-coherent) and record the host write.
+            Context.MarkHostWrite(Buffer, 0, (uint)(totalCount * sizeof(T)));
             return ResultCode.Ok;
         }
     }
@@ -528,7 +522,8 @@ public sealed class ElementBuffer<T> : IDisposable
             }
             writeAction(new SafeWriteContext(_pinnedMappedPtr, Capacity * sizeof(T)), state);
             Count = totalCount;
-            Context.MarkDirty(Buffer);
+            // Commit the in-place mapped write: flush (if non-coherent) and record the host write.
+            Context.MarkHostWrite(Buffer, 0, (uint)(totalCount * sizeof(T)));
             return ResultCode.Ok;
         }
     }
@@ -556,10 +551,8 @@ public sealed class ElementBuffer<T> : IDisposable
             {
                 return ResultCode.OutOfMemory;
             }
-            var ptr = (T*)((byte*)MappedPointer + index * sizeof(T));
-            *ptr = data;
-            Context.MarkDirty(Buffer);
-            return ResultCode.Ok;
+            // Write through the interface so the backend copies into mapped memory and records the write.
+            return Context.Upload(Buffer.Handle, (uint)(index * sizeof(T)), ref data);
         }
     }
 
@@ -735,37 +728,18 @@ public sealed class ElementBuffer<T> : IDisposable
 
             uint dataSize = (uint)(count * sizeof(T));
 
-            if (HostVisible)
+            // Upload through the graphics interface. For host-visible buffers the backend copies into
+            // mapped memory (flushing non-coherent memory); for device buffers it stages via transfer.
+            // Either way the buffer's last-write scope and dirty state are recorded correctly.
+            using var pinnedData = data.Pin();
+            var srcPtr = (nint)pinnedData.Pointer + start * sizeof(T);
+            var result = Context.Upload(Buffer.Handle, (uint)dstOffset, srcPtr, dataSize);
+            if (result.HasError())
             {
-                // For dynamic buffers, use mapped memory for direct CPU writes
-                if (_pinnedMappedPtr == nint.Zero)
-                {
-                    _logger.LogError("Cannot upload data: dynamic buffer is not mapped.");
-                    return ResultCode.InvalidState;
-                }
-                var mappedPtr = _pinnedMappedPtr + dstOffset;
-                // Copy data directly to mapped memory
-                using var pinnedData = data.Pin();
-                var srcPtr = (nint)pinnedData.Pointer + start * sizeof(T);
-                NativeHelper.MemoryCopy(mappedPtr, srcPtr, dataSize);
-                Context.MarkDirty(Buffer);
-                return ResultCode.Ok;
+                _logger.LogError("Failed to upload data to ElementBuffer: {REASON}", result);
+                return result;
             }
-            else
-            {
-                // For static buffers, use staging upload mechanism
-                using var pinnedData = data.Pin();
-                var srcPtr = (nint)pinnedData.Pointer + start * sizeof(T);
-                var result = Context.Upload(Buffer.Handle, (uint)dstOffset, srcPtr, dataSize);
-
-                if (result.HasError())
-                {
-                    _logger.LogError("Failed to upload data to ElementBuffer: {REASON}", result);
-                    return result;
-                }
-
-                return ResultCode.Ok;
-            }
+            return ResultCode.Ok;
         }
     }
 

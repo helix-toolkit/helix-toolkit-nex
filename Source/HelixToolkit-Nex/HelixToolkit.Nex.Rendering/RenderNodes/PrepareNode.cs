@@ -6,6 +6,7 @@ public class PrepareNode : RenderNode
     public override Color4 DebugColor => Color.Black;
 
     private RingFixSizeBuffer<FPConstants>? _constantsBuffer;
+    private readonly FastList<BufferHandle> _handles = new(5);
 
     protected override bool OnSetup()
     {
@@ -35,6 +36,23 @@ public class PrepareNode : RenderNode
     protected override void OnSetupRender(in RenderResources res)
     {
         var context = res.RenderContext!;
+        _handles.Clear();
+        _handles.Add(context.Data!.NodeInfos.Buffer);
+        _handles.Add(context.Data!.MeshInfos.Buffer);
+        _handles.Add(context.Data!.PBRPropertiesBuffer.Buffer);
+        if (context.Data!.DirectionalLights.Count > 0)
+        {
+            _handles.Add(context.Data!.DirectionalLights.Buffer);
+        }
+        if (context.Data!.Lights.Count > 0)
+        {
+            _handles.Add(context.Data!.Lights.Buffer);
+        }
+        res.CmdBuffer.Barrier(
+            _handles.GetInternalArray().AsSpan(0, _handles.Count),
+            BarrierPreset.HostWriteToShaderRW
+        );
+
         var fpData = new FPConstants
         {
             Enabled = context.RenderParams.EnableLightCulling ? 1u : 0,

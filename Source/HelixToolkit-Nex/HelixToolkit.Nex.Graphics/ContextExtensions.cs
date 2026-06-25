@@ -162,8 +162,8 @@ public static class ContextExtensions
     /// <param name="buffer">When this method returns, contains the created <see cref="BufferResource"/> if the operation succeeds;
     /// otherwise, contains <see langword="null"/>.</param>
     /// <param name="debugName">An optional name for the buffer resource, used for debugging purposes. Can be <see langword="null"/>.</param>
-    /// <returns>A <see cref="ResultCode"/> indicating the result of the buffer creation operation. Returns <see
-    /// cref="ResultCode.Success"/> if the buffer was created successfully; otherwise, returns an error code.</returns>
+    /// <returns>A <see cref="ResultCode"/> indicating the result of the buffer creation operation. Returns 
+    /// <see cref="ResultCode.Ok"/> if the buffer was created successfully; otherwise, returns an error code.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static ResultCode CreateBuffer<T>(
         this IContext context,
@@ -285,8 +285,8 @@ public static class ContextExtensions
     /// <param name="storage">The storage type indicating where and how the buffer will be allocated (e.g., device-local, host-visible).</param>
     /// <param name="buffer">When this method returns, contains the created buffer resource initialized with the specified data.</param>
     /// <param name="debugName">An optional name for the buffer resource, used for debugging purposes. Can be <see langword="null"/>.</param>
-    /// <returns>A <see cref="ResultCode"/> indicating the result of the buffer creation operation. Returns <see
-    /// cref="ResultCode.Success"/> if the buffer was created successfully; otherwise, returns an error code.</returns>
+    /// <returns>A <see cref="ResultCode"/> indicating the result of the buffer creation operation. Returns 
+    /// <see cref="ResultCode.Ok"/> if the buffer was created successfully; otherwise, returns an error code.</returns>
     public static ResultCode CreateBuffer<T>(
         this IContext context,
         T[] data,

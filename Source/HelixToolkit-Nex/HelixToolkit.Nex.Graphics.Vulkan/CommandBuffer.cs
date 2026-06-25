@@ -1257,6 +1257,19 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
             threadgroupCount.Height,
             threadgroupCount.Depth
         );
+
+        // Conservatively treat every buffer the dispatch depends on as potentially written by the
+        // compute shader: record a ComputeShader/ShaderWrite source and mark dirty, so the next read
+        // of the buffer emits a correctly-sourced barrier. (The engine cannot otherwise observe shader
+        // writes; buffers a dispatch writes must be listed in deps, which is the existing contract.)
+        foreach (var handle in deps.BufferSpan)
+        {
+            var buf = _ctx.BuffersPool.Get(handle);
+            if (buf is not null && buf.Valid)
+            {
+                buf.RecordWrite(PipelineStageFlags.ComputeShader, AccessFlags.ShaderWrite);
+            }
+        }
         ++DispatchCallCount;
     }
 
@@ -1883,6 +1896,161 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
     }
 
     /// <inheritdoc/>
+    public bool ImageBarrier(in TextureHandle texture, ImageTransition transition)
+    {
+        if (!TryResolveImageTransition(transition, out var targetLayout, out var desc))
+        {
+            _logger.LogError(
+                "ImageBarrier: undefined ImageTransition value '{TRANSITION}'. No barrier was emitted.",
+                transition
+            );
+            return false;
+        }
+        return ImageBarrierCore(in texture, in desc, targetLayout);
+    }
+
+    /// <inheritdoc/>
+    public bool ImageBarrier(
+        in TextureHandle texture,
+        in BarrierDescriptor descriptor,
+        TextureLayout targetLayout
+    )
+    {
+        return ImageBarrierCore(in texture, in descriptor, targetLayout);
+    }
+
+    /// <summary>
+    /// Resolves a named <see cref="ImageTransition"/> onto its target <see cref="TextureLayout"/> and
+    /// the backend-agnostic <see cref="BarrierDescriptor"/> describing the stages/access used to move
+    /// the texture into that layout.
+    /// </summary>
+    /// <param name="transition">The named image transition to resolve.</param>
+    /// <param name="target">When this method returns, the target layout for the transition.</param>
+    /// <param name="desc">When this method returns, the descriptor describing the transition's stages/access.</param>
+    /// <returns>
+    /// <see langword="true"/> for every defined <see cref="ImageTransition"/> member; otherwise
+    /// <see langword="false"/> for any value that is not a defined member.
+    /// </returns>
+    private static bool TryResolveImageTransition(
+        ImageTransition transition,
+        out TextureLayout target,
+        out BarrierDescriptor desc
+    )
+    {
+        // Source scope is conservative (all prior commands, all memory) so the transition is safe
+        // regardless of how the texture was previously used; the destination scope honors the target.
+        const PipelineStageFlags shaders =
+            PipelineStageFlags.ComputeShader
+            | PipelineStageFlags.VertexShader
+            | PipelineStageFlags.FragmentShader;
+
+        switch (transition)
+        {
+            case ImageTransition.ToShaderReadOnly:
+                target = TextureLayout.ShaderReadOnly;
+                desc = new BarrierDescriptor(
+                    PipelineStageFlags.AllCommands,
+                    shaders,
+                    AccessFlags.MemoryRead | AccessFlags.MemoryWrite,
+                    AccessFlags.ShaderRead
+                );
+                return true;
+            case ImageTransition.ToTransferSource:
+                target = TextureLayout.TransferSource;
+                desc = new BarrierDescriptor(
+                    PipelineStageFlags.AllCommands,
+                    PipelineStageFlags.Transfer,
+                    AccessFlags.MemoryRead | AccessFlags.MemoryWrite,
+                    AccessFlags.TransferRead
+                );
+                return true;
+            case ImageTransition.ToTransferDestination:
+                target = TextureLayout.TransferDestination;
+                desc = new BarrierDescriptor(
+                    PipelineStageFlags.AllCommands,
+                    PipelineStageFlags.Transfer,
+                    AccessFlags.MemoryRead | AccessFlags.MemoryWrite,
+                    AccessFlags.TransferWrite
+                );
+                return true;
+            default:
+                target = TextureLayout.Undefined;
+                desc = default;
+                return false;
+        }
+    }
+
+    /// <summary>
+    /// Shared image-barrier worker. Resolves the texture, transitions it from its current layout to
+    /// <paramref name="targetLayout"/> using the supplied descriptor's stages/access, and updates the
+    /// texture's tracked current layout.
+    /// </summary>
+    /// <param name="texture">The texture handle to barrier.</param>
+    /// <param name="desc">The descriptor supplying the source/destination stages and access flags.</param>
+    /// <param name="targetLayout">The layout to transition the texture into.</param>
+    /// <returns>
+    /// <see langword="true"/> when the barrier was emitted; <see langword="false"/> when the texture
+    /// handle is null/invalid (in which case nothing is emitted and the current layout is unchanged).
+    /// </returns>
+    private bool ImageBarrierCore(
+        in TextureHandle texture,
+        in BarrierDescriptor desc,
+        TextureLayout targetLayout
+    )
+    {
+        var img = _ctx.TexturesPool.Get(texture);
+        if (img is null || !img.Valid)
+        {
+            _logger.LogError(
+                "ImageBarrier: texture handle '{HANDLE}' is null or invalid. No image barrier was emitted.",
+                texture
+            );
+            return false;
+        }
+
+        // Map the backend-agnostic descriptor onto native stages/access (omit-unmapped semantics).
+        // If omitting unmapped flags leaves an empty source or destination stage scope, the resulting
+        // barrier would be invalid/no-op; reject it and leave the tracked layout unchanged so later
+        // transitions still compute the correct old layout.
+        if (!VulkanBarrierMapping.TryMap(in desc, out var mapped))
+        {
+            _logger.LogError(
+                "ImageBarrier: descriptor for texture '{HANDLE}' produced an empty native stage scope after omitting unmapped flags "
+                    + "(unmapped src stages={SRCSTAGES}, dst stages={DSTSTAGES}, src access={SRCACCESS}, dst access={DSTACCESS}). "
+                    + "No image barrier was emitted and the layout is unchanged.",
+                texture,
+                mapped.UnmappedSrcStages,
+                mapped.UnmappedDstStages,
+                mapped.UnmappedSrcAccess,
+                mapped.UnmappedDstAccess
+            );
+            return false;
+        }
+
+        // Resolve the target layout, emit the transition from the texture's current layout, then update
+        // the tracked current layout so subsequent transitions compute the correct old layout.
+        var newLayout = VulkanBarrierMapping.MapLayout(targetLayout);
+        var aspect = img.GetImageAspectFlags();
+
+        CmdBuffer.ImageMemoryBarrier2(
+            img.Image,
+            new StageAccess2 { Stage = mapped.SrcStage, Access = mapped.SrcAccess },
+            new StageAccess2 { Stage = mapped.DstStage, Access = mapped.DstAccess },
+            img.ImageLayout,
+            newLayout,
+            new VkImageSubresourceRange(
+                aspect,
+                0,
+                VK.VK_REMAINING_MIP_LEVELS,
+                0,
+                VK.VK_REMAINING_ARRAY_LAYERS
+            )
+        );
+        img.ImageLayout = newLayout;
+        return true;
+    }
+
+    /// <inheritdoc/>
     public ResultCode UpdateBuffer(in BufferHandle buffer, uint bufferOffset, uint size, nint data)
     {
         HxDebug.Assert(buffer);
@@ -2034,8 +2202,7 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
                 };
                 if (srcStage.HasAllFlags(VkPipelineStageFlags2.Host))
                 {
-                    barrier.srcAccessMask |=
-                        VkAccessFlags2.HostRead | VkAccessFlags2.HostWrite;
+                    barrier.srcAccessMask |= VkAccessFlags2.HostRead | VkAccessFlags2.HostWrite;
                 }
                 if (srcStage.HasAllFlags(VkPipelineStageFlags2.Transfer))
                 {
@@ -2079,6 +2246,237 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
             VK.vkCmdPipelineBarrier2(CmdBuffer, &depInfo);
         }
         return true;
+    }
+
+    /// <inheritdoc/>
+    public bool Barrier(in BufferHandle buffer, BarrierPreset preset, bool force = false)
+    {
+        if (!HelixToolkit.Nex.Graphics.BarrierPresets.TryGetDescriptor(preset, out var desc))
+        {
+            _logger.LogError(
+                "Barrier: undefined BarrierPreset value '{PRESET}'. No barrier was emitted.",
+                preset
+            );
+            return false;
+        }
+        var single = MemoryMarshal.CreateReadOnlySpan(ref Unsafe.AsRef(in buffer), 1);
+        return BarrierCore(single, in desc, force);
+    }
+
+    /// <inheritdoc/>
+    public bool Barrier(
+        ReadOnlySpan<BufferHandle> buffers,
+        BarrierPreset preset,
+        bool force = false
+    )
+    {
+        if (!HelixToolkit.Nex.Graphics.BarrierPresets.TryGetDescriptor(preset, out var desc))
+        {
+            _logger.LogError(
+                "Barrier: undefined BarrierPreset value '{PRESET}'. No barrier was emitted.",
+                preset
+            );
+            return false;
+        }
+        return BarrierCore(buffers, in desc, force);
+    }
+
+    /// <inheritdoc/>
+    public bool Barrier(in BufferHandle buffer, in BarrierDescriptor descriptor, bool force = false)
+    {
+        var single = MemoryMarshal.CreateReadOnlySpan(ref Unsafe.AsRef(in buffer), 1);
+        return BarrierCore(single, in descriptor, force);
+    }
+
+    /// <inheritdoc/>
+    public bool Barrier(
+        ReadOnlySpan<BufferHandle> buffers,
+        in BarrierDescriptor descriptor,
+        bool force = false
+    )
+    {
+        return BarrierCore(buffers, in descriptor, force);
+    }
+
+    /// <inheritdoc/>
+    public bool Barrier(
+        in BufferHandle buffer,
+        PipelineStageFlags dstStages,
+        AccessFlags dstAccess,
+        bool force = false
+    )
+    {
+        var single = MemoryMarshal.CreateReadOnlySpan(ref Unsafe.AsRef(in buffer), 1);
+        // No explicit source: the per-buffer source is supplied from each buffer's tracked last write.
+        return BarrierCore(
+            single,
+            new BarrierDescriptor(PipelineStageFlags.None, dstStages, AccessFlags.None, dstAccess),
+            force
+        );
+    }
+
+    /// <inheritdoc/>
+    public bool Barrier(
+        ReadOnlySpan<BufferHandle> buffers,
+        PipelineStageFlags dstStages,
+        AccessFlags dstAccess,
+        bool force = false
+    )
+    {
+        // No explicit source: the per-buffer source is supplied from each buffer's tracked last write.
+        return BarrierCore(
+            buffers,
+            new BarrierDescriptor(PipelineStageFlags.None, dstStages, AccessFlags.None, dstAccess),
+            force
+        );
+    }
+
+    /// <summary>
+    /// Single emission worker shared by every buffer-barrier path (preset, custom-descriptor, and the
+    /// destination-only auto-sourced overloads). Resolves each handle, applies the lazy/dirty/force
+    /// emit decision, maps the backend-agnostic descriptor onto native Vulkan flags, and emits the
+    /// barrier.
+    /// </summary>
+    /// <remarks>
+    /// The descriptor's source scope is optional: <see cref="TryEmitBufferBarrier"/> always unions it
+    /// with each buffer's tracked last write (<see cref="VulkanBuffer.LastWriteStages"/> /
+    /// <see cref="VulkanBuffer.LastWriteAccess"/>). Callers that want a purely tracked source pass
+    /// <see cref="PipelineStageFlags.None"/> / <see cref="AccessFlags.None"/> as the source; callers
+    /// that supply an explicit source (presets/custom descriptors) still have the tracked write folded
+    /// in. Only the destination scope must be non-empty.
+    /// </remarks>
+    /// <param name="buffers">The buffer handles to barrier, processed in the supplied order.</param>
+    /// <param name="desc">
+    /// The barrier descriptor applied to every handle. <see cref="BarrierDescriptor.SrcStages"/> /
+    /// <see cref="BarrierDescriptor.SrcAccess"/> may be <c>None</c> to use only the tracked source.
+    /// </param>
+    /// <param name="force">Whether emission is forced regardless of dirty state.</param>
+    /// <returns>
+    /// <see langword="true"/> when no invalid handle and no mapping failure occurred (including the empty-span
+    /// case); otherwise <see langword="false"/>. Valid handles are still processed even when an earlier handle
+    /// failed (partial success).
+    /// </returns>
+    private bool BarrierCore(
+        ReadOnlySpan<BufferHandle> buffers,
+        in BarrierDescriptor desc,
+        bool force
+    )
+    {
+        if (buffers.IsEmpty)
+        {
+            return true; // no handles, no barrier, no error (Requirement 7.5)
+        }
+
+        // The destination (consumer) scope must be specified; the source may be empty because it is
+        // augmented per-buffer from the tracked last write in TryEmitBufferBarrier.
+        if (desc.DstStages == PipelineStageFlags.None)
+        {
+            _logger.LogError(
+                "Barrier: invalid destination scope (DstStages=None); the consumer pipeline stages must be non-empty. No barrier was emitted."
+            );
+            return false;
+        }
+
+        return TryEmitBufferBarrier(buffers, in desc, force);
+    }
+
+    /// <summary>
+    /// Applies the lazy/dirty/force emit decision to multiple buffers, maps the descriptor onto native
+    /// flags, emits the barrier with verbatim access masks, and clears the buffer's dirty state.
+    /// Shared by every buffer-barrier path via <see cref="BarrierCore"/>.
+    /// </summary>
+    /// <remarks>
+    /// The source scope is always unioned with the buffer's tracked last write
+    /// (<see cref="VulkanBuffer.LastWriteStages"/> / <see cref="VulkanBuffer.LastWriteAccess"/>), even
+    /// when the caller supplied an explicit source via a preset or custom descriptor. Unioning the
+    /// recorded producer scope can only widen the source side of the dependency (it never narrows it),
+    /// so the barrier always covers the buffer's actual last write and can never under-synchronize
+    /// because of an incomplete caller-supplied source.
+    /// </remarks>
+    /// <returns>
+    /// <see langword="true"/> when the handle was processed without error (emitted or legitimately
+    /// skipped under lazy mode); <see langword="false"/> when mapping left an empty native stage scope.
+    /// </returns>
+    private bool TryEmitBufferBarrier(
+        ReadOnlySpan<BufferHandle> buffers,
+        in BarrierDescriptor desc,
+        bool force
+    )
+    {
+        bool succ = true;
+        unsafe
+        {
+            var barriers = stackalloc VkBufferMemoryBarrier2[buffers.Length];
+            var count = 0;
+            for (var i = 0; i < buffers.Length; i++)
+            {
+                var buf = _ctx.BuffersPool.Get(buffers[i]);
+                if (buf is null || !buf.Valid)
+                {
+                    _logger.LogError(
+                        "Barrier: buffer at index {INDEX} is null or invalid. Make sure the buffer is created before adding a barrier for it.",
+                        i
+                    );
+                    succ = false;
+                    continue;
+                }
+                if (
+                    BarrierPlanner.Decide(_ctx.Config.EnableLazyBufferBarrier, buf.IsDirty, force)
+                    == BarrierEmitDecision.Skip
+                )
+                {
+                    continue;
+                }
+
+                // Always fold the buffer's tracked last-write scope into the source, even when the caller gave
+                // an explicit source. This is a safe union (widening the producer scope only) that guarantees
+                // the barrier covers the actual last write.
+                var effective = new BarrierDescriptor(
+                    desc.SrcStages | buf.LastWriteStages,
+                    desc.DstStages,
+                    desc.SrcAccess | buf.LastWriteAccess,
+                    desc.DstAccess
+                );
+
+                if (!VulkanBarrierMapping.TryMap(in effective, out var mapped))
+                {
+                    _logger.LogError(
+                        "Barrier: buffer at index {INDEX} produced an empty native stage scope after omitting unmapped flags (unmapped src={SRC}, dst={DST}). No barrier was emitted for this buffer.",
+                        i,
+                        mapped.UnmappedSrcStages,
+                        mapped.UnmappedDstStages
+                    );
+                    succ = false;
+                    continue;
+                }
+                barriers[count++] = new()
+                {
+                    srcStageMask = mapped.SrcStage,
+                    srcAccessMask = mapped.SrcAccess,
+                    dstStageMask = mapped.DstStage,
+                    dstAccessMask = mapped.DstAccess,
+                    srcQueueFamilyIndex = VK.VK_QUEUE_FAMILY_IGNORED,
+                    dstQueueFamilyIndex = VK.VK_QUEUE_FAMILY_IGNORED,
+                    buffer = buf!.VkBuffer,
+                    offset = 0,
+                    size = VK.VK_WHOLE_SIZE,
+                };
+                buf.ClearDirty();
+            }
+            if (count == 0)
+            {
+                return succ; // all handles were skipped under lazy mode, no error
+            }
+            VkDependencyInfo depInfo = new()
+            {
+                bufferMemoryBarrierCount = (uint)count,
+                pBufferMemoryBarriers = barriers,
+            };
+
+            VK.vkCmdPipelineBarrier2(CmdBuffer, &depInfo);
+        }
+
+        return succ;
     }
 
     /// <inheritdoc/>
@@ -2149,6 +2547,16 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
             range
         );
 
+        // Order the upcoming transfer write after any prior use of the destination buffer
+        // (avoids WAR/WAW hazards with earlier reads/writes).
+        CmdBuffer.BufferBarrier2Explicit(
+            buf,
+            VkPipelineStageFlags2.AllCommands,
+            VkPipelineStageFlags2.Transfer,
+            VkAccessFlags2.MemoryRead | VkAccessFlags2.MemoryWrite,
+            VkAccessFlags2.TransferWrite
+        );
+
         unsafe
         {
             VkBufferImageCopy copy = new()
@@ -2192,6 +2600,18 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
             VK.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
             img.ImageLayout,
             range
+        );
+
+        // Make the transfer write to the destination buffer available/visible to its consumer.
+        // For HostVisible readback this must reach the Host stage with HostRead access, otherwise
+        // a subsequent CPU map can observe stale data. AllCommands/MemoryRead also covers any
+        // later GPU read of the buffer.
+        CmdBuffer.BufferBarrier2Explicit(
+            buf,
+            VkPipelineStageFlags2.Transfer,
+            VkPipelineStageFlags2.Host | VkPipelineStageFlags2.AllCommands,
+            VkAccessFlags2.TransferWrite,
+            VkAccessFlags2.HostRead | VkAccessFlags2.MemoryRead
         );
         buf.ClearDirty();
     }

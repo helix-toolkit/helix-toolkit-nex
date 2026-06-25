@@ -17,7 +17,6 @@ public sealed class RingFixSizeBuffer<T> : IDisposable
 
     private readonly IContext _context;
     private readonly BufferResource[] _buffers;
-    private readonly nint[] _mappedPtr;
     private int _currentIndex;
     private bool _disposed;
 
@@ -73,7 +72,6 @@ public sealed class RingFixSizeBuffer<T> : IDisposable
         ArgumentOutOfRangeException.ThrowIfLessThan(ringSize, 1, nameof(ringSize));
         _context = context;
         _buffers = new BufferResource[ringSize];
-        _mappedPtr = new nint[ringSize];
         var storage = StorageType.Device;
         if (hostVisible)
         {
@@ -87,10 +85,6 @@ public sealed class RingFixSizeBuffer<T> : IDisposable
                 storage,
                 $"ring_{debugName ?? ""}[{i}]"
             );
-            if (hostVisible)
-            {
-                _mappedPtr[i] = _context.GetMappedPtr(_buffers[i]);
-            }
         }
     }
 
@@ -116,7 +110,7 @@ public sealed class RingFixSizeBuffer<T> : IDisposable
 
     /// <summary>
     /// Advances to the next ring slot then writes a single <typeparamref name="T"/> value.
-    /// Equivalent to calling <see cref="Advance"/> followed by <see cref="Write"/>.
+    /// Equivalent to calling <see cref="Advance"/> followed by <see cref="Update"/>.
     /// </summary>
     /// <param name="cmdBuffer">The command buffer to record the update command into.</param>
     /// <param name="value">The value to upload.</param>
@@ -142,15 +136,9 @@ public sealed class RingFixSizeBuffer<T> : IDisposable
         {
             return ResultCode.InvalidState;
         }
-        if (_mappedPtr[_currentIndex] != nint.Zero)
-        {
-            unsafe
-            {
-                *(T*)_mappedPtr[_currentIndex] = value;
-            }
-            _context.MarkDirty(Current);
-            return ResultCode.Ok;
-        }
+        // Route through the graphics interface so the backend performs the copy (directly into mapped
+        // memory for host-visible buffers, or via staging otherwise) and sets the buffer's last-write
+        // scope and dirty state correctly.
         return _context.Upload(Current, 0, ref value);
     }
 
@@ -178,7 +166,6 @@ public sealed class RingFixSizeBuffer<T> : IDisposable
         for (int i = 0; i < _buffers.Length; i++)
         {
             _buffers[i].Reset();
-            _mappedPtr[i] = nint.Zero;
         }
     }
 

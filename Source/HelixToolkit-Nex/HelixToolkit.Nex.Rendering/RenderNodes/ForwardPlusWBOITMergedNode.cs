@@ -245,6 +245,13 @@ public sealed class ForwardPlusWBOITMergedNode : RenderNode
         res.Deps.PushBuffer(res.Buffers[SystemBufferNames.BufferLightIndex]);
         res.Deps.PushBuffer(res.Buffers[SystemBufferNames.BufferPBRProperties]);
         res.Deps.PushBuffer(res.Buffers[SystemBufferNames.BufferForwardPlusConstants]);
+        var streams = res.RenderContext.Data!.MeshDrawStreams.GetStreams(
+            DrawStreamType.Transparent
+        );
+        foreach (var stream in streams)
+        {
+            stream.Barrier(res.CmdBuffer);
+        }
     }
 
     protected override void OnRender(in RenderResources res)

@@ -25,6 +25,7 @@ Key features include:
 | `VulkanImmediateCommands`     | Handles immediate command buffer execution and synchronization.             |
 | `VulkanPipelineBuilder`       | Facilitates the creation of Vulkan graphics pipelines.                      |
 | `VulkanStagingDevice`         | Manages staging buffers for efficient data transfer to the GPU.             |
+| `BarrierPlanner`              | Provides GPU-free helpers for deciding what barriers to emit.               |
 | `Bindings` (enum)             | Defines descriptor set binding points for Vulkan pipelines.                 |
 | `DeviceQueues`                | Manages Vulkan device queues for graphics, compute, and transfer operations.|
 
@@ -115,6 +116,28 @@ commandBuffer.SetCullMode(CullMode.Back);
 
 ```csharp
 context.MarkDirty(bufferHandle);
+```
+
+### Marking a Buffer for Host Write
+
+```csharp
+context.MarkHostWrite(bufferHandle, offset: 0, size: 1024);
+```
+
+### Using Image Barriers
+
+```csharp
+var transition = ImageTransition.ToShaderReadOnly;
+if (commandBuffer.ImageBarrier(textureHandle, transition))
+{
+    Console.WriteLine("Image barrier applied successfully.");
+}
+```
+
+### Using Buffer Barriers
+
+```csharp
+commandBuffer.Barrier(bufferHandle, PipelineStageFlags.FragmentShader, AccessFlags.ShaderRead);
 ```
 
 ## Architecture Notes

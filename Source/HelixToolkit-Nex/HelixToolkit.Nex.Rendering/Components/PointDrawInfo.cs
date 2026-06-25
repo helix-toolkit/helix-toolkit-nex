@@ -1,8 +1,8 @@
 namespace HelixToolkit.Nex.Rendering.Components;
 
 /// <summary>
-/// ECS component that describes a point cloud attached to an entity, analogous to
-/// <see cref="LineDrawInfo"/>. A <see cref="PointDrawStream"/> consumes this component to
+/// ECS component that describes a point cloud attached to an entity.
+/// A <see cref="IRenderDataProvider.PointDrawStreams"/> consumes this component to
 /// build <c>PointDraw</c> records for the draw-stream rendering path.
 /// </summary>
 public struct PointDrawInfo(
