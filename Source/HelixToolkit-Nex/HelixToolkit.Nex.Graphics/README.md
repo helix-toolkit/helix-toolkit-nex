@@ -152,6 +152,12 @@ if (!allBarriersCreated)
 context.MarkDirty(buffer.Handle);
 ```
 
+### Committing In-Place CPU Writes
+
+```csharp
+context.MarkHostWrite(buffer.Handle, offset: 0, size: 256);
+```
+
 ### Waiting for Command Buffer Completion
 
 ```csharp

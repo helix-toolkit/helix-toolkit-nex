@@ -13,7 +13,7 @@ The `HelixToolkit.Nex.Graphics.Mock` package is designed to fit seamlessly into 
   - **DrawCallCount**: Property added to track the number of draw calls made.
   - **DispatchCallCount**: Property added to track the number of dispatch calls made.
   - **SetCheckpointMarker**: Method to simulate setting a checkpoint marker.
-  - **Barrier**: Overloaded methods to simulate a barrier operation on one or multiple buffers, with additional overloads for `BarrierPreset` and `BarrierDescriptor`.
+  - **Barrier**: Overloaded methods to simulate a barrier operation on one or multiple buffers, with additional overloads for `BarrierPreset`, `BarrierDescriptor`, `PipelineStageFlags`, and `AccessFlags`.
   - **ImageBarrier**: Methods to simulate image barrier operations with `ImageTransition` and `BarrierDescriptor`.
   - **BindRenderPipeline**: Overloaded method to bind a render pipeline with color write states.
   - **ClearDepthStencilImage**: Method to simulate clearing a depth-stencil image.
@@ -30,6 +30,7 @@ The `HelixToolkit.Nex.Graphics.Mock` package is designed to fit seamlessly into 
   - **GetBufferDesc**: Method to retrieve the `BufferDesc` used to create a buffer.
   - **GetBufferSubData**: Method to retrieve sub-data from a buffer.
   - **MarkDirty**: Method to mark a buffer as dirty, though no-op in mock context.
+  - **MarkHostWrite**: Method to simulate marking a buffer range as written by the host.
 
 ## Usage Examples
 
@@ -74,6 +75,8 @@ commandBuffer.Barrier(buffer.Handle, force: true);
 commandBuffer.Barrier(new[] { buffer.Handle }.AsSpan(), force: true);
 commandBuffer.Barrier(buffer.Handle, BarrierPreset.FullBarrier, force: true);
 commandBuffer.Barrier(new[] { buffer.Handle }.AsSpan(), BarrierPreset.FullBarrier, force: true);
+commandBuffer.Barrier(buffer.Handle, PipelineStageFlags.Transfer, AccessFlags.TransferWrite, force: true);
+commandBuffer.Barrier(new[] { buffer.Handle }.AsSpan(), PipelineStageFlags.Transfer, AccessFlags.TransferWrite, force: true);
 ```
 
 #### Image Barrier Operation
@@ -134,6 +137,12 @@ var commandBuffer = context.AcquireCommandBuffer();
 commandBuffer.SetCullMode(CullMode.Back);
 ```
 
+#### Mark Host Write
+
+```csharp
+context.MarkHostWrite(buffer.Handle, offset: 0, size: 512);
+```
+
 ## Architecture Notes
 
 - **Design Patterns**: The package uses mock objects to simulate the behavior of graphics interfaces, allowing for isolated testing of rendering logic.
@@ -148,6 +157,7 @@ commandBuffer.SetCullMode(CullMode.Back);
 - **GetBufferDesc**: Added method to `MockContext` to retrieve the `BufferDesc` used to create a buffer.
 - **GetBufferSubData**: Added method to `MockContext` to retrieve sub-data from a buffer.
 - **MarkDirty**: Added method to `MockContext` to mark a buffer as dirty, though it is a no-op in the mock context.
-- **Barrier Overloads**: Added overloads to `MockCommandBuffer` for barrier operations on multiple buffers, with `BarrierPreset` and `BarrierDescriptor`.
+- **MarkHostWrite**: Added method to `MockContext` to simulate marking a buffer range as written by the host.
+- **Barrier Overloads**: Added overloads to `MockCommandBuffer` for barrier operations on multiple buffers, with `BarrierPreset`, `BarrierDescriptor`, `PipelineStageFlags`, and `AccessFlags`.
 - **ImageBarrier Methods**: Added methods to `MockCommandBuffer` for image barrier operations with `ImageTransition` and `BarrierDescriptor`.
 ```

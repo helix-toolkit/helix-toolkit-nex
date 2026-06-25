@@ -47,6 +47,7 @@ HelixToolkit.Nex.Rendering is responsible for managing the rendering pipeline of
 - **RenderGraphResourceAllocationException**: Added to handle resource allocation failures in the render graph.
 - **Material Type Name Properties**: Updated `LineDrawInfo` and `PointDrawInfo` to use `LineMaterialTypeName` and `PointMaterialTypeName` respectively for material lookup.
 - **PickingContext**: Enhanced to use `GetBufferData` for reading results, improving resource management.
+- **Barrier Presets**: Introduced `BarrierPreset` for more precise control over buffer synchronization.
 
 ### Removed Features
 
