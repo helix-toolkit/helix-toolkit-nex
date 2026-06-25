@@ -1162,7 +1162,7 @@ internal sealed partial class VulkanContext : Initializable, IContext
         {
             _logger.LogError(
                 "Buffer handle is invalid for GetBufferSubData: {HANDLE}",
-                handle.ToString()
+                handle
             );
             return ResultCode.ArgumentError;
         }
