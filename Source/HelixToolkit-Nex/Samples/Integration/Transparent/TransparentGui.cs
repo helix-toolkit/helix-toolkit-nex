@@ -3,6 +3,7 @@ using HelixToolkit.Nex.Maths;
 using ImGuiNET;
 using Gui = ImGuiNET.ImGui;
 using TextureHandle = HelixToolkit.Nex.Handle<HelixToolkit.Nex.Graphics.Texture>;
+using Viewport = HelixToolkit.Nex.ImGui.Viewport;
 
 namespace Transparent;
 
@@ -24,7 +25,15 @@ internal partial class TransparentDemo
             displayWidth - ControlPanelWidth,
             displayHeight - menuBarHeight
         );
-        Draw3DViewport(offscreenTex, viewportPos, viewportSize);
+        _viewport?.Draw(offscreenTex, viewportPos, viewportSize);
+        if (_viewport is not null)
+        {
+            var m = _viewport.ViewportSize;
+            if (m.Width > 0 && m.Height > 0)
+            {
+                _viewportSize = m;
+            }
+        }
     }
 
     private float DrawMainMenuBar()
@@ -161,73 +170,6 @@ internal partial class TransparentDemo
                 {
                     ResetDefaults();
                 }
-            }
-        }
-        Gui.End();
-    }
-
-    private void Draw3DViewport(TextureHandle offscreenTex, Vector2 pos, Vector2 size)
-    {
-        Gui.SetNextWindowPos(pos, ImGuiCond.Always);
-        Gui.SetNextWindowSize(size, ImGuiCond.Always);
-
-        var flags =
-            ImGuiWindowFlags.NoResize
-            | ImGuiWindowFlags.NoMove
-            | ImGuiWindowFlags.NoCollapse
-            | ImGuiWindowFlags.NoBringToFrontOnFocus
-            | ImGuiWindowFlags.NoScrollbar
-            | ImGuiWindowFlags.NoScrollWithMouse;
-
-        if (Gui.Begin("3D Viewport", flags))
-        {
-            var contentSize = Gui.GetContentRegionAvail();
-
-            if (contentSize.X > 1 && contentSize.Y > 1)
-            {
-                _viewportSize = new Size((int)contentSize.X, (int)contentSize.Y);
-            }
-
-            // Draw the offscreen texture
-            var cursorPos = Gui.GetCursorScreenPos();
-            Gui.Image((nint)offscreenTex.Index, contentSize, Vector2.Zero, Vector2.One);
-
-            // Handle mouse input inside viewport
-            if (Gui.IsItemHovered())
-            {
-                var io = Gui.GetIO();
-                var mousePos = io.MousePos;
-                var viewportX = mousePos.X - cursorPos.X;
-                var viewportY = mousePos.Y - cursorPos.Y;
-
-                // Mouse buttons
-                if (Gui.IsMouseClicked(ImGuiMouseButton.Right))
-                {
-                    OnViewportMouseDown(1, viewportX, viewportY);
-                }
-                if (Gui.IsMouseClicked(ImGuiMouseButton.Middle))
-                {
-                    OnViewportMouseDown(2, viewportX, viewportY);
-                }
-
-                // Mouse wheel
-                if (io.MouseWheel != 0)
-                {
-                    OnViewportMouseWheel(io.MouseWheel);
-                }
-
-                // Mouse move (always forward while dragging)
-                OnViewportMouseMove(viewportX, viewportY);
-            }
-
-            // Release buttons globally
-            if (Gui.IsMouseReleased(ImGuiMouseButton.Right))
-            {
-                OnViewportMouseUp(1);
-            }
-            if (Gui.IsMouseReleased(ImGuiMouseButton.Middle))
-            {
-                OnViewportMouseUp(2);
             }
         }
         Gui.End();

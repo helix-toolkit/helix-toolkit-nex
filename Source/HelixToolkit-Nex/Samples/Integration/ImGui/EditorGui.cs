@@ -7,7 +7,6 @@ using HelixToolkit.Nex.Rendering.RenderNodes;
 using HelixToolkit.Nex.Scene;
 using HelixToolkit.Nex.Shaders;
 using ImGuiNET;
-using Microsoft.Extensions.Logging;
 using static HelixToolkit.Nex.Rendering.PostEffects.BorderHighlightPostEffect;
 using static HelixToolkit.Nex.Rendering.PostEffects.WireframePostEffect;
 using Gui = ImGuiNET.ImGui;
@@ -47,7 +46,7 @@ internal partial class Editor
     ///   [Scene panel] | [3D Viewport] | [Properties panel (top) + Post Effects panel (mid) + Camera panel (bottom)]
     /// All panels are anchored below the main menu bar and sized to fill the display.
     /// </summary>
-    private void DrawLayout(TextureHandle offscreenTex, float displayWidth, float displayHeight)
+    private void DrawLayout(TextureHandle offscreenTex, TextureHandle cullingTex, float displayWidth, float displayHeight)
     {
         // Menu bar height is reported by ImGui after BeginMainMenuBar.
         float menuBarHeight = Gui.GetFrameHeight();
@@ -64,11 +63,25 @@ internal partial class Editor
             new Vector2(ScenePanelWidth, panelHeight * 2 / 5f)
         );
 
-        Draw3DViewport(
+        // Keep the main viewport's controller in sync with the active controller, which can
+        // change at runtime when the camera mode is switched.
+        if (_viewport is not null)
+            _viewport.CameraController = _activeController;
+
+        _viewport?.Draw(
             offscreenTex,
             new Vector2(ScenePanelWidth, panelY),
-            new Vector2(viewportWidth, panelHeight)
+            new Vector2(viewportWidth / 2, panelHeight)
         );
+
+        _cullViewport?.Draw(
+            cullingTex,
+            new Vector2(ScenePanelWidth + viewportWidth / 2, panelY),
+            new Vector2(viewportWidth / 2, panelHeight)
+        );
+
+
+
         DrawPropertiesPanel(
             new Vector2(ScenePanelWidth + viewportWidth, panelY),
             new Vector2(PropertiesPanelWidth, thirdHeight)
@@ -81,90 +94,6 @@ internal partial class Editor
             new Vector2(ScenePanelWidth + viewportWidth, panelY + thirdHeight * 2f),
             new Vector2(PropertiesPanelWidth, thirdHeight)
         );
-    }
-
-    private void Draw3DViewport(TextureHandle offscreenTex, Vector2 pos, Vector2 size)
-    {
-        var windowFlags =
-            ImGuiWindowFlags.NoResize
-            | ImGuiWindowFlags.NoMove
-            | ImGuiWindowFlags.NoCollapse
-            | ImGuiWindowFlags.NoBringToFrontOnFocus
-            | ImGuiWindowFlags.NoTitleBar
-            | ImGuiWindowFlags.NoScrollbar
-            | ImGuiWindowFlags.NoScrollWithMouse;
-
-        Gui.SetNextWindowPos(pos);
-        Gui.SetNextWindowSize(size);
-        Gui.PushStyleVar(ImGuiStyleVar.WindowPadding, Vector2.Zero);
-        Gui.Begin("##Viewport", windowFlags);
-        Gui.PopStyleVar();
-
-        var contentSize = Gui.GetContentRegionAvail();
-        if (contentSize.X > 0 && contentSize.Y > 0)
-        {
-            // Update the viewport size so the next frame's render graph allocates
-            // offscreen textures at this resolution.
-            _viewportSize = new Size((int)contentSize.X, (int)contentSize.Y);
-            var canvas_pos = Gui.GetCursorScreenPos();
-            Gui.Image((nint)offscreenTex.Index, contentSize, new Vector2(0, 0), new Vector2(1, 1));
-
-            bool hovered = Gui.IsItemHovered();
-
-            if (hovered)
-            {
-                var mouse_pos = Gui.GetMousePos();
-                var relative_pos = new Vector2(
-                    mouse_pos.X - canvas_pos.X,
-                    mouse_pos.Y - canvas_pos.Y
-                );
-
-                // Left-click: picking
-                if (Gui.IsMouseClicked(ImGuiMouseButton.Left))
-                {
-                    _logger.LogInformation(
-                        "Mouse clicked at viewport coords: {X}, {Y}",
-                        relative_pos.X,
-                        relative_pos.Y
-                    );
-                    Pick((int)relative_pos.X, (int)relative_pos.Y);
-                }
-
-                // Right-click: begin rotate
-                if (Gui.IsMouseClicked(ImGuiMouseButton.Right))
-                {
-                    OnViewportMouseDown(1, relative_pos.X, relative_pos.Y);
-                }
-
-                // Middle-click: begin pan
-                if (Gui.IsMouseClicked(ImGuiMouseButton.Middle))
-                {
-                    OnViewportMouseDown(2, relative_pos.X, relative_pos.Y);
-                }
-
-                // Mouse drag: forward to camera controller
-                OnViewportMouseMove(relative_pos.X, relative_pos.Y);
-
-                // Scroll wheel: zoom
-                var io = Gui.GetIO();
-                if (MathF.Abs(io.MouseWheel) > 0.001f)
-                {
-                    OnViewportMouseWheel(io.MouseWheel);
-                }
-            }
-
-            // Release tracking on mouse-up (even if not hovered, to avoid stuck drags)
-            if (Gui.IsMouseReleased(ImGuiMouseButton.Right))
-            {
-                OnViewportMouseUp(1);
-            }
-            if (Gui.IsMouseReleased(ImGuiMouseButton.Middle))
-            {
-                OnViewportMouseUp(2);
-            }
-        }
-
-        Gui.End();
     }
 
     private void DrawScenePanel(Vector2 pos, Vector2 size)
