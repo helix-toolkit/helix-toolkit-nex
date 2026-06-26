@@ -70,6 +70,7 @@ internal partial class Editor : IDisposable
     private TurntableCameraController? _turntableController;
     private WalkaroundCameraController? _walkaroundController;
     private OrbitCameraController? _cullCameraController;
+    private CameraFrustumVisual? _cullCameraFrustumVisual;
     private ICameraController? _activeController;
 
     // Reusable viewport regions
@@ -121,6 +122,7 @@ internal partial class Editor : IDisposable
                 effects.AddEffect(_borderHighlight);
                 effects.AddEffect(_wireframe);
                 effects.AddEffect(new BoundingBoxPostEffect());
+                effects.AddEffect(new CameraFrustumVisual());
             })
             .Build();
 
@@ -130,6 +132,8 @@ internal partial class Editor : IDisposable
         _bloom = _engine.GetRenderNode<BloomNode>();
         _showFPS = _engine.GetRenderNode<FPSNode>();
         _cullNode = _engine.GetRenderNode<FrustumCullNode>();
+        _cullCameraFrustumVisual = _engine.GetPostEffect<CameraFrustumVisual>();
+        _cullCameraFrustumVisual!.FarPlaneDistance = 60;
 
         // --- Per-viewport state and scene data ---
         _renderContext = _engine.CreateRenderContext();
@@ -183,6 +187,7 @@ internal partial class Editor : IDisposable
             ReportPointerToRenderContext = false,
             WindowId = "##CullingViewport",
             Title = "Culling Visualizer",
+            CameraController = _cullCameraController,
         };
 
         _worldDataProvider = _engine.CreateWorldDataProvider();
@@ -237,15 +242,27 @@ internal partial class Editor : IDisposable
         _renderContext!.Update(_viewport!.ViewportSize, _camera);
         _cullRenderContext.Update(_cullViewport!.ViewportSize, _cullCamera);
 
+        _cullCameraFrustumVisual!.Data = new CameraFrustumVisual.CameraFrustumVisualInfo()
+        {
+            InversedViewProjection =
+                _camera.CreateInverseProjection(
+                    (float)_viewport.ViewportSize.Width / _viewport.ViewportSize.Height
+                ) * _camera.CreateInverseView(),
+        };
+
         // --- Step 1: Execute 3D render graph (offscreen) ---
         _engine.BeginFrame();
         _cullNode!.Enabled = true;
+        _cullCameraFrustumVisual.Enabled = false;
         var cmdBuf = _engine.RenderOffscreen(
             _renderContext,
             _worldDataProvider!,
             ViewportTextureName
         );
-        _cullNode!.Enabled = false;
+
+
+        _cullNode!.Enabled = false; // Disable culling for the frustum visualizer pass
+        _cullCameraFrustumVisual.Enabled = true; // Enable the frustum visualizer for the culling viewport pass
         cmdBuf = _engine.RenderOffscreen(
             _cullRenderContext!,
             _worldDataProvider!,
