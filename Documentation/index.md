@@ -37,7 +37,7 @@ Browse the [API Documentation](api/index.md) to explore the available classes an
 ## Requirements
 
 - .NET 8.0 or later
-- Vulkan 1.2 or later compatible GPU
+- Vulkan 1.3 or later compatible GPU
 
 ## License
 

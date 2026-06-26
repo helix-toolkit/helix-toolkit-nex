@@ -19,6 +19,7 @@ using Microsoft.Extensions.Logging;
 using static HelixToolkit.Nex.Rendering.PostEffects.BorderHighlightPostEffect;
 using Gui = ImGuiNET.ImGui;
 using TextureHandle = HelixToolkit.Nex.Handle<HelixToolkit.Nex.Graphics.Texture>;
+using Viewport = HelixToolkit.Nex.ImGui.Viewport;
 
 /// <summary>
 /// Comprehensive GPU line rendering demo, mirroring the Points sample:
@@ -46,6 +47,7 @@ internal sealed class LinesDemo : IDisposable
     // Camera
     private Camera _camera = new PerspectiveCamera();
     private OrbitCameraController? _orbitController;
+    private Viewport? _viewport;
     private long _lastTimestamp;
 
     // ImGui composite state
@@ -114,6 +116,12 @@ internal sealed class LinesDemo : IDisposable
                 );
             }
         );
+
+        // Reusable 3D viewport: wires the render context and orbit controller, and
+        // forwards pick clicks to the existing Pick handler. Button mappings match the
+        // Viewport defaults (Left=pick, Right=rotate, Middle=pan). DpiScale is left at the
+        // default of 1 because the demo already converts display size to logical units.
+        _viewport = new Viewport(_renderContext, _orbitController) { PickCallback = Pick };
 
         _worldDataProvider = _engine.CreateWorldDataProvider();
         _worldDataProvider.Initialize();
@@ -562,60 +570,18 @@ internal sealed class LinesDemo : IDisposable
             Gui.EndMainMenuBar();
         }
 
-        Draw3DViewport(offscreenTex, new Vector2(0, panelY), new Vector2(viewportW, panelH));
-        DrawControlPanel(new Vector2(viewportW, panelY), new Vector2(panelWidth, panelH));
-    }
+        // 3D Viewport
+        _viewport?.Draw(offscreenTex, new Vector2(0, panelY), new Vector2(viewportW, panelH));
 
-    private void Draw3DViewport(TextureHandle offscreenTex, Vector2 pos, Vector2 size)
-    {
-        var flags =
-            ImGuiNET.ImGuiWindowFlags.NoResize
-            | ImGuiNET.ImGuiWindowFlags.NoMove
-            | ImGuiNET.ImGuiWindowFlags.NoCollapse
-            | ImGuiNET.ImGuiWindowFlags.NoBringToFrontOnFocus
-            | ImGuiNET.ImGuiWindowFlags.NoTitleBar
-            | ImGuiNET.ImGuiWindowFlags.NoScrollbar
-            | ImGuiNET.ImGuiWindowFlags.NoScrollWithMouse;
-
-        Gui.SetNextWindowPos(pos);
-        Gui.SetNextWindowSize(size);
-        Gui.PushStyleVar(ImGuiNET.ImGuiStyleVar.WindowPadding, Vector2.Zero);
-        Gui.Begin("##Viewport", flags);
-        Gui.PopStyleVar();
-
-        var contentSize = Gui.GetContentRegionAvail();
-        if (contentSize.X > 0 && contentSize.Y > 0)
+        // Keep the offscreen target and aspect ratio in sync with the measured size.
+        if (_viewport is not null)
         {
-            _viewportSize = new Size((int)contentSize.X, (int)contentSize.Y);
-            var canvasPos = Gui.GetCursorScreenPos();
-            Gui.Image((nint)offscreenTex.Index, contentSize);
-
-            bool hovered = Gui.IsItemHovered();
-            if (hovered)
-            {
-                var mouse = Gui.GetMousePos();
-                var rel = new Vector2(mouse.X - canvasPos.X, mouse.Y - canvasPos.Y);
-
-                if (Gui.IsMouseClicked(ImGuiNET.ImGuiMouseButton.Left))
-                    Pick((int)rel.X, (int)rel.Y);
-
-                if (Gui.IsMouseClicked(ImGuiNET.ImGuiMouseButton.Right))
-                    _orbitController?.OnRotateBegin(rel.X, rel.Y);
-
-                if (Gui.IsMouseClicked(ImGuiNET.ImGuiMouseButton.Middle))
-                    _orbitController?.OnPanBegin(rel.X, rel.Y);
-
-                if (Gui.IsMouseDown(ImGuiNET.ImGuiMouseButton.Right))
-                    _orbitController?.OnRotateDelta(rel.X, rel.Y);
-                if (Gui.IsMouseDown(ImGuiNET.ImGuiMouseButton.Middle))
-                    _orbitController?.OnPanDelta(rel.X, rel.Y);
-
-                var io = Gui.GetIO();
-                if (MathF.Abs(io.MouseWheel) > 0.001f)
-                    _orbitController?.OnZoomDelta(io.MouseWheel);
-            }
+            var measured = _viewport.ViewportSize;
+            if (measured.Width > 0 && measured.Height > 0)
+                _viewportSize = measured;
         }
-        Gui.End();
+
+        DrawControlPanel(new Vector2(viewportW, panelY), new Vector2(panelWidth, panelH));
     }
 
     private void DrawControlPanel(Vector2 pos, Vector2 size)

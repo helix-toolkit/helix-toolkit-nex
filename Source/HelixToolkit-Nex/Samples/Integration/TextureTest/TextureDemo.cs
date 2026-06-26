@@ -17,6 +17,7 @@ using HelixToolkit.Nex.Scene;
 using HelixToolkit.Nex.Shaders.Frag;
 using HelixToolkit.Nex.Textures;
 using Microsoft.Extensions.Logging;
+using Viewport = HelixToolkit.Nex.ImGui.Viewport;
 
 namespace TextureTest;
 
@@ -220,6 +221,7 @@ internal sealed partial class TextureDemo : IDisposable
 
     // ---- Viewport ----
     private Size _viewportSize = new(1, 1);
+    private Viewport? _viewport;
 
     // ---- Scene objects ----
     private MeshNode? _sphereNode;
@@ -305,6 +307,10 @@ internal sealed partial class TextureDemo : IDisposable
             },
             true
         );
+
+        // Reusable viewport that draws the offscreen texture and forwards mouse input to the
+        // orbit camera controller (rotate = Right, pan = Middle, pick = Left — all defaults).
+        _viewport = new Viewport(_renderContext, _orbitController);
 
         _worldDataProvider = _engine.CreateWorldDataProvider();
         _worldDataProvider.Initialize();

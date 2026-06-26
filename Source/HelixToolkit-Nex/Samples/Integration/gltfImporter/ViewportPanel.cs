@@ -4,9 +4,8 @@ using HelixToolkit.Nex.Engine.CameraControllers;
 using HelixToolkit.Nex.Maths;
 using HelixToolkit.Nex.Rendering;
 using HelixToolkit.Nex.Scene;
-using ImGuiNET;
-using Gui = ImGuiNET.ImGui;
 using TextureHandle = HelixToolkit.Nex.Handle<HelixToolkit.Nex.Graphics.Texture>;
+using Viewport = HelixToolkit.Nex.ImGui.Viewport;
 
 namespace HelixToolkit.Nex.Sample.GltfImporter;
 
@@ -14,13 +13,24 @@ namespace HelixToolkit.Nex.Sample.GltfImporter;
 /// Renders the offscreen 3D texture as an ImGui image widget and handles
 /// viewport-relative mouse input for picking and camera control.
 /// </summary>
+/// <remarks>
+/// This panel delegates the ImGui window, image drawing, and mouse-input handling to the
+/// reusable <see cref="Viewport"/> class. It keeps the demo-specific concerns (selection and
+/// picking) and exposes the measured content size for render-target allocation.
+/// </remarks>
 internal class ViewportPanel
 {
     private readonly SelectionManager _selectionManager;
     private readonly ICameraController _cameraController;
     private Size _contentSize = new(1, 1);
-    private bool _isRotating;
-    private bool _isPanning;
+
+    // Lazily created reusable viewport. Created on the first Draw call once a RenderContext is
+    // available, since the RenderContext is stable across frames.
+    private Viewport? _viewport;
+
+    // Per-frame references stored so the pick callback can reach the current engine/context.
+    private Engine.Engine? _engine;
+    private RenderContext? _renderContext;
 
     /// <summary>Gets the current content region size for render target allocation.</summary>
     public Size ContentSize => _contentSize;
@@ -34,10 +44,10 @@ internal class ViewportPanel
 
     /// <summary>
     /// Draws the viewport image and processes mouse input.
-    /// - Left-click: pick entity at cursor position
-    /// - Right-drag: orbit camera
-    /// - Middle-drag: pan camera
-    /// - Scroll wheel: zoom
+    /// - Left-click: pick entity at cursor position (always active)
+    /// - Right-drag: orbit camera (only when a model is loaded)
+    /// - Middle-drag: pan camera (only when a model is loaded)
+    /// - Scroll wheel: zoom (only when a model is loaded)
     /// </summary>
     /// <param name="engine">The engine instance for creating picking requests.</param>
     /// <param name="offscreenTexture">The offscreen render target texture handle.</param>
@@ -56,97 +66,27 @@ internal class ViewportPanel
         Node? rootNode = null
     )
     {
-        var windowFlags =
-            ImGuiWindowFlags.NoResize
-            | ImGuiWindowFlags.NoMove
-            | ImGuiWindowFlags.NoCollapse
-            | ImGuiWindowFlags.NoBringToFrontOnFocus
-            | ImGuiWindowFlags.NoTitleBar
-            | ImGuiWindowFlags.NoScrollbar
-            | ImGuiWindowFlags.NoScrollWithMouse;
+        _engine = engine;
+        _renderContext = renderContext;
 
-        Gui.SetNextWindowPos(position);
-        Gui.SetNextWindowSize(size);
-        Gui.PushStyleVar(ImGuiStyleVar.WindowPadding, Vector2.Zero);
-        Gui.Begin("##Viewport", windowFlags);
-        Gui.PopStyleVar();
-
-        var contentSize = Gui.GetContentRegionAvail();
-
-        // Clamp each dimension independently to minimum 1 pixel (Req 8.3, 8.4)
-        int clampedWidth = Math.Max(1, (int)contentSize.X);
-        int clampedHeight = Math.Max(1, (int)contentSize.Y);
-        _contentSize = new Size(clampedWidth, clampedHeight);
-
-        // Render the offscreen texture as an ImGui image sized to the content region
-        var displaySize = new Vector2(
-            contentSize.X > 0 ? contentSize.X : 1,
-            contentSize.Y > 0 ? contentSize.Y : 1
-        );
-        var canvasPos = Gui.GetCursorScreenPos();
-        Gui.Image((nint)offscreenTexture.Index, displaySize, Vector2.Zero, Vector2.One);
-
-        bool hovered = Gui.IsItemHovered();
-
-        if (hovered)
+        // Lazily create the reusable viewport. Picking is always active via the callback;
+        // camera input is gated per-frame below by toggling the controller.
+        _viewport ??= new Viewport(renderContext, _cameraController)
         {
-            var mousePos = Gui.GetMousePos();
-            // Compute viewport-relative mouse position by subtracting the ImGui window position
-            var relativePos = new Vector2(mousePos.X - canvasPos.X, mousePos.Y - canvasPos.Y);
+            PickCallback = (x, y) => PerformPick(_engine!, _renderContext!, x, y),
+        };
 
-            // Left-click: picking (Req 4.1, 4.4)
-            if (Gui.IsMouseClicked(ImGuiMouseButton.Left))
-            {
-                PerformPick(engine, renderContext, (int)relativePos.X, (int)relativePos.Y);
-            }
+        // Camera input (rotate/pan/zoom) only moves the camera when a model is loaded. Detaching
+        // the controller while no model is loaded keeps picking active but suppresses gestures.
+        _viewport.CameraController = rootNode is not null ? _cameraController : null;
 
-            // Camera input only works when a model is loaded (Req 5.5)
-            if (rootNode is not null)
-            {
-                // Right-click: begin orbit (Req 5.1)
-                if (Gui.IsMouseClicked(ImGuiMouseButton.Right))
-                {
-                    _isRotating = true;
-                    _cameraController.OnRotateBegin(relativePos.X, relativePos.Y);
-                }
+        _viewport.Draw(offscreenTexture, position, size);
 
-                // Middle-click: begin pan (Req 5.2)
-                if (Gui.IsMouseClicked(ImGuiMouseButton.Middle))
-                {
-                    _isPanning = true;
-                    _cameraController.OnPanBegin(relativePos.X, relativePos.Y);
-                }
-
-                // Mouse drag: forward to camera controller
-                if (_isRotating)
-                {
-                    _cameraController.OnRotateDelta(relativePos.X, relativePos.Y);
-                }
-                if (_isPanning)
-                {
-                    _cameraController.OnPanDelta(relativePos.X, relativePos.Y);
-                }
-
-                // Scroll wheel: zoom (Req 5.3)
-                var io = Gui.GetIO();
-                if (MathF.Abs(io.MouseWheel) > 0.001f)
-                {
-                    _cameraController.OnZoomDelta(io.MouseWheel);
-                }
-            }
-        }
-
-        // Release drag state on mouse-up (even if not hovered, to avoid stuck drags)
-        if (Gui.IsMouseReleased(ImGuiMouseButton.Right))
-        {
-            _isRotating = false;
-        }
-        if (Gui.IsMouseReleased(ImGuiMouseButton.Middle))
-        {
-            _isPanning = false;
-        }
-
-        Gui.End();
+        // Update the content size from the measured viewport size for render-target allocation.
+        // ViewportSize is already floored to a minimum of 1 per dimension; retain the previous
+        // value if the viewport reported no measurement this frame.
+        var measured = _viewport.ViewportSize;
+        _contentSize = (measured.Width > 0 && measured.Height > 0) ? measured : _contentSize;
     }
 
     private void PerformPick(Engine.Engine engine, RenderContext context, int x, int y)

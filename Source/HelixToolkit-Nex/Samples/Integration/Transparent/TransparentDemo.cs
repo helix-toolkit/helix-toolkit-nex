@@ -15,6 +15,7 @@ using HelixToolkit.Nex.Rendering.Components;
 using HelixToolkit.Nex.Scene;
 using HelixToolkit.Nex.Shaders.Frag;
 using Microsoft.Extensions.Logging;
+using Viewport = HelixToolkit.Nex.ImGui.Viewport;
 
 namespace Transparent;
 
@@ -49,6 +50,9 @@ internal partial class TransparentDemo : IDisposable
     private OrbitCameraController? _orbitController;
     private bool _isRotating;
     private bool _isPanning;
+
+    // Reusable 3D viewport region
+    private Viewport? _viewport;
 
     // Transparent objects tracked for ImGui editing
     private readonly List<TransparentObjectInfo> _transparentObjects = [];
@@ -100,6 +104,15 @@ internal partial class TransparentDemo : IDisposable
 
         _worldDataProvider = _engine.CreateWorldDataProvider();
         _worldDataProvider.Initialize();
+
+        // Reusable 3D viewport region. The previous Draw3DViewport mapped rotate to the right
+        // button and pan to the middle button (matching the Viewport defaults), forwarded the
+        // scroll wheel to zoom, had no picking, and never reported the pointer to the render
+        // context, so picking is left unconfigured and pointer reporting is disabled.
+        _viewport = new Viewport(_renderContext, _orbitController)
+        {
+            ReportPointerToRenderContext = false,
+        };
 
         // Build the 3D scene
         BuildScene();

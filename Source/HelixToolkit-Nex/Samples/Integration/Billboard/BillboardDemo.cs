@@ -20,6 +20,7 @@ using SceneSamples;
 using static HelixToolkit.Nex.Rendering.PostEffects.BorderHighlightPostEffect;
 using Gui = ImGuiNET.ImGui;
 using TextureHandle = HelixToolkit.Nex.Handle<HelixToolkit.Nex.Graphics.Texture>;
+using Viewport = HelixToolkit.Nex.ImGui.Viewport;
 
 /// <summary>
 /// Billboard rendering demo with SDF text, ImGui controls, and GPU picking.
@@ -46,6 +47,9 @@ internal sealed class BillboardDemo : IDisposable
     private Camera _camera = new PerspectiveCamera();
     private ICameraController? _cameraController;
     private long _lastTimestamp;
+
+    // Reusable 3D viewport region
+    private Viewport? _viewport;
 
     // ImGui composite state
     private readonly Framebuffer _imGuiFramebuffer = new();
@@ -140,9 +144,17 @@ internal sealed class BillboardDemo : IDisposable
             }
         );
 
+        // Reusable 3D viewport region. Picking is wired to the demo's Pick handler; the original
+        // Draw3DViewport did not report the pointer to the render context, so that is disabled to
+        // preserve behavior. Rotate (Right), pick (Left), and scroll-zoom match the defaults.
+        _viewport = new Viewport(_renderContext, _cameraController)
+        {
+            PickCallback = Pick,
+            ReportPointerToRenderContext = false,
+        };
+
         _worldDataProvider = _engine.CreateWorldDataProvider();
         _worldDataProvider.Initialize();
-
         // Load the SDF font atlas
         LoadFontAtlas();
 
@@ -464,60 +476,16 @@ internal sealed class BillboardDemo : IDisposable
         }
 
         // 3D Viewport
-        Draw3DViewport(offscreenTex, new Vector2(0, panelY), new Vector2(viewportW, panelH));
+        _viewport?.Draw(offscreenTex, new Vector2(0, panelY), new Vector2(viewportW, panelH));
+        if (_viewport is not null)
+        {
+            var m = _viewport.ViewportSize;
+            if (m.Width > 0 && m.Height > 0)
+                _viewportSize = m;
+        }
 
         // Control panel
         DrawControlPanel(new Vector2(viewportW, panelY), new Vector2(panelWidth, panelH));
-    }
-
-    private void Draw3DViewport(TextureHandle offscreenTex, Vector2 pos, Vector2 size)
-    {
-        var flags =
-            ImGuiNET.ImGuiWindowFlags.NoResize
-            | ImGuiNET.ImGuiWindowFlags.NoMove
-            | ImGuiNET.ImGuiWindowFlags.NoCollapse
-            | ImGuiNET.ImGuiWindowFlags.NoBringToFrontOnFocus
-            | ImGuiNET.ImGuiWindowFlags.NoTitleBar
-            | ImGuiNET.ImGuiWindowFlags.NoScrollbar
-            | ImGuiNET.ImGuiWindowFlags.NoScrollWithMouse;
-
-        Gui.SetNextWindowPos(pos);
-        Gui.SetNextWindowSize(size);
-        Gui.PushStyleVar(ImGuiNET.ImGuiStyleVar.WindowPadding, Vector2.Zero);
-        Gui.Begin("##Viewport", flags);
-        Gui.PopStyleVar();
-
-        var contentSize = Gui.GetContentRegionAvail();
-        if (contentSize.X > 0 && contentSize.Y > 0)
-        {
-            _viewportSize = new Size((int)contentSize.X, (int)contentSize.Y);
-            var canvasPos = Gui.GetCursorScreenPos();
-            Gui.Image((nint)offscreenTex.Index, contentSize);
-
-            bool hovered = Gui.IsItemHovered();
-            if (hovered)
-            {
-                var mouse = Gui.GetMousePos();
-                var rel = new Vector2(mouse.X - canvasPos.X, mouse.Y - canvasPos.Y);
-
-                // Left-click: pick
-                if (Gui.IsMouseClicked(ImGuiNET.ImGuiMouseButton.Left))
-                    Pick((int)rel.X, (int)rel.Y);
-
-                // Right-drag: free-look
-                if (Gui.IsMouseClicked(ImGuiNET.ImGuiMouseButton.Right))
-                    _cameraController?.OnRotateBegin(rel.X, rel.Y);
-
-                if (Gui.IsMouseDown(ImGuiNET.ImGuiMouseButton.Right))
-                    _cameraController?.OnRotateDelta(rel.X, rel.Y);
-
-                // Scroll: dolly forward/back
-                var io = Gui.GetIO();
-                if (MathF.Abs(io.MouseWheel) > 0.001f)
-                    _cameraController?.OnZoomDelta(io.MouseWheel);
-            }
-        }
-        Gui.End();
     }
 
     private void DrawControlPanel(Vector2 pos, Vector2 size)
