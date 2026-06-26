@@ -60,7 +60,7 @@ Currently in development.
 
 <img src="Source/HelixToolkit-Nex/Samples/Integration/LightCulling/Screenshots/LargeScene.gif" width=400>
 
-<img src="Source/HelixToolkit-Nex/Samples/Integration/ImGui/Screenshots/Sample.jpg" width=400>
+<img src="Source/HelixToolkit-Nex/Samples/Integration/ImGui/Screenshots/Sample.gif" width=400>
 
 <img src="Source/HelixToolkit-Nex/Samples/Integration/Points/Screenshots/Points.gif" width=400>
 
