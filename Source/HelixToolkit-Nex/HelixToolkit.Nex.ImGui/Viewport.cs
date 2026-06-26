@@ -164,7 +164,7 @@ internal sealed class ViewportInputCore
 {
     /// <summary>Last successfully measured viewport size in physical pixels. <c>(0,0)</c> initially.</summary>
     /// <remarks>Requirement 2.3.</remarks>
-    public Size ViewportSize { get; private set; }
+    public Size ViewportSize { get; private set; } = new(1, 1);
 
     /// <summary>Last relative pointer position in logical coordinates. <c>(0,0)</c> initially.</summary>
     /// <remarks>Requirement 8.3.</remarks>
@@ -272,11 +272,12 @@ internal sealed class ViewportInputCore
             // explicitly here. The pick coordinates are the logical relative pointer multiplied by
             // the DPI scale, truncated toward zero (the (int) cast), then clamped to the inclusive
             // range [0, size - 1] (Requirement 7.2).
-            bool pick = input.Hovered
-                        && resolved.PickClicked
-                        && input.HasPickCallback
-                        && measured.Width > 0
-                        && measured.Height > 0;
+            bool pick =
+                input.Hovered
+                && resolved.PickClicked
+                && input.HasPickCallback
+                && measured.Width > 0
+                && measured.Height > 0;
             int pickX = Math.Clamp((int)(input.RelativeX * input.DpiScale), 0, measured.Width - 1);
             int pickY = Math.Clamp((int)(input.RelativeY * input.DpiScale), 0, measured.Height - 1);
 
@@ -360,8 +361,8 @@ internal sealed class ViewportInputCore
         bool rotateEnabled = input.RotateButton != input.PickButton;
 
         // Pan is suppressed when it collides with either the Pick or the Rotate button.
-        bool panEnabled = input.PanButton != input.PickButton
-                          && input.PanButton != input.RotateButton;
+        bool panEnabled =
+            input.PanButton != input.PickButton && input.PanButton != input.RotateButton;
 
         return new ResolvedButtonInput
         {
@@ -401,15 +402,14 @@ public sealed class Viewport
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="renderContext"/> is null.</exception>
     /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="dpiScale"/> is less than or equal to zero.</exception>
     /// <remarks>Requirements 1.1, 1.2, 1.3, 9.4.</remarks>
-    public Viewport(RenderContext renderContext,
-                    ICameraController? cameraController = null,
-                    float dpiScale = 1f)
+    public Viewport(
+        RenderContext renderContext,
+        ICameraController? cameraController = null,
+        float dpiScale = 1f
+    )
     {
         _renderContext = renderContext ?? throw new ArgumentNullException(nameof(renderContext));
-        if (dpiScale <= 0f)
-        {
-            throw new ArgumentOutOfRangeException(nameof(dpiScale));
-        }
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(dpiScale, 0f);
 
         CameraController = cameraController;
         _dpiScale = dpiScale;
@@ -451,10 +451,7 @@ public sealed class Viewport
         get => _dpiScale;
         set
         {
-            if (value <= 0f)
-            {
-                throw new ArgumentOutOfRangeException(nameof(DpiScale));
-            }
+            ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(value, 0f);
 
             _dpiScale = value;
         }
@@ -501,9 +498,11 @@ public sealed class Viewport
     /// <param name="offscreenTexture">Handle of the texture to display.</param>
     /// <param name="windowPos">Optional window position; fills the host area when null.</param>
     /// <param name="windowSize">Optional window size; fills the host area when null.</param>
-    public void Draw(TextureHandle offscreenTexture,
-                     Vector2? windowPos = null,
-                     Vector2? windowSize = null)
+    public void Draw(
+        TextureHandle offscreenTexture,
+        Vector2? windowPos = null,
+        Vector2? windowSize = null
+    )
     {
         // Borderless window flags: suppress title bar, resize, move, collapse, scrollbar,
         // scroll-with-mouse, and bring-to-front-on-focus so the 3D scene fills the region
@@ -542,10 +541,12 @@ public sealed class Viewport
             // image is actually drawn (Requirements 3.4, 3.7).
             Vector2 canvasPos = Gui.GetCursorScreenPos();
 
+            bool valid = offscreenTexture.Valid && contentSize.X > 0f && contentSize.Y > 0f;
+
             // Draw the offscreen texture at the content-region size. When the handle is not
             // allocated, skip the image draw but keep the recorded canvas position and complete the
             // frame without error (Requirements 3.3, 3.7).
-            if (offscreenTexture.Valid)
+            if (valid)
             {
                 Gui.Image((nint)offscreenTexture.Index, contentSize, Vector2.Zero, Vector2.One);
             }
@@ -573,7 +574,7 @@ public sealed class Viewport
             // buttons. Picking represents a completed press+release click, so it maps to
             // IsMouseReleased(PickButton) (Requirement 7.1).
             Vector2 mouse = Gui.GetMousePos();
-            bool hovered = Gui.IsItemHovered();
+            bool hovered = valid && Gui.IsItemHovered();
             IsHovered = hovered;
             ViewportFrameInput input = new()
             {
@@ -589,7 +590,7 @@ public sealed class Viewport
                 RotateReleased = Gui.IsMouseReleased(RotateButton),
                 PanPressed = Gui.IsMouseClicked(PanButton),
                 PanReleased = Gui.IsMouseReleased(PanButton),
-                PickClicked = Gui.IsMouseReleased(PickButton),
+                PickClicked = Gui.IsMouseClicked(PickButton),
                 ScrollWheel = Gui.GetIO().MouseWheel,
                 ReportPointer = ReportPointerToRenderContext,
                 HasPickCallback = PickCallback is not null,
