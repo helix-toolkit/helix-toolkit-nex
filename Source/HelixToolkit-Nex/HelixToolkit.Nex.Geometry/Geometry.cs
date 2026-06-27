@@ -800,8 +800,19 @@ public partial class Geometry : HxObservableObject, IDisposable
         {
             if (disposing)
             {
-                Manager?.Remove(this);
-                Release();
+                // Defer removal so the pool/static-index bookkeeping (and the resulting reindex)
+                // happens at a controlled frame boundary via GeometryManager.ProcessPendingRemovals,
+                // instead of mutating shared GPU state mid-frame. The GPU buffer free performed by
+                // Release() (inside the deferred Remove) is itself frame-deferred by the context.
+                // When there is no owning manager, free immediately.
+                if (Manager is not null)
+                {
+                    Manager.RemoveDeferred(this);
+                }
+                else
+                {
+                    Release();
+                }
             }
 
             // TODO: free unmanaged resources (unmanaged objects) and override finalizer

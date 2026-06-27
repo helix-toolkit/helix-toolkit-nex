@@ -23,6 +23,12 @@ public sealed class GeometryManager(IContext context) : IGeometryManager
     private readonly Dictionary<Geometry, int> _indexCountDict = []; // Tracks index counts for static geometries to manage TotalStaticIndexCount
     private readonly object _lock = new();
 
+    // Geometries queued for deferred removal. Enqueued by RemoveDeferred (e.g. from Geometry.Dispose)
+    // and actually removed by ProcessPendingRemovals, which the render loop calls once per frame
+    // before the shared static-index buffer is rebuilt. This keeps the removal — and the resulting
+    // static-mesh index reindex — at a single controlled frame boundary instead of mid-frame.
+    private readonly List<Geometry> _pendingRemovals = [];
+
     /// <summary>
     /// Gets the current number of active geometries in the pool.
     /// </summary>
@@ -180,6 +186,10 @@ public sealed class GeometryManager(IContext context) : IGeometryManager
     {
         lock (_lock)
         {
+            // Discard any deferred removals; the geometries are still pooled and will be removed
+            // by the snapshot loop below.
+            _pendingRemovals.Clear();
+
             // Take a snapshot of all geometries currently in the pool (static and dynamic).
             var list = _pool
                 .Objects.Select(entry => entry.Obj)
@@ -273,6 +283,51 @@ public sealed class GeometryManager(IContext context) : IGeometryManager
             }
             _eventBus.PublishAsync(new GeometryUpdatedEvent(id, GeometryChangeOp.Removed));
             return true;
+        }
+    }
+
+    /// <inheritdoc/>
+    public void RemoveDeferred(Geometry geometry)
+    {
+        // geometry.Manager may already be null if called from Geometry.Dispose after the manager
+        // reference was cleared; in that case there is nothing pooled to defer.
+        if (geometry.Manager != this || !geometry.Handle.Valid)
+        {
+            _logger.LogError("Geometry does not belong to this GeometryManager.");
+            return;
+        }
+        lock (_lock)
+        {
+            // The geometry stays live in the pool until ProcessPendingRemovals runs, so its indices
+            // remain in the shared static-index buffer (harmless — it is no longer drawn) and other
+            // geometries' offsets are not disturbed until the controlled removal point.
+            if (!_pendingRemovals.Contains(geometry))
+            {
+                _pendingRemovals.Add(geometry);
+            }
+        }
+    }
+
+    /// <inheritdoc/>
+    public void ProcessPendingRemovals()
+    {
+        Geometry[] toRemove;
+        lock (_lock)
+        {
+            if (_pendingRemovals.Count == 0)
+            {
+                return;
+            }
+            toRemove = [.. _pendingRemovals];
+            _pendingRemovals.Clear();
+        }
+
+        // Remove takes the lock per call; performing the removals here (typically at the top of the
+        // render loop's resource update, before the static-index buffer is rebuilt) means the
+        // index reindex happens once, at a GPU-safe point.
+        foreach (var geometry in toRemove)
+        {
+            Remove(geometry);
         }
     }
 
