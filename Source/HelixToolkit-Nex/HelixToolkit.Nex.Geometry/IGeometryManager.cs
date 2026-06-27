@@ -60,6 +60,21 @@ public interface IGeometryManager : IDisposable
     bool Remove(Geometry geometry);
 
     /// <summary>
+    /// Queues a geometry for deferred removal. The geometry stays live in the pool until
+    /// <see cref="ProcessPendingRemovals"/> runs (typically once per frame on the render thread,
+    /// before the shared static-mesh index buffer is rebuilt), so the removal and the resulting
+    /// static-index reindex happen at a single GPU-safe frame boundary rather than mid-frame.
+    /// </summary>
+    /// <param name="geometry">The geometry to remove on the next <see cref="ProcessPendingRemovals"/>.</param>
+    void RemoveDeferred(Geometry geometry);
+
+    /// <summary>
+    /// Performs all removals queued by <see cref="RemoveDeferred"/>. Intended to be called once per
+    /// frame by the render loop, before the static-mesh index data is updated.
+    /// </summary>
+    void ProcessPendingRemovals();
+
+    /// <summary>
     /// Uploads the index data for all static mesh geometries in the pool to the specified write context.
     /// </summary>
     /// <remarks>Only geometries that are not marked as dynamic are processed. If any write operation fails,

@@ -158,6 +158,10 @@ public sealed class ResourceManager : Initializable, IResourceManager
 
     public bool Update()
     {
+        // Apply any geometry removals that were deferred to a frame boundary before the shared
+        // static-mesh index buffer is rebuilt, so the removal and reindex happen consistently.
+        Geometries.ProcessPendingRemovals();
+
         // BeginFrame all geometries with dirty buffers
         foreach (var geometry in Geometries)
         {
