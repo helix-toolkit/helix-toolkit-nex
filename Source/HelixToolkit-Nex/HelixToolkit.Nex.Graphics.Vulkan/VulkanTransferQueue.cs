@@ -492,9 +492,7 @@ internal sealed class VulkanTransferQueue : IDisposable
         // For texture uploads, delegate to the staging device on the graphics queue
         // since texture layout transitions and mipmap handling are complex.
         // The async benefit here is that we run it on a background thread.
-        var result = _ctx.Upload(request.DestTexture, request.Range, 0, 0);
-
-        // Now do the actual upload using the staging device
+        ResultCode result;
         unsafe
         {
             using var src = request.Pin();
