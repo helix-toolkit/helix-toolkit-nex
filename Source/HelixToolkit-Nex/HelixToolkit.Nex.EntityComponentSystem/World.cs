@@ -372,7 +372,7 @@ public sealed class World : IEnumerable<Entity>, IDisposable
     public ResultCode SetComponent<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.NonPublicFields)] T>(Entity entity, ref T component, out bool added)
     {
         added = false;
-        var ret = ResultCode.Invalid;
+        var ret = ResultCode.InvalidState;
         if (ValidateEntity(ref entity))
         {
             if (IsTagType<T>())
@@ -392,7 +392,7 @@ public sealed class World : IEnumerable<Entity>, IDisposable
                     Id,
                     defaultCapacity: IsTagType<T>() ? 0 : 128
                 );
-                ret = manager?.Set(entity.Id, ref component, out added) ?? ResultCode.Invalid;
+                ret = manager?.Set(entity.Id, ref component, out added) ?? ResultCode.InvalidState;
             }
         }
         if (ret == ResultCode.Ok)
@@ -400,7 +400,7 @@ public sealed class World : IEnumerable<Entity>, IDisposable
             ref var state = ref GetState(entity.Id, entity.Generation);
             if (!state.Valid)
             {
-                return ResultCode.Invalid;
+                return ResultCode.InvalidState;
             }
             state.ComponentTypes.AddType(ComponentIdProxy<T>.TypeId);
             ECSEventBus.Send(
@@ -500,7 +500,7 @@ public sealed class World : IEnumerable<Entity>, IDisposable
         }
         lock (_lock)
         {
-            ret = ResultCode.Invalid;
+            ret = ResultCode.InvalidState;
 
             if (ValidateEntity(ref entity))
             {
@@ -523,7 +523,7 @@ public sealed class World : IEnumerable<Entity>, IDisposable
                 ref var state = ref GetState(entity.Id, entity.Generation);
                 if (!state.Valid)
                 {
-                    return ResultCode.Invalid;
+                    return ResultCode.InvalidState;
                 }
                 state.ComponentTypes.RemoveType(ComponentManager<T>.TypeId);
             }

@@ -1249,4 +1249,21 @@ internal sealed class MeshConverter
         }
         return _sphere;
     }
+
+    /// <summary>
+    /// Asynchronously returns the shared unit-sphere geometry, registering it with the geometry
+    /// manager via the async upload path so the GPU transfer is safe to run off the render thread.
+    /// </summary>
+    public async Task<Geometry> GetSphereMeshAsync()
+    {
+        if (_sphere == null)
+        {
+            var builder = new MeshBuilder();
+            builder.AddSphere(Vector3.Zero, 0.5f);
+            _sphere = builder.ToMesh().ToGeometry();
+            _manifest.AddGeometry(_sphere);
+            await _geometryManager.AddAsync(_sphere).ConfigureAwait(false);
+        }
+        return _sphere;
+    }
 }

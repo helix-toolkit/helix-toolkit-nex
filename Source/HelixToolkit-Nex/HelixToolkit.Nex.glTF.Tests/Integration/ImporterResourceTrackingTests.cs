@@ -359,6 +359,11 @@ public class ImporterResourceTrackingTests
         // Act: Dispose all resources
         result.Resources.DisposeAll();
 
+        // Geometry removal is deferred to a frame boundary (processed by ResourceManager.Update each
+        // frame). Process it explicitly here so the manager's pool slots are released before the
+        // assertions below. Material/texture/sampler disposal remains immediate.
+        worldData.ResourceManager.Geometries.ProcessPendingRemovals();
+
         // Assert: manifest counts are zero after disposal
         Assert.AreEqual(
             0,

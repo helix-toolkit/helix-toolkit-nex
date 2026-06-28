@@ -54,4 +54,29 @@ public enum ResultCode
     /// A compilation error occurred (e.g., shader compilation).
     /// </summary>
     CompileError,
+
+    /// <summary>
+    /// Not ready state.
+    /// </summary>
+    NotReady,
+
+    /// <summary>
+    /// The requested item (e.g., an entity component) was not found.
+    /// </summary>
+    NotFound,
+
+    /// <summary>
+    /// The target world is null, disposed, or otherwise not in a valid state.
+    /// </summary>
+    WorldNotValid,
+
+    /// <summary>
+    /// The entity does not belong to the world the operation was issued against.
+    /// </summary>
+    NotThisWorld,
+
+    /// <summary>
+    /// The entities involved in the operation do not belong to the same world.
+    /// </summary>
+    NotTheSameWorld,
 }
