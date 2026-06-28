@@ -51,6 +51,11 @@ internal class GltfImporterApp : ApplicationBase
     // Application state
     private Node? _currentModelRoot;
     private ResourceManifest? _currentResourceManifest;
+
+    // Background import state. The off-thread preparation (parse/convert/record) runs on a
+    // thread-pool task; the materializing flush is completed on the owning thread in OnTick.
+    private Task<PreparedImport>? _pendingImport;
+    private string? _pendingImportPath;
     private Node? _mainRoot;
     private DirectionalLightNode? _dirLight;
     private Size _viewportSize = new(1, 1);
@@ -139,6 +144,7 @@ internal class GltfImporterApp : ApplicationBase
             .WithFXAA()
             .WithToneMappingMode(Shaders.ToneMappingMode.Reinhard)
             .WithTransparent(Engine.TransparentMode.WBOIT)
+            .WithFPS()
             .RenderToCustomTarget(GraphicsSettings.IntermediateTargetFormat)
             .WithPostEffects(effects =>
             {
@@ -230,6 +236,17 @@ internal class GltfImporterApp : ApplicationBase
             || _propertiesPanel is null
         )
             return;
+
+        // --- Complete any background import on the owning thread ---
+        // PrepareImportAsync did the heavy work (parse/convert/record) off-thread; the flush that
+        // mutates the ECS world must run here, on the world's owning (render) thread.
+        if (_pendingImport is { IsCompleted: true } importTask)
+        {
+            var path = _pendingImportPath ?? string.Empty;
+            _pendingImport = null;
+            _pendingImportPath = null;
+            CompletePendingImport(importTask, path);
+        }
 
         // Timing
         if (_lastTimestamp == 0)
@@ -470,16 +487,78 @@ internal class GltfImporterApp : ApplicationBase
     // -------------------------------------------------------------------
 
     /// <summary>
-    /// Loads a glTF/GLB file, attaches the result to the scene, and frames the camera.
-    /// On failure, stores diagnostics for display without modifying the scene.
+    /// Begins loading a glTF/GLB file. The heavy preparation phase (parse, buffer load, mesh/
+    /// material/texture/light conversion, and recording the scene into a command buffer) runs on a
+    /// background thread; the result is materialized on the owning thread in <see cref="OnTick"/>.
     /// </summary>
     private void LoadFile(string filePath)
     {
         if (_worldDataProvider is null || _cameraController is null)
             return;
 
+        // Only one import at a time; ignore new requests while one is in flight.
+        if (_pendingImport is not null)
+        {
+            _logger.LogInformation(
+                "An import is already in progress; ignoring request to load {FilePath}.",
+                filePath
+            );
+            return;
+        }
+
         var importer = new Importer();
-        var result = importer.Import(filePath, _worldDataProvider, ImportConfig);
+        var worldData = _worldDataProvider;
+        var config = ImportConfig;
+
+        // Clear the current model up front, before the background load registers the new model's
+        // geometry. While new static geometry is uploaded, the shared static-index buffer is rebuilt
+        // on the render thread; if the old model were still being drawn it would render against that
+        // in-flux buffer and corrupt for a few frames. Removing it now means nothing references the
+        // shared buffer while it changes. Trade-off: the viewport is empty while the next model loads.
+        _selectionManager?.Deselect();
+        DisposeCurrentModel();
+
+        _pendingImportPath = filePath;
+        // Off-thread phase: file read, glTF parse, buffer decode, geometry upload via the async
+        // transfer-queue path, and recording the scene. Material/texture conversion and node
+        // construction happen on the render thread in PreparedImport.Complete (invoked from OnTick).
+        _pendingImport = Task.Run(() => importer.PrepareImportAsync(filePath, worldData, config));
+    }
+
+    /// <summary>
+    /// Completes a background import on the owning thread: flushes the recorded scene, attaches the
+    /// result, and frames the camera. On failure, stores diagnostics for display.
+    /// </summary>
+    private void CompletePendingImport(Task<PreparedImport> importTask, string filePath)
+    {
+        if (_worldDataProvider is null)
+            return;
+
+        // A faulted preparation (I/O or parsing exception) surfaces as an error.
+        if (importTask.IsFaulted)
+        {
+            var ex = importTask.Exception?.GetBaseException();
+            _importDiagnostics =
+            [
+                new ImportDiagnostic(
+                    DiagnosticSeverity.Error,
+                    $"Failed to import {filePath}: {ex?.Message}",
+                    "File",
+                    -1
+                ),
+            ];
+            _showErrorWindow = true;
+            _showWarningWindow = false;
+            _logger.LogError(ex, "Failed to import {FilePath}", filePath);
+            return;
+        }
+
+        // Dispose releases prepared resources only if Complete is never reached; once Complete
+        // runs, ownership transfers to the returned ImportResult, so this becomes a no-op.
+        using var prepared = importTask.Result;
+
+        // Materialize on the owning (render) thread.
+        var result = prepared.Complete(_worldDataProvider);
 
         if (!result.Success)
         {
@@ -495,9 +574,7 @@ internal class GltfImporterApp : ApplicationBase
             return;
         }
 
-        // Success — deselect current entity and dispose previous model before attaching new one
-        _selectionManager?.Deselect();
-        DisposeCurrentModel();
+        // Success — attach the new model. The previous model was already cleared in LoadFile.
         _currentModelRoot = result.RootNode;
         _currentResourceManifest = result.Resources;
         _mainRoot?.AddChild(_currentModelRoot!);
@@ -589,6 +666,13 @@ internal class GltfImporterApp : ApplicationBase
 
     protected override void OnDisposing()
     {
+        // Release a prepared-but-not-completed import's resources if it finished in the background.
+        if (_pendingImport is { IsCompletedSuccessfully: true })
+        {
+            _pendingImport.Result.Dispose();
+        }
+        _pendingImport = null;
+
         _selectionManager?.Deselect();
         _currentResourceManifest?.DisposeAll();
         _currentResourceManifest = null;

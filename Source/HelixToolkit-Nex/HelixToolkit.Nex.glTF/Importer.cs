@@ -22,7 +22,9 @@ public class Importer
     private static string GenerateSessionId() => Guid.NewGuid().ToString("D");
 
     /// <summary>
-    /// Synchronously imports a glTF/GLB file into the given world.
+    /// Synchronously imports a glTF/GLB file into the given world. Equivalent to calling
+    /// <see cref="PrepareImport"/> followed by <see cref="PreparedImport.Complete(WorldDataProvider)"/>
+    /// on the calling thread, which must be the world's owning thread.
     /// </summary>
     /// <param name="filePath">The path to the .gltf or .glb file to import.</param>
     /// <param name="worldData">The world data provider containing the ECS world and resource managers.</param>
@@ -34,8 +36,28 @@ public class Importer
         ImporterConfig? config = null
     )
     {
+        return PrepareImport(filePath, worldData, config).Complete(worldData);
+    }
+
+    /// <summary>
+    /// Synchronously performs the preparation phase of an import: validates the file, parses the
+    /// glTF model, loads buffer data, converts meshes/materials/textures/lights, and records the
+    /// scene graph into a <see cref="SceneCommandBuffer"/>. Materialize the result by calling
+    /// <see cref="PreparedImport.Complete(WorldDataProvider)"/> on the world's owning thread.
+    /// </summary>
+    /// <param name="filePath">The path to the .gltf or .glb file to import.</param>
+    /// <param name="worldData">The world data provider containing the resource managers (and the target world for completion).</param>
+    /// <param name="config">Optional configuration for the import operation. If null, default settings are used.</param>
+    /// <returns>A <see cref="PreparedImport"/> holding the recorded scene, diagnostics, and resources.</returns>
+    public PreparedImport PrepareImport(
+        string filePath,
+        WorldDataProvider worldData,
+        ImporterConfig? config = null
+    )
+    {
         var sessionId = GenerateSessionId();
         var diagnostics = new List<ImportDiagnostic>();
+        config ??= ImporterConfig.Default;
 
         // 1. Validate file exists
         if (!File.Exists(filePath))
@@ -49,12 +71,7 @@ public class Importer
                 )
             );
 
-            return new ImportResult
-            {
-                RootNode = null,
-                Diagnostics = diagnostics,
-                Resources = ResourceManifest.Empty,
-            };
+            return PreparedImport.ForFailure(diagnostics, ResourceManifest.Empty);
         }
 
         // 2. Parse glTF model
@@ -74,12 +91,7 @@ public class Importer
                 )
             );
 
-            return new ImportResult
-            {
-                RootNode = null,
-                Diagnostics = diagnostics,
-                Resources = ResourceManifest.Empty,
-            };
+            return PreparedImport.ForFailure(diagnostics, ResourceManifest.Empty);
         }
 
         // 3. Load all buffer data
@@ -90,67 +102,26 @@ public class Importer
         if (bufferData == null)
         {
             // Critical error loading buffers — already added to diagnostics
-            return new ImportResult
-            {
-                RootNode = null,
-                Diagnostics = diagnostics,
-                Resources = ResourceManifest.Empty,
-            };
+            return PreparedImport.ForFailure(diagnostics, ResourceManifest.Empty);
         }
 
-        // 4. Determine scene index
-        int sceneIndex = model.Scene ?? 0;
-
-        // 5. Apply default configuration if not provided
-        config ??= ImporterConfig.Default;
-
-        // 6. Create pipeline components
-        var resourceManager = worldData.ResourceManager;
-        var manifest = new ResourceManifest(sessionId);
-        var accessorReader = new AccessorReader(model, bufferData);
-        bool dracoRequired = IsDracoRequired(model);
-        var dracoDecoder = new DracoDecoder();
-        var meshConverter = new MeshConverter(
-            resourceManager.Geometries,
-            accessorReader,
-            diagnostics,
-            manifest,
-            config,
-            dracoDecoder,
-            dracoRequired
-        );
-        var textureLoader = new TextureLoader(
-            resourceManager.TextureRepository,
-            resourceManager.SamplerRepository,
-            baseDirectory,
+        // 4. Convert and record the scene (synchronous conversion path).
+        var sceneBuilder = CreateSceneBuilder(
             model,
             bufferData,
+            baseDirectory,
+            sessionId,
+            worldData,
+            config,
             diagnostics,
-            manifest,
-            sessionId
-        );
-        var materialConverter = new MaterialConverter(
-            resourceManager.PBRPropertyManager,
-            textureLoader,
-            diagnostics,
-            manifest,
-            config.DefaultShadingMode
-        );
-        var lightConverter = new LightConverter(diagnostics, config);
-        var sceneBuilder = new SceneBuilder(
-            worldData.World,
-            meshConverter,
-            materialConverter,
-            lightConverter,
-            diagnostics,
-            config
+            out var manifest
         );
 
-        // 7. Build scene
-        Node rootNode;
+        int sceneIndex = model.Scene ?? 0;
         try
         {
-            rootNode = sceneBuilder.BuildScene(model, sceneIndex);
+            var recording = sceneBuilder.RecordScene(model, sceneIndex);
+            return PreparedImport.ForRecording(recording, diagnostics, manifest);
         }
         catch (Exception ex)
         {
@@ -162,27 +133,22 @@ public class Importer
                     sceneIndex
                 )
             );
-
-            return new ImportResult
-            {
-                RootNode = null,
-                Diagnostics = diagnostics,
-                Resources = manifest,
-            };
+            return PreparedImport.ForFailure(diagnostics, manifest);
         }
-
-        // 8. Return ImportResult
-        return new ImportResult
-        {
-            RootNode = rootNode,
-            Diagnostics = diagnostics,
-            Resources = manifest,
-        };
     }
 
     /// <summary>
-    /// Asynchronously imports a glTF/GLB file into the given world.
+    /// Asynchronously imports a glTF/GLB file into the given world. Equivalent to
+    /// <see cref="PrepareImportAsync"/> followed by
+    /// <see cref="PreparedImport.Complete(WorldDataProvider)"/> on the continuation.
     /// </summary>
+    /// <remarks>
+    /// Only the load phase runs asynchronously/off-thread. The completing build performs GPU
+    /// resource creation and world mutation, so it MUST run on the world's owning thread: the
+    /// caller must await this on the owning thread. For explicit control — loading on a background
+    /// thread and building on the owning (render) thread — use <see cref="PrepareImportAsync"/> and
+    /// call <see cref="PreparedImport.Complete(WorldDataProvider)"/> on the owning thread.
+    /// </remarks>
     /// <param name="filePath">The path to the .gltf or .glb file to import.</param>
     /// <param name="worldData">The world data provider containing the ECS world and resource managers.</param>
     /// <param name="config">Optional configuration for the import operation. If null, default settings are used.</param>
@@ -195,8 +161,44 @@ public class Importer
         CancellationToken cancellationToken = default
     )
     {
+        var prepared = await PrepareImportAsync(filePath, worldData, config, cancellationToken)
+            .ConfigureAwait(false);
+
+        // Final cancellation check — if cancelled after recording, dispose and throw.
+        if (cancellationToken.IsCancellationRequested)
+        {
+            prepared.Dispose();
+            throw new OperationCanceledException(cancellationToken);
+        }
+
+        return prepared.Complete(worldData);
+    }
+
+    /// <summary>
+    /// Asynchronously performs the preparation phase of an import: validates the file, parses the
+    /// glTF model, loads buffer data (non-blocking I/O), converts meshes/materials/textures/lights
+    /// through the asynchronous GPU-upload path (<c>AddAsync</c>/<c>LoadTextureAsync</c>), and
+    /// records the scene graph into a <see cref="SceneCommandBuffer"/>. Because conversion uses the
+    /// async upload path and recording never mutates the world, this work may run on a background
+    /// thread. Materialize the result by calling
+    /// <see cref="PreparedImport.Complete(WorldDataProvider)"/> on the world's owning (render)
+    /// thread, which only flushes the recorded buffer.
+    /// </summary>
+    /// <param name="filePath">The path to the .gltf or .glb file to import.</param>
+    /// <param name="worldData">The world data provider containing the resource managers (and the target world for completion).</param>
+    /// <param name="config">Optional configuration for the import operation. If null, default settings are used.</param>
+    /// <param name="cancellationToken">A cancellation token to cancel the preparation.</param>
+    /// <returns>A task containing a <see cref="PreparedImport"/> holding the recorded scene, diagnostics, and resources.</returns>
+    public async Task<PreparedImport> PrepareImportAsync(
+        string filePath,
+        WorldDataProvider worldData,
+        ImporterConfig? config = null,
+        CancellationToken cancellationToken = default
+    )
+    {
         var sessionId = GenerateSessionId();
         var diagnostics = new List<ImportDiagnostic>();
+        config ??= ImporterConfig.Default;
 
         // 1. Check cancellation before starting
         cancellationToken.ThrowIfCancellationRequested();
@@ -213,12 +215,7 @@ public class Importer
                 )
             );
 
-            return new ImportResult
-            {
-                RootNode = null,
-                Diagnostics = diagnostics,
-                Resources = ResourceManifest.Empty,
-            };
+            return PreparedImport.ForFailure(diagnostics, ResourceManifest.Empty);
         }
 
         // 3. Parse glTF model
@@ -238,12 +235,7 @@ public class Importer
                 )
             );
 
-            return new ImportResult
-            {
-                RootNode = null,
-                Diagnostics = diagnostics,
-                Resources = ResourceManifest.Empty,
-            };
+            return PreparedImport.ForFailure(diagnostics, ResourceManifest.Empty);
         }
 
         // 4. Check cancellation before buffer loading
@@ -266,26 +258,69 @@ public class Importer
         if (bufferData == null)
         {
             // Critical error loading buffers — already added to diagnostics
-            return new ImportResult
-            {
-                RootNode = null,
-                Diagnostics = diagnostics,
-                Resources = ResourceManifest.Empty,
-            };
+            return PreparedImport.ForFailure(diagnostics, ResourceManifest.Empty);
         }
 
-        // 6. Check cancellation before scene building
+        // 6. Check cancellation before conversion/recording
         cancellationToken.ThrowIfCancellationRequested();
 
-        // 7. Determine scene index
+        // 7. Convert (async GPU upload) and record the scene off the owning thread.
+        var sceneBuilder = CreateSceneBuilder(
+            model,
+            bufferData,
+            baseDirectory,
+            sessionId,
+            worldData,
+            config,
+            diagnostics,
+            out var manifest
+        );
+
         int sceneIndex = model.Scene ?? 0;
+        try
+        {
+            var recording = await sceneBuilder
+                .RecordSceneAsync(model, sceneIndex, cancellationToken)
+                .ConfigureAwait(false);
+            return PreparedImport.ForRecording(recording, diagnostics, manifest);
+        }
+        catch (OperationCanceledException)
+        {
+            manifest.DisposeAll();
+            throw;
+        }
+        catch (Exception ex)
+        {
+            diagnostics.Add(
+                new ImportDiagnostic(
+                    DiagnosticSeverity.Error,
+                    $"Failed to build scene: {ex.Message}",
+                    "Scene",
+                    sceneIndex
+                )
+            );
+            return PreparedImport.ForFailure(diagnostics, manifest);
+        }
+    }
 
-        // 8. Apply default configuration if not provided
-        config ??= ImporterConfig.Default;
-
-        // 9. Create pipeline components
+    /// <summary>
+    /// Builds the conversion pipeline (mesh, material, texture, and light converters) and a
+    /// <see cref="SceneBuilder"/> over a freshly created resource manifest. Shared by the
+    /// synchronous and asynchronous prepare paths.
+    /// </summary>
+    private static SceneBuilder CreateSceneBuilder(
+        Gltf model,
+        byte[][] bufferData,
+        string baseDirectory,
+        string sessionId,
+        WorldDataProvider worldData,
+        ImporterConfig config,
+        List<ImportDiagnostic> diagnostics,
+        out ResourceManifest manifest
+    )
+    {
         var resourceManager = worldData.ResourceManager;
-        var manifest = new ResourceManifest(sessionId);
+        manifest = new ResourceManifest(sessionId);
         var accessorReader = new AccessorReader(model, bufferData);
         bool dracoRequired = IsDracoRequired(model);
         var dracoDecoder = new DracoDecoder();
@@ -316,7 +351,7 @@ public class Importer
             config.DefaultShadingMode
         );
         var lightConverter = new LightConverter(diagnostics, config);
-        var sceneBuilder = new SceneBuilder(
+        return new SceneBuilder(
             worldData.World,
             meshConverter,
             materialConverter,
@@ -324,47 +359,6 @@ public class Importer
             diagnostics,
             config
         );
-
-        // 10. Build scene (sync — the heavy async work was in buffer loading)
-        Node rootNode;
-        try
-        {
-            rootNode = sceneBuilder.BuildScene(model, sceneIndex);
-        }
-        catch (Exception ex)
-        {
-            diagnostics.Add(
-                new ImportDiagnostic(
-                    DiagnosticSeverity.Error,
-                    $"Failed to build scene: {ex.Message}",
-                    "Scene",
-                    sceneIndex
-                )
-            );
-
-            return new ImportResult
-            {
-                RootNode = null,
-                Diagnostics = diagnostics,
-                Resources = manifest,
-            };
-        }
-
-        // 11. Final cancellation check — if cancelled after scene build, dispose and throw
-        if (cancellationToken.IsCancellationRequested)
-        {
-            rootNode.Dispose();
-            manifest.Dispose();
-            throw new OperationCanceledException(cancellationToken);
-        }
-
-        // 12. Return ImportResult
-        return new ImportResult
-        {
-            RootNode = rootNode,
-            Diagnostics = diagnostics,
-            Resources = manifest,
-        };
     }
 
     /// <summary>

@@ -105,9 +105,9 @@ public struct Entity : IDisposable, IEquatable<Entity>
     {
         if (component == null)
         {
-            return ResultCode.Invalid;
+            return ResultCode.InvalidState;
         }
-        return World?.SetComponent<T>(this, ref component, out _) ?? ResultCode.Invalid;
+        return World?.SetComponent<T>(this, ref component, out _) ?? ResultCode.InvalidState;
     }
 
     /// <summary>
@@ -118,7 +118,7 @@ public struct Entity : IDisposable, IEquatable<Entity>
     /// <returns></returns>
     public readonly ResultCode Set<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.NonPublicFields)] T>(T? component = default)
     {
-        return component == null ? ResultCode.Invalid : Set(ref component);
+        return component == null ? ResultCode.InvalidState : Set(ref component);
     }
 
     /// <summary>
@@ -132,7 +132,7 @@ public struct Entity : IDisposable, IEquatable<Entity>
         where T : struct
     {
         T tag = default;
-        return World?.SetComponent<T>(this, ref tag, out _) ?? ResultCode.Invalid;
+        return World?.SetComponent<T>(this, ref tag, out _) ?? ResultCode.InvalidState;
     }
 
     /// <summary>
@@ -218,7 +218,7 @@ public struct Entity : IDisposable, IEquatable<Entity>
     /// <returns></returns>
     public readonly ResultCode Remove<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.NonPublicFields)] T>(bool keepSorted = false)
     {
-        return World?.RemoveComponent<T>(this, keepSorted) ?? ResultCode.Invalid;
+        return World?.RemoveComponent<T>(this, keepSorted) ?? ResultCode.InvalidState;
     }
 
     /// <summary>

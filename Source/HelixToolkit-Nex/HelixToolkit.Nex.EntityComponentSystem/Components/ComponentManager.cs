@@ -516,7 +516,7 @@ T
         added = false;
         if (!IsValid())
         {
-            return ResultCode.Invalid;
+            return ResultCode.InvalidState;
         }
         if (Has(entity))
         {
