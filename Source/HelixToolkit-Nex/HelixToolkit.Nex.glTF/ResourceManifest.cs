@@ -71,6 +71,33 @@ public class ResourceManifest : IDisposable
     /// <summary>Gets the number of tracked geometry instances.</summary>
     public int GeometryCount => _geometries.Count;
 
+    /// <summary>
+    /// Returns a task that completes when every tracked texture is fully GPU-ready, including any
+    /// mipmap generation that was deferred to the render thread.
+    /// </summary>
+    /// <remarks>
+    /// Base pixel uploads are already complete by the time a texture is tracked (the async upload
+    /// path awaits them before returning). This method additionally waits for the render-thread
+    /// mipmap pass (driven by the engine each frame via
+    /// <see cref="ITextureRepository.ProcessPendingMipmapGeneration"/>). For textures that requested
+    /// no mipmaps, or whose mipmaps have already been generated, the corresponding wait is already
+    /// complete. Returns a completed task when no textures are tracked.
+    /// </remarks>
+    public Task WhenTexturesReadyAsync()
+    {
+        if (_textures.Count == 0)
+        {
+            return Task.CompletedTask;
+        }
+
+        var tasks = new List<Task>(_textures.Count);
+        foreach (var texture in _textures)
+        {
+            tasks.Add(texture.Repository.WhenMipmapReadyAsync(texture.GetHandle()));
+        }
+        return Task.WhenAll(tasks);
+    }
+
     // --- Registration methods (internal, called by pipeline stages) ---
 
     /// <summary>

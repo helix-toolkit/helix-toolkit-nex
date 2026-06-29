@@ -431,8 +431,7 @@ internal sealed class MaterialConverter
             }
         }
 
-        // emissiveTexture — engine does not currently have an EmissiveMap property,
-        // so we load the texture but cannot assign it. Add a diagnostic note.
+        // emissiveTexture → EmissiveMap
         if (gltfMaterial.EmissiveTexture != null)
         {
             var textureRef = _textureLoader.LoadTexture(gltfMaterial.EmissiveTexture.Index);
@@ -448,6 +447,51 @@ internal sealed class MaterialConverter
                         materialIndex
                     )
                 );
+            }
+        }
+
+        // Resolve and assign the material's sampler from its textures.
+        ApplyMaterialSampler(material, gltfMaterial);
+    }
+
+    /// <summary>
+    /// Resolves the sampler for the material's textures and assigns it to
+    /// <see cref="PBRMaterialProperties.Sampler"/>.
+    /// </summary>
+    /// <remarks>
+    /// glTF defines a sampler per texture, while the engine material exposes a single sampler used
+    /// for all of its texture maps. The base color texture's sampler is treated as the
+    /// representative; if the base color texture has no sampler (or is absent), the other maps are
+    /// consulted in a fixed priority order so a sampler defined on any map is still honored. When no
+    /// texture references a sampler, the material keeps the engine default sampler.
+    /// </remarks>
+    private void ApplyMaterialSampler(
+        PBRMaterialProperties material,
+        glTFLoader.Schema.Material gltfMaterial
+    )
+    {
+        var pbr = gltfMaterial.PbrMetallicRoughness;
+        Span<int> candidates =
+        [
+            pbr?.BaseColorTexture?.Index ?? -1,
+            pbr?.MetallicRoughnessTexture?.Index ?? -1,
+            gltfMaterial.NormalTexture?.Index ?? -1,
+            gltfMaterial.OcclusionTexture?.Index ?? -1,
+            gltfMaterial.EmissiveTexture?.Index ?? -1,
+        ];
+
+        foreach (var textureIndex in candidates)
+        {
+            if (textureIndex < 0)
+            {
+                continue;
+            }
+
+            var samplerRef = _textureLoader.LoadSamplerForTexture(textureIndex);
+            if (samplerRef != SamplerRef.Null)
+            {
+                material.Sampler = samplerRef;
+                return;
             }
         }
     }
@@ -836,13 +880,14 @@ internal sealed class MaterialConverter
             }
         }
 
-        // emissiveTexture — engine does not currently have an EmissiveMap property
+        // emissiveTexture → EmissiveMap
         if (gltfMaterial.EmissiveTexture != null)
         {
             ct.ThrowIfCancellationRequested();
             var textureRef = await _textureLoader
                 .LoadTextureAsync(gltfMaterial.EmissiveTexture.Index, ct)
                 .ConfigureAwait(false);
+            material.EmissiveMap = textureRef;
 
             if (textureRef == TextureRef.Null)
             {
@@ -855,18 +900,10 @@ internal sealed class MaterialConverter
                     )
                 );
             }
-            else
-            {
-                _diagnostics.Add(
-                    new ImportDiagnostic(
-                        DiagnosticSeverity.Warning,
-                        $"Material {materialIndex} emissiveTexture loaded but engine does not support EmissiveMap assignment.",
-                        "Material",
-                        materialIndex
-                    )
-                );
-            }
         }
+
+        // Resolve and assign the material's sampler from its textures.
+        ApplyMaterialSampler(material, gltfMaterial);
     }
 
     /// <summary>

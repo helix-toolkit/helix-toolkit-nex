@@ -29,6 +29,15 @@ public sealed class ImportResult : IDisposable
     /// <summary>True if any diagnostics have Warning severity.</summary>
     public bool HasWarnings => Diagnostics.Any(d => d.Severity == DiagnosticSeverity.Warning);
 
+    /// <summary>
+    /// Returns a task that completes when all imported textures are fully GPU-ready, including any
+    /// mipmap generation deferred to the render thread. See
+    /// <see cref="ResourceManifest.WhenTexturesReadyAsync"/> for details. The mipmap pass is driven
+    /// by the engine each frame, so this completes once the engine has begun at least one frame
+    /// after the textures were uploaded.
+    /// </summary>
+    public Task WhenTexturesReadyAsync() => Resources.WhenTexturesReadyAsync();
+
     private bool _disposed;
 
     /// <summary>

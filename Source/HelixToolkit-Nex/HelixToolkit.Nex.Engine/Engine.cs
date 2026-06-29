@@ -518,6 +518,7 @@ public class Engine : Initializable
         }
 
         ProcessEvents();
+
         _frameBegun = true;
         return frameIndex;
     }

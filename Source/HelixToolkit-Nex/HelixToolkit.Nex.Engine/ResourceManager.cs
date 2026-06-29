@@ -158,10 +158,14 @@ public sealed class ResourceManager : Initializable, IResourceManager
 
     public bool Update()
     {
+        // Drain any pending GPU mipmap-generation requests on the render thread. Texture creation
+        // (async uploads and deferred sync paths) only enqueues these; IContext.GenerateMipmap
+        // performs an immediate command-buffer submission and must run here, not on background
+        // upload continuations.
+        TextureRepository.ProcessPendingMipmapGeneration();
         // Apply any geometry removals that were deferred to a frame boundary before the shared
         // static-mesh index buffer is rebuilt, so the removal and reindex happen consistently.
         Geometries.ProcessPendingRemovals();
-
         // BeginFrame all geometries with dirty buffers
         foreach (var geometry in Geometries)
         {

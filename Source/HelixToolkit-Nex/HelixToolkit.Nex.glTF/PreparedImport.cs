@@ -53,6 +53,15 @@ public sealed class PreparedImport : IDisposable
     /// </summary>
     public bool CanComplete => _recording is not null;
 
+    /// <summary>
+    /// Returns a task that completes when all imported textures are fully GPU-ready, including any
+    /// mipmap generation deferred to the render thread. See
+    /// <see cref="ResourceManifest.WhenTexturesReadyAsync"/> for details. The mipmap pass is driven
+    /// by the engine each frame, so this completes once the engine has rendered (begun) at least
+    /// one frame after the textures were uploaded.
+    /// </summary>
+    public Task WhenTexturesReadyAsync() => Resources.WhenTexturesReadyAsync();
+
     private PreparedImport(
         SceneRecording? recording,
         List<ImportDiagnostic> diagnostics,
