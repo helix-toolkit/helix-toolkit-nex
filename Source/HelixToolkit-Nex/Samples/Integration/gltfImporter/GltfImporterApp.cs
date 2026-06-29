@@ -688,11 +688,8 @@ internal class GltfImporterApp : ApplicationBase
 
     protected override void OnDisposing()
     {
-        // Release a prepared-but-not-completed import's resources if it finished in the background.
-        if (_pendingImport is { IsCompletedSuccessfully: true })
-        {
-            _pendingImport.Result.Dispose();
-        }
+        _pendingImport?.Wait();
+        _pendingImport?.Result?.Dispose();
         _pendingImport = null;
 
         _selectionManager?.Deselect();

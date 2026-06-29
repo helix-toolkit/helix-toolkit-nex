@@ -100,7 +100,7 @@ public class CommandBufferFlushReflushNoOpTest
 
             for (var i = 0; i < C.Count; i++)
             {
-                if (C[i].Id != other.C[i].Id || C[i].W != other.C[i].W)
+                if (C[i].Id != other.C[i].Id || Math.Abs(C[i].W - other.C[i].W) > 1e-12)
                 {
                     return false;
                 }
@@ -168,7 +168,10 @@ public class CommandBufferFlushReflushNoOpTest
                                     cb.RecordSet(target, new CompA { X = rng.Next() });
                                     break;
                                 case 1:
-                                    cb.RecordSet(target, new CompB { Y = rng.Next(), Z = rng.Next() });
+                                    cb.RecordSet(
+                                        target,
+                                        new CompB { Y = rng.Next(), Z = rng.Next() }
+                                    );
                                     break;
                                 default:
                                     cb.RecordSet(target, new CompC { W = rng.Next() });

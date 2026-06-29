@@ -37,7 +37,10 @@ public sealed class TextureRepository
     /// </summary>
     private readonly ConcurrentDictionary<TextureHandle, Task> _mipmapReady = new();
 
-    private readonly record struct PendingMipmap(TextureHandle Handle, TaskCompletionSource Completion);
+    private readonly record struct PendingMipmap(
+        TextureHandle Handle,
+        TaskCompletionSource Completion
+    );
 
     public TextureRepository(IContext context, int maxEntries = 0, TimeSpan? expirationTime = null)
         : base(maxEntries, expirationTime)
@@ -71,15 +74,13 @@ public sealed class TextureRepository
     {
         // Must be called on the engine render thread. IContext.GenerateMipmap acquires and submits
         // an immediate command buffer, so it cannot run from the background upload continuations.
-        bool contextGone = _context.IsDisposed;
-
         while (_pendingMipmaps.TryDequeue(out var pending))
         {
             try
             {
                 // Skip generation if the context is gone or the handle is invalid, but still
                 // signal completion so awaiters never hang.
-                if (!contextGone && !pending.Handle.Empty)
+                if (!_context.IsDisposed && !pending.Handle.Empty)
                 {
                     _context.GenerateMipmap(pending.Handle, out _);
                 }
@@ -95,7 +96,12 @@ public sealed class TextureRepository
     public static string NormalizeFilePath(string filePath) =>
         Path.GetFullPath(filePath).ToLowerInvariant();
 
-    public TextureRef GetOrCreateFromStream(string name, Stream stream, bool generateMipmaps = true, string? debugName = null)
+    public TextureRef GetOrCreateFromStream(
+        string name,
+        Stream stream,
+        bool generateMipmaps = true,
+        string? debugName = null
+    )
     {
         ArgumentException.ThrowIfNullOrEmpty(name);
         ArgumentNullException.ThrowIfNull(stream);
@@ -104,11 +110,21 @@ public sealed class TextureRepository
         if (TryGet(name, out var cached))
             return cached!.Ref;
 
-        var texture = TextureCreator.CreateTextureFromStream(_context, stream, generateMipmaps, debugName: debugName ?? name, scheduleMipmapGeneration: ScheduleMipmapGeneration);
+        var texture = TextureCreator.CreateTextureFromStream(
+            _context,
+            stream,
+            generateMipmaps,
+            debugName: debugName ?? name,
+            scheduleMipmapGeneration: ScheduleMipmapGeneration
+        );
         return StoreEntry(name, texture, debugName ?? name);
     }
 
-    public TextureRef GetOrCreateFromFile(string filePath, bool generateMipmaps = true, string? debugName = null)
+    public TextureRef GetOrCreateFromFile(
+        string filePath,
+        bool generateMipmaps = true,
+        string? debugName = null
+    )
     {
         ArgumentException.ThrowIfNullOrEmpty(filePath);
         ObjectDisposedException.ThrowIf(_context.IsDisposed, this);
@@ -123,7 +139,13 @@ public sealed class TextureRepository
 
         using var stream = File.OpenRead(filePath);
         var resolvedDebugName = debugName ?? Path.GetFileName(filePath);
-        var texture = TextureCreator.CreateTextureFromStream(_context, stream, generateMipmaps, debugName: resolvedDebugName, scheduleMipmapGeneration: ScheduleMipmapGeneration);
+        var texture = TextureCreator.CreateTextureFromStream(
+            _context,
+            stream,
+            generateMipmaps,
+            debugName: resolvedDebugName,
+            scheduleMipmapGeneration: ScheduleMipmapGeneration
+        );
         return StoreEntry(cacheKey, texture, resolvedDebugName);
     }
 
@@ -135,7 +157,13 @@ public sealed class TextureRepository
         if (TryGet(name, out var cached))
             return cached!.Ref;
 
-        var texture = TextureCreator.CreateTexture(_context, image, generateMipmaps, debugName: name, scheduleMipmapGeneration: ScheduleMipmapGeneration);
+        var texture = TextureCreator.CreateTexture(
+            _context,
+            image,
+            generateMipmaps,
+            debugName: name,
+            scheduleMipmapGeneration: ScheduleMipmapGeneration
+        );
         return StoreEntry(name, texture, name);
     }
 
@@ -220,7 +248,11 @@ public sealed class TextureRepository
         }
     }
 
-    public async Task<TextureRef> GetOrCreateFromImageAsync(string name, Image image, bool generateMipmaps = true)
+    public async Task<TextureRef> GetOrCreateFromImageAsync(
+        string name,
+        Image image,
+        bool generateMipmaps = true
+    )
     {
         ArgumentException.ThrowIfNullOrEmpty(name);
         ObjectDisposedException.ThrowIf(_context.IsDisposed, this);
@@ -228,14 +260,13 @@ public sealed class TextureRepository
         if (TryGet(name, out var cached))
             return cached!.Ref;
 
-        var (result, textureResource, uploadHandle) =
-            TextureCreator.CreateTextureAsyncWithResource(
-                _context,
-                image,
-                generateMipmaps,
-                debugName: name,
-                scheduleMipmapGeneration: ScheduleMipmapGeneration
-            );
+        var (result, textureResource, uploadHandle) = TextureCreator.CreateTextureAsyncWithResource(
+            _context,
+            image,
+            generateMipmaps,
+            debugName: name,
+            scheduleMipmapGeneration: ScheduleMipmapGeneration
+        );
         if (result != ResultCode.Ok)
             throw new InvalidOperationException($"Failed to create GPU texture '{name}': {result}");
         var textureRef = StoreEntry(name, textureResource, name);

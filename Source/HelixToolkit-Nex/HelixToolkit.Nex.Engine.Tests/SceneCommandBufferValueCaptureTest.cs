@@ -51,7 +51,8 @@ public class SceneCommandBufferValueCaptureTest
                         (float)rng.NextDouble(),
                         (float)rng.NextDouble(),
                         (float)rng.NextDouble(),
-                        (float)rng.NextDouble());
+                        (float)rng.NextDouble()
+                    );
                     var recCullable = rng.Next(2) == 0;
                     var recHitable = rng.Next(2) == 0;
                     var recMaterialName = "mat" + rng.Next();
@@ -84,7 +85,8 @@ public class SceneCommandBufferValueCaptureTest
                             recColor.Red + 0.5f,
                             recColor.Green + 0.5f,
                             recColor.Blue + 0.5f,
-                            recColor.Alpha + 0.5f);
+                            recColor.Alpha + 0.5f
+                        );
                         info.Cullable = !recCullable;
                         info.Hitable = !recHitable;
                         info.LineMaterialTypeName = recMaterialName + "_mutated";
@@ -96,15 +98,16 @@ public class SceneCommandBufferValueCaptureTest
                             return false;
                         }
 
-                        if (scb.TryGetMaterializedNode(handle, out var node)
-                            != ResultCode.Ok
-                            || node is null)
+                        if (
+                            scb.TryGetMaterializedNode(handle, out var node) != ResultCode.Ok
+                            || node is null
+                        )
                         {
                             return false;
                         }
 
                         // The materialized node must carry the values as captured AT RECORD TIME.
-                        return node.LineThickness == recThickness
+                        return MathF.Abs(node.LineThickness - recThickness) <= float.Epsilon
                             && node.LineColor.Equals(recColor)
                             && node.Cullable == recCullable
                             && node.Hitable == recHitable
@@ -165,9 +168,10 @@ public class SceneCommandBufferValueCaptureTest
                             return false;
                         }
 
-                        if (scb.TryGetMaterializedNode(handle, out var node)
-                            != ResultCode.Ok
-                            || node is null)
+                        if (
+                            scb.TryGetMaterializedNode(handle, out var node) != ResultCode.Ok
+                            || node is null
+                        )
                         {
                             return false;
                         }
@@ -216,9 +220,7 @@ public class SceneCommandBufferValueCaptureTest
             var flush = scb.Flush(world);
             Assert.IsTrue(flush.Success);
 
-            Assert.AreEqual(
-                ResultCode.Ok,
-                scb.TryGetMaterializedNode(handle, out var node));
+            Assert.AreEqual(ResultCode.Ok, scb.TryGetMaterializedNode(handle, out var node));
             Assert.IsNotNull(node);
 
             // The materialized node reflects the record-time values, not the mutated ones.
