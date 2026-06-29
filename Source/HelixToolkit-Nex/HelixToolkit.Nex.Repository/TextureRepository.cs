@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using HelixToolkit.Nex.Textures;
 
 namespace HelixToolkit.Nex.Repository;
@@ -20,10 +21,75 @@ public sealed class TextureRepository
 {
     private readonly IContext _context;
 
+    /// <summary>
+    /// Pending GPU mipmap-generation requests. Enqueued from the (possibly background)
+    /// texture-creation paths and drained on the render thread by
+    /// <see cref="ProcessPendingMipmapGeneration"/>. <see cref="IContext.GenerateMipmap(in TextureHandle, out uint)"/>
+    /// performs an immediate command-buffer submission and must only be invoked on the render thread.
+    /// Each entry carries a completion source that is signalled once generation has run (or been
+    /// discarded), enabling callers to await GPU readiness via <see cref="WhenMipmapReadyAsync"/>.
+    /// </summary>
+    private readonly ConcurrentQueue<PendingMipmap> _pendingMipmaps = new();
+
+    /// <summary>
+    /// Maps a texture handle awaiting mipmap generation to the task that completes when generation
+    /// has run. Entries are removed once drained, so a missing handle means "already ready".
+    /// </summary>
+    private readonly ConcurrentDictionary<TextureHandle, Task> _mipmapReady = new();
+
+    private readonly record struct PendingMipmap(TextureHandle Handle, TaskCompletionSource Completion);
+
     public TextureRepository(IContext context, int maxEntries = 0, TimeSpan? expirationTime = null)
         : base(maxEntries, expirationTime)
     {
         _context = context;
+    }
+
+    /// <summary>
+    /// Number of texture handles awaiting GPU mipmap generation on the render thread.
+    /// </summary>
+    public int PendingMipmapCount => _pendingMipmaps.Count;
+
+    /// <summary>
+    /// Enqueues a texture handle for deferred GPU mipmap generation. Thread-safe; the actual
+    /// generation runs later on the render thread via <see cref="ProcessPendingMipmapGeneration"/>.
+    /// </summary>
+    private void ScheduleMipmapGeneration(TextureHandle handle)
+    {
+        var tcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        // Record the readiness task before enqueuing so a concurrent drain always finds it.
+        _mipmapReady[handle] = tcs.Task;
+        _pendingMipmaps.Enqueue(new PendingMipmap(handle, tcs));
+    }
+
+    /// <inheritdoc/>
+    public Task WhenMipmapReadyAsync(TextureHandle handle) =>
+        _mipmapReady.TryGetValue(handle, out var task) ? task : Task.CompletedTask;
+
+    /// <inheritdoc/>
+    public void ProcessPendingMipmapGeneration()
+    {
+        // Must be called on the engine render thread. IContext.GenerateMipmap acquires and submits
+        // an immediate command buffer, so it cannot run from the background upload continuations.
+        bool contextGone = _context.IsDisposed;
+
+        while (_pendingMipmaps.TryDequeue(out var pending))
+        {
+            try
+            {
+                // Skip generation if the context is gone or the handle is invalid, but still
+                // signal completion so awaiters never hang.
+                if (!contextGone && !pending.Handle.Empty)
+                {
+                    _context.GenerateMipmap(pending.Handle, out _);
+                }
+            }
+            finally
+            {
+                _mipmapReady.TryRemove(pending.Handle, out _);
+                pending.Completion.TrySetResult();
+            }
+        }
     }
 
     public static string NormalizeFilePath(string filePath) =>
@@ -38,7 +104,7 @@ public sealed class TextureRepository
         if (TryGet(name, out var cached))
             return cached!.Ref;
 
-        var texture = TextureCreator.CreateTextureFromStream(_context, stream, generateMipmaps, debugName: debugName ?? name);
+        var texture = TextureCreator.CreateTextureFromStream(_context, stream, generateMipmaps, debugName: debugName ?? name, scheduleMipmapGeneration: ScheduleMipmapGeneration);
         return StoreEntry(name, texture, debugName ?? name);
     }
 
@@ -57,7 +123,7 @@ public sealed class TextureRepository
 
         using var stream = File.OpenRead(filePath);
         var resolvedDebugName = debugName ?? Path.GetFileName(filePath);
-        var texture = TextureCreator.CreateTextureFromStream(_context, stream, generateMipmaps, debugName: resolvedDebugName);
+        var texture = TextureCreator.CreateTextureFromStream(_context, stream, generateMipmaps, debugName: resolvedDebugName, scheduleMipmapGeneration: ScheduleMipmapGeneration);
         return StoreEntry(cacheKey, texture, resolvedDebugName);
     }
 
@@ -69,7 +135,7 @@ public sealed class TextureRepository
         if (TryGet(name, out var cached))
             return cached!.Ref;
 
-        var texture = TextureCreator.CreateTexture(_context, image, generateMipmaps, debugName: name);
+        var texture = TextureCreator.CreateTexture(_context, image, generateMipmaps, debugName: name, scheduleMipmapGeneration: ScheduleMipmapGeneration);
         return StoreEntry(name, texture, name);
     }
 
@@ -93,12 +159,18 @@ public sealed class TextureRepository
 
         using (image)
         {
-            var (textureResource, uploadHandle) = TextureCreator.CreateTextureAsyncWithResource(
-                _context,
-                image,
-                generateMipmaps,
-                debugName: debugName ?? name
-            );
+            var (result, textureResource, uploadHandle) =
+                TextureCreator.CreateTextureAsyncWithResource(
+                    _context,
+                    image,
+                    generateMipmaps,
+                    debugName: debugName ?? name,
+                    scheduleMipmapGeneration: ScheduleMipmapGeneration
+                );
+            if (result != ResultCode.Ok)
+                throw new InvalidOperationException(
+                    $"Failed to create GPU texture '{name}': {result}"
+                );
             var textureRef = StoreEntry(name, textureResource, debugName ?? name);
             await uploadHandle;
             return textureRef;
@@ -130,12 +202,18 @@ public sealed class TextureRepository
 
         using (image)
         {
-            var (textureResource, uploadHandle) = TextureCreator.CreateTextureAsyncWithResource(
-                _context,
-                image,
-                generateMipmaps,
-                debugName: resolvedDebugName
-            );
+            var (result, textureResource, uploadHandle) =
+                TextureCreator.CreateTextureAsyncWithResource(
+                    _context,
+                    image,
+                    generateMipmaps,
+                    debugName: resolvedDebugName,
+                    scheduleMipmapGeneration: ScheduleMipmapGeneration
+                );
+            if (result != ResultCode.Ok)
+                throw new InvalidOperationException(
+                    $"Failed to create GPU texture '{resolvedDebugName}': {result}"
+                );
             var textureRef = StoreEntry(cacheKey, textureResource, resolvedDebugName);
             await uploadHandle;
             return textureRef;
@@ -150,12 +228,16 @@ public sealed class TextureRepository
         if (TryGet(name, out var cached))
             return cached!.Ref;
 
-        var (textureResource, uploadHandle) = TextureCreator.CreateTextureAsyncWithResource(
-            _context,
-            image,
-            generateMipmaps,
-            debugName: name
-        );
+        var (result, textureResource, uploadHandle) =
+            TextureCreator.CreateTextureAsyncWithResource(
+                _context,
+                image,
+                generateMipmaps,
+                debugName: name,
+                scheduleMipmapGeneration: ScheduleMipmapGeneration
+            );
+        if (result != ResultCode.Ok)
+            throw new InvalidOperationException($"Failed to create GPU texture '{name}': {result}");
         var textureRef = StoreEntry(name, textureResource, name);
         await uploadHandle;
         return textureRef;

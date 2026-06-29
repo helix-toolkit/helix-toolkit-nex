@@ -36,6 +36,8 @@ internal sealed class NullTextureRepository : ITextureRepository
 
     public bool Remove(string key) => false;
 
+    public void ProcessPendingMipmapGeneration() { }
+
     public bool TryGet(string cacheKey, out TextureCacheEntry? entry)
     {
         entry = null;

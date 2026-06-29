@@ -583,6 +583,28 @@ internal class GltfImporterApp : ApplicationBase
         // Compute bounding volume and frame the camera
         ComputeBoundsAndFrameCamera(_currentModelRoot!);
 
+        // Texture pixel data is already uploaded, but mipmap generation is deferred to the render
+        // thread and runs on the next Engine.BeginFrame. Observe full GPU readiness without blocking
+        // the render loop: WhenTexturesReadyAsync completes once those queued mipmaps are generated.
+        int textureCount = result.Resources.TextureCount;
+        var readyTimer = System.Diagnostics.Stopwatch.StartNew();
+        _ = result
+            .WhenTexturesReadyAsync()
+            .ContinueWith(
+                _ =>
+                {
+                    readyTimer.Stop();
+                    _logger.LogInformation(
+                        "All {Count} imported texture(s) for {FilePath} are GPU-ready "
+                            + "(mipmaps generated) after {Ms} ms.",
+                        textureCount,
+                        filePath,
+                        readyTimer.ElapsedMilliseconds
+                    );
+                },
+                TaskScheduler.Default
+            );
+
         // Handle warnings
         if (result.HasWarnings)
         {
