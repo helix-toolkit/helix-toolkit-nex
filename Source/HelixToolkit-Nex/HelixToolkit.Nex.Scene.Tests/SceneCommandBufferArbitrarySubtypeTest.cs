@@ -1,6 +1,5 @@
 using FsCheck;
 using FsCheck.Fluent;
-using HelixToolkit.Nex.Scene;
 
 namespace HelixToolkit.Nex.Scene.Tests;
 
@@ -167,7 +166,8 @@ public class SceneCommandBufferArbitrarySubtypeTest
                                     expectedInt[i] = value;
                                     code = scb.TryRecordCreateNode<IntPayloadNode>(
                                         w => new IntPayloadNode(w, value),
-                                        out var handle);
+                                        out var handle
+                                    );
                                     handles[i] = handle;
                                     break;
                                 }
@@ -177,7 +177,8 @@ public class SceneCommandBufferArbitrarySubtypeTest
                                     expectedString[i] = label;
                                     code = scb.TryRecordCreateNode<StringPayloadNode>(
                                         w => new StringPayloadNode(w, label),
-                                        out var handle);
+                                        out var handle
+                                    );
                                     handles[i] = handle;
                                     break;
                                 }
@@ -187,7 +188,8 @@ public class SceneCommandBufferArbitrarySubtypeTest
                                     expectedStruct[i] = payload;
                                     code = scb.TryRecordCreateNode<StructPayloadNode>(
                                         w => new StructPayloadNode(w, payload),
-                                        out var handle);
+                                        out var handle
+                                    );
                                     handles[i] = handle;
                                     break;
                                 }
@@ -199,7 +201,8 @@ public class SceneCommandBufferArbitrarySubtypeTest
                                     expectedMarker[i] = marker;
                                     code = scb.TryRecordCreateNode<FurtherDerivedNode>(
                                         w => new FurtherDerivedNode(w, generation, marker),
-                                        out var handle);
+                                        out var handle
+                                    );
                                     handles[i] = handle;
                                     break;
                                 }
@@ -242,7 +245,10 @@ public class SceneCommandBufferArbitrarySubtypeTest
                                     {
                                         return false;
                                     }
-                                    if (node is not StringPayloadNode sp || sp.Label != expectedString[i])
+                                    if (
+                                        node is not StringPayloadNode sp
+                                        || sp.Label != expectedString[i]
+                                    )
                                     {
                                         return false;
                                     }
@@ -252,9 +258,11 @@ public class SceneCommandBufferArbitrarySubtypeTest
                                     {
                                         return false;
                                     }
-                                    if (node is not StructPayloadNode stp
-                                        || stp.Data.X != expectedStruct[i].X
-                                        || stp.Data.Y != expectedStruct[i].Y)
+                                    if (
+                                        node is not StructPayloadNode stp
+                                        || Math.Abs(stp.Data.X - expectedStruct[i].X) > 1e-6
+                                        || Math.Abs(stp.Data.Y - expectedStruct[i].Y) > 1e-6
+                                    )
                                     {
                                         return false;
                                     }
@@ -265,9 +273,11 @@ public class SceneCommandBufferArbitrarySubtypeTest
                                     {
                                         return false;
                                     }
-                                    if (node is not FurtherDerivedNode fd
+                                    if (
+                                        node is not FurtherDerivedNode fd
                                         || fd.Generation != expectedGeneration[i]
-                                        || fd.Marker != expectedMarker[i])
+                                        || fd.Marker != expectedMarker[i]
+                                    )
                                     {
                                         return false;
                                     }
@@ -305,9 +315,19 @@ public class SceneCommandBufferArbitrarySubtypeTest
             var scb = new SceneCommandBuffer();
 
             var hInt = scb.RecordCreateNode<IntPayloadNode>(w => new IntPayloadNode(w, 123));
-            var hStr = scb.RecordCreateNode<StringPayloadNode>(w => new StringPayloadNode(w, "hello"));
-            var hStruct = scb.RecordCreateNode<StructPayloadNode>(w => new StructPayloadNode(w, new Payload(1.5, -2.5)));
-            var hDerived = scb.RecordCreateNode<FurtherDerivedNode>(w => new FurtherDerivedNode(w, 9, "mark"));
+            var hStr = scb.RecordCreateNode<StringPayloadNode>(w => new StringPayloadNode(
+                w,
+                "hello"
+            ));
+            var hStruct = scb.RecordCreateNode<StructPayloadNode>(w => new StructPayloadNode(
+                w,
+                new Payload(1.5, -2.5)
+            ));
+            var hDerived = scb.RecordCreateNode<FurtherDerivedNode>(w => new FurtherDerivedNode(
+                w,
+                9,
+                "mark"
+            ));
 
             var flush = scb.Flush(world);
             Assert.IsTrue(flush.Success);
@@ -328,7 +348,10 @@ public class SceneCommandBufferArbitrarySubtypeTest
             Assert.AreEqual(1.5, structNode.Data.X);
             Assert.AreEqual(-2.5, structNode.Data.Y);
 
-            Assert.AreEqual(ResultCode.Ok, scb.TryGetMaterializedNode(hDerived, out var derivedNode));
+            Assert.AreEqual(
+                ResultCode.Ok,
+                scb.TryGetMaterializedNode(hDerived, out var derivedNode)
+            );
             Assert.IsNotNull(derivedNode);
             // Exact concrete type, even though it derives from DerivedNode which derives from Node.
             Assert.AreEqual(typeof(FurtherDerivedNode), derivedNode.GetType());

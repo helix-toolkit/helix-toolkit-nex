@@ -78,7 +78,10 @@ public class SceneCommandBufferSortAndTransformTest
                         {
                             if (parent[i] >= 0)
                             {
-                                if (scb.RecordAddChild(deferred[parent[i]], deferred[i]) != ResultCode.Ok)
+                                if (
+                                    scb.RecordAddChild(deferred[parent[i]], deferred[i])
+                                    != ResultCode.Ok
+                                )
                                 {
                                     return false;
                                 }
@@ -135,7 +138,12 @@ public class SceneCommandBufferSortAndTransformTest
                         // floating-point tolerance.
                         for (var i = 0; i < t.n; i++)
                         {
-                            if (!MatrixClose(bufferNodes[i].WorldTransform.Value, directNodes[i].WorldTransform.Value))
+                            if (
+                                !MatrixClose(
+                                    bufferNodes[i].WorldTransform.Value,
+                                    directNodes[i].WorldTransform.Value
+                                )
+                            )
                             {
                                 return false;
                             }
@@ -155,30 +163,32 @@ public class SceneCommandBufferSortAndTransformTest
 
     // Records deferred creation of the node kind through the public/Engine recording API. Every
     // typed handle converts implicitly to the DeferredNode the hierarchy operations consume.
-    private static DeferredNode RecordByKind(SceneCommandBuffer scb, int kind, string name) => kind switch
-    {
-        0 => scb.RecordCreateNode(name),
-        1 => scb.RecordCreateMeshNode(name),
-        2 => scb.RecordCreateLineNode(name),
-        3 => scb.RecordCreateDirectionalLight(name),
-        4 => scb.RecordCreatePointLight(name),
-        5 => scb.RecordCreateSpotLight(name),
-        6 => scb.RecordCreateBillboardNode(name),
-        _ => scb.RecordCreatePointCloudNode(name),
-    };
+    private static DeferredNode RecordByKind(SceneCommandBuffer scb, int kind, string name) =>
+        kind switch
+        {
+            0 => scb.RecordCreateNode(name),
+            1 => scb.RecordCreateMeshNode(name),
+            2 => scb.RecordCreateLineNode(name),
+            3 => scb.RecordCreateDirectionalLight(name),
+            4 => scb.RecordCreatePointLight(name),
+            5 => scb.RecordCreateSpotLight(name),
+            6 => scb.RecordCreateBillboardNode(name),
+            _ => scb.RecordCreatePointCloudNode(name),
+        };
 
     // Builds the same node kind directly on the owning thread with its real constructor.
-    private static Node ConstructByKind(World world, int kind, string name) => kind switch
-    {
-        0 => new Node(world, name),
-        1 => new MeshNode(world, name),
-        2 => new LineNode(world, name),
-        3 => new DirectionalLightNode(world, name),
-        4 => new PointLightNode(world, name),
-        5 => new SpotLightNode(world, name),
-        6 => new BillboardNode(world, name),
-        _ => new PointCloudNode(world, name),
-    };
+    private static Node ConstructByKind(World world, int kind, string name) =>
+        kind switch
+        {
+            0 => new Node(world, name),
+            1 => new MeshNode(world, name),
+            2 => new LineNode(world, name),
+            3 => new DirectionalLightNode(world, name),
+            4 => new PointLightNode(world, name),
+            5 => new SpotLightNode(world, name),
+            6 => new BillboardNode(world, name),
+            _ => new PointCloudNode(world, name),
+        };
 
     // Reads the world's post-sort NodeInfo order and maps each entry back to the creation index of
     // its node, producing the sequence of creation indices in sorted order.
@@ -209,7 +219,12 @@ public class SceneCommandBufferSortAndTransformTest
         {
             Scale = new Vector3(RandomFloat(rng), RandomFloat(rng), RandomFloat(rng)),
             Translation = new Vector3(RandomFloat(rng), RandomFloat(rng), RandomFloat(rng)),
-            Rotation = new Quaternion(RandomFloat(rng), RandomFloat(rng), RandomFloat(rng), RandomFloat(rng)),
+            Rotation = new Quaternion(
+                RandomFloat(rng),
+                RandomFloat(rng),
+                RandomFloat(rng),
+                RandomFloat(rng)
+            ),
         };
     }
 
@@ -217,14 +232,22 @@ public class SceneCommandBufferSortAndTransformTest
 
     private static bool MatrixClose(Matrix4x4 a, Matrix4x4 b)
     {
-        return FloatClose(a.M11, b.M11) && FloatClose(a.M12, b.M12)
-            && FloatClose(a.M13, b.M13) && FloatClose(a.M14, b.M14)
-            && FloatClose(a.M21, b.M21) && FloatClose(a.M22, b.M22)
-            && FloatClose(a.M23, b.M23) && FloatClose(a.M24, b.M24)
-            && FloatClose(a.M31, b.M31) && FloatClose(a.M32, b.M32)
-            && FloatClose(a.M33, b.M33) && FloatClose(a.M34, b.M34)
-            && FloatClose(a.M41, b.M41) && FloatClose(a.M42, b.M42)
-            && FloatClose(a.M43, b.M43) && FloatClose(a.M44, b.M44);
+        return FloatClose(a.M11, b.M11)
+            && FloatClose(a.M12, b.M12)
+            && FloatClose(a.M13, b.M13)
+            && FloatClose(a.M14, b.M14)
+            && FloatClose(a.M21, b.M21)
+            && FloatClose(a.M22, b.M22)
+            && FloatClose(a.M23, b.M23)
+            && FloatClose(a.M24, b.M24)
+            && FloatClose(a.M31, b.M31)
+            && FloatClose(a.M32, b.M32)
+            && FloatClose(a.M33, b.M33)
+            && FloatClose(a.M34, b.M34)
+            && FloatClose(a.M41, b.M41)
+            && FloatClose(a.M42, b.M42)
+            && FloatClose(a.M43, b.M43)
+            && FloatClose(a.M44, b.M44);
     }
 
     // Floating-point tolerance comparison that is also safe for non-finite values. Identical
@@ -247,7 +270,7 @@ public class SceneCommandBufferSortAndTransformTest
         }
         if (float.IsInfinity(a) || float.IsInfinity(b))
         {
-            return a == b;
+            return BitConverter.SingleToInt32Bits(a) == BitConverter.SingleToInt32Bits(b);
         }
         var diff = MathF.Abs(a - b);
         var scale = MathF.Max(1f, MathF.Max(MathF.Abs(a), MathF.Abs(b)));

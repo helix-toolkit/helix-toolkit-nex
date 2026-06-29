@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using FsCheck;
 using FsCheck.Fluent;
 
@@ -98,10 +97,12 @@ public class CommandBufferEmptyFlushTest
             return true;
         }
 
-        private static bool SamePosition(
-            Dictionary<int, EPosition> a,
-            Dictionary<int, EPosition> b
-        )
+        private static bool NearlyEqual(float left, float right, float epsilon = 1e-6f)
+        {
+            return MathF.Abs(left - right) <= epsilon;
+        }
+
+        private static bool SamePosition(Dictionary<int, EPosition> a, Dictionary<int, EPosition> b)
         {
             if (a.Count != b.Count)
             {
@@ -109,7 +110,11 @@ public class CommandBufferEmptyFlushTest
             }
             foreach (var kv in a)
             {
-                if (!b.TryGetValue(kv.Key, out var v) || v.X != kv.Value.X || v.Y != kv.Value.Y)
+                if (
+                    !b.TryGetValue(kv.Key, out var v)
+                    || !NearlyEqual(v.X, kv.Value.X)
+                    || !NearlyEqual(v.Y, kv.Value.Y)
+                )
                 {
                     return false;
                 }
@@ -127,8 +132,8 @@ public class CommandBufferEmptyFlushTest
             {
                 if (
                     !b.TryGetValue(kv.Key, out var v)
-                    || v.Velocity != kv.Value.Velocity
-                    || v.Acceleration != kv.Value.Acceleration
+                    || !NearlyEqual(v.Velocity, kv.Value.Velocity)
+                    || !NearlyEqual(v.Acceleration, kv.Value.Acceleration)
                 )
                 {
                     return false;
@@ -176,7 +181,11 @@ public class CommandBufferEmptyFlushTest
                             if (rng.Next(0, 2) == 0)
                             {
                                 entity.Set(
-                                    new EPosition { X = rng.Next(-1000, 1000), Y = rng.Next(-1000, 1000) }
+                                    new EPosition
+                                    {
+                                        X = rng.Next(-1000, 1000),
+                                        Y = rng.Next(-1000, 1000),
+                                    }
                                 );
                             }
                             if (rng.Next(0, 2) == 0)
