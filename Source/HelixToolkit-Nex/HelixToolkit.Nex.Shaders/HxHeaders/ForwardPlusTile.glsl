@@ -3,23 +3,23 @@
 
 @code_gen
 struct LightGridTile {
-    uint lightCount;
+    uint lightCount; // Packed light count: lower 16 bits = opaque light count, upper 16 bits = transparent light count
     uint lightIndexOffset;
 };
 
 uint packLightCount(uint opaqueCount, uint transparentCount) {
-    return (opaqueCount & 0xFFu) | ((transparentCount & 0xFFu) << 8);
+    return (opaqueCount & 0xFFFFu) | ((transparentCount & 0xFFFFu) << 16);
 }
 
 void unpackLightCount(uint packedCount, out uint opaqueCount, out uint transparentCount) {
-    opaqueCount = packedCount & 0xFFu;
-    transparentCount = (packedCount >> 8) & 0xFFu;
+    opaqueCount = packedCount & 0xFFFFu;
+    transparentCount = (packedCount >> 16) & 0xFFFFu;
 }
 
 uint unpackOpaqueLightCount(uint packedCount) {
-    return packedCount & 0xFFu;
+    return packedCount & 0xFFFFu;
 }
 
 uint unpackTransparentLightCount(uint packedCount) {
-    return (packedCount >> 8) & 0xFFu;
+    return (packedCount >> 16) & 0xFFFFu;
 }
