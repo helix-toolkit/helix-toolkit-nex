@@ -36,7 +36,7 @@ public sealed class ImporterConfig
     /// <summary>
     /// Gets or sets a value indicating whether point light meshes should be created.
     /// </summary>
-    public bool CreatePointLightMeshes { get; set; } = true;
+    public bool CreatePointLightMeshes { get; set; } = false;
 
     /// <summary>
     /// Gets or sets the world-space scale applied to the point-light visualization sphere mesh.
