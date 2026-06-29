@@ -64,7 +64,7 @@ Currently in development.
 
 <img src="Source/HelixToolkit-Nex/Samples/Integration/Points/Screenshots/Points.gif" width=400>
 
-<img src="Source/HelixToolkit-Nex/Samples/Integration/TextureTest/Screenshots/Sample.jpg" width=400>
+<img src="Source/HelixToolkit-Nex/Samples/Integration/gltfImporter/Screenshots/Sample.jpg" width=400>
 
 ## Linux Support
 

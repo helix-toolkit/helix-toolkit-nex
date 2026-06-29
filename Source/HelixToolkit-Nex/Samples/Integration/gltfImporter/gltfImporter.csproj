@@ -18,8 +18,4 @@
     <ItemGroup>
         <PackageReference Include="NativeFileDialogSharp" Version="0.5.0" />
     </ItemGroup>
-
-    <ItemGroup>
-        <Folder Include="Screenshots\" />
-    </ItemGroup>
 </Project>
