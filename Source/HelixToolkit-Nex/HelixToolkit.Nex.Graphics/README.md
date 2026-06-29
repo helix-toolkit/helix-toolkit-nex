@@ -10,7 +10,7 @@ HelixToolkit.Nex.Graphics is a core component of the HelixToolkit.Nex engine, re
 - **Reverse-Z Projection**: Utilizes reverse-Z for improved depth precision.
 - **Forward Plus Light Culling**: Efficiently manages lighting calculations.
 - **GPU-based Culling**: Performs frustum and instance culling on the GPU.
-- **Entity Component System (ECS)**: Based on the Arch ECS library for efficient entity management.
+- **Entity Component System (ECS)**: Uses the custom `HelixToolkit.Nex.ECS` framework for efficient entity management.
 - **Render Graph**: Manages the execution order of render nodes.
 
 ## Key Types
