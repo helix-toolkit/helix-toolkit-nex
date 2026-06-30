@@ -92,6 +92,7 @@ internal static class HxVkExtensions
             case VK.VK_FORMAT_R16G16_SFLOAT:
             case VK.VK_FORMAT_R32_SFLOAT:
             case VK.VK_FORMAT_R32_UINT:
+            case VK.VK_FORMAT_B8G8R8A8_SRGB:
                 return 4;
             case VK.VK_FORMAT_R16G16B16_SFLOAT:
                 return 6;

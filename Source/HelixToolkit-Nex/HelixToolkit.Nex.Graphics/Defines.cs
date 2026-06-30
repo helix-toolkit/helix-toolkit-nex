@@ -1171,18 +1171,18 @@ public struct Offset3D(int32_t x = 0, int32_t y = 0, int32_t z = 0)
 /// <summary>
 /// Represents a handle for tracking command buffer submissions.
 /// </summary>
-[StructLayout(LayoutKind.Sequential, Size = sizeof(uint64_t))]
+[StructLayout(LayoutKind.Explicit, Size = sizeof(uint64_t))]
 public struct SubmitHandle
 {
-    /// <summary>
-    /// The command buffer index.
-    /// </summary>
-    public uint32_t BufferIndex = 0;
+    [FieldOffset(0)]
+    public ushort BufferIndex;
+    [FieldOffset(2)]
+    public ushort QueueFamilyIndex;
+    [FieldOffset(4)]
+    public uint32_t SubmitId;
 
-    /// <summary>
-    /// The submission ID.
-    /// </summary>
-    public uint32_t SubmitId = 0;
+    [FieldOffset(0)]
+    private uint64_t _handle;
 
     /// <summary>
     /// Initializes a new empty submit handle.
@@ -1195,9 +1195,7 @@ public struct SubmitHandle
     /// <param name="handle">The packed 64-bit handle value.</param>
     public SubmitHandle(uint64_t handle)
     {
-        //HxDebug.Assert(handle != 0, "Invalid submit handle");
-        BufferIndex = (uint32_t)(handle & 0xffffffff);
-        SubmitId = (uint32_t)(handle >> 32);
+        _handle = handle;
     }
 
     /// <summary>
@@ -1208,7 +1206,7 @@ public struct SubmitHandle
     /// <summary>
     /// Gets the packed 64-bit handle value.
     /// </summary>
-    public readonly uint64_t Handle => ((uint64_t)SubmitId << 32) + BufferIndex;
+    public readonly uint64_t Handle => _handle;
 
     /// <summary>
     /// A predefined null/empty submit handle.

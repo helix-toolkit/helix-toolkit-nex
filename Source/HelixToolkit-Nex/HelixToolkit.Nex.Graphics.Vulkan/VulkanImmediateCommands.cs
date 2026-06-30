@@ -54,7 +54,7 @@ internal sealed class VulkanImmediateCommands : IDisposable
     {
         stageMask = VkPipelineStageFlags2.AllCommands,
     };
-    private uint32_t _submitCounter = 1;
+    private uint16_t _submitCounter = 1;
 
     public VulkanImmediateCommands(
         VulkanContext context,
@@ -101,9 +101,9 @@ internal sealed class VulkanImmediateCommands : IDisposable
             );
         }
 
-        for (uint32_t i = 0; i != KMaxCommandBuffers; i++)
+        for (uint32_t i = 0; i < KMaxCommandBuffers; ++i)
         {
-            _buffers[i] = new CommandBuffer(context, false, i, in _commandPool);
+            _buffers[i] = new CommandBuffer(context, false, i, in _commandPool, queueFamilyIndex);
             _freeStack.Push(i);
         }
     }
@@ -517,7 +517,8 @@ internal sealed class VulkanImmediateCommands : IDisposable
                 _context,
                 true,
                 (uint)_secondaryBuffers.Count,
-                in _secondaryCommandPool
+                in _secondaryCommandPool,
+                _queueFamilyIndex
             );
             _secondaryBuffers.Add(newBuffer);
             newBuffer.BeginEncoding();
