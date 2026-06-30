@@ -67,6 +67,9 @@ public sealed class ResourceManager : Initializable, IResourceManager
     /// <inheritdoc />
     public IRenderData MeshInfoData { get; }
 
+    /// <inheritdoc />
+    public IInstancingManager InstancingManager { get; }
+
     public override string Name => nameof(ResourceManager);
 
     public ResourceManager(IServiceProvider services)
@@ -78,6 +81,7 @@ public sealed class ResourceManager : Initializable, IResourceManager
             services.GetService<IPBRMaterialManager>()
             ?? new PBRMaterialManager(Context, PBRPropertyManager);
         Geometries = services.GetService<IGeometryManager>() ?? new GeometryManager(Context);
+        InstancingManager = services.GetService<IInstancingManager>() ?? new InstancingManager(Context);
         ShaderRepository =
             services.GetService<IShaderRepository>() ?? new ShaderRepository(Context);
         PointMaterialManager =
@@ -166,6 +170,7 @@ public sealed class ResourceManager : Initializable, IResourceManager
         // Apply any geometry removals that were deferred to a frame boundary before the shared
         // static-mesh index buffer is rebuilt, so the removal and reindex happen consistently.
         Geometries.ProcessPendingRemovals();
+        InstancingManager.ProcessPendingRemovals();
         // BeginFrame all geometries with dirty buffers
         foreach (var geometry in Geometries)
         {
@@ -178,6 +183,7 @@ public sealed class ResourceManager : Initializable, IResourceManager
         StaticMeshIndexData.Update();
         PBRPropertyData.Update();
         MeshInfoData.Update();
+        InstancingManager.UploadInstanceBuffers();
         return true;
     }
 }

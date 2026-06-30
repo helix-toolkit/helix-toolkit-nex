@@ -10,8 +10,8 @@ internal abstract class DrawStreamBase<DRAW_TYPE, COMP_TYPE> : Initializable, ID
 {
     private readonly ILogger _logger;
     private readonly ITracer _tracer;
-    private readonly IContext _context;
-    private readonly World _world;
+    public readonly IContext Context;
+    public readonly World World;
 
     // GPU buffer (ring buffer for multi-frame-in-flight)
     private RingElementBuffer<DRAW_TYPE>? _buffer;
@@ -66,8 +66,8 @@ internal abstract class DrawStreamBase<DRAW_TYPE, COMP_TYPE> : Initializable, ID
     )
     {
         _logger = logger;
-        _context = context;
-        _world = world;
+        Context = context;
+        World = world;
         StreamType = type;
         StreamName = name;
         Variants = name.GetVariants();
@@ -154,7 +154,7 @@ internal abstract class DrawStreamBase<DRAW_TYPE, COMP_TYPE> : Initializable, ID
     {
         _logger.LogInformation("Initializing.");
         _buffer = new RingElementBuffer<DRAW_TYPE>(
-            _context,
+            Context,
             (int)GraphicsSettings.MaxFrameInFlight,
             _initialCapacity,
             BufferUsageBits.Storage | BufferUsageBits.Indirect,
@@ -281,7 +281,7 @@ internal abstract class DrawStreamBase<DRAW_TYPE, COMP_TYPE> : Initializable, ID
 
         foreach (var entityId in _pendingUpdates.AsValueEnumerable())
         {
-            var entity = _world.GetEntity(entityId);
+            var entity = World.GetEntity(entityId);
             ref var renderable = ref _renderables[entity];
 
             // Only process if this entity belongs to this stream
@@ -342,7 +342,7 @@ internal abstract class DrawStreamBase<DRAW_TYPE, COMP_TYPE> : Initializable, ID
             for (var i = 0; i < list.Count; i++)
             {
                 var entityId = (int)GetEntityId(ref list.At(i));
-                var entity = _world.GetEntity(entityId);
+                var entity = World.GetEntity(entityId);
                 ref var renderable = ref _renderables[entity];
                 renderable.DrawCmdIndex = (int)(offset + (uint)i);
             }

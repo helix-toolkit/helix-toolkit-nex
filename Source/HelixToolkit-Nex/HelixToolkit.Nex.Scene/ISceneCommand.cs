@@ -202,3 +202,37 @@ internal sealed class CreateCustomNodeCommand<T>(int index, Func<World, T> facto
 
     public string Describe() => $"{nameof(CreateCustomNodeCommand<T>)}<{typeof(T).Name}>(index: {Index})";
 }
+
+/// <summary>
+/// Records an arbitrary consumer-supplied action to run against the <see cref="World"/> during
+/// flush. The action is stored as-is at record time and is neither copied nor invoked until
+/// flush; during flush it is invoked exactly once on the owning thread, in recorded order,
+/// mirroring the type-erasure/deferral pattern used by <see cref="CreateCustomNodeCommand{T}"/>.
+/// This keeps the Scene layer free of any rendering/instancing concepts while still allowing
+/// callers to defer work onto the world's owning thread.
+/// </summary>
+internal sealed class DeferredActionCommand(Action<World> action, string description) : ISceneCommand
+{
+    /// <summary>
+    /// The consumer-supplied action. Stored by reference; never copied or invoked at record time.
+    /// </summary>
+    private readonly Action<World> _action = action;
+
+    /// <summary>
+    /// The human-readable description surfaced in failure messages.
+    /// </summary>
+    private readonly string _description = description;
+
+    /// <summary>
+    /// Invokes the recorded action exactly once on the owning thread during flush, in recorded
+    /// order. Any exception thrown by the action is intentionally allowed to propagate so the
+    /// flush can catch it, stop, and identify this command as the point of failure.
+    /// </summary>
+    public ResultCode Apply(World world, Node[] nodes)
+    {
+        _action(world);
+        return ResultCode.Ok;
+    }
+
+    public string Describe() => _description;
+}

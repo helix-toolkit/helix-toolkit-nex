@@ -16,6 +16,33 @@ public class Importer
     private const string Base64Marker = ";base64,";
 
     /// <summary>
+    /// The set of glTF extension names this importer recognizes and handles. Membership here means
+    /// the importer classifies the extension as recognized and will never record an
+    /// unsupported/unrecognized-extension diagnostic for it, whether or not the corresponding
+    /// feature is enabled through <see cref="ImporterConfig"/> (Requirement 11). The match is
+    /// case-sensitive (<see cref="StringComparer.Ordinal"/>), consistent with the glTF extension
+    /// naming convention.
+    /// </summary>
+    private static readonly HashSet<string> RecognizedExtensions = new(StringComparer.Ordinal)
+    {
+        DracoExtensionData.ExtensionName,
+        LightConverter.ExtensionName,
+        InstancingExtensionParser.ExtensionName,
+    };
+
+    /// <summary>
+    /// Determines whether the importer recognizes the given glTF extension name. Recognized
+    /// extensions are never reported as unsupported or unrecognized (Requirement 11), independent of
+    /// whether their processing is enabled via <see cref="ImporterConfig"/>.
+    /// </summary>
+    /// <param name="extensionName">The glTF extension name to classify.</param>
+    /// <returns>
+    /// <see langword="true"/> when the extension is recognized; otherwise <see langword="false"/>.
+    /// </returns>
+    internal static bool IsRecognizedExtension(string extensionName) =>
+        RecognizedExtensions.Contains(extensionName);
+
+    /// <summary>
     /// Generates a unique session identifier for an import operation.
     /// </summary>
     /// <returns>A GUID string in "D" format (36 characters, lowercase hex with hyphens).</returns>
@@ -357,7 +384,11 @@ public class Importer
             materialConverter,
             lightConverter,
             diagnostics,
-            config
+            config,
+            accessorReader,
+            IsInstancingRequired(model),
+            manifest,
+            resourceManager.InstancingManager
         );
     }
 
@@ -379,12 +410,35 @@ public class Importer
             return false;
         }
 
+        return false;
+    }
+
+    /// <summary>
+    /// Determines whether <c>EXT_mesh_gpu_instancing</c> is listed in the model's
+    /// <c>extensionsRequired</c> array. This governs the disabled-path diagnostic: when instancing
+    /// processing is disabled and the extension is required, a Warning is emitted for each node that
+    /// declares it (Requirement 10.4); when the extension is only in <c>extensionsUsed</c>, no
+    /// Error/Warning is emitted for the unprocessed extension (Requirement 10.5).
+    /// </summary>
+    /// <param name="model">The deserialized glTF model.</param>
+    /// <returns>
+    /// <see langword="true"/> when <c>EXT_mesh_gpu_instancing</c> appears in
+    /// <c>extensionsRequired</c>; otherwise <see langword="false"/>.
+    /// </returns>
+    private static bool IsInstancingRequired(Gltf model)
+    {
+        var required = model.ExtensionsRequired;
+        if (required == null)
+        {
+            return false;
+        }
+
         for (int i = 0; i < required.Length; i++)
         {
             if (
                 string.Equals(
                     required[i],
-                    DracoExtensionData.ExtensionName,
+                    InstancingExtensionParser.ExtensionName,
                     StringComparison.Ordinal
                 )
             )

@@ -1,6 +1,7 @@
 using HelixToolkit.Nex.Geometries;
 using HelixToolkit.Nex.Material;
 using HelixToolkit.Nex.Repository;
+using Microsoft.Extensions.Logging;
 
 namespace HelixToolkit.Nex.glTF;
 
@@ -10,14 +11,22 @@ namespace HelixToolkit.Nex.glTF;
 /// </summary>
 public class ResourceManifest : IDisposable
 {
+    private static readonly ILogger _logger = LogManager.Create<ResourceManifest>();
+
     private readonly List<TextureRef> _textures = [];
     private readonly List<SamplerRef> _samplers = [];
     private readonly List<PBRMaterialProperties> _materials = [];
     private readonly List<Geometry> _geometries = [];
+    private readonly List<Instancing> _instancings = [];
 
     // Deduplication sets
     private readonly HashSet<string> _textureKeys = new(StringComparer.Ordinal);
     private readonly HashSet<SamplerRef> _samplerRefs = new(ReferenceEqualityComparer.Instance);
+
+    // Reference-equality dedup — imported instancings are deduplicated by reference identity
+    // (geometries are intentionally NOT deduped) because the same Instancing reference is shared
+    // across every primitive's MeshNode for an instanced mesh.
+    private readonly HashSet<Instancing> _instancingRefs = new(ReferenceEqualityComparer.Instance);
 
     private bool _disposed;
 
@@ -57,6 +66,9 @@ public class ResourceManifest : IDisposable
     /// <summary>Gets the tracked geometry instances as a read-only collection.</summary>
     public IReadOnlyList<Geometry> Geometries => _geometries;
 
+    /// <summary>Gets the tracked instancing instances as a read-only collection.</summary>
+    public IReadOnlyList<Instancing> Instancings => _instancings;
+
     // --- Count properties ---
 
     /// <summary>Gets the number of tracked texture references.</summary>
@@ -70,6 +82,9 @@ public class ResourceManifest : IDisposable
 
     /// <summary>Gets the number of tracked geometry instances.</summary>
     public int GeometryCount => _geometries.Count;
+
+    /// <summary>Gets the number of tracked instancing instances.</summary>
+    public int InstancingCount => _instancings.Count;
 
     /// <summary>
     /// Returns a task that completes when every tracked texture is fully GPU-ready, including any
@@ -147,6 +162,20 @@ public class ResourceManifest : IDisposable
         _geometries.Add(geometry);
     }
 
+    /// <summary>
+    /// Registers an instancing. Deduplicates by reference identity (geometries are intentionally
+    /// NOT deduped). Skips null.
+    /// </summary>
+    internal virtual void AddInstancing(Instancing? instancing)
+    {
+        if (instancing is null)
+            return;
+        if (_instancingRefs.Add(instancing))
+        {
+            _instancings.Add(instancing);
+        }
+    }
+
     // --- Disposal ---
 
     /// <summary>
@@ -154,6 +183,7 @@ public class ResourceManifest : IDisposable
     /// <list type="number">
     /// <item>Materials (unsubscribes from texture/sampler events)</item>
     /// <item>Geometries (releases GPU buffers)</item>
+    /// <item>Instancings (releases GPU buffers for unowned instancings)</item>
     /// <item>Textures (removes from repository)</item>
     /// <item>Samplers (removes from repository)</item>
     /// </list>
@@ -177,6 +207,29 @@ public class ResourceManifest : IDisposable
             geometry.Dispose();
         }
 
+        // Phase 2.5: Dispose instancings — ordered after geometries and before textures (Req 14.6).
+        // Per-instancing failures are caught so the remaining instancings are still released; an
+        // aggregate error is surfaced afterwards if any disposal failed (Req 14.11).
+        List<Exception>? instancingFailures = null;
+        foreach (var instancing in _instancings)
+        {
+            try
+            {
+                // Req 14.7 — owned by an InstancingManager: leave GPU disposal to that manager so the
+                // GPU resources are disposed exactly once.
+                if (instancing.IsManaged)
+                {
+                    continue;
+                }
+                // Req 14.8 — unowned: the manifest disposes the GPU resources directly.
+                instancing.Dispose();
+            }
+            catch (Exception ex)
+            {
+                (instancingFailures ??= []).Add(ex);
+            }
+        }
+
         // Phase 3: Remove textures from repository (disposes GPU texture resources)
         foreach (var texture in _textures)
         {
@@ -192,10 +245,23 @@ public class ResourceManifest : IDisposable
         // Clear collections so count properties return 0
         _materials.Clear();
         _geometries.Clear();
+        _instancings.Clear();
+        _instancingRefs.Clear();
         _textures.Clear();
         _samplers.Clear();
         _textureKeys.Clear();
         _samplerRefs.Clear();
+
+        // Req 14.11 — surface an aggregate error identifying that one or more instancing disposals failed.
+        if (instancingFailures is not null)
+        {
+            _logger.LogError(
+                new AggregateException(instancingFailures),
+                "Failed to dispose {Count} tracked Instancing(s) during ResourceManifest.DisposeAll (session {SessionId}).",
+                instancingFailures.Count,
+                SessionId
+            );
+        }
     }
 
     /// <summary>
@@ -220,5 +286,7 @@ public class ResourceManifest : IDisposable
         internal override void AddMaterial(PBRMaterialProperties _) { }
 
         internal override void AddGeometry(Geometry? _) { }
+
+        internal override void AddInstancing(Instancing? _) { }
     }
 }

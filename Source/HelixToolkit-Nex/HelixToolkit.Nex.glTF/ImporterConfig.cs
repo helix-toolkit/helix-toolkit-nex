@@ -50,6 +50,12 @@ public sealed class ImporterConfig
     public bool EnableDracoDecompression { get; set; } = true;
 
     /// <summary>
+    /// Gets or sets a value indicating whether the importer processes the
+    /// <c>EXT_mesh_gpu_instancing</c> extension. Defaults to <see langword="true"/>.
+    /// </summary>
+    public bool EnableMeshGpuInstancing { get; set; } = true;
+
+    /// <summary>
     /// Gets a default configuration with standard settings.
     /// </summary>
     public static ImporterConfig Default => new();

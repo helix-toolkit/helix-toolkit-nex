@@ -2,9 +2,11 @@ using System.Numerics;
 using glTFLoader.Schema;
 using HelixToolkit.Nex.ECS;
 using HelixToolkit.Nex.Engine.Components;
+using HelixToolkit.Nex.Geometries;
 using HelixToolkit.Nex.Lights;
 using HelixToolkit.Nex.Maths;
 using HelixToolkit.Nex.Scene;
+using HelixToolkit.Nex.Shaders;
 using HelixToolkit.Nex.Shaders.Frag;
 using Newtonsoft.Json.Linq;
 using GltfNode = glTFLoader.Schema.Node;
@@ -51,6 +53,38 @@ internal sealed class SceneBuilder
     private readonly ImporterConfig _config;
 
     /// <summary>
+    /// Reads per-instance <c>EXT_mesh_gpu_instancing</c> attribute accessor data into
+    /// <see cref="InstanceTransform"/> values. Used by <see cref="TryRecordInstancedMesh"/>. May be
+    /// <see langword="null"/> when the builder is constructed without an accessor reader (for example
+    /// in unit tests that never exercise the instancing path); instancing is then treated as absent.
+    /// </summary>
+    private readonly InstanceTransformReader? _instanceTransformReader;
+
+    /// <summary>
+    /// Whether <c>EXT_mesh_gpu_instancing</c> is listed in the model's <c>extensionsRequired</c>
+    /// array. When instancing processing is disabled and a node declares the extension, this gates
+    /// the required-extension Warning: emitted when required (Requirement 10.4), suppressed when the
+    /// extension is only in <c>extensionsUsed</c> (Requirement 10.5).
+    /// </summary>
+    private readonly bool _instancingRequired;
+
+    /// <summary>
+    /// The import <see cref="ResourceManifest"/> used to track GPU resources created during the
+    /// import (Requirement 14.1). May be <see langword="null"/> when the builder is constructed
+    /// without a manifest (for example in unit tests that never exercise the instancing path); the
+    /// instancing tracking call then short-circuits.
+    /// </summary>
+    private readonly ResourceManifest? _manifest;
+
+    /// <summary>
+    /// The active <see cref="IInstancingManager"/> that imported instancings are registered with
+    /// during flush (Requirement 15). May be <see langword="null"/> when the builder is constructed
+    /// without a manager (for example in unit tests that never exercise the instancing path); the
+    /// deferred registration command is then not recorded.
+    /// </summary>
+    private readonly IInstancingManager? _instancingManager;
+
+    /// <summary>
     /// The lights parsed from the document-level <c>KHR_lights_punctual</c> extension for the
     /// current build, positionally parallel to the glTF lights array. A <c>null</c> entry means
     /// the definition at that index was not convertible and must not be attached. Populated once
@@ -90,13 +124,34 @@ internal sealed class SceneBuilder
     /// <param name="lightConverter">The light converter for parsing KHR_lights_punctual lights.</param>
     /// <param name="diagnostics">The diagnostics list to report warnings/errors to.</param>
     /// <param name="config">The importer configuration providing default light ranges and mesh settings.</param>
+    /// <param name="accessorReader">
+    /// The accessor reader used to read per-instance instancing attribute data. When
+    /// <see langword="null"/>, the <c>EXT_mesh_gpu_instancing</c> path is disabled and every node is
+    /// imported through the existing non-instanced path.
+    /// </param>
+    /// <param name="instancingRequired">
+    /// Whether <c>EXT_mesh_gpu_instancing</c> is listed in the model's <c>extensionsRequired</c>
+    /// array. Governs the disabled-path required-extension Warning (Requirements 10.4 / 10.5).
+    /// </param>
+    /// <param name="manifest">
+    /// The import <see cref="ResourceManifest"/> that imported instancings are tracked in
+    /// (Requirement 14.1). When <see langword="null"/>, no manifest tracking is performed.
+    /// </param>
+    /// <param name="instancingManager">
+    /// The active <see cref="IInstancingManager"/> that imported instancings are registered with
+    /// during flush (Requirement 15). When <see langword="null"/>, no deferred registration is recorded.
+    /// </param>
     public SceneBuilder(
         World world,
         MeshConverter meshConverter,
         MaterialConverter materialConverter,
         LightConverter lightConverter,
         List<ImportDiagnostic> diagnostics,
-        ImporterConfig config
+        ImporterConfig config,
+        AccessorReader? accessorReader = null,
+        bool instancingRequired = false,
+        ResourceManifest? manifest = null,
+        IInstancingManager? instancingManager = null
     )
     {
         _world = world ?? throw new ArgumentNullException(nameof(world));
@@ -106,6 +161,11 @@ internal sealed class SceneBuilder
         _lightConverter = lightConverter ?? throw new ArgumentNullException(nameof(lightConverter));
         _diagnostics = diagnostics ?? throw new ArgumentNullException(nameof(diagnostics));
         _config = config ?? throw new ArgumentNullException(nameof(config));
+        _instanceTransformReader =
+            accessorReader is null ? null : new InstanceTransformReader(accessorReader);
+        _instancingRequired = instancingRequired;
+        _manifest = manifest;
+        _instancingManager = instancingManager;
     }
 
     /// <summary>
@@ -287,8 +347,24 @@ internal sealed class SceneBuilder
 
         buffer.RecordAddChild(parent, handle);
 
-        if (gltfNode.Mesh.HasValue)
+        // Handle mesh reference. EXT_mesh_gpu_instancing is evaluated first: when the node is handled
+        // as an instanced node, the normal (non-instanced) mesh path is skipped.
+        if (TryRecordInstancedMesh(buffer, model, gltfNode, nodeIndex, handle, out var instancing))
         {
+            // The node was handled as an instanced node.
+            // - instancing != null (N > 0): record the mesh through the instancing-aware path so each
+            //   primitive's MeshNode receives the same Instancing instance (Req 9.1, 9.2).
+            // - instancing == null (zero-instance / no-mesh): the mesh path is intentionally skipped.
+            //   The single Information diagnostic for those cases is recorded by TryRecordInstancedMesh.
+            if (instancing is not null && gltfNode.Mesh.HasValue)
+            {
+                await RecordMeshNodesAsync(buffer, model, gltfNode.Mesh.Value, handle, ct, instancing)
+                    .ConfigureAwait(false);
+            }
+        }
+        else if (gltfNode.Mesh.HasValue)
+        {
+            // Existing non-instanced mesh path (no extension, disabled, or parse/read failure).
             await RecordMeshNodesAsync(buffer, model, gltfNode.Mesh.Value, handle, ct)
                 .ConfigureAwait(false);
         }
@@ -407,12 +483,25 @@ internal sealed class SceneBuilder
         // Attach to parent (preserves child ordering: self is attached before its own children).
         buffer.RecordAddChild(parent, handle);
 
-        // Handle mesh reference
-        if (gltfNode.Mesh.HasValue)
+        // Handle mesh reference. EXT_mesh_gpu_instancing is evaluated first: when the node is handled
+        // as an instanced node, the normal (non-instanced) mesh path is skipped.
+        if (TryRecordInstancedMesh(buffer, model, gltfNode, nodeIndex, handle, out var instancing))
         {
+            // The node was handled as an instanced node.
+            // - instancing != null (N > 0): record the mesh through the instancing-aware path so each
+            //   primitive's MeshNode receives the same Instancing instance (Req 9.1, 9.2).
+            // - instancing == null (zero-instance / no-mesh): the mesh path is intentionally skipped.
+            //   The single Information diagnostic for those cases is recorded by TryRecordInstancedMesh.
+            if (instancing is not null && gltfNode.Mesh.HasValue)
+            {
+                RecordMeshNodes(buffer, model, gltfNode.Mesh.Value, handle, instancing);
+            }
+        }
+        else if (gltfNode.Mesh.HasValue)
+        {
+            // Existing non-instanced mesh path (no extension, disabled, or parse/read failure).
             RecordMeshNodes(buffer, model, gltfNode.Mesh.Value, handle);
         }
-
         // For point lights, optionally record the visualization sphere mesh as a child of the node.
         // The light's effective position is driven by the node transform; only the visualization
         // mesh is a child, the light component lives on the node's own entity.
@@ -675,6 +764,271 @@ internal sealed class SceneBuilder
     }
 
     /// <summary>
+    /// Attempts to process <c>EXT_mesh_gpu_instancing</c> for the node. Returns <see langword="true"/>
+    /// when the node was handled as an instanced node (including the zero-instance and no-mesh cases),
+    /// meaning the caller must NOT run the normal mesh-recording path. Returns <see langword="false"/>
+    /// to fall through to the existing non-instanced mesh path (no/disabled extension, malformed
+    /// extension value, or parse/read failure).
+    /// </summary>
+    /// <param name="buffer">The command buffer to record into (reserved for instanced mesh recording in task 6.2).</param>
+    /// <param name="model">The deserialized glTF model.</param>
+    /// <param name="gltfNode">The source glTF node.</param>
+    /// <param name="nodeIndex">The index of the node in the glTF Nodes array (used in diagnostics).</param>
+    /// <param name="handle">The deferred handle of the recorded node (reserved for task 6.2).</param>
+    /// <param name="instancing">
+    /// On a successful instanced result with <c>N &gt; 0</c> and a mesh, the built
+    /// <see cref="Instancing"/> resource carrying the per-instance transforms; otherwise
+    /// <see langword="null"/> (including the zero-instance and no-mesh cases, fleshed out in task 6.3).
+    /// </param>
+    private bool TryRecordInstancedMesh(
+        SceneCommandBuffer buffer,
+        Gltf model,
+        GltfNode gltfNode,
+        int nodeIndex,
+        DeferredNode handle,
+        out Instancing? instancing
+    )
+    {
+        instancing = null;
+
+        // Requirement 10.2 / 10.3: when instancing is disabled, the node is imported through the
+        // existing non-instanced path (mesh once, children via the existing path). A builder without
+        // an accessor reader likewise cannot read instance data, so it is treated as non-instanced.
+        if (!_config.EnableMeshGpuInstancing || _instanceTransformReader is null)
+        {
+            // Requirement 10.4 / 10.5: when instancing is disabled and the node declares the
+            // extension, emit exactly one Warning identifying the node ONLY when the extension is in
+            // extensionsRequired; when it is only in extensionsUsed, emit nothing. In all cases fall
+            // through (return false) to the non-instanced path.
+            if (_instancingRequired && InstancingExtensionParser.NodeDeclaresExtension(gltfNode))
+            {
+                _diagnostics.Add(
+                    new ImportDiagnostic(
+                        DiagnosticSeverity.Warning,
+                        $"Node {nodeIndex} declares the required EXT_mesh_gpu_instancing extension, "
+                            + "but instancing processing is disabled; the required extension was not "
+                            + "processed. Importing the node as non-instanced.",
+                        "Node",
+                        nodeIndex
+                    )
+                );
+            }
+
+            return false;
+        }
+
+        // Requirement 1.1 / 1.2 / 1.3: detect a non-null EXT_mesh_gpu_instancing object on the node.
+        if (
+            !InstancingExtensionParser.TryGetExtensionObject(
+                gltfNode,
+                out var extensionObj,
+                out bool keyPresentButInvalid
+            )
+        )
+        {
+            // Requirement 1.3: the key is present but the value is not a JSON object → record exactly
+            // one Warning identifying the node and fall back to the non-instanced path.
+            if (keyPresentButInvalid)
+            {
+                _diagnostics.Add(
+                    new ImportDiagnostic(
+                        DiagnosticSeverity.Warning,
+                        $"Node {nodeIndex} declares EXT_mesh_gpu_instancing with a value that is not a "
+                            + "JSON object. Skipping instancing and importing the node as non-instanced.",
+                        "Node",
+                        nodeIndex
+                    )
+                );
+            }
+
+            // Requirement 1.1: absent / non-matching key → non-instanced node, no diagnostic.
+            return false;
+        }
+
+        // Requirements 2 and 3: parse and validate the attributes object and resolve the count.
+        if (
+            !InstancingExtensionParser.TryParse(
+                model,
+                extensionObj!,
+                out var data,
+                out var parseError,
+                out var offendingDetail
+            )
+        )
+        {
+            // The parser does not record diagnostics; build the appropriate ImportDiagnostic for the
+            // failure and fall back to the non-instanced path.
+            _diagnostics.Add(BuildParseDiagnostic(nodeIndex, parseError, offendingDetail));
+            return false;
+        }
+
+        // Requirement 2.5: record exactly one Information diagnostic per ignored (unrecognized) key.
+        foreach (var ignoredKey in data!.IgnoredKeys)
+        {
+            _diagnostics.Add(
+                new ImportDiagnostic(
+                    DiagnosticSeverity.Information,
+                    $"Node {nodeIndex} EXT_mesh_gpu_instancing attributes contains unrecognized key "
+                        + $"'{ignoredKey}' which was ignored.",
+                    "Node",
+                    nodeIndex
+                )
+            );
+        }
+
+        // Requirements 7.1 / 7.2 / 3.4: zero resolved instances (including the zero-recognized-attributes
+        // case) → handled as an instanced node with no MeshNode; the node and its children are still
+        // imported through the existing node path. instancing stays null so the caller skips the mesh
+        // path. Record exactly one Information diagnostic and never an Error/Warning for this condition
+        // (Requirement 7.3); the import continues successfully.
+        if (data.InstanceCount <= 0)
+        {
+            _diagnostics.Add(
+                new ImportDiagnostic(
+                    DiagnosticSeverity.Information,
+                    $"Node {nodeIndex} EXT_mesh_gpu_instancing resolves to zero instances. "
+                        + "Importing the node and its children without creating a mesh node.",
+                    "Node",
+                    nodeIndex
+                )
+            );
+            return true;
+        }
+
+        // Requirement 9.5: an instanced node that declares no mesh → handled with no MeshNode; the node
+        // and its children are still imported through the existing node path. instancing stays null so
+        // the caller skips the (absent) mesh path. Record exactly one Information diagnostic.
+        if (!gltfNode.Mesh.HasValue)
+        {
+            _diagnostics.Add(
+                new ImportDiagnostic(
+                    DiagnosticSeverity.Information,
+                    $"Node {nodeIndex} declares EXT_mesh_gpu_instancing but references no mesh. "
+                        + "Importing the node and its children without creating a mesh node.",
+                    "Node",
+                    nodeIndex
+                )
+            );
+            return true;
+        }
+
+        // Requirements 4–8: read exactly InstanceCount InstanceTransform values. The reader records
+        // its own Error/Warning/Information diagnostics; on failure we fall back to non-instanced.
+        var transforms = new FastList<InstanceTransform>();
+        if (
+            !_instanceTransformReader.TryRead(
+                model,
+                data,
+                nodeIndex,
+                transforms,
+                _diagnostics,
+                out _
+            )
+        )
+        {
+            return false;
+        }
+
+        // Requirements 8 / 9.1: build a single Instancing resource carrying the per-instance
+        // transforms in accessor element order, surfaced via the out parameter so the caller can
+        // attach it to the node's MeshNode(s) (task 6.2).
+        var name = !string.IsNullOrEmpty(gltfNode.Name)
+            ? $"{gltfNode.Name}_Instancing"
+            : $"Node{nodeIndex}_Instancing";
+        instancing = new Instancing(isDynamic: false, name) { Transforms = transforms };
+
+        // Requirement 14.1: track the imported instancing in the manifest at record time, mirroring
+        // how geometries are tracked. Null-safe and deduplicated by reference inside AddInstancing.
+        _manifest?.AddInstancing(instancing);
+
+        // Requirement 15.1: when an active InstancingManager is available, record exactly one deferred
+        // registration command. No Add path is invoked and no instance-transform GPU upload happens
+        // during off-thread recording; the synchronous Add runs on the owning/render thread at flush.
+        if (_instancingManager is { } manager)
+        {
+            var captured = instancing;
+            var capturedNodeIndex = nodeIndex;
+            buffer.RecordDeferredAction(
+                _ =>
+                {
+                    // Requirement 15.2: runs on the owning/render thread; the synchronous Add uploads
+                    // the instance-transform buffer here.
+                    if (!manager.Add(captured))
+                    {
+                        // Requirement 15.4: Add failed → record exactly one Error diagnostic identifying
+                        // the node, leave the instancing manifest-tracked with Owning_Manager unchanged,
+                        // and continue executing the remaining recorded commands.
+                        _diagnostics.Add(
+                            new ImportDiagnostic(
+                                DiagnosticSeverity.Error,
+                                $"Node {capturedNodeIndex} instancing could not be registered with the "
+                                    + "InstancingManager (Add returned false).",
+                                "Node",
+                                capturedNodeIndex
+                            )
+                        );
+                    }
+                    // Requirement 15.3: on success, Add set Owning_Manager to this manager; the
+                    // instancing stays manifest-tracked and ResourceManifest.DisposeAll will not
+                    // double-dispose it.
+                },
+                $"RegisterInstancing(node: {nodeIndex})"
+            );
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Builds the <see cref="ImportDiagnostic"/> for an <see cref="InstancingExtensionParser.TryParse"/>
+    /// failure, mapping the parse error to the required severity and message (Requirements 2.3, 2.4,
+    /// 3.2).
+    /// </summary>
+    private static ImportDiagnostic BuildParseDiagnostic(
+        int nodeIndex,
+        InstancingParseError error,
+        string? offendingDetail
+    ) =>
+        error switch
+        {
+            // Requirement 2.3: `attributes` present but not a JSON object → Error.
+            InstancingParseError.AttributesNotObject => new ImportDiagnostic(
+                DiagnosticSeverity.Error,
+                $"Node {nodeIndex} EXT_mesh_gpu_instancing has a malformed '{offendingDetail}' "
+                    + "property (expected a JSON object). Skipping instancing.",
+                "Node",
+                nodeIndex
+            ),
+
+            // Requirement 2.4: an attribute value is not a valid in-range accessor index → Error.
+            InstancingParseError.InvalidAttributeAccessor => new ImportDiagnostic(
+                DiagnosticSeverity.Error,
+                $"Node {nodeIndex} EXT_mesh_gpu_instancing attribute '{offendingDetail}' is not a "
+                    + "valid accessor index. Skipping instancing.",
+                "Node",
+                nodeIndex
+            ),
+
+            // Requirement 3.2: present accessors report different element counts → Error.
+            InstancingParseError.ConflictingInstanceCounts => new ImportDiagnostic(
+                DiagnosticSeverity.Error,
+                $"Node {nodeIndex} EXT_mesh_gpu_instancing attribute accessors report conflicting "
+                    + $"instance counts: {offendingDetail}. Skipping instancing.",
+                "Node",
+                nodeIndex
+            ),
+
+            // ExtensionValueNotObject is surfaced via TryGetExtensionObject, not TryParse; any other
+            // value falls back to a generic Warning rather than throwing.
+            _ => new ImportDiagnostic(
+                DiagnosticSeverity.Warning,
+                $"Node {nodeIndex} EXT_mesh_gpu_instancing could not be parsed. Skipping instancing.",
+                "Node",
+                nodeIndex
+            ),
+        };
+
+    /// <summary>
     /// Records the mesh node(s) for the specified glTF mesh and wires them under the parent handle.
     /// Single primitive: records a MeshNode directly as a child of the parent node.
     /// Multiple primitives: records a parent Node (named after the mesh) with a child MeshNode per primitive.
@@ -684,11 +1038,17 @@ internal sealed class SceneBuilder
     /// <param name="model">The deserialized glTF model.</param>
     /// <param name="meshIndex">The index of the mesh in the glTF Meshes array.</param>
     /// <param name="parent">The deferred handle of the node to attach mesh nodes to.</param>
+    /// <param name="instancing">
+    /// The <c>EXT_mesh_gpu_instancing</c> resource to attach to every MeshNode created for this
+    /// mesh, or <see langword="null"/> for a non-instanced mesh. When non-null, the same instance is
+    /// attached to each primitive's MeshNode in primitive order (Req 9.1, 9.2).
+    /// </param>
     private void RecordMeshNodes(
         SceneCommandBuffer buffer,
         Gltf model,
         int meshIndex,
-        DeferredNode parent
+        DeferredNode parent,
+        Instancing? instancing = null
     )
     {
         if (model.Meshes == null || meshIndex < 0 || meshIndex >= model.Meshes.Length)
@@ -723,7 +1083,8 @@ internal sealed class SceneBuilder
                     meshIndex,
                     0,
                     mesh.Name ?? $"Mesh_{meshIndex}",
-                    out var meshHandle
+                    out var meshHandle,
+                    instancing
                 )
             )
             {
@@ -745,7 +1106,8 @@ internal sealed class SceneBuilder
                         meshIndex,
                         primIndex,
                         $"{mesh.Name ?? $"Mesh_{meshIndex}"}_Primitive{primIndex}",
-                        out var meshHandle
+                        out var meshHandle,
+                        instancing
                     )
                 )
                 {
@@ -790,7 +1152,8 @@ internal sealed class SceneBuilder
         int meshIndex,
         int primIndex,
         string nodeName,
-        out DeferredNode handle
+        out DeferredNode handle,
+        Instancing? instancing = null
     )
     {
         handle = default;
@@ -841,6 +1204,11 @@ internal sealed class SceneBuilder
                 IsRenderable = materialValid,
             };
 
+            // Attach the EXT_mesh_gpu_instancing resource (if any) so this primitive renders with
+            // the same per-instance transforms as every other primitive of the mesh. Null leaves
+            // the MeshNode non-instanced.
+            meshNode.Instancing = instancing;
+
             // Apply material metadata (alpha mode, double-sided) to the MeshNode.
             ApplyMaterialMetadata(meshNode, metadata);
 
@@ -859,7 +1227,8 @@ internal sealed class SceneBuilder
         Gltf model,
         int meshIndex,
         DeferredNode parent,
-        CancellationToken ct
+        CancellationToken ct,
+        Instancing? instancing = null
     )
     {
         if (model.Meshes == null || meshIndex < 0 || meshIndex >= model.Meshes.Length)
@@ -892,7 +1261,8 @@ internal sealed class SceneBuilder
                     meshIndex,
                     0,
                     mesh.Name ?? $"Mesh_{meshIndex}",
-                    ct
+                    ct,
+                    instancing
                 )
                 .ConfigureAwait(false);
             if (recorded)
@@ -913,7 +1283,8 @@ internal sealed class SceneBuilder
                         meshIndex,
                         primIndex,
                         $"{mesh.Name ?? $"Mesh_{meshIndex}"}_Primitive{primIndex}",
-                        ct
+                        ct,
+                        instancing
                     )
                     .ConfigureAwait(false);
                 if (recorded)
@@ -959,7 +1330,8 @@ internal sealed class SceneBuilder
         int meshIndex,
         int primIndex,
         string nodeName,
-        CancellationToken ct
+        CancellationToken ct,
+        Instancing? instancing = null
     )
     {
         // Convert geometry via the async upload path (dedicated transfer queue — safe off-thread).
@@ -997,6 +1369,11 @@ internal sealed class SceneBuilder
                 MaterialProperties = material,
                 IsRenderable = materialValid,
             };
+
+            // Attach the EXT_mesh_gpu_instancing resource (if any) so this primitive renders with
+            // the same per-instance transforms as every other primitive of the mesh. Null leaves
+            // the MeshNode non-instanced.
+            meshNode.Instancing = instancing;
 
             ApplyMaterialMetadata(meshNode, materialResult.Metadata);
 

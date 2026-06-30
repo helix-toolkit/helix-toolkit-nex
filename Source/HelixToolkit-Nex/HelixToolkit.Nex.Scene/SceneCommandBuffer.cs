@@ -401,6 +401,52 @@ public sealed class SceneCommandBuffer
     }
 
     /// <summary>
+    /// Records a deferred action to run on the world's owning thread during flush, in recorded
+    /// order. The action is stored, not invoked, at record time (mirrors the factory pattern of
+    /// <see cref="RecordCreateNode{T}(Func{World, T})"/>): neither the delegate nor any
+    /// <see cref="World"/> method is invoked during recording. A thrown exception or non-
+    /// <see cref="ResultCode.Ok"/> result inside the action is handled by the existing
+    /// <see cref="Flush"/> failure path.
+    /// </summary>
+    /// <param name="action">
+    /// The delegate to invoke against the target <see cref="World"/> during flush. All required
+    /// data must be captured inside the delegate.
+    /// </param>
+    /// <param name="description">A human-readable description surfaced in flush failure messages.</param>
+    /// <returns>
+    /// <see cref="ResultCode.Ok"/> on success; <see cref="ResultCode.InvalidState"/> if
+    /// <paramref name="action"/> is <see langword="null"/> or a concurrent recording operation is in
+    /// progress. On rejection no command is appended and previously recorded commands are left
+    /// unchanged.
+    /// </returns>
+    public ResultCode RecordDeferredAction(Action<World> action, string description)
+    {
+        if (action is null)
+        {
+            // Null action: reject, append no command, leave prior commands unchanged.
+            return ResultCode.InvalidState;
+        }
+
+        if (Interlocked.CompareExchange(ref _recordingGuard, 1, 0) != 0)
+        {
+            // Another recording operation is in progress: reject, leave state unchanged.
+            return ResultCode.InvalidState;
+        }
+
+        try
+        {
+            // The action is stored by reference and is neither copied nor invoked at record time;
+            // it runs once on the owning thread, in recorded order, during Flush.
+            _sceneCommands.Add(new DeferredActionCommand(action, description));
+            return ResultCode.Ok;
+        }
+        finally
+        {
+            Volatile.Write(ref _recordingGuard, 0);
+        }
+    }
+
+    /// <summary>
     /// Materializes all recorded commands onto <paramref name="world"/> on the world's owning
     /// thread, in recorded order, constructing real <see cref="Node"/> objects and wiring their
     /// hierarchy and properties.
