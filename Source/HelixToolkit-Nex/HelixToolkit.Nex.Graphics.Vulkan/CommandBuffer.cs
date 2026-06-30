@@ -89,11 +89,16 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
         VulkanContext context,
         bool isSecondary,
         uint32_t index,
-        in VkCommandPool commandPool
+        in VkCommandPool commandPool,
+        uint32_t queueFamilyIndex
     )
     {
         _ctx = context;
-        Handle = new SubmitHandle(index);
+        Handle = new()
+        {
+            BufferIndex = (uint16_t)index,
+            QueueFamilyIndex = (uint16_t)queueFamilyIndex
+        };
         IsSecondary = isSecondary;
         _commandPool = commandPool;
         Fence = context.VkDevice.CreateFence($"CmdFence_{index}");
@@ -233,11 +238,7 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
 
         IsRendering = true;
         ViewMask = renderPass.ViewMask;
-
-        foreach (var tex in deps.TextureSpan)
-        {
-            TransitionToShaderReadOnly(tex);
-        }
+        TransitionToShaderReadOnly(deps.TextureSpan, ShaderStage.Vertex);
         Barrier(deps.BufferSpan, false);
         uint32_t numFbColorAttachments = fb.GetNumColorAttachments();
         uint32_t numPassColorAttachments = renderPass.GetNumColorAttachments();
@@ -360,7 +361,7 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
             _inputAttachments.Count = (uint)i;
         }
 
-        VkSampleCountFlags samples = VkSampleCountFlags.Count1;
+        VkSampleCountFlags colorSamples = VkSampleCountFlags.Count1;
         uint32_t mipLevel = 0;
         uint32_t fbWidth = 0;
         uint32_t fbHeight = 0;
@@ -409,7 +410,7 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
             mipLevel = descColor.Level;
             fbWidth = dim.width;
             fbHeight = dim.height;
-            samples = colorTexture.SampleCount;
+            colorSamples = colorTexture.SampleCount;
             colorAttachments[i] = new()
             {
                 pNext = null,
@@ -421,7 +422,7 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
                 ),
                 imageLayout = colorTexture.ImageLayout,
                 resolveMode =
-                    samples > VkSampleCountFlags.Count1
+                    colorSamples > VkSampleCountFlags.Count1
                         ? descColor.ResolveMode.ResolveModeToVkResolveModeFlagBits(
                             VkResolveModeFlags.Max
                         )
@@ -436,7 +437,7 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
             // handle MSAA
             if (attachment.ResolveTexture)
             {
-                HxDebug.Assert(samples != VkSampleCountFlags.None);
+                HxDebug.Assert(colorSamples > VkSampleCountFlags.Count1);
                 HxDebug.Assert(
                     colorAttachments[i].storeOp == VkAttachmentStoreOp.DontCare,
                     "Multisampled attachments should have store op DONT_CARE."
@@ -514,7 +515,10 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
             // handle depth MSAA
             if (Framebuffer.DepthStencil.ResolveTexture)
             {
-                HxDebug.Assert(depthTexture.SampleCount == samples);
+                HxDebug.Assert(depthTexture.SampleCount > VkSampleCountFlags.Count1);
+                HxDebug.Assert(
+                    numFbColorAttachments != 0 || colorSamples == depthTexture.SampleCount
+                );
                 ref readonly var attachment = ref fb.DepthStencil;
                 HxDebug.Assert(
                     !attachment.ResolveTexture.Empty,
@@ -1833,20 +1837,40 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
     }
 
     /// <inheritdoc/>
-    public void TransitionToShaderReadOnly(in TextureHandle handle)
+    public void TransitionToShaderReadOnly(in TextureHandle handle, ShaderStage extraDestStage)
     {
-        var img = _ctx.TexturesPool.Get(handle);
+        var handles = MemoryMarshal.CreateReadOnlySpan(in handle, 1);
+        TransitionToShaderReadOnly(handles, extraDestStage);
+    }
 
-        HxDebug.Assert(img is not null && !img.IsSwapchainImage);
-        if (img is null || img.IsSwapchainImage)
+    /// <inheritdoc/>
+    public void TransitionToShaderReadOnly(
+        ReadOnlySpan<TextureHandle> handles,
+        ShaderStage extraDestStage
+    )
+    {
+        StageAccess2 extraDestAccess = new();
+        if (extraDestStage == ShaderStage.Compute)
         {
-            _logger.LogError("Cannot transition swapchain image to shader read only layout.");
-            return;
+            extraDestAccess.Stage |= VkPipelineStageFlags2.ComputeShader;
         }
 
-        // transition only non-multisampled images - MSAA images cannot be accessed from shaders
-        if (img.SampleCount.HasAllFlags(VK.VK_SAMPLE_COUNT_1_BIT))
+        foreach (var handle in handles)
         {
+            var img = _ctx.TexturesPool.Get(handle);
+
+            HxDebug.Assert(img is not null && !img.IsSwapchainImage);
+            if (img is null || img.IsSwapchainImage)
+            {
+                _logger.LogError("Cannot transition swapchain image to shader read only layout.");
+                return;
+            }
+
+            // transition only non-multisampled images - MSAA images cannot be accessed from shaders
+            if (img.SampleCount != VkSampleCountFlags.Count1)
+            {
+                continue;
+            }
             VkImageAspectFlags flags = img.GetImageAspectFlags();
             // set the result of the previous render pass
             img.TransitionLayout(
@@ -1860,7 +1884,8 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
                     VK.VK_REMAINING_MIP_LEVELS,
                     0,
                     VK.VK_REMAINING_ARRAY_LAYERS
-                )
+                ),
+                extraDestAccess
             );
         }
     }

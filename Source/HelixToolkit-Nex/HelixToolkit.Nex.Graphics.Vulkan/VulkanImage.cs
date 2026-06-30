@@ -642,7 +642,8 @@ internal sealed class VulkanImage : IDisposable
     public void TransitionLayout(
         in VkCommandBuffer commandBuffer,
         VkImageLayout newImageLayout,
-        in VkImageSubresourceRange subresourceRange
+        VkImageSubresourceRange subresourceRange,
+        StageAccess2 dstStageAccess = new()
     )
     {
         VkImageLayout oldImageLayout =
@@ -663,6 +664,10 @@ internal sealed class VulkanImage : IDisposable
 
         var src = oldImageLayout.GetPipelineStageAccess();
         var dst = newImageLayout.GetPipelineStageAccess();
+
+        dst.Stage |= dstStageAccess.Stage;
+        dst.Access |= dstStageAccess.Access;
+
         if (IsDepthAttachment && IsResolveAttachment)
         {
             // https://registry.khronos.org/vulkan/specs/latest/html/vkspec.html#renderpass-resolve-operations

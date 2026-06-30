@@ -60,8 +60,19 @@ public interface ICommandBuffer
     /// <summary>
     /// Transitions a texture to a shader read-only state, making it accessible for sampling in shaders.
     /// </summary>
-    /// <param name="surface">The texture handle to transition.</param>
-    void TransitionToShaderReadOnly(in TextureHandle handle);
+    /// <param name="handle">The texture handle to transition.</param>
+    /// <param name="extraDestStage">Additional shader stage flags to include in the destination stage mask.</param>
+    void TransitionToShaderReadOnly(in TextureHandle handle, ShaderStage extraDestStage);
+
+    /// <summary>
+    /// Transitions multiple textures to a shader read-only state, making them accessible for sampling in shaders.
+    /// </summary>
+    /// <param name="handles"></param>
+    /// <param name="extraDestStage"></param>
+    void TransitionToShaderReadOnly(
+        ReadOnlySpan<TextureHandle> handles,
+        ShaderStage extraDestStage
+    );
 
     /// <summary>
     /// Transitions the specified texture to a state suitable for local read operations during rendering.
