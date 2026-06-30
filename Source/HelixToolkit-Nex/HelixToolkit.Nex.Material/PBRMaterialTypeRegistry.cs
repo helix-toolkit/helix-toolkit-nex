@@ -140,6 +140,18 @@ public static class PBRMaterialTypeRegistry
         Register(
                 new PBRMaterialRegistration
                 {
+                    TypeId = PBRShadingMode.None,
+                    Name = PBRShadingMode.None.ToString(),
+                    OutputColorImplementation =
+                        @"
+                    return vec4(0.0, 0.0, 0.0, 1.0);
+                    ",
+                }
+            )
+            .WithPointerRingSupport();
+        Register(
+                new PBRMaterialRegistration
+                {
                     TypeId = PBRShadingMode.PBR,
                     Name = PBRShadingMode.PBR.ToString(),
                     OutputColorImplementation =
