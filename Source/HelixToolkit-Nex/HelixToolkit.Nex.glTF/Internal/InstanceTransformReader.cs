@@ -92,22 +92,20 @@ internal sealed class InstanceTransformReader
         // When present, read InstanceCount VEC3 FLOAT elements; when absent, every instance gets
         // (0,0,0).
         Vector3[]? translations = null;
-        if (data.Translation is int translationAccessor)
-        {
-            if (
-                !TryReadTranslations(
-                    model,
-                    translationAccessor,
-                    nodeIndex,
-                    count,
-                    diagnostics,
-                    out translations,
-                    out error
-                )
+        if (
+            data.Translation is int translationAccessor
+            && !TryReadTranslations(
+                model,
+                translationAccessor,
+                nodeIndex,
+                count,
+                diagnostics,
+                out translations,
+                out error
             )
-            {
-                return false;
-            }
+        )
+        {
+            return false;
         }
 
         // --- ROTATION (Requirements 5.1–5.6) ---
@@ -115,22 +113,20 @@ internal sealed class InstanceTransformReader
         // normalizing near-unit quaternions); when absent, every instance gets the identity
         // quaternion.
         Quaternion[]? rotations = null;
-        if (data.Rotation is int rotationAccessor)
-        {
-            if (
-                !TryReadRotations(
-                    model,
-                    rotationAccessor,
-                    nodeIndex,
-                    count,
-                    diagnostics,
-                    out rotations,
-                    out error
-                )
+        if (
+            data.Rotation is int rotationAccessor
+            && !TryReadRotations(
+                model,
+                rotationAccessor,
+                nodeIndex,
+                count,
+                diagnostics,
+                out rotations,
+                out error
             )
-            {
-                return false;
-            }
+        )
+        {
+            return false;
         }
 
         // --- SCALE (Requirements 6.1–6.4) ---
@@ -138,22 +134,20 @@ internal sealed class InstanceTransformReader
         // uniform scale (emitting a per-instance Information when an element is non-uniform); when
         // absent, every instance gets a uniform scale of 1.0.
         float[]? scales = null;
-        if (data.Scale is int scaleAccessor)
-        {
-            if (
-                !TryReadScales(
-                    model,
-                    scaleAccessor,
-                    nodeIndex,
-                    count,
-                    diagnostics,
-                    out scales,
-                    out error
-                )
+        if (
+            data.Scale is int scaleAccessor
+            && !TryReadScales(
+                model,
+                scaleAccessor,
+                nodeIndex,
+                count,
+                diagnostics,
+                out scales,
+                out error
             )
-            {
-                return false;
-            }
+        )
+        {
+            return false;
         }
 
         // --- Composition (Requirement 8, completed in task 4.14) ---
