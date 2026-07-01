@@ -52,6 +52,10 @@ public struct MeshDrawInfo
             if (Instancing is not null)
             {
                 variant |= DrawStreamVariants.Instancing;
+                if (Instancing.IsDynamic)
+                {
+                    variant |= DrawStreamVariants.Dynamic;
+                }
             }
 
             if (Hitable)

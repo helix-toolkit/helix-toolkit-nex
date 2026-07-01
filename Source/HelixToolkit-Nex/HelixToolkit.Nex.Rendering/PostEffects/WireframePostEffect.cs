@@ -240,7 +240,7 @@ public sealed class WireframePostEffect : PostEffect
             uint instanceCount = 1;
             if (mesh.Instancing is not null)
             {
-                pc.InstancingBufferAddress = mesh.Instancing.Buffer!;
+                pc.InstancingBufferAddress = mesh.Instancing.Buffer.GpuAddress(context.Context);
                 instanceCount = (uint)mesh.Instancing.Transforms.Count;
             }
             else
