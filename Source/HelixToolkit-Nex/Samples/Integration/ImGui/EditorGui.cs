@@ -352,6 +352,22 @@ internal partial class Editor
             float edge = _smaa.EdgeThreshold;
             if (Gui.SliderFloat("Edge Threshold##SMAA", ref edge, 0.001f, 0.5f))
                 _smaa.EdgeThreshold = edge;
+
+            int edgeMode = (int)_smaa.EdgeDetectionMode;
+            if (Gui.Combo("Edge Detection##SMAA", ref edgeMode, "Luma\0Color\0"))
+                _smaa.EdgeDetectionMode = (SMAAEdgeDetection)edgeMode;
+
+            bool diag = _smaa.DiagonalDetection;
+            if (Gui.Checkbox("Diagonal Detection##SMAA", ref diag))
+                _smaa.DiagonalDetection = diag;
+
+            bool corner = _smaa.CornerDetection;
+            if (Gui.Checkbox("Corner Detection##SMAA", ref corner))
+                _smaa.CornerDetection = corner;
+
+            int smaaDebug = (int)_smaa.DebugMode;
+            if (Gui.Combo("Debug Mode##SMAA", ref smaaDebug, "Off\0Edges\0Weights\0BlendStrength\0"))
+                _smaa.DebugMode = (SMAADebugMode)smaaDebug;
         }
 
         // --- Bloom ---

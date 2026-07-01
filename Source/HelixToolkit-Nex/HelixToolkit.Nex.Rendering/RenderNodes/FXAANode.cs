@@ -341,7 +341,8 @@ public sealed class FXAANode : RenderNode
             nameof(FXAANode),
             PingPongGroups.ColorF16,
             extraInputs: [],
-            extraOutputs: []
+            extraOutputs: [],
+            after: [nameof(SMAANode)]
         );
     }
 }

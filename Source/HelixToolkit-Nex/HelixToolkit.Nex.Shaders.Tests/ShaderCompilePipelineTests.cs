@@ -365,6 +365,37 @@ void main() {
 
     #endregion
 
+    #region Embedded Post-Processing Shaders
+
+    [TestMethod]
+    public void TestSmaaFragmentShaderCompiles()
+    {
+        // Compiles the real SMAA fragment shader (all stages + diagonal/corner
+        // detection + luma & colour edge detection are reachable through main(),
+        // so a single compile validates every code path).
+        var source = GlslUtils.GetEmbeddedGlslShader("Frag/psSmaa.glsl");
+
+        var (buildResult, shaderModule) = _context!.BuildAndCompileShader(
+            ShaderStage.Fragment,
+            source,
+            debugName: "Smaa_Fragment_Test"
+        );
+        using var module = shaderModule;
+
+        Assert.IsTrue(
+            buildResult.Success,
+            $"SMAA build should succeed: {string.Join("; ", buildResult.Errors)}"
+        );
+        Assert.IsTrue(shaderModule.Valid, "SMAA fragment module should be valid");
+        Assert.AreEqual(
+            0,
+            buildResult.Errors.Count,
+            $"Should have no errors, but got: {string.Join("; ", buildResult.Errors)}"
+        );
+    }
+
+    #endregion
+
     #region Error Handling Pipeline Tests
 
     [TestMethod]
