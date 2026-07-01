@@ -84,6 +84,25 @@ commandBuffer.EndRendering();
 context.Submit(commandBuffer);
 ```
 
+### Transitioning Texture Layouts
+
+```csharp
+var commandBuffer = context.AcquireCommandBuffer();
+bool transitionCreated = commandBuffer.ImageBarrier(textureHandle, ImageTransition.ToShaderReadOnly);
+if (!transitionCreated)
+{
+    // Handle error
+}
+```
+
+### Transitioning Multiple Textures to Shader Read-Only
+
+```csharp
+var commandBuffer = context.AcquireCommandBuffer();
+var textures = new TextureHandle[] { texture1.Handle, texture2.Handle };
+commandBuffer.TransitionToShaderReadOnly(textures, ShaderStage.FragmentShader);
+```
+
 ### Creating a Memory Barrier with Presets
 
 ```csharp
@@ -112,17 +131,6 @@ if (!barrierCreated)
 }
 ```
 
-### Transitioning Texture Layouts
-
-```csharp
-var commandBuffer = context.AcquireCommandBuffer();
-bool transitionCreated = commandBuffer.ImageBarrier(textureHandle, ImageTransition.ToShaderReadOnly);
-if (!transitionCreated)
-{
-    // Handle error
-}
-```
-
 ### Using RingElementBuffer with State-Based Write
 
 ```csharp
@@ -132,18 +140,6 @@ var state = new { /* state data */ };
 ringBuffer.WriteDynamic(100, state, (ctx, s) => {
     // Write data using ctx and state s
 });
-```
-
-### Creating Multiple Memory Barriers
-
-```csharp
-var commandBuffer = context.AcquireCommandBuffer();
-var buffers = new BufferHandle[] { buffer1.Handle, buffer2.Handle };
-bool allBarriersCreated = commandBuffer.Barrier(buffers, BarrierPreset.TransferWriteToShaderRW, force: true);
-if (!allBarriersCreated)
-{
-    // Handle error
-}
 ```
 
 ### Marking a Buffer as Dirty

@@ -33,6 +33,8 @@ HelixToolkit.Nex.Rendering is responsible for managing the rendering pipeline of
 | `BorderHighlightPostEffect`      | Renders colored outlines around mesh silhouettes.                           |
 | `RenderGraphResourceAllocationException` | Exception thrown when a render-graph resource fails to allocate. |
 | `PickingContext`                 | Manages GPU-based picking operations by reading entity information from a texture.|
+| `IInstancingManager`             | Interface for managing instancing resources, including lifecycle and GPU uploads.|
+| `InstancingManager`              | Manages a pool of `Instancing` objects, providing lifecycle and GPU resource management.|
 
 ## Recent Changes
 
@@ -48,6 +50,8 @@ HelixToolkit.Nex.Rendering is responsible for managing the rendering pipeline of
 - **Material Type Name Properties**: Updated `LineDrawInfo` and `PointDrawInfo` to use `LineMaterialTypeName` and `PointMaterialTypeName` respectively for material lookup.
 - **PickingContext**: Enhanced to use `GetBufferData` for reading results, improving resource management.
 - **Barrier Presets**: Introduced `BarrierPreset` for more precise control over buffer synchronization.
+- **InstancingManager**: Added to manage instancing resources, including lifecycle, eventing, GPU-upload, and deferred-removal.
+- **Instancing**: Updated to support dynamic and static instancing modes with ring buffers to prevent GPU stalls.
 
 ### Removed Features
 
