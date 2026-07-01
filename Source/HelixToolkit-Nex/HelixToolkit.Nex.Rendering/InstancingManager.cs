@@ -1,5 +1,3 @@
-using System.ComponentModel;
-
 namespace HelixToolkit.Nex.Geometries;
 
 /// <summary>
@@ -132,7 +130,7 @@ public sealed class InstancingManager : IInstancingManager
             instancing.Manager = this;
 
             // Requirement 2.2 — subscribe to PropertyChanged.
-            instancing.PropertyChanged += Instancing_PropertyChanged;
+            instancing.OnDirty += InstancingDirty;
 
             _dirty |= instancing.IsDirty;
             // Requirement 2.4 — publish the Added notification carrying the instancing reference.
@@ -143,47 +141,15 @@ public sealed class InstancingManager : IInstancingManager
         }
     }
 
-    /// <summary>
-    /// Handles <see cref="System.ComponentModel.INotifyPropertyChanged.PropertyChanged"/> notifications
-    /// raised by managed instancings. A managed instancing is marked pending re-upload and an
-    /// <see cref="InstancingChangeOp.Updated"/> event is published; notifications from instancings not
-    /// managed by this manager are ignored.
-    /// </summary>
-    private void Instancing_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    private void InstancingDirty(object? sender, EventArgs e)
     {
         if (sender is not Instancing instancing)
         {
             return;
         }
 
-        // Requirement 10.3 — ignore notifications from instancings not managed by this manager.
-        bool managed;
-        lock (_lock)
-        {
-            managed = _set.Contains(instancing);
-        }
-        if (!managed)
-        {
-            return;
-        }
-
         _dirty = true;
-        // Requirement 10.1 — publish the Updated notification carrying the instancing reference.
-        try
-        {
-            _eventBus.PublishAsync(
-                new InstancingUpdatedEvent(instancing, InstancingChangeOp.Updated)
-            );
-        }
-        catch (Exception ex)
-        {
-            // Requirement 10.4 — retain the pending re-upload (dirty) state set above and surface an error.
-            _logger.LogError(
-                ex,
-                "Failed to publish InstancingUpdatedEvent (Updated) for '{Name}'.",
-                instancing.Name
-            );
-        }
+        _eventBus.PublishAsync(new InstancingUpdatedEvent(instancing, InstancingChangeOp.Updated));
     }
 
     /// <inheritdoc/>
@@ -225,14 +191,14 @@ public sealed class InstancingManager : IInstancingManager
             }
 
             // Requirement 4.1 — unsubscribe from PropertyChanged and remove from the managed set/list.
-            instancing.PropertyChanged -= Instancing_PropertyChanged;
+            instancing.PropertyChanged -= InstancingDirty;
             _set.Remove(instancing);
 
             // Requirement 13.3 — clear the Owning_Manager reference. This is done BEFORE disposing the
             // GPU resources so that routing Instancing.Dispose through the owning manager's deferred
             // removal (task 14.1) observes a null Manager and does not re-enter this removal path.
             instancing.Manager = null;
-
+            instancing.OnDirty -= InstancingDirty;
             // Requirement 4.1 — dispose the instancing's GPU resources (Buffer / CulledIndicesBuffer).
             instancing.Dispose();
 
@@ -508,14 +474,28 @@ public sealed class InstancingManager : IInstancingManager
 
 public static class InstancingManagerExtensions
 {
+    /// <summary>
+    /// Creates a new <see cref="Instancing"/> object, adds it to the specified <see cref="IInstancingManager"/>,
+    /// and initializes it with the provided instance transforms.
+    /// </summary>
+    /// <param name="manager"></param>
+    /// <param name="isDynamic"></param>
+    /// <param name="name"></param>
+    /// <param name="instanceTransforms"></param>
+    /// <returns></returns>
+    /// <exception cref="InvalidOperationException"></exception>
     public static Instancing Create(
         this IInstancingManager manager,
         bool isDynamic,
-        string? name = null
+        string? name = null,
+        IEnumerable<InstanceTransform>? instanceTransforms = null
     )
     {
         ArgumentNullException.ThrowIfNull(manager);
-        var instancing = new Instancing(isDynamic, name);
+        var instancing = new Instancing(isDynamic, name)
+        {
+            Transforms = [.. instanceTransforms ?? Enumerable.Empty<InstanceTransform>()],
+        };
         if (!manager.Add(instancing))
         {
             throw new InvalidOperationException(

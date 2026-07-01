@@ -29,6 +29,7 @@
     <Project Path="Samples/Integration/DepthPrepassRenderer/DepthPrepassRenderer.csproj" />
     <Project Path="Samples/Integration/gltfImporter/gltfImporter.csproj" />
     <Project Path="Samples/Integration/ImGui/ImGui.csproj" />
+    <Project Path="Samples/Integration/InstancingDemo/InstancingDemo.csproj" />
     <Project Path="Samples/Integration/LightCulling/LightCulling.csproj" />
     <Project Path="Samples/Integration/Lines/Lines.csproj" />
     <Project Path="Samples/Integration/PBRTest/PBRTest.csproj" />

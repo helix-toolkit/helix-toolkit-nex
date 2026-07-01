@@ -1,6 +1,3 @@
-using HelixToolkit.Nex.Rendering.Components;
-using HelixToolkit.Nex.Rendering.DrawStreams;
-
 namespace HelixToolkit.Nex.Engine.Data;
 
 /// <summary>
@@ -66,22 +63,18 @@ internal sealed class MeshDrawStream : DrawStreamBase<MeshDraw, MeshDrawInfo>
             MaterialType = meshComp.MaterialProperties!.MaterialTypeId,
             NodeInfoIndex = (uint)renderable.GPUIndex,
             EntityId = (uint)entity.Id,
-            InstancingBufferAddress =
-                meshComp.Instancing is not null && meshComp.Instancing.Buffer is not null
-                    ? meshComp.Instancing.Buffer.Buffer.GpuAddress
-                    : 0,
+            InstancingBufferAddress = meshComp.Instancing is not null
+                ? meshComp.Instancing.Buffer.GpuAddress(Context)
+                : 0,
             InstancingIndexBufferAddress =
-                meshComp.Cullable
-                && meshComp.Instancing is not null
-                && meshComp.Instancing.CulledIndicesBuffer is not null
-                    ? meshComp.Instancing.CulledIndicesBuffer.Buffer.GpuAddress
+                meshComp.Cullable && meshComp.Instancing is not null
+                    ? meshComp.Instancing.CulledIndicesBuffer.GpuAddress(Context)
                     : 0,
             FirstIndex = meshComp.Geometry!.IndexOffset,
             IndexCount = meshComp.Geometry!.IndexCount,
-            InstanceCount =
-                meshComp.Instancing is not null && meshComp.Instancing.Buffer is not null
-                    ? (uint)meshComp.Instancing.Transforms.Count
-                    : 1u,
+            InstanceCount = meshComp.Instancing is not null
+                ? (uint)meshComp.Instancing.Transforms.Count
+                : 1u,
             Cullable = meshComp.Cullable ? 1u : 0u,
             DrawType = (uint)meshComp.Variants,
         };

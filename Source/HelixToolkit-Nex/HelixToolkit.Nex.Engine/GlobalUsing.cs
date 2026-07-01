@@ -1,12 +1,16 @@
 global using System.Diagnostics;
 global using System.Numerics;
+global using System.Runtime.CompilerServices;
 global using HelixToolkit.Nex.DependencyInjection;
 global using HelixToolkit.Nex.ECS;
+global using HelixToolkit.Nex.ECS.Utils;
 global using HelixToolkit.Nex.Geometries;
 global using HelixToolkit.Nex.Graphics;
 global using HelixToolkit.Nex.Material;
 global using HelixToolkit.Nex.Maths;
 global using HelixToolkit.Nex.Rendering;
+global using HelixToolkit.Nex.Rendering.Components;
+global using HelixToolkit.Nex.Rendering.DrawStreams;
 global using HelixToolkit.Nex.Rendering.RenderNodes;
 global using HelixToolkit.Nex.Repository;
 global using HelixToolkit.Nex.Scene;

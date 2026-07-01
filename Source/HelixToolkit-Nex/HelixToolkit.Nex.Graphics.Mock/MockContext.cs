@@ -25,7 +25,7 @@ public class MockContext : IContext
     > _renderPipelines = new();
     private readonly ConcurrentDictionary<QueryPoolHandle, MockQueryPoolData> _queryPools = new();
 
-    private uint _handleCounter = 1;
+    private ushort _handleCounter = 1;
     private readonly object _handleLock = new();
     private bool _isInitialized = false;
 
