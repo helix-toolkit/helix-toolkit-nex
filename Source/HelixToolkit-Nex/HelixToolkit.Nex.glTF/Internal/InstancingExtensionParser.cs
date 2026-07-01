@@ -80,15 +80,11 @@ internal static class InstancingExtensionParser
             return false;
         }
 
-        foreach (var pair in node.Extensions)
-        {
-            if (string.Equals(pair.Key, ExtensionName, StringComparison.Ordinal))
-            {
-                return true;
-            }
-        }
-
-        return false;
+        return node
+            .Extensions.Where(pair =>
+                string.Equals(pair.Key, ExtensionName, StringComparison.Ordinal)
+            )
+            .Any();
     }
 
     /// <summary>
@@ -215,7 +211,13 @@ internal static class InstancingExtensionParser
         // Requirement 2.1 / 2.4: resolve and validate each present recognized attribute. Returns at
         // the first invalid attribute so exactly one diagnostic is produced for the node.
         if (
-            !TryResolveAttribute(attributes, AttributeTranslation, accessorCount, out int? translation, out offendingDetail)
+            !TryResolveAttribute(
+                attributes,
+                AttributeTranslation,
+                accessorCount,
+                out int? translation,
+                out offendingDetail
+            )
         )
         {
             error = InstancingParseError.InvalidAttributeAccessor;
@@ -223,7 +225,13 @@ internal static class InstancingExtensionParser
         }
 
         if (
-            !TryResolveAttribute(attributes, AttributeRotation, accessorCount, out int? rotation, out offendingDetail)
+            !TryResolveAttribute(
+                attributes,
+                AttributeRotation,
+                accessorCount,
+                out int? rotation,
+                out offendingDetail
+            )
         )
         {
             error = InstancingParseError.InvalidAttributeAccessor;
@@ -231,7 +239,13 @@ internal static class InstancingExtensionParser
         }
 
         if (
-            !TryResolveAttribute(attributes, AttributeScale, accessorCount, out int? scale, out offendingDetail)
+            !TryResolveAttribute(
+                attributes,
+                AttributeScale,
+                accessorCount,
+                out int? scale,
+                out offendingDetail
+            )
         )
         {
             error = InstancingParseError.InvalidAttributeAccessor;

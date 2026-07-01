@@ -13,7 +13,8 @@ public interface IInstancingManager : IDisposable
     int Count { get; }
 
     /// <summary>
-    /// Adds an <see cref="Instancing"/> to the manager and uploads its instance-transform GPU buffer before returning.
+    /// Adds an <see cref="Instancing"/> to the manager. GPU uploads are performed later via <see cref="UploadInstanceBuffers"/> during the render loop.
+    /// The instancing must not already belong to another manager.
     /// </summary>
     /// <param name="instancing">The instancing to add. Must not already belong to another manager.</param>
     /// <returns><see langword="true"/> if the instancing was added (or is already owned by this manager); otherwise <see langword="false"/>.</returns>

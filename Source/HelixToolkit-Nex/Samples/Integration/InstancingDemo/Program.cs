@@ -69,9 +69,9 @@ internal sealed class App : Application
 
     protected override void OnDisplayScaleChanged(float scale)
     {
-        if (_demo?.ImGui != null && scale != 0)
+        if (_demo is { ImGui: { } imGui } && MathF.Abs(scale) > float.Epsilon)
         {
-            _demo.ImGui.DisplayScale = scale;
+            imGui.DisplayScale = scale;
         }
         base.OnDisplayScaleChanged(scale);
     }
@@ -89,10 +89,11 @@ internal sealed class App : Application
 
     protected override void OnMouseMove(int x, int y, int xrel, int yrel)
     {
-        if (_demo?.ImGui != null)
+        var imGui = _demo?.ImGui;
+        if (imGui != null)
         {
             var io = ImGui.GetIO();
-            io.AddMousePosEvent(x / _demo.ImGui.DisplayScale, y / _demo.ImGui.DisplayScale);
+            io.AddMousePosEvent(x / imGui.DisplayScale, y / imGui.DisplayScale);
         }
     }
 
