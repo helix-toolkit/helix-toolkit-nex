@@ -129,7 +129,7 @@ public sealed class InstancingManager : IInstancingManager
             _set.Add(instancing);
             instancing.Manager = this;
 
-            // Requirement 2.2 — subscribe to PropertyChanged.
+            // Requirement 2.2 — subscribe to OnDirty.
             instancing.OnDirty += InstancingDirty;
 
             _dirty |= instancing.IsDirty;
@@ -189,16 +189,14 @@ public sealed class InstancingManager : IInstancingManager
                 );
                 return false;
             }
-
-            // Requirement 4.1 — unsubscribe from PropertyChanged and remove from the managed set/list.
-            instancing.PropertyChanged -= InstancingDirty;
+            instancing.OnDirty -= InstancingDirty;
             _set.Remove(instancing);
 
             // Requirement 13.3 — clear the Owning_Manager reference. This is done BEFORE disposing the
             // GPU resources so that routing Instancing.Dispose through the owning manager's deferred
             // removal (task 14.1) observes a null Manager and does not re-enter this removal path.
             instancing.Manager = null;
-            instancing.OnDirty -= InstancingDirty;
+
             // Requirement 4.1 — dispose the instancing's GPU resources (Buffer / CulledIndicesBuffer).
             instancing.Dispose();
 
@@ -374,9 +372,9 @@ public sealed class InstancingManager : IInstancingManager
         {
             return ResultCode.Ok;
         }
-        _dirty = false;
         lock (_lock)
         {
+            _dirty = false;
             // Requirement 9.4 — track the first (most specific) failure so a success result is only
             // returned when every processed dirty instancing uploaded successfully.
             var result = ResultCode.Ok;
