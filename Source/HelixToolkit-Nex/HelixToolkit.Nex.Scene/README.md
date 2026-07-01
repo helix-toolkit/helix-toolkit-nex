@@ -1,3 +1,4 @@
+```markdown
 # HelixToolkit.Nex.Scene
 
 The `HelixToolkit.Nex.Scene` package manages and manipulates scene-graph nodes within a 3D environment. It builds on the `HelixToolkit.Nex.ECS` framework to provide hierarchical transformations, node management, and scene sorting in a data-oriented, performant way.
@@ -32,6 +33,26 @@ for matrix math.
 | `DeferredNode`         | Handle returned by `SceneCommandBuffer.RecordCreateNode()` that resolves to a real `Node` during flush.                        |
 | `TypedDeferredNode<T>` | Typed handle for recording creation of a custom `Node` subtype `T`.                                                            |
 | `SceneFlushResult`     | Result of `SceneCommandBuffer.Flush`, reporting success or the failing command index and description.                          |
+
+## New Features
+
+### Deferred Action Command
+
+The `SceneCommandBuffer` now supports recording arbitrary actions to be executed during the flush on the world's owning thread. This is achieved through the `RecordDeferredAction` method.
+
+#### `SceneCommandBuffer.RecordDeferredAction`
+
+Records a deferred action to run on the world's owning thread during flush, in recorded order.
+
+```csharp
+public ResultCode RecordDeferredAction(Action<World> action, string description);
+```
+
+- **Parameters:**
+  - `action`: The delegate to invoke against the target `World` during flush. All required data must be captured inside the delegate.
+  - `description`: A human-readable description surfaced in flush failure messages.
+
+- **Returns:** `ResultCode.Ok` on success; `ResultCode.InvalidState` if `action` is `null` or a concurrent recording operation is in progress.
 
 ## Usage Examples
 
@@ -83,6 +104,33 @@ sortedNodes.UpdateTransforms();
 ```csharp
 childNode.IsRenderable = true;          // adds the Renderable component
 bool isRenderable = childNode.IsRenderable;
+```
+
+### Recording Deferred Actions
+
+```csharp
+using HelixToolkit.Nex.Scene;
+using HelixToolkit.Nex.ECS;
+
+// 1. Record off the world thread — no World is referenced here.
+var buffer = new SceneCommandBuffer();
+
+buffer.RecordDeferredAction(world => {
+    // Custom action to be executed during flush
+    Console.WriteLine("Deferred action executed.");
+}, "Custom deferred action");
+
+// 2. Flush on the world's owning thread to materialize real Nodes and execute actions.
+SceneFlushResult result = buffer.Flush(world);
+if (result.Success)
+{
+    Console.WriteLine("Flush succeeded.");
+}
+else
+{
+    Console.WriteLine(
+        $"Flush failed at command {result.FailedCommandIndex}: {result.Message} ({result.Code})");
+}
 ```
 
 ## Scene Command Buffer
@@ -140,3 +188,4 @@ if (buffer.TryGetMaterializedNode(handle, out MyCustomNode? node) == ResultCode.
 - **Single-threaded per world**: A world is accessed by one thread at a time. Use `SceneCommandBuffer` to build nodes off-thread and apply them back on the world thread.
 - **Level-ordered transform updates**: `NodeInfo` sorts by hierarchy level so parents are processed before children when world transforms are recomputed.
 - **Dependencies**: `HelixToolkit.Nex.ECS` (entities/components) and `HelixToolkit.Nex.Maths` (matrix math).
+```

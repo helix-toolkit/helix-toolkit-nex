@@ -140,6 +140,12 @@ if (commandBuffer.ImageBarrier(textureHandle, transition))
 commandBuffer.Barrier(bufferHandle, PipelineStageFlags.FragmentShader, AccessFlags.ShaderRead);
 ```
 
+### Transitioning Textures to Shader Read-Only
+
+```csharp
+commandBuffer.TransitionToShaderReadOnly(textureHandle, ShaderStage.Vertex);
+```
+
 ## Architecture Notes
 
 Dependencies:
