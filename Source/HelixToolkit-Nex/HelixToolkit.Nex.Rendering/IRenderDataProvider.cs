@@ -1,5 +1,6 @@
 using HelixToolkit.Nex.ECS;
 using HelixToolkit.Nex.Rendering.DataEntries;
+using HelixToolkit.Nex.Rendering.Gizmos;
 
 namespace HelixToolkit.Nex.Rendering;
 
@@ -103,6 +104,11 @@ public interface IRenderDataProvider
     /// Returns <see langword="null"/> if no billboard data provider is registered.
     /// </summary>
     IBillboardData? BillboardData { get; }
+
+    /// <summary>
+    /// Gets the gizmo data provider that collects all <see cref="GizmoDrawInfo"/> entities each frame for rendering gizmos in the scene.
+    /// </summary>
+    IGizmoDataProvider GizmoData { get; }
 
     /// <summary>
     /// Retrieves a PBRMaterial based on the specified material type identifier.
