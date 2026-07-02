@@ -475,7 +475,7 @@ void BlendingWeights() {
             weights.rg = SMAACalculateDiagWeights(inTexCoord, e, subsampleIndices);
         }
 
-        if (weights.r == -weights.g) { // weights.r + weights.g == 0.0 → no diagonal
+        if (weights.r == 0.0 && weights.g == 0.0) { // no diagonal
             // Compute search offsets (reference SMAA vertex shader precomputation)
             vec2 searchOffsetL = inTexCoord + vec2(-0.25, -0.125) * ts;
             vec2 searchOffsetR = inTexCoord + vec2( 1.25, -0.125) * ts;
