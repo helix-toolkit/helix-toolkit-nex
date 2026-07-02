@@ -614,7 +614,12 @@ public class MockContext : IContext
 
     public void Wait(in SubmitHandle handle, bool reset = true) { }
 
-    public ResultCode GetBufferSubData(in BufferHandle handle, uint offset, uint size, nint data)
+    public virtual ResultCode GetBufferSubData(
+        in BufferHandle handle,
+        uint offset,
+        uint size,
+        nint data
+    )
     {
         return ResultCode.Ok;
     }

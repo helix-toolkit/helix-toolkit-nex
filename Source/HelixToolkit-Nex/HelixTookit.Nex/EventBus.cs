@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using ZLinq;
 
 namespace HelixToolkit.Nex;
 
@@ -123,7 +124,7 @@ public sealed class EventBus : IDisposable
         var subscribers = (SubscriberList<TEvent>)subscribersObj;
         var subscriptionsSnapshot = subscribers.GetSnapshot();
 
-        foreach (var subscription in subscriptionsSnapshot)
+        foreach (var subscription in subscriptionsSnapshot.AsValueEnumerable())
         {
             try
             {

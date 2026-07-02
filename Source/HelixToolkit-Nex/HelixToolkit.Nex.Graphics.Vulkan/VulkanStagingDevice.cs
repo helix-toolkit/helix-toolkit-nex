@@ -860,7 +860,6 @@ internal sealed class VulkanStagingDevice : IDisposable
             });
 
             return region;
-            ;
         }
 
         // nothing was available. Let's wait for the entire staging buffer to become free

@@ -8,7 +8,7 @@ namespace HelixToolkit.Nex;
 /// This class is useful for implementing custom resource management patterns,
 /// such as temporarily changing state and restoring it upon disposal.
 /// </remarks>
-public sealed class Scope(Action actionOnDispose) : IDisposable
+public struct Scope(Action actionOnDispose) : IDisposable
 {
     private readonly Action _actionOnDispose = actionOnDispose;
 

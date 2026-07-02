@@ -68,6 +68,11 @@ public static class GraphicsSettings
     public static uint MaxFrameInFlight = 2;
 
     /// <summary>
+    /// Maximum number of picking requests accepted within a single frame. Each accepted request occupies a distinct Request Slot and a distinct 8-byte region of the frame's picking staging buffer.
+    /// </summary>
+    public const uint MaxRequestsPerFrame = 64;
+
+    /// <summary>
     ///
     /// </summary>
     public static uint MaxNumSwapChains = 2;
