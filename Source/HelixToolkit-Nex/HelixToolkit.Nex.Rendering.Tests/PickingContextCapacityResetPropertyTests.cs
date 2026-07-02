@@ -91,7 +91,7 @@ public class PickingContextCapacityResetPropertyTests
                         }
 
                         // Recording completes the frame: pending coords cleared, capacity reset.
-                        picking.SendCommand(commandBuffer, renderContext, frameSlot);
+                        picking.SendCommand(commandBuffer, renderContext, frameSlot, new FastList<uint>());
 
                         // Req 6.1 / 6.2: the next frame must again offer a full MaxRequestsPerFrame
                         // Request Slots, regardless of how full the previous frame was.
@@ -126,7 +126,7 @@ public class PickingContextCapacityResetPropertyTests
                         }
 
                         // Reset again so the loop's next iteration starts from a clean frame.
-                        picking.SendCommand(nextBuffer, renderContext, nextSlot);
+                        picking.SendCommand(nextBuffer, renderContext, nextSlot, new FastList<uint>());
                     }
 
                     return true;

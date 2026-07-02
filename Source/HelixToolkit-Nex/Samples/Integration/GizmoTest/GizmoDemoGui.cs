@@ -42,51 +42,63 @@ internal sealed partial class GizmoDemo
         {
             Gui.TextColored(new Vector4(1f, 0.8f, 0.2f, 1f), "Gizmo Mode");
             Gui.Separator();
-            if (Gui.RadioButton("Translate", _gizmoManager.Mode == GizmoMode.Translate))
-                _gizmoManager.Mode = GizmoMode.Translate;
+            if (Gui.RadioButton("Translate", _gizmoMode == GizmoMode.Translate))
+            {
+                _gizmoMode = GizmoMode.Translate;
+                ApplyDefinition();
+            }
             Gui.SameLine();
-            if (Gui.RadioButton("Rotate", _gizmoManager.Mode == GizmoMode.Rotate))
-                _gizmoManager.Mode = GizmoMode.Rotate;
+            if (Gui.RadioButton("Rotate", _gizmoMode == GizmoMode.Rotate))
+            {
+                _gizmoMode = GizmoMode.Rotate;
+                ApplyDefinition();
+            }
             Gui.SameLine();
-            if (Gui.RadioButton("Scale", _gizmoManager.Mode == GizmoMode.Scale))
-                _gizmoManager.Mode = GizmoMode.Scale;
+            if (Gui.RadioButton("Scale", _gizmoMode == GizmoMode.Scale))
+            {
+                _gizmoMode = GizmoMode.Scale;
+                ApplyDefinition();
+            }
 
             Gui.Spacing();
             Gui.TextColored(new Vector4(1f, 0.8f, 0.2f, 1f), "Gizmo Space");
             Gui.Separator();
-            if (Gui.RadioButton("World", _gizmoManager.Space == GizmoSpace.World))
-                _gizmoManager.Space = GizmoSpace.World;
+            if (Gui.RadioButton("World", _gizmoSpace == GizmoSpace.World))
+            {
+                _gizmoSpace = GizmoSpace.World;
+                ApplyDefinition();
+            }
             Gui.SameLine();
-            if (Gui.RadioButton("Local", _gizmoManager.Space == GizmoSpace.Local))
-                _gizmoManager.Space = GizmoSpace.Local;
+            if (Gui.RadioButton("Local", _gizmoSpace == GizmoSpace.Local))
+            {
+                _gizmoSpace = GizmoSpace.Local;
+                ApplyDefinition();
+            }
 
             Gui.Spacing();
             Gui.TextColored(new Vector4(1f, 0.8f, 0.2f, 1f), "Occlusion Mode");
             Gui.Separator();
-            if (_gizmoNode is not null)
-            {
-                if (
-                    Gui.RadioButton(
-                        "Always On Top",
-                        _gizmoNode.OcclusionMode == GizmoOcclusionMode.AlwaysOnTop
-                    )
+            if (
+                Gui.RadioButton(
+                    "Always On Top",
+                    _occlusionMode == GizmoOcclusionMode.AlwaysOnTop
                 )
-                    _gizmoNode.OcclusionMode = GizmoOcclusionMode.AlwaysOnTop;
-                Gui.SameLine();
-                if (
-                    Gui.RadioButton(
-                        "Depth Tested",
-                        _gizmoNode.OcclusionMode == GizmoOcclusionMode.DepthTested
-                    )
+            )
+                SetOcclusionMode(GizmoOcclusionMode.AlwaysOnTop);
+            Gui.SameLine();
+            if (
+                Gui.RadioButton(
+                    "Depth Tested",
+                    _occlusionMode == GizmoOcclusionMode.DepthTested
                 )
-                    _gizmoNode.OcclusionMode = GizmoOcclusionMode.DepthTested;
-            }
+            )
+                SetOcclusionMode(GizmoOcclusionMode.DepthTested);
 
             Gui.Spacing();
             Gui.TextColored(new Vector4(1f, 0.8f, 0.2f, 1f), "Handle Sizing");
             Gui.Separator();
             if (Gui.SliderFloat("Handle Size (px)", ref _handlePixelSize, 1f, 1000f))
-                _gizmoManager.DesiredPixelSize = _handlePixelSize;
+                ApplyDefinition();
 
             Gui.Spacing();
             Gui.Separator();
@@ -133,9 +145,10 @@ internal sealed partial class GizmoDemo
     /// <summary>
     /// Highlights the gizmo handle under the pointer via the asynchronous picking path. Each frame
     /// (when not dragging and the viewport is hovered) it schedules a throttled hover pick; the
-    /// callback (<c>OnHoverPickResponse</c>) sets <see cref="GizmoManager.HoveredHandle"/> so the
-    /// render node draws that handle in the highlight color. Clears the hover (and the in-flight
-    /// throttle) when the pointer leaves the viewport or a drag is active.
+    /// callback (<c>OnHoverPickResponse</c>) routes the decoded pixel to
+    /// <see cref="GizmoManager.ResolveHighlight"/> so the render node draws the resolved handle in the
+    /// highlight color. Clears the highlight (and the in-flight throttle) when the pointer leaves the
+    /// viewport or a drag is active.
     /// </summary>
     private void UpdateGizmoHover()
     {
@@ -144,7 +157,7 @@ internal sealed partial class GizmoDemo
 
         // While dragging, the active handle is already highlighted; leave the hover state alone and
         // clear the throttle so hovering resumes cleanly once the drag ends.
-        if (_isDraggingGizmo)
+        if (_gizmoManager.IsDragging)
         {
             _hoverPickInFlight = false;
             return;
@@ -152,13 +165,27 @@ internal sealed partial class GizmoDemo
 
         if (!_viewport.IsHovered)
         {
-            _gizmoManager.HoveredHandle = null;
+            // Clear any highlight across tracked gizmos when the pointer leaves the viewport.
+            _gizmoManager.ResolveHighlight(false, 0u, default);
             _hoverPickInFlight = false;
             return;
         }
 
         var p = _viewport.RelativePointer;
         RequestHoverPick((int)p.X, (int)p.Y);
+    }
+
+    /// <summary>
+    /// Sets the occlusion mode: updates the definition state (so the republished component carries the
+    /// per-handle occlusion) and the render node's node-level occlusion (which selects the pass depth
+    /// state). Kept in sync so both the shader flag and the depth test agree.
+    /// </summary>
+    private void SetOcclusionMode(GizmoOcclusionMode mode)
+    {
+        _occlusionMode = mode;
+        if (_gizmoNode is not null)
+            _gizmoNode.OcclusionMode = mode;
+        ApplyDefinition();
     }
 
     /// <summary>
@@ -172,7 +199,9 @@ internal sealed partial class GizmoDemo
         if (_gizmoManager is null || _renderContext is null || _viewport is null)
             return;
 
-        if (!_isDraggingGizmo)
+        // The drag is owned by the engine-hosted gizmo service (begun by automatic pick routing). Drive
+        // it while it is active and the left button is held; end it on release.
+        if (!_gizmoManager.IsDragging)
             return;
 
         var io = Gui.GetIO();
@@ -193,7 +222,6 @@ internal sealed partial class GizmoDemo
         else
         {
             _gizmoManager.EndDrag();
-            _isDraggingGizmo = false;
         }
     }
 }

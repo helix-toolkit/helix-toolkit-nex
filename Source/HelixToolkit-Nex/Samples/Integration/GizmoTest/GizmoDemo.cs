@@ -16,15 +16,23 @@ using Microsoft.Extensions.Logging;
 using Viewport = HelixToolkit.Nex.ImGui.Viewport;
 
 /// <summary>
-/// Gizmo demo: renders a transform gizmo inside an ImGui-hosted offscreen 3D viewport and drives it
-/// through the <see cref="GizmoManager"/> each frame. The manager publishes its gizmo as a
-/// <c>GizmoDrawInfo</c> component on an entity in the render world; the <see cref="GizmoRenderNode"/>
-/// gathers every such entity each frame and draws its handles. Picks are classified from the shared
-/// entity-id target with the unified <see cref="Utils.UnpackEntityId(ulong)"/> decode: a gizmo pixel
-/// (world id 0, <c>Gizmo</c> encoding type) resolves to an owning gizmo entity plus
-/// <c>GizmoHandleId</c>, while a scene pixel (world id &gt; 0) resolves a normal scene entity.
-/// Dragging an axis handle translates a manipulated target mesh. An ImGui control panel changes gizmo
-/// mode, space, occlusion mode and handle pixel size at runtime.
+/// Gizmo demo: renders a transform gizmo inside an ImGui-hosted offscreen 3D viewport using the
+/// engine-hosted gizmo service and automatic pick routing. The manager is obtained from
+/// <see cref="Engine.Engine.Gizmos"/> (Req 8.1) rather than constructed directly, and the
+/// <see cref="GizmoRenderNode"/> is auto-registered by the engine on first gizmo creation. The gizmo
+/// is created once through the factory (<see cref="GizmoManager.TryCreateGizmo"/> +
+/// <see cref="GizmoManager.TrySetGizmo"/>) and driven per frame via
+/// <see cref="GizmoManager.UpdateInstance"/>, which publishes/refreshes its <c>GizmoDrawInfo</c>
+/// component; the render node gathers every such entity and draws its handles.
+/// <para>
+/// Click picks are issued with <c>routeGizmoPicks: true</c>, so the engine routes a decoded gizmo pick
+/// to the gizmo service and begins the drag automatically (Req 8.2) — the sample no longer decodes the
+/// entity-id pixel or classifies gizmo picks by hand to begin the drag. A scene pick resolves the
+/// scene entity via <see cref="PickingResponse.TryGetPickingResult"/> and never begins a gizmo drag
+/// (Req 8.3, 8.4); a no-hit begins no drag and resolves no scene entity (Req 8.7). Dragging an axis
+/// handle translates a manipulated target mesh. An ImGui control panel changes gizmo mode, space,
+/// occlusion mode and handle pixel size at runtime by updating the gizmo definition.
+/// </para>
 /// </summary>
 internal sealed partial class GizmoDemo : IDisposable
 {
@@ -50,9 +58,12 @@ internal sealed partial class GizmoDemo : IDisposable
     private OrbitCameraController? _orbitController;
     private Viewport? _viewport;
 
-    // Gizmo
+    // Gizmo (obtained from Engine.Gizmos; the render node is auto-registered by the engine).
     private GizmoManager? _gizmoManager;
     private GizmoRenderNode? _gizmoNode;
+
+    // The single factory-created gizmo instance set on the carrier entity.
+    private GizmoInstanceHandle _gizmoInstance = GizmoInstanceHandle.None;
 
     // The mesh node manipulated by the gizmo, and its world matrix (source of truth).
     private MeshNode? _targetNode;
@@ -61,13 +72,16 @@ internal sealed partial class GizmoDemo : IDisposable
 
     private Node? _lightNode;
 
-    // Drag state (driven from ImGui IO in DrawGui).
-    private bool _isDraggingGizmo;
-
     // True while an async hover-pick request is outstanding (throttles hover picks to one at a time).
     private bool _hoverPickInFlight;
 
-    // --- GUI state ---
+    // --- GUI / gizmo-definition state ---
+    // These drive the current GizmoDefinition; changing any of them republishes the instance via
+    // TryUpdateDefinition (a shape-key-unchanged republish, so no handle rebuild for space/occlusion/
+    // size changes).
+    private GizmoMode _gizmoMode = GizmoMode.Translate;
+    private GizmoSpace _gizmoSpace = GizmoSpace.World;
+    private GizmoOcclusionMode _occlusionMode = GizmoOcclusionMode.AlwaysOnTop;
     private float _handlePixelSize = 100f;
     private string _lastPickInfo = "No pick yet";
 
@@ -86,21 +100,23 @@ internal sealed partial class GizmoDemo : IDisposable
         };
         _orbitController = new OrbitCameraController(_camera);
 
-        // Create the gizmo manager and node BEFORE building the engine so the node can be registered.
-        _gizmoManager = new GizmoManager { Mode = GizmoMode.Translate, Space = GizmoSpace.World };
-        _handlePixelSize = _gizmoManager.DesiredPixelSize;
-        _gizmoNode = new GizmoRenderNode
-        {
-            OcclusionMode = GizmoOcclusionMode.AlwaysOnTop,
-        };
-
         _engine = EngineBuilder
             .Create(_context)
             .WithDefaultNodes(false)
             .WithFPS()
-            .AddNode(_gizmoNode)
             .RenderToCustomTarget(GraphicsSettings.IntermediateTargetFormat)
             .Build();
+
+        // Obtain the gizmo manager from the engine (Req 8.1). Accessing Engine.Gizmos lazily creates
+        // the single service instance and auto-registers a GizmoRenderNode (Req 4.6), so the sample no
+        // longer constructs a GizmoManager or wires the render node manually. Retrieve the registered
+        // node so the control panel can toggle its occlusion mode (pass depth state) at runtime.
+        _gizmoManager = _engine.Gizmos;
+        _gizmoNode = _engine.GetRenderNode<GizmoRenderNode>();
+        if (_gizmoNode is not null)
+        {
+            _gizmoNode.OcclusionMode = _occlusionMode;
+        }
 
         _renderContext = _engine.CreateRenderContext();
         _renderContext.Initialize();
@@ -141,12 +157,11 @@ internal sealed partial class GizmoDemo : IDisposable
 
         // --- Gizmo carrier entity ---
         // The GizmoRenderNode is a pure consumer: each frame it gathers every entity in the render
-        // world that carries a GizmoDrawInfo component and draws its handles. Attach an entity here so
-        // the manager can publish its gizmo as component data (via Update) instead of feeding the node
-        // an out-of-band handle list.
+        // world that carries a GizmoDrawInfo component and draws its handles. Create a carrier entity
+        // here; the factory-created gizmo is set on it below (after the target exists), which publishes
+        // the GizmoDrawInfo component.
         var gizmoEntityNode = new Node(world, "GizmoManagerEntity");
         _root.AddChild(gizmoEntityNode);
-        _gizmoManager!.AttachEntity(gizmoEntityNode.Entity);
 
         // --- Manipulated target: a box at the origin ---
         var boxBuilder = new MeshBuilder(true, true, true);
@@ -168,6 +183,14 @@ internal sealed partial class GizmoDemo : IDisposable
             MaterialProperties = targetMaterial,
         };
         _root.AddChild(_targetNode);
+
+        // Create the gizmo once through the factory (its handle set is built once and cached) and set
+        // it on the carrier entity, which publishes the GizmoDrawInfo component so the gizmo renders
+        // (Req 8.1, 8.5). Subsequent frames only call UpdateInstance to refresh origin/sizing.
+        if (_gizmoManager!.TryCreateGizmo(BuildDefinition(), out _gizmoInstance))
+        {
+            _gizmoManager.TrySetGizmo(gizmoEntityNode.Entity, _gizmoInstance);
+        }
 
         // --- A static reference sphere so the scene is not empty ---
         var sphereBuilder = new MeshBuilder(true, true, true);
@@ -203,6 +226,31 @@ internal sealed partial class GizmoDemo : IDisposable
         _root.AddChild(_lightNode);
 
         ApplyTargetTransform();
+    }
+
+    /// <summary>
+    /// Builds the current <see cref="GizmoDefinition"/> from the sample's mode/space/occlusion/size
+    /// state and the manipulated target association. Handle geometry depends only on the mode, so
+    /// changing space, occlusion, or pixel size republishes the instance without a handle rebuild.
+    /// </summary>
+    private GizmoDefinition BuildDefinition() =>
+        new(
+            _gizmoMode,
+            _gizmoSpace,
+            _targetNode is not null ? (uint)_targetNode.Entity.Id : 0u,
+            new GizmoHandleConfiguration(_handlePixelSize, _occlusionMode)
+        );
+
+    /// <summary>
+    /// Applies the current definition state to the tracked gizmo instance, republishing its
+    /// <c>GizmoDrawInfo</c> component. A no-op before the instance is created.
+    /// </summary>
+    private void ApplyDefinition()
+    {
+        if (_gizmoManager is null || !_gizmoInstance.IsValid)
+            return;
+
+        _gizmoManager.TryUpdateDefinition(_gizmoInstance, BuildDefinition());
     }
 
     /// <summary>
@@ -242,10 +290,16 @@ internal sealed partial class GizmoDemo : IDisposable
         });
         _renderContext.Update(_viewportSize, _camera);
 
-        // Drive the gizmo for this frame: rebuild handles for the current target and publish them as
-        // the GizmoDrawInfo component on the managed entity. The overlay node gathers that component
+        // Drive the gizmo for this frame: refresh only its origin and screen-derived sizing from the
+        // current target and camera and republish its GizmoDrawInfo component. The cached handle set is
+        // reused (no rebuild) while the definition is unchanged. The overlay node gathers that component
         // from the render world each frame, so this must run before RenderOffscreen.
-        _gizmoManager.Update(_renderContext.CameraParams, _viewportSize, _targetWorldMatrix);
+        _gizmoManager.UpdateInstance(
+            _gizmoInstance,
+            _renderContext.CameraParams,
+            _viewportSize,
+            _targetWorldMatrix
+        );
 
         // Keep the visible target node in sync with the manipulated matrix.
         ApplyTargetTransform();
@@ -273,49 +327,50 @@ internal sealed partial class GizmoDemo : IDisposable
 
     /// <summary>
     /// Left-click pick callback (viewport-relative pixel coordinates). Uses the asynchronous
-    /// <see cref="Engine.Engine.CreatePickingRequest"/> path: the entity-id readback is recorded with
-    /// the frame's command buffer and the callback is invoked a frame or two later without stalling
-    /// the CPU. The packed R/G words are classified in the callback with the unified
-    /// <see cref="Utils.UnpackEntityId(ulong)"/> decode and the encoding-type discriminator.
+    /// <see cref="Engine.Engine.CreatePickingRequest(RenderContext, Vector2, Action{PickingResponse}, bool)"/>
+    /// path with <c>routeGizmoPicks: true</c>: the entity-id readback is recorded with the frame's
+    /// command buffer and delivered a frame or two later. Before the callback runs, the engine routes a
+    /// decoded gizmo pick to the gizmo service and begins the drag automatically (Req 8.2), so the
+    /// sample does not decode the pixel or classify gizmo picks by hand.
     /// </summary>
     public void Pick(int x, int y)
     {
         if (_engine is null || _renderContext is null)
             return;
 
-        _engine.CreatePickingRequest(_renderContext, new Vector2(x, y), OnClickPickResponse);
+        _engine.CreatePickingRequest(
+            _renderContext,
+            new Vector2(x, y),
+            OnClickPickResponse,
+            routeGizmoPicks: true
+        );
     }
 
     /// <summary>
-    /// Async click-pick result. Classifies the pixel with <see cref="Utils.UnpackEntityId(ulong)"/>:
-    /// a gizmo decode (<see cref="EntityIdPickKind.Gizmo"/>) resolves the owning gizmo entity and
-    /// <c>GizmoHandleId</c> and begins an axis drag using the pick coordinate's world ray; a scene
-    /// decode (<see cref="EntityIdPickKind.Scene"/>) resolves a normal scene pick for object selection
-    /// exactly as before.
+    /// Async click-pick result. Gizmo picks were already routed to the gizmo service by the engine
+    /// (Req 8.2), which begins the drag; when that happened the manager reports it is dragging. A scene
+    /// pick resolves the scene entity via <see cref="PickingResponse.TryGetPickingResult"/> — which
+    /// succeeds only for a scene pixel (world id &gt; 0), never for a gizmo pixel or a no-hit — and
+    /// never begins a gizmo drag (Req 8.3, 8.4). A no-hit begins no drag and resolves no scene entity
+    /// (Req 8.7).
     /// </summary>
     private void OnClickPickResponse(PickingResponse response)
     {
         if (_gizmoManager is null || _renderContext is null)
             return;
 
-        // Classify the pick from the shared entity-id target. World id > 0 is a scene pick; world id 0
-        // selects an alternate encoding (Gizmo) via the encoding-type discriminator.
-        EntityIdDecodeResult decoded = Utils.UnpackEntityId(response.Data);
-
-        // Gizmo pick: resolve the owning gizmo entity + handle id, then begin an axis drag.
-        if (
-            _gizmoManager.TryResolvePick(in decoded, out var resolution)
-            && _renderContext.TryUnProject(response.Coord.X, response.Coord.Y, out var ray)
-            && _gizmoManager.BeginDrag(in resolution, in ray)
-        )
+        // Gizmo pick: the engine's routing already began the drag on the gizmo service before this
+        // callback ran, so just reflect the active drag and stop (Req 8.2).
+        if (_gizmoManager.IsDragging)
         {
-            _isDraggingGizmo = true;
-            _lastPickInfo = $"Dragging handle {resolution.Handle.Axis} ({resolution.Handle.Mode})";
+            _lastPickInfo = "Dragging gizmo handle";
             return;
         }
 
-        // Scene pick (world id > 0): resolve the scene entity exactly as before.
-        if (decoded.Kind == EntityIdPickKind.Scene && response.TryGetPickingResult(out var result))
+        // Scene pick: TryGetPickingResult succeeds only for a scene entity (world id > 0); gizmo pixels
+        // (world id 0) and no-hits return false, so this resolves the same scene entity as before and
+        // never begins a gizmo drag (Req 8.3, 8.4, 8.7).
+        if (response.TryGetPickingResult(out var result))
         {
             bool isTarget = _targetNode is not null && result.Entity.Id == _targetNode.Entity.Id;
             _lastPickInfo = isTarget
@@ -350,7 +405,10 @@ internal sealed partial class GizmoDemo : IDisposable
 
     /// <summary>
     /// Async hover-pick result: highlights the gizmo handle under the pointer (or clears the highlight
-    /// when the pixel is not a gizmo handle).
+    /// when the pixel is not a gizmo handle). Hover picks are not routed (highlighting is not a drag),
+    /// so the sample decodes the hovered pixel and routes it to the per-instance highlight overlay via
+    /// <see cref="GizmoManager.ResolveHighlight"/>, which highlights the resolved handle on the owning
+    /// gizmo and clears every other instance's highlight (or clears all when nothing resolves).
     /// </summary>
     private void OnHoverPickResponse(PickingResponse response)
     {
@@ -358,13 +416,12 @@ internal sealed partial class GizmoDemo : IDisposable
         if (_gizmoManager is null)
             return;
 
-        // Classify the hovered pixel with the unified decode; highlight the resolved handle when the
-        // pixel is a gizmo pick that maps to a tracked gizmo, otherwise clear the highlight.
         EntityIdDecodeResult decoded = Utils.UnpackEntityId(response.Data);
-        _gizmoManager.HoveredHandle =
-            _gizmoManager.TryResolvePick(in decoded, out var resolution)
-                ? resolution.Handle
-                : null;
+        _gizmoManager.ResolveHighlight(
+            decoded.Kind == EntityIdPickKind.Gizmo,
+            decoded.OwningEntityId,
+            decoded.Handle
+        );
     }
 
     private bool _disposed;

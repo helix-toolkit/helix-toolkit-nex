@@ -44,7 +44,8 @@ public class PickingContextMissingTextureUnitTests
         Assert.AreNotEqual(PickingContext.InvalidRequestId, id3);
 
         // Entity-id texture key is intentionally left absent from the resource set.
-        var copied = rc.PickingContext.SendCommand(mock.AcquireCommandBuffer(), rc, frameSlot: 0);
+        var copied = new FastList<uint>();
+        rc.PickingContext.SendCommand(mock.AcquireCommandBuffer(), rc, frameSlot: 0, copied);
 
         Assert.AreEqual(0, copied.Count, "Missing entity-id texture must record zero copies.");
     }
@@ -70,7 +71,8 @@ public class PickingContextMissingTextureUnitTests
         // Entity-id key present but mapped to a null texture handle => empty.
         rc.ResourceSet.Textures[SystemBufferNames.TextureEntityId] = TextureHandle.Null;
 
-        var copied = rc.PickingContext.SendCommand(mock.AcquireCommandBuffer(), rc, frameSlot: 0);
+        var copied = new FastList<uint>();
+        rc.PickingContext.SendCommand(mock.AcquireCommandBuffer(), rc, frameSlot: 0, copied);
 
         Assert.AreEqual(0, copied.Count, "Empty entity-id texture must record zero copies.");
     }

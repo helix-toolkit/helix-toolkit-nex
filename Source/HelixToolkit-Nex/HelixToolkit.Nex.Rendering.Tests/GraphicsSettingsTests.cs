@@ -10,6 +10,6 @@ public class GraphicsSettingsTests
     [TestCategory("Picking")]
     public void MaxRequestsPerFrame_HasExpectedConstantValue()
     {
-        Assert.AreEqual(32u, GraphicsSettings.MaxRequestsPerFrame);
+        Assert.AreEqual(64u, GraphicsSettings.MaxRequestsPerFrame);
     }
 }

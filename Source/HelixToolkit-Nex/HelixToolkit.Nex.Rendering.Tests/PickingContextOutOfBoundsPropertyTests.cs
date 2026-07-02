@@ -162,10 +162,12 @@ public class PickingContextOutOfBoundsPropertyTests
                             break;
                     }
 
-                    var copied = rc.PickingContext.SendCommand(
+                    var copied = new FastList<uint>();
+                    rc.PickingContext.SendCommand(
                         mock.AcquireCommandBuffer(),
                         rc,
-                        frameSlot: 0
+                        frameSlot: 0,
+                        copied
                     );
 
                     if (scenario.Mode != EntityTextureMode.Present)

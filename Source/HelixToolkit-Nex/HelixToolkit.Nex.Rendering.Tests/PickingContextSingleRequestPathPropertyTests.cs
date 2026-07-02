@@ -147,10 +147,12 @@ public class PickingContextSingleRequestPathPropertyTests
 
                         // Recorded: the sole request is the only copied id this frame.
                         var frameSlot = frame % (int)GraphicsSettings.MaxFrameInFlight;
-                        var copied = rc.PickingContext.SendCommand(
+                        var copied = new FastList<uint>();
+                        rc.PickingContext.SendCommand(
                             mock.AcquireCommandBuffer(),
                             rc,
-                            frameSlot
+                            frameSlot,
+                            copied
                         );
                         if (copied.Count != 1 || copied[0] != id)
                         {

@@ -79,9 +79,19 @@ public sealed partial class GizmoManager
             return false;
         }
 
-        // Capture the originating gizmo's frame. The manager describes its gizmo via the captured
-        // Update state; bind the drag to the resolved owning entity so it stays isolated to that gizmo.
-        CaptureDragFrame(_gizmoOrigin, Space, _targetTransform, resolution.OwningEntityId);
+        // Bind the drag to the resolved gizmo's per-instance frame when it is a factory-created
+        // instance, so origin/space/target come from that single gizmo and the drag stays isolated to
+        // it (Requirement 7.7). Fall back to the manager's captured single-gizmo frame for the legacy
+        // component-driven path where no per-instance state exists.
+        if (TryGetInstanceByOwningEntity(resolution.OwningEntityId, out GizmoInstance? instance) && instance is not null)
+        {
+            CaptureDragFrame(instance.Origin, instance.Definition.Space, instance.TargetTransform, resolution.OwningEntityId);
+        }
+        else
+        {
+            CaptureDragFrame(_gizmoOrigin, Space, _targetTransform, resolution.OwningEntityId);
+        }
+
         return BeginDragCore(resolution.Handle, pointerRay);
     }
 

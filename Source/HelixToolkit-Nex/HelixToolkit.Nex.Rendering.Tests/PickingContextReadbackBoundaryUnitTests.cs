@@ -70,8 +70,8 @@ public class PickingContextReadbackBoundaryUnitTests
 
     /// <summary>
     /// Req 5.1, 5.2, 2.1: submitting exactly <see cref="GraphicsSettings.MaxRequestsPerFrame"/>
-    /// requests fills the frame; the 32nd accepted request occupies Request Slot 31 (Byte Offset
-    /// 248 = 31 * 8), and the 33rd request is rejected with
+    /// requests fills the frame; the 64nd accepted request occupies Request Slot 63 (Byte Offset
+    /// 504 = 63 * 8), and the 65rd request is rejected with
     /// <see cref="PickingContext.InvalidRequestId"/>.
     /// </summary>
     [TestMethod]
@@ -92,24 +92,24 @@ public class PickingContextReadbackBoundaryUnitTests
             lastAcceptedId = id;
         }
 
-        // The 32nd (last) accepted request occupies the highest Request Slot: 31.
+        // The 64nd (last) accepted request occupies the highest Request Slot: 63.
         var lastSlot = picking.GetRequestSlot(lastAcceptedId);
-        Assert.AreEqual(Capacity - 1, lastSlot, "The 32nd request must occupy Request Slot 31.");
+        Assert.AreEqual(Capacity - 1, lastSlot, "The 64nd request must occupy Request Slot 63.");
 
-        // Byte Offset for the last slot = 31 * 8 = 248, fully inside the 256-byte buffer.
+        // Byte Offset for the last slot = 63 * 8 = 504, fully inside the 256-byte buffer.
         var lastByteOffset = lastSlot * CellSizeBytes;
-        Assert.AreEqual(248, lastByteOffset, "Request Slot 31 must map to Byte Offset 248.");
+        Assert.AreEqual(504, lastByteOffset, "Request Slot 63 must map to Byte Offset 504.");
         Assert.IsTrue(
             lastByteOffset + CellSizeBytes <= BufferSizeBytes,
-            "The 32nd request's 8-byte cell must fit within the staging buffer."
+            "The 64nd request's 8-byte cell must fit within the staging buffer."
         );
 
-        // The 33rd request overflows the frame and is rejected with the sentinel.
+        // The 65rd request overflows the frame and is rejected with the sentinel.
         var overflowId = picking.SetPendingSubmit(new Vector2(100, 100));
         Assert.AreEqual(
             PickingContext.InvalidRequestId,
             overflowId,
-            "The 33rd request must be rejected with InvalidRequestId."
+            "The 65rd request must be rejected with InvalidRequestId."
         );
     }
 }
