@@ -34,6 +34,7 @@
     <Project Path="Samples/Integration/Lines/Lines.csproj" />
     <Project Path="Samples/Integration/PBRTest/PBRTest.csproj" />
     <Project Path="Samples/Integration/PickingTest/PickingTest.csproj" />
+    <Project Path="Samples/Integration/GizmoTest/GizmoTest.csproj" />
     <Project Path="Samples/Integration/Points/Points.csproj" />
     <Project Path="Samples/Integration/TextureTest/TextureTest.csproj" />
     <Project Path="Samples/Integration/Transparent/Transparent.csproj" />

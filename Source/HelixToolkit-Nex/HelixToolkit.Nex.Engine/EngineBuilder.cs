@@ -1,4 +1,5 @@
 using HelixToolkit.Nex.Rendering.ComputeNodes;
+using HelixToolkit.Nex.Rendering.Gizmos;
 
 namespace HelixToolkit.Nex.Engine;
 
@@ -86,6 +87,8 @@ public sealed class EngineBuilder
     private bool _withBillboard;
     private bool _withPointCloud;
     private bool _withLine;
+    private GizmoManager? _gizmoManager;
+    private GizmoOcclusionMode _gizmoOcclusionMode = GizmoOcclusionMode.AlwaysOnTop;
     private Action<IResourceManager>? _onResourceManagerReady;
 
     private EngineBuilder(IContext context)
@@ -261,6 +264,36 @@ public sealed class EngineBuilder
         return this;
     }
 
+    /// <summary>
+    /// Enables gizmo overlay rendering (opt-in). Registers a <see cref="GizmoRenderNode"/> into the
+    /// overlay stage and wires it to the supplied <paramref name="manager"/>, so the manager's
+    /// per-frame handle geometry (queued via <see cref="GizmoManager.EmitDraws"/>) is consumed each
+    /// frame after tone mapping.
+    /// <para>
+    /// This is deliberately opt-in and is <b>not</b> included by <see cref="WithDefaultNodes"/>: the
+    /// node draws nothing and reports no renderable work while the manager has no active gizmo, but
+    /// it is only added when an application asks for it, so default pipelines are unaffected. The
+    /// application still calls <see cref="GizmoManager.Update"/> and <see cref="GizmoManager.EmitDraws"/>
+    /// each frame to drive the node.
+    /// </para>
+    /// </summary>
+    /// <param name="manager">The gizmo interaction manager that owns per-frame handle geometry.</param>
+    /// <param name="occlusionMode">
+    /// The occlusion mode the node applies; defaults to <see cref="GizmoOcclusionMode.AlwaysOnTop"/>
+    /// so manipulator handles stay grabbable even when behind geometry.
+    /// </param>
+    /// <returns>This builder for method chaining.</returns>
+    public EngineBuilder WithGizmos(
+        GizmoManager manager,
+        GizmoOcclusionMode occlusionMode = GizmoOcclusionMode.AlwaysOnTop
+    )
+    {
+        ArgumentNullException.ThrowIfNull(manager);
+        _gizmoManager = manager;
+        _gizmoOcclusionMode = occlusionMode;
+        return this;
+    }
+
     public EngineBuilder WithFXAA()
     {
         _withFXAA = true;
@@ -429,6 +462,25 @@ public sealed class EngineBuilder
         if (_withFPS)
         {
             AddNode(new FPSNode());
+        }
+
+        if (_gizmoManager is not null)
+        {
+            // Opt-in gizmo overlay: registered only when WithGizmos was called, so default
+            // pipelines are unaffected. The node self-places into RenderStage.Overlay (after tone
+            // mapping) and is skipped while no gizmos are gathered for the frame.
+            //
+            // The node is a pure consumer of gathered GizmoDrawInfo data (task 9.1) and now runs its
+            // own per-frame GizmoDataProvider gather over the active world (task 9.2): every entity
+            // carrying a valid GizmoDrawInfo is gathered each frame, so all simultaneous gizmos
+            // render in the same frame. The GizmoManager sets/updates those components on the
+            // entities it owns.
+            AddNode(
+                new GizmoRenderNode
+                {
+                    OcclusionMode = _gizmoOcclusionMode,
+                }
+            );
         }
 
         AddNode(new ToneMappingNode() { Mode = _toneMappingMode });

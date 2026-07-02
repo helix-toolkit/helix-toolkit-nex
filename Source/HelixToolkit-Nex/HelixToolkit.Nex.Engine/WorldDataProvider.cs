@@ -1,5 +1,5 @@
 using HelixToolkit.Nex.Engine.Data;
-using HelixToolkit.Nex.Rendering.DrawStreams;
+using HelixToolkit.Nex.Rendering.Gizmos;
 
 namespace HelixToolkit.Nex.Engine;
 
@@ -15,6 +15,7 @@ public sealed class WorldDataProvider : IRenderDataProvider, IDisposable
     private readonly PointDrawStreamRegistry _pointDrawStreamRegistry;
     private readonly BillboardData _billboardData;
     private readonly SceneState _sceneState;
+    private readonly GizmoDataProvider _gizmoDataProvider;
 
     public World World { get; } = World.CreateWorld();
     public IResourceManager ResourceManager { get; }
@@ -41,16 +42,19 @@ public sealed class WorldDataProvider : IRenderDataProvider, IDisposable
 
     public IRenderData MeshInfos => ResourceManager.MeshInfoData;
 
+    public IGizmoDataProvider GizmoData => _gizmoDataProvider;
+
     public WorldDataProvider(IServiceProvider services)
     {
         ResourceManager = services.GetRequiredService<IResourceManager>();
-        _lightData = new RangeLightData(Context, World);
-        _directionalLightData = new DirectionalLightData(Context, World);
         _meshDrawStreamRegistry = new MeshDrawStreamRegistry(Context, World);
         _lineDrawStreamRegistry = new LineDrawStreamRegistry(Context, World);
         _pointDrawStreamRegistry = new PointDrawStreamRegistry(Context, World);
+        _lightData = new RangeLightData(Context, World);
+        _directionalLightData = new DirectionalLightData(Context, World);
         _billboardData = new BillboardData(Context, World);
         _sceneState = new SceneState(Context, World);
+        _gizmoDataProvider = new GizmoDataProvider(World);
         _renderDataList.Add(_lightData);
         _renderDataList.Add(_directionalLightData);
         _renderDataList.Add(_billboardData);
@@ -58,6 +62,7 @@ public sealed class WorldDataProvider : IRenderDataProvider, IDisposable
 
     public bool Initialize()
     {
+        _logger.LogInformation($"Initializing. World: {World}");
         using var t = _tracer.BeginScope(nameof(Initialize));
         _sceneState.Initialize();
         if (_meshDrawStreamRegistry.Initialize().CheckResult() != ResultCode.Ok)
@@ -102,6 +107,7 @@ public sealed class WorldDataProvider : IRenderDataProvider, IDisposable
         {
             return false;
         }
+        _gizmoDataProvider.Update();
         return true;
     }
 
