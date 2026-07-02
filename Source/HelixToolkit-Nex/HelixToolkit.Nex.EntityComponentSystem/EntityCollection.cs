@@ -1,10 +1,13 @@
+using ZLinq;
+using ZLinq.Linq;
+
 namespace HelixToolkit.Nex.ECS;
 
 /// <summary>
 /// Provide a collection of entities defined by the filters.
 /// Collection changes when entity or component state changes according to the defined filter at build time.
 /// </summary>
-public sealed class EntityCollection : IEnumerable<Entity>, IDisposable
+public sealed class EntityCollection : IDisposable
 {
     public static RuleBuilder Create(in World world)
     {
@@ -102,33 +105,22 @@ public sealed class EntityCollection : IEnumerable<Entity>, IDisposable
     }
 
     #region Enumerable
-    private readonly struct Enumerator(World world, HashSet<int> entities) : IEnumerator
+    public struct Enumerator(World world, HashSet<int> entities)
     {
         private readonly World _world = world;
-        private readonly IEnumerator<int> _entities = entities.GetEnumerator();
+        private ValueEnumerator<FromHashSet<int>, int> _entities = entities
+            .AsValueEnumerable()
+            .GetEnumerator();
 
-        public readonly object Current => _world.GetEntity(_entities.Current);
+        public readonly Entity Current => _world.GetEntity(_entities.Current);
 
-        public readonly bool MoveNext()
+        public bool MoveNext()
         {
             return _entities.MoveNext();
         }
-
-        public readonly void Reset()
-        {
-            _entities.Reset();
-        }
     }
 
-    public IEnumerator<Entity> GetEnumerator()
-    {
-        foreach (var id in _entities)
-        {
-            yield return World.GetEntity(id);
-        }
-    }
-
-    IEnumerator IEnumerable.GetEnumerator()
+    public Enumerator GetEnumerator()
     {
         return new Enumerator(World, _entities);
     }

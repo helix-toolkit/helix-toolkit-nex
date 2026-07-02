@@ -454,6 +454,15 @@ public sealed class RenderContext(IServiceProvider services) : Initializable
         }
     }
 
+    /// <summary>
+    /// Sentinel value returned by <see cref="SendPicking"/> when the current frame's picking
+    /// capacity (<see cref="GraphicsSettings.MaxRequestsPerFrame"/>) has been exhausted and the
+    /// request could not be accepted. Callers and tests can compare a returned Request Id against
+    /// this constant to detect the overflow case, since the underlying
+    /// <see cref="PickingContext"/> is internal.
+    /// </summary>
+    public const uint InvalidPickingRequestId = PickingContext.InvalidRequestId;
+
     public uint SendPicking(Vector2 screenPos)
     {
         return PickingContext.SetPendingSubmit(screenPos);
