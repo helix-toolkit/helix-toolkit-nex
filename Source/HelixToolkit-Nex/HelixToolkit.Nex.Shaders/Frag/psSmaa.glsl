@@ -384,7 +384,7 @@ vec2 SMAACalculateDiagWeights(vec2 texcoord, vec2 e, vec4 subsampleIndices) {
         vec4 c;
         c.xy = sampleEdgeOffset(coords.xy, vec2(-1.0, 0.0), ts).rg;
         c.zw = sampleEdgeOffset(coords.zw, vec2( 1.0, 0.0), ts).rg;
-        c.yxwz = SMAADecodeDiagBilinearAccess(c.xyzw);
+        c = SMAADecodeDiagBilinearAccess(c);
 
         // Merge crossing edges at each side into a single value:
         vec2 cc = vec2(2.0, 2.0) * c.xz + c.yw;
