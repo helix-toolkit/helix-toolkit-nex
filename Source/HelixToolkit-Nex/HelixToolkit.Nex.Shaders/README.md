@@ -95,4 +95,5 @@ if (!cache.TryGet(cacheKey, out var entry))
 - **Shader Management**: The package includes a robust caching mechanism to optimize shader compilation times and resource usage.
 - **Shader Generation**: Provides utilities for generating GLSL shader code with support for various rendering techniques and optimizations.
 - **Wireframe Rendering**: Introduces a new wireframe rendering mode with adaptive line thickness and anti-aliasing, controlled via `WireframePushConstants`.
+- **SMAA Enhancements**: The SMAA shader now includes support for color-based edge detection and diagonal pattern detection, improving anti-aliasing quality.
 ```

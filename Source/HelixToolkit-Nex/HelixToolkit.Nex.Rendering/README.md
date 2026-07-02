@@ -35,11 +35,16 @@ HelixToolkit.Nex.Rendering is responsible for managing the rendering pipeline of
 | `PickingContext`                 | Manages GPU-based picking operations by reading entity information from a texture.|
 | `IInstancingManager`             | Interface for managing instancing resources, including lifecycle and GPU uploads.|
 | `InstancingManager`              | Manages a pool of `Instancing` objects, providing lifecycle and GPU resource management.|
+| `SMAANode`                       | Performs Subpixel Morphological Anti-Aliasing (SMAA) with configurable quality and debug modes. |
+| `FXAANode`                       | Performs Fast Approximate Anti-Aliasing (FXAA) with configurable quality settings. |
 
 ## Recent Changes
 
 ### New Features
 
+- **SMAANode**: Added to perform Subpixel Morphological Anti-Aliasing with configurable quality and debug modes.
+- **SMAAEdgeDetection**: Enum added to select edge-detection metrics for SMAA.
+- **SMAADebugMode**: Enum added to provide shader-level debug visualizations for SMAA.
 - **LineDrawInfo**: Added for describing line geometry attached to an entity.
 - **PointDrawInfo**: Introduced to replace `PointCloudDrawInfo` for describing point clouds.
 - **BillboardDrawInfo**: Renamed from `BillboardComponent` to better reflect its purpose.
