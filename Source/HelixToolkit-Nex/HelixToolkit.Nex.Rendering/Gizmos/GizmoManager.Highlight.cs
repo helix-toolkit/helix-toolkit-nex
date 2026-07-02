@@ -48,6 +48,64 @@ public sealed partial class GizmoManager
     public Color4 HighlightColor { get; set; } = new(1f, 1f, 0f, 1f);
 
     /// <summary>
+    /// Routes a decoded gizmo pick to the per-instance highlight overlay: when the pick resolves to
+    /// exactly one tracked gizmo, that gizmo's resolved handle is highlighted and every other tracked
+    /// instance's highlight is cleared (isolation, Requirement 7.2); when the pick resolves to no
+    /// tracked gizmo, any active highlight is cleared from all instances (Requirement 7.8).
+    /// </summary>
+    /// <param name="isGizmo">Whether the decode classified the pixel as a gizmo pick.</param>
+    /// <param name="owningEntityId">The decoded owning entity id (gizmo picks only).</param>
+    /// <param name="handle">The decoded handle identity (gizmo picks only).</param>
+    /// <remarks>
+    /// This never rebuilds or reallocates a handle set: it only mutates each affected instance's
+    /// <see cref="GizmoHandleId"/> highlight overlay in place and republishes the component
+    /// (Requirement 3.3). It is a pure routing helper over the existing pick resolution, so it never
+    /// throws for any input.
+    /// </remarks>
+    public void ResolveHighlight(bool isGizmo, uint owningEntityId, GizmoHandleId handle)
+    {
+        // A pick that resolves to no tracked gizmo clears every active highlight (Requirement 7.8).
+        if (!TryResolvePick(isGizmo, owningEntityId, handle, out GizmoPickResolution resolution))
+        {
+            ClearAllHighlights();
+            return;
+        }
+
+        // A resolved pick highlights only the resolved gizmo's handle and clears all others, so the
+        // highlight is isolated to a single gizmo (Requirement 7.2).
+        foreach (GizmoInstance instance in _instances.Values)
+        {
+            GizmoHandleId? desired =
+                instance.HasEntity && (uint)instance.Entity.Id == resolution.OwningEntityId
+                    ? resolution.Handle
+                    : null;
+
+            if (!Nullable.Equals(instance.Highlighted, desired))
+            {
+                instance.Highlighted = desired;
+                PublishDrawInfo(instance);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Clears the highlight overlay from every tracked instance whose highlight is currently set,
+    /// republishing only the instances that change. Used when a pick resolves to no tracked gizmo
+    /// (Requirement 7.8).
+    /// </summary>
+    private void ClearAllHighlights()
+    {
+        foreach (GizmoInstance instance in _instances.Values)
+        {
+            if (instance.Highlighted is not null)
+            {
+                instance.Highlighted = null;
+                PublishDrawInfo(instance);
+            }
+        }
+    }
+
+    /// <summary>
     /// Returns the color a handle should be published with this frame: <see cref="HighlightColor"/>
     /// when the handle is being dragged or is currently hovered, otherwise the handle's own color.
     /// Applied by <see cref="Update"/> / the <see cref="HoveredHandle"/> setter when building the

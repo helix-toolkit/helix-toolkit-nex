@@ -144,9 +144,10 @@ public sealed class WireframePostEffect : PostEffect
     private void GatherWireframeDraws(World world, IRenderDataProvider data)
     {
         _entries.Clear();
-
-        foreach (var entity in world.GetComponentEntities<WireframeOverlay>())
+        var comps = world.GetComponents<WireframeOverlay>().GetEntities();
+        foreach (var id in comps)
         {
+            var entity = world.GetEntity(id);
             if (!entity.Has<MeshDrawInfo>() || !entity.Has<Renderable>())
             {
                 continue;

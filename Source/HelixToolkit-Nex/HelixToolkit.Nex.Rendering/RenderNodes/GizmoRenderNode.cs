@@ -34,6 +34,16 @@ public sealed class GizmoRenderNode : RenderNode
     public GizmoOcclusionMode OcclusionMode { get; set; } = GizmoOcclusionMode.AlwaysOnTop;
 
     /// <summary>
+    /// Gets or sets the color used to draw a handle when it is the gizmo's highlighted handle
+    /// (<see cref="GizmoDrawInfo.HighlightedHandle"/>). Because the cached handle set is shared and
+    /// immutable, highlight is not baked into the handle geometry; instead the node resolves each
+    /// handle's draw color at record time, using this color when the handle's id matches the
+    /// instance's <see cref="GizmoDrawInfo.HighlightedHandle"/> and the handle's own color otherwise.
+    /// Defaults to yellow, matching the manager's previous highlight color.
+    /// </summary>
+    public Color4 HighlightColor { get; set; } = new(1f, 1f, 0f, 1f);
+
+    /// <summary>
     /// Pure mapping from an occlusion mode to the depth state used for the gizmo pass, under the
     /// reversed-Z convention: <see cref="GizmoOcclusionMode.AlwaysOnTop"/> selects
     /// <see cref="DepthState.Disabled"/> (X-ray, no depth test, Req 8.1/8.4) and
@@ -191,6 +201,15 @@ public sealed class GizmoRenderNode : RenderNode
 
                 float scale = screenScale.ScreenScaleAt(model.Translation, camera, viewportHeight);
 
+                // Resolve the draw color at record time against the shared, un-mutated cached handle
+                // set: use the node's HighlightColor when this handle is the instance's highlighted
+                // handle, otherwise the handle's own color (Requirement 7.3).
+                var drawColor =
+                    info.HighlightedHandle is GizmoHandleId highlighted
+                    && handle.Id.Equals(highlighted)
+                        ? HighlightColor
+                        : handle.Color;
+
                 DrawHandle(
                     in res,
                     fpAddr,
@@ -198,6 +217,7 @@ public sealed class GizmoRenderNode : RenderNode
                     in handle,
                     in model,
                     scale,
+                    drawColor,
                     encodedR,
                     encodedG
                 );
@@ -220,6 +240,7 @@ public sealed class GizmoRenderNode : RenderNode
         in GizmoHandle handle,
         in Matrix4x4 model,
         float screenScale,
+        Color4 color,
         uint encodedR,
         uint encodedG
     )
@@ -229,7 +250,7 @@ public sealed class GizmoRenderNode : RenderNode
             {
                 FpConstAddress = fpAddr,
                 ModelTransform = model,
-                Color = handle.Color,
+                Color = color,
                 EncodedR = encodedR,
                 EncodedG = encodedG,
                 ScreenScale = screenScale,

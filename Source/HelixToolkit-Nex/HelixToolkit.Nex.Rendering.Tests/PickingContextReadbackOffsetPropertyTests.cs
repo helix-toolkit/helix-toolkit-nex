@@ -141,10 +141,12 @@ public class PickingContextReadbackOffsetPropertyTests
                     rc.ResourceSet.Textures[SystemBufferNames.TextureEntityId] = tex;
 
                     // Record the copies into the generated Frame Slot's staging buffer.
-                    var copied = rc.PickingContext.SendCommand(
+                    var copied = new FastList<uint>();
+                    rc.PickingContext.SendCommand(
                         mock.AcquireCommandBuffer(),
                         rc,
-                        scenario.FrameSlot
+                        scenario.FrameSlot,
+                        copied
                     );
 
                     // Every in-bounds request is recorded, in submission (slot) order.

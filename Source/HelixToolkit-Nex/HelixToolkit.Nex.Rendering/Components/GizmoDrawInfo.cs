@@ -41,11 +41,23 @@ public struct GizmoDrawInfo
     public float DesiredPixelSize { get; set; }
 
     /// <summary>
-    /// The handle set for this gizmo. Each handle carries its stable <see cref="GizmoHandleId"/>
-    /// (mode + axis), shape, axis, color, and gizmo-local transform. Screen-size scaling is applied
-    /// in the vertex shader, not baked here.
+    /// The handle set for this gizmo. This is a direct reference to the manager's cached handle set
+    /// (no per-frame copy): each handle carries its stable <see cref="GizmoHandleId"/> (mode + axis),
+    /// shape, axis, base color, and gizmo-local transform. Because the cached set is shared and
+    /// immutable, per-instance highlight is not baked into these handles; it is expressed separately
+    /// via <see cref="HighlightedHandle"/>. Screen-size scaling is applied in the vertex shader, not
+    /// baked here.
     /// </summary>
     public IReadOnlyList<GizmoHandle> Handles { get; set; }
+
+    /// <summary>
+    /// The handle to render highlighted for this instance, or <see langword="null"/> when none is
+    /// highlighted. This is a per-instance overlay layered on top of the shared, cached
+    /// <see cref="Handles"/> set: the render node compares each drawn handle's
+    /// <see cref="GizmoHandleId"/> against this value and applies the highlight color for the match,
+    /// leaving the cached handle colors untouched.
+    /// </summary>
+    public GizmoHandleId? HighlightedHandle { get; set; }
 
     /// <summary>True when this component has a non-empty, drawable handle set.</summary>
     public readonly bool Valid => Handles is { Count: > 0 };

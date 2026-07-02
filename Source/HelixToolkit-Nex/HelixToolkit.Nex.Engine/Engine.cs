@@ -61,7 +61,7 @@ namespace HelixToolkit.Nex.Engine;
 /// </code>
 /// </para>
 /// </summary>
-public class Engine : Initializable
+public partial class Engine : Initializable
 {
     private static readonly ILogger _logger = LogManager.Create<Engine>();
     private static readonly EventBus _bus = EventBus.Instance;
@@ -166,6 +166,10 @@ public class Engine : Initializable
 
     protected override ResultCode OnTearingDown()
     {
+        // Dispose the engine-hosted gizmo service first, stopping tracking of every gizmo it owned
+        // (Requirement 4.2). Done before node teardown so component removals run against a live world.
+        TeardownGizmoService();
+
         for (var i = _initializables.Length - 1; i >= 0; --i)
         {
             ResultCode ret = _initializables[i].Teardown();
@@ -644,6 +648,43 @@ public class Engine : Initializable
             Callback = responseCallback,
         };
         return requestId;
+    }
+
+    /// <summary>
+    /// Creates an asynchronous picking request that optionally routes decoded gizmo picks to the
+    /// engine's gizmo service (<see cref="Gizmos"/>) automatically before the application callback
+    /// observes the result (Requirement 6).
+    /// </summary>
+    /// <param name="context">The render context the pick is issued against.</param>
+    /// <param name="coord">The pick's screen coordinate (viewport-relative pixels).</param>
+    /// <param name="responseCallback">The application callback invoked when the result is delivered.</param>
+    /// <param name="routeGizmoPicks">
+    /// When <see langword="true"/>, a <see cref="GizmoPickRouter"/> over <see cref="Gizmos"/> routes
+    /// decoded gizmo picks to the gizmo service (begin/continue drag) before the application callback
+    /// runs (Requirement 6.6). Scene picks, no-hits, and unresolved gizmo picks pass through unchanged.
+    /// When <see langword="false"/>, this behaves exactly like
+    /// <see cref="CreatePickingRequest(RenderContext, Vector2, Action{PickingResponse})"/> — no gizmo
+    /// pick is dispatched and the result reaches the application unchanged (Requirement 6.7).
+    /// </param>
+    /// <returns>The request id, or the overflow sentinel when the per-frame picking capacity is full.</returns>
+    public uint CreatePickingRequest(
+        RenderContext context,
+        Vector2 coord,
+        Action<PickingResponse> responseCallback,
+        bool routeGizmoPicks
+    )
+    {
+        // Disabled routing delegates unchanged, avoiding any gizmo-service creation (Requirement 6.7).
+        if (!routeGizmoPicks)
+        {
+            return CreatePickingRequest(context, coord, responseCallback);
+        }
+
+        // Wrap the application callback so decoded gizmo picks route to the gizmo service first, then
+        // the application callback always runs with the unmodified result (Requirement 6.6).
+        var router = new GizmoPickRouter(Gizmos);
+        var wrapped = router.Wrap(responseCallback, routeGizmoPicks);
+        return CreatePickingRequest(context, coord, wrapped);
     }
 
     private readonly struct PendingPicking

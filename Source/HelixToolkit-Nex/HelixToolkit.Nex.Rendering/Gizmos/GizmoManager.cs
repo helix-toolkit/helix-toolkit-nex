@@ -24,7 +24,7 @@ namespace HelixToolkit.Nex.Rendering.Gizmos;
 /// tasks.
 /// </para>
 /// </remarks>
-public sealed partial class GizmoManager
+public sealed partial class GizmoManager : IDisposable
 {
     /// <summary>Computes the constant on-screen sizing factor for handles.</summary>
     private readonly GizmoScreenScale _screenScale;
