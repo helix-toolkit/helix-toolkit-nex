@@ -17,7 +17,7 @@ internal sealed class BillboardData(IContext context, World world) : Initializab
     private long _lastBufferUpdateTicks;
     private long _lastDataUpdateTicks = Stopwatch.GetTimestamp();
     private bool _needRebuilt = true;
-    private Components<BillboardDrawInfo> _components;
+    private IComponents<BillboardDrawInfo>? _components;
 
     public IContext Context { get; } = context;
     public World World { get; } = world;
@@ -61,6 +61,7 @@ internal sealed class BillboardData(IContext context, World world) : Initializab
         }
         _billboardsByMaterial.Clear();
         Disposer.DisposeAndRemove(ref _entities);
+        _components = null;
         return ResultCode.Ok;
     }
 
@@ -83,7 +84,7 @@ internal sealed class BillboardData(IContext context, World world) : Initializab
     /// </summary>
     private void Rebuild()
     {
-        if (_entities is null)
+        if (_entities is null || _components is null)
         {
             return;
         }

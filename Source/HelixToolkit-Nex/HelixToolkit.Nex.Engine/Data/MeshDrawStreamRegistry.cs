@@ -10,8 +10,8 @@ internal sealed class MeshDrawStreamRegistry(IContext context, World world)
         (int)DrawStreamType.MeshStreamTypeCount
     );
     private EntityCollection? _collections;
-    private Components<MeshDrawInfo> _meshComponents = world.GetComponents<MeshDrawInfo>();
-    private Components<Renderable> _renderables = world.GetComponents<Renderable>();
+    private IComponents<MeshDrawInfo> _meshComponents = world.GetComponents<MeshDrawInfo>();
+    private IComponents<Renderable> _renderables = world.GetComponents<Renderable>();
 
     public AllStreamsEnumerable<MeshDraw> AllStreams => new(_streamsByType!);
 

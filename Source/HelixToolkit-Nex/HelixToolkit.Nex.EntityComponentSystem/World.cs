@@ -389,7 +389,7 @@ public sealed class World : IEnumerable<Entity>, IDisposable
                 if (!HasComponent<T>(entity))
                 {
                     var tagManager = TagManager<T>.GetOrCreateManager(Id);
-                    tagManager?.Add();
+                    tagManager?.Add(entity);
                     added = true;
                 }
                 ret = ResultCode.Ok;
@@ -454,7 +454,7 @@ public sealed class World : IEnumerable<Entity>, IDisposable
         }
 #pragma warning disable CS8602 // Dereference of a possibly null reference.
 #pragma warning disable S2259 // Null pointers should not be dereferenced
-        return ref manager.Get(entity.Id);
+        return ref manager.Get(entity);
 #pragma warning restore S2259 // Null pointers should not be dereferenced
 #pragma warning restore CS8602 // Dereference of a possibly null reference.
     }
@@ -540,7 +540,7 @@ public sealed class World : IEnumerable<Entity>, IDisposable
                 if (IsTagType<T>())
                 {
                     var tagManager = TagManager<T>.GetOrCreateManager(Id);
-                    tagManager?.Remove();
+                    tagManager?.Remove(entity);
                     ret = ResultCode.Ok;
                 }
                 else
@@ -600,7 +600,7 @@ public sealed class World : IEnumerable<Entity>, IDisposable
     /// <typeparam name="T"></typeparam>
     /// <returns></returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public Components<T> GetComponents<
+    public IComponents<T> GetComponents<
         [DynamicallyAccessedMembers(
             DynamicallyAccessedMemberTypes.PublicFields
                 | DynamicallyAccessedMemberTypes.NonPublicFields
@@ -610,12 +610,11 @@ public sealed class World : IEnumerable<Entity>, IDisposable
     {
         if (IsTagType<T>())
         {
-            throw new InvalidOperationException(
-                "Tag type is not valid for GetComponents operation."
-            );
+            var tagManager = TagManager<T>.GetManager(Id);
+            return tagManager is not null ? tagManager : EmptyComponents<T>.Empty;
         }
         var manager = GetComponentManager<T>();
-        return manager != null ? manager.AsComponents() : new Components<T>();
+        return manager is not null ? manager : EmptyComponents<T>.Empty;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -702,7 +701,7 @@ public sealed class World : IEnumerable<Entity>, IDisposable
     /// Enumerates all entities that have a component of type <typeparamref name="T"/>,
     /// in the same storage order as <see cref="GetComponents{T}"/>.
     /// </summary>
-    public IEnumerable<Entity> GetComponentEntities<
+    public ComponentEntities<T> GetComponentEntities<
         [DynamicallyAccessedMembers(
             DynamicallyAccessedMemberTypes.PublicFields
                 | DynamicallyAccessedMemberTypes.NonPublicFields
@@ -710,29 +709,7 @@ public sealed class World : IEnumerable<Entity>, IDisposable
     T
     >()
     {
-        if (IsTagType<T>())
-        {
-            foreach (var entity in this)
-            {
-                if (entity.Has<T>())
-                {
-                    yield return entity;
-                }
-            }
-        }
-        else
-        {
-            var manager = GetComponentManager<T>();
-            if (manager == null)
-            {
-                yield break;
-            }
-            foreach (var entity in manager.GetEntities())
-            {
-                if (entity.Valid)
-                    yield return entity;
-            }
-        }
+        return GetComponents<T>().GetEntities();
     }
 
     #region Event Handling
@@ -770,6 +747,30 @@ public sealed class World : IEnumerable<Entity>, IDisposable
         return EntityCollection.Create(this);
     }
     #endregion
+
+    internal ref EntityState GetEntityState(int entityId)
+    {
+        Debug.Assert(entityId < _entityState.Count);
+        return ref _entityState.GetInternalArray()[entityId];
+    }
+
+    internal bool GetNextEntityIdByType<T>(ref int currentEntityId)
+    {
+        for (var i = currentEntityId; i < _entityState.Count; ++i)
+        {
+            if (
+                _entityState.At(i).Valid
+                && _entityState
+                    .GetInternalArray()[i]
+                    .ComponentTypes.HasType(ComponentIdProxy<T>.TypeId)
+            )
+            {
+                currentEntityId = i;
+                return true;
+            }
+        }
+        return false;
+    }
 
     #region IEnumerable
     /// <summary>

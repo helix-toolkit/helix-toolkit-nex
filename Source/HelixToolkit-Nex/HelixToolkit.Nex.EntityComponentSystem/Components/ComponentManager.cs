@@ -105,7 +105,7 @@ internal sealed class TagManager<
         DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.NonPublicFields
     )]
 T
-> : IDisposable
+> : IComponents<T>, IDisposable
 {
     public static readonly ComponentIdProxy<T> Id = new();
     private static readonly FastList<TagManager<T>?> _managerStorage = [];
@@ -175,14 +175,18 @@ T
     }
 
     public int WorldId { get; }
+    public World? World => World.GetWorldById(WorldId);
     public int Count => _count;
 
     private readonly FastList<Subscription> _subscriptions = [];
+    private readonly HashSet<Entity> _entities = [];
 
     public TagManager(int worldId)
     {
         WorldId = worldId;
-        var world = World.GetWorldById(worldId) ?? throw new ArgumentException($"World id {worldId} is invalid.");
+        var world =
+            World.GetWorldById(worldId)
+            ?? throw new ArgumentException($"World id {worldId} is invalid.");
         _subscriptions.Add(ECSEventBus.Register<WorldDisposingEvent>(world, HandleWorldDisposing));
         _subscriptions.Add(
             ECSEventBus.Register<EntityDisposingEvent>(world, HandleEntityDisposing)
@@ -200,14 +204,16 @@ T
 
     private int _count = 0;
 
-    public void Add()
+    public void Add(Entity entity)
     {
         Interlocked.Increment(ref _count);
+        _entities.Add(entity);
     }
 
-    public void Remove()
+    public void Remove(Entity entity)
     {
         Interlocked.Decrement(ref _count);
+        _entities.Remove(entity);
     }
 
     private void HandleWorldDisposing(World world, WorldDisposingEvent msg)
@@ -223,7 +229,7 @@ T
         }
         if (world.HasComponentTypeById(msg.Entity.Id, ComponentIdProxy<T>.TypeId) == true)
         {
-            Remove();
+            Remove(msg.Entity);
         }
     }
 
@@ -240,9 +246,78 @@ T
             sub.Dispose();
         }
         _subscriptions.Clear();
+        _entities.Clear();
         _disposed = true;
         Interlocked.Exchange(ref _count, 0);
         RemoveManager(WorldId);
+    }
+
+    #region IComponents<T> Implementation
+    public ref T this[Entity entity]
+    {
+        get { throw new NotSupportedException("Tag components do not have a value."); }
+    }
+
+    public T[] GetInternalArray()
+    {
+        throw new NotSupportedException("Tag components do not have a value.");
+    }
+
+    public ComponentEntities<T> GetEntities()
+    {
+        return new ComponentEntities<T>(new EntityEnumerator<T>(_entities));
+    }
+
+    public MappingEnumerator<T> GetEnumerator()
+    {
+        return MappingEnumerator<T>.Empty;
+    }
+    #endregion
+}
+
+internal struct ComponentMappingKey()
+{
+    private uint _storage = 0;
+    public bool Valid
+    {
+        set
+        {
+            if (value)
+            {
+                _storage |= 0x80000000;
+            }
+            else
+            {
+                _storage &= 0x7FFFFFFF;
+            }
+        }
+        readonly get => (_storage & 0x80000000) != 0;
+    }
+    public int ComponentIndex
+    {
+        set
+        {
+            _storage = (_storage & 0x80000000) | ((uint)value & 0x7FFFFFFF);
+            Valid = true;
+        }
+        readonly get => Valid ? (int)(_storage & 0x7FFFFFFF) : -1;
+    }
+
+    public void Clear()
+    {
+        _storage = 0;
+    }
+}
+
+internal struct EntityMappingKey(int entity)
+{
+    public int Entity = entity;
+
+    public readonly bool Valid => Entity > 0;
+
+    public void Clear()
+    {
+        Entity = 0;
     }
 }
 
@@ -251,7 +326,7 @@ internal sealed class ComponentManager<
         DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.NonPublicFields
     )]
 T
-> : IDisposable
+> : IComponents<T>, IDisposable
 {
     #region Manager Storage
     internal static readonly ComponentTypeId TypeId = ComponentIdProxy<T>.TypeId;
@@ -376,83 +451,7 @@ T
     }
 
     #endregion
-    #region Internal Structs
-    internal struct ComponentMappingKey(int componentIndex)
-    {
-        public bool Valid = true;
-        public int ComponentIndex = componentIndex;
-    }
 
-    internal struct EntityMappingKey(int entity)
-    {
-        public int Entity = entity;
-    }
-    #endregion
-    #region Enumerable
-
-    public readonly struct EntityEnumerable(ComponentManager<T> pool) : IEnumerable<Entity>
-    {
-        private readonly ComponentManager<T> _pool = pool;
-
-        #region IEnumerable
-
-        public EntityEnumerator GetEnumerator() => new EntityEnumerator(_pool);
-
-        IEnumerator<Entity> IEnumerable<Entity>.GetEnumerator() => GetEnumerator();
-
-        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-        #endregion
-    }
-
-    public struct EntityEnumerator : IEnumerator<Entity>
-    {
-        private readonly World _world;
-        private readonly FastList<ComponentMappingKey> _mapping;
-
-        private int _index = -1;
-
-        public EntityEnumerator(ComponentManager<T> componentManager)
-        {
-            var w = _getWorldFunc?.Invoke(componentManager.WorldId);
-            _world = w ?? throw new InvalidOperationException($"Unable to get world.");
-            _mapping = componentManager.CompMapping;
-        }
-
-        #region IEnumerator
-
-        public readonly Entity Current => new(_world, _index);
-
-        readonly object IEnumerator.Current => Current;
-
-        public bool MoveNext()
-        {
-            while (++_index < _mapping.Count)
-            {
-                if (_mapping[_index].Valid)
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        public void Reset()
-        {
-            _index = -1;
-        }
-
-        #endregion
-
-        #region IDisposable
-
-        public readonly void Dispose()
-        {
-            // Method intentionally left empty.
-        }
-        #endregion
-    }
-    #endregion
     #region Private Properties
     internal int WorldId { private set; get; }
     internal readonly FastList<T> Storage;
@@ -494,7 +493,9 @@ T
     public ComponentManager(int worldId, in int defaultCapcity = 128)
     {
         WorldId = worldId;
-        var world = World.GetWorldById(worldId) ?? throw new ArgumentException($"World id {worldId} is invalid.");
+        var world =
+            World.GetWorldById(worldId)
+            ?? throw new ArgumentException($"World id {worldId} is invalid.");
         Storage = new(defaultCapcity);
         EntityMapping = new(defaultCapcity);
         CompMapping = new FastList<ComponentMappingKey>(defaultCapcity);
@@ -533,7 +534,7 @@ T
         lock (Lock)
         {
             CompMapping.Resize(Math.Max(CompMapping.Count, entityId + 1), true);
-            CompMapping[entityId] = new ComponentMappingKey(Storage.Count);
+            CompMapping.At(entityId).ComponentIndex = Storage.Count;
             Storage.Add(component);
             EntityMapping.Add(new EntityMappingKey(entityId));
             Debug.Assert(Storage.Count == EntityMapping.Count);
@@ -586,9 +587,9 @@ T
             return ResultCode.NotFound;
         }
         var componentIdx = CompMapping[entityId].ComponentIndex;
-        CompMapping[entityId] = default;
-        EntityMapping[componentIdx] = default;
-        Debug.Assert(componentIdx < Storage.Count);
+        CompMapping.At(entityId).Clear();
+        EntityMapping.At(componentIdx).Clear();
+        Debug.Assert(componentIdx >= 0 && componentIdx < Storage.Count);
         Debug.Assert(Storage.Count == EntityMapping.Count);
         lock (Lock)
         {
@@ -616,9 +617,8 @@ T
                 {
                     Storage[componentIdx] = Storage[Storage.Count - 1];
                     EntityMapping[componentIdx] = EntityMapping[EntityMapping.Count - 1];
-                    CompMapping
-                        .GetInternalArray()[EntityMapping[componentIdx].Entity]
-                        .ComponentIndex = componentIdx;
+                    CompMapping.At(EntityMapping[componentIdx].Entity).ComponentIndex =
+                        componentIdx;
                 }
                 else
                 {
@@ -626,7 +626,7 @@ T
                     {
                         Storage[i] = Storage[i + 1];
                         EntityMapping[i] = EntityMapping[i + 1];
-                        CompMapping.GetInternalArray()[EntityMapping[i].Entity].ComponentIndex = i;
+                        CompMapping.At(EntityMapping[i].Entity).ComponentIndex = i;
                     }
                 }
             }
@@ -648,9 +648,9 @@ T
     /// </summary>
     /// <param name="entity">The entity.</param>
     /// <returns>component reference</returns>
-    public ref T Get(int entity)
+    public ref T Get(Entity entity)
     {
-        return ref Storage.GetInternalArray()[CompMapping[entity].ComponentIndex];
+        return ref Storage.GetInternalArray()[CompMapping[entity.Id].ComponentIndex];
     }
 
     /// <summary>
@@ -658,9 +658,9 @@ T
     /// </summary>
     /// <param name="entity"></param>
     /// <returns></returns>
-    public int GetIndex(int entity)
+    public int GetIndex(Entity entity)
     {
-        return CompMapping[entity].ComponentIndex;
+        return CompMapping[entity.Id].ComponentIndex;
     }
 
     /// <summary>
@@ -671,19 +671,6 @@ T
     public Span<T> AsSpan() => Storage.GetInternalArray().AsSpan(0, Storage.Count);
 
     /// <summary>
-    /// As the components.
-    /// </summary>
-    /// <returns></returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public Components<T> AsComponents() => new(World.GetWorldById(WorldId)!, CompMapping, Storage);
-
-    /// <summary>
-    /// Gets the entities.
-    /// </summary>
-    /// <returns></returns>
-    public EntityEnumerable GetEntities() => new(this);
-
-    /// <summary>
     /// Gets the component with the specified entity.
     /// </summary>
     /// <value>
@@ -691,7 +678,7 @@ T
     /// </value>
     /// <param name="entity">The entity.</param>
     /// <returns></returns>
-    public ref T this[in int entity]
+    public ref T this[in Entity entity]
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => ref Get(entity);
@@ -779,7 +766,51 @@ T
         CompMapping.TrimExcess();
         Storage.Clear();
         Storage.TrimExcess();
+        EntityMapping.Clear();
+        EntityMapping.TrimExcess();
         RemoveManager(worldId);
     }
+    #endregion
+
+    #region IComponents<T> Implementation
+    public ref T this[Entity entity]
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get
+        {
+            Debug.Assert(entity.Valid);
+            Debug.Assert(CompMapping.Count > entity.Id);
+            Debug.Assert(Storage.Count > CompMapping[entity.Id].ComponentIndex);
+            return ref Storage.GetInternalArray()[CompMapping[entity.Id].ComponentIndex];
+        }
+    }
+
+    public override bool Equals(object? obj)
+    {
+        return false;
+    }
+
+    public override int GetHashCode()
+    {
+        return Storage.GetHashCode();
+    }
+
+    public MappingEnumerator<T> GetEnumerator()
+    {
+        return new MappingEnumerator<T>(EntityMapping, Storage);
+    }
+
+    public T[] GetInternalArray()
+    {
+        return Storage.GetInternalArray();
+    }
+
+    public ComponentEntities<T> GetEntities()
+    {
+        return new ComponentEntities<T>(
+            new EntityEnumerator<T>(World.GetWorldById(WorldId)!, EntityMapping)
+        );
+    }
+
     #endregion
 }

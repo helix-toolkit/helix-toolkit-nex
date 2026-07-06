@@ -8,8 +8,9 @@ internal sealed class PointDrawStreamRegistry(IContext context, World world)
     private readonly World _world = world;
     private readonly FastList<IDrawStream<PointDraw>?> _streams = [];
     private EntityCollection? _collections;
-    private Components<PointDrawInfo> _pointComponents = world.GetComponents<PointDrawInfo>();
-    private Components<Renderable> _renderables = world.GetComponents<Renderable>();
+    private readonly IComponents<PointDrawInfo> _pointComponents =
+        world.GetComponents<PointDrawInfo>();
+    private readonly IComponents<Renderable> _renderables = world.GetComponents<Renderable>();
 
     public AllStreamsEnumerable<PointDraw> AllStreams => new(_streams);
 

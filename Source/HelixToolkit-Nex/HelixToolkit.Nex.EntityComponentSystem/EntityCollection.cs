@@ -7,7 +7,7 @@ namespace HelixToolkit.Nex.ECS;
 /// Provide a collection of entities defined by the filters.
 /// Collection changes when entity or component state changes according to the defined filter at build time.
 /// </summary>
-public sealed class EntityCollection : IDisposable
+public sealed class EntityCollection : IDisposable, IEnumerable<Entity>
 {
     public static RuleBuilder Create(in World world)
     {
@@ -112,24 +112,36 @@ public sealed class EntityCollection : IDisposable
     }
 
     #region Enumerable
-    public struct Enumerator(World world, HashSet<Entity> entities)
+    public struct Enumerator(HashSet<Entity> entities) : IEnumerator<Entity>
     {
-        private readonly World _world = world;
-        private ValueEnumerator<FromHashSet<Entity>, Entity> _entities = entities
+        private readonly HashSet<Entity> _entities = entities;
+        private ValueEnumerator<FromHashSet<Entity>, Entity> _enumerator = entities
             .AsValueEnumerable()
             .GetEnumerator();
 
-        public readonly Entity Current => _entities.Current;
+        public readonly Entity Current => _enumerator.Current;
+
+        object IEnumerator.Current => Current;
 
         public bool MoveNext()
         {
-            return _entities.MoveNext();
+            return _enumerator.MoveNext();
+        }
+
+        public void Reset()
+        {
+            _enumerator = _entities.AsValueEnumerable().GetEnumerator();
+        }
+
+        public void Dispose()
+        {
+            _enumerator.Dispose();
         }
     }
 
     public Enumerator GetEnumerator()
     {
-        return new Enumerator(World, _entities);
+        return new Enumerator(_entities);
     }
     #endregion
 
@@ -157,6 +169,16 @@ public sealed class EntityCollection : IDisposable
         _builder.EntityChanged -= Builder__EntityChanged;
         _builder.Dispose();
         _entities.Clear();
+    }
+
+    IEnumerator<Entity> IEnumerable<Entity>.GetEnumerator()
+    {
+        return GetEnumerator();
+    }
+
+    IEnumerator IEnumerable.GetEnumerator()
+    {
+        return GetEnumerator();
     }
     #endregion
 }

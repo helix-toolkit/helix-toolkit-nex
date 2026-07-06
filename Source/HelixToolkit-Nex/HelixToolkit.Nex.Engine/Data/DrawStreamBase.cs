@@ -24,8 +24,8 @@ internal abstract class DrawStreamBase<DRAW_TYPE, COMP_TYPE> : Initializable, ID
     private readonly FastList<MaterialTypeId> _materialTypes = [];
 
     // ECS references
-    protected Components<COMP_TYPE> _components;
-    protected Components<Renderable> _renderables;
+    protected IComponents<COMP_TYPE> _components;
+    protected IComponents<Renderable> _renderables;
 
     // Change tracking
     private readonly HashSet<Entity> _pendingUpdates = [];

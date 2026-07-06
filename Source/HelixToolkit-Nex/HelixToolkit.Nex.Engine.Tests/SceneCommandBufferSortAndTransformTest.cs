@@ -200,12 +200,11 @@ public class SceneCommandBufferSortAndTransformTest
             entityToIndex[nodes[i].Entity.Id] = i;
         }
 
-        var nodeInfos = world.GetComponents<NodeInfo>();
-        var order = new List<int>(nodeInfos.Count);
-        for (var i = 0; i < nodeInfos.Count; i++)
+        var entities = world.GetComponentEntities<NodeInfo>();
+        var order = new List<int>();
+        foreach (var entity in entities)
         {
-            ref readonly var info = ref nodeInfos[i];
-            if (entityToIndex.TryGetValue(info.EntityId, out var index))
+            if (entityToIndex.TryGetValue(entity.Id, out var index))
             {
                 order.Add(index);
             }

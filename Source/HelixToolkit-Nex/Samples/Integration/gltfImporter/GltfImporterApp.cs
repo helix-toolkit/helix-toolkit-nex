@@ -676,9 +676,9 @@ internal class GltfImporterApp : ApplicationBase
         // rebuild their GPU draw commands for the already-rendered meshes.
         var world = _worldDataProvider.World;
         var comps = world.GetComponents<MeshDrawInfo>();
-        foreach (var entityId in comps.GetEntities())
+        foreach (var entity in comps.GetEntities())
         {
-            world.GetEntity(entityId).Update<MeshDrawInfo>(static m => m);
+            entity.Update<MeshDrawInfo>(static m => m);
         }
     }
 
