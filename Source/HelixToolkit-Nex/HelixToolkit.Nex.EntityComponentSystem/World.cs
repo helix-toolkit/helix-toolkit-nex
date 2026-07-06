@@ -842,4 +842,9 @@ public sealed class World : IEnumerable<Entity>, IDisposable
         ECSEventBus.Send(oldId, new WorldDisposedEvent());
     }
     #endregion
+
+    public override string ToString()
+    {
+        return "World(Id: " + Id + ", Generation: " + Generation + ", EntityCount: " + Count + ")";
+    }
 }

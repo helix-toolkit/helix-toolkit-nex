@@ -366,14 +366,14 @@ public sealed partial class GizmoManager
         }
 
         uint owningId = (uint)instance.Entity.Id;
-        if (!_tracked.TryGetValue(owningId, out HashSet<GizmoHandleId>? handleIds))
+        if (!_tracked.TryGetValue(owningId, out var handleIds))
         {
             handleIds = [];
             _tracked[owningId] = handleIds;
         }
 
         handleIds.Clear();
-        foreach (GizmoHandle handle in instance.Handles)
+        foreach (var handle in instance.Handles.AsValueEnumerable())
         {
             handleIds.Add(handle.Id);
         }
@@ -389,17 +389,8 @@ public sealed partial class GizmoManager
     /// <returns><see langword="true"/> if a matching tracked instance was found; otherwise <see langword="false"/>.</returns>
     private bool TryGetInstanceByOwningEntity(uint owningEntityId, out GizmoInstance? instance)
     {
-        foreach (GizmoInstance candidate in _instances.Values)
-        {
-            if (candidate.HasEntity && (uint)candidate.Entity.Id == owningEntityId)
-            {
-                instance = candidate;
-                return true;
-            }
-        }
-
-        instance = null;
-        return false;
+        instance = _instances.Values.AsValueEnumerable().Where(x => x.HasEntity && (uint)x.Entity.Id == owningEntityId).FirstOrDefault();
+        return instance != null;
     }
 
     /// <summary>
