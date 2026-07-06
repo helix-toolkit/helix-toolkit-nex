@@ -140,7 +140,7 @@ public sealed class SceneSortingTests
         var transforms = world.GetComponents<Transform>();
         for (int i = 0; i < transforms.Count; ++i)
         {
-            ref var transform = ref transforms[i];
+            ref var transform = ref transforms.GetInternalArray()[i];
             Assert.IsFalse(
                 transform.IsWorldDirty,
                 $"Transform component at index {i} should not be dirty after update."
@@ -159,11 +159,11 @@ public sealed class SceneSortingTests
         for (int i = 0; i < components.Count; ++i)
         {
             Assert.IsTrue(
-                components[i].Level >= prevLevel,
-                $"NodeInfo component at index {i} has level {components[i].Level} "
+                components.GetInternalArray()[i].Level >= prevLevel,
+                $"NodeInfo component at index {i} has level {components.GetInternalArray()[i].Level} "
                     + $"which is less than previous level {prevLevel}."
             );
-            prevLevel = components[i].Level;
+            prevLevel = components.GetInternalArray()[i].Level;
         }
     }
 

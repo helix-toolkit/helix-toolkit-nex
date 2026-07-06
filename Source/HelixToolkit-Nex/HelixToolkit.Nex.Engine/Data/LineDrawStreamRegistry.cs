@@ -8,8 +8,8 @@ internal sealed class LineDrawStreamRegistry(IContext context, World world)
     private readonly World _world = world;
     private readonly FastList<IDrawStream<LineDraw>?> _streams = [];
     private EntityCollection? _collections;
-    private Components<LineDrawInfo> _lineComponents = world.GetComponents<LineDrawInfo>();
-    private Components<Renderable> _renderables = world.GetComponents<Renderable>();
+    private IComponents<LineDrawInfo> _lineComponents = world.GetComponents<LineDrawInfo>();
+    private IComponents<Renderable> _renderables = world.GetComponents<Renderable>();
 
     public AllStreamsEnumerable<LineDraw> AllStreams => new(_streams);
 

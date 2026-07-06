@@ -102,20 +102,15 @@ public static class SceneSorting
     public static void UpdateTransforms(this World world)
     {
         var nodeInfos = world.GetComponents<NodeInfo>();
+        var entities = nodeInfos.GetEntities();
         var transforms = world.GetComponents<Transform>();
         var worldTransforms = world.GetComponents<WorldTransform>();
         var parents = world.GetComponents<Parent>();
 
         int level = 0;
-        for (int i = 0; i < nodeInfos.Count; ++i)
+        foreach (var entity in entities)
         {
-            ref var nodeInfo = ref nodeInfos[i];
-            var entity = world.GetEntity(nodeInfo.EntityId);
-            if (!entity.Valid)
-            {
-                continue;
-            }
-
+            ref var nodeInfo = ref nodeInfos[entity];
             ref var transform = ref transforms[entity];
             Debug.Assert(level <= nodeInfo.Level);
             level = nodeInfo.Level;

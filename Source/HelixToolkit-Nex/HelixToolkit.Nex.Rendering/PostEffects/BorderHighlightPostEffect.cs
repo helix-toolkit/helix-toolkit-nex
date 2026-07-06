@@ -85,6 +85,7 @@ public sealed class BorderHighlightPostEffect : PostEffect
     private readonly Framebuffer _frameBuffer = new();
     private readonly RenderPass _pass = new();
     private readonly List<HighlightEntry> _entries = [];
+    private readonly Dictionary<(float r, float g, float b, float a, float t), bool> _groups = [];
     public override string Name => nameof(BorderHighlightPostEffect);
     public override Color4 DebugColor => Color.Orange;
     public override uint Priority => (uint)PostEffectPriority.Highlight;
@@ -361,14 +362,14 @@ public sealed class BorderHighlightPostEffect : PostEffect
         // combined pass; if colours differ we run one composite pass per unique
         // colour).  For the common case (single colour) this is one pass.
         // Group by colour to minimise the number of passes.
-        var groups = new Dictionary<(float r, float g, float b, float a, float t), bool>();
-        foreach (var e in _entries)
+        _groups.Clear();
+        foreach (var e in _entries.AsValueEnumerable())
         {
             var key = (e.Color.Red, e.Color.Green, e.Color.Blue, e.Color.Alpha, e.Thickness);
-            groups[key] = true;
+            _groups[key] = true;
         }
 
-        foreach (var group in groups)
+        foreach (var group in _groups.AsValueEnumerable())
         {
             var (r, g, b, a, thickness) = group.Key;
             RunFullScreenPass(
