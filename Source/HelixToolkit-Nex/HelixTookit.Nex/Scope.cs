@@ -20,7 +20,7 @@ public struct Scope(Action actionOnDispose) : IDisposable
         {
             if (disposing)
             {
-                _actionOnDispose();
+                _actionOnDispose?.Invoke();
             }
 
             // TODO: free unmanaged resources (unmanaged objects) and override finalizer

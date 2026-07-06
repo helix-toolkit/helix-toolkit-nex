@@ -43,12 +43,9 @@ public sealed partial class GizmoManager
     public void ClearAll()
     {
         // Remove the published component from every factory-created instance's carrier entity.
-        foreach (GizmoInstance instance in _instances.Values)
+        foreach (var instance in _instances.Values.AsValueEnumerable().Where(x => x is not null && x.HasEntity))
         {
-            if (instance.HasEntity)
-            {
-                instance.Entity.Remove<GizmoDrawInfo>();
-            }
+            instance.Entity.Remove<GizmoDrawInfo>();
         }
         _instances.Clear();
 

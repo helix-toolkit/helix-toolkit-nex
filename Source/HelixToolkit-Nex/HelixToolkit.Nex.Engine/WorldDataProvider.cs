@@ -62,7 +62,7 @@ public sealed class WorldDataProvider : IRenderDataProvider, IDisposable
 
     public bool Initialize()
     {
-        _logger.LogInformation($"Initializing. World: {World}");
+        _logger.LogInformation($"Initializing. {World}");
         using var t = _tracer.BeginScope(nameof(Initialize));
         _sceneState.Initialize();
         if (_meshDrawStreamRegistry.Initialize().CheckResult() != ResultCode.Ok)

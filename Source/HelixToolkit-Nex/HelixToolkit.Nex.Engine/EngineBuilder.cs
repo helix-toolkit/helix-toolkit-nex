@@ -266,15 +266,11 @@ public sealed class EngineBuilder
 
     /// <summary>
     /// Enables gizmo overlay rendering (opt-in). Registers a <see cref="GizmoRenderNode"/> into the
-    /// overlay stage and wires it to the supplied <paramref name="manager"/>, so the manager's
-    /// per-frame handle geometry (queued via <see cref="GizmoManager.EmitDraws"/>) is consumed each
-    /// frame after tone mapping.
+    /// overlay stage so any entities in the active world carrying a valid <see cref="GizmoDrawInfo"/>.
     /// <para>
     /// This is deliberately opt-in and is <b>not</b> included by <see cref="WithDefaultNodes"/>: the
-    /// node draws nothing and reports no renderable work while the manager has no active gizmo, but
-    /// it is only added when an application asks for it, so default pipelines are unaffected. The
-    /// application still calls <see cref="GizmoManager.Update"/> and <see cref="GizmoManager.EmitDraws"/>
-    /// each frame to drive the node.
+    /// node draws nothing and reports no renderable work while no gizmos are present, but it is only
+    /// added when an application asks for it, so default pipelines are unaffected.
     /// </para>
     /// </summary>
     /// <param name="manager">The gizmo interaction manager that owns per-frame handle geometry.</param>

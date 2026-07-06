@@ -1,7 +1,6 @@
 using System.Numerics;
 using HelixToolkit.Nex.Graphics;
 using HelixToolkit.Nex.Graphics.Mock;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace HelixToolkit.Nex.Rendering.Tests;
 
@@ -11,8 +10,8 @@ namespace HelixToolkit.Nex.Rendering.Tests;
 /// <item>Fail-fast readback: a <c>ReadbackLocation</c> whose Byte Offset is outside the staging
 /// buffer causes <see cref="PickingContext.ReadResult"/> to throw rather than read from an
 /// incorrect location (Requirement 3.4).</item>
-/// <item>Overflow boundary: the 32nd request is accepted at Request Slot 31 (Byte Offset 248) and
-/// the 33rd request is rejected with <see cref="PickingContext.InvalidRequestId"/>
+/// <item>Overflow boundary: the 64th request is accepted at Request Slot 63 (Byte Offset 504) and
+/// the 65th request is rejected with <see cref="PickingContext.InvalidRequestId"/>
 /// (Requirements 5.1, 5.2, 2.1).</item>
 /// </list>
 /// </summary>
@@ -42,7 +41,7 @@ public class PickingContextReadbackBoundaryUnitTests
 
         const uint requestId = 1u;
         // Offset one full cell past the end of the buffer: [0, BufferSizeBytes) is valid, so
-        // BufferSizeBytes (= 8 * MaxRequestsPerFrame = 256) is the first out-of-bounds offset.
+        // BufferSizeBytes (= 8 * MaxRequestsPerFrame = 512) is the first out-of-bounds offset.
         var outOfBoundsOffset = BufferSizeBytes;
         picking.SetReadbackLocationForTest(requestId, frameSlot: 0, byteOffset: outOfBoundsOffset);
 
@@ -96,7 +95,7 @@ public class PickingContextReadbackBoundaryUnitTests
         var lastSlot = picking.GetRequestSlot(lastAcceptedId);
         Assert.AreEqual(Capacity - 1, lastSlot, "The 64nd request must occupy Request Slot 63.");
 
-        // Byte Offset for the last slot = 63 * 8 = 504, fully inside the 256-byte buffer.
+        // Byte Offset for the last slot = 63 * 8 = 504, fully inside the 512-byte buffer.
         var lastByteOffset = lastSlot * CellSizeBytes;
         Assert.AreEqual(504, lastByteOffset, "Request Slot 63 must map to Byte Offset 504.");
         Assert.IsTrue(
@@ -104,12 +103,12 @@ public class PickingContextReadbackBoundaryUnitTests
             "The 64nd request's 8-byte cell must fit within the staging buffer."
         );
 
-        // The 65rd request overflows the frame and is rejected with the sentinel.
+        // The 65th request overflows the frame and is rejected with the sentinel.
         var overflowId = picking.SetPendingSubmit(new Vector2(100, 100));
         Assert.AreEqual(
             PickingContext.InvalidRequestId,
             overflowId,
-            "The 65rd request must be rejected with InvalidRequestId."
+            "The 65th request must be rejected with InvalidRequestId."
         );
     }
 }
