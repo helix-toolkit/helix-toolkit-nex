@@ -63,7 +63,7 @@ public sealed class SceneState(IContext context, World world) : Initializable, I
 
     private void OnWorldTransformChanged(World _, ComponentChangedEvent<WorldTransform> e)
     {
-        var entity = World.GetEntity(e.EntityId);
+        var entity = e.Entity;
         if (entity.Has<Renderable>())
         {
             _renderables[entity].UpdateCounter = (int)GraphicsSettings.MaxFrameInFlight;
@@ -83,7 +83,7 @@ public sealed class SceneState(IContext context, World world) : Initializable, I
 
     private void OnNodeInfoChanged(World _, ComponentChangedEvent<NodeInfo> e)
     {
-        var entity = World.GetEntity(e.EntityId);
+        var entity = e.Entity;
         if (entity.Has<Renderable>())
         {
             _renderables[entity].UpdateCounter = (int)GraphicsSettings.MaxFrameInFlight;

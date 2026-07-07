@@ -1,6 +1,6 @@
 namespace HelixToolkit.Nex.ECS.Utils;
 
-public readonly record struct EntityChangedEvent(int EntityId, ComponentTypeId Type);
+public readonly record struct EntityChangedEvent(Entity Entity, ComponentTypeId Type);
 
 public sealed class RuleBuilder : IDisposable
 {
@@ -39,8 +39,8 @@ public sealed class RuleBuilder : IDisposable
     private IDisposable? _entityEnabledSubscription = null;
     private readonly IDisposable? _entityDisposingSubscription = null;
 
-    public event EventHandler<int>? EntityAdded;
-    public event EventHandler<int>? EntityRemoved;
+    public event EventHandler<Entity>? EntityAdded;
+    public event EventHandler<Entity>? EntityRemoved;
     public event EventHandler<EntityChangedEvent>? EntityChanged;
 
     internal RuleBuilder(World world)
@@ -48,7 +48,7 @@ public sealed class RuleBuilder : IDisposable
         _world = world;
         _entityDisposingSubscription = ECSEventBus.Register<EntityDisposingEvent>(
             world,
-            (w, msg) => EntityRemoved?.Invoke(this, msg.EntityId)
+            (w, msg) => EntityRemoved?.Invoke(this, msg.Entity)
         );
     }
 
@@ -88,7 +88,7 @@ public sealed class RuleBuilder : IDisposable
         {
             _entityEnabledSubscription = ECSEventBus.Register<EntityEnableEvent>(
                 World,
-                (w, msg) => OnEnableChanged(msg.EntityId, msg.Enabled)
+                (w, msg) => OnEnableChanged(msg.Entity, msg.Enabled)
             );
         }
         return this;
@@ -114,45 +114,45 @@ public sealed class RuleBuilder : IDisposable
             case ComponentOperations.Added:
                 if (_withoutFilters.HasType(id))
                 {
-                    EntityRemoved?.Invoke(this, msg.EntityId);
+                    EntityRemoved?.Invoke(this, msg.Entity);
                     break;
                 }
-                if (_withFilters.HasType(id) && Evaluate(World.GetEntity(msg.EntityId)))
+                if (_withFilters.HasType(id) && Evaluate(msg.Entity))
                 {
-                    EntityAdded?.Invoke(this, msg.EntityId);
+                    EntityAdded?.Invoke(this, msg.Entity);
                     break;
                 }
                 break;
             case ComponentOperations.Removed:
                 if (_withFilters.HasType(id))
                 {
-                    EntityRemoved?.Invoke(this, msg.EntityId);
+                    EntityRemoved?.Invoke(this, msg.Entity);
                     break;
                 }
-                if (_withoutFilters.HasType(id) && Evaluate(World.GetEntity(msg.EntityId)))
+                if (_withoutFilters.HasType(id) && Evaluate(msg.Entity))
                 {
-                    EntityAdded?.Invoke(this, msg.EntityId);
+                    EntityAdded?.Invoke(this, msg.Entity);
                     break;
                 }
                 break;
             case ComponentOperations.Changed:
-                if (_withFilters.HasType(id) && Evaluate(World.GetEntity(msg.EntityId)))
+                if (_withFilters.HasType(id) && Evaluate(msg.Entity))
                 {
-                    EntityChanged?.Invoke(this, new(msg.EntityId, msg.ComponentTypeId));
+                    EntityChanged?.Invoke(this, new(msg.Entity, msg.ComponentTypeId));
                 }
                 break;
         }
     }
 
-    private void OnEnableChanged(in int entityId, bool enabled)
+    private void OnEnableChanged(Entity entity, bool enabled)
     {
-        if (enabled && Evaluate(World.GetEntity(entityId)))
+        if (enabled && Evaluate(entity))
         {
-            EntityAdded?.Invoke(this, entityId);
+            EntityAdded?.Invoke(this, entity);
         }
         else
         {
-            EntityRemoved?.Invoke(this, entityId);
+            EntityRemoved?.Invoke(this, entity);
         }
     }
 

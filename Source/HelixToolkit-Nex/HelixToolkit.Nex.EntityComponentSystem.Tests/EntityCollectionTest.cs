@@ -155,7 +155,7 @@ public class EntityCollectionTest
         var collection = world.CreateCollection().Has<Speed>().Build();
         Assert.AreEqual(total, collection.Count);
 
-        foreach (var entity in collection.ToArray())
+        foreach (var entity in collection.Entities.ToArray())
         {
             entity.Remove<Speed>();
         }
@@ -432,7 +432,7 @@ public class EntityCollectionTest
         Assert.AreEqual(total * 2, collection1.Count);
         Assert.AreEqual(0, collection2.Count);
 
-        var entities = collection1.ToArray();
+        var entities = collection1.Entities.ToArray();
 
         foreach (var entity in entities)
         {

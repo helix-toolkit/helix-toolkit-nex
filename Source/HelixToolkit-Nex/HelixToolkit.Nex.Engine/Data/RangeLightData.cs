@@ -1,4 +1,3 @@
-using HelixToolkit.Nex.ECS.Utils;
 using HelixToolkit.Nex.Engine.Components;
 
 namespace HelixToolkit.Nex.Engine.Data;
@@ -18,7 +17,7 @@ internal class RangeLightData : Initializable, IRenderData
 
     private long _lastBufferUpdateTicks = 0;
     private long _lastDataUpdateTicks = Stopwatch.GetTimestamp();
-    private HashSet<int> _pendingEntities = [];
+    private HashSet<Entity> _pendingEntities = [];
     private bool _needRebuild = true;
 
     public BufferHandle Buffer => _lightBuffer is null ? BufferHandle.Null : _lightBuffer.Buffer;
@@ -109,9 +108,8 @@ internal class RangeLightData : Initializable, IRenderData
         }
         else
         {
-            foreach (var entityId in _pendingEntities)
+            foreach (var entity in _pendingEntities.AsValueEnumerable())
             {
-                var entity = World.GetEntity(entityId);
                 ref var lightComp = ref entity.Get<RangeLightInfo>();
                 ref var transform = ref entity.Get<WorldTransform>();
                 var light = lightComp.Light;
@@ -128,7 +126,7 @@ internal class RangeLightData : Initializable, IRenderData
         return true;
     }
 
-    private void OnLightAddRemove(object? sender, int e)
+    private void OnLightAddRemove(object? sender, Entity entity)
     {
         _lastDataUpdateTicks = Stopwatch.GetTimestamp();
         _needRebuild = true;
@@ -146,7 +144,7 @@ internal class RangeLightData : Initializable, IRenderData
             || e.Type == World.GetComponentTypeId<RangeLightInfo>()
         )
         {
-            _pendingEntities.Add(e.EntityId);
+            _pendingEntities.Add(e.Entity);
         }
         else if (e.Type == World.GetComponentTypeId<NodeInfo>())
         {

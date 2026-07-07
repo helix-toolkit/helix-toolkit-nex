@@ -1,7 +1,3 @@
-using HelixToolkit.Nex.ECS.Utils;
-using HelixToolkit.Nex.Rendering.Components;
-using HelixToolkit.Nex.Rendering.DrawStreams;
-
 namespace HelixToolkit.Nex.Engine.Data;
 
 internal sealed class MeshDrawStreamRegistry(IContext context, World world)
@@ -112,17 +108,15 @@ internal sealed class MeshDrawStreamRegistry(IContext context, World world)
         return GetStream(type, category) is MeshDrawStream mesh ? mesh : null;
     }
 
-    private void OnEntityAdded(object? sender, int entityId)
+    private void OnEntityAdded(object? sender, Entity entity)
     {
-        var entity = _world.GetEntity(entityId);
         var (type, category) = GetCategoryFromEntity(entity);
         var stream = GetStreamInternal(type, category);
         stream!.EntityAdded(entity);
     }
 
-    private void OnEntityRemoved(object? sender, int entityId)
+    private void OnEntityRemoved(object? sender, Entity entity)
     {
-        var entity = _world.GetEntity(entityId);
         var (type, category) = GetCategoryFromEntity(entity);
         var stream = GetStreamInternal(type, category);
         stream!.EntityRemoved(entity);
@@ -146,7 +140,7 @@ internal sealed class MeshDrawStreamRegistry(IContext context, World world)
 
     private void OnEntityChanged(object? sender, EntityChangedEvent e)
     {
-        var entity = _world.GetEntity(e.EntityId);
+        var entity = e.Entity;
         ref var meshComp = ref _meshComponents[entity];
 
         var (type, category) = GetCategoryFromEntity(entity);
