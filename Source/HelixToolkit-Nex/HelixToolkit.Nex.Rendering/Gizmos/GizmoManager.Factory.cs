@@ -163,24 +163,26 @@ public sealed partial class GizmoManager
     }
 
     /// <summary>
-    /// Refreshes a tracked gizmo's live state for the current frame: updates only its origin (from
-    /// <paramref name="targetTransform"/>'s translation) and the camera-derived screen sizing, then
-    /// republishes its <see cref="GizmoDrawInfo"/> component. While the instance's definition is
-    /// unchanged this performs zero handle-set rebuilds and keeps the published
-    /// <see cref="GizmoDrawInfo.Handles"/> reference-equal to the cached set (Requirements 2.2, 2.4,
-    /// 3.1, 3.2, 3.4).
+    /// Refreshes a tracked gizmo's live state for the current frame: reads the target transform from
+    /// the instance's bound manipulator, updates only its origin (from that transform's translation)
+    /// and the camera-derived screen sizing, then republishes its <see cref="GizmoDrawInfo"/>
+    /// component. While the instance's definition is unchanged this performs zero handle-set rebuilds
+    /// and keeps the published <see cref="GizmoDrawInfo.Handles"/> reference-equal to the cached set
+    /// (Requirements 2.2, 2.4, 3.1, 3.2, 3.4).
     /// </summary>
     /// <param name="handle">The instance handle returned by <see cref="TryCreateGizmo"/>.</param>
     /// <param name="camera">The current camera parameters (view-projection and projection Y scale).</param>
     /// <param name="viewport">The viewport size in pixels.</param>
-    /// <param name="targetTransform">The target's world transform; its translation defines the gizmo origin.</param>
     /// <remarks>
     /// A <see cref="GizmoInstanceHandle.None"/>, unknown, or already-removed handle is a safe no-op.
-    /// The cached handle set is never touched here, so no handle-set collection or per-frame handle
-    /// array is allocated; constant screen-size scaling is applied later by the render node using the
-    /// captured camera and each gizmo's origin, matching the legacy per-frame sizing math.
+    /// An instance with no active binding is also a no-op that leaves the published state unchanged
+    /// (Requirement 3.3): the origin (and local-axis frame) come from the bound manipulator's
+    /// transform (Requirements 3.2, 7.3). The cached handle set is never touched here, so no handle-set
+    /// collection or per-frame handle array is allocated; constant screen-size scaling is applied
+    /// later by the render node using the captured camera and each gizmo's origin, matching the legacy
+    /// per-frame sizing math.
     /// </remarks>
-    public void UpdateInstance(in GizmoInstanceHandle handle, in CameraParams camera, Size viewport, Matrix4x4 targetTransform)
+    public void UpdateInstance(in GizmoInstanceHandle handle, in CameraParams camera, Size viewport)
     {
         ThrowIfDisposed();
 
@@ -190,21 +192,30 @@ public sealed partial class GizmoManager
             return;
         }
 
-        // Capture the live camera/viewport/target frame so screen-derived sizing (applied at draw
-        // time by the render node) and drag-ray derivation use the current view. Reuses the legacy
-        // origin + screen-scale inputs; no handle-set rebuild occurs here.
+        // Req 3.3: without an active binding, leave the published state unchanged.
+        if (!TryGetBinding(handle, out IGizmoManipulator? manipulator) || manipulator is null)
+        {
+            return;
+        }
+
+        // Capture the live camera/viewport so screen-derived sizing (applied at draw time by the
+        // render node) and drag-ray derivation use the current view. Reuses the legacy origin +
+        // screen-scale inputs; no handle-set rebuild occurs here.
         _camera = camera;
         _viewport = viewport;
-        _targetTransform = targetTransform;
+
+        // Req 3.2 / 7.3: origin (and local-axis frame) come from the bound manipulator's transform.
+        Matrix4x4 target = manipulator.GetTargetTransform();
+        _targetTransform = target;
 
         // Update only the live origin from the target transform. The cached handle set is left
         // untouched, so the republished Handles reference stays reference-equal to the cached set
         // (zero rebuild / zero allocation while the definition is unchanged).
-        instance.Origin = targetTransform.Translation;
+        instance.Origin = target.Translation;
 
         // Bind the live target frame to the instance so a drag begun on it orients local-space axes
         // by this gizmo's own transform (Requirement 7.7).
-        instance.TargetTransform = targetTransform;
+        instance.TargetTransform = target;
 
         PublishDrawInfo(instance);
     }
@@ -280,6 +291,9 @@ public sealed partial class GizmoManager
         }
 
         _instances.Remove(handle);
+
+        // Drop any manipulator binding so a removed instance retains no stale manipulator (Req 2.3).
+        _bindings.Remove(handle);
         return true;
     }
 
@@ -391,6 +405,34 @@ public sealed partial class GizmoManager
     {
         instance = _instances.Values.AsValueEnumerable().Where(x => x.HasEntity && (uint)x.Entity.Id == owningEntityId).FirstOrDefault();
         return instance != null;
+    }
+
+    /// <summary>
+    /// Finds the handle of the tracked instance whose carrier entity id equals
+    /// <paramref name="owningEntityId"/>, so a drag anchored to an owning entity can consult the
+    /// binding map for that instance's manipulator. Mirrors <see cref="TryGetInstanceByOwningEntity"/>
+    /// but returns the instance handle rather than the instance.
+    /// </summary>
+    /// <param name="owningEntityId">The owning entity id the active drag is anchored to.</param>
+    /// <param name="handle">
+    /// On success, the handle of the matching tracked instance; otherwise
+    /// <see cref="GizmoInstanceHandle.None"/>.
+    /// </param>
+    /// <returns><see langword="true"/> if a matching tracked instance was found; otherwise <see langword="false"/>.</returns>
+    private bool TryGetInstanceHandleByOwningEntity(uint owningEntityId, out GizmoInstanceHandle handle)
+    {
+        foreach (var pair in _instances)
+        {
+            GizmoInstance instance = pair.Value;
+            if (instance.HasEntity && (uint)instance.Entity.Id == owningEntityId)
+            {
+                handle = pair.Key;
+                return true;
+            }
+        }
+
+        handle = GizmoInstanceHandle.None;
+        return false;
     }
 
     /// <summary>

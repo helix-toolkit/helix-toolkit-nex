@@ -46,7 +46,6 @@ public class EngineGizmoServiceLifecycleTests
         new(
             GizmoMode.Translate,
             GizmoSpace.World,
-            TargetEntityId: 1,
             new GizmoHandleConfiguration(DesiredPixelSize: 100f, GizmoOcclusionMode.AlwaysOnTop)
         );
 
@@ -114,13 +113,17 @@ public class EngineGizmoServiceLifecycleTests
         );
         Assert.IsTrue(published.Valid, "The published gizmo component should carry a non-empty handle set.");
 
-        // Update: driving the per-instance frame updates the published origin in place.
+        // Update: driving the per-instance frame updates the published origin in place. The origin is
+        // read from the bound manipulator's transform.
         var origin = new Vector3(3f, 4f, 5f);
+        Assert.IsTrue(
+            service.BindTarget(handle, new FixedTransformManipulator(Matrix4x4.CreateTranslation(origin))),
+            "Binding a manipulator to the created gizmo should succeed."
+        );
         service.UpdateInstance(
             handle,
             CameraParams.Identity,
-            Size.Empty,
-            Matrix4x4.CreateTranslation(origin)
+            Size.Empty
         );
         Assert.IsTrue(
             entity.TryGet(out GizmoDrawInfo afterUpdate),

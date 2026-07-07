@@ -188,7 +188,6 @@ public class GizmoFactoryLegacyDragParityPropertyTests
             var definition = new GizmoDefinition(
                 scenario.Mode,
                 scenario.Space,
-                scenario.TargetEntityId,
                 new GizmoHandleConfiguration(scenario.DesiredPixelSize, scenario.Occlusion));
 
             if (!factory.TryCreateGizmo(definition, out GizmoInstanceHandle instance))
@@ -202,7 +201,14 @@ public class GizmoFactoryLegacyDragParityPropertyTests
                 return false;
             }
 
-            factory.UpdateInstance(instance, CameraParams.Identity, Viewport, scenario.TargetTransform);
+            // Bind a manipulator reporting the scenario's target transform so UpdateInstance reads the
+            // per-instance frame from it (the raw target-transform argument was removed).
+            if (!factory.BindTarget(instance, new FixedTransformManipulator(scenario.TargetTransform)))
+            {
+                return false;
+            }
+
+            factory.UpdateInstance(instance, CameraParams.Identity, Viewport);
 
             // Resolve the same handle through the tracked-gizmo pick path so the drag binds to the
             // per-instance frame (task 7.1), then drive the identical drag input.

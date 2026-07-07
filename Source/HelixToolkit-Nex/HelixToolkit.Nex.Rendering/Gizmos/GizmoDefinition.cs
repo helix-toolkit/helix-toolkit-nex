@@ -16,8 +16,8 @@ public readonly record struct GizmoHandleConfiguration(
 );
 
 /// <summary>
-/// The full set of inputs that determine a gizmo: its transform mode, reference space, the target
-/// entity it manipulates, and its handle configuration.
+/// The full set of inputs that determine a gizmo: its transform mode, reference space, and its
+/// handle configuration.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -26,18 +26,16 @@ public readonly record struct GizmoHandleConfiguration(
 /// </para>
 /// <para>
 /// Handle <em>geometry</em> depends only on the geometry-affecting subset captured by
-/// <see cref="ShapeKey"/>; reference space and target association affect placement and per-instance
-/// state rather than the generated handles, so the cache is keyed by the shape key.
+/// <see cref="ShapeKey"/>; reference space affects placement and per-instance state rather than the
+/// generated handles, so the cache is keyed by the shape key.
 /// </para>
 /// </remarks>
 /// <param name="Mode">The transform-manipulation mode the gizmo represents.</param>
 /// <param name="Space">The reference frame the gizmo operates in.</param>
-/// <param name="TargetEntityId">The entity id of the target the gizmo manipulates.</param>
 /// <param name="Handles">The handle-presentation configuration.</param>
 public readonly record struct GizmoDefinition(
     GizmoMode Mode,
     GizmoSpace Space,
-    uint TargetEntityId,
     GizmoHandleConfiguration Handles
 )
 {

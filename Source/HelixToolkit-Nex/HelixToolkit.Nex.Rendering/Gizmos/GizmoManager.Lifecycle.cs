@@ -61,6 +61,7 @@ public sealed partial class GizmoManager
         _handleCache.Clear();
         _handles.Clear();
         _entityIdToHandle.Clear();
+        _bindings.Clear();
     }
 
     /// <summary>

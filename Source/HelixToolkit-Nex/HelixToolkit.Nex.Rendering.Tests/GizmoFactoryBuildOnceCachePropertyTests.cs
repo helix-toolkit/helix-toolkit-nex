@@ -47,13 +47,11 @@ public class GizmoFactoryBuildOnceCachePropertyTests
     private static Gen<GizmoDefinition> DefinitionGen() =>
         from mode in ModeGen()
         from space in SpaceGen()
-        from target in Gen.Choose(0, 1000)
         from pixel in Gen.Choose(1, 200)
         from occlusion in OcclusionGen()
         select new GizmoDefinition(
             mode,
             space,
-            (uint)target,
             new GizmoHandleConfiguration(pixel, occlusion));
 
     /// <summary>

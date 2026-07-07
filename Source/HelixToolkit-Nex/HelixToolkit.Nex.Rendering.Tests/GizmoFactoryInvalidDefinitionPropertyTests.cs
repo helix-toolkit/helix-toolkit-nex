@@ -80,12 +80,10 @@ public class GizmoFactoryInvalidDefinitionPropertyTests
         from invalidSpace in InvalidSpaceGen()
         from validPixel in FinitePixelGen()
         from invalidPixel in NonFinitePixelGen()
-        from target in Gen.Choose(0, 1000)
         from occlusion in OcclusionGen()
         select new GizmoDefinition(
             kind == InvalidKind.Mode ? invalidMode : validMode,
             kind == InvalidKind.Space ? invalidSpace : validSpace,
-            (uint)target,
             new GizmoHandleConfiguration(
                 kind == InvalidKind.Pixel ? invalidPixel : validPixel,
                 occlusion));
@@ -94,10 +92,9 @@ public class GizmoFactoryInvalidDefinitionPropertyTests
     private static Gen<GizmoDefinition> ValidDefinitionGen() =>
         from mode in ValidModeGen()
         from space in ValidSpaceGen()
-        from target in Gen.Choose(0, 1000)
         from pixel in FinitePixelGen()
         from occlusion in OcclusionGen()
-        select new GizmoDefinition(mode, space, (uint)target, new GizmoHandleConfiguration(pixel, occlusion));
+        select new GizmoDefinition(mode, space, new GizmoHandleConfiguration(pixel, occlusion));
 
     /// <summary>A bounded (1..12) sequence of invalid definitions.</summary>
     private static Arbitrary<GizmoDefinition[]> InvalidSequences() =>

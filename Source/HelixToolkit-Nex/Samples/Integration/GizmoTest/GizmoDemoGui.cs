@@ -104,13 +104,42 @@ internal sealed partial class GizmoDemo
             Gui.Separator();
             Gui.Spacing();
             Gui.TextColored(new Vector4(0.4f, 1f, 0.4f, 1f), "Target");
-            var pos = _targetWorldMatrix.Translation;
+            Gui.TextWrapped("Click an object in the viewport to bind the gizmo to it.");
+            // The bound manipulator is the single source of truth for the target transform; read the
+            // active target manipulator's current transform for the position display.
+            GizmoTarget? active = ActiveTarget;
+            var pos = active?.Manipulator.GetTargetTransform().Translation ?? Vector3.Zero;
+            Gui.Text($"Active Target: {active?.Name ?? "none"}");
             Gui.Text($"Position: ({pos.X:F2}, {pos.Y:F2}, {pos.Z:F2})");
             Gui.Text($"Dragging: {(_gizmoManager.IsDragging ? "yes" : "no")}");
-            if (Gui.Button("Reset Target"))
+
+            // Buttons to select each target directly (mirrors clicking the object in the viewport).
+            for (int i = 0; i < _targets.Count; i++)
             {
-                _targetWorldMatrix = InitialTargetMatrix;
-                ApplyTargetTransform();
+                bool isActive = i == _activeTargetIndex;
+                if (isActive)
+                    Gui.PushStyleColor(ImGuiCol.Button, new Vector4(0.2f, 0.5f, 0.2f, 1f));
+                if (Gui.Button($"{_targets[i].Name}##target{i}"))
+                    SetActiveTarget(i);
+                if (isActive)
+                    Gui.PopStyleColor();
+                if (i % 2 == 0 && i + 1 < _targets.Count)
+                    Gui.SameLine();
+            }
+
+            if (Gui.Button("Swap Target (cycle)"))
+            {
+                SwapTarget();
+            }
+
+            Gui.Spacing();
+            Gui.TextColored(new Vector4(0.4f, 1f, 0.4f, 1f), "Custom Manipulator");
+            Gui.Text($"Drives active target material Metallic: {(_customActive ? "on" : "off")}");
+            if (_customManipulator is not null)
+                Gui.Text($"Metallic: {_customManipulator.Value:F2}");
+            if (Gui.Button(_customActive ? "Use Transform Manipulator" : "Use Custom Manipulator"))
+            {
+                ToggleCustomManipulator();
             }
 
             Gui.Spacing();
@@ -212,11 +241,9 @@ internal sealed partial class GizmoDemo
             var p = _viewport.RelativePointer;
             if (_renderContext.TryUnProject(p.X, p.Y, out var ray))
             {
-                if (_gizmoManager.UpdateDrag(ray, out var delta))
-                {
-                    // System.Numerics row-vector convention (matches the gizmo design example).
-                    _targetWorldMatrix = delta * _targetWorldMatrix;
-                }
+                // The manager routes the produced delta to the bound manipulator, which owns the
+                // write-back to its node, so the demo no longer composes the target matrix by hand.
+                _gizmoManager.UpdateDrag(ray, out _);
             }
         }
         else
