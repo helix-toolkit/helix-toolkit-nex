@@ -28,7 +28,7 @@ internal abstract class DrawStreamBase<DRAW_TYPE, COMP_TYPE> : Initializable, ID
     protected Components<Renderable> _renderables;
 
     // Change tracking
-    private readonly HashSet<int> _pendingUpdates = [];
+    private readonly HashSet<Entity> _pendingUpdates = [];
     private long _lastDataChangeTicks = Stopwatch.GetTimestamp();
     private long _lastBufferUploadTicks = 0;
     private bool _needsRebuild = true;
@@ -278,9 +278,8 @@ internal abstract class DrawStreamBase<DRAW_TYPE, COMP_TYPE> : Initializable, ID
 
         using var t = _tracer.BeginScope("IncrementalUpdate");
 
-        foreach (var entityId in _pendingUpdates.AsValueEnumerable())
+        foreach (var entity in _pendingUpdates.AsValueEnumerable())
         {
-            var entity = World.GetEntity(entityId);
             ref var renderable = ref _renderables[entity];
 
             // Only process if this entity belongs to this stream
@@ -460,7 +459,7 @@ internal abstract class DrawStreamBase<DRAW_TYPE, COMP_TYPE> : Initializable, ID
         }
 
         // Otherwise, queue an incremental update (e.g., transform changed → NodeInfoIndex)
-        _pendingUpdates.Add(e.EntityId);
+        _pendingUpdates.Add(e.Entity);
         _lastDataChangeTicks = Stopwatch.GetTimestamp();
     }
 

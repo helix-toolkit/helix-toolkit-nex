@@ -48,7 +48,7 @@ public struct Entity : IDisposable, IEquatable<Entity>
         {
             if (World?.SetStateEnabled(Id, Generation, value) ?? false)
             {
-                ECSEventBus.Send(WorldId, new EntityEnableEvent(Id, value));
+                ECSEventBus.Send(WorldId, new EntityEnableEvent(this, value));
             }
         }
         get { return World?.GetStateEnabled(Id, Generation) ?? false; }
@@ -297,8 +297,8 @@ public struct Entity : IDisposable, IEquatable<Entity>
     {
         if (Valid)
         {
-            ECSEventBus.Send(WorldId, new EntityBeforeDisposeEvent(Id, Generation));
-            ECSEventBus.Send(WorldId, new EntityDisposingEvent(Id, Generation));
+            ECSEventBus.Send(WorldId, new EntityBeforeDisposeEvent(this));
+            ECSEventBus.Send(WorldId, new EntityDisposingEvent(this));
             Generation = default;
             Id = 0;
         }

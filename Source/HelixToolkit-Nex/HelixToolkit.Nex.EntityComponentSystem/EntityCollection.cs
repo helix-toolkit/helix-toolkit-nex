@@ -15,7 +15,7 @@ public sealed class EntityCollection : IDisposable
     }
 
     private readonly RuleBuilder _builder;
-    private readonly HashSet<int> _entities = [];
+    private readonly HashSet<Entity> _entities = [];
     private readonly FastList<Subscription> _subscriptions = [];
     public World World => _builder.World;
 
@@ -23,9 +23,10 @@ public sealed class EntityCollection : IDisposable
 
     public int Count => _entities.Count;
 
-    public event EventHandler<int>? EntityAdded;
-    public event EventHandler<int>? EntityRemoved;
+    public event EventHandler<Entity>? EntityAdded;
+    public event EventHandler<Entity>? EntityRemoved;
     public event EventHandler<EntityChangedEvent>? EntityChanged;
+    public IReadOnlySet<Entity> Entities => _entities;
 
     internal EntityCollection(RuleBuilder builder)
     {
@@ -37,7 +38,7 @@ public sealed class EntityCollection : IDisposable
         {
             if (_builder.Evaluate(entity))
             {
-                AddEntity(entity.Id);
+                AddEntity(entity);
             }
         }
         _subscriptions.Add(ECSEventBus.Register<WorldDisposingEvent>(World, HandleWorldDisposing));
@@ -48,7 +49,7 @@ public sealed class EntityCollection : IDisposable
 
     public bool Has(Entity entity)
     {
-        return _entities.Contains(entity.Id);
+        return _entities.Contains(entity);
     }
 
     private void HandleWorldDisposing(World _, WorldDisposingEvent msg)
@@ -58,61 +59,67 @@ public sealed class EntityCollection : IDisposable
 
     private void HandleEntityDisposing(World _, EntityBeforeDisposeEvent msg)
     {
-        RemoveEntity(msg.EntityId);
+        var entity = msg.Entity;
+        RemoveEntity(entity);
     }
 
-    private void AddEntity(int id)
+    private void AddEntity(Entity entity)
     {
         if (_disposed)
         {
             return;
         }
-        if (_entities.Contains(id))
+        if (_entities.Contains(entity))
         {
             return;
         }
-        _entities.Add(id);
-        EntityAdded?.Invoke(this, id);
+        _entities.Add(entity);
+        EntityAdded?.Invoke(this, entity);
     }
 
-    private void RemoveEntity(int id)
+    private void RemoveEntity(Entity entity)
     {
-        if (_disposed || !_entities.Contains(id))
+        if (_disposed || !_entities.Contains(entity))
         {
             return;
         }
-        _entities.Remove(id);
-        EntityRemoved?.Invoke(this, id);
+        _entities.Remove(entity);
+        EntityRemoved?.Invoke(this, entity);
     }
 
-    private void Builder_EntityRemoved(object? sender, int id)
+    private void Builder_EntityRemoved(object? sender, Entity entity)
     {
-        RemoveEntity(id);
+        RemoveEntity(entity);
     }
 
-    private void Builder__EntityAdded(object? sender, int id)
+    private void Builder__EntityAdded(object? sender, Entity entity)
     {
-        AddEntity(id);
+        AddEntity(entity);
     }
 
     private void Builder__EntityChanged(object? sender, EntityChangedEvent msg)
     {
-        if (!_entities.Contains(msg.EntityId))
+        if (!_entities.Contains(msg.Entity))
         {
             return;
         }
         EntityChanged?.Invoke(this, msg);
     }
 
+    public bool Contains(Entity entity)
+    {
+        return _entities.Contains(entity);
+    }
+
     #region Enumerable
-    public struct Enumerator(World world, HashSet<int> entities)
+    public struct Enumerator(World world, HashSet<Entity> entities)
     {
         private readonly World _world = world;
-        private ValueEnumerator<FromHashSet<int>, int> _entities = entities
+        private ValueEnumerator<FromHashSet<Entity>, Entity> _entities = entities
             .AsValueEnumerable()
             .GetEnumerator();
 
-        public readonly Entity Current => _world.GetEntity(_entities.Current);
+        public readonly Entity Current => _entities.Current;
 
         public bool MoveNext()
         {

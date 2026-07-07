@@ -221,7 +221,7 @@ T
         {
             return;
         }
-        if (world.HasComponentTypeById(msg.EntityId, ComponentIdProxy<T>.TypeId) == true)
+        if (world.HasComponentTypeById(msg.Entity.Id, ComponentIdProxy<T>.TypeId) == true)
         {
             Remove();
         }
@@ -754,7 +754,7 @@ T
 
     private void HandleEntityDisposing(World _, EntityDisposingEvent msg)
     {
-        Remove(msg.EntityId);
+        Remove(msg.Entity.Id);
     }
     #endregion
 

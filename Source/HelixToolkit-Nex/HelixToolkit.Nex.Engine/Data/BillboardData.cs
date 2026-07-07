@@ -1,5 +1,3 @@
-using HelixToolkit.Nex.ECS.Utils;
-using HelixToolkit.Nex.Rendering.Components;
 using HelixToolkit.Nex.Rendering.DataEntries;
 
 namespace HelixToolkit.Nex.Engine.Data;
@@ -151,7 +149,7 @@ internal sealed class BillboardData(IContext context, World world) : Initializab
         _needRebuilt = true;
     }
 
-    private void OnAddOrRemovedChanged(object? sender, int e)
+    private void OnAddOrRemovedChanged(object? sender, Entity entity)
     {
         _lastDataUpdateTicks = Stopwatch.GetTimestamp();
         _needRebuilt = true;

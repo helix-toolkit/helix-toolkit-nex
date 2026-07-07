@@ -1,4 +1,3 @@
-using HelixToolkit.Nex.ECS.Utils;
 using HelixToolkit.Nex.Engine.Components;
 
 namespace HelixToolkit.Nex.Engine.Data;
@@ -91,7 +90,7 @@ internal class DirectionalLightData : Initializable, IRenderData
         return true;
     }
 
-    private void OnLightChanged(object? source, int entityId)
+    private void OnLightChanged(object? source, Entity entity)
     {
         _lastDataUpdateTicks = Stopwatch.GetTimestamp();
     }
