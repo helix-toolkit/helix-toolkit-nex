@@ -29,7 +29,7 @@ The `HelixToolkit.Nex.Graphics.Mock` package is designed to fit seamlessly into 
   - **CreateSecondaryCommandBuffer**: Method signature updated to remove `RenderPass` parameter.
   - **SupportsSubpass**: Property indicating if subpass operations are supported.
   - **GetBufferDesc**: Method to retrieve the `BufferDesc` used to create a buffer.
-  - **GetBufferSubData**: Method to retrieve sub-data from a buffer.
+  - **GetBufferSubData**: Method to retrieve sub-data from a buffer, now marked as `virtual`.
   - **MarkDirty**: Method to mark a buffer as dirty, though no-op in mock context.
   - **MarkHostWrite**: Method to simulate marking a buffer range as written by the host.
 
@@ -164,7 +164,7 @@ context.MarkHostWrite(buffer.Handle, offset: 0, size: 512);
 - **New Methods and Properties**: Added `DrawCallCount`, `DispatchCallCount`, `SetCheckpointMarker`, `BindRenderPipeline` with color writes, `ClearDepthStencilImage`, `SetColorWriteEnabled`, `CopyTextureToBuffer`, `SetCullMode`, `TransitionToShaderReadOnly`, and updated `CreateSecondaryCommandBuffer` method signature to enhance testing capabilities.
 - **SupportsSubpass**: Added `SupportsSubpass` property to `MockContext` to indicate subpass support.
 - **GetBufferDesc**: Added method to `MockContext` to retrieve the `BufferDesc` used to create a buffer.
-- **GetBufferSubData**: Added method to `MockContext` to retrieve sub-data from a buffer.
+- **GetBufferSubData**: Method in `MockContext` now marked as `virtual` to allow for further customization in derived classes.
 - **MarkDirty**: Added method to `MockContext` to mark a buffer as dirty, though it is a no-op in the mock context.
 - **MarkHostWrite**: Added method to `MockContext` to simulate marking a buffer range as written by the host.
 - **Barrier Overloads**: Added overloads to `MockCommandBuffer` for barrier operations on multiple buffers, with `BarrierPreset`, `BarrierDescriptor`, `PipelineStageFlags`, and `AccessFlags`.

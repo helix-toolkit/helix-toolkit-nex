@@ -1,3 +1,4 @@
+```markdown
 # HelixToolkit.Nex.ECS
 
 HelixToolkit.Nex.ECS is the Entity Component System (ECS) framework used by the HelixToolkit.Nex 3D graphics engine. It provides a data-oriented way to manage entities and their components, with isolated worlds, a built-in event bus, and a thread-safe deferred command buffer for off-thread recording.
@@ -95,7 +96,7 @@ using HelixToolkit.Nex.ECS.Events;
 // React to Position being added/changed/removed on any entity in the world.
 var subscription = world.Register<ComponentChangedEvent<Position>>((w, evt) =>
 {
-    Console.WriteLine($"Entity {evt.EntityId}: Position {evt.Operation}");
+    Console.WriteLine($"Entity {evt.Entity.Id}: Position {evt.Operation}");
 });
 
 // Custom user-defined events work too.
@@ -166,3 +167,5 @@ buffer.Flush(world);
 - **Component type identification**: `ComponentTypeId` uniquely identifies each component type, supporting up to 128 distinct types.
 - **Event-driven**: Component add/change/remove operations raise `ComponentChangedEvent<T>`; `RuleBuilder`/`EntityCollection` use these to stay in sync.
 - **Tag components**: Data-less marker structs added via `Entity.Tag<T>()` allocate no component storage.
+
+```

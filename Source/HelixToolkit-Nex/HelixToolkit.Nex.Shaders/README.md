@@ -37,6 +37,7 @@ This package is integral to the HelixToolkit-Nex engine, facilitating the creati
 | `GpuNodeInfo`                 | Struct containing transformation and state information for nodes, used in culling. |
 | `BBoxPushConstant`            | Struct for push constants for bounding box visualization.                   |
 | `WireframePushConstants`      | Struct for push constants specific to wireframe rendering, including color and buffer addresses. |
+| `GizmoPushConstant`           | Struct for push constants for gizmo rendering, used in the new gizmo shaders. |
 
 ## Usage Examples
 
@@ -96,4 +97,5 @@ if (!cache.TryGet(cacheKey, out var entry))
 - **Shader Generation**: Provides utilities for generating GLSL shader code with support for various rendering techniques and optimizations.
 - **Wireframe Rendering**: Introduces a new wireframe rendering mode with adaptive line thickness and anti-aliasing, controlled via `WireframePushConstants`.
 - **SMAA Enhancements**: The SMAA shader now includes support for color-based edge detection and diagonal pattern detection, improving anti-aliasing quality.
+- **Gizmo Rendering**: New shaders for gizmo rendering (`vsGizmo.glsl` and `psGizmo.glsl`) support solid-handle rendering with entity picking capabilities.
 ```

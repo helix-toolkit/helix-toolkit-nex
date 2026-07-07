@@ -20,6 +20,7 @@ HelixToolkit.Nex.Rendering is responsible for managing the rendering pipeline of
 | `PointDrawInfo`                  | Describes a point cloud attached to an entity.                              |
 | `BillboardDrawInfo`              | Describes one or more billboards attached to an entity.                     |
 | `LineDrawInfo`                   | Describes line geometry attached to an entity.                             |
+| `GizmoDrawInfo`                  | Describes a renderable gizmo attached to an entity.                         |
 | `ForwardPlusLightCullingNode`    | Performs tiled Forward+ light culling.                                      |
 | `FrustumCullNode`                | Executes GPU-based frustum culling, including line and point culling.       |
 | `ForwardPlusWBOITMergedNode`     | Merges WBOIT transparent rendering and compositing into a single render pass.|
@@ -37,26 +38,33 @@ HelixToolkit.Nex.Rendering is responsible for managing the rendering pipeline of
 | `InstancingManager`              | Manages a pool of `Instancing` objects, providing lifecycle and GPU resource management.|
 | `SMAANode`                       | Performs Subpixel Morphological Anti-Aliasing (SMAA) with configurable quality and debug modes. |
 | `FXAANode`                       | Performs Fast Approximate Anti-Aliasing (FXAA) with configurable quality settings. |
+| `GizmoManager`                   | Manages the creation, updating, and interaction of gizmos.                  |
+| `IGizmoDataProvider`             | Interface for gathering gizmo data each frame.                              |
 
 ## Recent Changes
 
 ### New Features
 
-- **SMAANode**: Added to perform Subpixel Morphological Anti-Aliasing with configurable quality and debug modes.
-- **SMAAEdgeDetection**: Enum added to select edge-detection metrics for SMAA.
-- **SMAADebugMode**: Enum added to provide shader-level debug visualizations for SMAA.
-- **LineDrawInfo**: Added for describing line geometry attached to an entity.
-- **PointDrawInfo**: Introduced to replace `PointCloudDrawInfo` for describing point clouds.
-- **BillboardDrawInfo**: Renamed from `BillboardComponent` to better reflect its purpose.
-- **MeshDrawInfo**: Renamed from `MeshComponent` to better reflect its purpose.
+- **GizmoDrawInfo**: Added to describe renderable gizmos attached to entities.
+- **GizmoManager**: Added to manage gizmo creation, updating, and interaction.
+- **IGizmoDataProvider**: Interface added to gather all `GizmoDrawInfo` entities each frame.
+- **GizmoDefinition**: Defines the full set of inputs that determine a gizmo.
+- **GizmoHandle**: Represents one interactive part of a gizmo.
+- **GizmoEnums**: Added enums for gizmo modes, spaces, axes, handle shapes, and occlusion modes.
+- **GizmoInstanceHandle**: A lightweight, reusable reference to a gizmo created by the factory.
+- **GizmoHandleConfiguration**: Configuration for handle presentation in a gizmo request.
+- **GizmoShapeKey**: Identifies a distinct gizmo handle set in the factory cache.
+- **GizmoManager.Drag**: Handles drag-manipulation lifecycle for gizmos.
+
+### Updated Features
+
 - **FrustumCullNode**: Updated to include line and point culling pipelines.
-- **DrawStream Enhancements**: Introduced `DrawStreamType` and `DrawStreamVariants` for more precise control over draw stream characteristics.
-- **RenderGraphResourceAllocationException**: Added to handle resource allocation failures in the render graph.
-- **Material Type Name Properties**: Updated `LineDrawInfo` and `PointDrawInfo` to use `LineMaterialTypeName` and `PointMaterialTypeName` respectively for material lookup.
-- **PickingContext**: Enhanced to use `GetBufferData` for reading results, improving resource management.
-- **Barrier Presets**: Introduced `BarrierPreset` for more precise control over buffer synchronization.
-- **InstancingManager**: Added to manage instancing resources, including lifecycle, eventing, GPU-upload, and deferred-removal.
-- **Instancing**: Updated to support dynamic and static instancing modes with ring buffers to prevent GPU stalls.
+- **ForwardPlusLightCullingNode**: Added logic to cap the number of lights processed to prevent out-of-range indices.
+- **MeshDrawInfo**: Renamed `Category` property to `Variants` to determine the draw stream category based on instancing, hitability, and dynamic state.
+- **Draw Stream Enhancements**: Introduced `DrawStreamType` and `DrawStreamVariants` for more precise control over draw stream characteristics.
+- **IDrawStream**: Updated `GetMaterialTypes` method for zero-allocation material type enumeration.
+- **IDrawStreamRegistry**: Added `GetStreamsCore` method for zero-allocation stream enumeration.
+- **MeshDrawStreamEnumerable**: Introduced for efficient enumeration of draw streams without heap allocations.
 
 ### Removed Features
 
@@ -157,6 +165,23 @@ boundingBoxEffect.Apply(renderResources, ref readSlot, ref writeSlot);
 ```csharp
 var borderHighlightEffect = new BorderHighlightPostEffect();
 borderHighlightEffect.Apply(renderResources, ref readSlot, ref writeSlot);
+```
+
+### Creating and Managing Gizmos
+
+```csharp
+var gizmoManager = new GizmoManager();
+var gizmoDefinition = new GizmoDefinition(
+    Mode: GizmoMode.Translate,
+    Space: GizmoSpace.World,
+    TargetEntityId: myEntityId,
+    Handles: new GizmoHandleConfiguration(DesiredPixelSize: 10f, OcclusionMode: GizmoOcclusionMode.AlwaysOnTop)
+);
+
+if (gizmoManager.TryCreateGizmo(gizmoDefinition, out var gizmoHandle))
+{
+    gizmoManager.TrySetGizmo(myEntity, gizmoHandle);
+}
 ```
 
 ## Architecture Notes

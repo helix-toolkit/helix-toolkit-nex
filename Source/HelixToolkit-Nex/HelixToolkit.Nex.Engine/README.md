@@ -42,6 +42,7 @@ HelixToolkit.Nex.Engine is a core component of the HelixToolkit.Nex suite, respo
 | `PointDrawStreamRegistry`     | Registry for managing point draw streams.                                       |
 | `MeshDrawStream`              | Manages mesh draw commands, supporting dynamic and static data handling.        |
 | `MeshDrawStreamRegistry`      | Registry for managing mesh draw streams.                                        |
+| `GizmoDataProvider`           | Collects and manages gizmo entities for rendering.                              |
 
 ## Usage Examples
 
@@ -226,4 +227,8 @@ camera.FocusOn(new Vector3(0, 0, 0), 10f);
 
 - `Barrier(ICommandBuffer cmdBuf, BarrierPreset preset, bool force)` method now includes a `BarrierPreset` parameter for more flexible barrier configuration.
 - Improved handling of instancing updates with event subscriptions for `InstancingUpdatedEvent`.
+
+### New `GizmoDataProvider` Class
+
+- Collects every entity carrying a valid `GizmoDrawInfo` in the active world each frame and exposes them to the render node, mirroring the mesh/line/point gather pattern used by post effects.
 ```
