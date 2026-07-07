@@ -115,9 +115,8 @@ public class WorldComponentQueryLifecycleTests
                 var (world, entities) = ComponentQueryGenerators.Build(plan);
                 try
                 {
-                    // Record the prior count and the yielded carrier set before disposal.
+                    // Record the prior component count before disposal.
                     var countBefore = world.GetComponents<Speed>().Count;
-                    var setBefore = Collect<Speed>(world);
 
                     // Dispose exactly one carrier.
                     var disposed = entities[plan.CarrierIndices[0]];

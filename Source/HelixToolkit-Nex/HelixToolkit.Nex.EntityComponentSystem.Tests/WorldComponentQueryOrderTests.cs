@@ -40,12 +40,10 @@ public class WorldComponentQueryOrderTests
     public void GetComponentsAndGetComponentEntitiesShareCountAndAlignedOrdinals()
     {
         const int total = 8;
-        var created = new List<Entity>(total);
         for (var i = 0; i < total; ++i)
         {
             var entity = World!.CreateEntity();
             entity.Set(new Speed { Velocity = i * 3f, Acceleration = i * 7f });
-            created.Add(entity);
         }
 
         var components = World!.GetComponents<Speed>();
@@ -153,8 +151,8 @@ public class WorldComponentQueryOrderTests
                             var arrayValue = backingArray[i];
                             var entityValue = orderedEntities[i].Get<Speed>();
                             if (
-                                arrayValue.Velocity != entityValue.Velocity
-                                || arrayValue.Acceleration != entityValue.Acceleration
+                                 Math.Abs(arrayValue.Velocity - entityValue.Velocity) > float.Epsilon
+                                 || Math.Abs(arrayValue.Acceleration - entityValue.Acceleration) > float.Epsilon
                             )
                             {
                                 return false;

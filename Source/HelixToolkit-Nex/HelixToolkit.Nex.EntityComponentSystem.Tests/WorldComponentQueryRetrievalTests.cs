@@ -53,7 +53,7 @@ public class WorldComponentQueryRetrievalTests
         for (var i = 0; i < n; ++i)
         {
             var entity = World!.CreateEntity();
-            entity.Set(new Speed { Velocity = i, Acceleration = i * 2 });
+            entity.Set(new Speed { Velocity = i, Acceleration = i * 2f });
             assigned.Add(entity);
         }
 

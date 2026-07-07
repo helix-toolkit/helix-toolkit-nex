@@ -86,7 +86,7 @@ public class WorldComponentQueryMutationTests
         for (var i = 0; i < 4; ++i)
         {
             var entity = World!.CreateEntity();
-            entity.Set(new Speed { Velocity = i, Acceleration = i * 10 });
+            entity.Set(new Speed { Velocity = i, Acceleration = i * 10f });
             entities.Add(entity);
         }
 
@@ -372,14 +372,20 @@ public class WorldComponentQueryMutationTests
                     return true;
                 }
 
-                var (world, entities) = ComponentQueryGenerators.BuildTags<TagA>(total, taggedIndices);
+                var (world, entities) = ComponentQueryGenerators.BuildTags<TagA>(
+                    total,
+                    taggedIndices
+                );
                 try
                 {
                     // The full tagged set, in ordinal order, so we can remove one and check the rest.
                     var tagged = taggedIndices.Select(idx => entities[idx]).ToList();
 
                     // Record the prior tagged set before the removal and confirm it matches the model.
-                    var expectedBefore = ComponentQueryGenerators.ExpectedTaggedSet(taggedIndices, entities);
+                    var expectedBefore = ComponentQueryGenerators.ExpectedTaggedSet(
+                        taggedIndices,
+                        entities
+                    );
                     var setBefore = new HashSet<Entity>(EntityList<TagA>(world));
                     Assert.IsTrue(setBefore.SetEquals(expectedBefore));
 
@@ -469,17 +475,8 @@ public class WorldComponentQueryMutationTests
                 _ => entity.Has<Position>(),
             };
 
-        static bool YieldedFor<T>(World world, Entity entity)
-        {
-            foreach (var yielded in world.GetComponentEntities<T>())
-            {
-                if (yielded == entity)
-                {
-                    return true;
-                }
-            }
-            return false;
-        }
+        static bool YieldedFor<T>(World world, Entity entity) =>
+            world.GetComponentEntities<T>().Where(yielded => yielded == entity).Any();
 
         static bool Yielded(World world, int code, Entity entity) =>
             code switch

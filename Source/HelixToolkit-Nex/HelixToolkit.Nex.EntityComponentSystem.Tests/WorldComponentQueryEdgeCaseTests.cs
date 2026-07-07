@@ -94,7 +94,7 @@ public class WorldComponentQueryEdgeCaseTests
                     for (var i = 0; i < aCount; ++i)
                     {
                         var entity = world.CreateEntity();
-                        entity.Set(new Speed { Velocity = i, Acceleration = i * 2 });
+                        entity.Set(new Speed { Velocity = i, Acceleration = i * 2f });
                         aEntities.Add(entity);
                     }
 
@@ -199,13 +199,6 @@ public class WorldComponentQueryEdgeCaseTests
     private static bool Yields<T>(ComponentEntities<T> entities, Entity target)
         where T : struct
     {
-        foreach (var entity in entities)
-        {
-            if (entity == target)
-            {
-                return true;
-            }
-        }
-        return false;
+        return entities.Any(x => x == target);
     }
 }

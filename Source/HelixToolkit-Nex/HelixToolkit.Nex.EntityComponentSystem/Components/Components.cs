@@ -137,33 +137,34 @@ T
     int Count { get; }
 }
 
-public struct EmptyComponents<
+internal sealed class EmptyComponents<
     [DynamicallyAccessedMembers(
         DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.NonPublicFields
     )]
 T
 > : IComponents<T>
 {
-    public readonly ref T this[Entity entity]
+    private EmptyComponents() { }
+
+    public ref T this[Entity entity]
     {
         get =>
             throw new InvalidOperationException("EmptyComponents does not contain any components.");
     }
 
-    public readonly T[] GetInternalArray()
+    public T[] GetInternalArray()
     {
         return Array.Empty<T>();
     }
 
-    public readonly ComponentEntities<T> GetEntities()
+    public ComponentEntities<T> GetEntities()
     {
         return ComponentEntities<T>.Empty;
     }
 
-    public readonly MappingEnumerator<T> GetEnumerator() =>
-        throw new InvalidOperationException("EmptyComponents does not contain any components.");
+    public MappingEnumerator<T> GetEnumerator() => MappingEnumerator<T>.Empty;
 
-    public readonly int Count => 0;
+    public int Count => 0;
 
     public static readonly EmptyComponents<T> Empty = new();
 }
