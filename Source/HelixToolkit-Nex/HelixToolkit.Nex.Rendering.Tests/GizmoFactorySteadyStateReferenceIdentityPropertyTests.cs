@@ -43,13 +43,11 @@ public class GizmoFactorySteadyStateReferenceIdentityPropertyTests
     private static Gen<GizmoDefinition> DefinitionGen() =>
         from mode in ModeGen()
         from space in SpaceGen()
-        from target in Gen.Choose(0, 1000)
         from pixel in Gen.Choose(1, 200)
         from occlusion in OcclusionGen()
         select new GizmoDefinition(
             mode,
             space,
-            (uint)target,
             new GizmoHandleConfiguration(pixel, occlusion));
 
     /// <summary>The kind of steady-state update applied on a given frame.</summary>
@@ -142,6 +140,14 @@ public class GizmoFactorySteadyStateReferenceIdentityPropertyTests
                 return false;
             }
 
+            // Bind a fixed-transform manipulator so UpdateInstance reads the origin from it; the
+            // per-frame origin is driven by updating the manipulator's transform before each update.
+            var manipulator = new FixedTransformManipulator(Matrix4x4.Identity);
+            if (!manager.BindTarget(handle, manipulator))
+            {
+                return false;
+            }
+
             if (!entity.TryGet(out GizmoDrawInfo initial) || initial.Handles is null)
             {
                 return false;
@@ -164,11 +170,11 @@ public class GizmoFactorySteadyStateReferenceIdentityPropertyTests
                 switch (op.Kind)
                 {
                     case SteadyOpKind.UpdateOriginCamera:
+                        manipulator.Transform = Matrix4x4.CreateTranslation(op.Origin);
                         manager.UpdateInstance(
                             handle,
                             MakeCamera(op.CameraPosition),
-                            new Size(1920, 1080),
-                            Matrix4x4.CreateTranslation(op.Origin));
+                            new Size(1920, 1080));
                         checkOrigin = true;
                         expectedOrigin = op.Origin;
                         break;

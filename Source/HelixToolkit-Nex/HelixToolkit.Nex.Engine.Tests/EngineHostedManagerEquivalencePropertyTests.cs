@@ -54,13 +54,11 @@ public sealed class EngineHostedManagerEquivalencePropertyTests
     private static Gen<GizmoDefinition> DefinitionGen() =>
         from mode in ModeGen()
         from space in SpaceGen()
-        from target in Gen.Choose(0, 1000)
         from pixel in Gen.Choose(1, 200)
         from occlusion in OcclusionGen()
         select new GizmoDefinition(
             mode,
             space,
-            (uint)target,
             new GizmoHandleConfiguration(pixel, occlusion));
 
     private static Gen<Vector3> PositionGen() =>
@@ -300,6 +298,7 @@ public sealed class EngineHostedManagerEquivalencePropertyTests
         private readonly List<Entity> _entities = [];
         private readonly List<GizmoHandleId[]> _handleIds = [];
         private readonly List<bool> _present = [];
+        private readonly List<FixedTransformManipulator> _manipulators = [];
 
         public GizmoManager Manager { get; } = manager;
 
@@ -312,10 +311,19 @@ public sealed class EngineHostedManagerEquivalencePropertyTests
             Entity entity = _world.CreateEntity();
             bool set = created && Manager.TrySetGizmo(entity, handle);
 
+            // Bind a fixed-transform manipulator so UpdateInstance reads the origin from it; the
+            // per-frame origin is driven by updating the manipulator's transform before each update.
+            var manipulator = new FixedTransformManipulator(Matrix4x4.Identity);
+            if (created)
+            {
+                Manager.BindTarget(handle, manipulator);
+            }
+
             _handles.Add(handle);
             _entities.Add(entity);
             _present.Add(set);
             _handleIds.Add(CaptureHandleIds(entity));
+            _manipulators.Add(manipulator);
 
             return new SetupResult(created, set, (uint)entity.Id);
         }
@@ -336,7 +344,8 @@ public sealed class EngineHostedManagerEquivalencePropertyTests
             switch (op.Kind)
             {
                 case GizmoOpKind.Update:
-                    Manager.UpdateInstance(handle, CameraParams.Identity, Viewport, Matrix4x4.CreateTranslation(op.Origin));
+                    _manipulators[gi].Transform = Matrix4x4.CreateTranslation(op.Origin);
+                    Manager.UpdateInstance(handle, CameraParams.Identity, Viewport);
                     return OpResult.None;
 
                 case GizmoOpKind.Highlight:

@@ -42,13 +42,11 @@ public class GizmoFactoryDefinitionChangeRebuildPropertyTests
     /// <summary>Generates a well-formed definition for an explicitly chosen mode.</summary>
     private static Gen<GizmoDefinition> DefinitionGenForMode(GizmoMode mode) =>
         from space in SpaceGen()
-        from target in Gen.Choose(0, 100_000)
         from pixel in Gen.Choose(1, 4096)
         from occlusion in OcclusionGen()
         select new GizmoDefinition(
             mode,
             space,
-            (uint)target,
             new GizmoHandleConfiguration(pixel, occlusion));
 
     /// <summary>
@@ -72,14 +70,12 @@ public class GizmoFactoryDefinitionChangeRebuildPropertyTests
         Arb.From(
             from mode in ModeGen()
             from space in SpaceGen()
-            from target in Gen.Choose(0, 100_000)
             from pixel in Gen.Choose(1, 2048)
             from occlusion in OcclusionGen()
-            let first = new GizmoDefinition(mode, space, (uint)target, new GizmoHandleConfiguration(pixel, occlusion))
+            let first = new GizmoDefinition(mode, space, new GizmoHandleConfiguration(pixel, occlusion))
             let variant = new GizmoDefinition(
                 mode,
                 space == GizmoSpace.World ? GizmoSpace.Local : GizmoSpace.World,
-                (uint)target + 1,
                 new GizmoHandleConfiguration(pixel + 1, occlusion))
             select (first, variant));
 

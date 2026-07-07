@@ -48,13 +48,11 @@ public class GizmoFactoryCacheBackedPublishingPropertyTests
         Arb.From(
             from mode in ModeGen()
             from space in SpaceGen()
-            from target in Gen.Choose(0, 100_000)
             from pixel in Gen.Choose(1, 4096)
             from occlusion in OcclusionGen()
             select new GizmoDefinition(
                 mode,
                 space,
-                (uint)target,
                 new GizmoHandleConfiguration(pixel, occlusion)));
 
     /// <summary>
@@ -139,7 +137,6 @@ public class GizmoFactoryCacheBackedPublishingPropertyTests
             var sibling = new GizmoDefinition(
                 definition.Mode,
                 definition.Space == GizmoSpace.World ? GizmoSpace.Local : GizmoSpace.World,
-                definition.TargetEntityId + 1,
                 new GizmoHandleConfiguration(
                     definition.Handles.DesiredPixelSize + 1,
                     definition.Handles.OcclusionMode));

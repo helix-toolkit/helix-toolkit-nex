@@ -106,7 +106,6 @@ public class CrossLayerPlacementSmokeTests
         var definition = new GizmoDefinition(
             GizmoMode.Translate,
             GizmoSpace.World,
-            TargetEntityId: 42u,
             new GizmoHandleConfiguration(DesiredPixelSize: 64f, GizmoOcclusionMode.AlwaysOnTop)
         );
 

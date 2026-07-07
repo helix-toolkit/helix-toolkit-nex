@@ -33,13 +33,11 @@ public class GizmoFactoryBuilderEquivalencePropertyTests
         Arb.From(
             from modeIndex in Gen.Choose(0, 2)
             from spaceIndex in Gen.Choose(0, 1)
-            from targetId in Gen.Choose(0, 100_000)
             from pixels in Gen.Choose(1, 4096)
             from occlusionIndex in Gen.Choose(0, 1)
             select new GizmoDefinition(
                 ModeFor(modeIndex),
                 SpaceFor(spaceIndex),
-                (uint)targetId,
                 new GizmoHandleConfiguration(pixels, OcclusionFor(occlusionIndex))));
 
     private static GizmoMode ModeFor(int index) => index switch

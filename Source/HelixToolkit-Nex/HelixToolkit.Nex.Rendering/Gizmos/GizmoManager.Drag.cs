@@ -174,12 +174,39 @@ public sealed partial class GizmoManager
             return false;
         }
 
-        return _dragHandle.Mode switch
+        bool produced = _dragHandle.Mode switch
         {
             GizmoMode.Rotate => UpdateRotateDrag(pointerRay, out transformDelta),
             GizmoMode.Scale => UpdateScaleDrag(pointerRay, out transformDelta),
             _ => UpdateTranslateDrag(pointerRay, out transformDelta),
         };
+
+        // Route the produced delta to the manipulator bound to the single gizmo the drag began on
+        // (Requirements 4.3, 7.2, 8.4). The delta is still returned for migration compatibility.
+        if (produced)
+        {
+            ApplyDeltaToDragTarget(in transformDelta);
+        }
+
+        return produced;
+    }
+
+    /// <summary>
+    /// Forwards a produced drag delta to the manipulator bound to the single gizmo instance the drag
+    /// began on (Requirements 4.3, 7.2, 8.4). The manager never interprets the delta itself; the bound
+    /// manipulator decides how to apply it. This is a no-op when the originating instance has no
+    /// binding, so an unbound drag leaves all targets unchanged.
+    /// </summary>
+    /// <param name="dragDelta">The incremental transform produced by the active drag this frame.</param>
+    private void ApplyDeltaToDragTarget(in Matrix4x4 dragDelta)
+    {
+        if (TryGetInstanceHandleByOwningEntity(_dragOwningEntityId, out GizmoInstanceHandle handle)
+            && TryGetBinding(handle, out IGizmoManipulator? manipulator)
+            && manipulator is not null)
+        {
+            // Req 7.2: the delta is forwarded raw (uninterpreted) to the originating instance's manipulator.
+            manipulator.ApplyDelta(in dragDelta);
+        }
     }
 
     /// <summary>

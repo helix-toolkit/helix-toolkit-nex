@@ -129,7 +129,6 @@ public sealed class GizmoSampleFlowSmokeTests
         var definition = new GizmoDefinition(
             GizmoMode.Translate,
             GizmoSpace.World,
-            TargetEntityId: 0u,
             new GizmoHandleConfiguration(100f, GizmoOcclusionMode.AlwaysOnTop));
 
         if (!manager.TryCreateGizmo(definition, out GizmoInstanceHandle handle))

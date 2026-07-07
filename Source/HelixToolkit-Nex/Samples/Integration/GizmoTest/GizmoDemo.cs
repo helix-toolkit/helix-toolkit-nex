@@ -1,5 +1,6 @@
 using System.Numerics;
 using HelixToolkit.Nex;
+using HelixToolkit.Nex.ECS;
 using HelixToolkit.Nex.Engine;
 using HelixToolkit.Nex.Engine.CameraControllers;
 using HelixToolkit.Nex.Engine.Cameras;
@@ -65,10 +66,20 @@ internal sealed partial class GizmoDemo : IDisposable
     // The single factory-created gizmo instance set on the carrier entity.
     private GizmoInstanceHandle _gizmoInstance = GizmoInstanceHandle.None;
 
-    // The mesh node manipulated by the gizmo, and its world matrix (source of truth).
-    private MeshNode? _targetNode;
-    private Matrix4x4 _targetWorldMatrix = Matrix4x4.CreateTranslation(0, 0, 0);
-    private static readonly Matrix4x4 InitialTargetMatrix = Matrix4x4.CreateTranslation(0, 0, 0);
+    // The manipulable targets in the scene. Each target owns its own TransformManipulator; the gizmo
+    // instance is bound to exactly one target's manipulator at a time via GizmoManager.BindTarget.
+    // Clicking a target in the viewport rebinds the gizmo to it (SetActiveTarget), and "Swap Target"
+    // cycles through them. The bound manipulator is the single source of truth for the target
+    // transform, so the demo keeps no bookkeeping matrix and applies no transform by hand.
+    private readonly List<GizmoTarget> _targets = [];
+    private int _activeTargetIndex = -1;
+
+    // A custom manipulator that drives a non-transform property (the active target's material Metallic
+    // scalar) instead of the node transform, demonstrating custom manipulation end to end (Req 9.4,
+    // 9.5). It is bound to the gizmo instance on demand via the "Custom Manipulator" toggle; when
+    // active the gizmo drag edits the material value rather than moving the node.
+    private MaterialScalarManipulator? _customManipulator;
+    private bool _customActive;
 
     private Node? _lightNode;
 
@@ -150,7 +161,6 @@ internal sealed partial class GizmoDemo : IDisposable
     private void BuildScene()
     {
         var geometryManager = _engine!.ResourceManager.Geometries;
-        var materialPool = _engine.ResourceManager.PBRPropertyManager;
         var world = _worldDataProvider!.World;
 
         _root = new Node(world, "GizmoRoot");
@@ -163,55 +173,41 @@ internal sealed partial class GizmoDemo : IDisposable
         var gizmoEntityNode = new Node(world, "GizmoManagerEntity");
         _root.AddChild(gizmoEntityNode);
 
-        // --- Manipulated target: a box at the origin ---
+        // --- Manipulable targets ---
+        // One box geometry and one sphere geometry are added to the geometry manager once and shared
+        // across several nodes; each node gets its own material (color), world position, and its own
+        // TransformManipulator. Each geometry is centered at the origin and positioned via the node
+        // transform so the bound manipulator reports the node's world position as the gizmo origin.
         var boxBuilder = new MeshBuilder(true, true, true);
         boxBuilder.AddBox(Vector3.Zero, 6f, 6f, 6f);
         var boxGeom = boxBuilder.ToMesh().ToGeometry();
         bool succ = geometryManager.Add(boxGeom);
         System.Diagnostics.Debug.Assert(succ, "Failed to add box geometry");
 
-        var targetMaterial = materialPool.Create("PBR");
-        targetMaterial.Properties.Albedo = new Vector3(0.2f, 0.5f, 0.9f);
-        targetMaterial.Properties.Metallic = 0.2f;
-        targetMaterial.Properties.Roughness = 0.6f;
-        targetMaterial.Properties.Ao = 1.0f;
-        targetMaterial.Properties.Opacity = 1.0f;
-
-        _targetNode = new MeshNode(world, "GizmoTarget")
-        {
-            Geometry = boxGeom,
-            MaterialProperties = targetMaterial,
-        };
-        _root.AddChild(_targetNode);
-
-        // Create the gizmo once through the factory (its handle set is built once and cached) and set
-        // it on the carrier entity, which publishes the GizmoDrawInfo component so the gizmo renders
-        // (Req 8.1, 8.5). Subsequent frames only call UpdateInstance to refresh origin/sizing.
-        if (_gizmoManager!.TryCreateGizmo(BuildDefinition(), out _gizmoInstance))
-        {
-            _gizmoManager.TrySetGizmo(gizmoEntityNode.Entity, _gizmoInstance);
-        }
-
-        // --- A static reference sphere so the scene is not empty ---
         var sphereBuilder = new MeshBuilder(true, true, true);
-        sphereBuilder.AddSphere(new Vector3(20, 0, 0), 5f, 48, 48);
+        sphereBuilder.AddSphere(Vector3.Zero, 4f, 48, 48);
         var sphereGeom = sphereBuilder.ToMesh().ToGeometry();
         succ = geometryManager.Add(sphereGeom);
         System.Diagnostics.Debug.Assert(succ, "Failed to add sphere geometry");
 
-        var greyMaterial = materialPool.Create("PBR");
-        greyMaterial.Properties.Albedo = new Vector3(0.6f, 0.6f, 0.6f);
-        greyMaterial.Properties.Metallic = 0.3f;
-        greyMaterial.Properties.Roughness = 0.5f;
-        greyMaterial.Properties.Ao = 1.0f;
-        greyMaterial.Properties.Opacity = 1.0f;
+        // A spread of targets to exercise click-to-select and runtime rebinding. Click any object in
+        // the viewport to bind the gizmo to it; "Swap Target" cycles through them in order.
+        AddTarget("Box A", boxGeom, new Vector3(-20f, 0f, 0f), new Vector3(0.2f, 0.5f, 0.9f));
+        AddTarget("Sphere B", sphereGeom, new Vector3(-7f, 0f, 0f), new Vector3(0.9f, 0.4f, 0.3f));
+        AddTarget("Box C", boxGeom, new Vector3(7f, 0f, 0f), new Vector3(0.3f, 0.8f, 0.4f));
+        AddTarget("Sphere D", sphereGeom, new Vector3(20f, 0f, 0f), new Vector3(0.9f, 0.8f, 0.3f));
+        AddTarget("Box E", boxGeom, new Vector3(0f, 12f, 0f), new Vector3(0.7f, 0.4f, 0.9f));
 
-        var sphereNode = new MeshNode(world, "ReferenceSphere")
+        // Create the gizmo once through the factory (its handle set is built once and cached) and set
+        // it on the carrier entity, which publishes the GizmoDrawInfo component so the gizmo renders
+        // (Req 8.1, 8.5). Subsequent frames only call UpdateInstance to refresh origin/sizing. Bind the
+        // first target as the initial target so the gizmo origin starts on it (Req 9.1); clicking any
+        // target rebinds the gizmo to it at runtime.
+        if (_gizmoManager!.TryCreateGizmo(BuildDefinition(), out _gizmoInstance))
         {
-            Geometry = sphereGeom,
-            MaterialProperties = greyMaterial,
-        };
-        _root.AddChild(sphereNode);
+            _gizmoManager.TrySetGizmo(gizmoEntityNode.Entity, _gizmoInstance);
+            SetActiveTarget(0);
+        }
 
         // --- Directional light ---
         _lightNode = new Node(world, "Sun");
@@ -224,8 +220,143 @@ internal sealed partial class GizmoDemo : IDisposable
             }
         );
         _root.AddChild(_lightNode);
+    }
 
-        ApplyTargetTransform();
+    /// <summary>
+    /// Gets the currently active gizmo target, or <see langword="null"/> when none is selected.
+    /// </summary>
+    private GizmoTarget? ActiveTarget =>
+        _activeTargetIndex >= 0 && _activeTargetIndex < _targets.Count
+            ? _targets[_activeTargetIndex]
+            : null;
+
+    /// <summary>
+    /// Creates a mesh node for <paramref name="geometry"/> at <paramref name="position"/> with a solid
+    /// PBR color, wraps it in its own <see cref="TransformManipulator"/>, and registers it as a
+    /// selectable gizmo target. The node geometry is centered at the origin, so the manipulator reports
+    /// the node's world position as the gizmo origin.
+    /// </summary>
+    private void AddTarget(string name, Geometry geometry, Vector3 position, Vector3 color)
+    {
+        var world = _worldDataProvider!.World;
+
+        var material = _engine!.ResourceManager.PBRPropertyManager.Create("PBR");
+        material.Properties.Albedo = color;
+        material.Properties.Metallic = 0.2f;
+        material.Properties.Roughness = 0.6f;
+        material.Properties.Ao = 1.0f;
+        material.Properties.Opacity = 1.0f;
+
+        var node = new MeshNode(world, name)
+        {
+            Geometry = geometry,
+            MaterialProperties = material,
+        };
+        node.Transform.Translation = position;
+        node.NotifyTransformChanged();
+        _root!.AddChild(node);
+
+        _targets.Add(
+            new GizmoTarget
+            {
+                Name = name,
+                Node = node,
+                Manipulator = new TransformManipulator(node),
+            }
+        );
+    }
+
+    /// <summary>
+    /// Makes the target at <paramref name="index"/> the active gizmo target by binding its
+    /// <see cref="TransformManipulator"/> to the gizmo instance (Req 9.2). The next frame's
+    /// <see cref="GizmoManager.UpdateInstance"/> reads the gizmo origin from the newly bound
+    /// manipulator's transform (Req 9.3). Binding a transform manipulator also disables the custom
+    /// manipulator override, and the custom manipulator is re-created for the newly active node.
+    /// </summary>
+    private void SetActiveTarget(int index)
+    {
+        if (_gizmoManager is null || !_gizmoInstance.IsValid)
+            return;
+        if (index < 0 || index >= _targets.Count)
+            return;
+
+        GizmoTarget target = _targets[index];
+        if (_gizmoManager.BindTarget(_gizmoInstance, target.Manipulator))
+        {
+            _activeTargetIndex = index;
+            // A custom manipulator drives one node's material; recreate it for the newly active node so
+            // the "Custom Manipulator" toggle affects whatever object is currently selected.
+            _customManipulator = new MaterialScalarManipulator(target.Node);
+            _customActive = false;
+        }
+    }
+
+    /// <summary>
+    /// Selects the target whose mesh node carries <paramref name="entity"/>, if any, binding the gizmo
+    /// to it. Returns <see langword="true"/> when a target matched and was selected.
+    /// </summary>
+    private bool TrySelectTargetByEntity(Entity entity)
+    {
+        for (int i = 0; i < _targets.Count; i++)
+        {
+            if (_targets[i].Node.Entity.Id == entity.Id)
+            {
+                SetActiveTarget(i);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Cycles the active gizmo target to the next one in the list at runtime (Req 9.2), wrapping around.
+    /// </summary>
+    private void SwapTarget()
+    {
+        if (_targets.Count == 0)
+            return;
+
+        int next = (_activeTargetIndex + 1) % _targets.Count;
+        SetActiveTarget(next);
+    }
+
+    /// <summary>
+    /// Toggles between the custom (non-transform) manipulator and the active target's transform
+    /// manipulator on the gizmo instance (Req 9.4, 9.5). When enabled, <see cref="GizmoManager.BindTarget"/>
+    /// binds the <see cref="MaterialScalarManipulator"/> so subsequent drag deltas drive the active
+    /// target's material scalar; when disabled it rebinds that target's transform manipulator.
+    /// </summary>
+    private void ToggleCustomManipulator()
+    {
+        if (_gizmoManager is null || !_gizmoInstance.IsValid)
+            return;
+
+        GizmoTarget? active = ActiveTarget;
+        if (active is null)
+            return;
+
+        if (_customActive)
+        {
+            if (_gizmoManager.BindTarget(_gizmoInstance, active.Manipulator))
+                _customActive = false;
+        }
+        else if (_customManipulator is not null
+            && _gizmoManager.BindTarget(_gizmoInstance, _customManipulator))
+        {
+            _customActive = true;
+        }
+    }
+
+    /// <summary>
+    /// A selectable object the gizmo can manipulate: its scene node and the
+    /// <see cref="TransformManipulator"/> that owns its transform.
+    /// </summary>
+    private sealed class GizmoTarget
+    {
+        public required string Name { get; init; }
+        public required MeshNode Node { get; init; }
+        public required TransformManipulator Manipulator { get; init; }
     }
 
     /// <summary>
@@ -237,7 +368,6 @@ internal sealed partial class GizmoDemo : IDisposable
         new(
             _gizmoMode,
             _gizmoSpace,
-            _targetNode is not null ? (uint)_targetNode.Entity.Id : 0u,
             new GizmoHandleConfiguration(_handlePixelSize, _occlusionMode)
         );
 
@@ -251,29 +381,6 @@ internal sealed partial class GizmoDemo : IDisposable
             return;
 
         _gizmoManager.TryUpdateDefinition(_gizmoInstance, BuildDefinition());
-    }
-
-    /// <summary>
-    /// Decomposes <see cref="_targetWorldMatrix"/> and writes it to the manipulated node's transform so
-    /// the visible object follows gizmo drags. <see cref="Transform"/> exposes TRS (no full-matrix
-    /// setter), so we decompose; a non-decomposable matrix falls back to translation only.
-    /// </summary>
-    private void ApplyTargetTransform()
-    {
-        if (_targetNode is null)
-            return;
-
-        if (Matrix4x4.Decompose(_targetWorldMatrix, out var scale, out var rotation, out var translation))
-        {
-            _targetNode.Transform.Scale = scale;
-            _targetNode.Transform.Rotation = rotation;
-            _targetNode.Transform.Translation = translation;
-        }
-        else
-        {
-            _targetNode.Transform.Translation = _targetWorldMatrix.Translation;
-        }
-        _targetNode.NotifyTransformChanged();
     }
 
     public void Render(int width, int height)
@@ -297,12 +404,12 @@ internal sealed partial class GizmoDemo : IDisposable
         _gizmoManager.UpdateInstance(
             _gizmoInstance,
             _renderContext.CameraParams,
-            _viewportSize,
-            _targetWorldMatrix
+            _viewportSize
         );
 
-        // Keep the visible target node in sync with the manipulated matrix.
-        ApplyTargetTransform();
+        // The bound manipulator owns write-back to its node and is the single source of truth for the
+        // target transform; the control panel reads it directly for display, so the demo keeps no
+        // bookkeeping matrix here.
 
         // --- ImGui frame ---
         _imGuiRenderer.BeginFrame(new Vector2(width, height));
@@ -368,20 +475,30 @@ internal sealed partial class GizmoDemo : IDisposable
         }
 
         // Scene pick: TryGetPickingResult succeeds only for a scene entity (world id > 0); gizmo pixels
-        // (world id 0) and no-hits return false, so this resolves the same scene entity as before and
-        // never begins a gizmo drag (Req 8.3, 8.4, 8.7).
+        // (world id 0) and no-hits return false, so this resolves the scene entity and never begins a
+        // gizmo drag (Req 8.3, 8.4, 8.7). If the picked entity is one of the manipulable targets, bind
+        // the gizmo to it so clicking an object switches the gizmo's target (Req 9.2, 9.3).
         if (response.TryGetPickingResult(out var result))
         {
-            bool isTarget = _targetNode is not null && result.Entity.Id == _targetNode.Entity.Id;
-            _lastPickInfo = isTarget
-                ? $"Selected target (entity {result.Entity})"
-                : $"Picked entity {result.Entity}";
-            _logger.LogInformation(
-                "Scene pick: entity {Entity} at {Pos} (target={IsTarget})",
-                result.Entity,
-                result.WorldPosition,
-                isTarget
-            );
+            if (TrySelectTargetByEntity(result.Entity))
+            {
+                _lastPickInfo = $"Selected target '{ActiveTarget?.Name}' (entity {result.Entity})";
+                _logger.LogInformation(
+                    "Selected gizmo target {Target} (entity {Entity}) at {Pos}",
+                    ActiveTarget?.Name,
+                    result.Entity,
+                    result.WorldPosition
+                );
+            }
+            else
+            {
+                _lastPickInfo = $"Picked entity {result.Entity} (not a target)";
+                _logger.LogInformation(
+                    "Scene pick: entity {Entity} at {Pos} (not a gizmo target)",
+                    result.Entity,
+                    result.WorldPosition
+                );
+            }
         }
         else
         {
