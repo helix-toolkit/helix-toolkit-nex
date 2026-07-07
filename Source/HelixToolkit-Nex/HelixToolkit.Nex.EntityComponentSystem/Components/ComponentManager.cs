@@ -175,7 +175,6 @@ T
     }
 
     public int WorldId { get; }
-    public World? World => World.GetWorldById(WorldId);
     public int Count => _count;
 
     private readonly FastList<Subscription> _subscriptions = [];
@@ -787,12 +786,12 @@ T
 
     public override bool Equals(object? obj)
     {
-        return false;
+        return ReferenceEquals(this, obj);
     }
 
     public override int GetHashCode()
     {
-        return Storage.GetHashCode();
+        return RuntimeHelpers.GetHashCode(this);
     }
 
     public MappingEnumerator<T> GetEnumerator()
