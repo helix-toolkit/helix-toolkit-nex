@@ -876,15 +876,15 @@ internal static class HxVkExtensions
             | VkPipelineStageFlags2.VertexInput;
         if (srcStage.HasAllFlags(VkPipelineStageFlags2.Host))
         {
-            barrier.srcAccessMask |= VkAccessFlags2.HostRead | VkAccessFlags2.HostWrite;
+            barrier.srcAccessMask |= VkAccessFlags2.HostWrite;
         }
         if (srcStage.HasAllFlags(VkPipelineStageFlags2.Transfer))
         {
-            barrier.srcAccessMask |= VkAccessFlags2.TransferRead | VkAccessFlags2.TransferWrite;
+            barrier.srcAccessMask |= VkAccessFlags2.TransferWrite;
         }
         if (srcStage.HasAnyFlag(~nonShaderStages))
         {
-            barrier.srcAccessMask |= VkAccessFlags2.ShaderRead | VkAccessFlags2.ShaderWrite;
+            barrier.srcAccessMask |= VkAccessFlags2.ShaderWrite;
         }
 
         if (dstStage.HasAllFlags(VkPipelineStageFlags2.Transfer))
