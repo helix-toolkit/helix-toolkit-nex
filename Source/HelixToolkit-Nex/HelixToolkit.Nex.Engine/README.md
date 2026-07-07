@@ -226,4 +226,8 @@ camera.FocusOn(new Vector3(0, 0, 0), 10f);
 
 - `Barrier(ICommandBuffer cmdBuf, BarrierPreset preset, bool force)` method now includes a `BarrierPreset` parameter for more flexible barrier configuration.
 - Improved handling of instancing updates with event subscriptions for `InstancingUpdatedEvent`.
+
+### ECS Component Interface Update
+
+- Updated ECS component handling to use `IComponents<T>` interface for better abstraction and flexibility.
 ```

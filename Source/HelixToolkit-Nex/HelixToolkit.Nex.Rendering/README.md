@@ -94,6 +94,14 @@ HelixToolkit.Nex.Rendering is responsible for managing the rendering pipeline of
 
 - **Equality and Identity**: Added `Equals` and `IsIdentity` methods for `CameraParams` to facilitate comparison and identity checks.
 
+### BorderHighlightPostEffect
+
+- **Optimization**: Improved grouping logic for color passes to minimize the number of passes required.
+
+### WireframePostEffect
+
+- **Optimization**: Simplified entity retrieval logic for wireframe draws.
+
 ## Usage Examples
 
 ### Setting Up a Render Graph
