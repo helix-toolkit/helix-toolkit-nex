@@ -1,5 +1,3 @@
-using HelixToolkit.Nex.Rendering.Components;
-
 namespace HelixToolkit.Nex.Engine;
 
 public enum PickedGeometryType
@@ -395,59 +393,14 @@ public static class GpuPicking
         out PickedGeometryType geometryType
     )
     {
-        position = default;
-        geometryType = PickedGeometryType.None;
-        if (entity.Has<MeshDrawInfo>())
-        {
-            if (entity.TryGetTriangleFromMesh(primitiveId, out var p0, out var p1, out var p2))
-            {
-                if (entity.Has<WorldTransform>())
-                {
-                    ref var transform = ref entity.Get<WorldTransform>();
-                    p0 = Vector3.Transform(p0, transform.Value);
-                    p1 = Vector3.Transform(p1, transform.Value);
-                    p2 = Vector3.Transform(p2, transform.Value);
-                }
-                ref var meshComponent = ref entity.Get<MeshDrawInfo>();
-                if (meshComponent.Instancing is not null)
-                {
-                    if (instanceId >= meshComponent.Instancing.Transforms.Count)
-                    {
-                        return false;
-                    }
-                    var instanceTransform = meshComponent
-                        .Instancing!.Transforms[(int)instanceId]
-                        .ToMatrix();
-                    p0 = Vector3.Transform(p0, instanceTransform);
-                    p1 = Vector3.Transform(p1, instanceTransform);
-                    p2 = Vector3.Transform(p2, instanceTransform);
-                }
-                ray.Intersects(ref p0, ref p1, ref p2, out position);
-                geometryType = PickedGeometryType.Mesh;
-                return true;
-            }
-        }
-        else if (entity.Has<PointDrawInfo>())
-        {
-            if (entity.TryGetPointFromPointCloud(primitiveId, out var point))
-            {
-                position = point;
-                geometryType = PickedGeometryType.Point;
-                return true;
-            }
-        }
-        else if (entity.Has<LineDrawInfo>())
-        {
-            // For simplicity, we treat line primitives as points for picking purposes.
-            // A more robust implementation might compute the nearest point on the line segment to the ray.
-            if (entity.TryGetLine(instanceId, out var p0, out var p1))
-            {
-                ray.GetRayToLineDistance(p0, p1, out position, out _, out _, out _);
-                geometryType = PickedGeometryType.Line; // Reuse PointCloud type for lines
-                return true;
-            }
-        }
-        return false;
+        return PickingRegistry.TryGetPickPosition(
+            entity,
+            instanceId,
+            primitiveId,
+            ray,
+            out position,
+            out geometryType
+        );
     }
 
     public static bool TryGetTriangleFromMesh(
@@ -530,5 +483,179 @@ public static class GpuPicking
         p0 = vertices[(int)instanceId * 2].ToVector3();
         p1 = vertices[(int)instanceId * 2 + 1].ToVector3();
         return true;
+    }
+}
+
+public static class PickingRegistry
+{
+    public delegate bool TryGetPickPositionDelegate(
+        Entity entity,
+        uint instanceId,
+        uint primitiveId,
+        Ray ray,
+        out Vector3 position,
+        out PickedGeometryType geometryType
+    );
+
+    private static readonly List<TryGetPickPositionDelegate> _pickPositionDelegates = [];
+
+    static PickingRegistry()
+    {
+        // Register the default TryGetPickPosition implementation
+        RegisterPickingHandler(TryGetFromMeshDrawInfo);
+        RegisterPickingHandler(TryGetFromPointDrawInfo);
+        RegisterPickingHandler(TryGetFromLineDrawInfo);
+        RegisterPickingHandler(TryGetFromBillboardDrawInfo);
+    }
+
+    public static void RegisterPickingHandler(TryGetPickPositionDelegate del)
+    {
+        if (!_pickPositionDelegates.Contains(del))
+        {
+            _pickPositionDelegates.Add(del);
+        }
+    }
+
+    public static void UnregisterPickingHandler(TryGetPickPositionDelegate del)
+    {
+        _pickPositionDelegates.Remove(del);
+    }
+
+    internal static bool TryGetPickPosition(
+        Entity entity,
+        uint instanceId,
+        uint primitiveId,
+        Ray ray,
+        out Vector3 position,
+        out PickedGeometryType geometryType
+    )
+    {
+        foreach (var del in _pickPositionDelegates)
+        {
+            if (del(entity, instanceId, primitiveId, ray, out position, out geometryType))
+            {
+                return true;
+            }
+        }
+        position = default;
+        geometryType = PickedGeometryType.None;
+        return false;
+    }
+
+    public static void ClearPickingHandlers()
+    {
+        _pickPositionDelegates.Clear();
+    }
+
+    private static bool TryGetFromMeshDrawInfo(
+        this Entity entity,
+        uint instanceId,
+        uint primitiveId,
+        Ray ray,
+        out Vector3 position,
+        out PickedGeometryType geometryType
+    )
+    {
+        position = default;
+        geometryType = PickedGeometryType.None;
+        if (entity.Has<MeshDrawInfo>())
+        {
+            if (entity.TryGetTriangleFromMesh(primitiveId, out var p0, out var p1, out var p2))
+            {
+                if (entity.Has<WorldTransform>())
+                {
+                    ref var transform = ref entity.Get<WorldTransform>();
+                    p0 = Vector3.Transform(p0, transform.Value);
+                    p1 = Vector3.Transform(p1, transform.Value);
+                    p2 = Vector3.Transform(p2, transform.Value);
+                }
+                ref var meshComponent = ref entity.Get<MeshDrawInfo>();
+                if (meshComponent.Instancing is not null)
+                {
+                    if (instanceId >= meshComponent.Instancing.Transforms.Count)
+                    {
+                        return false;
+                    }
+                    var instanceTransform = meshComponent
+                        .Instancing!.Transforms[(int)instanceId]
+                        .ToMatrix();
+                    p0 = Vector3.Transform(p0, instanceTransform);
+                    p1 = Vector3.Transform(p1, instanceTransform);
+                    p2 = Vector3.Transform(p2, instanceTransform);
+                }
+                ray.Intersects(ref p0, ref p1, ref p2, out position);
+                geometryType = PickedGeometryType.Mesh;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static bool TryGetFromPointDrawInfo(
+        this Entity entity,
+        uint instanceId,
+        uint primitiveId,
+        Ray ray,
+        out Vector3 position,
+        out PickedGeometryType geometryType
+    )
+    {
+        position = default;
+        geometryType = PickedGeometryType.None;
+        if (entity.Has<PointDrawInfo>())
+        {
+            if (entity.TryGetPointFromPointCloud(primitiveId, out var point))
+            {
+                position = point;
+                geometryType = PickedGeometryType.Point;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static bool TryGetFromLineDrawInfo(
+        this Entity entity,
+        uint instanceId,
+        uint primitiveId,
+        Ray ray,
+        out Vector3 position,
+        out PickedGeometryType geometryType
+    )
+    {
+        position = default;
+        geometryType = PickedGeometryType.None;
+        if (entity.Has<LineDrawInfo>())
+        {
+            // For simplicity, we treat line primitives as points for picking purposes.
+            // A more robust implementation might compute the nearest point on the line segment to the ray.
+            if (entity.TryGetLine(instanceId, out var p0, out var p1))
+            {
+                ray.GetRayToLineDistance(p0, p1, out position, out _, out _, out _);
+                geometryType = PickedGeometryType.Line; // Reuse PointCloud type for lines
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static bool TryGetFromBillboardDrawInfo(
+        this Entity entity,
+        uint instanceId,
+        uint primitiveId,
+        Ray ray,
+        out Vector3 position,
+        out PickedGeometryType geometryType
+    )
+    {
+        position = default;
+        geometryType = PickedGeometryType.None;
+        if (entity.Has<BillboardDrawInfo>())
+        {
+            position = entity.Get<WorldTransform>().Value.Translation;
+            geometryType = PickedGeometryType.Billboard;
+            return true;
+        }
+        return false;
     }
 }
