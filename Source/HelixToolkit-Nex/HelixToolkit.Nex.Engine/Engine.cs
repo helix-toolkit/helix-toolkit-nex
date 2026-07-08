@@ -441,7 +441,12 @@ public partial class Engine : Initializable
         renderContext.FinalOutputTexture = target;
         var cmd = Renderer.Render(renderContext, RenderGraph, commandBuffer);
         var frameSlot = (int)(_frameIndex % GraphicsSettings.MaxFrameInFlight);
-        renderContext.PickingContext.SendCommand(cmd, renderContext, frameSlot, _pickingReqIdsPerFrame);
+        renderContext.PickingContext.SendCommand(
+            cmd,
+            renderContext,
+            frameSlot,
+            _pickingReqIdsPerFrame
+        );
         return cmd;
     }
 
@@ -675,15 +680,19 @@ public partial class Engine : Initializable
     )
     {
         // Disabled routing delegates unchanged, avoiding any gizmo-service creation (Requirement 6.7).
-        if (!routeGizmoPicks)
+        if (
+            !routeGizmoPicks
+            || _gizmoService is null
+            || _gizmoRouter is null
+            || !_gizmoService.HasGizmoInstance
+        )
         {
             return CreatePickingRequest(context, coord, responseCallback);
         }
 
         // Wrap the application callback so decoded gizmo picks route to the gizmo service first, then
         // the application callback always runs with the unmodified result (Requirement 6.6).
-        var router = new GizmoPickRouter(Gizmos);
-        var wrapped = router.Wrap(responseCallback, routeGizmoPicks);
+        var wrapped = _gizmoRouter.Wrap(responseCallback, routeGizmoPicks);
         return CreatePickingRequest(context, coord, wrapped);
     }
 

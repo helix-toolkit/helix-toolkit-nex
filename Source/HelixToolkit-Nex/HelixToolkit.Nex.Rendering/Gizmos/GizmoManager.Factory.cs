@@ -49,6 +49,11 @@ public sealed partial class GizmoManager
     public int HandleSetBuildCount => _handleSetBuildCount;
 
     /// <summary>
+    /// Gets a value indicating whether the manager has any tracked gizmo instances.
+    /// </summary>
+    public bool HasGizmoInstance => _instances.Count > 0;
+
+    /// <summary>
     /// Creates a gizmo for <paramref name="definition"/>, building and caching its handle set on the
     /// first request for that shape and returning a reusable <see cref="GizmoInstanceHandle"/> that
     /// references the cached set (Requirements 1.1, 1.2).
