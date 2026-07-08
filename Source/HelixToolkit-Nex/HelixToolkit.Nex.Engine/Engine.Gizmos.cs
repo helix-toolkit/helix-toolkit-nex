@@ -29,6 +29,7 @@ public partial class Engine
     /// </summary>
     private GizmoManager? _gizmoService;
 
+    private GizmoPickRouter? _gizmoRouter;
     /// <summary>
     /// Whether a <see cref="GizmoRenderNode"/> has been registered for the gizmo service, so the
     /// lazy registration runs at most once (idempotent, Requirement 4.6).
@@ -51,7 +52,7 @@ public partial class Engine
             if (_gizmoService is null)
             {
                 _gizmoService = new GizmoManager();
-
+                _gizmoRouter = new GizmoPickRouter(_gizmoService);
                 // On the first gizmo service creation, auto-register the render node so gizmos
                 // created through the service are rendered without manual wiring (Requirement 4.6).
                 EnsureGizmoNodeRegistered();
@@ -89,6 +90,6 @@ public partial class Engine
     /// </summary>
     private void TeardownGizmoService()
     {
-        _gizmoService?.Dispose();
+        Disposer.DisposeAndRemove(ref _gizmoService);
     }
 }
