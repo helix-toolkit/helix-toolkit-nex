@@ -30,6 +30,7 @@ Currently in development.
   - :white_check_mark: Billboard ([MSDF based Font support](https://github.com/chlumsky/msdfgen))
   - :white_check_mark: Material registry and shader generation system.
   - :white_check_mark: Line
+  - :white_check_mark: Gizmo
   - :hourglass: Particle System (Planned)
   - :hourglass: Skeletal/Morph Target Animation (Planned)
   - :hourglass: Model importer (Planned)
@@ -62,6 +63,8 @@ Currently in development.
 
 <img src="Source/HelixToolkit-Nex/Samples/Integration/ImGui/Screenshots/Sample.gif" width=400>
 
+<img src="Source/HelixToolkit-Nex/Samples/Integration/GizmoTest/Screenshots/Sample.gif" width=400>
+
 <img src="Source/HelixToolkit-Nex/Samples/Integration/Points/Screenshots/Points.gif" width=400>
 
 <img src="Source/HelixToolkit-Nex/Samples/Integration/gltfImporter/Screenshots/Sample.jpg" width=400>
@@ -79,6 +82,9 @@ Currently in development.
 
     - [WinUI](Source/HelixToolkit-Nex/Samples/Interop/WinUI)
     <img src="Source/HelixToolkit-Nex/Samples/Interop/WinUI/Screenshots/Sample.jpg" width=400>
+
+## Packages
+
 
 ## Contributing
 

@@ -16,4 +16,8 @@
         <ProjectReference Include="..\..\..\HelixToolkit.Nex.ImGui\HelixToolkit.Nex.ImGui.csproj" />
         <ProjectReference Include="..\..\Application\Application.csproj" />
     </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="Samples\" />
+    </ItemGroup>
 </Project>

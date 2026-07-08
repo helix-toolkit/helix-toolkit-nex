@@ -78,20 +78,10 @@ internal sealed partial class GizmoDemo
             Gui.Spacing();
             Gui.TextColored(new Vector4(1f, 0.8f, 0.2f, 1f), "Occlusion Mode");
             Gui.Separator();
-            if (
-                Gui.RadioButton(
-                    "Always On Top",
-                    _occlusionMode == GizmoOcclusionMode.AlwaysOnTop
-                )
-            )
+            if (Gui.RadioButton("Always On Top", _occlusionMode == GizmoOcclusionMode.AlwaysOnTop))
                 SetOcclusionMode(GizmoOcclusionMode.AlwaysOnTop);
             Gui.SameLine();
-            if (
-                Gui.RadioButton(
-                    "Depth Tested",
-                    _occlusionMode == GizmoOcclusionMode.DepthTested
-                )
-            )
+            if (Gui.RadioButton("Depth Tested", _occlusionMode == GizmoOcclusionMode.DepthTested))
                 SetOcclusionMode(GizmoOcclusionMode.DepthTested);
 
             Gui.Spacing();
@@ -142,6 +132,8 @@ internal sealed partial class GizmoDemo
                 ToggleCustomManipulator();
             }
 
+            DrawLightControls();
+
             Gui.Spacing();
             Gui.TextColored(new Vector4(0.4f, 1f, 0.4f, 1f), "Last Pick");
             Gui.TextWrapped(_lastPickInfo);
@@ -169,6 +161,49 @@ internal sealed partial class GizmoDemo
 
         UpdateGizmoHover();
         DriveGizmoDrag();
+    }
+
+    /// <summary>
+    /// Draws intensity/range/cone-angle/color controls for the active target when it is a light, and
+    /// applies edits live (rebuilding the spot cone / sun arrow geometry as needed).
+    /// </summary>
+    private void DrawLightControls()
+    {
+        GizmoTarget? t = ActiveTarget;
+        if (t is null || t.Kind == LightKind.None)
+        {
+            return;
+        }
+
+        Gui.Spacing();
+        Gui.TextColored(new Vector4(1f, 0.9f, 0.5f, 1f), $"Light Properties ({t.Kind})");
+        Gui.Separator();
+
+        bool changed = false;
+        changed |= Gui.ColorEdit3("Color##light", ref t.Color);
+
+        float maxIntensity = t.Kind == LightKind.Directional ? 10f : 250f;
+        changed |= Gui.SliderFloat("Intensity##light", ref t.Intensity, 0f, maxIntensity);
+
+        if (t.Kind is LightKind.Point or LightKind.Spot)
+        {
+            changed |= Gui.SliderFloat("Range##light", ref t.Range, 1f, 200f);
+        }
+
+        if (t.Kind == LightKind.Spot)
+        {
+            changed |= Gui.SliderFloat("Inner Angle##light", ref t.InnerDeg, 1f, 60f);
+            changed |= Gui.SliderFloat("Outer Angle##light", ref t.OuterDeg, 1f, 60f);
+            if (t.InnerDeg > t.OuterDeg)
+            {
+                t.InnerDeg = t.OuterDeg;
+            }
+        }
+
+        if (changed)
+        {
+            ApplyLightEdits(t);
+        }
     }
 
     /// <summary>
