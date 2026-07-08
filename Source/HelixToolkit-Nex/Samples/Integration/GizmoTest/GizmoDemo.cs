@@ -9,6 +9,7 @@ using HelixToolkit.Nex.Engine.Scene;
 using HelixToolkit.Nex.Geometries;
 using HelixToolkit.Nex.Graphics;
 using HelixToolkit.Nex.ImGui;
+using HelixToolkit.Nex.Lights;
 using HelixToolkit.Nex.Maths;
 using HelixToolkit.Nex.Rendering;
 using HelixToolkit.Nex.Rendering.Components;
@@ -231,16 +232,31 @@ internal sealed partial class GizmoDemo : IDisposable
         // --- Point lights (position-manipulable) ---
         // Each point light is a plain node whose world transform drives the light position, plus a
         // billboard icon for locating/selecting it. Select one and use Translate to move it.
-        AddPointLight("Point Light 1", new Vector3(-12f, 8f, -8f), new Color4(1f, 0.4f, 0.3f, 1f), intensity: 40f, range: 45f);
-        AddPointLight("Point Light 2", new Vector3(12f, 8f, -8f), new Color4(0.3f, 0.6f, 1f, 1f), intensity: 40f, range: 45f);
-        AddPointLight("Point Light 3", new Vector3(0f, 6f, 12f), new Color4(0.5f, 1f, 0.5f, 1f), intensity: 35f, range: 40f);
+        AddPointLight(
+            "Point Light 1",
+            new Vector3(-12f, 8f, -8f),
+            new Color4(1f, 0.4f, 0.3f, 1f),
+            intensity: 40f,
+            range: 45f
+        );
+        AddPointLight(
+            "Point Light 2",
+            new Vector3(12f, 8f, -8f),
+            new Color4(0.3f, 0.6f, 1f, 1f),
+            intensity: 40f,
+            range: 45f
+        );
+        AddPointLight(
+            "Point Light 3",
+            new Vector3(0f, 6f, 12f),
+            new Color4(0.5f, 1f, 0.5f, 1f),
+            intensity: 35f,
+            range: 40f
+        );
 
         // --- Spot lights (position + direction-manipulable) ---
         // Direction is stored in local space (-Y) and follows the node rotation, so Rotate aims the
         // beam and Translate moves it. Angles are cos(innerHalfAngle), cos(outerHalfAngle).
-        float cosInner = MathF.Cos(15f * MathF.PI / 180f);
-        float cosOuter = MathF.Cos(28f * MathF.PI / 180f);
-        var spotAngles = new Vector2(cosInner, cosOuter);
         AddSpotLight(
             "Spot Light 1",
             new Vector3(-14f, 22f, 0f),
@@ -248,7 +264,8 @@ internal sealed partial class GizmoDemo : IDisposable
             new Color4(1f, 0.9f, 0.6f, 1f),
             intensity: 120f,
             range: 60f,
-            spotAngles: spotAngles
+            innerDeg: 15f,
+            outerDeg: 28f
         );
         AddSpotLight(
             "Spot Light 2",
@@ -257,7 +274,8 @@ internal sealed partial class GizmoDemo : IDisposable
             new Color4(0.7f, 0.8f, 1f, 1f),
             intensity: 120f,
             range: 60f,
-            spotAngles: spotAngles
+            innerDeg: 15f,
+            outerDeg: 28f
         );
 
         // --- Directional light (the "sun", direction-manipulable via node rotation) ---
@@ -276,8 +294,27 @@ internal sealed partial class GizmoDemo : IDisposable
         );
         _root.AddChild(_lightNode);
 
+        // Parallel-ray arrow showing the sun direction (along local -Y). It follows the sun node, so
+        // rotating the sun with the gizmo re-aims both the arrow and the derived light direction.
+        var sunColor = new Color4(1f, 0.85f, 0.4f, 1f);
+        Geometry arrowGeo = LineGeometryBuilder.BuildDirectionArrow(sunColor, SunLocalForward);
+        LineNode arrow = AttachLineGizmo(_lightNode, arrowGeo, sunColor, thickness: 2.5f);
+
         BillboardNode sunIcon = AttachIcon(_lightNode, _sunIcon);
-        RegisterTarget("Sun (Directional)", _lightNode, sunIcon);
+        _targets.Add(
+            new GizmoTarget
+            {
+                Name = "Sun (Directional)",
+                Node = _lightNode,
+                Manipulator = new TransformManipulator(_lightNode),
+                Icon = sunIcon,
+                Kind = LightKind.Directional,
+                DirectionGizmo = arrow,
+                DirectionGeometry = arrowGeo,
+                Color = new Vector3(1f, 1f, 1f),
+                Intensity = 2f,
+            }
+        );
     }
 
     /// <summary>
@@ -295,8 +332,16 @@ internal sealed partial class GizmoDemo : IDisposable
         );
 
         string iconDir = Path.Combine(Paths.AssetsDir, "Icons");
-        _pointLightIcon = TryLoadIcon(textureRepo, Path.Combine(iconDir, "point-light-96.png"), "PointLightIcon");
-        _spotLightIcon = TryLoadIcon(textureRepo, Path.Combine(iconDir, "spotlight-96.png"), "SpotLightIcon");
+        _pointLightIcon = TryLoadIcon(
+            textureRepo,
+            Path.Combine(iconDir, "point-light-96.png"),
+            "PointLightIcon"
+        );
+        _spotLightIcon = TryLoadIcon(
+            textureRepo,
+            Path.Combine(iconDir, "spotlight-96.png"),
+            "SpotLightIcon"
+        );
         _sunIcon = TryLoadIcon(textureRepo, Path.Combine(iconDir, "sun-96.png"), "SunIcon");
     }
 
@@ -344,11 +389,7 @@ internal sealed partial class GizmoDemo : IDisposable
         material.Properties.Ao = 1.0f;
         material.Properties.Opacity = 1.0f;
 
-        var node = new MeshNode(world, name)
-        {
-            Geometry = geometry,
-            MaterialProperties = material,
-        };
+        var node = new MeshNode(world, name) { Geometry = geometry, MaterialProperties = material };
         node.Transform.Translation = position;
         node.NotifyTransformChanged();
         _root!.AddChild(node);
@@ -389,35 +430,149 @@ internal sealed partial class GizmoDemo : IDisposable
             anchor: BillboardAnchor.Center
         );
 
-        var iconNode = new BillboardNode(_worldDataProvider!.World, $"{parent.Name}_Icon", ref info);
+        var iconNode = new BillboardNode(
+            _worldDataProvider!.World,
+            $"{parent.Name}_Icon",
+            ref info
+        );
         parent.AddChild(iconNode);
         return iconNode;
+    }
+
+    /// <summary>
+    /// Attaches a wireframe direction indicator (line list) as a child of <paramref name="parent"/> so
+    /// it inherits the light node's world transform and stays live as the gizmo manipulates the light.
+    /// The indicator is non-hitable so it never intercepts a click meant to select the light's icon.
+    /// </summary>
+    private LineNode AttachLineGizmo(
+        Node parent,
+        Geometry lineGeometry,
+        Color4 color,
+        float thickness
+    )
+    {
+        var node = new LineNode(_worldDataProvider!.World, $"{parent.Name}_DirGizmo")
+        {
+            Geometry = lineGeometry,
+            LineColor = color,
+            LineThickness = thickness,
+            LineMaterialName = "Default",
+            Hitable = false, // the billboard icon is the selection handle, not the indicator
+            Cullable = false, // small overlay; keep it visible
+        };
+        parent.AddChild(node);
+        _engine!.Add(lineGeometry);
+        return node;
+    }
+
+    /// <summary>Converts inner/outer half-angles (degrees) to the (cosInner, cosOuter) spot-angle pair.</summary>
+    private static Vector2 SpotAnglesFromDegrees(float innerDeg, float outerDeg)
+    {
+        innerDeg = Math.Clamp(innerDeg, 0.5f, outerDeg);
+        return new Vector2(
+            MathF.Cos(innerDeg * MathF.PI / 180f),
+            MathF.Cos(outerDeg * MathF.PI / 180f)
+        );
+    }
+
+    /// <summary>
+    /// Pushes the target's edited light state (color/intensity/range/cone angles) to the underlying
+    /// light and rebuilds its direction indicator geometry in place so the cone/arrow reflect the edit.
+    /// </summary>
+    private void ApplyLightEdits(GizmoTarget t)
+    {
+        var color = new Color4(t.Color.X, t.Color.Y, t.Color.Z, 1f);
+        switch (t.Kind)
+        {
+            case LightKind.Point:
+                if (t.RangeLight is not null)
+                {
+                    t.RangeLight.Color = color;
+                    t.RangeLight.Intensity = t.Intensity;
+                    t.RangeLight.Range = t.Range;
+                }
+                break;
+
+            case LightKind.Spot:
+                if (t.RangeLight is SpotLightNode spot)
+                {
+                    Vector2 angles = SpotAnglesFromDegrees(t.InnerDeg, t.OuterDeg);
+                    spot.Color = color;
+                    spot.Intensity = t.Intensity;
+                    spot.Range = t.Range;
+                    spot.SpotAngles = angles;
+                    if (t.DirectionGeometry is not null && t.DirectionGizmo is not null)
+                    {
+                        LineGeometryBuilder.FillSpotCone(
+                            t.DirectionGeometry,
+                            t.Range,
+                            angles,
+                            color
+                        );
+                        t.DirectionGizmo.Geometry = t.DirectionGeometry; // re-upload dynamic buffers
+                        t.DirectionGizmo.LineColor = color;
+                    }
+                }
+                break;
+
+            case LightKind.Directional:
+                _lightNode?.Entity.Update<DirectionalLightInfo>(l =>
+                {
+                    l.Color = color;
+                    l.Intensity = t.Intensity;
+                    return l;
+                });
+                if (t.DirectionGeometry is not null && t.DirectionGizmo is not null)
+                {
+                    LineGeometryBuilder.FillDirectionArrow(
+                        t.DirectionGeometry,
+                        color,
+                        SunLocalForward
+                    );
+                    t.DirectionGizmo.Geometry = t.DirectionGeometry;
+                    t.DirectionGizmo.LineColor = color;
+                }
+                break;
+        }
     }
 
     /// <summary>
     /// Creates a point light node (position driven by its node transform), attaches the point-light
     /// icon, and registers it as a gizmo target so the manipulator can move it.
     /// </summary>
-    private void AddPointLight(string name, Vector3 position, Color4 color, float intensity, float range)
+    private void AddPointLight(
+        string name,
+        Vector3 position,
+        Color4 color,
+        float intensity,
+        float range
+    )
     {
         var world = _worldDataProvider!.World;
 
-        var node = new Node(world, name);
-        node.Transform.Translation = position;
+        var node = new PointLightNode(world, name);
+        node.Transform.Translation = position; // engine derives world position from the node transform
         node.NotifyTransformChanged();
-        node.Entity.Set(
-            new RangeLightInfo(RangeLightType.Point)
+        node.Color = color;
+        node.Intensity = intensity;
+        node.Range = range;
+        _root!.AddChild(node);
+
+        BillboardNode icon = AttachIcon(node, _pointLightIcon);
+        _targets.Add(
+            new GizmoTarget
             {
-                Position = Vector3.Zero, // engine derives world position from the node transform
-                Color = color,
+                Name = name,
+                Node = node,
+                Manipulator = new TransformManipulator(node),
+                Icon = icon,
+                Kind = LightKind.Point,
+                RangeLight = node,
+                Color = new Vector3(color.Red, color.Green, color.Blue),
                 Intensity = intensity,
                 Range = range,
             }
         );
-        _root!.AddChild(node);
-
-        BillboardNode icon = AttachIcon(node, _pointLightIcon);
-        RegisterTarget(name, node, icon);
     }
 
     /// <summary>
@@ -431,30 +586,48 @@ internal sealed partial class GizmoDemo : IDisposable
         Color4 color,
         float intensity,
         float range,
-        Vector2 spotAngles
+        float innerDeg,
+        float outerDeg
     )
     {
         var world = _worldDataProvider!.World;
+        Vector2 spotAngles = SpotAnglesFromDegrees(innerDeg, outerDeg);
 
-        var node = new Node(world, name);
+        var node = new SpotLightNode(world, name);
         node.Transform.Translation = position;
         node.Transform.Rotation = orientation;
         node.NotifyTransformChanged();
-        node.Entity.Set(
-            new RangeLightInfo(RangeLightType.Spot)
-            {
-                Position = Vector3.Zero, // engine derives world position from the node transform
-                Direction = -Vector3.UnitY, // local space; world direction follows node rotation
-                Color = color,
-                Intensity = intensity,
-                Range = range,
-                SpotAngles = spotAngles,
-            }
-        );
+        node.Color = color;
+        node.Intensity = intensity;
+        node.Range = range;
+        node.Direction = -Vector3.UnitY; // local; world beam direction follows node rotation
+        node.SpotAngles = spotAngles;
         _root!.AddChild(node);
 
+        // Wireframe cone showing the beam: apex at the light, opening along the beam to the outer angle
+        // at the light's range. Dynamic geometry so it can be rebuilt live when range/angles change.
+        Geometry coneGeo = LineGeometryBuilder.BuildSpotCone(range, spotAngles, color);
+        LineNode cone = AttachLineGizmo(node, coneGeo, color, thickness: 2f);
+
         BillboardNode icon = AttachIcon(node, _spotLightIcon);
-        RegisterTarget(name, node, icon);
+        _targets.Add(
+            new GizmoTarget
+            {
+                Name = name,
+                Node = node,
+                Manipulator = new TransformManipulator(node),
+                Icon = icon,
+                Kind = LightKind.Spot,
+                RangeLight = node,
+                DirectionGizmo = cone,
+                DirectionGeometry = coneGeo,
+                Color = new Vector3(color.Red, color.Green, color.Blue),
+                Intensity = intensity,
+                Range = range,
+                InnerDeg = innerDeg,
+                OuterDeg = outerDeg,
+            }
+        );
     }
 
     /// <summary>
@@ -538,8 +711,10 @@ internal sealed partial class GizmoDemo : IDisposable
             if (_gizmoManager.BindTarget(_gizmoInstance, active.Manipulator))
                 _customActive = false;
         }
-        else if (_customManipulator is not null
-            && _gizmoManager.BindTarget(_gizmoInstance, _customManipulator))
+        else if (
+            _customManipulator is not null
+            && _gizmoManager.BindTarget(_gizmoInstance, _customManipulator)
+        )
         {
             _customActive = true;
         }
@@ -549,6 +724,14 @@ internal sealed partial class GizmoDemo : IDisposable
     /// A selectable object the gizmo can manipulate: its scene node and the
     /// <see cref="TransformManipulator"/> that owns its transform.
     /// </summary>
+    private enum LightKind
+    {
+        None,
+        Point,
+        Spot,
+        Directional,
+    }
+
     private sealed class GizmoTarget
     {
         public required string Name { get; init; }
@@ -560,6 +743,25 @@ internal sealed partial class GizmoDemo : IDisposable
         /// Lights have no pickable geometry of their own, so their icon acts as the pick proxy.
         /// </summary>
         public Node? Icon { get; init; }
+
+        /// <summary>What kind of light this target is (None for plain mesh targets).</summary>
+        public LightKind Kind { get; init; } = LightKind.None;
+
+        /// <summary>The point/spot light node backing this target (null for directional/mesh targets).</summary>
+        public RangeLightNode? RangeLight { get; init; }
+
+        /// <summary>The direction indicator line node (spot cone / sun arrow), for live rebuilds.</summary>
+        public LineNode? DirectionGizmo { get; init; }
+
+        /// <summary>The dynamic geometry of <see cref="DirectionGizmo"/>, rebuilt in place on edits.</summary>
+        public Geometry? DirectionGeometry { get; init; }
+
+        // --- Editable mirror state bound to the ImGui light-property controls ---
+        public Vector3 Color = Vector3.One;
+        public float Intensity = 1f;
+        public float Range = 40f;
+        public float InnerDeg = 15f;
+        public float OuterDeg = 28f;
     }
 
     /// <summary>
@@ -588,7 +790,12 @@ internal sealed partial class GizmoDemo : IDisposable
 
     public void Render(int width, int height)
     {
-        if (_engine is null || _renderContext is null || _imGuiRenderer is null || _gizmoManager is null)
+        if (
+            _engine is null
+            || _renderContext is null
+            || _imGuiRenderer is null
+            || _gizmoManager is null
+        )
             return;
 
         _orbitController!.ViewportHeight = _viewportSize.Height;
@@ -614,11 +821,7 @@ internal sealed partial class GizmoDemo : IDisposable
         // current target and camera and republish its GizmoDrawInfo component. The cached handle set is
         // reused (no rebuild) while the definition is unchanged. The overlay node gathers that component
         // from the render world each frame, so this must run before RenderOffscreen.
-        _gizmoManager.UpdateInstance(
-            _gizmoInstance,
-            _renderContext.CameraParams,
-            _viewportSize
-        );
+        _gizmoManager.UpdateInstance(_gizmoInstance, _renderContext.CameraParams, _viewportSize);
 
         // The bound manipulator owns write-back to its node and is the single source of truth for the
         // target transform; the control panel reads it directly for display, so the demo keeps no
