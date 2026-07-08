@@ -85,6 +85,31 @@ Currently in development.
 
 ## Packages
 
+> **Note:** Packages are published to GitHub Packages. Links will resolve once the packages are published.
+
+| Project                                 | Package                                                                                                                                                              |
+| --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| HelixToolkit.Nex                        | [![GitHub](https://img.shields.io/badge/GitHub-package-blue)](https://github.com/helix-toolkit/helix-toolkit-nex/pkgs/nuget/HelixToolkit.Nex)                        |
+| HelixToolkit.Nex.Engine                 | [![GitHub](https://img.shields.io/badge/GitHub-package-blue)](https://github.com/helix-toolkit/helix-toolkit-nex/pkgs/nuget/HelixToolkit.Nex.Engine)                 |
+| HelixToolkit.Nex.EntityComponentSystem  | [![GitHub](https://img.shields.io/badge/GitHub-package-blue)](https://github.com/helix-toolkit/helix-toolkit-nex/pkgs/nuget/HelixToolkit.Nex.EntityComponentSystem)  |
+| HelixToolkit.Nex.Geometries.Builders    | [![GitHub](https://img.shields.io/badge/GitHub-package-blue)](https://github.com/helix-toolkit/helix-toolkit-nex/pkgs/nuget/HelixToolkit.Nex.Geometries.Builders)    |
+| HelixToolkit.Nex.Geometry               | [![GitHub](https://img.shields.io/badge/GitHub-package-blue)](https://github.com/helix-toolkit/helix-toolkit-nex/pkgs/nuget/HelixToolkit.Nex.Geometry)               |
+| HelixToolkit.Nex.glTF                   | [![GitHub](https://img.shields.io/badge/GitHub-package-blue)](https://github.com/helix-toolkit/helix-toolkit-nex/pkgs/nuget/HelixToolkit.Nex.glTF)                   |
+| HelixToolkit.Nex.Graphics               | [![GitHub](https://img.shields.io/badge/GitHub-package-blue)](https://github.com/helix-toolkit/helix-toolkit-nex/pkgs/nuget/HelixToolkit.Nex.Graphics)               |
+| HelixToolkit.Nex.Graphics.Mock          | [![GitHub](https://img.shields.io/badge/GitHub-package-blue)](https://github.com/helix-toolkit/helix-toolkit-nex/pkgs/nuget/HelixToolkit.Nex.Graphics.Mock)          |
+| HelixToolkit.Nex.Graphics.Vulkan        | [![GitHub](https://img.shields.io/badge/GitHub-package-blue)](https://github.com/helix-toolkit/helix-toolkit-nex/pkgs/nuget/HelixToolkit.Nex.Graphics.Vulkan)        |
+| HelixToolkit.Nex.ImGui                  | [![GitHub](https://img.shields.io/badge/GitHub-package-blue)](https://github.com/helix-toolkit/helix-toolkit-nex/pkgs/nuget/HelixToolkit.Nex.ImGui)                  |
+| HelixToolkit.Nex.Interop.DirectX        | [![GitHub](https://img.shields.io/badge/GitHub-package-blue)](https://github.com/helix-toolkit/helix-toolkit-nex/pkgs/nuget/HelixToolkit.Nex.Interop.DirectX)        |
+| HelixToolkit.Nex.Interop.PlatformShared | [![GitHub](https://img.shields.io/badge/GitHub-package-blue)](https://github.com/helix-toolkit/helix-toolkit-nex/pkgs/nuget/HelixToolkit.Nex.Interop.PlatformShared) |
+| HelixToolkit.Nex.Material               | [![GitHub](https://img.shields.io/badge/GitHub-package-blue)](https://github.com/helix-toolkit/helix-toolkit-nex/pkgs/nuget/HelixToolkit.Nex.Material)               |
+| HelixToolkit.Nex.Maths                  | [![GitHub](https://img.shields.io/badge/GitHub-package-blue)](https://github.com/helix-toolkit/helix-toolkit-nex/pkgs/nuget/HelixToolkit.Nex.Maths)                  |
+| HelixToolkit.Nex.Rendering              | [![GitHub](https://img.shields.io/badge/GitHub-package-blue)](https://github.com/helix-toolkit/helix-toolkit-nex/pkgs/nuget/HelixToolkit.Nex.Rendering)              |
+| HelixToolkit.Nex.Repository             | [![GitHub](https://img.shields.io/badge/GitHub-package-blue)](https://github.com/helix-toolkit/helix-toolkit-nex/pkgs/nuget/HelixToolkit.Nex.Repository)             |
+| HelixToolkit.Nex.Scene                  | [![GitHub](https://img.shields.io/badge/GitHub-package-blue)](https://github.com/helix-toolkit/helix-toolkit-nex/pkgs/nuget/HelixToolkit.Nex.Scene)                  |
+| HelixToolkit.Nex.Shaders                | [![GitHub](https://img.shields.io/badge/GitHub-package-blue)](https://github.com/helix-toolkit/helix-toolkit-nex/pkgs/nuget/HelixToolkit.Nex.Shaders)                |
+| HelixToolkit.Nex.Textures               | [![GitHub](https://img.shields.io/badge/GitHub-package-blue)](https://github.com/helix-toolkit/helix-toolkit-nex/pkgs/nuget/HelixToolkit.Nex.Textures)               |
+| HelixToolkit.Nex.WinUI                  | [![GitHub](https://img.shields.io/badge/GitHub-package-blue)](https://github.com/helix-toolkit/helix-toolkit-nex/pkgs/nuget/HelixToolkit.Nex.WinUI)                  |
+| HelixToolkit.Nex.Wpf                    | [![GitHub](https://img.shields.io/badge/GitHub-package-blue)](https://github.com/helix-toolkit/helix-toolkit-nex/pkgs/nuget/HelixToolkit.Nex.Wpf)                    |
 
 ## Contributing
 

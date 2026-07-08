@@ -1,6 +1,7 @@
 using System.Numerics;
 using HelixToolkit.Nex;
 using HelixToolkit.Nex.Graphics;
+using HelixToolkit.Nex.Maths;
 using HelixToolkit.Nex.Rendering;
 using HelixToolkit.Nex.Rendering.Gizmos;
 using ImGuiNET;
@@ -124,9 +125,14 @@ internal sealed partial class GizmoDemo
 
             Gui.Spacing();
             Gui.TextColored(new Vector4(0.4f, 1f, 0.4f, 1f), "Custom Manipulator");
-            Gui.Text($"Drives active target material Metallic: {(_customActive ? "on" : "off")}");
+            Gui.Text(
+                $"Drives active target material Albedo color via drag deltas: {(_customActive ? "on" : "off")}"
+            );
             if (_customManipulator is not null)
-                Gui.Text($"Metallic: {_customManipulator.Value:F2}");
+            {
+                Color4 albedo = _customManipulator.Value;
+                Gui.Text($"Albedo: R={albedo.Red:F2} G={albedo.Green:F2} B={albedo.Blue:F2}");
+            }
             if (Gui.Button(_customActive ? "Use Transform Manipulator" : "Use Custom Manipulator"))
             {
                 ToggleCustomManipulator();

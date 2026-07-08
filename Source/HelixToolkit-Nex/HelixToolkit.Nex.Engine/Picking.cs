@@ -530,7 +530,7 @@ public static class PickingRegistry
         out PickedGeometryType geometryType
     )
     {
-        foreach (var del in _pickPositionDelegates)
+        foreach (var del in _pickPositionDelegates.AsValueEnumerable())
         {
             if (del(entity, instanceId, primitiveId, ray, out position, out geometryType))
             {
@@ -558,35 +558,32 @@ public static class PickingRegistry
     {
         position = default;
         geometryType = PickedGeometryType.None;
-        if (entity.Has<MeshDrawInfo>())
+        if (entity.Has<MeshDrawInfo>() && entity.TryGetTriangleFromMesh(primitiveId, out var p0, out var p1, out var p2))
         {
-            if (entity.TryGetTriangleFromMesh(primitiveId, out var p0, out var p1, out var p2))
+            if (entity.Has<WorldTransform>())
             {
-                if (entity.Has<WorldTransform>())
-                {
-                    ref var transform = ref entity.Get<WorldTransform>();
-                    p0 = Vector3.Transform(p0, transform.Value);
-                    p1 = Vector3.Transform(p1, transform.Value);
-                    p2 = Vector3.Transform(p2, transform.Value);
-                }
-                ref var meshComponent = ref entity.Get<MeshDrawInfo>();
-                if (meshComponent.Instancing is not null)
-                {
-                    if (instanceId >= meshComponent.Instancing.Transforms.Count)
-                    {
-                        return false;
-                    }
-                    var instanceTransform = meshComponent
-                        .Instancing!.Transforms[(int)instanceId]
-                        .ToMatrix();
-                    p0 = Vector3.Transform(p0, instanceTransform);
-                    p1 = Vector3.Transform(p1, instanceTransform);
-                    p2 = Vector3.Transform(p2, instanceTransform);
-                }
-                ray.Intersects(ref p0, ref p1, ref p2, out position);
-                geometryType = PickedGeometryType.Mesh;
-                return true;
+                ref var transform = ref entity.Get<WorldTransform>();
+                p0 = Vector3.Transform(p0, transform.Value);
+                p1 = Vector3.Transform(p1, transform.Value);
+                p2 = Vector3.Transform(p2, transform.Value);
             }
+            ref var meshComponent = ref entity.Get<MeshDrawInfo>();
+            if (meshComponent.Instancing is not null)
+            {
+                if (instanceId >= meshComponent.Instancing.Transforms.Count)
+                {
+                    return false;
+                }
+                var instanceTransform = meshComponent
+                    .Instancing!.Transforms[(int)instanceId]
+                    .ToMatrix();
+                p0 = Vector3.Transform(p0, instanceTransform);
+                p1 = Vector3.Transform(p1, instanceTransform);
+                p2 = Vector3.Transform(p2, instanceTransform);
+            }
+            ray.Intersects(ref p0, ref p1, ref p2, out position);
+            geometryType = PickedGeometryType.Mesh;
+            return true;
         }
         return false;
     }
@@ -602,14 +599,11 @@ public static class PickingRegistry
     {
         position = default;
         geometryType = PickedGeometryType.None;
-        if (entity.Has<PointDrawInfo>())
+        if (entity.Has<PointDrawInfo>() && entity.TryGetPointFromPointCloud(primitiveId, out var point))
         {
-            if (entity.TryGetPointFromPointCloud(primitiveId, out var point))
-            {
-                position = point;
-                geometryType = PickedGeometryType.Point;
-                return true;
-            }
+            position = point;
+            geometryType = PickedGeometryType.Point;
+            return true;
         }
         return false;
     }
@@ -625,16 +619,13 @@ public static class PickingRegistry
     {
         position = default;
         geometryType = PickedGeometryType.None;
-        if (entity.Has<LineDrawInfo>())
+        if (entity.Has<LineDrawInfo>() && entity.TryGetLine(instanceId, out var p0, out var p1))
         {
             // For simplicity, we treat line primitives as points for picking purposes.
             // A more robust implementation might compute the nearest point on the line segment to the ray.
-            if (entity.TryGetLine(instanceId, out var p0, out var p1))
-            {
-                ray.GetRayToLineDistance(p0, p1, out position, out _, out _, out _);
-                geometryType = PickedGeometryType.Line; // Reuse PointCloud type for lines
-                return true;
-            }
+            ray.GetRayToLineDistance(p0, p1, out position, out _, out _, out _);
+            geometryType = PickedGeometryType.Line; // Reuse PointCloud type for lines
+            return true;
         }
         return false;
     }

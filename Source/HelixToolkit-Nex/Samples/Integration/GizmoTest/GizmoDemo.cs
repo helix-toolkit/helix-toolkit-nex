@@ -79,11 +79,11 @@ internal sealed partial class GizmoDemo : IDisposable
     private readonly List<GizmoTarget> _targets = [];
     private int _activeTargetIndex = -1;
 
-    // A custom manipulator that drives a non-transform property (the active target's material Metallic
-    // scalar) instead of the node transform, demonstrating custom manipulation end to end (Req 9.4,
+    // A custom manipulator that drives a non-transform property (the active target's material Albedo
+    // color, RGB) instead of the node transform, demonstrating custom manipulation end to end (Req 9.4,
     // 9.5). It is bound to the gizmo instance on demand via the "Custom Manipulator" toggle; when
-    // active the gizmo drag edits the material value rather than moving the node.
-    private MaterialScalarManipulator? _customManipulator;
+    // active the gizmo drag deltas recolor the material rather than moving the node.
+    private MaterialAlbedoManipulator? _customManipulator;
     private bool _customActive;
 
     // Light-type icons drawn as fixed-size billboards on each light so it can be located and picked in
@@ -331,18 +331,18 @@ internal sealed partial class GizmoDemo : IDisposable
             SamplerStateDesc.LinearClamp
         );
 
-        string iconDir = Path.Combine(Paths.AssetsDir, "Icons");
+        string iconDir = Path.Join(Paths.AssetsDir, "Icons");
         _pointLightIcon = TryLoadIcon(
             textureRepo,
-            Path.Combine(iconDir, "point-light-96.png"),
+            Path.Join(iconDir, "point-light-96.png"),
             "PointLightIcon"
         );
         _spotLightIcon = TryLoadIcon(
             textureRepo,
-            Path.Combine(iconDir, "spotlight-96.png"),
+            Path.Join(iconDir, "spotlight-96.png"),
             "SpotLightIcon"
         );
-        _sunIcon = TryLoadIcon(textureRepo, Path.Combine(iconDir, "sun-96.png"), "SunIcon");
+        _sunIcon = TryLoadIcon(textureRepo, Path.Join(iconDir, "sun-96.png"), "SunIcon");
     }
 
     private TextureRef TryLoadIcon(ITextureRepository repo, string path, string debugName)
@@ -648,10 +648,10 @@ internal sealed partial class GizmoDemo : IDisposable
         if (_gizmoManager.BindTarget(_gizmoInstance, target.Manipulator))
         {
             _activeTargetIndex = index;
-            // The custom manipulator drives a mesh node's material scalar; recreate it for the newly
-            // active node when that node is a mesh (lights have no material to drive).
+            // The custom manipulator drives a mesh node's material Albedo color; recreate it for the
+            // newly active node when that node is a mesh (lights have no material to drive).
             _customManipulator = target.Node is MeshNode meshNode
-                ? new MaterialScalarManipulator(meshNode)
+                ? new MaterialAlbedoManipulator(meshNode)
                 : null;
             _customActive = false;
         }
@@ -694,8 +694,8 @@ internal sealed partial class GizmoDemo : IDisposable
     /// <summary>
     /// Toggles between the custom (non-transform) manipulator and the active target's transform
     /// manipulator on the gizmo instance (Req 9.4, 9.5). When enabled, <see cref="GizmoManager.BindTarget"/>
-    /// binds the <see cref="MaterialScalarManipulator"/> so subsequent drag deltas drive the active
-    /// target's material scalar; when disabled it rebinds that target's transform manipulator.
+    /// binds the <see cref="MaterialAlbedoManipulator"/> so subsequent drag deltas drive the active
+    /// target's material Albedo color (RGB); when disabled it rebinds that target's transform manipulator.
     /// </summary>
     private void ToggleCustomManipulator()
     {
