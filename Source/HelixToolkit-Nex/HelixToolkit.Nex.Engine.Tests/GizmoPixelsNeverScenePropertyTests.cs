@@ -1,7 +1,7 @@
 using FsCheck;
 using FsCheck.Fluent;
-using HelixToolkit.Nex.Engine;
 using HelixToolkit.Nex.Rendering.Gizmos;
+using HelixToolkit.Nex.Rendering.SysEncoding;
 
 namespace HelixToolkit.Nex.Engine.Tests;
 
@@ -11,7 +11,7 @@ namespace HelixToolkit.Nex.Engine.Tests;
 /// For any gizmo pick encoded by <see cref="Utils.PackGizmoInfo(uint, GizmoHandleId, out uint, out uint)"/>,
 /// <see cref="Utils.UnpackEntityId(uint, uint)"/> yields <see cref="EntityIdPickKind.Gizmo"/> and
 /// never <see cref="EntityIdPickKind.Scene"/>; and for any world-id-zero pixel that is not a valid
-/// <see cref="EntityIdEncoding.Gizmo"/> encoding, the result is <see cref="EntityIdPickKind.NoHit"/>
+/// <see cref="SysEncodingKind.Gizmo"/> encoding, the result is <see cref="EntityIdPickKind.NoHit"/>
 /// rather than a scene pick, without raising an exception.
 ///
 /// **Validates: Requirements 4.1, 5.2**
@@ -42,7 +42,7 @@ public sealed class GizmoPixelsNeverScenePropertyTests
 
     /// <summary>
     /// All encoding-type values that a world-id-zero pixel can carry EXCEPT the recognized
-    /// <see cref="EntityIdEncoding.Gizmo"/> (<c>1</c>). The encoding-type field is
+    /// <see cref="SysEncodingKind.Gizmo"/> (<c>1</c>). The encoding-type field is
     /// <see cref="GizmoEncodingConstants.EncodingTypeBits"/> bits wide, so it ranges 0..15;
     /// removing <c>1</c> leaves <c>None</c> (0) and every currently-unrecognized value (2..15).
     /// </summary>
@@ -50,7 +50,7 @@ public sealed class GizmoPixelsNeverScenePropertyTests
         Enumerable
             .Range(0, (int)GizmoEncodingConstants.EncodingTypeMask + 1)
             .Select(v => (uint)v)
-            .Where(v => v != (uint)EntityIdEncoding.Gizmo)
+            .Where(v => v != (uint)SysEncodingKind.Gizmo)
             .ToArray();
 
     /// <summary>
@@ -72,7 +72,7 @@ public sealed class GizmoPixelsNeverScenePropertyTests
 
     /// <summary>
     /// Generates world-id-zero pixels whose encoding-type field is deliberately NOT the recognized
-    /// <see cref="EntityIdEncoding.Gizmo"/> value. The world-id bits are forced to zero (the
+    /// <see cref="SysEncodingKind.Gizmo"/> value. The world-id bits are forced to zero (the
     /// discriminator trigger) and the encoding-type field is overwritten with a non-gizmo value,
     /// while every other bit of R and all of G remain arbitrary.
     /// </summary>
@@ -140,7 +140,7 @@ public sealed class GizmoPixelsNeverScenePropertyTests
                     uint encoding =
                         (r >> LimitsShaderConstants.WorldIdBits)
                         & GizmoEncodingConstants.EncodingTypeMask;
-                    if (worldId != 0 || encoding == (uint)EntityIdEncoding.Gizmo)
+                    if (worldId != 0 || encoding == (uint)SysEncodingKind.Gizmo)
                     {
                         return false;
                     }

@@ -1,6 +1,6 @@
 using FsCheck;
 using FsCheck.Fluent;
-using HelixToolkit.Nex.Engine;
+using HelixToolkit.Nex.Rendering.SysEncoding;
 
 namespace HelixToolkit.Nex.Engine.Tests;
 
@@ -11,15 +11,15 @@ namespace HelixToolkit.Nex.Engine.Tests;
 /// <see cref="EntityIdPickKind.Scene"/>, <see cref="EntityIdPickKind.Gizmo"/>, or
 /// <see cref="EntityIdPickKind.NoHit"/>, never throws, and reports
 /// <see cref="EntityIdPickKind.NoHit"/> for every world-id-zero pixel whose encoding-type value is
-/// not a recognized alternate encoding (including the <see cref="EntityIdEncoding.None"/> /
+/// not a recognized alternate encoding (including the <see cref="SysEncodingKind.None"/> /
 /// cleared-to-zero pixel).
 ///
 /// The <see cref="EntityIdPickKind"/> enum has exactly three values, so "exactly one" holds by
 /// construction; the test additionally asserts the specific classification rules:
 /// <list type="bullet">
 ///   <item>world id &gt; 0 =&gt; <see cref="EntityIdPickKind.Scene"/>.</item>
-///   <item>world id == 0 and encoding == <see cref="EntityIdEncoding.Gizmo"/> =&gt; <see cref="EntityIdPickKind.Gizmo"/>.</item>
-///   <item>world id == 0 and encoding unrecognized (incl. <see cref="EntityIdEncoding.None"/>) =&gt; <see cref="EntityIdPickKind.NoHit"/>.</item>
+///   <item>world id == 0 and encoding == <see cref="SysEncodingKind.Gizmo"/> =&gt; <see cref="EntityIdPickKind.Gizmo"/>.</item>
+///   <item>world id == 0 and encoding unrecognized (incl. <see cref="SysEncodingKind.None"/>) =&gt; <see cref="EntityIdPickKind.NoHit"/>.</item>
 /// </list>
 ///
 /// **Validates: Requirements 3.3, 3.5, 5.4, 5.5**
@@ -37,7 +37,7 @@ public sealed class ClassificationTotalityPropertyTests
     ///   <item>fully-arbitrary pixels (predominantly world id &gt; 0, i.e. Scene),</item>
     ///   <item>world-id-zero pixels with an arbitrary encoding-type field in <c>0 .. 2^EncodingTypeBits - 1</c>
     ///         (covers <c>None</c>, <c>Gizmo</c>, and unrecognized encodings), and</item>
-    ///   <item>world-id-zero pixels forced to the <see cref="EntityIdEncoding.Gizmo"/> encoding.</item>
+    ///   <item>world-id-zero pixels forced to the <see cref="SysEncodingKind.Gizmo"/> encoding.</item>
     /// </list>
     /// </summary>
     private static Gen<(uint r, uint g)> PixelGen()
@@ -66,7 +66,7 @@ public sealed class ClassificationTotalityPropertyTests
             let cleared = unchecked((uint)rBits)
                 & ~LimitsShaderConstants.WorldIdMask
                 & ~(GizmoEncodingConstants.EncodingTypeMask << GizmoEncodingConstants.EncodingTypeShift)
-            let r = cleared | ((uint)EntityIdEncoding.Gizmo << GizmoEncodingConstants.EncodingTypeShift)
+            let r = cleared | ((uint)SysEncodingKind.Gizmo << GizmoEncodingConstants.EncodingTypeShift)
             select (r, unchecked((uint)gBits));
 
         return Gen.Frequency(
@@ -113,7 +113,7 @@ public sealed class ClassificationTotalityPropertyTests
                     {
                         expected = EntityIdPickKind.Scene; // Req 3.2
                     }
-                    else if (encoding == (uint)EntityIdEncoding.Gizmo)
+                    else if (encoding == (uint)SysEncodingKind.Gizmo)
                     {
                         expected = EntityIdPickKind.Gizmo; // Req 4.5
                     }

@@ -10,7 +10,7 @@ namespace HelixToolkit.Nex.Engine.Tests;
 /// For any pixel (R, G) whose decoded world id is greater than zero,
 /// <see cref="Utils.UnpackEntityId(uint, uint)"/> returns <see cref="EntityIdPickKind.Scene"/>
 /// regardless of the values of the encoding-type bits; and adding or changing alternate
-/// <see cref="EntityIdEncoding"/> values only affects the routing of world-id-zero pixels, never
+/// <see cref="SysEncodingKind"/> values only affects the routing of world-id-zero pixels, never
 /// the scene decode. Because the encoding-type field overlaps the scene entity-id field region,
 /// this test asserts the scene decode remains byte-for-byte identical to the unchanged
 /// <see cref="Utils.UnpackMeshInfo(uint, uint, out uint, out uint, out uint, out uint)"/> for

@@ -12,6 +12,7 @@ global using HelixToolkit.Nex.Rendering;
 global using HelixToolkit.Nex.Rendering.Components;
 global using HelixToolkit.Nex.Rendering.DrawStreams;
 global using HelixToolkit.Nex.Rendering.RenderNodes;
+global using HelixToolkit.Nex.Rendering.SysEncoding;
 global using HelixToolkit.Nex.Repository;
 global using HelixToolkit.Nex.Scene;
 global using HelixToolkit.Nex.Shaders;
