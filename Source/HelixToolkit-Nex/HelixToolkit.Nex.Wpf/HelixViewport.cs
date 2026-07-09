@@ -2,7 +2,6 @@ using System.ComponentModel;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
-using HelixToolkit.Nex.Engine.CameraControllers;
 using HelixToolkit.Nex.Interop;
 using HelixToolkit.Nex.Interop.DirectX;
 using Microsoft.Extensions.Logging;
@@ -99,13 +98,6 @@ public partial class HelixViewport : FrameworkElement, IDisposable
     private void SetClient(IViewportClient? client)
     {
         _viewportClient = client;
-    }
-
-    private void SetCameraController(ICameraController? controller)
-    {
-        if (_renderContext is null)
-            return;
-        _cameraController = controller;
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e)

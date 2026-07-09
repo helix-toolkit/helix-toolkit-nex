@@ -1,5 +1,4 @@
 using System.Runtime.InteropServices;
-using HelixToolkit.Nex.Engine.CameraControllers;
 using HelixToolkit.Nex.Graphics;
 using HelixToolkit.Nex.Interop;
 using HelixToolkit.Nex.Interop.DirectX;
@@ -136,13 +135,6 @@ public partial class HelixViewport : UserControl, IDisposable
     private void SetClient(IViewportClient? client)
     {
         _viewportClient = client;
-    }
-
-    private void SetCameraController(ICameraController? controller)
-    {
-        if (_renderContext is null)
-            return;
-        _cameraController = controller;
     }
 
     private void CreateResources(uint width, uint height)
