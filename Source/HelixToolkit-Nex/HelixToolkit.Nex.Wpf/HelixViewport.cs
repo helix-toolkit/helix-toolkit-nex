@@ -27,7 +27,7 @@ public partial class HelixViewport : FrameworkElement, IDisposable
 {
     private static readonly ILogger _logger = LogManager.Create<HelixViewport>();
 
-    private D3DImage? _d3dImage;
+    private readonly D3DImage _d3dImage;
     private D3D9DeviceManager? _d3d9Manager;
     private D3D11DeviceManager? _d3d11Manager;
     private IDirect3DTexture9? _d3d9BackBuffer;
@@ -64,6 +64,10 @@ public partial class HelixViewport : FrameworkElement, IDisposable
     {
         if (_d3dImage is { PixelWidth: > 0, PixelHeight: > 0 })
         {
+            Engine!.WaitForIdle();
+            _d3dImage.Lock();
+            _d3dImage.AddDirtyRect(new Int32Rect(0, 0, _d3dImage.PixelWidth, _d3dImage.PixelHeight));
+            _d3dImage.Unlock();
             drawingContext.DrawImage(
                 _d3dImage,
                 new Rect(new System.Windows.Size(ActualWidth, ActualHeight))
@@ -162,7 +166,9 @@ public partial class HelixViewport : FrameworkElement, IDisposable
             width,
             height
         );
-
+        _d3dImage?.Lock();
+        _d3dImage?.SetBackBuffer(D3DResourceType.IDirect3DSurface9, (nint)_d3d9Surface);
+        _d3dImage?.Unlock();
         // 6. Subscribe to the WPF render loop
         CompositionTarget.Rendering += OnCompositionRendering;
     }
@@ -185,12 +191,6 @@ public partial class HelixViewport : FrameworkElement, IDisposable
         // Compute delta time
         if (!Render((float)ActualWidth, (float)ActualHeight, _importedTexture!.Handle))
             return;
-
-        //// Present through D3DImage
-        _d3dImage.Lock();
-        _d3dImage.SetBackBuffer(D3DResourceType.IDirect3DSurface9, (nint)_d3d9Surface);
-        _d3dImage.AddDirtyRect(new Int32Rect(0, 0, _d3dImage.PixelWidth, _d3dImage.PixelHeight));
-        _d3dImage.Unlock();
 
         _lastRenderTime = args.RenderingTime;
         InvalidateVisual();
