@@ -42,6 +42,7 @@ HelixToolkit.Nex.Engine is a core component of the HelixToolkit.Nex suite, respo
 | `PointDrawStreamRegistry`     | Registry for managing point draw streams.                                       |
 | `MeshDrawStream`              | Manages mesh draw commands, supporting dynamic and static data handling.        |
 | `MeshDrawStreamRegistry`      | Registry for managing mesh draw streams.                                        |
+| `PickingRegistry`             | Manages picking handlers for different geometry types.                         |
 
 ## Usage Examples
 
@@ -230,4 +231,9 @@ camera.FocusOn(new Vector3(0, 0, 0), 10f);
 ### ECS Component Interface Update
 
 - Updated ECS component handling to use `IComponents<T>` interface for better abstraction and flexibility.
+
+### New `PickingRegistry` Class
+
+- Introduced `PickingRegistry` to manage picking handlers for different geometry types, allowing for extensible and customizable picking logic.
+- Default handlers for mesh, point, line, and billboard geometries are registered by default.
 ```

@@ -19,7 +19,7 @@ HelixToolkit.Nex.Rendering is responsible for managing the rendering pipeline of
 | `MeshDrawInfo`                   | Represents a mesh render component with geometry and material associations. |
 | `PointDrawInfo`                  | Describes a point cloud attached to an entity.                              |
 | `BillboardDrawInfo`              | Describes one or more billboards attached to an entity.                     |
-| `LineDrawInfo`                   | Describes line geometry attached to an entity.                             |
+| `LineDrawInfo`                   | Describes line geometry attached to an entity.                              |
 | `ForwardPlusLightCullingNode`    | Performs tiled Forward+ light culling.                                      |
 | `FrustumCullNode`                | Executes GPU-based frustum culling, including line and point culling.       |
 | `ForwardPlusWBOITMergedNode`     | Merges WBOIT transparent rendering and compositing into a single render pass.|
@@ -37,19 +37,19 @@ HelixToolkit.Nex.Rendering is responsible for managing the rendering pipeline of
 | `InstancingManager`              | Manages a pool of `Instancing` objects, providing lifecycle and GPU resource management.|
 | `SMAANode`                       | Performs Subpixel Morphological Anti-Aliasing (SMAA) with configurable quality and debug modes. |
 | `FXAANode`                       | Performs Fast Approximate Anti-Aliasing (FXAA) with configurable quality settings. |
+| `BillboardHelper`                | Provides factory helpers for creating image/icon billboards.                |
+| `GizmoManager`                   | Manages gizmo instances, including creation, binding, and manipulation.     |
 
 ## Recent Changes
 
 ### New Features
 
-- **SMAANode**: Added to perform Subpixel Morphological Anti-Aliasing with configurable quality and debug modes.
-- **SMAAEdgeDetection**: Enum added to select edge-detection metrics for SMAA.
-- **SMAADebugMode**: Enum added to provide shader-level debug visualizations for SMAA.
-- **LineDrawInfo**: Added for describing line geometry attached to an entity.
-- **PointDrawInfo**: Introduced to replace `PointCloudDrawInfo` for describing point clouds.
-- **BillboardDrawInfo**: Renamed from `BillboardComponent` to better reflect its purpose.
-- **MeshDrawInfo**: Renamed from `MeshComponent` to better reflect its purpose.
-- **FrustumCullNode**: Updated to include line and point culling pipelines.
+- **BillboardHelper**: Added to provide factory helpers for creating image/icon billboards.
+- **GizmoManager Enhancements**: Added binding and drag manipulation capabilities for gizmo instances.
+- **GizmoManager.Binding**: Introduced to manage runtime target-binding for gizmo instances.
+- **GizmoManager.Drag**: Added drag-manipulation lifecycle for gizmos, including begin, update, and end drag operations.
+- **GizmoManager.Factory**: Enhanced to support gizmo creation, updating, and removal with caching for handle sets.
+- **BillboardCullNode**: Added to perform culling operations on billboards based on screen size and distance.
 - **DrawStream Enhancements**: Introduced `DrawStreamType` and `DrawStreamVariants` for more precise control over draw stream characteristics.
 - **RenderGraphResourceAllocationException**: Added to handle resource allocation failures in the render graph.
 - **Material Type Name Properties**: Updated `LineDrawInfo` and `PointDrawInfo` to use `LineMaterialTypeName` and `PointMaterialTypeName` respectively for material lookup.
@@ -140,6 +140,21 @@ var billboardDrawInfo = new BillboardDrawInfo
     FixedSize = false,
     CullDistance = 100f // Set culling distance
 };
+```
+
+### Creating an Image Billboard
+
+```csharp
+var texture = new TextureRef(...);
+var sampler = new SamplerRef(...);
+var billboard = BillboardHelper.CreateImageBillboard(
+    texture,
+    sampler,
+    width: 100f,
+    height: 100f,
+    tint: new Color4(1f, 1f, 1f, 1f),
+    fixedSize: true
+);
 ```
 
 ### Applying Post-Processing Effects
