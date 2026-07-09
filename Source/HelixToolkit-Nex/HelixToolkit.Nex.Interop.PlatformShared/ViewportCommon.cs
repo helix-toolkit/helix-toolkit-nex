@@ -200,7 +200,6 @@ public partial class HelixViewport
         var cmdBuf = Engine!.RenderOffscreen(_renderContext, dataProvider, target);
 #if HxWPF
         Engine!.Submit(cmdBuf, TextureHandle.Null);
-        Engine!.WaitForIdle();
 #elif HxWinUI
         Engine!.Submit(cmdBuf, TextureHandle.Null, _vulkanSyncInfo);
 #else
