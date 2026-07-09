@@ -73,17 +73,19 @@ public sealed partial class GizmoManager
 
         // A resolved pick highlights only the resolved gizmo's handle and clears all others, so the
         // highlight is isolated to a single gizmo (Requirement 7.2).
-        foreach (var instance in _instances.Values.AsValueEnumerable().Where(x => x is not null))
+        foreach (var instance in _instances.AsValueEnumerable().Where(x => x.Value is not null))
         {
+            var instanceValue = instance.Value;
+
             GizmoHandleId? desired =
-                instance.HasEntity && (uint)instance.Entity.Id == resolution.OwningEntityId
+                instanceValue.HasEntity && (uint)instanceValue.Entity.Id == resolution.OwningEntityId
                     ? resolution.Handle
                     : null;
 
-            if (!Nullable.Equals(instance.Highlighted, desired))
+            if (!Nullable.Equals(instanceValue.Highlighted, desired))
             {
-                instance.Highlighted = desired;
-                PublishDrawInfo(instance);
+                instanceValue.Highlighted = desired;
+                PublishDrawInfo(instanceValue);
             }
         }
     }
@@ -95,10 +97,10 @@ public sealed partial class GizmoManager
     /// </summary>
     private void ClearAllHighlights()
     {
-        foreach (var instance in _instances.Values.AsValueEnumerable().Where(x => x is not null))
+        foreach (var instance in _instances.AsValueEnumerable().Where(x => x.Value is not null))
         {
-            instance.Highlighted = null;
-            PublishDrawInfo(instance);
+            instance.Value.Highlighted = null;
+            PublishDrawInfo(instance.Value);
         }
     }
 

@@ -402,6 +402,7 @@ public partial class Engine : Initializable
         EnsureResources(renderContext);
         renderContext.FinalOutputTexture = Context.GetCurrentSwapchainTexture();
         var cmdBuf = Renderer.Render(renderContext, RenderGraph);
+        CreateHoverHighlightRequest(renderContext);
         var frameSlot = (int)(_frameIndex % GraphicsSettings.MaxFrameInFlight);
         renderContext.PickingContext.SendCommand(
             cmdBuf,
@@ -440,6 +441,7 @@ public partial class Engine : Initializable
         renderContext.Data = dataProvider;
         renderContext.FinalOutputTexture = target;
         var cmd = Renderer.Render(renderContext, RenderGraph, commandBuffer);
+        CreateHoverHighlightRequest(renderContext);
         var frameSlot = (int)(_frameIndex % GraphicsSettings.MaxFrameInFlight);
         renderContext.PickingContext.SendCommand(
             cmd,
@@ -525,15 +527,22 @@ public partial class Engine : Initializable
             try
             {
                 var pickingResult = pending.Context!.PickingContext.ReadResult(pending.Id);
-                pending.Callback?.Invoke(
-                    new PickingResponse
-                    {
-                        Context = pending.Context!,
-                        Coord = pending.Coord,
-                        Data = pickingResult,
-                        RequestId = pending.Id,
-                    }
-                );
+                var response = new PickingResponse
+                {
+                    Context = pending.Context!,
+                    Coord = pending.Coord,
+                    Data = pickingResult,
+                    RequestId = pending.Id,
+                };
+                // Route decoded gizmo picks to the gizmo service first when requested, then always
+                // deliver the unmodified result to the application callback (Requirement 6.6).
+                // TryRoute never throws, so the callback still runs regardless of routing outcome
+                // (Requirements 6.3, 6.4).
+                if (pending.RouteGizmoPicks)
+                {
+                    _gizmoRouter?.TryRoute(in response);
+                }
+                pending.Callback?.Invoke(response);
             }
             catch (Exception ex)
             {
@@ -634,6 +643,22 @@ public partial class Engine : Initializable
         Action<PickingResponse> responseCallback
     )
     {
+        return CreatePickingRequestCore(context, coord, responseCallback, routeGizmoPicks: false);
+    }
+
+    /// <summary>
+    /// Registers a pending picking readback keyed by request id. Shared by both public overloads.
+    /// The gizmo-routing decision is carried on the pending request (<see cref="PendingPicking.RouteGizmoPicks"/>)
+    /// rather than by wrapping <paramref name="responseCallback"/> in a closure, so no per-call
+    /// delegate is allocated for routing — the delivery loop routes inline before invoking the callback.
+    /// </summary>
+    private uint CreatePickingRequestCore(
+        RenderContext context,
+        Vector2 coord,
+        Action<PickingResponse> responseCallback,
+        bool routeGizmoPicks
+    )
+    {
         var requestId = context.SendPicking(coord);
         // Overflow: the per-frame picking capacity is full. SendPicking returns the sentinel and no
         // request slot was assigned, so do not register a pending readback — just propagate the
@@ -651,6 +676,7 @@ public partial class Engine : Initializable
             Coord = coord,
             Id = requestId,
             Callback = responseCallback,
+            RouteGizmoPicks = routeGizmoPicks,
         };
         return requestId;
     }
@@ -679,21 +705,17 @@ public partial class Engine : Initializable
         bool routeGizmoPicks
     )
     {
-        // Disabled routing delegates unchanged, avoiding any gizmo-service creation (Requirement 6.7).
-        if (
-            !routeGizmoPicks
-            || _gizmoService is null
-            || _gizmoRouter is null
-            || !_gizmoService.HasGizmoInstance
-        )
-        {
-            return CreatePickingRequest(context, coord, responseCallback);
-        }
+        // Only route when routing is requested and a gizmo service with a live instance and a router
+        // exist (Requirement 6.7). The decision is carried on the pending request; the delivery loop
+        // routes inline via _gizmoRouter.TryRoute before invoking the callback, so no wrapper delegate
+        // is allocated per call.
+        var shouldRoute =
+            routeGizmoPicks
+            && _gizmoService is not null
+            && _gizmoRouter is not null
+            && _gizmoService.HasGizmoInstance;
 
-        // Wrap the application callback so decoded gizmo picks route to the gizmo service first, then
-        // the application callback always runs with the unmodified result (Requirement 6.6).
-        var wrapped = _gizmoRouter.Wrap(responseCallback, routeGizmoPicks);
-        return CreatePickingRequest(context, coord, wrapped);
+        return CreatePickingRequestCore(context, coord, responseCallback, shouldRoute);
     }
 
     private readonly struct PendingPicking
@@ -702,6 +724,14 @@ public partial class Engine : Initializable
         public Vector2 Coord { get; init; }
         public uint Id { get; init; }
         public Action<PickingResponse>? Callback { get; init; }
+
+        /// <summary>
+        /// When <c>true</c>, the delivery loop routes the decoded result through the engine's
+        /// <see cref="GizmoPickRouter"/> (begin/continue gizmo drag) before invoking
+        /// <see cref="Callback"/>. Carried on the request instead of wrapping the callback in a
+        /// closure, so <c>CreatePickingRequest</c> allocates no per-call delegate for routing.
+        /// </summary>
+        public bool RouteGizmoPicks { get; init; }
 
         /// <summary>
         /// The submit handle under which this request's <c>CopyTextureToBuffer</c> was submitted.
@@ -734,6 +764,7 @@ public partial class Engine : Initializable
                 Coord = Coord,
                 Id = Id,
                 Callback = Callback,
+                RouteGizmoPicks = RouteGizmoPicks,
                 CopySubmitHandle = handle,
                 HasSubmitHandle = true,
             };
@@ -744,6 +775,7 @@ public partial class Engine : Initializable
             Coord = default,
             Context = null,
             Callback = null,
+            RouteGizmoPicks = false,
             CopySubmitHandle = default,
             HasSubmitHandle = false,
         };
