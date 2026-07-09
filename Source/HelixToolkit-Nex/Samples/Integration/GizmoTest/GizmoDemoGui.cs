@@ -164,8 +164,6 @@ internal sealed partial class GizmoDemo
             if (m.Width > 0 && m.Height > 0)
                 _viewportSize = m;
         }
-
-        UpdateGizmoHover();
         DriveGizmoDrag();
     }
 
@@ -210,39 +208,6 @@ internal sealed partial class GizmoDemo
         {
             ApplyLightEdits(t);
         }
-    }
-
-    /// <summary>
-    /// Highlights the gizmo handle under the pointer via the asynchronous picking path. Each frame
-    /// (when not dragging and the viewport is hovered) it schedules a throttled hover pick; the
-    /// callback (<c>OnHoverPickResponse</c>) routes the decoded pixel to
-    /// <see cref="GizmoManager.ResolveHighlight"/> so the render node draws the resolved handle in the
-    /// highlight color. Clears the highlight (and the in-flight throttle) when the pointer leaves the
-    /// viewport or a drag is active.
-    /// </summary>
-    private void UpdateGizmoHover()
-    {
-        if (_gizmoManager is null || _viewport is null)
-            return;
-
-        // While dragging, the active handle is already highlighted; leave the hover state alone and
-        // clear the throttle so hovering resumes cleanly once the drag ends.
-        if (_gizmoManager.IsDragging)
-        {
-            _hoverPickInFlight = false;
-            return;
-        }
-
-        if (!_viewport.IsHovered)
-        {
-            // Clear any highlight across tracked gizmos when the pointer leaves the viewport.
-            _gizmoManager.ResolveHighlight(false, 0u, default);
-            _hoverPickInFlight = false;
-            return;
-        }
-
-        var p = _viewport.RelativePointer;
-        RequestHoverPick((int)p.X, (int)p.Y);
     }
 
     /// <summary>

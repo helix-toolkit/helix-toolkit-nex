@@ -36,6 +36,8 @@ public partial class Engine
     /// </summary>
     private bool _gizmoNodeRegistered;
 
+    public event EventHandler<PickingResponse>? OnViewportHovering;
+
     /// <summary>
     /// Gets the engine's gizmo service. The first access lazily creates a single
     /// <see cref="GizmoManager"/> and registers a <see cref="GizmoRenderNode"/> to render gizmos
@@ -91,5 +93,39 @@ public partial class Engine
     private void TeardownGizmoService()
     {
         Disposer.DisposeAndRemove(ref _gizmoService);
+    }
+
+    private bool CreateHoverHighlightRequest(RenderContext context)
+    {
+        if (
+            _gizmoService is null
+            || !_gizmoService.HasGizmoInstance
+            || !context.PointerValid
+            || _gizmoService.IsDragging
+        )
+        {
+            return false;
+        }
+        CreatePickingRequest(
+            context,
+            context.Pointer,
+            HandleHoverResponse
+        );
+        return true;
+    }
+
+    private void HandleHoverResponse(PickingResponse response)
+    {
+        if (_gizmoService is null || !_gizmoService.HasGizmoInstance)
+        {
+            return;
+        }
+        var decoded = Utils.UnpackEntityId(response.Data);
+        Gizmos.ResolveHighlight(
+            decoded.Kind == EntityIdPickKind.Gizmo,
+            decoded.OwningEntityId,
+            decoded.Handle
+        );
+        OnViewportHovering?.Invoke(this, response);
     }
 }

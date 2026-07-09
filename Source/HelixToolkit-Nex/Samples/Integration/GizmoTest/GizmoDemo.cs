@@ -922,41 +922,6 @@ internal sealed partial class GizmoDemo : IDisposable
         }
     }
 
-    /// <summary>
-    /// Schedules an asynchronous hover pick at the given viewport pixel, throttled to a single
-    /// outstanding request at a time so hover picks don't flood the readback ring. The result is
-    /// delivered to <see cref="OnHoverPickResponse"/>.
-    /// </summary>
-    private void RequestHoverPick(int x, int y)
-    {
-        if (_engine is null || _renderContext is null || _hoverPickInFlight)
-            return;
-
-        _hoverPickInFlight = true;
-        _engine.CreatePickingRequest(_renderContext, new Vector2(x, y), OnHoverPickResponse);
-    }
-
-    /// <summary>
-    /// Async hover-pick result: highlights the gizmo handle under the pointer (or clears the highlight
-    /// when the pixel is not a gizmo handle). Hover picks are not routed (highlighting is not a drag),
-    /// so the sample decodes the hovered pixel and routes it to the per-instance highlight overlay via
-    /// <see cref="GizmoManager.ResolveHighlight"/>, which highlights the resolved handle on the owning
-    /// gizmo and clears every other instance's highlight (or clears all when nothing resolves).
-    /// </summary>
-    private void OnHoverPickResponse(PickingResponse response)
-    {
-        _hoverPickInFlight = false;
-        if (_gizmoManager is null)
-            return;
-
-        EntityIdDecodeResult decoded = Utils.UnpackEntityId(response.Data);
-        _gizmoManager.ResolveHighlight(
-            decoded.Kind == EntityIdPickKind.Gizmo,
-            decoded.OwningEntityId,
-            decoded.Handle
-        );
-    }
-
     private bool _disposed;
 
     public void Dispose()
