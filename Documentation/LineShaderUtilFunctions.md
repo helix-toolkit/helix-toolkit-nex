@@ -9,7 +9,7 @@ vec2 getUV()
 ```glsl
 vec4 getColor()
 ```
-- **Description**: Retrieves the color for the current fragment.
+- **Description**: Retrieves the color associated with the current fragment.
 - **Return Type**: `vec4`
 
 ```glsl
@@ -21,55 +21,55 @@ float getLineWidth()
 ```glsl
 uint getTextureId()
 ```
-- **Description**: Retrieves the texture ID associated with the current fragment.
+- **Description**: Retrieves the texture ID for the current fragment.
 - **Return Type**: `uint`
 
 ```glsl
 uint getSamplerId()
 ```
-- **Description**: Retrieves the sampler ID associated with the current fragment.
+- **Description**: Retrieves the sampler ID for the current fragment.
 - **Return Type**: `uint`
 
 ```glsl
 uint64_t getTimeMs()
 ```
-- **Description**: Retrieves the current time in milliseconds.
+- **Description**: Retrieves the current time in milliseconds from the frame parameters.
 - **Return Type**: `uint64_t`
 
 ```glsl
 mat4 getViewProjection()
 ```
-- **Description**: Retrieves the view-projection matrix.
+- **Description**: Retrieves the view-projection matrix from the frame parameters.
 - **Return Type**: `mat4`
 
 ```glsl
 mat4 getInvViewProjection()
 ```
-- **Description**: Retrieves the inverse of the view-projection matrix.
+- **Description**: Retrieves the inverse view-projection matrix from the frame parameters.
 - **Return Type**: `mat4`
 
 ```glsl
 mat4 getView()
 ```
-- **Description**: Retrieves the view matrix.
+- **Description**: Retrieves the view matrix from the frame parameters.
 - **Return Type**: `mat4`
 
 ```glsl
 mat4 getInvView()
 ```
-- **Description**: Retrieves the inverse of the view matrix.
+- **Description**: Retrieves the inverse view matrix from the frame parameters.
 - **Return Type**: `mat4`
 
 ```glsl
 vec3 getCameraPosition()
 ```
-- **Description**: Retrieves the position of the camera in world space.
+- **Description**: Retrieves the camera position from the frame parameters.
 - **Return Type**: `vec3`
 
 ```glsl
 vec2 getScreenSize()
 ```
-- **Description**: Retrieves the dimensions of the screen.
+- **Description**: Retrieves the screen dimensions from the frame parameters.
 - **Return Type**: `vec2`
 
 ```glsl
@@ -81,13 +81,13 @@ bool isPointerRingEnabled()
 ```glsl
 vec3 getPointerRayDirection()
 ```
-- **Description**: Retrieves the direction of the pointer ray.
+- **Description**: Retrieves the direction of the pointer ray from the frame parameters.
 - **Return Type**: `vec3`
 
 ```glsl
 vec3 getPointerRayOrigin()
 ```
-- **Description**: Retrieves the origin of the pointer ray.
+- **Description**: Retrieves the origin of the pointer ray from the frame parameters.
 - **Return Type**: `vec3`
 
 ```glsl
@@ -105,7 +105,7 @@ float getPointerRingInnerDistThreshold()
 ```glsl
 float getPointerRingColorMix()
 ```
-- **Description**: Retrieves the mix factor for blending the pointer ring color with the fragment color.
+- **Description**: Retrieves the color mix factor for the pointer ring.
 - **Return Type**: `float`
 
 ```glsl
@@ -129,5 +129,5 @@ bool isInPointerRing()
 ```glsl
 vec4 mixWithPointerRing(in vec4 color)
 ```
-- **Description**: Blends the fragment color with the pointer ring color if the pointer ring is enabled and the fragment is within the ring.
+- **Description**: Mixes the fragment color with the pointer ring color if the pointer ring is enabled and the fragment is within the ring.
 - **Return Type**: `vec4`
