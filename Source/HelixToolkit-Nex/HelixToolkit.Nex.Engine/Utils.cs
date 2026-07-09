@@ -102,7 +102,7 @@ public static class Utils
     /// <summary>
     /// Packs a gizmo pick (owning entity id + handle identity) into the R and G channels of the
     /// shared <c>TextureEntityId</c> target. The R channel carries a world id of zero (the
-    /// alternate-encoding discriminator trigger), the <see cref="EntityIdEncoding.Gizmo"/>
+    /// alternate-encoding discriminator trigger), the <see cref="SysEncodingKind.Gizmo"/>
     /// encoding-type field, and the owning gizmo entity id; the G channel carries the
     /// <see cref="GizmoHandleId"/> (axis in the low byte, mode in the next byte), leaving the high
     /// G bits reserved for future per-handle data.
@@ -120,7 +120,7 @@ public static class Utils
     {
         r =
             (0u & LimitsShaderConstants.WorldIdMask) // worldId = 0 (discriminator trigger)
-            | ((uint)EntityIdEncoding.Gizmo << GizmoEncodingConstants.EncodingTypeShift)
+            | ((uint)SysEncodingKind.Gizmo << GizmoEncodingConstants.EncodingTypeShift)
             | (
                 (owningEntityId & GizmoEncodingConstants.OwningEntityMask)
                 << GizmoEncodingConstants.OwningEntityShift
@@ -171,9 +171,9 @@ public static class Utils
     /// target. Inspects the world id first: a decoded world id greater than zero is a scene pick
     /// (decoded by the unchanged <see cref="UnpackMeshInfo(uint, uint, out uint, out uint, out uint, out uint)"/>);
     /// a decoded world id of zero selects an alternate encoding chosen by the
-    /// <see cref="EntityIdEncoding"/> discriminator carried in the R channel. The only alternate
-    /// encoding defined today is <see cref="EntityIdEncoding.Gizmo"/>. Unrecognized encoding values
-    /// (including <see cref="EntityIdEncoding.None"/> and the cleared-to-<c>(0, 0)</c> pixel) decode
+    /// <see cref="SysEncodingKind"/> discriminator carried in the R channel. The only alternate
+    /// encoding defined today is <see cref="SysEncodingKind.Gizmo"/>. Unrecognized encoding values
+    /// (including <see cref="SysEncodingKind.None"/> and the cleared-to-<c>(0, 0)</c> pixel) decode
     /// to <see cref="EntityIdPickKind.NoHit"/>. This method never throws.
     /// </summary>
     /// <param name="r">The raw R channel bits.</param>
@@ -200,7 +200,7 @@ public static class Utils
         // worldId == 0: select the alternate encoding from the encoding-type field.
         uint encoding =
             (r >> LimitsShaderConstants.WorldIdBits) & GizmoEncodingConstants.EncodingTypeMask;
-        if (encoding == (uint)EntityIdEncoding.Gizmo)
+        if (encoding == (uint)SysEncodingKind.Gizmo)
         {
             UnpackGizmoInfo(r, g, out uint owningEntityId, out GizmoHandleId handle);
             return new EntityIdDecodeResult(

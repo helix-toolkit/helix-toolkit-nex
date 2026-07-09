@@ -33,7 +33,7 @@ namespace HelixToolkit.Nex.Rendering.Gizmos;
 public static class GizmoPickEncoding
 {
     /// <summary>The <c>Gizmo</c> encoding-type value (matches <c>EntityIdEncoding.Gizmo</c> in the Engine).</summary>
-    public const uint GizmoEncodingType = 1u;
+    public const uint GizmoEncodingType = (uint)SysEncoding.SysEncodingKind.Gizmo;
 
     /// <summary>
     /// Shift of the encoding-type field within R. Equals <c>LimitsShaderConstants.WorldIdBits</c>
