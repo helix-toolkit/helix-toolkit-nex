@@ -327,7 +327,7 @@ public sealed class RenderContext(IServiceProvider services) : Initializable
     /// </summary>
     public TextureHandle FinalOutputTexture
     {
-        internal set { ResourceSet.Textures[SystemBufferNames.FinalOutputTexture] = value; }
+        set { ResourceSet.Textures[SystemBufferNames.FinalOutputTexture] = value; }
         get
         {
             if (
