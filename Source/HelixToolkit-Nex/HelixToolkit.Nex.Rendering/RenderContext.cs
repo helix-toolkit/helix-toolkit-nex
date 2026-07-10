@@ -262,6 +262,8 @@ public sealed class RenderContext(IServiceProvider services) : Initializable
 
     private CameraParams _cameraParams = CameraParams.Identity;
 
+    public uint FrameIndex { internal set; get; } = 0;
+
     /// <summary>
     /// Gets the current camera parameters applied to the view.
     /// </summary>
