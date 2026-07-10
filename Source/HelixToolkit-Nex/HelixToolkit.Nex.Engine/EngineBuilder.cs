@@ -1,5 +1,6 @@
 using HelixToolkit.Nex.Rendering.ComputeNodes;
 using HelixToolkit.Nex.Rendering.Gizmos;
+using HelixToolkit.Nex.Rendering.PostEffects;
 
 namespace HelixToolkit.Nex.Engine;
 
@@ -305,6 +306,21 @@ public sealed class EngineBuilder
     public EngineBuilder WithBloom()
     {
         _withBloom = true;
+        return this;
+    }
+
+    /// <summary>
+    /// Registers a single <see cref="SsaoPostEffect"/> into the <see cref="PostEffectsNode"/>,
+    /// unless an effect named <c>"SsaoPostEffect"</c> is already present.
+    /// </summary>
+    /// <param name="quality">The quality preset used to construct the effect. Defaults to <see cref="SsaoQuality.Medium"/>.</param>
+    /// <returns>This builder for method chaining.</returns>
+    public EngineBuilder WithSSAO(SsaoQuality quality = SsaoQuality.Medium)
+    {
+        if (!_postEffectsNode.TryGetEffect(nameof(SsaoPostEffect), out _))
+        {
+            _postEffectsNode.AddEffect(new SsaoPostEffect(quality));
+        }
         return this;
     }
 

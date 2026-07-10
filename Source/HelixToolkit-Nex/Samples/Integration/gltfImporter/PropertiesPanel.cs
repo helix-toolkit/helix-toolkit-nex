@@ -71,6 +71,12 @@ internal class PropertiesPanel
                     Gui.EndCombo();
                 }
                 Gui.Spacing();
+                var enableSSAO = _app.EnableSSAO;
+                if (Gui.Checkbox("Enable SSAO", ref enableSSAO))
+                {
+                    _app.EnableSSAO = enableSSAO;
+                }
+                Gui.Spacing();
                 Gui.Text("Directional Light");
                 var light = _app.DirectionalLight;
                 var intensity = light.Intensity;

@@ -52,6 +52,14 @@ internal class GltfImporterApp : ApplicationBase
     private Node? _currentModelRoot;
     private ResourceManifest? _currentResourceManifest;
 
+    private SsaoPostEffect? _ssaoPostEffect;
+
+    public bool EnableSSAO
+    {
+        set => _ssaoPostEffect!.Enabled = value;
+        get => _ssaoPostEffect!.Enabled;
+    }
+
     // Background import state. The off-thread preparation (parse/convert/record) runs on a
     // thread-pool task; the materializing flush is completed on the owning thread in OnTick.
     private Task<PreparedImport>? _pendingImport;
@@ -145,12 +153,15 @@ internal class GltfImporterApp : ApplicationBase
             .WithToneMappingMode(Shaders.ToneMappingMode.Reinhard)
             .WithTransparent(Engine.TransparentMode.WBOIT)
             .WithFPS()
+            .WithSSAO()
             .RenderToCustomTarget(GraphicsSettings.IntermediateTargetFormat)
             .WithPostEffects(effects =>
             {
                 effects.AddEffect(_borderHighlight);
             })
             .Build();
+
+        _ssaoPostEffect = _engine.GetPostEffect<SsaoPostEffect>();
 
         // Create render context
         _renderContext = _engine.CreateRenderContext();

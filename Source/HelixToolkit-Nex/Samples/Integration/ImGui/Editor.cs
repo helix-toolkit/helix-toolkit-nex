@@ -81,7 +81,7 @@ internal partial class Editor : IDisposable
     private Viewport? _viewport;
     private Viewport? _cullViewport;
 
-    private bool _perInstance = false;
+    private bool _perInstance = true;
 
     public Editor(IContext context)
     {
