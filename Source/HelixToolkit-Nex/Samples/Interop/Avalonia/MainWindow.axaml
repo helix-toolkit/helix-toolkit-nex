@@ -4,11 +4,13 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:hx="clr-namespace:HelixToolkit.Nex.Avalonia;assembly=HelixToolkit.Nex.Avalonia"
+    xmlns:local="clr-namespace:AvaloniaInterop"
     mc:Ignorable="d"
     x:Class="AvaloniaInterop.MainWindow"
     Width="1280"
     Height="720"
     Title="HelixToolkit.Nex - Avalonia Interop"
+    x:DataType="local:MainViewModel"
 >
     <!--
         The MainViewModel is assigned as the DataContext in the code-behind. The HelixViewport binds
@@ -98,10 +100,18 @@
                 />
                 <ProgressBar IsIndeterminate="True" Height="4" />
                 <TextBlock
-                    Text="This animated bar and the panels are Avalonia controls drawn on top of the shared GPU texture."
-                    TextWrapping="Wrap"
+                    x:Name="FpsText"
+                    Text="FPS: --"
+                    FontFamily="Consolas,monospace"
+                    FontSize="13"
+                    Foreground="#FF7CF07C"
+                />
+                <TextBlock
+                    x:Name="FrameTimeText"
+                    Text="render --  present --"
+                    FontFamily="Consolas,monospace"
                     FontSize="12"
-                    Foreground="#99FFFFFF"
+                    Foreground="#CCFFFFFF"
                 />
             </StackPanel>
         </Border>

@@ -2,7 +2,6 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Platform;
 using Avalonia.Rendering.Composition;
-using HelixToolkit.Nex;
 using Microsoft.Extensions.Logging;
 using Format = HelixToolkit.Nex.Graphics.Format;
 
@@ -38,16 +37,14 @@ internal sealed class CompositionSurfacePresenter : Control
     private CompositionDrawingSurface? _surface;
     private ICompositionGpuInterop? _interop;
     private CompositionSurfaceVisual? _visual;
-    private ICompositionImportedGpuImage? _importedImage;
     private Task? _initializeTask;
 
-    // Cache key identifying the currently imported image. Importing a shared GPU texture into the
-    // compositor is expensive (it opens the shared handle and creates GPU resources), so the import
-    // is performed once and reused every frame; it is only refreshed when the shared image actually
-    // changes (first frame or a resize), detected by comparing these fields to the incoming
-    // description.
-    private nint _importedNtHandle;
-    private int _importedMemoryFd = -1;
+    // Imported GPU images cached by their platform handle. Importing a shared texture into the
+    // compositor is expensive (it opens the shared handle and creates GPU resources), so each buffer
+    // is imported once and reused. With a multi-buffered bridge the presenter sees several distinct
+    // handles rotating frame to frame, so one entry is kept per buffer. The whole cache is dropped
+    // when the image size/format changes (a resize), because every buffer then has a new handle.
+    private readonly Dictionary<nint, ICompositionImportedGpuImage> _importedImages = new();
     private uint _importedWidth;
     private uint _importedHeight;
     private Format _importedFormat;
@@ -102,8 +99,9 @@ internal sealed class CompositionSurfacePresenter : Control
             // GPU interop is unavailable in this render session. Log the condition and continue;
             // PresentAsync will skip frame presentation without throwing or terminating the app.
             _logger.LogWarning(
-                "Composition GPU interop is unavailable in the current Avalonia render session; " +
-                "engine frame presentation will be skipped.");
+                "Composition GPU interop is unavailable in the current Avalonia render session; "
+                    + "engine frame presentation will be skipped."
+            );
         }
     }
 
@@ -151,21 +149,27 @@ internal sealed class CompositionSurfacePresenter : Control
     /// </summary>
     private ICompositionImportedGpuImage GetOrImportImage(SharedImageDescription image)
     {
-        if (_importedImage is not null
-            && _importedNtHandle == image.NtHandle
-            && _importedMemoryFd == image.MemoryFd
-            && _importedWidth == image.Width
-            && _importedHeight == image.Height
-            && _importedFormat == image.Format)
+        // A size/format change means every buffer's handle is stale (the bridge recreated them on
+        // resize), so drop the whole cache and re-import lazily.
+        if (
+            image.Width != _importedWidth
+            || image.Height != _importedHeight
+            || image.Format != _importedFormat
+        )
         {
-            return _importedImage;
+            ClearImportedImages();
+            _importedWidth = image.Width;
+            _importedHeight = image.Height;
+            _importedFormat = image.Format;
         }
 
-        // First frame or the shared image changed (resize): release the stale import and import anew.
-        ReleaseImportedImage();
+        nint key = image.NtHandle != nint.Zero ? image.NtHandle : image.MemoryFd;
+        if (_importedImages.TryGetValue(key, out ICompositionImportedGpuImage? existing))
+        {
+            return existing;
+        }
 
-        nint rawHandle = image.NtHandle != nint.Zero ? image.NtHandle : image.MemoryFd;
-        var platformHandle = new PlatformHandle(rawHandle, image.ExternalHandleType);
+        var platformHandle = new PlatformHandle(key, image.ExternalHandleType);
 
         var properties = new PlatformGraphicsExternalImageProperties
         {
@@ -176,13 +180,24 @@ internal sealed class CompositionSurfacePresenter : Control
         };
 
         ICompositionImportedGpuImage imported = _interop!.ImportImage(platformHandle, properties);
-        _importedImage = imported;
-        _importedNtHandle = image.NtHandle;
-        _importedMemoryFd = image.MemoryFd;
-        _importedWidth = image.Width;
-        _importedHeight = image.Height;
-        _importedFormat = image.Format;
+        _importedImages[key] = imported;
         return imported;
+    }
+
+    /// <summary>Disposes and clears every cached imported image.</summary>
+    private void ClearImportedImages()
+    {
+        if (_importedImages.Count == 0)
+        {
+            return;
+        }
+
+        var toDispose = new List<ICompositionImportedGpuImage>(_importedImages.Values);
+        _importedImages.Clear();
+        foreach (ICompositionImportedGpuImage imported in toDispose)
+        {
+            _ = DisposeImportedAsync(imported);
+        }
     }
 
     /// <summary>
@@ -195,20 +210,12 @@ internal sealed class CompositionSurfacePresenter : Control
     /// </summary>
     public void ReleaseImportedImage()
     {
-        ICompositionImportedGpuImage? imported = _importedImage;
-        _importedImage = null;
+        ClearImportedImages();
 
-        // Reset the cache key so the next PresentAsync re-imports the (new) shared image.
-        _importedNtHandle = 0;
-        _importedMemoryFd = -1;
+        // Reset the cached size/format so the next PresentAsync re-imports the (new) shared images.
         _importedWidth = 0;
         _importedHeight = 0;
         _importedFormat = default;
-
-        if (imported is not null)
-        {
-            _ = DisposeImportedAsync(imported);
-        }
     }
 
     /// <summary>
@@ -270,9 +277,11 @@ internal sealed class CompositionSurfacePresenter : Control
     }
 
     /// <summary>Maps the engine pixel format onto the Avalonia external-image format.</summary>
-    private static PlatformGraphicsExternalImageFormat MapFormat(Format format) => format switch
-    {
-        Format.BGRA_UN8 or Format.BGRA_SRGB8 => PlatformGraphicsExternalImageFormat.B8G8R8A8UNorm,
-        _ => PlatformGraphicsExternalImageFormat.R8G8B8A8UNorm,
-    };
+    private static PlatformGraphicsExternalImageFormat MapFormat(Format format) =>
+        format switch
+        {
+            Format.BGRA_UN8 or Format.BGRA_SRGB8 =>
+                PlatformGraphicsExternalImageFormat.B8G8R8A8UNorm,
+            _ => PlatformGraphicsExternalImageFormat.R8G8B8A8UNorm,
+        };
 }

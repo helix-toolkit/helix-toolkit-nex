@@ -253,6 +253,13 @@ internal sealed class LinuxExternalMemoryBridge : IEngineOutputBridge
         CreateResources(width, height);
     }
 
+    /// <inheritdoc />
+    /// <remarks>Single-buffered; multi-buffering is provided by <see cref="BufferedEngineOutputBridge"/>.</remarks>
+    public void AdvanceFrame()
+    {
+        // No-op: this bridge owns a single exportable image.
+    }
+
     /// <summary>
     /// Creates the exportable <c>VkImage</c>/<c>VkDeviceMemory</c> at the given size, exports the
     /// memory fd, and registers the image in the engine textures pool to establish

@@ -2,6 +2,7 @@ using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
+using HelixToolkit.Nex.Avalonia;
 
 namespace AvaloniaInterop;
 
@@ -33,12 +34,45 @@ namespace AvaloniaInterop;
 public partial class MainWindow : Window
 {
     private MainViewModel? _viewModel;
+    private HelixViewport? _viewport;
+    private TextBlock? _fpsText;
+    private TextBlock? _frameTimeText;
 
     public MainWindow()
     {
         InitializeComponent();
+
+        // Resolve the named controls from the XAML name scope rather than relying on the auto-generated
+        // x:Name fields. In this sample those generated fields are not populated at runtime (the
+        // compiled-XAML field-population step is not active, so the runtime XAML loader builds the tree
+        // and registers the name scope but leaves the code-behind fields null). FindControl reads the
+        // registered name scope and works regardless.
+        _viewport = this.FindControl<HelixViewport>("ViewportFly");
+        _fpsText = this.FindControl<TextBlock>("FpsText");
+        _frameTimeText = this.FindControl<TextBlock>("FrameTimeText");
+
+        if (_viewport is not null)
+        {
+            _viewport.FrameStatisticsUpdated += OnFrameStatisticsUpdated;
+        }
+
         Closed += OnClosed;
+
         _ = InitializeAsync();
+    }
+
+    private void OnFrameStatisticsUpdated(object? sender, FrameStatistics stats)
+    {
+        if (_fpsText is not null)
+        {
+            _fpsText.Text = $"FPS: {stats.Fps:F1}";
+        }
+
+        if (_frameTimeText is not null)
+        {
+            _frameTimeText.Text =
+                $"render {stats.AverageRenderMs:F2} ms  present {stats.AveragePresentMs:F2} ms";
+        }
     }
 
     /// <summary>

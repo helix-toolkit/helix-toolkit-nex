@@ -1,5 +1,4 @@
 #if WINDOWS
-using HelixToolkit.Nex;
 using HelixToolkit.Nex.Graphics;
 using HelixToolkit.Nex.Interop.DirectX;
 using Microsoft.Extensions.Logging;
@@ -151,6 +150,13 @@ internal sealed class WindowsSharedTextureBridge : IEngineOutputBridge
 
         ReleaseResources();
         CreateResources(width, height);
+    }
+
+    /// <inheritdoc />
+    /// <remarks>Single-buffered; multi-buffering is provided by <see cref="BufferedEngineOutputBridge"/>.</remarks>
+    public void AdvanceFrame()
+    {
+        // No-op: this bridge owns a single shared texture.
     }
 
     /// <summary>
