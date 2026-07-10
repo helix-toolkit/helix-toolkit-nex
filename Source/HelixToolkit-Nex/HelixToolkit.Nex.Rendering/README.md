@@ -39,6 +39,7 @@ HelixToolkit.Nex.Rendering is responsible for managing the rendering pipeline of
 | `FXAANode`                       | Performs Fast Approximate Anti-Aliasing (FXAA) with configurable quality settings. |
 | `BillboardHelper`                | Provides factory helpers for creating image/icon billboards.                |
 | `GizmoManager`                   | Manages gizmo instances, including creation, binding, and manipulation.     |
+| `SysEncodingKind`                | Enumerates alternate encodings for system-specific rendering.               |
 
 ## Recent Changes
 
@@ -57,6 +58,7 @@ HelixToolkit.Nex.Rendering is responsible for managing the rendering pipeline of
 - **Barrier Presets**: Introduced `BarrierPreset` for more precise control over buffer synchronization.
 - **InstancingManager**: Added to manage instancing resources, including lifecycle, eventing, GPU-upload, and deferred-removal.
 - **Instancing**: Updated to support dynamic and static instancing modes with ring buffers to prevent GPU stalls.
+- **SysEncodingKind**: Added to enumerate alternate encodings for system-specific rendering.
 
 ### Removed Features
 
