@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <!-- Windows: -windows TFM so the Windows_Path can reference the Windows-only DirectX interop project. -->
+    <PropertyGroup Condition="!$([MSBuild]::IsOSPlatform('Linux'))">
+        <TargetFramework>net8.0-windows</TargetFramework>
+    </PropertyGroup>
+    <!-- Linux: plain net8.0 so it builds without any DirectX dependency. -->
+    <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('Linux'))">
+        <TargetFramework>net8.0</TargetFramework>
+    </PropertyGroup>
+
+    <PropertyGroup>
+        <OutputType>WinExe</OutputType>
+        <RootNamespace>AvaloniaInterop</RootNamespace>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <LangVersion>latest</LangVersion>
+        <Configurations>Debug;Release;LinuxDebug;LinuxRelease</Configurations>
+        <ApplicationManifest>app.manifest</ApplicationManifest>
+        <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Avalonia" Version="11.3.18" />
+        <PackageReference Include="Avalonia.Desktop" Version="11.3.18" />
+        <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.18" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\..\HelixToolkit.Nex.Avalonia\HelixToolkit.Nex.Avalonia.csproj" />
+        <ProjectReference Include="..\..\..\HelixToolkit.Nex.Engine\HelixToolkit.Nex.Engine.csproj" />
+        <ProjectReference Include="..\..\..\HelixToolkit.Nex.Graphics.Vulkan\HelixToolkit.Nex.Graphics.Vulkan.csproj" />
+        <ProjectReference Include="..\..\SceneSamples\SceneSamples.csproj" />
+    </ItemGroup>
+
+    <!-- Windows path only: D3D11 shared NT-handle interop -->
+    <ItemGroup Condition="!$([MSBuild]::IsOSPlatform('Linux'))">
+        <ProjectReference Include="..\..\..\HelixToolkit.Nex.Interop.DirectX\HelixToolkit.Nex.Interop.DirectX.csproj" />
+    </ItemGroup>
+</Project>

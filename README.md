@@ -83,6 +83,8 @@ Currently in development.
     - [WinUI](Source/HelixToolkit-Nex/Samples/Interop/WinUI)
     <img src="Source/HelixToolkit-Nex/Samples/Interop/WinUI/Screenshots/Sample.jpg" width=400>
 
+    - [Avalonia](Source/HelixToolkit-Nex/Samples/Interop/Avalonia)
+    <img src="Source/HelixToolkit-Nex/Samples/Interop/Avalonia/Screenshots/Sample.jpg" width=400>
 ## Packages
 
 > **Note:** Packages are published to GitHub Packages. Links will resolve once the packages are published.
@@ -110,6 +112,7 @@ Currently in development.
 | HelixToolkit.Nex.Textures               | [![GitHub](https://img.shields.io/badge/GitHub-package-blue)](https://github.com/helix-toolkit/helix-toolkit-nex/pkgs/nuget/HelixToolkit.Nex.Textures)               |
 | HelixToolkit.Nex.WinUI                  | [![GitHub](https://img.shields.io/badge/GitHub-package-blue)](https://github.com/helix-toolkit/helix-toolkit-nex/pkgs/nuget/HelixToolkit.Nex.WinUI)                  |
 | HelixToolkit.Nex.Wpf                    | [![GitHub](https://img.shields.io/badge/GitHub-package-blue)](https://github.com/helix-toolkit/helix-toolkit-nex/pkgs/nuget/HelixToolkit.Nex.Wpf)                    |
+| HelixToolkit.Nex.Avalonia               | [![GitHub](https://img.shields.io/badge/GitHub-package-blue)](https://github.com/helix-toolkit/helix-toolkit-nex/pkgs/nuget/HelixToolkit.Nex.Avalonia)               |
 
 ## Contributing
 

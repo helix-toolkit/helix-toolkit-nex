@@ -58,6 +58,15 @@ public sealed class VulkanContextConfig()
     public bool EnableExternalMemoryWin32 = false;
 
     /// <summary>
+    /// When true, enables VK_KHR_external_memory_fd and VK_KHR_external_semaphore_fd
+    /// device extensions (and, when supported, the optional VK_EXT_external_memory_dma_buf)
+    /// during Vulkan device creation. This is the Linux equivalent of
+    /// <see cref="EnableExternalMemoryWin32"/> and is used by the interop layer to share
+    /// images via POSIX file descriptors. Default false.
+    /// </summary>
+    public bool EnableExternalMemoryFd = false;
+
+    /// <summary>
     /// Optional LUID filter. When set, VulkanContext will only select a physical device
     /// whose VkPhysicalDeviceIDProperties.deviceLUID matches this value.
     /// Used by the interop layer to ensure Vulkan and DirectX use the same GPU.

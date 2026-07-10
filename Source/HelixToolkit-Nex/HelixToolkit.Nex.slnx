@@ -45,6 +45,9 @@
       <Build Solution="LinuxRelease|Any CPU" Project="false" />
     </Project>
   </Folder>
+  <Folder Name="/Samples/Interop/Avalonia/">
+    <Project Path="Samples/Interop/Avalonia/AvaloniaInterop.csproj" />
+  </Folder>
   <Folder Name="/Samples/Interop/WinUI/">
     <Project Path="Samples/Interop/WinUI/WinUIInterop.csproj">
       <Platform Solution="Debug|Any CPU" Project="x64" />
@@ -73,6 +76,11 @@
     <File Path="../../Scripts/format-solution.ps1" />
   </Folder>
   <Project Path="HelixTookit.Nex/HelixToolkit.Nex.csproj" />
+  <Project Path="HelixToolkit.Nex.Avalonia/HelixToolkit.Nex.Avalonia.csproj" />
+  <Project Path="HelixToolkit.Nex.Avalonia.Tests/HelixToolkit.Nex.Avalonia.Tests.csproj">
+    <Build Solution="LinuxDebug|Any CPU" Project="false" />
+    <Build Solution="LinuxRelease|Any CPU" Project="false" />
+  </Project>
   <Project Path="HelixToolkit.Nex.CodeGen.Tests/HelixToolkit.Nex.CodeGen.Tests.csproj" />
   <Project Path="HelixToolkit.Nex.CodeGen/HelixToolkit.Nex.CodeGen.csproj" />
   <Project Path="HelixToolkit.Nex.Engine.Tests/HelixToolkit.Nex.Engine.Tests.csproj" />

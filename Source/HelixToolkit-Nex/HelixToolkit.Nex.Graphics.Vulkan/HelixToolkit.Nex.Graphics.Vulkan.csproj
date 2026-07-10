@@ -32,6 +32,10 @@
         <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
             <_Parameter1>HelixToolkit.Nex.Interop.DirectX.Tests</_Parameter1>
         </AssemblyAttribute>
+        <!-- Linux Vulkan-to-Vulkan external-memory-fd export path (LinuxExternalMemoryBridge). -->
+        <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
+            <_Parameter1>HelixToolkit.Nex.Avalonia</_Parameter1>
+        </AssemblyAttribute>
     </ItemGroup>
 
     <ItemGroup>
