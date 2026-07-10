@@ -87,7 +87,7 @@ public class MultiRequestPickingIntegrationTests
 
         var engine = CreateEngine(mock);
         using var rc = engine.CreateRenderContext();
-
+        rc.WindowSize = new Maths.Size(64, 64);
         // Warm up the render-graph resources once so the real frame's EnsureResources does not clear
         // the entity-id texture we install below (CreateAllResources runs only on the first
         // EnsureResources call for this resource set).
