@@ -14,6 +14,9 @@ using Microsoft.UI.Xaml.Controls;
 
 namespace HelixToolkit.Nex.WinUI;
 
+#elif HxAvalonia
+namespace HelixToolkit.Nex.Avalonia;
+
 #else
 #error Unknown framework
 #endif

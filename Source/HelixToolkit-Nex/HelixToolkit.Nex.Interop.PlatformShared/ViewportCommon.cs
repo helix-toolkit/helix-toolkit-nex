@@ -18,6 +18,9 @@ using Microsoft.UI.Xaml.Controls;
 
 namespace HelixToolkit.Nex.WinUI;
 
+#elif HxAvalonia
+namespace HelixToolkit.Nex.Avalonia;
+
 #else
 #error Unknown framework
 #endif
@@ -210,6 +213,10 @@ public partial class HelixViewport
         Engine!.Submit(cmdBuf, TextureHandle.Null);
 #elif HxWinUI
         Engine!.Submit(cmdBuf, TextureHandle.Null, _vulkanSyncInfo);
+#elif HxAvalonia
+        // Keyed-mutex sync on Windows; default (SyncType.None) on Linux where the
+        // frame is serialized with Vulkan semaphores instead.
+        Engine!.Submit(cmdBuf, TextureHandle.Null, _frameSyncInfo);
 #else
 #error Unknown framework
 #endif

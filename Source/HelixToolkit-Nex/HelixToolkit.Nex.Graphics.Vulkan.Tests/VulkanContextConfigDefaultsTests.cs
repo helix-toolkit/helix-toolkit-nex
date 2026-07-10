@@ -20,6 +20,18 @@ public class VulkanContextConfigDefaultsTests
     }
 
     /// <summary>
+    /// EnableExternalMemoryFd defaults to false, ensuring the Linux external-memory-fd
+    /// extensions are not loaded unless explicitly opted in.
+    /// Validates: Requirements 6.1, 6.4
+    /// </summary>
+    [TestMethod]
+    public void EnableExternalMemoryFd_DefaultsToFalse()
+    {
+        var config = new VulkanContextConfig();
+        Assert.IsFalse(config.EnableExternalMemoryFd);
+    }
+
+    /// <summary>
     /// RequiredDeviceLuid defaults to null, meaning no LUID filtering
     /// is applied during physical device selection.
     /// Validates: Requirements 3.1, 3.3
