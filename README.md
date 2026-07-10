@@ -55,7 +55,7 @@ Currently in development.
  
 - :white_check_mark: Wpf Framework Interoperation
 - :white_check_mark: WinUI Interoperation
-- :hourglass: Avalonia UI Interoperation (Planned)
+- :white_check_mark: Avalonia UI Interoperation
 
 ## Rendering Samples
 
