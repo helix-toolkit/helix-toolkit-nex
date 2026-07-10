@@ -1,4 +1,5 @@
 using System.Numerics;
+using Demo.Utils;
 using HelixToolkit.Nex;
 using HelixToolkit.Nex.ECS;
 using HelixToolkit.Nex.Engine;
@@ -332,36 +333,17 @@ internal sealed partial class GizmoDemo : IDisposable
         );
 
         string iconDir = Path.Join(Paths.AssetsDir, "Icons");
-        _pointLightIcon = TryLoadIcon(
+        _pointLightIcon = TextureUtils.TryLoadIconFromAssets(
             textureRepo,
-            Path.Join(iconDir, "point-light-96.png"),
+            "point-light-96.png",
             "PointLightIcon"
         );
-        _spotLightIcon = TryLoadIcon(
+        _spotLightIcon = TextureUtils.TryLoadIconFromAssets(
             textureRepo,
-            Path.Join(iconDir, "spotlight-96.png"),
+            "spotlight-96.png",
             "SpotLightIcon"
         );
-        _sunIcon = TryLoadIcon(textureRepo, Path.Join(iconDir, "sun-96.png"), "SunIcon");
-    }
-
-    private TextureRef TryLoadIcon(ITextureRepository repo, string path, string debugName)
-    {
-        if (!File.Exists(path))
-        {
-            _logger.LogWarning("Light icon not found: {Path}", path);
-            return TextureRef.Null;
-        }
-
-        try
-        {
-            return repo.GetOrCreateFromFile(path, debugName: debugName);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to load light icon: {Path}", path);
-            return TextureRef.Null;
-        }
+        _sunIcon = TextureUtils.TryLoadIconFromAssets(textureRepo, "sun-96.png", "SunIcon");
     }
 
     /// <summary>

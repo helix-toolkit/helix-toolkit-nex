@@ -15,5 +15,6 @@
     <ItemGroup>
       <ProjectReference Include="..\..\HelixTookit.Nex\HelixToolkit.Nex.csproj" />
       <ProjectReference Include="..\..\HelixToolkit.Nex.Graphics\HelixToolkit.Nex.Graphics.csproj" />
+      <ProjectReference Include="..\..\HelixToolkit.Nex.Repository\HelixToolkit.Nex.Repository.csproj" />
     </ItemGroup>
 </Project>
