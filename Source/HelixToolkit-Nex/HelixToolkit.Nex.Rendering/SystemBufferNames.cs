@@ -72,6 +72,21 @@ public static class SystemBufferNames
     public const string TextureSmaaWeights = "TexSmaaWeights";
 
     /// <summary>
+    /// Single-channel (R16F) ambient-occlusion texture written by
+    /// <see cref="PostEffects.SsaoPostEffect"/> during its occlusion pass.
+    /// Stores the per-pixel occlusion factor in <c>[0, 1]</c>.  Allocated at full or
+    /// half screen resolution depending on <c>Ssao.HalfResolution</c>.
+    /// </summary>
+    public const string TextureSsaoAO = "TexSsaoAO";
+
+    /// <summary>
+    /// Single-channel (R16F) scratch target used by <see cref="PostEffects.SsaoPostEffect"/>
+    /// as the ping-pong destination for the separable edge-aware blur passes.
+    /// Allocated at the same resolution as <see cref="TextureSsaoAO"/>.
+    /// </summary>
+    public const string TextureSsaoBlur = "TexSsaoBlur";
+
+    /// <summary>
     /// GPU buffer holding <c>BillboardDrawData</c> structs written by the billboard expansion
     /// compute shader and read by the billboard vertex shader.
     /// </summary>
