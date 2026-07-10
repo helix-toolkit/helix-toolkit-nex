@@ -101,7 +101,15 @@ public sealed class RenderGraphResourceSet : IDisposable
     private bool _resourcesCreated;
 
     /// <summary>
-    /// Registers a texture builder.
+    /// Registers (or re-registers) a texture builder.
+    /// <para>
+    /// Registration is idempotent: re-adding an existing name updates its builder in place and
+    /// disposes the previously allocated resource so it will be rebuilt on the next
+    /// <see cref="EnsureResources"/>. This is required because <see cref="RenderGraph"/> re-applies
+    /// all registrations whenever it recompiles (e.g. after <see cref="RenderGraph.Invalidate"/> is
+    /// called to reallocate a graph-managed texture at a new size). Duplicate-name detection for
+    /// genuinely conflicting registrations is enforced by <see cref="RenderGraph.AddTexture"/>.
+    /// </para>
     /// </summary>
     public void AddTexture(
         string name,
@@ -109,12 +117,6 @@ public sealed class RenderGraphResourceSet : IDisposable
         bool dependsOnScreenSize = true
     )
     {
-        if (_textureBuilders.TryGetValue(name, out var existing) && existing != null)
-        {
-            throw new InvalidOperationException(
-                $"A texture with the name '{name}' already exists in the resource set."
-            );
-        }
         _textureBuilders[name] = buildFunc is not null
             ? new BuildTextureFunction(buildFunc, dependsOnScreenSize)
             : null;
@@ -126,7 +128,14 @@ public sealed class RenderGraphResourceSet : IDisposable
     }
 
     /// <summary>
-    /// Registers a buffer builder.
+    /// Registers (or re-registers) a buffer builder.
+    /// <para>
+    /// Registration is idempotent: re-adding an existing name updates its builder in place and
+    /// disposes the previously allocated resource so it will be rebuilt on the next
+    /// <see cref="EnsureResources"/>. See <see cref="AddTexture"/> for the rationale; duplicate-name
+    /// detection for genuinely conflicting registrations is enforced by
+    /// <see cref="RenderGraph.AddBuffer"/>.
+    /// </para>
     /// </summary>
     public void AddBuffer(
         string name,
@@ -134,12 +143,6 @@ public sealed class RenderGraphResourceSet : IDisposable
         bool dependsOnScreenSize = true
     )
     {
-        if (_bufferBuilders.TryGetValue(name, out var existing) && existing != null)
-        {
-            throw new InvalidOperationException(
-                $"A buffer with the name '{name}' already exists in the resource set."
-            );
-        }
         _bufferBuilders[name] = buildFunc is not null
             ? new BuildBufferFunction(buildFunc, dependsOnScreenSize)
             : null;
