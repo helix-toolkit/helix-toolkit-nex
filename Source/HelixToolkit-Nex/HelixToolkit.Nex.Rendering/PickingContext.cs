@@ -15,7 +15,7 @@ internal sealed class PickingContext : IDisposable
     /// already full. Distinguishable from any accepted Request Id (the accepted id counter never
     /// reaches it in practice, and callers compare against this constant).
     /// </summary>
-    public const uint InvalidRequestId = uint.MaxValue;
+    public const uint InvalidRequestId = 0;
 
     /// <summary>
     /// Maps an accepted Request Id to the exact place its pixel was copied: which Frame Slot's
@@ -115,6 +115,12 @@ internal sealed class PickingContext : IDisposable
         }
         var slot = _acceptedThisFrame++;
         ++_requestId;
+        if (_requestId == InvalidRequestId)
+        {
+            // Skip the sentinel value.
+            ++_requestId;
+        }
+
         _pendingCoords[slot] = new PickingParams { Coords = screenPos };
         _slotRequestId[slot] = _requestId;
         return _requestId;

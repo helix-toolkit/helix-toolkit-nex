@@ -312,8 +312,8 @@ public sealed class RenderContext(IServiceProvider services) : Initializable
     public bool PointerValid =>
         Pointer.X >= 0
         && Pointer.Y >= 0
-        && Pointer.X <= WindowSize.Width
-        && Pointer.Y <= WindowSize.Height;
+        && Pointer.X < WindowSize.Width
+        && Pointer.Y < WindowSize.Height;
 
     /// <summary>
     /// Indicates whether the render context is currently using an external rendering pipeline.

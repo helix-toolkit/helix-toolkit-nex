@@ -24,6 +24,18 @@ public partial class Engine
         bool routeGizmoPicks
     )
     {
+        // Reject out-of-bounds picks early; otherwise the request can be accepted but never copied,
+        // leaving a non-deliverable pending request in _pendingPickings.
+        if (
+            coord.X < 0
+            || coord.Y < 0
+            || coord.X >= context.WindowSize.Width
+            || coord.Y >= context.WindowSize.Height
+        )
+        {
+            return PickingContext.InvalidRequestId;
+        }
+
         var requestId = context.SendPicking(coord);
         // Overflow: the per-frame picking capacity is full. SendPicking returns the sentinel and no
         // request slot was assigned, so do not register a pending readback — just propagate the
