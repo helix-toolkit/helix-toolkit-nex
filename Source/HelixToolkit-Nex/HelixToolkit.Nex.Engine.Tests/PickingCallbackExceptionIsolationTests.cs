@@ -50,7 +50,7 @@ public class PickingCallbackExceptionIsolationTests
 
         var engine = CreateEngine(mock);
         using var rc = engine.CreateRenderContext();
-
+        rc.WindowSize = new Maths.Size(32, 32);
         // Warm up the render-graph resources once so the real frame's EnsureResources does not
         // clear the entity-id texture we install below (CreateAllResources runs only on the first
         // EnsureResources call for this resource set). The render graph is empty and the default

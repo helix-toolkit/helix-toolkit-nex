@@ -98,7 +98,7 @@ public class PickingSingleRequestBackwardCompatibilityTests
 
         var engine = CreateEngine(mock);
         using var rc = engine.CreateRenderContext();
-
+        rc.WindowSize = new Maths.Size(48, 48);
         // Warm up render-graph resources once before installing the entity-id texture, so the real
         // frame's EnsureResources does not clear the texture we install (CreateAllResources runs
         // only on the first EnsureResources for this resource set).
@@ -158,7 +158,7 @@ public class PickingSingleRequestBackwardCompatibilityTests
 
         var engine = CreateEngine(mock);
         using var rc = engine.CreateRenderContext();
-
+        rc.WindowSize = new Maths.Size(64, 64);
         // Warm up before installing the entity-id texture (see SingleRequest_DeliversResultToCallbackOnce).
         engine.RenderOffscreen(rc, null!, TextureHandle.Null);
         InstallEntityIdTexture(mock, rc);
