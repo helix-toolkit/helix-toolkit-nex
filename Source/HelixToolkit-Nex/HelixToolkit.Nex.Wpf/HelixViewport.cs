@@ -40,13 +40,6 @@ public partial class HelixViewport : FrameworkElement, IDisposable
     private bool _disposed;
     private bool _sizeChanged = true;
 
-    /// <summary>
-    /// Raised each frame after <see cref="IViewportClient.Update"/> but before rendering.
-    /// This is a <b>read-only notification</b>; use <see cref="ViewportClient"/> to
-    /// provide the camera and scene data.
-    /// </summary>
-    public event EventHandler<ViewportRenderingEventArgs>? BeforeRender;
-
     public HelixViewport()
     {
         _d3dImage = new D3DImage();

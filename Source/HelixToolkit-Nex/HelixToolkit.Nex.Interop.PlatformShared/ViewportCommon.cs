@@ -54,6 +54,13 @@ public partial class HelixViewport
 
     public bool ActiveDrag => _activeDrag != ActiveDragAction.None;
 
+    /// <summary>
+    /// Raised each frame after <see cref="IViewportClient.Update"/> but before rendering.
+    /// This is a <b>read-only notification</b>; use <see cref="ViewportClient"/> to
+    /// provide the camera and scene data.
+    /// </summary>
+    public event EventHandler<ViewportRenderingEventArgs>? BeforeRender;
+
     private void SetCameraController(ICameraController? controller)
     {
         _cameraController = controller;
