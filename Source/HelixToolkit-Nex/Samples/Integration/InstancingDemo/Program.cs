@@ -8,7 +8,7 @@ using Microsoft.Extensions.Logging;
 using SDL3;
 // Alias the demo type: the class lives in the `InstancingDemo` namespace and shares its name, so the
 // bare identifier would collide with the namespace from this global-namespace top-level file.
-using Demo = InstancingDemo.InstancingDemo;
+using InstDemo = InstancingDemo.InstancingDemo;
 
 using var app = new App();
 app.Run();
@@ -26,7 +26,7 @@ internal sealed class App : Application
     private static readonly ILogger _logger = LogManager.Create<App>();
 
     private IContext? _ctx;
-    private Demo? _demo;
+    private InstDemo? _demo;
 
     public App()
         : base(
@@ -56,7 +56,7 @@ internal sealed class App : Application
         var windowSize = MainWindow.Size;
         _ctx.RecreateSwapchain(windowSize.Width, windowSize.Height);
 
-        _demo = new Demo(_ctx);
+        _demo = new InstDemo(_ctx);
         _demo.Initialize(windowSize.Width, windowSize.Height);
     }
 
