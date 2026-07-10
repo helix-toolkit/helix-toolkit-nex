@@ -221,13 +221,13 @@ internal partial class Editor : IDisposable
             "camera-96.png",
             "Camera Icon"
         );
-        var _iconSampler = _engine!.ResourceManager.SamplerRepository.GetOrCreate(
+        var iconSampler = _engine!.ResourceManager.SamplerRepository.GetOrCreate(
             SamplerStateDesc.LinearClamp.DebugName,
             SamplerStateDesc.LinearClamp
         );
         BillboardDrawInfo info = BillboardHelper.CreateImageBillboard(
             icon,
-            _iconSampler,
+            iconSampler,
             width: 48f,
             height: 48f,
             fixedSize: true, // constant on-screen size like an editor gizmo icon

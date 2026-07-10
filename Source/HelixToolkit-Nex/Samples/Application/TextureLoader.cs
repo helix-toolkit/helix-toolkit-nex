@@ -13,7 +13,7 @@ public static class TextureUtils
     {
         if (!File.Exists(path))
         {
-            _logger.LogWarning("Light icon not found: {Path}", path);
+            _logger.LogWarning("Icon not found: {Path}", path);
             return TextureRef.Null;
         }
 
@@ -23,7 +23,7 @@ public static class TextureUtils
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to load light icon: {Path}", path);
+            _logger.LogError(ex, "Failed to load icon: {Path}", path);
             return TextureRef.Null;
         }
     }

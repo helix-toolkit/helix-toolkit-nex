@@ -66,7 +66,9 @@ public partial class HelixViewport : FrameworkElement, IDisposable
         {
             Engine!.WaitForIdle();
             _d3dImage.Lock();
-            _d3dImage.AddDirtyRect(new Int32Rect(0, 0, _d3dImage.PixelWidth, _d3dImage.PixelHeight));
+            _d3dImage.AddDirtyRect(
+                new Int32Rect(0, 0, _d3dImage.PixelWidth, _d3dImage.PixelHeight)
+            );
             _d3dImage.Unlock();
             drawingContext.DrawImage(
                 _d3dImage,
@@ -166,9 +168,9 @@ public partial class HelixViewport : FrameworkElement, IDisposable
             width,
             height
         );
-        _d3dImage?.Lock();
-        _d3dImage?.SetBackBuffer(D3DResourceType.IDirect3DSurface9, (nint)_d3d9Surface);
-        _d3dImage?.Unlock();
+        _d3dImage.Lock();
+        _d3dImage.SetBackBuffer(D3DResourceType.IDirect3DSurface9, (nint)_d3d9Surface);
+        _d3dImage.Unlock();
         // 6. Subscribe to the WPF render loop
         CompositionTarget.Rendering += OnCompositionRendering;
     }
@@ -178,7 +180,7 @@ public partial class HelixViewport : FrameworkElement, IDisposable
         if (_disposed || Engine is null || _renderContext is null || _renderArgs is null)
             return;
 
-        if (_d3dImage is null || !_d3dImage.IsFrontBufferAvailable)
+        if (!_d3dImage.IsFrontBufferAvailable)
             return;
         if (ActualWidth == 0 || ActualHeight == 0)
             return;
@@ -219,9 +221,9 @@ public partial class HelixViewport : FrameworkElement, IDisposable
     {
         _logger.LogInformation("Releasing viewport resources");
         CompositionTarget.Rendering -= OnCompositionRendering;
-        _d3dImage?.Lock();
-        _d3dImage?.SetBackBuffer(D3DResourceType.IDirect3DSurface9, 0);
-        _d3dImage?.Unlock();
+        _d3dImage.Lock();
+        _d3dImage.SetBackBuffer(D3DResourceType.IDirect3DSurface9, 0);
+        _d3dImage.Unlock();
         if (Engine is not null)
             Engine.Context.Wait(default);
         Disposer.DisposeAndRemove(ref _importedTexture);
@@ -244,13 +246,14 @@ public partial class HelixViewport : FrameworkElement, IDisposable
 
     #region Mouse event forwarding to camera controller
 
-    private static ViewportMouseButton ToViewportButton(System.Windows.Input.MouseButton button) => button switch
-    {
-        System.Windows.Input.MouseButton.Left => ViewportMouseButton.Left,
-        System.Windows.Input.MouseButton.Middle => ViewportMouseButton.Middle,
-        System.Windows.Input.MouseButton.Right => ViewportMouseButton.Right,
-        _ => ViewportMouseButton.None,
-    };
+    private static ViewportMouseButton ToViewportButton(System.Windows.Input.MouseButton button) =>
+        button switch
+        {
+            System.Windows.Input.MouseButton.Left => ViewportMouseButton.Left,
+            System.Windows.Input.MouseButton.Middle => ViewportMouseButton.Middle,
+            System.Windows.Input.MouseButton.Right => ViewportMouseButton.Right,
+            _ => ViewportMouseButton.None,
+        };
 
     private void OnMouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {

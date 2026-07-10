@@ -58,6 +58,7 @@ public partial class HelixViewport
     {
         _cameraController = controller;
     }
+
     /// <summary>
     /// Resolves which camera action a pressed button should trigger based on the
     /// current <see cref="RotateMouseButton"/> and <see cref="PanMouseButton"/> bindings.
@@ -170,10 +171,10 @@ public partial class HelixViewport
     private bool Render(float width, float height, TextureHandle target)
     {
         // Pull per-frame data from the viewport client
-        if (!IsContextValid || _renderArgs is null)
+        if (!IsContextValid || _renderArgs is null || _viewportClient is null)
             return false;
 
-        var dataProvider = _viewportClient!.DataProvider;
+        var dataProvider = _viewportClient.DataProvider;
 
         if (dataProvider is null)
             return false;
@@ -188,7 +189,7 @@ public partial class HelixViewport
         _renderContext!.WindowSize = new Size((int)ActualWidth, (int)ActualHeight);
         _cameraController?.Update(delta);
 
-        var camera = _viewportClient!.Update(_renderContext, delta);
+        var camera = _viewportClient.Update(_renderContext, delta);
         // Notify optional subscribers (read-only)
         BeforeRender?.Invoke(this, _renderArgs);
 

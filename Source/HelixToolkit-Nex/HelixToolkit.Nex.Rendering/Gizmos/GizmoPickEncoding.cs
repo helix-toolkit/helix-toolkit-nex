@@ -1,5 +1,3 @@
-using HelixToolkit.Nex.Rendering.RenderNodes;
-
 namespace HelixToolkit.Nex.Rendering.Gizmos;
 
 /// <summary>
@@ -7,16 +5,6 @@ namespace HelixToolkit.Nex.Rendering.Gizmos;
 /// the shared <c>TextureEntityId</c> (<c>RG_F32</c>) picking target.
 /// </summary>
 /// <remarks>
-/// <para>
-/// This mirrors the design's <c>Utils.PackGizmoInfo</c> / <c>GizmoEncodingConstants</c>. Those live
-/// in <c>HelixToolkit.Nex.Engine</c>, which references <c>HelixToolkit.Nex.Rendering</c> (not the
-/// reverse — see the project references and the <c>InternalsVisibleTo</c> in
-/// <c>HelixToolkit.Nex.Rendering.csproj</c>). The <see cref="GizmoRenderNode"/> that produces the
-/// pick words lives in this assembly, so it cannot reference the Engine packer without creating a
-/// dependency cycle. This packer therefore reproduces the exact same bit layout using only
-/// <c>HelixToolkit.Nex.Rendering</c>-visible types, exactly as <c>GizmoManager.TryResolvePick</c>
-/// mirrors the Engine decode.
-/// </para>
 /// <para>
 /// The layout must stay byte-for-byte in lock-step with <c>GizmoEncodingConstants</c> and
 /// <c>Utils.UnpackGizmoInfo</c> in <c>HelixToolkit.Nex.Engine</c>, which decodes these words:
