@@ -102,6 +102,7 @@ public partial class Engine
             || !_gizmoService.HasGizmoInstance
             || !context.PointerValid
             || _gizmoService.IsDragging
+            || context.FrameIndex == FrameIndex
         )
         {
             return false;
