@@ -2,7 +2,6 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Threading;
-using HelixToolkit.Nex;
 using HelixToolkit.Nex.Graphics;
 using Microsoft.Extensions.Logging;
 
@@ -45,6 +44,13 @@ namespace HelixToolkit.Nex.Avalonia;
 public partial class HelixViewport
 {
     /// <summary>
+    /// Number of rotating shared-output buffers. Two is sufficient for the pipelined loop here, which
+    /// keeps at most one present in flight (it awaits the previous present before issuing the next):
+    /// one buffer is being written by the engine while the other is being read by the compositor.
+    /// </summary>
+    private const int OutputBufferCount = 2;
+
+    /// <summary>
     /// Composition presenter that hosts the shared engine output through a
     /// <c>CompositionDrawingSurface</c>; created once and added as this control's visual child.
     /// </summary>
@@ -58,13 +64,13 @@ public partial class HelixViewport
     private IEngineOutputBridge? _bridge;
 
     /// <summary>
-    /// The bridge's import description and surface-update sync, cached when the bridge is created or
-    /// resized and reused every frame. They are stable between resizes, so rebuilding them each tick
-    /// (as was done originally) only added per-frame allocations; the presenter additionally caches
-    /// the imported GPU image keyed off the stable description.
+    /// The in-flight present task for the previously rendered frame. The pipelined loop issues a
+    /// frame's present without awaiting it, then awaits it on the next tick before issuing the next
+    /// present. This keeps surface updates serialized while overlapping the engine render of the next
+    /// frame with the compositor read of the current one (the multi-buffered bridge gives each frame a
+    /// separate output texture so they do not contend).
     /// </summary>
-    private SharedImageDescription? _importDescription;
-    private ISurfaceUpdateSync? _surfaceSync;
+    private Task? _pendingPresent;
 
     /// <summary>
     /// Set when the control size changes; consumed by <see cref="EnsureSize"/> on the next nonzero-
@@ -84,6 +90,20 @@ public partial class HelixViewport
 
     /// <summary>Reentrancy guard so a new tick does not start while an async present is in flight.</summary>
     private bool _rendering;
+
+    // --- Frame-timing instrumentation (aggregated over a ~1 second window) ---
+    private long _statsWindowStart;
+    private int _statsFrames;
+    private double _statsRenderMs;
+    private double _statsPresentMs;
+
+    /// <summary>
+    /// Raised about once per second on the UI thread with aggregated frame statistics (frames per
+    /// second and the average per-frame render and present times). Useful for diagnosing the
+    /// engine-render vs compositor-present split; the same numbers are also logged at Information
+    /// level.
+    /// </summary>
+    public event EventHandler<FrameStatistics>? FrameStatisticsUpdated;
 
     /// <summary>
     /// Creates the control, composes the composition presenter as its visual child, and subscribes to
@@ -215,6 +235,13 @@ public partial class HelixViewport
     private async void OnAnimationFrame(TimeSpan _)
     {
         _frameRequested = false;
+
+        // Request the next animation frame immediately, rather than after awaiting the present. This
+        // keeps the compositor's frame cadence independent of how long the present takes, so the loop
+        // does not lose a vsync waiting for the previous frame's compositor read to complete. The
+        // _rendering guard in TickAsync still prevents overlapping renders.
+        RequestNextFrame();
+
         try
         {
             await TickAsync();
@@ -222,10 +249,6 @@ public partial class HelixViewport
         catch (Exception ex)
         {
             _logger.LogError(ex, "HelixViewport render tick failed.");
-        }
-        finally
-        {
-            RequestNextFrame();
         }
     }
 
@@ -246,6 +269,21 @@ public partial class HelixViewport
         _rendering = true;
         try
         {
+            // Before a resize recreates (and disposes) the output buffers, drain any in-flight present
+            // so the compositor is not still reading a texture that is about to be destroyed.
+            if (_sizeChanged && _pendingPresent is not null)
+            {
+                try
+                {
+                    await _pendingPresent;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogDebug(ex, "Pending present faulted while draining before resize.");
+                }
+                _pendingPresent = null;
+            }
+
             EnsureSize();
 
             if (_bridge is null || _presenter is null)
@@ -262,27 +300,93 @@ public partial class HelixViewport
                 return;
             }
 
-            if (_importDescription is null || _surfaceSync is null)
-            {
-                return;
-            }
-
-            // Hand the bridge's per-frame sync to the shared submit path before rendering.
+            // Hand the current write buffer's sync to the shared submit path before rendering.
             _frameSyncInfo = _bridge.EngineSyncInfo;
 
-            if (!Render(width, height, _bridge.EngineTarget))
+            // Measure the engine render (CPU record + submit) separately from the present wait so the
+            // two costs can be compared when diagnosing the frame rate.
+            long renderStart = System.Diagnostics.Stopwatch.GetTimestamp();
+            bool rendered = Render(width, height, _bridge.EngineTarget);
+            double renderMs = System
+                .Diagnostics.Stopwatch.GetElapsedTime(renderStart)
+                .TotalMilliseconds;
+
+            if (!rendered)
             {
                 return;
             }
 
-            // Reuse the cached description/sync (rebuilt only on resize); the presenter reuses the
-            // imported GPU image across frames and only re-imports when the description changes.
-            await _presenter.PresentAsync(_importDescription, _surfaceSync);
+            // Capture this frame's present inputs from the CURRENT buffer, then rotate the write target
+            // so the next tick renders into a different buffer while this frame is still being read by
+            // the compositor.
+            SharedImageDescription description = _bridge.CreateImportDescription();
+            ISurfaceUpdateSync surfaceSync = _bridge.CreateSurfaceSync();
+            _bridge.AdvanceFrame();
+
+            // Serialize surface updates: wait for the previous frame's present (which has been running
+            // on the compositor thread since the last tick, so this wait is short once pipelined), then
+            // issue this frame's present WITHOUT awaiting it here. Not blocking on the current present
+            // is what lets the engine render the next frame while the compositor reads this one.
+            long presentWaitStart = System.Diagnostics.Stopwatch.GetTimestamp();
+            if (_pendingPresent is not null)
+            {
+                await _pendingPresent;
+            }
+            double presentMs = System
+                .Diagnostics.Stopwatch.GetElapsedTime(presentWaitStart)
+                .TotalMilliseconds;
+
+            _pendingPresent = _presenter.PresentAsync(description, surfaceSync);
+
+            AccumulateFrameStatistics(renderMs, presentMs);
         }
         finally
         {
             _rendering = false;
         }
+    }
+
+    /// <summary>
+    /// Aggregates per-frame render/present timings and, about once per second, logs them and raises
+    /// <see cref="FrameStatisticsUpdated"/>. This runs on the UI thread (the tick thread), so the
+    /// event can update UI directly.
+    /// </summary>
+    private void AccumulateFrameStatistics(double renderMs, double presentMs)
+    {
+        if (_statsWindowStart == 0)
+        {
+            _statsWindowStart = System.Diagnostics.Stopwatch.GetTimestamp();
+        }
+
+        _statsRenderMs += renderMs;
+        _statsPresentMs += presentMs;
+        _statsFrames++;
+
+        TimeSpan elapsed = System.Diagnostics.Stopwatch.GetElapsedTime(_statsWindowStart);
+        if (elapsed.TotalSeconds < 1.0 || _statsFrames == 0)
+        {
+            return;
+        }
+
+        var stats = new FrameStatistics(
+            _statsFrames / elapsed.TotalSeconds,
+            _statsRenderMs / _statsFrames,
+            _statsPresentMs / _statsFrames
+        );
+
+        _logger.LogInformation(
+            "HelixViewport perf: {Fps:F1} FPS | render {Render:F2} ms | present {Present:F2} ms",
+            stats.Fps,
+            stats.AverageRenderMs,
+            stats.AveragePresentMs
+        );
+
+        FrameStatisticsUpdated?.Invoke(this, stats);
+
+        _statsFrames = 0;
+        _statsRenderMs = 0;
+        _statsPresentMs = 0;
+        _statsWindowStart = System.Diagnostics.Stopwatch.GetTimestamp();
     }
 
     /// <summary>
@@ -326,8 +430,6 @@ public partial class HelixViewport
         if (_bridge is null)
         {
             _bridge = CreateBridge(_engine.Context, width, height);
-            _importDescription = _bridge.CreateImportDescription();
-            _surfaceSync = _bridge.CreateSurfaceSync();
             UpdateViewportSize(width, height);
             _sizeChanged = false;
             return;
@@ -343,10 +445,8 @@ public partial class HelixViewport
         // ReleaseResources()+CreateResources() (and no-ops when the size is unchanged).
         _engine.WaitForIdle();
         _bridge.Resize(width, height);
-        // The bridge recreated its shared output at the new size, so refresh the cached description
-        // and sync; the presenter re-imports because the description's handle/size changed.
-        _importDescription = _bridge.CreateImportDescription();
-        _surfaceSync = _bridge.CreateSurfaceSync();
+        // The bridge recreated its shared output at the new size; the presenter re-imports lazily
+        // because the descriptions' handles/size changed.
         // Requirement 8.3: propagate the new size to the camera controller.
         UpdateViewportSize(width, height);
         _sizeChanged = false;
@@ -361,6 +461,20 @@ public partial class HelixViewport
     /// <param name="height">Nonzero output height in pixels.</param>
     /// <returns>The platform-appropriate bridge.</returns>
     private static IEngineOutputBridge CreateBridge(IContext context, uint width, uint height)
+    {
+        // Double-buffer the shared output so the engine can render the next frame into a free buffer
+        // while the compositor still reads the presented one, decoupling the two and avoiding the
+        // single-texture keyed-mutex/semaphore stall that otherwise halves the frame rate.
+        var buffers = new IEngineOutputBridge[OutputBufferCount];
+        for (int i = 0; i < buffers.Length; i++)
+        {
+            buffers[i] = CreateSingleBridge(context, width, height);
+        }
+        return new BufferedEngineOutputBridge(buffers);
+    }
+
+    /// <summary>Creates one single-buffer platform bridge (Windows shared texture or Linux external memory).</summary>
+    private static IEngineOutputBridge CreateSingleBridge(IContext context, uint width, uint height)
     {
 #if WINDOWS
         if (OperatingSystem.IsWindows())
@@ -383,8 +497,13 @@ public partial class HelixViewport
     partial void OnReleaseResources()
     {
         _frameSyncInfo = default;
-        _importDescription = null;
-        _surfaceSync = null;
+
+        // Drop the in-flight present. It cannot be awaited synchronously here, so observe it to avoid
+        // an unobserved-task exception if it faults once the imported images are disposed below.
+        Task? pending = _pendingPresent;
+        _pendingPresent = null;
+        pending?.ContinueWith(static t => _ = t.Exception, TaskScheduler.Default);
+
         Disposer.DisposeAndRemove(ref _bridge);
         _presenter?.ReleaseImportedImage();
     }

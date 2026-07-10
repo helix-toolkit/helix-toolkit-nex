@@ -18,12 +18,13 @@
         <Configurations>Debug;Release;LinuxDebug;LinuxRelease</Configurations>
         <ApplicationManifest>app.manifest</ApplicationManifest>
         <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+        <EnableAvaloniaXamlCompilation>true</EnableAvaloniaXamlCompilation>
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Avalonia" Version="11.3.18" />
-        <PackageReference Include="Avalonia.Desktop" Version="11.3.18" />
-        <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.18" />
+        <PackageReference Include="Avalonia" Version="12.*" />
+        <PackageReference Include="Avalonia.Desktop" Version="12.*" />
+        <PackageReference Include="Avalonia.Themes.Fluent" Version="12.*" />
     </ItemGroup>
 
     <ItemGroup>

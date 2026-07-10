@@ -47,4 +47,13 @@ public interface IEngineOutputBridge : IDisposable
     /// <param name="width">The new width in pixels.</param>
     /// <param name="height">The new height in pixels.</param>
     void Resize(uint width, uint height);
+
+    /// <summary>
+    /// Advances to the next output buffer after a frame has been rendered and handed to the presenter.
+    /// A multi-buffered bridge rotates its write target so the engine can render the next frame into a
+    /// free buffer while the compositor still reads the previously presented one, decoupling the
+    /// engine from the compositor read and removing the single-texture keyed-mutex/semaphore stall.
+    /// Single-buffered implementations treat this as a no-op.
+    /// </summary>
+    void AdvanceFrame();
 }
