@@ -188,6 +188,7 @@ camera.FocusOn(new Vector3(0, 0, 0), 10f);
 - `BeginFrame()`: Prepares the engine for a new frame (frame pacing and picking readback). Must be called once per frame before rendering; `Submit` throws if it was not called.
 - `Submit(ICommandBuffer commandBuffer, in TextureHandle present)`: Submits a command buffer for execution on the GPU.
 - `Submit(ICommandBuffer commandBuffer, in TextureHandle present, KeyedMutexSyncInfo syncInfo)`: Submits a command buffer with synchronization information.
+- `CreatePickingRequest(RenderContext context, Vector2 coord, Action<PickingResponse> responseCallback)`: Creates an asynchronous picking request.
 
 ### New Overloads for `RenderOffscreen`
 
@@ -236,4 +237,8 @@ camera.FocusOn(new Vector3(0, 0, 0), 10f);
 
 - Introduced `PickingRegistry` to manage picking handlers for different geometry types, allowing for extensible and customizable picking logic.
 - Default handlers for mesh, point, line, and billboard geometries are registered by default.
+
+### New Event in `Engine`
+
+- `OnViewportHovering`: An event that is triggered when the viewport is hovered, providing a `PickingResponse`.
 ```
