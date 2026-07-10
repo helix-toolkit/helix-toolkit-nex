@@ -1,14 +1,17 @@
 using System.Diagnostics;
 using System.Numerics;
+using Demo.Utils;
 using HelixToolkit.Nex;
 using HelixToolkit.Nex.ECS;
 using HelixToolkit.Nex.Engine;
 using HelixToolkit.Nex.Engine.CameraControllers;
 using HelixToolkit.Nex.Engine.Cameras;
+using HelixToolkit.Nex.Engine.Scene;
 using HelixToolkit.Nex.Graphics;
 using HelixToolkit.Nex.ImGui;
 using HelixToolkit.Nex.Maths;
 using HelixToolkit.Nex.Rendering;
+using HelixToolkit.Nex.Rendering.Components;
 using HelixToolkit.Nex.Rendering.ComputeNodes;
 using HelixToolkit.Nex.Rendering.PostEffects;
 using HelixToolkit.Nex.Rendering.RenderNodes;
@@ -42,6 +45,7 @@ internal partial class Editor : IDisposable
     private WorldDataProvider? _worldDataProvider;
     private ImGuiRenderer? _imGuiRenderer;
     private Node? _root;
+    private BillboardNode? _cameraBillboard;
     private IScene _scene = new MinecraftScene();
 
     private Camera _camera = new PerspectiveCamera();
@@ -196,6 +200,10 @@ internal partial class Editor : IDisposable
         // Build the 3D scene
         _root = _scene.Build(_context, _engine.ResourceManager, _worldDataProvider);
 
+        // Build camera icon
+        _cameraBillboard = CreateCameraBillboard();
+        _root.AddChild(_cameraBillboard);
+
         // --- ImGui setup ---
         _imGuiRenderer = new ImGuiRenderer(_context, new ImGuiConfig());
         _imGuiRenderer.Initialize(_context.GetSwapchainFormat());
@@ -204,6 +212,29 @@ internal partial class Editor : IDisposable
         _imGuiPass.Colors[0].ClearColor = new Color4(0.12f, 0.12f, 0.12f, 1.0f);
         _imGuiPass.Colors[0].LoadOp = LoadOp.Clear;
         _imGuiPass.Colors[0].StoreOp = StoreOp.Store;
+    }
+
+    private BillboardNode CreateCameraBillboard()
+    {
+        var icon = TextureUtils.TryLoadIconFromAssets(
+            _engine!.ResourceManager.TextureRepository,
+            "camera-96.png",
+            "Camera Icon"
+        );
+        var _iconSampler = _engine!.ResourceManager.SamplerRepository.GetOrCreate(
+            SamplerStateDesc.LinearClamp.DebugName,
+            SamplerStateDesc.LinearClamp
+        );
+        BillboardDrawInfo info = BillboardHelper.CreateImageBillboard(
+            icon,
+            _iconSampler,
+            width: 48f,
+            height: 48f,
+            fixedSize: true, // constant on-screen size like an editor gizmo icon
+            anchor: BillboardAnchor.Center
+        );
+
+        return new BillboardNode(_worldDataProvider!.World, "CameraIcon", ref info);
     }
 
     public void Render(int width, int height)
@@ -235,6 +266,8 @@ internal partial class Editor : IDisposable
         _activeController?.Update(delta);
         _cullCameraController?.Update(delta);
 
+        _cameraBillboard!.Transform.Translation = _camera.Position;
+        _cameraBillboard!.NotifyTransformChanged();
         // --- Update render context for the 3D viewport ---
         // Use the ImGui viewport size (from the previous frame) for render graph resource
         // allocation and the camera projection. This decouples the 3D rendering resolution
@@ -259,7 +292,6 @@ internal partial class Editor : IDisposable
             _worldDataProvider!,
             ViewportTextureName
         );
-
 
         _cullNode!.Enabled = false; // Disable culling for the frustum visualizer pass
         _cullCameraFrustumVisual.Enabled = true; // Enable the frustum visualizer for the culling viewport pass
