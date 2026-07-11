@@ -42,6 +42,7 @@
     <ItemGroup>
         <ProjectReference Include="..\HelixToolkit.Nex.Engine\HelixToolkit.Nex.Engine.csproj" />
         <ProjectReference Include="..\HelixToolkit.Nex.Graphics.Vulkan\HelixToolkit.Nex.Graphics.Vulkan.csproj" />
+        <ProjectReference Include="..\HelixToolkit.Nex.Interop\HelixToolkit.Nex.Interop.csproj" />
     </ItemGroup>
 
     <!-- Windows path only: D3D11 shared NT-handle interop -->

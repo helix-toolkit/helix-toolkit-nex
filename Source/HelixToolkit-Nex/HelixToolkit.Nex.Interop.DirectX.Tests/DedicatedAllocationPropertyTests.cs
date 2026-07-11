@@ -1,6 +1,6 @@
 using FsCheck;
 using FsCheck.Fluent;
-using HelixToolkit.Nex.Interop.DirectX;
+using HelixToolkit.Nex.Interop;
 using Vortice.Vulkan;
 
 namespace HelixToolkit.Nex.Tests.Interop;

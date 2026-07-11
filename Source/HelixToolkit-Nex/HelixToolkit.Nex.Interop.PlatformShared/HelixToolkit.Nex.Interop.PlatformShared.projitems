@@ -10,9 +10,6 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="$(MSBuildThisFileDirectory)GlobalUsings.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)ViewportMouseButton.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)IViewportClient.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)ViewportRenderingEventArgs.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)ViewportCommon.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)ViewportProperties.cs" />
   </ItemGroup>

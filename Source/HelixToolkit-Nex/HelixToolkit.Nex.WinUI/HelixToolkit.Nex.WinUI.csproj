@@ -47,4 +47,7 @@
             <PackagePath>\</PackagePath>
         </None>
     </ItemGroup>
+    <ItemGroup>
+      <ProjectReference Include="..\HelixToolkit.Nex.Interop\HelixToolkit.Nex.Interop.csproj" />
+    </ItemGroup>
 </Project>

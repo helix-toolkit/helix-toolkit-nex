@@ -1,7 +1,7 @@
 using FsCheck;
 using FsCheck.Fluent;
 using HelixToolkit.Nex.Graphics.Vulkan;
-using HelixToolkit.Nex.Interop.DirectX;
+using HelixToolkit.Nex.Interop;
 using Vortice.Vulkan;
 using TextureHandle = HelixToolkit.Nex.Handle<HelixToolkit.Nex.Graphics.Texture>;
 using VK = Vortice.Vulkan.Vulkan;

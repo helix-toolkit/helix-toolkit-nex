@@ -32,11 +32,7 @@
     <ItemGroup Condition="!$([MSBuild]::IsOSPlatform('Linux'))">
         <PackageReference Include="Vortice.Direct3D9" Version="3.6.2" />
     </ItemGroup>
-    <Import
-        Condition="!$([MSBuild]::IsOSPlatform('Linux'))"
-        Project="..\HelixToolkit.Nex.Interop.PlatformShared\HelixToolkit.Nex.Interop.PlatformShared.projitems"
-        Label="Shared"
-    />
+    <Import Condition="!$([MSBuild]::IsOSPlatform('Linux'))" Project="..\HelixToolkit.Nex.Interop.PlatformShared\HelixToolkit.Nex.Interop.PlatformShared.projitems" Label="Shared" />
     <ItemGroup>
         <None Update="README.md">
             <Pack>True</Pack>
@@ -46,5 +42,8 @@
             <Pack>True</Pack>
             <PackagePath>\</PackagePath>
         </None>
+    </ItemGroup>
+    <ItemGroup>
+      <ProjectReference Include="..\HelixToolkit.Nex.Interop\HelixToolkit.Nex.Interop.csproj" />
     </ItemGroup>
 </Project>
