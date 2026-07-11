@@ -1,5 +1,6 @@
 #if WINDOWS
 using HelixToolkit.Nex.Graphics;
+using HelixToolkit.Nex.Interop;
 using HelixToolkit.Nex.Interop.DirectX;
 using Microsoft.Extensions.Logging;
 using Vortice.Vulkan;

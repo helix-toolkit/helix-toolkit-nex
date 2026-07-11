@@ -3,7 +3,7 @@ using Vortice.Vulkan;
 using TextureHandle = HelixToolkit.Nex.Handle<HelixToolkit.Nex.Graphics.Texture>;
 using VK = Vortice.Vulkan.Vulkan;
 
-namespace HelixToolkit.Nex.Interop.DirectX;
+namespace HelixToolkit.Nex.Interop;
 
 /// <summary>
 /// Result of importing a shared DirectX texture into Vulkan.

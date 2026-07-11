@@ -27,7 +27,7 @@
             <_Parameter1>HelixToolkit.Nex.Graphics.Vulkan.Tests</_Parameter1>
         </AssemblyAttribute>
         <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
-            <_Parameter1>HelixToolkit.Nex.Interop.DirectX</_Parameter1>
+            <_Parameter1>HelixToolkit.Nex.Interop</_Parameter1>
         </AssemblyAttribute>
         <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
             <_Parameter1>HelixToolkit.Nex.Interop.DirectX.Tests</_Parameter1>

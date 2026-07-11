@@ -101,6 +101,7 @@ Currently in development.
 | HelixToolkit.Nex.Graphics.Mock          | [![GitHub](https://img.shields.io/badge/GitHub-package-blue)](https://github.com/helix-toolkit/helix-toolkit-nex/pkgs/nuget/HelixToolkit.Nex.Graphics.Mock)          |
 | HelixToolkit.Nex.Graphics.Vulkan        | [![GitHub](https://img.shields.io/badge/GitHub-package-blue)](https://github.com/helix-toolkit/helix-toolkit-nex/pkgs/nuget/HelixToolkit.Nex.Graphics.Vulkan)        |
 | HelixToolkit.Nex.ImGui                  | [![GitHub](https://img.shields.io/badge/GitHub-package-blue)](https://github.com/helix-toolkit/helix-toolkit-nex/pkgs/nuget/HelixToolkit.Nex.ImGui)                  |
+| HelixToolkit.Nex.Interop                | [![GitHub](https://img.shields.io/badge/GitHub-package-blue)](https://github.com/helix-toolkit/helix-toolkit-nex/pkgs/nuget/HelixToolkit.Nex.Interop)                |
 | HelixToolkit.Nex.Interop.DirectX        | [![GitHub](https://img.shields.io/badge/GitHub-package-blue)](https://github.com/helix-toolkit/helix-toolkit-nex/pkgs/nuget/HelixToolkit.Nex.Interop.DirectX)        |
 | HelixToolkit.Nex.Interop.PlatformShared | [![GitHub](https://img.shields.io/badge/GitHub-package-blue)](https://github.com/helix-toolkit/helix-toolkit-nex/pkgs/nuget/HelixToolkit.Nex.Interop.PlatformShared) |
 | HelixToolkit.Nex.Material               | [![GitHub](https://img.shields.io/badge/GitHub-package-blue)](https://github.com/helix-toolkit/helix-toolkit-nex/pkgs/nuget/HelixToolkit.Nex.Material)               |
