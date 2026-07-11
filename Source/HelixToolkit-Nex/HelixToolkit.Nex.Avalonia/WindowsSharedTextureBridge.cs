@@ -1,4 +1,3 @@
-#if WINDOWS
 using HelixToolkit.Nex.Graphics;
 using HelixToolkit.Nex.Interop;
 using HelixToolkit.Nex.Interop.DirectX;
@@ -18,10 +17,9 @@ namespace HelixToolkit.Nex.Avalonia;
 /// keyed-mutex synchronization.
 /// </summary>
 /// <remarks>
-/// This type is compiled only for the Windows target framework (<c>net8.0-windows</c>), which is the
-/// only configuration where the Windows-only <c>HelixToolkit.Nex.Interop.DirectX</c> project is
-/// referenced. Callers must additionally guard construction behind
-/// <see cref="OperatingSystem.IsWindows"/>.
+/// This type is compiled into the single cross-platform assembly but only functions on Windows: its
+/// D3D11 interop resolves at runtime on Windows alone, so callers must guard construction behind
+/// <see cref="OperatingSystem.IsWindows"/> (see <c>HelixViewport.Render.cs</c>).
 /// <para>
 /// Task 7.1 owns the D3D11 texture creation, the Vulkan import, <see cref="EngineTarget"/>, and
 /// <see cref="Resize"/>. The keyed-mutex synchronization wiring together with
@@ -236,4 +234,3 @@ internal sealed class WindowsSharedTextureBridge : IEngineOutputBridge
         GC.SuppressFinalize(this);
     }
 }
-#endif

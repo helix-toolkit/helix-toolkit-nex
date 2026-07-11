@@ -1,13 +1,12 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-    <!-- Windows: -windows TFM so the Windows_Path can reference the Windows-only DirectX interop project. -->
-    <PropertyGroup Condition="!$([MSBuild]::IsOSPlatform('Linux'))">
-        <TargetFramework>net8.0-windows</TargetFramework>
-    </PropertyGroup>
-    <!-- Linux: plain net8.0 so it builds without any DirectX dependency. -->
-    <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('Linux'))">
-        <TargetFramework>net8.0</TargetFramework>
-    </PropertyGroup>
+    <!--
+        Single cross-platform assembly. Both the Windows (D3D11 shared-texture) and Linux
+        (Vulkan external-memory) bridges are compiled in; the concrete bridge is selected at
+        runtime via OperatingSystem.IsWindows() (see HelixViewport.Render.cs). This lets a single
+        net8.0 DLL ship in one NuGet package for both platforms.
+    -->
     <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
@@ -45,8 +44,8 @@
         <ProjectReference Include="..\HelixToolkit.Nex.Interop\HelixToolkit.Nex.Interop.csproj" />
     </ItemGroup>
 
-    <!-- Windows path only: D3D11 shared NT-handle interop -->
-    <ItemGroup Condition="!$([MSBuild]::IsOSPlatform('Linux'))">
+    <!-- D3D11 shared NT-handle interop (used by the Windows runtime path only, but always referenced). -->
+    <ItemGroup>
         <ProjectReference Include="..\HelixToolkit.Nex.Interop.DirectX\HelixToolkit.Nex.Interop.DirectX.csproj" />
     </ItemGroup>
 

@@ -2,7 +2,8 @@
 #
 # Build the HelixToolkit.Nex solution on Linux.
 # Uses the repo's Linux-only configurations (LinuxDebug / LinuxRelease) so the
-# Windows-only projects (WPF, WinUI, DirectX interop) are skipped automatically.
+# Windows-only host projects (WPF, WinUI) are skipped automatically. The DirectX
+# interop assembly is cross-platform (managed Vortice bindings) and still builds.
 #
 # Usage:
 #   Scripts/build-linux.sh                 # LinuxDebug build

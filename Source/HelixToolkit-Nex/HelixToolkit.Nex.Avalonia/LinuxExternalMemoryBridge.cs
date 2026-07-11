@@ -16,10 +16,9 @@ namespace HelixToolkit.Nex.Avalonia;
 /// </summary>
 /// <remarks>
 /// <para>
-/// The bridge is compiled unconditionally (it is not guarded by a Windows/Linux preprocessor symbol)
-/// so it can be compile-verified on both the <c>net8.0-windows</c> and <c>net8.0</c> target
-/// frameworks of the single-conditional-TFM Avalonia project. It has no DirectX dependency and only
-/// uses Vulkan symbols (available on both TFMs through <c>Vortice.Vulkan</c>). The external-memory-fd
+/// The bridge is compiled into the single cross-platform <c>net8.0</c> assembly alongside the Windows
+/// bridge; the concrete implementation is chosen at runtime via <see cref="OperatingSystem.IsWindows"/>.
+/// It has no DirectX dependency and only uses Vulkan symbols (through <c>Vortice.Vulkan</c>). The external-memory-fd
 /// device functions it calls (for example <c>vkGetMemoryFdKHR</c>) exist only at runtime on Linux
 /// with <see cref="VulkanContextConfig.EnableExternalMemoryFd"/> enabled (task 8.1); callers must
 /// guard construction behind <see cref="OperatingSystem.IsLinux"/>.

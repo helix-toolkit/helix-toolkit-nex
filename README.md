@@ -78,13 +78,17 @@ Currently in development.
 - Render content with Vulkan Backend in Wpf and WinUI applications using D3D11 interoperation. (Requires Vulkan Extension: `VK_KHR_external_memory_win32`. Only tested on Discrete Graphics Card.)
 
     - [WPF](Source/HelixToolkit-Nex/Samples/Interop/Wpf)
-    <img src="Source/HelixToolkit-Nex/Samples/Interop/Wpf/Screenshots/Sample.jpg" width=400>
+
+      <img src="Source/HelixToolkit-Nex/Samples/Interop/Wpf/Screenshots/Sample.jpg" width=400>
 
     - [WinUI](Source/HelixToolkit-Nex/Samples/Interop/WinUI)
-    <img src="Source/HelixToolkit-Nex/Samples/Interop/WinUI/Screenshots/Sample.jpg" width=400>
+  
+      <img src="Source/HelixToolkit-Nex/Samples/Interop/WinUI/Screenshots/Sample.jpg" width=400>
 
-    - [Avalonia](Source/HelixToolkit-Nex/Samples/Interop/Avalonia)
-    <img src="Source/HelixToolkit-Nex/Samples/Interop/Avalonia/Screenshots/Sample.jpg" width=400>
+    - [Avalonia](Source/HelixToolkit-Nex/Samples/Interop/Avalonia) [Supports both Windows and Linux]
+
+      <img src="Source/HelixToolkit-Nex/Samples/Interop/Avalonia/Screenshots/Sample.jpg" width=400>
+
 ## Packages
 
 > **Note:** Packages are published to GitHub Packages. Links will resolve once the packages are published.

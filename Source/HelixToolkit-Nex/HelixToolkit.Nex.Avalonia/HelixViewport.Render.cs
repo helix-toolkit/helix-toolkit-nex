@@ -487,12 +487,10 @@ public partial class HelixViewport
     /// <summary>Creates one single-buffer platform bridge (Windows shared texture or Linux external memory).</summary>
     private static IEngineOutputBridge CreateSingleBridge(IContext context, uint width, uint height)
     {
-#if WINDOWS
         if (OperatingSystem.IsWindows())
         {
             return new WindowsSharedTextureBridge(context, width, height);
         }
-#endif
         return new LinuxExternalMemoryBridge(context, width, height);
     }
 

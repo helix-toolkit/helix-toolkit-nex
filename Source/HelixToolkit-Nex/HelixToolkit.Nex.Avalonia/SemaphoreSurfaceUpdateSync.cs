@@ -15,10 +15,8 @@ namespace HelixToolkit.Nex.Avalonia;
 /// </summary>
 /// <remarks>
 /// <para>
-/// This type is compiled unconditionally (OS-runtime-guarded like
-/// <see cref="LinuxExternalMemoryBridge"/>, not gated behind a <c>WINDOWS</c> preprocessor symbol) so
-/// it compile-verifies on both the <c>net8.0-windows</c> and <c>net8.0</c> target frameworks of the
-/// Avalonia project. The exported semaphore file descriptors are POSIX handles only ever produced on
+/// This type is compiled into the single cross-platform <c>net8.0</c> assembly and OS-runtime-guarded
+/// like <see cref="LinuxExternalMemoryBridge"/>. The exported semaphore file descriptors are POSIX handles only ever produced on
 /// Linux with <see cref="VulkanContextConfig.EnableExternalMemoryFd"/> enabled; construction happens
 /// only through <see cref="LinuxExternalMemoryBridge.CreateSurfaceSync"/>, which is Linux-guarded by
 /// the control.
