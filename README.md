@@ -115,6 +115,10 @@ Currently in development.
 | HelixToolkit.Nex.Wpf                    | [![GitHub](https://img.shields.io/badge/GitHub-package-blue)](https://github.com/helix-toolkit/helix-toolkit-nex/pkgs/nuget/HelixToolkit.Nex.Wpf)                    |
 | HelixToolkit.Nex.Avalonia               | [![GitHub](https://img.shields.io/badge/GitHub-package-blue)](https://github.com/helix-toolkit/helix-toolkit-nex/pkgs/nuget/HelixToolkit.Nex.Avalonia)               |
 
+## Development
+
+See the [Development Setup Guide](DEV.md) for full instructions on prerequisites, Git LFS, Git hooks, building (Windows and Linux), running tests, and formatting.
+
 ## Contributing
 
 Interested in contributing? Please read our [Contributing Guide](CONTRIBUTING.md) for information on:
