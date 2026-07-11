@@ -32,7 +32,7 @@ namespace HelixToolkit.Nex.Avalonia;
 /// semaphore consumes the file descriptor.
 /// </para>
 /// </remarks>
-internal sealed class SemaphoreSurfaceUpdateSync : ISurfaceUpdateSync
+internal sealed class SemaphoreSurfaceUpdateSync : ISurfaceUpdateSync, IAsyncDisposable
 {
     private static readonly ILogger _logger = LogManager.Create<SemaphoreSurfaceUpdateSync>();
 
@@ -112,5 +112,39 @@ internal sealed class SemaphoreSurfaceUpdateSync : ISurfaceUpdateSync
         // Wait on the engine's render-finished semaphore, present the frame, and signal the
         // read-finished semaphore so the next engine write can proceed.
         await surface.UpdateWithSemaphoresAsync(image, _waitSemaphore, _signalSemaphore);
+    }
+
+    /// <summary>
+    /// Releases the imported compositor semaphores. Importing an opaque-fd semaphore consumes the file
+    /// descriptor, so this instance is cached and reused across frames by the bridge and only disposed
+    /// when the bridge releases its resources (resize or teardown).
+    /// </summary>
+    public async ValueTask DisposeAsync()
+    {
+        ICompositionImportedGpuSemaphore? wait = _waitSemaphore;
+        ICompositionImportedGpuSemaphore? signal = _signalSemaphore;
+        _waitSemaphore = null;
+        _signalSemaphore = null;
+
+        await DisposeSemaphoreAsync(wait).ConfigureAwait(false);
+        await DisposeSemaphoreAsync(signal).ConfigureAwait(false);
+    }
+
+    /// <summary>Disposes an imported compositor semaphore, logging and swallowing any failure.</summary>
+    private static async ValueTask DisposeSemaphoreAsync(ICompositionImportedGpuSemaphore? semaphore)
+    {
+        if (semaphore is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await semaphore.DisposeAsync().ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to dispose imported composition semaphore during teardown.");
+        }
     }
 }

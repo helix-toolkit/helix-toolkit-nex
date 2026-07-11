@@ -29,9 +29,9 @@ public partial class HelixViewport : IDisposable
 
     /// <summary>
     /// Per-frame synchronization info passed to <c>Engine.Submit</c>. On Windows this carries the
-    /// keyed-mutex keys/handles for the shared D3D11 texture; on Linux it stays <c>default</c>
-    /// (<see cref="KeyedMutexSyncType.None"/>) because engine writes are serialized with Vulkan
-    /// semaphores instead. Populated by the platform bridge in later wiring.
+    /// keyed-mutex keys/handles for the shared D3D11 texture; on Linux it carries the exported binary
+    /// semaphore handles the engine signals/waits to serialize its write against the compositor read.
+    /// Populated each frame from the platform bridge's <c>EngineSyncInfo</c>.
     /// </summary>
     private KeyedMutexSyncInfo _frameSyncInfo;
 

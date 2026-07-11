@@ -44,11 +44,23 @@ namespace HelixToolkit.Nex.Avalonia;
 public partial class HelixViewport
 {
     /// <summary>
-    /// Number of rotating shared-output buffers. Two is sufficient for the pipelined loop here, which
-    /// keeps at most one present in flight (it awaits the previous present before issuing the next):
-    /// one buffer is being written by the engine while the other is being read by the compositor.
+    /// Number of rotating shared-output buffers. Sized to <see cref="MaxPresentsInFlight"/> plus one:
+    /// the extra buffer is the one the engine is currently rendering into while up to
+    /// <see cref="MaxPresentsInFlight"/> previously rendered buffers are still being read by the
+    /// compositor, so the engine never overwrites a buffer a present is still consuming.
     /// </summary>
-    private const int OutputBufferCount = 2;
+    private const int OutputBufferCount = MaxPresentsInFlight + 1;
+
+    /// <summary>
+    /// Number of presents kept in flight before the render loop applies backpressure. The Avalonia
+    /// compositor takes about two display refreshes to complete a surface update
+    /// (<c>UpdateWithSemaphoresAsync</c>), so serializing on a single present caps throughput at half
+    /// the refresh rate. Keeping two presents in flight hides that latency and lets the frame rate reach
+    /// the display refresh. Requires <see cref="OutputBufferCount"/> to be at least this plus one (the
+    /// buffer currently being rendered), so the engine never overwrites a buffer the compositor is still
+    /// reading.
+    /// </summary>
+    private const int MaxPresentsInFlight = 2;
 
     /// <summary>
     /// Composition presenter that hosts the shared engine output through a
@@ -64,13 +76,14 @@ public partial class HelixViewport
     private IEngineOutputBridge? _bridge;
 
     /// <summary>
-    /// The in-flight present task for the previously rendered frame. The pipelined loop issues a
-    /// frame's present without awaiting it, then awaits it on the next tick before issuing the next
-    /// present. This keeps surface updates serialized while overlapping the engine render of the next
-    /// frame with the compositor read of the current one (the multi-buffered bridge gives each frame a
-    /// separate output texture so they do not contend).
+    /// The in-flight present tasks, oldest at the front. Each tick issues its present without awaiting
+    /// it and enqueues it here; once more than <see cref="MaxPresentsInFlight"/> are outstanding the
+    /// tick awaits (and dequeues) the oldest before continuing. This pipelines several presents so the
+    /// compositor's multi-vsync present latency is overlapped across frames rather than paid serially,
+    /// while the multi-buffered bridge gives each in-flight frame its own output texture so they do not
+    /// contend.
     /// </summary>
-    private Task? _pendingPresent;
+    private readonly Queue<Task> _pendingPresents = new();
 
     /// <summary>
     /// Set when the control size changes; consumed by <see cref="EnsureSize"/> on the next nonzero-
@@ -269,19 +282,11 @@ public partial class HelixViewport
         _rendering = true;
         try
         {
-            // Before a resize recreates (and disposes) the output buffers, drain any in-flight present
-            // so the compositor is not still reading a texture that is about to be destroyed.
-            if (_sizeChanged && _pendingPresent is not null)
+            // Before a resize recreates (and disposes) the output buffers, drain every in-flight
+            // present so the compositor is not still reading a texture that is about to be destroyed.
+            if (_sizeChanged)
             {
-                try
-                {
-                    await _pendingPresent;
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogDebug(ex, "Pending present faulted while draining before resize.");
-                }
-                _pendingPresent = null;
+                await DrainPendingPresentsAsync();
             }
 
             EnsureSize();
@@ -323,20 +328,25 @@ public partial class HelixViewport
             ISurfaceUpdateSync surfaceSync = _bridge.CreateSurfaceSync();
             _bridge.AdvanceFrame();
 
-            // Serialize surface updates: wait for the previous frame's present (which has been running
-            // on the compositor thread since the last tick, so this wait is short once pipelined), then
-            // issue this frame's present WITHOUT awaiting it here. Not blocking on the current present
-            // is what lets the engine render the next frame while the compositor reads this one.
-            long presentWaitStart = System.Diagnostics.Stopwatch.GetTimestamp();
-            if (_pendingPresent is not null)
-            {
-                await _pendingPresent;
-            }
-            double presentMs = System
-                .Diagnostics.Stopwatch.GetElapsedTime(presentWaitStart)
-                .TotalMilliseconds;
+            // Issue this frame's present immediately (early in the tick, so it lands in the compositor's
+            // next commit) WITHOUT awaiting it, then enqueue it. Only once more than
+            // MaxPresentsInFlight presents are outstanding do we await the oldest, applying backpressure
+            // that paces the loop to the compositor while keeping several presents pipelined. This hides
+            // the compositor's ~2-vsync present latency so throughput reaches the display refresh rather
+            // than stalling at half of it. The multi-buffered bridge gives each in-flight present its own
+            // output texture, and the engine's read-finished semaphore wait keeps buffer reuse correct.
+            Task present = _presenter.PresentAsync(description, surfaceSync);
+            _pendingPresents.Enqueue(present);
 
-            _pendingPresent = _presenter.PresentAsync(description, surfaceSync);
+            double presentMs = 0;
+            if (_pendingPresents.Count > MaxPresentsInFlight)
+            {
+                long presentWaitStart = System.Diagnostics.Stopwatch.GetTimestamp();
+                await _pendingPresents.Dequeue();
+                presentMs = System
+                    .Diagnostics.Stopwatch.GetElapsedTime(presentWaitStart)
+                    .TotalMilliseconds;
+            }
 
             AccumulateFrameStatistics(renderMs, presentMs);
         }
@@ -462,9 +472,10 @@ public partial class HelixViewport
     /// <returns>The platform-appropriate bridge.</returns>
     private static IEngineOutputBridge CreateBridge(IContext context, uint width, uint height)
     {
-        // Double-buffer the shared output so the engine can render the next frame into a free buffer
-        // while the compositor still reads the presented one, decoupling the two and avoiding the
-        // single-texture keyed-mutex/semaphore stall that otherwise halves the frame rate.
+        // Multi-buffer the shared output (OutputBufferCount buffers) so the engine can render the next
+        // frame into a free buffer while the compositor still reads the presented ones, decoupling the
+        // two and avoiding the single-texture keyed-mutex/semaphore stall that otherwise halves the
+        // frame rate.
         var buffers = new IEngineOutputBridge[OutputBufferCount];
         for (int i = 0; i < buffers.Length; i++)
         {
@@ -498,13 +509,34 @@ public partial class HelixViewport
     {
         _frameSyncInfo = default;
 
-        // Drop the in-flight present. It cannot be awaited synchronously here, so observe it to avoid
-        // an unobserved-task exception if it faults once the imported images are disposed below.
-        Task? pending = _pendingPresent;
-        _pendingPresent = null;
-        pending?.ContinueWith(static t => _ = t.Exception, TaskScheduler.Default);
+        // Drop every in-flight present. They cannot be awaited synchronously here, so observe each to
+        // avoid an unobserved-task exception if it faults once the imported images are disposed below.
+        while (_pendingPresents.Count > 0)
+        {
+            _pendingPresents.Dequeue().ContinueWith(static t => _ = t.Exception, TaskScheduler.Default);
+        }
 
         Disposer.DisposeAndRemove(ref _bridge);
         _presenter?.ReleaseImportedImage();
+    }
+
+    /// <summary>
+    /// Awaits and clears every in-flight present so the compositor is no longer reading any shared
+    /// output texture. Used before a resize recreates the buffers. Faults are logged and swallowed so a
+    /// present that failed does not abort the drain.
+    /// </summary>
+    private async Task DrainPendingPresentsAsync()
+    {
+        while (_pendingPresents.Count > 0)
+        {
+            try
+            {
+                await _pendingPresents.Dequeue();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Pending present faulted while draining before resize.");
+            }
+        }
     }
 }

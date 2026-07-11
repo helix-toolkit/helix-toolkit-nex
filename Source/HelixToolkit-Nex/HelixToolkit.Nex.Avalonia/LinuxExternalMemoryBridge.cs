@@ -136,6 +136,14 @@ internal sealed class LinuxExternalMemoryBridge : IEngineOutputBridge
     /// </summary>
     private int _readFinishedSemaphoreFd = -1;
 
+    /// <summary>
+    /// Cached surface-update sync for the current resources. Importing the opaque-fd semaphores
+    /// consumes their file descriptors, so the sync object (which imports each fd once and caches the
+    /// resulting compositor semaphore) must be reused across frames rather than recreated per frame;
+    /// recreating it would re-import an already-consumed fd and fail. Recreated on <see cref="Resize"/>.
+    /// </summary>
+    private SemaphoreSurfaceUpdateSync? _surfaceSync;
+
     private uint _width;
     private uint _height;
     private bool _disposed;
@@ -177,10 +185,20 @@ internal sealed class LinuxExternalMemoryBridge : IEngineOutputBridge
 
     /// <inheritdoc />
     /// <remarks>
-    /// On Linux, engine writes are serialized with a Vulkan semaphore (task 8.3), not a keyed mutex,
-    /// so this stays <c>default</c> (<see cref="KeyedMutexSyncType.None"/>).
+    /// On Linux, engine writes are serialized with exported Vulkan binary semaphores rather than a
+    /// keyed mutex. The engine signals <see cref="_renderFinishedSemaphore"/> after writing the frame
+    /// (the compositor waits on it before reading) and waits on <see cref="_readFinishedSemaphore"/>
+    /// before overwriting the shared image (the compositor signals it after reading). Without this the
+    /// compositor's <c>UpdateWithSemaphoresAsync</c> would wait forever on a render-finished semaphore
+    /// the engine never signals, deadlocking the present and freezing the window.
     /// </remarks>
-    public KeyedMutexSyncInfo EngineSyncInfo => default;
+    public KeyedMutexSyncInfo EngineSyncInfo =>
+        new()
+        {
+            SyncType = KeyedMutexSyncType.ExternalSemaphore,
+            WaitSemaphoreHandle = _readFinishedSemaphore.Handle,
+            SignalSemaphoreHandle = _renderFinishedSemaphore.Handle,
+        };
 
     /// <inheritdoc />
     /// <remarks>
@@ -223,14 +241,16 @@ internal sealed class LinuxExternalMemoryBridge : IEngineOutputBridge
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
 
-        if (_renderFinishedSemaphoreFd < 0 || _readFinishedSemaphoreFd < 0)
+        if (_surfaceSync is null)
         {
             throw new InvalidOperationException(
                 "Semaphore resources have not been created; call the constructor or Resize first."
             );
         }
 
-        return new SemaphoreSurfaceUpdateSync(_renderFinishedSemaphoreFd, _readFinishedSemaphoreFd);
+        // Reuse the cached sync object so the opaque-fd semaphores are imported once and reused;
+        // re-importing a consumed fd every frame fails and crashes the compositor GPU backend.
+        return _surfaceSync;
     }
 
     /// <inheritdoc />
@@ -461,6 +481,39 @@ internal sealed class LinuxExternalMemoryBridge : IEngineOutputBridge
         _readFinishedSemaphoreFd = readFinishedFd;
         _width = width;
         _height = height;
+
+        // Create the surface-update sync once for these resources. It imports the opaque-fd semaphores
+        // lazily on first present and caches them; it is returned unchanged every frame and only
+        // disposed when these resources are released (Resize/Dispose).
+        _surfaceSync = new SemaphoreSurfaceUpdateSync(renderFinishedFd, readFinishedFd);
+
+        // The engine waits on the read-finished semaphore before its first write to this image, but
+        // the compositor has not read (and therefore not signaled) it yet. Pre-signal it once so the
+        // very first engine write proceeds instead of deadlocking on an unsignaled binary semaphore.
+        SignalSemaphoreInitially(readFinishedSemaphore);
+    }
+
+    /// <summary>
+    /// Submits an empty signal of the given binary semaphore on the engine's graphics queue so it
+    /// starts in the signaled state. Used to bootstrap the read-finished semaphore the engine waits
+    /// on before its first write, which the compositor has not yet signaled.
+    /// </summary>
+    private unsafe void SignalSemaphoreInitially(VkSemaphore semaphore)
+    {
+        VkSemaphoreSubmitInfo signalInfo = new()
+        {
+            semaphore = semaphore,
+            stageMask = VkPipelineStageFlags2.AllCommands,
+        };
+
+        VkSubmitInfo2 submitInfo = new()
+        {
+            signalSemaphoreInfoCount = 1,
+            pSignalSemaphoreInfos = &signalInfo,
+        };
+
+        VK.vkQueueSubmit2(_ctx.GraphicsQueue.GraphicsQueue, 1, &submitInfo, VkFence.Null)
+            .CheckResult("Failed to pre-signal the read-finished semaphore");
     }
 
     /// <summary>
@@ -512,6 +565,18 @@ internal sealed class LinuxExternalMemoryBridge : IEngineOutputBridge
     {
         // Wait for the GPU to finish reading/writing before tearing down shared resources.
         _ctx.Wait(default);
+
+        // Release the cached surface sync (and its imported compositor semaphores) before destroying
+        // the exported semaphores and closing their fds. Disposal is async (composition GPU resources
+        // are IAsyncDisposable); fire-and-forget, observing faults, since the compositor's imported
+        // copies are backed by their own dup'd fds and are independent of the ones destroyed below.
+        var surfaceSync = _surfaceSync;
+        _surfaceSync = null;
+        if (surfaceSync is not null)
+        {
+            // DisposeAsync swallows its own faults, so the discarded task never surfaces one.
+            _ = surfaceSync.DisposeAsync().AsTask();
+        }
 
         var device = _ctx.VkDevice;
 
