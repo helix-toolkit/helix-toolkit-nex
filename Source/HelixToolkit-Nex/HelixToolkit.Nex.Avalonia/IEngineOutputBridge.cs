@@ -27,9 +27,10 @@ public interface IEngineOutputBridge : IDisposable
 
     /// <summary>
     /// The synchronization info passed to <c>Engine.Submit</c> for the engine write. On Windows this
-    /// carries the keyed-mutex keys/handles for the shared D3D11 texture; on Linux it stays
-    /// <c>default</c> (<see cref="KeyedMutexSyncType.None"/>) because writes are serialized with a
-    /// Vulkan semaphore instead.
+    /// carries the keyed-mutex keys/handles for the shared D3D11 texture
+    /// (<see cref="KeyedMutexSyncType.D3D11SharedFence"/>); on Linux it carries the exported binary
+    /// semaphore handles (<see cref="KeyedMutexSyncType.ExternalSemaphore"/>) the engine signals/waits
+    /// to serialize its write against the compositor read.
     /// </summary>
     KeyedMutexSyncInfo EngineSyncInfo { get; }
 

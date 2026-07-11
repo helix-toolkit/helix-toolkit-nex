@@ -41,7 +41,7 @@ public partial class HelixViewport
     );
     public Engine.Engine? Engine
     {
-        get { return (Engine.Engine)GetValue(EngineDp); }
+        get { return (Engine.Engine?)GetValue(EngineDp); }
         set { SetValue(EngineDp, value); }
     }
 
@@ -105,7 +105,7 @@ public partial class HelixViewport
     /// </summary>
     public ViewportMouseButton RotateMouseButton
     {
-        get { return (ViewportMouseButton)GetValue(RotateMouseButtonDp); }
+        get { return (ViewportMouseButton)GetValue(RotateMouseButtonDp)!; }
         set { SetValue(RotateMouseButtonDp, value); }
     }
 
@@ -119,7 +119,7 @@ public partial class HelixViewport
     /// </summary>
     public ViewportMouseButton PanMouseButton
     {
-        get { return (ViewportMouseButton)GetValue(PanMouseButtonDp); }
+        get { return (ViewportMouseButton)GetValue(PanMouseButtonDp)!; }
         set { SetValue(PanMouseButtonDp, value); }
     }
 
@@ -128,7 +128,7 @@ public partial class HelixViewport
         bool
     >("PointerRingEnabled", false, static (d, e) =>
     {
-        (d as HelixViewport)?.RenderContext?.PointerRing.Enabled = (bool)e.NewValue ? 1u : 0;
+        (d as HelixViewport)?.RenderContext?.PointerRing.Enabled = (bool)e.NewValue! ? 1u : 0;
     });
 
     /// <summary>
@@ -136,7 +136,7 @@ public partial class HelixViewport
     /// </summary>
     public bool PointerRingEnabled
     {
-        get { return (bool)GetValue(PointerRingEnabledDp); }
+        get { return (bool)GetValue(PointerRingEnabledDp)!; }
         set { SetValue(PointerRingEnabledDp, value); }
     }
     #endregion

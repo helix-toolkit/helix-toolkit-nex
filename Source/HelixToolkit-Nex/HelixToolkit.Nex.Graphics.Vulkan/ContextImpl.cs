@@ -1423,6 +1423,24 @@ internal sealed partial class VulkanContext : Initializable, IContext
                     vkCmdBuffer.LastSubmitHandle = Immediate!.Submit(vkCmdBuffer, &info);
                     break;
                 }
+                case KeyedMutexSyncType.ExternalSemaphore:
+                {
+                    // Linux external-memory path: serialize the engine write against the compositor
+                    // read with exported binary semaphores instead of a keyed mutex. The engine waits
+                    // on the compositor's read-finished semaphore before overwriting the shared image,
+                    // and signals the render-finished semaphore the compositor waits on before reading.
+                    if (syncInfo.WaitSemaphoreHandle != 0)
+                    {
+                        Immediate!.WaitSemaphore(new VkSemaphore(syncInfo.WaitSemaphoreHandle));
+                    }
+                    if (syncInfo.SignalSemaphoreHandle != 0)
+                    {
+                        // Binary semaphore: the signal value is ignored.
+                        Immediate!.SignalSemaphore(new VkSemaphore(syncInfo.SignalSemaphoreHandle), 0);
+                    }
+                    vkCmdBuffer.LastSubmitHandle = Immediate!.Submit(vkCmdBuffer, null);
+                    break;
+                }
                 default:
                     vkCmdBuffer.LastSubmitHandle = Immediate!.Submit(vkCmdBuffer, null);
                     break;
