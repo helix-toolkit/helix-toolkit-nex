@@ -1,11 +1,11 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-    <PropertyGroup Condition="!$([MSBuild]::IsOSPlatform('Linux'))">
-        <TargetFramework>net8.0-windows</TargetFramework>
-    </PropertyGroup>
-    <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('Linux'))">
-        <TargetFramework>net8.0</TargetFramework>
-    </PropertyGroup>
+    <!--
+        Plain net8.0 so this assembly restores and builds on any OS. The Vortice DirectX bindings are
+        managed, cross-platform packages; their P/Invokes into d3d11/dxgi only resolve at runtime on
+        Windows, so callers guard use behind OperatingSystem.IsWindows().
+    -->
     <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <LangVersion>latest</LangVersion>
@@ -18,7 +18,7 @@
         <Configurations>Debug;Release</Configurations>
     </PropertyGroup>
 
-    <ItemGroup Condition="!$([MSBuild]::IsOSPlatform('Linux'))">
+    <ItemGroup>
         <PackageReference Include="Vortice.Direct3D11" Version="3.6.2" />
         <PackageReference Include="Vortice.DXGI" Version="3.6.2" />
     </ItemGroup>
@@ -41,7 +41,7 @@
         </AssemblyAttribute>
     </ItemGroup>
 
-    <ItemGroup Condition="!$([MSBuild]::IsOSPlatform('Linux'))">
+    <ItemGroup>
         <ProjectReference Include="..\HelixToolkit.Nex.Graphics.Vulkan\HelixToolkit.Nex.Graphics.Vulkan.csproj" />
         <ProjectReference Include="..\HelixToolkit.Nex.Graphics\HelixToolkit.Nex.Graphics.csproj" />
         <ProjectReference Include="..\HelixToolkit.Nex.Rendering\HelixToolkit.Nex.Rendering.csproj" />

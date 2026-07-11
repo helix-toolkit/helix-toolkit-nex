@@ -1,4 +1,3 @@
-#if WINDOWS
 using Avalonia.Rendering.Composition;
 
 namespace HelixToolkit.Nex.Avalonia;
@@ -11,8 +10,8 @@ namespace HelixToolkit.Nex.Avalonia;
 /// composition reads of the shared D3D11 NT-handle texture.
 /// </summary>
 /// <remarks>
-/// This type is compiled only for the Windows target framework (<c>WINDOWS</c>), the sole
-/// configuration that uses the D3D11 shared-texture / keyed-mutex composition path.
+/// This type is used only by the Windows runtime path (the D3D11 shared-texture / keyed-mutex
+/// composition path driven by <see cref="WindowsSharedTextureBridge"/>).
 /// </remarks>
 internal sealed class KeyedMutexSurfaceUpdateSync : ISurfaceUpdateSync
 {
@@ -41,4 +40,3 @@ internal sealed class KeyedMutexSurfaceUpdateSync : ISurfaceUpdateSync
         return surface.UpdateWithKeyedMutexAsync(image, _acquireKey, _releaseKey);
     }
 }
-#endif

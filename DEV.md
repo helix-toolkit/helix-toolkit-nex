@@ -17,8 +17,8 @@ For contribution workflow and code-style expectations, see [CONTRIBUTING.md](CON
 
 ### Platform support
 
-- **Windows 10 or later** — full solution, including WPF / WinUI / DirectX interop.
-- **Linux** (tested on Ubuntu 26.04) — builds via the `LinuxDebug` / `LinuxRelease` configurations, which skip the Windows-only projects.
+- **Windows 10 or later** — full solution, including the WPF / WinUI host projects.
+- **Linux** (tested on Ubuntu 26.04) — builds via the `LinuxDebug` / `LinuxRelease` configurations, which skip the Windows-only host projects (WPF / WinUI). The Avalonia control and the DirectX interop assembly are cross-platform and build everywhere; the Windows-specific D3D11 path is guarded at runtime via `OperatingSystem.IsWindows()`.
 - A **Vulkan 1.3 compatible GPU and drivers** are required to run the samples.
 
 ## 2. Clone the repository
