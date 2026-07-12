@@ -84,9 +84,6 @@ internal sealed class LinuxExternalMemoryBridge : IEngineOutputBridge
     /// <summary>The exportable device memory backing <see cref="_image"/>.</summary>
     private VkDeviceMemory _memory = VkDeviceMemory.Null;
 
-    /// <summary>The image view created for <see cref="_image"/> (owned by this bridge).</summary>
-    private VkImageView _imageView = VkImageView.Null;
-
     /// <summary>The texture handle registered in the engine's textures pool (the render target).</summary>
     private TextureHandle _handle = TextureHandle.Null;
 
@@ -385,32 +382,6 @@ internal sealed class LinuxExternalMemoryBridge : IEngineOutputBridge
         VK.vkGetMemoryFdKHR(device, &getFdInfo, &fd)
             .CheckResult("Failed to export device memory as a POSIX file descriptor");
 
-        // 7. Create the image view (owned by this bridge).
-        VkImageViewCreateInfo imageViewCreateInfo = new()
-        {
-            image = image,
-            viewType = VkImageViewType.Image2D,
-            format = Format,
-            components = new VkComponentMapping(
-                VkComponentSwizzle.Identity,
-                VkComponentSwizzle.Identity,
-                VkComponentSwizzle.Identity,
-                VkComponentSwizzle.Identity
-            ),
-            subresourceRange = new VkImageSubresourceRange
-            {
-                aspectMask = VkImageAspectFlags.Color,
-                baseMipLevel = 0,
-                levelCount = 1,
-                baseArrayLayer = 0,
-                layerCount = 1,
-            },
-        };
-
-        VkImageView imageView;
-        VK.vkCreateImageView(device, &imageViewCreateInfo, null, &imageView)
-            .CheckResult("Failed to create image view for exported texture");
-
         // 8. Wrap in a VulkanImage (isOwningVkImage = false — this bridge owns the VkImage/memory and
         //    the image view and frees them in ReleaseResources, mirroring the imported-texture
         //    wrapping approach). The view is intentionally NOT assigned to VulkanImage.ImageView:
@@ -443,7 +414,7 @@ internal sealed class LinuxExternalMemoryBridge : IEngineOutputBridge
             "render-finished"
         );
 
-        VkSemaphore readFinishedSemaphore = VkSemaphore.Null;
+        VkSemaphore readFinishedSemaphore;
         int readFinishedFd = -1;
         try
         {
@@ -469,7 +440,6 @@ internal sealed class LinuxExternalMemoryBridge : IEngineOutputBridge
         // 11. Commit state.
         _image = image;
         _memory = memory;
-        _imageView = imageView;
         _handle = handle;
         _memoryFd = fd;
         _memorySize = memRequirements.size;
@@ -585,12 +555,6 @@ internal sealed class LinuxExternalMemoryBridge : IEngineOutputBridge
         {
             _ctx.TexturesPool.Destroy(_handle);
             _handle = TextureHandle.Null;
-        }
-
-        if (_imageView.IsNotNull)
-        {
-            VK.vkDestroyImageView(device, _imageView, null);
-            _imageView = VkImageView.Null;
         }
 
         if (_image.IsNotNull)

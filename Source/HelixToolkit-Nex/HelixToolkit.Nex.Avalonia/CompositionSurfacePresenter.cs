@@ -118,6 +118,21 @@ internal sealed class CompositionSurfacePresenter : Control
         ArgumentNullException.ThrowIfNull(image);
         ArgumentNullException.ThrowIfNull(sync);
 
+        if (_initializeTask is not null)
+        {
+            try
+            {
+                await _initializeTask;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Composition initialization failed; skipping presentation.");
+                _initializeTask = null;
+                return;
+            }
+            _initializeTask = null;
+        }
+
         if (_interop is null || _surface is null)
         {
             // GPU interop unavailable in this render session; skip presentation.
@@ -169,8 +184,6 @@ internal sealed class CompositionSurfacePresenter : Control
             return existing;
         }
 
-        var platformHandle = new PlatformHandle(key, image.ExternalHandleType);
-
         var properties = new PlatformGraphicsExternalImageProperties
         {
             Width = (int)image.Width,
@@ -179,9 +192,44 @@ internal sealed class CompositionSurfacePresenter : Control
             MemorySize = image.MemorySize,
         };
 
-        ICompositionImportedGpuImage imported = _interop!.ImportImage(platformHandle, properties);
+        ICompositionImportedGpuImage imported = ImportImage(image, key, properties);
         _importedImages[key] = imported;
         return imported;
+    }
+
+    /// <summary>
+    /// Imports the shared image through <see cref="ICompositionGpuInterop"/>. On the Linux
+    /// external-memory path the bridge owns and closes the ORIGINAL exported memory fd, so the
+    /// compositor is handed a <see cref="PosixFileDescriptor.Dup"/> of it (Avalonia takes ownership of
+    /// the duplicate on a successful import); this prevents the bridge and the compositor from
+    /// double-closing the same descriptor. On the Windows shared-NT-handle path the handle is passed
+    /// through unchanged.
+    /// </summary>
+    private ICompositionImportedGpuImage ImportImage(
+        SharedImageDescription image,
+        nint key,
+        PlatformGraphicsExternalImageProperties properties
+    )
+    {
+        if (image.NtHandle == nint.Zero && OperatingSystem.IsLinux())
+        {
+            int dup = PosixFileDescriptor.Dup(image.MemoryFd);
+            try
+            {
+                return _interop!.ImportImage(
+                    new PlatformHandle((nint)dup, image.ExternalHandleType),
+                    properties
+                );
+            }
+            catch
+            {
+                PosixFileDescriptor.Close(dup);
+                throw;
+            }
+        }
+
+        var platformHandle = new PlatformHandle(key, image.ExternalHandleType);
+        return _interop!.ImportImage(platformHandle, properties);
     }
 
     /// <summary>Disposes and clears every cached imported image.</summary>

@@ -272,6 +272,10 @@ public partial class HelixViewport
     /// </summary>
     private async Task TickAsync()
     {
+        if (_topLevel is null && (_fallbackTimer?.IsEnabled != true))
+        {
+            return;
+        }
         // Requirement 8.1: only render when the engine/render-context are valid and a viewport
         // client is present.
         if (_disposed || _rendering || !(IsContextValid && ViewportClient is not null))
@@ -286,6 +290,7 @@ public partial class HelixViewport
             // present so the compositor is not still reading a texture that is about to be destroyed.
             if (_sizeChanged)
             {
+                Engine?.WaitForIdle();
                 await DrainPendingPresentsAsync();
             }
 
