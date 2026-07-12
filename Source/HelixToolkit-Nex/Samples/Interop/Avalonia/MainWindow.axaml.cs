@@ -58,7 +58,7 @@ public partial class MainWindow : Window
 
         Closed += OnClosed;
 
-        _ = InitializeAsync();
+        _ = InitializeAsync().ContinueWith(static t => _ = t.Exception, TaskScheduler.Default);
     }
 
     private void OnFrameStatisticsUpdated(object? sender, FrameStatistics stats)

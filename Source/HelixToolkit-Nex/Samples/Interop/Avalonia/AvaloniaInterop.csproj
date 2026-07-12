@@ -1,15 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
-    <!-- Windows: -windows TFM so the Windows_Path can reference the Windows-only DirectX interop project. -->
-    <PropertyGroup Condition="!$([MSBuild]::IsOSPlatform('Linux'))">
-        <TargetFramework>net8.0-windows</TargetFramework>
-    </PropertyGroup>
-    <!-- Linux: plain net8.0 so it builds without any DirectX dependency. -->
-    <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('Linux'))">
-        <TargetFramework>net8.0</TargetFramework>
-    </PropertyGroup>
-
     <PropertyGroup>
-        <OutputType>WinExe</OutputType>
+        <TargetFramework>net8.0</TargetFramework>
+        <OutputType>Exe</OutputType>
         <RootNamespace>AvaloniaInterop</RootNamespace>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>

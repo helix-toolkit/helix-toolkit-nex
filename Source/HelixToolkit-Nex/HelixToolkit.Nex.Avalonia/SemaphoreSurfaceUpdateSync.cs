@@ -1,5 +1,6 @@
 using Avalonia.Platform;
 using Avalonia.Rendering.Composition;
+using Avalonia.Threading;
 using HelixToolkit.Nex;
 using Microsoft.Extensions.Logging;
 
@@ -29,6 +30,13 @@ namespace HelixToolkit.Nex.Avalonia;
 /// The imported semaphore objects are cached and reused across frames because importing an opaque-fd
 /// semaphore consumes the file descriptor.
 /// </para>
+/// <para>
+/// Ownership: the bridge owns and closes the ORIGINAL exported semaphore fds. This type hands Avalonia
+/// a <see cref="PosixFileDescriptor.Dup"/> of each fd (Avalonia takes ownership of the duplicate on a
+/// successful import, per its contract), so the compositor and the bridge never close the same
+/// descriptor. Double-closing a shared fd recycles its number and makes a later import fail with
+/// "DRM_IOCTL_SYNCOBJ_FD_TO_HANDLE failed: Invalid argument".
+/// </para>
 /// </remarks>
 internal sealed class SemaphoreSurfaceUpdateSync : ISurfaceUpdateSync, IAsyncDisposable
 {
@@ -45,13 +53,15 @@ internal sealed class SemaphoreSurfaceUpdateSync : ISurfaceUpdateSync, IAsyncDis
 
     /// <summary>
     /// Exported fd of the render-finished semaphore the engine signals; the compositor waits on it
-    /// before reading the shared image.
+    /// before reading the shared image. Owned and closed by the bridge; this type only reads it to
+    /// hand the compositor a duplicate at import time.
     /// </summary>
     private readonly int _waitSemaphoreFd;
 
     /// <summary>
     /// Exported fd of the read-finished semaphore the compositor signals once it is done reading; the
-    /// engine waits on it before the next write.
+    /// engine waits on it before the next write. Owned and closed by the bridge; this type only reads
+    /// it to hand the compositor a duplicate at import time.
     /// </summary>
     private readonly int _signalSemaphoreFd;
 
@@ -100,16 +110,37 @@ internal sealed class SemaphoreSurfaceUpdateSync : ISurfaceUpdateSync, IAsyncDis
 
         // Import the exported semaphore fds once and reuse the imported objects across frames
         // (importing an opaque-fd semaphore consumes the file descriptor).
-        _waitSemaphore ??= interop.ImportSemaphore(
-            new PlatformHandle((nint)_waitSemaphoreFd, VulkanSemaphoreOpaqueFdType)
-        );
-        _signalSemaphore ??= interop.ImportSemaphore(
-            new PlatformHandle((nint)_signalSemaphoreFd, VulkanSemaphoreOpaqueFdType)
-        );
+        _waitSemaphore ??= ImportSemaphore(interop, _waitSemaphoreFd);
+        _signalSemaphore ??= ImportSemaphore(interop, _signalSemaphoreFd);
 
         // Wait on the engine's render-finished semaphore, present the frame, and signal the
         // read-finished semaphore so the next engine write can proceed.
         await surface.UpdateWithSemaphoresAsync(image, _waitSemaphore, _signalSemaphore);
+    }
+
+    /// <summary>
+    /// Imports one exported semaphore fd, handing the compositor a <see cref="PosixFileDescriptor.Dup"/>
+    /// of it so the bridge (which owns and closes the original) and the compositor never close the same
+    /// descriptor. On a successful import the compositor owns the duplicate; if the import throws, the
+    /// duplicate is closed here (per Avalonia's contract, the caller owns a handle whose import failed).
+    /// </summary>
+    private static ICompositionImportedGpuSemaphore ImportSemaphore(
+        ICompositionGpuInterop interop,
+        int fd
+    )
+    {
+        int dup = PosixFileDescriptor.Dup(fd);
+        try
+        {
+            return interop.ImportSemaphore(
+                new PlatformHandle((nint)dup, VulkanSemaphoreOpaqueFdType)
+            );
+        }
+        catch
+        {
+            PosixFileDescriptor.Close(dup);
+            throw;
+        }
     }
 
     /// <summary>
@@ -124,11 +155,22 @@ internal sealed class SemaphoreSurfaceUpdateSync : ISurfaceUpdateSync, IAsyncDis
         _waitSemaphore = null;
         _signalSemaphore = null;
 
-        await DisposeSemaphoreAsync(wait).ConfigureAwait(false);
-        await DisposeSemaphoreAsync(signal).ConfigureAwait(false);
+        // ICompositionImportedGpuSemaphore.DisposeAsync (CompositionGpuImportedObjectBase) posts a
+        // server job through the compositor and must run on the Avalonia UI thread. This is called
+        // fire-and-forget from the bridge's ReleaseResources, which may already be off the UI thread.
+        // Dispose each semaphore in its OWN UI-thread invocation so the synchronous PostServerJob /
+        // VerifyAccess inside every DisposeAsync runs on the UI thread — never relying on an await
+        // continuation staying on that thread (a resumed thread-pool continuation would trip the
+        // compositor's thread-affinity check on the second semaphore).
+        await DisposeSemaphoreAsync(wait);
+        await DisposeSemaphoreAsync(signal);
     }
 
-    /// <summary>Disposes an imported compositor semaphore, logging and swallowing any failure.</summary>
+    /// <summary>
+    /// Disposes an imported compositor semaphore on the Avalonia UI thread, logging and swallowing any
+    /// failure. The disposal is marshaled onto the UI thread because the compositor server job it posts
+    /// has thread affinity.
+    /// </summary>
     private static async ValueTask DisposeSemaphoreAsync(ICompositionImportedGpuSemaphore? semaphore)
     {
         if (semaphore is null)
@@ -138,7 +180,7 @@ internal sealed class SemaphoreSurfaceUpdateSync : ISurfaceUpdateSync, IAsyncDis
 
         try
         {
-            await semaphore.DisposeAsync().ConfigureAwait(false);
+            await Dispatcher.UIThread.InvokeAsync(() => semaphore.DisposeAsync().AsTask());
         }
         catch (Exception ex)
         {
