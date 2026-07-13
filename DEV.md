@@ -20,6 +20,7 @@ For contribution workflow and code-style expectations, see [CONTRIBUTING.md](CON
 - **Windows 10 or later** — full solution, including the WPF / WinUI host projects.
 - **Linux** (tested on Ubuntu 26.04) — builds via the `LinuxDebug` / `LinuxRelease` configurations, which skip the Windows-only host projects (WPF / WinUI). The Avalonia control and the DirectX interop assembly are cross-platform and build everywhere; the Windows-specific D3D11 path is guarded at runtime via `OperatingSystem.IsWindows()`.
 - A **Vulkan 1.3 compatible GPU and drivers** are required to run the samples.
+- On **Linux/Wayland** (GNOME, KDE, etc.) the samples also need a working [libdecor](https://gitlab.freedesktop.org/libdecor/libdecor) plugin to draw window decorations — see [Troubleshooting](#troubleshooting) if sample windows open without a title bar or borders.
 
 ## 2. Clone the repository
 
@@ -103,3 +104,16 @@ The project uses [.editorconfig](.editorconfig) to enforce a consistent style, v
 - **Asset files appear as small text pointers** — Git LFS was not installed before cloning. Install it, then run `git lfs pull`.
 - **CI formatting failures** — run `.\Scripts\format-solution.ps1` and commit the changes.
 - **Vulkan initialization errors** — verify your GPU/drivers support Vulkan 1.3 and that the Vulkan SDK is installed.
+- **Sample windows have no title bar or borders (Linux/Wayland)** — under Wayland, compositors such as GNOME/Mutter do not draw server-side window decorations, so SDL relies on **libdecor** to draw them client-side. If libdecor has no usable plugin, the window opens undecorated. You can confirm this from the SDL log, which prints:
+
+  ```
+  No plugins found, falling back on no decorations
+  ```
+
+  Ubuntu's default `libdecor-0-plugin-1-gtk` plugin can fail to initialize GTK inside the .NET process (`libdecor-gtk-WARNING: Failed to initialize GTK`). Install the Cairo plugin, which draws decorations without needing GTK:
+
+  ```bash
+  sudo apt install libdecor-0-plugin-1-cairo
+  ```
+
+  Forcing the X11 backend (`SDL_VIDEODRIVER=x11`) is **not** a workaround — the Vulkan surface is created for the Wayland surface extension and surface creation fails under X11.

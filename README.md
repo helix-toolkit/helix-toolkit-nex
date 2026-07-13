@@ -107,7 +107,6 @@ Currently in development.
 | HelixToolkit.Nex.ImGui                  | [![GitHub](https://img.shields.io/badge/GitHub-package-blue)](https://github.com/helix-toolkit/helix-toolkit-nex/pkgs/nuget/HelixToolkit.Nex.ImGui)                  |
 | HelixToolkit.Nex.Interop                | [![GitHub](https://img.shields.io/badge/GitHub-package-blue)](https://github.com/helix-toolkit/helix-toolkit-nex/pkgs/nuget/HelixToolkit.Nex.Interop)                |
 | HelixToolkit.Nex.Interop.DirectX        | [![GitHub](https://img.shields.io/badge/GitHub-package-blue)](https://github.com/helix-toolkit/helix-toolkit-nex/pkgs/nuget/HelixToolkit.Nex.Interop.DirectX)        |
-| HelixToolkit.Nex.Interop.PlatformShared | [![GitHub](https://img.shields.io/badge/GitHub-package-blue)](https://github.com/helix-toolkit/helix-toolkit-nex/pkgs/nuget/HelixToolkit.Nex.Interop.PlatformShared) |
 | HelixToolkit.Nex.Material               | [![GitHub](https://img.shields.io/badge/GitHub-package-blue)](https://github.com/helix-toolkit/helix-toolkit-nex/pkgs/nuget/HelixToolkit.Nex.Material)               |
 | HelixToolkit.Nex.Maths                  | [![GitHub](https://img.shields.io/badge/GitHub-package-blue)](https://github.com/helix-toolkit/helix-toolkit-nex/pkgs/nuget/HelixToolkit.Nex.Maths)                  |
 | HelixToolkit.Nex.Rendering              | [![GitHub](https://img.shields.io/badge/GitHub-package-blue)](https://github.com/helix-toolkit/helix-toolkit-nex/pkgs/nuget/HelixToolkit.Nex.Rendering)              |
