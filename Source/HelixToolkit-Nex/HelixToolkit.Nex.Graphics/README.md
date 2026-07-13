@@ -42,6 +42,7 @@ HelixToolkit.Nex.Graphics is a core component of the HelixToolkit.Nex engine, re
 | `BarrierDescriptor`    | Describes a fully custom GPU memory barrier.                               |
 | `BarrierPreset`        | Enum for predefined buffer barrier configurations.                         |
 | `ImageTransition`      | Enum for named image/texture layout transitions.                           |
+| `KeyedMutexSyncInfo`   | Struct for keyed mutex synchronization, including new semaphore handles.   |
 
 ## Usage Examples
 

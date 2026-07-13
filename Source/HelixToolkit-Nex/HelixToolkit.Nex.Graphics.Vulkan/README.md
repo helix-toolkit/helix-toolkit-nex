@@ -14,6 +14,7 @@ Key features include:
 - Support for Vulkan's advanced features like mesh shaders and dynamic rendering.
 - Enhanced support for Vulkan features such as `shaderSampledImageArrayDynamicIndexing`, `shaderInt64`, `shaderInt16`, `extendedDynamicState`, and `colorWriteEnable`.
 - Support for Linux configurations with `LinuxDebug` and `LinuxRelease`.
+- New support for Linux external-memory-fd extensions for interop with Avalonia/EGL.
 
 ## Key Types
 
@@ -41,7 +42,8 @@ var config = new VulkanContextConfig
     TerminateOnValidationError = false,
     PreferredPresentMode = VkPresentModeKHR.FifoRelaxed,
     ForceIntegratedGPU = false,
-    MaxStagingBufferSize = 128u * 1024u * 1024u
+    MaxStagingBufferSize = 128u * 1024u * 1024u,
+    EnableExternalMemoryFd = true // Enable external memory FD for Linux interop
 };
 
 var context = VulkanBuilder.Create(config, windowHandle, displayHandle);

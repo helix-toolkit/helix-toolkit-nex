@@ -19,6 +19,7 @@ The `Engine` is externally owned and shared across viewports; the control create
 Key concepts:
 - **Composition GPU interop** — engine output is imported into the compositor via `ICompositionGpuInterop` and shown in a `CompositionDrawingSurface`.
 - **Platform bridges** — a single `IEngineOutputBridge` abstraction with a Windows shared-texture implementation and a Linux external-memory implementation.
+- **Buffered output** — `BufferedEngineOutputBridge` rotates over several independent single-buffer bridges to decouple engine render from compositor read, improving frame rate.
 - **Shared partial class** — one `HelixViewport` behavior across WPF/WinUI/Avalonia, selected by the `HxAvalonia` symbol.
 - **StyledProperty adapter** — thin shims (`HelixProperty`, `DependencyProperty`, ...) so the shared property definitions compile under Avalonia.
 
@@ -31,6 +32,7 @@ Key concepts:
 | `DependencyProperty`          | Non-generic handle wrapping an `AvaloniaProperty` plus its change callback (adapter shim).                    |
 | `CompositionSurfacePresenter` | Avalonia `Control` that presents the shared image via `CompositionDrawingSurface` + `ICompositionGpuInterop`. |
 | `IEngineOutputBridge`         | Abstraction over the per-viewport shared output resource and its synchronization.                             |
+| `BufferedEngineOutputBridge`  | Rotates over several independent single-buffer bridges to improve frame rate by decoupling engine render from compositor read. |
 | `WindowsSharedTextureBridge`  | Windows path: D3D11 shared NT-handle texture imported into Vulkan, keyed-mutex sync.                          |
 | `LinuxExternalMemoryBridge`   | Linux path: exportable Vulkan image (opaque-fd/dma-buf) with an exported semaphore.                           |
 | `SharedImageDescription`      | Platform-neutral description of the shared image passed to `ICompositionGpuInterop`.                          |
@@ -113,6 +115,7 @@ public static readonly DependencyProperty EngineDp = HelixProperty.Register<Heli
 
 - **Presentation** — `CompositionSurfacePresenter` obtains the compositor, creates a `CompositionDrawingSurface` + `CompositionSurfaceVisual`, wires it as the element's child visual, and imports the shared image through `ICompositionGpuInterop`. There is no `SwapChainPanel` or DXGI swap chain. If GPU interop is unavailable in the current render session, the presenter logs a warning and skips presentation without throwing.
 - **Bridges** — the control selects `WindowsSharedTextureBridge` or `LinuxExternalMemoryBridge` via `OperatingSystem.IsWindows()`. Both implement `IEngineOutputBridge` (render target, import description, engine sync info, surface sync, resize).
+- **Buffered Output** — `BufferedEngineOutputBridge` rotates over several independent single-buffer bridges to decouple engine render from compositor read, allowing the frame rate to reach the display refresh rate.
 - **Render loop** — frames are driven from the compositor via `TopLevel.RequestAnimationFrame` (with a `DispatcherTimer` fallback), guarded by a valid engine/render-context/viewport-client and a nonzero size. Each tick renders the offscreen frame into the bridge target and presents it.
 - **Resize & teardown** — on resize the control waits for engine idle, recreates the shared output at the new size, and updates the camera-controller viewport size. On unload/dispose it releases the `RenderContext` and all interop resources while leaving the `Engine` intact.
 

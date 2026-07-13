@@ -65,4 +65,5 @@ using (var deviceManager = new D3D9DeviceManager())
 - **Resource Management**: Added `EnsureSize` method in `HelixViewport` to handle dynamic resizing of resources, ensuring the viewport adapts to size changes efficiently.
 - **Event Handling Update**: Removed the `BeforeRender` event from `HelixViewport` to streamline the rendering process and reduce complexity.
 - **D3DImage Management**: Improved D3DImage locking and unlocking logic to ensure thread safety and rendering correctness.
+- **Project Reference Update**: Added a project reference to `HelixToolkit.Nex.Interop` to facilitate shared resource management across different platform targets.
 ```

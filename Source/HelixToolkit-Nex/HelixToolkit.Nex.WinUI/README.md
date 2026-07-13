@@ -60,6 +60,7 @@ viewport.PointerPressed += (sender, e) =>
 - **Resource Management**: Improved resource management with the `EnsureSize` method to handle viewport resizing more efficiently. The `Engine.WaitForIdle()` method is now used to ensure the engine is idle before releasing resources.
 - **Microsoft Windows App SDK Update**: Updated the package reference for `Microsoft.WindowsAppSDK` to version `2.1.3`.
 - **Removed `BeforeRender` Event**: The `BeforeRender` event has been removed from `HelixViewport`. Use the `ViewportClient` to provide camera and scene data.
+- **Project Reference Update**: Added a project reference to `HelixToolkit.Nex.Interop` to facilitate interop functionalities.
 
 ## Architecture Notes
 
