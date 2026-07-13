@@ -1,12 +1,14 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Numerics;
+using System.Runtime.InteropServices;
 using HelixToolkit.Nex.Engine;
 using HelixToolkit.Nex.Engine.CameraControllers;
 using HelixToolkit.Nex.Engine.Cameras;
 using HelixToolkit.Nex.Graphics;
 using HelixToolkit.Nex.Graphics.Vulkan;
 using HelixToolkit.Nex.Interop;
+using HelixToolkit.Nex.Interop.DirectX;
 using HelixToolkit.Nex.Rendering;
 using HelixToolkit.Nex.Rendering.PostEffects;
 using HelixToolkit.Nex.Rendering.RenderNodes;
@@ -127,30 +129,37 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
 
     public MainViewModel()
     {
-#if WINDOWS
-        // Windows path: create a D3D11 device to obtain the adapter LUID, then build a headless
-        // Vulkan context with Win32 external memory bound to that same adapter so the engine's Vulkan
-        // output can be shared into a D3D11 NT-handle texture.
-        using var d3d11 = new D3D11DeviceManager();
-        _vulkanContext = VulkanBuilder.CreateHeadless(
-            new VulkanContextConfig
-            {
-                EnableExternalMemoryWin32 = true,
-                RequiredDeviceLuid = d3d11.AdapterLuid,
-                EnableValidation = true,
-            }
-        );
-#else
-        // Linux path: build a headless Vulkan context with external-memory-fd enabled so the engine's
-        // Vulkan image can be exported as an opaque-fd/dma-buf and imported by the Avalonia compositor.
-        _vulkanContext = VulkanBuilder.CreateHeadless(
-            new VulkanContextConfig
-            {
-                EnableExternalMemoryFd = true,
-                EnableValidation = true,
-            }
-        );
-#endif
+        if (OperatingSystem.IsWindows())
+        {
+            // Windows path: create a D3D11 device to obtain the adapter LUID, then build a headless
+            // Vulkan context with Win32 external memory bound to that same adapter so the engine's Vulkan
+            // output can be shared into a D3D11 NT-handle texture.
+            using var d3d11 = new D3D11DeviceManager();
+            _vulkanContext = VulkanBuilder.CreateHeadless(
+                new VulkanContextConfig
+                {
+                    EnableExternalMemoryWin32 = true,
+                    RequiredDeviceLuid = d3d11.AdapterLuid,
+                    EnableValidation = true,
+                }
+            );
+        }
+        else if (OperatingSystem.IsLinux())
+        {
+            // Linux path: create a headless Vulkan context with external memory FD support so the
+            // engine's Vulkan output can be shared into an FD-backed texture.
+            _vulkanContext = VulkanBuilder.CreateHeadless(
+                new VulkanContextConfig
+                {
+                    EnableExternalMemoryFd = true,
+                    EnableValidation = true,
+                }
+            );
+        }
+        else
+        {
+            throw new PlatformNotSupportedException("This sample only supports Windows and Linux.");
+        }
 
         // Scene + materials (before engine build).
         _scene = new MinecraftScene();
