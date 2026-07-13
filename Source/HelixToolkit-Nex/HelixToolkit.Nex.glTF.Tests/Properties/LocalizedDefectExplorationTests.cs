@@ -206,8 +206,8 @@ public class LocalizedDefectExplorationTests
 
     private static Gen<InvalidRangeCase> InvalidRangeCaseGen() =>
         from kind in Gen.Elements(RangedKind.Point, RangedKind.Spot)
-        // Non-positive range values (<= 0) are invalid per the converter and trigger the
-        // invalid-range diagnostic whose wording is under test.
+            // Non-positive range values (<= 0) are invalid per the converter and trigger the
+            // invalid-range diagnostic whose wording is under test.
         from milli in Gen.Choose(-100000, 0)
         select new InvalidRangeCase(kind, milli / 1000.0f);
 

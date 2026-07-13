@@ -3,6 +3,7 @@ using Avalonia.Rendering.Composition;
 using Avalonia.Threading;
 using HelixToolkit.Nex;
 using Microsoft.Extensions.Logging;
+using Microsoft.Win32.SafeHandles;
 
 namespace HelixToolkit.Nex.Avalonia;
 
@@ -32,8 +33,8 @@ namespace HelixToolkit.Nex.Avalonia;
 /// </para>
 /// <para>
 /// Ownership: the bridge owns and closes the ORIGINAL exported semaphore fds. This type hands Avalonia
-/// a <see cref="PosixFileDescriptor.Dup"/> of each fd (Avalonia takes ownership of the duplicate on a
-/// successful import, per its contract), so the compositor and the bridge never close the same
+/// a <see cref="PosixFileDescriptor.Dup"/> of each fd — a <see cref="SafeFileHandle"/> Avalonia takes
+/// ownership of on a successful import (per its contract) — so the compositor and the bridge never close the same
 /// descriptor. Double-closing a shared fd recycles its number and makes a later import fail with
 /// "DRM_IOCTL_SYNCOBJ_FD_TO_HANDLE failed: Invalid argument".
 /// </para>
@@ -129,16 +130,22 @@ internal sealed class SemaphoreSurfaceUpdateSync : ISurfaceUpdateSync, IAsyncDis
         int fd
     )
     {
-        int dup = PosixFileDescriptor.Dup(fd);
+        SafeFileHandle dup = PosixFileDescriptor.Dup(fd);
         try
         {
-            return interop.ImportSemaphore(
-                new PlatformHandle((nint)dup, VulkanSemaphoreOpaqueFdType)
+            ICompositionImportedGpuSemaphore imported = interop.ImportSemaphore(
+                new PlatformHandle(dup.DangerousGetHandle(), VulkanSemaphoreOpaqueFdType)
             );
+
+            // The import succeeded, so the compositor now owns the duplicate; relinquish it from the
+            // SafeFileHandle so disposal does not close the fd out from under the compositor.
+            dup.SetHandleAsInvalid();
+            return imported;
         }
         catch
         {
-            PosixFileDescriptor.Close(dup);
+            // The import failed, so the caller owns the duplicate; close it.
+            dup.Dispose();
             throw;
         }
     }
