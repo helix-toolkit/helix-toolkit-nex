@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Platform;
 using Avalonia.Rendering.Composition;
 using Microsoft.Extensions.Logging;
+using Microsoft.Win32.SafeHandles;
 using Format = HelixToolkit.Nex.Graphics.Format;
 
 namespace HelixToolkit.Nex.Avalonia;
@@ -200,10 +201,10 @@ internal sealed class CompositionSurfacePresenter : Control
     /// <summary>
     /// Imports the shared image through <see cref="ICompositionGpuInterop"/>. On the Linux
     /// external-memory path the bridge owns and closes the ORIGINAL exported memory fd, so the
-    /// compositor is handed a <see cref="PosixFileDescriptor.Dup"/> of it (Avalonia takes ownership of
-    /// the duplicate on a successful import); this prevents the bridge and the compositor from
-    /// double-closing the same descriptor. On the Windows shared-NT-handle path the handle is passed
-    /// through unchanged.
+    /// compositor is handed a <see cref="PosixFileDescriptor.Dup"/> of it (a <see cref="SafeFileHandle"/>
+    /// Avalonia takes ownership of on a successful import); this prevents the bridge and the compositor
+    /// from double-closing the same descriptor. On the Windows shared-NT-handle path the handle is
+    /// passed through unchanged.
     /// </summary>
     private ICompositionImportedGpuImage ImportImage(
         SharedImageDescription image,
@@ -213,17 +214,23 @@ internal sealed class CompositionSurfacePresenter : Control
     {
         if (image.NtHandle == nint.Zero && OperatingSystem.IsLinux())
         {
-            int dup = PosixFileDescriptor.Dup(image.MemoryFd);
+            SafeFileHandle dup = PosixFileDescriptor.Dup(image.MemoryFd);
             try
             {
-                return _interop!.ImportImage(
-                    new PlatformHandle((nint)dup, image.ExternalHandleType),
+                ICompositionImportedGpuImage imported = _interop!.ImportImage(
+                    new PlatformHandle(dup.DangerousGetHandle(), image.ExternalHandleType),
                     properties
                 );
+
+                // The import succeeded, so the compositor now owns the duplicate; relinquish it from
+                // the SafeFileHandle so disposal does not close the fd out from under the compositor.
+                dup.SetHandleAsInvalid();
+                return imported;
             }
             catch
             {
-                PosixFileDescriptor.Close(dup);
+                // The import failed, so the caller owns the duplicate; close it.
+                dup.Dispose();
                 throw;
             }
         }

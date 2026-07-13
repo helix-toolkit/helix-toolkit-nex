@@ -1,6 +1,7 @@
 using HelixToolkit.Nex.Graphics;
 using HelixToolkit.Nex.Graphics.Vulkan;
 using Microsoft.Extensions.Logging;
+using Microsoft.Win32.SafeHandles;
 using Vortice.Vulkan;
 using VK = Vortice.Vulkan.Vulkan;
 
@@ -72,6 +73,8 @@ internal sealed class LinuxExternalMemoryBridge : IEngineOutputBridge
     /// </summary>
     private const string VulkanOpaqueFdImageHandleType = "VulkanOpaquePosixFileDescriptor";
 
+    private static readonly SafeFileHandle InvalidFdHandle = new(new IntPtr(-1), ownsHandle: true);
+
     /// <summary>Format of the exported render target (matches <see cref="Format.RGBA_UN8"/>).</summary>
     private const VkFormat Format = VkFormat.R8G8B8A8Unorm;
 
@@ -91,7 +94,7 @@ internal sealed class LinuxExternalMemoryBridge : IEngineOutputBridge
     /// The exported POSIX file descriptor for <see cref="_memory"/>, or <c>-1</c> when not exported.
     /// Consumed by <see cref="CreateImportDescription"/> (task 8.3).
     /// </summary>
-    private int _memoryFd = -1;
+    private SafeFileHandle _memoryFd = InvalidFdHandle;
 
     /// <summary>
     /// Size, in bytes, of the exported device-memory allocation. Consumed by
@@ -121,16 +124,18 @@ internal sealed class LinuxExternalMemoryBridge : IEngineOutputBridge
     private VkSemaphore _readFinishedSemaphore = VkSemaphore.Null;
 
     /// <summary>
-    /// Exported POSIX file descriptor for <see cref="_renderFinishedSemaphore"/>, or <c>-1</c> when
-    /// not exported. Consumed by <see cref="CreateSurfaceSync"/>.
+    /// Exported POSIX file descriptor for <see cref="_renderFinishedSemaphore"/>, wrapped in a
+    /// <see cref="SafeFileHandle"/> that closes it on disposal; invalid when not exported. Consumed
+    /// by <see cref="CreateSurfaceSync"/>.
     /// </summary>
-    private int _renderFinishedSemaphoreFd = -1;
+    private SafeFileHandle _renderFinishedSemaphoreFd = InvalidFdHandle;
 
     /// <summary>
-    /// Exported POSIX file descriptor for <see cref="_readFinishedSemaphore"/>, or <c>-1</c> when
-    /// not exported. Consumed by <see cref="CreateSurfaceSync"/>.
+    /// Exported POSIX file descriptor for <see cref="_readFinishedSemaphore"/>, wrapped in a
+    /// <see cref="SafeFileHandle"/> that closes it on disposal; invalid when not exported. Consumed
+    /// by <see cref="CreateSurfaceSync"/>.
     /// </summary>
-    private int _readFinishedSemaphoreFd = -1;
+    private SafeFileHandle _readFinishedSemaphoreFd = InvalidFdHandle;
 
     /// <summary>
     /// Cached surface-update sync for the current resources. Importing the opaque-fd semaphores
@@ -171,7 +176,7 @@ internal sealed class LinuxExternalMemoryBridge : IEngineOutputBridge
     public TextureHandle EngineTarget => _handle;
 
     /// <summary>The exported memory file descriptor, or <c>-1</c> when no resources are allocated.</summary>
-    internal int MemoryFd => _memoryFd;
+    internal int MemoryFd => _memoryFd.IsInvalid ? -1 : (int)_memoryFd.DangerousGetHandle();
 
     /// <summary>The size, in bytes, of the exported device-memory allocation.</summary>
     internal ulong MemorySize => _memorySize;
@@ -206,7 +211,7 @@ internal sealed class LinuxExternalMemoryBridge : IEngineOutputBridge
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
 
-        if (_memoryFd < 0)
+        if (_memoryFd.IsInvalid)
         {
             throw new InvalidOperationException(
                 "External-memory resources have not been created; call the constructor or Resize first."
@@ -218,7 +223,7 @@ internal sealed class LinuxExternalMemoryBridge : IEngineOutputBridge
             Width = _width,
             Height = _height,
             Format = Graphics.Format.RGBA_UN8,
-            MemoryFd = _memoryFd,
+            MemoryFd = (int)_memoryFd.DangerousGetHandle(),
             MemorySize = _memorySize,
             DmaBufModifier = _dmaBufModifier,
             ExternalHandleType = VulkanOpaqueFdImageHandleType,
@@ -409,13 +414,11 @@ internal sealed class LinuxExternalMemoryBridge : IEngineOutputBridge
         //     render-finished semaphore is signaled by the engine write and awaited by the
         //     compositor read; the read-finished semaphore is signaled by the compositor read and
         //     awaited by the next engine write.
-        (VkSemaphore renderFinishedSemaphore, int renderFinishedFd) = CreateExportableSemaphore(
-            device,
-            "render-finished"
-        );
+        (VkSemaphore renderFinishedSemaphore, SafeFileHandle renderFinishedFd) =
+            CreateExportableSemaphore(device, "render-finished");
 
         VkSemaphore readFinishedSemaphore;
-        int readFinishedFd = -1;
+        SafeFileHandle readFinishedFd;
         try
         {
             (readFinishedSemaphore, readFinishedFd) = CreateExportableSemaphore(
@@ -426,10 +429,7 @@ internal sealed class LinuxExternalMemoryBridge : IEngineOutputBridge
         catch
         {
             // Roll back the first semaphore so a partial failure does not leak it.
-            if (renderFinishedFd >= 0)
-            {
-                CloseFileDescriptor(renderFinishedFd);
-            }
+            renderFinishedFd.Dispose();
             if (renderFinishedSemaphore.IsNotNull)
             {
                 VK.vkDestroySemaphore(device, renderFinishedSemaphore, null);
@@ -441,7 +441,7 @@ internal sealed class LinuxExternalMemoryBridge : IEngineOutputBridge
         _image = image;
         _memory = memory;
         _handle = handle;
-        _memoryFd = fd;
+        _memoryFd = new SafeFileHandle(new IntPtr(fd), true);
         _memorySize = memRequirements.size;
         _dmaBufModifier = null; // opaque-fd export; dma-buf modifier query is a dma-buf-path concern.
         _renderFinishedSemaphore = renderFinishedSemaphore;
@@ -454,7 +454,10 @@ internal sealed class LinuxExternalMemoryBridge : IEngineOutputBridge
         // Create the surface-update sync once for these resources. It imports the opaque-fd semaphores
         // lazily on first present and caches them; it is returned unchanged every frame and only
         // disposed when these resources are released (Resize/Dispose).
-        _surfaceSync = new SemaphoreSurfaceUpdateSync(renderFinishedFd, readFinishedFd);
+        _surfaceSync = new SemaphoreSurfaceUpdateSync(
+            (int)renderFinishedFd.DangerousGetHandle(),
+            (int)readFinishedFd.DangerousGetHandle()
+        );
 
         // The engine waits on the read-finished semaphore before its first write to this image, but
         // the compositor has not read (and therefore not signaled) it yet. Pre-signal it once so the
@@ -492,8 +495,11 @@ internal sealed class LinuxExternalMemoryBridge : IEngineOutputBridge
     /// </summary>
     /// <param name="device">The Vulkan device the semaphore is created on.</param>
     /// <param name="role">A short role label used in error messages (for diagnostics only).</param>
-    /// <returns>The created semaphore together with its exported file descriptor.</returns>
-    private static unsafe (VkSemaphore Semaphore, int Fd) CreateExportableSemaphore(
+    /// <returns>
+    /// The created semaphore together with its exported file descriptor wrapped in a
+    /// <see cref="SafeFileHandle"/> that owns and closes it.
+    /// </returns>
+    private static unsafe (VkSemaphore Semaphore, SafeFileHandle Fd) CreateExportableSemaphore(
         VkDevice device,
         string role
     )
@@ -523,7 +529,7 @@ internal sealed class LinuxExternalMemoryBridge : IEngineOutputBridge
             result.CheckResult($"Failed to export {role} semaphore as a POSIX file descriptor");
         }
 
-        return (semaphore, fd);
+        return (semaphore, new SafeFileHandle(new IntPtr(fd), ownsHandle: true));
     }
 
     /// <summary>
@@ -571,24 +577,24 @@ internal sealed class LinuxExternalMemoryBridge : IEngineOutputBridge
 
         // The exported fd is owned by the importer once handed off; until then close it here to
         // avoid leaking descriptors when resources are released before an import occurs.
-        if (_memoryFd >= 0)
+        if (!_memoryFd.IsInvalid)
         {
-            CloseFileDescriptor(_memoryFd);
-            _memoryFd = -1;
+            _memoryFd.Dispose();
+            _memoryFd = InvalidFdHandle;
         }
 
         // Close the exported semaphore fds (owned by the compositor import once handed off) and
         // destroy the semaphores themselves.
-        if (_renderFinishedSemaphoreFd >= 0)
+        if (!_renderFinishedSemaphoreFd.IsInvalid)
         {
-            CloseFileDescriptor(_renderFinishedSemaphoreFd);
-            _renderFinishedSemaphoreFd = -1;
+            _renderFinishedSemaphoreFd.Dispose();
+            _renderFinishedSemaphoreFd = InvalidFdHandle;
         }
 
-        if (_readFinishedSemaphoreFd >= 0)
+        if (!_readFinishedSemaphoreFd.IsInvalid)
         {
-            CloseFileDescriptor(_readFinishedSemaphoreFd);
-            _readFinishedSemaphoreFd = -1;
+            _readFinishedSemaphoreFd.Dispose();
+            _readFinishedSemaphoreFd = InvalidFdHandle;
         }
 
         if (_renderFinishedSemaphore.IsNotNull)
@@ -678,25 +684,4 @@ internal sealed class LinuxExternalMemoryBridge : IEngineOutputBridge
 
         return externalFormatProperties.externalMemoryProperties.externalMemoryFeatures;
     }
-
-    /// <summary>
-    /// Closes a POSIX file descriptor. The exported memory fd is a POSIX handle even though the
-    /// bridge is compiled on both TFMs; on non-Linux hosts this is a defensive no-op because such an
-    /// fd is never produced (construction is Linux-guarded by the caller).
-    /// </summary>
-    private static void CloseFileDescriptor(int fd)
-    {
-        if (fd < 0)
-        {
-            return;
-        }
-
-        if (OperatingSystem.IsLinux())
-        {
-            _ = NativeClose(fd);
-        }
-    }
-
-    [System.Runtime.InteropServices.DllImport("libc", EntryPoint = "close", SetLastError = true)]
-    private static extern int NativeClose(int fd);
 }

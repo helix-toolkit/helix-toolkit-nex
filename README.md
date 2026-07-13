@@ -55,7 +55,7 @@ Currently in development.
  
 - :white_check_mark: Wpf Framework Interoperation
 - :white_check_mark: WinUI Interoperation
-- :white_check_mark: Avalonia UI Interoperation
+- :white_check_mark: Avalonia (Windows & Linux) UI Interoperation
 
 ## Rendering Samples
 
