@@ -1,0 +1,73 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "build",
+                "${workspaceFolder}/Source/HelixToolkit-Nex/HelixToolkit.Nex.slnx",
+                "/property:GenerateFullPaths=true",
+                "/consoleloggerparameters:NoSummary;ForceNoAlign"
+            ],
+            "problemMatcher": "$msCompile"
+        },
+        {
+            // Builds every buildable sample in one shot. The default args use
+            // the LinuxDebug configuration (the slnx marks WinUI/Wpf as
+            // non-built there, so it succeeds on Linux); the "windows" override
+            // switches to the Debug configuration, under which the slnx maps
+            // WinUI to the x64 platform. Used as the preLaunchTask for the
+            // generic sample launcher: the build needs no project input
+            // (keeping the launch dropdown a single prompt) and incremental
+            // rebuilds are fast.
+            "label": "build-samples",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "build",
+                "${workspaceFolder}/Source/HelixToolkit-Nex/HelixToolkit.Nex.slnx",
+                "-c",
+                "LinuxDebug",
+                "/property:GenerateFullPaths=true",
+                "/consoleloggerparameters:NoSummary;ForceNoAlign"
+            ],
+            "windows": {
+                "args": [
+                    "build",
+                    "${workspaceFolder}/Source/HelixToolkit-Nex/HelixToolkit.Nex.slnx",
+                    "-c",
+                    "Debug",
+                    "/property:GenerateFullPaths=true",
+                    "/consoleloggerparameters:NoSummary;ForceNoAlign"
+                ]
+            },
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "publish",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "publish",
+                "${workspaceFolder}/Source/HelixToolkit-Nex/HelixToolkit.Nex.sln",
+                "/property:GenerateFullPaths=true",
+                "/consoleloggerparameters:NoSummary;ForceNoAlign"
+            ],
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "watch",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "watch",
+                "run",
+                "--project",
+                "${workspaceFolder}/Source/HelixToolkit-Nex/HelixToolkit.Nex.sln"
+            ],
+            "problemMatcher": "$msCompile"
+        }
+    ]
+}
