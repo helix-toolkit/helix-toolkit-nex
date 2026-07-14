@@ -17,7 +17,16 @@ namespace HelixToolkit.Nex.Graphics.Vulkan;
 /// </summary>
 internal sealed class VulkanImmediateCommands : IDisposable
 {
+    /// <summary>Default primary command-buffer pool size (the render/frame instance).</summary>
     private const uint32_t KMaxCommandBuffers = 32;
+
+    /// <summary>
+    /// Smaller pool size for the upload instance. Staging uploads are effectively serialized
+    /// (each holds <see cref="SubmitLock"/> for a full Acquire→record→Submit), so a handful of
+    /// buffers is enough to keep a few transfers in flight without the 32-buffer footprint.
+    /// </summary>
+    internal const uint32_t KUploadCommandBuffers = 8;
+
     private const uint32_t KMaxSecondaryCommandBuffers = 64;
     private static readonly ILogger _logger = LogManager.Create<VulkanImmediateCommands>();
 
@@ -29,11 +38,49 @@ internal sealed class VulkanImmediateCommands : IDisposable
     private readonly uint32_t _queueFamilyIndex = 0;
     private readonly bool _hasExtDeviceFault = false;
 
-    private readonly CommandBuffer[] _buffers = new CommandBuffer[KMaxCommandBuffers];
+    // Number of primary command buffers this instance preallocates (see the constructor).
+    private readonly uint32_t _maxCommandBuffers;
+
+    private readonly CommandBuffer[] _buffers;
 
     // Secondary command buffer pool
     private readonly List<CommandBuffer> _secondaryBuffers = new();
     private readonly object _secondaryBuffersLock = new();
+
+    /// <summary>
+    /// Serializes all use of THIS instance's command pool and its per-instance submission state
+    /// (free/in-flight lists, semaphore chain, submit counter).
+    /// <para>
+    /// The Vulkan spec requires the owning <see cref="VkCommandPool"/> to be externally
+    /// synchronized: two threads must not record into buffers from the same pool concurrently. A
+    /// single instance may legitimately be driven from more than one thread — the upload instance
+    /// used by <see cref="VulkanStagingDevice"/> is exercised by both the render thread (mipmap
+    /// generation / read-back) and background upload threads (e.g. glTF import runs its
+    /// geometry/texture uploads on a thread-pool task). This reentrant monitor is entered in
+    /// <see cref="Acquire"/> and released in <see cref="Submit(CommandBuffer, void*)"/>, making the
+    /// whole Acquire→record→Submit span exclusive; callers MUST pair every <see cref="Acquire"/>
+    /// with exactly one <c>Submit</c> on the same thread. The staging device additionally holds this
+    /// lock across each complete operation so its region bookkeeping is protected. Query/wait
+    /// helpers take it briefly.
+    /// </para>
+    /// <para>
+    /// Render frames and background uploads use SEPARATE instances (separate pools + semaphore
+    /// chains), so this per-instance lock never couples a blocking frame (swapchain acquire /
+    /// present) with an upload. The one resource the two instances share — the <see cref="VkQueue"/>,
+    /// which also requires external synchronization for <c>vkQueueSubmit</c> — is guarded by the
+    /// cross-instance <see cref="_queueSubmitLock"/> held only around the submit call itself.
+    /// </para>
+    /// </summary>
+    internal object SubmitLock { get; } = new();
+
+    /// <summary>
+    /// Cross-instance lock guarding <c>vkQueueSubmit2</c> on the shared <see cref="VkQueue"/>. All
+    /// <see cref="VulkanImmediateCommands"/> instances that target the same queue are constructed
+    /// with the same lock object so their submits never overlap on the queue (Vulkan external
+    /// synchronization). Held only around the submit call — never across recording or a fence wait —
+    /// so it cannot deadlock.
+    /// </summary>
+    private readonly object _queueSubmitLock;
 
     // Semaphore state for the next submit
     private SubmitHandle _lastSubmitHandle = SubmitHandle.Null;
@@ -56,16 +103,31 @@ internal sealed class VulkanImmediateCommands : IDisposable
     };
     private uint16_t _submitCounter = 1;
 
+    /// <param name="queueSubmitLock">
+    /// Lock shared by every instance targeting the same <see cref="VkQueue"/>, guarding
+    /// <c>vkQueueSubmit2</c> (see <see cref="_queueSubmitLock"/>). Pass <see langword="null"/> to use
+    /// a private lock when this instance owns its queue exclusively.
+    /// </param>
+    /// <param name="maxCommandBuffers">
+    /// Number of primary command buffers to preallocate. Defaults to <see cref="KMaxCommandBuffers"/>
+    /// for the render/frame instance; the upload instance passes the smaller
+    /// <see cref="KUploadCommandBuffers"/> to keep its footprint low.
+    /// </param>
     public VulkanImmediateCommands(
         VulkanContext context,
         uint32_t queueFamilyIndex,
-        bool hasEXTDeviceFault
+        bool hasEXTDeviceFault,
+        object? queueSubmitLock = null,
+        uint32_t maxCommandBuffers = KMaxCommandBuffers
     )
     {
         _context = context;
         _device = context.GetVkDevice();
         _queueFamilyIndex = queueFamilyIndex;
         _hasExtDeviceFault = hasEXTDeviceFault;
+        _queueSubmitLock = queueSubmitLock ?? new object();
+        _maxCommandBuffers = Math.Max(1u, maxCommandBuffers);
+        _buffers = new CommandBuffer[_maxCommandBuffers];
 
         VK.vkGetDeviceQueue(_device, queueFamilyIndex, 0, out _queue);
 
@@ -101,7 +163,7 @@ internal sealed class VulkanImmediateCommands : IDisposable
             );
         }
 
-        for (uint32_t i = 0; i < KMaxCommandBuffers; ++i)
+        for (uint32_t i = 0; i < _maxCommandBuffers; ++i)
         {
             _buffers[i] = new CommandBuffer(context, false, i, in _commandPool, queueFamilyIndex);
             _freeStack.Push(i);
@@ -128,25 +190,40 @@ internal sealed class VulkanImmediateCommands : IDisposable
     /// </summary>
     public CommandBuffer Acquire()
     {
-        // Fast path: pop from free stack
-        if (_freeStack.Count > 0)
+        // Enter the pool/queue lock here and release it in Submit, so the whole
+        // Acquire→record→Submit span is exclusive across threads (see SubmitLock). The lock is a
+        // reentrant monitor, so a mid-frame acquire on the same thread (e.g. mipmap generation) is
+        // safe; it is released only when the matching Submit unwinds the outermost acquire.
+        Monitor.Enter(SubmitLock);
+        try
         {
+            // Fast path: pop from free stack
+            if (_freeStack.Count > 0)
+            {
+                return BeginBuffer(_buffers[_freeStack.Pop()]);
+            }
+
+            // No free buffers — try to recycle completed ones from the front of the in-flight queue
+            TryRecycleCompleted();
+
+            if (_freeStack.Count > 0)
+            {
+                return BeginBuffer(_buffers[_freeStack.Pop()]);
+            }
+
+            // Still nothing — must stall on the oldest in-flight buffer
+            _logger.LogWarning("All command buffers in-flight, stalling...");
+            WaitAndRecycleFront();
+
             return BeginBuffer(_buffers[_freeStack.Pop()]);
         }
-
-        // No free buffers — try to recycle completed ones from the front of the in-flight queue
-        TryRecycleCompleted();
-
-        if (_freeStack.Count > 0)
+        catch
         {
-            return BeginBuffer(_buffers[_freeStack.Pop()]);
+            // Acquire failed before returning a buffer, so no Submit will follow to release the
+            // lock — release the entry we just took to avoid leaking it.
+            Monitor.Exit(SubmitLock);
+            throw;
         }
-
-        // Still nothing — must stall on the oldest in-flight buffer
-        _logger.LogWarning("All command buffers in-flight, stalling...");
-        WaitAndRecycleFront();
-
-        return BeginBuffer(_buffers[_freeStack.Pop()]);
     }
 
     private CommandBuffer BeginBuffer(CommandBuffer buf)
@@ -230,73 +307,89 @@ internal sealed class VulkanImmediateCommands : IDisposable
 
     public unsafe SubmitHandle Submit(CommandBuffer cmdBuf, void* submitInfoPNext = null)
     {
-        HxDebug.Assert(cmdBuf.IsEncoding);
-        cmdBuf.EndEncoding();
-        unsafe
+        // Releases the SubmitLock entered by the matching Acquire (see SubmitLock). Wrapped in
+        // try/finally so a submit-time failure (e.g. a device-lost thrown by CheckResult) still
+        // releases the lock instead of deadlocking every subsequent Acquire.
+        try
         {
-            var waitSemaphores = stackalloc VkSemaphoreSubmitInfo[2];
-            uint32_t numWaitSemaphores = 0;
-            if (_waitSemaphore.semaphore != VkSemaphore.Null)
+            HxDebug.Assert(cmdBuf.IsEncoding);
+            cmdBuf.EndEncoding();
+            unsafe
             {
-                waitSemaphores[numWaitSemaphores++] = _waitSemaphore;
-            }
-            if (_lastSubmitSemaphore.semaphore != VkSemaphore.Null)
-            {
-                waitSemaphores[numWaitSemaphores++] = _lastSubmitSemaphore;
-            }
+                var waitSemaphores = stackalloc VkSemaphoreSubmitInfo[2];
+                uint32_t numWaitSemaphores = 0;
+                if (_waitSemaphore.semaphore != VkSemaphore.Null)
+                {
+                    waitSemaphores[numWaitSemaphores++] = _waitSemaphore;
+                }
+                if (_lastSubmitSemaphore.semaphore != VkSemaphore.Null)
+                {
+                    waitSemaphores[numWaitSemaphores++] = _lastSubmitSemaphore;
+                }
 
-            var signalSemaphores = stackalloc VkSemaphoreSubmitInfo[3];
-            signalSemaphores[0] = new VkSemaphoreSubmitInfo()
-            {
-                semaphore = cmdBuf.Semaphore,
-                stageMask = VkPipelineStageFlags2.AllCommands,
-            };
+                var signalSemaphores = stackalloc VkSemaphoreSubmitInfo[3];
+                signalSemaphores[0] = new VkSemaphoreSubmitInfo()
+                {
+                    semaphore = cmdBuf.Semaphore,
+                    stageMask = VkPipelineStageFlags2.AllCommands,
+                };
 
-            uint32_t numSignalSemaphores = 1;
-            if (_signalSemaphore.semaphore != VkSemaphore.Null)
-            {
-                signalSemaphores[numSignalSemaphores++] = _signalSemaphore;
-            }
-            if (_presentSignalSemaphore.semaphore != VkSemaphore.Null)
-            {
-                signalSemaphores[numSignalSemaphores++] = _presentSignalSemaphore;
-            }
+                uint32_t numSignalSemaphores = 1;
+                if (_signalSemaphore.semaphore != VkSemaphore.Null)
+                {
+                    signalSemaphores[numSignalSemaphores++] = _signalSemaphore;
+                }
+                if (_presentSignalSemaphore.semaphore != VkSemaphore.Null)
+                {
+                    signalSemaphores[numSignalSemaphores++] = _presentSignalSemaphore;
+                }
 
-            VkCommandBufferSubmitInfo bufferSI = new() { commandBuffer = cmdBuf.CmdBuffer };
-            VkSubmitInfo2 si = new()
-            {
-                waitSemaphoreInfoCount = numWaitSemaphores,
-                pWaitSemaphoreInfos = waitSemaphores,
-                commandBufferInfoCount = 1u,
-                pCommandBufferInfos = &bufferSI,
-                signalSemaphoreInfoCount = numSignalSemaphores,
-                pSignalSemaphoreInfos = signalSemaphores,
-                pNext = submitInfoPNext,
-            };
-            var result = VK.vkQueueSubmit2(_queue, 1u, &si, cmdBuf.Fence);
+                VkCommandBufferSubmitInfo bufferSI = new() { commandBuffer = cmdBuf.CmdBuffer };
+                VkSubmitInfo2 si = new()
+                {
+                    waitSemaphoreInfoCount = numWaitSemaphores,
+                    pWaitSemaphoreInfos = waitSemaphores,
+                    commandBufferInfoCount = 1u,
+                    pCommandBufferInfos = &bufferSI,
+                    signalSemaphoreInfoCount = numSignalSemaphores,
+                    pSignalSemaphoreInfos = signalSemaphores,
+                    pNext = submitInfoPNext,
+                };
+                // The VkQueue is shared with other immediate-command instances (e.g. the upload
+                // instance when no dedicated transfer queue exists); serialize the submit across them.
+                VkResult result;
+                lock (_queueSubmitLock)
+                {
+                    result = VK.vkQueueSubmit2(_queue, 1u, &si, cmdBuf.Fence);
+                }
 
-            if (_hasExtDeviceFault && result == VkResult.ErrorDeviceLost)
-            {
-                ReportDeviceFault();
-            }
+                if (_hasExtDeviceFault && result == VkResult.ErrorDeviceLost)
+                {
+                    ReportDeviceFault();
+                }
 
-            result.CheckResult();
+                result.CheckResult();
 
-            _lastSubmitSemaphore.semaphore = cmdBuf.Semaphore;
-            _lastSubmitHandle = cmdBuf.Handle;
-            _waitSemaphore.semaphore = VkSemaphore.Null;
-            _signalSemaphore.semaphore = VkSemaphore.Null;
-            _presentSignalSemaphore.semaphore = VkSemaphore.Null;
+                _lastSubmitSemaphore.semaphore = cmdBuf.Semaphore;
+                _lastSubmitHandle = cmdBuf.Handle;
+                _waitSemaphore.semaphore = VkSemaphore.Null;
+                _signalSemaphore.semaphore = VkSemaphore.Null;
+                _presentSignalSemaphore.semaphore = VkSemaphore.Null;
 
-            _inFlightQueue.Enqueue(cmdBuf.Handle.BufferIndex);
+                _inFlightQueue.Enqueue(cmdBuf.Handle.BufferIndex);
 
-            _submitCounter++;
-            if (_submitCounter == 0)
-            {
                 _submitCounter++;
-            }
+                if (_submitCounter == 0)
+                {
+                    _submitCounter++;
+                }
 
-            return _lastSubmitHandle;
+                return _lastSubmitHandle;
+            }
+        }
+        finally
+        {
+            Monitor.Exit(SubmitLock);
         }
     }
 
@@ -360,28 +453,32 @@ internal sealed class VulkanImmediateCommands : IDisposable
             return true;
         }
 
-        var buf = _buffers[handle.BufferIndex];
-
-        if (buf.IsAvailable)
+        // Reads buffer availability/fence state that Acquire/Submit/Reset mutate under SubmitLock.
+        lock (SubmitLock)
         {
-            return true;
-        }
+            var buf = _buffers[handle.BufferIndex];
 
-        if (buf.Handle.SubmitId != handle.SubmitId)
-        {
-            // Buffer was recycled and reused — the original submission is long done.
-            return true;
-        }
+            if (buf.IsAvailable)
+            {
+                return true;
+            }
 
-        if (fastCheckNoVulkan)
-        {
-            return false;
-        }
+            if (buf.Handle.SubmitId != handle.SubmitId)
+            {
+                // Buffer was recycled and reused — the original submission is long done.
+                return true;
+            }
 
-        unsafe
-        {
-            var fence = buf.Fence;
-            return VK.vkWaitForFences(_device, 1, &fence, VkBool32.True, 0) == VkResult.Success;
+            if (fastCheckNoVulkan)
+            {
+                return false;
+            }
+
+            unsafe
+            {
+                var fence = buf.Fence;
+                return VK.vkWaitForFences(_device, 1, &fence, VkBool32.True, 0) == VkResult.Success;
+            }
         }
     }
 
@@ -393,42 +490,49 @@ internal sealed class VulkanImmediateCommands : IDisposable
     {
         if (handle.Empty)
         {
-            VK.vkDeviceWaitIdle(_device);
+            lock (SubmitLock)
+            {
+                VK.vkDeviceWaitIdle(_device);
+            }
             return;
         }
 
-        var buf = _buffers[handle.BufferIndex];
-
-        // Already available — nothing to wait for
-        if (buf.IsAvailable)
+        // Guards the shared free-stack/buffer state against Acquire/Submit on other threads.
+        lock (SubmitLock)
         {
-            return;
-        }
+            var buf = _buffers[handle.BufferIndex];
 
-        // Buffer was recycled and reused by a newer submission — original work is done
-        if (buf.Handle.SubmitId != handle.SubmitId)
-        {
-            return;
-        }
+            // Already available — nothing to wait for
+            if (buf.IsAvailable)
+            {
+                return;
+            }
 
-        // Buffer is still being recorded — shouldn't happen in correct usage
-        if (buf.IsEncoding)
-        {
-            _logger.LogWarning("Wait called on a command buffer that is still encoding");
-            return;
-        }
+            // Buffer was recycled and reused by a newer submission — original work is done
+            if (buf.Handle.SubmitId != handle.SubmitId)
+            {
+                return;
+            }
 
-        // Wait for this buffer's fence
-        unsafe
-        {
-            var fence = buf.Fence;
-            VK.vkWaitForFences(_device, 1, &fence, VkBool32.True, ulong.MaxValue).CheckResult();
-        }
+            // Buffer is still being recorded — shouldn't happen in correct usage
+            if (buf.IsEncoding)
+            {
+                _logger.LogWarning("Wait called on a command buffer that is still encoding");
+                return;
+            }
 
-        if (reset)
-        {
-            buf.Reset();
-            _freeStack.Push(handle.BufferIndex);
+            // Wait for this buffer's fence
+            unsafe
+            {
+                var fence = buf.Fence;
+                VK.vkWaitForFences(_device, 1, &fence, VkBool32.True, ulong.MaxValue).CheckResult();
+            }
+
+            if (reset)
+            {
+                buf.Reset();
+                _freeStack.Push(handle.BufferIndex);
+            }
         }
     }
 
@@ -437,37 +541,40 @@ internal sealed class VulkanImmediateCommands : IDisposable
     /// </summary>
     public void WaitAll(bool reset = true)
     {
-        unsafe
+        lock (SubmitLock)
         {
-            var fences = stackalloc VkFence[(int)KMaxCommandBuffers];
-            uint32_t numFences = 0;
-
-            for (int i = 0; i < KMaxCommandBuffers; i++)
+            unsafe
             {
-                var buf = _buffers[i];
-                if (!buf.IsAvailable && !buf.IsEncoding)
+                var fences = stackalloc VkFence[(int)_maxCommandBuffers];
+                uint32_t numFences = 0;
+
+                for (int i = 0; i < _maxCommandBuffers; i++)
                 {
-                    fences[numFences++] = buf.Fence;
+                    var buf = _buffers[i];
+                    if (!buf.IsAvailable && !buf.IsEncoding)
+                    {
+                        fences[numFences++] = buf.Fence;
+                    }
+                }
+
+                if (numFences > 0)
+                {
+                    VK.vkWaitForFences(_device, numFences, fences, VkBool32.True, ulong.MaxValue)
+                        .CheckResult();
                 }
             }
 
-            if (numFences > 0)
+            if (reset)
             {
-                VK.vkWaitForFences(_device, numFences, fences, VkBool32.True, ulong.MaxValue)
-                    .CheckResult();
-            }
-        }
-
-        if (reset)
-        {
-            _inFlightQueue.Clear();
-            for (int i = 0; i < KMaxCommandBuffers; i++)
-            {
-                var buf = _buffers[i];
-                if (!buf.IsAvailable && !buf.IsEncoding)
+                _inFlightQueue.Clear();
+                for (int i = 0; i < _maxCommandBuffers; i++)
                 {
-                    buf.Reset();
-                    _freeStack.Push((uint32_t)i);
+                    var buf = _buffers[i];
+                    if (!buf.IsAvailable && !buf.IsEncoding)
+                    {
+                        buf.Reset();
+                        _freeStack.Push((uint32_t)i);
+                    }
                 }
             }
         }
@@ -702,7 +809,7 @@ internal sealed class VulkanImmediateCommands : IDisposable
                 WaitAll();
                 unsafe
                 {
-                    for (int i = 0; i < KMaxCommandBuffers; ++i)
+                    for (int i = 0; i < _maxCommandBuffers; ++i)
                     {
                         _buffers[i].Dispose();
                     }
