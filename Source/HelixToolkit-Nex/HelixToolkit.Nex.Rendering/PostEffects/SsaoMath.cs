@@ -369,7 +369,7 @@ internal static class SsaoMath
         var centerDepth = depth[cy, cx];
 
         // Far-plane pixels have no geometry: fully lit, skip normal reconstruction (Req 2.5, 3.6).
-        if (centerDepth == FarPlaneDepth)
+        if (MathF.Abs(centerDepth - FarPlaneDepth) <= 1e-6f)
         {
             return 1.0f;
         }
@@ -414,7 +414,7 @@ internal static class SsaoMath
 
             var (sx, sy) = UvToPixel(sampleUv, width, height);
             var neighborDepth = depth[sy, sx];
-            if (neighborDepth == FarPlaneDepth)
+            if (MathF.Abs(neighborDepth - FarPlaneDepth) <= 1e-6f)
             {
                 continue; // background, no occluding geometry
             }

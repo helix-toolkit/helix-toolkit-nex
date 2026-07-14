@@ -125,6 +125,7 @@ public sealed class RenderGraphResourceSet : IDisposable
             texture.Dispose();
         }
         _textureResources[name] = TextureResource.Null;
+        Textures[name] = TextureHandle.Null;
     }
 
     /// <summary>
@@ -151,6 +152,7 @@ public sealed class RenderGraphResourceSet : IDisposable
             buffer.Dispose();
         }
         _bufferResources[name] = BufferResource.Null;
+        Buffers[name] = BufferHandle.Null;
     }
 
     /// <summary>

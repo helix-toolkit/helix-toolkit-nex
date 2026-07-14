@@ -165,7 +165,7 @@ void occlusionPass() {
 
     // Far-plane pixels have no geometry: fully lit, skip normal reconstruction
     // (Req 2.5, 3.6).
-    if (centerDepth == SSAO_FAR_PLANE) {
+    if (abs(centerDepth - SSAO_FAR_PLANE) < 1e-6) {
         outColor = vec4(1.0);
         return;
     }
@@ -218,7 +218,7 @@ void occlusionPass() {
         }
 
         float nd = sampleDepth(sampleUV);
-        if (nd == SSAO_FAR_PLANE) {
+        if (abs(nd - SSAO_FAR_PLANE) < 1e-6) {
             continue; // background, no occluding geometry
         }
 
