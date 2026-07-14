@@ -157,6 +157,15 @@ internal sealed partial class VulkanContext
     private VulkanSwapchain? _swapchain = null;
     private VulkanStagingDevice? _stagingDevice = null;
     private VulkanImmediateCommands? _immediate = null;
+
+    // Dedicated immediate-command instance (its own command pool + semaphore chain) for staging
+    // uploads. When no dedicated transfer queue exists, uploads target the graphics queue and are
+    // frequently driven from a background import thread; giving them a separate instance keeps the
+    // render loop's per-frame command pool and semaphore chain uncontended, while the shared
+    // graphics VkQueue is serialized via a queue-submit lock passed to both instances. See
+    // VulkanImmediateCommands.SubmitLock / _queueSubmitLock.
+    private VulkanImmediateCommands? _uploadImmediate = null;
+
     private VulkanTransferQueue? _transferQueue = null;
     private VkDescriptorSetLayout _vkDesSetLayout = VkDescriptorSetLayout.Null;
     private VkDescriptorSetLayout _dslInputAttachments = VkDescriptorSetLayout.Null;
@@ -208,6 +217,15 @@ internal sealed partial class VulkanContext
     public VulkanSwapchain? Swapchain => _swapchain;
     public VkSemaphore TimelineSemaphore { private set; get; } = VkSemaphore.Null;
     public VulkanImmediateCommands? Immediate => _immediate;
+
+    /// <summary>
+    /// Immediate-command instance used by <see cref="StagingDevice"/> for buffer/texture uploads.
+    /// Separate command pool and semaphore chain from <see cref="Immediate"/> so background uploads
+    /// never contend with the render loop's per-frame recording; both share the same graphics queue
+    /// (serialized internally). Falls back to <see cref="Immediate"/> if not created.
+    /// </summary>
+    public VulkanImmediateCommands? UploadImmediate => _uploadImmediate ?? _immediate;
+
     public VulkanStagingDevice? StagingDevice => _stagingDevice;
 
     public DeviceQueues GraphicsQueue { get; } = new();
@@ -2188,6 +2206,7 @@ internal sealed partial class VulkanContext
                 BuffersPool.Clear();
             }
             WaitDeferredTasks();
+            Disposer.DisposeAndRemove(ref _uploadImmediate);
             Disposer.DisposeAndRemove(ref _immediate);
 
             VK.vkDestroyDescriptorSetLayout(_vkDevice, VkDesSetLayout, null);

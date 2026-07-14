@@ -40,118 +40,125 @@ internal sealed class VulkanStagingDevice : IDisposable
         nint data
     )
     {
-        HxDebug.Assert(_ctx.Immediate is not null);
+        HxDebug.Assert(_ctx.UploadImmediate is not null);
         if (buffer.IsMapped)
         {
             buffer.BufferSubData(dstOffset, size, data);
             return ResultCode.Ok;
         }
-        var stagingBuffer = _ctx.BuffersPool.Get(this._stagingBuffer.Handle);
-
-        HxDebug.Assert(stagingBuffer);
-
-        if (!stagingBuffer)
+        // Hold the upload instance's lock for the whole operation: the staging-region bookkeeping
+        // below (GetNextFreeOffset / InsertRegion / EnsureStagingBufferSize) plus the Acquire→Submit
+        // it drives must be atomic against other upload threads and the render thread's mipmap /
+        // read-back use of this same instance. Reentrant, so the nested Acquire/Submit calls are fine.
+        lock (_ctx.UploadImmediate!.SubmitLock)
         {
-            _logger.LogError("Staging buffer is not valid, cannot upload data.");
-            return ResultCode.InvalidState;
-        }
+            var stagingBuffer = _ctx.BuffersPool.Get(this._stagingBuffer.Handle);
 
-        while (size > 0)
-        {
-            // get next staging buffer free offset
-            MemoryRegionDesc desc = GetNextFreeOffset(size, out var bufferChanged);
-            uint32_t chunkSize = Math.Min(size, desc.Size);
+            HxDebug.Assert(stagingBuffer);
 
-            if (bufferChanged)
+            if (!stagingBuffer)
             {
-                stagingBuffer = _ctx.BuffersPool.Get(this._stagingBuffer.Handle);
-                HxDebug.Assert(stagingBuffer);
-
-                if (!stagingBuffer)
-                {
-                    _logger.LogError("Staging buffer is not valid, cannot upload data.");
-                    return ResultCode.InvalidState;
-                }
+                _logger.LogError("Staging buffer is not valid, cannot upload data.");
+                return ResultCode.InvalidState;
             }
 
-            // copy data into staging buffer
-            stagingBuffer!.BufferSubData(desc.Offset, chunkSize, data);
-
-            // do the transfer
-            VkBufferCopy copy = new()
+            while (size > 0)
             {
-                srcOffset = desc.Offset,
-                dstOffset = dstOffset,
-                size = chunkSize,
-            };
+                // get next staging buffer free offset
+                MemoryRegionDesc desc = GetNextFreeOffset(size, out var bufferChanged);
+                uint32_t chunkSize = Math.Min(size, desc.Size);
 
-            var cmdBuf = _ctx.Immediate!.Acquire();
-            unsafe
-            {
-                VK.vkCmdCopyBuffer(
-                    cmdBuf.CmdBuffer,
-                    stagingBuffer.VkBuffer,
-                    buffer.VkBuffer,
-                    1,
-                    &copy
-                );
-
-                VkBufferMemoryBarrier barrier = new()
+                if (bufferChanged)
                 {
-                    srcAccessMask = VK.VK_ACCESS_TRANSFER_WRITE_BIT,
-                    dstAccessMask = 0,
-                    srcQueueFamilyIndex = VK.VK_QUEUE_FAMILY_IGNORED,
-                    dstQueueFamilyIndex = VK.VK_QUEUE_FAMILY_IGNORED,
-                    buffer = buffer.VkBuffer,
-                    offset = dstOffset,
+                    stagingBuffer = _ctx.BuffersPool.Get(this._stagingBuffer.Handle);
+                    HxDebug.Assert(stagingBuffer);
+
+                    if (!stagingBuffer)
+                    {
+                        _logger.LogError("Staging buffer is not valid, cannot upload data.");
+                        return ResultCode.InvalidState;
+                    }
+                }
+
+                // copy data into staging buffer
+                stagingBuffer!.BufferSubData(desc.Offset, chunkSize, data);
+
+                // do the transfer
+                VkBufferCopy copy = new()
+                {
+                    srcOffset = desc.Offset,
+                    dstOffset = dstOffset,
                     size = chunkSize,
                 };
-                VkPipelineStageFlags dstMask = VK.VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
-                if (buffer.VkUsageFlags.HasAllFlags(VK.VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT))
-                {
-                    dstMask |= VK.VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT;
-                    barrier.dstAccessMask |= VK.VK_ACCESS_INDIRECT_COMMAND_READ_BIT;
-                }
-                if (buffer.VkUsageFlags.HasAllFlags(VK.VK_BUFFER_USAGE_INDEX_BUFFER_BIT))
-                {
-                    dstMask |= VK.VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
-                    barrier.dstAccessMask |= VK.VK_ACCESS_INDEX_READ_BIT;
-                }
-                if (buffer.VkUsageFlags.HasAllFlags(VK.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT))
-                {
-                    dstMask |= VK.VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
-                    barrier.dstAccessMask |= VK.VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
-                }
-                if (
-                    buffer.VkUsageFlags.HasAllFlags(
-                        VK.VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR
-                    )
-                )
-                {
-                    dstMask |= VK.VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
-                    barrier.dstAccessMask |= VK.VK_ACCESS_MEMORY_READ_BIT;
-                }
-                VK.vkCmdPipelineBarrier(
-                    cmdBuf.CmdBuffer,
-                    VK.VK_PIPELINE_STAGE_TRANSFER_BIT,
-                    dstMask,
-                    new VkDependencyFlags { },
-                    0,
-                    null,
-                    1,
-                    &barrier,
-                    0,
-                    null
-                );
-                desc.Handle = _ctx.Immediate!.Submit(cmdBuf);
-                InsertRegion(desc);
 
-                size -= chunkSize;
-                data = (nint)((uint8_t*)data + chunkSize);
-                dstOffset += chunkSize;
+                var cmdBuf = _ctx.UploadImmediate!.Acquire();
+                unsafe
+                {
+                    VK.vkCmdCopyBuffer(
+                        cmdBuf.CmdBuffer,
+                        stagingBuffer.VkBuffer,
+                        buffer.VkBuffer,
+                        1,
+                        &copy
+                    );
+
+                    VkBufferMemoryBarrier barrier = new()
+                    {
+                        srcAccessMask = VK.VK_ACCESS_TRANSFER_WRITE_BIT,
+                        dstAccessMask = 0,
+                        srcQueueFamilyIndex = VK.VK_QUEUE_FAMILY_IGNORED,
+                        dstQueueFamilyIndex = VK.VK_QUEUE_FAMILY_IGNORED,
+                        buffer = buffer.VkBuffer,
+                        offset = dstOffset,
+                        size = chunkSize,
+                    };
+                    VkPipelineStageFlags dstMask = VK.VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+                    if (buffer.VkUsageFlags.HasAllFlags(VK.VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT))
+                    {
+                        dstMask |= VK.VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT;
+                        barrier.dstAccessMask |= VK.VK_ACCESS_INDIRECT_COMMAND_READ_BIT;
+                    }
+                    if (buffer.VkUsageFlags.HasAllFlags(VK.VK_BUFFER_USAGE_INDEX_BUFFER_BIT))
+                    {
+                        dstMask |= VK.VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
+                        barrier.dstAccessMask |= VK.VK_ACCESS_INDEX_READ_BIT;
+                    }
+                    if (buffer.VkUsageFlags.HasAllFlags(VK.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT))
+                    {
+                        dstMask |= VK.VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
+                        barrier.dstAccessMask |= VK.VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
+                    }
+                    if (
+                        buffer.VkUsageFlags.HasAllFlags(
+                            VK.VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR
+                        )
+                    )
+                    {
+                        dstMask |= VK.VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
+                        barrier.dstAccessMask |= VK.VK_ACCESS_MEMORY_READ_BIT;
+                    }
+                    VK.vkCmdPipelineBarrier(
+                        cmdBuf.CmdBuffer,
+                        VK.VK_PIPELINE_STAGE_TRANSFER_BIT,
+                        dstMask,
+                        new VkDependencyFlags { },
+                        0,
+                        null,
+                        1,
+                        &barrier,
+                        0,
+                        null
+                    );
+                    desc.Handle = _ctx.UploadImmediate!.Submit(cmdBuf);
+                    InsertRegion(desc);
+
+                    size -= chunkSize;
+                    data = (nint)((uint8_t*)data + chunkSize);
+                    dstOffset += chunkSize;
+                }
             }
+            return ResultCode.Ok;
         }
-        return ResultCode.Ok;
     }
 
     public ResultCode ImageData2D(
@@ -168,235 +175,239 @@ internal sealed class VulkanStagingDevice : IDisposable
     {
         HxDebug.Assert(numMipLevels <= Constants.MAX_MIP_LEVELS);
 
-        // divide the width and height by 2 until we get to the size of level 'baseMipLevel'
-        uint32_t width = image.Extent.width >> (int)baseMipLevel;
-        uint32_t height = image.Extent.height >> (int)baseMipLevel;
-
-        var texFormat = format.ToFormat();
-        if (baseMipLevel > 0)
+        // Atomic against concurrent render-thread / upload-thread use (see BufferSubData).
+        lock (_ctx.UploadImmediate!.SubmitLock)
         {
-            HxDebug.Assert(
-                imageRegion.offset.x == 0
-                    && imageRegion.offset.y == 0
-                    && imageRegion.extent.width == width
-                    && imageRegion.extent.height == height,
-                "Uploading mip-levels with an image region that is smaller than the base mip level is not supported"
-            );
-        }
+            // divide the width and height by 2 until we get to the size of level 'baseMipLevel'
+            uint32_t width = image.Extent.width >> (int)baseMipLevel;
+            uint32_t height = image.Extent.height >> (int)baseMipLevel;
 
-        // find the storage size for all mip-levels being uploaded
-        uint32_t layerStorageSize = 0;
-        for (uint32_t i = 0; i < numMipLevels; ++i)
-        {
-            uint32_t mipSize = HxVkUtils.GetTextureBytesPerLayer(
-                image.Extent.width,
-                image.Extent.height,
-                texFormat,
-                i
-            );
-            layerStorageSize += mipSize;
-            width = width <= 1 ? 1 : width >> 1;
-            height = height <= 1 ? 1 : height >> 1;
-        }
-        uint32_t storageSize = layerStorageSize * numLayers;
-        EnsureStagingBufferSize(storageSize, out _);
-
-        HxDebug.Assert(
-            storageSize <= _stagingBufferSize,
-            $"Required storage size ({storageSize} is larger than maximum supported staging buffer size ({_stagingBufferSize})."
-        );
-
-        var desc = GetNextFreeOffset(storageSize, out _);
-        // No support for copying image in multiple smaller chunk sizes. If we get smaller buffer size than storageSize, we will wait for GPU idle
-        // and get bigger chunk.
-        if (desc.Size < storageSize)
-        {
-            WaitAndReset();
-            desc = GetNextFreeOffset(storageSize, out _);
-        }
-        HxDebug.Assert(desc.Size >= storageSize);
-
-        var cmdBuf = _ctx.Immediate!.Acquire();
-
-        var stagingBuffer = _ctx.BuffersPool.Get(this._stagingBuffer.Handle);
-
-        HxDebug.Assert(stagingBuffer, "Staging buffer is not valid, cannot upload image data.");
-
-        if (!stagingBuffer)
-        {
-            _logger.LogError("Staging buffer is not valid, cannot upload image data.");
-            return ResultCode.InvalidState;
-        }
-
-        var result = stagingBuffer!.BufferSubData(desc.Offset, storageSize, data);
-        if (result != ResultCode.Ok)
-        {
-            return result;
-        }
-
-        uint32_t offset = 0;
-
-        uint32_t numPlanes = image.ImageFormat.GetNumImagePlanes();
-
-        if (numPlanes > 1)
-        {
-            HxDebug.Assert(baseLayer == 0 && baseMipLevel == 0);
-            HxDebug.Assert(numLayers == 1 && numMipLevels == 1);
-            HxDebug.Assert(imageRegion.offset.x == 0 && imageRegion.offset.y == 0);
-            HxDebug.Assert(image.ImageType == VK.VK_IMAGE_TYPE_2D);
-            HxDebug.Assert(
-                image.Extent.width == imageRegion.extent.width
-                    && image.Extent.height == imageRegion.extent.height
-            );
-        }
-
-        VkImageAspectFlags imageAspect = VK.VK_IMAGE_ASPECT_COLOR_BIT;
-
-        if (numPlanes == 2)
-        {
-            imageAspect = VK.VK_IMAGE_ASPECT_PLANE_0_BIT | VK.VK_IMAGE_ASPECT_PLANE_1_BIT;
-        }
-        if (numPlanes == 3)
-        {
-            imageAspect =
-                VK.VK_IMAGE_ASPECT_PLANE_0_BIT
-                | VK.VK_IMAGE_ASPECT_PLANE_1_BIT
-                | VK.VK_IMAGE_ASPECT_PLANE_2_BIT;
-        }
-
-        // https://registry.khronos.org/KTX/specs/1.0/ktxspec.v1.html
-        for (uint32_t mipLevel = 0; mipLevel < numMipLevels; ++mipLevel)
-        {
-            for (uint32_t layer = 0; layer < numLayers; ++layer)
+            var texFormat = format.ToFormat();
+            if (baseMipLevel > 0)
             {
-                uint32_t currentMipLevel = baseMipLevel + mipLevel;
-                uint32_t currentLayer = baseLayer + layer;
-                HxDebug.Assert(currentMipLevel < image.NumLevels);
-                HxDebug.Assert(mipLevel < image.NumLevels);
-                HxDebug.Assert(currentLayer < image.NumLayers);
-
-                // 1. Transition initial image layout into TRANSFER_DST_OPTIMAL
-                cmdBuf.CmdBuffer.ImageMemoryBarrier2(
-                    image.Image,
-                    new StageAccess2
-                    {
-                        Stage = VkPipelineStageFlags2.TopOfPipe,
-                        Access = VkAccessFlags2.None,
-                    },
-                    new StageAccess2
-                    {
-                        Stage = VkPipelineStageFlags2.Transfer,
-                        Access = VkAccessFlags2.TransferWrite,
-                    },
-                    VK.VK_IMAGE_LAYOUT_UNDEFINED,
-                    VK.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                    new VkImageSubresourceRange(imageAspect, currentMipLevel, 1, currentLayer, 1)
+                HxDebug.Assert(
+                    imageRegion.offset.x == 0
+                        && imageRegion.offset.y == 0
+                        && imageRegion.extent.width == width
+                        && imageRegion.extent.height == height,
+                    "Uploading mip-levels with an image region that is smaller than the base mip level is not supported"
                 );
+            }
 
-                // 2. Copy the pixel data from the staging buffer into the image
-                uint32_t planeOffset = 0;
-                for (uint32_t plane = 0; plane != numPlanes; plane++)
+            // find the storage size for all mip-levels being uploaded
+            uint32_t layerStorageSize = 0;
+            for (uint32_t i = 0; i < numMipLevels; ++i)
+            {
+                uint32_t mipSize = HxVkUtils.GetTextureBytesPerLayer(
+                    image.Extent.width,
+                    image.Extent.height,
+                    texFormat,
+                    i
+                );
+                layerStorageSize += mipSize;
+                width = width <= 1 ? 1 : width >> 1;
+                height = height <= 1 ? 1 : height >> 1;
+            }
+            uint32_t storageSize = layerStorageSize * numLayers;
+            EnsureStagingBufferSize(storageSize, out _);
+
+            HxDebug.Assert(
+                storageSize <= _stagingBufferSize,
+                $"Required storage size ({storageSize} is larger than maximum supported staging buffer size ({_stagingBufferSize})."
+            );
+
+            var desc = GetNextFreeOffset(storageSize, out _);
+            // No support for copying image in multiple smaller chunk sizes. If we get smaller buffer size than storageSize, we will wait for GPU idle
+            // and get bigger chunk.
+            if (desc.Size < storageSize)
+            {
+                WaitAndReset();
+                desc = GetNextFreeOffset(storageSize, out _);
+            }
+            HxDebug.Assert(desc.Size >= storageSize);
+
+            var cmdBuf = _ctx.UploadImmediate!.Acquire();
+
+            var stagingBuffer = _ctx.BuffersPool.Get(this._stagingBuffer.Handle);
+
+            HxDebug.Assert(stagingBuffer, "Staging buffer is not valid, cannot upload image data.");
+
+            if (!stagingBuffer)
+            {
+                _logger.LogError("Staging buffer is not valid, cannot upload image data.");
+                return ResultCode.InvalidState;
+            }
+
+            var result = stagingBuffer!.BufferSubData(desc.Offset, storageSize, data);
+            if (result != ResultCode.Ok)
+            {
+                return result;
+            }
+
+            uint32_t offset = 0;
+
+            uint32_t numPlanes = image.ImageFormat.GetNumImagePlanes();
+
+            if (numPlanes > 1)
+            {
+                HxDebug.Assert(baseLayer == 0 && baseMipLevel == 0);
+                HxDebug.Assert(numLayers == 1 && numMipLevels == 1);
+                HxDebug.Assert(imageRegion.offset.x == 0 && imageRegion.offset.y == 0);
+                HxDebug.Assert(image.ImageType == VK.VK_IMAGE_TYPE_2D);
+                HxDebug.Assert(
+                    image.Extent.width == imageRegion.extent.width
+                        && image.Extent.height == imageRegion.extent.height
+                );
+            }
+
+            VkImageAspectFlags imageAspect = VK.VK_IMAGE_ASPECT_COLOR_BIT;
+
+            if (numPlanes == 2)
+            {
+                imageAspect = VK.VK_IMAGE_ASPECT_PLANE_0_BIT | VK.VK_IMAGE_ASPECT_PLANE_1_BIT;
+            }
+            if (numPlanes == 3)
+            {
+                imageAspect =
+                    VK.VK_IMAGE_ASPECT_PLANE_0_BIT
+                    | VK.VK_IMAGE_ASPECT_PLANE_1_BIT
+                    | VK.VK_IMAGE_ASPECT_PLANE_2_BIT;
+            }
+
+            // https://registry.khronos.org/KTX/specs/1.0/ktxspec.v1.html
+            for (uint32_t mipLevel = 0; mipLevel < numMipLevels; ++mipLevel)
+            {
+                for (uint32_t layer = 0; layer < numLayers; ++layer)
                 {
-                    var extent = HxVkUtils.GetImagePlaneExtent(
-                        new VkExtent2D
+                    uint32_t currentMipLevel = baseMipLevel + mipLevel;
+                    uint32_t currentLayer = baseLayer + layer;
+                    HxDebug.Assert(currentMipLevel < image.NumLevels);
+                    HxDebug.Assert(mipLevel < image.NumLevels);
+                    HxDebug.Assert(currentLayer < image.NumLayers);
+
+                    // 1. Transition initial image layout into TRANSFER_DST_OPTIMAL
+                    cmdBuf.CmdBuffer.ImageMemoryBarrier2(
+                        image.Image,
+                        new StageAccess2
                         {
-                            width = Math.Max(1u, imageRegion.extent.width >> (int)mipLevel),
-                            height = Math.Max(1u, imageRegion.extent.height >> (int)mipLevel),
+                            Stage = VkPipelineStageFlags2.TopOfPipe,
+                            Access = VkAccessFlags2.None,
                         },
-                        format.ToFormat(),
-                        plane
+                        new StageAccess2
+                        {
+                            Stage = VkPipelineStageFlags2.Transfer,
+                            Access = VkAccessFlags2.TransferWrite,
+                        },
+                        VK.VK_IMAGE_LAYOUT_UNDEFINED,
+                        VK.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                        new VkImageSubresourceRange(imageAspect, currentMipLevel, 1, currentLayer, 1)
                     );
-                    VkRect2D region = new()
+
+                    // 2. Copy the pixel data from the staging buffer into the image
+                    uint32_t planeOffset = 0;
+                    for (uint32_t plane = 0; plane != numPlanes; plane++)
                     {
-                        offset = new VkOffset2D()
+                        var extent = HxVkUtils.GetImagePlaneExtent(
+                            new VkExtent2D
+                            {
+                                width = Math.Max(1u, imageRegion.extent.width >> (int)mipLevel),
+                                height = Math.Max(1u, imageRegion.extent.height >> (int)mipLevel),
+                            },
+                            format.ToFormat(),
+                            plane
+                        );
+                        VkRect2D region = new()
                         {
-                            x = imageRegion.offset.x >> (int)mipLevel,
-                            y = imageRegion.offset.y >> (int)mipLevel,
-                        },
-                        extent = extent,
-                    };
-                    VkBufferImageCopy copy = new()
-                    {
-                        // the offset for this level is at the start of all mip-levels plus the size of all previous mip-levels being uploaded
-                        bufferOffset = desc.Offset + offset + planeOffset,
-                        bufferRowLength = 0,
-                        bufferImageHeight = 0,
-                        imageSubresource = new VkImageSubresourceLayers
+                            offset = new VkOffset2D()
+                            {
+                                x = imageRegion.offset.x >> (int)mipLevel,
+                                y = imageRegion.offset.y >> (int)mipLevel,
+                            },
+                            extent = extent,
+                        };
+                        VkBufferImageCopy copy = new()
                         {
-                            aspectMask =
-                                numPlanes > 1
-                                    ? (VkImageAspectFlags)(
-                                        (uint)VkImageAspectFlags.Plane0 << (int)plane
-                                    )
-                                    : imageAspect,
-                            mipLevel = currentMipLevel,
-                            baseArrayLayer = currentLayer,
-                            layerCount = 1,
-                        },
-                        imageOffset =
+                            // the offset for this level is at the start of all mip-levels plus the size of all previous mip-levels being uploaded
+                            bufferOffset = desc.Offset + offset + planeOffset,
+                            bufferRowLength = 0,
+                            bufferImageHeight = 0,
+                            imageSubresource = new VkImageSubresourceLayers
+                            {
+                                aspectMask =
+                                    numPlanes > 1
+                                        ? (VkImageAspectFlags)(
+                                            (uint)VkImageAspectFlags.Plane0 << (int)plane
+                                        )
+                                        : imageAspect,
+                                mipLevel = currentMipLevel,
+                                baseArrayLayer = currentLayer,
+                                layerCount = 1,
+                            },
+                            imageOffset =
                         {
                             x = region.offset.x,
                             y = region.offset.y,
                             z = 0,
                         },
-                        imageExtent =
+                            imageExtent =
                         {
                             width = region.extent.width,
                             height = region.extent.height,
                             depth = 1u,
                         },
-                    };
-                    unsafe
-                    {
-                        VK.vkCmdCopyBufferToImage(
-                            cmdBuf.CmdBuffer,
-                            stagingBuffer.VkBuffer,
-                            image.Image,
-                            VK.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                            1,
-                            &copy
+                        };
+                        unsafe
+                        {
+                            VK.vkCmdCopyBufferToImage(
+                                cmdBuf.CmdBuffer,
+                                stagingBuffer.VkBuffer,
+                                image.Image,
+                                VK.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                1,
+                                &copy
+                            );
+                        }
+                        planeOffset += HxVkUtils.GetTextureBytesPerPlane(
+                            imageRegion.extent.width,
+                            imageRegion.extent.height,
+                            format.ToFormat(),
+                            plane
                         );
                     }
-                    planeOffset += HxVkUtils.GetTextureBytesPerPlane(
+
+                    // 3. Transition TRANSFER_DST_OPTIMAL into SHADER_READ_ONLY_OPTIMAL
+                    cmdBuf.CmdBuffer.ImageMemoryBarrier2(
+                        image.Image,
+                        new StageAccess2
+                        {
+                            Stage = VkPipelineStageFlags2.Transfer,
+                            Access = VkAccessFlags2.TransferWrite,
+                        },
+                        new StageAccess2
+                        {
+                            Stage = VkPipelineStageFlags2.AllCommands,
+                            Access = VkAccessFlags2.MemoryRead | VkAccessFlags2.MemoryWrite,
+                        },
+                        VK.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                        VK.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                        new VkImageSubresourceRange(imageAspect, currentMipLevel, 1, currentLayer, 1)
+                    );
+
+                    offset += HxVkUtils.GetTextureBytesPerLayer(
                         imageRegion.extent.width,
                         imageRegion.extent.height,
-                        format.ToFormat(),
-                        plane
+                        texFormat,
+                        currentMipLevel
                     );
                 }
-
-                // 3. Transition TRANSFER_DST_OPTIMAL into SHADER_READ_ONLY_OPTIMAL
-                cmdBuf.CmdBuffer.ImageMemoryBarrier2(
-                    image.Image,
-                    new StageAccess2
-                    {
-                        Stage = VkPipelineStageFlags2.Transfer,
-                        Access = VkAccessFlags2.TransferWrite,
-                    },
-                    new StageAccess2
-                    {
-                        Stage = VkPipelineStageFlags2.AllCommands,
-                        Access = VkAccessFlags2.MemoryRead | VkAccessFlags2.MemoryWrite,
-                    },
-                    VK.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                    VK.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                    new VkImageSubresourceRange(imageAspect, currentMipLevel, 1, currentLayer, 1)
-                );
-
-                offset += HxVkUtils.GetTextureBytesPerLayer(
-                    imageRegion.extent.width,
-                    imageRegion.extent.height,
-                    texFormat,
-                    currentMipLevel
-                );
             }
+
+            image.ImageLayout = VK.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+            desc.Handle = _ctx.UploadImmediate!.Submit(cmdBuf);
+            InsertRegion(desc);
+            return ResultCode.Ok;
         }
-
-        image.ImageLayout = VK.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
-        desc.Handle = _ctx.Immediate!.Submit(cmdBuf);
-        InsertRegion(desc);
-        return ResultCode.Ok;
     }
 
     public ResultCode ImageData3D(
@@ -421,128 +432,132 @@ internal sealed class VulkanStagingDevice : IDisposable
             "Staging buffer does not support images larger than 4GB in size"
         );
 
-        uint32_t sliceBytes = (uint32_t)sliceBytes64;
-        uint32_t maxSlicesPerBatch = Math.Max(
-            1u,
-            (uint32_t)(_ctx.Config.MaxStagingBufferSize / sliceBytes)
-        );
-        EnsureStagingBufferSize(sliceBytes * maxSlicesPerBatch, out _);
-
-        HxDebug.Assert(
-            sliceBytes <= _stagingBufferSize,
-            "No support for copying image in multiple smaller chunk sizes"
-        );
-
-        uint32_t remainingSlices = extent.depth;
-        uint32_t currentZ = (uint)offset.z;
-
-        var stagingBuffer = _ctx.BuffersPool.Get(_stagingBuffer.Handle);
-
-        while (remainingSlices > 0)
+        // Atomic against concurrent render-thread / upload-thread use (see BufferSubData).
+        lock (_ctx.UploadImmediate!.SubmitLock)
         {
-            uint32_t batchSlices = Math.Min(remainingSlices, maxSlicesPerBatch);
-            uint batchBytes = sliceBytes * batchSlices;
-            MemoryRegionDesc desc = GetNextFreeOffset(batchBytes, out _);
-            if (desc.Size < batchBytes)
-            {
-                WaitAndReset();
-                desc = GetNextFreeOffset(batchBytes, out _);
-            }
+            uint32_t sliceBytes = (uint32_t)sliceBytes64;
+            uint32_t maxSlicesPerBatch = Math.Max(
+                1u,
+                (uint32_t)(_ctx.Config.MaxStagingBufferSize / sliceBytes)
+            );
+            EnsureStagingBufferSize(sliceBytes * maxSlicesPerBatch, out _);
 
             HxDebug.Assert(
-                desc.Size >= batchBytes,
-                "Staging buffer is not large enough to hold a batch of image data."
+                sliceBytes <= _stagingBufferSize,
+                "No support for copying image in multiple smaller chunk sizes"
             );
 
-            stagingBuffer!.BufferSubData(desc.Offset, batchBytes, data);
+            uint32_t remainingSlices = extent.depth;
+            uint32_t currentZ = (uint)offset.z;
 
-            var cmdBuf = _ctx.Immediate!.Acquire();
-            if (remainingSlices == extent.depth)
+            var stagingBuffer = _ctx.BuffersPool.Get(_stagingBuffer.Handle);
+
+            while (remainingSlices > 0)
             {
-                // For the first batch, we need to transition the image layout before copying any data
-                cmdBuf.CmdBuffer.ImageMemoryBarrier2(
-                    image.Image,
-                    new StageAccess2
-                    {
-                        Stage = VkPipelineStageFlags2.TopOfPipe,
-                        Access = VkAccessFlags2.None,
-                    },
-                    new StageAccess2
-                    {
-                        Stage = VkPipelineStageFlags2.Transfer,
-                        Access = VkAccessFlags2.TransferWrite,
-                    },
-                    VK.VK_IMAGE_LAYOUT_UNDEFINED,
-                    VK.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                    new VkImageSubresourceRange(VK.VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1)
-                );
-            }
-            unsafe
-            {
-                VkBufferImageCopy2 copy = new()
+                uint32_t batchSlices = Math.Min(remainingSlices, maxSlicesPerBatch);
+                uint batchBytes = sliceBytes * batchSlices;
+                MemoryRegionDesc desc = GetNextFreeOffset(batchBytes, out _);
+                if (desc.Size < batchBytes)
                 {
-                    bufferOffset = desc.Offset,
-                    bufferRowLength = 0,
-                    bufferImageHeight = 0,
-                    imageSubresource = new VkImageSubresourceLayers(
-                        VK.VK_IMAGE_ASPECT_COLOR_BIT,
-                        0,
-                        0,
-                        1
-                    ),
-                    imageOffset = new VkOffset3D
-                    {
-                        x = offset.x,
-                        y = offset.y,
-                        z = (int32_t)currentZ,
-                    },
-                    imageExtent = new VkExtent3D
-                    {
-                        width = extent.width,
-                        height = extent.height,
-                        depth = batchSlices,
-                    },
-                };
+                    WaitAndReset();
+                    desc = GetNextFreeOffset(batchBytes, out _);
+                }
 
-                VkCopyBufferToImageInfo2 copyInfo = new()
-                {
-                    srcBuffer = stagingBuffer!.VkBuffer,
-                    dstImage = image.Image,
-                    dstImageLayout = VK.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                    regionCount = 1,
-                    pRegions = &copy,
-                };
-                VK.vkCmdCopyBufferToImage2(cmdBuf.CmdBuffer, &copyInfo);
-            }
-
-            if (remainingSlices == batchSlices)
-            {
-                cmdBuf.CmdBuffer.ImageMemoryBarrier2(
-                    image.Image,
-                    new StageAccess2
-                    {
-                        Stage = VkPipelineStageFlags2.Transfer,
-                        Access = VkAccessFlags2.TransferWrite,
-                    },
-                    new StageAccess2
-                    {
-                        Stage = VkPipelineStageFlags2.AllCommands,
-                        Access = VkAccessFlags2.MemoryRead | VkAccessFlags2.MemoryWrite,
-                    },
-                    VK.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                    VK.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                    new VkImageSubresourceRange(VK.VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1)
+                HxDebug.Assert(
+                    desc.Size >= batchBytes,
+                    "Staging buffer is not large enough to hold a batch of image data."
                 );
-            }
 
-            desc.Handle = _ctx.Immediate!.Submit(cmdBuf);
-            InsertRegion(desc);
-            data += (nint)batchBytes;
-            currentZ += batchSlices;
-            remainingSlices -= batchSlices;
+                stagingBuffer!.BufferSubData(desc.Offset, batchBytes, data);
+
+                var cmdBuf = _ctx.UploadImmediate!.Acquire();
+                if (remainingSlices == extent.depth)
+                {
+                    // For the first batch, we need to transition the image layout before copying any data
+                    cmdBuf.CmdBuffer.ImageMemoryBarrier2(
+                        image.Image,
+                        new StageAccess2
+                        {
+                            Stage = VkPipelineStageFlags2.TopOfPipe,
+                            Access = VkAccessFlags2.None,
+                        },
+                        new StageAccess2
+                        {
+                            Stage = VkPipelineStageFlags2.Transfer,
+                            Access = VkAccessFlags2.TransferWrite,
+                        },
+                        VK.VK_IMAGE_LAYOUT_UNDEFINED,
+                        VK.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                        new VkImageSubresourceRange(VK.VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1)
+                    );
+                }
+                unsafe
+                {
+                    VkBufferImageCopy2 copy = new()
+                    {
+                        bufferOffset = desc.Offset,
+                        bufferRowLength = 0,
+                        bufferImageHeight = 0,
+                        imageSubresource = new VkImageSubresourceLayers(
+                            VK.VK_IMAGE_ASPECT_COLOR_BIT,
+                            0,
+                            0,
+                            1
+                        ),
+                        imageOffset = new VkOffset3D
+                        {
+                            x = offset.x,
+                            y = offset.y,
+                            z = (int32_t)currentZ,
+                        },
+                        imageExtent = new VkExtent3D
+                        {
+                            width = extent.width,
+                            height = extent.height,
+                            depth = batchSlices,
+                        },
+                    };
+
+                    VkCopyBufferToImageInfo2 copyInfo = new()
+                    {
+                        srcBuffer = stagingBuffer!.VkBuffer,
+                        dstImage = image.Image,
+                        dstImageLayout = VK.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                        regionCount = 1,
+                        pRegions = &copy,
+                    };
+                    VK.vkCmdCopyBufferToImage2(cmdBuf.CmdBuffer, &copyInfo);
+                }
+
+                if (remainingSlices == batchSlices)
+                {
+                    cmdBuf.CmdBuffer.ImageMemoryBarrier2(
+                        image.Image,
+                        new StageAccess2
+                        {
+                            Stage = VkPipelineStageFlags2.Transfer,
+                            Access = VkAccessFlags2.TransferWrite,
+                        },
+                        new StageAccess2
+                        {
+                            Stage = VkPipelineStageFlags2.AllCommands,
+                            Access = VkAccessFlags2.MemoryRead | VkAccessFlags2.MemoryWrite,
+                        },
+                        VK.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                        VK.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                        new VkImageSubresourceRange(VK.VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1)
+                    );
+                }
+
+                desc.Handle = _ctx.UploadImmediate!.Submit(cmdBuf);
+                InsertRegion(desc);
+                data += (nint)batchBytes;
+                currentZ += batchSlices;
+                remainingSlices -= batchSlices;
+            }
+            image.ImageLayout = VK.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            return ResultCode.Ok;
         }
-        image.ImageLayout = VK.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        return ResultCode.Ok;
     }
 
     public ResultCode GetBufferData(
@@ -553,84 +568,88 @@ internal sealed class VulkanStagingDevice : IDisposable
     )
     {
         HxDebug.Assert(outDataSize + offset <= buffer.BufferSize);
-        EnsureStagingBufferSize(outDataSize, out _);
-        HxDebug.Assert(outDataSize <= _stagingBufferSize);
-        // get next staging buffer free offset
-        MemoryRegionDesc desc = GetNextFreeOffset(outDataSize, out _);
-        // No support for copying image in multiple smaller chunk sizes.
-        // If we get smaller buffer size than storageSize, we will wait for GPU idle and get a bigger chunk.
-        if (desc.Size < outDataSize)
+        // Atomic against concurrent render-thread / upload-thread use (see BufferSubData).
+        lock (_ctx.UploadImmediate!.SubmitLock)
         {
-            WaitAndReset();
-            desc = GetNextFreeOffset(outDataSize, out _);
-        }
+            EnsureStagingBufferSize(outDataSize, out _);
+            HxDebug.Assert(outDataSize <= _stagingBufferSize);
+            // get next staging buffer free offset
+            MemoryRegionDesc desc = GetNextFreeOffset(outDataSize, out _);
+            // No support for copying image in multiple smaller chunk sizes.
+            // If we get smaller buffer size than storageSize, we will wait for GPU idle and get a bigger chunk.
+            if (desc.Size < outDataSize)
+            {
+                WaitAndReset();
+                desc = GetNextFreeOffset(outDataSize, out _);
+            }
 
-        HxDebug.Assert(desc.Size >= outDataSize);
+            HxDebug.Assert(desc.Size >= outDataSize);
 
-        var stagingBuffer = _ctx.BuffersPool.Get(this._stagingBuffer.Handle);
+            var stagingBuffer = _ctx.BuffersPool.Get(this._stagingBuffer.Handle);
 
-        HxDebug.Assert(stagingBuffer, "Staging buffer is not valid, cannot upload image data.");
-        if (!stagingBuffer)
-        {
-            _logger.LogError("Staging buffer is not valid, cannot upload image data.");
-            return ResultCode.InvalidState;
-        }
+            HxDebug.Assert(stagingBuffer, "Staging buffer is not valid, cannot upload image data.");
+            if (!stagingBuffer)
+            {
+                _logger.LogError("Staging buffer is not valid, cannot upload image data.");
+                return ResultCode.InvalidState;
+            }
 
-        var cmdBuf = _ctx.Immediate!.Acquire();
+            var cmdBuf = _ctx.UploadImmediate!.Acquire();
 
-        // 1. Transition to VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL
-        cmdBuf.CmdBuffer.BufferBarrier2(
-            buffer,
-            VkPipelineStageFlags2.AllCommands,
-            VkPipelineStageFlags2.Transfer
-        );
-
-        VkBufferCopy copy = new()
-        {
-            srcOffset = offset,
-            dstOffset = desc.Offset,
-            size = outDataSize,
-        };
-
-        unsafe
-        {
-            VK.vkCmdCopyBuffer(
-                cmdBuf.CmdBuffer,
-                buffer.VkBuffer,
-                stagingBuffer!.VkBuffer,
-                1,
-                &copy
+            // 1. Transition to VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL
+            cmdBuf.CmdBuffer.BufferBarrier2(
+                buffer,
+                VkPipelineStageFlags2.AllCommands,
+                VkPipelineStageFlags2.Transfer
             );
+
+            VkBufferCopy copy = new()
+            {
+                srcOffset = offset,
+                dstOffset = desc.Offset,
+                size = outDataSize,
+            };
+
+            unsafe
+            {
+                VK.vkCmdCopyBuffer(
+                    cmdBuf.CmdBuffer,
+                    buffer.VkBuffer,
+                    stagingBuffer!.VkBuffer,
+                    1,
+                    &copy
+                );
+            }
+
+            desc.Handle = _ctx.UploadImmediate!.Submit(cmdBuf);
+            InsertRegion(desc);
+
+            WaitAndReset();
+
+            if (!stagingBuffer.IsCoherentMemory)
+            {
+                stagingBuffer.InvalidateMappedMemory(desc.Offset, desc.Size);
+            }
+
+            // 3. Copy data from staging buffer into data
+            NativeHelper.MemoryCopy(
+                outData,
+                (nint)(stagingBuffer.MappedPtr + desc.Offset),
+                outDataSize
+            );
+
+            // 4. Transition back to the initial image layout
+            var cmdBuf2 = _ctx.UploadImmediate!.Acquire();
+
+            cmdBuf2.CmdBuffer.BufferBarrier2(
+                buffer,
+                VkPipelineStageFlags2.Transfer,
+                VkPipelineStageFlags2.AllCommands
+            );
+
+            _ctx.UploadImmediate!.Wait(_ctx.UploadImmediate!.Submit(cmdBuf2));
+            return ResultCode.Ok;
         }
-
-        desc.Handle = _ctx.Immediate!.Submit(cmdBuf);
-        InsertRegion(desc);
-
-        WaitAndReset();
-
-        if (!stagingBuffer.IsCoherentMemory)
-        {
-            stagingBuffer.InvalidateMappedMemory(desc.Offset, desc.Size);
-        }
-
-        // 3. Copy data from staging buffer into data
-        NativeHelper.MemoryCopy(
-            outData,
-            (nint)(stagingBuffer.MappedPtr + desc.Offset),
-            outDataSize
-        );
-
-        // 4. Transition back to the initial image layout
-        var cmdBuf2 = _ctx.Immediate!.Acquire();
-
-        cmdBuf2.CmdBuffer.BufferBarrier2(
-            buffer,
-            VkPipelineStageFlags2.Transfer,
-            VkPipelineStageFlags2.AllCommands
-        );
-
-        _ctx.Immediate!.Wait(_ctx.Immediate!.Submit(cmdBuf2));
-        return ResultCode.Ok;
     }
 
     public ResultCode GetImageData(
@@ -649,119 +668,123 @@ internal sealed class VulkanStagingDevice : IDisposable
         uint32_t storageSize =
             extent.width * extent.height * extent.depth * format.GetBytesPerPixel();
 
-        EnsureStagingBufferSize(storageSize, out _);
-
-        HxDebug.Assert(storageSize <= _stagingBufferSize);
-
-        // get next staging buffer free offset
-        MemoryRegionDesc desc = GetNextFreeOffset(storageSize, out _);
-
-        // No support for copying image in multiple smaller chunk sizes.
-        // If we get smaller buffer size than storageSize, we will wait for GPU idle and get a bigger chunk.
-        if (desc.Size < storageSize)
+        // Atomic against concurrent render-thread / upload-thread use (see BufferSubData).
+        lock (_ctx.UploadImmediate!.SubmitLock)
         {
-            WaitAndReset();
-            desc = GetNextFreeOffset(storageSize, out _);
-        }
+            EnsureStagingBufferSize(storageSize, out _);
 
-        HxDebug.Assert(desc.Size >= storageSize);
+            HxDebug.Assert(storageSize <= _stagingBufferSize);
 
-        var stagingBuffer = _ctx.BuffersPool.Get(this._stagingBuffer.Handle);
+            // get next staging buffer free offset
+            MemoryRegionDesc desc = GetNextFreeOffset(storageSize, out _);
 
-        HxDebug.Assert(stagingBuffer, "Staging buffer is not valid, cannot upload image data.");
-        if (!stagingBuffer)
-        {
-            _logger.LogError("Staging buffer is not valid, cannot upload image data.");
-            return ResultCode.InvalidState;
-        }
-
-        var cmdBuf = _ctx.Immediate!.Acquire();
-
-        // 1. Transition to VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL
-        cmdBuf.CmdBuffer.ImageMemoryBarrier2(
-            image.Image,
-            new StageAccess2
+            // No support for copying image in multiple smaller chunk sizes.
+            // If we get smaller buffer size than storageSize, we will wait for GPU idle and get a bigger chunk.
+            if (desc.Size < storageSize)
             {
-                Stage = VkPipelineStageFlags2.BottomOfPipe,
-                Access = VkAccessFlags2.MemoryRead | VkAccessFlags2.MemoryWrite,
-            },
-            new StageAccess2
-            {
-                Stage = VkPipelineStageFlags2.Transfer,
-                Access = VkAccessFlags2.TransferRead,
-            },
-            image.ImageLayout,
-            VK.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-            range
-        );
+                WaitAndReset();
+                desc = GetNextFreeOffset(storageSize, out _);
+            }
 
-        // 2.  Copy the pixel data from the image into the staging buffer
-        VkBufferImageCopy copy = new()
-        {
-            bufferOffset = desc.Offset,
-            bufferRowLength = 0,
-            bufferImageHeight = extent.height,
-            imageSubresource = new VkImageSubresourceLayers
+            HxDebug.Assert(desc.Size >= storageSize);
+
+            var stagingBuffer = _ctx.BuffersPool.Get(this._stagingBuffer.Handle);
+
+            HxDebug.Assert(stagingBuffer, "Staging buffer is not valid, cannot upload image data.");
+            if (!stagingBuffer)
             {
-                aspectMask = range.aspectMask,
-                mipLevel = range.baseMipLevel,
-                baseArrayLayer = range.baseArrayLayer,
-                layerCount = range.layerCount,
-            },
-            imageOffset = offset,
-            imageExtent = extent,
-        };
-        unsafe
-        {
-            VK.vkCmdCopyImageToBuffer(
-                cmdBuf.CmdBuffer,
+                _logger.LogError("Staging buffer is not valid, cannot upload image data.");
+                return ResultCode.InvalidState;
+            }
+
+            var cmdBuf = _ctx.UploadImmediate!.Acquire();
+
+            // 1. Transition to VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL
+            cmdBuf.CmdBuffer.ImageMemoryBarrier2(
                 image.Image,
+                new StageAccess2
+                {
+                    Stage = VkPipelineStageFlags2.BottomOfPipe,
+                    Access = VkAccessFlags2.MemoryRead | VkAccessFlags2.MemoryWrite,
+                },
+                new StageAccess2
+                {
+                    Stage = VkPipelineStageFlags2.Transfer,
+                    Access = VkAccessFlags2.TransferRead,
+                },
+                image.ImageLayout,
                 VK.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                stagingBuffer!.VkBuffer,
-                1,
-                &copy
+                range
             );
-        }
 
-        desc.Handle = _ctx.Immediate!.Submit(cmdBuf);
-        InsertRegion(desc);
-
-        WaitAndReset();
-
-        if (!stagingBuffer.IsCoherentMemory)
-        {
-            stagingBuffer.InvalidateMappedMemory(desc.Offset, desc.Size);
-        }
-
-        // 3. Copy data from staging buffer into data
-        NativeHelper.MemoryCopy(
-            outData,
-            (nint)(stagingBuffer.MappedPtr + desc.Offset),
-            storageSize
-        );
-
-        // 4. Transition back to the initial image layout
-        var cmdBuf2 = _ctx.Immediate!.Acquire();
-
-        cmdBuf2.CmdBuffer.ImageMemoryBarrier2(
-            image.Image,
-            new StageAccess2
+            // 2.  Copy the pixel data from the image into the staging buffer
+            VkBufferImageCopy copy = new()
             {
-                Stage = VkPipelineStageFlags2.Transfer,
-                Access = VkAccessFlags2.TransferRead,
-            },
-            new StageAccess2
+                bufferOffset = desc.Offset,
+                bufferRowLength = 0,
+                bufferImageHeight = extent.height,
+                imageSubresource = new VkImageSubresourceLayers
+                {
+                    aspectMask = range.aspectMask,
+                    mipLevel = range.baseMipLevel,
+                    baseArrayLayer = range.baseArrayLayer,
+                    layerCount = range.layerCount,
+                },
+                imageOffset = offset,
+                imageExtent = extent,
+            };
+            unsafe
             {
-                Stage = VkPipelineStageFlags2.TopOfPipe,
-                Access = VkAccessFlags2.MemoryRead | VkAccessFlags2.MemoryWrite,
-            },
-            VK.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-            image.ImageLayout,
-            range
-        );
+                VK.vkCmdCopyImageToBuffer(
+                    cmdBuf.CmdBuffer,
+                    image.Image,
+                    VK.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                    stagingBuffer!.VkBuffer,
+                    1,
+                    &copy
+                );
+            }
 
-        _ctx.Immediate!.Wait(_ctx.Immediate!.Submit(cmdBuf2));
-        return ResultCode.Ok;
+            desc.Handle = _ctx.UploadImmediate!.Submit(cmdBuf);
+            InsertRegion(desc);
+
+            WaitAndReset();
+
+            if (!stagingBuffer.IsCoherentMemory)
+            {
+                stagingBuffer.InvalidateMappedMemory(desc.Offset, desc.Size);
+            }
+
+            // 3. Copy data from staging buffer into data
+            NativeHelper.MemoryCopy(
+                outData,
+                (nint)(stagingBuffer.MappedPtr + desc.Offset),
+                storageSize
+            );
+
+            // 4. Transition back to the initial image layout
+            var cmdBuf2 = _ctx.UploadImmediate!.Acquire();
+
+            cmdBuf2.CmdBuffer.ImageMemoryBarrier2(
+                image.Image,
+                new StageAccess2
+                {
+                    Stage = VkPipelineStageFlags2.Transfer,
+                    Access = VkAccessFlags2.TransferRead,
+                },
+                new StageAccess2
+                {
+                    Stage = VkPipelineStageFlags2.TopOfPipe,
+                    Access = VkAccessFlags2.MemoryRead | VkAccessFlags2.MemoryWrite,
+                },
+                VK.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                image.ImageLayout,
+                range
+            );
+
+            _ctx.UploadImmediate!.Wait(_ctx.UploadImmediate!.Submit(cmdBuf2));
+            return ResultCode.Ok;
+        }
     }
 
     public MemoryRegionDesc GetNextFreeOffset(uint32_t size, out bool bufferChanged)
@@ -775,12 +798,12 @@ internal sealed class VulkanStagingDevice : IDisposable
         if (_regions.Count > 1)
         {
             size_t write = 0;
-            bool curReady = _ctx.Immediate!.IsReady(_regions[0].Handle);
+            bool curReady = _ctx.UploadImmediate!.IsReady(_regions[0].Handle);
             for (size_t read = 1; read < _regions.Count; ++read)
             {
                 ref var cur = ref _regions.At((int)write);
                 ref var next = ref _regions.At((int)read);
-                bool nextReady = _ctx.Immediate!.IsReady(next.Handle);
+                bool nextReady = _ctx.UploadImmediate!.IsReady(next.Handle);
                 if (curReady && nextReady && cur.Offset + cur.Size == next.Offset)
                 {
                     cur.Size += next.Size;
@@ -803,7 +826,7 @@ internal sealed class VulkanStagingDevice : IDisposable
         for (int i = 0; i < _regions.Count; ++i)
         {
             ref var region = ref _regions.At(i);
-            if (_ctx.Immediate!.IsReady(region.Handle))
+            if (_ctx.UploadImmediate!.IsReady(region.Handle))
             {
                 // This region is free, but is it big enough?
                 if (region.Size >= requestedAlignedSize)
@@ -850,7 +873,7 @@ internal sealed class VulkanStagingDevice : IDisposable
         // we found a region that is available that is smaller than the requested size. It's the best we can do
         if (
             bestNextRegion != _regions.Count
-            && _ctx.Immediate!.IsReady(_regions[bestNextRegion].Handle)
+            && _ctx.UploadImmediate!.IsReady(_regions[bestNextRegion].Handle)
         )
         {
             var region = _regions[bestNextRegion];
@@ -963,7 +986,7 @@ internal sealed class VulkanStagingDevice : IDisposable
     {
         foreach (var r in _regions)
         {
-            _ctx.Immediate!.Wait(r.Handle);
+            _ctx.UploadImmediate!.Wait(r.Handle);
         }
         ;
 

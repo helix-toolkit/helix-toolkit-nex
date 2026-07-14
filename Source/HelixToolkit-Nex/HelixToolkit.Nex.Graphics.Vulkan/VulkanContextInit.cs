@@ -343,11 +343,42 @@ namespace HelixToolkit.Nex.Graphics.Vulkan
                 );
             }
 
-            _immediate = new VulkanImmediateCommands(
-                this,
-                DeviceQueues.GraphicsQueueFamilyIndex,
-                HasExtDeviceFault
-            );
+            // When there is no dedicated transfer queue, buffer/texture uploads fall back to the
+            // staging device on the GRAPHICS queue and are frequently driven from a background
+            // import thread — racing the render loop on a single VulkanImmediateCommands corrupts
+            // the command stream (VK_ERROR_DEVICE_LOST). Give staging its own instance (separate
+            // command pool + semaphore chain) that shares only the graphics VkQueue with the frame
+            // instance, serialized by a shared queue-submit lock. The upload instance uses a small
+            // command-buffer pool since its transfers are effectively serialized.
+            //
+            // With a dedicated transfer queue, VulkanTransferQueue owns background buffer uploads on
+            // its own queue, so no second graphics-queue instance is created; StagingDevice then
+            // falls back to the frame instance (see VulkanContext.UploadImmediate).
+            if (DeviceQueues.HasDedicatedTransferQueue)
+            {
+                _immediate = new VulkanImmediateCommands(
+                    this,
+                    DeviceQueues.GraphicsQueueFamilyIndex,
+                    HasExtDeviceFault
+                );
+            }
+            else
+            {
+                var graphicsQueueSubmitLock = new object();
+                _immediate = new VulkanImmediateCommands(
+                    this,
+                    DeviceQueues.GraphicsQueueFamilyIndex,
+                    HasExtDeviceFault,
+                    graphicsQueueSubmitLock
+                );
+                _uploadImmediate = new VulkanImmediateCommands(
+                    this,
+                    DeviceQueues.GraphicsQueueFamilyIndex,
+                    HasExtDeviceFault,
+                    graphicsQueueSubmitLock,
+                    VulkanImmediateCommands.KUploadCommandBuffers
+                );
+            }
         }
 
         private unsafe void InitPipelineCache()
