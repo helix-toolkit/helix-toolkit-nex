@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Numerics;
+using Demo.Utils;
 using HelixToolkit.Nex.Engine.CameraControllers;
 using HelixToolkit.Nex.Engine.Cameras;
 using HelixToolkit.Nex.glTF;
@@ -14,7 +15,6 @@ using HelixToolkit.Nex.Rendering.PostEffects;
 using HelixToolkit.Nex.Scene;
 using ImGuiNET;
 using Microsoft.Extensions.Logging;
-using NativeFileDialogSharp;
 using SDL3;
 using ApplicationBase = HelixToolkit.Nex.Sample.Application.Application;
 using ApplicationConfig = HelixToolkit.Nex.Sample.Application.ApplicationConfig;
@@ -64,6 +64,10 @@ internal class GltfImporterApp : ApplicationBase
     // thread-pool task; the materializing flush is completed on the owning thread in OnTick.
     private Task<PreparedImport>? _pendingImport;
     private string? _pendingImportPath;
+
+    // Path chosen in the async SDL file dialog, consumed at the start of the next tick so the
+    // load runs on the render thread rather than inside the dialog callback.
+    private string? _pendingOpenPath;
     private Node? _mainRoot;
     private DirectionalLightNode? _dirLight;
     private Size _viewportSize = new(1, 1);
@@ -248,6 +252,13 @@ internal class GltfImporterApp : ApplicationBase
         )
             return;
 
+        // --- Start a load requested from the async file dialog ---
+        if (_pendingOpenPath is { } openPath)
+        {
+            _pendingOpenPath = null;
+            LoadFile(openPath);
+        }
+
         // --- Complete any background import on the owning thread ---
         // PrepareImportAsync did the heavy work (parse/convert/record) off-thread; the flush that
         // mutates the ECS world must run here, on the world's owning (render) thread.
@@ -279,11 +290,17 @@ internal class GltfImporterApp : ApplicationBase
             {
                 if (Gui.MenuItem("Open"))
                 {
-                    var result = Dialog.FileOpen("gltf,glb");
-                    if (result.IsOk && !string.IsNullOrEmpty(result.Path))
-                    {
-                        LoadFile(result.Path);
-                    }
+                    // Async dialog: the result arrives via callback and is picked up next tick.
+                    SdlFileDialog.OpenFile(
+                        MainWindow.Instance,
+                        path =>
+                        {
+                            if (!string.IsNullOrEmpty(path))
+                            {
+                                _pendingOpenPath = path;
+                            }
+                        },
+                        ("glTF models (*.gltf, *.glb)", "gltf;glb"));
                 }
                 Gui.EndMenu();
             }
