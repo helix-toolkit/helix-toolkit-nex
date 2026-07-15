@@ -22,7 +22,7 @@ HelixToolkit.Nex.Rendering is responsible for managing the rendering pipeline of
 | `LineDrawInfo`                   | Describes line geometry attached to an entity.                              |
 | `ForwardPlusLightCullingNode`    | Performs tiled Forward+ light culling.                                      |
 | `FrustumCullNode`                | Executes GPU-based frustum culling, including line and point culling.       |
-| `ForwardPlusWBOITMergedNode`     | Merges WBOIT transparent rendering and compositing into a single render pass.|
+| `BillboardCullNode`              | Performs culling operations on billboards based on screen size and distance.|
 | `RenderContext`                  | Manages rendering state and resources for a frame.                          |
 | `RenderGraph`                    | Organizes and executes rendering nodes in a defined order.                  |
 | `PostEffect`                     | Base class for post-processing effects.                                     |
@@ -40,6 +40,7 @@ HelixToolkit.Nex.Rendering is responsible for managing the rendering pipeline of
 | `BillboardHelper`                | Provides factory helpers for creating image/icon billboards.                |
 | `GizmoManager`                   | Manages gizmo instances, including creation, binding, and manipulation.     |
 | `SysEncodingKind`                | Enumerates alternate encodings for system-specific rendering.               |
+| `SsaoMath`                       | Provides GPU-free reference implementations for SSAO effect math.           |
 
 ## Recent Changes
 
@@ -59,6 +60,7 @@ HelixToolkit.Nex.Rendering is responsible for managing the rendering pipeline of
 - **InstancingManager**: Added to manage instancing resources, including lifecycle, eventing, GPU-upload, and deferred-removal.
 - **Instancing**: Updated to support dynamic and static instancing modes with ring buffers to prevent GPU stalls.
 - **SysEncodingKind**: Added to enumerate alternate encodings for system-specific rendering.
+- **SsaoMath**: Added to provide GPU-free reference implementations of SSAO effect math, including parameter validation and depth/normal reconstruction.
 
 ### Removed Features
 
