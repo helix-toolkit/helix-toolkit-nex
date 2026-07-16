@@ -11,10 +11,7 @@ The `HelixToolkit.Nex.Scene` package manages and manipulates scene-graph nodes w
 - Flattening and sorting nodes and updating world transforms.
 - Deferred scene construction off the world thread via `SceneCommandBuffer`.
 
-A `Node` wraps an ECS `Entity` and attaches the components needed for scene management (`NodeInfo`,
-`Transform`, `WorldTransform`, `Parent`, and optionally `NodeName`, `Children`, `Renderable`). The
-package depends on `HelixToolkit.Nex.ECS` for entity/component storage and `HelixToolkit.Nex.Maths`
-for matrix math.
+A `Node` wraps an ECS `Entity` and attaches the components needed for scene management (`NodeInfo`, `Transform`, `WorldTransform`, `Parent`, and optionally `NodeName`, `Children`, `Renderable`). The package depends on `HelixToolkit.Nex.ECS` for entity/component storage and `HelixToolkit.Nex.Maths` for matrix math.
 
 ## Key Types
 
@@ -135,10 +132,7 @@ else
 
 ## Scene Command Buffer
 
-`SceneCommandBuffer` lets you build a scene graph **without touching any `World`** during recording,
-so the work can run on a background thread. Recorded commands are materialized into real `Node`
-objects during `Flush`, which must run on the world's owning thread. Recording is single-writer:
-concurrent recording calls are rejected, leaving the buffer's state unchanged.
+`SceneCommandBuffer` lets you build a scene graph **without touching any `World`** during recording, so the work can run on a background thread. Recorded commands are materialized into real `Node` objects during `Flush`, which must run on the world's owning thread. Recording is single-writer: concurrent recording calls are rejected, leaving the buffer's state unchanged.
 
 ```csharp
 using HelixToolkit.Nex.Scene;

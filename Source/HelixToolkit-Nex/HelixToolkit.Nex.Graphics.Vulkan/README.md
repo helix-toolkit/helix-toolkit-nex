@@ -148,6 +148,19 @@ commandBuffer.Barrier(bufferHandle, PipelineStageFlags.FragmentShader, AccessFla
 commandBuffer.TransitionToShaderReadOnly(textureHandle, ShaderStage.Vertex);
 ```
 
+### Handling External Semaphores for Linux
+
+```csharp
+var syncInfo = new KeyedMutexSyncInfo
+{
+    SyncType = KeyedMutexSyncType.ExternalSemaphore,
+    WaitSemaphoreHandle = waitSemaphoreHandle,
+    SignalSemaphoreHandle = signalSemaphoreHandle
+};
+
+context.Submit(commandBuffer, presentTexture, syncInfo);
+```
+
 ## Architecture Notes
 
 Dependencies:

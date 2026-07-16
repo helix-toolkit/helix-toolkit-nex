@@ -120,4 +120,11 @@ README; the glTF importer is its primary consumer.
 - **Draco compression**: Supports `KHR_draco_mesh_compression`; decode severity depends on whether the extension is listed in `extensionsRequired`.
 - **Lighting**: `KHR_lights_punctual` lights are resolved at record time (with diagnostics) and materialized during flush.
 - **Mesh Instancing**: Supports `EXT_mesh_gpu_instancing`, allowing efficient rendering of multiple instances of a mesh with varying transformations. This is controlled via `ImporterConfig.EnableMeshGpuInstancing`.
+
+## New Features and Changes
+
+- Added `DiagnosticSeverity.Information` to classify informational diagnostics.
+- Introduced `ImportResult.WhenTexturesReadyAsync()` to await texture readiness, including mipmap generation.
+- `Importer` now recognizes and handles specific glTF extensions, ensuring they are not reported as unsupported.
+- Enhanced `Importer` methods to provide clearer documentation and usage patterns for synchronous and asynchronous imports.
 ```

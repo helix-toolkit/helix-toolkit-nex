@@ -9,10 +9,12 @@ The `HelixToolkit.Nex.ImGui` package provides integration with the ImGui library
 
 ## Key Types
 
-| Type            | Description                                                                 |
-|-----------------|-----------------------------------------------------------------------------|
-| `ImGuiConfig`   | Configuration class for setting up ImGui, including font path and size.     |
-| `ImGuiRenderer` | Main class responsible for rendering ImGui elements within the engine.      |
+| Type                | Description                                                                 |
+|---------------------|-----------------------------------------------------------------------------|
+| `ImGuiConfig`       | Configuration class for setting up ImGui, including font path and size.     |
+| `ImGuiRenderer`     | Main class responsible for rendering ImGui elements within the engine.      |
+| `Viewport`          | Reusable 3D viewport region for ImGui-hosted demos.                         |
+| `ViewportOperation` | Enum defining logical operations that can be bound to a mouse button.       |
 
 ## Usage Examples
 
@@ -50,10 +52,32 @@ imguiRenderer.EndFrame();
 imguiRenderer.Render(commandBuffer, renderPass, framebuffer, dependencies);
 ```
 
+### Using the Viewport
+
+The `Viewport` class provides a reusable 3D viewport region for ImGui-hosted demos. It translates mouse input into camera-controller and picking operations.
+
+```csharp
+using HelixToolkit.Nex.ImGui;
+using HelixToolkit.Nex.Rendering;
+
+// Create a render context
+var renderContext = /* Obtain RenderContext from HelixToolkit.Nex */;
+
+// Initialize the viewport
+var viewport = new Viewport(renderContext)
+{
+    CameraController = /* Optional: Set your camera controller */,
+    PickCallback = (x, y) => Console.WriteLine($"Picked at: {x}, {y}")
+};
+
+// In your rendering loop
+viewport.Draw(offscreenTexture);
+```
+
 ## Architecture Notes
 
 - **Design Patterns**: The `ImGuiRenderer` utilizes the IDisposable pattern to manage resources effectively, ensuring that Vulkan resources are properly released.
-- **Dependencies**: This package depends on the `HelixToolkit.Nex.Graphics` and `HelixToolkit.Nex.Shaders` packages for rendering and shader management.
+- **Dependencies**: This package depends on the `HelixToolkit.Nex.Graphics`, `HelixToolkit.Nex.Rendering`, and `HelixToolkit.Nex.Shaders` packages for rendering and shader management.
 - **Integration**: The renderer is designed to fit into the HelixToolkit.Nex's ECS and render graph architecture, allowing for efficient and organized rendering of ImGui elements alongside other 3D content.
 
 ## Recent Changes
@@ -61,4 +85,5 @@ imguiRenderer.Render(commandBuffer, renderPass, framebuffer, dependencies);
 - **Depth State Binding**: The `ImGuiRenderer` now explicitly binds the `DepthState.Disabled` during rendering, ensuring depth testing is disabled for ImGui elements.
 - **Debug Group Label**: The `ImGuiRenderer` uses a static byte array for the debug group label, improving performance by avoiding repeated string allocations.
 - **Platform Configurations**: The project includes additional build configurations for Linux (`LinuxDebug` and `LinuxRelease`), enhancing cross-platform support.
+- **New Viewport Class**: Introduced the `Viewport` class for handling 3D viewport regions within ImGui, supporting camera control and picking operations.
 ```

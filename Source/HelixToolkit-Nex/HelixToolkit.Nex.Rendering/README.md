@@ -39,6 +39,9 @@ HelixToolkit.Nex.Rendering is responsible for managing the rendering pipeline of
 | `FXAANode`                       | Performs Fast Approximate Anti-Aliasing (FXAA) with configurable quality settings. |
 | `BillboardHelper`                | Provides factory helpers for creating image/icon billboards.                |
 | `GizmoManager`                   | Manages gizmo instances, including creation, binding, and manipulation.     |
+| `GizmoDrawInfo`                  | Describes a single renderable gizmo with handle sets and render options.    |
+| `GizmoInstanceHandle`            | A lightweight, reusable reference to a gizmo created by the factory.        |
+| `IGizmoDataProvider`             | Gathers all `GizmoDrawInfo` entities each frame.                            |
 | `SysEncodingKind`                | Enumerates alternate encodings for system-specific rendering.               |
 | `SsaoMath`                       | Provides GPU-free reference implementations for SSAO effect math.           |
 
@@ -51,7 +54,9 @@ HelixToolkit.Nex.Rendering is responsible for managing the rendering pipeline of
 - **GizmoManager.Binding**: Introduced to manage runtime target-binding for gizmo instances.
 - **GizmoManager.Drag**: Added drag-manipulation lifecycle for gizmos, including begin, update, and end drag operations.
 - **GizmoManager.Factory**: Enhanced to support gizmo creation, updating, and removal with caching for handle sets.
-- **BillboardCullNode**: Added to perform culling operations on billboards based on screen size and distance.
+- **GizmoDrawInfo**: Added to describe a single renderable gizmo with handle sets and render options.
+- **GizmoInstanceHandle**: Added as a lightweight, reusable reference to a gizmo created by the factory.
+- **IGizmoDataProvider**: Added to gather all `GizmoDrawInfo` entities each frame.
 - **DrawStream Enhancements**: Introduced `DrawStreamType` and `DrawStreamVariants` for more precise control over draw stream characteristics.
 - **RenderGraphResourceAllocationException**: Added to handle resource allocation failures in the render graph.
 - **Material Type Name Properties**: Updated `LineDrawInfo` and `PointDrawInfo` to use `LineMaterialTypeName` and `PointMaterialTypeName` respectively for material lookup.

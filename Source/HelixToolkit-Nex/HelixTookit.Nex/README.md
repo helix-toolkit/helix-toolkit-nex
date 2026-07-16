@@ -62,6 +62,16 @@ The `Limits` class has been updated to include new constants for managing light 
 - `MaxLightsPerTileLimit`: The maximum number of lights per tile, constrained to 255 due to byte storage.
 - `MaxRangeLightCount`: The maximum number of range lights considered for culling, limited to 65535 due to ushort storage.
 
+## New Result Codes
+
+The `ResultCode` enum has been expanded with additional result codes:
+
+- `NotReady`: Indicates a not ready state.
+- `NotFound`: The requested item (e.g., an entity component) was not found.
+- `WorldNotValid`: The target world is null, disposed, or otherwise not in a valid state.
+- `NotThisWorld`: The entity does not belong to the world the operation was issued against.
+- `NotTheSameWorld`: The entities involved in the operation do not belong to the same world.
+
 ## Usage Examples
 
 ### Logging with DebugLogger

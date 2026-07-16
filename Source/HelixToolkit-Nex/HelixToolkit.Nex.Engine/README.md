@@ -43,6 +43,7 @@ HelixToolkit.Nex.Engine is a core component of the HelixToolkit.Nex suite, respo
 | `MeshDrawStream`              | Manages mesh draw commands, supporting dynamic and static data handling.        |
 | `MeshDrawStreamRegistry`      | Registry for managing mesh draw streams.                                        |
 | `PickingRegistry`             | Manages picking handlers for different geometry types.                         |
+| `GizmoDataProvider`           | Collects gizmo entities for rendering, similar to mesh and line gather patterns.|
 
 ## Usage Examples
 
@@ -242,4 +243,8 @@ camera.FocusOn(new Vector3(0, 0, 0), 10f);
 ### New Event in `Engine`
 
 - `OnViewportHovering`: An event that is triggered when the viewport is hovered, providing a `PickingResponse`.
+
+### New `GizmoDataProvider` Class
+
+- Collects every entity carrying a valid `GizmoDrawInfo` in the active world each frame and exposes them to the render node, mirroring the mesh/line/point gather pattern used by `BoundingBoxPostEffect`, `WireframePostEffect`, and `BorderHighlightPostEffect`.
 ```

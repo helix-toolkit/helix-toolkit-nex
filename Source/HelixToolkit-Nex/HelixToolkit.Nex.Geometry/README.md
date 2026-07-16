@@ -79,7 +79,7 @@ var deserializedGeometry = JsonSerializer.Deserialize<Geometry>(json, options);
 
 ## Architecture Notes
 
-- **Design Patterns**: The package uses the Entity Component System (ECS) architecture for managing dynamic and static geometries, built on the custom `HelixToolkit.Nex.ECS` framework.
+- **Design Patterns**: The package uses the Entity Component System (ECS) architecture for managing dynamic and static geometries, leveraging the Arch ECS library.
 - **Dependencies**: It relies on other HelixToolkit-Nex packages such as `HelixToolkit.Nex.Graphics` for rendering and `HelixToolkit.Nex.Maths` for mathematical operations.
 - **Octree Implementation**: The package includes several octree implementations for efficient spatial queries, such as `StaticMeshGeometryOctree` and `StaticPointGeometryOctree`.
 - **Serialization**: Custom JSON converters are provided for `Geometry` and `VertexProperties` to facilitate serialization and deserialization.
@@ -93,8 +93,9 @@ var deserializedGeometry = JsonSerializer.Deserialize<Geometry>(json, options);
   - Updated buffer management logic to use `HasAllFlags` for checking buffer types.
   - Buffer debug names have been updated for clarity.
   - Removed redundant event publishing logic from property change handlers.
+  - Disposal logic now defers removal from the `GeometryManager` to a controlled frame boundary.
 - **GeometryManager API**: 
-  - Introduced `UploadMeshInfoDynamic` method for uploading mesh information to the GPU.
+  - Introduced `RemoveDeferred` and `ProcessPendingRemovals` methods for deferred geometry removal.
   - Added `LastIndex` property to track the last object index in the pool.
 - **TangentGenerator Class**: 
   - New static class for generating tangent vectors for geometries using the Lengyel algorithm.

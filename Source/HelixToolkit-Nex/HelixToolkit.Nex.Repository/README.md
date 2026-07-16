@@ -87,6 +87,25 @@ var textureRepo = new TextureRepository(context);
 var textureRef = await textureRepo.GetOrCreateFromFileAsync("path/to/texture.png", generateMipmaps: true);
 ```
 
+### Processing Pending Mipmap Generation
+
+```csharp
+using HelixToolkit.Nex.Repository;
+
+// This should be called on the render thread once per frame
+textureRepo.ProcessPendingMipmapGeneration();
+```
+
+### Awaiting Mipmap Readiness
+
+```csharp
+using HelixToolkit.Nex.Repository;
+using System.Threading.Tasks;
+
+var textureHandle = textureRef.GetHandle();
+await textureRepo.WhenMipmapReadyAsync(textureHandle);
+```
+
 ## Architecture Notes
 
 - **Design Patterns**: The repository pattern is used extensively to manage resource caching. Each repository type (e.g., `SamplerRepository`, `ShaderRepository`, `TextureRepository`) implements a specific interface, providing a consistent API for resource management.

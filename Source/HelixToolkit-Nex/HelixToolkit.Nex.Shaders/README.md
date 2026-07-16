@@ -98,4 +98,6 @@ if (!cache.TryGet(cacheKey, out var entry))
 - **Wireframe Rendering**: Introduces a new wireframe rendering mode with adaptive line thickness and anti-aliasing, controlled via `WireframePushConstants`.
 - **SMAA Enhancements**: The SMAA shader now includes support for color-based edge detection and diagonal pattern detection, improving anti-aliasing quality.
 - **SSAO Implementation**: A new SSAO (Screen-Space Ambient Occlusion) shader has been added, supporting multiple stages (occlusion, blur, composite) for enhanced ambient occlusion effects.
+- **Gizmo Rendering**: New shaders for gizmo rendering have been added, supporting solid-handle rendering and entity picking with encoded gizmo information.
+- **Camera Frustum Visualization**: A new fragment shader for visualizing camera frustums has been introduced, aiding in debugging and scene understanding.
 ```
