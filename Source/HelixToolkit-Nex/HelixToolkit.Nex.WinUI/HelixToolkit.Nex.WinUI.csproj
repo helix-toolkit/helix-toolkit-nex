@@ -26,7 +26,9 @@
         <DefineConstants>$(DefineConstants);HxWinUI</DefineConstants>
     </PropertyGroup>
     <ItemGroup Condition="!$([MSBuild]::IsOSPlatform('Linux'))">
-        <PackageReference Include="Microsoft.WindowsAppSDK.WinUI" Version="2.2.1" />
+        <PackageReference Include="Microsoft.WindowsAppSDK.WinUI" Version="2.2.1">
+            <ExcludeAssets>buildTransitive</ExcludeAssets>
+        </PackageReference>
     </ItemGroup>
 
     <ItemGroup Condition="!$([MSBuild]::IsOSPlatform('Linux'))">
