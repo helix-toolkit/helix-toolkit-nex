@@ -71,6 +71,10 @@ public class PreservedSampleBehaviorTests
 
         public bool Remove(Geometry geometry) => true;
 
+        public void RemoveDeferred(Geometry geometry) => Remove(geometry);
+
+        public void ProcessPendingRemovals() { }
+
         public bool UploadStaticMeshIndices(ref SafeWriteContext ctx) => true;
 
         public void Clear() { }

@@ -58,6 +58,15 @@ public sealed class VulkanContextConfig()
     public bool EnableExternalMemoryWin32 = false;
 
     /// <summary>
+    /// When true, enables VK_KHR_external_memory_fd and VK_KHR_external_semaphore_fd
+    /// device extensions (and, when supported, the optional VK_EXT_external_memory_dma_buf)
+    /// during Vulkan device creation. This is the Linux equivalent of
+    /// <see cref="EnableExternalMemoryWin32"/> and is used by the interop layer to share
+    /// images via POSIX file descriptors. Default false.
+    /// </summary>
+    public bool EnableExternalMemoryFd = false;
+
+    /// <summary>
     /// Optional LUID filter. When set, VulkanContext will only select a physical device
     /// whose VkPhysicalDeviceIDProperties.deviceLUID matches this value.
     /// Used by the interop layer to ensure Vulkan and DirectX use the same GPU.
@@ -148,6 +157,15 @@ internal sealed partial class VulkanContext
     private VulkanSwapchain? _swapchain = null;
     private VulkanStagingDevice? _stagingDevice = null;
     private VulkanImmediateCommands? _immediate = null;
+
+    // Dedicated immediate-command instance (its own command pool + semaphore chain) for staging
+    // uploads. When no dedicated transfer queue exists, uploads target the graphics queue and are
+    // frequently driven from a background import thread; giving them a separate instance keeps the
+    // render loop's per-frame command pool and semaphore chain uncontended, while the shared
+    // graphics VkQueue is serialized via a queue-submit lock passed to both instances. See
+    // VulkanImmediateCommands.SubmitLock / _queueSubmitLock.
+    private VulkanImmediateCommands? _uploadImmediate = null;
+
     private VulkanTransferQueue? _transferQueue = null;
     private VkDescriptorSetLayout _vkDesSetLayout = VkDescriptorSetLayout.Null;
     private VkDescriptorSetLayout _dslInputAttachments = VkDescriptorSetLayout.Null;
@@ -199,6 +217,15 @@ internal sealed partial class VulkanContext
     public VulkanSwapchain? Swapchain => _swapchain;
     public VkSemaphore TimelineSemaphore { private set; get; } = VkSemaphore.Null;
     public VulkanImmediateCommands? Immediate => _immediate;
+
+    /// <summary>
+    /// Immediate-command instance used by <see cref="StagingDevice"/> for buffer/texture uploads.
+    /// Separate command pool and semaphore chain from <see cref="Immediate"/> so background uploads
+    /// never contend with the render loop's per-frame recording; both share the same graphics queue
+    /// (serialized internally). Falls back to <see cref="Immediate"/> if not created.
+    /// </summary>
+    public VulkanImmediateCommands? UploadImmediate => _uploadImmediate ?? _immediate;
+
     public VulkanStagingDevice? StagingDevice => _stagingDevice;
 
     public DeviceQueues GraphicsQueue { get; } = new();
@@ -2179,6 +2206,7 @@ internal sealed partial class VulkanContext
                 BuffersPool.Clear();
             }
             WaitDeferredTasks();
+            Disposer.DisposeAndRemove(ref _uploadImmediate);
             Disposer.DisposeAndRemove(ref _immediate);
 
             VK.vkDestroyDescriptorSetLayout(_vkDevice, VkDesSetLayout, null);

@@ -22,6 +22,12 @@ public static class TextureCreator
     /// already contains multiple mip levels.
     /// </param>
     /// <param name="debugName">Optional debug name for the texture.</param>
+    /// <param name="scheduleMipmapGeneration">
+    /// Optional callback used to defer GPU mipmap generation instead of invoking
+    /// <see cref="IContext.GenerateMipmap(in TextureHandle, out uint)"/> inline. When supplied and
+    /// mipmap generation applies, the callback is invoked with the texture handle so the caller can
+    /// queue the work to run on the render thread. When <c>null</c>, mipmaps are generated inline.
+    /// </param>
     /// <returns>A <see cref="TextureResource"/> representing the created GPU texture.</returns>
     /// <exception cref="InvalidOperationException">
     /// Thrown when <paramref name="image"/>'s format is <see cref="Format.Invalid"/>.
@@ -30,7 +36,8 @@ public static class TextureCreator
         IContext context,
         Image image,
         bool generateMipmaps = false,
-        string? debugName = null
+        string? debugName = null,
+        Action<TextureHandle>? scheduleMipmapGeneration = null
     )
     {
         if (image.Description.Format == Format.Invalid)
@@ -42,7 +49,12 @@ public static class TextureCreator
         context.CreateTexture(desc, out var texture, debugName).CheckResult();
         if (desc.GenerateMipmaps)
         {
-            context.GenerateMipmap(texture.Handle, out _);
+            // Defer generation to the render thread when a scheduler is provided; otherwise
+            // generate inline (e.g. when called directly outside the engine render path).
+            if (scheduleMipmapGeneration is not null)
+                scheduleMipmapGeneration(texture.Handle);
+            else
+                context.GenerateMipmap(texture.Handle, out _);
         }
         return texture;
     }
@@ -57,13 +69,18 @@ public static class TextureCreator
     /// and mipmaps are generated on the GPU immediately after upload.
     /// </param>
     /// <param name="debugName">Optional debug name for the texture.</param>
+    /// <param name="scheduleMipmapGeneration">
+    /// Optional callback used to defer GPU mipmap generation to the render thread. See
+    /// <see cref="CreateTexture"/> for details.
+    /// </param>
     /// <returns>A <see cref="TextureResource"/> representing the created GPU texture.</returns>
     /// <exception cref="InvalidOperationException">Thrown if the stream cannot be decoded into an image.</exception>
     public static TextureResource CreateTextureFromStream(
         IContext context,
         Stream stream,
         bool generateMipmaps = false,
-        string? debugName = null
+        string? debugName = null,
+        Action<TextureHandle>? scheduleMipmapGeneration = null
     )
     {
         var image =
@@ -73,7 +90,7 @@ public static class TextureCreator
             );
         using (image)
         {
-            return CreateTexture(context, image, generateMipmaps, debugName);
+            return CreateTexture(context, image, generateMipmaps, debugName, scheduleMipmapGeneration);
         }
     }
 
@@ -93,6 +110,14 @@ public static class TextureCreator
     /// and mipmaps are generated on the GPU after the upload completes.
     /// </param>
     /// <param name="debugName">Optional debug name for the texture.</param>
+    /// <param name="scheduleMipmapGeneration">
+    /// Optional callback used to defer GPU mipmap generation to the render thread instead of
+    /// invoking <see cref="IContext.GenerateMipmap(in TextureHandle, out uint)"/> from the upload
+    /// continuation. When supplied, the callback is invoked with the texture handle after the base
+    /// upload completes successfully, and the returned handle completes with <see cref="ResultCode.Ok"/>
+    /// once the mipmap work has been queued. When <c>null</c>, mipmaps are generated inline in the
+    /// continuation.
+    /// </param>
     /// <returns>
     /// An <see cref="AsyncUploadHandle{TextureHandle}"/> that completes when both the pixel upload
     /// and, if <paramref name="generateMipmaps"/> is <c>true</c>, mipmap generation have finished.
@@ -104,9 +129,15 @@ public static class TextureCreator
         IContext context,
         Image image,
         bool generateMipmaps = false,
-        string? debugName = null
+        string? debugName = null,
+        Action<TextureHandle>? scheduleMipmapGeneration = null
     )
     {
+        if (image is null)
+            throw new InvalidOperationException(
+                "Cannot create a GPU texture: the source image is null."
+            );
+
         if (image.Description.Format == Format.Invalid)
             throw new InvalidOperationException(
                 "Cannot create a GPU texture from an image with Format.Invalid"
@@ -175,7 +206,7 @@ public static class TextureCreator
                     if (isLast)
                     {
                         return desc.GenerateMipmaps
-                            ? ChainMipmapGeneration(context, uploadHandle, handle)
+                            ? ChainMipmapGeneration(context, uploadHandle, handle, scheduleMipmapGeneration)
                             : uploadHandle;
                     }
                 }
@@ -201,31 +232,74 @@ public static class TextureCreator
     /// </param>
     /// <param name="debugName">Optional debug name for the texture.</param>
     /// <returns>
-    /// A tuple of the <see cref="TextureResource"/> (GPU memory allocated synchronously) and an
+    /// A tuple of a <see cref="ResultCode"/> indicating whether GPU allocation succeeded, the
+    /// <see cref="TextureResource"/> (GPU memory allocated synchronously) and an
     /// <see cref="AsyncUploadHandle{TextureHandle}"/> that completes when both the pixel upload
     /// and, if <paramref name="generateMipmaps"/> is <c>true</c>, mipmap generation have finished.
+    /// When the result is not <see cref="ResultCode.Ok"/>, the texture resource is
+    /// <see cref="TextureResource.Null"/> and the upload handle is <c>null</c>; any partially
+    /// allocated GPU memory has been released.
     /// </returns>
     /// <exception cref="InvalidOperationException">
-    /// Thrown when <paramref name="image"/>'s format is <see cref="Format.Invalid"/>.
+    /// Thrown when <paramref name="image"/> is <c>null</c> or its format is <see cref="Format.Invalid"/>.
     /// </exception>
     public static (
+        ResultCode result,
         TextureResource resource,
         AsyncUploadHandle<TextureHandle> uploadHandle
     ) CreateTextureAsyncWithResource(
         IContext context,
         Image image,
         bool generateMipmaps = false,
-        string? debugName = null
+        string? debugName = null,
+        Action<TextureHandle>? scheduleMipmapGeneration = null
     )
     {
+        if (image is null)
+            throw new InvalidOperationException(
+                "Cannot create a GPU texture: the source image is null."
+            );
+
         if (image.Description.Format == Format.Invalid)
             throw new InvalidOperationException(
                 "Cannot create a GPU texture from an image with Format.Invalid"
             );
 
+        // Reject invalid dimensions and mip counts before any GPU allocation. (Req 1.5, 5.3)
+        var imageDesc = image.Description;
+        if (imageDesc.Width < 1 || imageDesc.Height < 1 || imageDesc.MipLevels < 1)
+        {
+            return (ResultCode.ArgumentError, TextureResource.Null, null!);
+        }
+
+        // Consistency guard: the resolved mip-level count must match the Full_Mip_Chain formula
+        // when mipmap generation applies. ResolveMipLevelCount is the single source of truth, so
+        // this should never diverge under normal operation; on a mismatch, abort before any GPU
+        // allocation and surface a mip-level-count-mismatch result. (Req 7.4)
+        bool generatesMipChain = generateMipmaps && imageDesc.MipLevels == 1;
+        if (generatesMipChain)
+        {
+            uint resolvedMipLevels = ResolveMipLevelCount(imageDesc, generateMipmaps);
+            uint formulaMipLevels = (uint)PitchCalculator.CountMips(
+                imageDesc.Width,
+                imageDesc.Height
+            );
+            if (resolvedMipLevels != formulaMipLevels)
+            {
+                return (ResultCode.InvalidState, TextureResource.Null, null!);
+            }
+        }
+
         // Create texture without initial data (synchronous GPU memory allocation)
         var desc = BuildTextureDesc(image, includeData: false, generateMipmaps: generateMipmaps);
-        context.CreateTexture(desc, out var texture, debugName).CheckResult();
+        var createResult = context.CreateTexture(desc, out var texture, debugName);
+        if (createResult != ResultCode.Ok)
+        {
+            // Allocation failed: release any partially allocated GPU memory and surface the
+            // failure code without returning a resource or upload handle. (Req 1.5, 5.3)
+            texture?.Dispose();
+            return (createResult, TextureResource.Null, null!);
+        }
         var handle = texture.Handle;
 
         // Upload pixel data for each array slice and mip level
@@ -285,10 +359,10 @@ public static class TextureCreator
         }
 
         var finalHandle = desc.GenerateMipmaps
-            ? ChainMipmapGeneration(context, lastUploadHandle, handle)
+            ? ChainMipmapGeneration(context, lastUploadHandle, handle, scheduleMipmapGeneration)
             : lastUploadHandle;
 
-        return (texture, finalHandle);
+        return (ResultCode.Ok, texture, finalHandle);
     }
 
     /// <summary>
@@ -301,14 +375,26 @@ public static class TextureCreator
     /// and mipmaps are generated on the GPU after the upload completes.
     /// </param>
     /// <param name="debugName">Optional debug name for the texture.</param>
+    /// <param name="scheduleMipmapGeneration">
+    /// Optional callback used to defer GPU mipmap generation to the render thread. See
+    /// <see cref="CreateTextureAsync"/> for details.
+    /// </param>
     /// <returns>An <see cref="AsyncUploadHandle{TextureHandle}"/> that completes when the upload finishes.</returns>
     public static AsyncUploadHandle<TextureHandle> CreateTextureFromStreamAsync(
         IContext context,
         Stream stream,
         bool generateMipmaps = false,
-        string? debugName = null
+        string? debugName = null,
+        Action<TextureHandle>? scheduleMipmapGeneration = null
     )
     {
+        if (stream is null)
+        {
+            throw new InvalidOperationException(
+                "Cannot create a GPU texture from a null stream."
+            );
+        }
+
         var image =
             Image.Load(stream)
             ?? throw new InvalidOperationException(
@@ -318,7 +404,7 @@ public static class TextureCreator
         // The pixel data is copied into managed arrays in CreateTextureAsync before disposal.
         using (image)
         {
-            return CreateTextureAsync(context, image, generateMipmaps, debugName);
+            return CreateTextureAsync(context, image, generateMipmaps, debugName, scheduleMipmapGeneration);
         }
     }
 
@@ -328,33 +414,73 @@ public static class TextureCreator
 
     /// <summary>
     /// Returns a new <see cref="AsyncUploadHandle{TextureHandle}"/> that completes only after
-    /// <paramref name="uploadHandle"/> finishes <em>and</em> mipmap generation has been submitted.
+    /// <paramref name="uploadHandle"/> finishes <em>and</em> mipmap generation has been submitted
+    /// (or queued, when <paramref name="scheduleMipmapGeneration"/> is supplied).
     /// </summary>
     private static AsyncUploadHandle<TextureHandle> ChainMipmapGeneration(
         IContext context,
         AsyncUploadHandle<TextureHandle> uploadHandle,
-        TextureHandle handle
+        TextureHandle handle,
+        Action<TextureHandle>? scheduleMipmapGeneration = null
     )
     {
         var chainedHandle = new AsyncUploadHandle<TextureHandle>();
         uploadHandle.Task.ContinueWith(
             t =>
             {
-                if (t.IsCompletedSuccessfully)
+                if (!t.IsCompletedSuccessfully)
                 {
-                    var (result, h) = t.Result;
-                    if (result == ResultCode.Ok)
-                        context.GenerateMipmap(h, out _);
-                    chainedHandle.Complete(result, h);
-                }
-                else
-                {
+                    // Upload task faulted/cancelled before producing a result. (Req 4.4)
                     chainedHandle.Complete(ResultCode.RuntimeError, handle);
+                    return;
+                }
+
+                var (uploadResult, uploadedHandle) = t.Result;
+                if (uploadResult != ResultCode.Ok)
+                {
+                    // Base upload failed: skip mip-gen, propagate the upload code, no valid handle. (Req 2.3, 2.4, 3.5, 4.2)
+                    chainedHandle.Complete(uploadResult, default);
+                    return;
+                }
+
+                try
+                {
+                    // (Req 2.1) only after Ok upload. When a scheduler is supplied, defer the GPU
+                    // mipmap generation to the render thread instead of calling GenerateMipmap from
+                    // this thread-pool continuation (where immediate command-buffer submission is
+                    // unsafe relative to the render thread).
+                    if (scheduleMipmapGeneration is not null)
+                        scheduleMipmapGeneration(uploadedHandle);
+                    else
+                        context.GenerateMipmap(uploadedHandle, out _);
+                    chainedHandle.Complete(ResultCode.Ok, uploadedHandle); // (Req 3.3, 4.1)
+                }
+                catch
+                {
+                    chainedHandle.Complete(ResultCode.RuntimeError, uploadedHandle); // (Req 3.6, 4.3)
                 }
             },
             TaskScheduler.Default
         );
         return chainedHandle;
+    }
+
+    /// <summary>
+    /// Resolves the number of mip levels to allocate for a texture.
+    /// </summary>
+    /// <param name="desc">The source image description.</param>
+    /// <param name="generateMipmaps">Whether automatic mipmap generation was requested.</param>
+    /// <returns>
+    /// The full mip chain count (<c>PitchCalculator.CountMips(width, height)</c>, equal to
+    /// <c>1 + floor(log2(max(width, height)))</c>) when <paramref name="generateMipmaps"/> is true
+    /// and the source has a single mip level; otherwise the source mip-level count.
+    /// </returns>
+    internal static uint ResolveMipLevelCount(in ImageDescription desc, bool generateMipmaps)
+    {
+        bool needsGenerate = generateMipmaps && desc.MipLevels == 1;
+        return needsGenerate
+            ? (uint)PitchCalculator.CountMips(desc.Width, desc.Height)
+            : (uint)desc.MipLevels;
     }
 
     private static TextureDesc BuildTextureDesc(
@@ -365,9 +491,7 @@ public static class TextureCreator
     {
         var desc = image.Description;
         bool needsGenerate = generateMipmaps && desc.MipLevels == 1;
-        uint mipLevels = needsGenerate
-            ? (uint)(1 + Math.Floor(Math.Log2(Math.Max(desc.Width, desc.Height))))
-            : (uint)desc.MipLevels;
+        uint mipLevels = ResolveMipLevelCount(desc, generateMipmaps);
         return new TextureDesc
         {
             Type = MapDimension(desc.Dimension),

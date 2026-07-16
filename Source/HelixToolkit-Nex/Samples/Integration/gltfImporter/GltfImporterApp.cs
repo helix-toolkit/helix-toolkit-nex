@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Numerics;
+using Demo.Utils;
 using HelixToolkit.Nex.Engine.CameraControllers;
 using HelixToolkit.Nex.Engine.Cameras;
 using HelixToolkit.Nex.glTF;
@@ -14,7 +15,6 @@ using HelixToolkit.Nex.Rendering.PostEffects;
 using HelixToolkit.Nex.Scene;
 using ImGuiNET;
 using Microsoft.Extensions.Logging;
-using NativeFileDialogSharp;
 using SDL3;
 using ApplicationBase = HelixToolkit.Nex.Sample.Application.Application;
 using ApplicationConfig = HelixToolkit.Nex.Sample.Application.ApplicationConfig;
@@ -51,6 +51,23 @@ internal class GltfImporterApp : ApplicationBase
     // Application state
     private Node? _currentModelRoot;
     private ResourceManifest? _currentResourceManifest;
+
+    private SsaoPostEffect? _ssaoPostEffect;
+
+    public bool EnableSSAO
+    {
+        set => _ssaoPostEffect!.Enabled = value;
+        get => _ssaoPostEffect!.Enabled;
+    }
+
+    // Background import state. The off-thread preparation (parse/convert/record) runs on a
+    // thread-pool task; the materializing flush is completed on the owning thread in OnTick.
+    private Task<PreparedImport>? _pendingImport;
+    private string? _pendingImportPath;
+
+    // Path chosen in the async SDL file dialog, consumed at the start of the next tick so the
+    // load runs on the render thread rather than inside the dialog callback.
+    private string? _pendingOpenPath;
     private Node? _mainRoot;
     private DirectionalLightNode? _dirLight;
     private Size _viewportSize = new(1, 1);
@@ -139,12 +156,16 @@ internal class GltfImporterApp : ApplicationBase
             .WithFXAA()
             .WithToneMappingMode(Shaders.ToneMappingMode.Reinhard)
             .WithTransparent(Engine.TransparentMode.WBOIT)
+            .WithFPS()
+            .WithSSAO()
             .RenderToCustomTarget(GraphicsSettings.IntermediateTargetFormat)
             .WithPostEffects(effects =>
             {
                 effects.AddEffect(_borderHighlight);
             })
             .Build();
+
+        _ssaoPostEffect = _engine.GetPostEffect<SsaoPostEffect>();
 
         // Create render context
         _renderContext = _engine.CreateRenderContext();
@@ -231,6 +252,24 @@ internal class GltfImporterApp : ApplicationBase
         )
             return;
 
+        // --- Start a load requested from the async file dialog ---
+        if (_pendingOpenPath is { } openPath)
+        {
+            _pendingOpenPath = null;
+            LoadFile(openPath);
+        }
+
+        // --- Complete any background import on the owning thread ---
+        // PrepareImportAsync did the heavy work (parse/convert/record) off-thread; the flush that
+        // mutates the ECS world must run here, on the world's owning (render) thread.
+        if (_pendingImport is { IsCompleted: true } importTask)
+        {
+            var path = _pendingImportPath ?? string.Empty;
+            _pendingImport = null;
+            _pendingImportPath = null;
+            CompletePendingImport(importTask, path);
+        }
+
         // Timing
         if (_lastTimestamp == 0)
             _lastTimestamp = Stopwatch.GetTimestamp();
@@ -251,11 +290,17 @@ internal class GltfImporterApp : ApplicationBase
             {
                 if (Gui.MenuItem("Open"))
                 {
-                    var result = Dialog.FileOpen("gltf,glb");
-                    if (result.IsOk && !string.IsNullOrEmpty(result.Path))
-                    {
-                        LoadFile(result.Path);
-                    }
+                    // Async dialog: the result arrives via callback and is picked up next tick.
+                    SdlFileDialog.OpenFile(
+                        MainWindow.Instance,
+                        path =>
+                        {
+                            if (!string.IsNullOrEmpty(path))
+                            {
+                                _pendingOpenPath = path;
+                            }
+                        },
+                        ("glTF models (*.gltf, *.glb)", "gltf;glb"));
                 }
                 Gui.EndMenu();
             }
@@ -470,16 +515,78 @@ internal class GltfImporterApp : ApplicationBase
     // -------------------------------------------------------------------
 
     /// <summary>
-    /// Loads a glTF/GLB file, attaches the result to the scene, and frames the camera.
-    /// On failure, stores diagnostics for display without modifying the scene.
+    /// Begins loading a glTF/GLB file. The heavy preparation phase (parse, buffer load, mesh/
+    /// material/texture/light conversion, and recording the scene into a command buffer) runs on a
+    /// background thread; the result is materialized on the owning thread in <see cref="OnTick"/>.
     /// </summary>
     private void LoadFile(string filePath)
     {
         if (_worldDataProvider is null || _cameraController is null)
             return;
 
+        // Only one import at a time; ignore new requests while one is in flight.
+        if (_pendingImport is not null)
+        {
+            _logger.LogInformation(
+                "An import is already in progress; ignoring request to load {FilePath}.",
+                filePath
+            );
+            return;
+        }
+
         var importer = new Importer();
-        var result = importer.Import(filePath, _worldDataProvider, ImportConfig);
+        var worldData = _worldDataProvider;
+        var config = ImportConfig;
+
+        // Clear the current model up front, before the background load registers the new model's
+        // geometry. While new static geometry is uploaded, the shared static-index buffer is rebuilt
+        // on the render thread; if the old model were still being drawn it would render against that
+        // in-flux buffer and corrupt for a few frames. Removing it now means nothing references the
+        // shared buffer while it changes. Trade-off: the viewport is empty while the next model loads.
+        _selectionManager?.Deselect();
+        DisposeCurrentModel();
+
+        _pendingImportPath = filePath;
+        // Off-thread phase: file read, glTF parse, buffer decode, geometry upload via the async
+        // transfer-queue path, and recording the scene. Material/texture conversion and node
+        // construction happen on the render thread in PreparedImport.Complete (invoked from OnTick).
+        _pendingImport = Task.Run(() => importer.PrepareImportAsync(filePath, worldData, config));
+    }
+
+    /// <summary>
+    /// Completes a background import on the owning thread: flushes the recorded scene, attaches the
+    /// result, and frames the camera. On failure, stores diagnostics for display.
+    /// </summary>
+    private void CompletePendingImport(Task<PreparedImport> importTask, string filePath)
+    {
+        if (_worldDataProvider is null)
+            return;
+
+        // A faulted preparation (I/O or parsing exception) surfaces as an error.
+        if (importTask.IsFaulted)
+        {
+            var ex = importTask.Exception?.GetBaseException();
+            _importDiagnostics =
+            [
+                new ImportDiagnostic(
+                    DiagnosticSeverity.Error,
+                    $"Failed to import {filePath}: {ex?.Message}",
+                    "File",
+                    -1
+                ),
+            ];
+            _showErrorWindow = true;
+            _showWarningWindow = false;
+            _logger.LogError(ex, "Failed to import {FilePath}", filePath);
+            return;
+        }
+
+        // Dispose releases prepared resources only if Complete is never reached; once Complete
+        // runs, ownership transfers to the returned ImportResult, so this becomes a no-op.
+        using var prepared = importTask.Result;
+
+        // Materialize on the owning (render) thread.
+        var result = prepared.Complete(_worldDataProvider);
 
         if (!result.Success)
         {
@@ -495,9 +602,7 @@ internal class GltfImporterApp : ApplicationBase
             return;
         }
 
-        // Success — deselect current entity and dispose previous model before attaching new one
-        _selectionManager?.Deselect();
-        DisposeCurrentModel();
+        // Success — attach the new model. The previous model was already cleared in LoadFile.
         _currentModelRoot = result.RootNode;
         _currentResourceManifest = result.Resources;
         _mainRoot?.AddChild(_currentModelRoot!);
@@ -505,6 +610,28 @@ internal class GltfImporterApp : ApplicationBase
         _worldDataProvider.World.UpdateTransforms();
         // Compute bounding volume and frame the camera
         ComputeBoundsAndFrameCamera(_currentModelRoot!);
+
+        // Texture pixel data is already uploaded, but mipmap generation is deferred to the render
+        // thread and runs on the next Engine.BeginFrame. Observe full GPU readiness without blocking
+        // the render loop: WhenTexturesReadyAsync completes once those queued mipmaps are generated.
+        int textureCount = result.Resources.TextureCount;
+        var readyTimer = System.Diagnostics.Stopwatch.StartNew();
+        _ = result
+            .WhenTexturesReadyAsync()
+            .ContinueWith(
+                _ =>
+                {
+                    readyTimer.Stop();
+                    _logger.LogInformation(
+                        "All {Count} imported texture(s) for {FilePath} are GPU-ready "
+                            + "(mipmaps generated) after {Ms} ms.",
+                        textureCount,
+                        filePath,
+                        readyTimer.ElapsedMilliseconds
+                    );
+                },
+                TaskScheduler.Default
+            );
 
         // Handle warnings
         if (result.HasWarnings)
@@ -577,9 +704,9 @@ internal class GltfImporterApp : ApplicationBase
         // rebuild their GPU draw commands for the already-rendered meshes.
         var world = _worldDataProvider.World;
         var comps = world.GetComponents<MeshDrawInfo>();
-        foreach (var entityId in comps.GetEntities())
+        foreach (var entity in comps.GetEntities())
         {
-            world.GetEntity(entityId).Update<MeshDrawInfo>(static m => m);
+            entity.Update<MeshDrawInfo>(static m => m);
         }
     }
 
@@ -589,6 +716,10 @@ internal class GltfImporterApp : ApplicationBase
 
     protected override void OnDisposing()
     {
+        _pendingImport?.Wait();
+        _pendingImport?.Result?.Dispose();
+        _pendingImport = null;
+
         _selectionManager?.Deselect();
         _currentResourceManifest?.DisposeAll();
         _currentResourceManifest = null;

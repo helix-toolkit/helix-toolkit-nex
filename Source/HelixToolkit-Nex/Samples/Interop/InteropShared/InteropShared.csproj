@@ -19,4 +19,8 @@
         <ProjectReference Include="..\..\..\HelixToolkit.Nex.Interop.DirectX\HelixToolkit.Nex.Interop.DirectX.csproj" />
         <ProjectReference Include="..\..\SceneSamples\SceneSamples.csproj" />
     </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\..\..\HelixToolkit.Nex.Interop\HelixToolkit.Nex.Interop.csproj" />
+    </ItemGroup>
 </Project>

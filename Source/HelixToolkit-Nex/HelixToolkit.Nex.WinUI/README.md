@@ -14,12 +14,12 @@ Key concepts include:
 
 ## Key Types
 
-| Type                              | Description                                                                 |
-|-----------------------------------|-----------------------------------------------------------------------------|
-| `HelixViewport`                   | A WinUI 3 control that hosts the HelixToolkit.Nex 3D engine output.         |
-| `FrameworkPropertyMetadata`       | Defines metadata for a dependency property, including default values.       |
-| `FrameworkPropertyMetadataOptions`| Enum specifying options for dependency property behavior in the property system. |
-| `HelixProperty`                   | Provides methods to register dependency properties and attached properties. |
+| Type                               | Description                                                                      |
+| ---------------------------------- | -------------------------------------------------------------------------------- |
+| `HelixViewport`                    | A WinUI 3 control that hosts the HelixToolkit.Nex 3D engine output.              |
+| `FrameworkPropertyMetadata`        | Defines metadata for a dependency property, including default values.            |
+| `FrameworkPropertyMetadataOptions` | Enum specifying options for dependency property behavior in the property system. |
+| `HelixProperty`                    | Provides methods to register dependency properties and attached properties.      |
 
 ## Usage Examples
 
@@ -58,12 +58,14 @@ viewport.PointerPressed += (sender, e) =>
 - **Gamma Correction**: The `HelixViewport` now enables gamma correction by default in the render context. This ensures more accurate color representation.
 - **Rendering Event Handling**: The `CompositionTarget.Rendering` event is now directly used without the namespace prefix, simplifying the event subscription and unsubscription process.
 - **Resource Management**: Improved resource management with the `EnsureSize` method to handle viewport resizing more efficiently. The `Engine.WaitForIdle()` method is now used to ensure the engine is idle before releasing resources.
-- **Microsoft Windows App SDK Update**: Updated the package reference for `Microsoft.WindowsAppSDK` to version `2.1.3`.
+- **Microsoft Windows App SDK Update**: Updated the package reference for `Microsoft.WindowsAppSDK.WinUI` to version `2.2.1`.
+- **Removed `BeforeRender` Event**: The `BeforeRender` event has been removed from `HelixViewport`. Use the `ViewportClient` to provide camera and scene data.
+- **Project Reference Update**: Added a project reference to `HelixToolkit.Nex.Interop` to facilitate interop functionalities.
 
 ## Architecture Notes
 
 - **Design Patterns**: The package uses a component-based architecture, leveraging the Entity Component System (ECS) pattern for managing 3D entities and their behaviors.
-- **Dependencies**: HelixToolkit.Nex.WinUI depends on the core HelixToolkit.Nex engine for rendering capabilities and the Arch ECS library for entity management.
+- **Dependencies**: HelixToolkit.Nex.WinUI depends on the core HelixToolkit.Nex engine for rendering capabilities and the custom `HelixToolkit.Nex.ECS` framework for entity management.
 - **Interop**: Utilizes DirectX interop for rendering within WinUI, ensuring compatibility and performance by using keyed mutex synchronization for resource sharing between Vulkan and DirectX.
 
 ## Platform Support

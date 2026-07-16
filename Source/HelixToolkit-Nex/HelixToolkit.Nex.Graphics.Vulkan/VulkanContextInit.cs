@@ -225,6 +225,32 @@ namespace HelixToolkit.Nex.Graphics.Vulkan
                 _deviceExtensions.Add(VK.VK_KHR_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME);
             }
 
+            // Conditionally enable external-memory-fd extensions for Linux (Avalonia/EGL) interop
+            if (Config.EnableExternalMemoryFd)
+            {
+                _deviceExtensions.Add(VK.VK_KHR_EXTERNAL_MEMORY_FD_EXTENSION_NAME);
+                _deviceExtensions.Add(VK.VK_KHR_EXTERNAL_SEMAPHORE_FD_EXTENSION_NAME);
+
+                // VK_EXT_external_memory_dma_buf is optional/best-effort: only enable it
+                // when the physical device advertises support for it.
+                string dmaBufExt = new VkUtf8ReadOnlyString(
+                    VK.VK_EXT_EXTERNAL_MEMORY_DMA_BUF_EXTENSION_NAME
+                ).ToString()!;
+                if (_supportedExtensions.Contains(dmaBufExt))
+                {
+                    _deviceExtensions.Add(VK.VK_EXT_EXTERNAL_MEMORY_DMA_BUF_EXTENSION_NAME);
+                    _logger.LogInformation(
+                        "Enabled optional device extension VK_EXT_external_memory_dma_buf."
+                    );
+                }
+                else
+                {
+                    _logger.LogInformation(
+                        "VK_EXT_external_memory_dma_buf not supported by device; skipping (optional)."
+                    );
+                }
+            }
+
             VK.vkGetPhysicalDeviceFeatures2(_vkPhysicalDevice, &feature_1_0);
             SupportsDynamicLocalRead = localReadFeatures.dynamicRenderingLocalRead == VK_BOOL.True;
             _logger.LogInformation(
@@ -317,11 +343,22 @@ namespace HelixToolkit.Nex.Graphics.Vulkan
                 );
             }
 
-            _immediate = new VulkanImmediateCommands(
-                this,
-                DeviceQueues.GraphicsQueueFamilyIndex,
-                HasExtDeviceFault
-            );
+            {
+                var graphicsQueueSubmitLock = new object();
+                _immediate = new VulkanImmediateCommands(
+                    this,
+                    DeviceQueues.GraphicsQueueFamilyIndex,
+                    HasExtDeviceFault,
+                    graphicsQueueSubmitLock
+                );
+                _uploadImmediate = new VulkanImmediateCommands(
+                    this,
+                    DeviceQueues.GraphicsQueueFamilyIndex,
+                    HasExtDeviceFault,
+                    graphicsQueueSubmitLock,
+                    VulkanImmediateCommands.KUploadCommandBuffers
+                );
+            }
         }
 
         private unsafe void InitPipelineCache()

@@ -1,14 +1,18 @@
 using System.Diagnostics;
 using System.Numerics;
+using Demo.Utils;
 using HelixToolkit.Nex;
 using HelixToolkit.Nex.ECS;
 using HelixToolkit.Nex.Engine;
 using HelixToolkit.Nex.Engine.CameraControllers;
 using HelixToolkit.Nex.Engine.Cameras;
+using HelixToolkit.Nex.Engine.Scene;
 using HelixToolkit.Nex.Graphics;
 using HelixToolkit.Nex.ImGui;
 using HelixToolkit.Nex.Maths;
 using HelixToolkit.Nex.Rendering;
+using HelixToolkit.Nex.Rendering.Components;
+using HelixToolkit.Nex.Rendering.ComputeNodes;
 using HelixToolkit.Nex.Rendering.PostEffects;
 using HelixToolkit.Nex.Rendering.RenderNodes;
 using HelixToolkit.Nex.Scene;
@@ -16,6 +20,7 @@ using Microsoft.Extensions.Logging;
 using SceneSamples;
 using static HelixToolkit.Nex.Rendering.PostEffects.BorderHighlightPostEffect;
 using static HelixToolkit.Nex.Rendering.PostEffects.WireframePostEffect;
+using Viewport = HelixToolkit.Nex.ImGui.Viewport;
 
 namespace ImGuiTest;
 
@@ -33,16 +38,18 @@ internal partial class Editor : IDisposable
 {
     private static readonly ILogger _logger = LogManager.Create<Editor>();
     private const string ViewportTextureName = "ViewportTexture";
-
     private readonly IContext _context;
     private Engine? _engine;
     private RenderContext? _renderContext;
+    private RenderContext? _cullRenderContext;
     private WorldDataProvider? _worldDataProvider;
     private ImGuiRenderer? _imGuiRenderer;
     private Node? _root;
+    private BillboardNode? _cameraBillboard;
     private IScene _scene = new MinecraftScene();
 
     private Camera _camera = new PerspectiveCamera();
+    private Camera _cullCamera = new PerspectiveCamera();
     private readonly long _startTimestamp = Stopwatch.GetTimestamp();
     private long _lastTimestamp = 0;
     private Entity _selectedEntity = Entity.Null;
@@ -57,30 +64,24 @@ internal partial class Editor : IDisposable
     private SMAANode? _smaa;
     private BloomNode? _bloom;
     private FPSNode? _showFPS;
+    private FrustumCullNode? _cullNode;
     private readonly BorderHighlightPostEffect _borderHighlight = new();
     private readonly WireframePostEffect _wireframe = new();
-
-    /// <summary>
-    /// Tracks the ImGui 3D viewport content region size from the previous frame.
-    /// The render graph uses this size (not the window size) to allocate offscreen
-    /// textures and compute the projection aspect ratio.
-    /// Initialized to a sensible default; updated every frame inside <see cref="Draw3DViewport"/>.
-    /// </summary>
-    private Size _viewportSize = new(1, 1);
 
     // --- Camera controllers ---
     private CameraControllerMode _cameraMode = CameraControllerMode.Orbit;
     private OrbitCameraController? _orbitController;
     private TurntableCameraController? _turntableController;
     private WalkaroundCameraController? _walkaroundController;
+    private OrbitCameraController? _cullCameraController;
+    private CameraFrustumVisual? _cullCameraFrustumVisual;
     private ICameraController? _activeController;
 
-    // Viewport-relative mouse tracking for camera input
-    private bool _isRotating;
-    private bool _isPanning;
-    private Vector2 _pointerLocation;
+    // Reusable viewport regions
+    private Viewport? _viewport;
+    private Viewport? _cullViewport;
 
-    private bool _perInstance = false;
+    private bool _perInstance = true;
 
     public Editor(IContext context)
     {
@@ -95,12 +96,18 @@ internal partial class Editor : IDisposable
             Target = new Vector3(_scene.WorldSizeX / 2f, 0, _scene.WorldSizeZ / 2f),
             FarPlane = 1000,
         };
-
+        _cullCamera = new PerspectiveCamera()
+        {
+            Position = new Vector3(_scene.WorldSizeX / 2f, 60, -_scene.WorldSizeZ / 2f - 20),
+            Target = new Vector3(_scene.WorldSizeX / 2f, 0, _scene.WorldSizeZ / 2f),
+            FarPlane = 1000,
+        };
         // --- Camera controllers ---
         _orbitController = new OrbitCameraController(_camera);
         _turntableController = new TurntableCameraController(_camera);
         _walkaroundController = new WalkaroundCameraController(_camera) { MoveSpeed = 20f };
         _activeController = _orbitController;
+        _cullCameraController = new OrbitCameraController(_cullCamera);
 
         // Register Minecraft block material types before the material registry is built
         _scene.RegisterMaterials();
@@ -119,6 +126,7 @@ internal partial class Editor : IDisposable
                 effects.AddEffect(_borderHighlight);
                 effects.AddEffect(_wireframe);
                 effects.AddEffect(new BoundingBoxPostEffect());
+                effects.AddEffect(new CameraFrustumVisual());
             })
             .Build();
 
@@ -127,13 +135,30 @@ internal partial class Editor : IDisposable
         _smaa = _engine.GetRenderNode<SMAANode>();
         _bloom = _engine.GetRenderNode<BloomNode>();
         _showFPS = _engine.GetRenderNode<FPSNode>();
+        _cullNode = _engine.GetRenderNode<FrustumCullNode>();
+        _cullCameraFrustumVisual = _engine.GetPostEffect<CameraFrustumVisual>();
+        _cullCameraFrustumVisual!.FarPlaneDistance = 60;
 
         // --- Per-viewport state and scene data ---
         _renderContext = _engine.CreateRenderContext();
         _renderContext.Initialize();
+        _cullRenderContext = _engine.CreateRenderContext();
+        _cullRenderContext.Initialize();
 
         // Create the offscreen render target texture for the 3D viewport and add it to the system resource set
         _renderContext.ResourceSet.AddTexture(
+            ViewportTextureName,
+            res =>
+            {
+                return res.Context.Context.CreateRenderTarget2D(
+                    GraphicsSettings.IntermediateTargetFormat,
+                    (uint)res.Context.WindowSize.Width,
+                    (uint)res.Context.WindowSize.Height,
+                    debugName: ViewportTextureName
+                );
+            }
+        );
+        _cullRenderContext.ResourceSet.AddTexture(
             ViewportTextureName,
             res =>
             {
@@ -150,11 +175,34 @@ internal partial class Editor : IDisposable
         _renderContext.PointerRing.InnerDistThreshold = 0.4f;
         _renderContext.PointerRing.ColorMix = 0.4f;
 
+        // Reusable viewport regions. The main viewport forwards input to the active
+        // camera controller and reports the pointer (PointerRing) by default; the culling
+        // viewport is a passive display only (no controller, no pick, no pointer reporting).
+        _viewport = new Viewport(_renderContext, _activeController)
+        {
+            PickCallback = Pick,
+            Title = "Main Viewport",
+        };
+        // A distinct WindowId is required: ImGui identifies windows by name, so two viewports
+        // sharing the default "##Viewport" id would collide into one window (the second one then
+        // measures a zero-width content region).
+        _cullViewport = new Viewport(_cullRenderContext)
+        {
+            ReportPointerToRenderContext = false,
+            WindowId = "##CullingViewport",
+            Title = "Culling Visualizer",
+            CameraController = _cullCameraController,
+        };
+
         _worldDataProvider = _engine.CreateWorldDataProvider();
         _worldDataProvider.Initialize();
 
         // Build the 3D scene
         _root = _scene.Build(_context, _engine.ResourceManager, _worldDataProvider);
+
+        // Build camera icon
+        _cameraBillboard = CreateCameraBillboard();
+        _root.AddChild(_cameraBillboard);
 
         // --- ImGui setup ---
         _imGuiRenderer = new ImGuiRenderer(_context, new ImGuiConfig());
@@ -166,9 +214,32 @@ internal partial class Editor : IDisposable
         _imGuiPass.Colors[0].StoreOp = StoreOp.Store;
     }
 
+    private BillboardNode CreateCameraBillboard()
+    {
+        var icon = TextureUtils.TryLoadIconFromAssets(
+            _engine!.ResourceManager.TextureRepository,
+            "camera-96.png",
+            "Camera Icon"
+        );
+        var iconSampler = _engine!.ResourceManager.SamplerRepository.GetOrCreate(
+            SamplerStateDesc.LinearClamp.DebugName,
+            SamplerStateDesc.LinearClamp
+        );
+        BillboardDrawInfo info = BillboardHelper.CreateImageBillboard(
+            icon,
+            iconSampler,
+            width: 48f,
+            height: 48f,
+            fixedSize: true, // constant on-screen size like an editor gizmo icon
+            anchor: BillboardAnchor.Center
+        );
+
+        return new BillboardNode(_worldDataProvider!.World, "CameraIcon", ref info);
+    }
+
     public void Render(int width, int height)
     {
-        if (_engine is null || _renderContext is null)
+        if (_engine is null || _renderContext is null || _cullRenderContext is null)
             return;
         if (_imGuiRenderer is null)
             return;
@@ -183,6 +254,7 @@ internal partial class Editor : IDisposable
         DrawMainMenuBar();
         DrawLayout(
             _renderContext.FinalOutputTexture,
+            _cullRenderContext.FinalOutputTexture,
             width / _imGuiRenderer.DisplayScale,
             height / _imGuiRenderer.DisplayScale
         );
@@ -192,30 +264,52 @@ internal partial class Editor : IDisposable
 
         // Update the active camera controller
         _activeController?.Update(delta);
+        _cullCameraController?.Update(delta);
 
+        _cameraBillboard!.Transform.Translation = _camera.Position;
+        _cameraBillboard!.NotifyTransformChanged();
         // --- Update render context for the 3D viewport ---
         // Use the ImGui viewport size (from the previous frame) for render graph resource
         // allocation and the camera projection. This decouples the 3D rendering resolution
         // from the swapchain / window size.
-        _renderContext!.Update(_viewportSize, _camera);
-        _renderContext.SetPointer(_pointerLocation);
+        _renderContext!.Update(_viewport!.ViewportSize, _camera);
+        _cullRenderContext.Update(_cullViewport!.ViewportSize, _cullCamera);
+
+        _cullCameraFrustumVisual!.Data = new CameraFrustumVisual.CameraFrustumVisualInfo()
+        {
+            InversedViewProjection =
+                _camera.CreateInverseProjection(
+                    (float)_viewport.ViewportSize.Width / _viewport.ViewportSize.Height
+                ) * _camera.CreateInverseView(),
+        };
 
         // --- Step 1: Execute 3D render graph (offscreen) ---
         _engine.BeginFrame();
+        _cullNode!.Enabled = true;
+        _cullCameraFrustumVisual.Enabled = false;
         var cmdBuf = _engine.RenderOffscreen(
             _renderContext,
             _worldDataProvider!,
             ViewportTextureName
         );
 
+        _cullNode!.Enabled = false; // Disable culling for the frustum visualizer pass
+        _cullCameraFrustumVisual.Enabled = true; // Enable the frustum visualizer for the culling viewport pass
+        cmdBuf = _engine.RenderOffscreen(
+            _cullRenderContext!,
+            _worldDataProvider!,
+            ViewportTextureName,
+            cmdBuf
+        );
+
         // --- Step 2: ImGui composite pass — renders to swapchain ---
         var swapchainTex = _context.GetCurrentSwapchainTexture();
         _imGuiFramebuffer.Colors[0].Texture = swapchainTex;
-        _imGuiDeps.PushTexture(_renderContext.FinalOutputTexture);
+        using var _ = _imGuiDeps.PushTextureScoped(_cullRenderContext.FinalOutputTexture);
+        using var __ = _imGuiDeps.PushTextureScoped(_renderContext.FinalOutputTexture);
         _imGuiRenderer.Render(cmdBuf, _imGuiPass, _imGuiFramebuffer, _imGuiDeps);
         // --- Submit & present ---
         _engine.Submit(cmdBuf, swapchainTex);
-        _imGuiDeps.PopTexture();
     }
 
     public void Pick(int x, int y)
@@ -309,87 +403,6 @@ internal partial class Editor : IDisposable
                 _ => _orbitController,
             };
         }
-    }
-
-    /// <summary>
-    /// Gets the currently active camera controller (never null after Initialize).
-    /// </summary>
-    internal ICameraController? ActiveController => _activeController;
-
-    /// <summary>
-    /// Gets the orbit camera controller for property editing in the GUI.
-    /// </summary>
-    internal OrbitCameraController? OrbitController => _orbitController;
-
-    /// <summary>
-    /// Gets the turntable camera controller for property editing in the GUI.
-    /// </summary>
-    internal TurntableCameraController? TurntableController => _turntableController;
-
-    /// <summary>
-    /// Gets the walkaround camera controller for property editing in the GUI.
-    /// </summary>
-    internal WalkaroundCameraController? WalkaroundController => _walkaroundController;
-
-    // -------------------------------------------------------------------
-    // Input forwarding from the application shell
-    // -------------------------------------------------------------------
-
-    /// <summary>
-    /// Handles a mouse button press over the 3D viewport.
-    /// </summary>
-    /// <param name="button">0 = left, 1 = right, 2 = middle</param>
-    /// <param name="viewportX">X position relative to the viewport.</param>
-    /// <param name="viewportY">Y position relative to the viewport.</param>
-    public void OnViewportMouseDown(int button, float viewportX, float viewportY)
-    {
-        if (_activeController is null)
-            return;
-
-        if (button == 1) // right = rotate
-        {
-            _isRotating = true;
-            _activeController.OnRotateBegin(viewportX, viewportY);
-        }
-        else if (button == 2) // middle = pan
-        {
-            _isPanning = true;
-            _activeController.OnPanBegin(viewportX, viewportY);
-        }
-    }
-
-    /// <summary>
-    /// Handles mouse button release.
-    /// </summary>
-    public void OnViewportMouseUp(int button)
-    {
-        if (button == 1)
-            _isRotating = false;
-        else if (button == 2)
-            _isPanning = false;
-    }
-
-    /// <summary>
-    /// Handles mouse movement over the viewport.
-    /// </summary>
-    public void OnViewportMouseMove(float viewportX, float viewportY)
-    {
-        _pointerLocation = new Vector2(viewportX, viewportY);
-        if (_activeController is null)
-            return;
-
-        if (_isRotating)
-            _activeController.OnRotateDelta(viewportX, viewportY);
-        if (_isPanning)
-            _activeController.OnPanDelta(viewportX, viewportY);
-    }
-
-    /// <summary>
-    /// Handles mouse scroll wheel over the viewport.
-    /// </summary>
-    public void OnViewportMouseWheel(float delta)
-    {
-        _activeController?.OnZoomDelta(delta);
     }
 
     /// <summary>

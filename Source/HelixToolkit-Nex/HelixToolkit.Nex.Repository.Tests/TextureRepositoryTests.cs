@@ -58,6 +58,71 @@ public class TextureRepositoryTests
     }
 
     // -------------------------------------------------------------------------
+    // Deferred mipmap generation + readiness tracking
+    // -------------------------------------------------------------------------
+
+    [TestMethod]
+    public void MipmapGeneration_IsDeferred_AndDrainedOnProcess()
+    {
+        var ctx = new MockContext();
+        ctx.Initialize();
+        using var repo = new TextureRepository(ctx);
+
+        // 4x4 single-level image → full mip chain (>1 level) requested, so generation is queued.
+        using var image = Image.New2D(4, 4, 1, Format.RGBA_UN8);
+        var texRef = repo.GetOrCreateFromImage("albedo", image, generateMipmaps: true);
+
+        Assert.AreEqual(
+            1,
+            repo.PendingMipmapCount,
+            "Mipmap generation must be queued for the render thread, not run inline."
+        );
+
+        var ready = repo.WhenMipmapReadyAsync(texRef.GetHandle());
+        Assert.IsFalse(ready.IsCompleted, "Readiness task should be pending before processing.");
+
+        // Simulates the engine's render-thread pass (Engine.BeginFrame).
+        repo.ProcessPendingMipmapGeneration();
+
+        Assert.AreEqual(0, repo.PendingMipmapCount, "Queue should be drained after processing.");
+        Assert.IsTrue(ready.IsCompleted, "Readiness task should complete after processing.");
+    }
+
+    [TestMethod]
+    public void WhenMipmapReadyAsync_ReturnsCompleted_ForUnscheduledHandle()
+    {
+        var ctx = new MockContext();
+        ctx.Initialize();
+        using var repo = new TextureRepository(ctx);
+
+        // A handle that was never scheduled for mipmap generation is already "ready".
+        Assert.IsTrue(repo.WhenMipmapReadyAsync(default).IsCompleted);
+    }
+
+    [TestMethod]
+    public void ProcessPendingMipmapGeneration_AfterContextDisposed_StillCompletesReadiness()
+    {
+        var ctx = new MockContext();
+        ctx.Initialize();
+        using var repo = new TextureRepository(ctx);
+
+        using var image = Image.New2D(4, 4, 1, Format.RGBA_UN8);
+        var texRef = repo.GetOrCreateFromImage("albedo", image, generateMipmaps: true);
+        var ready = repo.WhenMipmapReadyAsync(texRef.GetHandle());
+
+        // Context disposed before the render-thread pass runs: queued work is discarded, but
+        // awaiters must never hang.
+        ctx.Dispose();
+        repo.ProcessPendingMipmapGeneration();
+
+        Assert.IsTrue(
+            ready.IsCompleted,
+            "Readiness tasks must complete even when the context is disposed."
+        );
+        Assert.AreEqual(0, repo.PendingMipmapCount);
+    }
+
+    // -------------------------------------------------------------------------
     // Property 4: Cache-hit GetOrCreateFromStreamAsync returns completed task
     // Feature: resource-ref-lifecycle, Property 4: For any key K already in cache,
     // GetOrCreateFromStreamAsync returns a Task<TextureRef> where IsCompleted == true.

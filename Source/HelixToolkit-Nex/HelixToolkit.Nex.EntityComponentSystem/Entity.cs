@@ -48,7 +48,7 @@ public struct Entity : IDisposable, IEquatable<Entity>
         {
             if (World?.SetStateEnabled(Id, Generation, value) ?? false)
             {
-                ECSEventBus.Send(WorldId, new EntityEnableEvent(Id, value));
+                ECSEventBus.Send(WorldId, new EntityEnableEvent(this, value));
             }
         }
         get { return World?.GetStateEnabled(Id, Generation) ?? false; }
@@ -101,13 +101,19 @@ public struct Entity : IDisposable, IEquatable<Entity>
     /// <typeparam name="T"></typeparam>
     /// <param name="component">The component.</param>
     /// <returns></returns>
-    public readonly ResultCode Set<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.NonPublicFields)] T>(ref T component)
+    public readonly ResultCode Set<
+        [DynamicallyAccessedMembers(
+            DynamicallyAccessedMemberTypes.PublicFields
+                | DynamicallyAccessedMemberTypes.NonPublicFields
+        )]
+    T
+    >(ref T component)
     {
         if (component == null)
         {
-            return ResultCode.Invalid;
+            return ResultCode.InvalidState;
         }
-        return World?.SetComponent<T>(this, ref component, out _) ?? ResultCode.Invalid;
+        return World?.SetComponent<T>(this, ref component, out _) ?? ResultCode.InvalidState;
     }
 
     /// <summary>
@@ -116,9 +122,15 @@ public struct Entity : IDisposable, IEquatable<Entity>
     /// <typeparam name="T"></typeparam>
     /// <param name="component">The component.</param>
     /// <returns></returns>
-    public readonly ResultCode Set<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.NonPublicFields)] T>(T? component = default)
+    public readonly ResultCode Set<
+        [DynamicallyAccessedMembers(
+            DynamicallyAccessedMemberTypes.PublicFields
+                | DynamicallyAccessedMemberTypes.NonPublicFields
+        )]
+    T
+    >(T? component = default)
     {
-        return component == null ? ResultCode.Invalid : Set(ref component);
+        return component == null ? ResultCode.InvalidState : Set(ref component);
     }
 
     /// <summary>
@@ -128,11 +140,17 @@ public struct Entity : IDisposable, IEquatable<Entity>
     /// </summary>
     /// <typeparam name="T">The tag component type (must be an empty struct).</typeparam>
     /// <returns></returns>
-    public readonly ResultCode Tag<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.NonPublicFields)] T>()
+    public readonly ResultCode Tag<
+        [DynamicallyAccessedMembers(
+            DynamicallyAccessedMemberTypes.PublicFields
+                | DynamicallyAccessedMemberTypes.NonPublicFields
+        )]
+    T
+    >()
         where T : struct
     {
         T tag = default;
-        return World?.SetComponent<T>(this, ref tag, out _) ?? ResultCode.Invalid;
+        return World?.SetComponent<T>(this, ref tag, out _) ?? ResultCode.InvalidState;
     }
 
     /// <summary>
@@ -142,7 +160,13 @@ public struct Entity : IDisposable, IEquatable<Entity>
     /// <returns>
     ///   <c>true</c> if this instance has component; otherwise, <c>false</c>.
     /// </returns>
-    public readonly bool Has<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.NonPublicFields)] T>()
+    public readonly bool Has<
+        [DynamicallyAccessedMembers(
+            DynamicallyAccessedMemberTypes.PublicFields
+                | DynamicallyAccessedMemberTypes.NonPublicFields
+        )]
+    T
+    >()
     {
         return World?.HasComponent<T>(this) ?? false;
     }
@@ -155,7 +179,13 @@ public struct Entity : IDisposable, IEquatable<Entity>
     /// </summary>
     /// <typeparam name="T"></typeparam>
     /// <returns></returns>
-    public readonly ref T Get<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.NonPublicFields)] T>()
+    public readonly ref T Get<
+        [DynamicallyAccessedMembers(
+            DynamicallyAccessedMemberTypes.PublicFields
+                | DynamicallyAccessedMemberTypes.NonPublicFields
+        )]
+    T
+    >()
     {
         return ref World!.GetComponent<T>(this);
     }
@@ -169,7 +199,13 @@ public struct Entity : IDisposable, IEquatable<Entity>
     /// <typeparam name="T">The type of the component to update.</typeparam>
     /// <param name="updateFunc">A function that takes the current component of type <typeparamref name="T"/> as input and returns the updated
     /// component.</param>
-    public void Update<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.NonPublicFields)] T>(Func<T, T> updateFunc)
+    public void Update<
+        [DynamicallyAccessedMembers(
+            DynamicallyAccessedMemberTypes.PublicFields
+                | DynamicallyAccessedMemberTypes.NonPublicFields
+        )]
+    T
+    >(Func<T, T> updateFunc)
     {
         if (Has<T>())
         {
@@ -189,7 +225,13 @@ public struct Entity : IDisposable, IEquatable<Entity>
     /// default value for the type.</param>
     /// <returns><see langword="true"/> if the component of type <typeparamref name="T"/> is found; otherwise, <see
     /// langword="false"/>.</returns>
-    public readonly bool TryGet<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.NonPublicFields)] T>(out T? component)
+    public readonly bool TryGet<
+        [DynamicallyAccessedMembers(
+            DynamicallyAccessedMemberTypes.PublicFields
+                | DynamicallyAccessedMemberTypes.NonPublicFields
+        )]
+    T
+    >(out T? component)
     {
         if (!Has<T>())
         {
@@ -205,9 +247,15 @@ public struct Entity : IDisposable, IEquatable<Entity>
     /// </summary>
     /// <typeparam name="T"></typeparam>
     /// <returns></returns>
-    public readonly int GetIndex<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.NonPublicFields)] T>()
+    public readonly int GetIndex<
+        [DynamicallyAccessedMembers(
+            DynamicallyAccessedMemberTypes.PublicFields
+                | DynamicallyAccessedMemberTypes.NonPublicFields
+        )]
+    T
+    >()
     {
-        return World!.HasAnyComponent<T>() ? World!.GetComponentManager<T>()!.GetIndex(Id) : -1;
+        return World!.HasAnyComponent<T>() ? World!.GetComponentManager<T>()!.GetIndex(this) : -1;
     }
 
     /// <summary>
@@ -216,9 +264,15 @@ public struct Entity : IDisposable, IEquatable<Entity>
     /// <typeparam name="T"></typeparam>
     /// <param name="keepSorted">Keeps the order of the rest of components in storage after removing.</param>
     /// <returns></returns>
-    public readonly ResultCode Remove<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.NonPublicFields)] T>(bool keepSorted = false)
+    public readonly ResultCode Remove<
+        [DynamicallyAccessedMembers(
+            DynamicallyAccessedMemberTypes.PublicFields
+                | DynamicallyAccessedMemberTypes.NonPublicFields
+        )]
+    T
+    >(bool keepSorted = false)
     {
-        return World?.RemoveComponent<T>(this, keepSorted) ?? ResultCode.Invalid;
+        return World?.RemoveComponent<T>(this, keepSorted) ?? ResultCode.InvalidState;
     }
 
     /// <summary>
@@ -227,7 +281,13 @@ public struct Entity : IDisposable, IEquatable<Entity>
     /// <remarks>This method sends a <see cref="ComponentChangedEvent{T}"/> to the event bus if the component
     /// of type <typeparamref name="T"/> exists.</remarks>
     /// <typeparam name="T">The type of the component that has changed.</typeparam>
-    public readonly void NotifyComponentChanged<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.NonPublicFields)] T>()
+    public readonly void NotifyComponentChanged<
+        [DynamicallyAccessedMembers(
+            DynamicallyAccessedMemberTypes.PublicFields
+                | DynamicallyAccessedMemberTypes.NonPublicFields
+        )]
+    T
+    >()
     {
         World?.NotifyComponentChanged<T>(this);
     }
@@ -240,7 +300,13 @@ public struct Entity : IDisposable, IEquatable<Entity>
     /// method.</remarks>
     /// <typeparam name="T">The type of the component that has changed.</typeparam>
     /// <param name="component">The component instance that has changed.</param>
-    public readonly void NotifyComponentChanged<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.NonPublicFields)] T>(T component)
+    public readonly void NotifyComponentChanged<
+        [DynamicallyAccessedMembers(
+            DynamicallyAccessedMemberTypes.PublicFields
+                | DynamicallyAccessedMemberTypes.NonPublicFields
+        )]
+    T
+    >(T component)
     {
         World?.NotifyComponentChanged<T>(this);
     }
@@ -297,8 +363,8 @@ public struct Entity : IDisposable, IEquatable<Entity>
     {
         if (Valid)
         {
-            ECSEventBus.Send(WorldId, new EntityBeforeDisposeEvent(Id, Generation));
-            ECSEventBus.Send(WorldId, new EntityDisposingEvent(Id, Generation));
+            ECSEventBus.Send(WorldId, new EntityBeforeDisposeEvent(this));
+            ECSEventBus.Send(WorldId, new EntityDisposingEvent(this));
             Generation = default;
             Id = 0;
         }

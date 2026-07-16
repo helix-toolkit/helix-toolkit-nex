@@ -36,7 +36,7 @@ public sealed class ImporterConfig
     /// <summary>
     /// Gets or sets a value indicating whether point light meshes should be created.
     /// </summary>
-    public bool CreatePointLightMeshes { get; set; } = true;
+    public bool CreatePointLightMeshes { get; set; } = false;
 
     /// <summary>
     /// Gets or sets the world-space scale applied to the point-light visualization sphere mesh.
@@ -48,6 +48,12 @@ public sealed class ImporterConfig
     /// <c>KHR_draco_mesh_compression</c> primitives. Defaults to <see langword="true"/>.
     /// </summary>
     public bool EnableDracoDecompression { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether the importer processes the
+    /// <c>EXT_mesh_gpu_instancing</c> extension. Defaults to <see langword="true"/>.
+    /// </summary>
+    public bool EnableMeshGpuInstancing { get; set; } = true;
 
     /// <summary>
     /// Gets a default configuration with standard settings.

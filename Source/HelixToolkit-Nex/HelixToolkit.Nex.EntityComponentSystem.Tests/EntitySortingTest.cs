@@ -41,14 +41,14 @@ public class EntitySortingTest
         Assert.AreEqual(count, components.Count);
         for (var i = 0; i < count; ++i)
         {
-            Assert.AreEqual(count - i - 1, components[i].Level);
+            Assert.AreEqual(count - i - 1, components.GetInternalArray()[i].Level);
         }
 
         world.SortComponent<HierarchyInfo>();
 
         for (var i = 0; i < count; ++i)
         {
-            Assert.AreEqual(i, components[i].Level);
+            Assert.AreEqual(i, components.GetInternalArray()[i].Level);
         }
     }
 
@@ -75,7 +75,7 @@ public class EntitySortingTest
         Assert.AreEqual(count, components.Count);
         for (var i = 0; i < count; ++i)
         {
-            Assert.AreEqual(i, components[i].Level);
+            Assert.AreEqual(i, components.GetInternalArray()[i].Level);
         }
     }
 
@@ -101,7 +101,7 @@ public class EntitySortingTest
         Assert.AreEqual(count, components.Count);
         for (var i = 0; i < count; ++i)
         {
-            Assert.AreEqual(42, components[i].Level);
+            Assert.AreEqual(42, components.GetInternalArray()[i].Level);
         }
         Assert.IsTrue(world.GetComponentManager<HierarchyInfo>()!.VerifyStorage());
     }
@@ -120,7 +120,7 @@ public class EntitySortingTest
 
         var components = world.GetComponents<HierarchyInfo>();
         Assert.AreEqual(1, components.Count);
-        Assert.AreEqual(7, components[0].Level);
+        Assert.AreEqual(7, components.GetInternalArray()[0].Level);
         Assert.IsTrue(world.GetComponentManager<HierarchyInfo>()!.VerifyStorage());
     }
 
@@ -147,10 +147,15 @@ public class EntitySortingTest
         // Each entity must still resolve to its originally assigned level.
         for (var i = 0; i < count; i++)
         {
-            Assert.IsTrue(entities[i].Has<HierarchyInfo>(),
-                $"Entity {i} should still have HierarchyInfo after sort.");
-            Assert.AreEqual(count - i - 1, entities[i].Get<HierarchyInfo>().Level,
-                $"Entity {i} returned wrong level after sort.");
+            Assert.IsTrue(
+                entities[i].Has<HierarchyInfo>(),
+                $"Entity {i} should still have HierarchyInfo after sort."
+            );
+            Assert.AreEqual(
+                count - i - 1,
+                entities[i].Get<HierarchyInfo>().Level,
+                $"Entity {i} returned wrong level after sort."
+            );
         }
 
         // Internal storage must be coherent.
@@ -180,7 +185,7 @@ public class EntitySortingTest
         Assert.AreEqual(count, components.Count);
         for (var i = 0; i < count; ++i)
         {
-            Assert.AreEqual(i, components[i].Level);
+            Assert.AreEqual(i, components.GetInternalArray()[i].Level);
         }
         Assert.IsTrue(world.GetComponentManager<HierarchyInfo>()!.VerifyStorage());
     }
@@ -217,15 +222,19 @@ public class EntitySortingTest
         {
             if (removed.Contains(i))
             {
-                Assert.IsFalse(entities[i].Valid,
-                    $"Entity {i} should have been disposed.");
+                Assert.IsFalse(entities[i].Valid, $"Entity {i} should have been disposed.");
             }
             else
             {
-                Assert.IsTrue(entities[i].Has<HierarchyInfo>(),
-                    $"Entity {i} should still have HierarchyInfo.");
-                Assert.AreEqual(count - i - 1, entities[i].Get<HierarchyInfo>().Level,
-                    $"Entity {i} returned wrong level after remove+sort.");
+                Assert.IsTrue(
+                    entities[i].Has<HierarchyInfo>(),
+                    $"Entity {i} should still have HierarchyInfo."
+                );
+                Assert.AreEqual(
+                    count - i - 1,
+                    entities[i].Get<HierarchyInfo>().Level,
+                    $"Entity {i} returned wrong level after remove+sort."
+                );
             }
         }
 
@@ -236,8 +245,10 @@ public class EntitySortingTest
         var components = world.GetComponents<HierarchyInfo>();
         for (var i = 1; i < components.Count; ++i)
         {
-            Assert.IsTrue(components[i - 1].Level <= components[i].Level,
-                $"Component storage not sorted at index {i}.");
+            Assert.IsTrue(
+                components.GetInternalArray()[i - 1].Level <= components.GetInternalArray()[i].Level,
+                $"Component storage not sorted at index {i}."
+            );
         }
     }
 
@@ -273,15 +284,19 @@ public class EntitySortingTest
         {
             if (removed.Contains(i))
             {
-                Assert.IsFalse(entities[i].Valid,
-                    $"Entity {i} should have been disposed.");
+                Assert.IsFalse(entities[i].Valid, $"Entity {i} should have been disposed.");
             }
             else
             {
-                Assert.IsTrue(entities[i].Has<HierarchyInfo>(),
-                    $"Entity {i} should still have HierarchyInfo after sort+remove.");
-                Assert.AreEqual(count - i - 1, entities[i].Get<HierarchyInfo>().Level,
-                    $"Entity {i} returned wrong level after sort+remove.");
+                Assert.IsTrue(
+                    entities[i].Has<HierarchyInfo>(),
+                    $"Entity {i} should still have HierarchyInfo after sort+remove."
+                );
+                Assert.AreEqual(
+                    count - i - 1,
+                    entities[i].Get<HierarchyInfo>().Level,
+                    $"Entity {i} returned wrong level after sort+remove."
+                );
             }
         }
     }
@@ -311,15 +326,20 @@ public class EntitySortingTest
         Assert.AreEqual(count, components.Count);
         for (var i = 1; i < count; ++i)
         {
-            Assert.IsTrue(components[i - 1].Level <= components[i].Level,
-                $"Components not in ascending order at index {i}.");
+            Assert.IsTrue(
+                components.GetInternalArray()[i - 1].Level <= components.GetInternalArray()[i].Level,
+                $"Components not in ascending order at index {i}."
+            );
         }
 
         // Per-entity mappings must still be correct.
         for (var i = 0; i < count; i++)
         {
-            Assert.AreEqual((count - i - 1) % 3, entities[i].Get<HierarchyInfo>().Level,
-                $"Entity {i} returned wrong level after sort with duplicates.");
+            Assert.AreEqual(
+                (count - i - 1) % 3,
+                entities[i].Get<HierarchyInfo>().Level,
+                $"Entity {i} returned wrong level after sort with duplicates."
+            );
         }
 
         Assert.IsTrue(world.GetComponentManager<HierarchyInfo>()!.VerifyStorage());
@@ -348,15 +368,21 @@ public class EntitySortingTest
         Assert.AreEqual(count, components.Count);
         for (var i = 0; i < count; ++i)
         {
-            Assert.AreEqual(count - i - 1, components[i].Level,
-                $"Component at index {i} has wrong level for descending sort.");
+            Assert.AreEqual(
+                count - i - 1,
+                components.GetInternalArray()[i].Level,
+                $"Component at index {i} has wrong level for descending sort."
+            );
         }
 
         // Per-entity mappings must still round-trip correctly.
         for (var i = 0; i < count; i++)
         {
-            Assert.AreEqual(i, entities[i].Get<HierarchyInfoDescending>().Level,
-                $"Entity {i} returned wrong level after descending sort.");
+            Assert.AreEqual(
+                i,
+                entities[i].Get<HierarchyInfoDescending>().Level,
+                $"Entity {i} returned wrong level after descending sort."
+            );
         }
 
         Assert.IsTrue(world.GetComponentManager<HierarchyInfoDescending>()!.VerifyStorage());

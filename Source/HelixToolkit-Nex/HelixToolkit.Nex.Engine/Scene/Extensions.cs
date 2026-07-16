@@ -1,5 +1,4 @@
 using HelixToolkit.Nex.Engine.Scene;
-using HelixToolkit.Nex.Rendering.Components;
 using HelixToolkit.Nex.Rendering.SDF;
 
 namespace HelixToolkit.Nex.Scene;
@@ -9,14 +8,12 @@ public static class Extensions
     public static BoundingBox GetMeshBound(this Node node)
     {
         var world = node.World;
-        var nodeInfos = world.GetComponents<NodeInfo>();
+        var entities = world.GetComponentEntities<NodeInfo>();
         var worldTransforms = world.GetComponents<WorldTransform>();
         var meshes = world.GetComponents<MeshDrawInfo>();
         var mergedBound = BoundingBox.Empty;
-        for (int i = 0; i < nodeInfos.Count; ++i)
+        foreach (var entity in entities)
         {
-            ref var nodeInfo = ref nodeInfos[i];
-            var entity = world.GetEntity(nodeInfo.EntityId);
             if (!entity.Valid || !entity.Has<MeshDrawInfo>())
             {
                 continue;

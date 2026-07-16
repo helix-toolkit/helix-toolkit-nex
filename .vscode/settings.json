@@ -6,4 +6,8 @@
     "editor.defaultFormatter": "ms-dotnettools.csharp"
   },
   "editor.formatOnSave": true,
+  "chat.tools.terminal.autoApprove": {
+    "git config": true,
+    "true": true
+  },
 }

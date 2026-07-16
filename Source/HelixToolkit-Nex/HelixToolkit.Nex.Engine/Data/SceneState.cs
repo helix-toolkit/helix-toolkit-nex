@@ -2,20 +2,19 @@ using HelixToolkit.Nex.ECS.Events;
 
 namespace HelixToolkit.Nex.Engine.Data;
 
-public sealed class SceneState(IContext context, World world) : Initializable, IRenderData
+public sealed class SceneState : Initializable, IRenderData
 {
     private static readonly ITracer _tracer = TracerFactory.GetTracer(nameof(SceneState));
-    private readonly IContext _context = context;
+    private readonly IContext _context;
+    private readonly IComponents<Renderable> _renderables;
+    private readonly IComponents<NodeInfo> _nodeInfos;
+    private readonly IComponents<WorldTransform> _worldTransforms;
+    public World World { get; }
 
     private RingElementBuffer<GpuNodeInfo>? _buffer;
-    private Components<Renderable> _renderables;
-    private Components<NodeInfo> _nodeInfos;
-    private Components<WorldTransform> _worldTransforms;
     private readonly FastList<Subscription> _subscriptions = [];
 
     public override string Name => nameof(SceneState);
-
-    public World World { get; } = world;
 
     public bool NodeInfoDirty { private set; get; } = true;
 
@@ -31,14 +30,26 @@ public sealed class SceneState(IContext context, World world) : Initializable, I
 
     public uint Count => (uint)(_buffer?.Count ?? 0);
 
-    protected override ResultCode OnInitializing()
+    public SceneState(IContext context, World world)
     {
-        _buffer = new RingElementBuffer<GpuNodeInfo>(_context, (int)GraphicsSettings.MaxFrameInFlight, 1024);
+        _context = context;
+        World = world;
         _renderables = World.GetComponents<Renderable>();
         _worldTransforms = World.GetComponents<WorldTransform>();
         _nodeInfos = World.GetComponents<NodeInfo>();
+    }
+
+    protected override ResultCode OnInitializing()
+    {
+        _buffer = new RingElementBuffer<GpuNodeInfo>(
+            _context,
+            (int)GraphicsSettings.MaxFrameInFlight,
+            1024
+        );
         _subscriptions.Add(World.Register<ComponentChangedEvent<Transform>>(OnTransformChanged));
-        _subscriptions.Add(World.Register<ComponentChangedEvent<WorldTransform>>(OnWorldTransformChanged));
+        _subscriptions.Add(
+            World.Register<ComponentChangedEvent<WorldTransform>>(OnWorldTransformChanged)
+        );
         _subscriptions.Add(World.Register<ComponentChangedEvent<Parent>>(OnParentChanged));
         _subscriptions.Add(World.Register<ComponentChangedEvent<Renderable>>(OnRenderableChanged));
         _subscriptions.Add(World.Register<ComponentChangedEvent<NodeInfo>>(OnNodeInfoChanged));
@@ -63,7 +74,7 @@ public sealed class SceneState(IContext context, World world) : Initializable, I
 
     private void OnWorldTransformChanged(World _, ComponentChangedEvent<WorldTransform> e)
     {
-        var entity = World.GetEntity(e.EntityId);
+        var entity = e.Entity;
         if (entity.Has<Renderable>())
         {
             _renderables[entity].UpdateCounter = (int)GraphicsSettings.MaxFrameInFlight;
@@ -83,7 +94,7 @@ public sealed class SceneState(IContext context, World world) : Initializable, I
 
     private void OnNodeInfoChanged(World _, ComponentChangedEvent<NodeInfo> e)
     {
-        var entity = World.GetEntity(e.EntityId);
+        var entity = e.Entity;
         if (entity.Has<Renderable>())
         {
             _renderables[entity].UpdateCounter = (int)GraphicsSettings.MaxFrameInFlight;
@@ -122,20 +133,21 @@ public sealed class SceneState(IContext context, World world) : Initializable, I
     private void FullUpload()
     {
         FastList<GpuNodeInfo> gpuNodeInfos = new(_renderables.Count);
-        foreach (var entityId in _renderables.GetEntities())
+        foreach (var entity in _renderables.GetEntities())
         {
-            var entity = World.GetEntity(entityId);
             ref var renderable = ref _renderables[entity];
             renderable.GPUIndex = gpuNodeInfos.Count;
             renderable.UpdateCounter = 0;
-            gpuNodeInfos.Add(new GpuNodeInfo
-            {
-                Enabled = _nodeInfos[entity].Enabled ? 1u : 0u,
-                WorldId = (uint)entity.WorldId,
-                EntityId = (uint)entity.Id,
-                Transform = _worldTransforms[entity].Value,
-                RenderMask = renderable.RenderMask
-            });
+            gpuNodeInfos.Add(
+                new GpuNodeInfo
+                {
+                    Enabled = _nodeInfos[entity].Enabled ? 1u : 0u,
+                    WorldId = (uint)entity.WorldId,
+                    EntityId = (uint)entity.Id,
+                    Transform = _worldTransforms[entity].Value,
+                    RenderMask = renderable.RenderMask,
+                }
+            );
         }
         _context.WaitAll(false);
         for (int i = 0; i < GraphicsSettings.MaxFrameInFlight; i++)
@@ -151,9 +163,8 @@ public sealed class SceneState(IContext context, World world) : Initializable, I
     {
         _buffer?.Advance();
 
-        foreach (var entityId in _renderables.GetEntities())
+        foreach (var entity in _renderables.GetEntities())
         {
-            var entity = World.GetEntity(entityId);
             ref var renderable = ref _renderables[entity];
             if (renderable.UpdateCounter > 0)
             {
@@ -165,7 +176,7 @@ public sealed class SceneState(IContext context, World world) : Initializable, I
                     WorldId = (uint)entity.WorldId,
                     EntityId = (uint)entity.Id,
                     Transform = _worldTransforms[entity].Value,
-                    RenderMask = renderable.RenderMask
+                    RenderMask = renderable.RenderMask,
                 };
                 Debug.Assert(renderable.GPUIndex < _buffer!.Capacity);
                 _buffer?.WriteElement(ref info, renderable.GPUIndex);

@@ -44,6 +44,13 @@ public static class InstanceTransformExts
     }
 }
 
+/// <summary>
+/// Manages instance transform data and associated GPU buffers for instanced rendering.
+/// </summary>
+/// <remarks>Supports both dynamic and static instancing modes. Dynamic mode uses ring buffers to prevent GPU
+/// stalls during frequent updates (memory usage will be <see cref="GraphicsSettings.MaxFrameInFlight"/> times),
+/// while static mode optimizes for infrequent changes.
+/// Instances can be optionally managed by an <see cref="InstancingManager"/> for coordinated resource lifecycle management.</remarks>
 public partial class Instancing : HxObservableObject, IDisposable
 {
     public static readonly InstanceTransform Identity = new()
@@ -57,8 +64,35 @@ public partial class Instancing : HxObservableObject, IDisposable
     private FastList<InstanceTransform> _transforms = [];
 
     private bool _dirty = true;
-    public ElementBuffer<InstanceTransform>? Buffer { private set; get; }
-    public ElementBuffer<uint>? CulledIndicesBuffer { private set; get; }
+    private RingElementBuffer<InstanceTransform>? _buffer;
+    private RingElementBuffer<uint>? _culledIndicesBuffer;
+
+    public BufferHandle Buffer => _buffer?.Current ?? BufferHandle.Null;
+    public BufferHandle CulledIndicesBuffer => _culledIndicesBuffer?.Current ?? BufferHandle.Null;
+
+    public event EventHandler? OnDirty;
+
+    /// <summary>
+    /// Back-reference to the <see cref="InstancingManager"/> that currently owns this instancing,
+    /// or <c>null</c> when the instancing is not managed by any manager.
+    /// </summary>
+    internal InstancingManager? Manager { get; set; }
+
+    /// <summary>
+    /// Gets a value indicating whether this instancing is currently managed by an
+    /// <see cref="InstancingManager"/>.
+    /// </summary>
+    public bool IsManaged => Manager is not null;
+
+    /// <summary>
+    /// Gets a value indicating whether this instancing's GPU buffers need to be re-uploaded.
+    /// </summary>
+    public bool IsDirty => _dirty;
+
+    /// <summary>
+    /// Clears the dirty state after a successful GPU buffer upload.
+    /// </summary>
+    internal void ClearDirty() => _dirty = false;
 
     public bool IsDynamic { get; }
 
@@ -73,14 +107,24 @@ public partial class Instancing : HxObservableObject, IDisposable
 
     private void Instancing_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        _dirty = true;
+        MarkDirty();
     }
 
     public void MarkDirty()
     {
         _dirty = true;
+        OnDirty?.Invoke(this, EventArgs.Empty);
     }
 
+    /// <summary>
+    /// Updates the instance transform and culled indices buffers with the current transform data.
+    /// </summary>
+    /// <remarks>For static buffers, this method will wait for the GPU to finish using the buffer before
+    /// uploading new data if transform is updated (Won't wait for GPU on initial upload).
+    /// Dynamic buffers use a ring buffer to avoid GPU stalls.</remarks>
+    /// <param name="context">The graphics context used for buffer operations and GPU synchronization.</param>
+    /// <returns><see cref="ResultCode.Ok"/> if the buffer was successfully updated or if no update was needed.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">The number of transforms exceeds <see cref="Limits.MaxInstanceCount"/>.</exception>
     public ResultCode UpdateBuffer(IContext context)
     {
         if (!_dirty)
@@ -92,22 +136,35 @@ public partial class Instancing : HxObservableObject, IDisposable
                 $"Instance count {_transforms.Count} exceeds the maximum allowed {Limits.MaxInstanceCount}."
             );
         }
-        Buffer ??= new ElementBuffer<InstanceTransform>(
+        if (_buffer is not null && !IsDynamic)
+        {
+            // For static instancing, we can only upload the buffer once.
+            // If the buffer already exists and is not dynamic,
+            // we need to stall the CPU and wait for the GPU to finish using the buffer before uploading new data.
+            // Wait for the GPU to finish using the buffer before uploading new data
+            context.WaitAll(false);
+        }
+        _buffer ??= new RingElementBuffer<InstanceTransform>(
             context,
+            ringSize: IsDynamic ? (int)GraphicsSettings.MaxFrameInFlight : 1,
             _transforms.Count,
             BufferUsageBits.Storage,
             IsDynamic,
             debugName: Name
         );
-        Buffer.Upload(_transforms);
-        CulledIndicesBuffer ??= new ElementBuffer<uint>(
+
+        _culledIndicesBuffer ??= new RingElementBuffer<uint>(
             context,
+            ringSize: 1,
             _transforms.Count,
             BufferUsageBits.Storage,
             IsDynamic,
             debugName: $"{Name}_CulledInstIndices"
         );
-        CulledIndicesBuffer.EnsureCapacity(_transforms.Count);
+
+        _buffer.Advance();
+        _buffer.Upload(_transforms);
+        _culledIndicesBuffer.EnsureCapacity(_transforms.Count);
         _dirty = false;
         return ResultCode.Ok;
     }
@@ -120,10 +177,27 @@ public partial class Instancing : HxObservableObject, IDisposable
         {
             if (disposing)
             {
-                Buffer?.Dispose();
-                Buffer = null;
-                CulledIndicesBuffer?.Dispose();
-                CulledIndicesBuffer = null;
+                // Disposal coordination (Requirements 13.3, 5.1): when a MANAGED instancing is disposed
+                // directly by user code, route the disposal through the owning manager's deferred-removal
+                // path so the pool bookkeeping and GPU-resource disposal happen at a controlled point
+                // (InstancingManager.ProcessPendingRemovals -> Remove). Return WITHOUT freeing the GPU
+                // buffers and WITHOUT setting _disposedValue, so the deferred Remove can later actually
+                // dispose the buffers. InstancingManager.Remove clears Manager (sets it to null) BEFORE
+                // calling instancing.Dispose(), so when Remove disposes this instancing the Manager is
+                // null and disposal proceeds to free the GPU buffers below without re-entering
+                // RemoveDeferred.
+                var manager = Manager;
+                if (manager is not null)
+                {
+                    manager.RemoveDeferred(this);
+                    return;
+                }
+
+                _buffer?.Dispose();
+                _buffer = null;
+                _culledIndicesBuffer?.Dispose();
+                _culledIndicesBuffer = null;
+                OnDirty = null;
             }
 
             // TODO: free unmanaged resources (unmanaged objects) and override finalizer

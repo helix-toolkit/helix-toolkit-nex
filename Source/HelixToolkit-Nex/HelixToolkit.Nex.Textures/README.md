@@ -16,17 +16,17 @@ This package integrates seamlessly with the HelixToolkit-Nex engine, leveraging 
 
 ## Key Types
 
-| Type                          | Description                                                                                   |
-|-------------------------------|-----------------------------------------------------------------------------------------------|
-| `ChannelComponent`            | Enum identifying a single color channel within a pixel.                                       |
-| `ChannelSource`               | Abstract class describing the source of a channel value for texture combination.               |
-| `DDSCodec`                    | Internal static class for handling DDS image format encoding and decoding.                     |
-| `IImageDecoder`               | Interface for pluggable image decoders/encoders.                                              |
-| `Image`                       | Class representing a CPU-side container for pixel data.                                       |
-| `ImageDescription`            | Struct describing the dimensions, format, and layout of a texture image.                      |
-| `OmrTextureCombiner`          | Class for combining multiple PBR source images into a single OMR texture.                     |
-| `PitchCalculator`             | Static utility for computing row pitch, slice pitch, and mipmap level counts.                 |
-| `TextureCreator`              | Static utility for creating GPU textures from CPU-side image data.                            |
+| Type                 | Description                                                                      |
+| -------------------- | -------------------------------------------------------------------------------- |
+| `ChannelComponent`   | Enum identifying a single color channel within a pixel.                          |
+| `ChannelSource`      | Abstract class describing the source of a channel value for texture combination. |
+| `DDSCodec`           | Internal static class for handling DDS image format encoding and decoding.       |
+| `IImageDecoder`      | Interface for pluggable image decoders/encoders.                                 |
+| `Image`              | Class representing a CPU-side container for pixel data.                          |
+| `ImageDescription`   | Struct describing the dimensions, format, and layout of a texture image.         |
+| `OmrTextureCombiner` | Class for combining multiple PBR source images into a single OMR texture.        |
+| `PitchCalculator`    | Static utility for computing row pitch, slice pitch, and mipmap level counts.    |
+| `TextureCreator`     | Static utility for creating GPU textures from CPU-side image data.               |
 
 ## Usage Examples
 
@@ -66,8 +66,11 @@ if (image != null)
 {
     using (image)
     {
-        var (texture, uploadHandle) = TextureCreator.CreateTextureAsyncWithResource(context, image, generateMipmaps: true, "MyTexture");
-        // Use texture and await uploadHandle if needed
+        var (result, texture, uploadHandle) = TextureCreator.CreateTextureAsyncWithResource(context, image, generateMipmaps: true, "MyTexture");
+        if (result == ResultCode.Ok)
+        {
+            // Use texture and await uploadHandle if needed
+        }
     }
 }
 ```

@@ -26,7 +26,7 @@
         <DefineConstants>$(DefineConstants);HxWinUI</DefineConstants>
     </PropertyGroup>
     <ItemGroup Condition="!$([MSBuild]::IsOSPlatform('Linux'))">
-        <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.1.3">
+        <PackageReference Include="Microsoft.WindowsAppSDK.WinUI" Version="2.2.1">
             <ExcludeAssets>buildTransitive</ExcludeAssets>
         </PackageReference>
     </ItemGroup>
@@ -46,5 +46,8 @@
             <Pack>True</Pack>
             <PackagePath>\</PackagePath>
         </None>
+    </ItemGroup>
+    <ItemGroup>
+      <ProjectReference Include="..\HelixToolkit.Nex.Interop\HelixToolkit.Nex.Interop.csproj" />
     </ItemGroup>
 </Project>

@@ -17,16 +17,24 @@ if (-not (Test-Path ".git")) {
 # Create the pre-commit hook
 $hookContent = @'
 #!/bin/sh
-# Pre-commit hook: Check code formatting before commit
+# Pre-commit hook: Check code formatting for staged files before commit
 
-echo "Checking code formatting..."
+echo "Checking code formatting for staged files..."
 
-# Run dotnet format in verify mode
-dotnet format Source/HelixToolkit-Nex/HelixToolkit.Nex.slnx --verify-no-changes --verbosity quiet
+# Collect staged C# files (Added, Copied, Modified)
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM -- '*.cs')
+
+if [ -z "$STAGED_FILES" ]; then
+    echo "No staged C# files to check. Skipping format check."
+    exit 0
+fi
+
+# Run dotnet format in verify mode, limited to the staged files
+dotnet format Source/HelixToolkit-Nex/HelixToolkit.Nex.slnx --include $STAGED_FILES --verify-no-changes --verbosity quiet
 
 if [ $? -ne 0 ]; then
     echo ""
-    echo "Code formatting issues detected!"
+    echo "Code formatting issues detected in staged files!"
     echo "Please run: .\Scripts\format-solution.ps1"
     echo "Then stage and commit your changes again."
     exit 1

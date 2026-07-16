@@ -99,11 +99,11 @@ float getFragToPointerRayDistance()
 ```glsl
 bool isInPointerRing()
 ```
-- **Description**: Determines if the fragment is within the pointer ring based on the calculated distance.
+- **Description**: Determines if the fragment is within the pointer ring based on the distance thresholds.
 - **Return Type**: `bool`
 
 ```glsl
 vec4 mixWithPointerRing(in vec4 color)
 ```
-- **Description**: Modifies the input color by mixing it with the pointer ring color if the pointer ring is enabled and the fragment is within the ring.
+- **Description**: Mixes the input color with the pointer ring color if the pointer ring is enabled and the fragment is within the ring. The mix is modulated by the surface normal and view direction.
 - **Return Type**: `vec4`

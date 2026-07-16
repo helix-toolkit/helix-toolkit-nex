@@ -148,6 +148,35 @@ public interface ITextureRepository : IDisposable
     bool Remove(string key);
 
     /// <summary>
+    /// Drains the queue of pending GPU mipmap-generation requests, generating mipmaps for each
+    /// texture whose asynchronous (or deferred synchronous) upload has completed.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Mipmap generation issues an immediate GPU command-buffer submission and therefore must run
+    /// on the engine render thread. Texture-creation paths only <em>enqueue</em> the request; the
+    /// engine calls this method once per frame on the render thread to perform the actual work.
+    /// </para>
+    /// <para>
+    /// Safe to call when the queue is empty (no-op) and after the underlying context is disposed
+    /// (queued requests are discarded).
+    /// </para>
+    /// </remarks>
+    void ProcessPendingMipmapGeneration() { }
+
+    /// <summary>
+    /// Returns a task that completes when the queued GPU mipmap generation for the given texture
+    /// handle has run on the render thread (via <see cref="ProcessPendingMipmapGeneration"/>).
+    /// </summary>
+    /// <param name="handle">The texture handle to await mipmap readiness for.</param>
+    /// <returns>
+    /// A task that completes when mipmaps for <paramref name="handle"/> have been generated. If no
+    /// generation is pending for the handle (already generated, or none was requested), a completed
+    /// task is returned.
+    /// </returns>
+    Task WhenMipmapReadyAsync(TextureHandle handle) => Task.CompletedTask;
+
+    /// <summary>
     /// Attempts to retrieve a cached texture entry by its cache key.
     /// </summary>
     /// <param name="cacheKey">The cache key (name or normalized file path).</param>

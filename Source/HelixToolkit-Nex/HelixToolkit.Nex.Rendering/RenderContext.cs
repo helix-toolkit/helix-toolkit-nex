@@ -262,6 +262,8 @@ public sealed class RenderContext(IServiceProvider services) : Initializable
 
     private CameraParams _cameraParams = CameraParams.Identity;
 
+    public uint FrameIndex { internal set; get; } = 0;
+
     /// <summary>
     /// Gets the current camera parameters applied to the view.
     /// </summary>
@@ -304,9 +306,40 @@ public sealed class RenderContext(IServiceProvider services) : Initializable
     /// </summary>
     public Vector2 Pointer { private set; get; }
 
+    /// <summary>
+    /// Whether the current mouse pointer position is within the bounds of the window size. Returns true if the pointer is valid, false otherwise.
+    /// </summary>
+    public bool PointerValid =>
+        Pointer.X >= 0
+        && Pointer.Y >= 0
+        && Pointer.X < WindowSize.Width
+        && Pointer.Y < WindowSize.Height;
+
+    /// <summary>
+    /// Indicates whether the render context is currently using an external rendering pipeline.
+    /// When set to true, the context will not perform its own rendering and will instead rely on an external pipeline to handle rendering tasks.
+    /// This is useful for integrating with other rendering systems or frameworks that manage their own rendering flow.
+    /// </summary>
     public bool UseExternalPipeline { get; private set; } = false;
 
-    public TextureHandle FinalOutputTexture { get; set; } = TextureHandle.Null;
+    /// <summary>
+    /// Gets or sets the final output texture handle that represents the rendered image after all rendering passes are completed.
+    /// </summary>
+    public TextureHandle FinalOutputTexture
+    {
+        set { ResourceSet.Textures[SystemBufferNames.FinalOutputTexture] = value; }
+        get
+        {
+            if (
+                ResourceSet?.TryGetTexture(SystemBufferNames.FinalOutputTexture, out var texture)
+                == true
+            )
+            {
+                return texture;
+            }
+            return TextureHandle.Null;
+        }
+    }
 
     public UseExternalPipelineScope EnableExternalPipelineScoped() => new(this);
 
@@ -380,18 +413,14 @@ public sealed class RenderContext(IServiceProvider services) : Initializable
     /// <summary>
     /// Set current mouse pointer position and calculate the corresponding picking ray in world space.
     /// Must be called after <see cref="Update"/> to ensure the camera parameters are up to date for correct ray calculation.
+    /// If the pointer is outside the window bounds, set the pointer positions to negative values.
     /// </summary>
     /// <param name="x"></param>
     /// <param name="y"></param>
     public void SetPointer(float x, float y)
     {
         Pointer = new Vector2(x, y);
-        if (
-            Pointer.X < 0
-            || Pointer.Y < 0
-            || Pointer.X > WindowSize.Width
-            || Pointer.Y > WindowSize.Height
-        )
+        if (!PointerValid)
         {
             PointerRing.RayDirection = Vector3.Zero;
             PointerRing.RayOrigin = Vector3.Zero;
@@ -407,6 +436,7 @@ public sealed class RenderContext(IServiceProvider services) : Initializable
     /// <summary>
     /// Set current mouse pointer position and calculate the corresponding picking ray in world space.
     /// Must be called after <see cref="Update"/> to ensure the camera parameters are up to date for correct ray calculation.
+    /// If the pointer is outside the window bounds, set the pointer positions to negative values.
     /// </summary>
     /// <param name="pos"></param>
     public void SetPointer(Vector2 pos)
@@ -453,6 +483,15 @@ public sealed class RenderContext(IServiceProvider services) : Initializable
             ];
         }
     }
+
+    /// <summary>
+    /// Sentinel value returned by <see cref="SendPicking"/> when the current frame's picking
+    /// capacity (<see cref="GraphicsSettings.MaxRequestsPerFrame"/>) has been exhausted and the
+    /// request could not be accepted. Callers and tests can compare a returned Request Id against
+    /// this constant to detect the overflow case, since the underlying
+    /// <see cref="PickingContext"/> is internal.
+    /// </summary>
+    public const uint InvalidPickingRequestId = PickingContext.InvalidRequestId;
 
     public uint SendPicking(Vector2 screenPos)
     {

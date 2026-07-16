@@ -10,7 +10,7 @@ HelixToolkit.Nex.Graphics is a core component of the HelixToolkit.Nex engine, re
 - **Reverse-Z Projection**: Utilizes reverse-Z for improved depth precision.
 - **Forward Plus Light Culling**: Efficiently manages lighting calculations.
 - **GPU-based Culling**: Performs frustum and instance culling on the GPU.
-- **Entity Component System (ECS)**: Based on the Arch ECS library for efficient entity management.
+- **Entity Component System (ECS)**: Uses the custom `HelixToolkit.Nex.ECS` framework for efficient entity management.
 - **Render Graph**: Manages the execution order of render nodes.
 
 ## Key Types
@@ -42,6 +42,7 @@ HelixToolkit.Nex.Graphics is a core component of the HelixToolkit.Nex engine, re
 | `BarrierDescriptor`    | Describes a fully custom GPU memory barrier.                               |
 | `BarrierPreset`        | Enum for predefined buffer barrier configurations.                         |
 | `ImageTransition`      | Enum for named image/texture layout transitions.                           |
+| `KeyedMutexSyncInfo`   | Struct for keyed mutex synchronization, including new semaphore handles.   |
 
 ## Usage Examples
 
@@ -84,6 +85,25 @@ commandBuffer.EndRendering();
 context.Submit(commandBuffer);
 ```
 
+### Transitioning Texture Layouts
+
+```csharp
+var commandBuffer = context.AcquireCommandBuffer();
+bool transitionCreated = commandBuffer.ImageBarrier(textureHandle, ImageTransition.ToShaderReadOnly);
+if (!transitionCreated)
+{
+    // Handle error
+}
+```
+
+### Transitioning Multiple Textures to Shader Read-Only
+
+```csharp
+var commandBuffer = context.AcquireCommandBuffer();
+var textures = new TextureHandle[] { texture1.Handle, texture2.Handle };
+commandBuffer.TransitionToShaderReadOnly(textures, ShaderStage.FragmentShader);
+```
+
 ### Creating a Memory Barrier with Presets
 
 ```csharp
@@ -112,17 +132,6 @@ if (!barrierCreated)
 }
 ```
 
-### Transitioning Texture Layouts
-
-```csharp
-var commandBuffer = context.AcquireCommandBuffer();
-bool transitionCreated = commandBuffer.ImageBarrier(textureHandle, ImageTransition.ToShaderReadOnly);
-if (!transitionCreated)
-{
-    // Handle error
-}
-```
-
 ### Using RingElementBuffer with State-Based Write
 
 ```csharp
@@ -132,18 +141,6 @@ var state = new { /* state data */ };
 ringBuffer.WriteDynamic(100, state, (ctx, s) => {
     // Write data using ctx and state s
 });
-```
-
-### Creating Multiple Memory Barriers
-
-```csharp
-var commandBuffer = context.AcquireCommandBuffer();
-var buffers = new BufferHandle[] { buffer1.Handle, buffer2.Handle };
-bool allBarriersCreated = commandBuffer.Barrier(buffers, BarrierPreset.TransferWriteToShaderRW, force: true);
-if (!allBarriersCreated)
-{
-    // Handle error
-}
 ```
 
 ### Marking a Buffer as Dirty

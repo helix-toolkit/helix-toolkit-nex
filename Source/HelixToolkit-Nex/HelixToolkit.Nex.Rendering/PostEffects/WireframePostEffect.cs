@@ -144,8 +144,7 @@ public sealed class WireframePostEffect : PostEffect
     private void GatherWireframeDraws(World world, IRenderDataProvider data)
     {
         _entries.Clear();
-
-        foreach (var entity in world.GetComponentEntities<WireframeOverlay>())
+        foreach (var entity in world.GetComponents<WireframeOverlay>().GetEntities())
         {
             if (!entity.Has<MeshDrawInfo>() || !entity.Has<Renderable>())
             {
@@ -240,7 +239,7 @@ public sealed class WireframePostEffect : PostEffect
             uint instanceCount = 1;
             if (mesh.Instancing is not null)
             {
-                pc.InstancingBufferAddress = mesh.Instancing.Buffer!;
+                pc.InstancingBufferAddress = mesh.Instancing.Buffer.GpuAddress(context.Context);
                 instanceCount = (uint)mesh.Instancing.Transforms.Count;
             }
             else

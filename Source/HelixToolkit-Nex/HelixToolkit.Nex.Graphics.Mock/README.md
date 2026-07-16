@@ -20,6 +20,7 @@ The `HelixToolkit.Nex.Graphics.Mock` package is designed to fit seamlessly into 
   - **SetColorWriteEnabled**: Overloaded methods to enable or disable color writes for attachments.
   - **CopyTextureToBuffer**: Method to simulate copying texture data to a buffer.
   - **SetCullMode**: Method to simulate setting the cull mode.
+  - **TransitionToShaderReadOnly**: Methods to simulate transitioning textures to a shader read-only state, with optional extra destination shader stage.
 - **MockContext**: A mock implementation of `IContext` that simulates a graphics context, providing methods to create and manage mock resources such as buffers, textures, and pipelines.
   - **GenerateMipmap**: Method to simulate mipmap generation for a texture.
   - **WaitAll**: Method to simulate waiting for all operations to complete.
@@ -87,6 +88,14 @@ commandBuffer.ImageBarrier(texture.Handle, ImageTransition.TransferToShaderRead)
 commandBuffer.ImageBarrier(texture.Handle, new BarrierDescriptor(), TextureLayout.ShaderReadOnly);
 ```
 
+#### Transition to Shader Read-Only
+
+```csharp
+var commandBuffer = context.AcquireCommandBuffer();
+commandBuffer.TransitionToShaderReadOnly(texture.Handle, ShaderStage.Fragment);
+commandBuffer.TransitionToShaderReadOnly(new[] { texture.Handle }.AsSpan(), ShaderStage.Fragment);
+```
+
 #### Mipmap Generation
 
 ```csharp
@@ -152,7 +161,7 @@ context.MarkHostWrite(buffer.Handle, offset: 0, size: 512);
 ## Recent Changes
 
 - **Project Configuration**: Added new build configurations for `LinuxDebug` and `LinuxRelease` to support cross-platform testing and development.
-- **New Methods and Properties**: Added `DrawCallCount`, `DispatchCallCount`, `SetCheckpointMarker`, `BindRenderPipeline` with color writes, `ClearDepthStencilImage`, `SetColorWriteEnabled`, `CopyTextureToBuffer`, `SetCullMode`, and updated `CreateSecondaryCommandBuffer` method signature to enhance testing capabilities.
+- **New Methods and Properties**: Added `DrawCallCount`, `DispatchCallCount`, `SetCheckpointMarker`, `BindRenderPipeline` with color writes, `ClearDepthStencilImage`, `SetColorWriteEnabled`, `CopyTextureToBuffer`, `SetCullMode`, `TransitionToShaderReadOnly`, and updated `CreateSecondaryCommandBuffer` method signature to enhance testing capabilities.
 - **SupportsSubpass**: Added `SupportsSubpass` property to `MockContext` to indicate subpass support.
 - **GetBufferDesc**: Added method to `MockContext` to retrieve the `BufferDesc` used to create a buffer.
 - **GetBufferSubData**: Added method to `MockContext` to retrieve sub-data from a buffer.

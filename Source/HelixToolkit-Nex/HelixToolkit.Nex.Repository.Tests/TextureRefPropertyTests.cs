@@ -99,6 +99,8 @@ internal sealed class MockTextureRepository : ITextureRepository
 
     public bool Remove(string key) => false;
 
+    public void ProcessPendingMipmapGeneration() { }
+
     public void Clear() { }
 
     public int CleanupExpired() => 0;

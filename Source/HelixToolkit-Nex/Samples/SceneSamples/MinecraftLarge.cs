@@ -210,50 +210,58 @@ public class MinecraftLargeScene : IScene
     public void RegisterMaterials()
     {
         // Lava: pulsing emissive orange-red glow
-        PBRMaterialTypeRegistry.Register(
-            "Lava",
-            """
-            PBRMaterial material = createPBRMaterial();
-            float pulse = 0.7 + 0.3 * sin(float(getTimeMs() % 100000) / 1000 * 2.0 + fragWorldPos.x + fragWorldPos.z);
-            material.emissive = material.albedo * pulse * 3.0;
-            material.albedo *= 0.2;
-            return vec4(material.albedo + material.emissive, 1.0);
-            """
-        ).WithPointerRingSupport();
+        PBRMaterialTypeRegistry
+            .Register(
+                "Lava",
+                """
+                PBRMaterial material = createPBRMaterial();
+                float pulse = 0.7 + 0.3 * sin(float(getTimeMs() % 100000) / 1000 * 2.0 + fragWorldPos.x + fragWorldPos.z);
+                material.emissive = material.albedo * pulse * 3.0;
+                material.albedo *= 0.2;
+                return vec4(material.albedo + material.emissive, 1.0);
+                """
+            )
+            .WithPointerRingSupport();
 
         // Gold ore: metallic PBR with a view-angle sparkle emissive highlight
-        PBRMaterialTypeRegistry.Register(
-            "GoldOre",
-            """
-            PBRMaterial material = createPBRMaterial();
-            float sparkle = pow(max(dot(fragNormal, normalize(getCameraPosition() - fragWorldPos)), 0.0), 32.0);
-            material.emissive = vec3(1.0, 0.85, 0.1) * sparkle * 1.5;
-            return forwardPlusLighting(material) + vec4(material.emissive, 0.0);
-            """
-        ).WithPointerRingSupport();
+        PBRMaterialTypeRegistry
+            .Register(
+                "GoldOre",
+                """
+                PBRMaterial material = createPBRMaterial();
+                float sparkle = pow(max(dot(fragNormal, normalize(getCameraPosition() - fragWorldPos)), 0.0), 32.0);
+                material.emissive = vec3(1.0, 0.85, 0.1) * sparkle * 1.5;
+                return forwardPlusLighting(material) + vec4(material.emissive, 0.0);
+                """
+            )
+            .WithPointerRingSupport();
 
         // Water: time-based wave shimmer blended with PBR lighting
-        PBRMaterialTypeRegistry.Register(
-            "Water",
-            """
-            PBRMaterial material = createPBRMaterial();
-            float wave = 0.5 + 0.5 * sin(float(getTimeMs() % 100000) / 1000 * 3.0 + fragWorldPos.x * 0.8 + fragWorldPos.z * 0.6);
-            material.albedo = mix(material.albedo, vec3(0.1, 1, 1.0), wave);
-            material.emissive = material.albedo * 0.15;
-            return forwardPlusLighting(material) + vec4(material.emissive, 0.0);
-            """
-        ).WithPointerRingSupport();
+        PBRMaterialTypeRegistry
+            .Register(
+                "Water",
+                """
+                PBRMaterial material = createPBRMaterial();
+                float wave = 0.5 + 0.5 * sin(float(getTimeMs() % 100000) / 1000 * 3.0 + fragWorldPos.x * 0.8 + fragWorldPos.z * 0.6);
+                material.albedo = mix(material.albedo, vec3(0.1, 1, 1.0), wave);
+                material.emissive = material.albedo * 0.15;
+                return forwardPlusLighting(material) + vec4(material.emissive, 0.0);
+                """
+            )
+            .WithPointerRingSupport();
 
         // Snow: bright diffuse white with a subtle sparkle specular
-        PBRMaterialTypeRegistry.Register(
-            "Snow",
-            """
-            PBRMaterial material = createPBRMaterial();
-            float sparkle = pow(max(dot(fragNormal, normalize(getCameraPosition() - fragWorldPos)), 0.0), 16.0);
-            material.emissive = vec3(0.9, 0.95, 1.0) * sparkle * 0.3;
-            return forwardPlusLighting(material) + vec4(material.emissive, 0.0);
-            """
-        ).WithPointerRingSupport();
+        PBRMaterialTypeRegistry
+            .Register(
+                "Snow",
+                """
+                PBRMaterial material = createPBRMaterial();
+                float sparkle = pow(max(dot(fragNormal, normalize(getCameraPosition() - fragWorldPos)), 0.0), 16.0);
+                material.emissive = vec3(0.9, 0.95, 1.0) * sparkle * 0.3;
+                return forwardPlusLighting(material) + vec4(material.emissive, 0.0);
+                """
+            )
+            .WithPointerRingSupport();
     }
 
     /// <summary>
@@ -319,7 +327,7 @@ public class MinecraftLargeScene : IScene
             props.Properties.Ao = ao;
             props.Properties.Opacity = 1.0f;
             matProps[b] = props;
-            instancings[b] = new Instancing(false);
+            instancings[b] = resourceManager.InstancingManager.Create(false);
         }
 
         // ------------------------------------------------------------------
@@ -353,7 +361,6 @@ public class MinecraftLargeScene : IScene
             if (instancings[b].Transforms.Count == 0)
                 continue;
 
-            instancings[b].UpdateBuffer(context);
             var blockNode = worldDataProvider.World.CreateMeshNode(
                 $"Block_{(BlockType)b}",
                 new MeshDrawInfo(cube, matProps[b], instancings[b])
@@ -373,7 +380,7 @@ public class MinecraftLargeScene : IScene
             mat.Albedo = color;
             mat.Emissive = color * 2.0f;
             mat.Opacity = 1.0f;
-            lightSphereInstancings[color] = (mat, new Instancing(false));
+            lightSphereInstancings[color] = (mat, resourceManager.InstancingManager.Create(false));
         }
 
         // ------------------------------------------------------------------
@@ -413,7 +420,6 @@ public class MinecraftLargeScene : IScene
             if (inst.Transforms.Count == 0)
                 continue;
 
-            inst.UpdateBuffer(context);
             var sphereNode = worldDataProvider.World.CreateMeshNode(
                 $"LightSpheres_{color}",
                 new MeshDrawInfo(lightSphere, mat, inst)

@@ -497,4 +497,21 @@ public class MockCommandBuffer : ICommandBuffer
     {
         _recordedCommands.Add($"SetCullMode({mode})");
     }
+
+    public void TransitionToShaderReadOnly(in TextureHandle handle, ShaderStage extraDestStage)
+    {
+        _recordedCommands.Add(
+            $"TransitionToShaderReadOnly({handle.Index}, extraDestStage={extraDestStage})"
+        );
+    }
+
+    public void TransitionToShaderReadOnly(
+        ReadOnlySpan<TextureHandle> handles,
+        ShaderStage extraDestStage
+    )
+    {
+        _recordedCommands.Add(
+            $"TransitionToShaderReadOnly(handles=[{string.Join(", ", handles.ToArray().Select(h => h.Index))}], extraDestStage={extraDestStage})"
+        );
+    }
 }

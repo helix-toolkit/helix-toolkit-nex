@@ -2,7 +2,13 @@ namespace HelixToolkit.Nex.Rendering.RenderNodes;
 
 public enum PostEffectPriority : uint
 {
-    Highlight = 0,
+    // Post-effects are sorted by ascending Priority. The convention is:
+    //   - Scene-darkening effects (e.g. SSAO) run first and use low values.
+    //   - Selection / highlight overlays use mid-range values.
+    //   - Final color-grading / anti-aliasing effects that consume the composited
+    //     Scene_Color use high values (>= 1000) so they run last.
+    AmbientOcclusion = 0,
+    Highlight = 100,
 }
 
 public abstract class PostEffect() : Initializable

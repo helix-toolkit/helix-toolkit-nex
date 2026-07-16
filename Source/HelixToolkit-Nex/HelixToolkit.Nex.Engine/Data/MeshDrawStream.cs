@@ -1,6 +1,3 @@
-using HelixToolkit.Nex.Rendering.Components;
-using HelixToolkit.Nex.Rendering.DrawStreams;
-
 namespace HelixToolkit.Nex.Engine.Data;
 
 /// <summary>
@@ -67,11 +64,11 @@ internal sealed class MeshDrawStream : DrawStreamBase<MeshDraw, MeshDrawInfo>
             NodeInfoIndex = (uint)renderable.GPUIndex,
             EntityId = (uint)entity.Id,
             InstancingBufferAddress = meshComp.Instancing is not null
-                ? meshComp.Instancing.Buffer!.Buffer.GpuAddress
+                ? meshComp.Instancing.Buffer.GpuAddress(Context)
                 : 0,
             InstancingIndexBufferAddress =
                 meshComp.Cullable && meshComp.Instancing is not null
-                    ? meshComp.Instancing.CulledIndicesBuffer!.Buffer.GpuAddress
+                    ? meshComp.Instancing.CulledIndicesBuffer.GpuAddress(Context)
                     : 0,
             FirstIndex = meshComp.Geometry!.IndexOffset,
             IndexCount = meshComp.Geometry!.IndexCount,

@@ -1,189 +1,223 @@
+using System.Diagnostics.CodeAnalysis;
+using ZLinq;
+using ZLinq.Linq;
+
 namespace HelixToolkit.Nex.ECS;
 
 /// <summary>
-/// Base ref struct for components.
+/// Struct-based enumerator for iterating over valid entity IDs
+/// without heap allocation.
 /// </summary>
-/// <typeparam name="T"></typeparam>
-public readonly struct Components<T>
+public struct EntityEnumerator<
+    [DynamicallyAccessedMembers(
+        DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.NonPublicFields
+    )]
+T
+> : IEnumerator<Entity>
 {
-    private readonly FastList<T> _storage;
-    private readonly FastList<ComponentManager<T>.ComponentMappingKey> _mapping;
+    private readonly World? _world = null;
+    private readonly FastList<EntityMappingKey>? _mapping = null;
+    private readonly HashSet<Entity>? _entities;
+    private FromHashSet<Entity> _entityHashIter;
+    private Entity _next = Entity.Null;
+    private int _index = -1;
 
-    public readonly int Count => _storage.Count;
-    public readonly World World;
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="Components{T}" /> struct.
-    /// </summary>
-    /// <param name="world">World that components belongs to.</param>
-    /// <param name="mapping">The mapping.</param>
-    /// <param name="components">The components.</param>
-    internal Components(
-        World world,
-        FastList<ComponentManager<T>.ComponentMappingKey> mapping,
-        FastList<T> components
-    )
+    internal EntityEnumerator(World? world, FastList<EntityMappingKey> mapping)
     {
-        World = world;
+        _world = world;
         _mapping = mapping;
-        _storage = components;
     }
 
-    /// <summary>
-    /// Gets the component with the specified entity.
-    /// </summary>
-    /// <value>
-    /// The component.
-    /// </value>
-    /// <param name="entity">The entity.</param>
-    /// <returns></returns>
-    public ref T this[Entity entity]
+    internal EntityEnumerator(HashSet<Entity> entities)
+    {
+        _entities = entities;
+        _entityHashIter = entities.AsValueEnumerable().Enumerator;
+    }
+
+    public EntityEnumerator() { }
+
+    public readonly Entity Current
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get
         {
-            Debug.Assert(entity.Valid);
-            Debug.Assert(_mapping.Count > entity.Id);
-            Debug.Assert(_storage.Count > _mapping[entity.Id].ComponentIndex);
-            return ref _storage.GetInternalArray()[_mapping[entity.Id].ComponentIndex];
+            if (_world is not null && _mapping is not null)
+            {
+                return _world.GetEntity(_mapping[_index].Entity);
+            }
+            else
+            {
+                return _next;
+            }
         }
     }
 
-    /// <summary>
-    /// Gets the component by index directly from component storage
-    /// </summary>
-    /// <param name="index"></param>
-    /// <returns></returns>
-    public ref T this[int index]
-    {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get { return ref _storage.GetInternalArray()[index]; }
-    }
+    readonly object IEnumerator.Current => Current;
 
-    public override bool Equals(object? obj)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public bool MoveNext()
     {
+        if (_world is not null && _mapping is not null)
+        {
+            var mappingArray = _mapping.GetInternalArray();
+            var mappingCount = _mapping.Count;
+            while (++_index < mappingCount)
+            {
+                if (mappingArray[_index].Entity > 0)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+        else if (_entities is not null)
+        {
+            return _entityHashIter.TryGetNext(out _next);
+        }
         return false;
     }
 
-    public override int GetHashCode()
+    public void Reset()
     {
-        return _storage.GetHashCode();
-    }
-
-    public readonly MappingEnumerator GetEnumerator()
-    {
-        return new MappingEnumerator(_mapping, _storage);
-    }
-
-    public readonly T[] GetInternalArray()
-    {
-        return _storage.GetInternalArray();
-    }
-
-    public readonly EntityEnumerable GetEntities()
-    {
-        return new EntityEnumerable(_mapping);
-    }
-
-    /// <summary>
-    /// Provides a struct-based enumerable for iterating over valid entity IDs
-    /// without heap allocation.
-    /// </summary>
-    public readonly struct EntityEnumerable
-    {
-        private readonly FastList<ComponentManager<T>.ComponentMappingKey> _mapping;
-
-        internal EntityEnumerable(FastList<ComponentManager<T>.ComponentMappingKey> mapping)
+        _index = -1;
+        if (_entities is not null)
         {
-            _mapping = mapping;
+            _entityHashIter.Dispose();
+            _entityHashIter = _entities.AsValueEnumerable().Enumerator;
         }
+    }
 
+    public void Dispose()
+    {
+        _entityHashIter.Dispose();
+    }
+
+    public static readonly EntityEnumerator<T> Empty = new();
+}
+
+public struct ComponentEntities<
+    [DynamicallyAccessedMembers(
+        DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.NonPublicFields
+    )]
+T
+>(EntityEnumerator<T> enumerator) : IEnumerable<Entity>
+{
+    public readonly EntityEnumerator<T> GetEnumerator()
+    {
+        return enumerator;
+    }
+
+    readonly IEnumerator<Entity> IEnumerable<Entity>.GetEnumerator()
+    {
+        return enumerator;
+    }
+
+    readonly IEnumerator IEnumerable.GetEnumerator()
+    {
+        return enumerator;
+    }
+
+    public static readonly ComponentEntities<T> Empty = new();
+}
+
+public interface IComponents<
+    [DynamicallyAccessedMembers(
+        DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.NonPublicFields
+    )]
+T
+>
+{
+    ref T this[Entity entity] { get; }
+
+    T[] GetInternalArray();
+    ComponentEntities<T> GetEntities();
+
+    MappingEnumerator<T> GetEnumerator();
+
+    int Count { get; }
+}
+
+internal sealed class EmptyComponents<
+    [DynamicallyAccessedMembers(
+        DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.NonPublicFields
+    )]
+T
+> : IComponents<T>
+{
+    private EmptyComponents() { }
+
+    public ref T this[Entity entity]
+    {
+        get =>
+            throw new InvalidOperationException("EmptyComponents does not contain any components.");
+    }
+
+    public T[] GetInternalArray()
+    {
+        return Array.Empty<T>();
+    }
+
+    public ComponentEntities<T> GetEntities()
+    {
+        return ComponentEntities<T>.Empty;
+    }
+
+    public MappingEnumerator<T> GetEnumerator() => MappingEnumerator<T>.Empty;
+
+    public int Count => 0;
+
+    public static readonly EmptyComponents<T> Empty = new();
+}
+
+/// <summary>
+/// Enumerates components in storage using the mapping's ComponentIndex,
+/// skipping invalid (unassigned) mapping entries.
+/// </summary>
+public struct MappingEnumerator<
+    [DynamicallyAccessedMembers(
+        DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.NonPublicFields
+    )]
+T
+>
+{
+    private readonly FastList<EntityMappingKey>? _mapping;
+    private readonly FastList<T>? _storage;
+    private int _index;
+
+    internal MappingEnumerator(FastList<EntityMappingKey> mapping, FastList<T> storage)
+    {
+        Debug.Assert(mapping.Count == storage.Count);
+        _mapping = mapping;
+        _storage = storage;
+        _index = -1;
+    }
+
+    public readonly ref T Current
+    {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public EntityEnumerator GetEnumerator()
-        {
-            return new EntityEnumerator(_mapping);
-        }
+        get => ref _storage!.At(_index);
     }
 
-    /// <summary>
-    /// Struct-based enumerator for iterating over valid entity IDs
-    /// without heap allocation.
-    /// </summary>
-    public struct EntityEnumerator
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public bool MoveNext()
     {
-        private readonly FastList<ComponentManager<T>.ComponentMappingKey> _mapping;
-        private int _index;
-
-        internal EntityEnumerator(FastList<ComponentManager<T>.ComponentMappingKey> mapping)
+        if (_mapping is null || _storage is null)
         {
-            _mapping = mapping;
-            _index = -1;
-        }
-
-        public int Current
-        {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => _index;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool MoveNext()
-        {
-            var mappingArray = _mapping.GetInternalArray();
-            var mappingCount = _mapping.Count;
-            while (++_index < mappingCount)
-            {
-                if (mappingArray[_index].Valid)
-                {
-                    return true;
-                }
-            }
             return false;
         }
-    }
-
-    /// <summary>
-    /// Enumerates components in storage using the mapping's ComponentIndex,
-    /// skipping invalid (unassigned) mapping entries.
-    /// </summary>
-    public struct MappingEnumerator
-    {
-        private readonly FastList<ComponentManager<T>.ComponentMappingKey> _mapping;
-        private readonly FastList<T> _storage;
-        private int _index;
-
-        internal MappingEnumerator(
-            FastList<ComponentManager<T>.ComponentMappingKey> mapping,
-            FastList<T> storage
-        )
+        Debug.Assert(_mapping.Count == _storage.Count);
+        var mappingArray = _mapping.GetInternalArray();
+        var mappingCount = _mapping.Count;
+        while (++_index < mappingCount)
         {
-            _mapping = mapping;
-            _storage = storage;
-            _index = -1;
-        }
-
-        public ref T Current
-        {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get =>
-                ref _storage.GetInternalArray()[_mapping.GetInternalArray()[_index].ComponentIndex];
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool MoveNext()
-        {
-            var mappingArray = _mapping.GetInternalArray();
-            var mappingCount = _mapping.Count;
-            var storageCount = _storage.Count;
-            while (++_index < mappingCount)
+            ref var key = ref mappingArray[_index];
+            if (key.Valid)
             {
-                ref var key = ref mappingArray[_index];
-                if (key.Valid && key.ComponentIndex >= 0 && key.ComponentIndex < storageCount)
-                {
-                    return true;
-                }
+                return true;
             }
-            return false;
         }
+        return false;
     }
+
+    public static readonly MappingEnumerator<T> Empty = new();
 }

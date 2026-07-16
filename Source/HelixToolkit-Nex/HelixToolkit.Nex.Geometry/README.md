@@ -14,18 +14,18 @@ The `HelixToolkit.Nex.Geometries` package is responsible for:
 
 ## Key Types
 
-| Type                          | Description                                                                                           |
-|-------------------------------|-------------------------------------------------------------------------------------------------------|
-| `Geometry`                    | Represents a 3D geometry with vertices, indices, and vertex properties.                               |
-| `VertexProperties`            | Struct containing normal, texture coordinates, and tangent information for a vertex.                  |
-| `GeometryBufferType`          | Enum defining the types of buffers used in a geometry, such as vertex, index, and color buffers.      |
-| `GeometryManager`             | Manages a pool of geometry resources with automatic ID assignment and lifecycle management.           |
-| `HitTestContext`              | Provides context for performing hit tests, including ray and screen point information.                |
-| `HitTestResult`               | Represents the result of a hit test, including distance, hit point, and normal at the hit location.   |
-| `IOctreeBasic`                | Interface for basic octree operations, used for spatial queries and hit testing.                      |
-| `StaticMeshGeometryOctree`    | Static octree implementation for mesh geometries, optimizing spatial queries and hit tests.           |
-| `GeometryJsonConverter`       | JSON converter for serializing and deserializing `Geometry` objects.                                  |
-| `TangentGenerator`            | Static class for generating tangent vectors for geometries that lack them.                            |
+| Type                       | Description                                                                                         |
+| -------------------------- | --------------------------------------------------------------------------------------------------- |
+| `Geometry`                 | Represents a 3D geometry with vertices, indices, and vertex properties.                             |
+| `VertexProperties`         | Struct containing normal, texture coordinates, and tangent information for a vertex.                |
+| `GeometryBufferType`       | Enum defining the types of buffers used in a geometry, such as vertex, index, and color buffers.    |
+| `GeometryManager`          | Manages a pool of geometry resources with automatic ID assignment and lifecycle management.         |
+| `HitTestContext`           | Provides context for performing hit tests, including ray and screen point information.              |
+| `HitTestResult`            | Represents the result of a hit test, including distance, hit point, and normal at the hit location. |
+| `IOctreeBasic`             | Interface for basic octree operations, used for spatial queries and hit testing.                    |
+| `StaticMeshGeometryOctree` | Static octree implementation for mesh geometries, optimizing spatial queries and hit tests.         |
+| `GeometryJsonConverter`    | JSON converter for serializing and deserializing `Geometry` objects.                                |
+| `TangentGenerator`         | Static class for generating tangent vectors for geometries that lack them.                          |
 
 ## Usage Examples
 
@@ -79,7 +79,7 @@ var deserializedGeometry = JsonSerializer.Deserialize<Geometry>(json, options);
 
 ## Architecture Notes
 
-- **Design Patterns**: The package uses the Entity Component System (ECS) architecture for managing dynamic and static geometries, leveraging the Arch ECS library.
+- **Design Patterns**: The package uses the Entity Component System (ECS) architecture for managing dynamic and static geometries, built on the custom `HelixToolkit.Nex.ECS` framework.
 - **Dependencies**: It relies on other HelixToolkit-Nex packages such as `HelixToolkit.Nex.Graphics` for rendering and `HelixToolkit.Nex.Maths` for mathematical operations.
 - **Octree Implementation**: The package includes several octree implementations for efficient spatial queries, such as `StaticMeshGeometryOctree` and `StaticPointGeometryOctree`.
 - **Serialization**: Custom JSON converters are provided for `Geometry` and `VertexProperties` to facilitate serialization and deserialization.

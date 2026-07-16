@@ -38,6 +38,10 @@ public class MeshConverterTests
 
         public bool Remove(Geometry geometry) => true;
 
+        public void RemoveDeferred(Geometry geometry) => Remove(geometry);
+
+        public void ProcessPendingRemovals() { }
+
         public bool UploadStaticMeshIndices(ref SafeWriteContext ctx) => true;
 
         public void Clear() { }
@@ -74,6 +78,10 @@ public class MeshConverterTests
             Task.FromResult((false, Handle<GeometryResourceType>.Null));
 
         public bool Remove(Geometry geometry) => false;
+
+        public void RemoveDeferred(Geometry geometry) => Remove(geometry);
+
+        public void ProcessPendingRemovals() { }
 
         public bool UploadStaticMeshIndices(ref SafeWriteContext ctx) => true;
 

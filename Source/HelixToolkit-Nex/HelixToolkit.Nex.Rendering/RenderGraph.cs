@@ -234,6 +234,18 @@ public sealed class RenderGraph : Initializable
     }
 
     /// <summary>
+    /// Marks the graph dirty so the next update recompiles and the resource set rebuilds all
+    /// resources. Used when an effect changes the size of a graph-managed texture it owns
+    /// (e.g. the SSAO half-resolution toggle) without a viewport change.
+    /// </summary>
+    /// <returns>The current instance for method chaining.</returns>
+    public RenderGraph Invalidate()
+    {
+        IsDirty = true;
+        return this;
+    }
+
+    /// <summary>
     /// Registers a ping-pong texture pair under a logical group name.
     /// The two slots alternate as read/write targets across consecutive ping-pong passes in the
     /// same group, eliminating the need for any runtime buffer swap.

@@ -116,8 +116,9 @@ public sealed class BillboardCullNode : ComputeNode
         res.CmdBuffer.UpdateBuffer(_billboardExpandArgsBuffer, ref expandArgs);
         res.Deps.PushBuffer(_billboardExpandArgsBuffer);
 
-        foreach (var entry in billboards.Data.Values)
+        foreach (var billboard in billboards.Data.AsValueEnumerable())
         {
+            var entry = billboard.Value;
             if (!entry.Valid)
             {
                 continue;

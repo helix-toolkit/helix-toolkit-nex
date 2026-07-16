@@ -20,6 +20,7 @@ This package fits into the HelixToolkit-Nex engine by providing the foundational
 | `BoxFaces`              | Enum representing the faces of a box.                                       |
 | `ContourHelper`         | Class for calculating contour slices through 3D meshes.                     |
 | `CuttingEarsTriangulator` | Static class implementing the cutting ears triangulation algorithm.        |
+| `LineGeometryBuilder`   | Static class for constructing line-list geometries for visual indicators.   |
 | `MeshBuilder`           | Class for constructing `MeshGeometry3D` objects with various shapes.        |
 | `MeshFaces`             | Enum representing different mesh face configurations.                       |
 | `MeshGeometry3D`        | Class representing a 3D mesh with positions, normals, and texture coordinates. |
@@ -59,6 +60,26 @@ var meshSimplification = new MeshSimplification(originalMesh);
 MeshGeometry3D simplifiedMesh = meshSimplification.Simplify(targetCount: 100);
 ```
 
+### Building a Direction Arrow
+
+```csharp
+var geometry = LineGeometryBuilder.BuildDirectionArrow(
+    new Color4(1, 0, 0, 1), // Red color
+    new Vector3(0, 1, 0),   // Direction
+    length: 10f
+);
+```
+
+### Building a Spot Cone
+
+```csharp
+var spotCone = LineGeometryBuilder.BuildSpotCone(
+    range: 15f,
+    spotAngles: new Vector2(0.9f, 0.8f),
+    color: new Color4(0, 1, 0, 1) // Green color
+);
+```
+
 ## Architecture Notes
 
 - **Design Patterns**: The package employs several design patterns, including the Builder pattern for constructing complex mesh geometries and the Strategy pattern for different triangulation algorithms.
@@ -69,6 +90,10 @@ MeshGeometry3D simplifiedMesh = meshSimplification.Simplify(targetCount: 100);
 This package is crucial for developers working with the HelixToolkit-Nex engine, providing the tools necessary to create and manipulate 3D geometries efficiently.
 
 ## Recent Changes
+
+### New Features
+
+- **LineGeometryBuilder**: Added a new static class `LineGeometryBuilder` for creating line-list geometries used for visual indicators such as direction arrows and spot cones. This class provides methods like `BuildDirectionArrow` and `BuildSpotCone` to facilitate the creation of these geometries.
 
 ### MeshGeometry3D
 

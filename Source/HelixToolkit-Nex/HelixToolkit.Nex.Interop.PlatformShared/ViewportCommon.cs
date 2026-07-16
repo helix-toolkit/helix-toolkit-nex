@@ -18,6 +18,9 @@ using Microsoft.UI.Xaml.Controls;
 
 namespace HelixToolkit.Nex.WinUI;
 
+#elif HxAvalonia
+namespace HelixToolkit.Nex.Avalonia;
+
 #else
 #error Unknown framework
 #endif
@@ -31,6 +34,9 @@ public partial class HelixViewport
     private IViewportClient? _viewportClient;
     private ICameraController? _cameraController;
     private Vector2 _pointerLocation = new(-1, -1);
+    protected bool IsContextValid => _engine is not null && _renderContext is not null;
+    protected bool CanHandleInput =>
+        IsContextValid && _viewportClient is not null && _cameraController is not null;
 
     /// <summary>Tracks which camera action (if any) is currently being driven by a mouse drag.</summary>
     private enum ActiveDragAction
@@ -50,6 +56,18 @@ public partial class HelixViewport
     private ActiveDragAction _activeDrag = ActiveDragAction.None;
 
     public bool ActiveDrag => _activeDrag != ActiveDragAction.None;
+
+    /// <summary>
+    /// Raised each frame after <see cref="IViewportClient.Update"/> but before rendering.
+    /// This is a <b>read-only notification</b>; use <see cref="ViewportClient"/> to
+    /// provide the camera and scene data.
+    /// </summary>
+    public event EventHandler<ViewportRenderingEventArgs>? BeforeRender;
+
+    private void SetCameraController(ICameraController? controller)
+    {
+        _cameraController = controller;
+    }
 
     /// <summary>
     /// Resolves which camera action a pressed button should trigger based on the
@@ -75,21 +93,21 @@ public partial class HelixViewport
     /// </summary>
     private void HandlePointerPressed(ViewportMouseButton button, float x, float y)
     {
-        if (_cameraController is null || _renderContext is null)
+        if (!CanHandleInput)
             return;
         var action = ResolveDragAction(button);
         if (action == ActiveDragAction.None)
             return;
 
         _activeDrag = action;
-        var hitted = _renderContext.TryPick((int)x, (int)y, out _pickResult);
+        var hitted = _renderContext!.TryPick((int)x, (int)y, out _pickResult);
         switch (action)
         {
             case ActiveDragAction.Rotate:
-                _cameraController.OnRotateBegin(x, y, hitted ? _pickResult.WorldPosition : null);
+                _cameraController!.OnRotateBegin(x, y, hitted ? _pickResult.WorldPosition : null);
                 break;
             case ActiveDragAction.Pan:
-                _cameraController.OnPanBegin(x, y, hitted ? _pickResult.WorldPosition : null);
+                _cameraController!.OnPanBegin(x, y, hitted ? _pickResult.WorldPosition : null);
                 break;
         }
     }
@@ -113,16 +131,16 @@ public partial class HelixViewport
     private void HandlePointerMoved(float x, float y)
     {
         _pointerLocation = new Vector2(x, y);
-        if (_cameraController is null || _activeDrag == ActiveDragAction.None)
+        if (!CanHandleInput || _activeDrag == ActiveDragAction.None)
             return;
 
         switch (_activeDrag)
         {
             case ActiveDragAction.Rotate:
-                _cameraController.OnRotateDelta(x, y);
+                _cameraController!.OnRotateDelta(x, y);
                 break;
             case ActiveDragAction.Pan:
-                _cameraController.OnPanDelta(x, y);
+                _cameraController!.OnPanDelta(x, y);
                 break;
         }
     }
@@ -137,10 +155,10 @@ public partial class HelixViewport
     /// </summary>
     private void HandleMouseWheel(float delta)
     {
-        if (_cameraController is null)
+        if (!CanHandleInput)
             return;
 
-        _cameraController.OnZoomDelta(delta);
+        _cameraController!.OnZoomDelta(delta);
     }
 
     /// <summary>
@@ -153,22 +171,17 @@ public partial class HelixViewport
 
     private void UpdateViewportSize(float width, float height)
     {
-        if (_cameraController is not null)
-        {
-            _cameraController.ViewportWidth = width;
-            _cameraController.ViewportHeight = height;
-        }
+        if (!CanHandleInput)
+            return;
+
+        _cameraController!.ViewportWidth = width;
+        _cameraController!.ViewportHeight = height;
     }
 
     private bool Render(float width, float height, TextureHandle target)
     {
         // Pull per-frame data from the viewport client
-        if (
-            _viewportClient is null
-            || Engine is null
-            || _renderContext is null
-            || _renderArgs is null
-        )
+        if (!IsContextValid || _renderArgs is null || _viewportClient is null)
             return false;
 
         var dataProvider = _viewportClient.DataProvider;
@@ -183,24 +196,27 @@ public partial class HelixViewport
                 : (float)(now - _lastTimestamp) / System.Diagnostics.Stopwatch.Frequency;
         _lastTimestamp = now;
         _renderArgs.DeltaTime = delta;
-        _renderContext.WindowSize = new Size((int)ActualWidth, (int)ActualHeight);
+        _renderContext!.WindowSize = new Size((int)ActualWidth, (int)ActualHeight);
         _cameraController?.Update(delta);
 
         var camera = _viewportClient.Update(_renderContext, delta);
         // Notify optional subscribers (read-only)
         BeforeRender?.Invoke(this, _renderArgs);
 
-        _renderContext.Update(camera);
-        _renderContext.SetPointer(_pointerLocation);
+        _renderContext!.Update(camera);
+        _renderContext!.SetPointer(_pointerLocation);
 
         // Render offscreen
-        Engine.BeginFrame();
-        var cmdBuf = Engine.RenderOffscreen(_renderContext, dataProvider, target);
+        Engine!.BeginFrame();
+        var cmdBuf = Engine!.RenderOffscreen(_renderContext, dataProvider, target);
 #if HxWPF
-        Engine.Submit(cmdBuf, TextureHandle.Null);
-        Engine.WaitForIdle();
+        Engine!.Submit(cmdBuf, TextureHandle.Null);
 #elif HxWinUI
-        Engine.Submit(cmdBuf, TextureHandle.Null, _vulkanSyncInfo);
+        Engine!.Submit(cmdBuf, TextureHandle.Null, _vulkanSyncInfo);
+#elif HxAvalonia
+        // Keyed-mutex sync on Windows; default (SyncType.None) on Linux where the
+        // frame is serialized with Vulkan semaphores instead.
+        Engine!.Submit(cmdBuf, TextureHandle.Null, _frameSyncInfo);
 #else
 #error Unknown framework
 #endif

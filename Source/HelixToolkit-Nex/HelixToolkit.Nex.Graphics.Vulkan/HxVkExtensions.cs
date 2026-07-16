@@ -92,6 +92,7 @@ internal static class HxVkExtensions
             case VK.VK_FORMAT_R16G16_SFLOAT:
             case VK.VK_FORMAT_R32_SFLOAT:
             case VK.VK_FORMAT_R32_UINT:
+            case VK.VK_FORMAT_B8G8R8A8_SRGB:
                 return 4;
             case VK.VK_FORMAT_R16G16B16_SFLOAT:
                 return 6;
@@ -875,15 +876,15 @@ internal static class HxVkExtensions
             | VkPipelineStageFlags2.VertexInput;
         if (srcStage.HasAllFlags(VkPipelineStageFlags2.Host))
         {
-            barrier.srcAccessMask |= VkAccessFlags2.HostRead | VkAccessFlags2.HostWrite;
+            barrier.srcAccessMask |= VkAccessFlags2.HostWrite;
         }
         if (srcStage.HasAllFlags(VkPipelineStageFlags2.Transfer))
         {
-            barrier.srcAccessMask |= VkAccessFlags2.TransferRead | VkAccessFlags2.TransferWrite;
+            barrier.srcAccessMask |= VkAccessFlags2.TransferWrite;
         }
         if (srcStage.HasAnyFlag(~nonShaderStages))
         {
-            barrier.srcAccessMask |= VkAccessFlags2.ShaderRead | VkAccessFlags2.ShaderWrite;
+            barrier.srcAccessMask |= VkAccessFlags2.ShaderWrite;
         }
 
         if (dstStage.HasAllFlags(VkPipelineStageFlags2.Transfer))

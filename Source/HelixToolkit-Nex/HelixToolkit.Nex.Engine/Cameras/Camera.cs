@@ -23,6 +23,15 @@ public abstract class Camera : ICameraParamsProvider
     }
 
     /// <summary>
+    /// Creates an inverse view matrix for the camera, which can be used to transform from camera space back to world space.
+    /// </summary>
+    /// <returns>A <see cref="Matrix4x4"/> representing the inverse of the view matrix.</returns>
+    public Matrix4x4 CreateInverseView()
+    {
+        return MatrixHelper.PsudoInvert(CreateView());
+    }
+
+    /// <summary>
     /// Creates a projection matrix based on the specified aspect ratio.
     /// </summary>
     /// <param name="aspectRatio">The ratio of width to height for the viewing area. Must be a positive value.</param>

@@ -1,17 +1,13 @@
-using System.Runtime.CompilerServices;
-using HelixToolkit.Nex.ECS.Utils;
-using HelixToolkit.Nex.Rendering.Components;
-using HelixToolkit.Nex.Rendering.DrawStreams;
-
 namespace HelixToolkit.Nex.Engine.Data;
 
 internal abstract class DrawStreamBase<DRAW_TYPE, COMP_TYPE> : Initializable, IDrawStream<DRAW_TYPE>
     where DRAW_TYPE : unmanaged
 {
+    private static readonly EventBus _eventBus = EventBus.Instance;
     private readonly ILogger _logger;
     private readonly ITracer _tracer;
-    private readonly IContext _context;
-    private readonly World _world;
+    public readonly IContext Context;
+    public readonly World World;
 
     // GPU buffer (ring buffer for multi-frame-in-flight)
     private RingElementBuffer<DRAW_TYPE>? _buffer;
@@ -28,22 +24,25 @@ internal abstract class DrawStreamBase<DRAW_TYPE, COMP_TYPE> : Initializable, ID
     private readonly FastList<MaterialTypeId> _materialTypes = [];
 
     // ECS references
-    protected Components<COMP_TYPE> _components;
-    protected Components<Renderable> _renderables;
+    protected IComponents<COMP_TYPE> _components;
+    protected IComponents<Renderable> _renderables;
 
     // Change tracking
-    private readonly HashSet<int> _pendingUpdates = [];
+    private readonly HashSet<Entity> _pendingUpdates = [];
     private long _lastDataChangeTicks = Stopwatch.GetTimestamp();
     private long _lastBufferUploadTicks = 0;
     private bool _needsRebuild = true;
+    private IEventSubscription? _instChangeSub;
 
     #region IDrawStream Properties
 
     public DrawStreamName StreamName { get; }
     public DrawStreamType StreamType { get; }
     public DrawStreamVariants Variants { get; }
-    public bool IsInstancing { get; }
-    public IndexBufferStrategy IndexBufferStrategy { get; }
+    public bool IsInstancing => Variants.HasAllFlags(DrawStreamVariants.Instancing);
+    public bool IsDynamic => Variants.HasAllFlags(DrawStreamVariants.Dynamic);
+    public IndexBufferStrategy IndexBufferStrategy =>
+        IsDynamic ? IndexBufferStrategy.PerDraw : IndexBufferStrategy.Shared;
     #endregion
 
     #region IRenderData Properties
@@ -66,18 +65,14 @@ internal abstract class DrawStreamBase<DRAW_TYPE, COMP_TYPE> : Initializable, ID
     )
     {
         _logger = logger;
-        _context = context;
-        _world = world;
+        Context = context;
+        World = world;
         StreamType = type;
         StreamName = name;
         Variants = name.GetVariants();
         _initialCapacity = initialCapacity;
         _tracer = TracerFactory.GetTracer($"{StreamType}_{name}");
-        IsInstancing = Variants.HasAllFlags(DrawStreamVariants.Instancing);
         Name = name.ToString();
-        IndexBufferStrategy = Variants.HasAllFlags(DrawStreamVariants.Dynamic)
-            ? IndexBufferStrategy.PerDraw
-            : IndexBufferStrategy.Shared;
         _components = world.GetComponents<COMP_TYPE>();
         _renderables = world.GetComponents<Renderable>();
     }
@@ -154,14 +149,17 @@ internal abstract class DrawStreamBase<DRAW_TYPE, COMP_TYPE> : Initializable, ID
     {
         _logger.LogInformation("Initializing.");
         _buffer = new RingElementBuffer<DRAW_TYPE>(
-            _context,
+            Context,
             (int)GraphicsSettings.MaxFrameInFlight,
             _initialCapacity,
             BufferUsageBits.Storage | BufferUsageBits.Indirect,
             hostVisible: true,
             debugName: $"{StreamType}_{StreamName}"
         );
-
+        if (IsInstancing)
+        {
+            _instChangeSub = _eventBus.Subscribe<InstancingUpdatedEvent>(OnInstancingUpdated);
+        }
         _needsRebuild = true;
         return ResultCode.Ok;
     }
@@ -169,6 +167,7 @@ internal abstract class DrawStreamBase<DRAW_TYPE, COMP_TYPE> : Initializable, ID
     protected override ResultCode OnTearingDown()
     {
         _logger.LogInformation("Tearing down.");
+        _instChangeSub?.Dispose();
         Disposer.DisposeAndRemove(ref _buffer);
         _drawsByMaterial.Clear();
         _materialRanges.Clear();
@@ -279,9 +278,8 @@ internal abstract class DrawStreamBase<DRAW_TYPE, COMP_TYPE> : Initializable, ID
 
         using var t = _tracer.BeginScope("IncrementalUpdate");
 
-        foreach (var entityId in _pendingUpdates.AsValueEnumerable())
+        foreach (var entity in _pendingUpdates.AsValueEnumerable())
         {
-            var entity = _world.GetEntity(entityId);
             ref var renderable = ref _renderables[entity];
 
             // Only process if this entity belongs to this stream
@@ -313,6 +311,17 @@ internal abstract class DrawStreamBase<DRAW_TYPE, COMP_TYPE> : Initializable, ID
         return true;
     }
 
+    /// <summary>
+    /// Handles instancing update events and marks rebuild when the change type is Updated.
+    /// </summary>
+    /// <param name="e">The instancing update event arguments.</param>
+    private void OnInstancingUpdated(InstancingUpdatedEvent e)
+    {
+        if (e.ChangeType == InstancingChangeOp.Updated && e.Instancing.IsDynamic == IsDynamic)
+        {
+            MarkRebuildNeeded();
+        }
+    }
     #endregion
 
     #region GPU Upload
@@ -342,7 +351,7 @@ internal abstract class DrawStreamBase<DRAW_TYPE, COMP_TYPE> : Initializable, ID
             for (var i = 0; i < list.Count; i++)
             {
                 var entityId = (int)GetEntityId(ref list.At(i));
-                var entity = _world.GetEntity(entityId);
+                var entity = World.GetEntity(entityId);
                 ref var renderable = ref _renderables[entity];
                 renderable.DrawCmdIndex = (int)(offset + (uint)i);
             }
@@ -450,7 +459,7 @@ internal abstract class DrawStreamBase<DRAW_TYPE, COMP_TYPE> : Initializable, ID
         }
 
         // Otherwise, queue an incremental update (e.g., transform changed → NodeInfoIndex)
-        _pendingUpdates.Add(e.EntityId);
+        _pendingUpdates.Add(e.Entity);
         _lastDataChangeTicks = Stopwatch.GetTimestamp();
     }
 

@@ -89,11 +89,16 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
         VulkanContext context,
         bool isSecondary,
         uint32_t index,
-        in VkCommandPool commandPool
+        in VkCommandPool commandPool,
+        uint32_t queueFamilyIndex
     )
     {
         _ctx = context;
-        Handle = new SubmitHandle(index);
+        Handle = new()
+        {
+            BufferIndex = (uint16_t)index,
+            QueueFamilyIndex = (uint16_t)queueFamilyIndex
+        };
         IsSecondary = isSecondary;
         _commandPool = commandPool;
         Fence = context.VkDevice.CreateFence($"CmdFence_{index}");
@@ -233,11 +238,7 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
 
         IsRendering = true;
         ViewMask = renderPass.ViewMask;
-
-        foreach (var tex in deps.TextureSpan)
-        {
-            TransitionToShaderReadOnly(tex);
-        }
+        TransitionToShaderReadOnly(deps.TextureSpan, ShaderStage.Vertex);
         Barrier(deps.BufferSpan, false);
         uint32_t numFbColorAttachments = fb.GetNumColorAttachments();
         uint32_t numPassColorAttachments = renderPass.GetNumColorAttachments();
@@ -360,7 +361,7 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
             _inputAttachments.Count = (uint)i;
         }
 
-        VkSampleCountFlags samples = VkSampleCountFlags.Count1;
+        VkSampleCountFlags colorSamples = VkSampleCountFlags.Count1;
         uint32_t mipLevel = 0;
         uint32_t fbWidth = 0;
         uint32_t fbHeight = 0;
@@ -409,7 +410,7 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
             mipLevel = descColor.Level;
             fbWidth = dim.width;
             fbHeight = dim.height;
-            samples = colorTexture.SampleCount;
+            colorSamples = colorTexture.SampleCount;
             colorAttachments[i] = new()
             {
                 pNext = null,
@@ -421,7 +422,7 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
                 ),
                 imageLayout = colorTexture.ImageLayout,
                 resolveMode =
-                    samples > VkSampleCountFlags.Count1
+                    colorSamples > VkSampleCountFlags.Count1
                         ? descColor.ResolveMode.ResolveModeToVkResolveModeFlagBits(
                             VkResolveModeFlags.Max
                         )
@@ -436,7 +437,7 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
             // handle MSAA
             if (attachment.ResolveTexture)
             {
-                HxDebug.Assert(samples != VkSampleCountFlags.None);
+                HxDebug.Assert(colorSamples > VkSampleCountFlags.Count1);
                 HxDebug.Assert(
                     colorAttachments[i].storeOp == VkAttachmentStoreOp.DontCare,
                     "Multisampled attachments should have store op DONT_CARE."
@@ -514,7 +515,10 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
             // handle depth MSAA
             if (Framebuffer.DepthStencil.ResolveTexture)
             {
-                HxDebug.Assert(depthTexture.SampleCount == samples);
+                HxDebug.Assert(depthTexture.SampleCount > VkSampleCountFlags.Count1);
+                HxDebug.Assert(
+                    numFbColorAttachments != 0 || colorSamples == depthTexture.SampleCount
+                );
                 ref readonly var attachment = ref fb.DepthStencil;
                 HxDebug.Assert(
                     !attachment.ResolveTexture.Empty,
@@ -1833,20 +1837,40 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
     }
 
     /// <inheritdoc/>
-    public void TransitionToShaderReadOnly(in TextureHandle handle)
+    public void TransitionToShaderReadOnly(in TextureHandle handle, ShaderStage extraDestStage)
     {
-        var img = _ctx.TexturesPool.Get(handle);
+        var handles = MemoryMarshal.CreateReadOnlySpan(in handle, 1);
+        TransitionToShaderReadOnly(handles, extraDestStage);
+    }
 
-        HxDebug.Assert(img is not null && !img.IsSwapchainImage);
-        if (img is null || img.IsSwapchainImage)
+    /// <inheritdoc/>
+    public void TransitionToShaderReadOnly(
+        ReadOnlySpan<TextureHandle> handles,
+        ShaderStage extraDestStage
+    )
+    {
+        StageAccess2 extraDestAccess = new();
+        if (extraDestStage == ShaderStage.Compute)
         {
-            _logger.LogError("Cannot transition swapchain image to shader read only layout.");
-            return;
+            extraDestAccess.Stage |= VkPipelineStageFlags2.ComputeShader;
         }
 
-        // transition only non-multisampled images - MSAA images cannot be accessed from shaders
-        if (img.SampleCount.HasAllFlags(VK.VK_SAMPLE_COUNT_1_BIT))
+        foreach (var handle in handles)
         {
+            var img = _ctx.TexturesPool.Get(handle);
+
+            HxDebug.Assert(img is not null && !img.IsSwapchainImage);
+            if (img is null || img.IsSwapchainImage)
+            {
+                _logger.LogError("Cannot transition swapchain image to shader read only layout.");
+                return;
+            }
+
+            // transition only non-multisampled images - MSAA images cannot be accessed from shaders
+            if (img.SampleCount != VkSampleCountFlags.Count1)
+            {
+                continue;
+            }
             VkImageAspectFlags flags = img.GetImageAspectFlags();
             // set the result of the previous render pass
             img.TransitionLayout(
@@ -1860,7 +1884,8 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
                     VK.VK_REMAINING_MIP_LEVELS,
                     0,
                     VK.VK_REMAINING_ARRAY_LAYERS
-                )
+                ),
+                extraDestAccess
             );
         }
     }
@@ -2105,45 +2130,7 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
     /// <inheritdoc/>
     public bool Barrier(in BufferHandle handle, bool force)
     {
-        var buf = _ctx.BuffersPool.Get(in handle);
-        HxDebug.Assert(
-            buf,
-            "Buffer is null. Make sure the buffer is created before binding it to the command buffer."
-        );
-        if (buf is null || !buf.Valid)
-        {
-            _logger.LogError(
-                "Buffer is null or invalid. Make sure the buffer is created before binding it to the command buffer."
-            );
-            return false;
-        }
-        if (!buf.IsDirty && !force && _ctx.Config.EnableLazyBufferBarrier)
-        {
-            return true; // no need for a barrier if the buffer is not dirty
-        }
-        var dstStageFlags =
-            VkPipelineStageFlags2.VertexShader
-            | VkPipelineStageFlags2.FragmentShader
-            | VkPipelineStageFlags2.ComputeShader;
-        if (
-            buf!.VkUsageFlags.HasAllFlags(VK.VK_BUFFER_USAGE_INDEX_BUFFER_BIT)
-            || buf.VkUsageFlags.HasAllFlags(VK.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT)
-        )
-        {
-            dstStageFlags |= VkPipelineStageFlags2.VertexInput;
-        }
-        if (buf.VkUsageFlags.HasAllFlags(VK.VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT))
-        {
-            dstStageFlags |= VkPipelineStageFlags2.DrawIndirect;
-        }
-
-        CmdBuffer.BufferBarrier2(
-            buf,
-            VkPipelineStageFlags2.Host | VkPipelineStageFlags2.ComputeShader,
-            dstStageFlags
-        );
-        buf.ClearDirty();
-        return true;
+        return Barrier(MemoryMarshal.CreateReadOnlySpan(ref Unsafe.AsRef(in handle), 1), force);
     }
 
     /// <inheritdoc/>
@@ -2151,7 +2138,7 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
     {
         unsafe
         {
-            var barriers = stackalloc VkBufferMemoryBarrier2[buffers.Length];
+            var barrier = new VkMemoryBarrier2();
             var validCount = 0;
             var nonShaderStages =
                 VkPipelineStageFlags2.Transfer
@@ -2188,30 +2175,19 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
                 {
                     dstStage |= VkPipelineStageFlags2.DrawIndirect;
                 }
-                var barrier = new VkBufferMemoryBarrier2()
-                {
-                    srcStageMask = srcStage,
-                    srcAccessMask = 0,
-                    dstStageMask = dstStage,
-                    dstAccessMask = 0,
-                    srcQueueFamilyIndex = VK.VK_QUEUE_FAMILY_IGNORED,
-                    dstQueueFamilyIndex = VK.VK_QUEUE_FAMILY_IGNORED,
-                    buffer = buf.VkBuffer,
-                    offset = 0,
-                    size = VK.VK_WHOLE_SIZE,
-                };
+                barrier.srcStageMask |= srcStage;
+                barrier.dstStageMask |= dstStage;
                 if (srcStage.HasAllFlags(VkPipelineStageFlags2.Host))
                 {
-                    barrier.srcAccessMask |= VkAccessFlags2.HostRead | VkAccessFlags2.HostWrite;
+                    barrier.srcAccessMask |= VkAccessFlags2.HostWrite;
                 }
                 if (srcStage.HasAllFlags(VkPipelineStageFlags2.Transfer))
                 {
-                    barrier.srcAccessMask |=
-                        VkAccessFlags2.TransferRead | VkAccessFlags2.TransferWrite;
+                    barrier.srcAccessMask |= VkAccessFlags2.TransferWrite;
                 }
                 if (srcStage.HasAnyFlag(~nonShaderStages))
                 {
-                    barrier.srcAccessMask |= VkAccessFlags2.ShaderRead | VkAccessFlags2.ShaderWrite;
+                    barrier.srcAccessMask |= VkAccessFlags2.ShaderWrite;
                 }
                 if (dstStage.HasAllFlags(VkPipelineStageFlags2.Transfer))
                 {
@@ -2231,8 +2207,8 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
                     barrier.dstAccessMask |= VkAccessFlags2.IndexRead;
                     barrier.dstStageMask |= VkPipelineStageFlags2.IndexInput;
                 }
-                barriers[validCount++] = barrier;
                 buf.ClearDirty();
+                ++validCount;
             }
             if (validCount == 0)
             {
@@ -2240,8 +2216,8 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
             }
             VkDependencyInfo depInfo = new()
             {
-                bufferMemoryBarrierCount = (uint)validCount,
-                pBufferMemoryBarriers = barriers,
+                memoryBarrierCount = 1,
+                pMemoryBarriers = &barrier,
             };
             VK.vkCmdPipelineBarrier2(CmdBuffer, &depInfo);
         }
@@ -2251,7 +2227,7 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
     /// <inheritdoc/>
     public bool Barrier(in BufferHandle buffer, BarrierPreset preset, bool force = false)
     {
-        if (!HelixToolkit.Nex.Graphics.BarrierPresets.TryGetDescriptor(preset, out var desc))
+        if (!BarrierPresets.TryGetDescriptor(preset, out var desc))
         {
             _logger.LogError(
                 "Barrier: undefined BarrierPreset value '{PRESET}'. No barrier was emitted.",
@@ -2270,7 +2246,7 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
         bool force = false
     )
     {
-        if (!HelixToolkit.Nex.Graphics.BarrierPresets.TryGetDescriptor(preset, out var desc))
+        if (!BarrierPresets.TryGetDescriptor(preset, out var desc))
         {
             _logger.LogError(
                 "Barrier: undefined BarrierPreset value '{PRESET}'. No barrier was emitted.",
@@ -2406,7 +2382,7 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
         bool succ = true;
         unsafe
         {
-            var barriers = stackalloc VkBufferMemoryBarrier2[buffers.Length];
+            var barrier = new VkMemoryBarrier2();
             var count = 0;
             for (var i = 0; i < buffers.Length; i++)
             {
@@ -2449,19 +2425,12 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
                     succ = false;
                     continue;
                 }
-                barriers[count++] = new()
-                {
-                    srcStageMask = mapped.SrcStage,
-                    srcAccessMask = mapped.SrcAccess,
-                    dstStageMask = mapped.DstStage,
-                    dstAccessMask = mapped.DstAccess,
-                    srcQueueFamilyIndex = VK.VK_QUEUE_FAMILY_IGNORED,
-                    dstQueueFamilyIndex = VK.VK_QUEUE_FAMILY_IGNORED,
-                    buffer = buf!.VkBuffer,
-                    offset = 0,
-                    size = VK.VK_WHOLE_SIZE,
-                };
+                barrier.srcStageMask |= mapped.SrcStage;
+                barrier.dstStageMask |= mapped.DstStage;
+                barrier.srcAccessMask |= mapped.SrcAccess;
+                barrier.dstAccessMask |= mapped.DstAccess;
                 buf.ClearDirty();
+                ++count;
             }
             if (count == 0)
             {
@@ -2469,8 +2438,8 @@ internal sealed class CommandBuffer : ICommandBuffer, IDisposable
             }
             VkDependencyInfo depInfo = new()
             {
-                bufferMemoryBarrierCount = (uint)count,
-                pBufferMemoryBarriers = barriers,
+                memoryBarrierCount = 1,
+                pMemoryBarriers = &barrier,
             };
 
             VK.vkCmdPipelineBarrier2(CmdBuffer, &depInfo);

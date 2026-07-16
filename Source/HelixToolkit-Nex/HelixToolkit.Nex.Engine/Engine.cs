@@ -61,7 +61,7 @@ namespace HelixToolkit.Nex.Engine;
 /// </code>
 /// </para>
 /// </summary>
-public class Engine : Initializable
+public partial class Engine : Initializable
 {
     private static readonly ILogger _logger = LogManager.Create<Engine>();
     private static readonly EventBus _bus = EventBus.Instance;
@@ -71,17 +71,24 @@ public class Engine : Initializable
     private readonly SubmitHandle[] _submitHandles = new SubmitHandle[
         (int)GraphicsSettings.MaxFrameInFlight
     ];
-    private readonly PendingPicking[] _pendingPickings = new PendingPicking[
-        GraphicsSettings.MaxFrameInFlight
-    ];
 
     /// <summary>
-    /// The request id whose picking copy was recorded into the current frame's command buffer
-    /// (via <see cref="PickingContext.SendCommand"/>) and is awaiting the submit handle produced
-    /// by the next <see cref="Submit(ICommandBuffer, in TextureHandle)"/>. <c>null</c> when no
-    /// copy was recorded this frame (no request, skipped copy, or already paired with a handle).
+    /// Outstanding picking readbacks keyed by Request Id. An entry is inserted when a request is
+    /// accepted (<see cref="CreatePickingRequest"/>), updated with its copy's submit handle in
+    /// <see cref="Submit(ICommandBuffer, in TextureHandle)"/>, and removed once its result has
+    /// been delivered in <see cref="BeginFrame"/>. Keying by Request Id avoids the modular-arithmetic
+    /// collisions of the old fixed-size ring and lets multiple requests be in flight concurrently.
     /// </summary>
-    private uint? _pendingCopyRequestId;
+    private readonly Dictionary<uint, PendingPicking> _pendingPickings = [];
+
+    /// <summary>
+    /// The Request Ids whose picking copies were recorded into the current frame's command buffer
+    /// (via <see cref="PickingContext.SendCommand"/>) and are awaiting the submit handle produced
+    /// by the next <see cref="Submit(ICommandBuffer, in TextureHandle)"/>. Cleared once the handle
+    /// has been paired with each request.
+    /// </summary>
+    private readonly FastList<uint> _pickingReqIdsPerFrame = [];
+    private readonly FastList<uint> _deliveredThisFrame = [];
 
     private uint _frameIndex = 0;
     private bool _frameBegun = false;
@@ -159,6 +166,10 @@ public class Engine : Initializable
 
     protected override ResultCode OnTearingDown()
     {
+        // Dispose the engine-hosted gizmo service first, stopping tracking of every gizmo it owned
+        // (Requirement 4.2). Done before node teardown so component removals run against a live world.
+        TeardownGizmoService();
+
         for (var i = _initializables.Length - 1; i >= 0; --i)
         {
             ResultCode ret = _initializables[i].Teardown();
@@ -362,6 +373,30 @@ public class Engine : Initializable
         return postEffectsNode?.GetEffect<T>();
     }
 
+    /// <summary>
+    /// Prepares the engine for a new frame. This should be called once per frame before any rendering
+    /// </summary>
+    /// <returns>The current frame index, which can be used for frame-synced operations like picking.</returns>
+    public uint BeginFrame()
+    {
+        ++_frameIndex;
+        var frameIndex = _frameIndex % GraphicsSettings.MaxFrameInFlight;
+
+        // (a) Frame pacing: wait on the submit handle of the frame that previously occupied this
+        // ring slot, exactly as before. This is independent of any pending picking readback.
+        var currHandle = _submitHandles[frameIndex];
+        if (!currHandle.Empty)
+        {
+            Context.Wait(currHandle);
+        }
+
+        ProcessPickingResults();
+        ProcessEvents();
+
+        _frameBegun = true;
+        return frameIndex;
+    }
+
     public void ProcessEvents()
     {
         _bus.ProcessEvents();
@@ -387,15 +422,12 @@ public class Engine : Initializable
     /// </param>
     public void Render(RenderContext renderContext, IRenderDataProvider dataProvider)
     {
-        renderContext.Data = dataProvider;
-        EnsureResources(renderContext);
-        renderContext.FinalOutputTexture = Context.GetCurrentSwapchainTexture();
-        var cmdBuf = Renderer.Render(renderContext, RenderGraph);
-        var copiedRequestId = renderContext.PickingContext.SendCommand(cmdBuf, renderContext);
-        if (copiedRequestId.HasValue)
-        {
-            _pendingCopyRequestId = copiedRequestId;
-        }
+        var cmdBuf = RenderOffscreen(
+            renderContext,
+            dataProvider,
+            Context.GetCurrentSwapchainTexture(),
+            null
+        );
         Submit(cmdBuf, renderContext.FinalOutputTexture);
     }
 
@@ -414,22 +446,28 @@ public class Engine : Initializable
     /// dispose this object.
     /// </param>
     /// <param name="target">The offscreen render target.</param>
+    /// <param name="commandBuffer">Optional command buffer to record into. If <c>null</c>, a new command buffer is created.</param>
     /// <returns>The command buffer with recorded render graph commands.</returns>
     public ICommandBuffer RenderOffscreen(
         RenderContext renderContext,
         IRenderDataProvider dataProvider,
-        TextureHandle target
+        TextureHandle target,
+        ICommandBuffer? commandBuffer = null
     )
     {
         EnsureResources(renderContext);
         renderContext.Data = dataProvider;
         renderContext.FinalOutputTexture = target;
-        var cmd = Renderer.Render(renderContext, RenderGraph);
-        var copiedRequestId = renderContext.PickingContext.SendCommand(cmd, renderContext);
-        if (copiedRequestId.HasValue)
-        {
-            _pendingCopyRequestId = copiedRequestId;
-        }
+        var cmd = Renderer.Render(renderContext, RenderGraph, commandBuffer);
+        CreateHoverHighlightRequest(renderContext);
+        var frameSlot = (int)(FrameIndex % GraphicsSettings.MaxFrameInFlight);
+        renderContext.PickingContext.SendCommand(
+            cmd,
+            renderContext,
+            frameSlot,
+            _pickingReqIdsPerFrame
+        );
+        renderContext.FrameIndex = FrameIndex;
         return cmd;
     }
 
@@ -441,11 +479,13 @@ public class Engine : Initializable
     /// <param name="renderContext"></param>
     /// <param name="dataProvider"></param>
     /// <param name="targetName"></param>
+    /// <param name="commandBuffer"></param>
     /// <returns></returns>
     public ICommandBuffer RenderOffscreen(
         RenderContext renderContext,
         IRenderDataProvider dataProvider,
-        string targetName
+        string targetName,
+        ICommandBuffer? commandBuffer = null
     )
     {
         EnsureResources(renderContext);
@@ -459,63 +499,7 @@ public class Engine : Initializable
                 $"RenderOffscreen target texture '{targetName}' was not found."
             );
         }
-        return RenderOffscreen(renderContext, dataProvider, handle);
-    }
-
-    /// <summary>
-    /// Prepares the engine for a new frame. This should be called once per frame before any rendering
-    /// </summary>
-    /// <returns>The current frame index, which can be used for frame-synced operations like picking.</returns>
-    public uint BeginFrame()
-    {
-        ++_frameIndex;
-        var frameIndex = _frameIndex % GraphicsSettings.MaxFrameInFlight;
-
-        // (a) Frame pacing: wait on the submit handle of the frame that previously occupied this
-        // ring slot, exactly as before. This is independent of any pending picking readback.
-        var currHandle = _submitHandles[frameIndex];
-        if (!currHandle.Empty)
-        {
-            Context.Wait(currHandle);
-        }
-
-        // (b) Picking readback: for any pending picking whose copy has actually been submitted,
-        // deliver its result without stalling the CPU. Rather than blocking on the copy's submit
-        // handle (which is only one frame old and likely still executing on the GPU), poll the
-        // handle with a non-blocking IsReady check. If the copy has not completed yet, leave the
-        // pending picking in place and retry on a later BeginFrame; this defers delivery by a
-        // frame or two on slow GPUs instead of stalling. Keyed by request id, consistent with the
-        // staging buffer, so the polled handle, the buffer slot, and the request all refer to the
-        // same picking request. The handle's fence is still reset through normal frame-pacing
-        // reuse, so polling without an eventual blocking Wait is safe.
-        for (var i = 0; i < _pendingPickings.Length; ++i)
-        {
-            var pending = _pendingPickings[i];
-            if (!pending.IsReady)
-            {
-                continue;
-            }
-            if (!Context.IsReady(pending.CopySubmitHandle))
-            {
-                // Copy not finished on the GPU yet — keep the request pending and try next frame.
-                continue;
-            }
-            var pickingResult = pending.Context!.PickingContext.ReadResult(pending.Id);
-            pending.Callback?.Invoke(
-                new PickingResponse
-                {
-                    Context = pending.Context!,
-                    Coord = pending.Coord,
-                    Data = pickingResult,
-                    RequestId = pending.Id,
-                }
-            );
-            _pendingPickings[i] = PendingPicking.Empty;
-        }
-
-        ProcessEvents();
-        _frameBegun = true;
-        return frameIndex;
+        return RenderOffscreen(renderContext, dataProvider, handle, commandBuffer);
     }
 
     /// <summary>
@@ -556,17 +540,18 @@ public class Engine : Initializable
         // readback with the exact submit handle under which the copy was just submitted. Keyed by
         // request id (consistent with the staging buffer), so BeginFrame waits on this handle
         // before reading that request's result.
-        if (_pendingCopyRequestId.HasValue)
+        foreach (var requestId in _pickingReqIdsPerFrame)
         {
-            var requestId = _pendingCopyRequestId.Value;
-            var pickingIndex = requestId % (uint)_pendingPickings.Length;
-            var pending = _pendingPickings[pickingIndex];
-            if (pending.IsValid && pending.Id == requestId)
+            if (
+                _pendingPickings.TryGetValue(requestId, out var pending)
+                && pending.IsValid
+                && pending.Id == requestId
+            )
             {
-                _pendingPickings[pickingIndex] = pending.WithSubmitHandle(submitHandle);
+                _pendingPickings[requestId] = pending.WithSubmitHandle(submitHandle);
             }
-            _pendingCopyRequestId = null;
         }
+        _pickingReqIdsPerFrame.Clear();
 
         _frameBegun = false;
     }
@@ -586,79 +571,5 @@ public class Engine : Initializable
             }
             _submitHandles[i] = default;
         }
-    }
-
-    public uint CreatePickingRequest(
-        RenderContext context,
-        Vector2 coord,
-        Action<PickingResponse> responseCallback
-    )
-    {
-        var requestId = context.SendPicking(coord);
-        // Key the pending picking by the request id (consistent with the staging buffer), not by
-        // the frame index. The copy submit handle is filled in later, when the copy is actually
-        // submitted (see Submit), which is what BeginFrame waits on before readback.
-        var pickingIndex = requestId % (uint)_pendingPickings.Length;
-        _pendingPickings[pickingIndex] = new PendingPicking
-        {
-            Context = context,
-            Coord = coord,
-            Id = requestId,
-            Callback = responseCallback,
-        };
-        return requestId;
-    }
-
-    private readonly struct PendingPicking
-    {
-        public RenderContext? Context { get; init; }
-        public Vector2 Coord { get; init; }
-        public uint Id { get; init; }
-        public Action<PickingResponse>? Callback { get; init; }
-
-        /// <summary>
-        /// The submit handle under which this request's <c>CopyTextureToBuffer</c> was submitted.
-        /// Only meaningful once <see cref="HasSubmitHandle"/> is <c>true</c>.
-        /// </summary>
-        public SubmitHandle CopySubmitHandle { get; init; }
-
-        /// <summary>
-        /// <c>true</c> once the copy has been submitted and <see cref="CopySubmitHandle"/> has been
-        /// assigned. Until then the readback must not be performed.
-        /// </summary>
-        public bool HasSubmitHandle { get; init; }
-
-        public bool IsValid => Context is not null && Callback is not null;
-
-        /// <summary>
-        /// A pending picking is ready to deliver only once its copy has been submitted, so the
-        /// engine can wait on the copy's own submit handle before reading the result.
-        /// </summary>
-        public bool IsReady => IsValid && HasSubmitHandle;
-
-        /// <summary>
-        /// Returns a copy of this pending picking with the copy's submit handle recorded, marking
-        /// it ready for readback.
-        /// </summary>
-        public PendingPicking WithSubmitHandle(in SubmitHandle handle) =>
-            new()
-            {
-                Context = Context,
-                Coord = Coord,
-                Id = Id,
-                Callback = Callback,
-                CopySubmitHandle = handle,
-                HasSubmitHandle = true,
-            };
-
-        public static readonly PendingPicking Empty = new()
-        {
-            Id = uint.MaxValue,
-            Coord = default,
-            Context = null,
-            Callback = null,
-            CopySubmitHandle = default,
-            HasSubmitHandle = false,
-        };
     }
 }

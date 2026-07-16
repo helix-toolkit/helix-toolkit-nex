@@ -5,6 +5,7 @@ namespace HelixToolkit.Nex.glTF;
 /// </summary>
 public enum DiagnosticSeverity
 {
+    Information,
     Warning,
     Error,
 }

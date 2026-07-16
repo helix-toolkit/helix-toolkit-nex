@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <OutputType>Exe</OutputType>
+        <RootNamespace>AvaloniaInterop</RootNamespace>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <LangVersion>latest</LangVersion>
+        <Configurations>Debug;Release;LinuxDebug;LinuxRelease</Configurations>
+        <ApplicationManifest>app.manifest</ApplicationManifest>
+        <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+        <EnableAvaloniaXamlCompilation>true</EnableAvaloniaXamlCompilation>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Avalonia" Version="12.*" />
+        <PackageReference Include="Avalonia.Desktop" Version="12.*" />
+        <PackageReference Include="Avalonia.Themes.Fluent" Version="12.*" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\..\HelixToolkit.Nex.Avalonia\HelixToolkit.Nex.Avalonia.csproj" />
+        <ProjectReference Include="..\..\..\HelixToolkit.Nex.Engine\HelixToolkit.Nex.Engine.csproj" />
+        <ProjectReference Include="..\..\..\HelixToolkit.Nex.Graphics.Vulkan\HelixToolkit.Nex.Graphics.Vulkan.csproj" />
+        <ProjectReference Include="..\..\SceneSamples\SceneSamples.csproj" />
+    </ItemGroup>
+
+    <!-- Windows path only: D3D11 shared NT-handle interop -->
+    <ItemGroup Condition="!$([MSBuild]::IsOSPlatform('Linux'))">
+        <ProjectReference Include="..\..\..\HelixToolkit.Nex.Interop.DirectX\HelixToolkit.Nex.Interop.DirectX.csproj" />
+    </ItemGroup>
+</Project>

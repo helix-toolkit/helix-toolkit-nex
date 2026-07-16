@@ -16,7 +16,7 @@ public sealed class ViewportRenderingEventArgs : EventArgs
     public RenderContext RenderContext { get; }
 
     /// <summary>Seconds elapsed since the previous frame.</summary>
-    public float DeltaTime { get; internal set; }
+    public float DeltaTime { get; set; }
 
     public ViewportRenderingEventArgs(RenderContext renderContext)
     {

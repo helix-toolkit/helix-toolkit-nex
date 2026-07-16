@@ -90,6 +90,10 @@ public sealed class Dependencies
 
     public void PopBuffer()
     {
+        if (NumBuffers == 0)
+        {
+            return;
+        }
         _buffers[--NumBuffers] = BufferHandle.Null;
     }
 
@@ -107,6 +111,10 @@ public sealed class Dependencies
 
     public void PopTexture()
     {
+        if (NumTextures == 0)
+        {
+            return;
+        }
         _textures[--NumTextures] = TextureHandle.Null;
     }
 
@@ -118,6 +126,10 @@ public sealed class Dependencies
 
     public void PopInputAttachment()
     {
+        if (NumInputAttachments == 0)
+        {
+            return;
+        }
         _inputAttachments[--NumInputAttachments] = TextureHandle.Null;
     }
 

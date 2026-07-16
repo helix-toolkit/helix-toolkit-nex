@@ -180,6 +180,26 @@ internal sealed class TextureLoader
     }
 
     /// <summary>
+    /// Loads the sampler referenced by a glTF texture (via the texture's <c>sampler</c> property).
+    /// </summary>
+    /// <param name="textureIndex">The index of the texture in the glTF model's Textures array.</param>
+    /// <returns>
+    /// A <see cref="SamplerRef"/> for the texture's sampler, or <see cref="SamplerRef.Null"/> when
+    /// the texture index is out of range or the texture does not reference a sampler.
+    /// </returns>
+    public SamplerRef LoadSamplerForTexture(int textureIndex)
+    {
+        if (_model.Textures == null || textureIndex < 0 || textureIndex >= _model.Textures.Length)
+        {
+            return SamplerRef.Null;
+        }
+
+        // A glTF texture without a `sampler` reference uses the glTF default sampler (auto
+        // filtering, repeat wrapping); LoadSampler returns SamplerRef.Null for a null index.
+        return LoadSampler(_model.Textures[textureIndex].Sampler);
+    }
+
+    /// <summary>
     /// Loads a sampler from the glTF model by mapping glTF sampler properties
     /// to a <see cref="SamplerStateDesc"/>.
     /// </summary>

@@ -32,4 +32,7 @@
             <PackagePath>\</PackagePath>
         </None>
     </ItemGroup>
+    <ItemGroup>
+      <PackageReference Include="ZLinq" Version="1.5.6" />
+    </ItemGroup>
 </Project>

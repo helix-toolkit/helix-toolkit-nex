@@ -34,6 +34,12 @@ public interface IResourceManager : IInitializable
     /// </summary>
     IGeometryManager Geometries { get; }
 
+
+    /// <summary>
+    /// Gets the instancing manager for handling instanced rendering and managing instance data.
+    /// </summary>
+    IInstancingManager InstancingManager { get; }
+
     /// <summary>
     /// Gets the material pool for managing material resources.
     /// </summary>

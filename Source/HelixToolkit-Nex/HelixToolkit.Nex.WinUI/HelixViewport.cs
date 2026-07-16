@@ -1,5 +1,4 @@
 using System.Runtime.InteropServices;
-using HelixToolkit.Nex.Engine.CameraControllers;
 using HelixToolkit.Nex.Graphics;
 using HelixToolkit.Nex.Interop;
 using HelixToolkit.Nex.Interop.DirectX;
@@ -65,13 +64,6 @@ public partial class HelixViewport : UserControl, IDisposable
     private bool _sizeChanged = true;
     private bool _disposed;
 
-    /// <summary>
-    /// Raised each frame after <see cref="IViewportClient.Update"/> but before rendering.
-    /// This is a <b>read-only notification</b>; use <see cref="ViewportClient"/> to
-    /// provide the camera and scene data.
-    /// </summary>
-    public event EventHandler<ViewportRenderingEventArgs>? BeforeRender;
-
     private KeyedMutexSyncInfo _vulkanSyncInfo;
     private KeyedMutexSyncInfo _copySyncInfo;
 
@@ -136,13 +128,6 @@ public partial class HelixViewport : UserControl, IDisposable
     private void SetClient(IViewportClient? client)
     {
         _viewportClient = client;
-    }
-
-    private void SetCameraController(ICameraController? controller)
-    {
-        if (_renderContext is null)
-            return;
-        _cameraController = controller;
     }
 
     private void CreateResources(uint width, uint height)
@@ -219,12 +204,7 @@ public partial class HelixViewport : UserControl, IDisposable
 
     private void OnCompositionRendering(object? sender, object e)
     {
-        if (
-            _disposed
-            || _d3d11Manager is null
-            || _keyedMutex is null
-            || _renderArgs is null
-        )
+        if (_disposed || _d3d11Manager is null || _keyedMutex is null || _renderArgs is null)
             return;
         EnsureSize();
         if (!Render((float)ActualWidth, (float)ActualHeight, _importedTexture!.Handle))
@@ -328,13 +308,14 @@ public partial class HelixViewport : UserControl, IDisposable
         return ViewportMouseButton.None;
     }
 
-    private static bool IsButtonPressed(PointerPointProperties props, ViewportMouseButton button) => button switch
-    {
-        ViewportMouseButton.Left => props.IsLeftButtonPressed,
-        ViewportMouseButton.Middle => props.IsMiddleButtonPressed,
-        ViewportMouseButton.Right => props.IsRightButtonPressed,
-        _ => false,
-    };
+    private static bool IsButtonPressed(PointerPointProperties props, ViewportMouseButton button) =>
+        button switch
+        {
+            ViewportMouseButton.Left => props.IsLeftButtonPressed,
+            ViewportMouseButton.Middle => props.IsMiddleButtonPressed,
+            ViewportMouseButton.Right => props.IsRightButtonPressed,
+            _ => false,
+        };
 
     private void OnPointerPressed(object sender, PointerRoutedEventArgs e)
     {

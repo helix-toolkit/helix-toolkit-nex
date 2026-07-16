@@ -17,6 +17,7 @@ using HelixToolkit.Nex.Scene;
 using ImGuiNET;
 using Microsoft.Extensions.Logging;
 using Gui = ImGuiNET.ImGui;
+using Viewport = HelixToolkit.Nex.ImGui.Viewport;
 
 /// <summary>
 /// Picking demo: creates a large mesh (~1 million triangles), picks a triangle on click,
@@ -46,6 +47,7 @@ internal sealed class PickingDemo : IDisposable
     // Camera
     private Camera _camera = new PerspectiveCamera();
     private OrbitCameraController? _orbitController;
+    private Viewport? _viewport;
 
     // The large mesh geometry (kept to read triangle vertices on pick)
     private Geometry? _largeMeshGeometry;
@@ -104,6 +106,7 @@ internal sealed class PickingDemo : IDisposable
 
         _renderContext = _engine.CreateRenderContext();
         _renderContext.Initialize();
+        _viewport = new Viewport(_renderContext, _orbitController) { PickCallback = Pick };
 
         // Offscreen render target for the 3D viewport (displayed inside an ImGui window)
         _renderContext.ResourceSet.AddTexture(
@@ -289,7 +292,6 @@ internal sealed class PickingDemo : IDisposable
             return light;
         });
         _renderContext.Update(_viewportSize, _camera);
-        _renderContext.SetPointer(_pointerLocation);
 
         // --- ImGui frame ---
         _imGuiRenderer.BeginFrame(new Vector2(width, height));
@@ -550,89 +552,18 @@ internal sealed class PickingDemo : IDisposable
         }
         Gui.End();
 
-        Gui.SetNextWindowPos(new Vector2(PanelWidth, Gui.GetFrameHeight()), ImGuiCond.Always);
-        Gui.SetNextWindowSize(
-            new Vector2(width - PanelWidth, height - Gui.GetFrameHeight()),
-            ImGuiCond.Always
-        );
-        var windowFlags =
-            ImGuiWindowFlags.NoResize
-            | ImGuiWindowFlags.NoMove
-            | ImGuiWindowFlags.NoCollapse
-            | ImGuiWindowFlags.NoBringToFrontOnFocus
-            | ImGuiWindowFlags.NoTitleBar
-            | ImGuiWindowFlags.NoScrollbar
-            | ImGuiWindowFlags.NoScrollWithMouse;
-
-        Gui.PushStyleVar(ImGuiStyleVar.WindowPadding, Vector2.Zero);
-        Gui.Begin("##Viewport", windowFlags);
-        Gui.PopStyleVar();
-        var contentSize = Gui.GetContentRegionAvail();
-        if (contentSize.X > 0 && contentSize.Y > 0)
+        var viewportPos = new Vector2(PanelWidth, Gui.GetFrameHeight());
+        var viewportSize = new Vector2(width - PanelWidth, height - Gui.GetFrameHeight());
+        _viewport?.Draw(offscreenTex, viewportPos, viewportSize);
+        if (_viewport is not null)
         {
-            _viewportSize = new Size((int)contentSize.X, (int)contentSize.Y);
-            var canvas_pos = Gui.GetCursorScreenPos();
-            // Display the offscreen-rendered 3D scene as an ImGui image
-            Gui.Image(
-                (nint)offscreenTex.Index,
-                new Vector2(width - PanelWidth, height - Gui.GetFrameHeight())
-            );
-            bool hovered = Gui.IsItemHovered();
-            if (hovered)
-            {
-                var mouse_pos = Gui.GetMousePos();
-                var relative_pos = new Vector2(
-                    mouse_pos.X - canvas_pos.X,
-                    mouse_pos.Y - canvas_pos.Y
-                );
-
-                // Left-click: picking
-                if (Gui.IsMouseClicked(ImGuiMouseButton.Left))
-                {
-                    _logger.LogInformation(
-                        "Mouse clicked at viewport coords: {X}, {Y}",
-                        relative_pos.X,
-                        relative_pos.Y
-                    );
-                    Pick((int)relative_pos.X, (int)relative_pos.Y);
-                }
-                else if (_continuousPicking)
-                {
-                    Pick((int)relative_pos.X, (int)relative_pos.Y);
-                }
-
-                // Right-click: begin rotate
-                if (Gui.IsMouseClicked(ImGuiMouseButton.Right))
-                {
-                    OnViewportMouseDown(1, relative_pos.X, relative_pos.Y);
-                }
-
-                // Middle-click: begin pan
-                if (Gui.IsMouseClicked(ImGuiMouseButton.Middle))
-                {
-                    OnViewportMouseDown(2, relative_pos.X, relative_pos.Y);
-                }
-
-                // Mouse drag: forward to camera controller
-                OnViewportMouseMove(relative_pos.X, relative_pos.Y);
-
-                // Scroll wheel: zoom
-                var io = Gui.GetIO();
-                if (MathF.Abs(io.MouseWheel) > 0.001f)
-                {
-                    OnViewportMouseWheel(io.MouseWheel);
-                }
-            } // Release tracking on mouse-up (even if not hovered, to avoid stuck drags)
-            if (Gui.IsMouseReleased(ImGuiMouseButton.Right))
-            {
-                OnViewportMouseUp(1);
-            }
-            if (Gui.IsMouseReleased(ImGuiMouseButton.Middle))
-            {
-                OnViewportMouseUp(2);
-            }
+            var m = _viewport.ViewportSize;
+            if (m.Width > 0 && m.Height > 0)
+                _viewportSize = m;
+            // Preserve continuous picking: pick every frame while hovered.
+            if (_continuousPicking && _viewport.IsHovered)
+                Pick((int)_viewport.RelativePointer.X, (int)_viewport.RelativePointer.Y);
         }
-        Gui.End();
     }
 
     /// <summary>

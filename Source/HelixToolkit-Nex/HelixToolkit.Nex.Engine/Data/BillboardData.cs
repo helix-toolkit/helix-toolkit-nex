@@ -1,5 +1,3 @@
-using HelixToolkit.Nex.ECS.Utils;
-using HelixToolkit.Nex.Rendering.Components;
 using HelixToolkit.Nex.Rendering.DataEntries;
 
 namespace HelixToolkit.Nex.Engine.Data;
@@ -19,7 +17,7 @@ internal sealed class BillboardData(IContext context, World world) : Initializab
     private long _lastBufferUpdateTicks;
     private long _lastDataUpdateTicks = Stopwatch.GetTimestamp();
     private bool _needRebuilt = true;
-    private Components<BillboardDrawInfo> _components;
+    private IComponents<BillboardDrawInfo>? _components;
 
     public IContext Context { get; } = context;
     public World World { get; } = world;
@@ -63,6 +61,7 @@ internal sealed class BillboardData(IContext context, World world) : Initializab
         }
         _billboardsByMaterial.Clear();
         Disposer.DisposeAndRemove(ref _entities);
+        _components = null;
         return ResultCode.Ok;
     }
 
@@ -85,7 +84,7 @@ internal sealed class BillboardData(IContext context, World world) : Initializab
     /// </summary>
     private void Rebuild()
     {
-        if (_entities is null)
+        if (_entities is null || _components is null)
         {
             return;
         }
@@ -151,7 +150,7 @@ internal sealed class BillboardData(IContext context, World world) : Initializab
         _needRebuilt = true;
     }
 
-    private void OnAddOrRemovedChanged(object? sender, int e)
+    private void OnAddOrRemovedChanged(object? sender, Entity entity)
     {
         _lastDataUpdateTicks = Stopwatch.GetTimestamp();
         _needRebuilt = true;

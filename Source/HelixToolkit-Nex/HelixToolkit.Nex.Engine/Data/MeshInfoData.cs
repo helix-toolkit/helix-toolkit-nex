@@ -30,7 +30,7 @@ internal sealed class MeshInfoData : Initializable, IRenderData
         _sub = _eventBus.Subscribe<GeometryUpdatedEvent>(
             (e) =>
             {
-                _logger.LogDebug("Geometry [{ID}] updated. Op: {TYPE}", e.GeometryId, e.ChangeType);
+                _logger.LogTrace("Geometry [{ID}] updated. Op: {TYPE}", e.GeometryId, e.ChangeType);
                 _lastDataUpdateTicks = Stopwatch.GetTimestamp();
             }
         );

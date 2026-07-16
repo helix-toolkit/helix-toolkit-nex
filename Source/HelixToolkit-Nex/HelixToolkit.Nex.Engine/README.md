@@ -14,32 +14,35 @@ HelixToolkit.Nex.Engine is a core component of the HelixToolkit.Nex suite, respo
 
 ## Key Types
 
-| Type                             | Description                                                                 |
-|----------------------------------|-----------------------------------------------------------------------------|
-| `Engine`                         | The main coordinator for the 3D rendering engine.                           |
-| `RenderContext`                  | Holds per-viewport state such as window size and camera parameters.         |
-| `WorldDataProvider`              | Provides scene data to the engine, managing ECS-to-GPU data pipelines.      |
-| `FirstPersonCameraController`    | A camera controller for first-person navigation.                           |
-| `WalkaroundCameraController`     | A specialized first-person camera controller with inverted controls.       |
-| `OrbitCameraController`          | A camera controller for orbiting around a target point.                    |
-| `PanZoomCameraController`        | A camera controller for panning and zooming, suitable for orthographic views.|
-| `TurntableCameraController`      | A camera controller for turntable-style rotation around a fixed axis.      |
-| `Camera`                         | Base class for camera implementations, supporting view and projection matrices. |
-| `OrthographicCamera`             | A camera with an orthographic projection.                                  |
-| `PerspectiveCamera`              | A camera with a perspective projection.                                    |
-| `DirectionalLightInfo`           | Represents a directional light in the scene.                               |
-| `RangeLightInfo`                 | Represents a point or spot light in the scene.                             |
-| `DirectionalLightNode`           | Represents a directional light node in the scene graph.                    |
-| `PointLightNode`                 | Represents a point light node in the scene graph.                          |
-| `SpotLightNode`                  | Represents a spotlight node in the scene graph.                            |
-| `EngineBuilder`                  | Fluent builder for creating and configuring an `Engine` instance.          |
-| `BillboardData`                  | Manages billboard entities and their data for rendering.                   |
-| `DynamicMeshDrawData`            | Represents dynamic mesh draw data.                                         |
-| `BillboardNode`                  | Represents a node in the scene graph that contains billboard geometry.     |
-| `CameraExtensions`               | Provides extension methods for camera operations, such as focusing on targets. |
-| `DrawStreamBase`                 | Abstract base class for managing GPU draw streams with material grouping.  |
-| `PointDrawStream`                | Manages point draw commands for rendering point clouds.                    |
-| `PointDrawStreamRegistry`        | Registry for managing point draw streams.                                  |
+| Type                          | Description                                                                     |
+| ----------------------------- | ------------------------------------------------------------------------------- |
+| `Engine`                      | The main coordinator for the 3D rendering engine.                               |
+| `RenderContext`               | Holds per-viewport state such as window size and camera parameters.             |
+| `WorldDataProvider`           | Provides scene data to the engine, managing ECS-to-GPU data pipelines.          |
+| `FirstPersonCameraController` | A camera controller for first-person navigation.                                |
+| `WalkaroundCameraController`  | A specialized first-person camera controller with inverted controls.            |
+| `OrbitCameraController`       | A camera controller for orbiting around a target point.                         |
+| `PanZoomCameraController`     | A camera controller for panning and zooming, suitable for orthographic views.   |
+| `TurntableCameraController`   | A camera controller for turntable-style rotation around a fixed axis.           |
+| `Camera`                      | Base class for camera implementations, supporting view and projection matrices. |
+| `OrthographicCamera`          | A camera with an orthographic projection.                                       |
+| `PerspectiveCamera`           | A camera with a perspective projection.                                         |
+| `DirectionalLightInfo`        | Represents a directional light in the scene.                                    |
+| `RangeLightInfo`              | Represents a point or spot light in the scene.                                  |
+| `DirectionalLightNode`        | Represents a directional light node in the scene graph.                         |
+| `PointLightNode`              | Represents a point light node in the scene graph.                               |
+| `SpotLightNode`               | Represents a spotlight node in the scene graph.                                 |
+| `EngineBuilder`               | Fluent builder for creating and configuring an `Engine` instance.               |
+| `BillboardData`               | Manages billboard entities and their data for rendering.                        |
+| `DynamicMeshDrawData`         | Represents dynamic mesh draw data.                                              |
+| `BillboardNode`               | Represents a node in the scene graph that contains billboard geometry.          |
+| `CameraExtensions`            | Provides extension methods for camera operations, such as focusing on targets.  |
+| `DrawStreamBase`              | Abstract base class for managing GPU draw streams with material grouping.       |
+| `PointDrawStream`             | Manages point draw commands for rendering point clouds.                         |
+| `PointDrawStreamRegistry`     | Registry for managing point draw streams.                                       |
+| `MeshDrawStream`              | Manages mesh draw commands, supporting dynamic and static data handling.        |
+| `MeshDrawStreamRegistry`      | Registry for managing mesh draw streams.                                        |
+| `PickingRegistry`             | Manages picking handlers for different geometry types.                         |
 
 ## Usage Examples
 
@@ -55,7 +58,8 @@ viewport.Initialize();
 var worldData = engine.CreateWorldDataProvider();
 worldData.Initialize();
 
-// In game loop:
+// In game loop (BeginFrame is required once per frame before rendering):
+engine.BeginFrame();
 viewport.WindowSize = new Size(width, height);
 viewport.CameraParams = camera.ToCameraParams(aspectRatio);
 engine.Render(viewport, worldData);
@@ -99,12 +103,35 @@ controller.Update(deltaTime);
 
 ### Picking Objects in the Scene
 
+Synchronous picking via the `RenderContext.Pick`/`TryPick` extension methods samples the entity-id
+texture directly and **stalls the CPU** until the GPU result is ready. Use it for low-frequency picks.
+
 ```csharp
+// Returns a PickingResult? (null when nothing was hit).
 var pickingResult = renderContext.Pick(mouseX, mouseY);
-if (pickingResult != null)
+if (pickingResult is { } hit)
 {
-    Console.WriteLine($"Picked entity ID: {pickingResult.Entity.Id}");
+    Console.WriteLine($"Picked entity ID: {hit.Entity.Id}");
 }
+
+// Or the Try-pattern overload:
+if (renderContext.TryPick(mouseX, mouseY, out var result))
+{
+    Console.WriteLine($"Picked entity ID: {result.Entity.Id}");
+}
+```
+
+For per-frame picking without a CPU stall, use the engine's asynchronous request, which delivers the
+result through a callback on a later frame:
+
+```csharp
+engine.CreatePickingRequest(renderContext, new Vector2(mouseX, mouseY), response =>
+{
+    if (response.TryGetPickingResult(out var result))
+    {
+        Console.WriteLine($"Picked entity ID: {result.Entity.Id}");
+    }
+});
 ```
 
 ### Creating Billboards
@@ -128,7 +155,7 @@ camera.FocusOn(new Vector3(0, 0, 0), 10f);
 
 ## Architecture Notes
 
-- **Entity Component System (ECS):** The engine uses an ECS architecture based on the Arch ECS library, allowing for flexible and efficient scene management.
+- **Entity Component System (ECS):** The engine uses the custom `HelixToolkit.Nex.ECS` framework, allowing for flexible and efficient scene management.
 - **Render Graph:** The engine employs a Render Graph to manage the execution order of rendering nodes, ensuring optimal performance and resource management.
 - **Reverse-Z Projection:** The engine uses reverse-Z projection matrices to improve depth buffer precision, reducing artifacts in large scenes.
 - **Forward Plus Lighting:** Forward Plus light culling is used to efficiently manage lighting calculations, supporting a large number of dynamic lights.
@@ -158,9 +185,10 @@ camera.FocusOn(new Vector3(0, 0, 0), 10f);
 ### New Methods in `Engine`
 
 - `ProcessEvents()`: Processes pending events in the engine's event bus.
-- `EnsureResources(RenderContext context)`: Ensures that all necessary resources are available for rendering, processing events, and preparing the render graph.
+- `BeginFrame()`: Prepares the engine for a new frame (frame pacing and picking readback). Must be called once per frame before rendering; `Submit` throws if it was not called.
 - `Submit(ICommandBuffer commandBuffer, in TextureHandle present)`: Submits a command buffer for execution on the GPU.
 - `Submit(ICommandBuffer commandBuffer, in TextureHandle present, KeyedMutexSyncInfo syncInfo)`: Submits a command buffer with synchronization information.
+- `CreatePickingRequest(RenderContext context, Vector2 coord, Action<PickingResponse> responseCallback)`: Creates an asynchronous picking request.
 
 ### New Overloads for `RenderOffscreen`
 
@@ -171,7 +199,8 @@ camera.FocusOn(new Vector3(0, 0, 0), 10f);
 
 - `RenderToCustomTarget(Format targetFormat)`: Configures the engine to render to a custom target format.
 - Improved interop support with `WithWpf()` and `WithWinUI()` methods for WPF and WinUI applications.
-- New methods for enabling specific rendering features: `WithBillBoard()`, `WithTransparent()`, `WithFXAA()`, `WithSMAA()`, `WithBloom()`, `WithFPS()`.
+- New methods for enabling specific rendering features: `WithBillBoard()`, `WithTransparent(TransparentMode mode)`, `WithFXAA()`, `WithSMAA()`, `WithBloom()`, `WithFPS()`.
+- Added `WithSSAO(SsaoQuality quality = SsaoQuality.Medium)`: Registers a single `SsaoPostEffect` into the `PostEffectsNode`, unless an effect named `"SsaoPostEffect"` is already present.
 
 ### Buffer Management Updates
 
@@ -199,4 +228,18 @@ camera.FocusOn(new Vector3(0, 0, 0), 10f);
 ### Updated `DrawStreamBase`
 
 - `Barrier(ICommandBuffer cmdBuf, BarrierPreset preset, bool force)` method now includes a `BarrierPreset` parameter for more flexible barrier configuration.
+- Improved handling of instancing updates with event subscriptions for `InstancingUpdatedEvent`.
+
+### ECS Component Interface Update
+
+- Updated ECS component handling to use `IComponents<T>` interface for better abstraction and flexibility.
+
+### New `PickingRegistry` Class
+
+- Introduced `PickingRegistry` to manage picking handlers for different geometry types, allowing for extensible and customizable picking logic.
+- Default handlers for mesh, point, line, and billboard geometries are registered by default.
+
+### New Event in `Engine`
+
+- `OnViewportHovering`: An event that is triggered when the viewport is hovered, providing a `PickingResponse`.
 ```

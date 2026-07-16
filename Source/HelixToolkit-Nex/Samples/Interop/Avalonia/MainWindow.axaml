@@ -1,0 +1,134 @@
+<Window
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:hx="clr-namespace:HelixToolkit.Nex.Avalonia;assembly=HelixToolkit.Nex.Avalonia"
+    xmlns:local="clr-namespace:AvaloniaInterop"
+    mc:Ignorable="d"
+    x:Class="AvaloniaInterop.MainWindow"
+    Width="1280"
+    Height="720"
+    Title="HelixToolkit.Nex - Avalonia Interop"
+    x:DataType="local:MainViewModel"
+>
+    <!--
+        The MainViewModel is assigned as the DataContext in the code-behind. The HelixViewport binds
+        the engine, viewport client, camera controller, and pointer-ring flag.
+
+        The overlay controls below sit as later siblings in the same Grid cell, so Avalonia composites
+        the normal UI layer on top of the HelixViewport's GPU composition surface. This exercises
+        z-ordering, transparency (you can see the 3D scene through the translucent cards), and
+        hit-testing (interacting with a control must not rotate/pan the camera underneath).
+    -->
+    <Grid Name="MainGrid">
+        <hx:HelixViewport
+            x:Name="ViewportFly"
+            Engine="{Binding Engine}"
+            ViewportClient="{Binding FlyClient}"
+            CameraController="{Binding FlyCameraController}"
+            PointerRingEnabled="{Binding IsPointerRingEnabled, Mode=OneWay}"
+        />
+
+        <!-- Top-left: title + interactive controls over the 3D viewport. -->
+        <Border
+            HorizontalAlignment="Left"
+            VerticalAlignment="Top"
+            Margin="16"
+            Padding="16"
+            Width="300"
+            CornerRadius="8"
+            Background="#CC1E1E2A"
+            BorderBrush="#40FFFFFF"
+            BorderThickness="1"
+            BoxShadow="0 4 16 0 #80000000"
+        >
+            <StackPanel Spacing="10">
+                <TextBlock
+                    Text="Avalonia Interop"
+                    FontSize="20"
+                    FontWeight="SemiBold"
+                    Foreground="White"
+                />
+                <TextBlock
+                    Text="Avalonia UI composited over the Vulkan engine output."
+                    TextWrapping="Wrap"
+                    Foreground="#CCFFFFFF"
+                />
+
+                <Separator Margin="0,4" Background="#33FFFFFF" />
+
+                <CheckBox
+                    Content="Show pointer ring"
+                    Foreground="White"
+                    IsChecked="{Binding IsPointerRingEnabled, Mode=TwoWay}"
+                />
+
+                <Button
+                    Content="Reset camera"
+                    HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Center"
+                    Click="OnResetCamera"
+                />
+
+                <TextBlock
+                    Text="Left-drag: rotate   •   Middle-drag: pan   •   Wheel: zoom"
+                    TextWrapping="Wrap"
+                    FontSize="12"
+                    Foreground="#99FFFFFF"
+                />
+            </StackPanel>
+        </Border>
+
+        <!-- Top-right: live indicator proving the UI layer stays responsive while the 3D renders. -->
+        <Border
+            HorizontalAlignment="Right"
+            VerticalAlignment="Top"
+            Margin="16"
+            Padding="12"
+            Width="220"
+            CornerRadius="8"
+            Background="#99101018"
+            BorderBrush="#40FFFFFF"
+            BorderThickness="1"
+        >
+            <StackPanel Spacing="8">
+                <TextBlock
+                    Text="Compositing live"
+                    FontWeight="SemiBold"
+                    Foreground="White"
+                />
+                <ProgressBar IsIndeterminate="True" Height="4" />
+                <TextBlock
+                    x:Name="FpsText"
+                    Text="FPS: --"
+                    FontFamily="Consolas,monospace"
+                    FontSize="13"
+                    Foreground="#FF7CF07C"
+                />
+                <TextBlock
+                    x:Name="FrameTimeText"
+                    Text="render --  present --"
+                    FontFamily="Consolas,monospace"
+                    FontSize="12"
+                    Foreground="#CCFFFFFF"
+                />
+            </StackPanel>
+        </Border>
+
+        <!-- Bottom: translucent status strip. -->
+        <Border
+            HorizontalAlignment="Stretch"
+            VerticalAlignment="Bottom"
+            Padding="16,10"
+            Background="#66000000"
+        >
+            <TextBlock
+                Text="HelixToolkit.Nex on Avalonia — Vulkan offscreen render shared into the compositor via ICompositionGpuInterop."
+                Foreground="#DDFFFFFF"
+                HorizontalAlignment="Center"
+                FontSize="12"
+            />
+        </Border>
+    </Grid>
+</Window>

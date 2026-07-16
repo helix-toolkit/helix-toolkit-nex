@@ -1,3 +1,5 @@
+using HelixToolkit.Nex.Rendering.Gizmos;
+
 namespace HelixToolkit.Nex.Engine;
 
 
@@ -95,5 +97,139 @@ public static class Utils
         uint r = (uint)(id & 0xFFFFFFFF);
         uint g = (uint)(id >> 32);
         UnpackMeshInfo(r, g, out worldId, out entityId, out instanceId, out primitiveId);
+    }
+
+    /// <summary>
+    /// Packs a gizmo pick (owning entity id + handle identity) into the R and G channels of the
+    /// shared <c>TextureEntityId</c> target. The R channel carries a world id of zero (the
+    /// alternate-encoding discriminator trigger), the <see cref="SysEncodingKind.Gizmo"/>
+    /// encoding-type field, and the owning gizmo entity id; the G channel carries the
+    /// <see cref="GizmoHandleId"/> (axis in the low byte, mode in the next byte), leaving the high
+    /// G bits reserved for future per-handle data.
+    /// </summary>
+    /// <param name="owningEntityId">Id of the entity carrying the gizmo (masked to <see cref="GizmoEncodingConstants.OwningEntityMask"/>).</param>
+    /// <param name="handle">The picked handle identity (mode + axis).</param>
+    /// <param name="r">Packed R channel output.</param>
+    /// <param name="g">Packed G channel output.</param>
+    public static void PackGizmoInfo(
+        uint owningEntityId,
+        GizmoHandleId handle,
+        out uint r,
+        out uint g
+    )
+    {
+        r =
+            (0u & LimitsShaderConstants.WorldIdMask) // worldId = 0 (discriminator trigger)
+            | ((uint)SysEncodingKind.Gizmo << GizmoEncodingConstants.EncodingTypeShift)
+            | (
+                (owningEntityId & GizmoEncodingConstants.OwningEntityMask)
+                << GizmoEncodingConstants.OwningEntityShift
+            );
+
+        g =
+            (
+                ((uint)handle.Axis & GizmoEncodingConstants.HandleFieldMask)
+                << GizmoEncodingConstants.AxisShift
+            )
+            | (
+                ((uint)handle.Mode & GizmoEncodingConstants.HandleFieldMask)
+                << GizmoEncodingConstants.ModeShift
+            );
+    }
+
+    /// <summary>
+    /// Unpacks a gizmo pick previously packed by <see cref="PackGizmoInfo"/>, recovering the owning
+    /// gizmo entity id from the R channel and the <see cref="GizmoHandleId"/> from the G channel.
+    /// This is the exact inverse of <see cref="PackGizmoInfo"/>.
+    /// </summary>
+    /// <param name="r">Packed R channel.</param>
+    /// <param name="g">Packed G channel.</param>
+    /// <param name="owningEntityId">The unpacked owning gizmo entity id.</param>
+    /// <param name="handle">The unpacked handle identity (mode + axis).</param>
+    public static void UnpackGizmoInfo(
+        uint r,
+        uint g,
+        out uint owningEntityId,
+        out GizmoHandleId handle
+    )
+    {
+        owningEntityId =
+            (r >> GizmoEncodingConstants.OwningEntityShift) & GizmoEncodingConstants.OwningEntityMask;
+
+        var axis = (GizmoAxis)(
+            (g >> GizmoEncodingConstants.AxisShift) & GizmoEncodingConstants.HandleFieldMask
+        );
+        var mode = (GizmoMode)(
+            (g >> GizmoEncodingConstants.ModeShift) & GizmoEncodingConstants.HandleFieldMask
+        );
+
+        handle = new GizmoHandleId(mode, axis);
+    }
+
+    /// <summary>
+    /// The single, unified entry point for decoding a pixel of the shared <c>TextureEntityId</c>
+    /// target. Inspects the world id first: a decoded world id greater than zero is a scene pick
+    /// (decoded by the unchanged <see cref="UnpackMeshInfo(uint, uint, out uint, out uint, out uint, out uint)"/>);
+    /// a decoded world id of zero selects an alternate encoding chosen by the
+    /// <see cref="SysEncodingKind"/> discriminator carried in the R channel. The only alternate
+    /// encoding defined today is <see cref="SysEncodingKind.Gizmo"/>. Unrecognized encoding values
+    /// (including <see cref="SysEncodingKind.None"/> and the cleared-to-<c>(0, 0)</c> pixel) decode
+    /// to <see cref="EntityIdPickKind.NoHit"/>. This method never throws.
+    /// </summary>
+    /// <param name="r">The raw R channel bits.</param>
+    /// <param name="g">The raw G channel bits.</param>
+    /// <returns>The fully-decoded <see cref="EntityIdDecodeResult"/>.</returns>
+    public static EntityIdDecodeResult UnpackEntityId(uint r, uint g)
+    {
+        uint worldId = r & LimitsShaderConstants.WorldIdMask;
+        if (worldId > 0)
+        {
+            // Scene pick: decode via the unchanged mesh-info path (never a gizmo).
+            UnpackMeshInfo(r, g, out var w, out var e, out var inst, out var prim);
+            return new EntityIdDecodeResult(
+                EntityIdPickKind.Scene,
+                w,
+                e,
+                inst,
+                prim,
+                0,
+                default
+            );
+        }
+
+        // worldId == 0: select the alternate encoding from the encoding-type field.
+        uint encoding =
+            (r >> LimitsShaderConstants.WorldIdBits) & GizmoEncodingConstants.EncodingTypeMask;
+        if (encoding == (uint)SysEncodingKind.Gizmo)
+        {
+            UnpackGizmoInfo(r, g, out uint owningEntityId, out GizmoHandleId handle);
+            return new EntityIdDecodeResult(
+                EntityIdPickKind.Gizmo,
+                0,
+                0,
+                0,
+                0,
+                owningEntityId,
+                handle
+            );
+        }
+
+        // Unrecognized encoding (including None / cleared pixel) -> no hit, no exception.
+        return new EntityIdDecodeResult(EntityIdPickKind.NoHit, 0, 0, 0, 0, 0, default);
+    }
+
+    /// <summary>
+    /// Decodes a pixel of the shared <c>TextureEntityId</c> target from a single 64-bit packed
+    /// value, where the lower 32 bits are the R channel and the upper 32 bits are the G channel.
+    /// This mirrors <see cref="UnpackMeshInfo(ulong, out uint, out uint, out uint, out uint)"/> for
+    /// picking callers that read a packed <see cref="ulong"/>.
+    /// </summary>
+    /// <param name="id">The 64-bit packed pixel (low 32 = R, high 32 = G).</param>
+    /// <returns>The fully-decoded <see cref="EntityIdDecodeResult"/>.</returns>
+    public static EntityIdDecodeResult UnpackEntityId(ulong id)
+    {
+        uint r = (uint)(id & 0xFFFFFFFF);
+        uint g = (uint)(id >> 32);
+        return UnpackEntityId(r, g);
     }
 }

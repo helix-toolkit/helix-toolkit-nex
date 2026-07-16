@@ -1,0 +1,54 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+    <!--
+        Single cross-platform assembly. Both the Windows (D3D11 shared-texture) and Linux
+        (Vulkan external-memory) bridges are compiled in; the concrete bridge is selected at
+        runtime via OperatingSystem.IsWindows() (see HelixViewport.Render.cs). This lets a single
+        net8.0 DLL ship in one NuGet package for both platforms.
+    -->
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <LangVersion>latest</LangVersion>
+        <DefineConstants>$(DefineConstants);HxAvalonia</DefineConstants>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <IncludeSymbols>True</IncludeSymbols>
+        <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <PackageIcon>icon.png</PackageIcon>
+        <Configurations>Debug;Release;LinuxDebug;LinuxRelease</Configurations>
+    </PropertyGroup>
+    <ItemGroup>
+        <None Update="README.md">
+            <Pack>True</Pack>
+            <PackagePath>\</PackagePath>
+        </None>
+        <None Include="..\..\..\Assets\icon.png">
+            <Pack>True</Pack>
+            <PackagePath>\</PackagePath>
+        </None>
+    </ItemGroup>
+    <!-- Expose internal types (e.g. CompositionSurfacePresenter) to the test project. -->
+    <ItemGroup>
+        <InternalsVisibleTo Include="HelixToolkit.Nex.Avalonia.Tests" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Avalonia" Version="12.0.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\HelixToolkit.Nex.Engine\HelixToolkit.Nex.Engine.csproj" />
+        <ProjectReference Include="..\HelixToolkit.Nex.Graphics.Vulkan\HelixToolkit.Nex.Graphics.Vulkan.csproj" />
+        <ProjectReference Include="..\HelixToolkit.Nex.Interop\HelixToolkit.Nex.Interop.csproj" />
+    </ItemGroup>
+
+    <!-- D3D11 shared NT-handle interop (used by the Windows runtime path only, but always referenced). -->
+    <ItemGroup>
+        <ProjectReference Include="..\HelixToolkit.Nex.Interop.DirectX\HelixToolkit.Nex.Interop.DirectX.csproj" />
+    </ItemGroup>
+
+    <!-- Reuse shared viewport logic under the HxAvalonia symbol -->
+    <Import Project="..\HelixToolkit.Nex.Interop.PlatformShared\HelixToolkit.Nex.Interop.PlatformShared.projitems" Label="Shared" />
+</Project>

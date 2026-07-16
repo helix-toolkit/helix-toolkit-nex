@@ -2,7 +2,6 @@ using System.ComponentModel;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
-using HelixToolkit.Nex.Engine.CameraControllers;
 using HelixToolkit.Nex.Interop;
 using HelixToolkit.Nex.Interop.DirectX;
 using Microsoft.Extensions.Logging;
@@ -28,7 +27,7 @@ public partial class HelixViewport : FrameworkElement, IDisposable
 {
     private static readonly ILogger _logger = LogManager.Create<HelixViewport>();
 
-    private D3DImage? _d3dImage;
+    private readonly D3DImage _d3dImage;
     private D3D9DeviceManager? _d3d9Manager;
     private D3D11DeviceManager? _d3d11Manager;
     private IDirect3DTexture9? _d3d9BackBuffer;
@@ -40,13 +39,6 @@ public partial class HelixViewport : FrameworkElement, IDisposable
     private long _lastTimestamp;
     private bool _disposed;
     private bool _sizeChanged = true;
-
-    /// <summary>
-    /// Raised each frame after <see cref="IViewportClient.Update"/> but before rendering.
-    /// This is a <b>read-only notification</b>; use <see cref="ViewportClient"/> to
-    /// provide the camera and scene data.
-    /// </summary>
-    public event EventHandler<ViewportRenderingEventArgs>? BeforeRender;
 
     public HelixViewport()
     {
@@ -65,6 +57,12 @@ public partial class HelixViewport : FrameworkElement, IDisposable
     {
         if (_d3dImage is { PixelWidth: > 0, PixelHeight: > 0 })
         {
+            Engine!.WaitForIdle();
+            _d3dImage.Lock();
+            _d3dImage.AddDirtyRect(
+                new Int32Rect(0, 0, _d3dImage.PixelWidth, _d3dImage.PixelHeight)
+            );
+            _d3dImage.Unlock();
             drawingContext.DrawImage(
                 _d3dImage,
                 new Rect(new System.Windows.Size(ActualWidth, ActualHeight))
@@ -99,13 +97,6 @@ public partial class HelixViewport : FrameworkElement, IDisposable
     private void SetClient(IViewportClient? client)
     {
         _viewportClient = client;
-    }
-
-    private void SetCameraController(ICameraController? controller)
-    {
-        if (_renderContext is null)
-            return;
-        _cameraController = controller;
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e)
@@ -170,7 +161,9 @@ public partial class HelixViewport : FrameworkElement, IDisposable
             width,
             height
         );
-
+        _d3dImage.Lock();
+        _d3dImage.SetBackBuffer(D3DResourceType.IDirect3DSurface9, (nint)_d3d9Surface);
+        _d3dImage.Unlock();
         // 6. Subscribe to the WPF render loop
         CompositionTarget.Rendering += OnCompositionRendering;
     }
@@ -180,7 +173,7 @@ public partial class HelixViewport : FrameworkElement, IDisposable
         if (_disposed || Engine is null || _renderContext is null || _renderArgs is null)
             return;
 
-        if (_d3dImage is null || !_d3dImage.IsFrontBufferAvailable)
+        if (!_d3dImage.IsFrontBufferAvailable)
             return;
         if (ActualWidth == 0 || ActualHeight == 0)
             return;
@@ -193,12 +186,6 @@ public partial class HelixViewport : FrameworkElement, IDisposable
         // Compute delta time
         if (!Render((float)ActualWidth, (float)ActualHeight, _importedTexture!.Handle))
             return;
-
-        //// Present through D3DImage
-        _d3dImage.Lock();
-        _d3dImage.SetBackBuffer(D3DResourceType.IDirect3DSurface9, (nint)_d3d9Surface);
-        _d3dImage.AddDirtyRect(new Int32Rect(0, 0, _d3dImage.PixelWidth, _d3dImage.PixelHeight));
-        _d3dImage.Unlock();
 
         _lastRenderTime = args.RenderingTime;
         InvalidateVisual();
@@ -227,9 +214,9 @@ public partial class HelixViewport : FrameworkElement, IDisposable
     {
         _logger.LogInformation("Releasing viewport resources");
         CompositionTarget.Rendering -= OnCompositionRendering;
-        _d3dImage?.Lock();
-        _d3dImage?.SetBackBuffer(D3DResourceType.IDirect3DSurface9, 0);
-        _d3dImage?.Unlock();
+        _d3dImage.Lock();
+        _d3dImage.SetBackBuffer(D3DResourceType.IDirect3DSurface9, 0);
+        _d3dImage.Unlock();
         if (Engine is not null)
             Engine.Context.Wait(default);
         Disposer.DisposeAndRemove(ref _importedTexture);
@@ -252,13 +239,14 @@ public partial class HelixViewport : FrameworkElement, IDisposable
 
     #region Mouse event forwarding to camera controller
 
-    private static ViewportMouseButton ToViewportButton(System.Windows.Input.MouseButton button) => button switch
-    {
-        System.Windows.Input.MouseButton.Left => ViewportMouseButton.Left,
-        System.Windows.Input.MouseButton.Middle => ViewportMouseButton.Middle,
-        System.Windows.Input.MouseButton.Right => ViewportMouseButton.Right,
-        _ => ViewportMouseButton.None,
-    };
+    private static ViewportMouseButton ToViewportButton(System.Windows.Input.MouseButton button) =>
+        button switch
+        {
+            System.Windows.Input.MouseButton.Left => ViewportMouseButton.Left,
+            System.Windows.Input.MouseButton.Middle => ViewportMouseButton.Middle,
+            System.Windows.Input.MouseButton.Right => ViewportMouseButton.Right,
+            _ => ViewportMouseButton.None,
+        };
 
     private void OnMouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {

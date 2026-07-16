@@ -30,6 +30,7 @@ Currently in development.
   - :white_check_mark: Billboard ([MSDF based Font support](https://github.com/chlumsky/msdfgen))
   - :white_check_mark: Material registry and shader generation system.
   - :white_check_mark: Line
+  - :white_check_mark: Gizmo
   - :hourglass: Particle System (Planned)
   - :hourglass: Skeletal/Morph Target Animation (Planned)
   - :hourglass: Model importer (Planned)
@@ -54,17 +55,19 @@ Currently in development.
  
 - :white_check_mark: Wpf Framework Interoperation
 - :white_check_mark: WinUI Interoperation
-- :hourglass: Avalonia UI Interoperation (Planned)
+- :white_check_mark: Avalonia (Windows & Linux) UI Interoperation
 
 ## Rendering Samples
 
 <img src="Source/HelixToolkit-Nex/Samples/Integration/LightCulling/Screenshots/LargeScene.gif" width=400>
 
-<img src="Source/HelixToolkit-Nex/Samples/Integration/ImGui/Screenshots/Sample.jpg" width=400>
+<img src="Source/HelixToolkit-Nex/Samples/Integration/ImGui/Screenshots/Sample.gif" width=400>
+
+<img src="Source/HelixToolkit-Nex/Samples/Integration/GizmoTest/Screenshots/Sample.gif" width=400>
 
 <img src="Source/HelixToolkit-Nex/Samples/Integration/Points/Screenshots/Points.gif" width=400>
 
-<img src="Source/HelixToolkit-Nex/Samples/Integration/TextureTest/Screenshots/Sample.jpg" width=400>
+<img src="Source/HelixToolkit-Nex/Samples/Integration/gltfImporter/Screenshots/Sample.jpg" width=400>
 
 ## Linux Support
 
@@ -75,10 +78,49 @@ Currently in development.
 - Render content with Vulkan Backend in Wpf and WinUI applications using D3D11 interoperation. (Requires Vulkan Extension: `VK_KHR_external_memory_win32`. Only tested on Discrete Graphics Card.)
 
     - [WPF](Source/HelixToolkit-Nex/Samples/Interop/Wpf)
-    <img src="Source/HelixToolkit-Nex/Samples/Interop/Wpf/Screenshots/Sample.jpg" width=400>
+
+      <img src="Source/HelixToolkit-Nex/Samples/Interop/Wpf/Screenshots/Sample.jpg" width=400>
 
     - [WinUI](Source/HelixToolkit-Nex/Samples/Interop/WinUI)
-    <img src="Source/HelixToolkit-Nex/Samples/Interop/WinUI/Screenshots/Sample.jpg" width=400>
+  
+      <img src="Source/HelixToolkit-Nex/Samples/Interop/WinUI/Screenshots/Sample.jpg" width=400>
+
+    - [Avalonia](Source/HelixToolkit-Nex/Samples/Interop/Avalonia) [Supports both Windows and Linux]
+
+      <img src="Source/HelixToolkit-Nex/Samples/Interop/Avalonia/Screenshots/Sample.jpg" width=400>
+
+## Packages
+
+> **Note:** Packages are published to GitHub Packages. Links will resolve once the packages are published.
+
+| Project                                 | Package                                                                                                                                                              |
+| --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| HelixToolkit.Nex                        | [![GitHub](https://img.shields.io/badge/GitHub-package-blue)](https://github.com/helix-toolkit/helix-toolkit-nex/pkgs/nuget/HelixToolkit.Nex)                        |
+| HelixToolkit.Nex.Engine                 | [![GitHub](https://img.shields.io/badge/GitHub-package-blue)](https://github.com/helix-toolkit/helix-toolkit-nex/pkgs/nuget/HelixToolkit.Nex.Engine)                 |
+| HelixToolkit.Nex.EntityComponentSystem  | [![GitHub](https://img.shields.io/badge/GitHub-package-blue)](https://github.com/helix-toolkit/helix-toolkit-nex/pkgs/nuget/HelixToolkit.Nex.EntityComponentSystem)  |
+| HelixToolkit.Nex.Geometries.Builders    | [![GitHub](https://img.shields.io/badge/GitHub-package-blue)](https://github.com/helix-toolkit/helix-toolkit-nex/pkgs/nuget/HelixToolkit.Nex.Geometries.Builders)    |
+| HelixToolkit.Nex.Geometry               | [![GitHub](https://img.shields.io/badge/GitHub-package-blue)](https://github.com/helix-toolkit/helix-toolkit-nex/pkgs/nuget/HelixToolkit.Nex.Geometry)               |
+| HelixToolkit.Nex.glTF                   | [![GitHub](https://img.shields.io/badge/GitHub-package-blue)](https://github.com/helix-toolkit/helix-toolkit-nex/pkgs/nuget/HelixToolkit.Nex.glTF)                   |
+| HelixToolkit.Nex.Graphics               | [![GitHub](https://img.shields.io/badge/GitHub-package-blue)](https://github.com/helix-toolkit/helix-toolkit-nex/pkgs/nuget/HelixToolkit.Nex.Graphics)               |
+| HelixToolkit.Nex.Graphics.Mock          | [![GitHub](https://img.shields.io/badge/GitHub-package-blue)](https://github.com/helix-toolkit/helix-toolkit-nex/pkgs/nuget/HelixToolkit.Nex.Graphics.Mock)          |
+| HelixToolkit.Nex.Graphics.Vulkan        | [![GitHub](https://img.shields.io/badge/GitHub-package-blue)](https://github.com/helix-toolkit/helix-toolkit-nex/pkgs/nuget/HelixToolkit.Nex.Graphics.Vulkan)        |
+| HelixToolkit.Nex.ImGui                  | [![GitHub](https://img.shields.io/badge/GitHub-package-blue)](https://github.com/helix-toolkit/helix-toolkit-nex/pkgs/nuget/HelixToolkit.Nex.ImGui)                  |
+| HelixToolkit.Nex.Interop                | [![GitHub](https://img.shields.io/badge/GitHub-package-blue)](https://github.com/helix-toolkit/helix-toolkit-nex/pkgs/nuget/HelixToolkit.Nex.Interop)                |
+| HelixToolkit.Nex.Interop.DirectX        | [![GitHub](https://img.shields.io/badge/GitHub-package-blue)](https://github.com/helix-toolkit/helix-toolkit-nex/pkgs/nuget/HelixToolkit.Nex.Interop.DirectX)        |
+| HelixToolkit.Nex.Material               | [![GitHub](https://img.shields.io/badge/GitHub-package-blue)](https://github.com/helix-toolkit/helix-toolkit-nex/pkgs/nuget/HelixToolkit.Nex.Material)               |
+| HelixToolkit.Nex.Maths                  | [![GitHub](https://img.shields.io/badge/GitHub-package-blue)](https://github.com/helix-toolkit/helix-toolkit-nex/pkgs/nuget/HelixToolkit.Nex.Maths)                  |
+| HelixToolkit.Nex.Rendering              | [![GitHub](https://img.shields.io/badge/GitHub-package-blue)](https://github.com/helix-toolkit/helix-toolkit-nex/pkgs/nuget/HelixToolkit.Nex.Rendering)              |
+| HelixToolkit.Nex.Repository             | [![GitHub](https://img.shields.io/badge/GitHub-package-blue)](https://github.com/helix-toolkit/helix-toolkit-nex/pkgs/nuget/HelixToolkit.Nex.Repository)             |
+| HelixToolkit.Nex.Scene                  | [![GitHub](https://img.shields.io/badge/GitHub-package-blue)](https://github.com/helix-toolkit/helix-toolkit-nex/pkgs/nuget/HelixToolkit.Nex.Scene)                  |
+| HelixToolkit.Nex.Shaders                | [![GitHub](https://img.shields.io/badge/GitHub-package-blue)](https://github.com/helix-toolkit/helix-toolkit-nex/pkgs/nuget/HelixToolkit.Nex.Shaders)                |
+| HelixToolkit.Nex.Textures               | [![GitHub](https://img.shields.io/badge/GitHub-package-blue)](https://github.com/helix-toolkit/helix-toolkit-nex/pkgs/nuget/HelixToolkit.Nex.Textures)               |
+| HelixToolkit.Nex.WinUI                  | [![GitHub](https://img.shields.io/badge/GitHub-package-blue)](https://github.com/helix-toolkit/helix-toolkit-nex/pkgs/nuget/HelixToolkit.Nex.WinUI)                  |
+| HelixToolkit.Nex.Wpf                    | [![GitHub](https://img.shields.io/badge/GitHub-package-blue)](https://github.com/helix-toolkit/helix-toolkit-nex/pkgs/nuget/HelixToolkit.Nex.Wpf)                    |
+| HelixToolkit.Nex.Avalonia               | [![GitHub](https://img.shields.io/badge/GitHub-package-blue)](https://github.com/helix-toolkit/helix-toolkit-nex/pkgs/nuget/HelixToolkit.Nex.Avalonia)               |
+
+## Development
+
+See the [Development Setup Guide](DEV.md) for full instructions on prerequisites, Git LFS, Git hooks, building (Windows and Linux), running tests, and formatting.
 
 ## Contributing
 

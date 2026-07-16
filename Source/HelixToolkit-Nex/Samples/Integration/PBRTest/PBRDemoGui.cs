@@ -25,7 +25,15 @@ internal partial class PBRDemo
             displayWidth - ControlPanelWidth,
             displayHeight - menuBarHeight
         );
-        Draw3DViewport(offscreenTex, viewportPos, viewportSize);
+        _viewport?.Draw(offscreenTex, viewportPos, viewportSize);
+
+        // Keep the offscreen target in sync with the measured viewport size.
+        if (_viewport is not null)
+        {
+            var measured = _viewport.ViewportSize;
+            if (measured.Width > 0 && measured.Height > 0)
+                _viewportSize = measured;
+        }
     }
 
     private float DrawMainMenuBar()
@@ -276,58 +284,6 @@ internal partial class PBRDemo
 
         if (changed)
             sphere.PushToMaterial();
-
-        Gui.End();
-    }
-
-    private void Draw3DViewport(TextureHandle offscreenTex, Vector2 pos, Vector2 size)
-    {
-        var flags =
-            ImGuiWindowFlags.NoResize
-            | ImGuiWindowFlags.NoMove
-            | ImGuiWindowFlags.NoCollapse
-            | ImGuiWindowFlags.NoBringToFrontOnFocus
-            | ImGuiWindowFlags.NoTitleBar
-            | ImGuiWindowFlags.NoScrollbar
-            | ImGuiWindowFlags.NoScrollWithMouse;
-
-        Gui.SetNextWindowPos(pos, ImGuiCond.Always);
-        Gui.SetNextWindowSize(size, ImGuiCond.Always);
-        Gui.PushStyleVar(ImGuiStyleVar.WindowPadding, Vector2.Zero);
-        Gui.Begin("##Viewport", flags);
-        Gui.PopStyleVar();
-
-        var contentSize = Gui.GetContentRegionAvail();
-        if (contentSize.X > 0 && contentSize.Y > 0)
-        {
-            _viewportSize = new HelixToolkit.Nex.Maths.Size((int)contentSize.X, (int)contentSize.Y);
-            var canvasPos = Gui.GetCursorScreenPos();
-            Gui.Image((nint)offscreenTex.Index, contentSize, Vector2.Zero, Vector2.One);
-
-            bool hovered = Gui.IsItemHovered();
-            if (hovered)
-            {
-                var mousePos = Gui.GetMousePos();
-                var rel = new Vector2(mousePos.X - canvasPos.X, mousePos.Y - canvasPos.Y);
-                if (Gui.IsMouseClicked(ImGuiMouseButton.Left))
-                    OnViewportMouseDown(0, rel.X, rel.Y);
-                if (Gui.IsMouseClicked(ImGuiMouseButton.Right))
-                    OnViewportMouseDown(1, rel.X, rel.Y);
-                if (Gui.IsMouseClicked(ImGuiMouseButton.Middle))
-                    OnViewportMouseDown(2, rel.X, rel.Y);
-
-                OnViewportMouseMove(rel.X, rel.Y);
-
-                var io = Gui.GetIO();
-                if (MathF.Abs(io.MouseWheel) > 0.001f)
-                    OnViewportMouseWheel(io.MouseWheel);
-            }
-
-            if (Gui.IsMouseReleased(ImGuiMouseButton.Right))
-                OnViewportMouseUp(1);
-            if (Gui.IsMouseReleased(ImGuiMouseButton.Middle))
-                OnViewportMouseUp(2);
-        }
 
         Gui.End();
     }

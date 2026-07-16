@@ -21,8 +21,6 @@ public class Renderer(IServiceProvider serviceProvider) : Initializable
         ];
 
     public IServiceProvider Services { get; } = serviceProvider;
-    public int Width { get; private set; }
-    public int Height { get; private set; }
 
     public IResourceManager ResourceManager { get; } =
         serviceProvider.GetRequiredService<IResourceManager>();
@@ -101,9 +99,9 @@ public class Renderer(IServiceProvider serviceProvider) : Initializable
         _renderers.Clear();
     }
 
-    public ICommandBuffer Render(RenderContext context, RenderGraph graph)
+    public ICommandBuffer Render(RenderContext context, RenderGraph graph, ICommandBuffer? commandBuffer = null)
     {
-        var cmdBuf = context.Context.AcquireCommandBuffer();
+        var cmdBuf = commandBuffer ?? context.Context.AcquireCommandBuffer();
         if (context.WindowSize.Width <= 1 || context.WindowSize.Height <= 1)
         {
             _logger.LogDebug(

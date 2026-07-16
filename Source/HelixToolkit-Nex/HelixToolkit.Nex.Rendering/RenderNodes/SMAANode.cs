@@ -38,6 +38,54 @@ public enum SMAAQuality
     Ultra = 3,
 }
 
+/// <summary>
+/// Selects the edge-detection metric used by the <see cref="SMAANode"/> edge-detection pass.
+/// </summary>
+public enum SMAAEdgeDetection
+{
+    /// <summary>
+    /// Luminance-based edge detection (single channel per tap). Fastest, but
+    /// misses edges between iso-luminant colours.
+    /// </summary>
+    Luma = 0,
+
+    /// <summary>
+    /// Colour-based edge detection (maximum per-channel delta). Detects edges
+    /// between colours of equal luminance at a modest extra fill-rate cost.
+    /// </summary>
+    Color = 1,
+}
+
+/// <summary>
+/// Shader-level debug visualisations for <see cref="SMAANode"/>. Applied in the
+/// neighbourhood-blending pass and mapped to specialization constant 1
+/// (<c>SMAA_DEBUG</c>) in <c>psSmaa.glsl</c>. Use these to confirm each stage is
+/// producing data when tuning quality.
+/// </summary>
+public enum SMAADebugMode : uint
+{
+    /// <summary>Normal anti-aliased output.</summary>
+    None = 0,
+
+    /// <summary>
+    /// Shows the edge mask (red = left edge, green = top edge). If this is mostly
+    /// black, raise the quality preset / lower <see cref="SMAANode.EdgeThreshold"/>
+    /// or switch to <see cref="SMAAEdgeDetection.Color"/>.
+    /// </summary>
+    Edges = 1,
+
+    /// <summary>
+    /// Shows the blending-weight magnitude (brighter = stronger). Black here while
+    /// <see cref="Edges"/> shows edges points at the weight-computation stage.
+    /// </summary>
+    Weights = 2,
+
+    /// <summary>
+    /// Heat-map of the final per-pixel blend strength (blue = none, red = maximum).
+    /// </summary>
+    BlendStrength = 3,
+}
+
 public sealed class SMAANode : RenderNode
 {
     private static readonly ILogger _logger = LogManager.Create<SMAANode>();
@@ -70,6 +118,11 @@ public sealed class SMAANode : RenderNode
     private RenderPipelineResource _edgePipeline = RenderPipelineResource.Null;
     private RenderPipelineResource _weightPipeline = RenderPipelineResource.Null;
     private RenderPipelineResource _blendPipeline = RenderPipelineResource.Null;
+
+    // Debug blend-stage variants (SMAA_DEBUG specialization constant), selected by DebugMode.
+    private RenderPipelineResource _blendDebugEdges = RenderPipelineResource.Null;
+    private RenderPipelineResource _blendDebugWeights = RenderPipelineResource.Null;
+    private RenderPipelineResource _blendDebugStrength = RenderPipelineResource.Null;
 
     private SamplerRef _linearSampler = SamplerRef.Null;
     private TextureRef _areaTex = TextureRef.Null;
@@ -112,6 +165,33 @@ public sealed class SMAANode : RenderNode
         set => _edgeThreshold = value;
     }
 
+    /// <summary>
+    /// Selects the metric used by the edge-detection pass. <see cref="SMAAEdgeDetection.Color"/>
+    /// detects edges between iso-luminant colours that <see cref="SMAAEdgeDetection.Luma"/>
+    /// misses, at a small extra cost. Defaults to <see cref="SMAAEdgeDetection.Luma"/>.
+    /// </summary>
+    public SMAAEdgeDetection EdgeDetectionMode { get; set; } = SMAAEdgeDetection.Luma;
+
+    /// <summary>
+    /// Selects a shader-level debug visualisation. Defaults to
+    /// <see cref="SMAADebugMode.None"/> (normal output). Changing this does not
+    /// require re-initialisation; the matching pre-compiled blend pipeline variant
+    /// is selected each frame.
+    /// </summary>
+    public SMAADebugMode DebugMode { get; set; } = SMAADebugMode.None;
+
+    /// <summary>
+    /// Enables diagonal-pattern detection in the weight pass (reference SMAA).
+    /// Improves anti-aliasing on near-45° and curved edges. Defaults to <see langword="true"/>.
+    /// </summary>
+    public bool DiagonalDetection { get; set; } = true;
+
+    /// <summary>
+    /// Enables sharp-corner rounding in the weight pass (reference SMAA).
+    /// Defaults to <see langword="true"/>.
+    /// </summary>
+    public bool CornerDetection { get; set; } = true;
+
     public override string Name => nameof(SMAANode);
     public override Color4 DebugColor => Color.LightGreen;
 
@@ -145,6 +225,9 @@ public sealed class SMAANode : RenderNode
         _edgePipeline.Dispose();
         _weightPipeline.Dispose();
         _blendPipeline.Dispose();
+        _blendDebugEdges.Dispose();
+        _blendDebugWeights.Dispose();
+        _blendDebugStrength.Dispose();
         base.OnTeardown();
     }
 
@@ -250,7 +333,40 @@ public sealed class SMAANode : RenderNode
             "Smaa_NeighbourhoodBlending"
         );
 
-        if (!_edgePipeline.Valid || !_weightPipeline.Valid || !_blendPipeline.Valid)
+        // Debug variants of the blend stage (same output format), one per SMAADebugMode.
+        _blendDebugEdges = CreateStagePipeline(
+            vs,
+            fs,
+            SmaaMode.NeighbourhoodBlending,
+            GraphicsSettings.IntermediateTargetFormat,
+            "Smaa_Debug_Edges",
+            SMAADebugMode.Edges
+        );
+        _blendDebugWeights = CreateStagePipeline(
+            vs,
+            fs,
+            SmaaMode.NeighbourhoodBlending,
+            GraphicsSettings.IntermediateTargetFormat,
+            "Smaa_Debug_Weights",
+            SMAADebugMode.Weights
+        );
+        _blendDebugStrength = CreateStagePipeline(
+            vs,
+            fs,
+            SmaaMode.NeighbourhoodBlending,
+            GraphicsSettings.IntermediateTargetFormat,
+            "Smaa_Debug_BlendStrength",
+            SMAADebugMode.BlendStrength
+        );
+
+        if (
+            !_edgePipeline.Valid
+            || !_weightPipeline.Valid
+            || !_blendPipeline.Valid
+            || !_blendDebugEdges.Valid
+            || !_blendDebugWeights.Valid
+            || !_blendDebugStrength.Valid
+        )
         {
             _logger.LogError("One or more SMAA pipelines failed to create.");
             return ResultCode.RuntimeError;
@@ -264,7 +380,8 @@ public sealed class SMAANode : RenderNode
         ShaderModuleResource fs,
         SmaaMode stage,
         Format outputFormat,
-        string debugName
+        string debugName,
+        SMAADebugMode debugMode = SMAADebugMode.None
     )
     {
         var desc = new RenderPipelineDesc
@@ -277,6 +394,7 @@ public sealed class SMAANode : RenderNode
         };
         desc.Colors[0] = ColorAttachment.CreateOpaque(outputFormat);
         desc.WriteSpecInfo(0, (uint)stage);
+        desc.WriteSpecInfo(1, (uint)debugMode);
         return Context!.CreateRenderPipeline(desc);
     }
 
@@ -329,6 +447,7 @@ public sealed class SMAANode : RenderNode
                 TexelWidth = tw,
                 TexelHeight = th,
                 EdgeThreshold = EdgeThreshold,
+                EdgeMode = (uint)EdgeDetectionMode,
             },
             dep0: sceneTex
         );
@@ -353,6 +472,8 @@ public sealed class SMAANode : RenderNode
                 TexelWidth = tw,
                 TexelHeight = th,
                 EdgeThreshold = EdgeThreshold,
+                DiagDetection = DiagonalDetection ? 1u : 0u,
+                CornerDetection = CornerDetection ? 1u : 0u,
             },
             dep0: edgeTex
         );
@@ -361,16 +482,25 @@ public sealed class SMAANode : RenderNode
         // ------------------------------------------------------------------
         // Pass 2: Neighbourhood blending  (scene + weights) → writeSlot
         // ------------------------------------------------------------------
+        var blendPipeline = DebugMode switch
+        {
+            SMAADebugMode.Edges => _blendDebugEdges,
+            SMAADebugMode.Weights => _blendDebugWeights,
+            SMAADebugMode.BlendStrength => _blendDebugStrength,
+            _ => _blendPipeline,
+        };
         RunSmaaPass(
             _passNameNeighbourhoodBlending,
             in res,
-            _blendPipeline,
+            blendPipeline,
             outputHandle: res.Textures[SystemBufferNames.TextureColorF16Target],
             clearOutput: false,
             new SmaaPushConstants
             {
                 ColorTextureId = sceneTex.Index,
                 ColorSamplerId = _linearSampler,
+                EdgeTextureId = edgeTex.Index,
+                EdgeSamplerId = _linearSampler,
                 WeightTextureId = weightTex.Index,
                 WeightSamplerId = _linearSampler,
                 AreaTextureId = _areaTex,

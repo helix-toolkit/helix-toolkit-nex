@@ -5,6 +5,7 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <RootNamespace>HelixToolkit.Nex.Sample.GltfImporter</RootNamespace>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     </PropertyGroup>
 
     <ItemGroup>
@@ -13,13 +14,5 @@
         <ProjectReference Include="..\..\..\HelixToolkit.Nex.ImGui\HelixToolkit.Nex.ImGui.csproj" />
         <ProjectReference Include="..\..\..\HelixToolkit.Nex.glTF\HelixToolkit.Nex.glTF.csproj" />
         <ProjectReference Include="..\..\Application\Application.csproj" />
-    </ItemGroup>
-
-    <ItemGroup>
-        <PackageReference Include="NativeFileDialogSharp" Version="0.5.0" />
-    </ItemGroup>
-
-    <ItemGroup>
-        <Folder Include="Screenshots\" />
     </ItemGroup>
 </Project>

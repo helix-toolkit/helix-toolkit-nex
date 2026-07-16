@@ -16,6 +16,7 @@ using HelixToolkit.Nex.Scene;
 using HelixToolkit.Nex.Shaders.Frag;
 using Microsoft.Extensions.Logging;
 using static HelixToolkit.Nex.Rendering.PostEffects.BoundingBoxPostEffect;
+using Viewport = HelixToolkit.Nex.ImGui.Viewport;
 
 namespace PBRTest;
 
@@ -124,8 +125,9 @@ internal partial class PBRDemo : IDisposable
 
     // Camera controller (orbit)
     private OrbitCameraController? _orbitController;
-    private bool _isRotating;
-    private bool _isPanning;
+
+    // Reusable 3D viewport region.
+    private Viewport? _viewport;
 
     // Sphere grid data
     private readonly List<PBRSphereInfo> _spheres = [];
@@ -201,6 +203,12 @@ internal partial class PBRDemo : IDisposable
 
         _worldDataProvider = _engine.CreateWorldDataProvider();
         _worldDataProvider.Initialize();
+
+        // Reusable 3D viewport: wires the render context and orbit controller, and forwards
+        // pick clicks to the existing Pick handler. Button mappings match the defaults
+        // (Left = pick, Right = rotate, Middle = pan). DpiScale is left at the default of 1
+        // because the demo already converts display size to logical units.
+        _viewport = new Viewport(_renderContext, _orbitController) { PickCallback = Pick };
 
         BuildScene();
 
@@ -357,58 +365,23 @@ internal partial class PBRDemo : IDisposable
     }
 
     // -----------------------------------------------------------------------
-    // Input forwarding
+    // GPU Picking
     // -----------------------------------------------------------------------
 
-    public void OnViewportMouseDown(int button, float vx, float vy)
+    private void Pick(int x, int y)
     {
-        if (_orbitController is null)
+        if (_engine is null || _renderContext is null)
             return;
-        if (button == 0)
+
+        _engine.CreatePickingRequest(_renderContext, new Vector2(x, y), result =>
         {
-            _engine!.CreatePickingRequest(_renderContext!, new Vector2(vx, vy), result =>
+            if (result.TryGetPickingResult(out var pickingResult))
             {
-                if (result.TryGetPickingResult(out var pickingResult))
-                {
-                    SelectedIndex = pickingResult.Entity.Get<IndexComponent>().Index;
-                    return;
-                }
-                SelectedIndex = -1;
-            });
-        }
-        else if (button == 1)
-        {
-            _isRotating = true;
-            _orbitController.OnRotateBegin(vx, vy);
-        }
-        else if (button == 2)
-        {
-            _isPanning = true;
-            _orbitController.OnPanBegin(vx, vy);
-        }
-    }
-
-    public void OnViewportMouseUp(int button)
-    {
-        if (button == 1)
-            _isRotating = false;
-        else if (button == 2)
-            _isPanning = false;
-    }
-
-    public void OnViewportMouseMove(float vx, float vy)
-    {
-        if (_orbitController is null)
-            return;
-        if (_isRotating)
-            _orbitController.OnRotateDelta(vx, vy);
-        if (_isPanning)
-            _orbitController.OnPanDelta(vx, vy);
-    }
-
-    public void OnViewportMouseWheel(float delta)
-    {
-        _orbitController?.OnZoomDelta(delta);
+                SelectedIndex = pickingResult.Entity.Get<IndexComponent>().Index;
+                return;
+            }
+            SelectedIndex = -1;
+        });
     }
 
     // -----------------------------------------------------------------------
