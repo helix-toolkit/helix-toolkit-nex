@@ -240,6 +240,13 @@ public partial class HelixViewport : UserControl, IDisposable
         if (Engine is not null)
             Engine.Context.Wait(default);
 
+        // Detach the swap chain before releasing it because SwapChainPanel retains
+        // its own COM reference.
+        if (_swapChainPanel is not null && _swapchain is not null)
+        {
+            SetSwapChainOnPanel(_swapChainPanel, null);
+        }
+
         Disposer.DisposeAndRemove(ref _keyedMutex);
         Disposer.DisposeAndRemove(ref _renderTargetResource);
         Disposer.DisposeAndRemove(ref _backbufferResource);
@@ -254,15 +261,23 @@ public partial class HelixViewport : UserControl, IDisposable
     /// </summary>
     private static unsafe void SetSwapChainOnPanel(
         SwapChainPanel panel,
-        IDXGISwapChain1 swapchain
-    )
+        IDXGISwapChain1? swapchain)
     {
-        using var panelNative = MarshalInspectable<SwapChainPanel>.CreateMarshaler<IUnknownVftbl>(
-            panel,
-            _swapChainPanelNativeIid
-        );
-        var panelNativePointer = (NativeSwapChainPanel*)panelNative.ThisPtr;
-        panelNativePointer->SetSwapChain((NativeDxgiSwapChain*)swapchain.NativePointer);
+        using var panelNative =
+            MarshalInspectable<SwapChainPanel>.CreateMarshaler<IUnknownVftbl>(
+                panel,
+                _swapChainPanelNativeIid);
+
+        var nativePanel = (NativeSwapChainPanel*)panelNative.ThisPtr;
+
+        NativeDxgiSwapChain* nativeSwapchain = null;
+        if (swapchain is not null)
+        {
+            nativeSwapchain =
+                (NativeDxgiSwapChain*)swapchain.NativePointer;
+        }
+
+        nativePanel->SetSwapChain(nativeSwapchain);
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
