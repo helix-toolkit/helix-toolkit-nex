@@ -61,6 +61,7 @@ viewport.PointerPressed += (sender, e) =>
 - **Microsoft Windows App SDK Update**: Updated the package reference for `Microsoft.WindowsAppSDK.WinUI` to version `2.2.1`.
 - **Removed `BeforeRender` Event**: The `BeforeRender` event has been removed from `HelixViewport`. Use the `ViewportClient` to provide camera and scene data.
 - **Project Reference Update**: Added a project reference to `HelixToolkit.Nex.Interop` to facilitate interop functionalities.
+- **Interop Enhancements**: Introduced `Microsoft.Windows.CsWin32` for improved COM interop, replacing manual COM interface definitions with generated interop code.
 
 ## Architecture Notes
 
