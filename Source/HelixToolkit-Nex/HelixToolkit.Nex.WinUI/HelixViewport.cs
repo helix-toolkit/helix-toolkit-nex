@@ -1,4 +1,3 @@
-using System.Runtime.InteropServices;
 using HelixToolkit.Nex.Graphics;
 using HelixToolkit.Nex.Interop;
 using HelixToolkit.Nex.Interop.DirectX;
@@ -11,26 +10,13 @@ using Microsoft.UI.Xaml.Media;
 using Vortice.Direct3D11;
 using Vortice.DXGI;
 using Vortice.Vulkan;
+using WinRT;
+using WinRT.Interop;
+using NativeDxgiSwapChain = Windows.Win32.Graphics.Dxgi.IDXGISwapChain;
+using NativeSwapChainPanel = Windows.Win32.System.WinRT.Xaml.ISwapChainPanelNative;
 using Size = HelixToolkit.Nex.Maths.Size;
 
 namespace HelixToolkit.Nex.WinUI;
-
-/// <summary>
-/// COM interface for setting a DXGI swap chain on a <see cref="SwapChainPanel"/>.
-/// </summary>
-[
-    ComImport,
-    Guid("63aad0b8-7c24-40ff-85a8-640d944cc325"),
-    InterfaceType(ComInterfaceType.InterfaceIsIUnknown)
-]
-internal partial interface ISwapChainPanelNative
-{
-    [PreserveSig]
-    int SetSwapChain([In] IntPtr swapchain);
-
-    [PreserveSig]
-    ulong Release();
-}
 
 /// <summary>
 /// WinUI 3 control that hosts the HelixToolkit.Nex 3D engine output.
@@ -46,6 +32,12 @@ internal partial interface ISwapChainPanelNative
 /// </summary>
 public partial class HelixViewport : UserControl, IDisposable
 {
+    /// <summary>
+    /// The WinUI 3 IID from <c>microsoft.ui.xaml.media.dxinterop.h</c>.
+    /// </summary>
+    private static readonly Guid _swapChainPanelNativeIid = new(
+        "63aad0b8-7c24-40ff-85a8-640d944cc325"
+    );
     private static readonly ILogger _logger = LogManager.Create<HelixViewport>();
 
     private SwapChainPanel? _swapChainPanel;
@@ -257,21 +249,20 @@ public partial class HelixViewport : UserControl, IDisposable
         Disposer.DisposeAndRemove(ref _swapchain);
     }
 
-    private static void SetSwapChainOnPanel(SwapChainPanel panel, IDXGISwapChain1 swapchain)
+    /// <summary>
+    /// Sets the native DXGI swap chain used by a WinUI swap-chain panel.
+    /// </summary>
+    private static unsafe void SetSwapChainOnPanel(
+        SwapChainPanel panel,
+        IDXGISwapChain1 swapchain
+    )
     {
-        var panelNativePtr = Marshal.GetComInterfaceForObject<
-            SwapChainPanel,
-            ISwapChainPanelNative
-        >(panel);
-        try
-        {
-            var panelNative = (ISwapChainPanelNative)Marshal.GetObjectForIUnknown(panelNativePtr);
-            panelNative.SetSwapChain(swapchain.NativePointer);
-        }
-        finally
-        {
-            Marshal.Release(panelNativePtr);
-        }
+        using var panelNative = MarshalInspectable<SwapChainPanel>.CreateMarshaler<IUnknownVftbl>(
+            panel,
+            _swapChainPanelNativeIid
+        );
+        var panelNativePointer = (NativeSwapChainPanel*)panelNative.ThisPtr;
+        panelNativePointer->SetSwapChain((NativeDxgiSwapChain*)swapchain.NativePointer);
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
