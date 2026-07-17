@@ -4,8 +4,7 @@ using HelixToolkit.Nex.Maths;
 namespace HelixToolkit.Nex.Engine.Tests;
 
 /// <summary>
-/// Regression tests for the <see cref="CameraExtensions.FocusOn(
-/// Camera, BoundingBox, float)"/> overload.
+/// Regression tests for the <see cref="CameraExtensions.FocusOn(Camera, BoundingBox, float)"/> overload.
 /// <para>
 /// The bounding-box overload calculates a camera distance and must delegate to
 /// <see cref="CameraExtensions.FocusOn(Camera, Vector3, float?)"/>. Passing the
