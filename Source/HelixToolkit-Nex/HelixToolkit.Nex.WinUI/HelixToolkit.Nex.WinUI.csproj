@@ -18,6 +18,8 @@
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <PackageIcon>icon.png</PackageIcon>
         <Configurations>Debug;Release</Configurations>
+        <CsWin32RunAsBuildTask>true</CsWin32RunAsBuildTask>
+        <DisableRuntimeMarshalling>true</DisableRuntimeMarshalling>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
         <DefineConstants>$(DefineConstants);HxWinUI</DefineConstants>
@@ -28,6 +30,10 @@
     <ItemGroup Condition="!$([MSBuild]::IsOSPlatform('Linux'))">
         <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.1.3">
             <ExcludeAssets>buildTransitive</ExcludeAssets>
+        </PackageReference>
+        <PackageReference Include="Microsoft.Windows.CsWin32" Version="0.3.298">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
     </ItemGroup>
 
