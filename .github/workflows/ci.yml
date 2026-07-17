@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [ main, develop, release* ]
+    branches: [ main, develop, release/* ]
     tags:
       - 'v*'
     paths-ignore:
@@ -10,7 +10,7 @@ on:
       - 'LICENSE'
       - '.gitignore'
   pull_request:
-    branches: [ main, develop ]
+    branches: [ main, develop, release/* ]
     paths-ignore:
       - '**.md'
       - 'LICENSE'
