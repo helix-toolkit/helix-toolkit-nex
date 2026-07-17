@@ -1,6 +1,6 @@
 name: Documentation Agent
 
-# Runs on every push to main or develop that touches source files (excluding
+# Runs on every push to release or develop that touches source files (excluding
 # Markdown and Samples).  Can also be triggered manually via workflow_dispatch
 # to regenerate all package READMEs from scratch.
 
