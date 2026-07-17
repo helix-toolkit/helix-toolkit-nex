@@ -16,6 +16,16 @@ public struct LineDrawInfo(
     /// </summary>
     public float LineThickness { set; get; } = 1.0f;
 
+    /// <summary>
+    /// Gets or sets the index of the bindless texture used when rendering lines.
+    /// </summary>
+    public uint TextureIndex { set; get; }
+
+    /// <summary>
+    /// Gets or sets the index of the bindless sampler used when rendering lines.
+    /// </summary>
+    public uint SamplerIndex { set; get; }
+
     public readonly int LineCount => Geometry?.Vertices.Count / 2 ?? 0;
 
     /// <summary>

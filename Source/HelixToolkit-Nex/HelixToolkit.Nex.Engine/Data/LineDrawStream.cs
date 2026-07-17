@@ -34,6 +34,8 @@ internal sealed class LineDrawStream : DrawStreamBase<LineDraw, LineDrawInfo>
             // LineDrawInfo.LineThickness. The vertex shader clamps it to [1,64] (Req 2.3).
             LineWidth = lineComp.LineThickness,
             DrawType = (uint)lineComp.Variants,
+            TextureId = lineComp.TextureIndex,
+            SamplerId = lineComp.SamplerIndex,
         };
     }
 
