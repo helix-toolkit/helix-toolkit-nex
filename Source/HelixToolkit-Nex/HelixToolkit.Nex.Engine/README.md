@@ -42,6 +42,8 @@ HelixToolkit.Nex.Engine is a core component of the HelixToolkit.Nex suite, respo
 | `PointDrawStreamRegistry`     | Registry for managing point draw streams.                                       |
 | `MeshDrawStream`              | Manages mesh draw commands, supporting dynamic and static data handling.        |
 | `MeshDrawStreamRegistry`      | Registry for managing mesh draw streams.                                        |
+| `LineDrawStream`              | Manages line draw commands, supporting dynamic and static data handling.        |
+| `LineDrawStreamRegistry`      | Registry for managing line draw streams.                                        |
 | `PickingRegistry`             | Manages picking handlers for different geometry types.                         |
 
 ## Usage Examples
@@ -216,6 +218,11 @@ camera.FocusOn(new Vector3(0, 0, 0), 10f);
 - Introduced `PointDrawStream` for managing point draw commands, replacing the removed `PointCloudData`.
 - `PointDrawStreamRegistry` manages point draw streams, organizing them by `DrawStreamType` and `DrawStreamName`.
 
+### New `LineDrawStream` and `LineDrawStreamRegistry`
+
+- Introduced `LineDrawStream` for managing line draw commands, supporting dynamic and static data handling.
+- `LineDrawStreamRegistry` manages line draw streams, organizing them by `DrawStreamType` and `DrawStreamName`.
+
 ### New Light Nodes
 
 - `DirectionalLightNode`, `PointLightNode`, and `SpotLightNode` added to represent light sources in the scene graph, allowing for more intuitive scene management and light manipulation.
@@ -242,4 +249,8 @@ camera.FocusOn(new Vector3(0, 0, 0), 10f);
 ### New Event in `Engine`
 
 - `OnViewportHovering`: An event that is triggered when the viewport is hovered, providing a `PickingResponse`.
+
+### Updates to `LineDrawStream`
+
+- Added `TextureId` and `SamplerId` properties to `LineDrawStream` and `LineNode` for bindless texture and sampler support.
 ```

@@ -61,6 +61,7 @@ HelixToolkit.Nex.Rendering is responsible for managing the rendering pipeline of
 - **Instancing**: Updated to support dynamic and static instancing modes with ring buffers to prevent GPU stalls.
 - **SysEncodingKind**: Added to enumerate alternate encodings for system-specific rendering.
 - **SsaoMath**: Added to provide GPU-free reference implementations of SSAO effect math, including parameter validation and depth/normal reconstruction.
+- **LineDrawInfo Enhancements**: Added `TextureIndex` and `SamplerIndex` properties for bindless texture and sampler support.
 
 ### Removed Features
 
