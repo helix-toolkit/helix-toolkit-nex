@@ -9,12 +9,10 @@ on:
     branches: [release/*, develop]
     paths:
       - 'Source/HelixToolkit-Nex/**'
-      - '!Source/HelixToolkit-Nex/**/*.md'
       - '!Source/HelixToolkit-Nex/Samples/**'
-    paths-ignore:
-      - '**.md'
-      - 'LICENSE'
-      - '.gitignore'
+      - '!**.md'
+      - '!LICENSE'
+      - '!.gitignore'
   workflow_dispatch:
     inputs:
       force_all:
