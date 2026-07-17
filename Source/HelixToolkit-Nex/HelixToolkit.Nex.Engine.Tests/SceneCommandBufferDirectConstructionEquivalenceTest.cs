@@ -216,6 +216,8 @@ internal sealed class NodeCaseSpec
         new(geometry: null, materialTypeName: RandomMaterialName(rng), cullable: rng.Next(0, 2) == 0, hitable: rng.Next(0, 2) == 0)
         {
             LineThickness = RandomFloat(rng),
+            TextureIndex = (uint)rng.Next(0, 16),
+            SamplerIndex = (uint)rng.Next(0, 16),
         };
 
     private static PointDrawInfo MakePointInfo(Random rng) =>

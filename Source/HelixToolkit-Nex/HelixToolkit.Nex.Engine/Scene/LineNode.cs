@@ -86,6 +86,38 @@ public class LineNode : Node
     }
 
     /// <summary>
+    /// Gets or sets the index of the bindless texture used when rendering the line.
+    /// </summary>
+    public uint TextureIndex
+    {
+        get => Entity.Get<LineDrawInfo>().TextureIndex;
+        set
+        {
+            Entity.Update<LineDrawInfo>(comp =>
+            {
+                comp.TextureIndex = value;
+                return comp;
+            });
+        }
+    }
+
+    /// <summary>
+    /// Gets or sets the index of the bindless sampler used when rendering the line.
+    /// </summary>
+    public uint SamplerIndex
+    {
+        get => Entity.Get<LineDrawInfo>().SamplerIndex;
+        set
+        {
+            Entity.Update<LineDrawInfo>(comp =>
+            {
+                comp.SamplerIndex = value;
+                return comp;
+            });
+        }
+    }
+
+    /// <summary>
     /// Gets or sets the line material name used for shader lookup.
     /// </summary>
     public string? LineMaterialName
