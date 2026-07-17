@@ -109,7 +109,8 @@ namespace HelixToolkit.Nex.Engine
             requiredDistance = MathF.Max(requiredDistance, camera.NearPlane + 0.01f);
 
             // Focus on the center with the calculated distance
-            camera.FocusOn(center, requiredDistance);
+            // Use the named argument to avoid resolving to the bounding-sphere overload.
+            camera.FocusOn(center, distance: requiredDistance);
         }
 
         /// <summary>
