@@ -3,49 +3,49 @@
 ```glsl
 PBRProperties getPBRProperties()
 ```
-- **Description**: Retrieves the PBR (Physically Based Rendering) properties for the current material. This function accesses the material buffer using the provided material ID.
+- **Description**: Retrieves the PBR (Physically Based Rendering) properties for the current material using the material buffer address.
 - **Return Type**: `PBRProperties`
 
 ```glsl
 uint64_t getTimeMs()
 ```
-- **Description**: Returns the current time in milliseconds. This can be used for animations or time-dependent calculations within the shader.
+- **Description**: Returns the current time in milliseconds as provided by the frame parameters.
 - **Return Type**: `uint64_t`
 
 ```glsl
 mat4 getViewProjection()
 ```
-- **Description**: Retrieves the view-projection matrix, which is used to transform world coordinates to clip space.
+- **Description**: Retrieves the view-projection matrix from the frame parameters, used for transforming coordinates from world space to clip space.
 - **Return Type**: `mat4`
 
 ```glsl
 mat4 getInvViewProjection()
 ```
-- **Description**: Retrieves the inverse of the view-projection matrix. This is useful for transforming coordinates from clip space back to world space.
+- **Description**: Retrieves the inverse view-projection matrix, useful for transforming coordinates from clip space back to world space.
 - **Return Type**: `mat4`
 
 ```glsl
 mat4 getView()
 ```
-- **Description**: Returns the view matrix, which transforms world coordinates to view space.
+- **Description**: Retrieves the view matrix, which transforms coordinates from world space to camera space.
 - **Return Type**: `mat4`
 
 ```glsl
 mat4 getInvView()
 ```
-- **Description**: Returns the inverse of the view matrix. This is used to transform coordinates from view space back to world space.
+- **Description**: Retrieves the inverse view matrix, used for transforming coordinates from camera space back to world space.
 - **Return Type**: `mat4`
 
 ```glsl
 vec3 getCameraPosition()
 ```
-- **Description**: Retrieves the position of the camera in world space.
+- **Description**: Returns the position of the camera in world space.
 - **Return Type**: `vec3`
 
 ```glsl
 vec2 getScreenSize()
 ```
-- **Description**: Returns the dimensions of the screen or viewport.
+- **Description**: Retrieves the dimensions of the screen in pixels.
 - **Return Type**: `vec2`
 
 ```glsl
@@ -69,13 +69,13 @@ vec3 getPointerRayOrigin()
 ```glsl
 float getPointerRingOuterDistThreshold()
 ```
-- **Description**: Returns the outer distance threshold for the pointer ring, used to determine the ring's boundary.
+- **Description**: Returns the outer distance threshold for the pointer ring, used to determine the ring's outer boundary.
 - **Return Type**: `float`
 
 ```glsl
 float getPointerRingInnerDistThreshold()
 ```
-- **Description**: Returns the inner distance threshold for the pointer ring, used to determine the ring's boundary.
+- **Description**: Returns the inner distance threshold for the pointer ring, used to determine the ring's inner boundary.
 - **Return Type**: `float`
 
 ```glsl
@@ -105,5 +105,5 @@ bool isInPointerRing()
 ```glsl
 vec4 mixWithPointerRing(in vec4 color)
 ```
-- **Description**: Blends the input color with the pointer ring color if the pointer ring is enabled and the fragment is within the ring. The blending considers the surface normal and view direction for natural shading.
+- **Description**: Blends the input color with the pointer ring color if the pointer ring is enabled and the fragment is within the ring. The blending is modulated by the surface normal and view direction to achieve natural shading.
 - **Return Type**: `vec4`
