@@ -62,6 +62,7 @@ viewport.PointerPressed += (sender, e) =>
 - **Removed `BeforeRender` Event**: The `BeforeRender` event has been removed from `HelixViewport`. Use the `ViewportClient` to provide camera and scene data.
 - **Project Reference Update**: Added a project reference to `HelixToolkit.Nex.Interop` to facilitate interop functionalities.
 - **Interop Enhancements**: Introduced `Microsoft.Windows.CsWin32` for improved COM interop, replacing manual COM interface definitions with generated interop code.
+- **Swap Chain Detachment**: The swap chain is now detached from the `SwapChainPanel` before releasing it to manage COM references properly.
 
 ## Architecture Notes
 
