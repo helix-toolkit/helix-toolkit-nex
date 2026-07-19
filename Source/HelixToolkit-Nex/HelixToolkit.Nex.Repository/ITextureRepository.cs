@@ -86,6 +86,83 @@ public interface ITextureRepository : IDisposable
     TextureRef GetOrCreateFromImage(string name, Image image, bool generateMipmaps = true);
 
     /// <summary>
+    /// Gets or creates a cubemap GPU texture from six already decoded face images, using
+    /// <paramref name="name"/> as the cache key.
+    /// </summary>
+    /// <param name="name">A unique name that identifies this cubemap in the cache.</param>
+    /// <param name="faces">
+    /// Exactly six square, equally sized face images in the standard cubemap order:
+    /// index 0 = +X, 1 = -X, 2 = +Y, 3 = -Y, 4 = +Z, 5 = -Z.
+    /// </param>
+    /// <param name="generateMipmaps">When <c>true</c>, generates the full mip chain on the GPU after upload. Defaults to <c>true</c>.</param>
+    /// <returns>A <see cref="TextureRef"/> for the resulting <c>TextureCube</c>.</returns>
+    /// <exception cref="ArgumentException">Thrown if <paramref name="name"/> is null/empty or the faces are invalid (not six, not square, mismatched size/format).</exception>
+    /// <exception cref="ObjectDisposedException">Thrown if the repository or context has been disposed.</exception>
+    /// <remarks>
+    /// The default implementation assembles the faces into a cube <see cref="Image"/> via
+    /// <see cref="Image.NewCube(IReadOnlyList{Image})"/> and forwards to
+    /// <see cref="GetOrCreateFromImage"/>; <see cref="TextureRepository"/> overrides it for caching.
+    /// </remarks>
+    TextureRef GetOrCreateCubeFromImages(
+        string name,
+        IReadOnlyList<Image> faces,
+        bool generateMipmaps = true
+    )
+    {
+        using var cube = Image.NewCube(faces);
+        return GetOrCreateFromImage(name, cube, generateMipmaps);
+    }
+
+    /// <summary>
+    /// Gets or creates a cubemap GPU texture by loading six face image files from disk. A
+    /// deterministic composite of the six normalized absolute paths is used as the cache key.
+    /// </summary>
+    /// <param name="filePaths">
+    /// Exactly six image file paths in the standard cubemap order:
+    /// index 0 = +X, 1 = -X, 2 = +Y, 3 = -Y, 4 = +Z, 5 = -Z. Faces must decode to square,
+    /// equally sized images of the same format (PNG/JPG/BMP/TGA/… decode to RGBA8).
+    /// </param>
+    /// <param name="generateMipmaps">When <c>true</c>, generates the full mip chain on the GPU after upload. Defaults to <c>true</c>.</param>
+    /// <param name="debugName">Optional debug name forwarded to the GPU resource. Defaults to <c>"Cubemap"</c>.</param>
+    /// <returns>A <see cref="TextureRef"/> for the resulting <c>TextureCube</c>.</returns>
+    /// <exception cref="ArgumentException">Thrown if there are not exactly six paths, or a path is null/empty.</exception>
+    /// <exception cref="FileNotFoundException">Thrown if any face file does not exist.</exception>
+    /// <exception cref="InvalidOperationException">Thrown if any face cannot be decoded or texture creation fails.</exception>
+    /// <exception cref="ObjectDisposedException">Thrown if the repository or context has been disposed.</exception>
+    /// <remarks>
+    /// The default implementation decodes each face and forwards to
+    /// <see cref="GetOrCreateCubeFromImages"/>; <see cref="TextureRepository"/> overrides it to key
+    /// the cache by the six normalized paths and to validate file existence up front.
+    /// </remarks>
+    TextureRef GetOrCreateCubeFromFiles(
+        IReadOnlyList<string> filePaths,
+        bool generateMipmaps = true,
+        string? debugName = null
+    )
+    {
+        ArgumentNullException.ThrowIfNull(filePaths);
+
+        var faces = filePaths
+            .Select(p =>
+                Image.Load(p)
+                ?? throw new InvalidOperationException($"Failed to decode cube face image: '{p}'")
+            )
+            .ToArray();
+        try
+        {
+            var name = string.IsNullOrEmpty(debugName)
+                ? string.Join("|", filePaths.Select(Path.GetFullPath))
+                : debugName;
+            return GetOrCreateCubeFromImages(name, faces, generateMipmaps);
+        }
+        finally
+        {
+            foreach (var face in faces)
+                face?.Dispose();
+        }
+    }
+
+    /// <summary>
     /// Gets or creates a GPU texture from a memory stream asynchronously, using <paramref name="name"/> as the cache key.
     /// </summary>
     /// <param name="name">

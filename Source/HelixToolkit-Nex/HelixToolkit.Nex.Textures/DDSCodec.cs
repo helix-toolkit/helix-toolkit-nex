@@ -696,6 +696,10 @@ internal static class DDSCodec
                 case DDSConstants.D3D10_RESOURCE_DIMENSION_TEXTURE2D:
                     if ((dx10.MiscFlag & DDSConstants.DDS_RESOURCE_MISC_TEXTURECUBE) != 0)
                     {
+                        // Cube faces are read as sequential array slices in the file's stored
+                        // order. A well-formed cube DDS stores them in the standard D3D/Vulkan
+                        // face order +X, -X, +Y, -Y, +Z, -Z; that order is preserved verbatim
+                        // through the pipeline (no reordering here or in TextureCreator).
                         description.ArraySize *= 6;
                         description.Dimension = TextureDimension.TextureCube;
                     }
@@ -746,7 +750,9 @@ internal static class DDSCodec
             {
                 if ((header.Caps2 & DDSConstants.DDSCAPS2_CUBEMAP) != 0)
                 {
-                    // Require all 6 faces
+                    // Require all 6 faces. They are consumed as sequential array slices in the
+                    // file's stored order, which must be the standard D3D/Vulkan face order
+                    // +X, -X, +Y, -Y, +Z, -Z (array slice 0..5) — no face reordering is applied.
                     if (
                         (header.Caps2 & DDSConstants.DDSCAPS2_CUBEMAP_ALLFACES)
                         != DDSConstants.DDSCAPS2_CUBEMAP_ALLFACES
@@ -1071,7 +1077,9 @@ internal static class DDSCodec
             WriteStructToStream(stream, dx10);
         }
 
-        // Write pixel data: for each array slice, for each mip level, for each z-slice
+        // Write pixel data: for each array slice, for each mip level, for each z-slice.
+        // For a cubemap the array slices are the six faces and are written in their existing
+        // order, i.e. the standard D3D/Vulkan face order +X, -X, +Y, -Y, +Z, -Z (slice 0..5).
         int index = 0;
         for (int arrayIndex = 0; arrayIndex < description.ArraySize; arrayIndex++)
         {

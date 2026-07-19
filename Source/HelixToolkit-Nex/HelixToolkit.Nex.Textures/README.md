@@ -75,6 +75,44 @@ if (image != null)
 }
 ```
 
+### Cubemaps and Face Ordering
+
+Cubemaps (`TextureDimension.TextureCube`, `ArraySize = 6`) store their six faces as array
+slices `0..5`. Both the DDS codec and `Image.NewCube(faces)` use — and require — the standard
+**D3D/Vulkan cube face order**, which is preserved verbatim through the whole pipeline (no
+reordering or flipping happens on load, save, or GPU upload):
+
+| Slice | Face  | Skybox name |
+| ----- | ----- | ----------- |
+| 0     | `+X`  | right       |
+| 1     | `-X`  | left        |
+| 2     | `+Y`  | top         |
+| 3     | `-Y`  | bottom      |
+| 4     | `+Z`  | front       |
+| 5     | `-Z`  | back        |
+
+**A cubemap `.dds` must store its faces in this order.** DDS files authored by standard tooling
+(e.g. `texassemble`, `texconv`, NVIDIA Texture Tools) already follow it, so a correctly authored
+cube DDS loads with no remapping. If a cubemap looks scrambled, the faces are in the wrong slots;
+if it looks merely mirrored, upside-down, or front/back-swapped, that is an orientation
+(handedness) issue corrected at sample time — see the `FlipX`/`FlipY`/`FlipZ` options on
+`EnvironmentMapConfig` — not a face-ordering problem.
+
+```csharp
+// Assemble a cube Image from six square, equally sized faces in +X,-X,+Y,-Y,+Z,-Z order.
+Image[] faces =
+[
+    Image.Load("right.png")!,  // +X
+    Image.Load("left.png")!,   // -X
+    Image.Load("top.png")!,    // +Y
+    Image.Load("bottom.png")!, // -Y
+    Image.Load("front.png")!,  // +Z
+    Image.Load("back.png")!,   // -Z
+];
+using Image cube = Image.NewCube(faces);
+cube.Save("skybox.dds", ImageFileType.Dds); // written back in the same face order
+```
+
 ### Combining Textures
 
 ```csharp

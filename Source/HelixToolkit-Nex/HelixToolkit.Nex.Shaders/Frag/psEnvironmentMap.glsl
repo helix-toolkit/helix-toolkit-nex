@@ -34,6 +34,10 @@ struct EnvironmentMapPushConstants {
     float intensity;       // Linear radiance multiplier applied to the sampled colour.
     float mipLevel;        // Explicit cubemap LOD to sample (0 = sharpest). Enables a soft/blurred background.
     float rotationY;       // Environment yaw rotation about the world Y axis, in radians.
+    uint flipMask;         // Cubemap axis-flip correction: bit0 = -X, bit1 = -Y, bit2 = -Z (handedness/orientation fix).
+    uint _padding0;
+    uint _padding1;
+    uint _padding2;
 };
 
 layout(push_constant) uniform PushConstants {
@@ -55,6 +59,16 @@ void main() {
     float s = sin(pc.value.rotationY);
     float c = cos(pc.value.rotationY);
     dir = vec3(c * dir.x + s * dir.z, dir.y, -s * dir.x + c * dir.z);
+
+    // Cubemap orientation correction. Vulkan/D3D cube sampling uses a left-handed
+    // convention; a right-handed world may need one or more axes negated so the
+    // environment appears upright and un-mirrored. Driven from EnvironmentMapConfig
+    // so it can be corrected per-asset without re-authoring the cubemap.
+    dir *= vec3(
+        (pc.value.flipMask & 1u) != 0u ? -1.0 : 1.0,
+        (pc.value.flipMask & 2u) != 0u ? -1.0 : 1.0,
+        (pc.value.flipMask & 4u) != 0u ? -1.0 : 1.0
+    );
 
     // Clamp the requested LOD to the cubemap's available mip range so a large
     // "blur" value degrades gracefully to the coarsest mip instead of clamping

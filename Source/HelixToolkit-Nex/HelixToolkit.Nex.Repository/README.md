@@ -44,6 +44,34 @@ using var stream = File.OpenRead("path/to/texture.png");
 var textureRef = textureRepo.GetOrCreateFromStream("uniqueTextureName", stream, generateMipmaps: true);
 ```
 
+### Building a Cubemap from Six Face Images
+
+Assemble an environment cubemap from six individual images (e.g. PNG/JPG faces). Faces must be
+square, equally sized, and supplied in the standard cubemap layer order
+**+X, -X, +Y, -Y, +Z, -Z** (for skybox-named faces: right, left, top, bottom, front, back). The
+returned `TextureRef` can be assigned directly to `RenderContext.EnvironmentMap.Texture`.
+
+```csharp
+using HelixToolkit.Nex.Repository;
+
+var context = /* Obtain IContext instance */;
+var textureRepo = new TextureRepository(context);
+
+// From files on disk (cached by the six normalized paths):
+var cubemap = textureRepo.GetOrCreateCubeFromFiles(
+[
+    "skybox/right.jpg",  // +X
+    "skybox/left.jpg",   // -X
+    "skybox/top.jpg",    // +Y
+    "skybox/bottom.jpg", // -Y
+    "skybox/front.jpg",  // +Z
+    "skybox/back.jpg",   // -Z
+], generateMipmaps: true, debugName: "SkyboxCubemap");
+
+// Or from already-decoded images (cached by the supplied name):
+// var cubemap = textureRepo.GetOrCreateCubeFromImages("SkyboxCubemap", faces);
+```
+
 ### Caching a Shader Module from GLSL Source
 
 ```csharp

@@ -123,6 +123,24 @@ internal class PropertiesPanel
                 {
                     env.Blur = envBlur;
                 }
+                Gui.Text("Orientation Correction");
+                var flipX = env.FlipX;
+                if (Gui.Checkbox("Flip X", ref flipX))
+                {
+                    env.FlipX = flipX;
+                }
+                Gui.SameLine();
+                var flipY = env.FlipY;
+                if (Gui.Checkbox("Flip Y", ref flipY))
+                {
+                    env.FlipY = flipY;
+                }
+                Gui.SameLine();
+                var flipZ = env.FlipZ;
+                if (Gui.Checkbox("Flip Z", ref flipZ))
+                {
+                    env.FlipZ = flipZ;
+                }
                 Gui.EndDisabled();
             }
             Gui.EndChild();

@@ -223,9 +223,15 @@ internal class GltfImporterApp : ApplicationBase
     }
 
     /// <summary>
-    /// Loads the Grand Canyon HDR cubemap from <c>Assets/EnvironmentMaps</c> and assigns it to the
-    /// render context's environment-map config so <c>EnvironmentMapNode</c> draws it as the scene
-    /// background. The texture is owned by the resource manager's texture repository.
+    /// Builds an environment cubemap from six individual face images in
+    /// <c>Assets/EnvironmentMaps/water</c> and assigns it to the render context's environment-map
+    /// config so <c>EnvironmentMapNode</c> draws it as the scene background. The texture is owned
+    /// by the resource manager's texture repository.
+    /// <para>
+    /// The faces are supplied in the standard cubemap order expected by
+    /// <c>GetOrCreateCubeFromFiles</c>: +X, -X, +Y, -Y, +Z, -Z, which for a skybox-named face set
+    /// maps to right, left, top, bottom, front, back.
+    /// </para>
     /// </summary>
     private void SetupEnvironmentMap()
     {
@@ -234,21 +240,28 @@ internal class GltfImporterApp : ApplicationBase
             return;
         }
 
-        string path = Path.Combine(
+        string dir = Path.Combine(
             HelixToolkit.Nex.Sample.Application.Paths.AssetsDir,
             "EnvironmentMaps",
-            "Cubemap_Grandcanyon.dds"
+            "water"
         );
-        if (!File.Exists(path))
-        {
-            _logger.LogWarning("Environment cubemap not found: {Path}", path);
-            return;
-        }
+
+        // Standard cubemap layer order: +X, -X, +Y, -Y, +Z, -Z.
+        string[] facePaths =
+        [
+            Path.Combine(dir, "right.jpg"), // +X
+            Path.Combine(dir, "left.jpg"), // -X
+            Path.Combine(dir, "top.jpg"), // +Y
+            Path.Combine(dir, "bottom.jpg"), // -Y
+            Path.Combine(dir, "front.jpg"), // +Z
+            Path.Combine(dir, "back.jpg"), // -Z
+        ];
 
         try
         {
-            _environmentMap = _engine.ResourceManager.TextureRepository.GetOrCreateFromFile(
-                path,
+            _environmentMap = _engine.ResourceManager.TextureRepository.GetOrCreateCubeFromFiles(
+                facePaths,
+                generateMipmaps: true,
                 debugName: "EnvironmentCubemap"
             );
             _renderContext.EnvironmentMap.Texture = _environmentMap;
@@ -256,7 +269,7 @@ internal class GltfImporterApp : ApplicationBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to load environment cubemap: {Path}", path);
+            _logger.LogError(ex, "Failed to build environment cubemap from faces in: {Dir}", dir);
         }
     }
 
