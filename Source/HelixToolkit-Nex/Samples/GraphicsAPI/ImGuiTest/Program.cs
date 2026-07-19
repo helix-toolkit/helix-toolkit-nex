@@ -74,7 +74,7 @@ internal class App : Application
     private void LoadImageSample()
     {
         Configuration.Default.PreferContiguousImageBuffers = true;
-        using var image = Image.Load<Rgba32>("Assets/image_sample.jpg");
+        using var image = Image.Load<Rgba32>(Path.Combine(AppContext.BaseDirectory, "Assets", "image_sample.jpg"));
         if (image == null || image.Width == 0 || image.Height == 0)
         {
             throw new Exception("Failed to load noise texture.");
