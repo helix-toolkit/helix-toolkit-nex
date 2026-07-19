@@ -114,8 +114,8 @@ public interface ITextureRepository : IDisposable
     }
 
     /// <summary>
-    /// Gets or creates a cubemap GPU texture by loading six face image files from disk. A
-    /// deterministic composite of the six normalized absolute paths is used as the cache key.
+    /// Gets or creates a cubemap GPU texture by loading six face image files from disk. If debug name is not provided,
+    /// A deterministic composite of the six normalized absolute paths is used as the cache key.
     /// </summary>
     /// <param name="filePaths">
     /// Exactly six image file paths in the standard cubemap order:
@@ -123,7 +123,7 @@ public interface ITextureRepository : IDisposable
     /// equally sized images of the same format (PNG/JPG/BMP/TGA/… decode to RGBA8).
     /// </param>
     /// <param name="generateMipmaps">When <c>true</c>, generates the full mip chain on the GPU after upload. Defaults to <c>true</c>.</param>
-    /// <param name="debugName">Optional debug name forwarded to the GPU resource. Defaults to <c>"Cubemap"</c>.</param>
+    /// <param name="cubeMapName">Optional name as key used for storing the cubemap. Defaults to <c>null</c>.</param>
     /// <returns>A <see cref="TextureRef"/> for the resulting <c>TextureCube</c>.</returns>
     /// <exception cref="ArgumentException">Thrown if there are not exactly six paths, or a path is null/empty.</exception>
     /// <exception cref="FileNotFoundException">Thrown if any face file does not exist.</exception>
@@ -137,7 +137,7 @@ public interface ITextureRepository : IDisposable
     TextureRef GetOrCreateCubeFromFiles(
         IReadOnlyList<string> filePaths,
         bool generateMipmaps = true,
-        string? debugName = null
+        string? cubeMapName = null
     )
     {
         ArgumentNullException.ThrowIfNull(filePaths);
@@ -150,9 +150,9 @@ public interface ITextureRepository : IDisposable
             .ToArray();
         try
         {
-            var name = string.IsNullOrEmpty(debugName)
+            var name = string.IsNullOrEmpty(cubeMapName)
                 ? string.Join("|", filePaths.Select(Path.GetFullPath))
-                : debugName;
+                : cubeMapName;
             return GetOrCreateCubeFromImages(name, faces, generateMipmaps);
         }
         finally

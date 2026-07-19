@@ -446,7 +446,7 @@ internal sealed partial class TextureDemo : IDisposable
             _environmentMap = _engine.ResourceManager.TextureRepository.GetOrCreateCubeFromFiles(
                 facePaths,
                 generateMipmaps: true,
-                debugName: "EnvironmentCubemap"
+                "EnvironmentCubemap"
             );
             _renderContext.EnvironmentMap.Texture = _environmentMap;
             _renderContext.EnvironmentMap.Enabled = true;
