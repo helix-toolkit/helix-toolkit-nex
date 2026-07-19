@@ -41,11 +41,15 @@ HelixToolkit.Nex.Rendering is responsible for managing the rendering pipeline of
 | `GizmoManager`                   | Manages gizmo instances, including creation, binding, and manipulation.     |
 | `SysEncodingKind`                | Enumerates alternate encodings for system-specific rendering.               |
 | `SsaoMath`                       | Provides GPU-free reference implementations for SSAO effect math.           |
+| `EnvironmentMapConfig`           | Configures environment-map (skybox) rendering for a render context.         |
+| `EnvironmentMapNode`             | Renders an HDR environment cubemap as the scene background (skybox).        |
 
 ## Recent Changes
 
 ### New Features
 
+- **EnvironmentMapConfig**: Added to configure environment-map (skybox) rendering per `RenderContext`.
+- **EnvironmentMapNode**: Added to render an HDR environment cubemap as the scene background.
 - **BillboardHelper**: Added to provide factory helpers for creating image/icon billboards.
 - **GizmoManager Enhancements**: Added binding and drag manipulation capabilities for gizmo instances.
 - **GizmoManager.Binding**: Introduced to manage runtime target-binding for gizmo instances.
@@ -185,6 +189,19 @@ boundingBoxEffect.Apply(renderResources, ref readSlot, ref writeSlot);
 ```csharp
 var borderHighlightEffect = new BorderHighlightPostEffect();
 borderHighlightEffect.Apply(renderResources, ref readSlot, ref writeSlot);
+```
+
+### Configuring Environment Map
+
+```csharp
+var environmentMapConfig = new EnvironmentMapConfig
+{
+    Texture = myCubemapTexture,
+    Intensity = 1.5f,
+    RotationY = MathF.PI / 4,
+    Blur = 0.5f
+};
+renderContext.EnvironmentMap = environmentMapConfig;
 ```
 
 ## Architecture Notes

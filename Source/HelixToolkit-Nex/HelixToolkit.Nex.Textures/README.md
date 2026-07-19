@@ -77,10 +77,7 @@ if (image != null)
 
 ### Cubemaps and Face Ordering
 
-Cubemaps (`TextureDimension.TextureCube`, `ArraySize = 6`) store their six faces as array
-slices `0..5`. Both the DDS codec and `Image.NewCube(faces)` use — and require — the standard
-**D3D/Vulkan cube face order**, which is preserved verbatim through the whole pipeline (no
-reordering or flipping happens on load, save, or GPU upload):
+Cubemaps (`TextureDimension.TextureCube`, `ArraySize = 6`) store their six faces as array slices `0..5`. Both the DDS codec and `Image.NewCube(faces)` use — and require — the standard **D3D/Vulkan cube face order**, which is preserved verbatim through the whole pipeline (no reordering or flipping happens on load, save, or GPU upload):
 
 | Slice | Face  | Skybox name |
 | ----- | ----- | ----------- |
@@ -91,11 +88,7 @@ reordering or flipping happens on load, save, or GPU upload):
 | 4     | `+Z`  | front       |
 | 5     | `-Z`  | back        |
 
-**A cubemap `.dds` must store its faces in this order.** DDS files authored by standard tooling
-(e.g. `texassemble`, `texconv`, NVIDIA Texture Tools) already follow it, so a correctly authored
-cube DDS loads with no remapping. If a cubemap looks scrambled, the faces are in the wrong slots
-(a face-ordering problem); if it looks merely mirrored, upside-down, or front/back-swapped, that is
-an orientation (handedness) issue that must be corrected in the source cubemap.
+**A cubemap `.dds` must store its faces in this order.** DDS files authored by standard tooling (e.g. `texassemble`, `texconv`, NVIDIA Texture Tools) already follow it, so a correctly authored cube DDS loads with no remapping. If a cubemap looks scrambled, the faces are in the wrong slots (a face-ordering problem); if it looks merely mirrored, upside-down, or front/back-swapped, that is an orientation (handedness) issue that must be corrected in the source cubemap.
 
 ```csharp
 // Assemble a cube Image from six square, equally sized faces in +X,-X,+Y,-Y,+Z,-Z order.

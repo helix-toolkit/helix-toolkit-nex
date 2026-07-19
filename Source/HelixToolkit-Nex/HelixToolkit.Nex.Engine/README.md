@@ -203,6 +203,7 @@ camera.FocusOn(new Vector3(0, 0, 0), 10f);
 - Improved interop support with `WithWpf()` and `WithWinUI()` methods for WPF and WinUI applications.
 - New methods for enabling specific rendering features: `WithBillBoard()`, `WithTransparent(TransparentMode mode)`, `WithFXAA()`, `WithSMAA()`, `WithBloom()`, `WithFPS()`.
 - Added `WithSSAO(SsaoQuality quality = SsaoQuality.Medium)`: Registers a single `SsaoPostEffect` into the `PostEffectsNode`, unless an effect named `"SsaoPostEffect"` is already present.
+- Added `WithEnvironment()`: Enables the environment-map (skybox) background by registering an `EnvironmentMapNode` into the default pipeline.
 
 ### Buffer Management Updates
 
