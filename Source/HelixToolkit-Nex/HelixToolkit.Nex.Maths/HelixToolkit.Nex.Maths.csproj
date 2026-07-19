@@ -15,7 +15,7 @@
         <Configurations>Debug;Release;LinuxDebug;LinuxRelease</Configurations>
     </PropertyGroup>
     <ItemGroup>
-        <ProjectReference Include="..\HelixTookit.Nex\HelixToolkit.Nex.csproj" />
+        <ProjectReference Include="..\HelixToolkit.Nex\HelixToolkit.Nex.csproj" />
     </ItemGroup>
     <ItemGroup>
         <None Update="README.md">

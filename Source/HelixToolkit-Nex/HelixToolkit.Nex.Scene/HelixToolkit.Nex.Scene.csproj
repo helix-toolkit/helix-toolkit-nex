@@ -12,7 +12,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\HelixTookit.Nex\HelixToolkit.Nex.csproj" />
+        <ProjectReference Include="..\HelixToolkit.Nex\HelixToolkit.Nex.csproj" />
         <ProjectReference Include="..\HelixToolkit.Nex.EntityComponentSystem\HelixToolkit.Nex.ECS.csproj" />
         <ProjectReference Include="..\HelixToolkit.Nex.Maths\HelixToolkit.Nex.Maths.csproj" />
     </ItemGroup>

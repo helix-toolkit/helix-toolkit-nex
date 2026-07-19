@@ -116,7 +116,7 @@ dotnet format --include File1.cs File2.cs
 
 ### Format specific projects
 ```bash
-dotnet format Source/HelixToolkit-Nex/HelixTookit.Nex/HelixToolkit.Nex.csproj
+dotnet format Source/HelixToolkit-Nex/HelixToolkit.Nex/HelixToolkit.Nex.csproj
 ```
 
 ## IDE Integration
