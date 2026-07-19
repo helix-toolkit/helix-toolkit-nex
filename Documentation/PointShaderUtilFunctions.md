@@ -15,7 +15,7 @@ vec4 getColor()
 ```glsl
 float getPointSize()
 ```
-- **Description**: Retrieves the screen size of the point being processed.
+- **Description**: Retrieves the screen size of the point being rendered.
 - **Return Type**: `float`
 
 ```glsl
@@ -111,23 +111,23 @@ float getPointerRingColorMix()
 ```glsl
 vec3 getPointerRingColor()
 ```
-- **Description**: Retrieves the color used for the pointer ring effect.
+- **Description**: Retrieves the color of the pointer ring effect.
 - **Return Type**: `vec3`
 
 ```glsl
 float getFragToPointerRayDistance()
 ```
-- **Description**: Computes the distance from the fragment to the closest point on the pointer ray.
+- **Description**: Calculates the distance from the fragment to the closest point on the pointer ray.
 - **Return Type**: `float`
 
 ```glsl
 bool isInPointerRing()
 ```
-- **Description**: Determines if the fragment is within the pointer ring's distance thresholds.
+- **Description**: Determines if the fragment is within the pointer ring effect's distance thresholds.
 - **Return Type**: `bool`
 
 ```glsl
 vec4 mixWithPointerRing(in vec4 color)
 ```
-- **Description**: Mixes the input color with the pointer ring color if the pointer ring effect is enabled and the fragment is within the ring.
+- **Description**: Mixes the fragment's color with the pointer ring color if the effect is enabled and the fragment is within the ring.
 - **Return Type**: `vec4`
