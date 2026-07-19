@@ -85,6 +85,8 @@ internal sealed partial class TextureDemo
         Gui.Spacing();
         DrawMaterialSection();
         Gui.Spacing();
+        DrawEnvironmentSection();
+        Gui.Spacing();
         DrawAnimationSection();
         Gui.Spacing();
         DrawWireframeToggle();
@@ -266,6 +268,49 @@ internal sealed partial class TextureDemo
         _material.Roughness = Roughness;
         _material.Ao = Ao;
         _material.Opacity = Opacity;
+    }
+
+    // -------------------------------------------------------------------------
+    // Environment map
+    // -------------------------------------------------------------------------
+
+    private void DrawEnvironmentSection()
+    {
+        if (!Gui.CollapsingHeader("Environment Map", ImGuiTreeNodeFlags.DefaultOpen))
+            return;
+
+        var env = _renderContext?.EnvironmentMap;
+        if (env is null)
+            return;
+
+        if (!env.HasValidTexture)
+        {
+            Gui.TextDisabled("No environment map loaded");
+            return;
+        }
+
+        var enabled = env.Enabled;
+        if (Gui.Checkbox("Draw Skybox Background", ref enabled))
+            env.Enabled = enabled;
+
+        var renderCubeMap = env.RenderCubeMap;
+        if (Gui.Checkbox("PBR Cubemap Reflections", ref renderCubeMap))
+            env.RenderCubeMap = renderCubeMap;
+
+        var intensity = env.Intensity;
+        Gui.SetNextItemWidth(-1f);
+        if (Gui.SliderFloat("##EnvIntensity", ref intensity, 0f, 5f, "Intensity %.2f"))
+            env.Intensity = intensity;
+
+        var rotationDeg = env.RotationY * (180f / MathF.PI);
+        Gui.SetNextItemWidth(-1f);
+        if (Gui.SliderFloat("##EnvRotation", ref rotationDeg, -180f, 180f, "Rotation %.0f°"))
+            env.RotationY = rotationDeg * (MathF.PI / 180f);
+
+        var blur = env.Blur;
+        Gui.SetNextItemWidth(-1f);
+        if (Gui.SliderFloat("##EnvBlur", ref blur, 0f, 8f, "Blur %.2f"))
+            env.Blur = blur;
     }
 
     // -------------------------------------------------------------------------

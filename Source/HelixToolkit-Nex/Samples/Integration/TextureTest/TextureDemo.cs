@@ -120,8 +120,8 @@ internal sealed partial class TextureDemo : IDisposable
     [
         new TextureSetDesc(
             DisplayName: "Earth",
-            AlbedoFile: "Assets/Textures/Earth/2k_earth_daymap.jpg",
-            NormalFile: "Assets/Textures/Earth/2k_earth_normal_map.tif",
+            AlbedoFile: "Textures/Earth/2k_earth_daymap.jpg",
+            NormalFile: "Textures/Earth/2k_earth_normal_map.tif",
             MetallicRoughnessFile: null,
             MetallicFile: null,
             RoughnessFile: null,
@@ -135,13 +135,13 @@ internal sealed partial class TextureDemo : IDisposable
         ),
         new TextureSetDesc(
             DisplayName: "Metal Corroded",
-            AlbedoFile: "Assets/Textures/MetalCorroded/MetalCorrodedHeavy001_COL_2K_METALNESS.jpg",
-            NormalFile: "Assets/Textures/MetalCorroded/MetalCorrodedHeavy001_NRM_2K_METALNESS.jpg",
+            AlbedoFile: "Textures/MetalCorroded/MetalCorrodedHeavy001_COL_2K_METALNESS.jpg",
+            NormalFile: "Textures/MetalCorroded/MetalCorrodedHeavy001_NRM_2K_METALNESS.jpg",
             MetallicRoughnessFile: null,
-            MetallicFile: "Assets/Textures/MetalCorroded/MetalCorrodedHeavy001_METALNESS_2K_METALNESS.jpg",
-            RoughnessFile: "Assets/Textures/MetalCorroded/MetalCorrodedHeavy001_ROUGHNESS_2K_METALNESS.jpg",
+            MetallicFile: "Textures/MetalCorroded/MetalCorrodedHeavy001_METALNESS_2K_METALNESS.jpg",
+            RoughnessFile: "Textures/MetalCorroded/MetalCorrodedHeavy001_ROUGHNESS_2K_METALNESS.jpg",
             RoughnessIsGloss: false,
-            DisplaceFile: "Assets/Textures/MetalCorroded/MetalCorrodedHeavy001_DISP_2K_METALNESS.jpg",
+            DisplaceFile: "Textures/MetalCorroded/MetalCorrodedHeavy001_DISP_2K_METALNESS.jpg",
             BumpFile: null,
             AoFile: null,
             DefaultMetallic: 1.0f,
@@ -150,15 +150,15 @@ internal sealed partial class TextureDemo : IDisposable
         ),
         new TextureSetDesc(
             DisplayName: "Ceramic Glossy Tile",
-            AlbedoFile: "Assets/Textures/CeramicGlossyTile/TilesMosaicPennyround001_COL_2K.png",
-            NormalFile: "Assets/Textures/CeramicGlossyTile/TilesMosaicPennyround001_NRM_2K.png",
+            AlbedoFile: "Textures/CeramicGlossyTile/TilesMosaicPennyround001_COL_2K.png",
+            NormalFile: "Textures/CeramicGlossyTile/TilesMosaicPennyround001_NRM_2K.png",
             MetallicRoughnessFile: null,
-            MetallicFile: "Assets/Textures/CeramicGlossyTile/TilesMosaicPennyround001_REFL_2K.png",
+            MetallicFile: "Textures/CeramicGlossyTile/TilesMosaicPennyround001_REFL_2K.png",
             // GLOSS map — will be inverted to roughness
-            RoughnessFile: "Assets/Textures/CeramicGlossyTile/TilesMosaicPennyround001_GLOSS_2K.png",
+            RoughnessFile: "Textures/CeramicGlossyTile/TilesMosaicPennyround001_GLOSS_2K.png",
             RoughnessIsGloss: true,
-            AoFile: "Assets/Textures/CeramicGlossyTile/TilesMosaicPennyround001_AO_2K.png",
-            BumpFile: "Assets/Textures/CeramicGlossyTile/TilesMosaicPennyround001_BUMP_2K.png",
+            AoFile: "Textures/CeramicGlossyTile/TilesMosaicPennyround001_AO_2K.png",
+            BumpFile: "Textures/CeramicGlossyTile/TilesMosaicPennyround001_BUMP_2K.png",
             DisplaceFile: null,
             DefaultMetallic: 0.0f,
             DefaultRoughness: 0.2f,
@@ -169,14 +169,14 @@ internal sealed partial class TextureDemo : IDisposable
         ),
         new TextureSetDesc(
             DisplayName: "Grass Patchy Ground",
-            AlbedoFile: "Assets/Textures/GrassPatchyGround/Poliigon_GrassPatchyGround_4585_BaseColor.jpg",
-            NormalFile: "Assets/Textures/GrassPatchyGround/Poliigon_GrassPatchyGround_4585_Normal.png",
+            AlbedoFile: "Textures/GrassPatchyGround/Poliigon_GrassPatchyGround_4585_BaseColor.jpg",
+            NormalFile: "Textures/GrassPatchyGround/Poliigon_GrassPatchyGround_4585_Normal.png",
             MetallicRoughnessFile: null,
-            MetallicFile: "Assets/Textures/GrassPatchyGround/Poliigon_GrassPatchyGround_4585_Metallic.jpg",
+            MetallicFile: "Textures/GrassPatchyGround/Poliigon_GrassPatchyGround_4585_Metallic.jpg",
             // GLOSS map — will be inverted to roughness
-            RoughnessFile: "Assets/Textures/GrassPatchyGround/Poliigon_GrassPatchyGround_4585_Roughness.jpg",
+            RoughnessFile: "Textures/GrassPatchyGround/Poliigon_GrassPatchyGround_4585_Roughness.jpg",
             RoughnessIsGloss: false,
-            AoFile: "Assets/Textures/GrassPatchyGround/Poliigon_GrassPatchyGround_4585_AmbientOcclusion.png",
+            AoFile: "Textures/GrassPatchyGround/Poliigon_GrassPatchyGround_4585_AmbientOcclusion.png",
             BumpFile: null,
             DisplaceFile: null,
             DefaultMetallic: 0.0f,
@@ -185,10 +185,10 @@ internal sealed partial class TextureDemo : IDisposable
         ),
         new TextureSetDesc(
             DisplayName: "Metal Matte",
-            AlbedoFile: "Assets/Textures/MetalMatte/Poliigon_MetalPaintedMatte_7037_BaseColor.jpg",
-            NormalFile: "Assets/Textures/MetalMatte/Poliigon_MetalPaintedMatte_7037_Normal.png",
-            DisplaceFile: "Assets/Textures/MetalMatte/Poliigon_MetalPaintedMatte_7037_Displacement.tiff",
-            MetallicRoughnessFile: "Assets/Textures/MetalMatte/Poliigon_MetalPaintedMatte_7037_ORM.jpg",
+            AlbedoFile: "Textures/MetalMatte/Poliigon_MetalPaintedMatte_7037_BaseColor.jpg",
+            NormalFile: "Textures/MetalMatte/Poliigon_MetalPaintedMatte_7037_Normal.png",
+            DisplaceFile: "Textures/MetalMatte/Poliigon_MetalPaintedMatte_7037_Displacement.tiff",
+            MetallicRoughnessFile: "Textures/MetalMatte/Poliigon_MetalPaintedMatte_7037_ORM.jpg",
             BumpFile: null,
             RoughnessIsGloss: false,
             DefaultMetallic: 0.8f,
@@ -196,7 +196,7 @@ internal sealed partial class TextureDemo : IDisposable
             DefaultAo: 1.0f,
             MetallicFile: null,
             RoughnessFile: null,
-            AoFile: "Assets/Textures/MetalMatte/Poliigon_MetalPaintedMatte_7037_ORM.jpg"
+            AoFile: "Textures/MetalMatte/Poliigon_MetalPaintedMatte_7037_ORM.jpg"
         ),
     ];
 
@@ -228,6 +228,7 @@ internal sealed partial class TextureDemo : IDisposable
     private PBRMaterialProperties? _material;
     private SamplerRef _sampler = SamplerRef.Null;
     private SamplerRef _displaceSampler = SamplerRef.Null;
+    private TextureRef _environmentMap = TextureRef.Null;
 
     // ---- Texture set state ----
     private readonly LoadedTextureSet?[] _loadedSets = new LoadedTextureSet?[TextureSets.Length];
@@ -285,6 +286,7 @@ internal sealed partial class TextureDemo : IDisposable
         _engine = EngineBuilder
             .Create(_context)
             .WithDefaultNodes(false)
+            .WithEnvironment()
             .WithPostEffects(post =>
             {
                 post.AddEffect(new WireframePostEffect());
@@ -316,6 +318,7 @@ internal sealed partial class TextureDemo : IDisposable
         _worldDataProvider.Initialize();
 
         BuildScene();
+        SetupEnvironmentMap();
 
         _imGuiRenderer = new ImGuiRenderer(_context, new ImGuiConfig());
         _imGuiRenderer.Initialize(_context.GetSwapchainFormat());
@@ -404,6 +407,58 @@ internal sealed partial class TextureDemo : IDisposable
     }
 
     // -------------------------------------------------------------------------
+    // Environment map
+    // -------------------------------------------------------------------------
+
+    /// <summary>
+    /// Builds an environment cubemap from six individual face images in
+    /// <c>Assets/EnvironmentMaps/water</c> and assigns it to the render context's environment-map
+    /// config. <c>EnvironmentMapNode</c> draws it as the scene background, and the PBR shader
+    /// samples it for image-based reflections on the sphere (see <see cref="EnvironmentMapConfig.RenderCubeMap"/>).
+    /// The texture is owned by the resource manager's texture repository.
+    /// </summary>
+    private void SetupEnvironmentMap()
+    {
+        if (_engine is null || _renderContext is null)
+        {
+            return;
+        }
+
+        string dir = Path.Combine(
+            HelixToolkit.Nex.Sample.Application.Paths.AssetsDir,
+            "EnvironmentMaps",
+            "water"
+        );
+
+        // Standard cubemap layer order: +X, -X, +Y, -Y, +Z, -Z.
+        string[] facePaths =
+        [
+            Path.Combine(dir, "right.jpg"), // +X
+            Path.Combine(dir, "left.jpg"), // -X
+            Path.Combine(dir, "top.jpg"), // +Y
+            Path.Combine(dir, "bottom.jpg"), // -Y
+            Path.Combine(dir, "front.jpg"), // +Z
+            Path.Combine(dir, "back.jpg"), // -Z
+        ];
+
+        try
+        {
+            _environmentMap = _engine.ResourceManager.TextureRepository.GetOrCreateCubeFromFiles(
+                facePaths,
+                generateMipmaps: true,
+                debugName: "EnvironmentCubemap"
+            );
+            _renderContext.EnvironmentMap.Texture = _environmentMap;
+            _renderContext.EnvironmentMap.Enabled = true;
+            _renderContext.EnvironmentMap.RenderCubeMap = true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to build environment cubemap from faces in: {Dir}", dir);
+        }
+    }
+
+    // -------------------------------------------------------------------------
     // Texture set loading
     // -------------------------------------------------------------------------
 
@@ -475,18 +530,9 @@ internal sealed partial class TextureDemo : IDisposable
 
         try
         {
-            Image? aoImg =
-                desc.AoFile is not null && File.Exists(desc.AoFile)
-                    ? Image.Load(desc.AoFile)
-                    : null;
-            Image? roughnessImg =
-                desc.RoughnessFile is not null && File.Exists(desc.RoughnessFile)
-                    ? Image.Load(desc.RoughnessFile)
-                    : null;
-            Image? metallicImg =
-                desc.MetallicFile is not null && File.Exists(desc.MetallicFile)
-                    ? Image.Load(desc.MetallicFile)
-                    : null;
+            var aoImg = LoadImageIfExists(desc.AoFile);
+            var roughnessImg = LoadImageIfExists(desc.RoughnessFile);
+            var metallicImg = LoadImageIfExists(desc.MetallicFile);
 
             if (aoImg is null && roughnessImg is null && metallicImg is null)
                 return TextureRef.Null;
@@ -523,24 +569,45 @@ internal sealed partial class TextureDemo : IDisposable
         }
     }
 
+    /// <summary>
+    /// Resolves a texture path that is relative to the shared samples <c>Assets</c> directory
+    /// (see <see cref="HelixToolkit.Nex.Sample.Application.Paths.AssetsDir"/>) into an absolute
+    /// path. Assets are loaded directly from that directory, so no per-project copies are needed.
+    /// </summary>
+    private static string ResolveAsset(string relativePath) =>
+        Path.Combine(HelixToolkit.Nex.Sample.Application.Paths.AssetsDir, relativePath);
+
+    /// <summary>
+    /// Loads an <see cref="Image"/> from a path relative to the shared samples <c>Assets</c>
+    /// directory, or returns <see langword="null"/> when the path is null or the file is missing.
+    /// </summary>
+    private static Image? LoadImageIfExists(string? relativePath)
+    {
+        if (relativePath is null)
+            return null;
+        var fullPath = ResolveAsset(relativePath);
+        return File.Exists(fullPath) ? Image.Load(fullPath) : null;
+    }
+
     private TextureRef TryLoadFile(ITextureRepository repo, string? filePath, string debugName)
     {
         if (filePath is null)
             return TextureRef.Null;
 
-        if (!File.Exists(filePath))
+        var fullPath = ResolveAsset(filePath);
+        if (!File.Exists(fullPath))
         {
-            _logger.LogWarning("Texture not found: {Path}", filePath);
+            _logger.LogWarning("Texture not found: {Path}", fullPath);
             return TextureRef.Null;
         }
 
         try
         {
-            return repo.GetOrCreateFromFile(filePath, debugName: debugName);
+            return repo.GetOrCreateFromFile(fullPath, debugName: debugName);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to load texture: {Path}", filePath);
+            _logger.LogError(ex, "Failed to load texture: {Path}", fullPath);
             return TextureRef.Null;
         }
     }
