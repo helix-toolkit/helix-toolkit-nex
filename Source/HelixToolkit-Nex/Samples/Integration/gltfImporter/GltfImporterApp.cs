@@ -12,6 +12,7 @@ using HelixToolkit.Nex.Maths;
 using HelixToolkit.Nex.Rendering;
 using HelixToolkit.Nex.Rendering.Components;
 using HelixToolkit.Nex.Rendering.PostEffects;
+using HelixToolkit.Nex.Repository;
 using HelixToolkit.Nex.Scene;
 using ImGuiNET;
 using Microsoft.Extensions.Logging;
@@ -53,6 +54,9 @@ internal class GltfImporterApp : ApplicationBase
     private ResourceManifest? _currentResourceManifest;
 
     private SsaoPostEffect? _ssaoPostEffect;
+
+    // Environment map (skybox) cubemap, owned by the resource manager's texture repository.
+    private TextureRef _environmentMap = TextureRef.Null;
 
     public bool EnableSSAO
     {
@@ -154,6 +158,7 @@ internal class GltfImporterApp : ApplicationBase
             .Create(_context)
             .WithDefaultNodes(false)
             .WithFXAA()
+            .WithEnvironment()
             .WithToneMappingMode(Shaders.ToneMappingMode.Reinhard)
             .WithTransparent(Engine.TransparentMode.WBOIT)
             .WithFPS()
@@ -170,6 +175,9 @@ internal class GltfImporterApp : ApplicationBase
         // Create render context
         _renderContext = _engine.CreateRenderContext();
         _renderContext.Initialize();
+
+        // Load the environment cubemap and enable the environment-map background.
+        SetupEnvironmentMap();
 
         // Create the offscreen render target texture for the 3D viewport
         _renderContext.ResourceSet.AddTexture(
@@ -212,6 +220,44 @@ internal class GltfImporterApp : ApplicationBase
         _viewportPanel = new ViewportPanel(_selectionManager, _cameraController);
 
         SetupLighting();
+    }
+
+    /// <summary>
+    /// Loads the Grand Canyon HDR cubemap from <c>Assets/EnvironmentMaps</c> and assigns it to the
+    /// render context's environment-map config so <c>EnvironmentMapNode</c> draws it as the scene
+    /// background. The texture is owned by the resource manager's texture repository.
+    /// </summary>
+    private void SetupEnvironmentMap()
+    {
+        if (_engine is null || _renderContext is null)
+        {
+            return;
+        }
+
+        string path = Path.Combine(
+            HelixToolkit.Nex.Sample.Application.Paths.AssetsDir,
+            "EnvironmentMaps",
+            "Cubemap_Grandcanyon.dds"
+        );
+        if (!File.Exists(path))
+        {
+            _logger.LogWarning("Environment cubemap not found: {Path}", path);
+            return;
+        }
+
+        try
+        {
+            _environmentMap = _engine.ResourceManager.TextureRepository.GetOrCreateFromFile(
+                path,
+                debugName: "EnvironmentCubemap"
+            );
+            _renderContext.EnvironmentMap.Texture = _environmentMap;
+            _renderContext.EnvironmentMap.Enabled = true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to load environment cubemap: {Path}", path);
+        }
     }
 
     private void SetupLighting()

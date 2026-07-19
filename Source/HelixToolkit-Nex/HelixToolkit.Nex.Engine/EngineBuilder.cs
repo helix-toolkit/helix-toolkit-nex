@@ -83,6 +83,7 @@ public sealed class EngineBuilder
     private bool _withSMAA;
     private bool _withBloom;
     private bool _withFPS;
+    private bool _withEnvironment;
     private TransparentMode _transparentMode = TransparentMode.ForwardPlus;
     private ToneMappingMode _toneMappingMode = ToneMappingMode.ACESFilm;
     private bool _withBillboard;
@@ -330,6 +331,20 @@ public sealed class EngineBuilder
         return this;
     }
 
+    /// <summary>
+    /// Enables the environment-map (skybox) background by registering an
+    /// <see cref="EnvironmentMapNode"/> into the default pipeline. The node draws an HDR
+    /// cubemap behind the scene and is a no-op until a cubemap is assigned to
+    /// <see cref="RenderContext.EnvironmentMap"/> (see <see cref="EnvironmentMapConfig.Texture"/>);
+    /// intensity, rotation and blur are also configured there per <see cref="RenderContext"/>.
+    /// </summary>
+    /// <returns>This builder for method chaining.</returns>
+    public EngineBuilder WithEnvironment()
+    {
+        _withEnvironment = true;
+        return this;
+    }
+
     public EngineBuilder WithToneMappingMode(ToneMappingMode toneMappingMode)
     {
         _toneMappingMode = toneMappingMode;
@@ -429,6 +444,12 @@ public sealed class EngineBuilder
         AddNode(new ForwardPlusLightCullingNode());
         AddNode(new ForwardPlusOpaqueNode());
         AddNode(new ForwardPlusMaskNode());
+        if (_withEnvironment)
+        {
+            // Environment-map background. Draws after opaque/mask geometry and no-ops until a
+            // cubemap is assigned to RenderContext.EnvironmentMap.
+            AddNode(new EnvironmentMapNode());
+        }
         if (_withPointCloud)
         {
             // Points reuse the default FrustumCullNode for culling (point-stream integration),

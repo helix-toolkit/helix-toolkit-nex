@@ -214,6 +214,14 @@ public sealed class RenderContext(IServiceProvider services) : Initializable
     /// </summary>
     public PickingConfig PickingConfig { get; } = new();
 
+    /// <summary>
+    /// Environment-map (skybox) configuration. Assign a cubemap texture to
+    /// <see cref="EnvironmentMapConfig.Texture"/> to have <see cref="RenderNodes.EnvironmentMapNode"/>
+    /// draw an HDR environment background behind the scene. See <see cref="EnvironmentMapConfig"/>
+    /// for intensity, rotation and blur controls.
+    /// </summary>
+    public EnvironmentMapConfig EnvironmentMap { get; } = new();
+
     private Size _windowSize = DefaultWindowSize;
 
     public Size WindowSize

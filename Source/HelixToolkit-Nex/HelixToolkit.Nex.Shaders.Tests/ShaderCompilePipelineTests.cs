@@ -394,6 +394,33 @@ void main() {
         );
     }
 
+    [TestMethod]
+    public void TestEnvironmentMapFragmentShaderCompiles()
+    {
+        // Compiles the real environment-map (skybox) fragment shader, validating the
+        // @code_gen push-constant block and the bindless cubemap sampling helpers
+        // (textureBindlessCubeLod / textureBindlessQueryLevelsCube).
+        var source = GlslUtils.GetEmbeddedGlslShader("Frag/psEnvironmentMap.glsl");
+
+        var (buildResult, shaderModule) = _context!.BuildAndCompileShader(
+            ShaderStage.Fragment,
+            source,
+            debugName: "EnvironmentMap_Fragment_Test"
+        );
+        using var module = shaderModule;
+
+        Assert.IsTrue(
+            buildResult.Success,
+            $"Environment map build should succeed: {string.Join("; ", buildResult.Errors)}"
+        );
+        Assert.IsTrue(shaderModule.Valid, "Environment map fragment module should be valid");
+        Assert.AreEqual(
+            0,
+            buildResult.Errors.Count,
+            $"Should have no errors, but got: {string.Join("; ", buildResult.Errors)}"
+        );
+    }
+
     #endregion
 
     #region Error Handling Pipeline Tests
