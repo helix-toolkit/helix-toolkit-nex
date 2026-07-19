@@ -492,12 +492,13 @@ public static class TextureCreator
         var desc = image.Description;
         bool needsGenerate = generateMipmaps && desc.MipLevels == 1;
         uint mipLevels = ResolveMipLevelCount(desc, generateMipmaps);
+        var type = MapDimension(desc.Dimension);
         return new TextureDesc
         {
-            Type = MapDimension(desc.Dimension),
+            Type = type,
             Format = desc.Format,
             Dimensions = new Dimensions((uint)desc.Width, (uint)desc.Height, (uint)desc.Depth),
-            NumLayers = (uint)desc.ArraySize,
+            NumLayers = type == TextureType.TextureCube ? (uint)desc.ArraySize / 6 : (uint)desc.ArraySize,
             NumMipLevels = mipLevels,
             Usage = TextureUsageBits.Sampled,
             Storage = StorageType.Device,
