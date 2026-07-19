@@ -93,6 +93,37 @@ internal class PropertiesPanel
                 var wireframe = _renderContext.RenderParams.EnableGlobalWireframe;
                 Gui.Checkbox("Wireframe Mode", ref wireframe);
                 _renderContext.RenderParams.EnableGlobalWireframe = wireframe;
+
+                Gui.Spacing();
+                Gui.Separator();
+                Gui.Text("Environment Map");
+                var env = _renderContext.EnvironmentMap;
+                if (!env.HasValidTexture)
+                {
+                    Gui.TextDisabled("No environment map loaded");
+                }
+                var envEnabled = env.Enabled;
+                if (Gui.Checkbox("Enable Environment Map", ref envEnabled))
+                {
+                    env.Enabled = envEnabled;
+                }
+                Gui.BeginDisabled(!env.HasValidTexture || !env.Enabled);
+                var envIntensity = env.Intensity;
+                if (Gui.SliderFloat("Env Intensity", ref envIntensity, 0.0f, 5.0f))
+                {
+                    env.Intensity = envIntensity;
+                }
+                var envRotationDeg = env.RotationY * (180f / MathF.PI);
+                if (Gui.SliderFloat("Env Rotation", ref envRotationDeg, -180f, 180f))
+                {
+                    env.RotationY = envRotationDeg * (MathF.PI / 180f);
+                }
+                var envBlur = env.Blur;
+                if (Gui.SliderFloat("Env Blur", ref envBlur, 0.0f, 8.0f))
+                {
+                    env.Blur = envBlur;
+                }
+                Gui.EndDisabled();
             }
             Gui.EndChild();
             if (Gui.BeginChild("Properties"))
