@@ -40,7 +40,7 @@ Every library folder contains a `README.md` with its purpose, a key-types table,
 Packages are layered bottom-up. Lower layers never depend on higher ones.
 
 **Foundation**
-- `HelixToolkit.Nex` (folder `HelixlTookit.Nex`) — base package: DI helpers, serialization, tracing, shared `ResultCode`. Deps: `Microsoft.Extensions.Logging`, `ZLinq`.
+- `HelixToolkit.Nex` (folder `HelixToolkit.Nex`) — base package: DI helpers, serialization, tracing, shared `ResultCode`. Deps: `Microsoft.Extensions.Logging`, `ZLinq`.
 - `HelixToolkit.Nex.Maths` — vectors, matrices, collections, type converters. **Row-major** matrices (see conventions).
 - `HelixToolkit.Nex.ECS` (folder `HelixToolkit.Nex.EntityComponentSystem`) — the Entity Component System: `World`, `Entity`, `Components<T>`, `EntityCollection`, event bus, deferred `CommandBuffer`.
 
@@ -97,7 +97,7 @@ When adding a dependency between packages, respect the layering — e.g. `Render
 Enforced by [.editorconfig](.editorconfig) and verified in CI via `dotnet format`. Key rules:
 
 - **Language/runtime:** C# `LangVersion=latest`, `net8.0`, `Nullable=enable`, `ImplicitUsings=enable`, `AllowUnsafeBlocks=true`.
-- **Namespaces:** **block-scoped** (`namespace X { ... }`), *not* file-scoped.
+- ****Namespaces:** file-scoped (`namespace X;`) is used throughout the codebase.
 - **`var`:** preferred everywhere (built-in types, apparent types, elsewhere).
 - **Indentation:** 4 spaces for C#; line endings **CRLF** for `.cs`; final newline required; UTF-8. (YAML/JSON use 2-space indent.)
 - **`using` directives:** system directives sorted first.
