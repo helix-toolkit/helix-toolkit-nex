@@ -763,6 +763,7 @@ internal sealed partial class VulkanContext : Initializable, IContext
                     numLayers > 1 ? VK.VK_IMAGE_VIEW_TYPE_CUBE_ARRAY : VK.VK_IMAGE_VIEW_TYPE_CUBE;
                 vkImageType = VK.VK_IMAGE_TYPE_2D;
                 vkCreateFlags = VK.VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+                numLayers *= 6; // each cube face is a layer
                 break;
             default:
                 HxDebug.Assert(false, "Code should NOT be reached");
