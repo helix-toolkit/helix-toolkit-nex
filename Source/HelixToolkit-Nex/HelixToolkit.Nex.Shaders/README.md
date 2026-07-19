@@ -38,6 +38,8 @@ This package is integral to the HelixToolkit-Nex engine, facilitating the creati
 | `BBoxPushConstant`            | Struct for push constants for bounding box visualization.                   |
 | `WireframePushConstants`      | Struct for push constants specific to wireframe rendering, including color and buffer addresses. |
 | `SsaoPushConstants`           | Struct for push constants for the SSAO post-processing shader, newly added to support screen-space ambient occlusion. |
+| `EnvironmentMapPushConstants` | Struct for push constants for the environment map shader, newly added to support HDR environment cubemap rendering. |
+| `EnvironmentMapConstants`     | Struct containing parameters for environment map rendering, including cubemap index, intensity, blur, and rotation. |
 
 ## Usage Examples
 
@@ -98,4 +100,5 @@ if (!cache.TryGet(cacheKey, out var entry))
 - **Wireframe Rendering**: Introduces a new wireframe rendering mode with adaptive line thickness and anti-aliasing, controlled via `WireframePushConstants`.
 - **SMAA Enhancements**: The SMAA shader now includes support for color-based edge detection and diagonal pattern detection, improving anti-aliasing quality.
 - **SSAO Implementation**: A new SSAO (Screen-Space Ambient Occlusion) shader has been added, supporting multiple stages (occlusion, blur, composite) for enhanced ambient occlusion effects.
+- **Environment Mapping**: Added support for HDR environment cubemap rendering with rotation and mip-level selection, integrated with PBR shading for consistent reflections.
 ```

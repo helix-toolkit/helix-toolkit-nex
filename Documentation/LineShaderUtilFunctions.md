@@ -9,7 +9,7 @@ vec2 getUV()
 ```glsl
 vec4 getColor()
 ```
-- **Description**: Retrieves the color for the current fragment.
+- **Description**: Retrieves the color associated with the current fragment.
 - **Return Type**: `vec4`
 
 ```glsl
@@ -21,13 +21,13 @@ float getLineWidth()
 ```glsl
 uint getTextureId()
 ```
-- **Description**: Retrieves the texture ID associated with the current fragment.
+- **Description**: Retrieves the texture ID used for the current fragment.
 - **Return Type**: `uint`
 
 ```glsl
 uint getSamplerId()
 ```
-- **Description**: Retrieves the sampler ID associated with the current fragment.
+- **Description**: Retrieves the sampler ID used for the current fragment.
 - **Return Type**: `uint`
 
 ```glsl
@@ -111,7 +111,7 @@ float getPointerRingColorMix()
 ```glsl
 vec3 getPointerRingColor()
 ```
-- **Description**: Retrieves the color used for the pointer ring effect.
+- **Description**: Retrieves the color of the pointer ring effect.
 - **Return Type**: `vec3`
 
 ```glsl
