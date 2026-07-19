@@ -1,4 +1,5 @@
 #include "HxHeaders/HeaderFrag.glsl"
+#include "HxHeaders/ForwardPlusConstants.glsl"
 
 // Environment map (skybox) background shader.
 // ---------------------------------------------------------------------------
@@ -16,6 +17,11 @@
 //      cubemap. A selectable mip level provides a cheap pre-blurred background
 //      (useful for a soft/defocused backdrop or a low-roughness reflection look).
 //
+// The environment parameters (camera matrices, cubemap index, intensity, blur,
+// rotation) are read from the shared Forward+ constants buffer (FPConstants) via
+// its device address, so the same values drive both this background pass and the
+// PBR cubemap reflections. See EnvironmentMapConstants in ForwardPlusConstants.glsl.
+//
 // The shader writes linear HDR radiance into the F16 scene colour target. Tone
 // mapping / gamma are handled later by ToneMappingNode, so the background stays
 // consistent with lit geometry. The pipeline uses a reversed-Z GREATER_EQUAL
@@ -27,55 +33,42 @@ layout(location = 0) out vec4 outColor;
 
 @code_gen
 struct EnvironmentMapPushConstants {
-    mat4 invViewProj;      // Inverse view-projection matrix (world <- clip).
-    vec3 cameraPosition;   // Camera position in world space.
-    uint envTexIndex;      // Bindless index of the environment cubemap.
-    uint samplerIndex;     // Bindless index of the sampler.
-    float intensity;       // Linear radiance multiplier applied to the sampled colour.
-    float mipLevel;        // Explicit cubemap LOD to sample (0 = sharpest). Enables a soft/blurred background.
-    float rotationY;       // Environment yaw rotation about the world Y axis, in radians.
-    uint flipMask;         // Cubemap axis-flip correction: bit0 = -X, bit1 = -Y, bit2 = -Z (handedness/orientation fix).
-    uint _padding0;
-    uint _padding1;
-    uint _padding2;
+    uint64_t fpConstAddress; // Device address of the Forward+ constants buffer (FPConstants).
 };
 
 layout(push_constant) uniform PushConstants {
     EnvironmentMapPushConstants value;
 } pc;
 
+layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer FPBuffer {
+    FPConstants fpConstants;
+};
+
 void main() {
+    FPConstants fpConst = FPBuffer(pc.value.fpConstAddress).fpConstants;
+    EnvironmentMapConstants env = fpConst.environmentMap;
+
     // Reconstruct the pixel's normalized device coordinates from the full-screen
     // triangle's texture coordinates (vsFullScreenQuad flips Y for texture space).
     vec2 ndc = vec2(inTexCoord.x * 2.0 - 1.0, 1.0 - inTexCoord.y * 2.0);
 
     // Un-project the far-plane point (reversed-Z far = 0) to world space and form
     // the view ray direction from the camera through this pixel.
-    vec4 farPoint = pc.value.invViewProj * vec4(ndc, 0.0, 1.0);
+    vec4 farPoint = fpConst.inverseViewProjection * vec4(ndc, 0.0, 1.0);
     vec3 worldFar = farPoint.xyz / farPoint.w;
-    vec3 dir = normalize(worldFar - pc.value.cameraPosition);
+    vec3 dir = normalize(worldFar - fpConst.cameraPosition);
 
     // Optional yaw rotation of the environment about the world Y axis.
-    float s = sin(pc.value.rotationY);
-    float c = cos(pc.value.rotationY);
+    float s = sin(env.rotationY);
+    float c = cos(env.rotationY);
     dir = vec3(c * dir.x + s * dir.z, dir.y, -s * dir.x + c * dir.z);
-
-    // Cubemap orientation correction. Vulkan/D3D cube sampling uses a left-handed
-    // convention; a right-handed world may need one or more axes negated so the
-    // environment appears upright and un-mirrored. Driven from EnvironmentMapConfig
-    // so it can be corrected per-asset without re-authoring the cubemap.
-    dir *= vec3(
-        (pc.value.flipMask & 1u) != 0u ? -1.0 : 1.0,
-        (pc.value.flipMask & 2u) != 0u ? -1.0 : 1.0,
-        (pc.value.flipMask & 4u) != 0u ? -1.0 : 1.0
-    );
 
     // Clamp the requested LOD to the cubemap's available mip range so a large
     // "blur" value degrades gracefully to the coarsest mip instead of clamping
     // to an undefined level.
-    float maxLod = float(max(textureBindlessQueryLevelsCube(pc.value.envTexIndex) - 1, 0));
-    float lod = clamp(pc.value.mipLevel, 0.0, maxLod);
+    float maxLod = float(max(textureBindlessQueryLevelsCube(env.envTexIndex) - 1, 0));
+    float lod = clamp(env.mipLevel, 0.0, maxLod);
 
-    vec3 color = textureBindlessCubeLod(pc.value.envTexIndex, pc.value.samplerIndex, dir, lod).rgb;
-    outColor = vec4(color * pc.value.intensity, 1.0);
+    vec3 color = textureBindlessCubeLod(env.envTexIndex, env.samplerIndex, dir, lod).rgb;
+    outColor = vec4(color * env.intensity, 1.0);
 }

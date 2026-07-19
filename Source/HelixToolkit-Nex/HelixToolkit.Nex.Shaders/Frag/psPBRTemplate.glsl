@@ -153,6 +153,9 @@ bool isInPointerRing() {
     return dist >= getPointerRingInnerDistThreshold() && dist <= getPointerRingOuterDistThreshold();
 }
 
+vec3 getViewDirection() {
+    return normalize(getCameraPosition() - fragWorldPos);
+}
 
 vec4 mixWithPointerRing(in vec4 color) {
     if (isPointerRingEnabled() && isInPointerRing()) {
@@ -161,7 +164,7 @@ vec4 mixWithPointerRing(in vec4 color) {
         // Modulate the ring brightness based on the surface normal vs. view direction,
         // so the ring shades naturally across uneven geometry.
         vec3 N = normalize(fragNormal);
-        vec3 V = normalize(getCameraPosition() - fragWorldPos);
+        vec3 V = getViewDirection();
         float NdotV = max(dot(N, V), 0.0);
         ringColor = ringColor * mix(0.2, 1.0, NdotV);
 #endif
@@ -174,11 +177,64 @@ vec4 mixWithPointerRing(in vec4 color) {
 // Custom code injection point
 // TEMPLATE_CUSTOM_CODE
 
+// ============================================================================
+// Image-Based Lighting (environment cubemap)
+// ============================================================================
+// Rotate a world-space direction about the Y axis to match the skybox background
+// orientation (see psEnvironmentMap.glsl), so reflections line up with the drawn
+// environment.
+vec3 rotateEnvDir(in vec3 dir) {
+    float s = sin(fpConst.environmentMap.rotationY);
+    float c = cos(fpConst.environmentMap.rotationY);
+    return vec3(c * dir.x + s * dir.z, dir.y, -s * dir.x + c * dir.z);
+}
+
+// Approximate image-based lighting from the scene environment cubemap. Adds a
+// diffuse irradiance term (coarsest mip along the surface normal) and a specular
+// reflection term (roughness-selected mip along the reflection vector), matched to
+// the background's rotation and intensity. Gated on environmentMap.renderCubeMap
+// so it is a no-op when no environment is assigned or cubemap rendering is disabled.
+vec3 environmentIBL(in PBRMaterial material, in vec3 viewDir) {
+    if (fpConst.environmentMap.renderCubeMap == 0u) {
+        return vec3(0.0);
+    }
+    uint envTex = fpConst.environmentMap.envTexIndex;
+    uint envSampler = fpConst.environmentMap.samplerIndex;
+
+    vec3 N = normalize(material.normal);
+    vec3 V = normalize(viewDir);
+    float NdotV = max(dot(N, V), 0.0);
+
+    // F0: dielectric reflectance for non-metals, base colour for metals.
+    vec3 F0 = mix(vec3(material.reflectance), material.albedo, material.metallic);
+    vec3 F = fresnelSchlickRoughness(NdotV, F0, material.roughness);
+    vec3 kD = (vec3(1.0) - F) * (1.0 - material.metallic);
+
+    float maxLod = float(max(textureBindlessQueryLevelsCube(envTex) - 1, 0));
+
+    // Diffuse irradiance: coarsest mip along the surface normal is a cheap
+    // approximation of a pre-integrated irradiance map.
+    vec3 irradiance = textureBindlessCubeLod(envTex, envSampler, rotateEnvDir(N), maxLod).rgb;
+    vec3 diffuse = irradiance * material.albedo;
+
+    // Specular reflection: roughness selects the pre-blurred mip along the
+    // reflection vector.
+    vec3 R = reflect(-V, N);
+    float specLod = material.roughness * maxLod;
+    vec3 prefiltered = textureBindlessCubeLod(envTex, envSampler, rotateEnvDir(R), specLod).rgb;
+    vec3 specular = prefiltered * F;
+
+    return (kD * diffuse + specular) * material.ao * fpConst.environmentMap.intensity;
+}
+
 vec4 forwardPlusLighting(in PBRMaterial material)
 {
     // Forward+ tiled lighting
-    vec3 viewDir = normalize(fpConst.cameraPosition - fragWorldPos);
+    vec3 viewDir = getViewDirection();
     vec3 finalC = material.ambient * material.albedo * material.ao;
+
+    // Image-based lighting from the environment cubemap (no-op when disabled).
+    finalC += environmentIBL(material, viewDir);
 
     // Transmission parameters — only relevant for the transparent pass.
 #ifdef TRANSPARENT_PASS
@@ -321,7 +377,7 @@ vec4 cadStyleLightingFlat(in PBRMaterial material){
     // -------------------------------------------------------------------------
     vec3 geomNormal = material.normal;
 
-    vec3 V = normalize(fpConst.cameraPosition - fragWorldPos);
+    vec3 V = getViewDirection();
     // Ensure the generated face normal points toward the viewer
     if (dot(geomNormal, V) < 0.0) {
         geomNormal = -geomNormal;

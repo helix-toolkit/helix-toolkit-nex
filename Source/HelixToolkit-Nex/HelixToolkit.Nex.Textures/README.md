@@ -93,10 +93,9 @@ reordering or flipping happens on load, save, or GPU upload):
 
 **A cubemap `.dds` must store its faces in this order.** DDS files authored by standard tooling
 (e.g. `texassemble`, `texconv`, NVIDIA Texture Tools) already follow it, so a correctly authored
-cube DDS loads with no remapping. If a cubemap looks scrambled, the faces are in the wrong slots;
-if it looks merely mirrored, upside-down, or front/back-swapped, that is an orientation
-(handedness) issue corrected at sample time — see the `FlipX`/`FlipY`/`FlipZ` options on
-`EnvironmentMapConfig` — not a face-ordering problem.
+cube DDS loads with no remapping. If a cubemap looks scrambled, the faces are in the wrong slots
+(a face-ordering problem); if it looks merely mirrored, upside-down, or front/back-swapped, that is
+an orientation (handedness) issue that must be corrected in the source cubemap.
 
 ```csharp
 // Assemble a cube Image from six square, equally sized faces in +X,-X,+Y,-Y,+Z,-Z order.

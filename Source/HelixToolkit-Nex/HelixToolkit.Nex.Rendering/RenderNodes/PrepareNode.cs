@@ -8,9 +8,13 @@ public class PrepareNode : RenderNode
     private RingFixSizeBuffer<FPConstants>? _constantsBuffer;
     private readonly FastList<BufferHandle> _handles = new(5);
 
+    // Fallback sampler for the environment cubemap when the config does not supply one.
+    // Linear + clamp with mipmapping so the environment blur (mip LOD) control works.
+    private SamplerRef _defaultEnvSampler = SamplerRef.Null;
+
     protected override bool OnSetup()
     {
-        if (Context is null || Renderer is null)
+        if (Context is null || Renderer is null || ResourceManager is null)
             return false;
         _constantsBuffer = new RingFixSizeBuffer<FPConstants>(
             Context,
@@ -18,6 +22,10 @@ public class PrepareNode : RenderNode
             BufferUsageBits.Storage,
             hostVisible: true,
             debugName: "FPConst"
+        );
+        _defaultEnvSampler = ResourceManager.SamplerRepository.GetOrCreate(
+            SamplerStateDesc.LinearClamp.DebugName,
+            SamplerStateDesc.LinearClamp
         );
         return true;
     }
@@ -90,6 +98,7 @@ public class PrepareNode : RenderNode
             MaxLightsPerTile = context.FPLightConfig.MaxLightsPerTile,
             PointerRing = context.PointerRing,
             WireframeColor = context.RenderParams.GlobalWireframeColor,
+            EnvironmentMap = BuildEnvironmentMapConstants(context.EnvironmentMap),
         };
 
         _constantsBuffer!.AdvanceAndUpdate(ref fpData);
@@ -117,6 +126,34 @@ public class PrepareNode : RenderNode
         // has a valid source even when PostEffectsNode is absent from the graph.
         res.RenderContext.ResourceSet.Textures[SystemBufferNames.TextureColorF16Target] =
             res.RenderContext.ResourceSet.Textures[SystemBufferNames.TextureColorF16A];
+    }
+
+    /// <summary>
+    /// Packs the <see cref="EnvironmentMapConfig"/> into the GPU-side sub-struct shared by the
+    /// skybox background pass (<see cref="EnvironmentMapNode"/>) and the PBR cubemap reflections.
+    /// When no valid cubemap is assigned, <c>RenderCubeMap</c> is forced to 0 so the PBR shader
+    /// skips sampling entirely.
+    /// </summary>
+    private EnvironmentMapConstants BuildEnvironmentMapConstants(EnvironmentMapConfig config)
+    {
+        if (!config.HasValidTexture)
+        {
+            return default;
+        }
+
+        var samplerIndex = config.Sampler is { Valid: true }
+            ? config.Sampler.GetHandle().Index
+            : _defaultEnvSampler.GetHandle().Index;
+
+        return new EnvironmentMapConstants
+        {
+            EnvTexIndex = config.Texture.GetHandle().Index,
+            SamplerIndex = samplerIndex,
+            Intensity = config.Intensity,
+            MipLevel = config.Blur,
+            RotationY = config.RotationY,
+            RenderCubeMap = config.ShouldRenderCubeMap ? 1u : 0u,
+        };
     }
 
     protected override bool BeginRender(in RenderResources res)
