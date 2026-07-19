@@ -140,6 +140,21 @@ public sealed class EnvironmentMapNode : RenderNode
             ? config.Sampler.GetHandle().Index
             : _defaultSampler.GetHandle().Index;
 
+        // Axis-flip correction (bit0 = -X, bit1 = -Y, bit2 = -Z), see EnvironmentMapConfig.
+        uint flipMask = 0u;
+        if (config.FlipX)
+        {
+            flipMask |= 1u;
+        }
+        if (config.FlipY)
+        {
+            flipMask |= 2u;
+        }
+        if (config.FlipZ)
+        {
+            flipMask |= 4u;
+        }
+
         res.CmdBuffer.BindRenderPipeline(_pipeline);
         res.CmdBuffer.BindDepthState(DepthState.ReadOnlyInvZ);
         res.CmdBuffer.PushConstants(
@@ -152,6 +167,7 @@ public sealed class EnvironmentMapNode : RenderNode
                 Intensity = config.Intensity,
                 MipLevel = config.Blur,
                 RotationY = config.RotationY,
+                FlipMask = flipMask,
             }
         );
         res.CmdBuffer.Draw(3); // full-screen triangle

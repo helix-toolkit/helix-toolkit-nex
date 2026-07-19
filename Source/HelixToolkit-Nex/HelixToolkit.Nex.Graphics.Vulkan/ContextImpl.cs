@@ -763,7 +763,6 @@ internal sealed partial class VulkanContext : Initializable, IContext
                     numLayers > 1 ? VK.VK_IMAGE_VIEW_TYPE_CUBE_ARRAY : VK.VK_IMAGE_VIEW_TYPE_CUBE;
                 vkImageType = VK.VK_IMAGE_TYPE_2D;
                 vkCreateFlags = VK.VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
-                numLayers *= 6;
                 break;
             default:
                 HxDebug.Assert(false, "Code should NOT be reached");
@@ -880,7 +879,6 @@ internal sealed partial class VulkanContext : Initializable, IContext
                 desc.Type == TextureType.Texture2D || desc.Type == TextureType.TextureCube
             );
             HxDebug.Assert(desc.DataNumMipLevels <= desc.NumMipLevels);
-            desc.NumLayers = desc.Type == TextureType.TextureCube ? 6u : 1u;
             ResultCode res = Upload(
                 handle,
                 new TextureRangeDesc()

@@ -167,6 +167,89 @@ public sealed class TextureRepository
         return StoreEntry(name, texture, name);
     }
 
+    public TextureRef GetOrCreateCubeFromImages(
+        string name,
+        IReadOnlyList<Image> faces,
+        bool generateMipmaps = true
+    )
+    {
+        ArgumentException.ThrowIfNullOrEmpty(name);
+        ArgumentNullException.ThrowIfNull(faces);
+        ObjectDisposedException.ThrowIf(_context.IsDisposed, this);
+
+        if (TryGet(name, out var cached))
+            return cached!.Ref;
+
+        // Image.NewCube validates the six faces and assembles them into a single cube image
+        // that owns its buffer; dispose it once the synchronous upload has copied the data.
+        using var cube = Image.NewCube(faces);
+        var texture = TextureCreator.CreateTexture(
+            _context,
+            cube,
+            generateMipmaps,
+            debugName: name,
+            scheduleMipmapGeneration: ScheduleMipmapGeneration
+        );
+        return StoreEntry(name, texture, name);
+    }
+
+    public TextureRef GetOrCreateCubeFromFiles(
+        IReadOnlyList<string> filePaths,
+        bool generateMipmaps = true,
+        string? debugName = null
+    )
+    {
+        ArgumentNullException.ThrowIfNull(filePaths);
+        ObjectDisposedException.ThrowIf(_context.IsDisposed, this);
+
+        if (filePaths.Count != 6)
+        {
+            throw new ArgumentException(
+                $"A cubemap requires exactly 6 face files, but {filePaths.Count} were provided.",
+                nameof(filePaths)
+            );
+        }
+
+        // Deterministic composite cache key so repeated calls with the same six faces hit the cache.
+        var cacheKey = string.Join("|", filePaths.Select(NormalizeFilePath));
+        if (TryGet(cacheKey, out var cached))
+            return cached!.Ref;
+
+        var faces = new Image[6];
+        try
+        {
+            for (var i = 0; i < 6; ++i)
+            {
+                var path = filePaths[i];
+                ArgumentException.ThrowIfNullOrEmpty(path, $"{nameof(filePaths)}[{i}]");
+                if (!File.Exists(path))
+                    throw new FileNotFoundException($"Cube face file not found: '{path}'", path);
+
+                faces[i] =
+                    Image.Load(path)
+                    ?? throw new InvalidOperationException(
+                        $"Failed to decode cube face image: '{path}'"
+                    );
+            }
+
+            var resolvedDebugName = debugName ?? "Cubemap";
+            using var cube = Image.NewCube(faces);
+            var texture = TextureCreator.CreateTexture(
+                _context,
+                cube,
+                generateMipmaps,
+                debugName: resolvedDebugName,
+                scheduleMipmapGeneration: ScheduleMipmapGeneration
+            );
+            return StoreEntry(cacheKey, texture, resolvedDebugName);
+        }
+        finally
+        {
+            foreach (var face in faces)
+                face?.Dispose();
+        }
+    }
+
     public async Task<TextureRef> GetOrCreateFromStreamAsync(
         string name,
         Stream stream,
