@@ -17,7 +17,7 @@
         <None Remove="RenderGraphs\**" />
     </ItemGroup>
     <ItemGroup>
-        <ProjectReference Include="..\HelixTookit.Nex\HelixToolkit.Nex.csproj" />
+        <ProjectReference Include="..\HelixToolkit.Nex\HelixToolkit.Nex.csproj" />
         <ProjectReference Include="..\HelixToolkit.Nex.EntityComponentSystem\HelixToolkit.Nex.ECS.csproj" />
         <ProjectReference Include="..\HelixToolkit.Nex.Graphics\HelixToolkit.Nex.Graphics.csproj" />
         <ProjectReference Include="..\HelixToolkit.Nex.Material\HelixToolkit.Nex.Material.csproj" />

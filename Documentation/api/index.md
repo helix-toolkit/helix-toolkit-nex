@@ -6,7 +6,7 @@ This section contains the complete API reference for all Helix Toolkit NEX libra
 
 ### Core & Foundation
 
-- **[HelixToolkit.Nex](../../Source/HelixToolkit-Nex/HelixTookit.Nex/README.md)** - Core 3D graphics engine leveraging the Vulkan API, with Reverse-Z, Forward Plus light culling, and GPU-based culling.
+- **[HelixToolkit.Nex](../../Source/HelixToolkit-Nex/HelixToolkit.Nex/README.md)** - Core 3D graphics engine leveraging the Vulkan API, with Reverse-Z, Forward Plus light culling, and GPU-based culling.
 - **[HelixToolkit.Nex.Maths](../../Source/HelixToolkit-Nex/HelixToolkit.Nex.Maths/README.md)** - Comprehensive mathematics library including vectors, matrices, colors, bounding volumes, and collision detection.
 - **[HelixToolkit.Nex.ECS](../../Source/HelixToolkit-Nex/HelixToolkit.Nex.EntityComponentSystem/README.md)** - Data-oriented Entity Component System with isolated worlds, an event bus, and a deferred command buffer.
 - **[HelixToolkit.Nex.Repository](../../Source/HelixToolkit-Nex/HelixToolkit.Nex.Repository/README.md)** - Thread-safe LRU cache for GPU resources such as textures, shaders, and samplers.

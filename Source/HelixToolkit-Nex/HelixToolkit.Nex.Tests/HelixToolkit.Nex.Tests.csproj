@@ -9,7 +9,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\HelixTookit.Nex\HelixToolkit.Nex.csproj" />
+        <ProjectReference Include="..\HelixToolkit.Nex\HelixToolkit.Nex.csproj" />
         <ProjectReference Include="..\HelixToolkit.Nex.Engine\HelixToolkit.Nex.Engine.csproj" />
     </ItemGroup>
 
