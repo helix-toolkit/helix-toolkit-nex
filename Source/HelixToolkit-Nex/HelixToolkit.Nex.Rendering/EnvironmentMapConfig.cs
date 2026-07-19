@@ -51,26 +51,13 @@ public sealed class EnvironmentMapConfig
     public float RotationY { get; set; } = 0f;
 
     /// <summary>
-    /// Negates the X component of the cubemap sampling direction. Use this to correct a
-    /// left/right-mirrored environment caused by the handedness mismatch between the
-    /// right-handed world and the left-handed Vulkan/D3D cube-sampling convention. Default: <see langword="false"/>.
+    /// When <see langword="true"/>, the PBR shader samples this cubemap for image-based
+    /// reflections/irradiance on lit geometry. Only takes effect while a valid
+    /// <see cref="Texture"/> is assigned (see <see cref="ShouldRenderCubeMap"/>).
+    /// Independent of <see cref="Enabled"/>, which controls only the skybox background.
+    /// Default: <see langword="true"/>.
     /// </summary>
-    public bool FlipX { get; set; } = false;
-
-    /// <summary>
-    /// Negates the Y component of the cubemap sampling direction. Use this to correct an
-    /// upside-down environment (sky on the floor). Whether this is needed is asset-dependent:
-    /// cubemaps assembled from top-left-origin face images (PNG/JPG) typically render upright
-    /// with this off, whereas some D3D-authored <c>.dds</c> cubemaps sample upside-down and need
-    /// it on. Default: <see langword="false"/>.
-    /// </summary>
-    public bool FlipY { get; set; } = false;
-
-    /// <summary>
-    /// Negates the Z component of the cubemap sampling direction. Use this to correct a
-    /// front/back-swapped environment. Default: <see langword="false"/>.
-    /// </summary>
-    public bool FlipZ { get; set; } = false;
+    public bool RenderCubeMap { get; set; } = true;
 
     /// <summary>
     /// Explicit cubemap mip level to sample, providing a cheap pre-blurred background.
@@ -90,4 +77,11 @@ public sealed class EnvironmentMapConfig
     /// (enabled and backed by a valid cubemap texture).
     /// </summary>
     public bool ShouldRender => Enabled && HasValidTexture;
+
+    /// <summary>
+    /// Gets a value indicating whether the PBR shader should sample this cubemap for
+    /// image-based lighting this frame (<see cref="RenderCubeMap"/> enabled and backed by
+    /// a valid cubemap texture).
+    /// </summary>
+    public bool ShouldRenderCubeMap => RenderCubeMap && HasValidTexture;
 }

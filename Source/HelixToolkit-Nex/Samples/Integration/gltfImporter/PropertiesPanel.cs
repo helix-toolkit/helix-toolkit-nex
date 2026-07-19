@@ -107,7 +107,10 @@ internal class PropertiesPanel
                 {
                     env.Enabled = envEnabled;
                 }
-                Gui.BeginDisabled(!env.HasValidTexture || !env.Enabled);
+                // Intensity/rotation/blur and the cubemap toggle also drive the PBR
+                // reflections, which are independent of the skybox background (Enabled),
+                // so gate them only on a valid cubemap being loaded.
+                Gui.BeginDisabled(!env.HasValidTexture);
                 var envIntensity = env.Intensity;
                 if (Gui.SliderFloat("Env Intensity", ref envIntensity, 0.0f, 5.0f))
                 {
@@ -123,23 +126,10 @@ internal class PropertiesPanel
                 {
                     env.Blur = envBlur;
                 }
-                Gui.Text("Orientation Correction");
-                var flipX = env.FlipX;
-                if (Gui.Checkbox("Flip X", ref flipX))
+                var renderCubeMap = env.RenderCubeMap;
+                if (Gui.Checkbox("PBR Cubemap Reflections", ref renderCubeMap))
                 {
-                    env.FlipX = flipX;
-                }
-                Gui.SameLine();
-                var flipY = env.FlipY;
-                if (Gui.Checkbox("Flip Y", ref flipY))
-                {
-                    env.FlipY = flipY;
-                }
-                Gui.SameLine();
-                var flipZ = env.FlipZ;
-                if (Gui.Checkbox("Flip Z", ref flipZ))
-                {
-                    env.FlipZ = flipZ;
+                    env.RenderCubeMap = renderCubeMap;
                 }
                 Gui.EndDisabled();
             }

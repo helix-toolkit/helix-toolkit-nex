@@ -22,7 +22,6 @@ public sealed class EnvironmentMapNode : RenderNode
     private static readonly ILogger _logger = LogManager.Create<EnvironmentMapNode>();
 
     private RenderPipelineResource _pipeline = RenderPipelineResource.Null;
-    private SamplerRef _defaultSampler = SamplerRef.Null;
 
     public override string Name => nameof(EnvironmentMapNode);
     public override Color4 DebugColor => Color.SkyBlue;
@@ -39,13 +38,6 @@ public sealed class EnvironmentMapNode : RenderNode
             );
             return false;
         }
-
-        // Fallback sampler used when the config does not provide one. Linear + clamp with
-        // mipmapping so the environment blur (mip LOD) control works out of the box.
-        _defaultSampler = ResourceManager.SamplerRepository.GetOrCreate(
-            SamplerStateDesc.LinearClamp.DebugName,
-            SamplerStateDesc.LinearClamp
-        );
 
         var shaderCompiler = new ShaderCompiler();
 
@@ -132,43 +124,16 @@ public sealed class EnvironmentMapNode : RenderNode
     {
         Debug.Assert(_pipeline.Valid, "Environment map pipeline is not valid.");
 
-        var config = res.RenderContext.EnvironmentMap;
-        var camera = res.RenderContext.CameraParams;
-
-        // Prefer the caller-supplied sampler; fall back to the node's linear-clamp sampler.
-        var samplerIndex = config.Sampler is { Valid: true }
-            ? config.Sampler.GetHandle().Index
-            : _defaultSampler.GetHandle().Index;
-
-        // Axis-flip correction (bit0 = -X, bit1 = -Y, bit2 = -Z), see EnvironmentMapConfig.
-        uint flipMask = 0u;
-        if (config.FlipX)
-        {
-            flipMask |= 1u;
-        }
-        if (config.FlipY)
-        {
-            flipMask |= 2u;
-        }
-        if (config.FlipZ)
-        {
-            flipMask |= 4u;
-        }
+        // The environment parameters (camera matrices, cubemap index, intensity, blur,
+        // rotation) live in the shared Forward+ constants buffer, populated by PrepareNode.
+        var fpConstAddress = res
+            .Buffers[SystemBufferNames.BufferForwardPlusConstants]
+            .GpuAddress(res.RenderContext.Context);
 
         res.CmdBuffer.BindRenderPipeline(_pipeline);
         res.CmdBuffer.BindDepthState(DepthState.ReadOnlyInvZ);
         res.CmdBuffer.PushConstants(
-            new EnvironmentMapPushConstants
-            {
-                InvViewProj = camera.InvViewProjection,
-                CameraPosition = camera.Position,
-                EnvTexIndex = config.Texture.GetHandle().Index,
-                SamplerIndex = samplerIndex,
-                Intensity = config.Intensity,
-                MipLevel = config.Blur,
-                RotationY = config.RotationY,
-                FlipMask = flipMask,
-            }
+            new EnvironmentMapPushConstants { FpConstAddress = fpConstAddress }
         );
         res.CmdBuffer.Draw(3); // full-screen triangle
     }
@@ -178,7 +143,11 @@ public sealed class EnvironmentMapNode : RenderNode
         graph.AddPass(
             RenderStage.Opaque,
             nameof(EnvironmentMapNode),
-            inputs: [new(SystemBufferNames.TextureDepthF32, ResourceType.Texture)],
+            inputs:
+            [
+                new(SystemBufferNames.TextureDepthF32, ResourceType.Texture),
+                new(SystemBufferNames.BufferForwardPlusConstants, ResourceType.Buffer),
+            ],
             outputs: [new(SystemBufferNames.TextureColorF16Target, ResourceType.Texture)],
             after: [nameof(ForwardPlusOpaqueNode), nameof(ForwardPlusMaskNode)]
         );
