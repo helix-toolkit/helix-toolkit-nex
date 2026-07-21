@@ -213,7 +213,7 @@ public struct Entity : IDisposable, IEquatable<Entity>
     T
     >(RefAction<T> updateAction)
     {
-        if (Has<T>())
+        if (Has<T>() && updateAction != null)
         {
             ref var component = ref Get<T>();
             updateAction(ref component);
