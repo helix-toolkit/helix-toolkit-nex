@@ -7,7 +7,7 @@ namespace HelixToolkit.Nex;
 /// </summary>
 /// <remarks>
 /// These methods provide compatibility across different .NET versions by using optimized parsing
-/// when available (.NET 8+) or fallback implementations for earlier versions.
+/// when available (.NET 9+) or fallback implementations for earlier versions.
 /// </remarks>
 public static class NumericHelpers
 {

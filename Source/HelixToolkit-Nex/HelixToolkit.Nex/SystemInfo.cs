@@ -35,7 +35,7 @@ public static class SystemInfo
     /// <summary>
     /// Gets a description of the current .NET framework.
     /// </summary>
-    /// <returns>A string describing the framework (e.g., ".NET 8.0.1").</returns>
+    /// <returns>A string describing the framework (e.g., ".NET 9.0.1").</returns>
     public static string GetCurrentFramework()
     {
         return RuntimeInformation.FrameworkDescription; // Get the current framework description

@@ -14,34 +14,21 @@
             "problemMatcher": "$msCompile"
         },
         {
-            // Builds every buildable sample in one shot. The default args use
-            // the LinuxDebug configuration (the slnx marks WinUI/Wpf as
-            // non-built there, so it succeeds on Linux); the "windows" override
-            // switches to the Debug configuration, under which the slnx maps
-            // WinUI to the x64 platform. Used as the preLaunchTask for the
-            // generic sample launcher: the build needs no project input
-            // (keeping the launch dropdown a single prompt) and incremental
-            // rebuilds are fast.
-            "label": "build-samples",
-            "command": "dotnet",
-            "type": "process",
-            "args": [
-                "build",
-                "${workspaceFolder}/Source/HelixToolkit-Nex/HelixToolkit.Nex.slnx",
-                "-c",
-                "LinuxDebug",
-                "/property:GenerateFullPaths=true",
-                "/consoleloggerparameters:NoSummary;ForceNoAlign"
-            ],
+            // Builds ONLY the sample selected in the launch dropdown, instead
+            // of the whole solution. The ${input:sample}/${input:sampleWindows}
+            // value is a build *output* path (…/<proj>/bin/<cfg>/<tfm>/<app>);
+            // we strip everything from "/bin/" onward to recover the project
+            // directory and run `dotnet build` on it (which builds that project
+            // plus its referenced libraries). This is a `shell` task so the
+            // string trim can run in the shell; it reuses the same ${input:}
+            // the launch config uses, so the dropdown is still a single prompt.
+            // Default is the LinuxDebug config; the "windows" override uses the
+            // Debug config (which the slnx maps WinUI -> x64).
+            "label": "build-sample",
+            "type": "shell",
+            "command": "p='${input:sample}'; dotnet build \"${workspaceFolder}/Source/HelixToolkit-Nex/${p%%/bin/*}\" -c LinuxDebug /property:GenerateFullPaths=true '/consoleloggerparameters:NoSummary;ForceNoAlign'",
             "windows": {
-                "args": [
-                    "build",
-                    "${workspaceFolder}/Source/HelixToolkit-Nex/HelixToolkit.Nex.slnx",
-                    "-c",
-                    "Debug",
-                    "/property:GenerateFullPaths=true",
-                    "/consoleloggerparameters:NoSummary;ForceNoAlign"
-                ]
+                "command": "$p = '${input:sampleWindows}'; dotnet build \"${workspaceFolder}/Source/HelixToolkit-Nex/$($p -replace '/bin/.*$','')\" -c Debug /property:GenerateFullPaths=true '/consoleloggerparameters:NoSummary;ForceNoAlign'"
             },
             "problemMatcher": "$msCompile"
         },
@@ -68,6 +55,209 @@
                 "${workspaceFolder}/Source/HelixToolkit-Nex/HelixToolkit.Nex.sln"
             ],
             "problemMatcher": "$msCompile"
+        }
+    ],
+    "inputs": [
+        {
+            // Linux: relative path (from Source/HelixToolkit-Nex) to the
+            // LinuxDebug build output (no file extension on the apphost).
+            // Keep in sync with the identical input in launch.json — VS Code
+            // input variables are file-scoped, so both files need their own.
+            "id": "sample",
+            "type": "pickString",
+            "description": "Select the sample to run",
+            "default": "Samples/GraphicsAPI/HelloTriangle/bin/LinuxDebug/net9.0/HelloTriangle",
+            "options": [
+                {
+                    "label": "GraphicsAPI / HelloTriangle",
+                    "value": "Samples/GraphicsAPI/HelloTriangle/bin/LinuxDebug/net9.0/HelloTriangle"
+                },
+                {
+                    "label": "GraphicsAPI / MeshCulling",
+                    "value": "Samples/GraphicsAPI/MeshCulling/bin/LinuxDebug/net9.0/MeshCulling"
+                },
+                {
+                    "label": "GraphicsAPI / InstancingMeshCulling",
+                    "value": "Samples/GraphicsAPI/InstancingMeshCulling/bin/LinuxDebug/net9.0/InstancingMeshCulling"
+                },
+                {
+                    "label": "GraphicsAPI / ForwardPlusSimple",
+                    "value": "Samples/GraphicsAPI/ForwardPlusSimple/bin/LinuxDebug/net9.0/ForwardPlusSimple"
+                },
+                {
+                    "label": "GraphicsAPI / ImGuiTest",
+                    "value": "Samples/GraphicsAPI/ImGuiTest/bin/LinuxDebug/net9.0/ImGuiTest"
+                },
+                {
+                    "label": "GraphicsAPI / RenderToCubeMap",
+                    "value": "Samples/GraphicsAPI/RenderToCubeMap/bin/LinuxDebug/net9.0/RenderToCubeMap"
+                },
+                {
+                    "label": "GraphicsAPI / RenderToCubeMapSinglePass",
+                    "value": "Samples/GraphicsAPI/RenderToCubeMapSinglePass/bin/LinuxDebug/net9.0/RenderToCubeMapSinglePass"
+                },
+                {
+                    "label": "Integration / Billboard",
+                    "value": "Samples/Integration/Billboard/bin/LinuxDebug/net9.0/Billboard"
+                },
+                {
+                    "label": "Integration / DepthPrepassRenderer",
+                    "value": "Samples/Integration/DepthPrepassRenderer/bin/LinuxDebug/net9.0/DepthPrepassRenderer"
+                },
+                {
+                    "label": "Integration / GizmoTest",
+                    "value": "Samples/Integration/GizmoTest/bin/LinuxDebug/net9.0/GizmoTest"
+                },
+                {
+                    "label": "Integration / ImGui",
+                    "value": "Samples/Integration/ImGui/bin/LinuxDebug/net9.0/ImGui"
+                },
+                {
+                    "label": "Integration / InstancingDemo",
+                    "value": "Samples/Integration/InstancingDemo/bin/LinuxDebug/net9.0/InstancingDemo"
+                },
+                {
+                    "label": "Integration / LightCulling",
+                    "value": "Samples/Integration/LightCulling/bin/LinuxDebug/net9.0/LightCulling"
+                },
+                {
+                    "label": "Integration / Lines",
+                    "value": "Samples/Integration/Lines/bin/LinuxDebug/net9.0/Lines"
+                },
+                {
+                    "label": "Integration / PBRTest",
+                    "value": "Samples/Integration/PBRTest/bin/LinuxDebug/net9.0/PBRTest"
+                },
+                {
+                    "label": "Integration / PickingTest",
+                    "value": "Samples/Integration/PickingTest/bin/LinuxDebug/net9.0/PickingTest"
+                },
+                {
+                    "label": "Integration / Points",
+                    "value": "Samples/Integration/Points/bin/LinuxDebug/net9.0/Points"
+                },
+                {
+                    "label": "Integration / TextureTest",
+                    "value": "Samples/Integration/TextureTest/bin/LinuxDebug/net9.0/TextureTest"
+                },
+                {
+                    "label": "Integration / Transparent",
+                    "value": "Samples/Integration/Transparent/bin/LinuxDebug/net9.0/Transparent"
+                },
+                {
+                    "label": "Integration / gltfImporter",
+                    "value": "Samples/Integration/gltfImporter/bin/LinuxDebug/net9.0/gltfImporter"
+                },
+                {
+                    "label": "Interop / Avalonia",
+                    "value": "Samples/Interop/Avalonia/bin/LinuxDebug/net9.0/AvaloniaInterop"
+                }
+            ]
+        },
+        {
+            // Windows: same samples, but the Debug build output with the .exe
+            // apphost. Keep this list in sync with launch.json's "sampleWindows".
+            "id": "sampleWindows",
+            "type": "pickString",
+            "description": "Select the sample to run",
+            "default": "Samples/GraphicsAPI/HelloTriangle/bin/Debug/net9.0/HelloTriangle.exe",
+            "options": [
+                {
+                    "label": "GraphicsAPI / HelloTriangle",
+                    "value": "Samples/GraphicsAPI/HelloTriangle/bin/Debug/net9.0/HelloTriangle.exe"
+                },
+                {
+                    "label": "GraphicsAPI / MeshCulling",
+                    "value": "Samples/GraphicsAPI/MeshCulling/bin/Debug/net9.0/MeshCulling.exe"
+                },
+                {
+                    "label": "GraphicsAPI / InstancingMeshCulling",
+                    "value": "Samples/GraphicsAPI/InstancingMeshCulling/bin/Debug/net9.0/InstancingMeshCulling.exe"
+                },
+                {
+                    "label": "GraphicsAPI / ForwardPlusSimple",
+                    "value": "Samples/GraphicsAPI/ForwardPlusSimple/bin/Debug/net9.0/ForwardPlusSimple.exe"
+                },
+                {
+                    "label": "GraphicsAPI / ImGuiTest",
+                    "value": "Samples/GraphicsAPI/ImGuiTest/bin/Debug/net9.0/ImGuiTest.exe"
+                },
+                {
+                    "label": "GraphicsAPI / RenderToCubeMap",
+                    "value": "Samples/GraphicsAPI/RenderToCubeMap/bin/Debug/net9.0/RenderToCubeMap.exe"
+                },
+                {
+                    "label": "GraphicsAPI / RenderToCubeMapSinglePass",
+                    "value": "Samples/GraphicsAPI/RenderToCubeMapSinglePass/bin/Debug/net9.0/RenderToCubeMapSinglePass.exe"
+                },
+                {
+                    "label": "Integration / Billboard",
+                    "value": "Samples/Integration/Billboard/bin/Debug/net9.0/Billboard.exe"
+                },
+                {
+                    "label": "Integration / DepthPrepassRenderer",
+                    "value": "Samples/Integration/DepthPrepassRenderer/bin/Debug/net9.0/DepthPrepassRenderer.exe"
+                },
+                {
+                    "label": "Integration / GizmoTest",
+                    "value": "Samples/Integration/GizmoTest/bin/Debug/net9.0/GizmoTest.exe"
+                },
+                {
+                    "label": "Integration / ImGui",
+                    "value": "Samples/Integration/ImGui/bin/Debug/net9.0/ImGui.exe"
+                },
+                {
+                    "label": "Integration / InstancingDemo",
+                    "value": "Samples/Integration/InstancingDemo/bin/Debug/net9.0/InstancingDemo.exe"
+                },
+                {
+                    "label": "Integration / LightCulling",
+                    "value": "Samples/Integration/LightCulling/bin/Debug/net9.0/LightCulling.exe"
+                },
+                {
+                    "label": "Integration / Lines",
+                    "value": "Samples/Integration/Lines/bin/Debug/net9.0/Lines.exe"
+                },
+                {
+                    "label": "Integration / PBRTest",
+                    "value": "Samples/Integration/PBRTest/bin/Debug/net9.0/PBRTest.exe"
+                },
+                {
+                    "label": "Integration / PickingTest",
+                    "value": "Samples/Integration/PickingTest/bin/Debug/net9.0/PickingTest.exe"
+                },
+                {
+                    "label": "Integration / Points",
+                    "value": "Samples/Integration/Points/bin/Debug/net9.0/Points.exe"
+                },
+                {
+                    "label": "Integration / TextureTest",
+                    "value": "Samples/Integration/TextureTest/bin/Debug/net9.0/TextureTest.exe"
+                },
+                {
+                    "label": "Integration / Transparent",
+                    "value": "Samples/Integration/Transparent/bin/Debug/net9.0/Transparent.exe"
+                },
+                {
+                    "label": "Integration / gltfImporter",
+                    "value": "Samples/Integration/gltfImporter/bin/Debug/net9.0/gltfImporter.exe"
+                },
+                {
+                    "label": "Interop / Avalonia",
+                    "value": "Samples/Interop/Avalonia/bin/Debug/net9.0/AvaloniaInterop.exe"
+                },
+                {
+                    // Windows-only. Builds as x64 (slnx maps Debug -> x64) and
+                    // targets the Windows App SDK TFM, so it lands under bin/x64.
+                    "label": "Interop / WinUI (Windows only)",
+                    "value": "Samples/Interop/WinUI/bin/x64/Debug/net9.0-windows10.0.22621.0/WinUIInterop.exe"
+                },
+                {
+                    // Windows-only. Targets net9.0-windows at AnyCPU.
+                    "label": "Interop / Wpf (Windows only)",
+                    "value": "Samples/Interop/Wpf/bin/Debug/net9.0-windows/WpfInterop.exe"
+                }
+            ]
         }
     ]
 }

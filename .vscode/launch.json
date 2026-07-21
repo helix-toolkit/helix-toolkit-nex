@@ -10,12 +10,12 @@
             // output; the "windows" block overrides it with the Debug output
             // (and the .exe apphost). VS Code only resolves the ${input:}
             // referenced by the active OS, so you are prompted exactly once.
-            // The preLaunchTask builds all samples (incremental, fast) and
-            // needs no project input.
+            // The preLaunchTask builds only the picked sample (it reuses this
+            // same ${input:}), so no extra prompt and no whole-solution build.
             "name": "Run Sample (pick project)",
             "type": "coreclr",
             "request": "launch",
-            "preLaunchTask": "build-samples",
+            "preLaunchTask": "build-sample",
             "program": "${workspaceFolder}/Source/HelixToolkit-Nex/${input:sample}",
             "args": [],
             "cwd": "${workspaceFolder}/Source/HelixToolkit-Nex",
@@ -38,91 +38,91 @@
             "id": "sample",
             "type": "pickString",
             "description": "Select the sample to run",
-            "default": "Samples/GraphicsAPI/HelloTriangle/bin/LinuxDebug/net8.0/HelloTriangle",
+            "default": "Samples/GraphicsAPI/HelloTriangle/bin/LinuxDebug/net9.0/HelloTriangle",
             "options": [
                 {
                     "label": "GraphicsAPI / HelloTriangle",
-                    "value": "Samples/GraphicsAPI/HelloTriangle/bin/LinuxDebug/net8.0/HelloTriangle"
+                    "value": "Samples/GraphicsAPI/HelloTriangle/bin/LinuxDebug/net9.0/HelloTriangle"
                 },
                 {
                     "label": "GraphicsAPI / MeshCulling",
-                    "value": "Samples/GraphicsAPI/MeshCulling/bin/LinuxDebug/net8.0/MeshCulling"
+                    "value": "Samples/GraphicsAPI/MeshCulling/bin/LinuxDebug/net9.0/MeshCulling"
                 },
                 {
                     "label": "GraphicsAPI / InstancingMeshCulling",
-                    "value": "Samples/GraphicsAPI/InstancingMeshCulling/bin/LinuxDebug/net8.0/InstancingMeshCulling"
+                    "value": "Samples/GraphicsAPI/InstancingMeshCulling/bin/LinuxDebug/net9.0/InstancingMeshCulling"
                 },
                 {
                     "label": "GraphicsAPI / ForwardPlusSimple",
-                    "value": "Samples/GraphicsAPI/ForwardPlusSimple/bin/LinuxDebug/net8.0/ForwardPlusSimple"
+                    "value": "Samples/GraphicsAPI/ForwardPlusSimple/bin/LinuxDebug/net9.0/ForwardPlusSimple"
                 },
                 {
                     "label": "GraphicsAPI / ImGuiTest",
-                    "value": "Samples/GraphicsAPI/ImGuiTest/bin/LinuxDebug/net8.0/ImGuiTest"
+                    "value": "Samples/GraphicsAPI/ImGuiTest/bin/LinuxDebug/net9.0/ImGuiTest"
                 },
                 {
                     "label": "GraphicsAPI / RenderToCubeMap",
-                    "value": "Samples/GraphicsAPI/RenderToCubeMap/bin/LinuxDebug/net8.0/RenderToCubeMap"
+                    "value": "Samples/GraphicsAPI/RenderToCubeMap/bin/LinuxDebug/net9.0/RenderToCubeMap"
                 },
                 {
                     "label": "GraphicsAPI / RenderToCubeMapSinglePass",
-                    "value": "Samples/GraphicsAPI/RenderToCubeMapSinglePass/bin/LinuxDebug/net8.0/RenderToCubeMapSinglePass"
+                    "value": "Samples/GraphicsAPI/RenderToCubeMapSinglePass/bin/LinuxDebug/net9.0/RenderToCubeMapSinglePass"
                 },
                 {
                     "label": "Integration / Billboard",
-                    "value": "Samples/Integration/Billboard/bin/LinuxDebug/net8.0/Billboard"
+                    "value": "Samples/Integration/Billboard/bin/LinuxDebug/net9.0/Billboard"
                 },
                 {
                     "label": "Integration / DepthPrepassRenderer",
-                    "value": "Samples/Integration/DepthPrepassRenderer/bin/LinuxDebug/net8.0/DepthPrepassRenderer"
+                    "value": "Samples/Integration/DepthPrepassRenderer/bin/LinuxDebug/net9.0/DepthPrepassRenderer"
                 },
                 {
                     "label": "Integration / GizmoTest",
-                    "value": "Samples/Integration/GizmoTest/bin/LinuxDebug/net8.0/GizmoTest"
+                    "value": "Samples/Integration/GizmoTest/bin/LinuxDebug/net9.0/GizmoTest"
                 },
                 {
                     "label": "Integration / ImGui",
-                    "value": "Samples/Integration/ImGui/bin/LinuxDebug/net8.0/ImGui"
+                    "value": "Samples/Integration/ImGui/bin/LinuxDebug/net9.0/ImGui"
                 },
                 {
                     "label": "Integration / InstancingDemo",
-                    "value": "Samples/Integration/InstancingDemo/bin/LinuxDebug/net8.0/InstancingDemo"
+                    "value": "Samples/Integration/InstancingDemo/bin/LinuxDebug/net9.0/InstancingDemo"
                 },
                 {
                     "label": "Integration / LightCulling",
-                    "value": "Samples/Integration/LightCulling/bin/LinuxDebug/net8.0/LightCulling"
+                    "value": "Samples/Integration/LightCulling/bin/LinuxDebug/net9.0/LightCulling"
                 },
                 {
                     "label": "Integration / Lines",
-                    "value": "Samples/Integration/Lines/bin/LinuxDebug/net8.0/Lines"
+                    "value": "Samples/Integration/Lines/bin/LinuxDebug/net9.0/Lines"
                 },
                 {
                     "label": "Integration / PBRTest",
-                    "value": "Samples/Integration/PBRTest/bin/LinuxDebug/net8.0/PBRTest"
+                    "value": "Samples/Integration/PBRTest/bin/LinuxDebug/net9.0/PBRTest"
                 },
                 {
                     "label": "Integration / PickingTest",
-                    "value": "Samples/Integration/PickingTest/bin/LinuxDebug/net8.0/PickingTest"
+                    "value": "Samples/Integration/PickingTest/bin/LinuxDebug/net9.0/PickingTest"
                 },
                 {
                     "label": "Integration / Points",
-                    "value": "Samples/Integration/Points/bin/LinuxDebug/net8.0/Points"
+                    "value": "Samples/Integration/Points/bin/LinuxDebug/net9.0/Points"
                 },
                 {
                     "label": "Integration / TextureTest",
-                    "value": "Samples/Integration/TextureTest/bin/LinuxDebug/net8.0/TextureTest"
+                    "value": "Samples/Integration/TextureTest/bin/LinuxDebug/net9.0/TextureTest"
                 },
                 {
                     "label": "Integration / Transparent",
-                    "value": "Samples/Integration/Transparent/bin/LinuxDebug/net8.0/Transparent"
+                    "value": "Samples/Integration/Transparent/bin/LinuxDebug/net9.0/Transparent"
                 },
                 {
                     "label": "Integration / gltfImporter",
-                    "value": "Samples/Integration/gltfImporter/bin/LinuxDebug/net8.0/gltfImporter"
+                    "value": "Samples/Integration/gltfImporter/bin/LinuxDebug/net9.0/gltfImporter"
                 },
                 {
                     "label": "Interop / Avalonia",
-                    "value": "Samples/Interop/Avalonia/bin/LinuxDebug/net8.0/AvaloniaInterop"
+                    "value": "Samples/Interop/Avalonia/bin/LinuxDebug/net9.0/AvaloniaInterop"
                 }
             ]
         },
@@ -132,102 +132,102 @@
             "id": "sampleWindows",
             "type": "pickString",
             "description": "Select the sample to run",
-            "default": "Samples/GraphicsAPI/HelloTriangle/bin/Debug/net8.0/HelloTriangle.exe",
+            "default": "Samples/GraphicsAPI/HelloTriangle/bin/Debug/net9.0/HelloTriangle.exe",
             "options": [
                 {
                     "label": "GraphicsAPI / HelloTriangle",
-                    "value": "Samples/GraphicsAPI/HelloTriangle/bin/Debug/net8.0/HelloTriangle.exe"
+                    "value": "Samples/GraphicsAPI/HelloTriangle/bin/Debug/net9.0/HelloTriangle.exe"
                 },
                 {
                     "label": "GraphicsAPI / MeshCulling",
-                    "value": "Samples/GraphicsAPI/MeshCulling/bin/Debug/net8.0/MeshCulling.exe"
+                    "value": "Samples/GraphicsAPI/MeshCulling/bin/Debug/net9.0/MeshCulling.exe"
                 },
                 {
                     "label": "GraphicsAPI / InstancingMeshCulling",
-                    "value": "Samples/GraphicsAPI/InstancingMeshCulling/bin/Debug/net8.0/InstancingMeshCulling.exe"
+                    "value": "Samples/GraphicsAPI/InstancingMeshCulling/bin/Debug/net9.0/InstancingMeshCulling.exe"
                 },
                 {
                     "label": "GraphicsAPI / ForwardPlusSimple",
-                    "value": "Samples/GraphicsAPI/ForwardPlusSimple/bin/Debug/net8.0/ForwardPlusSimple.exe"
+                    "value": "Samples/GraphicsAPI/ForwardPlusSimple/bin/Debug/net9.0/ForwardPlusSimple.exe"
                 },
                 {
                     "label": "GraphicsAPI / ImGuiTest",
-                    "value": "Samples/GraphicsAPI/ImGuiTest/bin/Debug/net8.0/ImGuiTest.exe"
+                    "value": "Samples/GraphicsAPI/ImGuiTest/bin/Debug/net9.0/ImGuiTest.exe"
                 },
                 {
                     "label": "GraphicsAPI / RenderToCubeMap",
-                    "value": "Samples/GraphicsAPI/RenderToCubeMap/bin/Debug/net8.0/RenderToCubeMap.exe"
+                    "value": "Samples/GraphicsAPI/RenderToCubeMap/bin/Debug/net9.0/RenderToCubeMap.exe"
                 },
                 {
                     "label": "GraphicsAPI / RenderToCubeMapSinglePass",
-                    "value": "Samples/GraphicsAPI/RenderToCubeMapSinglePass/bin/Debug/net8.0/RenderToCubeMapSinglePass.exe"
+                    "value": "Samples/GraphicsAPI/RenderToCubeMapSinglePass/bin/Debug/net9.0/RenderToCubeMapSinglePass.exe"
                 },
                 {
                     "label": "Integration / Billboard",
-                    "value": "Samples/Integration/Billboard/bin/Debug/net8.0/Billboard.exe"
+                    "value": "Samples/Integration/Billboard/bin/Debug/net9.0/Billboard.exe"
                 },
                 {
                     "label": "Integration / DepthPrepassRenderer",
-                    "value": "Samples/Integration/DepthPrepassRenderer/bin/Debug/net8.0/DepthPrepassRenderer.exe"
+                    "value": "Samples/Integration/DepthPrepassRenderer/bin/Debug/net9.0/DepthPrepassRenderer.exe"
                 },
                 {
                     "label": "Integration / GizmoTest",
-                    "value": "Samples/Integration/GizmoTest/bin/Debug/net8.0/GizmoTest.exe"
+                    "value": "Samples/Integration/GizmoTest/bin/Debug/net9.0/GizmoTest.exe"
                 },
                 {
                     "label": "Integration / ImGui",
-                    "value": "Samples/Integration/ImGui/bin/Debug/net8.0/ImGui.exe"
+                    "value": "Samples/Integration/ImGui/bin/Debug/net9.0/ImGui.exe"
                 },
                 {
                     "label": "Integration / InstancingDemo",
-                    "value": "Samples/Integration/InstancingDemo/bin/Debug/net8.0/InstancingDemo.exe"
+                    "value": "Samples/Integration/InstancingDemo/bin/Debug/net9.0/InstancingDemo.exe"
                 },
                 {
                     "label": "Integration / LightCulling",
-                    "value": "Samples/Integration/LightCulling/bin/Debug/net8.0/LightCulling.exe"
+                    "value": "Samples/Integration/LightCulling/bin/Debug/net9.0/LightCulling.exe"
                 },
                 {
                     "label": "Integration / Lines",
-                    "value": "Samples/Integration/Lines/bin/Debug/net8.0/Lines.exe"
+                    "value": "Samples/Integration/Lines/bin/Debug/net9.0/Lines.exe"
                 },
                 {
                     "label": "Integration / PBRTest",
-                    "value": "Samples/Integration/PBRTest/bin/Debug/net8.0/PBRTest.exe"
+                    "value": "Samples/Integration/PBRTest/bin/Debug/net9.0/PBRTest.exe"
                 },
                 {
                     "label": "Integration / PickingTest",
-                    "value": "Samples/Integration/PickingTest/bin/Debug/net8.0/PickingTest.exe"
+                    "value": "Samples/Integration/PickingTest/bin/Debug/net9.0/PickingTest.exe"
                 },
                 {
                     "label": "Integration / Points",
-                    "value": "Samples/Integration/Points/bin/Debug/net8.0/Points.exe"
+                    "value": "Samples/Integration/Points/bin/Debug/net9.0/Points.exe"
                 },
                 {
                     "label": "Integration / TextureTest",
-                    "value": "Samples/Integration/TextureTest/bin/Debug/net8.0/TextureTest.exe"
+                    "value": "Samples/Integration/TextureTest/bin/Debug/net9.0/TextureTest.exe"
                 },
                 {
                     "label": "Integration / Transparent",
-                    "value": "Samples/Integration/Transparent/bin/Debug/net8.0/Transparent.exe"
+                    "value": "Samples/Integration/Transparent/bin/Debug/net9.0/Transparent.exe"
                 },
                 {
                     "label": "Integration / gltfImporter",
-                    "value": "Samples/Integration/gltfImporter/bin/Debug/net8.0/gltfImporter.exe"
+                    "value": "Samples/Integration/gltfImporter/bin/Debug/net9.0/gltfImporter.exe"
                 },
                 {
                     "label": "Interop / Avalonia",
-                    "value": "Samples/Interop/Avalonia/bin/Debug/net8.0/AvaloniaInterop.exe"
+                    "value": "Samples/Interop/Avalonia/bin/Debug/net9.0/AvaloniaInterop.exe"
                 },
                 {
                     // Windows-only. Builds as x64 (slnx maps Debug -> x64) and
                     // targets the Windows App SDK TFM, so it lands under bin/x64.
                     "label": "Interop / WinUI (Windows only)",
-                    "value": "Samples/Interop/WinUI/bin/x64/Debug/net8.0-windows10.0.22621.0/WinUIInterop.exe"
+                    "value": "Samples/Interop/WinUI/bin/x64/Debug/net9.0-windows10.0.22621.0/WinUIInterop.exe"
                 },
                 {
-                    // Windows-only. Targets net8.0-windows at AnyCPU.
+                    // Windows-only. Targets net9.0-windows at AnyCPU.
                     "label": "Interop / Wpf (Windows only)",
-                    "value": "Samples/Interop/Wpf/bin/Debug/net8.0-windows/WpfInterop.exe"
+                    "value": "Samples/Interop/Wpf/bin/Debug/net9.0-windows/WpfInterop.exe"
                 }
             ]
         }

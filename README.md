@@ -14,7 +14,7 @@ Currently in development.
 - Windows 10 or later
 - Linux (Tested on Ubuntu 26.04)
 - Vulkan 1.3 compatible GPU and drivers
-- .NET 8.0 or later
+- .NET 9.0 or later
 
 ## Features (Done or In progress)
 

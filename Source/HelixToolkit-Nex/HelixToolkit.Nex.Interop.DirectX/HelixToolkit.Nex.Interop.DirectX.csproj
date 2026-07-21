@@ -1,11 +1,11 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
     <!--
-        Plain net8.0 so this assembly restores and builds on any OS. The Vortice DirectX bindings are
+        Plain net9.0 so this assembly restores and builds on any OS. The Vortice DirectX bindings are
         managed, cross-platform packages; their P/Invokes into d3d11/dxgi only resolve at runtime on
         Windows, so callers guard use behind OperatingSystem.IsWindows().
     -->
     <PropertyGroup>
-        <TargetFramework>net8.0</TargetFramework>
+        <TargetFramework>net9.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <LangVersion>latest</LangVersion>

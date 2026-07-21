@@ -1,6 +1,6 @@
 # Helix Toolkit NEX Documentation
 
-Welcome to the Helix Toolkit NEX documentation. This is a modern, high-performance 3D graphics toolkit for .NET 8.
+Welcome to the Helix Toolkit NEX documentation. This is a modern, high-performance 3D graphics toolkit for .NET 9.
 
 ## Overview
 
@@ -48,7 +48,7 @@ Browse the [API Documentation](api/index.md) to explore the available classes an
 ## Key Features
 
 - Modern Vulkan-based rendering pipeline
-- Cross-platform support (.NET 8)
+- Cross-platform support (.NET 9)
 - High-performance graphics operations
 - Comprehensive mathematics library
 - Scene graph management
@@ -61,7 +61,7 @@ Browse the [API Documentation](api/index.md) to explore the available classes an
 
 ## Requirements
 
-- .NET 8.0 or later
+- .NET 9.0 or later
 - Vulkan 1.3 or later compatible GPU
 
 ## License

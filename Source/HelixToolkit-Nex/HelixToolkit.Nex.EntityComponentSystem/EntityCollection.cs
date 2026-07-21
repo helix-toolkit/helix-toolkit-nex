@@ -1,6 +1,3 @@
-using ZLinq;
-using ZLinq.Linq;
-
 namespace HelixToolkit.Nex.ECS;
 
 /// <summary>
@@ -112,16 +109,20 @@ public sealed class EntityCollection : IDisposable, IEnumerable<Entity>
     }
 
     #region Enumerable
-    public struct Enumerator(HashSet<Entity> entities) : IEnumerator<Entity>
+    public struct Enumerator : IEnumerator<Entity>
     {
-        private readonly HashSet<Entity> _entities = entities;
-        private ValueEnumerator<FromHashSet<Entity>, Entity> _enumerator = entities
-            .AsValueEnumerable()
-            .GetEnumerator();
+        private readonly HashSet<Entity> _entities;
+        private HashSet<Entity>.Enumerator _enumerator;
+
+        internal Enumerator(HashSet<Entity> entities)
+        {
+            _entities = entities;
+            _enumerator = entities.GetEnumerator();
+        }
 
         public readonly Entity Current => _enumerator.Current;
 
-        object IEnumerator.Current => Current;
+        readonly object IEnumerator.Current => Current;
 
         public bool MoveNext()
         {
@@ -130,7 +131,7 @@ public sealed class EntityCollection : IDisposable, IEnumerable<Entity>
 
         public void Reset()
         {
-            _enumerator = _entities.AsValueEnumerable().GetEnumerator();
+            _enumerator = _entities.GetEnumerator();
         }
 
         public void Dispose()
