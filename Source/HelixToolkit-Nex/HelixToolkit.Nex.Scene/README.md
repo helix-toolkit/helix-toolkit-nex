@@ -188,4 +188,8 @@ if (buffer.TryGetMaterializedNode(handle, out MyCustomNode? node) == ResultCode.
 - **Single-threaded per world**: A world is accessed by one thread at a time. Use `SceneCommandBuffer` to build nodes off-thread and apply them back on the world thread.
 - **Level-ordered transform updates**: `NodeInfo` sorts by hierarchy level so parents are processed before children when world transforms are recomputed.
 - **Dependencies**: `HelixToolkit.Nex.ECS` (entities/components) and `HelixToolkit.Nex.Maths` (matrix math).
+
+## Compatibility
+
+- **Target Framework**: Updated to .NET 9.0.
 ```

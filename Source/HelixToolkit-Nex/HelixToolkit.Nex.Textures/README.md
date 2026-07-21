@@ -131,4 +131,8 @@ The project now supports additional build configurations for Linux:
 - `LinuxRelease`
 
 These configurations allow for building and testing the package on Linux environments, expanding the versatility and deployment options for developers using the HelixToolkit-Nex engine.
+
+## Target Framework
+
+The package now targets `.NET 9.0`, ensuring compatibility with the latest features and improvements in the .NET ecosystem.
 ```
