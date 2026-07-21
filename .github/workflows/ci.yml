@@ -24,7 +24,14 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          lfs: true
+
+      - name: Pull LFS assets needed for tests
+        # Only the glTF import tests read Assets/Models/**. Textures and sample
+        # screenshots aren't used by the build or test suite, so skip them here
+        # to avoid burning LFS bandwidth on every push/PR.
+        run: |
+          git lfs install --local
+          git lfs pull --include "Assets/Models/**"
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
@@ -84,7 +91,14 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          lfs: true
+
+      - name: Pull LFS assets needed for tests
+        # Only the glTF import tests read Assets/Models/**. Textures and sample
+        # screenshots aren't used by the build or test suite, so skip them here
+        # to avoid burning LFS bandwidth on every push/PR.
+        run: |
+          git lfs install --local
+          git lfs pull --include "Assets/Models/**"
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
