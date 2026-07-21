@@ -3,6 +3,13 @@ using System.Diagnostics.CodeAnalysis;
 namespace HelixToolkit.Nex.ECS;
 
 /// <summary>
+/// Mutates <paramref name="value"/> in place, without copying it in or out.
+/// </summary>
+/// <typeparam name="T">The component type.</typeparam>
+/// <param name="value">The component, passed by reference.</param>
+public delegate void RefAction<T>(ref T value);
+
+/// <summary>
 /// Entity structure.
 /// </summary>
 /// <seealso cref="System.IDisposable" />
@@ -193,25 +200,24 @@ public struct Entity : IDisposable, IEquatable<Entity>
     /// <summary>
     /// Updates the component of type <typeparamref name="T"/> associated with the current entity.
     /// </summary>
-    /// <remarks>This method applies the provided <paramref name="updateFunc"/> to the component of type
-    /// <typeparamref name="T"/> if the entity has such a component. If the entity does not have the specified
-    /// component, the method does nothing.</remarks>
+    /// <remarks>This method applies the provided <paramref name="updateAction"/> directly to the stored
+    /// component by reference, so no copy is made. If the entity does not have the specified component, the
+    /// method does nothing. A <see cref="ComponentChangedEvent{T}"/> is raised afterwards, same as <see cref="Set{T}(ref T)"/>.</remarks>
     /// <typeparam name="T">The type of the component to update.</typeparam>
-    /// <param name="updateFunc">A function that takes the current component of type <typeparamref name="T"/> as input and returns the updated
-    /// component.</param>
-    public void Update<
+    /// <param name="updateAction">An action that mutates the current component of type <typeparamref name="T"/> in place.</param>
+    public readonly void Update<
         [DynamicallyAccessedMembers(
             DynamicallyAccessedMemberTypes.PublicFields
                 | DynamicallyAccessedMemberTypes.NonPublicFields
         )]
     T
-    >(Func<T, T> updateFunc)
+    >(RefAction<T> updateAction)
     {
         if (Has<T>())
         {
             ref var component = ref Get<T>();
-            var updatedComponent = updateFunc(component);
-            Set(ref updatedComponent);
+            updateAction(ref component);
+            NotifyComponentChanged<T>();
         }
     }
 

@@ -27,11 +27,7 @@ public class DirectionalLightNode : Node
         get => Entity.Get<DirectionalLightInfo>().Direction;
         set
         {
-            Entity.Update<DirectionalLightInfo>(comp =>
-            {
-                comp.Direction = value;
-                return comp;
-            });
+            Entity.Update<DirectionalLightInfo>((ref DirectionalLightInfo comp) => comp.Direction = value);
         }
     }
 
@@ -43,11 +39,7 @@ public class DirectionalLightNode : Node
         get => Entity.Get<DirectionalLightInfo>().Color;
         set
         {
-            Entity.Update<DirectionalLightInfo>(comp =>
-            {
-                comp.Color = value;
-                return comp;
-            });
+            Entity.Update<DirectionalLightInfo>((ref DirectionalLightInfo comp) => comp.Color = value);
         }
     }
 
@@ -59,11 +51,7 @@ public class DirectionalLightNode : Node
         get => Entity.Get<DirectionalLightInfo>().Intensity;
         set
         {
-            Entity.Update<DirectionalLightInfo>(comp =>
-            {
-                comp.Intensity = value;
-                return comp;
-            });
+            Entity.Update<DirectionalLightInfo>((ref DirectionalLightInfo comp) => comp.Intensity = value);
         }
     }
 }

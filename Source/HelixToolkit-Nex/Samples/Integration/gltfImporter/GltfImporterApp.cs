@@ -765,7 +765,7 @@ internal class GltfImporterApp : ApplicationBase
         var comps = world.GetComponents<MeshDrawInfo>();
         foreach (var entity in comps.GetEntities())
         {
-            entity.Update<MeshDrawInfo>(static m => m);
+            entity.NotifyComponentChanged<MeshDrawInfo>();
         }
     }
 
