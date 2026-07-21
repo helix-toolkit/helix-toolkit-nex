@@ -101,4 +101,8 @@ if (!cache.TryGet(cacheKey, out var entry))
 - **SMAA Enhancements**: The SMAA shader now includes support for color-based edge detection and diagonal pattern detection, improving anti-aliasing quality.
 - **SSAO Implementation**: A new SSAO (Screen-Space Ambient Occlusion) shader has been added, supporting multiple stages (occlusion, blur, composite) for enhanced ambient occlusion effects.
 - **Environment Mapping**: Added support for HDR environment cubemap rendering with rotation and mip-level selection, integrated with PBR shading for consistent reflections.
+
+## Compatibility
+
+- **Target Framework**: Updated to .NET 9.0 to leverage the latest language features and performance improvements.
 ```

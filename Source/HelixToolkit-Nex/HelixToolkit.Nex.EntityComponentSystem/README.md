@@ -31,6 +31,7 @@ HelixToolkit.Nex.ECS supports:
 | `DeferredEntity`   | Handle returned by `CommandBuffer.RecordCreateEntity()` that resolves to a real `Entity` during flush.                           |
 | `FlushResult`      | Result of `CommandBuffer.Flush`, reporting success or the index and description of the failing command.                          |
 | `ResultCode`       | Shared `HelixToolkit.Nex` result enum returned by component operations (`Ok`, `InvalidState`, `NotFound`, `WorldNotValid`, ...). |
+| `RefAction<T>`     | Delegate for mutating a component in place without copying it in or out.                                                         |
 
 > Note: `ComponentManager<T>` and `TagManager<T>` are internal storage managers. Consumers interact with components only through `World` and `Entity`.
 
@@ -58,6 +59,17 @@ if (entity.Has<Position>())
     ref var pos = ref entity.Get<Position>(); // returns by ref; check entity.Valid first
     Console.WriteLine($"Position: {pos.X}, {pos.Y}, {pos.Z}");
 }
+```
+
+### Updating Components In-Place
+
+```csharp
+entity.Update<Position>(ref pos => 
+{
+    pos.X += 1.0f;
+    pos.Y += 1.0f;
+    pos.Z += 1.0f;
+});
 ```
 
 ### Tag (Marker) Components

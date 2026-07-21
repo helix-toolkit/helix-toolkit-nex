@@ -254,4 +254,9 @@ camera.FocusOn(new Vector3(0, 0, 0), 10f);
 ### Updates to `LineDrawStream`
 
 - Added `TextureId` and `SamplerId` properties to `LineDrawStream` and `LineNode` for bindless texture and sampler support.
+
+### Codebase Updates
+
+- Updated target framework to .NET 9.0 for improved performance and feature set.
+- Simplified ECS component updates using lambda expressions for `Entity.Update<T>()` calls.
 ```

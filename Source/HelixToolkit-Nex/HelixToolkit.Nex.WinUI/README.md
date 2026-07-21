@@ -63,6 +63,7 @@ viewport.PointerPressed += (sender, e) =>
 - **Project Reference Update**: Added a project reference to `HelixToolkit.Nex.Interop` to facilitate interop functionalities.
 - **Interop Enhancements**: Introduced `Microsoft.Windows.CsWin32` for improved COM interop, replacing manual COM interface definitions with generated interop code.
 - **Swap Chain Detachment**: The swap chain is now detached from the `SwapChainPanel` before releasing it to manage COM references properly.
+- **Target Framework Update**: Updated the target framework to `net9.0` for both Windows and Linux platforms.
 
 ## Architecture Notes
 

@@ -13,6 +13,7 @@ The `HelixToolkit.Nex.ImGui` package provides integration with the ImGui library
 |-----------------|-----------------------------------------------------------------------------|
 | `ImGuiConfig`   | Configuration class for setting up ImGui, including font path and size.     |
 | `ImGuiRenderer` | Main class responsible for rendering ImGui elements within the engine.      |
+| `Viewport`      | Reusable 3D viewport region for ImGui-hosted demos, translating mouse input into camera-controller and picking operations. |
 
 ## Usage Examples
 
@@ -50,6 +51,22 @@ imguiRenderer.EndFrame();
 imguiRenderer.Render(commandBuffer, renderPass, framebuffer, dependencies);
 ```
 
+### Viewport Integration
+
+To use the `Viewport` class, instantiate it with a render context and optionally a camera controller. Use the `Draw` method to render the viewport.
+
+```csharp
+using HelixToolkit.Nex.ImGui;
+using HelixToolkit.Nex.Rendering;
+
+// Create a render context
+var renderContext = /* Obtain RenderContext from HelixToolkit.Nex */;
+var viewport = new Viewport(renderContext);
+
+// In your rendering loop
+viewport.Draw(offscreenTexture);
+```
+
 ## Architecture Notes
 
 - **Design Patterns**: The `ImGuiRenderer` utilizes the IDisposable pattern to manage resources effectively, ensuring that Vulkan resources are properly released.
@@ -58,6 +75,7 @@ imguiRenderer.Render(commandBuffer, renderPass, framebuffer, dependencies);
 
 ## Recent Changes
 
+- **Target Framework Update**: The project now targets .NET 9.0, ensuring compatibility with the latest features and improvements.
 - **Depth State Binding**: The `ImGuiRenderer` now explicitly binds the `DepthState.Disabled` during rendering, ensuring depth testing is disabled for ImGui elements.
 - **Debug Group Label**: The `ImGuiRenderer` uses a static byte array for the debug group label, improving performance by avoiding repeated string allocations.
 - **Platform Configurations**: The project includes additional build configurations for Linux (`LinuxDebug` and `LinuxRelease`), enhancing cross-platform support.

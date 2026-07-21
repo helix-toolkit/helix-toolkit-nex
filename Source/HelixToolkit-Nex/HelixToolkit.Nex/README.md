@@ -143,4 +143,8 @@ using (HxDebug.TemporarilyDisableAsserts())
 - **Dependency Injection**: The engine includes a lightweight dependency injection framework, allowing for easy management of service lifetimes and dependencies.
 
 HelixToolkit.Nex is designed to be modular and extensible, making it suitable for a wide range of 3D graphics applications.
+
+## Target Framework Update
+
+HelixToolkit.Nex now targets .NET 9.0, taking advantage of the latest features and performance improvements available in this version.
 ```
