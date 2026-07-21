@@ -4,7 +4,7 @@ This file gives an AI agent the context needed to work productively in this repo
 
 ## What this project is
 
-HelixToolkit Nex is the next-generation 3D graphics engine from HelixToolkit, written in **C# / .NET 8**. It exposes a unified graphics interface designed to support multiple GPU backends, with the current implementation targeting **Vulkan 1.3**. The graphics interface and Vulkan backend are inspired by [LightWeightVk](https://github.com/corporateshark/lightweightvk).
+HelixToolkit Nex is the next-generation 3D graphics engine from HelixToolkit, written in **C# / .NET 9**. It exposes a unified graphics interface designed to support multiple GPU backends, with the current implementation targeting **Vulkan 1.3**. The graphics interface and Vulkan backend are inspired by [LightWeightVk](https://github.com/corporateshark/lightweightvk).
 
 Key characteristics:
 - **Bindless descriptor architecture** — a single large descriptor set of resource arrays; shaders index resources by integer handles rather than binding per-draw.
@@ -96,7 +96,7 @@ When adding a dependency between packages, respect the layering — e.g. `Render
 
 Enforced by [.editorconfig](.editorconfig) and verified in CI via `dotnet format`. Key rules:
 
-- **Language/runtime:** C# `LangVersion=latest`, `net8.0`, `Nullable=enable`, `ImplicitUsings=enable`, `AllowUnsafeBlocks=true`.
+- **Language/runtime:** C# `LangVersion=latest`, `net9.0`, `Nullable=enable`, `ImplicitUsings=enable`, `AllowUnsafeBlocks=true`.
 - ****Namespaces:** file-scoped (`namespace X;`) is used throughout the codebase.
 - **`var`:** preferred everywhere (built-in types, apparent types, elsewhere).
 - **Indentation:** 4 spaces for C#; line endings **CRLF** for `.cs`; final newline required; UTF-8. (YAML/JSON use 2-space indent.)
@@ -138,7 +138,7 @@ Scripts/build-linux.sh --clean
 
 **Tests:** MSTest. Tests tagged `TestCategory=GPURequired` need a real GPU and are skipped in CI. Each library has a paired `*.Tests` project; add tests there. The `Graphics.Mock` backend enables GPU-free testing of higher layers.
 
-**Prerequisites:** .NET 8 SDK, Vulkan SDK ≥ 1.3.296.0, a Vulkan 1.3 GPU/drivers to run samples, `pwsh`, Git, and **Git LFS**.
+**Prerequisites:** .NET 9 SDK, Vulkan SDK ≥ 1.3.296.0, a Vulkan 1.3 GPU/drivers to run samples, `pwsh`, Git, and **Git LFS**.
 
 ## Git LFS & assets
 

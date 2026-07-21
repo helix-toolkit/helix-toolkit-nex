@@ -72,8 +72,8 @@ viewport.PointerPressed += (sender, e) =>
 
 ## Platform Support
 
-- **Windows**: The package targets `net8.0-windows10.0.22621.0` for Windows platforms, utilizing the Microsoft Windows App SDK.
-- **Linux**: The package now includes conditional support for Linux platforms targeting `net8.0`, although DirectX interop features are not available on Linux.
+- **Windows**: The package targets `net9.0-windows10.0.22621.0` for Windows platforms, utilizing the Microsoft Windows App SDK.
+- **Linux**: The package now includes conditional support for Linux platforms targeting `net9.0`, although DirectX interop features are not available on Linux.
 
 HelixToolkit.Nex.WinUI is designed to be flexible and powerful, providing developers with the tools needed to create immersive 3D applications in the WinUI ecosystem.
 ```

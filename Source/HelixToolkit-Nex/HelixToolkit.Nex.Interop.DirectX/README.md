@@ -40,5 +40,5 @@ var sharedTexture = SharedTextureFactory.CreateForWinUI(d3d11Manager, width, hei
 - **Design Patterns**: The package utilizes the Factory pattern for creating shared textures (`SharedTextureFactory`) and the Adapter pattern for managing device contexts (`D3D11DeviceManager`).
 - **Dependencies**: This package depends on other HelixToolkit.Nex packages, specifically those related to Vulkan graphics (`HelixToolkit.Nex.Graphics.Vulkan`) and rendering contexts.
 - **Interop Strategy**: The package employs VK_KHR_external_memory_win32 for Vulkan-DirectX interop, allowing textures to be shared across APIs efficiently.
-- **Platform Support**: The project now targets `net8.0`, allowing it to restore and build on any OS. However, DirectX interop is only applicable on Windows, as the Vortice DirectX bindings resolve P/Invokes into d3d11/dxgi at runtime on Windows. Usage should be guarded with `OperatingSystem.IsWindows()`.
+- **Platform Support**: The project now targets `net9.0`, allowing it to restore and build on any OS. However, DirectX interop is only applicable on Windows, as the Vortice DirectX bindings resolve P/Invokes into d3d11/dxgi at runtime on Windows. Usage should be guarded with `OperatingSystem.IsWindows()`.
 ```

@@ -189,7 +189,7 @@ public class ServiceProvider : IServiceProvider, IDisposable, IServiceScopeFacto
     {
         // Check for Nullable<T> or reference types if in nullable context (but runtime check is hard for nullable ref types without attributes)
         // For simplicity, handle Nullable<T> and classes.
-        // In .NET 8, nullable attributes are available but complex to parse manually without help.
+        // In .NET 9, nullable attributes are available but complex to parse manually without help.
         // Let's assume if it's not a value type, it 'can' be null, or if it is Nullable<T>.
         return !parameter.ParameterType.IsValueType
             || Nullable.GetUnderlyingType(parameter.ParameterType) != null;

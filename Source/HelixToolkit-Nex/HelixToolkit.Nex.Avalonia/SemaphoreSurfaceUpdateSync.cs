@@ -17,7 +17,7 @@ namespace HelixToolkit.Nex.Avalonia;
 /// </summary>
 /// <remarks>
 /// <para>
-/// This type is compiled into the single cross-platform <c>net8.0</c> assembly and OS-runtime-guarded
+/// This type is compiled into the single cross-platform <c>net9.0</c> assembly and OS-runtime-guarded
 /// like <see cref="LinuxExternalMemoryBridge"/>. The exported semaphore file descriptors are POSIX handles only ever produced on
 /// Linux with <see cref="VulkanContextConfig.EnableExternalMemoryFd"/> enabled; construction happens
 /// only through <see cref="LinuxExternalMemoryBridge.CreateSurfaceSync"/>, which is Linux-guarded by

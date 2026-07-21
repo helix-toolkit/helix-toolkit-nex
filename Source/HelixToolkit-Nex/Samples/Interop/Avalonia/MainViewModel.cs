@@ -25,7 +25,7 @@ namespace AvaloniaInterop;
 /// <see cref="IViewportClient"/> that owns a <see cref="Camera"/> and delegates per-frame camera
 /// manipulation to an optional callback. Modeled on the <c>InteropShared</c> sample's
 /// <c>DelegateViewportClient</c>, but kept local to this project so the sample stays cross-platform
-/// (the shared <c>InteropShared</c> project is <c>net8.0-windows</c> and cannot be referenced from
+/// (the shared <c>InteropShared</c> project is <c>net9.0-windows</c> and cannot be referenced from
 /// the Linux build of this app).
 /// </summary>
 internal sealed class DelegateViewportClient : IViewportClient
@@ -78,7 +78,7 @@ internal sealed class DelegateViewportClient : IViewportClient
 /// <remarks>
 /// This mirrors the <c>InteropShared</c> <c>MainViewModel</c> but is a local, cross-platform copy:
 /// the platform-specific engine configuration is guarded by the <c>WINDOWS</c> compilation symbol
-/// (defined only for the <c>net8.0-windows</c> target), so the Linux build never touches DirectX.
+/// (defined only for the <c>net9.0-windows</c> target), so the Linux build never touches DirectX.
 /// </remarks>
 public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
 {
