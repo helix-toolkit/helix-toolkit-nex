@@ -86,10 +86,31 @@ public partial class HelixViewport : UserControl, IDisposable
             return;
         }
 
-        _d3d11Manager = new D3D11DeviceManager();
-        _dxgiDevice = _d3d11Manager.Device.QueryInterface<IDXGIDevice3>();
-        _dxgiDevice.GetAdapter(out _dxgiAdapter).CheckError();
-        _dxgiFactory = _dxgiAdapter.GetParent<IDXGIFactory2>();
+        try
+        {
+            _d3d11Manager = new D3D11DeviceManager();
+            _dxgiDevice = _d3d11Manager.Device.QueryInterface<IDXGIDevice3>();
+            _dxgiDevice.GetAdapter(out _dxgiAdapter).CheckError();
+            _dxgiFactory = _dxgiAdapter.GetParent<IDXGIFactory2>();
+        }
+        catch (Exception error)
+        {
+            var cleanupFailures = new List<Exception>();
+            TryDispose(ref _dxgiFactory, cleanupFailures);
+            TryDispose(ref _dxgiAdapter, cleanupFailures);
+            TryDispose(ref _dxgiDevice, cleanupFailures);
+            TryDispose(ref _d3d11Manager, cleanupFailures);
+            if (cleanupFailures.Count > 0)
+            {
+                cleanupFailures.Insert(0, error);
+                throw new AggregateException(
+                    "Device resource creation and cleanup both failed.",
+                    cleanupFailures
+                );
+            }
+
+            throw;
+        }
     }
 
     private void SetEngine(Engine.Engine? engine)
