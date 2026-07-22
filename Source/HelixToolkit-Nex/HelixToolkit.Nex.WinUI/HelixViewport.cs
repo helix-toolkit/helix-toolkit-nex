@@ -7,9 +7,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
-using Vortice.Direct3D11;
 using Vortice.DXGI;
-using Vortice.Vulkan;
 using WinRT;
 using WinRT.Interop;
 using NativeDxgiSwapChain = Windows.Win32.Graphics.Dxgi.IDXGISwapChain;
@@ -45,22 +43,18 @@ public partial class HelixViewport : UserControl, IDisposable
     private IDXGIDevice3? _dxgiDevice;
     private IDXGIAdapter? _dxgiAdapter;
     private IDXGIFactory2? _dxgiFactory;
-    private IDXGISwapChain1? _swapchain;
-    private ID3D11Texture2D? _backbuffer;
-    private ID3D11Resource? _backbufferResource;
-    private ID3D11Resource? _renderTargetResource;
-    private SharedTextureResult? _sharedTexture;
-    private ImportedVulkanTexture? _importedTexture;
-    private IDXGIKeyedMutex? _keyedMutex;
     private long _lastTimestamp;
     private bool _sizeChanged = true;
-    private bool _disposed;
-
     private KeyedMutexSyncInfo _vulkanSyncInfo;
-    private KeyedMutexSyncInfo _copySyncInfo;
+    private readonly ViewportLifecycle<ViewportSession> _lifecycle;
 
     public HelixViewport()
     {
+        _lifecycle = new ViewportLifecycle<ViewportSession>(
+            ActivateSession,
+            DeactivateSession,
+            DisposeTerminalResources
+        );
         _swapChainPanel = new SwapChainPanel();
         Content = _swapChainPanel;
 
@@ -77,21 +71,25 @@ public partial class HelixViewport : UserControl, IDisposable
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
-        // 1. D3D11 device for shared texture interop
-        _d3d11Manager = new D3D11DeviceManager();
+        _lastTimestamp = 0;
+        _lifecycle.Load(CreateResources);
+        _sizeChanged = _lifecycle.Session is null;
+    }
 
-        // 2. DXGI device, adapter, factory for swap chain creation
+    /// <summary>
+    /// Lazily creates the D3D11 and DXGI resources retained across unload.
+    /// </summary>
+    private void EnsureDeviceResources()
+    {
+        if (_d3d11Manager is not null)
+        {
+            return;
+        }
+
+        _d3d11Manager = new D3D11DeviceManager();
         _dxgiDevice = _d3d11Manager.Device.QueryInterface<IDXGIDevice3>();
         _dxgiDevice.GetAdapter(out _dxgiAdapter).CheckError();
         _dxgiFactory = _dxgiAdapter.GetParent<IDXGIFactory2>();
-
-        // 4. Create shared resources at the current control size
-        var width = (uint)ActualWidth;
-        var height = (uint)ActualHeight;
-        if (width > 0 && height > 0)
-        {
-            CreateResources(width, height);
-        }
     }
 
     private void SetEngine(Engine.Engine? engine)
@@ -100,8 +98,27 @@ public partial class HelixViewport : UserControl, IDisposable
         {
             return;
         }
-        ReleaseResources();
+
+        if (_lifecycle.State == ViewportLifecycleState.Loaded)
+        {
+            _lifecycle.Replace(() =>
+            {
+                SetEngineCore(engine);
+                return CreateResources();
+            });
+            return;
+        }
+
+        SetEngineCore(engine);
+    }
+
+    /// <summary>
+    /// Applies the original render-context replacement sequence.
+    /// </summary>
+    private void SetEngineCore(Engine.Engine? engine)
+    {
         Disposer.DisposeAndRemove(ref _renderContext);
+        _renderArgs = null;
         _engine = engine;
         if (_engine is null)
         {
@@ -111,10 +128,6 @@ public partial class HelixViewport : UserControl, IDisposable
         _renderContext.Initialize();
         _renderContext.RenderParams.EnableGammaCorrection = true; // Must enable gamma correction.
         _renderArgs = new(_renderContext);
-        if (IsLoaded && Width > 0 && Height > 0)
-        {
-            CreateResources((uint)Width, (uint)Height);
-        }
     }
 
     private void SetClient(IViewportClient? client)
@@ -122,92 +135,96 @@ public partial class HelixViewport : UserControl, IDisposable
         _viewportClient = client;
     }
 
-    private void CreateResources(uint width, uint height)
+    /// <summary>
+    /// Creates a session at the current rendered size when one is needed.
+    /// </summary>
+    private ViewportSession? CreateResources()
     {
-        if (_engine is null || _dxgiFactory is null)
+        EnsureDeviceResources();
+        var width = (uint)ActualWidth;
+        var height = (uint)ActualHeight;
+        if (width == 0 || height == 0)
         {
-            return;
+            return null;
         }
+
+        return CreateResources(width, height);
+    }
+
+    /// <summary>
+    /// Creates the loaded-surface resources for a non-zero size.
+    /// </summary>
+    private ViewportSession? CreateResources(uint width, uint height)
+    {
+        if (
+            _engine is null
+            || _renderContext is null
+            || _d3d11Manager is null
+            || _dxgiFactory is null
+            || _dxgiDevice is null
+        )
+        {
+            return null;
+        }
+
         _logger.LogInformation(
             "Creating resources for HelixViewport with size {Width}x{Height}.",
             width,
             height
         );
 
-        var context = _engine.Context;
-
-        // 1. DXGI swap chain for composition
-        var swapchainDesc = new SwapChainDescription1
-        {
-            Width = width,
-            Height = height,
-            Format = Vortice.DXGI.Format.R8G8B8A8_UNorm,
-            SwapEffect = SwapEffect.FlipSequential,
-            SampleDescription = new(1u, 0u),
-            BufferUsage = Usage.Backbuffer,
-            BufferCount = 2u,
-        };
-
-        _swapchain = _dxgiFactory.CreateSwapChainForComposition(_dxgiDevice, swapchainDesc);
-
-        _backbuffer = _swapchain.GetBuffer<ID3D11Texture2D>(0u);
-        SetSwapChainOnPanel(_swapChainPanel!, _swapchain);
-
-        // 2. Shared D3D11 render target (NT handle + keyed mutex)
-        _sharedTexture = SharedTextureFactory.CreateForWinUI(_d3d11Manager!, width, height);
-        _backbufferResource = _backbuffer.QueryInterface<ID3D11Resource>();
-        _renderTargetResource = _sharedTexture.Texture.QueryInterface<ID3D11Resource>();
-
-        #region Get keyed mutex for render target texture and setup syncing
-        _keyedMutex = _renderTargetResource.QueryInterface<IDXGIKeyedMutex>();
-        _vulkanSyncInfo = new KeyedMutexSyncInfo
-        {
-            AcquireKey = 0, // Vulkan goes first
-            ReleaseKey = 1, // Release key for copy to back buffer to run
-            Timeout = 1000,
-            SyncType = KeyedMutexSyncType.D3D11SharedFence,
-        };
-        _copySyncInfo = new KeyedMutexSyncInfo
-        {
-            AcquireKey = 1,
-            ReleaseKey = 0, // Release key for Vulkan to run
-            Timeout = 500,
-            SyncType = KeyedMutexSyncType.D3D11SharedFence,
-        };
-        #endregion
-        // 3. Import into Vulkan as R8G8B8A8Unorm
-        _importedTexture = VulkanExternalMemoryImporter.Import(
-            context,
-            _sharedTexture.SharedHandle,
-            VkExternalMemoryHandleTypeFlags.D3D11Texture,
-            VkFormat.R8G8B8A8Unorm,
+        var session = ViewportSession.Create(
+            _engine.Context,
+            _d3d11Manager,
+            _dxgiFactory,
+            _dxgiDevice,
             width,
             height
         );
-
-        _vulkanSyncInfo.AcquireSyncHandle = _importedTexture.Memory.Handle;
-        _vulkanSyncInfo.ReleaseSyncHandle = _importedTexture.Memory.Handle;
-
-        // 4. Wire up render context
-        _renderContext!.WindowSize = new Size((int)width, (int)height);
-
-        CompositionTarget.Rendering += OnCompositionRendering;
+        try
+        {
+            _renderContext.WindowSize = new Size((int)width, (int)height);
+            return session;
+        }
+        catch
+        {
+            session.Dispose();
+            throw;
+        }
     }
 
     private void OnCompositionRendering(object? sender, object e)
     {
-        if (_disposed || _d3d11Manager is null || _keyedMutex is null || _renderArgs is null)
+        if (
+            _lifecycle.State != ViewportLifecycleState.Loaded
+            || _d3d11Manager is null
+            || _renderArgs is null
+        )
             return;
+
         EnsureSize();
-        if (!Render((float)ActualWidth, (float)ActualHeight, _importedTexture!.Handle))
+        var session = _lifecycle.Session;
+        if (
+            session is null
+            || !Render(
+                (float)ActualWidth,
+                (float)ActualHeight,
+                session.ImportedTexture.Handle
+            )
+        )
         {
             return;
         }
+
         // Keyed mutex acquire → copy → release → present
-        _keyedMutex.AcquireSync(_copySyncInfo.AcquireKey, (int)_copySyncInfo.Timeout);
-        _d3d11Manager.DeviceContext.CopyResource(_backbufferResource, _renderTargetResource);
-        _keyedMutex.ReleaseSync(_copySyncInfo.ReleaseKey);
-        _swapchain?.Present(0u, 0u);
+        var copySyncInfo = session.CopySyncInfo;
+        session.KeyedMutex.AcquireSync(copySyncInfo.AcquireKey, (int)copySyncInfo.Timeout);
+        _d3d11Manager.DeviceContext.CopyResource(
+            session.BackBufferResource,
+            session.RenderTargetResource
+        );
+        session.KeyedMutex.ReleaseSync(copySyncInfo.ReleaseKey);
+        session.SwapChain.Present(0u, 0u);
     }
 
     private void EnsureSize()
@@ -215,45 +232,86 @@ public partial class HelixViewport : UserControl, IDisposable
         if (!_sizeChanged || ActualWidth == 0 || ActualHeight == 0)
             return;
 
-        if (_disposed || Engine is null)
+        if (_lifecycle.State != ViewportLifecycleState.Loaded || Engine is null)
             return;
+
         Engine.WaitForIdle();
-        ReleaseResources();
-        CreateResources((uint)ActualWidth, (uint)ActualHeight);
+        _lifecycle.Replace(() =>
+            CreateResources((uint)ActualWidth, (uint)ActualHeight)
+        );
         UpdateViewportSize((float)ActualWidth, (float)ActualHeight);
         _sizeChanged = false;
     }
 
     private void OnSizeChanged(object sender, SizeChangedEventArgs e)
     {
-        if (_disposed || Engine is null)
+        if (_lifecycle.State != ViewportLifecycleState.Loaded || Engine is null)
             return;
 
         _sizeChanged = true;
+
+        // The session won't be created when the Loaded event fires if ActualWidth or ActualHeight is 0.
+        // Create it when the size changes and both ActualWidth and ActualHeight are greater than 0.
+        if (_lifecycle.Session is null && ActualWidth > 0 && ActualHeight > 0)
+        {
+            EnsureSize();
+        }
     }
 
-    private void ReleaseResources()
+    /// <summary>
+    /// Connects a prepared loaded-surface session to the WinUI render path.
+    /// </summary>
+    private void ActivateSession(ViewportSession? session)
+    {
+        if (session is null)
+        {
+            return;
+        }
+
+        SetSwapChainOnPanel(_swapChainPanel!, session.SwapChain);
+        _vulkanSyncInfo = session.VulkanSyncInfo;
+        CompositionTarget.Rendering += OnCompositionRendering;
+    }
+
+    /// <summary>
+    /// Disconnects the current session before the lifecycle releases it.
+    /// </summary>
+    private void DeactivateSession()
     {
         _logger.LogInformation("Releasing resources for HelixViewport.");
+        var failures = new List<Exception>();
         CompositionTarget.Rendering -= OnCompositionRendering;
 
-        if (Engine is not null)
-            Engine.Context.Wait(default);
+        if (_swapChainPanel is not null)
+        {
+            Try(_swapChainPanel.ReleasePointerCaptures, failures);
+        }
+        _activeDrag = ActiveDragAction.None;
+        ResetPointerLocation();
+
+        if (_engine is not null)
+        {
+            Try(() => _engine.Context.Wait(default), failures);
+        }
 
         // Detach the swap chain before releasing it because SwapChainPanel retains
         // its own COM reference.
-        if (_swapChainPanel is not null && _swapchain is not null)
+        if (_swapChainPanel is not null && _lifecycle.Session is not null)
         {
-            SetSwapChainOnPanel(_swapChainPanel, null);
+            Try(() => SetSwapChainOnPanel(_swapChainPanel, null), failures);
         }
 
-        Disposer.DisposeAndRemove(ref _keyedMutex);
-        Disposer.DisposeAndRemove(ref _renderTargetResource);
-        Disposer.DisposeAndRemove(ref _backbufferResource);
-        Disposer.DisposeAndRemove(ref _importedTexture);
-        Disposer.DisposeAndRemove(ref _sharedTexture);
-        Disposer.DisposeAndRemove(ref _backbuffer);
-        Disposer.DisposeAndRemove(ref _swapchain);
+        _vulkanSyncInfo = default;
+        _lastTimestamp = 0;
+        _sizeChanged = true;
+
+        if (failures.Count > 0)
+        {
+            throw new AggregateException(
+                "The viewport could not be deactivated completely.",
+                failures
+            );
+        }
     }
 
     /// <summary>
@@ -282,7 +340,7 @@ public partial class HelixViewport : UserControl, IDisposable
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
     {
-        Dispose();
+        _lifecycle.Unload();
     }
 
     #region Pointer event forwarding to camera controller
@@ -376,21 +434,71 @@ public partial class HelixViewport : UserControl, IDisposable
 
     public void Dispose()
     {
-        if (_disposed)
-            return;
-        _disposed = true;
+        _lifecycle.Dispose();
+        GC.SuppressFinalize(this);
+    }
 
-        ReleaseResources();
-
-        Disposer.DisposeAndRemove(ref _renderContext);
+    /// <summary>
+    /// Releases resources retained across unload without disposing the external engine.
+    /// </summary>
+    private void DisposeTerminalResources()
+    {
+        var failures = new List<Exception>();
+        TryDispose(ref _renderContext, failures);
+        _renderArgs = null;
 
         // We do NOT dispose Engine — it is externally owned
-        Disposer.DisposeAndRemove(ref _dxgiFactory);
-        Disposer.DisposeAndRemove(ref _dxgiAdapter);
-        Disposer.DisposeAndRemove(ref _dxgiDevice);
+        TryDispose(ref _dxgiFactory, failures);
+        TryDispose(ref _dxgiAdapter, failures);
+        TryDispose(ref _dxgiDevice, failures);
+        TryDispose(ref _d3d11Manager, failures);
 
-        Disposer.DisposeAndRemove(ref _d3d11Manager);
+        if (failures.Count > 0)
+        {
+            throw new AggregateException(
+                "One or more viewport resources could not be released.",
+                failures
+            );
+        }
+    }
 
-        GC.SuppressFinalize(this);
+    /// <summary>
+    /// Attempts one cleanup action and records its failure.
+    /// </summary>
+    private static void Try(Action action, List<Exception> failures)
+    {
+        try
+        {
+            action();
+        }
+        catch (Exception error)
+        {
+            failures.Add(error);
+        }
+    }
+
+    /// <summary>
+    /// Attempts one terminal resource disposal and always drops the owned reference.
+    /// </summary>
+    private static void TryDispose<T>(ref T? resource, List<Exception> failures)
+        where T : class, IDisposable
+    {
+        if (resource is null)
+        {
+            return;
+        }
+
+        try
+        {
+            resource.Dispose();
+        }
+        catch (Exception error)
+        {
+            failures.Add(error);
+        }
+        finally
+        {
+            resource = null;
+        }
     }
 }

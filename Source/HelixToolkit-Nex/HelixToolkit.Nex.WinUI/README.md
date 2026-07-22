@@ -34,6 +34,13 @@ var viewport = new HelixViewport
 myWinUIPage.Content = viewport;
 ```
 
+### Viewport Lifetime
+
+`Unloaded` only suspends rendering so the same `HelixViewport` can be loaded
+again. The owner must call `Dispose()` when the viewport instance will no
+longer be used. Dispose every viewport before disposing its externally owned
+`Engine`.
+
 ### Registering a Dependency Property
 
 ```csharp
