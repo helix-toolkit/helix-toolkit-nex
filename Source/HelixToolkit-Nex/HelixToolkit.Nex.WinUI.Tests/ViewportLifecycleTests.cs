@@ -1,4 +1,4 @@
-﻿namespace HelixToolkit.Nex.WinUI.Tests;
+namespace HelixToolkit.Nex.WinUI.Tests;
 
 /// <summary>
 /// Tests for the WinUI viewport's platform-independent lifecycle coordinator.
