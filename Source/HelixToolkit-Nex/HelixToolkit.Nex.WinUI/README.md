@@ -71,6 +71,8 @@ viewport.PointerPressed += (sender, e) =>
 - **Interop Enhancements**: Introduced `Microsoft.Windows.CsWin32` for improved COM interop, replacing manual COM interface definitions with generated interop code.
 - **Swap Chain Detachment**: The swap chain is now detached from the `SwapChainPanel` before releasing it to manage COM references properly.
 - **Target Framework Update**: Updated the target framework to `net9.0` for both Windows and Linux platforms.
+- **Viewport Lifecycle Management**: Introduced `ViewportLifecycle<TSession>` to manage the lifecycle of viewport sessions, ensuring proper resource management and error handling.
+- **Viewport Session Management**: Added `ViewportSession` to encapsulate the native resources used by a loaded viewport surface, improving resource management and synchronization.
 
 ## Architecture Notes
 
