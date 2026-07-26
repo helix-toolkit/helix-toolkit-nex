@@ -19,6 +19,7 @@ Key concepts include:
 | `D3D9DeviceManager`      | Manages the D3D9 context and device for WPF D3DImage interop.               |
 | `HelixProperty`          | Provides static methods to register dependency properties and attached properties. |
 | `HelixViewport`          | A WPF control that hosts the HelixToolkit.Nex 3D engine output.             |
+| `ViewportLifecycle<TSession>` | Manages the lifecycle of a viewport session, handling loading, unloading, and disposing of resources. |
 
 ## Usage Examples
 
@@ -73,4 +74,5 @@ using (var deviceManager = new D3D9DeviceManager())
 - **Event Handling Update**: Removed the `BeforeRender` event from `HelixViewport` to streamline the rendering process and reduce complexity.
 - **D3DImage Management**: Improved D3DImage locking and unlocking logic to ensure thread safety and rendering correctness.
 - **Project Reference Update**: Added a project reference to `HelixToolkit.Nex.Interop` to facilitate shared resource management across different platform targets.
+- **Viewport Lifecycle Management**: Introduced `ViewportLifecycle<TSession>` to manage the lifecycle of viewport sessions, handling loading, unloading, and disposing of resources efficiently.
 ```
