@@ -137,4 +137,8 @@
     <Build Solution="LinuxDebug|Any CPU" Project="false" />
     <Build Solution="LinuxRelease|Any CPU" Project="false" />
   </Project>
+  <Project Path="HelixToolkit.Nex.Wpf.Tests/HelixToolkit.Nex.Wpf.Tests.csproj">
+    <BuildType Solution="LinuxDebug|*" Project="Debug" />
+    <BuildType Solution="LinuxRelease|*" Project="Release" />
+  </Project>
 </Solution>

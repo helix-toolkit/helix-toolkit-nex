@@ -5,9 +5,8 @@ using System.Windows.Media;
 using HelixToolkit.Nex.Interop;
 using HelixToolkit.Nex.Interop.DirectX;
 using Microsoft.Extensions.Logging;
-using Vortice.Direct3D9;
-using Vortice.Vulkan;
 using Rect = System.Windows.Rect;
+using Size = HelixToolkit.Nex.Maths.Size;
 
 namespace HelixToolkit.Nex.Wpf;
 
@@ -28,20 +27,20 @@ public partial class HelixViewport : FrameworkElement, IDisposable
     private static readonly ILogger _logger = LogManager.Create<HelixViewport>();
 
     private readonly D3DImage _d3dImage;
+    private readonly ViewportLifecycle<ViewportSession> _lifecycle;
     private D3D9DeviceManager? _d3d9Manager;
     private D3D11DeviceManager? _d3d11Manager;
-    private IDirect3DTexture9? _d3d9BackBuffer;
-    private IDirect3DSurface9? _d3d9Surface;
-    private nint _d3d9SharedHandle;
-    private SharedTextureResult? _sharedTexture;
-    private ImportedVulkanTexture? _importedTexture;
     private TimeSpan _lastRenderTime;
     private long _lastTimestamp;
-    private bool _disposed;
     private bool _sizeChanged = true;
 
     public HelixViewport()
     {
+        _lifecycle = new ViewportLifecycle<ViewportSession>(
+            ActivateSession,
+            DeactivateSession,
+            DisposeTerminalResources
+        );
         _d3dImage = new D3DImage();
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
@@ -55,9 +54,14 @@ public partial class HelixViewport : FrameworkElement, IDisposable
 
     protected override void OnRender(DrawingContext drawingContext)
     {
-        if (_d3dImage is { PixelWidth: > 0, PixelHeight: > 0 })
+        if (
+            _lifecycle.State == ViewportLifecycleState.Loaded
+            && _lifecycle.Session is not null
+            && Engine is not null
+            && _d3dImage is { PixelWidth: > 0, PixelHeight: > 0 }
+        )
         {
-            Engine!.WaitForIdle();
+            Engine.WaitForIdle();
             _d3dImage.Lock();
             _d3dImage.AddDirtyRect(
                 new Int32Rect(0, 0, _d3dImage.PixelWidth, _d3dImage.PixelHeight)
@@ -77,10 +81,29 @@ public partial class HelixViewport : FrameworkElement, IDisposable
         {
             return;
         }
-        ReleaseResources();
+
+        if (_lifecycle.State == ViewportLifecycleState.Loaded)
+        {
+            _lifecycle.Replace(() =>
+            {
+                SetEngineCore(engine);
+                return CreateResources();
+            });
+            return;
+        }
+
+        SetEngineCore(engine);
+    }
+
+    /// <summary>
+    /// Applies the original render-context replacement sequence.
+    /// </summary>
+    private void SetEngineCore(Engine.Engine? engine)
+    {
         Disposer.DisposeAndRemove(ref _renderContext);
+        _renderArgs = null;
         _engine = engine;
-        if (_engine == null)
+        if (_engine is null)
         {
             return;
         }
@@ -88,10 +111,6 @@ public partial class HelixViewport : FrameworkElement, IDisposable
         _renderContext.Initialize();
         _renderContext.RenderParams.EnableGammaCorrection = true; // Must enable gamma correction.
         _renderArgs = new ViewportRenderingEventArgs(_renderContext);
-        if (IsLoaded && Width > 0 && Height > 0)
-        {
-            CreateResources((uint)Width, (uint)Height);
-        }
     }
 
     private void SetClient(IViewportClient? client)
@@ -103,74 +122,107 @@ public partial class HelixViewport : FrameworkElement, IDisposable
     {
         if (DesignerProperties.GetIsInDesignMode(this))
             return;
-        // 1. D3D9 device for D3DImage back buffer
-        _d3d9Manager = new D3D9DeviceManager();
+        _lastTimestamp = 0;
+        _lastRenderTime = default;
+        _lifecycle.Load(CreateResources);
+        _sizeChanged = _lifecycle.Session is null;
+    }
 
-        // 2. D3D11 device for shared texture interop
-        _d3d11Manager = new D3D11DeviceManager();
-
-        // 3. Create shared resources at the current control size
-        var width = (uint)ActualWidth;
-        var height = (uint)ActualHeight;
-        if (width > 0 && height > 0)
+    /// <summary>
+    /// Lazily creates the D3D9 and D3D11 devices retained across unload.
+    /// </summary>
+    private void EnsureDeviceResources()
+    {
+        if (_d3d9Manager is not null && _d3d11Manager is not null)
         {
-            CreateResources(width, height);
+            return;
+        }
+
+        try
+        {
+            // 1. D3D9 device for the D3DImage back buffer
+            _d3d9Manager ??= new D3D9DeviceManager();
+
+            // 2. D3D11 device for shared texture interop
+            _d3d11Manager ??= new D3D11DeviceManager();
+        }
+        catch (Exception error)
+        {
+            var cleanupFailures = new List<Exception>();
+            TryDispose(ref _d3d11Manager, cleanupFailures);
+            TryDispose(ref _d3d9Manager, cleanupFailures);
+            if (cleanupFailures.Count > 0)
+            {
+                cleanupFailures.Insert(0, error);
+                throw new AggregateException(
+                    "Device resource creation and cleanup both failed.",
+                    cleanupFailures
+                );
+            }
+
+            throw;
         }
     }
 
-    private void CreateResources(uint width, uint height)
+    /// <summary>
+    /// Creates a session at the current rendered size when one is needed.
+    /// </summary>
+    private ViewportSession? CreateResources()
     {
-        if (_engine is null)
+        EnsureDeviceResources();
+        var width = (uint)ActualWidth;
+        var height = (uint)ActualHeight;
+        if (width == 0 || height == 0)
         {
-            return;
+            return null;
         }
-        if (_d3d9Manager is null)
+
+        return CreateResources(width, height);
+    }
+
+    /// <summary>
+    /// Creates the loaded-surface resources for a non-zero size.
+    /// </summary>
+    private ViewportSession? CreateResources(uint width, uint height)
+    {
+        if (
+            _engine is null
+            || _renderContext is null
+            || _d3d9Manager is null
+            || _d3d11Manager is null
+        )
         {
-            return;
+            return null;
         }
+
         _logger.LogInformation(
-            "Creating resources for viewport with size {Width}x{Height}",
+            "Creating resources for HelixViewport with size {Width}x{Height}.",
             width,
             height
         );
-        var context = Engine!.Context;
 
-        // 1. D3D9 shared back buffer (X8R8G8B8)
-        _d3d9BackBuffer = _d3d9Manager!.Device.CreateTexture(
-            width,
-            height,
-            1u,
-            Usage.RenderTarget,
-            Vortice.Direct3D9.Format.X8R8G8B8,
-            Pool.Default,
-            ref _d3d9SharedHandle
-        );
-
-        // 2. Surface level 0 for D3DImage.SetBackBuffer
-        _d3d9Surface = _d3d9BackBuffer.GetSurfaceLevel(0u);
-
-        // 3. Open on D3D11 and get KMT handle
-        _sharedTexture = SharedTextureFactory.CreateForWpf(_d3d11Manager!, _d3d9SharedHandle);
-
-        // 4. Import into Vulkan as B8G8R8A8Unorm
-        _importedTexture = VulkanExternalMemoryImporter.Import(
-            context,
-            _sharedTexture.SharedHandle,
-            VkExternalMemoryHandleTypeFlags.D3D11TextureKMT,
-            VkFormat.B8G8R8A8Unorm,
+        var session = ViewportSession.Create(
+            _engine.Context,
+            _d3d9Manager,
+            _d3d11Manager,
             width,
             height
         );
-        _d3dImage.Lock();
-        _d3dImage.SetBackBuffer(D3DResourceType.IDirect3DSurface9, (nint)_d3d9Surface);
-        _d3dImage.Unlock();
-        // 6. Subscribe to the WPF render loop
-        CompositionTarget.Rendering += OnCompositionRendering;
+        try
+        {
+            _renderContext.WindowSize = new Size((int)width, (int)height);
+            return session;
+        }
+        catch
+        {
+            session.Dispose();
+            throw;
+        }
     }
 
     private void OnCompositionRendering(object? sender, EventArgs e)
     {
-        if (_disposed || Engine is null || _renderContext is null || _renderArgs is null)
+        if (_lifecycle.State != ViewportLifecycleState.Loaded || _renderArgs is null)
             return;
 
         if (!_d3dImage.IsFrontBufferAvailable)
@@ -183,8 +235,11 @@ public partial class HelixViewport : FrameworkElement, IDisposable
             return;
 
         EnsureSize();
-        // Compute delta time
-        if (!Render((float)ActualWidth, (float)ActualHeight, _importedTexture!.Handle))
+        var session = _lifecycle.Session;
+        if (
+            session is null
+            || !Render((float)ActualWidth, (float)ActualHeight, session.ImportedTexture.Handle)
+        )
             return;
 
         _lastRenderTime = args.RenderingTime;
@@ -193,7 +248,17 @@ public partial class HelixViewport : FrameworkElement, IDisposable
 
     private void OnSizeChanged(object sender, SizeChangedEventArgs e)
     {
+        if (_lifecycle.State != ViewportLifecycleState.Loaded || Engine is null)
+            return;
+
         _sizeChanged = true;
+
+        // The session won't be created when the Loaded event fires if ActualWidth or ActualHeight is 0.
+        // Create it when the size changes and both ActualWidth and ActualHeight are greater than 0.
+        if (_lifecycle.Session is null && ActualWidth > 0 && ActualHeight > 0)
+        {
+            EnsureSize();
+        }
     }
 
     private void EnsureSize()
@@ -201,40 +266,88 @@ public partial class HelixViewport : FrameworkElement, IDisposable
         if (!_sizeChanged || ActualWidth == 0 || ActualHeight == 0)
             return;
 
-        if (_disposed || Engine is null)
+        if (_lifecycle.State != ViewportLifecycleState.Loaded || Engine is null)
             return;
+
         Engine.Context.Wait(default);
-        ReleaseResources();
-        CreateResources((uint)ActualWidth, (uint)ActualHeight);
+        _lifecycle.Replace(() => CreateResources((uint)ActualWidth, (uint)ActualHeight));
         UpdateViewportSize((float)ActualWidth, (float)ActualHeight);
         _sizeChanged = false;
     }
 
-    private void ReleaseResources()
+    /// <summary>
+    /// Connects a prepared loaded-surface session to the WPF render path.
+    /// </summary>
+    private void ActivateSession(ViewportSession? session)
     {
-        _logger.LogInformation("Releasing viewport resources");
+        if (session is null)
+        {
+            return;
+        }
+
+        SetBackBuffer(session.SurfacePointer);
+        CompositionTarget.Rendering += OnCompositionRendering;
+    }
+
+    /// <summary>
+    /// Disconnects the current session before the lifecycle releases it.
+    /// </summary>
+    private void DeactivateSession()
+    {
+        _logger.LogInformation("Releasing resources for HelixViewport.");
+        var failures = new List<Exception>();
         CompositionTarget.Rendering -= OnCompositionRendering;
+
+        Try(ReleaseMouseCapture, failures);
+        _activeDrag = ActiveDragAction.None;
+        ResetPointerLocation();
+
+        if (_engine is not null)
+        {
+            Try(() => _engine.Context.Wait(default), failures);
+        }
+
+        // Detach the back buffer before releasing the surface because D3DImage retains
+        // its own COM reference.
+        if (_lifecycle.Session is not null)
+        {
+            Try(() => SetBackBuffer(nint.Zero), failures);
+        }
+
+        _lastTimestamp = 0;
+        _lastRenderTime = default;
+        _sizeChanged = true;
+
+        if (failures.Count > 0)
+        {
+            throw new AggregateException(
+                "The viewport could not be deactivated completely.",
+                failures
+            );
+        }
+    }
+
+    /// <summary>
+    /// Points the D3DImage at a D3D9 surface, or detaches it when the pointer is zero.
+    /// </summary>
+    private void SetBackBuffer(nint surface)
+    {
         _d3dImage.Lock();
-        _d3dImage.SetBackBuffer(D3DResourceType.IDirect3DSurface9, 0);
-        _d3dImage.Unlock();
-        if (Engine is not null)
-            Engine.Context.Wait(default);
-        Disposer.DisposeAndRemove(ref _importedTexture);
-
-        Disposer.DisposeAndRemove(ref _sharedTexture);
-
-        Disposer.DisposeAndRemove(ref _d3d9Surface);
-
-        Disposer.DisposeAndRemove(ref _d3d9BackBuffer);
-
-        _d3d9SharedHandle = 0;
+        try
+        {
+            _d3dImage.SetBackBuffer(D3DResourceType.IDirect3DSurface9, surface);
+        }
+        finally
+        {
+            _d3dImage.Unlock();
+        }
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
     {
         if (DesignerProperties.GetIsInDesignMode(this))
             return;
-        Dispose();
+        _lifecycle.Unload();
     }
 
     #region Mouse event forwarding to camera controller
@@ -297,18 +410,69 @@ public partial class HelixViewport : FrameworkElement, IDisposable
 
     public void Dispose()
     {
-        if (_disposed)
-            return;
-        _disposed = true;
-
-        ReleaseResources();
-        Disposer.DisposeAndRemove(ref _renderContext);
-        _d3d11Manager?.Dispose();
-        _d3d11Manager = null;
-
-        _d3d9Manager?.Dispose();
-        _d3d9Manager = null;
-
+        _lifecycle.Dispose();
         GC.SuppressFinalize(this);
+    }
+
+    /// <summary>
+    /// Releases resources retained across unload without disposing the external engine.
+    /// </summary>
+    private void DisposeTerminalResources()
+    {
+        var failures = new List<Exception>();
+        TryDispose(ref _renderContext, failures);
+        _renderArgs = null;
+
+        // We do NOT dispose Engine — it is externally owned
+        TryDispose(ref _d3d11Manager, failures);
+        TryDispose(ref _d3d9Manager, failures);
+
+        if (failures.Count > 0)
+        {
+            throw new AggregateException(
+                "One or more viewport resources could not be released.",
+                failures
+            );
+        }
+    }
+
+    /// <summary>
+    /// Attempts one cleanup action and records its failure.
+    /// </summary>
+    private static void Try(Action action, List<Exception> failures)
+    {
+        try
+        {
+            action();
+        }
+        catch (Exception error)
+        {
+            failures.Add(error);
+        }
+    }
+
+    /// <summary>
+    /// Attempts one terminal resource disposal and always drops the owned reference.
+    /// </summary>
+    private static void TryDispose<T>(ref T? resource, List<Exception> failures)
+        where T : class, IDisposable
+    {
+        if (resource is null)
+        {
+            return;
+        }
+
+        try
+        {
+            resource.Dispose();
+        }
+        catch (Exception error)
+        {
+            failures.Add(error);
+        }
+        finally
+        {
+            resource = null;
+        }
     }
 }
