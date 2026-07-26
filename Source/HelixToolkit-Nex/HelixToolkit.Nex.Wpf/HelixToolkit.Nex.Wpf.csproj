@@ -46,4 +46,7 @@
     <ItemGroup>
       <ProjectReference Include="..\HelixToolkit.Nex.Interop\HelixToolkit.Nex.Interop.csproj" />
     </ItemGroup>
+    <ItemGroup>
+        <InternalsVisibleTo Include="HelixToolkit.Nex.Wpf.Tests" />
+    </ItemGroup>
 </Project>
