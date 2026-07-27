@@ -86,7 +86,12 @@ public class GeometryJsonConverter : JsonConverter<Geometry>
             switch (propertyName)
             {
                 case nameof(Geometry.Topology):
-                    topology = JsonSerializer.Deserialize<Topology>(ref reader, effectiveOptions);
+                    topology = reader.TokenType switch
+                    {
+                        JsonTokenType.String => Enum.Parse<Topology>(reader.GetString()!),
+                        JsonTokenType.Number => (Topology)reader.GetInt32(),
+                        _ => throw new JsonException($"Unexpected token type for {nameof(Geometry.Topology)}")
+                    };
                     break;
                 case nameof(Geometry.Vertices):
                     vertices = JsonSerializer.Deserialize<FastList<Vector4>>(

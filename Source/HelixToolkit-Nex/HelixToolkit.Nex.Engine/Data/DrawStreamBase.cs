@@ -2,10 +2,8 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace HelixToolkit.Nex.Engine.Data;
 
-internal abstract class DrawStreamBase<[DynamicallyAccessedMembers(
-            DynamicallyAccessedMemberTypes.PublicFields
-                | DynamicallyAccessedMemberTypes.NonPublicFields
-        )] DRAW_TYPE, [DynamicallyAccessedMembers(
+internal abstract class DrawStreamBase<
+            DRAW_TYPE, [DynamicallyAccessedMembers(
             DynamicallyAccessedMemberTypes.PublicFields
                 | DynamicallyAccessedMemberTypes.NonPublicFields
         )] COMP_TYPE> : Initializable, IDrawStream<DRAW_TYPE>
