@@ -27,6 +27,7 @@ HelixToolkit.Nex is part of the HelixToolkit suite, focusing on providing a robu
 | `DoubleKeyDictionary`  | Dictionary supporting two keys for each value.                                      |
 | `EventBus`             | Thread-safe event bus for publishing and subscribing to events.                     |
 | `FastList`             | List implementation with direct access to the underlying array.                     |
+| `FastListJsonConverter`| JSON converter for `FastList<T>`.                                                   |
 | `Handle`               | Type-safe handle with generational versioning to prevent the ABA problem.           |
 | `HxDebug`              | Provides debugging and assertion utilities.                                         |
 | `IdHelper`             | Manages unique ID generation and recycling.                                         |

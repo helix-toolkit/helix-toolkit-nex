@@ -179,4 +179,5 @@ buffer.Flush(world);
 - **Component type identification**: `ComponentTypeId` uniquely identifies each component type, supporting up to 128 distinct types.
 - **Event-driven**: Component add/change/remove operations raise `ComponentChangedEvent<T>`; `RuleBuilder`/`EntityCollection` use these to stay in sync.
 - **Tag components**: Data-less marker structs added via `Entity.Tag<T>()` allocate no component storage.
+- **Dynamic Access**: The use of `[DynamicallyAccessedMembers]` attribute ensures that all necessary fields are preserved during trimming, supporting dynamic access patterns.
 ```

@@ -101,5 +101,6 @@ var deserializedGeometry = JsonSerializer.Deserialize<Geometry>(json, options);
   - New static class for generating tangent vectors for geometries using the Lengyel algorithm.
 - **Serialization**: 
   - Updated `VertexPropsJsonConverter` to handle `Vector4` tangents.
+  - Enhanced `GeometryJsonConverter` to support both string and numeric representations of `Topology`.
 - **Platform Configurations**: Added new build configurations for `LinuxDebug` and `LinuxRelease` to support cross-platform development.
 ```
