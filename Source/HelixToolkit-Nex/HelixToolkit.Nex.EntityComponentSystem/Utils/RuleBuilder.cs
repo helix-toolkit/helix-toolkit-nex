@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace HelixToolkit.Nex.ECS.Utils;
 
 public readonly record struct EntityChangedEvent(Entity Entity, ComponentTypeId Type);
@@ -60,7 +62,10 @@ public sealed class RuleBuilder : IDisposable
     /// </summary>
     /// <typeparam name="T"></typeparam>
     /// <returns></returns>
-    public RuleBuilder Has<T>()
+    public RuleBuilder Has<[DynamicallyAccessedMembers(
+            DynamicallyAccessedMemberTypes.PublicFields
+                | DynamicallyAccessedMemberTypes.NonPublicFields
+        )] T>()
     {
         return AddOrRemove<T>(OpType.And);
     }
@@ -73,7 +78,10 @@ public sealed class RuleBuilder : IDisposable
     /// </summary>
     /// <typeparam name="T"></typeparam>
     /// <returns></returns>
-    public RuleBuilder NotHas<T>()
+    public RuleBuilder NotHas<[DynamicallyAccessedMembers(
+            DynamicallyAccessedMemberTypes.PublicFields
+                | DynamicallyAccessedMemberTypes.NonPublicFields
+        )] T>()
     {
         return AddOrRemove<T>(OpType.Not);
     }
@@ -94,7 +102,10 @@ public sealed class RuleBuilder : IDisposable
         return this;
     }
 
-    private RuleBuilder AddOrRemove<T>(OpType op)
+    private RuleBuilder AddOrRemove<[DynamicallyAccessedMembers(
+            DynamicallyAccessedMemberTypes.PublicFields
+                | DynamicallyAccessedMemberTypes.NonPublicFields
+        )] T>(OpType op)
     {
         var id = ComponentIdProxy<T>.TypeId;
         var subObj = ECSEventBus.Register<ComponentChangedEvent<T>>(
@@ -106,7 +117,10 @@ public sealed class RuleBuilder : IDisposable
         return this;
     }
 
-    internal void OnComponentChanged<T>(in ComponentChangedEvent<T> msg)
+    internal void OnComponentChanged<[DynamicallyAccessedMembers(
+            DynamicallyAccessedMemberTypes.PublicFields
+                | DynamicallyAccessedMemberTypes.NonPublicFields
+        )] T>(in ComponentChangedEvent<T> msg)
     {
         var id = ComponentIdProxy<T>.TypeId;
         switch (msg.Operation)

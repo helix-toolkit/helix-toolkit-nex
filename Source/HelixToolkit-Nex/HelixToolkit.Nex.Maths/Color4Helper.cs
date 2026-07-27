@@ -18,7 +18,8 @@ namespace HelixToolkit.Nex.Maths
             FillConstants(colors, typeof(Color));
         }
 
-        private static void FillConstants(Dictionary<string, object> hash, Type enumType)
+        private static void FillConstants(Dictionary<string, object> hash,
+            [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembers(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicFields)] Type enumType)
         {
             //MethodAttributes attrs = MethodAttributes.Public | MethodAttributes.Static;
             var fields = enumType.GetFields();
