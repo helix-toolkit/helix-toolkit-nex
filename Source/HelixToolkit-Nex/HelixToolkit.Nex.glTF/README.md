@@ -120,4 +120,8 @@ README; the glTF importer is its primary consumer.
 - **Draco compression**: Supports `KHR_draco_mesh_compression`; decode severity depends on whether the extension is listed in `extensionsRequired`.
 - **Lighting**: `KHR_lights_punctual` lights are resolved at record time (with diagnostics) and materialized during flush.
 - **Mesh Instancing**: Supports `EXT_mesh_gpu_instancing`, allowing efficient rendering of multiple instances of a mesh with varying transformations. This is controlled via `ImporterConfig.EnableMeshGpuInstancing`.
+
+## Compatibility
+
+- **Target Framework**: The package now targets .NET 9.0, ensuring compatibility with the latest features and performance improvements.
 ```

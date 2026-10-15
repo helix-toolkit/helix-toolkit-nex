@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -34,7 +35,10 @@ public class FastListJsonConverterFactory : JsonConverterFactory
 /// JSON converter for FastList&lt;T&gt;.
 /// </summary>
 /// <typeparam name="T">The type of elements in the list.</typeparam>
-public class FastListJsonConverter<T> : JsonConverter<FastList<T>>
+public class FastListJsonConverter<[DynamicallyAccessedMembers(
+            DynamicallyAccessedMemberTypes.PublicFields
+                | DynamicallyAccessedMemberTypes.NonPublicFields
+        )] T> : JsonConverter<FastList<T>>
 {
     public override FastList<T> Read(
         ref Utf8JsonReader reader,

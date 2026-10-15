@@ -695,11 +695,9 @@ internal sealed class BillboardDemo : IDisposable
         {
             if (entry.Node is not null)
             {
-                entry.Node.Entity.Update<BillboardDrawInfo>(comp =>
-                {
-                    comp.FixedSize = _fixedSize;
-                    return comp;
-                });
+                entry.Node.Entity.Update<BillboardDrawInfo>(
+                    (ref BillboardDrawInfo comp) => comp.FixedSize = _fixedSize
+                );
             }
         }
     }
@@ -708,11 +706,9 @@ internal sealed class BillboardDemo : IDisposable
     {
         if (entry.Node is not null)
         {
-            entry.Node.Entity.Update<BillboardDrawInfo>(comp =>
-            {
-                comp.Color = entry.Color;
-                return comp;
-            });
+            entry.Node.Entity.Update<BillboardDrawInfo>(
+                (ref BillboardDrawInfo comp) => comp.Color = entry.Color
+            );
         }
     }
 

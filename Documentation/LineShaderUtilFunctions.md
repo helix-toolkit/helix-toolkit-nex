@@ -15,19 +15,19 @@ vec4 getColor()
 ```glsl
 float getLineWidth()
 ```
-- **Description**: Retrieves the line width in screen space.
+- **Description**: Retrieves the line width in screen space for the current fragment.
 - **Return Type**: `float`
 
 ```glsl
 uint getTextureId()
 ```
-- **Description**: Retrieves the texture ID for the current fragment.
+- **Description**: Retrieves the texture ID used for the current fragment.
 - **Return Type**: `uint`
 
 ```glsl
 uint getSamplerId()
 ```
-- **Description**: Retrieves the sampler ID for the current fragment.
+- **Description**: Retrieves the sampler ID used for the current fragment.
 - **Return Type**: `uint`
 
 ```glsl
@@ -63,7 +63,7 @@ mat4 getInvView()
 ```glsl
 vec3 getCameraPosition()
 ```
-- **Description**: Retrieves the camera's position in world space.
+- **Description**: Retrieves the position of the camera in world space.
 - **Return Type**: `vec3`
 
 ```glsl
@@ -93,13 +93,13 @@ vec3 getPointerRayOrigin()
 ```glsl
 float getPointerRingOuterDistThreshold()
 ```
-- **Description**: Retrieves the outer distance threshold for the pointer ring.
+- **Description**: Retrieves the outer distance threshold for the pointer ring effect.
 - **Return Type**: `float`
 
 ```glsl
 float getPointerRingInnerDistThreshold()
 ```
-- **Description**: Retrieves the inner distance threshold for the pointer ring.
+- **Description**: Retrieves the inner distance threshold for the pointer ring effect.
 - **Return Type**: `float`
 
 ```glsl
@@ -123,11 +123,11 @@ float getFragToPointerRayDistance()
 ```glsl
 bool isInPointerRing()
 ```
-- **Description**: Determines if the fragment is within the pointer ring's distance thresholds.
+- **Description**: Determines if the fragment is within the pointer ring based on distance thresholds.
 - **Return Type**: `bool`
 
 ```glsl
 vec4 mixWithPointerRing(in vec4 color)
 ```
-- **Description**: Mixes the fragment color with the pointer ring color if the pointer ring is enabled and the fragment is within the ring.
+- **Description**: Blends the fragment color with the pointer ring color if the pointer ring is enabled and the fragment is within the ring.
 - **Return Type**: `vec4`

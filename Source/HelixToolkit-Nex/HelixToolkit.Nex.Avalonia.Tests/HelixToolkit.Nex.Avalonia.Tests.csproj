@@ -1,11 +1,11 @@
 <Project Sdk="MSTest.Sdk/3.6.4">
     <!-- Mirror the main Avalonia project's conditional TFM: -windows on Windows so the
-         transitive DirectX (Windows_Path) dependency resolves; plain net8.0 on Linux. -->
+         transitive DirectX (Windows_Path) dependency resolves; plain net9.0 on Linux. -->
     <PropertyGroup Condition="!$([MSBuild]::IsOSPlatform('Linux'))">
-        <TargetFramework>net8.0-windows</TargetFramework>
+        <TargetFramework>net9.0-windows</TargetFramework>
     </PropertyGroup>
     <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('Linux'))">
-        <TargetFramework>net8.0</TargetFramework>
+        <TargetFramework>net9.0</TargetFramework>
     </PropertyGroup>
     <PropertyGroup>
         <LangVersion>latest</LangVersion>

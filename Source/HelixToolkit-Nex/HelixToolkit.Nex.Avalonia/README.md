@@ -128,8 +128,8 @@ public static readonly DependencyProperty EngineDp = HelixProperty.Register<Heli
 
 ## Platform Support
 
-- **Windows** — targets `net8.0-windows` and references `HelixToolkit.Nex.Interop.DirectX` for the D3D11 shared-texture path. Requires a Vulkan context created with `EnableExternalMemoryWin32 = true` and a `RequiredDeviceLuid` matching the D3D11 adapter.
-- **Linux** — targets `net8.0` with no DirectX dependency. Requires a Vulkan context created with `EnableExternalMemoryFd = true` (enables `VK_KHR_external_memory_fd`, the optional `VK_EXT_external_memory_dma_buf`, and `VK_KHR_external_semaphore_fd`).
+- **Windows** — targets `net9.0-windows` and references `HelixToolkit.Nex.Interop.DirectX` for the D3D11 shared-texture path. Requires a Vulkan context created with `EnableExternalMemoryWin32 = true` and a `RequiredDeviceLuid` matching the D3D11 adapter.
+- **Linux** — targets `net9.0` with no DirectX dependency. Requires a Vulkan context created with `EnableExternalMemoryFd = true` (enables `VK_KHR_external_memory_fd`, the optional `VK_EXT_external_memory_dma_buf`, and `VK_KHR_external_semaphore_fd`).
 
 A runnable cross-platform sample is available under `Samples/Interop/Avalonia` (`AvaloniaInterop`), demonstrating the viewport with an engine, a `SceneSamples` scene, an `OrbitCameraController`, and an Avalonia UI overlay composited on top of the 3D output.
 ```

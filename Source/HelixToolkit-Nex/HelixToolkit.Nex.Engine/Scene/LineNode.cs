@@ -45,11 +45,7 @@ public class LineNode : Node
         get => Entity.Get<LineDrawInfo>().Geometry;
         set
         {
-            Entity.Update<LineDrawInfo>(comp =>
-            {
-                comp.Geometry = value;
-                return comp;
-            });
+            Entity.Update<LineDrawInfo>((ref LineDrawInfo comp) => comp.Geometry = value);
         }
     }
 
@@ -61,11 +57,7 @@ public class LineNode : Node
         get => Entity.Get<LineDrawInfo>().LineColor;
         set
         {
-            Entity.Update<LineDrawInfo>(comp =>
-            {
-                comp.LineColor = value;
-                return comp;
-            });
+            Entity.Update<LineDrawInfo>((ref LineDrawInfo comp) => comp.LineColor = value);
         }
     }
 
@@ -77,11 +69,31 @@ public class LineNode : Node
         get => Entity.Get<LineDrawInfo>().LineThickness;
         set
         {
-            Entity.Update<LineDrawInfo>(comp =>
-            {
-                comp.LineThickness = value;
-                return comp;
-            });
+            Entity.Update<LineDrawInfo>((ref LineDrawInfo comp) => comp.LineThickness = value);
+        }
+    }
+
+    /// <summary>
+    /// Gets or sets the index of the bindless texture used when rendering the line.
+    /// </summary>
+    public uint TextureIndex
+    {
+        get => Entity.Get<LineDrawInfo>().TextureIndex;
+        set
+        {
+            Entity.Update<LineDrawInfo>((ref LineDrawInfo comp) => comp.TextureIndex = value);
+        }
+    }
+
+    /// <summary>
+    /// Gets or sets the index of the bindless sampler used when rendering the line.
+    /// </summary>
+    public uint SamplerIndex
+    {
+        get => Entity.Get<LineDrawInfo>().SamplerIndex;
+        set
+        {
+            Entity.Update<LineDrawInfo>((ref LineDrawInfo comp) => comp.SamplerIndex = value);
         }
     }
 
@@ -93,11 +105,7 @@ public class LineNode : Node
         get => Entity.Get<LineDrawInfo>().LineMaterialTypeName;
         set
         {
-            Entity.Update<LineDrawInfo>(comp =>
-            {
-                comp.LineMaterialTypeName = value ?? string.Empty;
-                return comp;
-            });
+            Entity.Update<LineDrawInfo>((ref LineDrawInfo comp) => comp.LineMaterialTypeName = value ?? string.Empty);
         }
     }
 
@@ -109,11 +117,7 @@ public class LineNode : Node
         get => Entity.Get<LineDrawInfo>().Hitable;
         set
         {
-            Entity.Update<LineDrawInfo>(comp =>
-            {
-                comp.Hitable = value;
-                return comp;
-            });
+            Entity.Update<LineDrawInfo>((ref LineDrawInfo comp) => comp.Hitable = value);
         }
     }
 
@@ -125,11 +129,7 @@ public class LineNode : Node
         get => Entity.Get<LineDrawInfo>().Cullable;
         set
         {
-            Entity.Update<LineDrawInfo>(comp =>
-            {
-                comp.Cullable = value;
-                return comp;
-            });
+            Entity.Update<LineDrawInfo>((ref LineDrawInfo comp) => comp.Cullable = value);
         }
     }
 

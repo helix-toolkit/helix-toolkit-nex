@@ -6,7 +6,7 @@ This directory contains the configuration and tools for generating API documenta
 
 ### Prerequisites
 
-- .NET 8.0 SDK
+- .NET 9.0 SDK
 - PowerShell (Windows, Linux, or macOS)
 
 ### Building Documentation
@@ -178,7 +178,7 @@ dotnet tool update -g docfx
 dotnet build --configuration Release
 ```
 
-2. Check that XML documentation files are being generated in `bin/Release/net8.0/`
+2. Check that XML documentation files are being generated in `bin/Release/net9.0/`
 
 3. Clean and rebuild:
 ```powershell

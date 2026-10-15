@@ -14,6 +14,19 @@ struct PointerRing {
 };
 
 @code_gen
+struct EnvironmentMapConstants {
+    uint envTexIndex;      // Bindless index of the environment cubemap.
+    uint samplerIndex;     // Bindless index of the cubemap sampler.
+    float intensity;       // Linear radiance multiplier applied to the sampled colour.
+    float mipLevel;        // Background LOD to sample (0 = sharpest). Enables a soft/blurred backdrop.
+
+    float rotationY;       // Environment yaw rotation about the world Y axis, in radians.
+    uint renderCubeMap;    // 0 = skip PBR cubemap reflections, 1 = sample the cubemap in the PBR shader.
+    uint _padding0;
+    uint _padding1;
+};
+
+@code_gen
 struct FPConstants {
     mat4 viewProjection;
     mat4 inverseViewProjection;
@@ -46,4 +59,5 @@ struct FPConstants {
 
     vec4 wireframeColor; // RGBA color for global mesh wireframe mode (if enabled)
     PointerRing pointerRing;
+    EnvironmentMapConstants environmentMap;
 };

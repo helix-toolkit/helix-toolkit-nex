@@ -4,7 +4,7 @@ This guide will help you get started with Helix Toolkit NEX.
 
 ## Prerequisites
 
-- .NET 8.0 SDK or later
+- .NET 9.0 SDK or later
 - Vulkan 1.2 compatible GPU and drivers
 - Visual Studio 2022 or JetBrains Rider (recommended)
 

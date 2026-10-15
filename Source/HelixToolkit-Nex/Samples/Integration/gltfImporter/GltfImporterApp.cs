@@ -12,6 +12,7 @@ using HelixToolkit.Nex.Maths;
 using HelixToolkit.Nex.Rendering;
 using HelixToolkit.Nex.Rendering.Components;
 using HelixToolkit.Nex.Rendering.PostEffects;
+using HelixToolkit.Nex.Repository;
 using HelixToolkit.Nex.Scene;
 using ImGuiNET;
 using Microsoft.Extensions.Logging;
@@ -53,6 +54,9 @@ internal class GltfImporterApp : ApplicationBase
     private ResourceManifest? _currentResourceManifest;
 
     private SsaoPostEffect? _ssaoPostEffect;
+
+    // Environment map (skybox) cubemap, owned by the resource manager's texture repository.
+    private TextureRef _environmentMap = TextureRef.Null;
 
     public bool EnableSSAO
     {
@@ -154,6 +158,7 @@ internal class GltfImporterApp : ApplicationBase
             .Create(_context)
             .WithDefaultNodes(false)
             .WithFXAA()
+            .WithEnvironment()
             .WithToneMappingMode(Shaders.ToneMappingMode.Reinhard)
             .WithTransparent(Engine.TransparentMode.WBOIT)
             .WithFPS()
@@ -170,6 +175,9 @@ internal class GltfImporterApp : ApplicationBase
         // Create render context
         _renderContext = _engine.CreateRenderContext();
         _renderContext.Initialize();
+
+        // Load the environment cubemap and enable the environment-map background.
+        SetupEnvironmentMap();
 
         // Create the offscreen render target texture for the 3D viewport
         _renderContext.ResourceSet.AddTexture(
@@ -212,6 +220,57 @@ internal class GltfImporterApp : ApplicationBase
         _viewportPanel = new ViewportPanel(_selectionManager, _cameraController);
 
         SetupLighting();
+    }
+
+    /// <summary>
+    /// Builds an environment cubemap from six individual face images in
+    /// <c>Assets/EnvironmentMaps/water</c> and assigns it to the render context's environment-map
+    /// config so <c>EnvironmentMapNode</c> draws it as the scene background. The texture is owned
+    /// by the resource manager's texture repository.
+    /// <para>
+    /// The faces are supplied in the standard cubemap order expected by
+    /// <c>GetOrCreateCubeFromFiles</c>: +X, -X, +Y, -Y, +Z, -Z, which for a skybox-named face set
+    /// maps to right, left, top, bottom, front, back.
+    /// </para>
+    /// </summary>
+    private void SetupEnvironmentMap()
+    {
+        if (_engine is null || _renderContext is null)
+        {
+            return;
+        }
+
+        string dir = Path.Combine(
+            HelixToolkit.Nex.Sample.Application.Paths.AssetsDir,
+            "EnvironmentMaps",
+            "water"
+        );
+
+        // Standard cubemap layer order: +X, -X, +Y, -Y, +Z, -Z.
+        string[] facePaths =
+        [
+            Path.Combine(dir, "right.jpg"), // +X
+            Path.Combine(dir, "left.jpg"), // -X
+            Path.Combine(dir, "top.jpg"), // +Y
+            Path.Combine(dir, "bottom.jpg"), // -Y
+            Path.Combine(dir, "front.jpg"), // +Z
+            Path.Combine(dir, "back.jpg"), // -Z
+        ];
+
+        try
+        {
+            _environmentMap = _engine.ResourceManager.TextureRepository.GetOrCreateCubeFromFiles(
+                facePaths,
+                generateMipmaps: true,
+                "EnvironmentCubemap"
+            );
+            _renderContext.EnvironmentMap.Texture = _environmentMap;
+            _renderContext.EnvironmentMap.Enabled = true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to build environment cubemap from faces in: {Dir}", dir);
+        }
     }
 
     private void SetupLighting()
@@ -706,7 +765,7 @@ internal class GltfImporterApp : ApplicationBase
         var comps = world.GetComponents<MeshDrawInfo>();
         foreach (var entity in comps.GetEntities())
         {
-            entity.Update<MeshDrawInfo>(static m => m);
+            entity.NotifyComponentChanged<MeshDrawInfo>();
         }
     }
 

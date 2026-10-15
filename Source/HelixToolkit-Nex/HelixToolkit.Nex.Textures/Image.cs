@@ -264,6 +264,76 @@ public sealed class Image : IDisposable
             false
         );
 
+    /// <summary>
+    /// Creates a cube image (arraySize = 6) by assembling six individual face images.
+    /// <para>
+    /// Faces must be supplied in the standard cubemap layer order expected by the graphics
+    /// backend: index 0 = +X, 1 = -X, 2 = +Y, 3 = -Y, 4 = +Z, 5 = -Z. All faces must be
+    /// square, share the same width/height and the same <see cref="Format"/>. Only mip level 0
+    /// of each face is copied; the returned cube has a single mip level, so request mipmap
+    /// generation at upload time (e.g. <c>generateMipmaps: true</c>) if you need a mip chain.
+    /// </para>
+    /// </summary>
+    /// <param name="faces">Exactly six face images in +X, -X, +Y, -Y, +Z, -Z order.</param>
+    /// <returns>A newly allocated cube <see cref="Image"/> that owns its pixel buffer.</returns>
+    /// <exception cref="ArgumentException">
+    /// Thrown when there are not exactly six faces, a face is null, a face is not square, or the
+    /// faces differ in size or format.
+    /// </exception>
+    public static Image NewCube(IReadOnlyList<Image> faces)
+    {
+        ArgumentNullException.ThrowIfNull(faces);
+        if (faces.Count != 6)
+        {
+            throw new ArgumentException(
+                $"A cubemap requires exactly 6 faces, but {faces.Count} were provided.",
+                nameof(faces)
+            );
+        }
+
+        var first = faces[0] ?? throw new ArgumentException("Cube face 0 is null.", nameof(faces));
+        var width = first.Description.Width;
+        var format = first.Description.Format;
+
+        for (var i = 0; i < 6; ++i)
+        {
+            var face = faces[i] ?? throw new ArgumentException(
+                $"Cube face {i} is null.",
+                nameof(faces)
+            );
+            var desc = face.Description;
+            if (desc.Width <= 0 || desc.Width != desc.Height)
+            {
+                throw new ArgumentException(
+                    $"Cube face {i} must be square, but is {desc.Width}x{desc.Height}.",
+                    nameof(faces)
+                );
+            }
+            if (desc.Width != width)
+            {
+                throw new ArgumentException(
+                    $"Cube face {i} is {desc.Width}x{desc.Height}, expected {width}x{width} to match face 0.",
+                    nameof(faces)
+                );
+            }
+            if (desc.Format != format)
+            {
+                throw new ArgumentException(
+                    $"Cube face {i} has format {desc.Format}, expected {format} to match face 0.",
+                    nameof(faces)
+                );
+            }
+        }
+
+        var cube = NewCube(width, 1, format);
+        for (var i = 0; i < 6; ++i)
+        {
+            // Copy each face's base mip into the matching cube array slice (face layer).
+            faces[i].GetPixelBuffer(0, 0).CopyTo(cube.GetPixelBuffer(i, 0));
+        }
+        return cube;
+    }
+
     /// <summary>Creates a new 3D image.</summary>
     public static Image New3D(
         int width,

@@ -12,10 +12,24 @@ namespace WinUIInterop
     /// </summary>
     public sealed partial class MainWindow : Window
     {
+        private readonly MainViewModel _viewModel;
+
         public MainWindow()
         {
             InitializeComponent();
-            MainGrid.DataContext = new MainViewModel(EngineInteropTarget.WinUI);
+            _viewModel = new MainViewModel(EngineInteropTarget.WinUI);
+            MainGrid.DataContext = _viewModel;
+            Closed += (_, _) => DisposeOwnedResources();
+        }
+
+        /// <summary>
+        /// Releases the WinUI viewports before their externally owned engine.
+        /// </summary>
+        private void DisposeOwnedResources()
+        {
+            ViewportFly.Dispose();
+            ViewportOverhead.Dispose();
+            _viewModel.Dispose();
         }
     }
 }

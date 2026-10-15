@@ -39,11 +39,7 @@ public class PointCloudNode : Node
         get => Entity.Get<PointDrawInfo>().Geometry;
         set
         {
-            Entity.Update<PointDrawInfo>(comp =>
-            {
-                comp.Geometry = value;
-                return comp;
-            });
+            Entity.Update<PointDrawInfo>((ref PointDrawInfo comp) => comp.Geometry = value);
         }
     }
 
@@ -55,11 +51,7 @@ public class PointCloudNode : Node
         get => Entity.Get<PointDrawInfo>().Hitable;
         set
         {
-            Entity.Update<PointDrawInfo>(comp =>
-            {
-                comp.Hitable = value;
-                return comp;
-            });
+            Entity.Update<PointDrawInfo>((ref PointDrawInfo comp) => comp.Hitable = value);
         }
     }
 
@@ -71,11 +63,7 @@ public class PointCloudNode : Node
         get => Entity.Get<PointDrawInfo>().Cullable;
         set
         {
-            Entity.Update<PointDrawInfo>(comp =>
-            {
-                comp.Cullable = value;
-                return comp;
-            });
+            Entity.Update<PointDrawInfo>((ref PointDrawInfo comp) => comp.Cullable = value);
         }
     }
 
@@ -87,11 +75,7 @@ public class PointCloudNode : Node
         get => Entity.Get<PointDrawInfo>().FixedSize;
         set
         {
-            Entity.Update<PointDrawInfo>(comp =>
-            {
-                comp.FixedSize = value;
-                return comp;
-            });
+            Entity.Update<PointDrawInfo>((ref PointDrawInfo comp) => comp.FixedSize = value);
         }
     }
 
@@ -103,11 +87,7 @@ public class PointCloudNode : Node
         get => Entity.Get<PointDrawInfo>().PointMaterialTypeName;
         set
         {
-            Entity.Update<PointDrawInfo>(comp =>
-            {
-                comp.PointMaterialTypeName = value;
-                return comp;
-            });
+            Entity.Update<PointDrawInfo>((ref PointDrawInfo comp) => comp.PointMaterialTypeName = value);
         }
     }
 
@@ -119,11 +99,7 @@ public class PointCloudNode : Node
         get => Entity.Get<PointDrawInfo>().PointSize;
         set
         {
-            Entity.Update<PointDrawInfo>(comp =>
-            {
-                comp.PointSize = value;
-                return comp;
-            });
+            Entity.Update<PointDrawInfo>((ref PointDrawInfo comp) => comp.PointSize = value);
         }
     }
 
@@ -135,11 +111,7 @@ public class PointCloudNode : Node
         get => Entity.Get<PointDrawInfo>().PointColor;
         set
         {
-            Entity.Update<PointDrawInfo>(comp =>
-            {
-                comp.PointColor = value;
-                return comp;
-            });
+            Entity.Update<PointDrawInfo>((ref PointDrawInfo comp) => comp.PointColor = value);
         }
     }
 
@@ -151,11 +123,7 @@ public class PointCloudNode : Node
         get => Entity.Get<PointDrawInfo>().TextureIndex;
         set
         {
-            Entity.Update<PointDrawInfo>(comp =>
-            {
-                comp.TextureIndex = value;
-                return comp;
-            });
+            Entity.Update<PointDrawInfo>((ref PointDrawInfo comp) => comp.TextureIndex = value);
         }
     }
 
@@ -167,11 +135,7 @@ public class PointCloudNode : Node
         get => Entity.Get<PointDrawInfo>().SamplerIndex;
         set
         {
-            Entity.Update<PointDrawInfo>(comp =>
-            {
-                comp.SamplerIndex = value;
-                return comp;
-            });
+            Entity.Update<PointDrawInfo>((ref PointDrawInfo comp) => comp.SamplerIndex = value);
         }
     }
 

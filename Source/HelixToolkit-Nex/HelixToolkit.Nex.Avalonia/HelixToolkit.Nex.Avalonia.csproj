@@ -3,10 +3,10 @@
         Single cross-platform assembly. Both the Windows (D3D11 shared-texture) and Linux
         (Vulkan external-memory) bridges are compiled in; the concrete bridge is selected at
         runtime via OperatingSystem.IsWindows() (see HelixViewport.Render.cs). This lets a single
-        net8.0 DLL ship in one NuGet package for both platforms.
+        net9.0 DLL ship in one NuGet package for both platforms.
     -->
     <PropertyGroup>
-        <TargetFramework>net8.0</TargetFramework>
+        <TargetFramework>net9.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>

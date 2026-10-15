@@ -286,11 +286,9 @@ internal sealed class PickingDemo : IDisposable
 
         _orbitController!.ViewportHeight = _viewportSize.Height;
         _orbitController!.ViewportWidth = _viewportSize.Width;
-        _lightNode!.Entity.Update<DirectionalLightInfo>(light =>
-        {
-            light.Direction = _camera.LookDir;
-            return light;
-        });
+        _lightNode!.Entity.Update<DirectionalLightInfo>(
+            (ref DirectionalLightInfo light) => light.Direction = _camera.LookDir
+        );
         _renderContext.Update(_viewportSize, _camera);
 
         // --- ImGui frame ---

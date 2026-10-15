@@ -6,7 +6,7 @@ Thank you for your interest in contributing to HelixToolkit Nex! This document p
 
 ### Prerequisites
 
-- .NET 8 SDK
+- .NET 9 SDK
 - Vulkan SDK 1.3.296.0 or later
 - Git
 - Visual Studio 2022 or your preferred IDE with .NET support

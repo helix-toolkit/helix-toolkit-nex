@@ -405,3 +405,5 @@ FodyWeavers.xsd
 # Publish
 *.pubxml
 *.exe
+
+*.ini

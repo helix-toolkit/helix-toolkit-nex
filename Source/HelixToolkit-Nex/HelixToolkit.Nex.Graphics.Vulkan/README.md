@@ -155,4 +155,8 @@ Dependencies:
 - HelixToolkit.Nex.Shaders
 - Vortice.Vulkan
 - Microsoft.Extensions.Logging
+
+## Compatibility
+
+- Updated to target .NET 9.0 for improved performance and feature support.
 ```

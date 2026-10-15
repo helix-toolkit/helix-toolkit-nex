@@ -42,6 +42,8 @@ HelixToolkit.Nex.Engine is a core component of the HelixToolkit.Nex suite, respo
 | `PointDrawStreamRegistry`     | Registry for managing point draw streams.                                       |
 | `MeshDrawStream`              | Manages mesh draw commands, supporting dynamic and static data handling.        |
 | `MeshDrawStreamRegistry`      | Registry for managing mesh draw streams.                                        |
+| `LineDrawStream`              | Manages line draw commands, supporting dynamic and static data handling.        |
+| `LineDrawStreamRegistry`      | Registry for managing line draw streams.                                        |
 | `PickingRegistry`             | Manages picking handlers for different geometry types.                         |
 
 ## Usage Examples
@@ -201,6 +203,7 @@ camera.FocusOn(new Vector3(0, 0, 0), 10f);
 - Improved interop support with `WithWpf()` and `WithWinUI()` methods for WPF and WinUI applications.
 - New methods for enabling specific rendering features: `WithBillBoard()`, `WithTransparent(TransparentMode mode)`, `WithFXAA()`, `WithSMAA()`, `WithBloom()`, `WithFPS()`.
 - Added `WithSSAO(SsaoQuality quality = SsaoQuality.Medium)`: Registers a single `SsaoPostEffect` into the `PostEffectsNode`, unless an effect named `"SsaoPostEffect"` is already present.
+- Added `WithEnvironment()`: Enables the environment-map (skybox) background by registering an `EnvironmentMapNode` into the default pipeline.
 
 ### Buffer Management Updates
 
@@ -215,6 +218,11 @@ camera.FocusOn(new Vector3(0, 0, 0), 10f);
 
 - Introduced `PointDrawStream` for managing point draw commands, replacing the removed `PointCloudData`.
 - `PointDrawStreamRegistry` manages point draw streams, organizing them by `DrawStreamType` and `DrawStreamName`.
+
+### New `LineDrawStream` and `LineDrawStreamRegistry`
+
+- Introduced `LineDrawStream` for managing line draw commands, supporting dynamic and static data handling.
+- `LineDrawStreamRegistry` manages line draw streams, organizing them by `DrawStreamType` and `DrawStreamName`.
 
 ### New Light Nodes
 
@@ -242,4 +250,13 @@ camera.FocusOn(new Vector3(0, 0, 0), 10f);
 ### New Event in `Engine`
 
 - `OnViewportHovering`: An event that is triggered when the viewport is hovered, providing a `PickingResponse`.
+
+### Updates to `LineDrawStream`
+
+- Added `TextureId` and `SamplerId` properties to `LineDrawStream` and `LineNode` for bindless texture and sampler support.
+
+### Codebase Updates
+
+- Updated target framework to .NET 9.0 for improved performance and feature set.
+- Simplified ECS component updates using lambda expressions for `Entity.Update<T>()` calls.
 ```

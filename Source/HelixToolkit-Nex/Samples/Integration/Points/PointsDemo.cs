@@ -747,11 +747,10 @@ internal sealed class PointsDemo : IDisposable
                         )
                     )
                     {
-                        entry.Node.Entity.Update<PointDrawInfo>(x =>
-                        {
-                            x.PointMaterialTypeName = _materialTypes[entry.MaterialNameIndex];
-                            return x;
-                        });
+                        entry.Node.Entity.Update<PointDrawInfo>(
+                            (ref PointDrawInfo x) =>
+                                x.PointMaterialTypeName = _materialTypes[entry.MaterialNameIndex]
+                        );
                     }
 
                     Gui.TreePop();
@@ -794,12 +793,13 @@ internal sealed class PointsDemo : IDisposable
     {
         foreach (var entry in _pointClouds)
         {
-            entry.Node.Entity.Update<PointDrawInfo>(x =>
-            {
-                x.FixedSize = _fixedSize;
-                x.PointSize = _globalPointSize;
-                return x;
-            });
+            entry.Node.Entity.Update<PointDrawInfo>(
+                (ref PointDrawInfo x) =>
+                {
+                    x.FixedSize = _fixedSize;
+                    x.PointSize = _globalPointSize;
+                }
+            );
         }
     }
 

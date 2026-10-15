@@ -8,7 +8,7 @@ For contribution workflow and code-style expectations, see [CONTRIBUTING.md](CON
 
 | Requirement | Notes |
 | ----------- | ----- |
-| **.NET 8 SDK** or later | https://dotnet.microsoft.com/download |
+| **.NET 9 SDK** or later | https://dotnet.microsoft.com/download |
 | **Vulkan SDK** 1.3.296.0 or later | https://vulkan.lunarg.com/ — required for the Vulkan backend |
 | **Git** | https://git-scm.com/ |
 | **Git LFS** | https://git-lfs.com/ — required for large binary assets (models, textures, GIFs) |

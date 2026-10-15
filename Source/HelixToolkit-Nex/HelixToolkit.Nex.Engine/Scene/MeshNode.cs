@@ -33,11 +33,7 @@ public class MeshNode : Node
         get => Entity.Get<MeshDrawInfo>().Geometry;
         set
         {
-            Entity.Update<MeshDrawInfo>(comp =>
-            {
-                comp.Geometry = value;
-                return comp;
-            });
+            Entity.Update<MeshDrawInfo>((ref MeshDrawInfo comp) => comp.Geometry = value);
         }
     }
 
@@ -49,11 +45,7 @@ public class MeshNode : Node
         get => Entity.Get<MeshDrawInfo>().MaterialProperties;
         set
         {
-            Entity.Update<MeshDrawInfo>(comp =>
-            {
-                comp.MaterialProperties = value;
-                return comp;
-            });
+            Entity.Update<MeshDrawInfo>((ref MeshDrawInfo comp) => comp.MaterialProperties = value);
         }
     }
 
@@ -65,11 +57,7 @@ public class MeshNode : Node
         get => Entity.Get<MeshDrawInfo>().Instancing;
         set
         {
-            Entity.Update<MeshDrawInfo>(comp =>
-            {
-                comp.Instancing = value;
-                return comp;
-            });
+            Entity.Update<MeshDrawInfo>((ref MeshDrawInfo comp) => comp.Instancing = value);
         }
     }
 
@@ -81,11 +69,7 @@ public class MeshNode : Node
         get => Entity.Get<MeshDrawInfo>().Cullable;
         set
         {
-            Entity.Update<MeshDrawInfo>(comp =>
-            {
-                comp.Cullable = value;
-                return comp;
-            });
+            Entity.Update<MeshDrawInfo>((ref MeshDrawInfo comp) => comp.Cullable = value);
         }
     }
 
@@ -97,11 +81,7 @@ public class MeshNode : Node
         get => Entity.Get<MeshDrawInfo>().Hitable;
         set
         {
-            Entity.Update<MeshDrawInfo>(comp =>
-            {
-                comp.Hitable = value;
-                return comp;
-            });
+            Entity.Update<MeshDrawInfo>((ref MeshDrawInfo comp) => comp.Hitable = value);
         }
     }
 

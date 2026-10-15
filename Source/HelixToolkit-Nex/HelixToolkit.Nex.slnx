@@ -75,7 +75,7 @@
     <File Path="../../Scripts/fix-naming.ps1" />
     <File Path="../../Scripts/format-solution.ps1" />
   </Folder>
-  <Project Path="HelixTookit.Nex/HelixToolkit.Nex.csproj" />
+  <Project Path="HelixToolkit.Nex/HelixToolkit.Nex.csproj" />
   <Project Path="HelixToolkit.Nex.Avalonia.Tests/HelixToolkit.Nex.Avalonia.Tests.csproj">
     <Build Solution="LinuxDebug|Any CPU" Project="false" />
     <Build Solution="LinuxRelease|Any CPU" Project="false" />
@@ -129,8 +129,16 @@
     <Build Solution="LinuxDebug|Any CPU" Project="false" />
     <Build Solution="LinuxRelease|Any CPU" Project="false" />
   </Project>
+  <Project Path="HelixToolkit.Nex.WinUI.Tests/HelixToolkit.Nex.WinUI.Tests.csproj">
+    <BuildType Solution="LinuxDebug|*" Project="Debug" />
+    <BuildType Solution="LinuxRelease|*" Project="Release" />
+  </Project>
   <Project Path="HelixToolkit.Nex.Wpf/HelixToolkit.Nex.Wpf.csproj">
     <Build Solution="LinuxDebug|Any CPU" Project="false" />
     <Build Solution="LinuxRelease|Any CPU" Project="false" />
+  </Project>
+  <Project Path="HelixToolkit.Nex.Wpf.Tests/HelixToolkit.Nex.Wpf.Tests.csproj">
+    <BuildType Solution="LinuxDebug|*" Project="Debug" />
+    <BuildType Solution="LinuxRelease|*" Project="Release" />
   </Project>
 </Solution>

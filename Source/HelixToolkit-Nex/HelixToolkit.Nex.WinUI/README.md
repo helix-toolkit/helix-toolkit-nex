@@ -34,6 +34,13 @@ var viewport = new HelixViewport
 myWinUIPage.Content = viewport;
 ```
 
+### Viewport Lifetime
+
+`Unloaded` only suspends rendering so the same `HelixViewport` can be loaded
+again. The owner must call `Dispose()` when the viewport instance will no
+longer be used. Dispose every viewport before disposing its externally owned
+`Engine`.
+
 ### Registering a Dependency Property
 
 ```csharp
@@ -61,6 +68,11 @@ viewport.PointerPressed += (sender, e) =>
 - **Microsoft Windows App SDK Update**: Updated the package reference for `Microsoft.WindowsAppSDK.WinUI` to version `2.2.1`.
 - **Removed `BeforeRender` Event**: The `BeforeRender` event has been removed from `HelixViewport`. Use the `ViewportClient` to provide camera and scene data.
 - **Project Reference Update**: Added a project reference to `HelixToolkit.Nex.Interop` to facilitate interop functionalities.
+- **Interop Enhancements**: Introduced `Microsoft.Windows.CsWin32` for improved COM interop, replacing manual COM interface definitions with generated interop code.
+- **Swap Chain Detachment**: The swap chain is now detached from the `SwapChainPanel` before releasing it to manage COM references properly.
+- **Target Framework Update**: Updated the target framework to `net9.0` for both Windows and Linux platforms.
+- **Viewport Lifecycle Management**: Introduced `ViewportLifecycle<TSession>` to manage the lifecycle of viewport sessions, ensuring proper resource management and error handling.
+- **Viewport Session Management**: Added `ViewportSession` to encapsulate the native resources used by a loaded viewport surface, improving resource management and synchronization.
 
 ## Architecture Notes
 
@@ -70,8 +82,8 @@ viewport.PointerPressed += (sender, e) =>
 
 ## Platform Support
 
-- **Windows**: The package targets `net8.0-windows10.0.22621.0` for Windows platforms, utilizing the Microsoft Windows App SDK.
-- **Linux**: The package now includes conditional support for Linux platforms targeting `net8.0`, although DirectX interop features are not available on Linux.
+- **Windows**: The package targets `net9.0-windows10.0.22621.0` for Windows platforms, utilizing the Microsoft Windows App SDK.
+- **Linux**: The package now includes conditional support for Linux platforms targeting `net9.0`, although DirectX interop features are not available on Linux.
 
 HelixToolkit.Nex.WinUI is designed to be flexible and powerful, providing developers with the tools needed to create immersive 3D applications in the WinUI ecosystem.
 ```

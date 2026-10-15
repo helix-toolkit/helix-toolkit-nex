@@ -28,7 +28,6 @@ public partial class HelixViewport
     /// <returns>The mapped viewport mouse button.</returns>
     internal static ViewportMouseButton ToViewportButton(PointerPointProperties p)
     {
-        ArgumentNullException.ThrowIfNull(p);
         if (p.IsLeftButtonPressed)
             return ViewportMouseButton.Left;
         if (p.IsMiddleButtonPressed)

@@ -86,6 +86,7 @@ var deserializedGeometry = JsonSerializer.Deserialize<Geometry>(json, options);
 
 ## Recent Changes
 
+- **Target Framework**: Updated to target .NET 9.0.
 - **VertexProperties Struct**: 
   - The `Tangent` field has been updated to a `Vector4` to include handedness information, aligning with the glTF specification.
   - Introduced `DefaultTangent` for initializing tangents with a default right-handed bitangent.

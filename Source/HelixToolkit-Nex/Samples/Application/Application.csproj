@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
       <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
@@ -13,7 +13,7 @@
         <PackageReference Include="Vortice.Vulkan" Version="2.2.0" />
     </ItemGroup>
     <ItemGroup>
-      <ProjectReference Include="..\..\HelixTookit.Nex\HelixToolkit.Nex.csproj" />
+      <ProjectReference Include="..\..\HelixToolkit.Nex\HelixToolkit.Nex.csproj" />
       <ProjectReference Include="..\..\HelixToolkit.Nex.Graphics\HelixToolkit.Nex.Graphics.csproj" />
       <ProjectReference Include="..\..\HelixToolkit.Nex.Repository\HelixToolkit.Nex.Repository.csproj" />
     </ItemGroup>

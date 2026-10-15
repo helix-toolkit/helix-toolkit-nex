@@ -498,12 +498,13 @@ internal sealed partial class GizmoDemo : IDisposable
                 break;
 
             case LightKind.Directional:
-                _lightNode?.Entity.Update<DirectionalLightInfo>(l =>
-                {
-                    l.Color = color;
-                    l.Intensity = t.Intensity;
-                    return l;
-                });
+                _lightNode?.Entity.Update<DirectionalLightInfo>(
+                    (ref DirectionalLightInfo l) =>
+                    {
+                        l.Color = color;
+                        l.Intensity = t.Intensity;
+                    }
+                );
                 if (t.DirectionGeometry is not null && t.DirectionGizmo is not null)
                 {
                     LineGeometryBuilder.FillDirectionArrow(
@@ -790,11 +791,9 @@ internal sealed partial class GizmoDemo : IDisposable
             Vector3 sunDir = Vector3.Normalize(
                 Vector3.TransformNormal(SunLocalForward, _lightNode.Transform.Value)
             );
-            _lightNode.Entity.Update<DirectionalLightInfo>(light =>
-            {
-                light.Direction = sunDir;
-                return light;
-            });
+            _lightNode.Entity.Update<DirectionalLightInfo>(
+                (ref DirectionalLightInfo light) => light.Direction = sunDir
+            );
         }
 
         _renderContext.Update(_viewportSize, _camera);

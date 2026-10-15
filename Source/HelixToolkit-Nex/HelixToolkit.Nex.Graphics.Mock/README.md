@@ -160,7 +160,7 @@ context.MarkHostWrite(buffer.Handle, offset: 0, size: 512);
 
 ## Recent Changes
 
-- **Project Configuration**: Added new build configurations for `LinuxDebug` and `LinuxRelease` to support cross-platform testing and development.
+- **Project Configuration**: Updated target framework to `net9.0` to support the latest .NET features.
 - **New Methods and Properties**: Added `DrawCallCount`, `DispatchCallCount`, `SetCheckpointMarker`, `BindRenderPipeline` with color writes, `ClearDepthStencilImage`, `SetColorWriteEnabled`, `CopyTextureToBuffer`, `SetCullMode`, `TransitionToShaderReadOnly`, and updated `CreateSecondaryCommandBuffer` method signature to enhance testing capabilities.
 - **SupportsSubpass**: Added `SupportsSubpass` property to `MockContext` to indicate subpass support.
 - **GetBufferDesc**: Added method to `MockContext` to retrieve the `BufferDesc` used to create a buffer.

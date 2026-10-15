@@ -87,7 +87,7 @@ public class TextureCreatorTests
         var desc = _context.GetTextureDesc(texture.Handle);
         Assert.IsNotNull(desc);
         Assert.AreEqual(TextureType.TextureCube, desc!.Value.Type);
-        Assert.AreEqual(6u, desc.Value.NumLayers);
+        Assert.AreEqual(1u, desc.Value.NumLayers); // Cube maps have 1 layer, but 6 faces
     }
 
     [TestMethod]

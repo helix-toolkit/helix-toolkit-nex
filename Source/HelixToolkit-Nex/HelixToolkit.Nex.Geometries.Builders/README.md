@@ -105,4 +105,8 @@ var tangent = new Vector4(tangentXYZ, 1.0f);
 ```
 
 This change affects how tangents are stored and should be considered when interfacing with shaders or other systems that utilize tangent data.
+
+### Target Framework Update
+
+- The target framework for the `HelixToolkit.Nex.Geometries.Builders` package has been updated from `net8.0` to `net9.0`. This change may require updates to your development environment to ensure compatibility with the latest .NET features and improvements.
 ```

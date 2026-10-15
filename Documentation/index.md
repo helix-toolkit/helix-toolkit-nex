@@ -1,6 +1,6 @@
 # Helix Toolkit NEX Documentation
 
-Welcome to the Helix Toolkit NEX documentation. This is a modern, high-performance 3D graphics toolkit for .NET 8.
+Welcome to the Helix Toolkit NEX documentation. This is a modern, high-performance 3D graphics toolkit for .NET 9.
 
 ## Overview
 
@@ -8,7 +8,7 @@ Helix Toolkit NEX is a collection of libraries for 3D graphics programming using
 
 ### Core & Foundation
 
-- **[HelixToolkit.Nex](../Source/HelixToolkit-Nex/HelixTookit.Nex/README.md)** - Core 3D graphics engine leveraging the Vulkan API, with Reverse-Z, Forward Plus light culling, and GPU-based culling.
+- **[HelixToolkit.Nex](../Source/HelixToolkit-Nex/HelixToolkit.Nex/README.md)** - Core 3D graphics engine leveraging the Vulkan API, with Reverse-Z, Forward Plus light culling, and GPU-based culling.
 - **[HelixToolkit.Nex.Maths](../Source/HelixToolkit-Nex/HelixToolkit.Nex.Maths/README.md)** - Mathematics utilities: vectors, matrices, colors, bounding volumes, and collision detection.
 - **[HelixToolkit.Nex.ECS](../Source/HelixToolkit-Nex/HelixToolkit.Nex.EntityComponentSystem/README.md)** - Data-oriented Entity Component System with isolated worlds, an event bus, and a deferred command buffer.
 - **[HelixToolkit.Nex.Repository](../Source/HelixToolkit-Nex/HelixToolkit.Nex.Repository/README.md)** - Thread-safe LRU cache for GPU resources such as textures, shaders, and samplers.
@@ -48,7 +48,7 @@ Browse the [API Documentation](api/index.md) to explore the available classes an
 ## Key Features
 
 - Modern Vulkan-based rendering pipeline
-- Cross-platform support (.NET 8)
+- Cross-platform support (.NET 9)
 - High-performance graphics operations
 - Comprehensive mathematics library
 - Scene graph management
@@ -61,7 +61,7 @@ Browse the [API Documentation](api/index.md) to explore the available classes an
 
 ## Requirements
 
-- .NET 8.0 or later
+- .NET 9.0 or later
 - Vulkan 1.3 or later compatible GPU
 
 ## License

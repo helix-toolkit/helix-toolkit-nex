@@ -21,6 +21,18 @@ internal sealed class NullTextureRepository : ITextureRepository
 
     public TextureRef GetOrCreateFromImage(string name, Image image, bool generateMipmaps = true) => TextureRef.Null;
 
+    public TextureRef GetOrCreateCubeFromImages(
+        string name,
+        IReadOnlyList<Image> faces,
+        bool generateMipmaps = true
+    ) => TextureRef.Null;
+
+    public TextureRef GetOrCreateCubeFromFiles(
+        IReadOnlyList<string> filePaths,
+        bool generateMipmaps = true,
+        string? debugName = null
+    ) => TextureRef.Null;
+
     public Task<TextureRef> GetOrCreateFromStreamAsync(
         string name,
         Stream stream,

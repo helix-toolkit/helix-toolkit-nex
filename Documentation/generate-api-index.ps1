@@ -28,7 +28,7 @@ Write-Host "Generated api/index.md ($($assemblies.Count) assemblies)" -Foregroun
 $homeLines = @(
     "# Helix Toolkit NEX Documentation",
     "",
-    "Welcome to Helix Toolkit NEX — a modern, high-performance 3D graphics toolkit for .NET 8.",
+    "Welcome to Helix Toolkit NEX — a modern, high-performance 3D graphics toolkit for .NET 9.",
     "",
     "## Libraries",
     ""
@@ -44,7 +44,7 @@ $homeLines += @(
     "",
     "## Requirements",
     "",
-    "- .NET 8.0 or later",
+    "- .NET 9.0 or later",
     "- Vulkan 1.2 or later compatible GPU"
 )
 Set-Content -Path "$PSScriptRoot\index.md" -Value ($homeLines -join "`n") -Encoding UTF8

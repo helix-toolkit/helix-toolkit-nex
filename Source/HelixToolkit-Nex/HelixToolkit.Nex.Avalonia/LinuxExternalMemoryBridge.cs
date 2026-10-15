@@ -17,7 +17,7 @@ namespace HelixToolkit.Nex.Avalonia;
 /// </summary>
 /// <remarks>
 /// <para>
-/// The bridge is compiled into the single cross-platform <c>net8.0</c> assembly alongside the Windows
+/// The bridge is compiled into the single cross-platform <c>net9.0</c> assembly alongside the Windows
 /// bridge; the concrete implementation is chosen at runtime via <see cref="OperatingSystem.IsWindows"/>.
 /// It has no DirectX dependency and only uses Vulkan symbols (through <c>Vortice.Vulkan</c>). The external-memory-fd
 /// device functions it calls (for example <c>vkGetMemoryFdKHR</c>) exist only at runtime on Linux

@@ -18,11 +18,7 @@ public abstract class RangeLightNode : Node
         get => Entity.Get<RangeLightInfo>().Position;
         set
         {
-            Entity.Update<RangeLightInfo>(comp =>
-            {
-                comp.Position = value;
-                return comp;
-            });
+            Entity.Update<RangeLightInfo>((ref RangeLightInfo comp) => comp.Position = value);
         }
     }
 
@@ -34,11 +30,7 @@ public abstract class RangeLightNode : Node
         get => Entity.Get<RangeLightInfo>().Color;
         set
         {
-            Entity.Update<RangeLightInfo>(comp =>
-            {
-                comp.Color = value;
-                return comp;
-            });
+            Entity.Update<RangeLightInfo>((ref RangeLightInfo comp) => comp.Color = value);
         }
     }
 
@@ -50,11 +42,7 @@ public abstract class RangeLightNode : Node
         get => Entity.Get<RangeLightInfo>().Intensity;
         set
         {
-            Entity.Update<RangeLightInfo>(comp =>
-            {
-                comp.Intensity = value;
-                return comp;
-            });
+            Entity.Update<RangeLightInfo>((ref RangeLightInfo comp) => comp.Intensity = value);
         }
     }
 
@@ -66,11 +54,7 @@ public abstract class RangeLightNode : Node
         get => Entity.Get<RangeLightInfo>().Range;
         set
         {
-            Entity.Update<RangeLightInfo>(comp =>
-            {
-                comp.Range = value;
-                return comp;
-            });
+            Entity.Update<RangeLightInfo>((ref RangeLightInfo comp) => comp.Range = value);
         }
     }
 }
@@ -100,11 +84,7 @@ public class SpotLightNode : RangeLightNode
         get => Entity.Get<RangeLightInfo>().Direction;
         set
         {
-            Entity.Update<RangeLightInfo>(comp =>
-            {
-                comp.Direction = value;
-                return comp;
-            });
+            Entity.Update<RangeLightInfo>((ref RangeLightInfo comp) => comp.Direction = value);
         }
     }
 
@@ -116,11 +96,7 @@ public class SpotLightNode : RangeLightNode
         get => Entity.Get<RangeLightInfo>().SpotAngles;
         set
         {
-            Entity.Update<RangeLightInfo>(comp =>
-            {
-                comp.SpotAngles = value;
-                return comp;
-            });
+            Entity.Update<RangeLightInfo>((ref RangeLightInfo comp) => comp.SpotAngles = value);
         }
     }
 }
