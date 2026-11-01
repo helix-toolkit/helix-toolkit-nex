@@ -97,7 +97,7 @@ When adding a dependency between packages, respect the layering — e.g. `Render
 Enforced by [.editorconfig](.editorconfig) and verified in CI via `dotnet format`. Key rules:
 
 - **Language/runtime:** C# `LangVersion=latest`, `net9.0`, `Nullable=enable`, `ImplicitUsings=enable`, `AllowUnsafeBlocks=true`.
-- ****Namespaces:** file-scoped (`namespace X;`) is used throughout the codebase.
+- **Namespaces:** file-scoped (`namespace X;`) is used throughout the codebase.
 - **`var`:** preferred everywhere (built-in types, apparent types, elsewhere).
 - **Indentation:** 4 spaces for C#; line endings **CRLF** for `.cs`; final newline required; UTF-8. (YAML/JSON use 2-space indent.)
 - **`using` directives:** system directives sorted first.
@@ -158,4 +158,4 @@ Binary assets (`.glb`, `.dds`, `.gif`, textures, etc.) are stored via **Git LFS*
 - Respect **package layering** when adding references; respect **row-major/column-major** and **reverse-Z** conventions when touching math or shaders.
 - Watch for **per-frame allocations**; prefer `ZLinq`, ring buffers, and the zero-alloc stream/registry enumeration paths already in place.
 - Windows-only code (D3D11 interop, WPF, WinUI) must stay guarded by `OperatingSystem.IsWindows()` and excluded from the Linux configs.
-- Run `dotnet format` before finishing; CRLF + block-scoped namespaces + `_camelCase` fields are the easy things to get wrong.
+- Run `dotnet format` before finishing; CRLF + file-scoped namespaces + `_camelCase` fields are the easy things to get wrong.

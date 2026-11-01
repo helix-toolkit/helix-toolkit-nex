@@ -36,7 +36,7 @@ public static class BillboardExtensions
         Color4? background = null,
         BillboardAnchor anchor = BillboardAnchor.Center,
         string materialName = "SDFFont",
-        bool fixedSize = true,
+        RenderSpace renderSpace = RenderSpace.Screen,
         float cullDistance = 0
     )
     {
@@ -54,7 +54,7 @@ public static class BillboardExtensions
             background,
             anchor,
             materialName: materialName,
-            fixedSize: fixedSize,
+            renderSpace: renderSpace,
             cullDistance: cullDistance
         );
     }
@@ -68,7 +68,7 @@ public static class BillboardExtensions
         Color4? background = null,
         BillboardAnchor anchor = BillboardAnchor.Center,
         string materialName = "SDFFont",
-        bool fixedSize = true,
+        RenderSpace renderSpace = RenderSpace.Screen,
         float cullDistance = 0
     )
     {
@@ -83,7 +83,7 @@ public static class BillboardExtensions
                 background,
                 anchor,
                 materialName: materialName,
-                fixedSize: fixedSize,
+                renderSpace: renderSpace,
                 cullDistance: cullDistance
             );
         }

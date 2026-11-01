@@ -468,7 +468,7 @@ public sealed class SolarSystemScene : IScene
                 PlanetLabelFontSize,
                 atlas,
                 planet.MaterialVariant,
-                true
+                RenderSpace.Screen
             );
 
             // ---- Fact-ring labels (smaller, arranged in a circle) ---------
@@ -543,7 +543,7 @@ public sealed class SolarSystemScene : IScene
                     MoonLabelFontSize,
                     moonAtlas,
                     "SDFFont",
-                    true
+                    RenderSpace.Screen
                 );
 
                 // One extra fact label per moon (distance from parent)
@@ -557,7 +557,7 @@ public sealed class SolarSystemScene : IScene
                     MoonLabelFontSize * 0.8f,
                     moonAtlas,
                     "SDFFont_Outlined",
-                    true,
+                    RenderSpace.Screen,
                     cullDistance: 100
                 );
             }
@@ -580,7 +580,7 @@ public sealed class SolarSystemScene : IScene
         float fontSize,
         SDFFontAtlas atlas,
         string materialName,
-        bool fixedSize,
+        RenderSpace renderSpace,
         float cullDistance = 0
     )
     {
@@ -592,7 +592,7 @@ public sealed class SolarSystemScene : IScene
             background,
             BillboardAnchor.Center,
             materialName: "SDFFont",
-            fixedSize: false,
+            renderSpace: RenderSpace.World,
             cullDistance: cullDistance
         );
 

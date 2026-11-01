@@ -262,7 +262,7 @@ internal sealed class PickingDemo : IDisposable
             Size = 10f,
             Color = new Color4(1f, 0f, 0f, 1f),
             Hitable = false,
-            FixedSize = true,
+            RenderSpace = RenderSpace.Screen,
         };
         _root.AddChild(_highlightPointNode);
 

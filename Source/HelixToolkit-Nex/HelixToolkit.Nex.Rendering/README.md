@@ -146,7 +146,7 @@ var billboardDrawInfo = new BillboardDrawInfo
 {
     BillboardGeometry = new BillboardGeometry(),
     Color = new Color4(1f, 1f, 1f, 1f),
-    FixedSize = false,
+    RenderSpace = RenderSpace.World,
     CullDistance = 100f // Set culling distance
 };
 ```
@@ -162,7 +162,7 @@ var billboard = BillboardHelper.CreateImageBillboard(
     width: 100f,
     height: 100f,
     tint: new Color4(1f, 1f, 1f, 1f),
-    fixedSize: true
+    renderSpace: RenderSpace.Screen
 );
 ```
 

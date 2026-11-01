@@ -62,7 +62,8 @@ public class LineNode : Node
     }
 
     /// <summary>
-    /// Gets or sets the screen-space line width in pixels. Clamped by the shader to [1, 64].
+    /// Gets or sets the line width/thickness, interpreted according to <see cref="RenderSpace"/>.
+    /// The resolved screen-space pixel width is clamped by the shader to [1, 64].
     /// </summary>
     public float LineThickness
     {
@@ -70,6 +71,19 @@ public class LineNode : Node
         set
         {
             Entity.Update<LineDrawInfo>((ref LineDrawInfo comp) => comp.LineThickness = value);
+        }
+    }
+
+    /// <summary>
+    /// Gets or sets whether <see cref="LineThickness"/> is a fixed screen-space pixel width or a
+    /// world-space diameter projected to screen space.
+    /// </summary>
+    public RenderSpace RenderSpace
+    {
+        get => Entity.Get<LineDrawInfo>().RenderSpace;
+        set
+        {
+            Entity.Update<LineDrawInfo>((ref LineDrawInfo comp) => comp.RenderSpace = value);
         }
     }
 

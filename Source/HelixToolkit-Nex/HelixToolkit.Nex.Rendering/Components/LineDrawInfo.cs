@@ -11,10 +11,20 @@ public struct LineDrawInfo(
     public Color4 LineColor { set; get; } = Color4.White;
 
     /// <summary>
-    /// Screen-space line width in pixels. The line vertex shader clamps the value to
-    /// the valid range [1.0, 64.0] (Requirement 2.3). Defaults to 1.0.
+    /// Line width/thickness, interpreted according to <see cref="RenderSpace"/>: a fixed
+    /// screen-space pixel width (<see cref="RenderSpace.Screen"/>, default) or a world-space
+    /// diameter that is projected to screen space (<see cref="RenderSpace.World"/>). The line
+    /// vertex shader clamps a screen-space width to [1.0, 64.0] px; a world-space width has no upper limit (minimum 1 px)
+    /// (Requirement 2.3). Defaults to 1.0.
     /// </summary>
     public float LineThickness { set; get; } = 1.0f;
+
+    /// <summary>
+    /// Gets or sets whether <see cref="LineThickness"/> is interpreted as a fixed screen-space
+    /// pixel width (<see cref="RenderSpace.Screen"/>, default) or a world-space diameter
+    /// projected to screen space (<see cref="RenderSpace.World"/>).
+    /// </summary>
+    public RenderSpace RenderSpace { set; get; } = RenderSpace.Screen;
 
     /// <summary>
     /// Gets or sets the index of the bindless texture used when rendering lines.

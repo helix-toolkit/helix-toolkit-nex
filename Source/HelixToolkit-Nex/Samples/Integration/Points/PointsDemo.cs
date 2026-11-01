@@ -348,7 +348,7 @@ internal sealed class PointsDemo : IDisposable
 
         node.Geometry = geo;
         node.Color = Color4.White;
-        node.FixedSize = _fixedSize;
+        node.RenderSpace = _fixedSize ? RenderSpace.Screen : RenderSpace.World;
         node.PointMaterialName = materialName;
         node.Size = _globalPointSize;
 
@@ -796,7 +796,7 @@ internal sealed class PointsDemo : IDisposable
             entry.Node.Entity.Update<PointDrawInfo>(
                 (ref PointDrawInfo x) =>
                 {
-                    x.FixedSize = _fixedSize;
+                    x.RenderSpace = _fixedSize ? RenderSpace.Screen : RenderSpace.World;
                     x.PointSize = _globalPointSize;
                 }
             );

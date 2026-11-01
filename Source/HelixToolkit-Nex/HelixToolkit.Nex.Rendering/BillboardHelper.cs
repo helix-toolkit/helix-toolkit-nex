@@ -59,12 +59,12 @@ public static class BillboardHelper
     /// </summary>
     /// <param name="texture">The bindless texture to sample (e.g. an icon loaded via the texture repository).</param>
     /// <param name="sampler">The bindless sampler used to sample <paramref name="texture"/>.</param>
-    /// <param name="width">The quad width. Interpreted as world-space units, or as screen pixels when <paramref name="fixedSize"/> is <see langword="true"/>.</param>
-    /// <param name="height">The quad height. Interpreted as world-space units, or as screen pixels when <paramref name="fixedSize"/> is <see langword="true"/>.</param>
+    /// <param name="width">The quad width. Interpreted as world-space units, or as screen pixels when <paramref name="renderSpace"/> is <see cref="RenderSpace.Screen"/>.</param>
+    /// <param name="height">The quad height. Interpreted as world-space units, or as screen pixels when <paramref name="renderSpace"/> is <see cref="RenderSpace.Screen"/>.</param>
     /// <param name="tint">The color multiplied with the sampled texture. Defaults to opaque white (no tint).</param>
     /// <param name="anchor">The anchor point within the quad that maps to the entity's world position. Defaults to <see cref="BillboardAnchor.Center"/>.</param>
     /// <param name="uvRect">The UV rectangle to sample. Defaults to the full texture (0,0,1,1).</param>
-    /// <param name="fixedSize">When <see langword="true"/>, the quad keeps a constant screen-space pixel size (typical for editor icons).</param>
+    /// <param name="renderSpace">When <see cref="RenderSpace.Screen"/>, the quad keeps a constant screen-space pixel size (typical for editor icons).</param>
     /// <param name="cullDistance">The distance beyond which the billboard is culled (0 disables distance culling).</param>
     /// <param name="hitable">Whether the billboard can be selected via GPU picking. Defaults to <see langword="true"/>.</param>
     /// <param name="materialName">
@@ -80,7 +80,7 @@ public static class BillboardHelper
         Color4? tint = null,
         BillboardAnchor anchor = BillboardAnchor.Center,
         Vector4? uvRect = null,
-        bool fixedSize = false,
+        RenderSpace renderSpace = RenderSpace.World,
         float cullDistance = 0,
         bool hitable = true,
         string? materialName = null
@@ -97,7 +97,7 @@ public static class BillboardHelper
             // Null material name falls back to the default textured billboard material (id 0).
             BillboardMaterialName = materialName,
             Hitable = hitable,
-            FixedSize = fixedSize,
+            RenderSpace = renderSpace,
             Anchor = anchor,
             CullDistance = cullDistance,
         };

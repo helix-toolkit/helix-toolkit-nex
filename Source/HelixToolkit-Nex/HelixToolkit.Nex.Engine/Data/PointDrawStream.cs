@@ -35,7 +35,7 @@ internal sealed class PointDrawStream : DrawStreamBase<PointDraw, PointDrawInfo>
             Cullable = pointComp.Cullable ? 1u : 0u,
             PointColor = pointComp.PointColor.EncodeToUInt(),
             PointSize = pointComp.PointSize,
-            FixedSize = pointComp.FixedSize ? 1u : 0u,
+            RenderSpace = (uint)pointComp.RenderSpace,
             DrawType = (uint)pointComp.Variants,
             TextureId = pointComp.TextureIndex,
             SamplerId = pointComp.SamplerIndex,

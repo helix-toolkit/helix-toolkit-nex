@@ -69,7 +69,7 @@ void main() {
     float outScreenW, outScreenH;
     vec2  pixelOff;
     float halfPixW, halfPixH;
-    if (info.fixedSize != 0u) {
+    if (info.renderSpace == 0u) {
         outScreenW  = width;
         outScreenH  = height;
         pixelOff    = localOffsetXY;

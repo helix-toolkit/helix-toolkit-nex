@@ -230,7 +230,7 @@ internal partial class Editor : IDisposable
             iconSampler,
             width: 48f,
             height: 48f,
-            fixedSize: true, // constant on-screen size like an editor gizmo icon
+            renderSpace: RenderSpace.Screen, // constant on-screen size like an editor gizmo icon
             anchor: BillboardAnchor.Center
         );
 

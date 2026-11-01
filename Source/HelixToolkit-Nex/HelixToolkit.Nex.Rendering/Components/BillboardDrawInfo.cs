@@ -25,11 +25,12 @@ public struct BillboardDrawInfo()
     public Color4 Color { get; set; } = new Color4(1f, 1f, 1f, 1f);
 
     /// <summary>
-    /// When <see langword="true"/>, billboard sizes are interpreted as
-    /// fixed screen-space pixel dimensions (no perspective scaling). When <see langword="false"/>
-    /// (default), they are interpreted as world-space units that are projected to screen space.
+    /// When <see cref="RenderSpace.Screen"/>, billboard sizes are interpreted as
+    /// fixed screen-space pixel dimensions (no perspective scaling). When
+    /// <see cref="RenderSpace.World"/> (default), they are interpreted as world-space units
+    /// that are projected to screen space.
     /// </summary>
-    public bool FixedSize { get; set; }
+    public RenderSpace RenderSpace { get; set; } = RenderSpace.World;
 
     /// <summary>
     /// Gets or sets the bindless texture index for the billboard. 0 means no texture.
@@ -128,7 +129,7 @@ public struct BillboardDrawInfo()
 
     public override readonly string ToString()
     {
-        return $"Billboard: Count={BillboardCount}; Hitable={Hitable}; FixedSize={FixedSize}; AxisConstrained={AxisConstrained}; MaterialId={BillboardMaterialId.Id}";
+        return $"Billboard: Count={BillboardCount}; Hitable={Hitable}; RenderSpace={RenderSpace}; AxisConstrained={AxisConstrained}; MaterialId={BillboardMaterialId.Id}";
     }
 
     public BillboardInfo ToInfo(Entity entity, Matrix4x4 worldTransform)
@@ -139,7 +140,7 @@ public struct BillboardDrawInfo()
             EntityId = (uint)entity.Id,
             TextureIndex = Texture,
             SamplerIndex = Sampler,
-            FixedSize = FixedSize ? 1u : 0,
+            RenderSpace = (uint)RenderSpace,
             AxisConstrained = AxisConstrained ? 1u : 0,
             ConstraintAxis = ConstraintAxis,
             Color = Color,
