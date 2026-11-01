@@ -224,7 +224,7 @@ internal sealed class NodeCaseSpec
         new(geometry: null, materialTypeName: RandomMaterialName(rng), cullable: rng.Next(0, 2) == 0, hitable: rng.Next(0, 2) == 0)
         {
             PointSize = RandomFloat(rng),
-            FixedSize = rng.Next(0, 2) == 0,
+            RenderSpace = rng.Next(0, 2) == 0 ? RenderSpace.Screen : RenderSpace.World,
             TextureIndex = (uint)rng.Next(0, 16),
             SamplerIndex = (uint)rng.Next(0, 16),
         };
@@ -232,7 +232,7 @@ internal sealed class NodeCaseSpec
     private static BillboardDrawInfo MakeBillboardInfo(Random rng) =>
         new()
         {
-            FixedSize = rng.Next(0, 2) == 0,
+            RenderSpace = rng.Next(0, 2) == 0 ? RenderSpace.Screen : RenderSpace.World,
             AxisConstrained = rng.Next(0, 2) == 0,
             Hitable = rng.Next(0, 2) == 0,
             CullDistance = RandomFloat(rng),

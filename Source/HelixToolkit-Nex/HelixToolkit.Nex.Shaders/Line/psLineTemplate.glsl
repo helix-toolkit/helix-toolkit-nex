@@ -5,7 +5,7 @@
 
 layout(location = 0) in vec2  v_uv;
 layout(location = 1) in vec4  v_color;
-layout(location = 2) in float v_screenSize;
+layout(location = 2) in noperspective float v_screenSize;
 layout(location = 3) in flat uvec2  v_entityId;
 layout(location = 4) in flat uint  v_textureIndex;
 layout(location = 5) in flat uint  v_samplerIndex;
@@ -144,21 +144,21 @@ vec4 outputColor() {
         color *= texColor; // component-wise multiply with the interpolated vertex color
     }
 
-    // Edge coverage across the segment width: 1.0 at the centre, 0.0 at the outer edge
-    // (Requirement 4.1).
-    float edge = clamp(1.0 - abs(v_uv.y), 0.0, 1.0);
+    // Edge coverage measured in screen pixels. v_screenSize is the (screen-linear interpolated)
+    // geometry width, already limited by the vertex shader (screen: [1,64]; world: >= 1).
+    // Distance of this fragment from the centre line, and the half width, in pixels.
+    float halfWidthPx = max(v_screenSize, 1.0) * 0.5;
+    float distPx = abs(v_uv.y) * v_screenSize * 0.5;
 
-    // Feather-band width: one screen pixel as a fraction of half the line width carried by
-    // v_screenSize. A non-positive line width yields a hard edge (Requirements 4.2, 4.4).
-    float feather = (v_screenSize > 0.0)
-        ? clamp(1.0 / max(v_screenSize * 0.5, 1e-6), 0.0, 1.0)
-        : 0.0;
+    // Pixels remaining to the outer edge: >= 1 inside the inner band, 0 at the outer edge
+    // (Requirement 4.1).
+    float edgePx = halfWidthPx - distPx;
 
     // Fragment alpha: 1.0 inside the inner band, interpolating to 0.0 across the one-pixel
-    // Feather_Band; a hard edge degenerates to a step (Requirements 4.2, 4.3, 4.4).
-    float alpha = (feather <= 0.0)
-        ? step(0.0, edge)                  // hard edge
-        : smoothstep(0.0, feather, edge);  // 1.0 inner -> 0.0 at the outer band edge
+    // Feather_Band (Requirements 4.2, 4.3). Fragments beyond the half width get alpha 0.
+    // The feather is one pixel, but never wider than the half width, so 1px lines stay fully
+    // opaque at their centre (matches the previous uv-space feather clamp).
+    float alpha = smoothstep(0.0, min(1.0, halfWidthPx), edgePx);
     color.a *= alpha;
 
     return color;

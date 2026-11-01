@@ -294,7 +294,7 @@ internal sealed class BillboardDemo : IDisposable
             null,
             BillboardAnchor.Center,
             materialName,
-            _fixedSize
+            _fixedSize ? RenderSpace.Screen : RenderSpace.World
         );
 
         var world = _worldDataProvider!.World;
@@ -696,7 +696,8 @@ internal sealed class BillboardDemo : IDisposable
             if (entry.Node is not null)
             {
                 entry.Node.Entity.Update<BillboardDrawInfo>(
-                    (ref BillboardDrawInfo comp) => comp.FixedSize = _fixedSize
+                    (ref BillboardDrawInfo comp) =>
+                        comp.RenderSpace = _fixedSize ? RenderSpace.Screen : RenderSpace.World
                 );
             }
         }

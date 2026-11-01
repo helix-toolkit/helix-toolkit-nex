@@ -100,7 +100,7 @@ public static class Extensions
         Color4? background,
         BillboardAnchor anchor = BillboardAnchor.Center,
         string materialName = "SDFFont",
-        bool fixedSize = true,
+        RenderSpace renderSpace = RenderSpace.Screen,
         float cullDistance = 0
     )
     {
@@ -112,7 +112,7 @@ public static class Extensions
             background,
             anchor,
             materialName: materialName,
-            fixedSize: fixedSize,
+            renderSpace: renderSpace,
             cullDistance: cullDistance
         );
         node.Billboard = comp;

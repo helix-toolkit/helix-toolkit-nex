@@ -14,12 +14,12 @@ struct LineDraw {
     uint cullable; // Whether this mesh is cullable, used for frustum culling.
     uint nodeInfoIndex;
     uint entityId; // The entity id this mesh belongs to, used for GPU picking.
-    float lineWidth; // Screen-space line width in pixels; clamped to [1,64] by the vertex shader.
+    float lineWidth; // Line width: screen-space pixels or world-space diameter, per renderSpace; resolved pixel width is clamped to [1,64] by the vertex shader.
 
     uint drawType; // Draw type
     uint textureId;
     uint samplerId;
-    uint _padding0;
+    uint renderSpace; // 0 = Screen (fixed pixel width), 1 = World (world-space diameter, distance-scaled)
 };
 
 /// Push constants for the line render vertex/fragment shaders.

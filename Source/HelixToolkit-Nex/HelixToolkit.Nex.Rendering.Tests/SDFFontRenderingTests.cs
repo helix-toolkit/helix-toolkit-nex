@@ -1,6 +1,7 @@
 using System.Numerics;
 using HelixToolkit.Nex.Geometries;
 using HelixToolkit.Nex.Maths;
+using HelixToolkit.Nex.Rendering.Components;
 using HelixToolkit.Nex.Rendering.SDF;
 using HelixToolkit.Nex.Repository;
 
@@ -648,7 +649,7 @@ public class SDFFontRenderingTests
         var comp = new Components.BillboardDrawInfo();
 
         Assert.AreEqual(new Color4(1f, 1f, 1f, 1f), comp.Color);
-        Assert.IsFalse(comp.FixedSize);
+        Assert.AreEqual(RenderSpace.World, comp.RenderSpace);
         Assert.IsFalse(comp.AxisConstrained);
         Assert.AreEqual(new Vector3(0, 1, 0), comp.ConstraintAxis);
         Assert.IsTrue(comp.Hitable);

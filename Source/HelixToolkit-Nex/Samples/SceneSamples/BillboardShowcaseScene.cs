@@ -5,6 +5,7 @@ using HelixToolkit.Nex.Engine.Scene;
 using HelixToolkit.Nex.Graphics;
 using HelixToolkit.Nex.Maths;
 using HelixToolkit.Nex.Rendering;
+using HelixToolkit.Nex.Rendering.Components;
 using HelixToolkit.Nex.Rendering.SDF;
 using HelixToolkit.Nex.Scene;
 
@@ -135,36 +136,36 @@ public sealed class BillboardShowcaseScene : IScene
         // -------------------------------------------------------------------
         z = 0f;
         AddRow(world, root, "Row 0 – Plain SDF", z, google);
-        AddBillboard(world, root, "Google Sans", new Vector3(-ColSpacing, 2f, z), new Color4(1f, 1f, 1f, 1f), null, 1.8f, google, MatPlain, false);
-        AddBillboard(world, root, "Roboto Slab", new Vector3(0f, 2f, z), new Color4(0.9f, 0.85f, 1f, 1f), null, 1.8f, roboto, MatPlain, false);
-        AddBillboard(world, root, "Michroma", new Vector3(ColSpacing, 2f, z), new Color4(0.6f, 1f, 0.8f, 1f), null, 1.8f, michroma, MatPlain, false);
+        AddBillboard(world, root, "Google Sans", new Vector3(-ColSpacing, 2f, z), new Color4(1f, 1f, 1f, 1f), null, 1.8f, google, MatPlain, RenderSpace.World);
+        AddBillboard(world, root, "Roboto Slab", new Vector3(0f, 2f, z), new Color4(0.9f, 0.85f, 1f, 1f), null, 1.8f, roboto, MatPlain, RenderSpace.World);
+        AddBillboard(world, root, "Michroma", new Vector3(ColSpacing, 2f, z), new Color4(0.6f, 1f, 0.8f, 1f), null, 1.8f, michroma, MatPlain, RenderSpace.World);
 
         // -------------------------------------------------------------------
         // Row 1 – Outlined variants
         // -------------------------------------------------------------------
         z -= RowSpacing;
         AddRow(world, root, "Row 1 – Outlined", z, roboto);
-        AddBillboard(world, root, "Red Outline", new Vector3(-ColSpacing, 2f, z), new Color4(1f, 1f, 1f, 1f), null, 1.8f, google, MatOutlineRed, false);
-        AddBillboard(world, root, "Blue Outline", new Vector3(0f, 2f, z), new Color4(1f, 1f, 1f, 1f), null, 1.8f, roboto, MatOutlineBlue, false);
-        AddBillboard(world, root, "Wide Yellow", new Vector3(ColSpacing, 2f, z), new Color4(0.2f, 0.2f, 0.2f, 1f), null, 1.8f, michroma, MatOutlineWide, false);
+        AddBillboard(world, root, "Red Outline", new Vector3(-ColSpacing, 2f, z), new Color4(1f, 1f, 1f, 1f), null, 1.8f, google, MatOutlineRed, RenderSpace.World);
+        AddBillboard(world, root, "Blue Outline", new Vector3(0f, 2f, z), new Color4(1f, 1f, 1f, 1f), null, 1.8f, roboto, MatOutlineBlue, RenderSpace.World);
+        AddBillboard(world, root, "Wide Yellow", new Vector3(ColSpacing, 2f, z), new Color4(0.2f, 0.2f, 0.2f, 1f), null, 1.8f, michroma, MatOutlineWide, RenderSpace.World);
 
         // -------------------------------------------------------------------
         // Row 2 – Drop-shadow variants
         // -------------------------------------------------------------------
         z -= RowSpacing;
         AddRow(world, root, "Row 2 – Drop Shadow", z, google);
-        AddBillboard(world, root, "Hard Shadow", new Vector3(-ColSpacing, 2f, z), new Color4(1f, 0.9f, 0.5f, 1f), null, 1.8f, google, MatShadow, false);
-        AddBillboard(world, root, "Soft Shadow", new Vector3(0f, 2f, z), new Color4(0.5f, 0.9f, 1f, 1f), null, 1.8f, roboto, MatShadowSoft, false);
-        AddBillboard(world, root, "Shadow Michroma", new Vector3(ColSpacing, 2f, z), new Color4(1f, 0.7f, 0.3f, 1f), null, 1.8f, michroma, MatShadow, false);
+        AddBillboard(world, root, "Hard Shadow", new Vector3(-ColSpacing, 2f, z), new Color4(1f, 0.9f, 0.5f, 1f), null, 1.8f, google, MatShadow, RenderSpace.World);
+        AddBillboard(world, root, "Soft Shadow", new Vector3(0f, 2f, z), new Color4(0.5f, 0.9f, 1f, 1f), null, 1.8f, roboto, MatShadowSoft, RenderSpace.World);
+        AddBillboard(world, root, "Shadow Michroma", new Vector3(ColSpacing, 2f, z), new Color4(1f, 0.7f, 0.3f, 1f), null, 1.8f, michroma, MatShadow, RenderSpace.World);
 
         // -------------------------------------------------------------------
         // Row 3 – Outline + shadow combined
         // -------------------------------------------------------------------
         z -= RowSpacing;
         AddRow(world, root, "Row 3 – Outline + Shadow", z, michroma);
-        AddBillboard(world, root, "Green Outline\n+ Shadow", new Vector3(-ColSpacing, 2f, z), new Color4(1f, 1f, 1f, 1f), null, 1.8f, google, MatOutlineShadow, false);
-        AddBillboard(world, root, "Combined\nRoboto", new Vector3(0f, 2f, z), new Color4(0.9f, 0.95f, 1f, 1f), null, 1.8f, roboto, MatOutlineShadow, false);
-        AddBillboard(world, root, "Michroma\nCombined", new Vector3(ColSpacing, 2f, z), new Color4(1f, 0.95f, 0.8f, 1f), null, 1.8f, michroma, MatOutlineShadow, false);
+        AddBillboard(world, root, "Green Outline\n+ Shadow", new Vector3(-ColSpacing, 2f, z), new Color4(1f, 1f, 1f, 1f), null, 1.8f, google, MatOutlineShadow, RenderSpace.World);
+        AddBillboard(world, root, "Combined\nRoboto", new Vector3(0f, 2f, z), new Color4(0.9f, 0.95f, 1f, 1f), null, 1.8f, roboto, MatOutlineShadow, RenderSpace.World);
+        AddBillboard(world, root, "Michroma\nCombined", new Vector3(ColSpacing, 2f, z), new Color4(1f, 0.95f, 0.8f, 1f), null, 1.8f, michroma, MatOutlineShadow, RenderSpace.World);
 
         // -------------------------------------------------------------------
         // Row 4 – Background quads, anchor variants
@@ -192,9 +193,9 @@ public sealed class BillboardShowcaseScene : IScene
         // -------------------------------------------------------------------
         z -= RowSpacing;
         AddRow(world, root, "Row 5 – Fixed Screen-Space Size", z, google);
-        AddBillboard(world, root, "Fixed 24px", new Vector3(-ColSpacing, 2f, z), new Color4(1f, 0.8f, 0.8f, 1f), null, 24f, google, MatPlain, fixedSize: true);
-        AddBillboard(world, root, "Fixed 32px", new Vector3(0f, 2f, z), new Color4(0.8f, 1f, 0.8f, 1f), null, 32f, roboto, MatPlain, fixedSize: true);
-        AddBillboard(world, root, "Fixed 40px", new Vector3(ColSpacing, 2f, z), new Color4(0.8f, 0.8f, 1f, 1f), null, 40f, michroma, MatPlain, fixedSize: true);
+        AddBillboard(world, root, "Fixed 24px", new Vector3(-ColSpacing, 2f, z), new Color4(1f, 0.8f, 0.8f, 1f), null, 24f, google, MatPlain, renderSpace: RenderSpace.Screen);
+        AddBillboard(world, root, "Fixed 32px", new Vector3(0f, 2f, z), new Color4(0.8f, 1f, 0.8f, 1f), null, 32f, roboto, MatPlain, renderSpace: RenderSpace.Screen);
+        AddBillboard(world, root, "Fixed 40px", new Vector3(ColSpacing, 2f, z), new Color4(0.8f, 0.8f, 1f, 1f), null, 40f, michroma, MatPlain, renderSpace: RenderSpace.Screen);
 
         // -------------------------------------------------------------------
         // Row 6 – Axis-constrained billboards
@@ -211,7 +212,7 @@ public sealed class BillboardShowcaseScene : IScene
                 new Color4(0.9f, 0.7f + i * 0.05f, 0.3f, 1f),
                 anchor: BillboardAnchor.Center,
                 materialName: MatPlain,
-                fixedSize: false);
+                renderSpace: RenderSpace.World);
             comp.AxisConstrained = true;
             comp.ConstraintAxis = Vector3.UnitY;
             var node = new BillboardNode(world, $"AxisBB_{i}", ref comp);
@@ -232,7 +233,7 @@ public sealed class BillboardShowcaseScene : IScene
             AddBillboard(world, root, lbl,
                 new Vector3(x, 2f, z),
                 new Color4(0.7f + i * 0.1f, 0.9f, 0.6f, 1f),
-                null, 1.5f, roboto, MatPlain, false,
+                null, 1.5f, roboto, MatPlain, RenderSpace.World,
                 cullDistance: cullDists[i]);
         }
 
@@ -242,11 +243,11 @@ public sealed class BillboardShowcaseScene : IScene
         z -= RowSpacing;
         AddRow(world, root, "Row 8 – Multi-line Text", z, michroma);
         AddBillboard(world, root, "Line One\nLine Two\nLine Three",
-            new Vector3(-ColSpacing, 2f, z), new Color4(1f, 1f, 0.7f, 1f), null, 1.4f, google, MatPlain, false);
+            new Vector3(-ColSpacing, 2f, z), new Color4(1f, 1f, 0.7f, 1f), null, 1.4f, google, MatPlain, RenderSpace.World);
         AddBillboard(world, root, "Hello\nWorld\n!",
-            new Vector3(0f, 2f, z), new Color4(0.7f, 1f, 1f, 1f), null, 1.4f, roboto, MatShadow, false);
+            new Vector3(0f, 2f, z), new Color4(0.7f, 1f, 1f, 1f), null, 1.4f, roboto, MatShadow, RenderSpace.World);
         AddBillboard(world, root, "HELIX\nTOOLKIT\nNEX",
-            new Vector3(ColSpacing, 2f, z), new Color4(1f, 0.6f, 0.9f, 1f), null, 1.4f, michroma, MatOutlineRed, false);
+            new Vector3(ColSpacing, 2f, z), new Color4(1f, 0.6f, 0.9f, 1f), null, 1.4f, michroma, MatOutlineRed, RenderSpace.World);
 
         return root;
     }
@@ -265,7 +266,7 @@ public sealed class BillboardShowcaseScene : IScene
             new Color4(0.55f, 0.55f, 0.55f, 1f),
             anchor: BillboardAnchor.CenterLeft,
             materialName: MatPlain,
-            fixedSize: false);
+            renderSpace: RenderSpace.World);
         var node = new BillboardNode(world, $"Header_{title}", ref comp);
         node.Transform.Translation = new Vector3(-ColSpacing * 2f, 0.5f, z);
         root.AddChild(node);
@@ -281,7 +282,7 @@ public sealed class BillboardShowcaseScene : IScene
         float fontSize,
         SDFFontAtlas atlas,
         string materialName,
-        bool fixedSize,
+        RenderSpace renderSpace,
         float cullDistance = 0f)
     {
         var comp = TextLayoutHelper.CreateTextBillboard(
@@ -292,7 +293,7 @@ public sealed class BillboardShowcaseScene : IScene
             background,
             BillboardAnchor.Center,
             materialName: materialName,
-            fixedSize: fixedSize,
+            renderSpace: renderSpace,
             cullDistance: cullDistance);
         var node = new BillboardNode(world, $"BB_{text}", ref comp);
         node.Transform.Translation = position;
@@ -321,7 +322,7 @@ public sealed class BillboardShowcaseScene : IScene
             anchor,
             padding: padding,
             materialName: materialName,
-            fixedSize: false);
+            renderSpace: RenderSpace.World);
         var node = new BillboardNode(world, $"BB_BG_{text}", ref comp);
         node.Transform.Translation = position;
         root.AddChild(node);

@@ -30,12 +30,14 @@ internal sealed class LineDrawStream : DrawStreamBase<LineDraw, LineDrawInfo>
             VertexCount = 4,
             LineCount = (uint)(lineComp.Geometry.Vertices.Count / 2),
             LineColor = lineComp.LineColor.EncodeToUInt(),
-            // Screen-space line width in pixels, sourced from the per-entity
-            // LineDrawInfo.LineThickness. The vertex shader clamps it to [1,64] (Req 2.3).
+            // Line width, sourced from the per-entity LineDrawInfo.LineThickness, interpreted
+            // according to LineDrawInfo.RenderSpace. The vertex shader resolves it to a
+            // screen-space pixel width and clamps it to [1,64] (Req 2.3).
             LineWidth = lineComp.LineThickness,
             DrawType = (uint)lineComp.Variants,
             TextureId = lineComp.TextureIndex,
             SamplerId = lineComp.SamplerIndex,
+            RenderSpace = (uint)lineComp.RenderSpace,
         };
     }
 

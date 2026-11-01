@@ -149,9 +149,10 @@ void main() {
     //   clip.xy     += offsetNdc * clip.w
     //
     // Task 2.5: point-size resolution — fixed-pixel + distance-scaled branches (Req 2.3-2.6).
-    // fixedSize != 0 : pointSize is already a screen-pixel diameter, constant with camera
-    //                  distance (Req 2.4).
-    // fixedSize == 0 : pointSize is a world-space diameter projected to screen pixels (Req 2.5).
+    // renderSpace == 0 (Screen) : pointSize is already a screen-pixel diameter, constant with
+    //                             camera distance (Req 2.4).
+    // renderSpace == 1 (World)  : pointSize is a world-space diameter projected to screen pixels
+    //                             (Req 2.5).
     //                  FPConstants exposes no standalone projection matrix, so recover it as
     //                  projection = viewProjection * inverseView (since viewProjection =
     //                  projection * view). Its [1][1] element is the vertical projection scale
@@ -160,7 +161,7 @@ void main() {
     //                  shrinks as the point recedes. guardW keeps the divisor magnitude >= 1e-6 so
     //                  the distance-scaled divide stays finite (Task 2.14, Req 7.2).
     float pointSizePx;
-    if (meshDraw.fixedSize != 0u) {
+    if (meshDraw.renderSpace == 0u) {
         pointSizePx = meshDraw.pointSize;
     } else {
         mat4 projection = fpConst.viewProjection * fpConst.inverseView;

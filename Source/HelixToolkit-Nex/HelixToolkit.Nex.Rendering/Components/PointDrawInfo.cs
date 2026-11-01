@@ -13,6 +13,15 @@ public struct PointDrawInfo(
 )
 {
     /// <summary>
+    /// Initializes a <see cref="PointDrawInfo"/> with default values. Declared explicitly because
+    /// the optional-argument primary constructor does not replace a struct's implicit parameterless
+    /// constructor, which would otherwise skip the property initializers (e.g. the
+    /// <see cref="RenderSpace.World"/> default).
+    /// </summary>
+    public PointDrawInfo()
+        : this(null) { }
+
+    /// <summary>
     /// Gets or sets the geometry whose vertices are rendered as a point cloud. Each vertex
     /// contributes exactly one point.
     /// </summary>
@@ -25,17 +34,17 @@ public struct PointDrawInfo(
 
     /// <summary>
     /// The size of each rendered point. Interpreted as a fixed screen-pixel diameter when
-    /// <see cref="FixedSize"/> is <see langword="true"/>, otherwise as a distance-scaled
-    /// (world-space-projected) diameter. Defaults to 1.0.
+    /// <see cref="RenderSpace"/> is <see cref="RenderSpace.Screen"/>, otherwise as a
+    /// distance-scaled (world-space-projected) diameter. Defaults to 1.0.
     /// </summary>
     public float PointSize { set; get; } = 1.0f;
 
     /// <summary>
-    /// When <see langword="true"/>, <see cref="PointSize"/> is interpreted as a fixed
-    /// screen-space size in pixels (no perspective scaling). When <see langword="false"/>
+    /// When <see cref="RenderSpace.Screen"/>, <see cref="PointSize"/> is interpreted as a fixed
+    /// screen-space size in pixels (no perspective scaling). When <see cref="RenderSpace.World"/>
     /// (default), it is interpreted as a world-space diameter projected to screen space.
     /// </summary>
-    public bool FixedSize { set; get; }
+    public RenderSpace RenderSpace { set; get; } = RenderSpace.World;
 
     /// <summary>
     /// Gets or sets the index of the bindless texture used when rendering points.

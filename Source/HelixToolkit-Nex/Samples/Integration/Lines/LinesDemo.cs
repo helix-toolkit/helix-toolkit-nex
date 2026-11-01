@@ -62,8 +62,7 @@ internal sealed class LinesDemo : IDisposable
     private int _pickedEntityId;
 
     // Global tunables
-    private float _globalLineWidth = 2.0f;
-    private float _animTime;
+    private float _globalLineWidth = 2.0f; private float _animTime;
 
     // Custom line material types registered by this demo
     private string[] _materialTypes = [];
@@ -599,6 +598,7 @@ internal sealed class LinesDemo : IDisposable
         // --- Global settings ---
         if (Gui.CollapsingHeader("Global Settings", ImGuiNET.ImGuiTreeNodeFlags.DefaultOpen))
         {
+            // Applies to line sets in Screen render space; World-space sets keep their own width.
             if (Gui.SliderFloat("Line Width (px)", ref _globalLineWidth, 1f, 32f))
                 ApplyGlobalLineWidth();
             var camPos = _camera.Position;
@@ -676,7 +676,24 @@ internal sealed class LinesDemo : IDisposable
                         entry.Node.LineColor = entry.Color;
                     }
 
-                    if (Gui.SliderFloat("Width", ref entry.Thickness, 1f, 32f))
+                    bool worldSpace = entry.RenderSpace == RenderSpace.World;
+                    if (Gui.Checkbox("World Space Width (perspective scaling)", ref worldSpace))
+                    {
+                        entry.RenderSpace = worldSpace ? RenderSpace.World : RenderSpace.Screen;
+                        entry.Thickness = worldSpace ? 0.05f : 2f; // sensible default for the new unit
+                        entry.Node.RenderSpace = entry.RenderSpace;
+                        entry.Node.LineThickness = entry.Thickness;
+                    }
+
+                    var widthRange = worldSpace ? (0.005f, 0.5f) : (1f, 32f);
+                    if (
+                        Gui.SliderFloat(
+                            worldSpace ? "Width (world units)" : "Width (px)",
+                            ref entry.Thickness,
+                            widthRange.Item1,
+                            widthRange.Item2
+                        )
+                    )
                         entry.Node.LineThickness = entry.Thickness;
 
                     if (
@@ -717,6 +734,8 @@ internal sealed class LinesDemo : IDisposable
     {
         foreach (var entry in _lineSets)
         {
+            if (entry.RenderSpace != RenderSpace.Screen)
+                continue;
             entry.Thickness = _globalLineWidth;
             entry.Node.LineThickness = _globalLineWidth;
         }
@@ -766,6 +785,7 @@ internal sealed class LineEntry
     public Geometry Lines { get; set; }
     public Color4 Color { get; set; }
     public float Thickness;
+    public RenderSpace RenderSpace = RenderSpace.Screen;
     public int MaterialNameIndex;
 
     public LineEntry(

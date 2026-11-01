@@ -68,14 +68,15 @@ public class PointCloudNode : Node
     }
 
     /// <summary>
-    /// Gets or sets whether the point size is fixed in screen space.
+    /// Gets or sets whether the point size is a fixed screen-space pixel size or a world-space
+    /// diameter projected to screen space.
     /// </summary>
-    public bool FixedSize
+    public RenderSpace RenderSpace
     {
-        get => Entity.Get<PointDrawInfo>().FixedSize;
+        get => Entity.Get<PointDrawInfo>().RenderSpace;
         set
         {
-            Entity.Update<PointDrawInfo>((ref PointDrawInfo comp) => comp.FixedSize = value);
+            Entity.Update<PointDrawInfo>((ref PointDrawInfo comp) => comp.RenderSpace = value);
         }
     }
 

@@ -10,7 +10,9 @@
 // ------------------------------------------------------------------
 layout(location = 0) out vec2  v_uv;            // Quad_Corner_UV in [-1,1]
 layout(location = 1) out vec4  v_color;         // interpolated RGBA endpoint color
-layout(location = 2) out float v_screenSize;    // clamped Line_Width in pixels
+// noperspective: the width in pixels varies linearly in SCREEN space between endpoints (offset =
+// width * w / w), so it must not be perspective-corrected.
+layout(location = 2) out noperspective float v_screenSize;    // Line_Width in pixels (screen mode: clamped to [1,64]; world mode: at least 1, no upper limit)
 layout(location = 3) out flat uvec2  v_entityId;       // packed GPU-picking entity id
 layout(location = 4) out flat uint  v_textureIndex;   // bindless texture index (0 = none)
 layout(location = 5) out flat uint  v_samplerIndex;   // bindless sampler index
@@ -132,6 +134,29 @@ void main() {
     vec4 clip0 = clipMVP * vec4(P0.xyz, 1.0);   // start endpoint in clip space
     vec4 clip1 = clipMVP * vec4(P1.xyz, 1.0);   // end endpoint   in clip space
 
+    // Near-plane clipping of the segment BEFORE any projected direction / width / offset math.
+    // An endpoint behind the camera has w <= 0, which would give a negative (clamped to 1px)
+    // world-space width and a flipped screen direction that the rasterizer would then carry into
+    // the visible part of the segment. Reverse-Z: a point is inside the near plane when
+    // clip.z <= clip.w. tc0/tc1 are the parametric positions (0 = P0, 1 = P1) of the clipped start
+    // and end; position, color and clip coordinates are all re-derived from them so every
+    // attribute stays consistent.
+    float tc0 = 0.0;
+    float tc1 = 1.0;
+    {
+        float dNear0 = clip0.w - clip0.z;
+        float dNear1 = clip1.w - clip1.z;
+        if (dNear0 < 0.0 && dNear1 >= 0.0) {
+            tc0 = dNear0 / (dNear0 - dNear1);
+        } else if (dNear1 < 0.0 && dNear0 >= 0.0) {
+            tc1 = dNear0 / (dNear0 - dNear1);
+        }
+        vec4 clipA = clip0;
+        vec4 clipB = clip1;
+        clip0 = mix(clipA, clipB, tc0);
+        clip1 = mix(clipA, clipB, tc1);
+    }
+
     // clip0/clip1 are consumed by the subsequent expansion tasks (3.2 quad-corner
     // selection, 3.3 perpendicular screen-space offset, 3.4 degenerate handling).
 
@@ -143,7 +168,8 @@ void main() {
     // (uv.X < 0 -> clip0/p0, else clip1/p1).
     bool atStart = corner.x < 0.0;
     vec4 anchorClip  = atStart ? clip0 : clip1;   // anchored clip-space position
-    vec3 anchorWorld = atStart ? P0.xyz : P1.xyz; // anchored OBJECT-space endpoint (-> world in 5.1)
+    // anchored OBJECT-space endpoint (-> world in 5.1), after near-plane clipping
+    vec3 anchorWorld = atStart ? mix(P0.xyz, P1.xyz, tc0) : mix(P0.xyz, P1.xyz, tc1);
 
     // Task 3.3: perpendicular screen-space offset and width clamp (Req 2.1, 2.2, 2.3).
     // Mirrors LineShaderMirror.ExpandCorner: project both endpoints to NDC, build the
@@ -173,8 +199,40 @@ void main() {
     // Screen-space perpendicular: rotate the unit direction 90° -> (-y, x).
     vec2 perp = vec2(-dirUnit.y, dirUnit.x);
 
+    // Task 3.3b: line-width resolution — fixed-pixel + distance-scaled branches, mirroring
+    // vsPoint.glsl's point-size resolution.
+    // renderSpace == 0 (Screen): lineWidth is already a screen-pixel width, constant with
+    //                            camera distance.
+    // renderSpace == 1 (World):  lineWidth is a world-space diameter projected to screen pixels
+    //                            at the anchored endpoint's depth. FPConstants exposes no
+    //                            standalone projection matrix, so recover it as
+    //                            projection = viewProjection * inverseView (since viewProjection
+    //                            = projection * view). Its [1][1] element is the vertical
+    //                            projection scale 1/tan(fovY/2). A world diameter D at guarded
+    //                            clip depth w projects to D * projScaleY * screenDimensions.y /
+    //                            (2 * w) pixels, mirroring vsPoint.glsl's pointSizePx resolution
+    //                            but anchored per corner (anchorClip.w), so the near endpoint of
+    //                            a segment renders thicker than the far endpoint, matching a true
+    //                            world-space diameter. guardW keeps the divisor magnitude >= 1e-6
+    //                            (Task 3.4).
+    float widthPx;
+    if (meshDraw.renderSpace == 0u) {
+        widthPx = meshDraw.lineWidth;
+    } else {
+        mat4 projection = fpConst.viewProjection * fpConst.inverseView;
+        float projScaleY = projection[1][1];
+        float w = guardW(anchorClip.w);
+        widthPx = meshDraw.lineWidth * projScaleY * fpConst.screenDimensions.y / (2.0 * w);
+    }
+
     // Clamp Line_Width to [1.0, 64.0] px (Req 2.3).
-    float width = clamp(meshDraw.lineWidth, 1.0, 64.0);
+    //
+    // Screen mode: the width is constant along the segment, so clamping per endpoint is exact.
+    // World mode: the width is a physical size, so it has no upper limit (it keeps growing as the
+    // camera approaches) and only the 1px lower bound is applied.
+    float width = (meshDraw.renderSpace == 0u)
+        ? clamp(widthPx, 1.0, 64.0)
+        : max(widthPx, 1.0);
 
     // Offset the anchored corner perpendicular to the segment by half the width, scaled by
     // the corner's cross-segment component. Convert the pixel offset to an NDC offset via
@@ -219,7 +277,10 @@ void main() {
     // reproduces (1 - t) * startColor + t * endColor automatically — matching
     // LineShaderMirror.InterpolateColor / ColorParameterFromUV (Property 9). No explicit mix
     // is needed in the vertex shader. atStart was selected above from corner.x < 0.
-    vec4 cornerColor = atStart ? startColor : endColor;
+    // Colors follow the near-plane-clipped endpoints (tc0/tc1) so the gradient stays consistent.
+    vec4 clippedStartColor = mix(startColor, endColor, tc0);
+    vec4 clippedEndColor   = mix(startColor, endColor, tc1);
+    vec4 cornerColor = atStart ? clippedStartColor : clippedEndColor;
 
     // Task 5.1: entity-ID packing + hitable gating, world-position varying
     // (Req 6.1, 6.2, 7.1, 11.5).

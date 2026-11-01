@@ -254,7 +254,7 @@ public static class TextLayoutHelper
     /// <param name="background">The optional background color (null for no background quad).</param>
     /// <param name="anchor">The anchor point within the text bounding rectangle. Defaults to BottomLeft (preserves legacy behavior).</param>
     /// <param name="materialName">The billboard material name (e.g., "SDFFont").</param>
-    /// <param name="fixedSize">Whether billboard sizes are fixed screen-space pixels.</param>
+    /// <param name="renderSpace">Whether billboard sizes are fixed screen-space pixels or world-space units projected to screen space.</param>
     /// <param name="cullDistance">The distance beyond which the billboard should be culled (0 for no culling).</param>
     /// <returns>A fully-configured <see cref="BillboardDrawInfo"/>.</returns>
     public static BillboardDrawInfo CreateTextBillboard(
@@ -266,7 +266,7 @@ public static class TextLayoutHelper
         BillboardAnchor anchor = BillboardAnchor.BottomLeft,
         Vector4? padding = null,
         string? materialName = "SDFFont",
-        bool fixedSize = false,
+        RenderSpace renderSpace = RenderSpace.World,
         float cullDistance = 0
     )
     {
@@ -310,7 +310,7 @@ public static class TextLayoutHelper
             Sampler = atlas.Sampler,
             BillboardMaterialName = materialName,
             Hitable = true,
-            FixedSize = fixedSize,
+            RenderSpace = renderSpace,
             SdfDistanceRange = atlas.SDFSpread,
             SdfDistanceRangeMiddle = atlas.DistanceRangeMiddle,
             SdfGlyphCellSize = atlas.GlyphCellSize,

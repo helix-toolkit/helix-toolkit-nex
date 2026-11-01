@@ -10,7 +10,7 @@
 @code_gen
 struct BillboardVertex {
     vec4  position;        // xyz = offset based on anchor position, w = unused
-    vec2  size;            // x = width, y = height (world-space or pixels if fixedSize)
+    vec2  size;            // x = width, y = height (world-space units or screen pixels, per BillboardInfo.renderSpace)
     uint  infoIndex;       // Index into BillboardInfo buffer, automatically set internally.
     uint  type;            // Billboard vertex type. 0: Solid color; 1: USE UV
     vec4  uvRect;          // Texture atlas sub-region (u_min, v_min, u_max, v_max)
@@ -63,7 +63,7 @@ struct BillboardExpandArgs {
 
 @code_gen
 struct BillboardInfo {
-    uint     fixedSize;                 // Whether size is fixed in screen space (ignore perspective and use width/height as pixels)
+    uint     renderSpace;                // 0 = Screen (fixed pixel size, ignore perspective), 1 = World (world-space units, distance-scaled)
     uint     worldId;                   // World ID for all billboards in this dispatch (used for GPU picking)
     uint     entityId;                  // Entity ID for all billboards in this dispatch
     uint     _padding0;

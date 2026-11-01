@@ -19,7 +19,7 @@ struct PointDraw {
     uint drawType; // Draw type
     uint textureId;
     uint samplerId;
-    uint fixedSize;
+    uint renderSpace; // 0 = Screen (fixed pixel diameter), 1 = World (world-space diameter, distance-scaled)
 };
 
 /// Push constants for the point render vertex/fragment shaders.
