@@ -50,44 +50,32 @@ public sealed class Image : IDisposable
     {
         Register(ImageFileType.Dds, DDSCodec.LoadFromMemory, DDSCodec.SaveToStream);
 
-        // Register ImageSharp for all raster formats.
+        // Register SkiaSharp for all raster formats it supports.
         // Each entry shares the same decoder but uses a format-specific save delegate.
-        var dec = ImageSharpDecoder.Instance;
         Register(
             ImageFileType.Png,
-            dec.Decode,
-            (pb, c, d, s) => dec.SaveAs(pb, c, d, s, ImageFileType.Png)
+            SkiaSharpDecoder.Instance.Decode,
+            (pb, c, d, s) => SkiaSharpDecoder.SaveAs(pb, c, d, s, ImageFileType.Png)
         );
         Register(
             ImageFileType.Jpg,
-            dec.Decode,
-            (pb, c, d, s) => dec.SaveAs(pb, c, d, s, ImageFileType.Jpg)
+            SkiaSharpDecoder.Instance.Decode,
+            (pb, c, d, s) => SkiaSharpDecoder.SaveAs(pb, c, d, s, ImageFileType.Jpg)
         );
-        Register(
-            ImageFileType.Bmp,
-            dec.Decode,
-            (pb, c, d, s) => dec.SaveAs(pb, c, d, s, ImageFileType.Bmp)
-        );
-        Register(
-            ImageFileType.Gif,
-            dec.Decode,
-            (pb, c, d, s) => dec.SaveAs(pb, c, d, s, ImageFileType.Gif)
-        );
-        Register(
-            ImageFileType.Tiff,
-            dec.Decode,
-            (pb, c, d, s) => dec.SaveAs(pb, c, d, s, ImageFileType.Tiff)
-        );
+
         Register(
             ImageFileType.Webp,
-            dec.Decode,
-            (pb, c, d, s) => dec.SaveAs(pb, c, d, s, ImageFileType.Webp)
+            SkiaSharpDecoder.Instance.Decode,
+            (pb, c, d, s) => SkiaSharpDecoder.SaveAs(pb, c, d, s, ImageFileType.Webp)
         );
-        Register(
-            ImageFileType.Tga,
-            dec.Decode,
-            (pb, c, d, s) => dec.SaveAs(pb, c, d, s, ImageFileType.Tga)
-        );
+
+        // SkiaSharp supports decoding but not encoding these formats.
+        Register(ImageFileType.Bmp, SkiaSharpDecoder.Instance.Decode, BmpEncoder.Instance.Save);
+        Register(ImageFileType.Gif, SkiaSharpDecoder.Instance.Decode, null);
+
+        // Register extra decoders/encoders for the formats SkiaSharp doesn't support.
+        Register(ImageFileType.Tiff, TiffDecoder.Instance.Decode, TiffDecoder.Instance.Save);
+        Register(ImageFileType.Tga, TgaDecoder.Instance.Decode, TgaDecoder.Instance.Save);
     }
 
     // ---- Static loader/saver registry ----

@@ -4,10 +4,10 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 namespace HelixToolkit.Nex.Textures.Tests;
 
 /// <summary>
-/// Integration tests for ImageSharpDecoder — round-trip load/save for each supported format.
+/// Integration tests for image decoder/encoder classes — round-trip load/save for each supported format.
 /// </summary>
 [TestClass]
-public class ImageSharpDecoderTests
+public class ImageDecoderTests
 {
     // -------------------------------------------------------------------------
     // Helpers
@@ -102,9 +102,10 @@ public class ImageSharpDecoderTests
     public void RoundTrip_Tiff_LosslessPreservesPixels() =>
         AssertRoundTrip(ImageFileType.Tiff, lossless: true);
 
-    [TestMethod]
-    public void RoundTrip_Gif_LosslessPreservesPixels() =>
-        AssertRoundTrip(ImageFileType.Gif, lossless: true);
+    // Gif encode is not currently supported
+    //[TestMethod]
+    //public void RoundTrip_Gif_LosslessPreservesPixels() =>
+    //    AssertRoundTrip(ImageFileType.Gif, lossless: true);
 
     [TestMethod]
     public void RoundTrip_Tga_LosslessPreservesPixels() =>
@@ -118,18 +119,18 @@ public class ImageSharpDecoderTests
 
     [TestMethod]
     public void RoundTrip_Webp_LoadsWithCorrectDimensions()
-        // WebP — lossless by default in ImageSharp
+        // WebP — SkiaSharp encoder is lossless when quality is set to 100
         =>
         AssertRoundTrip(ImageFileType.Webp, lossless: false);
 
     // -------------------------------------------------------------------------
-    // Load-only: verify ImageSharp decoder is tried when DDS fails
+    // Load-only: verify other decoders are tried when DDS fails
     // -------------------------------------------------------------------------
 
     [TestMethod]
     public void Load_PngBytes_ReturnsValidImage()
     {
-        // Create a PNG in memory via ImageSharp and load it back through Image.Load
+        // Create a PNG in memory and load it back through Image.Load
         using var original = CreateTestImage(8, 8);
         using var ms = new MemoryStream();
         original.Save(ms, ImageFileType.Png);
@@ -155,11 +156,11 @@ public class ImageSharpDecoderTests
     }
 
     // -------------------------------------------------------------------------
-    // DDS still works after ImageSharp registration
+    // DDS still works after other decoder registration
     // -------------------------------------------------------------------------
 
     [TestMethod]
-    public void Load_DdsStillWorksAfterImageSharpRegistration()
+    public void Load_DdsStillWorksAfterImageDecoderRegistration()
     {
         using var original = Image.New2D(4, 4, 1, Format.RGBA_UN8);
         using var ms = new MemoryStream();
