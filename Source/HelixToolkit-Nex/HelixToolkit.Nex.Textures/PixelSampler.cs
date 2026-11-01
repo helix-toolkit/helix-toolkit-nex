@@ -91,6 +91,8 @@ internal struct Rgba8Pixel
     public byte G;
     public byte B;
     public byte A;
+
+    public override readonly string ToString() => $"rgba({R}, {G}, {B}, {A})";
 }
 
 /// <summary>
@@ -103,4 +105,6 @@ internal struct Bgra8Pixel
     public byte G; // byte offset 1
     public byte R; // byte offset 2
     public byte A; // byte offset 3
+
+    public override readonly string ToString() => $"bgra({B}, {G}, {R}, {A})";
 }
