@@ -184,7 +184,7 @@ jobs:
            $packages = Get-ChildItem -Path . -Recurse -Filter *.nupkg
            if (-not $packages) { throw 'No .nupkg files found to publish.' }
            foreach ($pkg in $packages) {
-             dotnet nuget push $pkg.FullName --api-key ${{steps.login.outputs.NUGET_API_KEY}} -s https://api.nuget.org/v3/index.json
+             dotnet nuget push $pkg.FullName --api-key ${{steps.login.outputs.NUGET_API_KEY}} -s https://api.nuget.org/v3/index.json --skip-duplicate
            }
 
 #      - name: Publish to Myget
