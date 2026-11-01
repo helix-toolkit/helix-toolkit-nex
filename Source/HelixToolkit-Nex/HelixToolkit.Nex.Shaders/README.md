@@ -31,7 +31,7 @@ This package is integral to the HelixToolkit-Nex engine, facilitating the creati
 | `BillboardDrawData`           | Struct for per-visible-billboard data written by the compute shader, now includes a `type` field for vertex type. |
 | `BillboardDrawIndirectArgs`   | Struct for indirect draw arguments for DrawIndirect.                        |
 | `BillboardExpandArgs`         | Struct for shared camera state for the billboard expansion compute shader, now includes additional padding for alignment. |
-| `BillboardInfo`               | Struct containing information for each billboard, now includes a `renderSpace` field for distance culling. |
+| `BillboardInfo`               | Struct containing information for each billboard, including `renderSpace` for size interpretation and `cullDistance` for distance culling. |
 | `BillboardExpandPC`           | Struct for push constants for the billboard expansion compute shader.       |
 | `BillboardRenderPC`           | Struct for push constants for the billboard render vertex/fragment shaders, now includes `billboardInfoAddress`. |
 | `GpuNodeInfo`                 | Struct containing transformation and state information for nodes, used in culling. |
