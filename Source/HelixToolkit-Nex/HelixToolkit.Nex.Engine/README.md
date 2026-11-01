@@ -253,7 +253,11 @@ camera.FocusOn(new Vector3(0, 0, 0), 10f);
 
 ### Updates to `LineDrawStream`
 
-- Added `TextureId` and `SamplerId` properties to `LineDrawStream` and `LineNode` for bindless texture and sampler support.
+- Added `TextureId`, `SamplerId`, and `RenderSpace` properties to `LineDrawStream` and `LineNode` for bindless texture and sampler support, and to specify whether line thickness is interpreted in screen space or world space.
+
+### Updates to `PointDrawStream`
+
+- Added `RenderSpace` property to `PointDrawStream` and `PointCloudNode` to specify whether point size is interpreted in screen space or world space.
 
 ### Codebase Updates
 

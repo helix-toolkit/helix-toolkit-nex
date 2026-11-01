@@ -43,11 +43,16 @@ HelixToolkit.Nex.Rendering is responsible for managing the rendering pipeline of
 | `SsaoMath`                       | Provides GPU-free reference implementations for SSAO effect math.           |
 | `EnvironmentMapConfig`           | Configures environment-map (skybox) rendering for a render context.         |
 | `EnvironmentMapNode`             | Renders an HDR environment cubemap as the scene background (skybox).        |
+| `RenderSpace`                    | Specifies the space in which a draw primitive's size/thickness is measured. |
 
 ## Recent Changes
 
 ### New Features
 
+- **RenderSpace**: Introduced to specify the space in which a draw primitive's size/thickness is measured, replacing the `FixedSize` boolean with a more descriptive enum.
+- **BillboardHelper**: Updated to use `RenderSpace` instead of `FixedSize` for determining the size interpretation of billboards.
+- **LineDrawInfo**: Added `RenderSpace` property to determine how line thickness is interpreted.
+- **PointDrawInfo**: Added `RenderSpace` property to determine how point size is interpreted.
 - **EnvironmentMapConfig**: Added to configure environment-map (skybox) rendering per `RenderContext`.
 - **EnvironmentMapNode**: Added to render an HDR environment cubemap as the scene background.
 - **BillboardHelper**: Added to provide factory helpers for creating image/icon billboards.
