@@ -1,6 +1,5 @@
 // See https://aka.ms/new-console-template for more information
 using System.Numerics;
-using System.Runtime.InteropServices;
 using HelixToolkit.Nex.Graphics;
 using HelixToolkit.Nex.Graphics.Vulkan;
 using HelixToolkit.Nex.ImGui;
@@ -9,9 +8,7 @@ using HelixToolkit.Nex.Sample.Application;
 using ImGuiNET;
 using ImGuiTest;
 using SDL3;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
-using SixLabors.ImageSharp.Processing;
+using SkiaSharp;
 
 Console.WriteLine("Hello, World!");
 
@@ -27,6 +24,7 @@ internal class App : Application
     private readonly Dependencies _dp = new();
     private TextureResource _frameTexture = TextureResource.Null;
     private ShaderToyRenderer? _shaderToyRenderer = null;
+    private SKBitmap? _image = null;
     private TextureResource _imageSample = TextureResource.Null;
     private uint _toySelection = 0;
 
@@ -73,30 +71,36 @@ internal class App : Application
 
     private void LoadImageSample()
     {
-        Configuration.Default.PreferContiguousImageBuffers = true;
-        using var image = Image.Load<Rgba32>(Path.Combine(AppContext.BaseDirectory, "Assets", "image_sample.jpg"));
+        using var image = SKBitmap.Decode(Path.Combine(AppContext.BaseDirectory, "Assets", "image_sample.jpg"));
+
         if (image == null || image.Width == 0 || image.Height == 0)
         {
             throw new Exception("Failed to load noise texture.");
         }
-        image.Mutate(x => x.Resize(2048, 2048, KnownResamplers.Bicubic));
-        if (image!.DangerousTryGetSinglePixelMemory(out var pixels))
+
+        // The input image may be in any color format since we didn't specify one when decoding.
+        // Resize to a reasonable size and convert to RGBA at the same time.
+        _image = new SKBitmap(2048, 2048, SKColorType.Rgba8888, SKAlphaType.Opaque);
+
+        using (var canvas = new SKCanvas(_image))
         {
-            using var data = pixels.Pin();
-            unsafe
-            {
-                var textureDesc = new TextureDesc()
-                {
-                    Type = TextureType.Texture2D,
-                    Dimensions = new((uint)image.Width, (uint)image.Height, 1),
-                    Format = Format.RGBA_SRGB8,
-                    Usage = TextureUsageBits.Sampled,
-                    Data = (nint)data.Pointer,
-                    DataSize = (uint)(image.Width * image.Height * Marshal.SizeOf<Rgba32>()),
-                };
-                _imageSample = _ctx!.CreateTexture(textureDesc, "ShaderRenderer: Image Sample");
-            }
+            canvas.DrawBitmap(
+                image,
+                new SKRect(0, 0, _image.Width, _image.Height),
+                new SKSamplingOptions(SKCubicResampler.Mitchell)
+            );
         }
+
+        var textureDesc = new TextureDesc()
+        {
+            Type = TextureType.Texture2D,
+            Dimensions = new((uint)_image.Width, (uint)_image.Height, 1),
+            Format = Format.RGBA_SRGB8,
+            Usage = TextureUsageBits.Sampled,
+            Data = _image.GetPixels(out var dataSize),
+            DataSize = (uint)dataSize,
+        };
+        _imageSample = _ctx!.CreateTexture(textureDesc, "ShaderRenderer: Image Sample");
     }
 
     protected override void OnDisplayScaleChanged(float scale)
@@ -242,6 +246,7 @@ internal class App : Application
         _guiRenderer?.Dispose();
         _frameTexture?.Dispose();
         _imageSample?.Dispose();
+        _image?.Dispose();
         _ctx?.Dispose();
     }
 }
