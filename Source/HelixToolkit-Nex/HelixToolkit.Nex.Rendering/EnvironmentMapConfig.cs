@@ -19,7 +19,8 @@ public sealed class EnvironmentMapConfig
 {
     /// <summary>
     /// Master switch for environment-map rendering. When <see langword="false"/> the
-    /// <see cref="RenderNodes.EnvironmentMapNode"/> is skipped entirely. Default: <see langword="true"/>.
+    /// <see cref="RenderNodes.EnvironmentMapNode"/> is skipped entirely and PBR cubemap
+    /// reflections are turned off as well. Default: <see langword="true"/>.
     /// </summary>
     public bool Enabled { get; set; } = true;
 
@@ -54,8 +55,8 @@ public sealed class EnvironmentMapConfig
     /// When <see langword="true"/>, the PBR shader samples this cubemap for image-based
     /// reflections/irradiance on lit geometry. Only takes effect while a valid
     /// <see cref="Texture"/> is assigned (see <see cref="ShouldRenderCubeMap"/>).
-    /// Independent of <see cref="Enabled"/>, which controls only the skybox background.
-    /// Default: <see langword="true"/>.
+    /// Also requires <see cref="Enabled"/>: disabling the environment map turns off both the
+    /// skybox background and these reflections. Default: <see langword="true"/>.
     /// </summary>
     public bool RenderCubeMap { get; set; } = true;
 
@@ -80,8 +81,8 @@ public sealed class EnvironmentMapConfig
 
     /// <summary>
     /// Gets a value indicating whether the PBR shader should sample this cubemap for
-    /// image-based lighting this frame (<see cref="RenderCubeMap"/> enabled and backed by
-    /// a valid cubemap texture).
+    /// image-based lighting this frame (<see cref="Enabled"/> and <see cref="RenderCubeMap"/>
+    /// both set and backed by a valid cubemap texture).
     /// </summary>
-    public bool ShouldRenderCubeMap => RenderCubeMap && HasValidTexture;
+    public bool ShouldRenderCubeMap => Enabled && RenderCubeMap && HasValidTexture;
 }
