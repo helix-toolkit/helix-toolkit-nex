@@ -12,13 +12,12 @@ Usage:
   - Manually via: python .github/scripts/doc_agent.py [--force-all] [--regenerate-all-readmes] [--since-sha <sha>]
 
 Environment variables:
-  GITHUB_TOKEN   - Required. Used to authenticate with GitHub Models API.
-  OPENAI_API_KEY - Optional. If set, uses OpenAI API instead of GitHub Models.
+  CLAUDE_API_KEY - Required. Anthropic API key.
   FORCE_ALL      - If "true", processes all package docs regardless of change detection.
   FORCE_REGENERATE_ALL_READMES - If "true", regenerates all package README.md files from source.
   BEFORE_SHA     - The commit SHA before the push (set by GitHub Actions push event).
   SINCE_SHA      - Optional override for the git base commit used in change detection.
-  DOC_AGENT_MODEL - AI model name (default: gpt-4o).
+  DOC_AGENT_MODEL - AI model name (default: claude-haiku-5-5).
 """
 
 import os
@@ -26,11 +25,12 @@ import sys
 import subprocess
 import argparse
 import json
+import hashlib
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from openai import OpenAI
+    from anthropic import Anthropic
 
 # ---- Configuration ----
 
@@ -44,9 +44,8 @@ MAX_FILE_CHARS = 100_000
 MAX_FULL_DOC_CHARS = 400_000
 MAX_UPDATE_DOC_CHARS = 128_000
 
-MODEL = os.environ.get("DOC_AGENT_MODEL", "gpt-5.4-mini")
-GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
+MODEL = os.environ.get("DOC_AGENT_MODEL", "claude-haiku-5-5")
+CLAUDE_API_KEY = os.environ.get("CLAUDE_API_KEY", "")
 FORCE_ALL = os.environ.get("FORCE_ALL", "false").lower() == "true"
 FORCE_REGENERATE_ALL_READMES = (
     os.environ.get("FORCE_REGENERATE_ALL_READMES", "false").lower() == "true"
@@ -85,25 +84,20 @@ When writing documentation:
 """
 
 
-def get_openai_client() -> "OpenAI":
+def get_client() -> "Anthropic":
     try:
-        from openai import OpenAI
+        from anthropic import Anthropic
     except ImportError as exc:
         print(
-            "ERROR: openai package is required. Install with: pip install openai>=1.0.0",
+            "ERROR: anthropic package is required. Install with: pip install anthropic",
             file=sys.stderr,
         )
         raise SystemExit(1) from exc
 
-    if OPENAI_API_KEY:
-        return OpenAI(api_key=OPENAI_API_KEY)
-    if GITHUB_TOKEN:
-        return OpenAI(
-            base_url="https://models.inference.ai.azure.com",
-            api_key=GITHUB_TOKEN,
-        )
-    print("ERROR: Neither GITHUB_TOKEN nor OPENAI_API_KEY is set.", file=sys.stderr)
-    sys.exit(1)
+    if not CLAUDE_API_KEY:
+        print("ERROR: CLAUDE_API_KEY is not set.", file=sys.stderr)
+        sys.exit(1)
+    return Anthropic(api_key=CLAUDE_API_KEY)
 
 
 # ---- Project Discovery ----
@@ -323,11 +317,25 @@ def resolve_since_sha(explicit_since_sha: str = "") -> tuple[str, str]:
     return DEFAULT_SINCE_SHA, f"fallback default ({DEFAULT_SINCE_SHA})"
 
 
+DOC_RELEVANT_SUFFIXES = (".cs", ".glsl", ".vert", ".frag", ".comp", ".glh")
+
+
+def is_doc_relevant_file(path: str) -> bool:
+    """True for files that can affect the documented public API (not generated/tests/docs)."""
+    if not path.endswith(DOC_RELEVANT_SUFFIXES):
+        return False
+    return not (path.endswith(".g.cs") or path.endswith(".Designer.cs"))
+
+
 def get_changed_packages(since_sha: str) -> list[Path]:
     """Return packages that have source file changes since since_sha."""
-    changed_files_raw = run_git("diff", "--name-only", since_sha, "HEAD")
+    changed_files_raw = run_git(
+        "diff", "--name-only", "-w", "--ignore-blank-lines", since_sha, "HEAD"
+    )
     changed_files = [
-        REPO_ROOT / ln for ln in changed_files_raw.strip().splitlines() if ln
+        REPO_ROOT / ln
+        for ln in changed_files_raw.strip().splitlines()
+        if ln and is_doc_relevant_file(ln)
     ]
 
     all_pkgs = get_all_packages()
@@ -346,7 +354,13 @@ def get_changed_packages(since_sha: str) -> list[Path]:
 def get_diff_for_package(
     project_dir: Path, since_sha: str, max_chars: int = 15_000
 ) -> str:
-    diff = run_git("diff", since_sha, "HEAD", "--", str(project_dir))
+    # Ignore whitespace-only changes and restrict to files that can affect the docs.
+    pathspecs = [f":(glob){project_dir.relative_to(REPO_ROOT).as_posix()}/**/*{s}"
+                 for s in DOC_RELEVANT_SUFFIXES]
+    pathspecs += [":(exclude,glob)**/*.g.cs", ":(exclude,glob)**/*.Designer.cs"]
+    diff = run_git(
+        "diff", "-U2", since_sha, "HEAD", "--", *pathspecs
+    )
     if len(diff) > max_chars:
         diff = diff[:max_chars] + "\n... [diff truncated]"
     return diff
@@ -355,17 +369,31 @@ def get_diff_for_package(
 # ---- AI Documentation Generation ----
 
 
-def call_ai(client: OpenAI, prompt: str) -> str:
-    response = client.chat.completions.create(
+def call_ai(client: "Anthropic", prompt: str) -> str:
+    response = client.messages.create(
         model=MODEL,
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": prompt},
-        ],
-        max_tokens=4096,
-        temperature=0.2,
+        system=SYSTEM_PROMPT,
+        messages=[{"role": "user", "content": prompt}],
+        max_tokens=8192,
     )
-    return response.choices[0].message.content.strip()
+    if response.stop_reason == "max_tokens":
+        raise RuntimeError("Documentation response reached max_tokens before completion.")
+    return "".join(b.text for b in response.content if b.type == "text").strip()
+
+
+NO_CHANGE_SENTINEL = "NO_README_CHANGES_NEEDED"
+
+
+def strip_code_fence(text: str) -> str:
+    """Remove a wrapping ```markdown fence the model sometimes adds around the whole answer."""
+    lines = text.strip().splitlines()
+    if len(lines) >= 2 and lines[0].startswith("```") and lines[-1].strip() == "```":
+        return "\n".join(lines[1:-1]).strip()
+    return text.strip()
+
+
+def normalize_for_compare(text: str) -> str:
+    return text.replace("\r\n", "\n").strip("\n")
 
 
 _FULL_README_PROMPT = """\
@@ -403,13 +431,18 @@ code changes shown in the diff below.
 {source_context}
 
 Instructions:
-- Update sections that are affected by the code changes (new types, changed API, removed features).
-- Add documentation for new public classes, methods, or properties.
-- Remove or correct documentation for deleted or renamed items.
-- Keep all existing documentation that remains accurate.
-- Improve any sections that are clearly incomplete or missing important detail.
+- Make the MINIMAL edits needed. Only edit when the diff adds, removes, renames, or changes \
+the behavior/signature of a PUBLIC type or member, or makes an existing statement factually wrong.
+- Do NOT edit for: refactors, private/internal changes, comments, formatting, performance \
+tweaks, bug fixes that do not change documented behavior, or test changes.
+- Do NOT reword, reorder, restructure, re-style, or "improve" any text that is still accurate. \
+Copy unaffected lines verbatim, character for character.
+- Add documentation only for new public classes, methods, or properties.
+- Remove or correct documentation only for deleted or renamed items.
 
-Return ONLY the updated Markdown content of the README.md, with no preamble or trailing commentary.\
+If the README is already accurate for these changes, return exactly `{sentinel}` and nothing else.
+Otherwise return ONLY the full updated Markdown content of the README.md, with no preamble or \
+trailing commentary.\
 """
 
 
@@ -447,7 +480,7 @@ SHADER_UTIL_CONFIGS: list[tuple[str, str]] = [
 ]
 
 
-def generate_full_readme(client: OpenAI, project_name: str, source_context: str) -> str:
+def generate_full_readme(client: "Anthropic", project_name: str, source_context: str) -> str:
     prompt = _FULL_README_PROMPT.format(
         project_name=project_name,
         source_context=source_context,
@@ -456,7 +489,7 @@ def generate_full_readme(client: OpenAI, project_name: str, source_context: str)
 
 
 def update_readme(
-    client: "OpenAI",
+    client: "Anthropic",
     project_name: str,
     current_readme: str,
     diff_context: str,
@@ -467,11 +500,28 @@ def update_readme(
         current_readme=current_readme,
         diff_context=diff_context,
         source_context=source_context,
+        sentinel=NO_CHANGE_SENTINEL,
     )
     return call_ai(client, prompt)
 
 
-def generate_shader_util_docs(client: "OpenAI") -> list[str]:
+def _source_hash(text: str) -> str:
+    return hashlib.sha256(normalize_for_compare(text).encode("utf-8")).hexdigest()[:16]
+
+
+_HASH_PREFIX = "<!-- source-hash: "
+
+
+def _read_stored_hash(doc_path: Path) -> str:
+    if not doc_path.exists():
+        return ""
+    for ln in doc_path.read_text(encoding="utf-8-sig").splitlines()[-3:]:
+        if ln.startswith(_HASH_PREFIX):
+            return ln[len(_HASH_PREFIX) :].removesuffix(" -->").strip()
+    return ""
+
+
+def generate_shader_util_docs(client: "Anthropic", force: bool = False) -> list[str]:
     """Generate Markdown documentation for shader utility functions.
 
     Iterates over SHADER_UTIL_CONFIGS, extracts utility function blocks from each
@@ -496,13 +546,21 @@ def generate_shader_util_docs(client: "OpenAI") -> list[str]:
             )
             continue
 
+        # Regenerate only when the extracted GLSL changed since the doc was last generated.
+        src_hash = _source_hash(extracted)
+        if not force and _read_stored_hash(output_full_path) == src_hash:
+            print(f"   Shader {shader_file_name}: unchanged — skipping.")
+            continue
+
         prompt = _SHADER_UTIL_DOC_PROMPT.format(
             shader_file_name=shader_file_name,
             glsl_code=extracted,
         )
-        doc_content = call_ai(client, prompt)
+        doc_content = strip_code_fence(call_ai(client, prompt))
 
-        output_full_path.write_text(doc_content + "\n", encoding="utf-8")
+        output_full_path.write_text(
+            f"{doc_content}\n\n{_HASH_PREFIX}{src_hash} -->\n", encoding="utf-8"
+        )
         print(f"   ✓ {output_full_path.name} written")
         results.append(output_full_path.name)
 
@@ -513,7 +571,7 @@ def generate_shader_util_docs(client: "OpenAI") -> list[str]:
 
 
 def process_package(
-    client: "OpenAI",
+    client: "Anthropic",
     project_dir: Path,
     since_sha: str,
     force_regenerate_readme: bool = False,
@@ -547,6 +605,16 @@ def process_package(
         new_content = update_readme(
             client, project_name, current_readme, diff_context, source_context
         )
+        if NO_CHANGE_SENTINEL in new_content:
+            print("   README already accurate — skipping.")
+            return False
+
+    new_content = strip_code_fence(new_content)
+    if readme_path.exists():
+        old_content = readme_path.read_text(encoding="utf-8-sig")
+        if normalize_for_compare(old_content) == normalize_for_compare(new_content):
+            print("   No effective README change — skipping.")
+            return False
 
     readme_path.write_text(new_content + "\n", encoding="utf-8")
     print(f"   ✓ README.md updated")
@@ -596,7 +664,7 @@ def main() -> int:
     force_regenerate_all_readmes = args.regenerate_all_readmes
     since_sha, since_sha_reason = resolve_since_sha(args.since_sha)
 
-    client = get_openai_client()
+    client = get_client()
     all_packages = get_all_packages()
 
     if force_all:
@@ -638,7 +706,7 @@ def main() -> int:
 
     print("\n── Shader Utility Documentation")
     try:
-        changed.extend(generate_shader_util_docs(client))
+        changed.extend(generate_shader_util_docs(client, force=force_regenerate_all_readmes))
     except Exception as exc:
         print(f"   ERROR generating shader util docs: {exc}", file=sys.stderr)
 
