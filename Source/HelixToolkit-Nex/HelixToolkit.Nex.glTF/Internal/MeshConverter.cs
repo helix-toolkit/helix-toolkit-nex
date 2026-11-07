@@ -180,6 +180,8 @@ internal sealed class MeshConverter
             _accessorReader.ReadIndices(primitive.Indices.Value, geometry.Indices);
         }
 
+        ApplyWindingOrder(geometry);
+
         // Generate tangents when the glTF asset does not supply them
         if (!primitive.Attributes.ContainsKey("TANGENT"))
         {
@@ -342,6 +344,8 @@ internal sealed class MeshConverter
         {
             _accessorReader.ReadIndices(primitive.Indices.Value, geometry.Indices);
         }
+
+        ApplyWindingOrder(geometry);
 
         // Generate tangents when the glTF asset does not supply them
         if (!primitive.Attributes.ContainsKey("TANGENT"))
@@ -1078,6 +1082,8 @@ internal sealed class MeshConverter
             }
         }
 
+        ApplyWindingOrder(geometry);
+
         // Requirement 3.6: generate tangents when no TANGENT attribute is available from either source.
         if (!hasTangent)
         {
@@ -1207,6 +1213,32 @@ internal sealed class MeshConverter
             output.Add(
                 new Vector4(values[baseIndex], values[baseIndex + 1], values[baseIndex + 2], a)
             );
+        }
+    }
+
+    /// <summary>
+    /// Reverses triangle winding when <see cref="ImporterConfig.WindingOrder"/> is not the glTF
+    /// default (CCW). Only triangle lists are affected; non-indexed lists become indexed.
+    /// </summary>
+    private void ApplyWindingOrder(Geometry geometry)
+    {
+        if (_config.WindingOrder == WindingMode.CCW || geometry.Topology != Topology.Triangle)
+        {
+            return;
+        }
+
+        var indices = geometry.Indices;
+        if (indices.Count == 0)
+        {
+            for (uint i = 0; i < geometry.Vertices.Count; i++)
+            {
+                indices.Add(i);
+            }
+        }
+
+        for (int i = 0; i + 2 < indices.Count; i += 3)
+        {
+            (indices[i + 1], indices[i + 2]) = (indices[i + 2], indices[i + 1]);
         }
     }
 
