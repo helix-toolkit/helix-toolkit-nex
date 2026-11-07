@@ -372,7 +372,7 @@ class TestEmptyExtractionSkipBehavior:
 
 import tempfile
 
-from doc_agent import SHADER_UTIL_CONFIGS
+from doc_agent import SHADER_UTIL_CONFIGS, _HASH_PREFIX, _source_hash
 
 
 class TestFullPipelineWithMockedAI:
@@ -437,8 +437,11 @@ class TestFullPipelineWithMockedAI:
                 # Read back with UTF-8 encoding to verify encoding correctness
                 file_content = output_full.read_text(encoding="utf-8")
 
-                # Content matches mocked AI output plus trailing newline
-                expected_content = mocked_ai_output + "\n"
+                # Content matches mocked AI output plus the source-hash footer
+                src_hash = _source_hash("vec3 someFunc() { return vec3(0.0); }\n")
+                expected_content = (
+                    f"{mocked_ai_output}\n\n{_HASH_PREFIX}{src_hash} -->\n"
+                )
                 assert file_content == expected_content, (
                     f"File {output_rel_path} content mismatch: "
                     f"expected {expected_content!r}, got {file_content!r}"
@@ -448,6 +451,19 @@ class TestFullPipelineWithMockedAI:
                 assert file_content.endswith(
                     "\n"
                 ), f"File {output_rel_path} should end with trailing newline"
+
+            # Second run with unchanged shaders must not call the AI or rewrite files
+            with patch("doc_agent.REPO_ROOT", tmp_root), patch(
+                "doc_agent.call_ai", return_value="# Different output"
+            ) as mock_call_ai_again:
+                second_result = generate_shader_util_docs(mock_client)
+
+            assert mock_call_ai_again.call_count == 0
+            assert second_result == []
+            for _, output_rel_path in SHADER_UTIL_CONFIGS:
+                assert "Different output" not in (tmp_root / output_rel_path).read_text(
+                    encoding="utf-8"
+                )
 
 
 # ---------------------------------------------------------------------------
