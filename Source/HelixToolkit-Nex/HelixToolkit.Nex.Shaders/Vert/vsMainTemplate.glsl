@@ -120,19 +120,28 @@ InstanceTransform getInstancingMatrix(uint index) {
 
 GpuVertexProps emptyProps;
 
+// Skinned meshes read the vertices written by the skinning compute pass instead of the bind pose.
+uint64_t vertexBufferAddress = meshDraw.skinnedVertexBufferAddress != 0
+    ? meshDraw.skinnedVertexBufferAddress
+    : meshInfo.vertexBufferAddress;
+
+uint64_t vertexPropsBufferAddress = meshDraw.skinnedVertexPropsBufferAddress != 0
+    ? meshDraw.skinnedVertexPropsBufferAddress
+    : meshInfo.vertexPropsBufferAddress;
+
 vec4 getVertex() {
-    if (meshInfo.vertexBufferAddress == 0) {
+    if (vertexBufferAddress == 0) {
         return vec4(0.0);
     }
-    VertexBuffer vertexBuf = VertexBuffer(meshInfo.vertexBufferAddress);
+    VertexBuffer vertexBuf = VertexBuffer(vertexBufferAddress);
     return vec4(vertexBuf.value[gl_VertexIndex].xyz, 1);
 }
 
 GpuVertexProps getVertexProps() {
-    if (meshInfo.vertexPropsBufferAddress == 0) {
+    if (vertexPropsBufferAddress == 0) {
         return emptyProps;
     }
-    VertexPropsBuffer propsBuf = VertexPropsBuffer(meshInfo.vertexPropsBufferAddress);
+    VertexPropsBuffer propsBuf = VertexPropsBuffer(vertexPropsBufferAddress);
     return propsBuf.value[gl_VertexIndex];
 }
 

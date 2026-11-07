@@ -44,6 +44,10 @@ HelixToolkit.Nex.Rendering is responsible for managing the rendering pipeline of
 | `EnvironmentMapConfig`           | Configures environment-map (skybox) rendering for a render context.         |
 | `EnvironmentMapNode`             | Renders an HDR environment cubemap as the scene background (skybox).        |
 | `RenderSpace`                    | Specifies the space in which a draw primitive's size/thickness is measured. |
+| `Skeleton`                       | Shared skinning asset holding the inverse bind matrices of a joint hierarchy. |
+| `Skinning`                       | Binds a skinned mesh to its joint entities and owns the compute skinning buffers. |
+| `SkinningNode`                   | Skins all skinned meshes on the GPU (palette + vertex compute passes) in `RenderStage.Prepare`. |
+| `ISkinningData`                  | Provides the per-frame skinning dispatches (`SkinningDispatch`) to `SkinningNode`. |
 
 ## Recent Changes
 
@@ -143,6 +147,34 @@ var meshDrawInfo = new MeshDrawInfo(
     instancing: myInstancing
 );
 ```
+
+### Adding a Skinned Mesh
+
+Bone skinning runs in a compute pass ahead of rendering. The geometry must carry per-vertex
+`JointInfluences` (four joints and weights per vertex); the joints are regular scene nodes whose
+`WorldTransform` drives each bone.
+
+```csharp
+var skeleton = new Skeleton(inverseBindMatrices);             // shared, one matrix per joint
+var skinning = new Skinning(skeleton, jointNodes.Select(n => n.Entity).ToArray());
+var meshDrawInfo = new MeshDrawInfo(
+    geometry: skinnedGeometry,                                // geometry.JointInfluences populated
+    materialProperties: myMaterialProperties,
+    skinning: skinning
+);
+```
+
+- `SkinningNode` computes `palette[j] = jointMatrix[j] * inverseBind[j]` and then skins positions,
+  normals and tangents (linear blend skinning) into buffers owned by the `Skinning`. Mesh draw
+  commands reference those buffers (`MeshDraw.skinnedVertexBufferAddress`), so every pass
+  (depth, opaque, transparent, picking, wireframe) reads the skinned vertices without re-skinning.
+- Joint matrices are uploaded relative to the mesh node, so the mesh node's own transform does not
+  affect the pose (glTF semantics).
+- Skinned meshes are never frustum culled (`MeshDrawInfo.IsCullable` is `false`) because their
+  bind-pose bounds do not cover the animated pose.
+- A `Skinning` holds the output of one geometry and must not be shared between mesh entities.
+  Instanced skinned meshes share one pose across all instances.
+- `Skinning` and `Skeleton` own GPU buffers and must be disposed by their owner.
 
 ### Adding a Billboard Component
 

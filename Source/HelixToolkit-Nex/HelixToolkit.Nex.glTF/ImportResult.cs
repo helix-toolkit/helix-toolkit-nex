@@ -20,6 +20,13 @@ public sealed class ImportResult : IDisposable
     /// </summary>
     public ResourceManifest Resources { get; init; } = ResourceManifest.Empty;
 
+    /// <summary>
+    /// Animation clips imported from the glTF <c>animations</c>, bound to the imported nodes.
+    /// Play them with an <see cref="AnimationPlayer"/>. Empty for failed imports or when
+    /// <see cref="ImporterConfig.ImportAnimations"/> is disabled.
+    /// </summary>
+    public IReadOnlyList<AnimationClip> Animations { get; init; } = [];
+
     /// <summary>True if the import completed (possibly with warnings) and produced no Error-severity diagnostics. False if a critical error occurred or any Error diagnostic was reported.</summary>
     public bool Success => RootNode is not null && !HasErrors;
 

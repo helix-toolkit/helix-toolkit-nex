@@ -22,10 +22,10 @@ rather than mutating the ECS `World` directly. This splits an import into two ph
 | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `Importer`             | Main entry point. Provides `Import`/`ImportAsync` (one-shot) and `PrepareImport`/`PrepareImportAsync` (two-phase).                                                                 |
 | `PreparedImport`       | The result of the prepare phase: holds the recorded `SceneCommandBuffer`, diagnostics, and created GPU resources. Materialized by calling `Complete` on the world's owning thread. |
-| `ImportResult`         | Contains the root node of the imported scene, diagnostics, and the resource manifest. Implements `IDisposable`.                                                                    |
+| `ImportResult`         | Contains the root node of the imported scene, diagnostics, the resource manifest, and the imported `Animations`. Implements `IDisposable`.                                         |
 | `ImportDiagnostic`     | A diagnostic entry with severity, message, and reference to the glTF element.                                                                                                      |
 | `DiagnosticSeverity`   | Severity level of a diagnostic (`Information`, `Warning`, `Error`).                                                                                                                |
-| `ImporterConfig`       | Configuration: default shading mode, Draco decompression, mesh instancing options, point-light mesh options, etc.                                                                  |
+| `ImporterConfig`       | Configuration: default shading mode, Draco decompression, mesh instancing, animation import, point-light mesh options, etc.                                                        |
 | `ResourceManifest`     | Tracks all GPU resources created during import for disposal / readiness tracking.                                                                                                  |
 | `DirectionalLightInfo` | Directional light component attached to a node's entity (from `KHR_lights_punctual`).                                                                                              |
 | `RangeLightInfo`       | Point/spot light component attached to a node's entity (from `KHR_lights_punctual`).                                                                                               |
@@ -88,6 +88,19 @@ runs off-thread.
 using ImportResult result = await importer.ImportAsync("path/to/model.gltf", worldData, null, ct);
 ```
 
+### Playing Imported Animations
+
+`ImportResult.Animations` holds one `AnimationClip` per glTF animation, bound to the imported nodes.
+Skinned meshes follow their animated joints automatically.
+
+```csharp
+var player = new AnimationPlayer(result.Animations[0]);
+player.Play();
+
+// Per frame, on the world's owning thread, before rendering:
+player.Update(deltaTime);
+```
+
 ## Threading Model
 
 A glTF import is deliberately split so the expensive work can run off the render thread:
@@ -120,6 +133,9 @@ README; the glTF importer is its primary consumer.
 - **Draco compression**: Supports `KHR_draco_mesh_compression`; decode severity depends on whether the extension is listed in `extensionsRequired`.
 - **Lighting**: `KHR_lights_punctual` lights are resolved at record time (with diagnostics) and materialized during flush.
 - **Mesh Instancing**: Supports `EXT_mesh_gpu_instancing`, allowing efficient rendering of multiple instances of a mesh with varying transformations. This is controlled via `ImporterConfig.EnableMeshGpuInstancing`.
+- **Normals and tangents**: a triangle-list primitive without a `NORMAL` attribute gets flat normals, as the glTF specification requires (`NormalGenerator.ComputeFlatNormals`). Its vertices are unwelded so every triangle has its own three vertices, and the normals follow the glTF counter-clockwise front faces regardless of `ImporterConfig.WindingOrder`. Missing `TANGENT`s are generated with `TangentGenerator`. Non-indexed triangle and line lists get sequential indices, because meshes are drawn with indexed indirect draws.
+- **Skins**: `JOINTS_0`/`WEIGHTS_0` are read into `Geometry.JointInfluences` (u8/u16 joints; float or normalized u8/u16 weights, renormalized). Each glTF skin becomes a `Skeleton`; each skinned primitive gets its own `Skinning` bound to the materialized joint nodes during flush. Skeletons and skinnings are tracked by `ResourceManifest`. Draco-compressed skinning attributes are not supported (the mesh renders unskinned with a warning).
+- **Animations**: each glTF `animation` becomes an `AnimationClip` in `ImportResult.Animations`, with its channels bound to the materialized nodes during flush (so they are bound once `Complete`/`Import` returns). Translation, rotation and scale channels are supported with `LINEAR`, `STEP` and `CUBICSPLINE` interpolation; rotation outputs may be float or normalized integers. Morph target `weights` channels are skipped with a warning, and an animation without supported channels is dropped. Set `ImporterConfig.ImportAnimations = false` to skip animations. Play a clip with `AnimationPlayer` (see the Scene README).
 
 ## Compatibility
 

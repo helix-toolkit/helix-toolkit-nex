@@ -1,5 +1,6 @@
 using HelixToolkit.Nex.Geometries;
 using HelixToolkit.Nex.Material;
+using HelixToolkit.Nex.Rendering;
 using HelixToolkit.Nex.Repository;
 using Microsoft.Extensions.Logging;
 
@@ -18,6 +19,8 @@ public class ResourceManifest : IDisposable
     private readonly List<PBRMaterialProperties> _materials = [];
     private readonly List<Geometry> _geometries = [];
     private readonly List<Instancing> _instancings = [];
+    private readonly List<Skeleton> _skeletons = [];
+    private readonly List<Skinning> _skinnings = [];
 
     // Deduplication sets
     private readonly HashSet<string> _textureKeys = new(StringComparer.Ordinal);
@@ -68,6 +71,12 @@ public class ResourceManifest : IDisposable
 
     /// <summary>Gets the tracked instancing instances as a read-only collection.</summary>
     public IReadOnlyList<Instancing> Instancings => _instancings;
+
+    /// <summary>Gets the tracked skeletons (one per glTF skin).</summary>
+    public IReadOnlyList<Skeleton> Skeletons => _skeletons;
+
+    /// <summary>Gets the tracked skinnings (one per skinned mesh node). Populated when the scene is flushed.</summary>
+    public IReadOnlyList<Skinning> Skinnings => _skinnings;
 
     // --- Count properties ---
 
@@ -176,6 +185,26 @@ public class ResourceManifest : IDisposable
         }
     }
 
+    /// <summary>
+    /// Registers a skeleton. Skips null.
+    /// </summary>
+    internal virtual void AddSkeleton(Skeleton? skeleton)
+    {
+        if (skeleton is null)
+            return;
+        _skeletons.Add(skeleton);
+    }
+
+    /// <summary>
+    /// Registers a skinning. Skips null.
+    /// </summary>
+    internal virtual void AddSkinning(Skinning? skinning)
+    {
+        if (skinning is null)
+            return;
+        _skinnings.Add(skinning);
+    }
+
     // --- Disposal ---
 
     /// <summary>
@@ -184,6 +213,7 @@ public class ResourceManifest : IDisposable
     /// <item>Materials (unsubscribes from texture/sampler events)</item>
     /// <item>Geometries (releases GPU buffers)</item>
     /// <item>Instancings (releases GPU buffers for unowned instancings)</item>
+    /// <item>Skinnings and skeletons (releases GPU buffers)</item>
     /// <item>Textures (removes from repository)</item>
     /// <item>Samplers (removes from repository)</item>
     /// </list>
@@ -230,6 +260,16 @@ public class ResourceManifest : IDisposable
             }
         }
 
+        // Phase 2.6: Dispose skinnings, then the skeletons they reference.
+        foreach (var skinning in _skinnings)
+        {
+            skinning.Dispose();
+        }
+        foreach (var skeleton in _skeletons)
+        {
+            skeleton.Dispose();
+        }
+
         // Phase 3: Remove textures from repository (disposes GPU texture resources)
         foreach (var texture in _textures)
         {
@@ -247,6 +287,8 @@ public class ResourceManifest : IDisposable
         _geometries.Clear();
         _instancings.Clear();
         _instancingRefs.Clear();
+        _skinnings.Clear();
+        _skeletons.Clear();
         _textures.Clear();
         _samplers.Clear();
         _textureKeys.Clear();
@@ -288,5 +330,9 @@ public class ResourceManifest : IDisposable
         internal override void AddGeometry(Geometry? _) { }
 
         internal override void AddInstancing(Instancing? _) { }
+
+        internal override void AddSkeleton(Skeleton? _) { }
+
+        internal override void AddSkinning(Skinning? _) { }
     }
 }

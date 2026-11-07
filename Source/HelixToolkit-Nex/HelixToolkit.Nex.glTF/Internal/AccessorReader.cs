@@ -1,7 +1,9 @@
 using System.Numerics;
+using System.Runtime.InteropServices;
 using glTFLoader.Schema;
 using HelixToolkit.Nex.Geometries;
 using HelixToolkit.Nex.glTF.Internal.Draco;
+using HelixToolkit.Nex.Shaders;
 using Vertex = System.Numerics.Vector4;
 
 namespace HelixToolkit.Nex.glTF.Internal;
@@ -435,6 +437,245 @@ internal sealed class AccessorReader
                 output.Add(new VertexProperties(Vector3.Zero, Vector2.Zero, tangent));
             }
         }
+    }
+
+    /// <summary>
+    /// Reads skinning attributes (<c>JOINTS_0</c> and <c>WEIGHTS_0</c>, both VEC4) into joint influences.
+    /// Joints may be UNSIGNED_BYTE or UNSIGNED_SHORT; weights may be FLOAT or normalized
+    /// UNSIGNED_BYTE / UNSIGNED_SHORT. Weights are renormalized to sum to one.
+    /// </summary>
+    /// <param name="jointsAccessorIndex">The index of the <c>JOINTS_0</c> accessor.</param>
+    /// <param name="weightsAccessorIndex">The index of the <c>WEIGHTS_0</c> accessor.</param>
+    /// <param name="output">The output list to populate with joint influences.</param>
+    /// <param name="error">A description of the problem when the attributes cannot be read.</param>
+    /// <returns><see langword="true"/> if the influences were read; otherwise <see langword="false"/>.</returns>
+    public bool ReadJointInfluences(
+        int jointsAccessorIndex,
+        int weightsAccessorIndex,
+        FastList<GpuJointInfluence> output,
+        out string? error
+    )
+    {
+        var joints = _model.Accessors[jointsAccessorIndex];
+        var weights = _model.Accessors[weightsAccessorIndex];
+        if (joints.Type != Accessor.TypeEnum.VEC4 || weights.Type != Accessor.TypeEnum.VEC4)
+        {
+            error = "JOINTS_0 and WEIGHTS_0 must be VEC4.";
+            return false;
+        }
+        if (joints.Count != weights.Count)
+        {
+            error = $"JOINTS_0 count {joints.Count} does not match WEIGHTS_0 count {weights.Count}.";
+            return false;
+        }
+        if (
+            joints.ComponentType
+            is not (Accessor.ComponentTypeEnum.UNSIGNED_BYTE or Accessor.ComponentTypeEnum.UNSIGNED_SHORT)
+        )
+        {
+            error = $"Unsupported JOINTS_0 component type {joints.ComponentType}.";
+            return false;
+        }
+        if (
+            weights.ComponentType
+            is not (
+                Accessor.ComponentTypeEnum.FLOAT
+                or Accessor.ComponentTypeEnum.UNSIGNED_BYTE
+                or Accessor.ComponentTypeEnum.UNSIGNED_SHORT
+            )
+        )
+        {
+            error = $"Unsupported WEIGHTS_0 component type {weights.ComponentType}.";
+            return false;
+        }
+
+        var jointBuffer = GetBuffer(jointsAccessorIndex);
+        var weightBuffer = GetBuffer(weightsAccessorIndex);
+        int jointOffset = GetByteOffset(jointsAccessorIndex);
+        int jointStride = GetStride(jointsAccessorIndex);
+        int jointSize = GetComponentSize(joints.ComponentType);
+        int weightOffset = GetByteOffset(weightsAccessorIndex);
+        int weightStride = GetStride(weightsAccessorIndex);
+        int weightSize = GetComponentSize(weights.ComponentType);
+
+        Span<uint> j = stackalloc uint[4];
+        Span<float> w = stackalloc float[4];
+        for (int i = 0; i < joints.Count; i++)
+        {
+            for (int c = 0; c < 4; c++)
+            {
+                j[c] =
+                    jointBuffer == null ? 0u
+                    : joints.ComponentType == Accessor.ComponentTypeEnum.UNSIGNED_BYTE
+                        ? jointBuffer[jointOffset + i * jointStride + c * jointSize]
+                    : BitConverter.ToUInt16(jointBuffer, jointOffset + i * jointStride + c * jointSize);
+
+                int offset = weightOffset + i * weightStride + c * weightSize;
+                w[c] =
+                    weightBuffer == null ? 0f
+                    : weights.ComponentType switch
+                    {
+                        Accessor.ComponentTypeEnum.FLOAT => BitConverter.ToSingle(weightBuffer, offset),
+                        Accessor.ComponentTypeEnum.UNSIGNED_BYTE => weightBuffer[offset] / 255f,
+                        _ => BitConverter.ToUInt16(weightBuffer, offset) / 65535f,
+                    };
+            }
+
+            var weight = new Vector4(w[0], w[1], w[2], w[3]);
+            float sum = weight.X + weight.Y + weight.Z + weight.W;
+            // A vertex without weights is fully bound to its first joint.
+            weight = sum > 0f ? weight / sum : Vector4.UnitX;
+            output.Add(
+                new GpuJointInfluence
+                {
+                    Joint0 = j[0],
+                    Joint1 = j[1],
+                    Joint2 = j[2],
+                    Joint3 = j[3],
+                    Weights = weight,
+                }
+            );
+        }
+        error = null;
+        return true;
+    }
+
+    /// <summary>
+    /// Reads matrix data (MAT4 FLOAT, column-major per glTF) into a FastList of row-major
+    /// <see cref="Matrix4x4"/>, matching the engine's row-vector convention.
+    /// </summary>
+    /// <param name="accessorIndex">The index of the accessor in the glTF model.</param>
+    /// <param name="output">The output list to populate with matrices.</param>
+    /// <returns><see langword="true"/> if the matrices were read; otherwise <see langword="false"/>.</returns>
+    public bool ReadMatrices(int accessorIndex, FastList<Matrix4x4> output)
+    {
+        var accessor = _model.Accessors[accessorIndex];
+        if (
+            accessor.Type != Accessor.TypeEnum.MAT4
+            || accessor.ComponentType != Accessor.ComponentTypeEnum.FLOAT
+        )
+        {
+            return false;
+        }
+        var buffer = GetBuffer(accessorIndex);
+        if (buffer == null)
+        {
+            for (int i = 0; i < accessor.Count; i++)
+            {
+                output.Add(Matrix4x4.Identity);
+            }
+            return true;
+        }
+
+        int byteOffset = GetByteOffset(accessorIndex);
+        int stride = GetStride(accessorIndex);
+        for (int i = 0; i < accessor.Count; i++)
+        {
+            var m = MemoryMarshal.Read<Matrix4x4>(buffer.AsSpan(byteOffset + i * stride, 64));
+            output.Add(m);
+        }
+        return true;
+    }
+
+    /// <summary>
+    /// Reads animation keyframe times (SCALAR FLOAT).
+    /// </summary>
+    /// <param name="accessorIndex">The index of the accessor in the glTF model.</param>
+    /// <param name="output">The keyframe times.</param>
+    /// <param name="error">A description of the problem when the data cannot be read.</param>
+    /// <returns><see langword="true"/> if the times were read; otherwise <see langword="false"/>.</returns>
+    public bool ReadKeyframeTimes(int accessorIndex, out float[] output, out string? error)
+    {
+        output = [];
+        var accessor = _model.Accessors[accessorIndex];
+        if (
+            accessor.Type != Accessor.TypeEnum.SCALAR
+            || accessor.ComponentType != Accessor.ComponentTypeEnum.FLOAT
+        )
+        {
+            error = $"Keyframe times must be SCALAR FLOAT, got {accessor.Type} {accessor.ComponentType}.";
+            return false;
+        }
+        output = new float[accessor.Count];
+        var buffer = GetBuffer(accessorIndex);
+        if (buffer != null)
+        {
+            int byteOffset = GetByteOffset(accessorIndex);
+            int stride = GetStride(accessorIndex);
+            for (int i = 0; i < output.Length; i++)
+            {
+                output[i] = BitConverter.ToSingle(buffer, byteOffset + i * stride);
+            }
+        }
+        error = null;
+        return true;
+    }
+
+    /// <summary>
+    /// Reads animation output values (VEC3 or VEC4) into <see cref="Vector4"/>s. Components may be
+    /// FLOAT or normalized integers (as allowed for rotations). Missing components are zero.
+    /// </summary>
+    /// <param name="accessorIndex">The index of the accessor in the glTF model.</param>
+    /// <param name="type">The expected accessor type.</param>
+    /// <param name="output">The values.</param>
+    /// <param name="error">A description of the problem when the data cannot be read.</param>
+    /// <returns><see langword="true"/> if the values were read; otherwise <see langword="false"/>.</returns>
+    public bool ReadKeyframeValues(
+        int accessorIndex,
+        Accessor.TypeEnum type,
+        out Vector4[] output,
+        out string? error
+    )
+    {
+        output = [];
+        var accessor = _model.Accessors[accessorIndex];
+        if (accessor.Type != type)
+        {
+            error = $"Keyframe values must be {type}, got {accessor.Type}.";
+            return false;
+        }
+        if (accessor.ComponentType != Accessor.ComponentTypeEnum.FLOAT && !accessor.Normalized)
+        {
+            error = $"Keyframe values must be FLOAT or normalized integers, got {accessor.ComponentType}.";
+            return false;
+        }
+        output = new Vector4[accessor.Count];
+        var buffer = GetBuffer(accessorIndex);
+        if (buffer == null)
+        {
+            error = null;
+            return true;
+        }
+
+        int byteOffset = GetByteOffset(accessorIndex);
+        int stride = GetStride(accessorIndex);
+        int componentSize = GetComponentSize(accessor.ComponentType);
+        int componentCount = GetTypeCount(type);
+        Span<float> v = stackalloc float[4];
+        for (int i = 0; i < output.Length; i++)
+        {
+            v.Clear();
+            for (int c = 0; c < componentCount; c++)
+            {
+                int offset = byteOffset + i * stride + c * componentSize;
+                v[c] = accessor.ComponentType switch
+                {
+                    Accessor.ComponentTypeEnum.FLOAT => BitConverter.ToSingle(buffer, offset),
+                    Accessor.ComponentTypeEnum.BYTE => MathF.Max((sbyte)buffer[offset] / 127f, -1f),
+                    Accessor.ComponentTypeEnum.UNSIGNED_BYTE => buffer[offset] / 255f,
+                    Accessor.ComponentTypeEnum.SHORT => MathF.Max(
+                        BitConverter.ToInt16(buffer, offset) / 32767f,
+                        -1f
+                    ),
+                    Accessor.ComponentTypeEnum.UNSIGNED_SHORT => BitConverter.ToUInt16(buffer, offset)
+                        / 65535f,
+                    _ => BitConverter.ToUInt32(buffer, offset) / (float)uint.MaxValue,
+                };
+            }
+            output[i] = new Vector4(v[0], v[1], v[2], v[3]);
+        }
+        error = null;
+        return true;
     }
 
     /// <summary>

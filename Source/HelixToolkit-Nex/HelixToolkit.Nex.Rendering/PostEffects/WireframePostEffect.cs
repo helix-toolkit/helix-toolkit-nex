@@ -247,8 +247,16 @@ public sealed class WireframePostEffect : PostEffect
                 pc.InstancingBufferAddress = 0;
             }
 
-            pc.VertexBufferAddress = mesh.Geometry.VertexBuffer.GpuAddress;
-            pc.VertexPropsBufferAddress = mesh.Geometry.VertexPropsBuffer.GpuAddress;
+            if (mesh.Skinning is { IsReady: true } skinning)
+            {
+                pc.VertexBufferAddress = skinning.SkinnedVertexBuffer.GpuAddress;
+                pc.VertexPropsBufferAddress = skinning.SkinnedVertexPropsBuffer.GpuAddress;
+            }
+            else
+            {
+                pc.VertexBufferAddress = mesh.Geometry.VertexBuffer.GpuAddress;
+                pc.VertexPropsBufferAddress = mesh.Geometry.VertexPropsBuffer.GpuAddress;
+            }
 
             pc.Color = entry.Color;
             pc.NodeIndex = (uint)entry.NodeIndex;

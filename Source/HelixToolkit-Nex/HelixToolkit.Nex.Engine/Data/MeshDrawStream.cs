@@ -56,6 +56,7 @@ internal sealed class MeshDrawStream : DrawStreamBase<MeshDraw, MeshDrawInfo>
             return default;
 
         ref var renderable = ref _renderables[entity];
+        var skinning = meshComp.Skinning;
         return new MeshDraw
         {
             MeshId = meshComp.Geometry!.Id,
@@ -67,7 +68,7 @@ internal sealed class MeshDrawStream : DrawStreamBase<MeshDraw, MeshDrawInfo>
                 ? meshComp.Instancing.Buffer.GpuAddress(Context)
                 : 0,
             InstancingIndexBufferAddress =
-                meshComp.Cullable && meshComp.Instancing is not null
+                meshComp.IsCullable && meshComp.Instancing is not null
                     ? meshComp.Instancing.CulledIndicesBuffer.GpuAddress(Context)
                     : 0,
             FirstIndex = meshComp.Geometry!.IndexOffset,
@@ -75,8 +76,10 @@ internal sealed class MeshDrawStream : DrawStreamBase<MeshDraw, MeshDrawInfo>
             InstanceCount = meshComp.Instancing is not null
                 ? (uint)meshComp.Instancing.Transforms.Count
                 : 1u,
-            Cullable = meshComp.Cullable ? 1u : 0u,
+            Cullable = meshComp.IsCullable ? 1u : 0u,
             DrawType = (uint)meshComp.Variants,
+            SkinnedVertexBufferAddress = skinning?.SkinnedVertexBuffer.GpuAddress ?? 0,
+            SkinnedVertexPropsBufferAddress = skinning?.SkinnedVertexPropsBuffer.GpuAddress ?? 0,
         };
     }
 

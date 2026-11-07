@@ -26,6 +26,12 @@ The `HelixToolkit.Nex.Geometries` package is responsible for:
 | `StaticMeshGeometryOctree` | Static octree implementation for mesh geometries, optimizing spatial queries and hit tests.         |
 | `GeometryJsonConverter`    | JSON converter for serializing and deserializing `Geometry` objects.                                |
 | `TangentGenerator`         | Static class for generating tangent vectors for geometries that lack them.                          |
+| `NormalGenerator`          | Static class for generating flat (per-face) normals; unwelds indexed triangle lists.                |
+
+`Geometry.JointInfluences` holds optional per-vertex bone influences (`GpuJointInfluence`: four joint
+indices and normalized weights) used for GPU skinning. Their GPU buffer is `JointInfluenceBuffer`
+(`GeometryBufferType.Skin`); `IsSkinned` reports whether any are present. Joint influences are not
+serialized by `GeometryJsonConverter` yet.
 
 ## Usage Examples
 

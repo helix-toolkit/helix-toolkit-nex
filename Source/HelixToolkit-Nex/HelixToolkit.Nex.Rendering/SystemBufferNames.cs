@@ -23,6 +23,13 @@ public static class SystemBufferNames
     public const string BufferMeshDrawPlaceholder = "BufferMeshDraw";
 
     /// <summary>
+    /// Logical placeholder for the skinned vertex buffers written by
+    /// <see cref="ComputeNodes.SkinningNode"/>. The buffers themselves are owned by each
+    /// <see cref="Skinning"/> and referenced by address from the mesh draw commands.
+    /// </summary>
+    public const string BufferSkinnedVertices = "BufSkinnedVertices";
+
+    /// <summary>
     /// R16F revealage texture for Weighted Blended Order-Independent Transparency (WBOIT).
     /// Initialized to 1 and multiplicatively reduced by each transparent fragment's <c>(1 - alpha)</c>.
     /// </summary>

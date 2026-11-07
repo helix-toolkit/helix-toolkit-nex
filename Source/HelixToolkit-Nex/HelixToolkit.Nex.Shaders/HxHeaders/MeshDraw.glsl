@@ -17,6 +17,9 @@ struct MeshDraw {
 
     uint64_t instancingBufferAddress; // For GPU driven instancing
     uint64_t instancingIndexBufferAddress; // Used to get the instancing matrix from instancing buffer.
+
+    uint64_t skinnedVertexBufferAddress; // Skinned positions written by the skinning compute pass. 0 if not skinned.
+    uint64_t skinnedVertexPropsBufferAddress; // Skinned vertex props written by the skinning compute pass. 0 if not skinned.
 };
 
 @code_gen

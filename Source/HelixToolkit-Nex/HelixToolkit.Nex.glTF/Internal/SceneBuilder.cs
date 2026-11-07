@@ -8,9 +8,12 @@ using HelixToolkit.Nex.Maths;
 using HelixToolkit.Nex.Scene;
 using HelixToolkit.Nex.Shaders;
 using HelixToolkit.Nex.Shaders.Frag;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
 using GltfNode = glTFLoader.Schema.Node;
 using Node = HelixToolkit.Nex.Scene.Node;
+using Skeleton = HelixToolkit.Nex.Rendering.Skeleton;
+using Skinning = HelixToolkit.Nex.Rendering.Skinning;
 
 namespace HelixToolkit.Nex.glTF.Internal;
 
@@ -21,13 +24,22 @@ namespace HelixToolkit.Nex.glTF.Internal;
 /// on the target world's owning thread; the root node is then available from
 /// <see cref="SceneCommandBuffer.MaterializedNodes"/> keyed by <see cref="Root"/>.
 /// </summary>
-internal readonly struct SceneRecording(SceneCommandBuffer buffer, DeferredNode root)
+internal readonly struct SceneRecording(
+    SceneCommandBuffer buffer,
+    DeferredNode root,
+    IReadOnlyList<AnimationClip>? animations = null
+)
 {
     /// <summary>The command buffer holding the recorded scene.</summary>
     public SceneCommandBuffer Buffer { get; } = buffer;
 
     /// <summary>The deferred handle of the recorded scene root.</summary>
     public DeferredNode Root { get; } = root;
+
+    /// <summary>
+    /// The imported animation clips. Their channel targets are bound when the buffer is flushed.
+    /// </summary>
+    public IReadOnlyList<AnimationClip> Animations { get; } = animations ?? [];
 }
 
 /// <summary>
@@ -45,6 +57,7 @@ internal readonly struct SceneRecording(SceneCommandBuffer buffer, DeferredNode 
 /// </remarks>
 internal sealed class SceneBuilder
 {
+    private static readonly ILogger _logger = LogManager.Create<SceneBuilder>();
     private readonly World _world;
     private readonly MeshConverter _meshConverter;
     private readonly MaterialConverter _materialConverter;
@@ -91,6 +104,18 @@ internal sealed class SceneBuilder
     /// per <see cref="RecordScene"/> call.
     /// </summary>
     private IReadOnlyList<ParsedLight?> _parsedLights = [];
+
+    /// <summary>
+    /// Converts glTF animations into clips. <c>null</c> when animation import is disabled or the
+    /// builder has no accessor reader.
+    /// </summary>
+    private readonly AnimationConverter? _animationConverter;
+
+    /// <summary>
+    /// Node binding state of the scene being recorded, or <c>null</c> when the model has no skins
+    /// or animations (or a single node is built outside of a scene recording).
+    /// </summary>
+    private NodeBindingState? _skinState;
 
     /// <summary>
     /// The identity matrix in column-major order as stored by glTF2Loader.
@@ -166,6 +191,10 @@ internal sealed class SceneBuilder
         _instancingRequired = instancingRequired;
         _manifest = manifest;
         _instancingManager = instancingManager;
+        _animationConverter =
+            accessorReader is not null && config.ImportAnimations
+                ? new AnimationConverter(accessorReader, diagnostics)
+                : null;
     }
 
     /// <summary>
@@ -203,6 +232,8 @@ internal sealed class SceneBuilder
         // Parse the document-level KHR_lights_punctual lights once for the duration of this build.
         // When the extension is absent or the lights array is empty/absent, this is an empty list.
         _parsedLights = _lightConverter.ParseLights(model);
+        var animations = _animationConverter?.Convert(model) ?? [];
+        _skinState = NodeBindingState.Create(model, animations.Count > 0);
 
         // Determine which scene to import
         int resolvedSceneIndex = sceneIndex;
@@ -217,6 +248,7 @@ internal sealed class SceneBuilder
         if (scenes == null || resolvedSceneIndex >= scenes.Length)
         {
             // No scenes available — record an empty root node
+            _skinState = null;
             var emptyRoot = buffer.RecordCreateNode("Root");
             return new SceneRecording(buffer, emptyRoot);
         }
@@ -235,7 +267,8 @@ internal sealed class SceneBuilder
             }
         }
 
-        return new SceneRecording(buffer, rootHandle);
+        RecordBindings(buffer, animations);
+        return new SceneRecording(buffer, rootHandle, [.. animations.Select(a => a.Clip)]);
     }
 
     /// <summary>
@@ -260,6 +293,8 @@ internal sealed class SceneBuilder
         var buffer = new SceneCommandBuffer();
 
         _parsedLights = _lightConverter.ParseLights(model);
+        var animations = _animationConverter?.Convert(model) ?? [];
+        _skinState = NodeBindingState.Create(model, animations.Count > 0);
 
         int resolvedSceneIndex = sceneIndex;
         if (resolvedSceneIndex < 0)
@@ -270,6 +305,7 @@ internal sealed class SceneBuilder
         var scenes = model.Scenes;
         if (scenes == null || resolvedSceneIndex >= scenes.Length)
         {
+            _skinState = null;
             var emptyRoot = buffer.RecordCreateNode("Root");
             return new SceneRecording(buffer, emptyRoot);
         }
@@ -285,7 +321,8 @@ internal sealed class SceneBuilder
             }
         }
 
-        return new SceneRecording(buffer, rootHandle);
+        RecordBindings(buffer, animations);
+        return new SceneRecording(buffer, rootHandle, [.. animations.Select(a => a.Clip)]);
     }
 
     /// <summary>
@@ -322,6 +359,7 @@ internal sealed class SceneBuilder
         var resolvedLight = ResolveNodeLight(gltfNode, nodeIndex, out var lightIndex);
 
         DeferredNode handle;
+        var skinState = _skinState;
         if (resolvedLight is ParsedLight light)
         {
             var capturedIndex = nodeIndex;
@@ -329,6 +367,18 @@ internal sealed class SceneBuilder
             {
                 var node = new Node(world);
                 AttachLightComponent(node, capturedIndex, light, lightIndex);
+                skinState?.CaptureNode(capturedIndex, node);
+                return node;
+            });
+        }
+        else if (skinState is not null)
+        {
+            // Capture the materialized node so skins (joints) and animations (targets) can bind it after flush.
+            var capturedIndex = nodeIndex;
+            handle = buffer.RecordCreateNode(world =>
+            {
+                var node = new Node(world);
+                skinState.CaptureNode(capturedIndex, node);
                 return node;
             });
         }
@@ -358,14 +408,29 @@ internal sealed class SceneBuilder
             //   The single Information diagnostic for those cases is recorded by TryRecordInstancedMesh.
             if (instancing is not null && gltfNode.Mesh.HasValue)
             {
-                await RecordMeshNodesAsync(buffer, model, gltfNode.Mesh.Value, handle, ct, instancing)
+                await RecordMeshNodesAsync(
+                        buffer,
+                        model,
+                        gltfNode.Mesh.Value,
+                        handle,
+                        ct,
+                        instancing,
+                        gltfNode.Skin
+                    )
                     .ConfigureAwait(false);
             }
         }
         else if (gltfNode.Mesh.HasValue)
         {
             // Existing non-instanced mesh path (no extension, disabled, or parse/read failure).
-            await RecordMeshNodesAsync(buffer, model, gltfNode.Mesh.Value, handle, ct)
+            await RecordMeshNodesAsync(
+                    buffer,
+                    model,
+                    gltfNode.Mesh.Value,
+                    handle,
+                    ct,
+                    skinIndex: gltfNode.Skin
+                )
                 .ConfigureAwait(false);
         }
 
@@ -455,6 +520,7 @@ internal sealed class SceneBuilder
         // factory that materializes the base Node and sets the light component on the owning
         // thread; a node without a light uses the plain base-node creation path.
         DeferredNode handle;
+        var skinState = _skinState;
         if (resolvedLight is ParsedLight light)
         {
             var capturedIndex = nodeIndex;
@@ -462,6 +528,18 @@ internal sealed class SceneBuilder
             {
                 var node = new Node(world);
                 AttachLightComponent(node, capturedIndex, light, lightIndex);
+                skinState?.CaptureNode(capturedIndex, node);
+                return node;
+            });
+        }
+        else if (skinState is not null)
+        {
+            // Capture the materialized node so skins (joints) and animations (targets) can bind it after flush.
+            var capturedIndex = nodeIndex;
+            handle = buffer.RecordCreateNode(world =>
+            {
+                var node = new Node(world);
+                skinState.CaptureNode(capturedIndex, node);
                 return node;
             });
         }
@@ -494,13 +572,13 @@ internal sealed class SceneBuilder
             //   The single Information diagnostic for those cases is recorded by TryRecordInstancedMesh.
             if (instancing is not null && gltfNode.Mesh.HasValue)
             {
-                RecordMeshNodes(buffer, model, gltfNode.Mesh.Value, handle, instancing);
+                RecordMeshNodes(buffer, model, gltfNode.Mesh.Value, handle, instancing, gltfNode.Skin);
             }
         }
         else if (gltfNode.Mesh.HasValue)
         {
             // Existing non-instanced mesh path (no extension, disabled, or parse/read failure).
-            RecordMeshNodes(buffer, model, gltfNode.Mesh.Value, handle);
+            RecordMeshNodes(buffer, model, gltfNode.Mesh.Value, handle, skinIndex: gltfNode.Skin);
         }
         // For point lights, optionally record the visualization sphere mesh as a child of the node.
         // The light's effective position is driven by the node transform; only the visualization
@@ -1048,7 +1126,8 @@ internal sealed class SceneBuilder
         Gltf model,
         int meshIndex,
         DeferredNode parent,
-        Instancing? instancing = null
+        Instancing? instancing = null,
+        int? skinIndex = null
     )
     {
         if (model.Meshes == null || meshIndex < 0 || meshIndex >= model.Meshes.Length)
@@ -1084,7 +1163,8 @@ internal sealed class SceneBuilder
                     0,
                     mesh.Name ?? $"Mesh_{meshIndex}",
                     out var meshHandle,
-                    instancing
+                    instancing,
+                    skinIndex
                 )
             )
             {
@@ -1107,7 +1187,8 @@ internal sealed class SceneBuilder
                         primIndex,
                         $"{mesh.Name ?? $"Mesh_{meshIndex}"}_Primitive{primIndex}",
                         out var meshHandle,
-                        instancing
+                        instancing,
+                        skinIndex
                     )
                 )
                 {
@@ -1153,7 +1234,8 @@ internal sealed class SceneBuilder
         int primIndex,
         string nodeName,
         out DeferredNode handle,
-        Instancing? instancing = null
+        Instancing? instancing = null,
+        int? skinIndex = null
     )
     {
         handle = default;
@@ -1194,6 +1276,8 @@ internal sealed class SceneBuilder
         // Set IsRenderable based on validity of both geometry and material
         bool materialValid = material != null && material.Valid;
 
+        var pendingSkin = CreatePendingSkin(model, geometry, skinIndex, meshIndex);
+
         // Record the MeshNode: construction and entity mutation are deferred to flush.
         handle = buffer.RecordCreateNode(world =>
         {
@@ -1208,6 +1292,12 @@ internal sealed class SceneBuilder
             // the same per-instance transforms as every other primitive of the mesh. Null leaves
             // the MeshNode non-instanced.
             meshNode.Instancing = instancing;
+
+            // Skinning is bound after flush, once the joint nodes exist.
+            if (pendingSkin is not null)
+            {
+                pendingSkin.MeshNode = meshNode;
+            }
 
             // Apply material metadata (alpha mode, double-sided) to the MeshNode.
             ApplyMaterialMetadata(meshNode, metadata);
@@ -1228,7 +1318,8 @@ internal sealed class SceneBuilder
         int meshIndex,
         DeferredNode parent,
         CancellationToken ct,
-        Instancing? instancing = null
+        Instancing? instancing = null,
+        int? skinIndex = null
     )
     {
         if (model.Meshes == null || meshIndex < 0 || meshIndex >= model.Meshes.Length)
@@ -1262,7 +1353,8 @@ internal sealed class SceneBuilder
                     0,
                     mesh.Name ?? $"Mesh_{meshIndex}",
                     ct,
-                    instancing
+                    instancing,
+                    skinIndex
                 )
                 .ConfigureAwait(false);
             if (recorded)
@@ -1284,7 +1376,8 @@ internal sealed class SceneBuilder
                         primIndex,
                         $"{mesh.Name ?? $"Mesh_{meshIndex}"}_Primitive{primIndex}",
                         ct,
-                        instancing
+                        instancing,
+                        skinIndex
                     )
                     .ConfigureAwait(false);
                 if (recorded)
@@ -1331,7 +1424,8 @@ internal sealed class SceneBuilder
         int primIndex,
         string nodeName,
         CancellationToken ct,
-        Instancing? instancing = null
+        Instancing? instancing = null,
+        int? skinIndex = null
     )
     {
         // Convert geometry via the async upload path (dedicated transfer queue — safe off-thread).
@@ -1344,6 +1438,8 @@ internal sealed class SceneBuilder
         {
             return (false, default);
         }
+
+        var pendingSkin = CreatePendingSkin(model, geometry, skinIndex, meshIndex);
 
         // Material conversion (which uploads textures on the graphics queue, including mip blits)
         // is deferred into the factory, which runs on the owning thread during flush.
@@ -1375,6 +1471,12 @@ internal sealed class SceneBuilder
             // the MeshNode non-instanced.
             meshNode.Instancing = instancing;
 
+            // Skinning is bound after flush, once the joint nodes exist.
+            if (pendingSkin is not null)
+            {
+                pendingSkin.MeshNode = meshNode;
+            }
+
             ApplyMaterialMetadata(meshNode, materialResult.Metadata);
 
             return meshNode;
@@ -1382,6 +1484,257 @@ internal sealed class SceneBuilder
 
         return (true, handle);
     }
+
+    #region Skinning
+
+    /// <summary>
+    /// Per-recording state used to bind glTF skins and animations: the materialized node of every
+    /// glTF node (captured by the node factories during flush), the skeletons created per glTF
+    /// skin, and the skinned mesh nodes waiting for their joints.
+    /// </summary>
+    private sealed class NodeBindingState
+    {
+        private readonly Node?[] _nodes;
+
+        public Dictionary<int, Skeleton?> Skeletons { get; } = [];
+
+        public List<PendingSkin> PendingSkins { get; } = [];
+
+        private NodeBindingState(int nodeCount)
+        {
+            _nodes = new Node?[nodeCount];
+        }
+
+        public static NodeBindingState? Create(Gltf model, bool hasAnimations)
+        {
+            return (model.Skins is { Length: > 0 } || hasAnimations)
+                && model.Nodes is { Length: > 0 }
+                ? new NodeBindingState(model.Nodes.Length)
+                : null;
+        }
+
+        public void CaptureNode(int nodeIndex, Node node)
+        {
+            _nodes[nodeIndex] = node;
+        }
+
+        public Node? GetNode(int nodeIndex)
+        {
+            return nodeIndex >= 0 && nodeIndex < _nodes.Length ? _nodes[nodeIndex] : null;
+        }
+    }
+
+    /// <summary>
+    /// A skinned mesh node whose <see cref="Skinning"/> is created after flush.
+    /// </summary>
+    private sealed class PendingSkin(Skeleton skeleton, int[] jointNodeIndices, int skinIndex)
+    {
+        public Skeleton Skeleton { get; } = skeleton;
+        public int[] JointNodeIndices { get; } = jointNodeIndices;
+        public int SkinIndex { get; } = skinIndex;
+        public MeshNode? MeshNode { get; set; }
+    }
+
+    /// <summary>
+    /// Registers a skinned mesh primitive for joint binding when the node references a skin and the
+    /// geometry carries joint influences. Returns <c>null</c> when the primitive is not skinned.
+    /// </summary>
+    private PendingSkin? CreatePendingSkin(
+        Gltf model,
+        Geometry geometry,
+        int? skinIndex,
+        int meshIndex
+    )
+    {
+        if (_skinState is not { } state || skinIndex is not int index)
+        {
+            return null;
+        }
+        if (!geometry.IsSkinned)
+        {
+            _diagnostics.Add(
+                new ImportDiagnostic(
+                    DiagnosticSeverity.Warning,
+                    $"Mesh {meshIndex} references skin {index} but has no JOINTS_0/WEIGHTS_0 attributes. The primitive is not skinned.",
+                    "Mesh",
+                    meshIndex
+                )
+            );
+            return null;
+        }
+        var skeleton = GetOrCreateSkeleton(model, state, index);
+        if (skeleton is null)
+        {
+            return null;
+        }
+        var pending = new PendingSkin(skeleton, model.Skins[index].Joints, index);
+        state.PendingSkins.Add(pending);
+        return pending;
+    }
+
+    /// <summary>
+    /// Creates the <see cref="Skeleton"/> of a glTF skin (once per skin per recording).
+    /// </summary>
+    private Skeleton? GetOrCreateSkeleton(Gltf model, NodeBindingState state, int skinIndex)
+    {
+        if (state.Skeletons.TryGetValue(skinIndex, out var cached))
+        {
+            return cached;
+        }
+        var skeleton = CreateSkeleton(model, skinIndex);
+        state.Skeletons[skinIndex] = skeleton;
+        _manifest?.AddSkeleton(skeleton);
+        return skeleton;
+    }
+
+    private Skeleton? CreateSkeleton(Gltf model, int skinIndex)
+    {
+        if (skinIndex < 0 || skinIndex >= model.Skins.Length)
+        {
+            AddSkinDiagnostic(skinIndex, $"Skin index {skinIndex} is out of range.");
+            return null;
+        }
+        var skin = model.Skins[skinIndex];
+        if (skin.Joints is not { Length: > 0 })
+        {
+            AddSkinDiagnostic(skinIndex, $"Skin {skinIndex} has no joints.");
+            return null;
+        }
+        var inverseBinds = new FastList<Matrix4x4>(skin.Joints.Length);
+        if (skin.InverseBindMatrices is int accessorIndex)
+        {
+            if (!_meshConverter.ReadMatrices(accessorIndex, inverseBinds))
+            {
+                AddSkinDiagnostic(
+                    skinIndex,
+                    $"Skin {skinIndex} inverse bind matrices must be MAT4 FLOAT."
+                );
+                return null;
+            }
+            if (inverseBinds.Count != skin.Joints.Length)
+            {
+                AddSkinDiagnostic(
+                    skinIndex,
+                    $"Skin {skinIndex} has {inverseBinds.Count} inverse bind matrices but {skin.Joints.Length} joints."
+                );
+                return null;
+            }
+        }
+        else
+        {
+            // Per glTF, missing inverse bind matrices are identity matrices.
+            for (int i = 0; i < skin.Joints.Length; i++)
+            {
+                inverseBinds.Add(Matrix4x4.Identity);
+            }
+        }
+        return new Skeleton(inverseBinds, skin.Name ?? $"Skin_{skinIndex}");
+    }
+
+    private void AddSkinDiagnostic(int skinIndex, string message)
+    {
+        _diagnostics.Add(
+            new ImportDiagnostic(
+                DiagnosticSeverity.Warning,
+                message + " Meshes using this skin are not skinned.",
+                "Skin",
+                skinIndex
+            )
+        );
+    }
+
+    /// <summary>
+    /// Records the deferred actions that bind skins and animations to the materialized nodes.
+    /// Clears the recording's binding state.
+    /// </summary>
+    private void RecordBindings(SceneCommandBuffer buffer, List<ImportedAnimation> animations)
+    {
+        var state = _skinState;
+        _skinState = null;
+        if (state is null)
+        {
+            return;
+        }
+        RecordSkinBinding(buffer, state);
+        RecordAnimationBinding(buffer, state, animations);
+    }
+
+    /// <summary>
+    /// Records a deferred action that creates a <see cref="Skinning"/> for every skinned mesh node
+    /// once all nodes (including the joints) are materialized.
+    /// </summary>
+    private void RecordSkinBinding(SceneCommandBuffer buffer, NodeBindingState state)
+    {
+        if (state.PendingSkins.Count == 0)
+        {
+            return;
+        }
+        var manifest = _manifest;
+        buffer.RecordDeferredAction(
+            _ =>
+            {
+                foreach (var pending in state.PendingSkins)
+                {
+                    if (pending.MeshNode is null)
+                    {
+                        continue;
+                    }
+                    var joints = new Entity[pending.JointNodeIndices.Length];
+                    for (int i = 0; i < joints.Length; i++)
+                    {
+                        var jointNode = state.GetNode(pending.JointNodeIndices[i]);
+                        if (jointNode is null)
+                        {
+                            _logger.LogWarning(
+                                "Skin {SKIN} joint node {NODE} is not part of the imported scene; the joint stays in its bind pose.",
+                                pending.SkinIndex,
+                                pending.JointNodeIndices[i]
+                            );
+                        }
+                        joints[i] = jointNode?.Entity ?? Entity.Null;
+                    }
+                    var skinning = new Skinning(pending.Skeleton, joints);
+                    manifest?.AddSkinning(skinning);
+                    pending.MeshNode.Skinning = skinning;
+                }
+            },
+            "Bind glTF skins"
+        );
+    }
+
+    /// <summary>
+    /// Records a deferred action that binds every animation channel to its materialized target
+    /// node. Channels targeting nodes outside the imported scene stay unbound and are skipped
+    /// during playback.
+    /// </summary>
+    private static void RecordAnimationBinding(
+        SceneCommandBuffer buffer,
+        NodeBindingState state,
+        List<ImportedAnimation> animations
+    )
+    {
+        if (animations.Count == 0)
+        {
+            return;
+        }
+        buffer.RecordDeferredAction(
+            _ =>
+            {
+                foreach (var animation in animations)
+                {
+                    var channels = animation.Clip.Channels;
+                    for (int i = 0; i < channels.Count; i++)
+                    {
+                        channels[i].Target = state.GetNode(animation.TargetNodes[i]);
+                    }
+                }
+            },
+            "Bind glTF animations"
+        );
+    }
+
+    #endregion
+
 
     /// <summary>
     /// Applies material metadata (alpha mode, double-sided) to the MeshNode.

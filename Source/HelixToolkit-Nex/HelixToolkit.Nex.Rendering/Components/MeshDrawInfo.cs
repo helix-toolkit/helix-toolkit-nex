@@ -32,9 +32,28 @@ public struct MeshDrawInfo
     public Instancing? Instancing { set; get; }
 
     /// <summary>
+    /// Gets or sets the bone skinning data for this mesh. If not null, the mesh vertices are skinned
+    /// in a compute pass ahead of rendering. The geometry must carry joint influences
+    /// (<see cref="Geometry.JointInfluences"/>).
+    /// </summary>
+    public Skinning? Skinning { set; get; }
+
+    /// <summary>
     /// Gets or sets a value indicating whether this mesh is cullable.
+    /// Skinned meshes are never culled; see <see cref="IsCullable"/>.
     /// </summary>
     public bool Cullable { set; get; } = true;
+
+    /// <summary>
+    /// Gets a value indicating whether this mesh is frustum culled. Skinned meshes are not culled,
+    /// because their bind-pose bounds do not cover the animated pose.
+    /// </summary>
+    public readonly bool IsCullable => Cullable && Skinning is null;
+
+    /// <summary>
+    /// Gets a value indicating whether this mesh uses bone skinning.
+    /// </summary>
+    public readonly bool IsSkinned => Skinning is not null;
 
     /// <summary>
     /// Gets or sets a value indicating whether this mesh is hitable.
@@ -82,7 +101,8 @@ public struct MeshDrawInfo
         PBRMaterialProperties? materialProperties = null,
         Instancing? instancing = null,
         bool cullable = true,
-        bool hitable = true
+        bool hitable = true,
+        Skinning? skinning = null
     )
     {
         Geometry = geometry;
@@ -90,6 +110,7 @@ public struct MeshDrawInfo
         Instancing = instancing;
         Cullable = cullable;
         Hitable = hitable;
+        Skinning = skinning;
     }
 
     /// <summary>
@@ -109,7 +130,7 @@ public struct MeshDrawInfo
     public override readonly string ToString()
     {
         return $"GeometryId: {Geometry?.Id}; MaterialType: {MaterialProperties?.MaterialTypeId}; MaterialIndex: {MaterialProperties?.Index}; "
-            + $"Category: {Variants}; Cullable: {Cullable};";
+            + $"Category: {Variants}; Cullable: {IsCullable}; Skinned: {IsSkinned};";
     }
 }
 
