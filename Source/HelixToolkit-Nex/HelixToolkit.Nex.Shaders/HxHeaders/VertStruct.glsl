@@ -8,5 +8,3 @@ struct GpuVertexProps {
     uint _padding2;
     vec4 tangent; // xyz = tangent vector, w = handedness (+1 or -1) per glTF TANGENT.w
 };
-
-

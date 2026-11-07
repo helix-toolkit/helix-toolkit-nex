@@ -1,5 +1,6 @@
 #include "HxHeaders/HeaderVertex.glsl"
 #include "HxHeaders/VertStruct.glsl"
+#include "HxHeaders/Utils.glsl"
 #include "HxHeaders/ForwardPlusConstants.glsl"
 #include "HxHeaders/MeshDraw.glsl"
 #include "HxHeaders/MeshInfo.glsl"
@@ -176,7 +177,7 @@ void calVertexOutput(in uint index, out vec4 pos, out vec3 wp, out vec3 normal, 
     wp = worldPos.xyz;
     pos = fpConst.viewProjection * worldPos;
 #ifndef EXCLUDE_MESH_PROPS
-    normal = mat3(nodeInfo.transform) * vertProps.normal;
+    normal = normalMatrix(mat3(nodeInfo.transform)) * vertProps.normal;
     normal = normalize(rotateQuaternion(normal, instance.quaternion));
     vec3 tangentXYZ = mat3(nodeInfo.transform) * vertProps.tangent.xyz;
     tangentXYZ = normalize(rotateQuaternion(tangentXYZ, instance.quaternion));
