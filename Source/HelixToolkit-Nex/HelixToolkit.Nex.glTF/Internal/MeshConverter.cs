@@ -174,12 +174,23 @@ internal sealed class MeshConverter
             _accessorReader.ReadColors(colorAccessorIndex, geometry.VertexColors);
         }
 
+        // Read skinning attributes (optional)
+        ReadSkinAttributes(primitive, geometry, meshIndex, primIndex);
+
         // Read indices (optional)
         if (primitive.Indices.HasValue)
         {
             _accessorReader.ReadIndices(primitive.Indices.Value, geometry.Indices);
         }
 
+        // glTF requires flat normals when the primitive has no NORMAL attribute. Computed before
+        // the winding order is applied so they follow the glTF counter-clockwise front faces.
+        if (!primitive.Attributes.ContainsKey("NORMAL"))
+        {
+            NormalGenerator.ComputeFlatNormals(geometry);
+        }
+
+        EnsureIndices(geometry);
         ApplyWindingOrder(geometry);
 
         // Generate tangents when the glTF asset does not supply them
@@ -339,12 +350,23 @@ internal sealed class MeshConverter
             _accessorReader.ReadColors(colorAccessorIndex, geometry.VertexColors);
         }
 
+        // Read skinning attributes (optional)
+        ReadSkinAttributes(primitive, geometry, meshIndex, primIndex);
+
         // Read indices (optional)
         if (primitive.Indices.HasValue)
         {
             _accessorReader.ReadIndices(primitive.Indices.Value, geometry.Indices);
         }
 
+        // glTF requires flat normals when the primitive has no NORMAL attribute. Computed before
+        // the winding order is applied so they follow the glTF counter-clockwise front faces.
+        if (!primitive.Attributes.ContainsKey("NORMAL"))
+        {
+            NormalGenerator.ComputeFlatNormals(geometry);
+        }
+
+        EnsureIndices(geometry);
         ApplyWindingOrder(geometry);
 
         // Generate tangents when the glTF asset does not supply them
@@ -1073,6 +1095,26 @@ internal sealed class MeshConverter
             _accessorReader.ReadColors(colorAccessorIndex, geometry.VertexColors);
         }
 
+        // Skinning attributes are only read through accessors; Draco-compressed ones are not supported.
+        if (
+            decoded.Attributes.ContainsKey(JointsSemantic)
+            || decoded.Attributes.ContainsKey(WeightsSemantic)
+        )
+        {
+            _diagnostics.Add(
+                new ImportDiagnostic(
+                    DiagnosticSeverity.Warning,
+                    $"Mesh {meshIndex} primitive {primIndex} has Draco-compressed skinning attributes, which are not supported. The mesh will not be skinned.",
+                    "Mesh",
+                    meshIndex
+                )
+            );
+        }
+        else
+        {
+            ReadSkinAttributes(primitive, geometry, meshIndex, primIndex);
+        }
+
         // Requirements 3.4, 3.5: populate indices when present, otherwise build non-indexed.
         if (decoded.Indices is { } indices)
         {
@@ -1082,6 +1124,13 @@ internal sealed class MeshConverter
             }
         }
 
+        // glTF requires flat normals when no NORMAL attribute is available from either source.
+        if (!hasNormal)
+        {
+            NormalGenerator.ComputeFlatNormals(geometry);
+        }
+
+        EnsureIndices(geometry);
         ApplyWindingOrder(geometry);
 
         // Requirement 3.6: generate tangents when no TANGENT attribute is available from either source.
@@ -1217,8 +1266,90 @@ internal sealed class MeshConverter
     }
 
     /// <summary>
+    /// Reads MAT4 FLOAT matrices (e.g. skin inverse bind matrices) from an accessor.
+    /// </summary>
+    /// <returns><see langword="true"/> if the matrices were read; otherwise <see langword="false"/>.</returns>
+    public bool ReadMatrices(int accessorIndex, FastList<Matrix4x4> output)
+    {
+        return _accessorReader.ReadMatrices(accessorIndex, output);
+    }
+
+    private const string JointsSemantic = "JOINTS_0";
+    private const string WeightsSemantic = "WEIGHTS_0";
+
+    /// <summary>
+    /// Reads <c>JOINTS_0</c>/<c>WEIGHTS_0</c> into the geometry's joint influences when both are present.
+    /// Influences whose count does not match the vertex count are dropped with a warning.
+    /// </summary>
+    private void ReadSkinAttributes(
+        MeshPrimitive primitive,
+        Geometry geometry,
+        int meshIndex,
+        int primIndex
+    )
+    {
+        if (
+            primitive.Attributes is null
+            || !primitive.Attributes.TryGetValue(JointsSemantic, out int jointsAccessorIndex)
+            || !primitive.Attributes.TryGetValue(WeightsSemantic, out int weightsAccessorIndex)
+        )
+        {
+            return;
+        }
+        if (
+            !_accessorReader.ReadJointInfluences(
+                jointsAccessorIndex,
+                weightsAccessorIndex,
+                geometry.JointInfluences,
+                out var error
+            )
+        )
+        {
+            _diagnostics.Add(
+                new ImportDiagnostic(
+                    DiagnosticSeverity.Warning,
+                    $"Mesh {meshIndex} primitive {primIndex} skinning attributes ignored: {error}",
+                    "Mesh",
+                    meshIndex
+                )
+            );
+            geometry.JointInfluences.Clear();
+            return;
+        }
+        if (geometry.JointInfluences.Count != geometry.Vertices.Count)
+        {
+            _diagnostics.Add(
+                new ImportDiagnostic(
+                    DiagnosticSeverity.Warning,
+                    $"Mesh {meshIndex} primitive {primIndex} skinning attributes ignored: influence count {geometry.JointInfluences.Count} does not match vertex count {geometry.Vertices.Count}.",
+                    "Mesh",
+                    meshIndex
+                )
+            );
+            geometry.JointInfluences.Clear();
+        }
+    }
+
+    /// <summary>
+    /// Gives non-indexed triangle and line lists sequential indices. Meshes are drawn with indexed
+    /// indirect draws, so a geometry without indices is never rendered.
+    /// </summary>
+    private static void EnsureIndices(Geometry geometry)
+    {
+        if (geometry.Topology is not (Topology.Triangle or Topology.Line) || geometry.Indices.Count > 0)
+        {
+            return;
+        }
+        var indices = geometry.Indices;
+        for (uint i = 0; i < geometry.Vertices.Count; i++)
+        {
+            indices.Add(i);
+        }
+    }
+
+    /// <summary>
     /// Reverses triangle winding when <see cref="ImporterConfig.WindingOrder"/> is not the glTF
-    /// default (CCW). Only triangle lists are affected; non-indexed lists become indexed.
+    /// default (CCW). Only triangle lists are affected.
     /// </summary>
     private void ApplyWindingOrder(Geometry geometry)
     {
@@ -1228,14 +1359,6 @@ internal sealed class MeshConverter
         }
 
         var indices = geometry.Indices;
-        if (indices.Count == 0)
-        {
-            for (uint i = 0; i < geometry.Vertices.Count; i++)
-            {
-                indices.Add(i);
-            }
-        }
-
         for (int i = 0; i + 2 < indices.Count; i += 3)
         {
             (indices[i + 1], indices[i + 2]) = (indices[i + 2], indices[i + 1]);

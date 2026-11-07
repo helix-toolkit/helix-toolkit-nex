@@ -62,6 +62,19 @@ public class MeshNode : Node
     }
 
     /// <summary>
+    /// Gets or sets the bone skinning data. Skinned meshes are skinned on the GPU ahead of
+    /// rendering and are never frustum culled.
+    /// </summary>
+    public Skinning? Skinning
+    {
+        get => Entity.Get<MeshDrawInfo>().Skinning;
+        set
+        {
+            Entity.Update<MeshDrawInfo>((ref MeshDrawInfo comp) => comp.Skinning = value);
+        }
+    }
+
+    /// <summary>
     /// Gets or sets whether this mesh can be culled.
     /// </summary>
     public bool Cullable

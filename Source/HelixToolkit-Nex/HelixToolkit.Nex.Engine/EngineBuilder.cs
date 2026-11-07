@@ -439,6 +439,8 @@ public sealed class EngineBuilder
         engine.ResourceManager.LineMaterialManager.CreatePipelinesFromRegistry();
         _onResourceManagerReady?.Invoke(engine.ResourceManager);
         AddNode(new PrepareNode());
+        // Skins meshes on the GPU ahead of all geometry passes. No-op when nothing is skinned.
+        AddNode(new SkinningNode());
         AddNode(new DepthPassNode());
         AddNode(new FrustumCullNode());
         AddNode(new ForwardPlusLightCullingNode());

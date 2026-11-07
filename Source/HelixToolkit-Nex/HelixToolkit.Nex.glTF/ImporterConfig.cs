@@ -62,10 +62,17 @@ public sealed class ImporterConfig
     /// </summary>
     /// <remarks>
     /// When set to <see cref="WindingMode.CW"/>, the indices of every triangle-list primitive are
-    /// reversed on import. Non-indexed triangle lists are converted to indexed geometry.
+    /// reversed on import.
     /// Triangle strips are left unchanged.
     /// </remarks>
     public WindingMode WindingOrder { get; set; } = WindingMode.CCW;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether the importer converts glTF animations into
+    /// <see cref="Scene.AnimationClip"/>s exposed by <see cref="ImportResult.Animations"/>.
+    /// Defaults to <see langword="true"/>.
+    /// </summary>
+    public bool ImportAnimations { get; set; } = true;
 
     /// <summary>
     /// Gets a default configuration with standard settings.

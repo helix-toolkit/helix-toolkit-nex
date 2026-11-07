@@ -14,6 +14,7 @@ public sealed class WorldDataProvider : IRenderDataProvider, IDisposable
     private readonly LineDrawStreamRegistry _lineDrawStreamRegistry;
     private readonly PointDrawStreamRegistry _pointDrawStreamRegistry;
     private readonly BillboardData _billboardData;
+    private readonly SkinningData _skinningData;
     private readonly SceneState _sceneState;
     private readonly GizmoDataProvider _gizmoDataProvider;
 
@@ -40,6 +41,8 @@ public sealed class WorldDataProvider : IRenderDataProvider, IDisposable
 
     public IBillboardData? BillboardData => _billboardData;
 
+    public ISkinningData? SkinningData => _skinningData;
+
     public IRenderData MeshInfos => ResourceManager.MeshInfoData;
 
     public IGizmoDataProvider GizmoData => _gizmoDataProvider;
@@ -54,6 +57,7 @@ public sealed class WorldDataProvider : IRenderDataProvider, IDisposable
         _directionalLightData = new DirectionalLightData(Context, World);
         _billboardData = new BillboardData(Context, World);
         _sceneState = new SceneState(Context, World);
+        _skinningData = new SkinningData(Context, World);
         _gizmoDataProvider = new GizmoDataProvider(World);
         _renderDataList.Add(_lightData);
         _renderDataList.Add(_directionalLightData);
@@ -65,6 +69,10 @@ public sealed class WorldDataProvider : IRenderDataProvider, IDisposable
         _logger.LogInformation($"Initializing. {World}");
         using var t = _tracer.BeginScope(nameof(Initialize));
         _sceneState.Initialize();
+        if (_skinningData.Initialize().CheckResult() != ResultCode.Ok)
+        {
+            return false;
+        }
         if (_meshDrawStreamRegistry.Initialize().CheckResult() != ResultCode.Ok)
         {
             return false;
@@ -92,6 +100,12 @@ public sealed class WorldDataProvider : IRenderDataProvider, IDisposable
         using var t = _tracer.BeginScope(nameof(Update));
         ResourceManager.Update();
         _sceneState.Update();
+        // Joint matrices depend on the updated transforms; skinned buffer addresses must be
+        // known before the mesh draw streams rebuild their draw commands.
+        if (!_skinningData.Update())
+        {
+            return false;
+        }
         foreach (var item in _renderDataList)
         {
             if (!item.Update())
@@ -134,6 +148,7 @@ public sealed class WorldDataProvider : IRenderDataProvider, IDisposable
                 _lineDrawStreamRegistry.Dispose();
                 _pointDrawStreamRegistry.Dispose();
                 _sceneState.Dispose();
+                _skinningData.Dispose();
                 foreach (var data in _renderDataList)
                 {
                     data.Dispose();

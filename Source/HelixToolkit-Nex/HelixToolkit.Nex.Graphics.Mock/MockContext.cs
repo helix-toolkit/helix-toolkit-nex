@@ -202,7 +202,8 @@ public class MockContext : IContext
         {
             Desc = desc,
             DebugName = debugName ?? string.Empty,
-            Data = new byte[desc.DataSize],
+            // Pinned so the pointer returned by GetMappedPtr stays valid across GCs, like mapped GPU memory.
+            Data = GC.AllocateArray<byte>((int)desc.DataSize, pinned: true),
         };
 
         if (desc.Data != IntPtr.Zero && desc.DataSize > 0)

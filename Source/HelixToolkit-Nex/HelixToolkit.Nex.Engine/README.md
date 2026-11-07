@@ -45,6 +45,7 @@ HelixToolkit.Nex.Engine is a core component of the HelixToolkit.Nex suite, respo
 | `LineDrawStream`              | Manages line draw commands, supporting dynamic and static data handling.        |
 | `LineDrawStreamRegistry`      | Registry for managing line draw streams.                                        |
 | `PickingRegistry`             | Manages picking handlers for different geometry types.                         |
+| `SkinningData`                | Collects skinned meshes each frame, uploads joint matrices and prepares the skinning dispatches. |
 
 ## Usage Examples
 
@@ -156,6 +157,12 @@ camera.FocusOn(new Vector3(0, 0, 0), 10f);
 ```
 
 ## Architecture Notes
+
+- **Bone skinning**: `EngineBuilder` adds `SkinningNode` to the default pipeline right after
+  `PrepareNode`. `WorldDataProvider` updates `SkinningData` after the scene transforms and before
+  the mesh draw streams, so joint matrices reflect the current frame and new skinned buffers are
+  referenced by the draw commands in the same frame. `MeshNode.Skinning` assigns skinning to a mesh.
+  CPU pick positions on skinned meshes are resolved against the skinned triangle.
 
 - **Entity Component System (ECS):** The engine uses the custom `HelixToolkit.Nex.ECS` framework, allowing for flexible and efficient scene management.
 - **Render Graph:** The engine employs a Render Graph to manage the execution order of rendering nodes, ensuring optimal performance and resource management.

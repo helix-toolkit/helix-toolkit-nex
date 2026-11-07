@@ -53,6 +53,11 @@ internal class GltfImporterApp : ApplicationBase
     private Node? _currentModelRoot;
     private ResourceManifest? _currentResourceManifest;
 
+    // Animation playback of the current model.
+    private IReadOnlyList<AnimationClip> _animations = [];
+    private readonly AnimationPlayer _animationPlayer = new();
+    private int _selectedAnimation;
+
     private SsaoPostEffect? _ssaoPostEffect;
 
     // Environment map (skybox) cubemap, owned by the resource manager's texture repository.
@@ -110,7 +115,8 @@ internal class GltfImporterApp : ApplicationBase
     public DirectionalLightNode DirectionalLight =>
         _dirLight ?? throw new InvalidOperationException("Light node is not initialized.");
 
-    public GltfImporterApp()
+    /// <param name="initialFile">Optional glTF/GLB file to load on startup.</param>
+    public GltfImporterApp(string? initialFile = null)
         : base(
             new ApplicationConfig()
             {
@@ -119,7 +125,9 @@ internal class GltfImporterApp : ApplicationBase
                 WindowHeight = 1080,
             }
         )
-    { }
+    {
+        _pendingOpenPath = initialFile;
+    }
 
     protected override void Initialize()
     {
@@ -447,8 +455,13 @@ internal class GltfImporterApp : ApplicationBase
             Gui.End();
         }
 
+        DrawAnimationWindow();
+
         // --- ImGui end frame ---
         _imGuiRenderer.EndFrame();
+
+        // --- Advance the model animation before the scene is rendered ---
+        _animationPlayer.Update(delta);
 
         // --- Update camera controller ---
         _cameraController.Update(delta);
@@ -670,6 +683,15 @@ internal class GltfImporterApp : ApplicationBase
         // Compute bounding volume and frame the camera
         ComputeBoundsAndFrameCamera(_currentModelRoot!);
 
+        // Play the first animation, if any.
+        _animations = result.Animations;
+        _selectedAnimation = 0;
+        if (_animations.Count > 0)
+        {
+            _animationPlayer.Clip = _animations[0];
+            _animationPlayer.Play();
+        }
+
         // Texture pixel data is already uploaded, but mipmap generation is deferred to the render
         // thread and runs on the next Engine.BeginFrame. Observe full GPU readiness without blocking
         // the render loop: WhenTexturesReadyAsync completes once those queued mipmaps are generated.
@@ -713,6 +735,58 @@ internal class GltfImporterApp : ApplicationBase
     }
 
     /// <summary>
+    /// Draws the playback controls of the current model's animations.
+    /// </summary>
+    private void DrawAnimationWindow()
+    {
+        if (_animations.Count == 0)
+            return;
+        Gui.SetNextWindowSize(new Vector2(360, 0), ImGuiCond.FirstUseEver);
+        if (Gui.Begin("Animation"))
+        {
+            var names = _animations.Select(a => a.Name).ToArray();
+            if (Gui.Combo("Clip", ref _selectedAnimation, names, names.Length))
+            {
+                _animationPlayer.Clip = _animations[_selectedAnimation];
+            }
+
+            if (Gui.Button(_animationPlayer.IsPlaying ? "Pause" : "Play"))
+            {
+                if (_animationPlayer.IsPlaying)
+                    _animationPlayer.Pause();
+                else
+                    _animationPlayer.Play();
+            }
+            Gui.SameLine();
+            if (Gui.Button("Stop"))
+            {
+                _animationPlayer.Stop();
+            }
+            Gui.SameLine();
+            var loop = _animationPlayer.Loop;
+            if (Gui.Checkbox("Loop", ref loop))
+            {
+                _animationPlayer.Loop = loop;
+            }
+
+            var speed = _animationPlayer.Speed;
+            if (Gui.SliderFloat("Speed", ref speed, -2f, 2f))
+            {
+                _animationPlayer.Speed = speed;
+            }
+
+            var clip = _animationPlayer.Clip!;
+            var time = _animationPlayer.Time;
+            if (Gui.SliderFloat("Time", ref time, clip.StartTime, clip.EndTime, "%.2f s"))
+            {
+                _animationPlayer.Time = time;
+            }
+            Gui.TextUnformatted($"{clip.Channels.Count} channels, {clip.Duration:0.00} s");
+        }
+        Gui.End();
+    }
+
+    /// <summary>
     /// Disposes the currently loaded model's root node and all its children,
     /// releasing ECS entities and GPU resources tracked by the import manifest.
     /// </summary>
@@ -720,6 +794,9 @@ internal class GltfImporterApp : ApplicationBase
     {
         if (_currentModelRoot is null)
             return;
+        _animationPlayer.Stop();
+        _animationPlayer.Clip = null;
+        _animations = [];
         _mainRoot?.RemoveChild(_currentModelRoot);
         _currentModelRoot.Dispose();
         _currentModelRoot = null;

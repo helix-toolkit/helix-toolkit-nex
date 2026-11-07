@@ -10,6 +10,7 @@ The `HelixToolkit.Nex.Scene` package manages and manipulates scene-graph nodes w
 - Handling hierarchical transformations and parent-child relationships.
 - Flattening and sorting nodes and updating world transforms.
 - Deferred scene construction off the world thread via `SceneCommandBuffer`.
+- Keyframe animation of node transforms (`AnimationClip`, `AnimationPlayer`).
 
 A `Node` wraps an ECS `Entity` and attaches the components needed for scene management (`NodeInfo`,
 `Transform`, `WorldTransform`, `Parent`, and optionally `NodeName`, `Children`, `Renderable`). The
@@ -33,6 +34,10 @@ for matrix math.
 | `DeferredNode`         | Handle returned by `SceneCommandBuffer.RecordCreateNode()` that resolves to a real `Node` during flush.                        |
 | `TypedDeferredNode<T>` | Typed handle for recording creation of a custom `Node` subtype `T`.                                                            |
 | `SceneFlushResult`     | Result of `SceneCommandBuffer.Flush`, reporting success or the failing command index and description.                          |
+| `AnimationSampler`     | Immutable keyframes (times + `Vector4` values) with `Linear` (slerp for rotations), `Step` or `CubicSpline` interpolation.      |
+| `AnimationChannel`     | Animates the `Translation`, `Rotation` or `Scale` of a target `Node` with a sampler.                                           |
+| `AnimationClip`        | Named set of channels with a common time range; `Apply(time)` poses the targets.                                               |
+| `AnimationPlayer`      | Plays a clip (`Play`/`Pause`/`Stop`, `Speed`, `Loop`, `Time`); restores the targets' rest pose on `Stop` or clip change.        |
 
 ## New Features
 
@@ -132,6 +137,32 @@ else
         $"Flush failed at command {result.FailedCommandIndex}: {result.Message} ({result.Code})");
 }
 ```
+
+## Animation
+
+Animations write node `Transform`s. An `AnimationClip` is a set of `AnimationChannel`s, each
+animating one transform property of a target node with an `AnimationSampler`. glTF imports produce
+clips already bound to the imported nodes (`ImportResult.Animations`); clips can also be built by hand:
+
+```csharp
+var sampler = new AnimationSampler(
+    [0f, 1f],                                   // keyframe times in seconds
+    [Vector4.Zero, new Vector4(0, 2, 0, 0)],    // translations use XYZ, rotations store a quaternion as XYZW
+    AnimationInterpolation.Linear);
+var clip = new AnimationClip("Bounce", [new AnimationChannel(node, AnimationPath.Translation, sampler)]);
+
+var player = new AnimationPlayer(clip) { Loop = true, Speed = 1f };
+player.Play();
+
+// Per frame, on the world's owning thread, before rendering:
+player.Update(deltaTime);
+```
+
+`AnimationPlayer.Update` advances the time while playing and applies the clip; a paused player only
+re-applies after `Time` or `Clip` changes. Applying a clip notifies `Transform` changes, so the engine
+updates world transforms (and the joints of skinned meshes) on the next frame. The player remembers
+the targets' transforms before it first poses them and restores them on `Stop` or when `Clip`
+changes. Channels whose target is `null` or disposed are skipped.
 
 ## Scene Command Buffer
 

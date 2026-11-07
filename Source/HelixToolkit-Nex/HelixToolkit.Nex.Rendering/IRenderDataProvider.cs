@@ -45,6 +45,28 @@ public interface IBillboardData : IRenderData
     uint TotalBillboardCount { get; }
 }
 
+/// <summary>
+/// A skinned mesh to be processed by the skinning compute pass this frame.
+/// </summary>
+/// <param name="Skinning">The skinning instance owning the joint, palette and output buffers.</param>
+/// <param name="Geometry">The bind-pose geometry providing vertices and joint influences.</param>
+public readonly record struct SkinningDispatch(Skinning Skinning, Geometry Geometry);
+
+/// <summary>
+/// Provides the skinned meshes of a world for the skinning compute pass.
+/// <para>
+/// The data provider collects all mesh entities with a <see cref="Components.MeshDrawInfo.Skinning"/>
+/// each frame, uploads their joint matrices, and makes sure their output buffers exist.
+/// </para>
+/// </summary>
+public interface ISkinningData : IRenderData
+{
+    /// <summary>
+    /// Gets the skinned meshes ready for the skinning compute pass this frame.
+    /// </summary>
+    ReadOnlySpan<SkinningDispatch> Dispatches { get; }
+}
+
 public interface IRenderDataProvider
 {
     World World { get; }
@@ -104,6 +126,12 @@ public interface IRenderDataProvider
     /// Returns <see langword="null"/> if no billboard data provider is registered.
     /// </summary>
     IBillboardData? BillboardData { get; }
+
+    /// <summary>
+    /// Gets the skinned mesh data processed by the skinning compute pass.
+    /// Returns <see langword="null"/> if no skinning data provider is registered.
+    /// </summary>
+    ISkinningData? SkinningData { get; }
 
     /// <summary>
     /// Gets the gizmo data provider that collects all <see cref="GizmoDrawInfo"/> entities each frame for rendering gizmos in the scene.

@@ -176,6 +176,7 @@ public sealed class PreparedImport : IDisposable
             RootNode = rootNode,
             Diagnostics = _diagnostics,
             Resources = Resources,
+            Animations = recording.Animations,
         };
     }
 

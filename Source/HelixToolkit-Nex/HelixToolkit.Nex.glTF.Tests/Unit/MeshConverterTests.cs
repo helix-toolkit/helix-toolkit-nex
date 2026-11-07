@@ -550,4 +550,122 @@ public class MeshConverterTests
         Assert.IsNotNull(geometry);
         Assert.AreEqual(Topology.Triangle, geometry.Topology);
     }
+
+    /// <summary>
+    /// Creates an indexed quad in the XY plane (counter-clockwise when viewed from +Z) with only a
+    /// POSITION attribute: accessor 0 holds 4 positions, accessor 1 holds 6 UNSIGNED_SHORT indices.
+    /// </summary>
+    private static (Gltf model, byte[] buffer, MeshPrimitive primitive) CreateQuadWithoutNormals()
+    {
+        float[] positions = [0f, 0f, 0f, 1f, 0f, 0f, 1f, 1f, 0f, 0f, 1f, 0f];
+        ushort[] indices = [0, 1, 2, 0, 2, 3];
+        var positionBytes = positions.Length * sizeof(float);
+        var buffer = new byte[positionBytes + indices.Length * sizeof(ushort)];
+        System.Buffer.BlockCopy(positions, 0, buffer, 0, positionBytes);
+        System.Buffer.BlockCopy(indices, 0, buffer, positionBytes, indices.Length * sizeof(ushort));
+
+        var model = new Gltf
+        {
+            Accessors =
+            [
+                new Accessor
+                {
+                    BufferView = 0,
+                    ComponentType = Accessor.ComponentTypeEnum.FLOAT,
+                    Type = Accessor.TypeEnum.VEC3,
+                    Count = 4,
+                },
+                new Accessor
+                {
+                    BufferView = 1,
+                    ComponentType = Accessor.ComponentTypeEnum.UNSIGNED_SHORT,
+                    Type = Accessor.TypeEnum.SCALAR,
+                    Count = indices.Length,
+                },
+            ],
+            BufferViews =
+            [
+                new BufferView { Buffer = 0, ByteLength = positionBytes },
+                new BufferView
+                {
+                    Buffer = 0,
+                    ByteOffset = positionBytes,
+                    ByteLength = indices.Length * sizeof(ushort),
+                },
+            ],
+            Buffers = [new glTFLoader.Schema.Buffer { ByteLength = buffer.Length }],
+        };
+        var primitive = new MeshPrimitive
+        {
+            Attributes = new Dictionary<string, int> { ["POSITION"] = 0 },
+            Indices = 1,
+            Mode = MeshPrimitive.ModeEnum.TRIANGLES,
+        };
+        return (model, buffer, primitive);
+    }
+
+    private static void AssertFlatQuadNormals(Geometry? geometry)
+    {
+        Assert.IsNotNull(geometry);
+        Assert.AreEqual(6, geometry.Vertices.Count);
+        Assert.AreEqual(6, geometry.VertexProps.Count);
+        Assert.AreEqual(6, geometry.Indices.Count);
+        for (var i = 0; i < geometry.VertexProps.Count; ++i)
+        {
+            Assert.AreEqual(System.Numerics.Vector3.UnitZ, geometry.VertexProps[i].Normal);
+        }
+    }
+
+    [TestMethod]
+    public void ConvertPrimitive_WithoutNormals_GeneratesFlatNormals()
+    {
+        var (model, buffer, primitive) = CreateQuadWithoutNormals();
+        var reader = new AccessorReader(model, [buffer]);
+        var converter = new MeshConverter(new MockGeometryManager(), reader, [], new ResourceManifest(), MeshConverterTestDefaults.Config, MeshConverterTestDefaults.Decoder, false);
+
+        var (geometry, _) = converter.ConvertPrimitive(model, primitive, 0, 0);
+
+        AssertFlatQuadNormals(geometry);
+        CollectionAssert.AreEqual(new uint[] { 0, 1, 2, 3, 4, 5 }, geometry!.Indices.ToArray());
+    }
+
+    [TestMethod]
+    public async Task ConvertPrimitiveAsync_WithoutNormals_GeneratesFlatNormals()
+    {
+        var (model, buffer, primitive) = CreateQuadWithoutNormals();
+        var reader = new AccessorReader(model, [buffer]);
+        var converter = new MeshConverter(new MockGeometryManager(), reader, [], new ResourceManifest(), MeshConverterTestDefaults.Config, MeshConverterTestDefaults.Decoder, false);
+
+        var (geometry, _) = await converter.ConvertPrimitiveAsync(model, primitive, 0, 0);
+
+        AssertFlatQuadNormals(geometry);
+    }
+
+    [TestMethod]
+    public void ConvertPrimitive_WithoutNormals_ClockwiseWinding_NormalsFollowGltfFrontFaces()
+    {
+        var (model, buffer, primitive) = CreateQuadWithoutNormals();
+        var reader = new AccessorReader(model, [buffer]);
+        var config = new ImporterConfig { WindingOrder = WindingMode.CW };
+        var converter = new MeshConverter(new MockGeometryManager(), reader, [], new ResourceManifest(), config, MeshConverterTestDefaults.Decoder, false);
+
+        var (geometry, _) = converter.ConvertPrimitive(model, primitive, 0, 0);
+
+        AssertFlatQuadNormals(geometry);
+        CollectionAssert.AreEqual(new uint[] { 0, 2, 1, 3, 5, 4 }, geometry!.Indices.ToArray());
+    }
+
+    [TestMethod]
+    public void ConvertPrimitive_NonIndexedTriangles_GeneratesSequentialIndices()
+    {
+        // Meshes are drawn with indexed indirect draws; a geometry without indices is never rendered.
+        var (model, buffer) = CreateSimpleTrianglePrimitive();
+        var reader = new AccessorReader(model, [buffer]);
+        var converter = new MeshConverter(new MockGeometryManager(), reader, [], new ResourceManifest(), MeshConverterTestDefaults.Config, MeshConverterTestDefaults.Decoder, false);
+
+        var (geometry, _) = converter.ConvertPrimitive(model, CreatePrimitiveWithPosition(), 0, 0);
+
+        Assert.IsNotNull(geometry);
+        CollectionAssert.AreEqual(new uint[] { 0, 1, 2 }, geometry.Indices.ToArray());
+    }
 }

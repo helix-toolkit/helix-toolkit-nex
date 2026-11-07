@@ -418,7 +418,8 @@ public static class GpuPicking
         {
             return false;
         }
-        var mesh = entity.Get<MeshDrawInfo>().Geometry;
+        ref var meshInfo = ref entity.Get<MeshDrawInfo>();
+        var mesh = meshInfo.Geometry;
         if (mesh is null)
         {
             return false;
@@ -426,9 +427,20 @@ public static class GpuPicking
         var indices = mesh.Indices;
         var vertices = mesh.Vertices;
         var idx = (int)primitiveId * 3;
-        p0 = vertices[(int)indices[idx]].ToVector3();
-        p1 = vertices[(int)indices[idx + 1]].ToVector3();
-        p2 = vertices[(int)indices[idx + 2]].ToVector3();
+        var i0 = (int)indices[idx];
+        var i1 = (int)indices[idx + 1];
+        var i2 = (int)indices[idx + 2];
+        p0 = vertices[i0].ToVector3();
+        p1 = vertices[i1].ToVector3();
+        p2 = vertices[i2].ToVector3();
+        if (meshInfo.Skinning is { } skinning && mesh.IsSkinned)
+        {
+            // Match the GPU-skinned triangle that was rendered.
+            var influences = mesh.JointInfluences;
+            p0 = skinning.SkinPosition(p0, influences[i0]);
+            p1 = skinning.SkinPosition(p1, influences[i1]);
+            p2 = skinning.SkinPosition(p2, influences[i2]);
+        }
         return true;
     }
 

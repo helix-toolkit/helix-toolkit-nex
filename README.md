@@ -32,7 +32,8 @@ Currently in development.
   - :white_check_mark: Line
   - :white_check_mark: Gizmo
   - :hourglass: Particle System (Planned)
-  - :hourglass: Skeletal/Morph Target Animation (Planned)
+  - :white_check_mark: Skeletal Animation
+  - :hourglass: Morph Target Animation
   - :hourglass: Model importer (Planned)
     - :white_check_mark: glTF importer. [Demo](Source/HelixToolkit-Nex/Samples/Integration/gltfImporter)
 - :white_check_mark: [GPU Frustum Culling](Source/HelixToolkit-Nex/Samples/GraphicsAPI/MeshCulling/README.md) and [GPU Frustum Culling on Instancing](Source/HelixToolkit-Nex/Samples/GraphicsAPI/InstancingMeshCulling/README.md). (Done)
@@ -68,6 +69,8 @@ Currently in development.
 <img src="Source/HelixToolkit-Nex/Samples/Integration/Points/Screenshots/Points.gif" width=400>
 
 <img src="Source/HelixToolkit-Nex/Samples/Integration/gltfImporter/Screenshots/Sample.jpg" width=400>
+
+<img src="Source/HelixToolkit-Nex/Samples/Integration/gltfImporter/Screenshots/Fox.gif" width=400>
 
 ## Linux Support
 

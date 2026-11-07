@@ -53,7 +53,7 @@ public class ModelImportTests
         return Path.Combine(parts.Concat(segments).ToArray());
     }
 
-    private static WorldDataProvider CreateTestWorldDataProvider()
+    internal static WorldDataProvider CreateTestWorldDataProvider()
     {
         var mockContext = new MockContext();
         mockContext.Initialize();
@@ -75,7 +75,7 @@ public class ModelImportTests
     /// Uses the default PBR shader implementation for all registered types.
     /// Skips names that are already registered.
     /// </summary>
-    private static void RegisterMaterialNamesFromFile(string filePath)
+    internal static void RegisterMaterialNamesFromFile(string filePath)
     {
         var model = Interface.LoadModel(filePath);
         if (model.Materials == null)
@@ -109,7 +109,7 @@ public class ModelImportTests
         return count;
     }
 
-    private static List<MeshNode> CollectMeshNodes(Node? node)
+    internal static List<MeshNode> CollectMeshNodes(Node? node)
     {
         var result = new List<MeshNode>();
         CollectMeshNodesRecursive(node, result);
@@ -151,7 +151,7 @@ public class ModelImportTests
         );
     }
 
-    private static string FormatDiagnostics(ImportResult result)
+    internal static string FormatDiagnostics(ImportResult result)
     {
         return string.Join(
             "; ",
@@ -231,6 +231,109 @@ public class ModelImportTests
 
         // Assert
         AssertImportSuccessWithMeshes(result, "BrainStem GLB (async)");
+    }
+
+    #endregion
+
+    #region BrainStem animation
+
+    [TestMethod]
+    public void Import_BrainStem_ImportsBoundAnimation()
+    {
+        var path = GetAssetPath("BrainStem", "glTF-Binary", "BrainStem.glb");
+        using var worldData = CreateTestWorldDataProvider();
+
+        var result = _importer.Import(path, worldData);
+
+        AssertImportSuccessWithMeshes(result, "BrainStem GLB");
+        AssertBrainStemAnimation(result, worldData);
+    }
+
+    [TestMethod]
+    public async Task ImportAsync_BrainStem_ImportsBoundAnimation()
+    {
+        var path = GetAssetPath("BrainStem", "glTF", "BrainStem.gltf");
+        using var worldData = CreateTestWorldDataProvider();
+
+        var result = await _importer.ImportAsync(path, worldData);
+
+        AssertImportSuccessWithMeshes(result, "BrainStem glTF (async)");
+        AssertBrainStemAnimation(result, worldData);
+    }
+
+    [TestMethod]
+    public void Import_BrainStem_AnimationsDisabled_ImportsNoClips()
+    {
+        var path = GetAssetPath("BrainStem", "glTF-Binary", "BrainStem.glb");
+        using var worldData = CreateTestWorldDataProvider();
+
+        var result = _importer.Import(
+            path,
+            worldData,
+            new ImporterConfig { ImportAnimations = false }
+        );
+
+        AssertImportSuccessWithMeshes(result, "BrainStem GLB");
+        Assert.AreEqual(0, result.Animations.Count);
+    }
+
+    private static void AssertBrainStemAnimation(ImportResult result, WorldDataProvider worldData)
+    {
+        Assert.AreEqual(1, result.Animations.Count);
+        var clip = result.Animations[0];
+        Assert.AreEqual(57, clip.Channels.Count);
+        Assert.IsTrue(clip.Duration > 0f);
+        Assert.IsTrue(
+            clip.Channels.All(c => c.Target is { Alive: true }),
+            "Every channel must be bound to an imported node."
+        );
+
+        // The animated nodes are the skin joints, so posing the clip moves the skinned meshes.
+        var joints = CollectMeshNodes(result.RootNode)
+            .Where(m => m.Skinning is not null)
+            .SelectMany(m => m.Skinning!.Joints)
+            .Select(e => e.Id)
+            .ToHashSet();
+        Assert.IsTrue(clip.Channels.Any(c => joints.Contains(c.Target!.Entity.Id)));
+
+        var world = worldData.World;
+        world.SortSceneNodes();
+        world.UpdateTransforms();
+        var rest = clip.Channels.Select(c => c.Target!.WorldTransform.Value).ToArray();
+
+        var player = new AnimationPlayer(clip);
+        player.Play();
+        player.Update(clip.Duration * 0.5f);
+        world.UpdateTransforms();
+
+        Assert.IsTrue(player.IsPlaying);
+        var moved = clip.Channels.Where((c, i) => c.Target!.WorldTransform.Value != rest[i]).Count();
+        Assert.IsTrue(moved > 0, "Playing the clip should move the animated nodes.");
+
+        player.Stop();
+        world.UpdateTransforms();
+        for (int i = 0; i < rest.Length; i++)
+        {
+            Assert.IsTrue(
+                Matrix4x4Equal(rest[i], clip.Channels[i].Target!.WorldTransform.Value),
+                "Stop restores the rest pose."
+            );
+        }
+    }
+
+    private static bool Matrix4x4Equal(System.Numerics.Matrix4x4 a, System.Numerics.Matrix4x4 b)
+    {
+        for (int r = 0; r < 4; r++)
+        {
+            for (int c = 0; c < 4; c++)
+            {
+                if (MathF.Abs(a[r, c] - b[r, c]) > 1e-4f)
+                {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
     #endregion

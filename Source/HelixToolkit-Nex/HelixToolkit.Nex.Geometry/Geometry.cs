@@ -1,3 +1,4 @@
+using HelixToolkit.Nex.Shaders;
 using HelixToolkit.Nex.Trace;
 
 namespace HelixToolkit.Nex.Geometries;
@@ -59,7 +60,8 @@ public enum GeometryBufferType
     VertexProp = 1 << 2,
     Index = 1 << 3,
     VertexColor = 1 << 4,
-    All = Vertex | VertexProp | Index | VertexColor,
+    Skin = 1 << 5,
+    All = Vertex | VertexProp | Index | VertexColor | Skin,
 }
 
 public readonly struct GeometryResourceType { }
@@ -97,6 +99,13 @@ public partial class Geometry : HxObservableObject, IDisposable
     [Observable]
     private FastList<Vector4> _vertexColors = [];
 
+    /// <summary>
+    /// Per-vertex joint influences for bone skinning. Empty for non-skinned geometry.
+    /// When not empty, the count must match the vertex count.
+    /// </summary>
+    [Observable]
+    private FastList<GpuJointInfluence> _jointInfluences = [];
+
     #region Buffers
     private ElementBuffer<Vector4>? _vertexBuffer;
     private ElementBuffer<VertexProperties>? _vertexPropsBuffer;
@@ -106,6 +115,7 @@ public partial class Geometry : HxObservableObject, IDisposable
     /// </summary>
     private ElementBuffer<uint>? _indexBuffer;
     private ElementBuffer<Vector4>? _vertColorsBuffer;
+    private ElementBuffer<GpuJointInfluence>? _jointInfluenceBuffer;
 
     /// <summary>
     /// Pending buffer state for async uploads. Holds new buffers that are being uploaded
@@ -119,6 +129,13 @@ public partial class Geometry : HxObservableObject, IDisposable
     public BufferResource VertexPropsBuffer => _vertexPropsBuffer?.Buffer ?? BufferResource.Null;
     public BufferResource IndexBuffer => _indexBuffer?.Buffer ?? BufferResource.Null;
     public BufferResource VertexColorBuffer => _vertColorsBuffer?.Buffer ?? BufferResource.Null;
+    public BufferResource JointInfluenceBuffer =>
+        _jointInfluenceBuffer?.Buffer ?? BufferResource.Null;
+
+    /// <summary>
+    /// Gets a value indicating whether this geometry carries joint influences for bone skinning.
+    /// </summary>
+    public bool IsSkinned => _jointInfluences.Count > 0;
 
     /// <summary>
     /// Gets a value indicating whether there is a pending async buffer update in progress.
@@ -196,6 +213,10 @@ public partial class Geometry : HxObservableObject, IDisposable
                 {
                     BufferDirty |= GeometryBufferType.VertexColor;
                 }
+                else if (e.PropertyName is nameof(JointInfluences))
+                {
+                    BufferDirty |= GeometryBufferType.Skin;
+                }
             };
         }
     }
@@ -258,6 +279,7 @@ public partial class Geometry : HxObservableObject, IDisposable
         _vertices.AddRange(other._vertices);
         _vertexProps.AddRange(other._vertexProps);
         _indices.AddRange(other._indices);
+        _jointInfluences.AddRange(other._jointInfluences);
     }
 
     #region Buffer Creation
@@ -392,6 +414,33 @@ public partial class Geometry : HxObservableObject, IDisposable
             }
 
             BufferDirty &= ~GeometryBufferType.VertexColor;
+        }
+        if (types.HasAllFlags(GeometryBufferType.Skin))
+        {
+            if (_jointInfluences.Count == 0)
+            {
+                Disposer.DisposeAndRemove(ref _jointInfluenceBuffer);
+            }
+            else
+            {
+                if (_jointInfluences.Count != _vertices.Count)
+                {
+                    HxDebug.Assert(false, "Joint influence count must match vertex count");
+                }
+                else
+                {
+                    _jointInfluenceBuffer ??= new ElementBuffer<GpuJointInfluence>(
+                        context,
+                        _jointInfluences.Count,
+                        BufferUsageBits.Storage,
+                        IsDynamic,
+                        debugName: $"JointInfluence_{Id}_{Name}"
+                    );
+                    _jointInfluenceBuffer.Upload(_jointInfluences);
+                }
+            }
+
+            BufferDirty &= ~GeometryBufferType.Skin;
         }
         if (dirty && Valid)
         {
@@ -547,6 +596,39 @@ public partial class Geometry : HxObservableObject, IDisposable
             BufferDirty &= ~GeometryBufferType.VertexColor;
         }
 
+        if (types.HasAllFlags(GeometryBufferType.Skin))
+        {
+            if (_jointInfluences.Count == 0)
+            {
+                Disposer.DisposeAndRemove(ref _jointInfluenceBuffer);
+            }
+            else
+            {
+                if (_jointInfluences.Count != _vertices.Count)
+                {
+                    HxDebug.Assert(
+                        false,
+                        $"Joint influence count {_jointInfluences.Count} must match vertex count {_vertices.Count}"
+                    );
+                }
+                else
+                {
+                    _jointInfluenceBuffer ??= new ElementBuffer<GpuJointInfluence>(
+                        context,
+                        _jointInfluences.Count,
+                        BufferUsageBits.Storage,
+                        IsDynamic,
+                        debugName: $"Geo_{Id}_JointInfluence"
+                    );
+                    pending.UploadHandles.Add(_jointInfluenceBuffer.UploadAsync(_jointInfluences));
+                    hasAnyUpload = true;
+                }
+
+                pending.Types |= GeometryBufferType.Skin;
+            }
+            BufferDirty &= ~GeometryBufferType.Skin;
+        }
+
         if (!hasAnyUpload)
         {
             // All requested buffer types had no data — apply immediately
@@ -692,6 +774,11 @@ public partial class Geometry : HxObservableObject, IDisposable
         {
             BufferDirty &= ~GeometryBufferType.VertexColor;
         }
+
+        if (pending.Types.HasAllFlags(GeometryBufferType.Skin))
+        {
+            BufferDirty &= ~GeometryBufferType.Skin;
+        }
         EventBus.Instance.PublishAsync(new GeometryUpdatedEvent(Id, GeometryChangeOp.Updated));
     }
 
@@ -790,6 +877,7 @@ public partial class Geometry : HxObservableObject, IDisposable
         Disposer.DisposeAndRemove(ref _vertexPropsBuffer);
         Disposer.DisposeAndRemove(ref _indexBuffer);
         Disposer.DisposeAndRemove(ref _vertColorsBuffer);
+        Disposer.DisposeAndRemove(ref _jointInfluenceBuffer);
         Handle = Handle<GeometryResourceType>.Null;
         Manager = null;
     }
