@@ -186,6 +186,39 @@ public sealed class SkinningDataTests
     }
 
     [TestMethod]
+    public void RepeatedUpdate_WithoutTransformChange_DoesNotAdvanceJointRing()
+    {
+        // Every viewport rendering the world updates it, but the joint-matrix ring buffer must
+        // advance at most once per engine frame (frames are paced once per engine frame).
+        var joint0 = new Node(_world, "Joint0");
+        var joint1 = new Node(_world, "Joint1");
+        var skeleton = new Skeleton([Matrix4x4.Identity, Matrix4x4.Identity]);
+        var skinning = new Skinning(skeleton, [joint0.Entity, joint1.Entity]);
+        _ = new MeshNode(_world, "Skinned") { Geometry = CreateGeometry(true), Skinning = skinning };
+        _world.SortSceneNodes();
+        _world.UpdateTransforms();
+
+        Assert.IsTrue(_skinningData.Update());
+        var uploaded = skinning.JointMatrixBuffer;
+
+        Assert.IsTrue(_skinningData.Update());
+        Assert.AreSame(uploaded, skinning.JointMatrixBuffer);
+        Assert.AreEqual(1, _skinningData.Dispatches.Length, "Still dispatched without an upload.");
+
+        joint1.Transform.Translation = new Vector3(0, 2, 0);
+        joint1.NotifyTransformChanged();
+        _world.UpdateTransforms();
+
+        Assert.IsTrue(_skinningData.Update());
+        Assert.AreNotSame(uploaded, skinning.JointMatrixBuffer);
+        var moved = skinning.SkinPosition(
+            Vector3.Zero,
+            new GpuJointInfluence { Joint0 = 1, Weights = Vector4.UnitX }
+        );
+        Assert.IsTrue(Vector3.Distance(new Vector3(0, 2, 0), moved) < 1e-5f, $"Got {moved}");
+    }
+
+    [TestMethod]
     public void SkinnedMesh_IsNeverCullable()
     {
         var info = new MeshDrawInfo(cullable: true);

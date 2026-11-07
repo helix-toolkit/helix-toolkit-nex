@@ -9,9 +9,9 @@ namespace HelixToolkit.Nex.Rendering;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Assign an instance to <see cref="Components.MeshDrawInfo.Skinning"/>. Every frame the engine
-/// uploads the world transforms of <see cref="Joints"/>, computes the skinning palette and skins the
-/// mesh's vertices in a compute pass ahead of rendering. All render passes then read the skinned
+/// Assign an instance to <see cref="Components.MeshDrawInfo.Skinning"/>. When world transforms
+/// change, the engine uploads the world transforms of <see cref="Joints"/>; every frame it computes
+/// the skinning palette and skins the mesh's vertices in a compute pass ahead of rendering. All render passes then read the skinned
 /// vertices, so a mesh is skinned once per frame regardless of how many passes draw it.
 /// </para>
 /// <para>
@@ -189,7 +189,8 @@ public sealed class Skinning : IDisposable
     /// Uploads the joint matrices for the current frame. Each joint matrix is the joint's world
     /// transform expressed relative to the skinned mesh node, so that the regular node transform
     /// applied in the vertex shader yields the joint-driven world position.
-    /// Called by the engine once per frame after the scene transforms have been updated.
+    /// Called by the engine after the scene transforms have been updated, at most once per frame and
+    /// only when a world transform changed. Each call advances the joint-matrix ring buffer.
     /// </summary>
     /// <param name="meshWorld">The world transform of the skinned mesh entity.</param>
     /// <param name="worldTransforms">The world transform components of the world the joints belong to.</param>
