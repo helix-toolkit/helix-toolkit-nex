@@ -27,7 +27,6 @@ on:
 permissions:
   contents: write
   pull-requests: write
-  models: read   # GitHub Models API access
 
 jobs:
   doc-agent:
@@ -44,7 +43,7 @@ jobs:
           fetch-depth: 0
 
       # ------------------------------------------------------------------ #
-      # 2. Python + openai SDK                                              #
+      # 2. Python + anthropic SDK                                              #
       # ------------------------------------------------------------------ #
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -52,7 +51,7 @@ jobs:
           python-version: '3.12'
 
       - name: Install Python dependencies
-        run: pip install --quiet openai>=1.0.0
+        run: pip install --quiet anthropic
 
       # ------------------------------------------------------------------ #
       # 3. Run the documentation agent                                      #
@@ -62,12 +61,12 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           FORCE_ALL: ${{ inputs.force_all || 'false' }}
           FORCE_REGENERATE_ALL_READMES: ${{ inputs.force_regenerate_all || 'false' }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
           # On a push event GitHub sets `github.event.before` to the SHA
           # that was the HEAD before the push.  The script uses this to
           # compute which packages changed.
           BEFORE_SHA: ${{ github.event.before }}
-          DOC_AGENT_MODEL: gpt-4o
+          DOC_AGENT_MODEL: claude-haiku-5-5
         run: python .github/scripts/doc_agent.py
 
       # ------------------------------------------------------------------ #
