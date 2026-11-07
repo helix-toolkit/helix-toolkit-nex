@@ -25,7 +25,7 @@ rather than mutating the ECS `World` directly. This splits an import into two ph
 | `ImportResult`         | Contains the root node of the imported scene, diagnostics, and the resource manifest. Implements `IDisposable`.                                                                    |
 | `ImportDiagnostic`     | A diagnostic entry with severity, message, and reference to the glTF element.                                                                                                      |
 | `DiagnosticSeverity`   | Severity level of a diagnostic (`Information`, `Warning`, `Error`).                                                                                                                |
-| `ImporterConfig`       | Configuration: default shading mode, Draco decompression, mesh instancing options, point-light mesh options, etc.                                                                  |
+| `ImporterConfig`       | Configuration: default shading mode, Draco decompression, mesh instancing options, point-light mesh options, winding order, etc.                                                   |
 | `ResourceManifest`     | Tracks all GPU resources created during import for disposal / readiness tracking.                                                                                                  |
 | `DirectionalLightInfo` | Directional light component attached to a node's entity (from `KHR_lights_punctual`).                                                                                              |
 | `RangeLightInfo`       | Point/spot light component attached to a node's entity (from `KHR_lights_punctual`).                                                                                               |
@@ -120,6 +120,7 @@ README; the glTF importer is its primary consumer.
 - **Draco compression**: Supports `KHR_draco_mesh_compression`; decode severity depends on whether the extension is listed in `extensionsRequired`.
 - **Lighting**: `KHR_lights_punctual` lights are resolved at record time (with diagnostics) and materialized during flush.
 - **Mesh Instancing**: Supports `EXT_mesh_gpu_instancing`, allowing efficient rendering of multiple instances of a mesh with varying transformations. This is controlled via `ImporterConfig.EnableMeshGpuInstancing`.
+- **Winding Order**: The `ImporterConfig.WindingOrder` property allows specifying the winding order for front-facing triangles, with options for counter-clockwise (CCW) and clockwise (CW) winding.
 
 ## Compatibility
 
