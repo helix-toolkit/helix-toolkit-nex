@@ -1,4 +1,5 @@
 using System.Numerics;
+using HelixToolkit.Nex.Graphics;
 using HelixToolkit.Nex.Material;
 using HelixToolkit.Nex.Maths;
 using HelixToolkit.Nex.Rendering;
@@ -70,6 +71,24 @@ internal class PropertiesPanel
                     }
                     Gui.EndCombo();
                 }
+                var winding = _app.ImportConfig.WindingOrder;
+                if (Gui.BeginCombo("Winding Order", winding.ToString()))
+                {
+                    foreach (var value in Enum.GetValues<WindingMode>())
+                    {
+                        var isSelected = value == winding;
+                        if (Gui.Selectable(value.ToString(), isSelected))
+                        {
+                            _app.ImportConfig.WindingOrder = value;
+                        }
+                        if (isSelected)
+                        {
+                            Gui.SetItemDefaultFocus();
+                        }
+                    }
+                    Gui.EndCombo();
+                }
+                Gui.TextDisabled("Applies to the next file loaded.");
                 Gui.Spacing();
                 var enableSSAO = _app.EnableSSAO;
                 if (Gui.Checkbox("Enable SSAO", ref enableSSAO))

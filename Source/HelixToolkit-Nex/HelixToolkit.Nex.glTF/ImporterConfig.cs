@@ -1,3 +1,4 @@
+using HelixToolkit.Nex.Graphics;
 using HelixToolkit.Nex.Shaders.Frag;
 
 namespace HelixToolkit.Nex.glTF;
@@ -54,6 +55,17 @@ public sealed class ImporterConfig
     /// <c>EXT_mesh_gpu_instancing</c> extension. Defaults to <see langword="true"/>.
     /// </summary>
     public bool EnableMeshGpuInstancing { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets the winding order that defines front-facing triangles in the output geometry.
+    /// Defaults to <see cref="WindingMode.CCW"/>, which is the glTF convention, so no change is made.
+    /// </summary>
+    /// <remarks>
+    /// When set to <see cref="WindingMode.CW"/>, the indices of every triangle-list primitive are
+    /// reversed on import. Non-indexed triangle lists are converted to indexed geometry.
+    /// Triangle strips are left unchanged.
+    /// </remarks>
+    public WindingMode WindingOrder { get; set; } = WindingMode.CCW;
 
     /// <summary>
     /// Gets a default configuration with standard settings.
