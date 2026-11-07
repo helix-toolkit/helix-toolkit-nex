@@ -100,7 +100,11 @@ public sealed class EnvironmentMapNode : RenderNode
 
     protected override bool CanRender(in RenderResources res)
     {
-        return _pipeline.Valid && res.RenderContext.EnvironmentMap.ShouldRender;
+        // Skipped in global wireframe mode: the depth pre-pass is not run, so the background
+        // would be drawn over the wireframe lines.
+        return _pipeline.Valid
+            && !res.RenderContext.RenderParams.EnableGlobalWireframe
+            && res.RenderContext.EnvironmentMap.ShouldRender;
     }
 
     protected override void OnSetupRender(in RenderResources res)
