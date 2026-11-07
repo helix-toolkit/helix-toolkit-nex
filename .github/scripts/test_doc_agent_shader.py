@@ -464,12 +464,12 @@ class TestMainCallsShaderPipeline:
     @patch("sys.argv", ["doc_agent.py"])
     @patch("doc_agent.get_changed_packages", return_value=[])
     @patch("doc_agent.get_all_packages", return_value=[])
-    @patch("doc_agent.get_openai_client")
+    @patch("doc_agent.get_client")
     @patch("doc_agent.generate_shader_util_docs", return_value=[])
     def test_main_calls_generate_shader_util_docs(
         self,
         mock_generate_shader_util_docs: MagicMock,
-        mock_get_openai_client: MagicMock,
+        mock_get_client: MagicMock,
         mock_get_all_packages: MagicMock,
         mock_get_changed_packages: MagicMock,
     ) -> None:
@@ -480,8 +480,8 @@ class TestMainCallsShaderPipeline:
         from doc_agent import main
 
         mock_client = MagicMock()
-        mock_get_openai_client.return_value = mock_client
+        mock_get_client.return_value = mock_client
 
         main()
 
-        mock_generate_shader_util_docs.assert_called_once_with(mock_client)
+        mock_generate_shader_util_docs.assert_called_once_with(mock_client, force=False)
