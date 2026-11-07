@@ -127,8 +127,7 @@ internal class PropertiesPanel
                     env.Enabled = envEnabled;
                 }
                 // Intensity/rotation/blur and the cubemap toggle also drive the PBR
-                // reflections, which are independent of the skybox background (Enabled),
-                // so gate them only on a valid cubemap being loaded.
+                // reflections; gate them on a valid cubemap being loaded.
                 Gui.BeginDisabled(!env.HasValidTexture);
                 var envIntensity = env.Intensity;
                 if (Gui.SliderFloat("Env Intensity", ref envIntensity, 0.0f, 5.0f))
