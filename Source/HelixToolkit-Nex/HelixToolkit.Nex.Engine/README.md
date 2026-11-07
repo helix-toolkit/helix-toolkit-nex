@@ -45,7 +45,7 @@ HelixToolkit.Nex.Engine is a core component of the HelixToolkit.Nex suite, respo
 | `LineDrawStream`              | Manages line draw commands, supporting dynamic and static data handling.        |
 | `LineDrawStreamRegistry`      | Registry for managing line draw streams.                                        |
 | `PickingRegistry`             | Manages picking handlers for different geometry types.                         |
-| `SkinningData`                | Collects skinned meshes each frame, uploads joint matrices and prepares the skinning dispatches. |
+| `SkinningData`                | Collects skinned meshes each frame, uploads joint matrices when world transforms change and prepares the skinning dispatches. |
 
 ## Usage Examples
 
