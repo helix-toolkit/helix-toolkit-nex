@@ -23,6 +23,20 @@ public sealed class AnimationSamplerTests
     }
 
     [TestMethod]
+    public void Constructor_CopiesArrays()
+    {
+        float[] times = [1f, 3f];
+        Vector4[] values = [V(0), V(10)];
+        var sampler = new AnimationSampler(times, values, AnimationInterpolation.Linear);
+
+        times[1] = 0f;
+        values[1] = V(100);
+
+        Assert.AreEqual(3f, sampler.EndTime);
+        Assert.AreEqual(V(5), sampler.Sample(2f));
+    }
+
+    [TestMethod]
     public void Linear_MultipleKeys_FindsSegment()
     {
         var sampler = new AnimationSampler(

@@ -27,8 +27,8 @@ public enum AnimationInterpolation
 /// <remarks>
 /// Values are stored as <see cref="Vector4"/>: translations and scales use XYZ, rotations store a
 /// quaternion as XYZW. For <see cref="AnimationInterpolation.CubicSpline"/> each keyframe stores three
-/// values (in-tangent, value, out-tangent), as in glTF. A sampler is immutable and may be shared by
-/// any number of channels.
+/// values (in-tangent, value, out-tangent), as in glTF. A sampler is immutable (it copies the arrays
+/// it is constructed with) and may be shared by any number of channels.
 /// </remarks>
 public sealed class AnimationSampler
 {
@@ -90,15 +90,17 @@ public sealed class AnimationSampler
                 nameof(values)
             );
         }
-        for (var i = 1; i < times.Length; ++i)
+        // Copy so later changes to the caller's arrays cannot alter a sampler shared by channels or
+        // break the sorted-times precondition validated below.
+        _times = [.. times];
+        _values = [.. values];
+        for (var i = 1; i < _times.Length; ++i)
         {
-            if (times[i] < times[i - 1])
+            if (_times[i] < _times[i - 1])
             {
                 throw new ArgumentException("Keyframe times must not decrease.", nameof(times));
             }
         }
-        _times = times;
-        _values = values;
         Interpolation = interpolation;
     }
 

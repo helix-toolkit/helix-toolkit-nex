@@ -113,6 +113,16 @@ internal sealed class VulkanStagingDevice : IDisposable
                         size = chunkSize,
                     };
                     VkPipelineStageFlags dstMask = VK.VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+                    // Storage and uniform buffers (including those read through buffer device
+                    // addresses) must be made visible to shader reads.
+                    if (buffer.VkUsageFlags.HasAllFlags(VK.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT))
+                    {
+                        barrier.dstAccessMask |= VK.VK_ACCESS_SHADER_READ_BIT;
+                    }
+                    if (buffer.VkUsageFlags.HasAllFlags(VK.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT))
+                    {
+                        barrier.dstAccessMask |= VK.VK_ACCESS_UNIFORM_READ_BIT;
+                    }
                     if (buffer.VkUsageFlags.HasAllFlags(VK.VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT))
                     {
                         dstMask |= VK.VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT;

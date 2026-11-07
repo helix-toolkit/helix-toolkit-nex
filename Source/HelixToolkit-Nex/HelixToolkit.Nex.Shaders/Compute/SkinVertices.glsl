@@ -1,6 +1,7 @@
 #include "HxHeaders/HeaderCompute.glsl"
 #include "HxHeaders/VertStruct.glsl"
 #include "HxHeaders/Skinning.glsl"
+#include "HxHeaders/Utils.glsl"
 
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
@@ -60,9 +61,10 @@ void main() {
     }
 
     GpuVertexProps props = SrcPropsBuffer(pc.value.srcPropsAddress).value[idx];
-    // Assumes joints carry no non-uniform scale; otherwise the inverse-transpose is required.
+    // Normals use the inverse-transpose so non-uniformly scaled joints keep them perpendicular;
+    // tangents lie in the surface and use the linear transform.
     mat3 skin3 = mat3(skin);
-    vec3 normal = skin3 * props.normal;
+    vec3 normal = normalMatrix(skin3) * props.normal;
     props.normal = dot(normal, normal) > 0.0 ? normalize(normal) : props.normal;
     vec3 tangent = skin3 * props.tangent.xyz;
     props.tangent.xyz = dot(tangent, tangent) > 0.0 ? normalize(tangent) : props.tangent.xyz;
