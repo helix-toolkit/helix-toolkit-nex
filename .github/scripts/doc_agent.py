@@ -359,7 +359,7 @@ def get_diff_for_package(
                  for s in DOC_RELEVANT_SUFFIXES]
     pathspecs += [":(exclude,glob)**/*.g.cs", ":(exclude,glob)**/*.Designer.cs"]
     diff = run_git(
-        "diff", "-w", "--ignore-blank-lines", "-U2", since_sha, "HEAD", "--", *pathspecs
+        "diff", "-U2", since_sha, "HEAD", "--", *pathspecs
     )
     if len(diff) > max_chars:
         diff = diff[:max_chars] + "\n... [diff truncated]"
@@ -375,8 +375,9 @@ def call_ai(client: "Anthropic", prompt: str) -> str:
         system=SYSTEM_PROMPT,
         messages=[{"role": "user", "content": prompt}],
         max_tokens=8192,
-        temperature=0,
     )
+    if response.stop_reason == "max_tokens":
+        raise RuntimeError("Documentation response reached max_tokens before completion.")
     return "".join(b.text for b in response.content if b.type == "text").strip()
 
 
@@ -392,7 +393,7 @@ def strip_code_fence(text: str) -> str:
 
 
 def normalize_for_compare(text: str) -> str:
-    return "\n".join(ln.rstrip() for ln in text.strip().splitlines())
+    return text.replace("\r\n", "\n").strip("\n")
 
 
 _FULL_README_PROMPT = """\
