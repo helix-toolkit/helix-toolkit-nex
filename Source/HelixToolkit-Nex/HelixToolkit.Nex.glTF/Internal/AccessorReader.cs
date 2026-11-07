@@ -658,24 +658,37 @@ internal sealed class AccessorReader
             for (int c = 0; c < componentCount; c++)
             {
                 int offset = byteOffset + i * stride + c * componentSize;
-                v[c] = accessor.ComponentType switch
-                {
-                    Accessor.ComponentTypeEnum.FLOAT => BitConverter.ToSingle(buffer, offset),
-                    Accessor.ComponentTypeEnum.BYTE => MathF.Max((sbyte)buffer[offset] / 127f, -1f),
-                    Accessor.ComponentTypeEnum.UNSIGNED_BYTE => buffer[offset] / 255f,
-                    Accessor.ComponentTypeEnum.SHORT => MathF.Max(
-                        BitConverter.ToInt16(buffer, offset) / 32767f,
-                        -1f
-                    ),
-                    Accessor.ComponentTypeEnum.UNSIGNED_SHORT => BitConverter.ToUInt16(buffer, offset)
-                        / 65535f,
-                    _ => BitConverter.ToUInt32(buffer, offset) / (float)uint.MaxValue,
-                };
+                v[c] = ReadNormalizedComponent(buffer, offset, accessor.ComponentType);
             }
             output[i] = new Vector4(v[0], v[1], v[2], v[3]);
         }
         error = null;
         return true;
+    }
+
+    /// <summary>
+    /// Reads one component as a float: FLOAT as is, integer types as normalized values
+    /// (signed types clamped to -1, per the glTF normalization rules).
+    /// </summary>
+    private static float ReadNormalizedComponent(
+        byte[] buffer,
+        int offset,
+        Accessor.ComponentTypeEnum componentType
+    )
+    {
+        return componentType switch
+        {
+            Accessor.ComponentTypeEnum.FLOAT => BitConverter.ToSingle(buffer, offset),
+            Accessor.ComponentTypeEnum.BYTE => MathF.Max((sbyte)buffer[offset] / 127f, -1f),
+            Accessor.ComponentTypeEnum.UNSIGNED_BYTE => buffer[offset] / 255f,
+            Accessor.ComponentTypeEnum.SHORT => MathF.Max(
+                BitConverter.ToInt16(buffer, offset) / 32767f,
+                -1f
+            ),
+            Accessor.ComponentTypeEnum.UNSIGNED_SHORT => BitConverter.ToUInt16(buffer, offset)
+                / 65535f,
+            _ => BitConverter.ToUInt32(buffer, offset) / (float)uint.MaxValue,
+        };
     }
 
     /// <summary>
@@ -712,8 +725,8 @@ internal sealed class AccessorReader
     }
 
     /// <summary>
-    /// Reads vertex color data (VEC3 or VEC4 FLOAT) into a FastList of Vector4.
-    /// For VEC3 data, alpha is set to 1.0.
+    /// Reads vertex color data (VEC3 or VEC4; FLOAT, or normalized UNSIGNED_BYTE or UNSIGNED_SHORT)
+    /// into a FastList of Vector4. For VEC3 data, alpha is set to 1.0.
     /// </summary>
     /// <param name="accessorIndex">The index of the accessor in the glTF model.</param>
     /// <param name="output">The output list to populate with color values.</param>
@@ -733,14 +746,18 @@ internal sealed class AccessorReader
         int byteOffset = GetByteOffset(accessorIndex);
         int stride = GetStride(accessorIndex);
         bool isVec4 = accessor.Type == Accessor.TypeEnum.VEC4;
+        var componentType = accessor.ComponentType;
+        int componentSize = GetComponentSize(componentType);
 
         for (int i = 0; i < accessor.Count; i++)
         {
             int offset = byteOffset + i * stride;
-            float r = BitConverter.ToSingle(buffer, offset);
-            float g = BitConverter.ToSingle(buffer, offset + 4);
-            float b = BitConverter.ToSingle(buffer, offset + 8);
-            float a = isVec4 ? BitConverter.ToSingle(buffer, offset + 12) : 1.0f;
+            float r = ReadNormalizedComponent(buffer, offset, componentType);
+            float g = ReadNormalizedComponent(buffer, offset + componentSize, componentType);
+            float b = ReadNormalizedComponent(buffer, offset + 2 * componentSize, componentType);
+            float a = isVec4
+                ? ReadNormalizedComponent(buffer, offset + 3 * componentSize, componentType)
+                : 1.0f;
             output.Add(new Vector4(r, g, b, a));
         }
     }
