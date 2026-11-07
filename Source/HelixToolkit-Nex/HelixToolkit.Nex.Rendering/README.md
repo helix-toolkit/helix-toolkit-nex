@@ -120,6 +120,14 @@ HelixToolkit.Nex.Rendering is responsible for managing the rendering pipeline of
 
 - **Optimization**: Simplified entity retrieval logic for wireframe draws.
 
+### EnvironmentMapConfig
+
+- **Master Switch Scope**: `Enabled` now also turns off PBR cubemap reflections. `ShouldRenderCubeMap` returns `true` only when `Enabled` and `RenderCubeMap` are both set and a valid cubemap texture is assigned. `RenderCubeMap` no longer operates independently of `Enabled`.
+
+### EnvironmentMapNode
+
+- **Global Wireframe**: The node is skipped when `RenderParams.EnableGlobalWireframe` is enabled, because the depth pre-pass does not run in that mode and the background would otherwise be drawn over the wireframe lines.
+
 ## Usage Examples
 
 ### Setting Up a Render Graph
