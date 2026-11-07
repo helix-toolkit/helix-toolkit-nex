@@ -1,4 +1,3 @@
-```markdown
 # HelixToolkit.Nex.Geometries
 
 The `HelixToolkit.Nex.Geometries` package is a core component of the HelixToolkit-Nex 3D graphics engine, designed to handle geometric data structures and operations. It provides functionality for managing, processing, and rendering geometric data, including vertices, indices, and vertex properties. This package is essential for creating and manipulating 3D models within the HelixToolkit-Nex engine.
@@ -52,6 +51,16 @@ geometry.UpdateNormals();
 TangentGenerator.ComputeTangents(geometry);
 ```
 
+### Generating Flat Normals
+
+```csharp
+var geometry = new Geometry(vertices, indices, Topology.Triangle);
+
+// Unwelds indexed triangles: vertices, vertex properties, vertex colors and joint
+// influences are duplicated per triangle corner and the indices become sequential.
+NormalGenerator.ComputeFlatNormals(geometry);
+```
+
 ### Performing a Hit Test
 
 ```csharp
@@ -100,12 +109,14 @@ var deserializedGeometry = JsonSerializer.Deserialize<Geometry>(json, options);
   - Updated buffer management logic to use `HasAllFlags` for checking buffer types.
   - Buffer debug names have been updated for clarity.
   - Removed redundant event publishing logic from property change handlers.
+  - Added joint influence support: `JointInfluences`, `JointInfluenceBuffer`, `IsSkinned`, and `GeometryBufferType.Skin`.
 - **GeometryManager API**: 
   - Introduced `UploadMeshInfoDynamic` method for uploading mesh information to the GPU.
   - Added `LastIndex` property to track the last object index in the pool.
 - **TangentGenerator Class**: 
   - New static class for generating tangent vectors for geometries using the Lengyel algorithm.
+- **NormalGenerator Class**: 
+  - New static class with `ComputeFlatNormals` for generating per-face normals. Indexed geometry is unwelded first, so its vertex count may change.
 - **Serialization**: 
   - Updated `VertexPropsJsonConverter` to handle `Vector4` tangents.
 - **Platform Configurations**: Added new build configurations for `LinuxDebug` and `LinuxRelease` to support cross-platform development.
-```
