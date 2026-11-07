@@ -1,4 +1,3 @@
-```markdown
 # HelixToolkit.Nex.Rendering
 
 HelixToolkit.Nex.Rendering is a comprehensive rendering package designed for the HelixToolkit-Nex 3D graphics engine. It provides a robust set of tools and components for rendering 3D scenes using the Vulkan API, leveraging advanced techniques such as Forward Plus lighting, GPU-based culling, and post-processing effects.
@@ -48,6 +47,7 @@ HelixToolkit.Nex.Rendering is responsible for managing the rendering pipeline of
 | `Skinning`                       | Binds a skinned mesh to its joint entities and owns the compute skinning buffers. |
 | `SkinningNode`                   | Skins all skinned meshes on the GPU (palette + vertex compute passes) in `RenderStage.Prepare`. |
 | `ISkinningData`                  | Provides the per-frame skinning dispatches (`SkinningDispatch`) to `SkinningNode`. |
+| `SkinningDispatch`               | Record struct pairing a `Skinning` with its bind-pose `Geometry` for one skinning dispatch. |
 
 ## Recent Changes
 
@@ -175,6 +175,9 @@ var meshDrawInfo = new MeshDrawInfo(
 - A `Skinning` holds the output of one geometry and must not be shared between mesh entities.
   Instanced skinned meshes share one pose across all instances.
 - `Skinning` and `Skeleton` own GPU buffers and must be disposed by their owner.
+- Each frame, skinned meshes are exposed to the render graph through `IRenderDataProvider.SkinningData`,
+  an `ISkinningData` whose `Dispatches` supply one `SkinningDispatch` per skinned mesh. It is `null`
+  when no skinning data provider is registered.
 
 ### Adding a Billboard Component
 
@@ -249,4 +252,3 @@ renderContext.EnvironmentMap = environmentMapConfig;
 - **Post-Processing**: Post-processing effects are modular and can be added or removed easily, allowing for customizable rendering pipelines.
 
 HelixToolkit.Nex.Rendering is designed to be both powerful and flexible, providing developers with the tools they need to create high-performance 3D applications.
-```

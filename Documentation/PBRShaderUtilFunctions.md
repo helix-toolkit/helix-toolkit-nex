@@ -1,115 +1,215 @@
 # psPBRTemplate.glsl Utility Functions
 
+## Material Access
+
+### `getPBRProperties`
+
 ```glsl
 PBRProperties getPBRProperties()
 ```
-- **Description**: Retrieves the PBR (Physically Based Rendering) properties for the current material. This function accesses the material buffer using the material ID to obtain the relevant material properties.
-- **Return Type**: `PBRProperties`
+
+Retrieves the PBR material properties for the current fragment. It casts `fpConst.materialBufferAddress` to a `MaterialBuffer` and returns the entry at `materialId`.
+
+**Return type:** `PBRProperties`
+
+## Timing
+
+### `getTimeMs`
 
 ```glsl
 uint64_t getTimeMs()
 ```
-- **Description**: Returns the current time in milliseconds. This can be used for animations or time-based effects within the shader.
-- **Return Type**: `uint64_t`
+
+Returns the current time in milliseconds from the fragment push constants (`fpConst.timeMs`).
+
+**Return type:** `uint64_t`
+
+## Camera and Transform Matrices
+
+Matrices returned by these functions are GLSL column-major. The C# side of the engine stores matrices row-major, so the values are uploaded to the shader accordingly.
+
+### `getViewProjection`
 
 ```glsl
 mat4 getViewProjection()
 ```
-- **Description**: Retrieves the view-projection matrix. This matrix is used to transform world coordinates into clip space coordinates.
-- **Return Type**: `mat4`
+
+Returns the combined view-projection matrix from `fpConst.viewProjection`.
+
+**Return type:** `mat4`
+
+### `getInvViewProjection`
 
 ```glsl
 mat4 getInvViewProjection()
 ```
-- **Description**: Retrieves the inverse of the view-projection matrix. This is useful for transforming clip space coordinates back into world coordinates.
-- **Return Type**: `mat4`
+
+Returns the inverse of the view-projection matrix from `fpConst.inverseViewProjection`. Useful for reconstructing world-space positions from screen-space or depth values.
+
+**Return type:** `mat4`
+
+### `getView`
 
 ```glsl
 mat4 getView()
 ```
-- **Description**: Returns the view matrix, which transforms world coordinates into view (camera) space coordinates.
-- **Return Type**: `mat4`
+
+Returns the view matrix from `fpConst.view`.
+
+**Return type:** `mat4`
+
+### `getInvView`
 
 ```glsl
 mat4 getInvView()
 ```
-- **Description**: Returns the inverse of the view matrix. This is used to transform view space coordinates back into world coordinates.
-- **Return Type**: `mat4`
+
+Returns the inverse view matrix from `fpConst.inverseView`.
+
+**Return type:** `mat4`
+
+## Camera and Screen Information
+
+### `getCameraPosition`
 
 ```glsl
 vec3 getCameraPosition()
 ```
-- **Description**: Retrieves the position of the camera in world space. This is often used for lighting calculations and view direction computations.
-- **Return Type**: `vec3`
+
+Returns the camera position in world space from `fpConst.cameraPosition`.
+
+**Return type:** `vec3`
+
+### `getScreenSize`
 
 ```glsl
 vec2 getScreenSize()
 ```
-- **Description**: Returns the dimensions of the screen or render target. This is useful for screen-space effects and calculations.
-- **Return Type**: `vec2`
 
-```glsl
-bool isPointerRingEnabled()
-```
-- **Description**: Checks if the pointer ring effect is enabled. This effect can be used for highlighting or selection feedback.
-- **Return Type**: `bool`
+Returns the render target dimensions from `fpConst.screenDimensions`.
 
-```glsl
-vec3 getPointerRayDirection()
-```
-- **Description**: Retrieves the direction of the pointer ray in world space. This is used for raycasting and intersection tests.
-- **Return Type**: `vec3`
+**Return type:** `vec2`
 
-```glsl
-vec3 getPointerRayOrigin()
-```
-- **Description**: Retrieves the origin of the pointer ray in world space. This is used in conjunction with the ray direction for raycasting.
-- **Return Type**: `vec3`
-
-```glsl
-float getPointerRingOuterDistThreshold()
-```
-- **Description**: Returns the outer distance threshold for the pointer ring effect. This defines the maximum distance at which the effect is visible.
-- **Return Type**: `float`
-
-```glsl
-float getPointerRingInnerDistThreshold()
-```
-- **Description**: Returns the inner distance threshold for the pointer ring effect. This defines the minimum distance at which the effect starts.
-- **Return Type**: `float`
-
-```glsl
-float getPointerRingColorMix()
-```
-- **Description**: Retrieves the mix factor for blending the pointer ring color with the underlying color. This controls the intensity of the effect.
-- **Return Type**: `float`
-
-```glsl
-vec3 getPointerRingColor()
-```
-- **Description**: Returns the color of the pointer ring effect. This color is used to blend with the underlying surface color when the effect is active.
-- **Return Type**: `vec3`
-
-```glsl
-float getFragToPointerRayDistance()
-```
-- **Description**: Computes the distance from the fragment's world position to the closest point on the pointer ray. This is used to determine if the fragment is within the pointer ring.
-- **Return Type**: `float`
-
-```glsl
-bool isInPointerRing()
-```
-- **Description**: Determines if the current fragment is within the pointer ring effect based on the computed distance to the pointer ray.
-- **Return Type**: `bool`
+### `getViewDirection`
 
 ```glsl
 vec3 getViewDirection()
 ```
-- **Description**: Computes the normalized view direction from the camera position to the fragment's world position. This is commonly used in lighting calculations.
-- **Return Type**: `vec3`
+
+Returns the normalized direction from the current fragment's world position toward the camera, computed as `normalize(getCameraPosition() - fragWorldPos)`.
+
+**Return type:** `vec3`
+
+## Pointer Ring
+
+The pointer ring is a screen-space visual indicator that highlights geometry near the pointer's ray. The functions below read its configuration from `fpConst.pointerRing`.
+
+### `isPointerRingEnabled`
+
+```glsl
+bool isPointerRingEnabled()
+```
+
+Returns `true` if the pointer ring is enabled (`fpConst.pointerRing.enabled != 0`).
+
+**Return type:** `bool`
+
+### `getPointerRayDirection`
+
+```glsl
+vec3 getPointerRayDirection()
+```
+
+Returns the pointer ray direction from `fpConst.pointerRing.rayDirection`.
+
+**Return type:** `vec3`
+
+### `getPointerRayOrigin`
+
+```glsl
+vec3 getPointerRayOrigin()
+```
+
+Returns the pointer ray origin from `fpConst.pointerRing.rayOrigin`.
+
+**Return type:** `vec3`
+
+### `getPointerRingOuterDistThreshold`
+
+```glsl
+float getPointerRingOuterDistThreshold()
+```
+
+Returns the outer distance threshold, the maximum fragment-to-ray distance that is still inside the ring. Read from `fpConst.pointerRing.outerDistThreshold`.
+
+**Return type:** `float`
+
+### `getPointerRingInnerDistThreshold`
+
+```glsl
+float getPointerRingInnerDistThreshold()
+```
+
+Returns the inner distance threshold, the minimum fragment-to-ray distance for the ring. Read from `fpConst.pointerRing.innerDistThreshold`.
+
+**Return type:** `float`
+
+### `getPointerRingColorMix`
+
+```glsl
+float getPointerRingColorMix()
+```
+
+Returns the blend factor used when mixing the ring color with the surface color. Read from `fpConst.pointerRing.colorMix`.
+
+**Return type:** `float`
+
+### `getPointerRingColor`
+
+```glsl
+vec3 getPointerRingColor()
+```
+
+Returns the base color of the pointer ring from `fpConst.pointerRing.color`.
+
+**Return type:** `vec3`
+
+### `getFragToPointerRayDistance`
+
+```glsl
+float getFragToPointerRayDistance()
+```
+
+Computes the shortest distance from the current fragment's world position to the pointer ray. The ray is treated as a half-line starting at the ray origin, so the closest point is clamped to the origin when the fragment lies behind it.
+
+**Return type:** `float`
+
+### `isInPointerRing`
+
+```glsl
+bool isInPointerRing()
+```
+
+Returns `true` if the current fragment's distance to the pointer ray lies between the inner and outer distance thresholds, inclusive.
+
+**Return type:** `bool`
+
+### `mixWithPointerRing`
 
 ```glsl
 vec4 mixWithPointerRing(in vec4 color)
 ```
-- **Description**: Blends the input color with the pointer ring color if the pointer ring effect is enabled and the fragment is within the ring. This function modulates the ring brightness based on the surface normal and view direction to achieve natural shading.
-- **Return Type**: `vec4`
+
+Blends the pointer ring color into the input color when the pointer ring is enabled and the fragment is within the ring. The blend amount is `getPointerRingColorMix()`, and only the RGB channels are modified. The alpha channel is preserved.
+
+When `EXCLUDE_MESH_PROPS` is not defined, the ring brightness is modulated by the surface normal relative to the view direction. The ring color is scaled by `mix(0.2, 1.0, NdotV)`, where `NdotV` is the clamped dot product of the normalized `fragNormal` and the view direction. This lets the ring shade naturally across curved geometry. When `EXCLUDE_MESH_PROPS` is defined, this shading is skipped and the base ring color is used directly.
+
+**Parameters:**
+
+| Name | Type | Qualifier | Description |
+|------|------|-----------|-------------|
+| `color` | `vec4` | `in` | The input surface color. |
+
+**Return type:** `vec4`
+
+<!-- source-hash: 5d1e502ea557467e -->
