@@ -224,4 +224,24 @@ public sealed class PixelBuffer
             }
         }
     }
+
+    /// <summary>
+    /// Gets a span over one row of pixels.
+    /// </summary>
+    /// <param name="y">The Y coordinate of the row.</param>
+    public unsafe Span<T> GetRowSpan<T>(int y)
+        where T : unmanaged
+    {
+        var sizeOfT = Marshal.SizeOf<T>();
+        var pixelPointer = (byte*)DataPointer + (y * RowStride);
+        var rowBytes = Width * PixelSize;
+
+        return new(pixelPointer, rowBytes / sizeOfT);
+    }
+
+    /// <summary>
+    /// Gets a span over one row of pixels.
+    /// </summary>
+    /// <param name="y">The Y coordinate of the row.</param>
+    public Span<byte> GetRowSpan(int y) => GetRowSpan<byte>(y);
 }

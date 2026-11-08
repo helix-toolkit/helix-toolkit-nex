@@ -123,7 +123,7 @@ public sealed class SkiaSharpDecoder : IImageDecoder
     /// <summary>
     /// Builds a SkiaSharp <see cref="SKBitmap"/> from a <see cref="PixelBuffer"/>.
     /// </summary>
-    private static unsafe SKBitmap ConvertToSKBitmap(PixelBuffer pb)
+    private static SKBitmap ConvertToSKBitmap(PixelBuffer pb)
     {
         var colorType = pb.Format switch
         {
@@ -139,14 +139,29 @@ public sealed class SkiaSharpDecoder : IImageDecoder
             _ => throw new ArgumentException("Unsupported format"),
         };
 
-        var bitmap = new SKBitmap(pb.Width, pb.Height, colorType, SKAlphaType.Unpremul);
+        var buffer = pb.GetPixels<byte>();
+        var handle = GCHandle.Alloc(buffer, GCHandleType.Pinned);
 
-        var srcSpan = new ReadOnlySpan<byte>((byte*)pb.DataPointer, pb.RowStride * pb.Height);
-        var dstSpan = bitmap.GetPixelSpan();
+        var info = new SKImageInfo(pb.Width, pb.Height, colorType, SKAlphaType.Unpremul);
+        var bitmap = new SKBitmap();
 
-        HxDebug.Assert(srcSpan.Length == dstSpan.Length);
-
-        srcSpan.CopyTo(dstSpan);
+        try
+        {
+            bitmap.InstallPixels(
+                info,
+                handle.AddrOfPinnedObject(),
+                pb.Width * pb.PixelSize,
+                delegate
+                {
+                    handle.Free();
+                }
+            );
+        }
+        catch
+        {
+            handle.Free();
+            throw;
+        }
 
         // Skia's encoders for various file formats do not all support the same color types.
         // Convert to a color type that every encoder supports first if needed.

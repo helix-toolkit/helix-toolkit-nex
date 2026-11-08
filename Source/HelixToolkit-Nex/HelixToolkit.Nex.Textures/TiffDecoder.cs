@@ -247,10 +247,9 @@ public sealed class TiffDecoder : IImageDecoder
     /// <summary>
     /// Converts one row of a <see cref="PixelBuffer"/> to RGBA and writes it to a byte buffer.
     /// </summary>
-    private static unsafe void ConvertRowToTif(PixelBuffer pb, int y, Span<byte> dest)
+    private static void ConvertRowToTif(PixelBuffer pb, int y, Span<byte> dest)
     {
-        var srcPtr = (byte*)pb.DataPointer + (y * pb.RowStride);
-        var src = new ReadOnlySpan<byte>(srcPtr, pb.RowStride);
+        var src = pb.GetRowSpan(y);
 
         switch (pb.Format)
         {

@@ -38,7 +38,7 @@ public sealed class BmpEncoder : IImageDecoder
 
         using var writer = new BinaryWriter(stream, Encoding.UTF8, leaveOpen: true);
 
-        var pixelDataSize = (uint)(pb.Width * pb.Height * 4);
+        var pixelDataSize = (uint)(pb.Width * pb.Height * pb.PixelSize);
         var pixelDataOffset = FileHeaderSize + InfoHeaderSize;
         var fileSize = pixelDataOffset + pixelDataSize;
 
@@ -81,14 +81,12 @@ public sealed class BmpEncoder : IImageDecoder
     private const uint FileHeaderSize = 14;
     private const uint InfoHeaderSize = 108;
 
-    private static unsafe void WritePixelData(BinaryWriter writer, PixelBuffer pb)
+    private static void WritePixelData(BinaryWriter writer, PixelBuffer pb)
     {
-        var buffer = new ReadOnlySpan<byte>((byte*)pb.DataPointer, pb.RowStride * pb.Height);
-
         // BMP rows are ordered bottom to top
         for (var y = pb.Height - 1; y >= 0; y--)
         {
-            var row = buffer.Slice(pb.RowStride * y, pb.RowStride);
+            var row = pb.GetRowSpan(y);
             writer.Write(row);
         }
     }
