@@ -1,4 +1,3 @@
-```markdown
 # HelixToolkit.Nex.Shaders
 
 The `HelixToolkit.Nex.Shaders` package is a comprehensive library for shader management and generation within the HelixToolkit-Nex 3D graphics engine. It provides tools and utilities for creating, compiling, and caching shaders, supporting advanced rendering techniques such as Forward Plus light culling, GPU-based frustum culling, and various post-processing effects.
@@ -43,6 +42,8 @@ This package is integral to the HelixToolkit-Nex engine, facilitating the creati
 | `GpuSkinning`                 | Generates the bone skinning compute shaders (`Compute/SkinPalette.glsl`, `Compute/SkinVertices.glsl`). |
 | `GpuJointInfluence`           | Struct with four joint indices and blend weights per vertex.                |
 | `SkinPalettePC` / `SkinVertexPC` | Push constants for the skinning palette and vertex skinning passes.      |
+| `BoneLine`                    | Struct describing a single bone for skeleton visualization in world space: `start`, `end`, and `color`. Generated from `Vert/vsBoneLine.glsl`. |
+| `BoneLinePushConstant`        | Struct for push constants for the bone visualization vertex shader, including `bonesAddress`, `fpConstAddress`, `style` (0 = line, 1 = arrow, 2 = octahedral), and `headSize`. Generated from `Vert/vsBoneLine.glsl`. |
 | `MeshDraw`                    | Mesh draw command; `skinnedVertexBufferAddress`/`skinnedVertexPropsBufferAddress` redirect vertex fetch to skinned output when non-zero. |
 
 ## Usage Examples
@@ -109,4 +110,3 @@ if (!cache.TryGet(cacheKey, out var entry))
 ## Compatibility
 
 - **Target Framework**: Updated to .NET 9.0 to leverage the latest language features and performance improvements.
-```
