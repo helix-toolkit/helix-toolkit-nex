@@ -146,9 +146,9 @@ public static class TestImage
         var img = Image.New2D(width, height, 1, format);
         var pb = img.GetPixelBuffer(0, 0);
 
-        for (var y = 0; y < pb.Width; y++)
+        for (var x = 0; x < pb.Width; x++)
         {
-            for (var x = 0; x < pb.Height; x++)
+            for (var y = 0; y < pb.Height; y++)
             {
                 var color = Quantize8Bit(getColor(x, y, pb.Width, pb.Height));
                 var pixel = colorToPixel(color);
