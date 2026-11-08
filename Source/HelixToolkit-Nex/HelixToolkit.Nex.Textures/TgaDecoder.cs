@@ -115,10 +115,13 @@ public sealed class TgaDecoder : IImageDecoder
         writer.Write(ImageDescriptor);
     }
 
-    private static unsafe void WriteTgaImageData(BinaryWriter writer, PixelBuffer pb, WritePixelsAction writePixels)
+    private static void WriteTgaImageData(BinaryWriter writer, PixelBuffer pb, WritePixelsAction writePixels)
     {
-        var buffer = new ReadOnlySpan<byte>((byte*)pb.DataPointer, pb.RowStride * pb.Height);
-        writePixels(writer, buffer);
+        for (var y = 0; y < pb.Height; y++)
+        {
+            var row = pb.GetRowSpan(y);
+            writePixels(writer, row);
+        }
     }
 
     private static void WritePixelsRgba(BinaryWriter writer, ReadOnlySpan<byte> buffer)

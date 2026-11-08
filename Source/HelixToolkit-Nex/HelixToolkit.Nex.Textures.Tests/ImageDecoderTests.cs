@@ -42,20 +42,20 @@ public class ImageDecoderTests
             // Verify decoded pixel data matches the expected data exactly
             var expectedPb = expected.GetPixelBuffer(0, 0);
             var loadedPb = loaded.GetPixelBuffer(0, 0);
-            var pixelCount = expectedPb.Width * expectedPb.Height;
-            unsafe
+
+            Assert.AreEqual(4, expectedPb.PixelSize);
+            Assert.AreEqual(4, loadedPb.PixelSize);
+
+            for (var y = 0; y < expectedPb.Height; y++)
             {
-                var expectedPixels = new ReadOnlySpan<Rgba8Pixel>((void*)expectedPb.DataPointer, pixelCount);
-                var loadedPixels = new ReadOnlySpan<Rgba8Pixel>((void*)loadedPb.DataPointer, pixelCount);
+                var expectedRow = expectedPb.GetRowSpan<Rgba8Pixel>(y);
+                var loadedRow = loadedPb.GetRowSpan<Rgba8Pixel>(y);
 
-                for (var i = 0; i < expectedPixels.Length; i++)
+                for (var x = 0; x < expectedPb.Width; x++)
                 {
-                    var x = i % expectedPb.Width;
-                    var y = i / expectedPb.Width;
-
                     Assert.AreEqual(
-                        expectedPixels[i],
-                        loadedPixels[i],
+                        expectedRow[x],
+                        loadedRow[x],
                         $"{fileType}: pixel ({x},{y}) mismatch"
                     );
                 }
