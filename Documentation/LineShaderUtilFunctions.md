@@ -1,238 +1,365 @@
 # psLineTemplate.glsl Utility Functions
 
-### Vertex Attribute Accessors
+## Texture and Vertex Attribute Accessors
 
-#### `getUV`
+### `vec2 getUV()`
 
 ```glsl
 vec2 getUV()
 ```
 
-Returns the interpolated texture coordinates (`v_uv`) for the current fragment.
+Returns the interpolated texture coordinates passed from the vertex stage (`v_uv`).
 
 **Return type:** `vec2`
 
-#### `getColor`
+---
+
+### `vec4 getColor()`
 
 ```glsl
 vec4 getColor()
 ```
 
-Returns the interpolated vertex color (`v_color`) for the current fragment.
+Returns the interpolated vertex color (`v_color`).
 
 **Return type:** `vec4`
 
-#### `getLineWidth`
+---
+
+### `float getLineWidth()`
 
 ```glsl
 float getLineWidth()
 ```
 
-Returns the screen-size value (`v_screenSize`) passed from the vertex stage for the current line primitive.
+Returns the interpolated screen-space size value (`v_screenSize`) that the vertex stage supplies for the line.
 
 **Return type:** `float`
 
-#### `getTextureId`
+---
+
+### `uint getTextureId()`
 
 ```glsl
 uint getTextureId()
 ```
 
-Returns the texture index (`v_textureIndex`) associated with the current fragment, used to identify the texture to sample.
+Returns the texture index (`v_textureIndex`) associated with the fragment.
 
 **Return type:** `uint`
 
-#### `getSamplerId`
+---
+
+### `uint getSamplerId()`
 
 ```glsl
 uint getSamplerId()
 ```
 
-Returns the sampler index (`v_samplerIndex`) associated with the current fragment, used to identify the sampler to use.
+Returns the sampler index (`v_samplerIndex`) associated with the fragment.
 
 **Return type:** `uint`
 
-### Frame Constant Accessors
+---
 
-These functions read from the `fpConst` frame constant data. Matrix values are column-major, as is standard for GLSL. The C# side of the engine stores matrices in row-major order, so layout conversion is handled at the boundary.
+## Frame Constant Accessors
 
-#### `getTimeMs`
+These functions read per-frame data from the `fpConst` push constant block.
+
+### `uint64_t getTimeMs()`
 
 ```glsl
 uint64_t getTimeMs()
 ```
 
-Returns the current time in milliseconds from `fpConst.timeMs`.
+Returns the frame time in milliseconds (`fpConst.timeMs`).
 
 **Return type:** `uint64_t`
 
-#### `getViewProjection`
+---
+
+### `mat4 getViewProjection()`
 
 ```glsl
 mat4 getViewProjection()
 ```
 
-Returns the combined view-projection matrix from `fpConst.viewProjection`.
+Returns the combined view-projection matrix (`fpConst.viewProjection`).
 
 **Return type:** `mat4`
 
-#### `getInvViewProjection`
+---
+
+### `mat4 getInvViewProjection()`
 
 ```glsl
 mat4 getInvViewProjection()
 ```
 
-Returns the inverse view-projection matrix from `fpConst.inverseViewProjection`. Useful for reconstructing world-space positions from screen-space coordinates.
+Returns the inverse view-projection matrix (`fpConst.inverseViewProjection`).
 
 **Return type:** `mat4`
 
-#### `getView`
+---
+
+### `mat4 getView()`
 
 ```glsl
 mat4 getView()
 ```
 
-Returns the view matrix from `fpConst.view`.
+Returns the view matrix (`fpConst.view`).
 
 **Return type:** `mat4`
 
-#### `getInvView`
+---
+
+### `mat4 getInvView()`
 
 ```glsl
 mat4 getInvView()
 ```
 
-Returns the inverse view matrix from `fpConst.inverseView`.
+Returns the inverse view matrix (`fpConst.inverseView`).
 
 **Return type:** `mat4`
 
-#### `getCameraPosition`
+---
+
+### `vec3 getCameraPosition()`
 
 ```glsl
 vec3 getCameraPosition()
 ```
 
-Returns the camera position from `fpConst.cameraPosition`.
+Returns the camera position in world space (`fpConst.cameraPosition`).
 
 **Return type:** `vec3`
 
-#### `getScreenSize`
+---
+
+### `vec2 getScreenSize()`
 
 ```glsl
 vec2 getScreenSize()
 ```
 
-Returns the screen dimensions from `fpConst.screenDimensions`.
+Returns the render target dimensions in pixels (`fpConst.screenDimensions`).
 
 **Return type:** `vec2`
 
-### Pointer Ring Accessors
+---
 
-These functions read pointer ring configuration from `fpConst.pointerRing`.
+## Pointer Ring Accessors
 
-#### `isPointerRingEnabled`
+These functions read the pointer ring settings from `fpConst.pointerRing`.
+
+### `bool isPointerRingEnabled()`
 
 ```glsl
 bool isPointerRingEnabled()
 ```
 
-Returns `true` when the pointer ring feature is enabled, that is, when `fpConst.pointerRing.enabled` is nonzero.
+Returns `true` when the pointer ring feature is enabled, that is, when `fpConst.pointerRing.enabled` is non-zero.
 
 **Return type:** `bool`
 
-#### `getPointerRayDirection`
+---
+
+### `vec3 getPointerRayDirection()`
 
 ```glsl
 vec3 getPointerRayDirection()
 ```
 
-Returns the pointer ray direction from `fpConst.pointerRing.rayDirection`.
+Returns the world-space direction of the pointer ray (`fpConst.pointerRing.rayDirection`). The value is not normalized by this function.
 
 **Return type:** `vec3`
 
-#### `getPointerRayOrigin`
+---
+
+### `vec3 getPointerRayOrigin()`
 
 ```glsl
 vec3 getPointerRayOrigin()
 ```
 
-Returns the pointer ray origin from `fpConst.pointerRing.rayOrigin`.
+Returns the world-space origin of the pointer ray (`fpConst.pointerRing.rayOrigin`).
 
 **Return type:** `vec3`
 
-#### `getPointerRingOuterDistThreshold`
+---
+
+### `float getPointerRingOuterDistThreshold()`
 
 ```glsl
 float getPointerRingOuterDistThreshold()
 ```
 
-Returns the outer distance threshold from `fpConst.pointerRing.outerDistThreshold`. Fragments farther from the pointer ray than this value are outside the ring.
+Returns the maximum fragment-to-ray distance that still falls inside the ring (`fpConst.pointerRing.outerDistThreshold`).
 
 **Return type:** `float`
 
-#### `getPointerRingInnerDistThreshold`
+---
+
+### `float getPointerRingInnerDistThreshold()`
 
 ```glsl
 float getPointerRingInnerDistThreshold()
 ```
 
-Returns the inner distance threshold from `fpConst.pointerRing.innerDistThreshold`. Fragments closer to the pointer ray than this value are inside the inner edge of the ring.
+Returns the minimum fragment-to-ray distance that falls inside the ring (`fpConst.pointerRing.innerDistThreshold`).
 
 **Return type:** `float`
 
-#### `getPointerRingColorMix`
+---
+
+### `float getPointerRingColorMix()`
 
 ```glsl
 float getPointerRingColorMix()
 ```
 
-Returns the blend factor from `fpConst.pointerRing.colorMix` that controls how strongly the ring color is blended into the fragment color.
+Returns the blend factor used when mixing the ring color into the fragment color (`fpConst.pointerRing.colorMix`).
 
 **Return type:** `float`
 
-#### `getPointerRingColor`
+---
+
+### `vec3 getPointerRingColor()`
 
 ```glsl
 vec3 getPointerRingColor()
 ```
 
-Returns the pointer ring color from `fpConst.pointerRing.color`.
+Returns the RGB color of the pointer ring (`fpConst.pointerRing.color`).
 
 **Return type:** `vec3`
 
-### Pointer Ring Computation
+---
 
-#### `getFragToPointerRayDistance`
+### `float getFragToPointerRayDistance()`
 
 ```glsl
 float getFragToPointerRayDistance()
 ```
 
-Computes the shortest distance from the current fragment's world position (`v_fragWorldPos`) to the pointer ray. The projection parameter is clamped to zero, so the ray is treated as a half-line that starts at the ray origin and extends in the ray direction. Points behind the origin are measured to the origin itself.
+Computes the distance from the fragment's world position (`v_fragWorldPos`) to the pointer ray. The ray direction is normalized internally. The closest point is clamped to the ray origin (`t >= 0`), so the function measures distance to a ray rather than an infinite line.
 
 **Return type:** `float`
 
-#### `isInPointerRing`
+---
+
+### `bool isInPointerRing()`
 
 ```glsl
 bool isInPointerRing()
 ```
 
-Returns `true` when the fragment's distance to the pointer ray lies within the closed interval `[innerDistThreshold, outerDistThreshold]`, meaning the fragment falls inside the ring band.
+Returns `true` when the fragment's distance to the pointer ray lies within the inclusive range `[innerDistThreshold, outerDistThreshold]`.
 
 **Return type:** `bool`
 
-#### `mixWithPointerRing`
+---
+
+### `vec4 mixWithPointerRing(in vec4 color)`
 
 ```glsl
 vec4 mixWithPointerRing(in vec4 color)
 ```
 
-Applies the pointer ring highlight to an input color. When the pointer ring is enabled and the fragment is inside the ring band, the RGB channels are linearly interpolated toward the ring color by the color mix factor. The alpha channel is left unchanged. If either condition is false, the input color is returned unmodified.
-
-**Parameters:**
-- `color` (`in vec4`): The input fragment color.
+Blends the pointer ring color into the RGB channels of `color` when the ring is enabled and the fragment lies within it. The blend uses `getPointerRingColorMix()`. The alpha channel is unchanged. If the condition is not met, the input color is returned unmodified.
 
 **Return type:** `vec4`
 
-<!-- source-hash: e38a66d55a91bcda -->
+---
+
+## Line Rendering Functions
+
+### `const float LINE_OUTSIDE`
+
+```glsl
+const float LINE_OUTSIDE = 1e30;
+```
+
+Sentinel distance value returned by `getLineShapeDistance()` when a join assigns the fragment to the neighboring segment. This is a constant, not a function.
+
+---
+
+### `vec2 getFragLinePx()`
+
+```glsl
+vec2 getFragLinePx()
+```
+
+Converts the fragment position from `gl_FragCoord` into line pixel space. The result is centered on the viewport origin, with +Y pointing up, which matches the coordinate system used by `vsLine.glsl`. The conversion inverts the Y-flipped viewport. Because both segments of a joint derive their position from `gl_FragCoord`, they compute bit-identical positions for the shared bisector test.
+
+**Return type:** `vec2`
+
+---
+
+### `bool isBeyondJoin(uint mode, vec2 q, vec2 u, vec2 v, bool isSegmentEnd)`
+
+```glsl
+bool isBeyondJoin(uint mode, vec2 q, vec2 u, vec2 v, bool isSegmentEnd)
+```
+
+Determines whether the fragment lies on the neighboring segment's side of a join's angle bisector.
+
+- `mode`: the end mode of this segment at the joint.
+- `q`: the fragment position relative to the joint.
+- `u`: this segment's direction out of the joint.
+- `v`: the neighbor's direction away from the joint.
+- `isSegmentEnd`: selects the comparison strictness.
+
+The function returns `false` if `mode` is not a line join mode. Otherwise it evaluates `dot(q, u + v)`. The segment end uses `>= 0.0`, and the segment start uses `> 0.0`. This opposite strictness assigns a fragment that lies exactly on the bisector to exactly one of the two segments.
+
+**Return type:** `bool`
+
+---
+
+### `float shapeLineEnd(float d, uint mode, vec2 q, vec2 u, vec2 v, float halfWidth)`
+
+```glsl
+float shapeLineEnd(float d, uint mode, vec2 q, vec2 u, vec2 v, float halfWidth)
+```
+
+Applies one end's cap or join shape to the body distance `d`. The parameters `q`, `u`, and `v` follow the same meaning as in `isBeyondJoin`. The `mode` parameter selects the shape:
+
+| Mode | Behavior |
+|---|---|
+| `LINE_END_BUTT` | Flat cut at the endpoint. |
+| `LINE_END_SQUARE` | Flat cut extended by `halfWidth`. |
+| `LINE_END_ROUND`, `LINE_END_ROUND_JOIN` | Semicircular cap or round join. |
+| `LINE_END_BEVEL_JOIN` | Straight bevel across the outer corners. A straight continuation (`u == v`) returns `d` unchanged. |
+| Any other value (miter) | Returns `d` unchanged. The body strip extended to the bisector forms the miter tip. |
+
+**Return type:** `float`
+
+---
+
+### `float getLineShapeDistance()`
+
+```glsl
+float getLineShapeDistance()
+```
+
+Computes the signed distance, in pixels, from the fragment to the edge of this segment's share of the stroke. The result includes caps and joins. Negative values are inside the stroke.
+
+The function reads the segment geometry from `v_segPx`, `v_dirHw`, `v_adjDir`, and `v_endModes`. It returns `LINE_OUTSIDE` when a join assigns the fragment to a neighboring segment. The half width is interpolated along the segment. This allows the two ends to differ in world render space.
+
+**Return type:** `float`
+
+---
+
+### `float getLineCoverage()`
+
+```glsl
+float getLineCoverage()
+```
+
+Returns anti-aliased coverage for the stroke shape. The function computes `clamp(0.5 - getLineShapeDistance(), 0.0, 1.0)`, which gives a 1-pixel ramp centered on the edge. The result is 1.0 inside the stroke and 0.0 outside it.
+
+**Return type:** `float`
+
+<!-- source-hash: ce0bb5d0929b2d1a -->
