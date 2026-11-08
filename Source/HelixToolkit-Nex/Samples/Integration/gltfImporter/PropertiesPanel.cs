@@ -4,6 +4,7 @@ using HelixToolkit.Nex.Material;
 using HelixToolkit.Nex.Maths;
 using HelixToolkit.Nex.Rendering;
 using HelixToolkit.Nex.Rendering.Components;
+using HelixToolkit.Nex.Rendering.PostEffects;
 using HelixToolkit.Nex.Scene;
 using HelixToolkit.Nex.Shaders.Frag;
 using ImGuiNET;
@@ -112,6 +113,43 @@ internal class PropertiesPanel
                 var wireframe = _renderContext.RenderParams.EnableGlobalWireframe;
                 Gui.Checkbox("Wireframe Mode", ref wireframe);
                 _renderContext.RenderParams.EnableGlobalWireframe = wireframe;
+                if (_app.HasSkeleton)
+                {
+                    var showSkeleton = _app.ShowSkeleton;
+                    if (Gui.Checkbox("Show Skeleton", ref showSkeleton))
+                    {
+                        _app.ShowSkeleton = showSkeleton;
+                    }
+                    var skeleton = _app.SkeletonEffect;
+                    Gui.BeginDisabled(!showSkeleton);
+                    if (Gui.BeginCombo("Bone Style", skeleton.Style.ToString()))
+                    {
+                        foreach (var value in Enum.GetValues<BoneStyle>())
+                        {
+                            var isSelected = value == skeleton.Style;
+                            if (Gui.Selectable(value.ToString(), isSelected))
+                            {
+                                skeleton.Style = value;
+                            }
+                            if (isSelected)
+                            {
+                                Gui.SetItemDefaultFocus();
+                            }
+                        }
+                        Gui.EndCombo();
+                    }
+                    var headSize = skeleton.HeadSize;
+                    if (Gui.SliderFloat("Bone Head Size", ref headSize, 0.05f, 0.5f))
+                    {
+                        skeleton.HeadSize = headSize;
+                    }
+                    var depthTest = skeleton.UseDepthTest;
+                    if (Gui.Checkbox("Bone Depth Test", ref depthTest))
+                    {
+                        skeleton.UseDepthTest = depthTest;
+                    }
+                    Gui.EndDisabled();
+                }
 
                 Gui.Spacing();
                 Gui.Separator();

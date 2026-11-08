@@ -28,6 +28,7 @@ HelixToolkit.Nex.Rendering is responsible for managing the rendering pipeline of
 | `Renderer`                       | Manages the lifecycle and execution of render nodes.                        |
 | `RenderParams`                   | Contains render parameters including background color and other settings.   |
 | `BoundingBoxPostEffect`          | Renders wireframe bounding boxes for debugging purposes.                    |
+| `SkeletonPostEffect`             | Draws the bones of skinned meshes as lines, arrows or octahedra (`BoneStyle`), optionally without depth test. |
 | `WireframePostEffect`            | Renders wireframe overlays on meshes with customizable color and depth bias.|
 | `BorderHighlightPostEffect`      | Renders colored outlines around mesh silhouettes.                           |
 | `RenderGraphResourceAllocationException` | Exception thrown when a render-graph resource fails to allocate. |

@@ -63,6 +63,25 @@ internal class GltfImporterApp : ApplicationBase
     // Environment map (skybox) cubemap, owned by the resource manager's texture repository.
     private TextureRef _environmentMap = TextureRef.Null;
 
+    /// <summary>
+    /// Gets whether the current model has a skinned mesh whose skeleton can be displayed.
+    /// </summary>
+    public bool HasSkeleton { get; private set; }
+
+    /// <summary>
+    /// Gets the post effect drawing the bones of skinned meshes.
+    /// </summary>
+    public SkeletonPostEffect SkeletonEffect => _skeletonEffect;
+
+    /// <summary>
+    /// Gets or sets whether the bones of skinned meshes are drawn.
+    /// </summary>
+    public bool ShowSkeleton
+    {
+        set => _skeletonEffect.Enabled = value;
+        get => _skeletonEffect.Enabled;
+    }
+
     public bool EnableSSAO
     {
         set => _ssaoPostEffect!.Enabled = value;
@@ -93,6 +112,7 @@ internal class GltfImporterApp : ApplicationBase
 
     // Post effects
     private readonly BorderHighlightPostEffect _borderHighlight = new();
+    private readonly SkeletonPostEffect _skeletonEffect = new();
 
     // Layout constants
     private const float ScenePanelWidth = 250f;
@@ -175,6 +195,7 @@ internal class GltfImporterApp : ApplicationBase
             .WithPostEffects(effects =>
             {
                 effects.AddEffect(_borderHighlight);
+                effects.AddEffect(_skeletonEffect);
             })
             .Build();
 
@@ -683,6 +704,8 @@ internal class GltfImporterApp : ApplicationBase
         // Compute bounding volume and frame the camera
         ComputeBoundsAndFrameCamera(_currentModelRoot!);
 
+        MarkSkinnedMeshes();
+
         // Play the first animation, if any.
         _animations = result.Animations;
         _selectedAnimation = 0;
@@ -787,11 +810,33 @@ internal class GltfImporterApp : ApplicationBase
     }
 
     /// <summary>
+    /// Adds a skeleton overlay to every skinned mesh so <see cref="SkeletonPostEffect"/> draws its bones.
+    /// </summary>
+    private void MarkSkinnedMeshes()
+    {
+        var world = _worldDataProvider!.World;
+        var skinned = new List<HelixToolkit.Nex.ECS.Entity>();
+        foreach (var entity in world.GetComponentEntities<MeshDrawInfo>())
+        {
+            if (entity.Get<MeshDrawInfo>().Skinning is not null)
+            {
+                skinned.Add(entity);
+            }
+        }
+        foreach (var entity in skinned)
+        {
+            entity.Set(SkeletonPostEffect.SkeletonOverlay.Default);
+        }
+        HasSkeleton = skinned.Count > 0;
+    }
+
+    /// <summary>
     /// Disposes the currently loaded model's root node and all its children,
     /// releasing ECS entities and GPU resources tracked by the import manifest.
     /// </summary>
     private void DisposeCurrentModel()
     {
+        HasSkeleton = false;
         if (_currentModelRoot is null)
             return;
         _animationPlayer.Stop();
