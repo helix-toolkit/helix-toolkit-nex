@@ -29,6 +29,8 @@ HelixToolkit.Nex.Rendering is responsible for managing the rendering pipeline of
 | `RenderParams`                   | Contains render parameters including background color and other settings.   |
 | `BoundingBoxPostEffect`          | Renders wireframe bounding boxes for debugging purposes.                    |
 | `SkeletonPostEffect`             | Draws the bones of skinned meshes as lines, arrows or octahedra (`BoneStyle`), optionally without depth test. |
+| `SkeletonPostEffect.SkeletonOverlay` | Marks a skinned mesh entity for bone visualization and sets the bone color. |
+| `BoneStyle`                      | Enumerates the shapes used to draw bones: `Line`, `Arrow`, and `Octahedral`. |
 | `WireframePostEffect`            | Renders wireframe overlays on meshes with customizable color and depth bias.|
 | `BorderHighlightPostEffect`      | Renders colored outlines around mesh silhouettes.                           |
 | `RenderGraphResourceAllocationException` | Exception thrown when a render-graph resource fails to allocate. |
@@ -76,6 +78,7 @@ HelixToolkit.Nex.Rendering is responsible for managing the rendering pipeline of
 - **SysEncodingKind**: Added to enumerate alternate encodings for system-specific rendering.
 - **SsaoMath**: Added to provide GPU-free reference implementations of SSAO effect math, including parameter validation and depth/normal reconstruction.
 - **LineDrawInfo Enhancements**: Added `TextureIndex` and `SamplerIndex` properties for bindless texture and sampler support.
+- **SkeletonPostEffect**: Added to visualize skeleton bones of skinned meshes as lines, arrows, or octahedra. Bones are drawn on top of the scene by default; `UseDepthTest`, `Style` (`BoneStyle`), and `HeadSize` control depth testing and bone shape.
 
 ### Removed Features
 
@@ -238,6 +241,25 @@ boundingBoxEffect.Apply(renderResources, ref readSlot, ref writeSlot);
 ```csharp
 var borderHighlightEffect = new BorderHighlightPostEffect();
 borderHighlightEffect.Apply(renderResources, ref readSlot, ref writeSlot);
+```
+
+### Visualizing Skeletons
+
+`SkeletonPostEffect` draws one line segment per joint, from the joint's parent to the joint, for every
+skinned mesh entity that carries a `SkeletonPostEffect.SkeletonOverlay` component. Attach the overlay
+to the skinned mesh entity with your ECS world's component-add API.
+
+```csharp
+var skeletonEffect = new SkeletonPostEffect
+{
+    Style = BoneStyle.Octahedral, // BoneStyle.Line, BoneStyle.Arrow (default), or BoneStyle.Octahedral
+    HeadSize = 0.15f,             // Fraction of bone length in [0, 1]; defaults to 0.2
+    UseDepthTest = false          // Default: bones are drawn on top of the scene
+};
+
+// Mark the skinned mesh entity for visualization with a custom color
+// (SkeletonOverlay.Default is a yellow overlay):
+var overlay = new SkeletonPostEffect.SkeletonOverlay(new Color4(0f, 1f, 0f, 1f));
 ```
 
 ### Configuring Environment Map
