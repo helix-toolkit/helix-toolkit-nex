@@ -76,4 +76,56 @@ public sealed class LineTextureIndicesTests
         Assert.AreEqual(textureIndex, draw.TextureId);
         Assert.AreEqual(samplerIndex, draw.SamplerId);
     }
+
+    /// <summary>
+    /// Verifies that a new <see cref="LineNode"/> uses butt caps, miter joins and a miter limit of
+    /// 4, and that cap, join and miter limit set through the node reach the generated
+    /// <c>LineDraw</c> record.
+    /// </summary>
+    [TestMethod]
+    public void LineNode_CapJoinAndMiterLimit_ArePropagatedToGpuDrawData()
+    {
+        using var context = new MockContext();
+        Assert.AreEqual(ResultCode.Ok, context.Initialize());
+
+        using World world = World.CreateWorld();
+        using var geometryManager = new GeometryManager(context);
+        using var drawStream = new LineDrawStream(
+            context,
+            world,
+            DrawStreamType.Line,
+            DrawStreamName.StaticHitable
+        );
+
+        var geometry = new Geometry(
+            [
+                new Vector4(0, 0, 0, 1),
+                new Vector4(1, 0, 0, 1),
+                new Vector4(1, 0, 0, 1),
+                new Vector4(1, 1, 0, 1),
+            ],
+            Topology.Line
+        );
+        Assert.IsTrue(geometryManager.Add(geometry).Valid);
+
+        var node = new LineNode(world, "Polyline") { Geometry = geometry };
+        Assert.AreEqual(LineCap.Butt, node.Cap);
+        Assert.AreEqual(LineJoin.Miter, node.Join);
+        Assert.AreEqual(4.0f, node.MiterLimit);
+
+        node.Cap = LineCap.Round;
+        node.Join = LineJoin.Bevel;
+        node.MiterLimit = 2.5f;
+
+        Assert.AreEqual(ResultCode.Ok, drawStream.Initialize());
+        drawStream.EntityAdded(node.Entity);
+        Assert.IsTrue(drawStream.Update());
+
+        var (draw, slotIndex) = drawStream.GetDraw(node.Entity);
+        Assert.IsTrue(slotIndex >= 0);
+        Assert.AreEqual((uint)LineCap.Round, draw.LineCap);
+        Assert.AreEqual((uint)LineJoin.Bevel, draw.LineJoin);
+        Assert.AreEqual(2.5f, draw.MiterLimit);
+        Assert.AreEqual(2u, draw.LineCount);
+    }
 }

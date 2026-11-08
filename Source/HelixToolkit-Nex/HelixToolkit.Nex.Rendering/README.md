@@ -46,6 +46,8 @@ HelixToolkit.Nex.Rendering is responsible for managing the rendering pipeline of
 | `EnvironmentMapConfig`           | Configures environment-map (skybox) rendering for a render context.         |
 | `EnvironmentMapNode`             | Renders an HDR environment cubemap as the scene background (skybox).        |
 | `RenderSpace`                    | Specifies the space in which a draw primitive's size/thickness is measured. |
+| `LineCap`                        | Shape of unconnected line segment ends: `Butt`, `Square`, `Round`.          |
+| `LineJoin`                       | How connected line segments are joined: `None`, `Miter`, `Bevel`, `Round`.  |
 | `Skeleton`                       | Shared skinning asset holding the inverse bind matrices of a joint hierarchy. |
 | `Skinning`                       | Binds a skinned mesh to its joint entities and owns the compute skinning buffers. |
 | `SkinningNode`                   | Skins all skinned meshes on the GPU (palette + vertex compute passes) in `RenderStage.Prepare`. |
@@ -56,6 +58,8 @@ HelixToolkit.Nex.Rendering is responsible for managing the rendering pipeline of
 
 ### New Features
 
+- **Line caps and joins**: `LineDrawInfo` gained `Cap` (`LineCap`, default `Butt`), `Join` (`LineJoin`, default `Miter`) and `MiterLimit` (default 4, SVG `stroke-miterlimit` semantics). Line geometry stays a list of disjoint 2-vertex segments; the line shader treats consecutive segments as connected when the end vertex of one equals the start vertex of the next (and the last segment with the first, for closed loops). Connected segments are split along the joint's angle bisector, so translucent lines no longer overlap or leave gaps at corners. Edge anti-aliasing and the cap/join shape are applied in the line fragment template's `main()` for every line material, so custom `OutputColorImplementation` code no longer needs to feather the edge. Set `Join = LineJoin.None` to render every segment independently.
+- **LineDrawInfo defaults**: Added an explicit parameterless constructor so `new LineDrawInfo { ... }` applies the documented property defaults (`LineColor = White`, `LineThickness = 1`, `Join = Miter`, …) instead of zero-initializing the struct.
 - **RenderSpace**: Introduced to specify the space in which a draw primitive's size/thickness is measured, replacing the `FixedSize` boolean with a more descriptive enum.
 - **BillboardHelper**: Updated to use `RenderSpace` instead of `FixedSize` for determining the size interpretation of billboards.
 - **LineDrawInfo**: Added `RenderSpace` property to determine how line thickness is interpreted.

@@ -38,6 +38,9 @@ internal sealed class LineDrawStream : DrawStreamBase<LineDraw, LineDrawInfo>
             TextureId = lineComp.TextureIndex,
             SamplerId = lineComp.SamplerIndex,
             RenderSpace = (uint)lineComp.RenderSpace,
+            LineCap = (uint)lineComp.Cap,
+            LineJoin = (uint)lineComp.Join,
+            MiterLimit = lineComp.MiterLimit,
         };
     }
 

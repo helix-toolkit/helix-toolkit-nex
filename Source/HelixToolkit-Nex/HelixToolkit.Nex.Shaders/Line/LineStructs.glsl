@@ -20,6 +20,11 @@ struct LineDraw {
     uint textureId;
     uint samplerId;
     uint renderSpace; // 0 = Screen (fixed pixel width), 1 = World (world-space diameter, distance-scaled)
+
+    uint lineCap;     // Cap style of unconnected segment ends: 0 = Butt, 1 = Square, 2 = Round.
+    uint lineJoin;    // Join style between connected segments: 0 = None (independent quads), 1 = Miter, 2 = Bevel, 3 = Round.
+    float miterLimit; // Maximum miter length / line width ratio; sharper miter joins fall back to bevel.
+    uint _padding0;
 };
 
 /// Push constants for the line render vertex/fragment shaders.

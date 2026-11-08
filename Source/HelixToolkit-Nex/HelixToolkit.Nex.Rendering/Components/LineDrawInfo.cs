@@ -7,6 +7,13 @@ public struct LineDrawInfo(
     bool hitable = true
 )
 {
+    /// <summary>
+    /// Creates a line draw info with default property values. Without this constructor,
+    /// <c>new LineDrawInfo()</c> would zero-initialize the struct and skip the property initializers.
+    /// </summary>
+    public LineDrawInfo()
+        : this(null) { }
+
     public Geometry? Geometry { get; set; } = geometry;
     public Color4 LineColor { set; get; } = Color4.White;
 
@@ -25,6 +32,26 @@ public struct LineDrawInfo(
     /// projected to screen space (<see cref="RenderSpace.World"/>).
     /// </summary>
     public RenderSpace RenderSpace { set; get; } = RenderSpace.Screen;
+
+    /// <summary>
+    /// Gets or sets the shape of segment ends that are not connected to another segment.
+    /// Defaults to <see cref="LineCap.Butt"/>.
+    /// </summary>
+    public LineCap Cap { set; get; } = LineCap.Butt;
+
+    /// <summary>
+    /// Gets or sets how connected segments are joined. Consecutive segments are connected when the
+    /// end vertex of one equals the start vertex of the next. Defaults to <see cref="LineJoin.Miter"/>;
+    /// <see cref="LineJoin.None"/> renders every segment independently.
+    /// </summary>
+    public LineJoin Join { set; get; } = LineJoin.Miter;
+
+    /// <summary>
+    /// Gets or sets the maximum ratio of miter length to line width for <see cref="LineJoin.Miter"/>
+    /// joins; sharper joins fall back to a bevel (same meaning as SVG <c>stroke-miterlimit</c>).
+    /// Values below 1 are treated as 1. Defaults to 4.
+    /// </summary>
+    public float MiterLimit { set; get; } = 4.0f;
 
     /// <summary>
     /// Gets or sets the index of the bindless texture used when rendering lines.
