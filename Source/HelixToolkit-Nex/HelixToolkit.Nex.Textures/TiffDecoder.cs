@@ -211,6 +211,10 @@ public sealed class TiffDecoder : IImageDecoder
 
             // TiffRgbaImage does not check for floating point data and will read it as unsigned
             // integers instead. Override the put delegates with ones that do support floats.
+            // Note that for Photometric.MINISBLACK and Photometric.MINISWHITE, it is possible
+            // for an image to also have an alpha channel, but LibTiff.NET does not currently
+            // support this, and Format has no gray + alpha formats, so we cannot test if if we
+            // were to add support ourselves.
             case SampleFormat.IEEEFP:
                 switch (img.BitsPerSample)
                 {
@@ -432,12 +436,13 @@ public sealed class TiffDecoder : IImageDecoder
     )
     {
         int samplesPerPixel = img.SamplesPerPixel;
+        bufferShift *= samplesPerPixel;
+
+        var wp = MemoryMarshal.Cast<byte, Half>(buffer.AsSpan(offset));
+        var wpPos = 0;
 
         while (height-- > 0)
         {
-            var wp = MemoryMarshal.Cast<byte, Half>(buffer.AsSpan(offset));
-            var wpPos = 0;
-
             for (x = width; x-- > 0;)
             {
                 var v = HalfToByte(wp[wpPos]);
@@ -449,7 +454,7 @@ public sealed class TiffDecoder : IImageDecoder
             }
 
             rasterOffset += rasterShift;
-            offset += bufferShift;
+            wpPos += bufferShift;
         }
     }
 
@@ -472,12 +477,13 @@ public sealed class TiffDecoder : IImageDecoder
     )
     {
         int samplesPerPixel = img.SamplesPerPixel;
+        bufferShift *= samplesPerPixel;
+
+        var wp = MemoryMarshal.Cast<byte, Half>(buffer.AsSpan(offset));
+        var wpPos = 0;
 
         while (height-- > 0)
         {
-            var wp = MemoryMarshal.Cast<byte, Half>(buffer.AsSpan(offset));
-            var wpPos = 0;
-
             for (x = width; x-- > 0;)
             {
                 var v = 255 - HalfToByte(wp[wpPos]);
@@ -489,7 +495,7 @@ public sealed class TiffDecoder : IImageDecoder
             }
 
             rasterOffset += rasterShift;
-            offset += bufferShift;
+            wpPos += bufferShift;
         }
     }
 
