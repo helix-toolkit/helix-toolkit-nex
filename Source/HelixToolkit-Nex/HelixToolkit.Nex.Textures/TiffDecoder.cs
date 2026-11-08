@@ -136,14 +136,14 @@ public sealed class TiffDecoder : IImageDecoder
         var width = tif.GetField(TiffTag.IMAGEWIDTH)[0].ToInt();
         var height = tif.GetField(TiffTag.IMAGELENGTH)[0].ToInt();
 
-        var image = Image.New2D(width, height, 1, Format.RGBA_UN8);
-        var pb = image.GetPixelBuffer(0, 0);
-
         var raster = ReadRgbaImage(tif, width, height);
         if (raster is null)
         {
             return null;
         }
+
+        var image = Image.New2D(width, height, 1, Format.RGBA_UN8);
+        var pb = image.GetPixelBuffer(0, 0);
 
         var srcSpan = MemoryMarshal.Cast<int, byte>(raster);
         var dstSpan = new Span<byte>((byte*)pb.DataPointer, pb.RowStride * pb.Height);
