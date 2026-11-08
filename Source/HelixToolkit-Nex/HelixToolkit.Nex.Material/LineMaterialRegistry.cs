@@ -43,7 +43,9 @@ public sealed class LineMaterialRegistration : IMaterialRegistration
     public string? AdditionalCode { get; init; }
 
     /// <summary>
-    /// Gets the blend configuration for the color attachment. If null, the default blend state (opaque) is used.
+    /// Gets the blend configuration for the color attachment. If null, the default straight-alpha
+    /// blend state (SrcAlpha / OneMinusSrcAlpha) is used. The line template multiplies only the
+    /// alpha of the material color by the anti-aliased cap / join coverage, which assumes straight alpha.
     /// No need to set <see cref="ColorAttachment.Format"/>. The pipeline will use the format of the render target's color attachment.
     /// </summary>
     public ColorAttachment? BlendConfig { get; init; } = null;

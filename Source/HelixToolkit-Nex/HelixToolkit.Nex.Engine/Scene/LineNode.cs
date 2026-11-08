@@ -88,6 +88,43 @@ public class LineNode : Node
     }
 
     /// <summary>
+    /// Gets or sets the shape of segment ends that are not connected to another segment.
+    /// </summary>
+    public LineCap Cap
+    {
+        get => Entity.Get<LineDrawInfo>().Cap;
+        set
+        {
+            Entity.Update<LineDrawInfo>((ref LineDrawInfo comp) => comp.Cap = value);
+        }
+    }
+
+    /// <summary>
+    /// Gets or sets how connected segments (end vertex of one equal to the start vertex of the
+    /// next) are joined.
+    /// </summary>
+    public LineJoin Join
+    {
+        get => Entity.Get<LineDrawInfo>().Join;
+        set
+        {
+            Entity.Update<LineDrawInfo>((ref LineDrawInfo comp) => comp.Join = value);
+        }
+    }
+
+    /// <summary>
+    /// Gets or sets the miter length / line width ratio above which miter joins fall back to bevel.
+    /// </summary>
+    public float MiterLimit
+    {
+        get => Entity.Get<LineDrawInfo>().MiterLimit;
+        set
+        {
+            Entity.Update<LineDrawInfo>((ref LineDrawInfo comp) => comp.MiterLimit = value);
+        }
+    }
+
+    /// <summary>
     /// Gets or sets the index of the bindless texture used when rendering the line.
     /// </summary>
     public uint TextureIndex

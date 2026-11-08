@@ -261,6 +261,7 @@ camera.FocusOn(new Vector3(0, 0, 0), 10f);
 ### Updates to `LineDrawStream`
 
 - Added `TextureId`, `SamplerId`, and `RenderSpace` properties to `LineDrawStream` and `LineNode` for bindless texture and sampler support, and to specify whether line thickness is interpreted in screen space or world space.
+- Added `Cap`, `Join`, and `MiterLimit` properties to `LineNode`; `LineDrawStream` copies them into the `LineCap`, `LineJoin`, and `MiterLimit` fields of the GPU `LineDraw` record. Consecutive segments whose shared vertex is identical are joined (miter by default).
 
 ### Updates to `PointDrawStream`
 

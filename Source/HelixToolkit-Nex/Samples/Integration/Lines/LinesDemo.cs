@@ -25,7 +25,7 @@ using Viewport = HelixToolkit.Nex.ImGui.Viewport;
 /// Comprehensive GPU line rendering demo, mirroring the Points sample:
 /// - Multiple line entities (axes, grid, helix, wireframe box, animated wave)
 /// - GPU picking (click a line set to select its entity)
-/// - ImGui controls for line width, color, material, enable/disable
+/// - ImGui controls for line width, color, cap / join style, material, enable/disable
 /// - Orbit camera
 /// <para>
 /// All line geometry is built as a LINE LIST of DISJOINT 2-vertex segments:
@@ -66,6 +66,9 @@ internal sealed class LinesDemo : IDisposable
 
     // Custom line material types registered by this demo
     private string[] _materialTypes = [];
+
+    private static readonly string[] _capNames = Enum.GetNames<LineCap>();
+    private static readonly string[] _joinNames = Enum.GetNames<LineJoin>();
 
     public ImGuiRenderer? ImGui => _imGuiRenderer;
 
@@ -145,9 +148,9 @@ internal sealed class LinesDemo : IDisposable
     /// Registers several custom line material shaders to demonstrate the
     /// <see cref="LineMaterialRegistry"/> extensibility.
     /// <para>
-    /// Each body REPLACES the template's outputColor(); the built-in "Default" does NOT
-    /// feather or premultiply, so every custom body does its own edge feathering across the
-    /// line width (v_uv.y in [-1,1]) and premultiplied-alpha output.
+    /// Each body REPLACES the template's outputColor(). The template's main() always applies
+    /// the anti-aliased cap / join coverage afterwards; these bodies additionally feather across
+    /// the line width (v_uv.y in [-1,1]) for a softer look and output premultiplied alpha.
     /// </para>
     /// </summary>
     private void RegisterCustomLineMaterials()
@@ -284,6 +287,17 @@ internal sealed class LinesDemo : IDisposable
             "Dashed",
             thickness: 2f
         );
+
+        // 6. Zigzag — sharp, semi-transparent polyline to compare cap / join styles. Connected
+        // segments are joined without overlap, so the translucent corners show no dark seams.
+        AddLineSet(
+            "Zigzag",
+            GenerateZigzag(10, 2f, 3f, new Vector3(-10, 6, 12)),
+            new Color4(0.3f, 0.8f, 1f, 0.6f),
+            "Default",
+            thickness: 16f
+        );
+        _lineSets[^1].Node.Cap = LineCap.Round;
     }
 
     private void AddLineSet(
@@ -418,6 +432,21 @@ internal sealed class LinesDemo : IDisposable
         };
         for (int e = 0; e < 12; e++)
             AddSegment(geo, v[edges[e, 0]], v[edges[e, 1]], c, c);
+        return geo;
+    }
+
+    private Geometry GenerateZigzag(int segments, float step, float amplitude, Vector3 origin)
+    {
+        // Polyline emitted as disjoint segments that duplicate the shared vertex, which is what
+        // the line shader detects as a connection for joins.
+        var geo = new Geometry();
+        var c = Vector4.One;
+        for (int i = 0; i < segments; i++)
+        {
+            var a = origin + new Vector3(i * step, (i % 2) * amplitude, 0);
+            var b = origin + new Vector3((i + 1) * step, ((i + 1) % 2) * amplitude, 0);
+            AddSegment(geo, a, b, c, c);
+        }
         return geo;
     }
 
@@ -695,6 +724,21 @@ internal sealed class LinesDemo : IDisposable
                         )
                     )
                         entry.Node.LineThickness = entry.Thickness;
+
+                    int cap = (int)entry.Node.Cap;
+                    if (Gui.Combo("Cap", ref cap, _capNames, _capNames.Length))
+                        entry.Node.Cap = (LineCap)cap;
+
+                    int join = (int)entry.Node.Join;
+                    if (Gui.Combo("Join", ref join, _joinNames, _joinNames.Length))
+                        entry.Node.Join = (LineJoin)join;
+
+                    if (entry.Node.Join == LineJoin.Miter)
+                    {
+                        float miterLimit = entry.Node.MiterLimit;
+                        if (Gui.SliderFloat("Miter Limit", ref miterLimit, 1f, 10f))
+                            entry.Node.MiterLimit = miterLimit;
+                    }
 
                     if (
                         Gui.Combo(
