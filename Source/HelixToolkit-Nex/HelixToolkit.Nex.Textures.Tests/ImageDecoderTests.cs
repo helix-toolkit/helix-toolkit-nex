@@ -1,4 +1,7 @@
+using System.Runtime.InteropServices;
+using BitMiracle.LibTiff.Classic;
 using HelixToolkit.Nex.Graphics;
+using HelixToolkit.Nex.Maths;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace HelixToolkit.Nex.Textures.Tests;
@@ -61,6 +64,34 @@ public class ImageDecoderTests
                 }
             }
         }
+    }
+
+    private static byte[] CreateTiffPremultipliedAlpha(int width, int height, Color color)
+    {
+        using var stream = new MemoryStream();
+        using var tif = Tiff.ClientOpen("in-memory", "w", stream, new TiffStream());
+
+        tif.SetField(TiffTag.IMAGEWIDTH, width);
+        tif.SetField(TiffTag.IMAGELENGTH, height);
+        tif.SetField(TiffTag.ROWSPERSTRIP, height);
+        tif.SetField(TiffTag.ORIENTATION, Orientation.TOPLEFT);
+        tif.SetField(TiffTag.PLANARCONFIG, PlanarConfig.CONTIG);
+        tif.SetField(TiffTag.PHOTOMETRIC, Photometric.RGB);
+        tif.SetField(TiffTag.BITSPERSAMPLE, 8);
+        tif.SetField(TiffTag.SAMPLESPERPIXEL, 4);
+        tif.SetField(TiffTag.EXTRASAMPLES, 1, new short[] { (short)ExtraSample.ASSOCALPHA });
+
+        var row = new byte[width * 4];
+        MemoryMarshal.Cast<byte, int>(row.AsSpan()).Fill(color.ToRgba());
+
+        for (var y = 0; y < height; y++)
+        {
+            tif.WriteScanline(row, y);
+        }
+
+        tif.Close();
+
+        return stream.ToArray();
     }
 
     // -------------------------------------------------------------------------
@@ -192,5 +223,59 @@ public class ImageDecoderTests
         using var loaded = Image.Load(ms);
         Assert.IsNotNull(loaded);
         Assert.AreEqual(Format.RGBA_UN8, loaded!.Description.Format);
+    }
+
+    // -------------------------------------------------------------------------
+    // Tests for TIFF files with features not used in round-trip test
+    // -------------------------------------------------------------------------
+
+    public static IEnumerable<(Color Premul, Color Straight)> PremultipliedColors =>
+    [
+        // A = 0 should not divide by zero
+        (new(0, 0, 0, 0), new(0, 0, 0, 0)),
+
+        // A = 255 should not modify RGB
+        (new(0, 0, 0, 255), new(0, 0, 0, 255)),
+        (new(32, 128, 255, 255), new(32, 128, 255, 255)),
+
+        // 0 < A < 255 should rescale RGB
+        (new(16, 64, 128, 128), new(32, 128, 255, 128)),
+
+        // RGB values larger than A should clamp to 255
+        (new(16, 64, 128, 80), new(51, 204, 255, 80)),
+        (new(16, 64, 128, 1), new(255, 255, 255, 1)),
+    ];
+
+    [TestMethod]
+    [DynamicData(nameof(PremultipliedColors), DynamicDataSourceType.Property)]
+    public void Load_Tiff_AssociatedAlphaConvertsToStraight(Color premul, Color expected)
+    {
+        // Create an image with multiple pixels of the same color with premultiplied alpha.
+        var width = 4;
+        var height = 2;
+        var fileBuffer = CreateTiffPremultipliedAlpha(width, height, premul);
+
+        // Decode it and check that every pixel was converted to straight alpha.
+        using var stream = new MemoryStream(fileBuffer);
+        using var loaded = Image.Load(stream);
+
+        Assert.IsNotNull(loaded);
+        Assert.AreEqual(TextureDimension.Texture2D, loaded!.Description.Dimension);
+        Assert.AreEqual(width, loaded.Description.Width);
+        Assert.AreEqual(height, loaded.Description.Height);
+        Assert.AreEqual(Format.RGBA_UN8, loaded.Description.Format);
+
+        var pb = loaded.GetPixelBuffer(0, 0);
+
+        for (var x = 0; x < pb.Width; x++)
+        {
+            for (var y = 0; y < pb.Height; y++)
+            {
+                var pixel = pb.GetPixel<Rgba8Pixel>(x, y);
+                var actual = new Color(pixel.R, pixel.G, pixel.B, pixel.A);
+
+                Assert.AreEqual(expected, actual, $"pixel ({x},{y}) mismatch");
+            }
+        }
     }
 }

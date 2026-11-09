@@ -178,9 +178,56 @@ public sealed class TiffDecoder : IImageDecoder
             return null;
         }
 
+        // The result should use straight alpha. OverridePutDelegates ensures that images
+        // with straight alpha are read as-is, but images that contain premultiplied alpha
+        // need to be converted to straight alpha.
+        if (img.Alpha == ExtraSample.ASSOCALPHA)
+        {
+            PremultipliedToStraight(MemoryMarshal.Cast<int, Rgba8Pixel>(raster));
+        }
+
         return raster;
     }
 
+    /// <summary>
+    /// Converts colors with premultiplied alpha back to straight alpha.
+    /// </summary>
+    private static void PremultipliedToStraight(Span<Rgba8Pixel> buffer)
+    {
+        foreach (ref var pixel in buffer)
+        {
+            if (pixel.A == 255)
+            {
+                continue;
+            }
+
+            if (pixel.A == 0)
+            {
+                pixel.R = 0;
+                pixel.G = 0;
+                pixel.B = 0;
+            }
+            else
+            {
+                pixel.R = PremultipliedToStraight(pixel.R, pixel.A);
+                pixel.G = PremultipliedToStraight(pixel.G, pixel.A);
+                pixel.B = PremultipliedToStraight(pixel.B, pixel.A);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Converts a single color component with premultiplied alpha back to straight alpha.
+    /// </summary>
+    /// <param name="c">The color component to convert.</param>
+    /// <param name="a">The pixel's alpha value.</param>
+    private static byte PremultipliedToStraight(byte c, byte a) => (byte)Math.Min(255, ((c * 255) + (a / 2)) / a);
+
+    /// <summary>
+    /// Modifies <see cref="TiffRgbaImage.PutContig"/> and <see cref="TiffRgbaImage.PutSeparate"/>
+    /// as necessary to read images with straight alpha as-is instead of premultiplying and to
+    /// support some floating point image types.
+    /// </summary>
     private static void OverridePutDelegates(Tiff tif, TiffRgbaImage img)
     {
         var result = tif.GetFieldDefaulted(TiffTag.SAMPLEFORMAT);
