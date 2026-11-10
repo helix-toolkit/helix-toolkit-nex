@@ -1,4 +1,3 @@
-```markdown
 # HelixToolkit.Nex.Textures
 
 The `HelixToolkit.Nex.Textures` package is a comprehensive suite for handling texture data within the HelixToolkit-Nex 3D graphics engine. It provides functionality for loading, manipulating, and saving various image formats, as well as creating GPU textures from CPU-side image data. This package is essential for developers working with textures in 3D graphics applications using the HelixToolkit-Nex engine.
@@ -18,6 +17,7 @@ This package integrates seamlessly with the HelixToolkit-Nex engine, leveraging 
 
 | Type                 | Description                                                                      |
 | -------------------- | -------------------------------------------------------------------------------- |
+| `BmpEncoder`         | Sealed BMP encoder (`Instance` singleton). Saves 32-bit RGBA/BGRA; decoding throws `NotSupportedException`. |
 | `ChannelComponent`   | Enum identifying a single color channel within a pixel.                          |
 | `ChannelSource`      | Abstract class describing the source of a channel value for texture combination. |
 | `DDSCodec`           | Internal static class for handling DDS image format encoding and decoding.       |
@@ -27,6 +27,19 @@ This package integrates seamlessly with the HelixToolkit-Nex engine, leveraging 
 | `OmrTextureCombiner` | Class for combining multiple PBR source images into a single OMR texture.        |
 | `PitchCalculator`    | Static utility for computing row pitch, slice pitch, and mipmap level counts.    |
 | `TextureCreator`     | Static utility for creating GPU textures from CPU-side image data.               |
+
+## Supported File Formats
+
+| `ImageFileType` | Load | Save | Notes                                                        |
+| --------------- | ---- | ---- | ------------------------------------------------------------ |
+| `Dds`           | Yes  | Yes  | Native DDS codec.                                            |
+| `Png`           | Yes  | Yes  | Decoded and encoded via SkiaSharp.                           |
+| `Jpg`           | Yes  | Yes  | Decoded and encoded via SkiaSharp.                           |
+| `Webp`          | Yes  | Yes  | Decoded and encoded via SkiaSharp.                           |
+| `Bmp`           | Yes  | Yes  | Loaded via SkiaSharp; saved via `BmpEncoder` (RGBA/BGRA sources). |
+| `Gif`           | Yes  | No   | Decode only. Saving throws `NotSupportedException`.          |
+| `Tiff`          | Yes  | Yes  | Dedicated TIFF decoder/encoder.                              |
+| `Tga`           | Yes  | Yes  | Dedicated TGA decoder/encoder.                               |
 
 ## Usage Examples
 
@@ -40,6 +53,27 @@ Image? image = Image.Load("texture.png");
 if (image != null)
 {
     image.Save("texture.dds", ImageFileType.Dds);
+}
+```
+
+### Accessing Pixel Rows
+
+`PixelBuffer.GetRowSpan` returns a span over one row of pixels, which avoids manual pointer arithmetic. The row span covers `Width * PixelSize` bytes starting at the row's start, so padding bytes between rows (`RowStride`) are excluded.
+
+```csharp
+Image? image = Image.Load("texture.png");
+if (image != null)
+{
+    using (image)
+    {
+        PixelBuffer pb = image.GetPixelBuffer(0, 0);
+
+        // Byte view of the first row
+        Span<byte> bytes = pb.GetRowSpan(0);
+
+        // Typed view of the same row (T must be unmanaged)
+        Span<uint> pixels = pb.GetRowSpan<uint>(0);
+    }
 }
 ```
 
@@ -135,4 +169,3 @@ These configurations allow for building and testing the package on Linux environ
 ## Target Framework
 
 The package now targets `.NET 9.0`, ensuring compatibility with the latest features and improvements in the .NET ecosystem.
-```
