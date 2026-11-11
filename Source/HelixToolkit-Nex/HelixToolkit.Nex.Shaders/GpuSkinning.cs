@@ -1,7 +1,7 @@
 namespace HelixToolkit.Nex.Shaders;
 
 /// <summary>
-/// Compute shaders used for GPU bone skinning.
+/// Compute shaders used for GPU vertex deformation: bone skinning and morph targets.
 /// </summary>
 public static class GpuSkinning
 {
@@ -9,6 +9,20 @@ public static class GpuSkinning
     public const string SkinVerticesShaderPath = "Compute/SkinVertices.glsl";
 
     public const uint WorkGroupSize = 64;
+
+    /// <summary>
+    /// <see cref="SkinVertexPC.Flags"/> bit: the geometry has generated flat normals with the
+    /// vertices of each triangle stored consecutively; the face normals are recomputed from the
+    /// morphed triangles. Matches <c>SKIN_VERTEX_FLAG_FLAT_NORMALS</c>.
+    /// </summary>
+    public const uint FlagFlatNormals = 1;
+
+    /// <summary>
+    /// <see cref="SkinVertexPC.Flags"/> bit: the geometry has generated (not authored) tangents,
+    /// which are kept consistent with the morphed surface. Matches
+    /// <c>SKIN_VERTEX_FLAG_GENERATED_TANGENTS</c>.
+    /// </summary>
+    public const uint FlagGeneratedTangents = 2;
 
     public enum Pass : uint
     {
@@ -18,7 +32,7 @@ public static class GpuSkinning
         Palette = 0,
 
         /// <summary>
-        /// Skins the vertices with the palette: one thread per vertex.
+        /// Applies the morph targets, then skins the vertices with the palette: one thread per vertex.
         /// </summary>
         Vertices,
     }

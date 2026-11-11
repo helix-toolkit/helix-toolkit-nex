@@ -11,8 +11,8 @@ public static class NormalGenerator
     /// <summary>
     /// Computes flat normals for <paramref name="geometry"/> in-place. Each triangle gets its own
     /// three vertices, so an indexed geometry is unwelded first: vertices, vertex properties, vertex
-    /// colors and joint influences are duplicated per triangle corner and the indices become
-    /// sequential. Normals follow the counter-clockwise winding of the triangle indices.
+    /// colors, joint influences and morph target deltas are duplicated per triangle corner and the
+    /// indices become sequential. Normals follow the counter-clockwise winding of the triangle indices.
     /// </summary>
     /// <remarks>
     /// Does nothing unless the topology is <see cref="Topology.Triangle"/> and the geometry has at
@@ -62,6 +62,7 @@ public static class NormalGenerator
             propArray[i + 1].Normal = normal;
             propArray[i + 2].Normal = normal;
         }
+        geometry.HasFlatNormals = true;
     }
 
     private static void Unweld(Geometry geometry)
@@ -75,6 +76,11 @@ public static class NormalGenerator
         var colors = CreatePerCorner(geometry.VertexColors, vertexCount, cornerCount);
         var influences = CreatePerCorner(geometry.JointInfluences, vertexCount, cornerCount);
         var newIndices = new FastList<uint>(cornerCount);
+        var morphTargets = new FastList<MorphTarget>(geometry.MorphTargets.Count);
+        foreach (var target in geometry.MorphTargets)
+        {
+            morphTargets.Add(new MorphTarget(target.Name));
+        }
 
         for (var t = 0; t < cornerCount; t += 3)
         {
@@ -86,9 +92,9 @@ public static class NormalGenerator
             {
                 continue;
             }
-            AddCorner(geometry, (int)i0, vertices, props, colors, influences, newIndices);
-            AddCorner(geometry, (int)i1, vertices, props, colors, influences, newIndices);
-            AddCorner(geometry, (int)i2, vertices, props, colors, influences, newIndices);
+            AddCorner(geometry, (int)i0, vertices, props, colors, influences, morphTargets, newIndices);
+            AddCorner(geometry, (int)i1, vertices, props, colors, influences, morphTargets, newIndices);
+            AddCorner(geometry, (int)i2, vertices, props, colors, influences, morphTargets, newIndices);
         }
 
         geometry.Vertices = vertices;
@@ -101,6 +107,10 @@ public static class NormalGenerator
         {
             geometry.JointInfluences = influences;
         }
+        if (morphTargets.Count > 0)
+        {
+            geometry.MorphTargets = morphTargets;
+        }
         geometry.Indices = newIndices;
     }
 
@@ -111,6 +121,7 @@ public static class NormalGenerator
         FastList<VertexProperties>? props,
         FastList<Vector4>? colors,
         FastList<GpuJointInfluence>? influences,
+        FastList<MorphTarget> morphTargets,
         FastList<uint> indices
     )
     {
@@ -119,6 +130,26 @@ public static class NormalGenerator
         props?.Add(geometry.VertexProps[index]);
         colors?.Add(geometry.VertexColors[index]);
         influences?.Add(geometry.JointInfluences[index]);
+        var vertexCount = geometry.Vertices.Count;
+        for (var t = 0; t < morphTargets.Count; ++t)
+        {
+            var source = geometry.MorphTargets[t];
+            var target = morphTargets[t];
+            AddDelta(source.PositionDeltas, target.PositionDeltas, index, vertexCount);
+            AddDelta(source.NormalDeltas, target.NormalDeltas, index, vertexCount);
+            AddDelta(source.TangentDeltas, target.TangentDeltas, index, vertexCount);
+        }
+    }
+
+    /// <summary>
+    /// Copies the delta of one corner when <paramref name="source"/> has one delta per vertex.
+    /// </summary>
+    private static void AddDelta(FastList<Vector3> source, FastList<Vector3> target, int index, int vertexCount)
+    {
+        if (source.Count == vertexCount)
+        {
+            target.Add(source[index]);
+        }
     }
 
     /// <summary>

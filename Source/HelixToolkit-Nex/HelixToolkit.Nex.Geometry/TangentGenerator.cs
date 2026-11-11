@@ -102,5 +102,6 @@ public static class TangentGenerator
             prop.Tangent = new Vector4(tangentXYZ, w);
             props[i] = prop;
         }
+        geometry.HasGeneratedTangents = true;
     }
 }

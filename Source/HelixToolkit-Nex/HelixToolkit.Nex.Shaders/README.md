@@ -39,9 +39,10 @@ This package is integral to the HelixToolkit-Nex engine, facilitating the creati
 | `SsaoPushConstants`           | Struct for push constants for the SSAO post-processing shader, newly added to support screen-space ambient occlusion. |
 | `EnvironmentMapPushConstants` | Struct for push constants for the environment map shader, newly added to support HDR environment cubemap rendering. |
 | `EnvironmentMapConstants`     | Struct containing parameters for environment map rendering, including cubemap index, intensity, blur, and rotation. |
-| `GpuSkinning`                 | Generates the bone skinning compute shaders (`Compute/SkinPalette.glsl`, `Compute/SkinVertices.glsl`). |
+| `GpuSkinning`                 | Generates the vertex deformation compute shaders (`Compute/SkinPalette.glsl`, `Compute/SkinVertices.glsl`: morph targets, then skinning). |
 | `GpuJointInfluence`           | Struct with four joint indices and blend weights per vertex.                |
-| `SkinPalettePC` / `SkinVertexPC` | Push constants for the skinning palette and vertex skinning passes.      |
+| `GpuMorphDelta` / `GpuMorphWeight` | Morph target displacement of a vertex (target-major), and an active (target, weight) pair. |
+| `SkinPalettePC` / `SkinVertexPC` | Push constants for the skinning palette and vertex deformation passes.   |
 | `BoneLine`                    | Struct describing a single bone for skeleton visualization in world space: `start`, `end`, and `color`. Generated from `Vert/vsBoneLine.glsl`. |
 | `BoneLinePushConstant`        | Struct for push constants for the bone visualization vertex shader, including `bonesAddress`, `fpConstAddress`, `style` (0 = line, 1 = arrow, 2 = octahedral), and `headSize`. Generated from `Vert/vsBoneLine.glsl`. |
 | `MeshDraw`                    | Mesh draw command; `skinnedVertexBufferAddress`/`skinnedVertexPropsBufferAddress` redirect vertex fetch to skinned output when non-zero. |

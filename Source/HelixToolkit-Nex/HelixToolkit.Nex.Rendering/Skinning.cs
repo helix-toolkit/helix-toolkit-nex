@@ -26,8 +26,7 @@ public sealed class Skinning : IDisposable
     private readonly FastList<Matrix4x4> _jointMatrices;
     private RingElementBuffer<Matrix4x4>? _jointMatrixBuffer;
     private ElementBuffer<Matrix4x4>? _paletteBuffer;
-    private ElementBuffer<Vector4>? _skinnedVertexBuffer;
-    private ElementBuffer<VertexProperties>? _skinnedVertexPropsBuffer;
+    private readonly DeformedVertexBuffers _output = new();
     private bool _disposedValue;
 
     /// <summary>
@@ -44,7 +43,7 @@ public sealed class Skinning : IDisposable
     /// <summary>
     /// Gets the number of skinned vertices the output buffers hold.
     /// </summary>
-    public int VertexCount { get; private set; }
+    public int VertexCount => _output.VertexCount;
 
     /// <summary>
     /// Gets the buffer holding the joint matrices uploaded for the current frame.
@@ -59,15 +58,13 @@ public sealed class Skinning : IDisposable
     /// <summary>
     /// Gets the buffer holding the skinned vertex positions.
     /// </summary>
-    public BufferResource SkinnedVertexBuffer =>
-        _skinnedVertexBuffer?.Buffer ?? BufferResource.Null;
+    public BufferResource SkinnedVertexBuffer => _output.VertexBuffer;
 
     /// <summary>
     /// Gets the buffer holding the skinned vertex properties (normal, tangent, texture coordinate).
     /// Null when the geometry has no vertex properties.
     /// </summary>
-    public BufferResource SkinnedVertexPropsBuffer =>
-        _skinnedVertexPropsBuffer?.Buffer ?? BufferResource.Null;
+    public BufferResource SkinnedVertexPropsBuffer => _output.VertexPropsBuffer;
 
     /// <summary>
     /// Gets a value indicating whether the GPU buffers are ready for the skinning pass.
@@ -145,44 +142,18 @@ public sealed class Skinning : IDisposable
             debugName: $"{Skeleton.Name}_Palette"
         );
 
-        if (_skinnedVertexBuffer is null || VertexCount != vertexCount)
-        {
-            Disposer.DisposeAndRemove(ref _skinnedVertexBuffer);
-            Disposer.DisposeAndRemove(ref _skinnedVertexPropsBuffer);
-            VertexCount = vertexCount;
-            reallocated = true;
-            if (vertexCount == 0)
-            {
-                return ResultCode.Ok;
-            }
-            _skinnedVertexBuffer = new ElementBuffer<Vector4>(
-                context,
-                vertexCount,
-                BufferUsageBits.Storage,
-                hostVisible: false,
-                debugName: $"{Skeleton.Name}_SkinnedVert"
-            );
-        }
-
-        if (hasVertexProps != (_skinnedVertexPropsBuffer is not null))
-        {
-            reallocated = true;
-            if (hasVertexProps)
-            {
-                _skinnedVertexPropsBuffer = new ElementBuffer<VertexProperties>(
-                    context,
-                    vertexCount,
-                    BufferUsageBits.Storage,
-                    hostVisible: false,
-                    debugName: $"{Skeleton.Name}_SkinnedVertProps"
-                );
-            }
-            else
-            {
-                Disposer.DisposeAndRemove(ref _skinnedVertexPropsBuffer);
-            }
-        }
+        reallocated = _output.Ensure(context, vertexCount, hasVertexProps, $"{Skeleton.Name}_Skinned");
         return ResultCode.Ok;
+    }
+
+    /// <summary>
+    /// Releases the skinned output buffers, for example when the geometry no longer has joint
+    /// influences. Called by the engine; <see cref="EnsureBuffers"/> recreates them.
+    /// </summary>
+    /// <returns><see langword="true"/> when buffers were released, which changes their GPU addresses.</returns>
+    public bool ReleaseOutput()
+    {
+        return _output.Release();
     }
 
     /// <summary>
@@ -268,9 +239,7 @@ public sealed class Skinning : IDisposable
         }
         Disposer.DisposeAndRemove(ref _jointMatrixBuffer);
         Disposer.DisposeAndRemove(ref _paletteBuffer);
-        Disposer.DisposeAndRemove(ref _skinnedVertexBuffer);
-        Disposer.DisposeAndRemove(ref _skinnedVertexPropsBuffer);
-        VertexCount = 0;
+        _output.Dispose();
         _disposedValue = true;
     }
 }

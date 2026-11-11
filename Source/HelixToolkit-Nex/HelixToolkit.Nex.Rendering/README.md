@@ -30,6 +30,8 @@ HelixToolkit.Nex.Rendering is responsible for managing the rendering pipeline of
 | `BoundingBoxPostEffect`          | Renders wireframe bounding boxes for debugging purposes.                    |
 | `SkeletonPostEffect`             | Draws the bones of skinned meshes as lines, arrows or octahedra (`BoneStyle`), optionally without depth test. |
 | `SkeletonPostEffect.SkeletonOverlay` | Marks a skinned mesh entity for bone visualization and sets the bone color. |
+| `MorphPostEffect`                | Draws the morph target displacement of each vertex of morphed meshes as a line (un-morphed to morphed position, skinned when the mesh is skinned); `LengthScale`, `MinLength`, `UseDepthTest`. |
+| `MorphPostEffect.MorphOverlay`   | Marks a morphed mesh entity for displacement visualization and sets the line color. |
 | `BoneStyle`                      | Enumerates the shapes used to draw bones: `Line`, `Arrow`, and `Octahedral`. |
 | `WireframePostEffect`            | Renders wireframe overlays on meshes with customizable color and depth bias.|
 | `BorderHighlightPostEffect`      | Renders colored outlines around mesh silhouettes.                           |
@@ -50,9 +52,10 @@ HelixToolkit.Nex.Rendering is responsible for managing the rendering pipeline of
 | `LineJoin`                       | How connected line segments are joined: `None`, `Miter`, `Bevel`, `Round`.  |
 | `Skeleton`                       | Shared skinning asset holding the inverse bind matrices of a joint hierarchy. |
 | `Skinning`                       | Binds a skinned mesh to its joint entities and owns the compute skinning buffers. |
-| `SkinningNode`                   | Skins all skinned meshes on the GPU (palette + vertex compute passes) in `RenderStage.Prepare`. |
-| `ISkinningData`                  | Provides the per-frame skinning dispatches (`SkinningDispatch`) to `SkinningNode`. |
-| `SkinningDispatch`               | Record struct pairing a `Skinning` with its bind-pose `Geometry` for one skinning dispatch. |
+| `Morphing`                       | Binds a mesh with morph targets to its `MorphWeights` and owns the weight buffer (and the output buffers when the mesh is not skinned). |
+| `SkinningNode`                   | Deforms all skinned and morphed meshes on the GPU (palette + vertex compute passes; morph targets, then skinning) in `RenderStage.Prepare`. |
+| `ISkinningData`                  | Provides the per-frame deformation dispatches (`SkinningDispatch`) to `SkinningNode`. |
+| `SkinningDispatch`               | Record struct pairing a `Skinning` and/or `Morphing` with its bind-pose `Geometry` for one deformation dispatch. |
 
 ## Recent Changes
 
@@ -194,6 +197,32 @@ var meshDrawInfo = new MeshDrawInfo(
 - Each frame, skinned meshes are exposed to the render graph through `IRenderDataProvider.SkinningData`,
   an `ISkinningData` whose `Dispatches` supply one `SkinningDispatch` per skinned mesh. It is `null`
   when no skinning data provider is registered.
+
+### Adding a Mesh with Morph Targets
+
+Morph targets run in the same compute pass as skinning, before it (glTF order). The geometry carries
+the targets (`Geometry.MorphTargets`); the weights are a `MorphWeights` that animation channels or
+your code change at runtime.
+
+```csharp
+var weights = new MorphWeights([0f, 0.5f]);                   // one weight per morph target
+var meshDrawInfo = new MeshDrawInfo(
+    geometry: morphGeometry,                                  // geometry.MorphTargets populated
+    materialProperties: myMaterialProperties,
+    morphing: new Morphing(weights)
+);
+weights[0] = 1f;                                              // re-uploaded on the next frame
+```
+
+- Only the non-zero weights are uploaded, and only when `MorphWeights.Version` changes, so meshes
+  with many targets cost one pass over their active targets per vertex.
+- The deformed output belongs to the `Skinning` when the mesh is also skinned, otherwise to the
+  `Morphing`. `MeshDrawInfo.DeformedVertexBuffer` returns the buffer the draws read.
+- Morphed meshes are never frustum culled (`MeshDrawInfo.IsCullable` is `false`).
+- A `Morphing` must not be shared between mesh entities; share the `MorphWeights` instead (as the
+  primitives of a glTF mesh do). `Morphing` owns GPU buffers and must be disposed by its owner.
+- `Morphing.MorphPosition` applies the uploaded weights on the CPU; picking uses it so pick positions
+  match the morphed (and skinned) triangle.
 
 ### Adding a Billboard Component
 

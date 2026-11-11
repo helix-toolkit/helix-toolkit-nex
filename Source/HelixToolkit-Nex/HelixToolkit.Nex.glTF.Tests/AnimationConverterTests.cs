@@ -172,7 +172,7 @@ public class AnimationConverterTests
     }
 
     [TestMethod]
-    public void Convert_SkipsWeightsAndInvalidChannels_WithWarnings()
+    public void Convert_SkipsWeightsWithoutMorphTargetsAndInvalidChannels_WithWarnings()
     {
         var (model, reader) = CreateModel(
             (Floats(0f, 1f), Scalar(2)),
@@ -210,9 +210,160 @@ public class AnimationConverterTests
         Assert.AreEqual(1, animations[0].Clip.Channels.Count);
         Assert.AreEqual(AnimationPath.Scale, animations[0].Clip.Channels[0].Path);
         Assert.IsTrue(diagnostics.All(d => d.Severity == DiagnosticSeverity.Warning));
-        Assert.IsTrue(diagnostics.Any(d => d.Message.Contains("morph target weights")));
+        Assert.IsTrue(diagnostics.Any(d => d.Message.Contains("has no morph targets")));
         Assert.IsTrue(diagnostics.Any(d => d.Message.Contains("missing sampler 5")));
         Assert.IsTrue(diagnostics.Any(d => d.Message.Contains("'MorphOnly' has no supported channels")));
+    }
+
+    /// <summary>
+    /// Builds a model whose node 0 has a mesh with <paramref name="targetCount"/> morph targets.
+    /// </summary>
+    private static void AddMorphMesh(Gltf model, int targetCount)
+    {
+        var targets = new Dictionary<string, int>[targetCount];
+        for (int i = 0; i < targetCount; i++)
+        {
+            targets[i] = new Dictionary<string, int> { ["POSITION"] = 0 };
+        }
+        model.Meshes = [new Mesh { Primitives = [new MeshPrimitive { Targets = targets }] }];
+        model.Nodes = [new() { Mesh = 0 }];
+    }
+
+    [TestMethod]
+    public void Convert_WeightChannel_SplitsIntoGroupsOfFourWeights()
+    {
+        // Two keyframes of five weights each.
+        var (model, reader) = CreateModel(
+            (Floats(0f, 1f), Scalar(2)),
+            (Floats(0, 0, 0, 0, 0, 1, 2, 3, 4, 5), Scalar(10))
+        );
+        AddMorphMesh(model, 5);
+        model.Animations =
+        [
+            new Animation
+            {
+                Name = "Blink",
+                Samplers = [Sampler(0, 1)],
+                Channels = [Channel(0, 0, GltfPath.weights)],
+            },
+        ];
+        var diagnostics = new List<ImportDiagnostic>();
+
+        var animations = new AnimationConverter(reader, diagnostics).Convert(model);
+
+        Assert.AreEqual(0, diagnostics.Count, string.Join("; ", diagnostics.Select(d => d.Message)));
+        var clip = animations[0].Clip;
+        Assert.AreEqual(2, clip.Channels.Count);
+        CollectionAssert.AreEqual(new[] { 0, 0 }, animations[0].TargetNodes);
+        Assert.IsTrue(clip.Channels.All(c => c.Path == AnimationPath.Weights && c.Weights is null));
+        Assert.AreEqual(0, clip.Channels[0].WeightOffset);
+        Assert.AreEqual(4, clip.Channels[1].WeightOffset);
+        Assert.AreEqual(new Vector4(0.5f, 1f, 1.5f, 2f), clip.Channels[0].Sampler.Sample(0.5f));
+        Assert.AreEqual(new Vector4(2.5f, 0, 0, 0), clip.Channels[1].Sampler.Sample(0.5f));
+
+        var weights = new MorphWeights(5);
+        foreach (var channel in clip.Channels)
+        {
+            channel.Weights = weights;
+        }
+        clip.Apply(1f);
+        CollectionAssert.AreEqual(new[] { 1f, 2f, 3f, 4f, 5f }, weights.Values.ToArray());
+    }
+
+    [TestMethod]
+    public void Convert_CubicSplineWeights_KeepTangentLayout()
+    {
+        // One keyframe pair, two weights: [in-tangents(2), values(2), out-tangents(2)] per key.
+        var (model, reader) = CreateModel(
+            (Floats(0f, 1f), Scalar(2)),
+            (Floats(0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0), Scalar(12))
+        );
+        AddMorphMesh(model, 2);
+        model.Animations =
+        [
+            new Animation
+            {
+                Samplers = [Sampler(0, 1, GltfSampler.InterpolationEnum.CUBICSPLINE)],
+                Channels = [Channel(0, 0, GltfPath.weights)],
+            },
+        ];
+        var diagnostics = new List<ImportDiagnostic>();
+
+        var animations = new AnimationConverter(reader, diagnostics).Convert(model);
+
+        Assert.AreEqual(0, diagnostics.Count, string.Join("; ", diagnostics.Select(d => d.Message)));
+        var sampler = animations[0].Clip.Channels.Single().Sampler;
+        Assert.AreEqual(new Vector4(0, 1, 0, 0), sampler.Sample(0f));
+        Assert.AreEqual(new Vector4(1, 0, 0, 0), sampler.Sample(1f));
+    }
+
+    [TestMethod]
+    public void Convert_SparseOnlyWeightOutput_AppliesSparseValues()
+    {
+        // Two keyframes of two weights; only weight 1 of the second keyframe (element 3) is stored.
+        var (model, reader) = CreateModel(
+            (Floats(0f, 1f), Scalar(2)),
+            (Shorts(3, 0), new Accessor { Type = Accessor.TypeEnum.SCALAR, Count = 1 }),
+            (Floats(1f), new Accessor { Type = Accessor.TypeEnum.SCALAR, Count = 1 })
+        );
+        model.Accessors =
+        [
+            .. model.Accessors,
+            new Accessor
+            {
+                ComponentType = Accessor.ComponentTypeEnum.FLOAT,
+                Type = Accessor.TypeEnum.SCALAR,
+                Count = 4,
+                Sparse = new AccessorSparse
+                {
+                    Count = 1,
+                    Indices = new AccessorSparseIndices
+                    {
+                        BufferView = 1,
+                        ComponentType = AccessorSparseIndices.ComponentTypeEnum.UNSIGNED_SHORT,
+                    },
+                    Values = new AccessorSparseValues { BufferView = 2 },
+                },
+            },
+        ];
+        AddMorphMesh(model, 2);
+        model.Animations =
+        [
+            new Animation
+            {
+                Samplers = [Sampler(0, 3)],
+                Channels = [Channel(0, 0, GltfPath.weights)],
+            },
+        ];
+        var diagnostics = new List<ImportDiagnostic>();
+
+        var animations = new AnimationConverter(reader, diagnostics).Convert(model);
+
+        Assert.AreEqual(0, diagnostics.Count, string.Join("; ", diagnostics.Select(d => d.Message)));
+        var sampler = animations[0].Clip.Channels.Single().Sampler;
+        Assert.AreEqual(Vector4.Zero, sampler.Sample(0f));
+        Assert.AreEqual(new Vector4(0, 1, 0, 0), sampler.Sample(1f));
+    }
+
+    [TestMethod]
+    public void Convert_WeightCountMismatch_IsSkipped()
+    {
+        var (model, reader) = CreateModel((Floats(0f, 1f), Scalar(2)), (Floats(0, 0, 0), Scalar(3)));
+        AddMorphMesh(model, 2);
+        model.Animations =
+        [
+            new Animation
+            {
+                Samplers = [Sampler(0, 1)],
+                Channels = [Channel(0, 0, GltfPath.weights)],
+            },
+        ];
+        var diagnostics = new List<ImportDiagnostic>();
+
+        var animations = new AnimationConverter(reader, diagnostics).Convert(model);
+
+        Assert.AreEqual(0, animations.Count);
+        Assert.IsTrue(diagnostics.Any(d => d.Message.Contains("expected 4 for 2 morph targets")));
     }
 
     [TestMethod]

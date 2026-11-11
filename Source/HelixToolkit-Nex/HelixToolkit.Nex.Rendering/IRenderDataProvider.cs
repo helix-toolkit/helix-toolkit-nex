@@ -46,23 +46,50 @@ public interface IBillboardData : IRenderData
 }
 
 /// <summary>
-/// A skinned mesh to be processed by the skinning compute pass this frame.
+/// A deformed (skinned and/or morphed) mesh to be processed by the deformation compute pass this frame.
+/// At least one of <paramref name="Skinning"/> and <paramref name="Morphing"/> is set.
 /// </summary>
-/// <param name="Skinning">The skinning instance owning the joint, palette and output buffers.</param>
-/// <param name="Geometry">The bind-pose geometry providing vertices and joint influences.</param>
-public readonly record struct SkinningDispatch(Skinning Skinning, Geometry Geometry);
+/// <param name="Skinning">The skinning instance owning the joint, palette and output buffers, or null when the mesh is only morphed.</param>
+/// <param name="Morphing">The morphing instance owning the weight buffer, or null when the mesh is only skinned. Owns the output buffers when the mesh is not skinned.</param>
+/// <param name="Geometry">The bind-pose geometry providing vertices, joint influences and morph targets.</param>
+public readonly record struct SkinningDispatch(Skinning? Skinning, Morphing? Morphing, Geometry Geometry)
+{
+    /// <summary>
+    /// Initializes a dispatch of a mesh that is only skinned.
+    /// </summary>
+    public SkinningDispatch(Skinning skinning, Geometry geometry)
+        : this(skinning, null, geometry) { }
+
+    /// <summary>
+    /// Gets the buffer receiving the deformed vertex positions.
+    /// </summary>
+    public BufferResource OutputVertexBuffer =>
+        Skinning?.SkinnedVertexBuffer ?? Morphing!.MorphedVertexBuffer;
+
+    /// <summary>
+    /// Gets the buffer receiving the deformed vertex properties. May be a null buffer.
+    /// </summary>
+    public BufferResource OutputVertexPropsBuffer =>
+        Skinning?.SkinnedVertexPropsBuffer ?? Morphing!.MorphedVertexPropsBuffer;
+
+    /// <summary>
+    /// Gets the number of deformed vertices.
+    /// </summary>
+    public int VertexCount => Skinning?.VertexCount ?? Morphing!.VertexCount;
+}
 
 /// <summary>
-/// Provides the skinned meshes of a world for the skinning compute pass.
+/// Provides the deformed meshes of a world for the deformation (morph target and skinning) compute pass.
 /// <para>
 /// The data provider collects all mesh entities with a <see cref="Components.MeshDrawInfo.Skinning"/>
-/// each frame, uploads their joint matrices, and makes sure their output buffers exist.
+/// or a <see cref="Components.MeshDrawInfo.Morphing"/> each frame, uploads their joint matrices and
+/// morph weights when they change, and makes sure their output buffers exist.
 /// </para>
 /// </summary>
 public interface ISkinningData : IRenderData
 {
     /// <summary>
-    /// Gets the skinned meshes ready for the skinning compute pass this frame.
+    /// Gets the deformed meshes ready for the deformation compute pass this frame.
     /// </summary>
     ReadOnlySpan<SkinningDispatch> Dispatches { get; }
 }

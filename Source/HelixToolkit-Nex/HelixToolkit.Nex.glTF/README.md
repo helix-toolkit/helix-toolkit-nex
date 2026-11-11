@@ -91,7 +91,7 @@ using ImportResult result = await importer.ImportAsync("path/to/model.gltf", wor
 ### Playing Imported Animations
 
 `ImportResult.Animations` holds one `AnimationClip` per glTF animation, bound to the imported nodes.
-Skinned meshes follow their animated joints automatically.
+Skinned meshes follow their animated joints automatically, and weight animations drive morph targets.
 
 ```csharp
 var player = new AnimationPlayer(result.Animations[0]);
@@ -135,7 +135,8 @@ README; the glTF importer is its primary consumer.
 - **Mesh Instancing**: Supports `EXT_mesh_gpu_instancing`, allowing efficient rendering of multiple instances of a mesh with varying transformations. This is controlled via `ImporterConfig.EnableMeshGpuInstancing`.
 - **Normals and tangents**: a triangle-list primitive without a `NORMAL` attribute gets flat normals, as the glTF specification requires (`NormalGenerator.ComputeFlatNormals`). Its vertices are unwelded so every triangle has its own three vertices, and the normals follow the glTF counter-clockwise front faces regardless of `ImporterConfig.WindingOrder`. Missing `TANGENT`s are generated with `TangentGenerator`. Non-indexed triangle and line lists get sequential indices, because meshes are drawn with indexed indirect draws.
 - **Skins**: `JOINTS_0`/`WEIGHTS_0` are read into `Geometry.JointInfluences` (u8/u16 joints; float or normalized u8/u16 weights, renormalized). Each glTF skin becomes a `Skeleton`; each skinned primitive gets its own `Skinning` bound to the materialized joint nodes during flush. Skeletons and skinnings are tracked by `ResourceManifest`. Draco-compressed skinning attributes are not supported (the mesh renders unskinned with a warning).
-- **Animations**: each glTF `animation` becomes an `AnimationClip` in `ImportResult.Animations`, with its channels bound to the materialized nodes during flush (so they are bound once `Complete`/`Import` returns). Translation, rotation and scale channels are supported with `LINEAR`, `STEP` and `CUBICSPLINE` interpolation; rotation outputs may be float or normalized integers. Morph target `weights` channels are skipped with a warning, and an animation without supported channels is dropped. Set `ImporterConfig.ImportAnimations = false` to skip animations. Play a clip with `AnimationPlayer` (see the Scene README).
+- **Morph targets**: primitive `targets` (`POSITION`, `NORMAL`, `TANGENT` deltas; float, normalized or quantized integers; sparse accessors supported) are read into `Geometry.MorphTargets`, including Draco primitives (targets are never compressed). Each glTF node with a morphed mesh gets one `MorphWeights` initialized from `node.weights`, else `mesh.weights`, shared by every primitive; each morphed primitive gets its own `Morphing`, tracked by `ResourceManifest.Morphings`.
+- **Animations**: each glTF `animation` becomes an `AnimationClip` in `ImportResult.Animations`, with its channels bound to the materialized nodes during flush (so they are bound once `Complete`/`Import` returns). Translation, rotation and scale channels are supported with `LINEAR`, `STEP` and `CUBICSPLINE` interpolation; rotation outputs may be float or normalized integers. Morph target `weights` channels are bound to the `MorphWeights` of their node (split into channels of four weights). An animation without supported channels is dropped. Set `ImporterConfig.ImportAnimations = false` to skip animations. Play a clip with `AnimationPlayer` (see the Scene README).
 
 ## Compatibility
 

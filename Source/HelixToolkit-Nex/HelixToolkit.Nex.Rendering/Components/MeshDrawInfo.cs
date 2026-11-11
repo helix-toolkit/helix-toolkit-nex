@@ -39,21 +39,56 @@ public struct MeshDrawInfo
     public Skinning? Skinning { set; get; }
 
     /// <summary>
+    /// Gets or sets the morph target weights binding of this mesh. If not null, the morph targets of
+    /// the geometry (<see cref="Geometry.MorphTargets"/>) are applied in a compute pass ahead of
+    /// rendering, before skinning.
+    /// </summary>
+    public Morphing? Morphing { set; get; }
+
+    /// <summary>
     /// Gets or sets a value indicating whether this mesh is cullable.
-    /// Skinned meshes are never culled; see <see cref="IsCullable"/>.
+    /// Skinned and morphed meshes are never culled; see <see cref="IsCullable"/>.
     /// </summary>
     public bool Cullable { set; get; } = true;
 
     /// <summary>
-    /// Gets a value indicating whether this mesh is frustum culled. Skinned meshes are not culled,
-    /// because their bind-pose bounds do not cover the animated pose.
+    /// Gets a value indicating whether this mesh is frustum culled. Skinned and morphed meshes are
+    /// not culled, because their bind-pose bounds do not cover the deformed pose.
     /// </summary>
-    public readonly bool IsCullable => Cullable && Skinning is null;
+    public readonly bool IsCullable => Cullable && !IsDeformed;
 
     /// <summary>
     /// Gets a value indicating whether this mesh uses bone skinning.
     /// </summary>
     public readonly bool IsSkinned => Skinning is not null;
+
+    /// <summary>
+    /// Gets a value indicating whether this mesh uses morph targets.
+    /// </summary>
+    public readonly bool IsMorphed => Morphing is not null;
+
+    /// <summary>
+    /// Gets a value indicating whether this mesh is deformed by skinning or morph targets.
+    /// </summary>
+    public readonly bool IsDeformed => IsSkinned || IsMorphed;
+
+    /// <summary>
+    /// Gets the buffer holding the deformed vertex positions written by the deformation pass, or a
+    /// null buffer when the mesh is not deformed (yet). The skinning owns the output of a skinned mesh,
+    /// otherwise the morphing does.
+    /// </summary>
+    public readonly BufferResource DeformedVertexBuffer =>
+        Skinning?.SkinnedVertexBuffer is { Valid: true } skinned
+            ? skinned
+            : Morphing?.MorphedVertexBuffer ?? BufferResource.Null;
+
+    /// <summary>
+    /// Gets the buffer holding the deformed vertex properties, paired with <see cref="DeformedVertexBuffer"/>.
+    /// </summary>
+    public readonly BufferResource DeformedVertexPropsBuffer =>
+        Skinning?.SkinnedVertexBuffer is { Valid: true }
+            ? Skinning.SkinnedVertexPropsBuffer
+            : Morphing?.MorphedVertexPropsBuffer ?? BufferResource.Null;
 
     /// <summary>
     /// Gets or sets a value indicating whether this mesh is hitable.
@@ -102,7 +137,8 @@ public struct MeshDrawInfo
         Instancing? instancing = null,
         bool cullable = true,
         bool hitable = true,
-        Skinning? skinning = null
+        Skinning? skinning = null,
+        Morphing? morphing = null
     )
     {
         Geometry = geometry;
@@ -111,6 +147,7 @@ public struct MeshDrawInfo
         Cullable = cullable;
         Hitable = hitable;
         Skinning = skinning;
+        Morphing = morphing;
     }
 
     /// <summary>
@@ -130,7 +167,7 @@ public struct MeshDrawInfo
     public override readonly string ToString()
     {
         return $"GeometryId: {Geometry?.Id}; MaterialType: {MaterialProperties?.MaterialTypeId}; MaterialIndex: {MaterialProperties?.Index}; "
-            + $"Category: {Variants}; Cullable: {IsCullable}; Skinned: {IsSkinned};";
+            + $"Category: {Variants}; Cullable: {IsCullable}; Skinned: {IsSkinned}; Morphed: {IsMorphed};";
     }
 }
 

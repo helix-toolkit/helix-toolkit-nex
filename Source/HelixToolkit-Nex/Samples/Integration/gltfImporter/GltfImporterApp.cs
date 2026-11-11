@@ -82,6 +82,25 @@ internal class GltfImporterApp : ApplicationBase
         get => _skeletonEffect.Enabled;
     }
 
+    /// <summary>
+    /// Gets whether the current model has a mesh with morph targets.
+    /// </summary>
+    public bool HasMorphTargets { get; private set; }
+
+    /// <summary>
+    /// Gets the post effect drawing the morph target displacements.
+    /// </summary>
+    public MorphPostEffect MorphEffect => _morphEffect;
+
+    /// <summary>
+    /// Gets or sets whether the morph target displacements are drawn.
+    /// </summary>
+    public bool ShowMorphDisplacement
+    {
+        set => _morphEffect.Enabled = value;
+        get => _morphEffect.Enabled;
+    }
+
     public bool EnableSSAO
     {
         set => _ssaoPostEffect!.Enabled = value;
@@ -113,6 +132,9 @@ internal class GltfImporterApp : ApplicationBase
     // Post effects
     private readonly BorderHighlightPostEffect _borderHighlight = new();
     private readonly SkeletonPostEffect _skeletonEffect = new();
+
+    // One line per vertex can be dense, so the morph displacement view starts hidden.
+    private readonly MorphPostEffect _morphEffect = new() { Enabled = false };
 
     // Layout constants
     private const float ScenePanelWidth = 250f;
@@ -196,6 +218,7 @@ internal class GltfImporterApp : ApplicationBase
             {
                 effects.AddEffect(_borderHighlight);
                 effects.AddEffect(_skeletonEffect);
+                effects.AddEffect(_morphEffect);
             })
             .Build();
 
@@ -704,7 +727,7 @@ internal class GltfImporterApp : ApplicationBase
         // Compute bounding volume and frame the camera
         ComputeBoundsAndFrameCamera(_currentModelRoot!);
 
-        MarkSkinnedMeshes();
+        MarkDeformedMeshes();
 
         // Play the first animation, if any.
         _animations = result.Animations;
@@ -810,24 +833,37 @@ internal class GltfImporterApp : ApplicationBase
     }
 
     /// <summary>
-    /// Adds a skeleton overlay to every skinned mesh so <see cref="SkeletonPostEffect"/> draws its bones.
+    /// Adds a skeleton overlay to every skinned mesh so <see cref="SkeletonPostEffect"/> draws its
+    /// bones, and a morph overlay to every morphed mesh so <see cref="MorphPostEffect"/> draws its
+    /// displacements.
     /// </summary>
-    private void MarkSkinnedMeshes()
+    private void MarkDeformedMeshes()
     {
         var world = _worldDataProvider!.World;
         var skinned = new List<HelixToolkit.Nex.ECS.Entity>();
+        var morphed = new List<HelixToolkit.Nex.ECS.Entity>();
         foreach (var entity in world.GetComponentEntities<MeshDrawInfo>())
         {
-            if (entity.Get<MeshDrawInfo>().Skinning is not null)
+            ref var mesh = ref entity.Get<MeshDrawInfo>();
+            if (mesh.Skinning is not null)
             {
                 skinned.Add(entity);
+            }
+            if (mesh.Morphing is not null)
+            {
+                morphed.Add(entity);
             }
         }
         foreach (var entity in skinned)
         {
             entity.Set(SkeletonPostEffect.SkeletonOverlay.Default);
         }
+        foreach (var entity in morphed)
+        {
+            entity.Set(MorphPostEffect.MorphOverlay.Default);
+        }
         HasSkeleton = skinned.Count > 0;
+        HasMorphTargets = morphed.Count > 0;
     }
 
     /// <summary>
@@ -837,6 +873,7 @@ internal class GltfImporterApp : ApplicationBase
     private void DisposeCurrentModel()
     {
         HasSkeleton = false;
+        HasMorphTargets = false;
         if (_currentModelRoot is null)
             return;
         _animationPlayer.Stop();

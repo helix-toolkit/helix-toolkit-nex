@@ -21,6 +21,7 @@ public class ResourceManifest : IDisposable
     private readonly List<Instancing> _instancings = [];
     private readonly List<Skeleton> _skeletons = [];
     private readonly List<Skinning> _skinnings = [];
+    private readonly List<Morphing> _morphings = [];
 
     // Deduplication sets
     private readonly HashSet<string> _textureKeys = new(StringComparer.Ordinal);
@@ -77,6 +78,9 @@ public class ResourceManifest : IDisposable
 
     /// <summary>Gets the tracked skinnings (one per skinned mesh node). Populated when the scene is flushed.</summary>
     public IReadOnlyList<Skinning> Skinnings => _skinnings;
+
+    /// <summary>Gets the tracked morphings (one per mesh node with morph targets).</summary>
+    public IReadOnlyList<Morphing> Morphings => _morphings;
 
     // --- Count properties ---
 
@@ -205,6 +209,16 @@ public class ResourceManifest : IDisposable
         _skinnings.Add(skinning);
     }
 
+    /// <summary>
+    /// Registers a morphing. Skips null.
+    /// </summary>
+    internal virtual void AddMorphing(Morphing? morphing)
+    {
+        if (morphing is null)
+            return;
+        _morphings.Add(morphing);
+    }
+
     // --- Disposal ---
 
     /// <summary>
@@ -213,7 +227,7 @@ public class ResourceManifest : IDisposable
     /// <item>Materials (unsubscribes from texture/sampler events)</item>
     /// <item>Geometries (releases GPU buffers)</item>
     /// <item>Instancings (releases GPU buffers for unowned instancings)</item>
-    /// <item>Skinnings and skeletons (releases GPU buffers)</item>
+    /// <item>Skinnings, skeletons and morphings (releases GPU buffers)</item>
     /// <item>Textures (removes from repository)</item>
     /// <item>Samplers (removes from repository)</item>
     /// </list>
@@ -269,6 +283,10 @@ public class ResourceManifest : IDisposable
         {
             skeleton.Dispose();
         }
+        foreach (var morphing in _morphings)
+        {
+            morphing.Dispose();
+        }
 
         // Phase 3: Remove textures from repository (disposes GPU texture resources)
         foreach (var texture in _textures)
@@ -289,6 +307,7 @@ public class ResourceManifest : IDisposable
         _instancingRefs.Clear();
         _skinnings.Clear();
         _skeletons.Clear();
+        _morphings.Clear();
         _textures.Clear();
         _samplers.Clear();
         _textureKeys.Clear();
@@ -334,5 +353,7 @@ public class ResourceManifest : IDisposable
         internal override void AddSkeleton(Skeleton? _) { }
 
         internal override void AddSkinning(Skinning? _) { }
+
+        internal override void AddMorphing(Morphing? _) { }
     }
 }

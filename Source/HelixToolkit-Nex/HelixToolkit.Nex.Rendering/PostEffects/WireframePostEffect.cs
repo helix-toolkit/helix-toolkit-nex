@@ -247,10 +247,10 @@ public sealed class WireframePostEffect : PostEffect
                 pc.InstancingBufferAddress = 0;
             }
 
-            if (mesh.Skinning is { IsReady: true } skinning)
+            if (mesh.DeformedVertexBuffer is { Valid: true } deformed)
             {
-                pc.VertexBufferAddress = skinning.SkinnedVertexBuffer.GpuAddress;
-                pc.VertexPropsBufferAddress = skinning.SkinnedVertexPropsBuffer.GpuAddress;
+                pc.VertexBufferAddress = deformed.GpuAddress;
+                pc.VertexPropsBufferAddress = mesh.DeformedVertexPropsBuffer.GpuAddress;
             }
             else
             {
