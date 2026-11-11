@@ -32,6 +32,14 @@ indices and normalized weights) used for GPU skinning. Their GPU buffer is `Join
 (`GeometryBufferType.Skin`); `IsSkinned` reports whether any are present. Joint influences are not
 serialized by `GeometryJsonConverter` yet.
 
+`Geometry.MorphTargets` holds optional morph targets (blend shapes). Each `MorphTarget` has
+`PositionDeltas`, `NormalDeltas` and `TangentDeltas`, each either empty or one delta per vertex. All
+targets are packed target-major into `MorphDeltaBuffer` (`GeometryBufferType.Morph`, one
+`GpuMorphDelta` per target and vertex); `HasMorphTargets` reports whether any are present. The
+weights live outside the geometry (`MorphWeights` in the Scene package), so one geometry can be
+drawn with different weights. `NormalGenerator` expands the morph target deltas when it unwelds the
+vertices. Morph targets are not serialized by `GeometryJsonConverter` yet.
+
 ## Usage Examples
 
 ### Creating and Managing Geometry

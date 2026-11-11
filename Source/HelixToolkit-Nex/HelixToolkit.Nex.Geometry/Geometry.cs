@@ -61,7 +61,8 @@ public enum GeometryBufferType
     Index = 1 << 3,
     VertexColor = 1 << 4,
     Skin = 1 << 5,
-    All = Vertex | VertexProp | Index | VertexColor | Skin,
+    Morph = 1 << 6,
+    All = Vertex | VertexProp | Index | VertexColor | Skin | Morph,
 }
 
 public readonly struct GeometryResourceType { }
@@ -106,6 +107,13 @@ public partial class Geometry : HxObservableObject, IDisposable
     [Observable]
     private FastList<GpuJointInfluence> _jointInfluences = [];
 
+    /// <summary>
+    /// Morph targets (blend shapes) displacing the vertices. Empty for non-morphed geometry.
+    /// The weights are provided per mesh entity at render time.
+    /// </summary>
+    [Observable]
+    private FastList<MorphTarget> _morphTargets = [];
+
     #region Buffers
     private ElementBuffer<Vector4>? _vertexBuffer;
     private ElementBuffer<VertexProperties>? _vertexPropsBuffer;
@@ -116,6 +124,7 @@ public partial class Geometry : HxObservableObject, IDisposable
     private ElementBuffer<uint>? _indexBuffer;
     private ElementBuffer<Vector4>? _vertColorsBuffer;
     private ElementBuffer<GpuJointInfluence>? _jointInfluenceBuffer;
+    private ElementBuffer<GpuMorphDelta>? _morphDeltaBuffer;
 
     /// <summary>
     /// Pending buffer state for async uploads. Holds new buffers that are being uploaded
@@ -136,6 +145,17 @@ public partial class Geometry : HxObservableObject, IDisposable
     /// Gets a value indicating whether this geometry carries joint influences for bone skinning.
     /// </summary>
     public bool IsSkinned => _jointInfluences.Count > 0;
+
+    /// <summary>
+    /// Gets the buffer holding the deltas of all morph targets, target-major
+    /// (<c>delta[target * vertexCount + vertex]</c>).
+    /// </summary>
+    public BufferResource MorphDeltaBuffer => _morphDeltaBuffer?.Buffer ?? BufferResource.Null;
+
+    /// <summary>
+    /// Gets a value indicating whether this geometry has morph targets.
+    /// </summary>
+    public bool HasMorphTargets => _morphTargets.Count > 0;
 
     /// <summary>
     /// Gets a value indicating whether there is a pending async buffer update in progress.
@@ -170,6 +190,22 @@ public partial class Geometry : HxObservableObject, IDisposable
     /// Gpu culling only supports static geometry with a single shared index buffer for batched indirect draw.
     /// </summary>
     public bool IsDynamic { set; get; } = false;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether the normals are flat (per-face) normals generated
+    /// from the vertex positions, with the vertices of each triangle stored consecutively (as
+    /// <see cref="NormalGenerator.ComputeFlatNormals"/> produces). The deformation pass then
+    /// recomputes the normals from the morphed triangles, since morph targets carry no normal deltas
+    /// for generated normals.
+    /// </summary>
+    public bool HasFlatNormals { set; get; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether the tangents were generated from the vertex positions
+    /// and texture coordinates (as <see cref="TangentGenerator.ComputeTangents"/> produces) rather
+    /// than authored. The deformation pass then keeps them consistent with the morphed surface.
+    /// </summary>
+    public bool HasGeneratedTangents { set; get; }
 
     public bool IsBoundDirty { set; get; } = true;
 
@@ -216,6 +252,10 @@ public partial class Geometry : HxObservableObject, IDisposable
                 else if (e.PropertyName is nameof(JointInfluences))
                 {
                     BufferDirty |= GeometryBufferType.Skin;
+                }
+                else if (e.PropertyName is nameof(MorphTargets))
+                {
+                    BufferDirty |= GeometryBufferType.Morph;
                 }
             };
         }
@@ -280,6 +320,12 @@ public partial class Geometry : HxObservableObject, IDisposable
         _vertexProps.AddRange(other._vertexProps);
         _indices.AddRange(other._indices);
         _jointInfluences.AddRange(other._jointInfluences);
+        foreach (var target in other._morphTargets)
+        {
+            _morphTargets.Add(target.Clone());
+        }
+        HasFlatNormals = other.HasFlatNormals;
+        HasGeneratedTangents = other.HasGeneratedTangents;
     }
 
     #region Buffer Creation
@@ -441,6 +487,26 @@ public partial class Geometry : HxObservableObject, IDisposable
             }
 
             BufferDirty &= ~GeometryBufferType.Skin;
+        }
+        if (types.HasAllFlags(GeometryBufferType.Morph))
+        {
+            if (!TryPackMorphDeltas(out var deltas))
+            {
+                Disposer.DisposeAndRemove(ref _morphDeltaBuffer);
+            }
+            else
+            {
+                _morphDeltaBuffer ??= new ElementBuffer<GpuMorphDelta>(
+                    context,
+                    deltas.Length,
+                    BufferUsageBits.Storage,
+                    IsDynamic,
+                    debugName: $"MorphDelta_{Id}_{Name}"
+                );
+                _morphDeltaBuffer.Upload(deltas, 0, deltas.Length, 0);
+            }
+
+            BufferDirty &= ~GeometryBufferType.Morph;
         }
         if (dirty && Valid)
         {
@@ -629,6 +695,28 @@ public partial class Geometry : HxObservableObject, IDisposable
             BufferDirty &= ~GeometryBufferType.Skin;
         }
 
+        if (types.HasAllFlags(GeometryBufferType.Morph))
+        {
+            if (!TryPackMorphDeltas(out var deltas))
+            {
+                Disposer.DisposeAndRemove(ref _morphDeltaBuffer);
+            }
+            else
+            {
+                _morphDeltaBuffer ??= new ElementBuffer<GpuMorphDelta>(
+                    context,
+                    deltas.Length,
+                    BufferUsageBits.Storage,
+                    IsDynamic,
+                    debugName: $"Geo_{Id}_MorphDelta"
+                );
+                pending.UploadHandles.Add(_morphDeltaBuffer.UploadAsync(deltas, deltas.Length));
+                hasAnyUpload = true;
+                pending.Types |= GeometryBufferType.Morph;
+            }
+            BufferDirty &= ~GeometryBufferType.Morph;
+        }
+
         if (!hasAnyUpload)
         {
             // All requested buffer types had no data — apply immediately
@@ -779,7 +867,63 @@ public partial class Geometry : HxObservableObject, IDisposable
         {
             BufferDirty &= ~GeometryBufferType.Skin;
         }
+
+        if (pending.Types.HasAllFlags(GeometryBufferType.Morph))
+        {
+            BufferDirty &= ~GeometryBufferType.Morph;
+        }
         EventBus.Instance.PublishAsync(new GeometryUpdatedEvent(Id, GeometryChangeOp.Updated));
+    }
+
+    /// <summary>
+    /// Packs the deltas of all morph targets into the target-major GPU layout.
+    /// </summary>
+    /// <returns><see langword="false"/> when there are no morph targets or a target does not match the vertex count.</returns>
+    private bool TryPackMorphDeltas(out GpuMorphDelta[] deltas)
+    {
+        deltas = [];
+        var vertexCount = _vertices.Count;
+        if (_morphTargets.Count == 0 || vertexCount == 0)
+        {
+            return false;
+        }
+        foreach (var target in _morphTargets)
+        {
+            if (!target.IsValidFor(vertexCount))
+            {
+                HxDebug.Assert(false, "Morph target delta count must match vertex count");
+                logger.LogError(
+                    "Morph target {TARGET} of geometry {ID} does not match vertex count {COUNT}; morph targets are ignored.",
+                    target.Name,
+                    Id,
+                    vertexCount
+                );
+                return false;
+            }
+        }
+        deltas = new GpuMorphDelta[_morphTargets.Count * vertexCount];
+        for (var t = 0; t < _morphTargets.Count; ++t)
+        {
+            var target = _morphTargets[t];
+            var offset = t * vertexCount;
+            for (var v = 0; v < vertexCount; ++v)
+            {
+                ref var delta = ref deltas[offset + v];
+                if (target.PositionDeltas.Count > 0)
+                {
+                    delta.Position = target.PositionDeltas[v];
+                }
+                if (target.NormalDeltas.Count > 0)
+                {
+                    delta.Normal = target.NormalDeltas[v];
+                }
+                if (target.TangentDeltas.Count > 0)
+                {
+                    delta.Tangent = target.TangentDeltas[v];
+                }
+            }
+        }
+        return true;
     }
 
     /// <summary>
@@ -878,6 +1022,7 @@ public partial class Geometry : HxObservableObject, IDisposable
         Disposer.DisposeAndRemove(ref _indexBuffer);
         Disposer.DisposeAndRemove(ref _vertColorsBuffer);
         Disposer.DisposeAndRemove(ref _jointInfluenceBuffer);
+        Disposer.DisposeAndRemove(ref _morphDeltaBuffer);
         Handle = Handle<GeometryResourceType>.Null;
         Manager = null;
     }

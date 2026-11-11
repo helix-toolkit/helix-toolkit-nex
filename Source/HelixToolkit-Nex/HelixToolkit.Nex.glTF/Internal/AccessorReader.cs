@@ -667,6 +667,298 @@ internal sealed class AccessorReader
     }
 
     /// <summary>
+    /// Reads VEC3 data into <see cref="Vector3"/>s, as used by morph target deltas. Components may be
+    /// FLOAT, or normalized or plain integers (<c>KHR_mesh_quantization</c>). Sparse accessors are
+    /// supported: the sparse values replace the base values (zeros when there is no buffer view).
+    /// </summary>
+    /// <param name="accessorIndex">The index of the accessor in the glTF model.</param>
+    /// <param name="output">The list the values are appended to.</param>
+    /// <param name="error">A description of the problem when the data cannot be read.</param>
+    /// <returns><see langword="true"/> if the values were read; otherwise <see langword="false"/>.</returns>
+    public bool ReadVector3s(int accessorIndex, FastList<Vector3> output, out string? error)
+    {
+        if (!ValidateAccessor(accessorIndex, out error))
+        {
+            return false;
+        }
+        var accessor = _model.Accessors[accessorIndex];
+        if (accessor.Type != Accessor.TypeEnum.VEC3)
+        {
+            error = $"Accessor {accessorIndex} must be VEC3, got {accessor.Type}.";
+            return false;
+        }
+        var componentType = accessor.ComponentType;
+        int componentSize = GetComponentSize(componentType);
+        int start = output.Count;
+        var buffer = GetBuffer(accessorIndex);
+        if (buffer == null)
+        {
+            for (int i = 0; i < accessor.Count; i++)
+            {
+                output.Add(Vector3.Zero);
+            }
+        }
+        else
+        {
+            int byteOffset = GetByteOffset(accessorIndex);
+            int stride = GetStride(accessorIndex);
+            for (int i = 0; i < accessor.Count; i++)
+            {
+                output.Add(ReadVector3(buffer, byteOffset + i * stride, componentType, componentSize, accessor.Normalized));
+            }
+        }
+
+        if (accessor.Sparse is { Count: > 0 })
+        {
+            if (!TryGetSparse(accessorIndex, accessor, componentSize * 3, out var sparse, out error))
+            {
+                return false;
+            }
+            for (int i = 0; i < sparse.Count; i++)
+            {
+                output[start + sparse.GetIndex(i)] = ReadVector3(
+                    sparse.Values,
+                    sparse.GetValueOffset(i),
+                    componentType,
+                    componentSize,
+                    accessor.Normalized
+                );
+            }
+        }
+        return true;
+    }
+
+    /// <summary>
+    /// Reads SCALAR data (FLOAT or normalized integers) into floats, as used by morph target weight
+    /// animation outputs. Sparse accessors are supported: the sparse values replace the base values
+    /// (zeros when there is no buffer view).
+    /// </summary>
+    /// <param name="accessorIndex">The index of the accessor in the glTF model.</param>
+    /// <param name="output">The values.</param>
+    /// <param name="error">A description of the problem when the data cannot be read.</param>
+    /// <returns><see langword="true"/> if the values were read; otherwise <see langword="false"/>.</returns>
+    public bool ReadScalars(int accessorIndex, out float[] output, out string? error)
+    {
+        output = [];
+        if (!ValidateAccessor(accessorIndex, out error))
+        {
+            return false;
+        }
+        var accessor = _model.Accessors[accessorIndex];
+        if (accessor.Type != Accessor.TypeEnum.SCALAR)
+        {
+            error = $"Accessor {accessorIndex} must be SCALAR, got {accessor.Type}.";
+            return false;
+        }
+        var componentType = accessor.ComponentType;
+        if (componentType != Accessor.ComponentTypeEnum.FLOAT && !accessor.Normalized)
+        {
+            error = $"Accessor {accessorIndex} must be FLOAT or normalized integers, got {componentType}.";
+            return false;
+        }
+        output = new float[accessor.Count];
+        var buffer = GetBuffer(accessorIndex);
+        if (buffer != null)
+        {
+            int byteOffset = GetByteOffset(accessorIndex);
+            int stride = GetStride(accessorIndex);
+            for (int i = 0; i < output.Length; i++)
+            {
+                output[i] = ReadNormalizedComponent(buffer, byteOffset + i * stride, componentType);
+            }
+        }
+        if (accessor.Sparse is { Count: > 0 })
+        {
+            if (!TryGetSparse(accessorIndex, accessor, GetComponentSize(componentType), out var sparse, out error))
+            {
+                output = [];
+                return false;
+            }
+            for (int i = 0; i < sparse.Count; i++)
+            {
+                output[sparse.GetIndex(i)] = ReadNormalizedComponent(
+                    sparse.Values,
+                    sparse.GetValueOffset(i),
+                    componentType
+                );
+            }
+        }
+        return true;
+    }
+
+    /// <summary>
+    /// The resolved sparse substitution of an accessor: element indices and tightly packed values.
+    /// </summary>
+    private readonly record struct SparseData(
+        int Count,
+        byte[] Indices,
+        int IndexOffset,
+        int IndexSize,
+        byte[] Values,
+        int ValueOffset,
+        int ElementSize
+    )
+    {
+        public int GetIndex(int i)
+        {
+            int offset = IndexOffset + i * IndexSize;
+            return IndexSize switch
+            {
+                1 => Indices[offset],
+                2 => BitConverter.ToUInt16(Indices, offset),
+                _ => (int)BitConverter.ToUInt32(Indices, offset),
+            };
+        }
+
+        public int GetValueOffset(int i)
+        {
+            return ValueOffset + i * ElementSize;
+        }
+    }
+
+    /// <summary>
+    /// Resolves the sparse indices and values of an accessor, validating them against their buffer
+    /// views (not only the backing buffers) and every index against the accessor count.
+    /// </summary>
+    private bool TryGetSparse(
+        int accessorIndex,
+        Accessor accessor,
+        int elementSize,
+        out SparseData sparse,
+        out string? error
+    )
+    {
+        sparse = default;
+        error = null;
+        var info = accessor.Sparse;
+        int indexSize = info.Indices.ComponentType switch
+        {
+            AccessorSparseIndices.ComponentTypeEnum.UNSIGNED_BYTE => 1,
+            AccessorSparseIndices.ComponentTypeEnum.UNSIGNED_SHORT => 2,
+            _ => 4,
+        };
+        if (
+            !TryGetBufferViewRange(
+                info.Indices.BufferView,
+                info.Indices.ByteOffset,
+                (long)info.Count * indexSize,
+                out var indexBuffer,
+                out var indexOffset
+            )
+            || !TryGetBufferViewRange(
+                info.Values.BufferView,
+                info.Values.ByteOffset,
+                (long)info.Count * elementSize,
+                out var valueBuffer,
+                out var valueOffset
+            )
+        )
+        {
+            error = $"Sparse accessor {accessorIndex} references an invalid buffer view or exceeds its bounds.";
+            return false;
+        }
+        sparse = new SparseData(
+            info.Count,
+            indexBuffer,
+            indexOffset,
+            indexSize,
+            valueBuffer,
+            valueOffset,
+            elementSize
+        );
+        for (int i = 0; i < info.Count; i++)
+        {
+            long index = indexSize == 4
+                ? BitConverter.ToUInt32(indexBuffer, indexOffset + i * indexSize)
+                : sparse.GetIndex(i);
+            if (index >= accessor.Count)
+            {
+                error = $"Sparse accessor {accessorIndex} index {index} is out of range.";
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /// <summary>
+    /// Resolves <paramref name="byteLength"/> bytes at <paramref name="byteOffset"/> within a buffer
+    /// view, failing when the range does not fit in the view or the view does not fit in its buffer.
+    /// </summary>
+    private bool TryGetBufferViewRange(
+        int bufferViewIndex,
+        int byteOffset,
+        long byteLength,
+        out byte[] buffer,
+        out int bufferOffset
+    )
+    {
+        buffer = [];
+        bufferOffset = 0;
+        var bufferViews = _model.BufferViews;
+        if (bufferViews is null || bufferViewIndex < 0 || bufferViewIndex >= bufferViews.Length)
+        {
+            return false;
+        }
+        var bufferView = bufferViews[bufferViewIndex];
+        if (bufferView.Buffer < 0 || bufferView.Buffer >= _bufferData.Length)
+        {
+            return false;
+        }
+        var data = _bufferData[bufferView.Buffer];
+        if (
+            byteOffset < 0
+            || byteOffset + byteLength > bufferView.ByteLength
+            || (long)bufferView.ByteOffset + bufferView.ByteLength > data.Length
+        )
+        {
+            return false;
+        }
+        buffer = data;
+        bufferOffset = bufferView.ByteOffset + byteOffset;
+        return true;
+    }
+
+    private static Vector3 ReadVector3(
+        byte[] buffer,
+        int offset,
+        Accessor.ComponentTypeEnum componentType,
+        int componentSize,
+        bool normalized
+    )
+    {
+        return new Vector3(
+            ReadComponent(buffer, offset, componentType, normalized),
+            ReadComponent(buffer, offset + componentSize, componentType, normalized),
+            ReadComponent(buffer, offset + 2 * componentSize, componentType, normalized)
+        );
+    }
+
+    /// <summary>
+    /// Reads one component as a float: FLOAT as is, normalized integers as normalized values and
+    /// other integers as their plain value.
+    /// </summary>
+    private static float ReadComponent(
+        byte[] buffer,
+        int offset,
+        Accessor.ComponentTypeEnum componentType,
+        bool normalized
+    )
+    {
+        if (normalized || componentType == Accessor.ComponentTypeEnum.FLOAT)
+        {
+            return ReadNormalizedComponent(buffer, offset, componentType);
+        }
+        return componentType switch
+        {
+            Accessor.ComponentTypeEnum.BYTE => (sbyte)buffer[offset],
+            Accessor.ComponentTypeEnum.UNSIGNED_BYTE => buffer[offset],
+            Accessor.ComponentTypeEnum.SHORT => BitConverter.ToInt16(buffer, offset),
+            Accessor.ComponentTypeEnum.UNSIGNED_SHORT => BitConverter.ToUInt16(buffer, offset),
+            _ => BitConverter.ToUInt32(buffer, offset),
+        };
+    }
+
+    /// <summary>
     /// Reads one component as a float: FLOAT as is, integer types as normalized values
     /// (signed types clamped to -1, per the glTF normalization rules).
     /// </summary>

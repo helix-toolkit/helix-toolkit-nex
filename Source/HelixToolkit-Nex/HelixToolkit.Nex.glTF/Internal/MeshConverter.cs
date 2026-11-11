@@ -177,6 +177,9 @@ internal sealed class MeshConverter
         // Read skinning attributes (optional)
         ReadSkinAttributes(primitive, geometry, meshIndex, primIndex);
 
+        // Read morph targets (optional). Must happen before flat normals unweld the vertices.
+        ReadMorphTargets(primitive, geometry, meshIndex, primIndex);
+
         // Read indices (optional)
         if (primitive.Indices.HasValue)
         {
@@ -352,6 +355,9 @@ internal sealed class MeshConverter
 
         // Read skinning attributes (optional)
         ReadSkinAttributes(primitive, geometry, meshIndex, primIndex);
+
+        // Read morph targets (optional). Must happen before flat normals unweld the vertices.
+        ReadMorphTargets(primitive, geometry, meshIndex, primIndex);
 
         // Read indices (optional)
         if (primitive.Indices.HasValue)
@@ -1115,6 +1121,9 @@ internal sealed class MeshConverter
             ReadSkinAttributes(primitive, geometry, meshIndex, primIndex);
         }
 
+        // Morph targets are never Draco-compressed; read them from their accessors.
+        ReadMorphTargets(primitive, geometry, meshIndex, primIndex);
+
         // Requirements 3.4, 3.5: populate indices when present, otherwise build non-indexed.
         if (decoded.Indices is { } indices)
         {
@@ -1281,6 +1290,77 @@ internal sealed class MeshConverter
     /// Reads <c>JOINTS_0</c>/<c>WEIGHTS_0</c> into the geometry's joint influences when both are present.
     /// Influences whose count does not match the vertex count are dropped with a warning.
     /// </summary>
+    /// <summary>
+    /// Reads the morph targets of a primitive (<c>POSITION</c>, <c>NORMAL</c> and <c>TANGENT</c>
+    /// displacements) into <see cref="Geometry.MorphTargets"/>. When any target cannot be read, the
+    /// primitive keeps no morph targets, since the target order must match the mesh weights.
+    /// </summary>
+    private void ReadMorphTargets(
+        MeshPrimitive primitive,
+        Geometry geometry,
+        int meshIndex,
+        int primIndex
+    )
+    {
+        if (primitive.Targets is not { Length: > 0 } targets)
+        {
+            return;
+        }
+        var vertexCount = geometry.Vertices.Count;
+        var morphTargets = new FastList<MorphTarget>(targets.Length);
+        for (int t = 0; t < targets.Length; t++)
+        {
+            var target = new MorphTarget($"Target_{t}");
+            var attributes = targets[t];
+            string? error = null;
+            if (
+                attributes is null
+                || !TryReadMorphDeltas(attributes, PositionSemantic, target.PositionDeltas, vertexCount, out error)
+                || !TryReadMorphDeltas(attributes, NormalSemantic, target.NormalDeltas, vertexCount, out error)
+                || !TryReadMorphDeltas(attributes, TangentSemantic, target.TangentDeltas, vertexCount, out error)
+            )
+            {
+                _diagnostics.Add(
+                    new ImportDiagnostic(
+                        DiagnosticSeverity.Warning,
+                        $"Mesh {meshIndex} primitive {primIndex} morph target {t} cannot be read: {error ?? "missing attributes"}. The primitive is not morphed.",
+                        "Mesh",
+                        meshIndex
+                    )
+                );
+                return;
+            }
+            morphTargets.Add(target);
+        }
+        geometry.MorphTargets = morphTargets;
+    }
+
+    private bool TryReadMorphDeltas(
+        Dictionary<string, int> attributes,
+        string semantic,
+        FastList<Vector3> output,
+        int vertexCount,
+        out string? error
+    )
+    {
+        error = null;
+        if (!attributes.TryGetValue(semantic, out int accessorIndex))
+        {
+            return true;
+        }
+        if (!_accessorReader.ReadVector3s(accessorIndex, output, out error))
+        {
+            return false;
+        }
+        if (output.Count != vertexCount)
+        {
+            error = $"{semantic} has {output.Count} deltas but the primitive has {vertexCount} vertices";
+            output.Clear();
+            return false;
+        }
+        return true;
+    }
+
     private void ReadSkinAttributes(
         MeshPrimitive primitive,
         Geometry geometry,

@@ -167,6 +167,230 @@ public class SkinningShaderCompileTests
         AssertNear(new Vector4(1, 1, 0, 1), skinnedPositions[1], "rotated vertex");
     }
 
+    /// <summary>
+    /// Runs the vertex deformation pass with morph targets, without and with skinning, and compares
+    /// the output with the CPU reference: <c>skin(base + sum(w * delta))</c>.
+    /// </summary>
+    [TestMethod]
+    [DataRow(false)]
+    [DataRow(true)]
+    public void DeformationPass_MorphTargets_MatchCpuReference(bool skinned)
+    {
+        var ctx = _context!;
+        Vector4[] positions = [new(0, 0, 0, 1), new(1, 0, 0, 1), new(0, 1, 0, 1)];
+        var props = new GpuVertexProps[positions.Length];
+        for (int i = 0; i < props.Length; i++)
+        {
+            props[i].Normal = Vector3.UnitZ;
+            props[i].TexCoord = new Vector2(i, 0);
+            props[i].Tangent = new Vector4(1, 0, 0, 1);
+        }
+        // Two targets, target-major: target 0 moves along Y and tilts the normal, target 1 along Z.
+        var deltas = new GpuMorphDelta[2 * positions.Length];
+        for (int v = 0; v < positions.Length; v++)
+        {
+            deltas[v] = new GpuMorphDelta { Position = new Vector3(0, 1, 0), Normal = new Vector3(1, 0, 0) };
+            deltas[positions.Length + v] = new GpuMorphDelta { Position = new Vector3(0, 0, v + 1) };
+        }
+        GpuMorphWeight[] weights = [new() { Target = 0, Weight = 0.5f }, new() { Target = 1, Weight = 2f }];
+        var skin = Matrix4x4.CreateRotationZ(MathF.PI / 2) * Matrix4x4.CreateTranslation(3, 0, 0);
+        var influences = new GpuJointInfluence[positions.Length];
+        for (int i = 0; i < influences.Length; i++)
+        {
+            influences[i] = new GpuJointInfluence { Joint0 = 0, Weights = Vector4.UnitX };
+        }
+
+        using var positionBuffer = CreateBuffer(ctx, positions);
+        using var propsBuffer = CreateBuffer(ctx, props);
+        using var deltaBuffer = CreateBuffer(ctx, deltas);
+        using var weightBuffer = CreateBuffer(ctx, weights);
+        using var paletteBuffer = CreateBuffer(ctx, new[] { skin });
+        using var influenceBuffer = CreateBuffer(ctx, influences);
+        using var dstPositionBuffer = CreateBuffer(ctx, new Vector4[positions.Length]);
+        using var dstPropsBuffer = CreateBuffer(ctx, new GpuVertexProps[positions.Length]);
+        using var verticesPipeline = CreatePipeline(GpuSkinning.Pass.Vertices);
+
+        var cmd = ctx.AcquireCommandBuffer();
+        cmd.BindComputePipeline(verticesPipeline);
+        cmd.PushConstants(
+            new SkinVertexPC
+            {
+                PaletteAddress = skinned ? paletteBuffer.Buffer.GpuAddress : 0,
+                SrcVertexAddress = positionBuffer.Buffer.GpuAddress,
+                SrcPropsAddress = propsBuffer.Buffer.GpuAddress,
+                InfluenceAddress = skinned ? influenceBuffer.Buffer.GpuAddress : 0,
+                DstVertexAddress = dstPositionBuffer.Buffer.GpuAddress,
+                DstPropsAddress = dstPropsBuffer.Buffer.GpuAddress,
+                MorphDeltaAddress = deltaBuffer.Buffer.GpuAddress,
+                MorphWeightAddress = weightBuffer.Buffer.GpuAddress,
+                VertexCount = (uint)positions.Length,
+                JointCount = skinned ? 1u : 0u,
+                MorphWeightCount = (uint)weights.Length,
+            }
+        );
+        cmd.DispatchThreadGroups(new Dimensions(1, 1, 1), Dependencies.Empty);
+        ctx.Wait(ctx.Submit(cmd, TextureHandle.Null));
+
+        var outPositions = Read<Vector4>(ctx, dstPositionBuffer, positions.Length);
+        var outProps = Read<GpuVertexProps>(ctx, dstPropsBuffer, positions.Length);
+        var m = skinned ? skin : Matrix4x4.Identity;
+        for (int v = 0; v < positions.Length; v++)
+        {
+            var p = positions[v];
+            var morphed = new Vector3(p.X, p.Y, p.Z) + 0.5f * deltas[v].Position + 2f * deltas[positions.Length + v].Position;
+            var normal = props[v].Normal + 0.5f * deltas[v].Normal;
+            var expectedPosition = new Vector4(Vector3.Transform(morphed, m), 1);
+            var expectedNormal = Vector3.Normalize(Vector3.TransformNormal(normal, m));
+            var expectedTangent = Vector3.Normalize(Vector3.TransformNormal(Vector3.UnitX, m));
+
+            AssertNear(expectedPosition, outPositions[v], $"position {v}");
+            AssertNear(new Vector4(expectedNormal, 0), new Vector4(outProps[v].Normal, 0), $"normal {v}");
+            AssertNear(new Vector4(expectedTangent, 1), outProps[v].Tangent, $"tangent {v}");
+            Assert.AreEqual(props[v].TexCoord, outProps[v].TexCoord, $"texcoord {v}");
+        }
+    }
+
+    /// <summary>
+    /// Generated flat normals are recomputed from the morphed triangle when the flat-normal flag is
+    /// set, and kept otherwise.
+    /// </summary>
+    [TestMethod]
+    [DataRow(true)]
+    [DataRow(false)]
+    public void DeformationPass_FlatNormals_FollowMorphedTriangle(bool flatNormals)
+    {
+        var ctx = _context!;
+        Vector4[] positions = [new(0, 0, 0, 1), new(1, 0, 0, 1), new(0, 1, 0, 1)];
+        var props = new GpuVertexProps[positions.Length];
+        for (int i = 0; i < props.Length; i++)
+        {
+            props[i].Normal = Vector3.UnitZ;
+            props[i].Tangent = new Vector4(1, 0, 0, 1);
+        }
+        // Lift the third corner along +Z: the face normal tilts to normalize(0, -1, 1).
+        var deltas = new GpuMorphDelta[positions.Length];
+        deltas[2].Position = Vector3.UnitZ;
+        GpuMorphWeight[] weights = [new() { Target = 0, Weight = 1f }];
+
+        using var positionBuffer = CreateBuffer(ctx, positions);
+        using var propsBuffer = CreateBuffer(ctx, props);
+        using var deltaBuffer = CreateBuffer(ctx, deltas);
+        using var weightBuffer = CreateBuffer(ctx, weights);
+        using var dstPositionBuffer = CreateBuffer(ctx, new Vector4[positions.Length]);
+        using var dstPropsBuffer = CreateBuffer(ctx, new GpuVertexProps[positions.Length]);
+        using var verticesPipeline = CreatePipeline(GpuSkinning.Pass.Vertices);
+
+        var cmd = ctx.AcquireCommandBuffer();
+        cmd.BindComputePipeline(verticesPipeline);
+        cmd.PushConstants(
+            new SkinVertexPC
+            {
+                SrcVertexAddress = positionBuffer.Buffer.GpuAddress,
+                SrcPropsAddress = propsBuffer.Buffer.GpuAddress,
+                DstVertexAddress = dstPositionBuffer.Buffer.GpuAddress,
+                DstPropsAddress = dstPropsBuffer.Buffer.GpuAddress,
+                MorphDeltaAddress = deltaBuffer.Buffer.GpuAddress,
+                MorphWeightAddress = weightBuffer.Buffer.GpuAddress,
+                VertexCount = (uint)positions.Length,
+                MorphWeightCount = (uint)weights.Length,
+                Flags = flatNormals ? GpuSkinning.FlagFlatNormals : 0,
+            }
+        );
+        cmd.DispatchThreadGroups(new Dimensions(1, 1, 1), Dependencies.Empty);
+        ctx.Wait(ctx.Submit(cmd, TextureHandle.Null));
+
+        var outProps = Read<GpuVertexProps>(ctx, dstPropsBuffer, positions.Length);
+        var expected = flatNormals ? Vector3.Normalize(new Vector3(0, -1, 1)) : Vector3.UnitZ;
+        for (int v = 0; v < positions.Length; v++)
+        {
+            AssertNear(new Vector4(expected, 0), new Vector4(outProps[v].Normal, 0), $"normal {v}");
+        }
+    }
+
+    /// <summary>
+    /// Generated tangents follow the morphed surface: with flat normals the face tangent is
+    /// recomputed from the morphed triangle and its texture coordinates; otherwise the tangent is
+    /// re-orthogonalized against the morphed normal. Authored tangents are kept.
+    /// </summary>
+    [TestMethod]
+    [DataRow(true, true)]
+    [DataRow(false, true)]
+    [DataRow(false, false)]
+    public void DeformationPass_GeneratedTangents_FollowMorphedSurface(bool flatNormals, bool generated)
+    {
+        var ctx = _context!;
+        Vector4[] positions = [new(0, 0, 0, 1), new(1, 0, 0, 1), new(0, 1, 0, 1)];
+        Vector2[] uvs = [new(0, 0), new(1, 0), new(0, 1)];
+        var props = new GpuVertexProps[positions.Length];
+        for (int i = 0; i < props.Length; i++)
+        {
+            props[i].Normal = Vector3.UnitZ;
+            props[i].TexCoord = uvs[i];
+            props[i].Tangent = new Vector4(1, 0, 0, 1);
+        }
+        var deltas = new GpuMorphDelta[positions.Length];
+        if (flatNormals)
+        {
+            // Lift the second corner along +Z: the face tangent (along +U) tilts to (1, 0, 1).
+            deltas[1].Position = Vector3.UnitZ;
+        }
+        else
+        {
+            // Tilt the normals to (1, 0, 1) without moving the vertices.
+            for (int i = 0; i < deltas.Length; i++)
+            {
+                deltas[i].Normal = Vector3.UnitX;
+            }
+        }
+        GpuMorphWeight[] weights = [new() { Target = 0, Weight = 1f }];
+        var flags = (flatNormals ? GpuSkinning.FlagFlatNormals : 0) | (generated ? GpuSkinning.FlagGeneratedTangents : 0);
+
+        using var positionBuffer = CreateBuffer(ctx, positions);
+        using var propsBuffer = CreateBuffer(ctx, props);
+        using var deltaBuffer = CreateBuffer(ctx, deltas);
+        using var weightBuffer = CreateBuffer(ctx, weights);
+        using var dstPositionBuffer = CreateBuffer(ctx, new Vector4[positions.Length]);
+        using var dstPropsBuffer = CreateBuffer(ctx, new GpuVertexProps[positions.Length]);
+        using var verticesPipeline = CreatePipeline(GpuSkinning.Pass.Vertices);
+
+        var cmd = ctx.AcquireCommandBuffer();
+        cmd.BindComputePipeline(verticesPipeline);
+        cmd.PushConstants(
+            new SkinVertexPC
+            {
+                SrcVertexAddress = positionBuffer.Buffer.GpuAddress,
+                SrcPropsAddress = propsBuffer.Buffer.GpuAddress,
+                DstVertexAddress = dstPositionBuffer.Buffer.GpuAddress,
+                DstPropsAddress = dstPropsBuffer.Buffer.GpuAddress,
+                MorphDeltaAddress = deltaBuffer.Buffer.GpuAddress,
+                MorphWeightAddress = weightBuffer.Buffer.GpuAddress,
+                VertexCount = (uint)positions.Length,
+                MorphWeightCount = (uint)weights.Length,
+                Flags = flags,
+            }
+        );
+        cmd.DispatchThreadGroups(new Dimensions(1, 1, 1), Dependencies.Empty);
+        ctx.Wait(ctx.Submit(cmd, TextureHandle.Null));
+
+        var outProps = Read<GpuVertexProps>(ctx, dstPropsBuffer, positions.Length);
+        // Flat: face tangent of the lifted triangle. Smooth: X re-orthogonalized against
+        // normalize(1, 0, 1). Authored: unchanged.
+        var expected = !generated
+            ? new Vector4(1, 0, 0, 1)
+            : flatNormals
+                ? new Vector4(Vector3.Normalize(new Vector3(1, 0, 1)), 1)
+                : new Vector4(Vector3.Normalize(new Vector3(1, 0, -1)), 1);
+        for (int v = 0; v < positions.Length; v++)
+        {
+            AssertNear(expected, outProps[v].Tangent, $"tangent {v}");
+            Assert.IsTrue(
+                MathF.Abs(Vector3.Dot(outProps[v].Normal, new Vector3(outProps[v].Tangent.X, outProps[v].Tangent.Y, outProps[v].Tangent.Z))) < 1e-4f
+                    || !generated,
+                $"tangent {v} is perpendicular to the normal"
+            );
+        }
+    }
+
     private static ElementBuffer<T> CreateBuffer<T>(IContext ctx, T[] data)
         where T : unmanaged
     {

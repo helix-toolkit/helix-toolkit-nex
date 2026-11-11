@@ -16,9 +16,10 @@ namespace HelixToolkit.Nex.Scene;
 /// </code>
 /// </para>
 /// <para>
-/// The player remembers the transforms of the target nodes before it first poses them, and
-/// restores them on <see cref="Stop"/> or when <see cref="Clip"/> changes, so switching clips does
-/// not leave nodes animated only by the previous clip in its last pose.
+/// The player remembers the transforms of the target nodes (and the animated morph target
+/// weights) before it first poses them, and restores them on <see cref="Stop"/> or when
+/// <see cref="Clip"/> changes, so switching clips does not leave nodes animated only by the
+/// previous clip in its last pose.
 /// </para>
 /// </remarks>
 public sealed class AnimationPlayer
@@ -26,6 +27,7 @@ public sealed class AnimationPlayer
     private readonly record struct RestPose(Vector3 Translation, Quaternion Rotation, Vector3 Scale);
 
     private readonly Dictionary<Node, RestPose> _restPoses = [];
+    private readonly Dictionary<MorphWeights, float[]> _restWeights = [];
     private AnimationClip? _clip;
     private float _time;
     private bool _dirty;
@@ -186,6 +188,14 @@ public sealed class AnimationPlayer
     {
         foreach (var channel in clip.Channels)
         {
+            if (!channel.IsTransform)
+            {
+                if (channel.Weights is { } weights && !_restWeights.ContainsKey(weights))
+                {
+                    _restWeights[weights] = weights.Values.ToArray();
+                }
+                continue;
+            }
             var target = channel.Target;
             if (target is null || !target.Alive || _restPoses.ContainsKey(target))
             {
@@ -215,5 +225,10 @@ public sealed class AnimationPlayer
             node.NotifyTransformChanged();
         }
         _restPoses.Clear();
+        foreach (var (weights, values) in _restWeights)
+        {
+            weights.Set(values);
+        }
+        _restWeights.Clear();
     }
 }

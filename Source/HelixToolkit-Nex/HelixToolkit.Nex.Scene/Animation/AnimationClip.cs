@@ -1,8 +1,8 @@
 namespace HelixToolkit.Nex.Scene;
 
 /// <summary>
-/// A named set of <see cref="AnimationChannel"/>s that animate node transforms over a common
-/// time range (a glTF <c>animation</c>).
+/// A named set of <see cref="AnimationChannel"/>s that animate node transforms and morph target
+/// weights over a common time range (a glTF <c>animation</c>).
 /// </summary>
 /// <remarks>
 /// A clip only describes the animation. Use an <see cref="AnimationPlayer"/> to play it, or call
@@ -72,7 +72,7 @@ public sealed class AnimationClip
     {
         foreach (var channel in _channels)
         {
-            if (channel.Apply(time))
+            if (channel.Apply(time) && channel.IsTransform)
             {
                 channel.Target!.NotifyTransformChanged();
             }

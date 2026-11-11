@@ -11,6 +11,7 @@ using HelixToolkit.Nex.Shaders.Frag;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
 using GltfNode = glTFLoader.Schema.Node;
+using Morphing = HelixToolkit.Nex.Rendering.Morphing;
 using Node = HelixToolkit.Nex.Scene.Node;
 using Skeleton = HelixToolkit.Nex.Rendering.Skeleton;
 using Skinning = HelixToolkit.Nex.Rendering.Skinning;
@@ -399,6 +400,7 @@ internal sealed class SceneBuilder
 
         // Handle mesh reference. EXT_mesh_gpu_instancing is evaluated first: when the node is handled
         // as an instanced node, the normal (non-instanced) mesh path is skipped.
+        var morphWeights = CreateMorphWeights(model, gltfNode, nodeIndex);
         if (TryRecordInstancedMesh(buffer, model, gltfNode, nodeIndex, handle, out var instancing))
         {
             // The node was handled as an instanced node.
@@ -415,7 +417,8 @@ internal sealed class SceneBuilder
                         handle,
                         ct,
                         instancing,
-                        gltfNode.Skin
+                        gltfNode.Skin,
+                        morphWeights
                     )
                     .ConfigureAwait(false);
             }
@@ -429,7 +432,8 @@ internal sealed class SceneBuilder
                     gltfNode.Mesh.Value,
                     handle,
                     ct,
-                    skinIndex: gltfNode.Skin
+                    skinIndex: gltfNode.Skin,
+                    morphWeights: morphWeights
                 )
                 .ConfigureAwait(false);
         }
@@ -563,6 +567,7 @@ internal sealed class SceneBuilder
 
         // Handle mesh reference. EXT_mesh_gpu_instancing is evaluated first: when the node is handled
         // as an instanced node, the normal (non-instanced) mesh path is skipped.
+        var morphWeights = CreateMorphWeights(model, gltfNode, nodeIndex);
         if (TryRecordInstancedMesh(buffer, model, gltfNode, nodeIndex, handle, out var instancing))
         {
             // The node was handled as an instanced node.
@@ -572,13 +577,20 @@ internal sealed class SceneBuilder
             //   The single Information diagnostic for those cases is recorded by TryRecordInstancedMesh.
             if (instancing is not null && gltfNode.Mesh.HasValue)
             {
-                RecordMeshNodes(buffer, model, gltfNode.Mesh.Value, handle, instancing, gltfNode.Skin);
+                RecordMeshNodes(buffer, model, gltfNode.Mesh.Value, handle, instancing, gltfNode.Skin, morphWeights);
             }
         }
         else if (gltfNode.Mesh.HasValue)
         {
             // Existing non-instanced mesh path (no extension, disabled, or parse/read failure).
-            RecordMeshNodes(buffer, model, gltfNode.Mesh.Value, handle, skinIndex: gltfNode.Skin);
+            RecordMeshNodes(
+                buffer,
+                model,
+                gltfNode.Mesh.Value,
+                handle,
+                skinIndex: gltfNode.Skin,
+                morphWeights: morphWeights
+            );
         }
         // For point lights, optionally record the visualization sphere mesh as a child of the node.
         // The light's effective position is driven by the node transform; only the visualization
@@ -1127,7 +1139,8 @@ internal sealed class SceneBuilder
         int meshIndex,
         DeferredNode parent,
         Instancing? instancing = null,
-        int? skinIndex = null
+        int? skinIndex = null,
+        MorphWeights? morphWeights = null
     )
     {
         if (model.Meshes == null || meshIndex < 0 || meshIndex >= model.Meshes.Length)
@@ -1164,7 +1177,8 @@ internal sealed class SceneBuilder
                     mesh.Name ?? $"Mesh_{meshIndex}",
                     out var meshHandle,
                     instancing,
-                    skinIndex
+                    skinIndex,
+                    morphWeights
                 )
             )
             {
@@ -1188,7 +1202,8 @@ internal sealed class SceneBuilder
                         $"{mesh.Name ?? $"Mesh_{meshIndex}"}_Primitive{primIndex}",
                         out var meshHandle,
                         instancing,
-                        skinIndex
+                        skinIndex,
+                        morphWeights
                     )
                 )
                 {
@@ -1235,7 +1250,8 @@ internal sealed class SceneBuilder
         string nodeName,
         out DeferredNode handle,
         Instancing? instancing = null,
-        int? skinIndex = null
+        int? skinIndex = null,
+        MorphWeights? morphWeights = null
     )
     {
         handle = default;
@@ -1277,6 +1293,7 @@ internal sealed class SceneBuilder
         bool materialValid = material != null && material.Valid;
 
         var pendingSkin = CreatePendingSkin(model, geometry, skinIndex, meshIndex);
+        var morphing = CreateMorphing(geometry, morphWeights, nodeName, meshIndex);
 
         // Record the MeshNode: construction and entity mutation are deferred to flush.
         handle = buffer.RecordCreateNode(world =>
@@ -1292,6 +1309,7 @@ internal sealed class SceneBuilder
             // the same per-instance transforms as every other primitive of the mesh. Null leaves
             // the MeshNode non-instanced.
             meshNode.Instancing = instancing;
+            meshNode.Morphing = morphing;
 
             // Skinning is bound after flush, once the joint nodes exist.
             if (pendingSkin is not null)
@@ -1319,7 +1337,8 @@ internal sealed class SceneBuilder
         DeferredNode parent,
         CancellationToken ct,
         Instancing? instancing = null,
-        int? skinIndex = null
+        int? skinIndex = null,
+        MorphWeights? morphWeights = null
     )
     {
         if (model.Meshes == null || meshIndex < 0 || meshIndex >= model.Meshes.Length)
@@ -1354,7 +1373,8 @@ internal sealed class SceneBuilder
                     mesh.Name ?? $"Mesh_{meshIndex}",
                     ct,
                     instancing,
-                    skinIndex
+                    skinIndex,
+                    morphWeights
                 )
                 .ConfigureAwait(false);
             if (recorded)
@@ -1377,7 +1397,8 @@ internal sealed class SceneBuilder
                         $"{mesh.Name ?? $"Mesh_{meshIndex}"}_Primitive{primIndex}",
                         ct,
                         instancing,
-                        skinIndex
+                        skinIndex,
+                        morphWeights
                     )
                     .ConfigureAwait(false);
                 if (recorded)
@@ -1425,7 +1446,8 @@ internal sealed class SceneBuilder
         string nodeName,
         CancellationToken ct,
         Instancing? instancing = null,
-        int? skinIndex = null
+        int? skinIndex = null,
+        MorphWeights? morphWeights = null
     )
     {
         // Convert geometry via the async upload path (dedicated transfer queue — safe off-thread).
@@ -1440,6 +1462,7 @@ internal sealed class SceneBuilder
         }
 
         var pendingSkin = CreatePendingSkin(model, geometry, skinIndex, meshIndex);
+        var morphing = CreateMorphing(geometry, morphWeights, nodeName, meshIndex);
 
         // Material conversion (which uploads textures on the graphics queue, including mip blits)
         // is deferred into the factory, which runs on the owning thread during flush.
@@ -1470,6 +1493,7 @@ internal sealed class SceneBuilder
             // the same per-instance transforms as every other primitive of the mesh. Null leaves
             // the MeshNode non-instanced.
             meshNode.Instancing = instancing;
+            meshNode.Morphing = morphing;
 
             // Skinning is bound after flush, once the joint nodes exist.
             if (pendingSkin is not null)
@@ -1485,6 +1509,84 @@ internal sealed class SceneBuilder
         return (true, handle);
     }
 
+    #region Morph targets
+
+    /// <summary>
+    /// Creates the morph target weights of a glTF node whose mesh has morph targets, initialized
+    /// from <c>node.weights</c>, else <c>mesh.weights</c>, else zero. The weights are shared by
+    /// every primitive of the mesh and registered for weight animation binding.
+    /// Returns <c>null</c> when the node has no mesh with morph targets.
+    /// </summary>
+    private MorphWeights? CreateMorphWeights(Gltf model, GltfNode gltfNode, int nodeIndex)
+    {
+        var count = GetMorphTargetCount(model, gltfNode);
+        if (count == 0)
+        {
+            return null;
+        }
+        var weights = new MorphWeights(count);
+        var mesh = model.Meshes[gltfNode.Mesh!.Value];
+        weights.Set(gltfNode.Weights ?? mesh.Weights ?? []);
+        _skinState?.MorphWeights.TryAdd(nodeIndex, weights);
+        return weights;
+    }
+
+    /// <summary>
+    /// Gets the number of morph targets of the mesh of a glTF node: the largest target count of its
+    /// primitives (glTF requires all primitives to have the same count), or zero.
+    /// </summary>
+    internal static int GetMorphTargetCount(Gltf model, GltfNode gltfNode)
+    {
+        if (
+            gltfNode.Mesh is not int meshIndex
+            || model.Meshes is null
+            || meshIndex < 0
+            || meshIndex >= model.Meshes.Length
+        )
+        {
+            return 0;
+        }
+        var count = 0;
+        foreach (var primitive in model.Meshes[meshIndex].Primitives ?? [])
+        {
+            count = Math.Max(count, primitive.Targets?.Length ?? 0);
+        }
+        return count;
+    }
+
+    /// <summary>
+    /// Creates the <see cref="Morphing"/> of a primitive with morph targets. Returns <c>null</c>
+    /// when the primitive has no (readable) morph targets.
+    /// </summary>
+    private Morphing? CreateMorphing(
+        Geometry geometry,
+        MorphWeights? morphWeights,
+        string nodeName,
+        int meshIndex
+    )
+    {
+        if (morphWeights is null || !geometry.HasMorphTargets)
+        {
+            return null;
+        }
+        if (geometry.MorphTargets.Count != morphWeights.Count)
+        {
+            _diagnostics.Add(
+                new ImportDiagnostic(
+                    DiagnosticSeverity.Warning,
+                    $"Mesh {meshIndex} primitive '{nodeName}' has {geometry.MorphTargets.Count} morph targets but the mesh has {morphWeights.Count} weights.",
+                    "Mesh",
+                    meshIndex
+                )
+            );
+        }
+        var morphing = new Morphing(morphWeights, nodeName);
+        _manifest?.AddMorphing(morphing);
+        return morphing;
+    }
+
+    #endregion
+
     #region Skinning
 
     /// <summary>
@@ -1499,6 +1601,8 @@ internal sealed class SceneBuilder
         public Dictionary<int, Skeleton?> Skeletons { get; } = [];
 
         public List<PendingSkin> PendingSkins { get; } = [];
+
+        public Dictionary<int, MorphWeights> MorphWeights { get; } = [];
 
         private NodeBindingState(int nodeCount)
         {
@@ -1725,7 +1829,12 @@ internal sealed class SceneBuilder
                     var channels = animation.Clip.Channels;
                     for (int i = 0; i < channels.Count; i++)
                     {
-                        channels[i].Target = state.GetNode(animation.TargetNodes[i]);
+                        var nodeIndex = animation.TargetNodes[i];
+                        channels[i].Target = state.GetNode(nodeIndex);
+                        if (channels[i].Path == AnimationPath.Weights)
+                        {
+                            channels[i].Weights = state.MorphWeights.GetValueOrDefault(nodeIndex);
+                        }
                     }
                 }
             },

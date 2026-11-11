@@ -150,6 +150,27 @@ internal class PropertiesPanel
                     }
                     Gui.EndDisabled();
                 }
+                if (_app.HasMorphTargets)
+                {
+                    var showMorph = _app.ShowMorphDisplacement;
+                    if (Gui.Checkbox("Show Morph Displacement", ref showMorph))
+                    {
+                        _app.ShowMorphDisplacement = showMorph;
+                    }
+                    var morph = _app.MorphEffect;
+                    Gui.BeginDisabled(!showMorph);
+                    var lengthScale = morph.LengthScale;
+                    if (Gui.SliderFloat("Displacement Scale", ref lengthScale, 0.1f, 5f))
+                    {
+                        morph.LengthScale = lengthScale;
+                    }
+                    var morphDepthTest = morph.UseDepthTest;
+                    if (Gui.Checkbox("Displacement Depth Test", ref morphDepthTest))
+                    {
+                        morph.UseDepthTest = morphDepthTest;
+                    }
+                    Gui.EndDisabled();
+                }
 
                 Gui.Spacing();
                 Gui.Separator();
@@ -253,6 +274,36 @@ internal class PropertiesPanel
                     Gui.Text($"Material: {materialName}");
                 }
             }
+            if (mesh.Morphing is { } morphing && mesh.Geometry is not null)
+            {
+                DrawMorphWeights(morphing, mesh.Geometry);
+            }
         }
+    }
+
+    /// <summary>
+    /// Draws a slider per morph target. Weights are shared by every primitive of the mesh, and a
+    /// playing weight animation overrides the sliders.
+    /// </summary>
+    private static void DrawMorphWeights(Morphing morphing, Geometries.Geometry geometry)
+    {
+        if (!Gui.CollapsingHeader("Morph Targets", ImGuiTreeNodeFlags.DefaultOpen))
+        {
+            return;
+        }
+        var weights = morphing.Weights;
+        for (var i = 0; i < weights.Count; i++)
+        {
+            var name =
+                i < geometry.MorphTargets.Count && geometry.MorphTargets[i].Name.Length > 0
+                    ? geometry.MorphTargets[i].Name
+                    : $"Target_{i}";
+            var weight = weights[i];
+            if (Gui.SliderFloat($"{name}##morph{i}", ref weight, 0f, 1f))
+            {
+                weights[i] = weight;
+            }
+        }
+        Gui.TextDisabled($"{morphing.ActiveWeightCount} active target(s)");
     }
 }

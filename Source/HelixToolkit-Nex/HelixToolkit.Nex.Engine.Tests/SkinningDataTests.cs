@@ -231,6 +231,167 @@ public sealed class SkinningDataTests
         Assert.IsTrue(info.IsSkinned);
     }
 
+    private Geometry CreateMorphGeometry(bool skinned)
+    {
+        var geometry = new Geometry(
+            [new Vector4(0, 0, 0, 1), new Vector4(1, 0, 0, 1), new Vector4(0, 1, 0, 1)],
+            [new VertexProperties(Vector3.UnitZ), new VertexProperties(Vector3.UnitZ), new VertexProperties(Vector3.UnitZ)],
+            [0u, 1u, 2u]
+        );
+        var up = new MorphTarget("Up");
+        var side = new MorphTarget("Side");
+        for (int i = 0; i < geometry.Vertices.Count; i++)
+        {
+            up.PositionDeltas.Add(new Vector3(0, 0, 1));
+            side.PositionDeltas.Add(new Vector3(i, 0, 0));
+            if (skinned)
+            {
+                geometry.JointInfluences.Add(new GpuJointInfluence { Joint0 = 0, Weights = Vector4.UnitX });
+            }
+        }
+        geometry.MorphTargets.Add(up);
+        geometry.MorphTargets.Add(side);
+        Assert.IsTrue(_geometryManager.Add(geometry).Valid);
+        Assert.IsTrue(geometry.MorphDeltaBuffer.Valid);
+        return geometry;
+    }
+
+    [TestMethod]
+    public void MorphedMesh_ProducesDispatch_AndOwnsOutput()
+    {
+        var geometry = CreateMorphGeometry(skinned: false);
+        var morphing = new Morphing(new MorphWeights([0.5f, 0f]));
+        var node = new MeshNode(_world, "Morphed") { Geometry = geometry, Morphing = morphing };
+
+        Assert.IsTrue(_skinningData.Update());
+
+        Assert.AreEqual(1, _skinningData.Dispatches.Length);
+        var dispatch = _skinningData.Dispatches[0];
+        Assert.IsNull(dispatch.Skinning);
+        Assert.AreSame(morphing, dispatch.Morphing);
+        Assert.AreEqual(geometry.Vertices.Count, dispatch.VertexCount);
+        Assert.IsTrue(morphing.MorphedVertexBuffer.Valid);
+        Assert.IsTrue(morphing.MorphedVertexPropsBuffer.Valid);
+        Assert.AreEqual(1, morphing.ActiveWeightCount, "Zero weights are not uploaded.");
+        var info = node.Entity.Get<MeshDrawInfo>();
+        Assert.AreSame(morphing.MorphedVertexBuffer, info.DeformedVertexBuffer);
+        Assert.AreSame(morphing.MorphedVertexPropsBuffer, info.DeformedVertexPropsBuffer);
+    }
+
+    [TestMethod]
+    public void SkinnedAndMorphedMesh_SkinningOwnsOutput()
+    {
+        var geometry = CreateMorphGeometry(skinned: true);
+        var morphing = new Morphing(new MorphWeights([1f, 1f]));
+        var skinning = CreateSkinning();
+        var node = new MeshNode(_world, "Both")
+        {
+            Geometry = geometry,
+            Skinning = skinning,
+            Morphing = morphing,
+        };
+
+        Assert.IsTrue(_skinningData.Update());
+
+        Assert.AreEqual(1, _skinningData.Dispatches.Length);
+        Assert.AreSame(skinning, _skinningData.Dispatches[0].Skinning);
+        Assert.AreSame(morphing, _skinningData.Dispatches[0].Morphing);
+        Assert.IsFalse(morphing.MorphedVertexBuffer.Valid, "The skinning owns the deformed output.");
+        Assert.AreEqual(2, morphing.ActiveWeightCount);
+        Assert.AreSame(skinning.SkinnedVertexBuffer, node.Entity.Get<MeshDrawInfo>().DeformedVertexBuffer);
+
+        // Removing the skinning hands the output over to the morphing.
+        node.Skinning = null;
+        Assert.IsTrue(_skinningData.Update());
+        Assert.IsTrue(morphing.MorphedVertexBuffer.Valid);
+        Assert.AreSame(morphing.MorphedVertexBuffer, node.Entity.Get<MeshDrawInfo>().DeformedVertexBuffer);
+    }
+
+    [TestMethod]
+    public void SkinnedAndMorphedMesh_LosingJointInfluences_DrawsMorphedOutput()
+    {
+        var morphing = new Morphing(new MorphWeights([1f, 0f]));
+        var skinning = CreateSkinning();
+        var node = new MeshNode(_world, "Both")
+        {
+            Geometry = CreateMorphGeometry(skinned: true),
+            Skinning = skinning,
+            Morphing = morphing,
+        };
+        Assert.IsTrue(_skinningData.Update());
+        Assert.IsTrue(skinning.SkinnedVertexBuffer.Valid);
+
+        // The new geometry has morph targets but no joint influences: the skinning no longer
+        // applies, so its stale output must not be drawn.
+        node.Geometry = CreateMorphGeometry(skinned: false);
+        Assert.IsTrue(_skinningData.Update());
+
+        Assert.IsNull(_skinningData.Dispatches[0].Skinning);
+        Assert.IsFalse(skinning.SkinnedVertexBuffer.Valid);
+        Assert.AreSame(morphing.MorphedVertexBuffer, node.Entity.Get<MeshDrawInfo>().DeformedVertexBuffer);
+        Assert.IsTrue(morphing.MorphedVertexBuffer.Valid);
+    }
+
+    [TestMethod]
+    public void MorphedMesh_LosingMorphTargets_DrawsBaseVertices()
+    {
+        var morphing = new Morphing(new MorphWeights([1f, 0f]));
+        var node = new MeshNode(_world, "Morphed") { Geometry = CreateMorphGeometry(false), Morphing = morphing };
+        Assert.IsTrue(_skinningData.Update());
+        Assert.IsTrue(morphing.MorphedVertexBuffer.Valid);
+
+        node.Geometry = CreateGeometry(skinned: false);
+        Assert.IsTrue(_skinningData.Update());
+
+        Assert.AreEqual(0, _skinningData.Dispatches.Length);
+        Assert.IsFalse(node.Entity.Get<MeshDrawInfo>().DeformedVertexBuffer.Valid, "Falls back to the base vertices.");
+    }
+
+    [TestMethod]
+    public void MorphWeights_AreUploadedOnlyWhenChanged()
+    {
+        var weights = new MorphWeights(2);
+        var morphing = new Morphing(weights);
+        _ = new MeshNode(_world, "Morphed") { Geometry = CreateMorphGeometry(false), Morphing = morphing };
+
+        Assert.IsTrue(_skinningData.Update());
+        Assert.AreEqual(0, morphing.ActiveWeightCount);
+        Assert.AreEqual(1, _skinningData.Dispatches.Length, "Dispatched with all weights zero.");
+        var uploaded = morphing.WeightBuffer;
+
+        Assert.IsTrue(_skinningData.Update());
+        Assert.AreSame(uploaded, morphing.WeightBuffer, "Unchanged weights do not advance the ring.");
+
+        weights[1] = 0.25f;
+        Assert.IsTrue(_skinningData.Update());
+        Assert.AreNotSame(uploaded, morphing.WeightBuffer);
+        Assert.AreEqual(1, morphing.ActiveWeightCount);
+    }
+
+    [TestMethod]
+    public void MorphPosition_AppliesUploadedWeights()
+    {
+        var geometry = CreateMorphGeometry(false);
+        var weights = new MorphWeights([0.5f, 2f]);
+        var morphing = new Morphing(weights);
+        _ = new MeshNode(_world, "Morphed") { Geometry = geometry, Morphing = morphing };
+
+        Assert.IsTrue(_skinningData.Update());
+
+        // Vertex 2: base (0, 1, 0) + 0.5 * (0, 0, 1) + 2 * (2, 0, 0).
+        var morphed = morphing.MorphPosition(geometry, 2, new Vector3(0, 1, 0));
+        Assert.IsTrue(Vector3.Distance(new Vector3(4, 1, 0.5f), morphed) < 1e-5f, $"Got {morphed}");
+    }
+
+    [TestMethod]
+    public void MorphedMesh_IsNeverCullable()
+    {
+        var info = new MeshDrawInfo(cullable: true) { Morphing = new Morphing(new MorphWeights(1)) };
+        Assert.IsTrue(info.IsMorphed);
+        Assert.IsTrue(info.IsDeformed);
+        Assert.IsFalse(info.IsCullable);
+    }
+
     [TestMethod]
     public void Skinning_RejectsJointCountMismatch()
     {

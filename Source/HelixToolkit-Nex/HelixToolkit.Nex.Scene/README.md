@@ -35,7 +35,8 @@ for matrix math.
 | `TypedDeferredNode<T>` | Typed handle for recording creation of a custom `Node` subtype `T`.                                                            |
 | `SceneFlushResult`     | Result of `SceneCommandBuffer.Flush`, reporting success or the failing command index and description.                          |
 | `AnimationSampler`     | Immutable keyframes (times + `Vector4` values) with `Linear` (slerp for rotations), `Step` or `CubicSpline` interpolation.      |
-| `AnimationChannel`     | Animates the `Translation`, `Rotation` or `Scale` of a target `Node` with a sampler.                                           |
+| `AnimationChannel`     | Animates the `Translation`, `Rotation` or `Scale` of a target `Node`, or up to four `MorphWeights` (`AnimationPath.Weights`).  |
+| `MorphWeights`         | Morph target weights of a mesh, shared by its primitives; `Version` changes on every weight change.                           |
 | `AnimationClip`        | Named set of channels with a common time range; `Apply(time)` poses the targets.                                               |
 | `AnimationPlayer`      | Plays a clip (`Play`/`Pause`/`Stop`, `Speed`, `Loop`, `Time`); restores the targets' rest pose on `Stop` or clip change.        |
 
@@ -163,6 +164,21 @@ re-applies after `Time` or `Clip` changes. Applying a clip notifies `Transform` 
 updates world transforms (and the joints of skinned meshes) on the next frame. The player remembers
 the targets' transforms before it first poses them and restores them on `Stop` or when `Clip`
 changes. Channels whose target is `null` or disposed are skipped.
+
+Morph target weights are animated by `AnimationPath.Weights` channels. Each channel writes the four
+components of its sampler to the `MorphWeights` at `WeightOffset` and the following indices (a glTF
+weights channel with N targets becomes ceil(N / 4) channels). The player restores the animated weights
+on `Stop` or clip change as well.
+
+```csharp
+var weights = new MorphWeights(2);                            // one weight per morph target
+var sampler = new AnimationSampler(
+    [0f, 1f],
+    [new Vector4(0, 0, 0, 0), new Vector4(1, 0.5f, 0, 0)],    // weights 0 and 1 per keyframe
+    AnimationInterpolation.Linear
+);
+var clip = new AnimationClip("Smile", [new AnimationChannel(weights, 0, sampler)]);
+```
 
 ## Scene Command Buffer
 

@@ -57,6 +57,83 @@ public sealed class NormalGeneratorTests
     }
 
     [TestMethod]
+    public void ComputeFlatNormals_Indexed_DuplicatesMorphTargetDeltas()
+    {
+        var geometry = CreateFoldedQuad();
+        var target = new MorphTarget("Lift");
+        for (var i = 0; i < geometry.Vertices.Count; ++i)
+        {
+            target.PositionDeltas.Add(new Vector3(0, 0, i));
+        }
+        geometry.MorphTargets.Add(target);
+
+        NormalGenerator.ComputeFlatNormals(geometry);
+
+        Assert.AreEqual(1, geometry.MorphTargets.Count);
+        var unwelded = geometry.MorphTargets[0];
+        Assert.AreEqual("Lift", unwelded.Name);
+        Assert.AreEqual(0, unwelded.NormalDeltas.Count, "Missing deltas stay missing.");
+        // Corners follow the indices 0, 1, 2, 1, 3, 2.
+        CollectionAssert.AreEqual(
+            new[] { 0f, 1f, 2f, 1f, 3f, 2f },
+            unwelded.PositionDeltas.ToArray().Select(d => d.Z).ToArray()
+        );
+        Assert.IsTrue(unwelded.IsValidFor(geometry.Vertices.Count));
+    }
+
+    [TestMethod]
+    public void ComputeFlatNormals_MarksGeometryWithFlatNormals()
+    {
+        var geometry = CreateFoldedQuad();
+        Assert.IsFalse(geometry.HasFlatNormals);
+
+        NormalGenerator.ComputeFlatNormals(geometry);
+
+        Assert.IsTrue(geometry.HasFlatNormals);
+    }
+
+    [TestMethod]
+    public void ComputeTangents_MarksGeometryWithGeneratedTangents()
+    {
+        var geometry = CreateFoldedQuad();
+        NormalGenerator.ComputeFlatNormals(geometry);
+        for (var i = 0; i < geometry.VertexProps.Count; ++i)
+        {
+            var prop = geometry.VertexProps[i];
+            prop.TexCoord = new Vector2(geometry.Vertices[i].X, geometry.Vertices[i].Y);
+            prop.Tangent = Vector4.Zero;
+            geometry.VertexProps[i] = prop;
+        }
+        Assert.IsFalse(geometry.HasGeneratedTangents);
+
+        TangentGenerator.ComputeTangents(geometry);
+
+        Assert.IsTrue(geometry.HasGeneratedTangents);
+        Assert.IsTrue(new Geometry(geometry).HasGeneratedTangents, "Copies keep the flag.");
+    }
+
+    [TestMethod]
+    public void CopyConstructor_ClonesMorphTargets()
+    {
+        var geometry = CreateFoldedQuad();
+        var target = new MorphTarget("Lift");
+        for (var i = 0; i < geometry.Vertices.Count; ++i)
+        {
+            target.PositionDeltas.Add(Vector3.UnitZ);
+        }
+        geometry.MorphTargets.Add(target);
+        geometry.HasFlatNormals = true;
+
+        var copy = new Geometry(geometry);
+        copy.MorphTargets[0].PositionDeltas[0] = Vector3.UnitX;
+
+        Assert.AreNotSame(target, copy.MorphTargets[0]);
+        Assert.AreEqual("Lift", copy.MorphTargets[0].Name);
+        Assert.AreEqual(Vector3.UnitZ, target.PositionDeltas[0], "The original deltas are unchanged.");
+        Assert.IsTrue(copy.HasFlatNormals);
+    }
+
+    [TestMethod]
     public void ComputeFlatNormals_Indexed_DuplicatesPerVertexAttributes()
     {
         var geometry = CreateFoldedQuad();

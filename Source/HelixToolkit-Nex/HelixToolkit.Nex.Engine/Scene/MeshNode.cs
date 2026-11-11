@@ -75,6 +75,19 @@ public class MeshNode : Node
     }
 
     /// <summary>
+    /// Gets or sets the morph target weights binding. The morph targets of the geometry are applied
+    /// on the GPU ahead of rendering (before skinning), and morphed meshes are never frustum culled.
+    /// </summary>
+    public Morphing? Morphing
+    {
+        get => Entity.Get<MeshDrawInfo>().Morphing;
+        set
+        {
+            Entity.Update<MeshDrawInfo>((ref MeshDrawInfo comp) => comp.Morphing = value);
+        }
+    }
+
+    /// <summary>
     /// Gets or sets whether this mesh can be culled.
     /// </summary>
     public bool Cullable

@@ -433,6 +433,13 @@ public static class GpuPicking
         p0 = vertices[i0].ToVector3();
         p1 = vertices[i1].ToVector3();
         p2 = vertices[i2].ToVector3();
+        if (meshInfo.Morphing is { } morphing && mesh.HasMorphTargets)
+        {
+            // Match the GPU-morphed triangle that was rendered (morph targets apply before skinning).
+            p0 = morphing.MorphPosition(mesh, i0, p0);
+            p1 = morphing.MorphPosition(mesh, i1, p1);
+            p2 = morphing.MorphPosition(mesh, i2, p2);
+        }
         if (meshInfo.Skinning is { } skinning && mesh.IsSkinned)
         {
             // Match the GPU-skinned triangle that was rendered.

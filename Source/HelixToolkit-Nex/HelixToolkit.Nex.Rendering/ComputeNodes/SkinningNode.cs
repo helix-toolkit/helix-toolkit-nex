@@ -1,16 +1,18 @@
 namespace HelixToolkit.Nex.Rendering.ComputeNodes;
 
 /// <summary>
-/// Skins all skinned meshes on the GPU ahead of rendering.
+/// Deforms all skinned and morphed meshes on the GPU ahead of rendering.
 /// </summary>
 /// <remarks>
 /// Runs in <see cref="RenderStage.Prepare"/> in two compute passes:
 /// <list type="number">
-/// <item>Palette: <c>palette[j] = jointMatrix[j] * inverseBind[j]</c>, one thread per joint.</item>
-/// <item>Vertices: linear blend skinning of positions, normals and tangents, one thread per vertex.</item>
+/// <item>Palette (skinned meshes only): <c>palette[j] = jointMatrix[j] * inverseBind[j]</c>, one thread per joint.</item>
+/// <item>Vertices: morph targets (weighted deltas of the active targets), then linear blend
+/// skinning of positions, normals and tangents, one thread per vertex.</item>
 /// </list>
-/// The skinned vertices are written to buffers owned by each <see cref="Skinning"/> and referenced
-/// by the mesh draw commands, so every later pass (depth, opaque, transparent, picking) reads them.
+/// The deformed vertices are written to buffers owned by each <see cref="Skinning"/> (or by the
+/// <see cref="Morphing"/> of a mesh that is not skinned) and referenced by the mesh draw commands,
+/// so every later pass (depth, opaque, transparent, picking) reads them.
 /// </remarks>
 public sealed class SkinningNode : ComputeNode
 {
@@ -28,7 +30,7 @@ public sealed class SkinningNode : ComputeNode
 
     private ComputePipelineResource _palettePipeline = ComputePipelineResource.Null;
     private ComputePipelineResource _verticesPipeline = ComputePipelineResource.Null;
-    private readonly FastList<BufferHandle> _jointBuffers = [];
+    private readonly FastList<BufferHandle> _hostBuffers = [];
     private readonly FastList<BufferHandle> _paletteBuffers = [];
     private readonly FastList<BufferHandle> _outputBuffers = [];
 
@@ -78,66 +80,87 @@ public sealed class SkinningNode : ComputeNode
         var dispatches = res.RenderContext.Data!.SkinningData!.Dispatches;
         var cmdBuf = res.CmdBuffer;
 
-        _jointBuffers.Clear();
+        _hostBuffers.Clear();
         _paletteBuffers.Clear();
         _outputBuffers.Clear();
         foreach (var dispatch in dispatches)
         {
-            var skinning = dispatch.Skinning;
-            _jointBuffers.Add(skinning.JointMatrixBuffer);
-            _paletteBuffers.Add(skinning.PaletteBuffer);
-            _outputBuffers.Add(skinning.SkinnedVertexBuffer);
-            if (skinning.SkinnedVertexPropsBuffer.Valid)
+            if (dispatch.Skinning is { } skinning)
             {
-                _outputBuffers.Add(skinning.SkinnedVertexPropsBuffer);
+                _hostBuffers.Add(skinning.JointMatrixBuffer);
+                _paletteBuffers.Add(skinning.PaletteBuffer);
+            }
+            if (dispatch.Morphing is { ActiveWeightCount: > 0 } morphing)
+            {
+                _hostBuffers.Add(morphing.WeightBuffer);
+            }
+            _outputBuffers.Add(dispatch.OutputVertexBuffer);
+            if (dispatch.OutputVertexPropsBuffer.Valid)
+            {
+                _outputBuffers.Add(dispatch.OutputVertexPropsBuffer);
             }
         }
 
-        cmdBuf.Barrier(AsSpan(_jointBuffers), BarrierPreset.HostWriteToShaderRW, force: true);
-        cmdBuf.Barrier(AsSpan(_paletteBuffers), ReadToComputeWrite, force: true);
-
-        // Pass 1: skinning palette.
-        cmdBuf.BindComputePipeline(_palettePipeline);
-        foreach (var dispatch in dispatches)
+        if (_hostBuffers.Count > 0)
         {
-            var skinning = dispatch.Skinning;
-            var jointCount = (uint)skinning.Skeleton.JointCount;
-            cmdBuf.PushConstants(
-                new SkinPalettePC
-                {
-                    JointMatrixAddress = skinning.JointMatrixBuffer.GpuAddress,
-                    InverseBindAddress = skinning.Skeleton.InverseBindBuffer.GpuAddress,
-                    PaletteAddress = skinning.PaletteBuffer.GpuAddress,
-                    JointCount = jointCount,
-                }
-            );
-            cmdBuf.DispatchThreadGroups(
-                new Dimensions(GpuSkinning.GetGroupSize(jointCount), 1, 1),
-                Dependencies.Empty
-            );
+            cmdBuf.Barrier(AsSpan(_hostBuffers), BarrierPreset.HostWriteToShaderRW, force: true);
         }
 
-        cmdBuf.Barrier(AsSpan(_paletteBuffers), BarrierPreset.ComputeWriteToShaderRW, force: true);
+        // Pass 1: skinning palette.
+        if (_paletteBuffers.Count > 0)
+        {
+            cmdBuf.Barrier(AsSpan(_paletteBuffers), ReadToComputeWrite, force: true);
+            cmdBuf.BindComputePipeline(_palettePipeline);
+            foreach (var dispatch in dispatches)
+            {
+                if (dispatch.Skinning is not { } skinning)
+                {
+                    continue;
+                }
+                var jointCount = (uint)skinning.Skeleton.JointCount;
+                cmdBuf.PushConstants(
+                    new SkinPalettePC
+                    {
+                        JointMatrixAddress = skinning.JointMatrixBuffer.GpuAddress,
+                        InverseBindAddress = skinning.Skeleton.InverseBindBuffer.GpuAddress,
+                        PaletteAddress = skinning.PaletteBuffer.GpuAddress,
+                        JointCount = jointCount,
+                    }
+                );
+                cmdBuf.DispatchThreadGroups(
+                    new Dimensions(GpuSkinning.GetGroupSize(jointCount), 1, 1),
+                    Dependencies.Empty
+                );
+            }
+            cmdBuf.Barrier(AsSpan(_paletteBuffers), BarrierPreset.ComputeWriteToShaderRW, force: true);
+        }
+
         cmdBuf.Barrier(AsSpan(_outputBuffers), ReadToComputeWrite, force: true);
 
-        // Pass 2: vertex skinning.
+        // Pass 2: vertex deformation (morph targets, then skinning).
         cmdBuf.BindComputePipeline(_verticesPipeline);
         foreach (var dispatch in dispatches)
         {
             var skinning = dispatch.Skinning;
+            var morphing = dispatch.Morphing;
             var geometry = dispatch.Geometry;
-            var vertexCount = (uint)skinning.VertexCount;
+            var vertexCount = (uint)dispatch.VertexCount;
+            var morphed = morphing is { ActiveWeightCount: > 0 };
             cmdBuf.PushConstants(
                 new SkinVertexPC
                 {
-                    PaletteAddress = skinning.PaletteBuffer.GpuAddress,
+                    PaletteAddress = skinning?.PaletteBuffer.GpuAddress ?? 0,
                     SrcVertexAddress = geometry.VertexBuffer.GpuAddress,
                     SrcPropsAddress = geometry.VertexPropsBuffer.GpuAddress,
-                    InfluenceAddress = geometry.JointInfluenceBuffer.GpuAddress,
-                    DstVertexAddress = skinning.SkinnedVertexBuffer.GpuAddress,
-                    DstPropsAddress = skinning.SkinnedVertexPropsBuffer.GpuAddress,
+                    InfluenceAddress = skinning is not null ? geometry.JointInfluenceBuffer.GpuAddress : 0,
+                    DstVertexAddress = dispatch.OutputVertexBuffer.GpuAddress,
+                    DstPropsAddress = dispatch.OutputVertexPropsBuffer.GpuAddress,
+                    MorphDeltaAddress = morphed ? geometry.MorphDeltaBuffer.GpuAddress : 0,
+                    MorphWeightAddress = morphed ? morphing!.WeightBuffer.GpuAddress : 0,
                     VertexCount = vertexCount,
-                    JointCount = (uint)skinning.Skeleton.JointCount,
+                    JointCount = (uint)(skinning?.Skeleton.JointCount ?? 0),
+                    MorphWeightCount = morphed ? (uint)morphing!.ActiveWeightCount : 0,
+                    Flags = morphed ? GetDeformFlags(geometry) : 0,
                 }
             );
             cmdBuf.DispatchThreadGroups(
@@ -146,8 +169,26 @@ public sealed class SkinningNode : ComputeNode
             );
         }
 
-        // Make the skinned vertices visible to every later shader stage.
+        // Make the deformed vertices visible to every later shader stage.
         cmdBuf.Barrier(AsSpan(_outputBuffers), BarrierPreset.ComputeWriteToShaderRW, force: true);
+    }
+
+    /// <summary>
+    /// Gets the <see cref="SkinVertexPC.Flags"/> of a morphed geometry: which generated attributes
+    /// must follow the morphed surface.
+    /// </summary>
+    private static uint GetDeformFlags(Geometry geometry)
+    {
+        var flags = 0u;
+        if (geometry.HasFlatNormals)
+        {
+            flags |= GpuSkinning.FlagFlatNormals;
+        }
+        if (geometry.HasGeneratedTangents)
+        {
+            flags |= GpuSkinning.FlagGeneratedTangents;
+        }
+        return flags;
     }
 
     private static ReadOnlySpan<BufferHandle> AsSpan(FastList<BufferHandle> list)
