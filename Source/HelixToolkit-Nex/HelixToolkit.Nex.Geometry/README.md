@@ -26,6 +26,7 @@ The `HelixToolkit.Nex.Geometries` package is responsible for:
 | `GeometryJsonConverter`    | JSON converter for serializing and deserializing `Geometry` objects.                                |
 | `TangentGenerator`         | Static class for generating tangent vectors for geometries that lack them.                          |
 | `NormalGenerator`          | Static class for generating flat (per-face) normals; unwelds indexed triangle lists.                |
+| `MorphTarget`              | Morph target (blend shape) holding optional per-vertex position, normal and tangent deltas.         |
 
 `Geometry.JointInfluences` holds optional per-vertex bone influences (`GpuJointInfluence`: four joint
 indices and normalized weights) used for GPU skinning. Their GPU buffer is `JointInfluenceBuffer`
@@ -39,6 +40,13 @@ targets are packed target-major into `MorphDeltaBuffer` (`GeometryBufferType.Mor
 weights live outside the geometry (`MorphWeights` in the Scene package), so one geometry can be
 drawn with different weights. `NormalGenerator` expands the morph target deltas when it unwelds the
 vertices. Morph targets are not serialized by `GeometryJsonConverter` yet.
+
+`Geometry.HasFlatNormals` and `Geometry.HasGeneratedTangents` record whether the normals or tangents
+were generated from the vertex data rather than authored. `HasFlatNormals` is set by
+`NormalGenerator.ComputeFlatNormals`. When it is `true`, the deformation pass recomputes the normals
+from the morphed triangles, because morph targets carry no normal deltas for generated normals.
+`HasGeneratedTangents` tells the deformation pass to keep the tangents consistent with the morphed
+surface.
 
 ## Usage Examples
 
@@ -128,3 +136,7 @@ var deserializedGeometry = JsonSerializer.Deserialize<Geometry>(json, options);
 - **Serialization**: 
   - Updated `VertexPropsJsonConverter` to handle `Vector4` tangents.
 - **Platform Configurations**: Added new build configurations for `LinuxDebug` and `LinuxRelease` to support cross-platform development.
+- **Morph Targets**: 
+  - Added `Geometry.MorphTargets`, `MorphDeltaBuffer`, `HasMorphTargets`, `GeometryBufferType.Morph`, and the `MorphTarget` class.
+- **Flat Normal and Tangent Flags**: 
+  - Added `Geometry.HasFlatNormals` and `Geometry.HasGeneratedTangents`.

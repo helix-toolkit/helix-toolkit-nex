@@ -1,4 +1,3 @@
-```markdown
 # HelixToolkit.Nex.Scene
 
 The `HelixToolkit.Nex.Scene` package manages and manipulates scene-graph nodes within a 3D environment. It builds on the `HelixToolkit.Nex.ECS` framework to provide hierarchical transformations, node management, and scene sorting in a data-oriented, performant way.
@@ -141,9 +140,10 @@ else
 
 ## Animation
 
-Animations write node `Transform`s. An `AnimationClip` is a set of `AnimationChannel`s, each
-animating one transform property of a target node with an `AnimationSampler`. glTF imports produce
-clips already bound to the imported nodes (`ImportResult.Animations`); clips can also be built by hand:
+Animations write node `Transform`s and morph target weights. An `AnimationClip` is a set of
+`AnimationChannel`s, each animating one transform property of a target node, or morph target weights,
+with an `AnimationSampler`. glTF imports produce clips already bound to the imported nodes
+(`ImportResult.Animations`); clips can also be built by hand:
 
 ```csharp
 var sampler = new AnimationSampler(
@@ -239,4 +239,3 @@ if (buffer.TryGetMaterializedNode(handle, out MyCustomNode? node) == ResultCode.
 ## Compatibility
 
 - **Target Framework**: Updated to .NET 9.0.
-```
