@@ -43,8 +43,11 @@ This package is integral to the HelixToolkit-Nex engine, facilitating the creati
 | `GpuJointInfluence`           | Struct with four joint indices and blend weights per vertex.                |
 | `GpuMorphDelta` / `GpuMorphWeight` | Morph target displacement of a vertex (target-major), and an active (target, weight) pair. |
 | `SkinPalettePC` / `SkinVertexPC` | Push constants for the skinning palette and vertex deformation passes.   |
+| `GpuSkinning.FlagFlatNormals` / `GpuSkinning.FlagGeneratedTangents` | `SkinVertexPC.Flags` bits: flat normals with per-triangle consecutive vertices (face normals recomputed from the morphed triangles), and generated (not authored) tangents kept consistent with the morphed surface. |
 | `BoneLine`                    | Struct describing a single bone for skeleton visualization in world space: `start`, `end`, and `color`. Generated from `Vert/vsBoneLine.glsl`. |
 | `BoneLinePushConstant`        | Struct for push constants for the bone visualization vertex shader, including `bonesAddress`, `fpConstAddress`, `style` (0 = line, 1 = arrow, 2 = octahedral), and `headSize`. Generated from `Vert/vsBoneLine.glsl`. |
+| `MorphLineMesh`               | Per-mesh data for the morph displacement visualization; each instance draws a line from a vertex's un-morphed position to its deformed position. Generated from `Vert/vsMorphLine.glsl`. |
+| `MorphLinePushConstant`       | Struct for push constants for the morph displacement visualization vertex shader, including `meshAddress` and `fpConstAddress`. Generated from `Vert/vsMorphLine.glsl`. |
 | `MeshDraw`                    | Mesh draw command; `skinnedVertexBufferAddress`/`skinnedVertexPropsBufferAddress` redirect vertex fetch to skinned output when non-zero. |
 
 ## Usage Examples
