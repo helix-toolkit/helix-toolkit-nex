@@ -532,7 +532,7 @@ namespace HelixToolkit.Nex.Maths
             Matrix.Invert(Transformation, out Matrix invTrans);
 
             L1.TransformCoordinate(ref invTrans, out Vector3 LB1);
-            L1.TransformCoordinate(ref invTrans, out Vector3 LB2);
+            L2.TransformCoordinate(ref invTrans, out Vector3 LB2);
 
             // Get line midpoint and extent
             Vector3 LMid = (LB1 + LB2) * 0.5f;
