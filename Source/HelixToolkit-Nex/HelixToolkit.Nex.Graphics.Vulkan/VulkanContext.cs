@@ -1750,11 +1750,7 @@ internal sealed partial class VulkanContext
                         srcAlphaBlendFactor = VK.VK_BLEND_FACTOR_ONE,
                         dstAlphaBlendFactor = VK.VK_BLEND_FACTOR_ZERO,
                         alphaBlendOp = VK.VK_BLEND_OP_ADD,
-                        colorWriteMask =
-                            VK.VK_COLOR_COMPONENT_R_BIT
-                            | VK.VK_COLOR_COMPONENT_G_BIT
-                            | VK.VK_COLOR_COMPONENT_B_BIT
-                            | VK.VK_COLOR_COMPONENT_A_BIT,
+                        colorWriteMask = (VkColorComponentFlags)(uint)attachment.WriteMask,
                     };
                 }
                 else
@@ -1768,11 +1764,7 @@ internal sealed partial class VulkanContext
                         srcAlphaBlendFactor = attachment.SrcAlphaBlendFactor.ToVk(),
                         dstAlphaBlendFactor = attachment.DstAlphaBlendFactor.ToVk(),
                         alphaBlendOp = attachment.AlphaBlendOp.ToVk(),
-                        colorWriteMask =
-                            VK.VK_COLOR_COMPONENT_R_BIT
-                            | VK.VK_COLOR_COMPONENT_G_BIT
-                            | VK.VK_COLOR_COMPONENT_B_BIT
-                            | VK.VK_COLOR_COMPONENT_A_BIT,
+                        colorWriteMask = (VkColorComponentFlags)(uint)attachment.WriteMask,
                     };
                 }
             }
