@@ -37,5 +37,5 @@ struct PBRProperties {
     float alphaCutoff;            // Alpha cutoff threshold during alpha mask mode.
 
     vec3 attenuationColor;        // Color of the medium at attenuationDistance (Beer-Lambert)
-    uint _padding2;
+    uint texCoordSets;            // Bit per texture slot (see PBRTextureSlot): 1 = sample with TEXCOORD_1, 0 = TEXCOORD_0
 };

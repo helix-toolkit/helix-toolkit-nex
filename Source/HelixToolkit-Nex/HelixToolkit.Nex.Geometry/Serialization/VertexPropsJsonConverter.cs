@@ -20,13 +20,14 @@ public class VertexPropsJsonConverter : JsonConverter<VertexProperties>
 
         Vector3 normal = default;
         Vector2 texCoord = default;
+        Vector2 texCoord1 = default;
         Vector4 tangent = new Vector4(0, 0, 0, 1);
 
         while (reader.Read())
         {
             if (reader.TokenType == JsonTokenType.EndObject)
             {
-                return new VertexProperties(normal, texCoord, tangent);
+                return new VertexProperties(normal, texCoord, tangent) { TexCoord1 = texCoord1 };
             }
 
             if (reader.TokenType != JsonTokenType.PropertyName)
@@ -44,6 +45,9 @@ public class VertexPropsJsonConverter : JsonConverter<VertexProperties>
                     break;
                 case "TexCoord":
                     texCoord = ReadVector2(ref reader);
+                    break;
+                case "TexCoord1":
+                    texCoord1 = ReadVector2(ref reader);
                     break;
                 case "Tangent":
                     tangent = ReadVector4(ref reader);
@@ -191,6 +195,15 @@ public class VertexPropsJsonConverter : JsonConverter<VertexProperties>
         writer.WriteNumber("X", value.TexCoord.X);
         writer.WriteNumber("Y", value.TexCoord.Y);
         writer.WriteEndObject();
+
+        if (value.TexCoord1 != Vector2.Zero)
+        {
+            writer.WritePropertyName("TexCoord1");
+            writer.WriteStartObject();
+            writer.WriteNumber("X", value.TexCoord1.X);
+            writer.WriteNumber("Y", value.TexCoord1.Y);
+            writer.WriteEndObject();
+        }
 
         writer.WritePropertyName("Tangent");
         writer.WriteStartObject();

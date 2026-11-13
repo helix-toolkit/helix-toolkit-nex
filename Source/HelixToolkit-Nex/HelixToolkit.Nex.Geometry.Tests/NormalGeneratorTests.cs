@@ -113,6 +113,45 @@ public sealed class NormalGeneratorTests
     }
 
     [TestMethod]
+    [DataRow(false)]
+    [DataRow(true)]
+    public void ComputeTangents_FollowsTheSelectedUvSet(bool useSecondUv)
+    {
+        // A flat quad in the XY plane. The first UV set maps u along +X; the second UV set is
+        // rotated a quarter turn so that u runs along +Y.
+        var geometry = new Geometry(Topology.Triangle);
+        Vector2[] positions = [new(0, 0), new(1, 0), new(0, 1), new(1, 1)];
+        foreach (var p in positions)
+        {
+            geometry.Vertices.Add(new Vector4(p.X, p.Y, 0, 1));
+            geometry.VertexProps.Add(
+                new VertexProperties(Vector3.UnitZ, new Vector2(p.X, p.Y))
+                {
+                    TexCoord1 = new Vector2(p.Y, -p.X),
+                    Tangent = Vector4.Zero,
+                }
+            );
+        }
+        uint[] indices = [0, 1, 2, 1, 3, 2];
+        foreach (var index in indices)
+        {
+            geometry.Indices.Add(index);
+        }
+
+        TangentGenerator.ComputeTangents(geometry, useSecondUv);
+
+        Assert.IsTrue(geometry.HasGeneratedTangents);
+        Assert.AreEqual(useSecondUv, geometry.GeneratedTangentsUseSecondUv);
+        Assert.IsTrue(new Geometry(geometry).GeneratedTangentsUseSecondUv == useSecondUv, "Copies keep the flag.");
+        var expected = useSecondUv ? Vector3.UnitY : Vector3.UnitX;
+        for (var i = 0; i < geometry.VertexProps.Count; ++i)
+        {
+            var tangent = geometry.VertexProps[i].Tangent;
+            AssertVector(expected, new Vector3(tangent.X, tangent.Y, tangent.Z));
+        }
+    }
+
+    [TestMethod]
     public void CopyConstructor_ClonesMorphTargets()
     {
         var geometry = CreateFoldedQuad();

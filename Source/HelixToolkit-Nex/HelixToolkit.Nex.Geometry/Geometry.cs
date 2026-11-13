@@ -22,10 +22,12 @@ public struct VertexProperties(Vector3 normal, Vector2 texCoord, Vector4 tangent
             var basePtr = (byte*)&v;
             var normalOffset = (byte*)&v.Normal - basePtr;
             var texCoordOffset = (byte*)&v.TexCoord - basePtr;
+            var texCoord1Offset = (byte*)&v.TexCoord1 - basePtr;
             var tangentOffset = (byte*)&v.Tangent - basePtr;
 
             Debug.Assert(normalOffset == 0, "Normal must be at offset 0");
             Debug.Assert(texCoordOffset == 16, "TexCoord must be at offset 16");
+            Debug.Assert(texCoord1Offset == 24, "TexCoord1 must be at offset 24");
             Debug.Assert(tangentOffset == 32, "Tangent must be at offset 32");
         }
     }
@@ -33,7 +35,10 @@ public struct VertexProperties(Vector3 normal, Vector2 texCoord, Vector4 tangent
     public Vector3 Normal = normal;
     private readonly float _padding1 = 0;
     public Vector2 TexCoord = texCoord;
-    private readonly Vector2 _padding2 = Vector2.Zero;
+    /// <summary>
+    /// Second texture coordinate set (glTF TEXCOORD_1), e.g. for baked occlusion/light maps.
+    /// </summary>
+    public Vector2 TexCoord1 = Vector2.Zero;
     /// <summary>
     /// Tangent vector with handedness in W (+1 or -1), as per glTF spec (TANGENT.w).
     /// Used to correctly orient the bitangent: B = cross(N, T.xyz) * T.w.
@@ -207,6 +212,13 @@ public partial class Geometry : HxObservableObject, IDisposable
     /// </summary>
     public bool HasGeneratedTangents { set; get; }
 
+    /// <summary>
+    /// Gets or sets a value indicating whether the generated tangents were derived from
+    /// <see cref="VertexProperties.TexCoord1"/> (the normal map uses the second UV set) instead of
+    /// <see cref="VertexProperties.TexCoord"/>. Only meaningful when <see cref="HasGeneratedTangents"/> is set.
+    /// </summary>
+    public bool GeneratedTangentsUseSecondUv { set; get; }
+
     public bool IsBoundDirty { set; get; } = true;
 
     /// <summary>
@@ -326,6 +338,7 @@ public partial class Geometry : HxObservableObject, IDisposable
         }
         HasFlatNormals = other.HasFlatNormals;
         HasGeneratedTangents = other.HasGeneratedTangents;
+        GeneratedTangentsUseSecondUv = other.GeneratedTangentsUseSecondUv;
     }
 
     #region Buffer Creation

@@ -112,9 +112,12 @@ void main() {
                     // Face tangent of the morphed triangle, as TangentGenerator computes it (Lengyel;
                     // independent of the triangle winding).
                     SrcPropsBuffer srcProps = SrcPropsBuffer(pc.value.srcPropsAddress);
-                    vec2 uv0 = srcProps.value[first].texCoord;
-                    vec2 deltaUV1 = srcProps.value[first + 1u].texCoord - uv0;
-                    vec2 deltaUV2 = srcProps.value[first + 2u].texCoord - uv0;
+                    bool useUv1 = (pc.value.flags & SKIN_VERTEX_FLAG_GENERATED_TANGENTS_UV1) != 0;
+                    vec2 uv0 = useUv1 ? srcProps.value[first].texCoord1 : srcProps.value[first].texCoord;
+                    vec2 uv1 = useUv1 ? srcProps.value[first + 1u].texCoord1 : srcProps.value[first + 1u].texCoord;
+                    vec2 uv2 = useUv1 ? srcProps.value[first + 2u].texCoord1 : srcProps.value[first + 2u].texCoord;
+                    vec2 deltaUV1 = uv1 - uv0;
+                    vec2 deltaUV2 = uv2 - uv0;
                     float denom = deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y;
                     if (abs(denom) >= 1e-8) {
                         float r = 1.0 / denom;

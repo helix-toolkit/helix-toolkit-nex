@@ -72,6 +72,8 @@ Currently in development.
 
 <img src="Source/HelixToolkit-Nex/Samples/Integration/gltfImporter/Screenshots/Fox.gif" width=400>
 
+<img src="Source/HelixToolkit-Nex/Samples/Integration/gltfImporter/Screenshots/Morph.gif" width=400>
+
 ## Linux Support
 
 <img src="Assets/Screenshots/linux_support.png" width=400>

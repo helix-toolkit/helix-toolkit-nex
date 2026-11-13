@@ -345,6 +345,76 @@ internal sealed class MaterialConverter
     }
 
     /// <summary>
+    /// Records which material textures sample TEXCOORD_1 instead of TEXCOORD_0. The engine carries
+    /// two UV sets; a texture referencing any other set falls back to TEXCOORD_0 with a warning.
+    /// </summary>
+    private void ApplyUvSets(
+        PBRMaterialProperties material,
+        glTFLoader.Schema.Material gltfMaterial,
+        int materialIndex
+    )
+    {
+        var pbr = gltfMaterial.PbrMetallicRoughness;
+        var slots = PBRTextureSlot.None;
+
+        slots = ResolveUvSlot(slots, PBRTextureSlot.Albedo, pbr?.BaseColorTexture?.TexCoord, "baseColorTexture", materialIndex);
+        slots = ResolveUvSlot(
+            slots,
+            PBRTextureSlot.MetallicRoughness,
+            pbr?.MetallicRoughnessTexture?.TexCoord,
+            "metallicRoughnessTexture",
+            materialIndex
+        );
+        slots = ResolveUvSlot(slots, PBRTextureSlot.Normal, gltfMaterial.NormalTexture?.TexCoord, "normalTexture", materialIndex);
+        slots = ResolveUvSlot(slots, PBRTextureSlot.Ao, gltfMaterial.OcclusionTexture?.TexCoord, "occlusionTexture", materialIndex);
+        slots = ResolveUvSlot(slots, PBRTextureSlot.Emissive, gltfMaterial.EmissiveTexture?.TexCoord, "emissiveTexture", materialIndex);
+
+        material.SecondUvSlots = slots;
+    }
+
+    /// <summary>
+    /// Returns <paramref name="slots"/> with <paramref name="slot"/> set when the texture uses
+    /// TEXCOORD_1 and cleared otherwise. Sets above 1 are unsupported: the slot falls back to
+    /// TEXCOORD_0 and a warning is recorded.
+    /// </summary>
+    internal PBRTextureSlot ResolveUvSlot(
+        PBRTextureSlot slots,
+        PBRTextureSlot slot,
+        int? texCoord,
+        string textureName,
+        int materialIndex
+    )
+    {
+        slots &= ~slot;
+        if (texCoord is null or 0)
+        {
+            return slots;
+        }
+        if (texCoord == 1)
+        {
+            return slots | slot;
+        }
+        _diagnostics.Add(
+            new ImportDiagnostic(
+                DiagnosticSeverity.Warning,
+                $"Material {materialIndex} {textureName} uses TEXCOORD_{texCoord}, which is not supported; using TEXCOORD_0.",
+                "Material",
+                materialIndex
+            )
+        );
+        return slots;
+    }
+
+    /// <summary>
+    /// Reads the optional <c>texCoord</c> member of an extension textureInfo object (default 0).
+    /// </summary>
+    private static int GetExtensionTexCoord(JToken textureInfo)
+    {
+        var token = textureInfo["texCoord"];
+        return token is { Type: JTokenType.Integer } ? token.Value<int>() : 0;
+    }
+
+    /// <summary>
     /// Loads and assigns textures from the glTF material to the engine material (synchronous).
     /// </summary>
     private void ApplyTextures(
@@ -451,6 +521,7 @@ internal sealed class MaterialConverter
         }
 
         // Resolve and assign the material's sampler from its textures.
+        ApplyUvSets(material, gltfMaterial, materialIndex);
         ApplyMaterialSampler(material, gltfMaterial);
     }
 
@@ -543,7 +614,16 @@ internal sealed class MaterialConverter
             {
                 var textureRef = _textureLoader.LoadTexture(ttIdx);
                 if (textureRef != TextureRef.Null)
+                {
                     material.ThicknessMap = textureRef;
+                    material.SecondUvSlots = ResolveUvSlot(
+                        material.SecondUvSlots,
+                        PBRTextureSlot.Thickness,
+                        GetExtensionTexCoord(ttProp),
+                        "KHR_materials_transmission transmissionTexture",
+                        materialIndex
+                    );
+                }
                 else
                     _diagnostics.Add(
                         new ImportDiagnostic(
@@ -582,7 +662,16 @@ internal sealed class MaterialConverter
             {
                 var textureRef = _textureLoader.LoadTexture(thickTexIdx);
                 if (textureRef != TextureRef.Null)
+                {
                     material.ThicknessMap = textureRef;
+                    material.SecondUvSlots = ResolveUvSlot(
+                        material.SecondUvSlots,
+                        PBRTextureSlot.Thickness,
+                        GetExtensionTexCoord(thickTexProp),
+                        "KHR_materials_volume thicknessTexture",
+                        materialIndex
+                    );
+                }
                 else
                     _diagnostics.Add(
                         new ImportDiagnostic(
@@ -684,7 +773,16 @@ internal sealed class MaterialConverter
                     .LoadTextureAsync(ttIdx, ct)
                     .ConfigureAwait(false);
                 if (textureRef != TextureRef.Null)
+                {
                     material.ThicknessMap = textureRef;
+                    material.SecondUvSlots = ResolveUvSlot(
+                        material.SecondUvSlots,
+                        PBRTextureSlot.Thickness,
+                        GetExtensionTexCoord(ttProp),
+                        "KHR_materials_transmission transmissionTexture",
+                        materialIndex
+                    );
+                }
                 else
                     _diagnostics.Add(
                         new ImportDiagnostic(
@@ -723,7 +821,16 @@ internal sealed class MaterialConverter
                     .LoadTextureAsync(thickTexIdx, ct)
                     .ConfigureAwait(false);
                 if (textureRef != TextureRef.Null)
+                {
                     material.ThicknessMap = textureRef;
+                    material.SecondUvSlots = ResolveUvSlot(
+                        material.SecondUvSlots,
+                        PBRTextureSlot.Thickness,
+                        GetExtensionTexCoord(thickTexProp),
+                        "KHR_materials_volume thicknessTexture",
+                        materialIndex
+                    );
+                }
                 else
                     _diagnostics.Add(
                         new ImportDiagnostic(
@@ -903,6 +1010,7 @@ internal sealed class MaterialConverter
         }
 
         // Resolve and assign the material's sampler from its textures.
+        ApplyUvSets(material, gltfMaterial, materialIndex);
         ApplyMaterialSampler(material, gltfMaterial);
     }
 

@@ -348,12 +348,18 @@ internal sealed class AccessorReader
     }
 
     /// <summary>
-    /// Reads texture coordinate data (VEC2 FLOAT) into a FastList of VertexProperties.
+    /// Reads texture coordinate data (VEC2 FLOAT or normalized UNSIGNED_BYTE/UNSIGNED_SHORT) into a FastList of VertexProperties.
     /// </summary>
     /// <param name="accessorIndex">The index of the accessor in the glTF model.</param>
     /// <param name="output">The output list to populate or merge tex coords into.</param>
     /// <param name="merge">If true, updates existing entries' TexCoord field; if false, adds new entries.</param>
-    public void ReadTexCoords(int accessorIndex, FastList<VertexProperties> output, bool merge)
+    /// <param name="secondSet">If true, writes <see cref="VertexProperties.TexCoord1"/> (TEXCOORD_1) instead of TexCoord.</param>
+    public void ReadTexCoords(
+        int accessorIndex,
+        FastList<VertexProperties> output,
+        bool merge,
+        bool secondSet = false
+    )
     {
         var accessor = _model.Accessors[accessorIndex];
         var buffer = GetBuffer(accessorIndex);
@@ -371,23 +377,39 @@ internal sealed class AccessorReader
 
         int byteOffset = GetByteOffset(accessorIndex);
         int stride = GetStride(accessorIndex);
+        var componentType = accessor.ComponentType;
+        int componentSize = GetComponentSize(componentType);
+        bool normalized = accessor.Normalized;
 
         for (int i = 0; i < accessor.Count; i++)
         {
             int offset = byteOffset + i * stride;
-            float u = BitConverter.ToSingle(buffer, offset);
-            float v = BitConverter.ToSingle(buffer, offset + 4);
+            // glTF permits FLOAT and normalized UNSIGNED_BYTE/UNSIGNED_SHORT texture coordinates.
+            float u = ReadComponent(buffer, offset, componentType, normalized);
+            float v = ReadComponent(buffer, offset + componentSize, componentType, normalized);
             var texCoord = new Vector2(u, v);
 
             if (merge && i < output.Count)
             {
                 var existing = output[i];
-                existing.TexCoord = texCoord;
+                if (secondSet)
+                {
+                    existing.TexCoord1 = texCoord;
+                }
+                else
+                {
+                    existing.TexCoord = texCoord;
+                }
                 output[i] = existing;
             }
             else
             {
-                output.Add(new VertexProperties(Vector3.Zero, texCoord));
+                var added = new VertexProperties(Vector3.Zero, secondSet ? Vector2.Zero : texCoord);
+                if (secondSet)
+                {
+                    added.TexCoord1 = texCoord;
+                }
+                output.Add(added);
             }
         }
     }

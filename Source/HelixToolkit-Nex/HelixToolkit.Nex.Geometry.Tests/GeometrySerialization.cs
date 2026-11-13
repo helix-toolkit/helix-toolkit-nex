@@ -334,12 +334,34 @@ public sealed class GeometrySerialization
         Assert.AreEqual(0, deserialized.VertexColors.Count);
     }
 
+    [TestMethod]
+    public void VertexProperties_TexCoord1_LayoutAndRoundTrip()
+    {
+        Assert.AreEqual(48u, VertexProperties.SizeInBytes);
+
+        var original = new VertexProperties(Vector3.UnitY, new Vector2(0.25f, 0.5f))
+        {
+            TexCoord1 = new Vector2(0.75f, 0.125f),
+        };
+
+        string json = JsonSerializer.Serialize(original);
+        var roundTrip = JsonSerializer.Deserialize<VertexProperties>(json);
+
+        Assert.AreEqual(original.TexCoord, roundTrip.TexCoord);
+        Assert.AreEqual(original.TexCoord1, roundTrip.TexCoord1);
+
+        // Vertices without a second UV set keep the previous JSON shape.
+        var plain = JsonSerializer.Serialize(new VertexProperties(Vector3.UnitY));
+        Assert.IsFalse(plain.Contains("TexCoord1"));
+    }
+
     #region Helper Methods
 
     private static void AssertVertexEqual(VertexProperties expected, VertexProperties actual)
     {
         Assert.AreEqual(expected.Normal, actual.Normal, $"Normal mismatch");
         Assert.AreEqual(expected.TexCoord, actual.TexCoord, $"TexCoord mismatch");
+        Assert.AreEqual(expected.TexCoord1, actual.TexCoord1, $"TexCoord1 mismatch");
         Assert.AreEqual(expected.Tangent, actual.Tangent, $"Tangent mismatch");
     }
 
