@@ -1,4 +1,3 @@
-```markdown
 # HelixToolkit.Nex.Graphics
 
 HelixToolkit.Nex.Graphics is a comprehensive 3D graphics engine implemented in C# that leverages the Vulkan API. It provides a robust framework for creating and managing GPU resources, recording and executing command buffers, and performing advanced rendering operations. The package is designed to integrate seamlessly with the HelixToolkit.Nex engine, offering high-performance graphics capabilities for real-time applications.
@@ -43,6 +42,7 @@ HelixToolkit.Nex.Graphics is a core component of the HelixToolkit.Nex engine, re
 | `BarrierPreset`        | Enum for predefined buffer barrier configurations.                         |
 | `ImageTransition`      | Enum for named image/texture layout transitions.                           |
 | `KeyedMutexSyncInfo`   | Struct for keyed mutex synchronization, including new semaphore handles.   |
+| `ColorWriteMask`       | Flags enum of color channels a pipeline may write, used by `ColorAttachment.WriteMask`. |
 
 ## Usage Examples
 
@@ -204,6 +204,18 @@ var commandBuffer = context.AcquireCommandBuffer();
 commandBuffer.SetColorWriteEnabled(c0: true, c1: false, c2: true, c3: false);
 ```
 
+### Restricting Color Write Channels on a Color Attachment
+
+`ColorAttachment.WriteMask` limits which channels a pipeline may write. It defaults to `ColorWriteMask.All`. Use `ColorWriteMask.None` for an attachment that is bound but intentionally not written, so it keeps its previous contents.
+
+```csharp
+var attachment = ColorAttachment.CreateOpaque(Format.RGBA_UN8);
+attachment.WriteMask = ColorWriteMask.R | ColorWriteMask.G; // Write only red and green
+
+var passThrough = ColorAttachment.CreateOpaque(Format.RGBA_UN8);
+passThrough.WriteMask = ColorWriteMask.None; // Bound, but not written by the pipeline
+```
+
 ### Setting Cull Mode
 
 ```csharp
@@ -233,4 +245,3 @@ commandBuffer.CopyTextureToBuffer(
 - **Reverse-Z**: The engine uses reverse-Z for projection matrices to improve depth buffer precision.
 
 HelixToolkit.Nex.Graphics is designed to provide a flexible and high-performance graphics framework for C# developers, enabling the creation of sophisticated 3D applications with ease.
-```
