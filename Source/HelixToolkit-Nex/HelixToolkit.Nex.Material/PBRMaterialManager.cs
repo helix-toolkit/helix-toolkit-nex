@@ -123,10 +123,14 @@ public class PBRMaterialManager(IContext context, IPBRMaterialPropertyManager pr
                 DebugName = debugName ?? string.Empty,
             };
 
+            // The WBOIT fragment shader writes only the accumulation/revealage targets (and the
+            // mesh id), never outColor. Mask attachment 0 so the opaque scene color is left intact
+            // instead of receiving undefined values.
             desc.Colors[0] = new ColorAttachment()
             {
                 Format = GraphicsSettings.IntermediateTargetFormat,
                 BlendEnabled = false,
+                WriteMask = ColorWriteMask.None,
             };
 
             desc.Colors[1] = new ColorAttachment()

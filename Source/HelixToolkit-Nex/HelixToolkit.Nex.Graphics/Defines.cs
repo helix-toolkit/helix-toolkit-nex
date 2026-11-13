@@ -1024,6 +1024,21 @@ public enum ResolveMode : uint8_t
 }
 
 /// <summary>
+/// Channels of a color attachment that a pipeline is allowed to write. Values match
+/// <c>VkColorComponentFlagBits</c>.
+/// </summary>
+[Flags]
+public enum ColorWriteMask : uint
+{
+    None = 0,
+    R = 1 << 0,
+    G = 1 << 1,
+    B = 1 << 2,
+    A = 1 << 3,
+    All = R | G | B | A,
+}
+
+/// <summary>
 /// Describes a color attachment's format and blending configuration.
 /// </summary>
 public struct ColorAttachment()
@@ -1032,6 +1047,13 @@ public struct ColorAttachment()
     /// Pixel format of the color attachment. Defaults to Invalid.
     /// </summary>
     public Format Format = Format.Invalid;
+
+    /// <summary>
+    /// Channels the pipeline may write. Defaults to <see cref="ColorWriteMask.All"/>. Use
+    /// <see cref="ColorWriteMask.None"/> for an attachment that is bound but intentionally not
+    /// written by the fragment shader, so it keeps its previous contents.
+    /// </summary>
+    public ColorWriteMask WriteMask = ColorWriteMask.All;
 
     /// <summary>
     /// Whether blending is enabled for this attachment. Defaults to false.
