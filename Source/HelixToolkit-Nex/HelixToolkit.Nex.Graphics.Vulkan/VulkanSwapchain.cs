@@ -389,7 +389,12 @@ internal sealed class VulkanSwapchain : IDisposable
                     );
                 }
             }
-            VkResult r = VK.vkQueuePresentKHR(_graphicsQueue, &pi);
+            // The graphics queue is shared with submits from background upload threads.
+            VkResult r;
+            lock (_ctx.GraphicsQueueLock)
+            {
+                r = VK.vkQueuePresentKHR(_graphicsQueue, &pi);
+            }
             HxDebug.Assert(
                 r == VK.VK_SUCCESS || r == VK.VK_SUBOPTIMAL_KHR || r == VK.VK_ERROR_OUT_OF_DATE_KHR
             );
