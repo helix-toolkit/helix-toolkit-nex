@@ -344,18 +344,17 @@ namespace HelixToolkit.Nex.Graphics.Vulkan
             }
 
             {
-                var graphicsQueueSubmitLock = new object();
                 _immediate = new VulkanImmediateCommands(
                     this,
                     DeviceQueues.GraphicsQueueFamilyIndex,
                     HasExtDeviceFault,
-                    graphicsQueueSubmitLock
+                    GraphicsQueueLock
                 );
                 _uploadImmediate = new VulkanImmediateCommands(
                     this,
                     DeviceQueues.GraphicsQueueFamilyIndex,
                     HasExtDeviceFault,
-                    graphicsQueueSubmitLock,
+                    GraphicsQueueLock,
                     VulkanImmediateCommands.KUploadCommandBuffers
                 );
             }

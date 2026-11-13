@@ -230,6 +230,14 @@ internal sealed partial class VulkanContext
 
     public DeviceQueues GraphicsQueue { get; } = new();
 
+    /// <summary>
+    /// Guards every call that uses the shared graphics <see cref="VkQueue"/> (<c>vkQueueSubmit2</c>
+    /// from the render and upload command instances, and <c>vkQueuePresentKHR</c>). Vulkan requires
+    /// external synchronization of a queue, and background import threads submit uploads while the
+    /// render thread presents. Held only around the queue call itself, never across a fence wait.
+    /// </summary>
+    internal object GraphicsQueueLock { get; } = new();
+
     public uint32_t CurrentMaxTextures { private set; get; } = 16;
     public uint32_t CurrentMaxSamplers { private set; get; } = 16;
 
