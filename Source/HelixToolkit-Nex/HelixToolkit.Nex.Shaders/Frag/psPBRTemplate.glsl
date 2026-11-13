@@ -16,6 +16,7 @@ layout(location = 2) in vec4 fragColor;
 layout(location = 3) in vec3 fragNormal;
 layout(location = 4) in vec4 fragTangent;
 layout(location = 5) in vec2 fragTexCoord;
+layout(location = 7) in vec2 fragTexCoord1;
 #endif
 #endif
 
@@ -172,6 +173,23 @@ vec4 mixWithPointerRing(in vec4 color) {
     }
     return color;
 }
+#ifndef WIREFRAME_PASS
+#ifndef EXCLUDE_MESH_PROPS
+// Texture slot bits for PBRProperties.texCoordSets (mirrors C# PBRTextureSlot).
+const uint UV_SLOT_ALBEDO = 1u;
+const uint UV_SLOT_NORMAL = 2u;
+const uint UV_SLOT_METALLIC_ROUGHNESS = 4u;
+const uint UV_SLOT_AO = 8u;
+const uint UV_SLOT_BUMP = 16u;
+const uint UV_SLOT_EMISSIVE = 32u;
+const uint UV_SLOT_THICKNESS = 64u;
+
+// Picks TEXCOORD_1 when the slot's bit is set in texCoordSets, otherwise TEXCOORD_0.
+vec2 selectTexCoord(uint texCoordSets, uint slot) {
+    return (texCoordSets & slot) != 0u ? fragTexCoord1 : fragTexCoord;
+}
+#endif
+#endif
 /*UTILITY_FUNCTIONS_END*/
 
 // Custom code injection point
@@ -524,7 +542,7 @@ PBRMaterial createPBRMaterial()
 #ifndef EXCLUDE_MESH_PROPS
     if (props.albedoTexIndex > 0)
     {
-        vec4 albedo = textureBindless2D(props.albedoTexIndex, props.samplerIndex, fragTexCoord);
+        vec4 albedo = textureBindless2D(props.albedoTexIndex, props.samplerIndex, selectTexCoord(props.texCoordSets, UV_SLOT_ALBEDO));
         // Per glTF spec: final alpha = baseColorFactor.a * baseColorTexture.a
         // Apply texture alpha to material opacity for correct alpha masking/blending
         material.opacity = material.opacity * albedo.a;
@@ -538,7 +556,7 @@ PBRMaterial createPBRMaterial()
     }
     if (props.metallicRoughnessTexIndex > 0)
     {
-        vec2 omr = textureBindless2D(props.metallicRoughnessTexIndex, props.samplerIndex, fragTexCoord).gb;
+        vec2 omr = textureBindless2D(props.metallicRoughnessTexIndex, props.samplerIndex, selectTexCoord(props.texCoordSets, UV_SLOT_METALLIC_ROUGHNESS)).gb;
         // glTF channel packing: G = Roughness, B = Metallic
         material.roughness = omr.x;
         material.metallic  = omr.y;
@@ -546,22 +564,22 @@ PBRMaterial createPBRMaterial()
     if (props.aoTexIndex > 0)
     {
         // glTF channel packing: R = Ambient Occlusion
-        material.ao = material.ao * textureBindless2D(props.aoTexIndex, props.samplerIndex, fragTexCoord).r;
+        material.ao = material.ao * textureBindless2D(props.aoTexIndex, props.samplerIndex, selectTexCoord(props.texCoordSets, UV_SLOT_AO)).r;
     }
     if (props.emissiveTexIndex > 0)
     {
-        material.emissive = material.emissive * textureBindless2D(props.emissiveTexIndex, props.samplerIndex, fragTexCoord).rgb;
+        material.emissive = material.emissive * textureBindless2D(props.emissiveTexIndex, props.samplerIndex, selectTexCoord(props.texCoordSets, UV_SLOT_EMISSIVE)).rgb;
     }
     // Thickness: G channel * thicknessFactor (glTF spec: stored in G, multiplied with factor).
     // 0 = thin-walled (max transmission), >0 = volumetric. Kept in mesh/world-space units.
     material.thickness = (props.thicknessTexIndex > 0)
-        ? textureBindless2D(props.thicknessTexIndex, props.samplerIndex, fragTexCoord).g * props.thicknessFactor
+        ? textureBindless2D(props.thicknessTexIndex, props.samplerIndex, selectTexCoord(props.texCoordSets, UV_SLOT_THICKNESS)).g * props.thicknessFactor
         : props.thicknessFactor;
     vec3 baseNormal = normalize(fragNormal);
     vec3 finalNormal = baseNormal;
 
     if (props.normalTexIndex > 0) {
-        vec3 normalMap = textureBindless2D(props.normalTexIndex, props.samplerIndex, fragTexCoord).xyz * 2.0 - 1.0;
+        vec3 normalMap = textureBindless2D(props.normalTexIndex, props.samplerIndex, selectTexCoord(props.texCoordSets, UV_SLOT_NORMAL)).xyz * 2.0 - 1.0;
         vec3 N = normalize(fragNormal);
         vec3 T = normalize(fragTangent.xyz - dot(fragTangent.xyz, N) * N);
         vec3 B = cross(N, T) * fragTangent.w;
@@ -570,7 +588,7 @@ PBRMaterial createPBRMaterial()
     }
     if (props.bumpTexIndex > 0 )
     {
-        float h = textureBindless2D(props.bumpTexIndex, props.samplerIndex, fragTexCoord).r;
+        float h = textureBindless2D(props.bumpTexIndex, props.samplerIndex, selectTexCoord(props.texCoordSets, UV_SLOT_BUMP)).r;
         // 1. Get screen-space derivatives of world position and height
         vec3 dpdx = dFdx(fragWorldPos);
         vec3 dpdy = dFdy(fragWorldPos);

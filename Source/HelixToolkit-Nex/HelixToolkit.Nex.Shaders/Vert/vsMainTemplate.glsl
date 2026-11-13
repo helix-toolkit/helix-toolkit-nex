@@ -20,6 +20,7 @@ layout(location = 2) out vec4 fragColor;
 layout(location = 3) out vec3 fragNormal;
 layout(location = 4) out vec4 fragTangent;
 layout(location = 5) out vec2 fragTexCoord;
+layout(location = 7) out vec2 fragTexCoord1;
 #endif
 #endif
 
@@ -198,6 +199,11 @@ void main() {
 #endif
     uint idx = getInstancingIndex();
     calVertexOutput(idx, gl_Position, fragWorldPos, fragNormal, fragTangent, fragColor, fragTexCoord);
+#ifndef WIREFRAME_PASS
+#ifndef EXCLUDE_MESH_PROPS
+    fragTexCoord1 = getVertexProps().texCoord1;
+#endif
+#endif
 
 #ifdef OUTPUT_DRAW_ID
     fragEntityId = packObjectInfo(nodeInfo.worldId, nodeInfo.entityId, idx) * uint(isHitable(meshDraw.drawType));

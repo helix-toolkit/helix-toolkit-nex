@@ -812,4 +812,104 @@ public class MaterialConverterTests
 
         material.Dispose();
     }
+
+    // -------------------------------------------------------------------------
+    // Second UV set: textures referencing TEXCOORD_1 are flagged in SecondUvSlots
+    // -------------------------------------------------------------------------
+
+    [TestMethod]
+    public void ConvertMaterial_TexturesUsingTexCoord1_SetSecondUvSlots()
+    {
+        var diagnostics = new List<ImportDiagnostic>();
+        var model = new Gltf
+        {
+            Materials =
+            [
+                new glTFLoader.Schema.Material
+                {
+                    PbrMetallicRoughness = new MaterialPbrMetallicRoughness
+                    {
+                        BaseColorTexture = new TextureInfo { Index = 0, TexCoord = 0 },
+                    },
+                    OcclusionTexture = new MaterialOcclusionTextureInfo { Index = 0, TexCoord = 1 },
+                },
+            ],
+            Textures = [new GltfTexture { Source = 0 }],
+        };
+
+        var converter = CreateConverterWithModel(model, diagnostics);
+        var material = converter.ConvertMaterial(model, 0);
+
+        Assert.AreEqual(
+            PBRTextureSlot.Ao,
+            material.SecondUvSlots,
+            "Only the occlusion texture uses TEXCOORD_1."
+        );
+
+        material.Dispose();
+    }
+
+    [TestMethod]
+    public void ResolveUvSlot_SetsAndClearsTheSlot_SoALaterTextureOverridesAnEarlierOne()
+    {
+        var diagnostics = new List<ImportDiagnostic>();
+        var converter = CreateConverter(diagnostics);
+        const PBRTextureSlot thickness = PBRTextureSlot.Thickness;
+
+        // Transmission texture on TEXCOORD_1 ...
+        var slots = converter.ResolveUvSlot(
+            PBRTextureSlot.Ao,
+            thickness,
+            1,
+            "transmissionTexture",
+            0
+        );
+        Assert.AreEqual(PBRTextureSlot.Ao | thickness, slots, "Other slots are preserved.");
+
+        // ... overridden by a volume thickness texture on TEXCOORD_0.
+        slots = converter.ResolveUvSlot(slots, thickness, 0, "thicknessTexture", 0);
+        Assert.AreEqual(PBRTextureSlot.Ao, slots);
+
+        slots = converter.ResolveUvSlot(slots, thickness, null, "thicknessTexture", 0);
+        Assert.AreEqual(PBRTextureSlot.Ao, slots);
+        Assert.AreEqual(0, diagnostics.Count);
+
+        slots = converter.ResolveUvSlot(slots, thickness, 3, "thicknessTexture", 0);
+        Assert.AreEqual(PBRTextureSlot.Ao, slots, "An unsupported set falls back to TEXCOORD_0.");
+        Assert.IsTrue(
+            diagnostics.Any(d =>
+                d.Severity == DiagnosticSeverity.Warning && d.Message.Contains("TEXCOORD_3")
+            )
+        );
+    }
+
+    [TestMethod]
+    public void ConvertMaterial_TexCoordBeyondSecondSet_FallsBackWithWarning()
+    {
+        var diagnostics = new List<ImportDiagnostic>();
+        var model = new Gltf
+        {
+            Materials =
+            [
+                new glTFLoader.Schema.Material
+                {
+                    OcclusionTexture = new MaterialOcclusionTextureInfo { Index = 0, TexCoord = 2 },
+                },
+            ],
+            Textures = [new GltfTexture { Source = 0 }],
+        };
+
+        var converter = CreateConverterWithModel(model, diagnostics);
+        var material = converter.ConvertMaterial(model, 0);
+
+        Assert.AreEqual(PBRTextureSlot.None, material.SecondUvSlots);
+        Assert.IsTrue(
+            diagnostics.Any(d =>
+                d.Severity == DiagnosticSeverity.Warning && d.Message.Contains("TEXCOORD_2")
+            ),
+            "An unsupported UV set should produce a warning."
+        );
+
+        material.Dispose();
+    }
 }

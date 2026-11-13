@@ -13,7 +13,13 @@ public static class TangentGenerator
     /// Does nothing if the geometry lacks normals, UVs, or triangle indices, or if
     /// tangents are already present (i.e. any vertex has a non-zero tangent XYZ).
     /// </summary>
-    public static void ComputeTangents(Geometry geometry)
+    /// <param name="geometry">The geometry to generate tangents for.</param>
+    /// <param name="useSecondUv">
+    /// Derive the tangent frame from <see cref="VertexProperties.TexCoord1"/> instead of
+    /// <see cref="VertexProperties.TexCoord"/>. Tangents must be generated from the UV set the
+    /// normal map is sampled with, otherwise rotated or mirrored UV charts light incorrectly.
+    /// </param>
+    public static void ComputeTangents(Geometry geometry, bool useSecondUv = false)
     {
         var vertices = geometry.Vertices;
         var props = geometry.VertexProps;
@@ -49,9 +55,9 @@ public static class TangentGenerator
             var v2 = new Vector3(vertices[i2].X, vertices[i2].Y, vertices[i2].Z);
             var v3 = new Vector3(vertices[i3].X, vertices[i3].Y, vertices[i3].Z);
 
-            var uv1 = props[i1].TexCoord;
-            var uv2 = props[i2].TexCoord;
-            var uv3 = props[i3].TexCoord;
+            var uv1 = useSecondUv ? props[i1].TexCoord1 : props[i1].TexCoord;
+            var uv2 = useSecondUv ? props[i2].TexCoord1 : props[i2].TexCoord;
+            var uv3 = useSecondUv ? props[i3].TexCoord1 : props[i3].TexCoord;
 
             var edge1 = v2 - v1;
             var edge2 = v3 - v1;
@@ -103,5 +109,6 @@ public static class TangentGenerator
             props[i] = prop;
         }
         geometry.HasGeneratedTangents = true;
+        geometry.GeneratedTangentsUseSecondUv = useSecondUv;
     }
 }

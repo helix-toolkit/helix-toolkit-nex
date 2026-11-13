@@ -48,6 +48,11 @@ from the morphed triangles, because morph targets carry no normal deltas for gen
 `HasGeneratedTangents` tells the deformation pass to keep the tangents consistent with the morphed
 surface.
 
+`VertexProperties` carries two texture coordinate sets: `TexCoord` (glTF `TEXCOORD_0`) and
+`TexCoord1` (`TEXCOORD_1`, e.g. for baked occlusion maps). `TangentGenerator.ComputeTangents(geometry,
+useSecondUv)` derives the tangent frame from the set the normal map is sampled with, and
+`Geometry.GeneratedTangentsUseSecondUv` records that choice for the deformation pass.
+
 ## Usage Examples
 
 ### Creating and Managing Geometry
@@ -140,3 +145,6 @@ var deserializedGeometry = JsonSerializer.Deserialize<Geometry>(json, options);
   - Added `Geometry.MorphTargets`, `MorphDeltaBuffer`, `HasMorphTargets`, `GeometryBufferType.Morph`, and the `MorphTarget` class.
 - **Flat Normal and Tangent Flags**: 
   - Added `Geometry.HasFlatNormals` and `Geometry.HasGeneratedTangents`.
+- **Second UV Set**:
+  - Added `VertexProperties.TexCoord1` (stored in former padding, the struct stays 48 bytes; serialized only when non-zero).
+  - `TangentGenerator.ComputeTangents` takes an optional `useSecondUv`, recorded in `Geometry.GeneratedTangentsUseSecondUv`.

@@ -53,7 +53,7 @@ public sealed class SkinningNode : ComputeNode
     {
         var shader = GpuSkinning.GenerateComputeShader(pass);
         using var module = Context!.CreateShaderModuleGlsl(shader, ShaderStage.Compute, debugName);
-        var pipeline = Context.CreateComputePipeline(
+        var pipeline = Context!.CreateComputePipeline(
             new ComputePipelineDesc { ComputeShader = module }
         );
         Debug.Assert(pipeline.Valid);
@@ -187,6 +187,10 @@ public sealed class SkinningNode : ComputeNode
         if (geometry.HasGeneratedTangents)
         {
             flags |= GpuSkinning.FlagGeneratedTangents;
+            if (geometry.GeneratedTangentsUseSecondUv)
+            {
+                flags |= GpuSkinning.FlagGeneratedTangentsUv1;
+            }
         }
         return flags;
     }

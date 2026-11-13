@@ -146,6 +146,18 @@ internal sealed class MeshConverter
             }
         }
 
+        // Read second texture coordinate set (optional)
+        if (primitive.Attributes.TryGetValue("TEXCOORD_1", out int texCoord1AccessorIndex))
+        {
+            _accessorReader.ReadTexCoords(
+                texCoord1AccessorIndex,
+                geometry.VertexProps,
+                merge: hasVertexProps,
+                secondSet: true
+            );
+            hasVertexProps = true;
+        }
+
         // Read tangents (optional)
         if (primitive.Attributes.TryGetValue("TANGENT", out int tangentAccessorIndex))
         {
@@ -199,7 +211,10 @@ internal sealed class MeshConverter
         // Generate tangents when the glTF asset does not supply them
         if (!primitive.Attributes.ContainsKey("TANGENT"))
         {
-            TangentGenerator.ComputeTangents(geometry);
+            TangentGenerator.ComputeTangents(
+                geometry,
+                NormalMapUsesSecondUv(model, primitive, primitive.Attributes.ContainsKey("TEXCOORD_1"))
+            );
         }
 
         // Compute bounding volumes from vertex positions
@@ -325,6 +340,18 @@ internal sealed class MeshConverter
             }
         }
 
+        // Read second texture coordinate set (optional)
+        if (primitive.Attributes.TryGetValue("TEXCOORD_1", out int texCoord1AccessorIndex))
+        {
+            _accessorReader.ReadTexCoords(
+                texCoord1AccessorIndex,
+                geometry.VertexProps,
+                merge: hasVertexProps,
+                secondSet: true
+            );
+            hasVertexProps = true;
+        }
+
         // Read tangents (optional)
         if (primitive.Attributes.TryGetValue("TANGENT", out int tangentAccessorIndex))
         {
@@ -378,7 +405,10 @@ internal sealed class MeshConverter
         // Generate tangents when the glTF asset does not supply them
         if (!primitive.Attributes.ContainsKey("TANGENT"))
         {
-            TangentGenerator.ComputeTangents(geometry);
+            TangentGenerator.ComputeTangents(
+                geometry,
+                NormalMapUsesSecondUv(model, primitive, primitive.Attributes.ContainsKey("TEXCOORD_1"))
+            );
         }
 
         // Compute bounding volumes from vertex positions
@@ -864,6 +894,27 @@ internal sealed class MeshConverter
     /// against the model's accessor table. Returns <see langword="false"/> when the index is
     /// negative or out of range so callers can skip the comparison rather than throw.
     /// </summary>
+    private static bool NormalMapUsesSecondUv(
+        Gltf model,
+        MeshPrimitive primitive,
+        bool hasTexCoord1
+    )
+    {
+        // Generated tangents must follow the UV set the normal map is sampled with. Mirrors
+        // MaterialConverter: only TEXCOORD_1 is supported besides TEXCOORD_0.
+        if (
+            !hasTexCoord1
+            || primitive.Material is not int materialIndex
+            || model.Materials is null
+            || materialIndex < 0
+            || materialIndex >= model.Materials.Length
+        )
+        {
+            return false;
+        }
+        return model.Materials[materialIndex].NormalTexture?.TexCoord == 1;
+    }
+
     private bool TryGetAccessorCount(Gltf model, int accessorIndex, out int count)
     {
         count = 0;
@@ -879,6 +930,7 @@ internal sealed class MeshConverter
     // Engine attribute semantic names consumed by the Geometry (besides POSITION).
     private const string NormalSemantic = "NORMAL";
     private const string TexCoordSemantic = "TEXCOORD_0";
+    private const string TexCoord1Semantic = "TEXCOORD_1";
     private const string TangentSemantic = "TANGENT";
     private const string ColorSemantic = "COLOR_0";
     private const string PositionSemantic = "POSITION";
@@ -962,6 +1014,7 @@ internal sealed class MeshConverter
             {
                 NormalSemantic,
                 TexCoordSemantic,
+                TexCoord1Semantic,
                 TangentSemantic,
                 ColorSemantic,
             }
@@ -1014,6 +1067,10 @@ internal sealed class MeshConverter
             TexCoordSemantic,
             out var texCoordDecodedAttribute
         );
+        bool texCoord1Decoded = decoded.Attributes.TryGetValue(
+            TexCoord1Semantic,
+            out var texCoord1DecodedAttribute
+        );
         bool tangentDecoded = decoded.Attributes.TryGetValue(
             TangentSemantic,
             out var tangentDecodedAttribute
@@ -1031,6 +1088,12 @@ internal sealed class MeshConverter
             TexCoordSemantic,
             out int texCoordAccessorIndex
         );
+        bool texCoord1Accessor = TryGetAccessorFallback(
+            primitive,
+            data,
+            TexCoord1Semantic,
+            out int texCoord1AccessorIndex
+        );
         bool tangentAccessor = TryGetAccessorFallback(
             primitive,
             data,
@@ -1039,7 +1102,8 @@ internal sealed class MeshConverter
         );
 
         bool hasNormal = normalDecoded || normalAccessor;
-        bool hasTexCoord = texCoordDecoded || texCoordAccessor;
+        bool hasTexCoord =
+            texCoordDecoded || texCoordAccessor || texCoord1Decoded || texCoord1Accessor;
         bool hasTangent = tangentDecoded || tangentAccessor;
 
         // Only populate VertexProps when at least one vertex-property semantic is present, mirroring
@@ -1065,7 +1129,11 @@ internal sealed class MeshConverter
             // TEXCOORD_0 (Requirement 3.2 / 5.6).
             if (texCoordDecoded)
             {
-                WriteDecodedTexCoords(texCoordDecodedAttribute, geometry.VertexProps);
+                WriteDecodedTexCoords(
+                    texCoordDecodedAttribute,
+                    geometry.VertexProps,
+                    GetDecodedTexCoordScale(model, primitive, TexCoordSemantic)
+                );
             }
             else if (texCoordAccessor)
             {
@@ -1073,6 +1141,26 @@ internal sealed class MeshConverter
                     texCoordAccessorIndex,
                     geometry.VertexProps,
                     merge: true
+                );
+            }
+
+            // TEXCOORD_1 (second UV set).
+            if (texCoord1Decoded)
+            {
+                WriteDecodedTexCoords(
+                    texCoord1DecodedAttribute,
+                    geometry.VertexProps,
+                    GetDecodedTexCoordScale(model, primitive, TexCoord1Semantic),
+                    secondSet: true
+                );
+            }
+            else if (texCoord1Accessor)
+            {
+                _accessorReader.ReadTexCoords(
+                    texCoord1AccessorIndex,
+                    geometry.VertexProps,
+                    merge: true,
+                    secondSet: true
                 );
             }
 
@@ -1145,7 +1233,10 @@ internal sealed class MeshConverter
         // Requirement 3.6: generate tangents when no TANGENT attribute is available from either source.
         if (!hasTangent)
         {
-            TangentGenerator.ComputeTangents(geometry);
+            TangentGenerator.ComputeTangents(
+                geometry,
+                NormalMapUsesSecondUv(model, primitive, texCoord1Decoded || texCoord1Accessor)
+            );
         }
 
         // Requirement 3.7: compute bounding volumes and register with the geometry manager.
@@ -1209,11 +1300,44 @@ internal sealed class MeshConverter
     }
 
     /// <summary>
-    /// Writes decoded TEXCOORD_0 values (VEC2) into the supplied vertex-property list by index.
+    /// Gets the factor that maps decoded texture coordinates to [0, 1]. The Draco decoder returns
+    /// integer attributes as their raw values, so a normalized UNSIGNED_BYTE/UNSIGNED_SHORT source
+    /// accessor (the only integer types glTF permits for TEXCOORD_n) must be scaled here.
+    /// </summary>
+    private static float GetDecodedTexCoordScale(Gltf model, MeshPrimitive primitive, string semantic)
+    {
+        if (
+            primitive.Attributes is null
+            || !primitive.Attributes.TryGetValue(semantic, out int accessorIndex)
+            || model.Accessors is null
+            || accessorIndex < 0
+            || accessorIndex >= model.Accessors.Length
+        )
+        {
+            return 1f;
+        }
+        var accessor = model.Accessors[accessorIndex];
+        if (!accessor.Normalized)
+        {
+            return 1f;
+        }
+        return accessor.ComponentType switch
+        {
+            Accessor.ComponentTypeEnum.UNSIGNED_BYTE => 1f / byte.MaxValue,
+            Accessor.ComponentTypeEnum.UNSIGNED_SHORT => 1f / ushort.MaxValue,
+            _ => 1f,
+        };
+    }
+
+    /// <summary>
+    /// Writes decoded TEXCOORD_0 (or TEXCOORD_1) values (VEC2) into the supplied vertex-property
+    /// list by index, multiplied by <paramref name="scale"/> (see <see cref="GetDecodedTexCoordScale"/>).
     /// </summary>
     private static void WriteDecodedTexCoords(
         DecodedAttribute attribute,
-        FastList<VertexProperties> output
+        FastList<VertexProperties> output,
+        float scale,
+        bool secondSet = false
     )
     {
         int components = attribute.Components;
@@ -1223,7 +1347,15 @@ internal sealed class MeshConverter
         {
             int baseIndex = i * components;
             var existing = output[i];
-            existing.TexCoord = new Vector2(values[baseIndex], values[baseIndex + 1]);
+            var uv = new Vector2(values[baseIndex], values[baseIndex + 1]) * scale;
+            if (secondSet)
+            {
+                existing.TexCoord1 = uv;
+            }
+            else
+            {
+                existing.TexCoord = uv;
+            }
             output[i] = existing;
         }
     }

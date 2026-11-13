@@ -24,6 +24,13 @@ public static class GpuSkinning
     /// </summary>
     public const uint FlagGeneratedTangents = 2;
 
+    /// <summary>
+    /// <see cref="SkinVertexPC.Flags"/> bit (with <see cref="FlagGeneratedTangents"/>): the
+    /// generated tangents come from the second texture coordinate set. Matches
+    /// <c>SKIN_VERTEX_FLAG_GENERATED_TANGENTS_UV1</c>.
+    /// </summary>
+    public const uint FlagGeneratedTangentsUv1 = 4;
+
     public enum Pass : uint
     {
         /// <summary>

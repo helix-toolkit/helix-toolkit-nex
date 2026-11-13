@@ -63,3 +63,7 @@ const uint SKIN_VERTEX_FLAG_FLAT_NORMALS = 1u;
 // With flat normals the face tangent is recomputed from the morphed triangle and its texture
 // coordinates; otherwise the tangent is re-orthogonalized against the morphed normal.
 const uint SKIN_VERTEX_FLAG_GENERATED_TANGENTS = 2u;
+
+// With SKIN_VERTEX_FLAG_GENERATED_TANGENTS: the tangents were generated from the second texture
+// coordinate set (texCoord1) because the normal map uses it, so the face tangent must be too.
+const uint SKIN_VERTEX_FLAG_GENERATED_TANGENTS_UV1 = 4u;

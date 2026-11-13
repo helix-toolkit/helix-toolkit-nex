@@ -46,6 +46,23 @@ public readonly struct MaterialPropsUpdatedEvent(
 }
 
 /// <summary>
+/// Material texture slots. Used as a bit mask to select which slots are sampled with the second
+/// UV set (TEXCOORD_1) instead of the first. Values mirror <c>UV_SLOT_*</c> in psPBRTemplate.glsl.
+/// </summary>
+[Flags]
+public enum PBRTextureSlot : uint
+{
+    None = 0,
+    Albedo = 1 << 0,
+    Normal = 1 << 1,
+    MetallicRoughness = 1 << 2,
+    Ao = 1 << 3,
+    Bump = 1 << 4,
+    Emissive = 1 << 5,
+    Thickness = 1 << 6,
+}
+
+/// <summary>
 /// Manages the PBR (Physically Based Rendering) material properties for a single material
 /// instance, backed by a pooled <see cref="PBRProperties"/> entry.
 /// Publish change notifications via the <see cref="EventBus"/> whenever a property value is modified.
@@ -166,6 +183,24 @@ public sealed class PBRMaterialProperties : IDisposable
             NotifyUpdated();
         }
         get => Properties.AlphaCutoff;
+    }
+
+    /// <summary>
+    /// Gets or sets the texture slots that are sampled with the second UV set (TEXCOORD_1).
+    /// Slots not set here use the first UV set (TEXCOORD_0).
+    /// </summary>
+    public PBRTextureSlot SecondUvSlots
+    {
+        set
+        {
+            if (Properties.TexCoordSets == (uint)value)
+            {
+                return;
+            }
+            Properties.TexCoordSets = (uint)value;
+            NotifyUpdated();
+        }
+        get => (PBRTextureSlot)Properties.TexCoordSets;
     }
 
     /// <summary>
