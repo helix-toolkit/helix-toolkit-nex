@@ -1,6 +1,7 @@
 using System.Numerics;
 using glTFLoader.Schema;
 using HelixToolkit.Nex.Scene;
+using Microsoft.Extensions.Logging;
 using GltfAnimationSampler = glTFLoader.Schema.AnimationSampler;
 using GltfChannelPath = glTFLoader.Schema.AnimationChannelTarget.PathEnum;
 using GltfInterpolation = glTFLoader.Schema.AnimationSampler.InterpolationEnum;
@@ -27,6 +28,8 @@ internal sealed record ImportedAnimation(AnimationClip Clip, int[] TargetNodes);
 internal sealed class AnimationConverter(AccessorReader reader, List<ImportDiagnostic> diagnostics)
 {
     private const string Category = "Animation";
+    private const string AnimationPointerExtension = "KHR_animation_pointer";
+    private static readonly ILogger _logger = LogManager.Create<AnimationConverter>();
 
     /// <summary>
     /// Converts all animations of the model. Animations without any supported channel are skipped.
@@ -59,9 +62,21 @@ internal sealed class AnimationConverter(AccessorReader reader, List<ImportDiagn
         var samplers = new Dictionary<int, SceneAnimationSampler?>();
         var weightSamplers = new Dictionary<int, SceneAnimationSampler[]?>();
         var nodeCount = model.Nodes?.Length ?? 0;
+        var pointerChannelCount = 0;
 
         foreach (var channel in animation.Channels ?? [])
         {
+            if (channel.Target.Extensions?.ContainsKey(AnimationPointerExtension) == true)
+            {
+                // KHR_animation_pointer is not supported; skip quietly rather than warn.
+                _logger.LogDebug(
+                    "Animation '{Name}' channel uses {Extension}, which is not supported. The channel is skipped.",
+                    name,
+                    AnimationPointerExtension
+                );
+                pointerChannelCount++;
+                continue;
+            }
             if (channel.Target.Node is not int nodeIndex || nodeIndex < 0 || nodeIndex >= nodeCount)
             {
                 Warn(animationIndex, $"Animation '{name}' has a channel without a valid target node.");
@@ -111,7 +126,18 @@ internal sealed class AnimationConverter(AccessorReader reader, List<ImportDiagn
 
         if (channels.Count == 0)
         {
-            Warn(animationIndex, $"Animation '{name}' has no supported channels and is skipped.");
+            if (pointerChannelCount == animation.Channels?.Length)
+            {
+                _logger.LogDebug(
+                    "Animation '{Name}' only has {Extension} channels and is skipped.",
+                    name,
+                    AnimationPointerExtension
+                );
+            }
+            else
+            {
+                Warn(animationIndex, $"Animation '{name}' has no supported channels and is skipped.");
+            }
             return null;
         }
         return new ImportedAnimation(new AnimationClip(name, channels), [.. targets]);

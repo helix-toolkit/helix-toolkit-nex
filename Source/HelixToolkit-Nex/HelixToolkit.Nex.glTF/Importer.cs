@@ -105,7 +105,7 @@ public class Importer
         Gltf model;
         try
         {
-            model = Interface.LoadModel(filePath);
+            model = GltfModelLoader.Load(filePath);
         }
         catch (Exception ex)
         {
@@ -249,7 +249,7 @@ public class Importer
         Gltf model;
         try
         {
-            model = Interface.LoadModel(filePath);
+            model = GltfModelLoader.Load(filePath);
         }
         catch (Exception ex)
         {
