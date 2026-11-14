@@ -39,6 +39,8 @@ This package is integral to the HelixToolkit-Nex engine, facilitating the creati
 | `SsaoPushConstants`           | Struct for push constants for the SSAO post-processing shader, newly added to support screen-space ambient occlusion. |
 | `EnvironmentMapPushConstants` | Struct for push constants for the environment map shader, newly added to support HDR environment cubemap rendering. |
 | `EnvironmentMapConstants`     | Struct containing parameters for environment map rendering, including cubemap index, intensity, blur, and rotation. |
+| `AtmosphereConstants`         | Struct containing sky atmosphere parameters (scattering coefficients, scale heights, sun, unit scale), nested in `FPConstants`. |
+| `SkyAtmospherePushConstants`  | Struct for push constants for the sky atmosphere background shader. |
 | `GpuSkinning`                 | Generates the vertex deformation compute shaders (`Compute/SkinPalette.glsl`, `Compute/SkinVertices.glsl`: morph targets, then skinning). |
 | `GpuJointInfluence`           | Struct with four joint indices and blend weights per vertex.                |
 | `GpuMorphDelta` / `GpuMorphWeight` | Morph target displacement of a vertex (target-major), and an active (target, weight) pair. |
@@ -111,6 +113,7 @@ if (!cache.TryGet(cacheKey, out var entry))
 - **SMAA Enhancements**: The SMAA shader now includes support for color-based edge detection and diagonal pattern detection, improving anti-aliasing quality.
 - **SSAO Implementation**: A new SSAO (Screen-Space Ambient Occlusion) shader has been added, supporting multiple stages (occlusion, blur, composite) for enhanced ambient occlusion effects.
 - **Environment Mapping**: Added support for HDR environment cubemap rendering with rotation and mip-level selection, integrated with PBR shading for consistent reflections.
+- **Sky Atmosphere**: `HxHeaders/Atmosphere.glsl` provides a raymarched single-scattering atmosphere (Rayleigh, Mie, ozone; flat ground, km units) shared by `Frag/psSkyAtmosphere.glsl` (background) and the PBR template, which exposes `applyAtmosphere(vec4)` for aerial perspective and tints directional light 0 by the sunlight transmittance.
 
 ## Compatibility
 

@@ -101,9 +101,11 @@ public sealed class EnvironmentMapNode : RenderNode
     protected override bool CanRender(in RenderResources res)
     {
         // Skipped in global wireframe mode: the depth pre-pass is not run, so the background
-        // would be drawn over the wireframe lines.
+        // would be drawn over the wireframe lines. Also skipped while the sky atmosphere is
+        // enabled: SkyAtmosphereNode owns the background then.
         return _pipeline.Valid
             && !res.RenderContext.RenderParams.EnableGlobalWireframe
+            && !res.RenderContext.SkyAtmosphere.Enabled
             && res.RenderContext.EnvironmentMap.ShouldRender;
     }
 

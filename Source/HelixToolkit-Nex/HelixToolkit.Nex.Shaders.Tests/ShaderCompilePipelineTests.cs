@@ -421,6 +421,62 @@ void main() {
         );
     }
 
+    [TestMethod]
+    public void TestSkyAtmosphereFragmentShaderCompiles()
+    {
+        // Compiles the real sky atmosphere background shader, validating the shared
+        // HxHeaders/Atmosphere.glsl raymarch, the AtmosphereConstants block nested in
+        // FPConstants, and the directional-light buffer reference used for the sun.
+        var source = GlslUtils.GetEmbeddedGlslShader("Frag/psSkyAtmosphere.glsl");
+
+        var (buildResult, shaderModule) = _context!.BuildAndCompileShader(
+            ShaderStage.Fragment,
+            source,
+            debugName: "SkyAtmosphere_Fragment_Test"
+        );
+        using var module = shaderModule;
+
+        Assert.IsTrue(
+            buildResult.Success,
+            $"Sky atmosphere build should succeed: {string.Join("; ", buildResult.Errors)}"
+        );
+        Assert.IsTrue(shaderModule.Valid, "Sky atmosphere fragment module should be valid");
+        Assert.AreEqual(
+            0,
+            buildResult.Errors.Count,
+            $"Should have no errors, but got: {string.Join("; ", buildResult.Errors)}"
+        );
+    }
+
+    [TestMethod]
+    [DataRow(null)]
+    [DataRow("TRANSPARENT_PASS")]
+    [DataRow("ALPHA_MASK")]
+    public void TestPBRUberShaderWithAtmosphereCompiles(string? define)
+    {
+        // The PBR template applies aerial perspective (applyAtmosphere) in the PBR, Flat and
+        // Unlit outputs and tints directional light 0 in forwardPlusLighting; every pass
+        // variant of the uber shader must still compile.
+        var builder = new PBRMaterialShaderBuilder();
+        if (define is not null)
+        {
+            builder.WithDefine(define);
+        }
+
+        var buildResult = builder.BuildFragmentShader();
+        Assert.IsTrue(
+            buildResult.Success,
+            $"PBR uber shader ({define ?? "opaque"}) build should succeed: {string.Join("; ", buildResult.Errors)}"
+        );
+
+        using var module = _context!.CreateShaderModuleGlsl(
+            buildResult.Source!,
+            ShaderStage.Fragment,
+            $"PBRUber_{define ?? "Opaque"}_Test"
+        );
+        Assert.IsTrue(module.Valid, $"PBR uber shader ({define ?? "opaque"}) module should be valid");
+    }
+
     #endregion
 
     #region Error Handling Pipeline Tests

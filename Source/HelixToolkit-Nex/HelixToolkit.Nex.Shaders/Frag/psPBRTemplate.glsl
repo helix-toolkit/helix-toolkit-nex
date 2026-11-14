@@ -6,6 +6,7 @@
 #include "HxHeaders/MeshDraw.glsl"
 #include "HxHeaders/PBRProperties.glsl"
 #include "HxHeaders/HeaderPackEntity.glsl"
+#include "HxHeaders/Atmosphere.glsl"
 
 layout(location = 0) in vec3 fragWorldPos;
 layout(location = 1) in flat uint materialId;
@@ -245,6 +246,56 @@ vec3 environmentIBL(in PBRMaterial material, in vec3 viewDir) {
     return (kD * diffuse + specular) * material.ao * fpConst.environmentMap.intensity;
 }
 
+// ============================================================================
+// Sky atmosphere (see HxHeaders/Atmosphere.glsl)
+// ============================================================================
+// Primary samples for the aerial-perspective march. Geometry distances are short compared
+// to background rays, so far fewer samples than the sky pass are needed.
+const int AERIAL_PERSPECTIVE_STEPS = 8;
+
+// Tints the sun directional light (index 0) by the sunlight transmittance at the fragment's
+// altitude, giving warm low-sun lighting. No-op unless the atmosphere is enabled and set to
+// follow directional light 0.
+void atmosphereTintSunLight(inout Light light, uint dirLightIndex) {
+    AtmosphereConstants atm = fpConst.atmosphere;
+    if (dirLightIndex != 0u || atm.enabled == 0u || atm.sunFromDirectionalLight == 0u) {
+        return;
+    }
+    vec3 sunDir = normalize(-light.direction);
+    light.color *= atmosphereSunTransmittance(atm, sunDir, atmosphereAltitude(atm, fragWorldPos));
+}
+
+// Aerial perspective: attenuates the surface colour by the atmosphere between the camera and
+// the fragment and adds the in-scattered light along that segment. Call it on the final
+// colour of a material's output. No-op when the atmosphere is disabled.
+vec4 applyAtmosphere(in vec4 color) {
+    if (fpConst.atmosphere.enabled == 0u) {
+        return color;
+    }
+    AtmosphereConstants atm = atmosphereResolveSun(fpConst);
+    vec3 toFrag = fragWorldPos - fpConst.cameraPosition;
+    float dist = length(toFrag);
+    if (dist < 1e-6) {
+        return color;
+    }
+    vec3 inscatter;
+    vec3 transmittance;
+    integrateAtmosphere(
+        atm,
+        toFrag / dist,
+        atm.sunDirection,
+        dist * atm.kmPerUnit * atm.aerialPerspectiveScale,
+        atmosphereAltitude(atm, fpConst.cameraPosition),
+        AERIAL_PERSPECTIVE_STEPS,
+        0.5,
+        false,
+        inscatter,
+        transmittance
+    );
+    color.rgb = color.rgb * transmittance + inscatter;
+    return color;
+}
+
 vec4 forwardPlusLighting(in PBRMaterial material)
 {
     // Forward+ tiled lighting
@@ -345,6 +396,7 @@ vec4 forwardPlusLighting(in PBRMaterial material)
         DirectionalLightBuffer dirLightBuf = DirectionalLightBuffer(fpConst.directionalLightsBufferAddress);
         for (uint i = 0; i < dirLightBuf.value.lightCount; ++i) {
             Light dirLight = DirectionLightToLight(dirLightBuf.value.lights[i]);
+            atmosphereTintSunLight(dirLight, i);
 #ifdef TRANSPARENT_PASS
             finalC += hasTransmission
                 ? calculatePBRLightingTransmissive(material, dirLight, fragWorldPos, viewDir, transmissionScale)
@@ -663,7 +715,7 @@ vec4 outputColor()
         PBRMaterial material = createPBRMaterial();
         vec4 color = forwardPlusLighting(material);
         color.rgb += material.emissive; // Add emissive after lighting
-        return color;
+        return applyAtmosphere(color);
     }
     {
         return vec4(1.0, 0.0, 1.0, 1.0); // Magenta for unsupported shading model

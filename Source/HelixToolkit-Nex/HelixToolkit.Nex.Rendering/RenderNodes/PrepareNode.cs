@@ -99,6 +99,7 @@ public class PrepareNode : RenderNode
             PointerRing = context.PointerRing,
             WireframeColor = context.RenderParams.GlobalWireframeColor,
             EnvironmentMap = BuildEnvironmentMapConstants(context.EnvironmentMap),
+            Atmosphere = context.SkyAtmosphere.ToConstants(),
         };
 
         _constantsBuffer!.AdvanceAndUpdate(ref fpData);

@@ -84,6 +84,7 @@ public sealed class EngineBuilder
     private bool _withBloom;
     private bool _withFPS;
     private bool _withEnvironment;
+    private bool _withSkyAtmosphere;
     private TransparentMode _transparentMode = TransparentMode.ForwardPlus;
     private ToneMappingMode _toneMappingMode = ToneMappingMode.ACESFilm;
     private bool _withBillboard;
@@ -345,6 +346,20 @@ public sealed class EngineBuilder
         return this;
     }
 
+    /// <summary>
+    /// Enables the dynamic sky atmosphere by registering a <see cref="SkyAtmosphereNode"/> into
+    /// the default pipeline. The node draws a raymarched sky behind the scene and is a no-op until
+    /// <see cref="SkyAtmosphereConfig.Enabled"/> is set on <see cref="RenderContext.SkyAtmosphere"/>.
+    /// While enabled it replaces the <see cref="EnvironmentMapNode"/> background; aerial
+    /// perspective and sun tinting in the PBR shaders follow the same config.
+    /// </summary>
+    /// <returns>This builder for method chaining.</returns>
+    public EngineBuilder WithSkyAtmosphere()
+    {
+        _withSkyAtmosphere = true;
+        return this;
+    }
+
     public EngineBuilder WithToneMappingMode(ToneMappingMode toneMappingMode)
     {
         _toneMappingMode = toneMappingMode;
@@ -451,6 +466,11 @@ public sealed class EngineBuilder
             // Environment-map background. Draws after opaque/mask geometry and no-ops until a
             // cubemap is assigned to RenderContext.EnvironmentMap.
             AddNode(new EnvironmentMapNode());
+        }
+        if (_withSkyAtmosphere)
+        {
+            // Dynamic sky background. No-ops until RenderContext.SkyAtmosphere is enabled.
+            AddNode(new SkyAtmosphereNode());
         }
         if (_withPointCloud)
         {

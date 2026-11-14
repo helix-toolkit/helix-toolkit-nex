@@ -209,6 +209,111 @@ internal class PropertiesPanel
                     env.RenderCubeMap = renderCubeMap;
                 }
                 Gui.EndDisabled();
+
+                Gui.Spacing();
+                Gui.Separator();
+                Gui.Text("Sky Atmosphere");
+                var sky = _renderContext.SkyAtmosphere;
+                var skyEnabled = sky.Enabled;
+                if (Gui.Checkbox("Enable Sky Atmosphere", ref skyEnabled))
+                {
+                    sky.Enabled = skyEnabled;
+                }
+                Gui.BeginDisabled(!sky.Enabled);
+                var sunElevation = _app.SunElevationDeg;
+                if (Gui.SliderFloat("Sun Elevation", ref sunElevation, -10f, 90f))
+                {
+                    _app.SunElevationDeg = sunElevation;
+                }
+                var sunAzimuth = _app.SunAzimuthDeg;
+                if (Gui.SliderFloat("Sun Azimuth", ref sunAzimuth, -180f, 180f))
+                {
+                    _app.SunAzimuthDeg = sunAzimuth;
+                }
+                var bindIntensity = sky.SunIntensityFromDirectionalLight;
+                if (Gui.Checkbox("Sun Follows Light Intensity", ref bindIntensity))
+                {
+                    sky.SunIntensityFromDirectionalLight = bindIntensity;
+                }
+                if (sky.SunIntensityFromDirectionalLight)
+                {
+                    var intensityScale = sky.DirectionalLightIntensityScale;
+                    if (Gui.SliderFloat("Light To Sun Scale", ref intensityScale, 1f, 100f))
+                    {
+                        sky.DirectionalLightIntensityScale = intensityScale;
+                    }
+                }
+                else
+                {
+                    var sunIntensity = sky.SunIntensity;
+                    if (Gui.SliderFloat("Sun Intensity", ref sunIntensity, 1f, 60f))
+                    {
+                        sky.SunIntensity = sunIntensity;
+                    }
+                }
+                var bindColor = sky.SunColorFromDirectionalLight;
+                if (Gui.Checkbox("Sun Follows Light Color", ref bindColor))
+                {
+                    sky.SunColorFromDirectionalLight = bindColor;
+                }
+                if (!sky.SunColorFromDirectionalLight)
+                {
+                    var sunColor = sky.SunColor;
+                    if (Gui.ColorEdit3("Sun Color", ref sunColor))
+                    {
+                        sky.SunColor = sunColor;
+                    }
+                }
+                var groundColor = sky.GroundColor;
+                if (Gui.ColorEdit3("Ground Color", ref groundColor))
+                {
+                    sky.GroundColor = groundColor;
+                }
+                var groundBlendDeg = sky.GroundBlendAngle * (180f / MathF.PI);
+                if (Gui.SliderFloat("Ground Blend", ref groundBlendDeg, 0f, 30f, "%.1f deg"))
+                {
+                    sky.GroundBlendAngle = groundBlendDeg * (MathF.PI / 180f);
+                }
+                var sunDiscSize = sky.SunDiscSize;
+                if (Gui.SliderFloat("Sun Disc Size", ref sunDiscSize, 0.1f, 5f))
+                {
+                    sky.SunDiscSize = sunDiscSize;
+                }
+                var hazeScale = sky.AerialPerspectiveScale;
+                if (
+                    Gui.SliderFloat(
+                        "Haze Scale",
+                        ref hazeScale,
+                        1f,
+                        1000f,
+                        "%.0f",
+                        ImGuiSliderFlags.Logarithmic
+                    )
+                )
+                {
+                    sky.AerialPerspectiveScale = hazeScale;
+                }
+                var mieG = sky.MieG;
+                if (Gui.SliderFloat("Mie G", ref mieG, 0f, 0.99f))
+                {
+                    sky.MieG = mieG;
+                }
+                var mieEnabled = sky.MieEnabled;
+                if (Gui.Checkbox("Mie Scattering", ref mieEnabled))
+                {
+                    sky.MieEnabled = mieEnabled;
+                }
+                var ozoneEnabled = sky.OzoneEnabled;
+                if (Gui.Checkbox("Ozone Absorption", ref ozoneEnabled))
+                {
+                    sky.OzoneEnabled = ozoneEnabled;
+                }
+                var envAsSpace = sky.ShowEnvironmentMapAsSpace;
+                if (Gui.Checkbox("Env Map Behind Sky", ref envAsSpace))
+                {
+                    sky.ShowEnvironmentMapAsSpace = envAsSpace;
+                }
+                Gui.EndDisabled();
             }
             Gui.EndChild();
             if (Gui.BeginChild("Properties"))
