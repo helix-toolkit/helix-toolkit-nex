@@ -159,7 +159,7 @@ public static class PBRMaterialTypeRegistry
                     PBRMaterial material = createPBRMaterial();
                     vec4 color = forwardPlusLighting(material);
                     color.rgb += material.emissive; // Add emissive after lighting
-                    return color;
+                    return applyAtmosphere(color);
                     ",
                 }
             )
@@ -174,7 +174,7 @@ public static class PBRMaterialTypeRegistry
                     OutputColorImplementation =
                         @"
                     PBRMaterial material = createPBRMaterial();
-                    return nonLitOutputColor(material);
+                    return applyAtmosphere(nonLitOutputColor(material));
                     ",
                 }
             )
@@ -216,7 +216,7 @@ public static class PBRMaterialTypeRegistry
                     PBRMaterial material = createPBRMaterialFlatNormal();
                     vec4 color = forwardPlusLighting(material);
                     color.rgb += material.emissive; // Add emissive after lighting
-                    return color;
+                    return applyAtmosphere(color);
                     ",
                 }
             )

@@ -47,6 +47,8 @@ HelixToolkit.Nex.Rendering is responsible for managing the rendering pipeline of
 | `SsaoMath`                       | Provides GPU-free reference implementations for SSAO effect math.           |
 | `EnvironmentMapConfig`           | Configures environment-map (skybox) rendering for a render context.         |
 | `EnvironmentMapNode`             | Renders an HDR environment cubemap as the scene background (skybox).        |
+| `SkyAtmosphereConfig`            | Configures the dynamic sky atmosphere (scattering media, sun, units) for a render context. |
+| `SkyAtmosphereNode`              | Renders a raymarched sky atmosphere as the scene background in place of the environment map. |
 | `RenderSpace`                    | Specifies the space in which a draw primitive's size/thickness is measured. |
 | `LineCap`                        | Shape of unconnected line segment ends: `Butt`, `Square`, `Round`.          |
 | `LineJoin`                       | How connected line segments are joined: `None`, `Miter`, `Bevel`, `Round`.  |
@@ -61,6 +63,7 @@ HelixToolkit.Nex.Rendering is responsible for managing the rendering pipeline of
 
 ### New Features
 
+- **Sky atmosphere**: `SkyAtmosphereConfig` (`RenderContext.SkyAtmosphere`) and `SkyAtmosphereNode` add a dynamic, raymarched sky: Rayleigh, Mie and ozone single scattering over a flat ground with world +Y as up, lengths in kilometers and world units converted via `KmPerUnit` (default 0.001, one unit = one meter). While enabled, the node draws the background in place of `EnvironmentMapNode` (which skips itself), the PBR, Flat and Unlit shading models apply aerial perspective (distance haze) through `applyAtmosphere()`, and directional light 0 is used as the sun and tinted by the sunlight transmittance (`SunFromDirectionalLight`); its intensity also drives the sky's sun intensity, scaled by `DirectionalLightIntensityScale` (`SunIntensityFromDirectionalLight`), and its colour tints the sky and haze (`SunColorFromDirectionalLight`; otherwise `SunColor`). `ShowEnvironmentMapAsSpace` draws the environment cubemap behind the atmosphere (e.g. a star field). Below the horizon the background fades from the horizon sky into `GroundColor` (lit by the horizon radiance) over `GroundBlendAngle`. The CAD and debug shading models, and point/line/billboard materials, are not hazed.
 - **Line caps and joins**: `LineDrawInfo` gained `Cap` (`LineCap`, default `Butt`), `Join` (`LineJoin`, default `Miter`) and `MiterLimit` (default 4, SVG `stroke-miterlimit` semantics). Line geometry stays a list of disjoint 2-vertex segments; the line shader treats consecutive segments as connected when the end vertex of one equals the start vertex of the next (and the last segment with the first, for closed loops). Connected segments are split along the joint's angle bisector, so translucent lines no longer overlap or leave gaps at corners. Edge anti-aliasing and the cap/join shape are applied in the line fragment template's `main()` for every line material, so custom `OutputColorImplementation` code no longer needs to feather the edge. Set `Join = LineJoin.None` to render every segment independently.
 - **LineDrawInfo defaults**: Added an explicit parameterless constructor so `new LineDrawInfo { ... }` applies the documented property defaults (`LineColor = White`, `LineThickness = 1`, `Join = Miter`, …) instead of zero-initializing the struct.
 - **RenderSpace**: Introduced to specify the space in which a draw primitive's size/thickness is measured, replacing the `FixedSize` boolean with a more descriptive enum.
@@ -138,6 +141,7 @@ HelixToolkit.Nex.Rendering is responsible for managing the rendering pipeline of
 ### EnvironmentMapNode
 
 - **Global Wireframe**: The node is skipped when `RenderParams.EnableGlobalWireframe` is enabled, because the depth pre-pass does not run in that mode and the background would otherwise be drawn over the wireframe lines.
+- **Sky Atmosphere**: The node is skipped while `RenderContext.SkyAtmosphere.Enabled` is set; `SkyAtmosphereNode` draws the background instead. The cubemap still drives PBR reflections.
 
 ## Usage Examples
 
@@ -307,6 +311,27 @@ var environmentMapConfig = new EnvironmentMapConfig
 };
 renderContext.EnvironmentMap = environmentMapConfig;
 ```
+
+### Configuring Sky Atmosphere
+
+Requires `SkyAtmosphereNode` in the pipeline (`EngineBuilder.WithSkyAtmosphere()`).
+
+```csharp
+var sky = renderContext.SkyAtmosphere;
+sky.Enabled = true;
+sky.KmPerUnit = 0.001f;              // one world unit = one meter (default)
+sky.SunFromDirectionalLight = true;  // sun follows directional light 0 (default)
+sky.SunIntensityFromDirectionalLight = true; // sky brightness follows light 0 (default)
+sky.DirectionalLightIntensityScale = 25f;     // light intensity 0.8 -> sun intensity 20
+sky.SunColorFromDirectionalLight = true;     // sky tint follows light 0's colour (default)
+sky.GroundColor = new Vector3(0.3f, 0.28f, 0.25f); // ground tint below the horizon
+sky.AerialPerspectiveScale = 50f;    // exaggerate the haze for a small scene
+// Optional: draw the environment cubemap behind the atmosphere as a star field.
+sky.ShowEnvironmentMapAsSpace = true;
+```
+
+Custom PBR material types can haze their output by returning `applyAtmosphere(color)` from
+their `OutputColorImplementation`.
 
 ## Architecture Notes
 

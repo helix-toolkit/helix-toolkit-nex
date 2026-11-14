@@ -157,6 +157,15 @@ internal class GltfImporterApp : ApplicationBase
     public DirectionalLightNode DirectionalLight =>
         _dirLight ?? throw new InvalidOperationException("Light node is not initialized.");
 
+    /// <summary>
+    /// Sun elevation above the horizon in degrees. Drives the directional light while the sky
+    /// atmosphere is enabled (otherwise the light follows the camera).
+    /// </summary>
+    public float SunElevationDeg { get; set; } = 20f;
+
+    /// <summary>Sun azimuth around the world Y axis in degrees.</summary>
+    public float SunAzimuthDeg { get; set; } = 135f;
+
     /// <param name="initialFile">Optional glTF/GLB file to load on startup.</param>
     public GltfImporterApp(string? initialFile = null)
         : base(
@@ -209,6 +218,7 @@ internal class GltfImporterApp : ApplicationBase
             .WithDefaultNodes(false)
             .WithFXAA()
             .WithEnvironment()
+            .WithSkyAtmosphere()
             .WithToneMappingMode(Shaders.ToneMappingMode.Reinhard)
             .WithTransparent(Engine.TransparentMode.WBOIT)
             .WithFPS()
@@ -510,8 +520,24 @@ internal class GltfImporterApp : ApplicationBase
         // --- Update camera controller ---
         _cameraController.Update(delta);
 
-        // --- Update light direction to match camera (optional, for better default lighting) ---
-        _dirLight!.Direction = Vector3.Normalize(_camera.LookDir);
+        // --- Update light direction: the sun while the sky atmosphere is on, otherwise match
+        // the camera (optional, for better default lighting) ---
+        if (_renderContext.SkyAtmosphere.Enabled)
+        {
+            float elevation = SunElevationDeg * (MathF.PI / 180f);
+            float azimuth = SunAzimuthDeg * (MathF.PI / 180f);
+            var towardSun = new Vector3(
+                MathF.Cos(elevation) * MathF.Sin(azimuth),
+                MathF.Sin(elevation),
+                MathF.Cos(elevation) * MathF.Cos(azimuth)
+            );
+            // Directional lights store the direction the light travels.
+            _dirLight!.Direction = -towardSun;
+        }
+        else
+        {
+            _dirLight!.Direction = Vector3.Normalize(_camera.LookDir);
+        }
 
         // --- Update render context for the 3D viewport ---
         _renderContext.RenderParams.BackgroundColor = _background;

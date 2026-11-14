@@ -214,6 +214,7 @@ camera.FocusOn(new Vector3(0, 0, 0), 10f);
 - New methods for enabling specific rendering features: `WithBillBoard()`, `WithTransparent(TransparentMode mode)`, `WithFXAA()`, `WithSMAA()`, `WithBloom()`, `WithFPS()`.
 - Added `WithSSAO(SsaoQuality quality = SsaoQuality.Medium)`: Registers a single `SsaoPostEffect` into the `PostEffectsNode`, unless an effect named `"SsaoPostEffect"` is already present.
 - Added `WithEnvironment()`: Enables the environment-map (skybox) background by registering an `EnvironmentMapNode` into the default pipeline.
+- Added `WithSkyAtmosphere()`: Registers a `SkyAtmosphereNode` that draws a dynamic sky atmosphere once `RenderContext.SkyAtmosphere.Enabled` is set, replacing the environment-map background while enabled.
 
 ### Buffer Management Updates
 

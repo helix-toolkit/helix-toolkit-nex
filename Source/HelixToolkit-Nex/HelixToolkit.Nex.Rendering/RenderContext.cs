@@ -222,6 +222,13 @@ public sealed class RenderContext(IServiceProvider services) : Initializable
     /// </summary>
     public EnvironmentMapConfig EnvironmentMap { get; } = new();
 
+    /// <summary>
+    /// Dynamic sky atmosphere configuration. Set <see cref="SkyAtmosphereConfig.Enabled"/> to have
+    /// <see cref="RenderNodes.SkyAtmosphereNode"/> draw a raymarched sky in place of the environment
+    /// map background and to apply aerial perspective and sun tinting in the PBR shaders.
+    /// </summary>
+    public SkyAtmosphereConfig SkyAtmosphere { get; } = new();
+
     private Size _windowSize = DefaultWindowSize;
 
     public Size WindowSize

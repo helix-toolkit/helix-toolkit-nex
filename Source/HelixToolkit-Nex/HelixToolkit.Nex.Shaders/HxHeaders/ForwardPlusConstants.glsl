@@ -27,6 +27,41 @@ struct EnvironmentMapConstants {
 };
 
 @code_gen
+struct AtmosphereConstants {
+    vec3 rayleighBeta;            // Rayleigh scattering coefficient per km (RGB).
+    float rayleighScaleHeight;    // Rayleigh density scale height in km.
+
+    vec3 ozoneBetaAbs;            // Ozone absorption coefficient per km (RGB).
+    float mieScaleHeight;         // Mie (aerosol) density scale height in km.
+
+    vec3 sunDirection;            // Normalized world-space direction toward the sun (used when not taken from a directional light).
+    float sunIntensity;           // Sun radiance multiplier driving sky and haze brightness.
+
+    float mieBeta;                // Mie scattering coefficient per km.
+    float mieBetaExt;             // Mie extinction coefficient per km.
+    float mieG;                   // Mie phase anisotropy in [0, 1). Higher values give a tighter glow around the sun.
+    float atmosphereHeight;       // Atmosphere thickness in km.
+
+    float groundAltitude;         // Altitude of world Y = 0 above the ground, in km.
+    float kmPerUnit;              // World units to km conversion (0.001 when one unit is one meter).
+    float sunDiscSize;            // Sun disc radius scale (1 = default size).
+    float aerialPerspectiveScale; // Multiplier applied to geometry distance for the haze (1 = physical).
+
+    uint enabled;                 // 0 = atmosphere disabled, 1 = enabled.
+    uint mieEnabled;              // 0 = skip Mie (aerosol) scattering, 1 = include it.
+    uint ozoneEnabled;            // 0 = skip ozone absorption, 1 = include it.
+    uint sunFromDirectionalLight; // 1 = sun direction follows directional light 0 and that light is tinted by the atmosphere.
+
+    uint sunIntensityFromDirectionalLight; // 1 = sunIntensity is replaced by directional light 0's intensity times directionalLightIntensityScale.
+    float directionalLightIntensityScale;  // Sky sun intensity per unit of directional light intensity.
+    uint _padding0;
+    uint _padding1;
+
+    vec3 sunColor;                     // Linear RGB sun colour multiplying sky, sun disc and haze radiance.
+    uint sunColorFromDirectionalLight; // 1 = sunColor is replaced by directional light 0's colour.
+};
+
+@code_gen
 struct FPConstants {
     mat4 viewProjection;
     mat4 inverseViewProjection;
@@ -60,4 +95,5 @@ struct FPConstants {
     vec4 wireframeColor; // RGBA color for global mesh wireframe mode (if enabled)
     PointerRing pointerRing;
     EnvironmentMapConstants environmentMap;
+    AtmosphereConstants atmosphere;
 };
