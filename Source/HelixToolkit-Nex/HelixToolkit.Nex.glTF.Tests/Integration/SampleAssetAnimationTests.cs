@@ -164,6 +164,25 @@ public class SampleAssetAnimationTests
         CollectionAssert.AreEqual(new[] { 0.5f, 0.5f }, node.Morphing!.Weights.Values.ToArray());
     }
 
+    /// <summary>
+    /// KHR_animation_pointer is not supported: the file must still import, with the pointer
+    /// channels skipped without a diagnostic.
+    /// </summary>
+    [TestMethod]
+    public void Import_AnimationPointerSample_ImportsAndSkipsPointerChannels()
+    {
+        var path = GetSamplePath("PotOfCoalsAnimationPointer");
+        RegisterMaterialNamesFromFile(path);
+        using var worldData = CreateTestWorldDataProvider();
+
+        var result = new Importer().Import(path, worldData);
+
+        Assert.IsTrue(result.Success, FormatDiagnostics(result));
+        Assert.AreEqual(0, result.Animations.Count, FormatDiagnostics(result));
+        Assert.IsFalse(result.HasWarnings, FormatDiagnostics(result));
+        Assert.IsTrue(CollectMeshNodes(result.RootNode).Any());
+    }
+
     private static string GetSamplePath(string model)
     {
         // A rooted model name would make Path.Combine silently drop the assets root.

@@ -103,7 +103,7 @@ public class ImporterIsolationIntegrationTests
     /// </summary>
     private static void RegisterMaterialNamesFromFile(string filePath)
     {
-        var model = Interface.LoadModel(filePath);
+        var model = Internal.GltfModelLoader.Load(filePath);
         if (model.Materials == null)
             return;
 
