@@ -8,11 +8,11 @@
 PBRProperties getPBRProperties()
 ```
 
-Retrieves the PBR material properties for the current fragment. It casts `fpConst.materialBufferAddress` to a `MaterialBuffer` and returns the entry at `materialId`.
+Retrieves the PBR material properties for the current fragment. It casts `fpConst.materialBufferAddress` to a `MaterialBuffer` and indexes it with `materialId`.
 
 **Return type:** `PBRProperties`
 
-## Timing
+## Frame Constants
 
 ### `getTimeMs`
 
@@ -24,9 +24,7 @@ Returns the current time in milliseconds from the fragment push constants (`fpCo
 
 **Return type:** `uint64_t`
 
-## Camera and Transform Matrices
-
-Matrices returned by these functions are GLSL column-major. The C# side of the engine stores matrices row-major, so the values are uploaded to the shader accordingly.
+## Camera and Transform Accessors
 
 ### `getViewProjection`
 
@@ -34,7 +32,7 @@ Matrices returned by these functions are GLSL column-major. The C# side of the e
 mat4 getViewProjection()
 ```
 
-Returns the combined view-projection matrix from `fpConst.viewProjection`.
+Returns the combined view-projection matrix (`fpConst.viewProjection`).
 
 **Return type:** `mat4`
 
@@ -44,7 +42,7 @@ Returns the combined view-projection matrix from `fpConst.viewProjection`.
 mat4 getInvViewProjection()
 ```
 
-Returns the inverse of the view-projection matrix from `fpConst.inverseViewProjection`. Useful for reconstructing world-space positions from screen-space or depth values.
+Returns the inverse of the combined view-projection matrix (`fpConst.inverseViewProjection`).
 
 **Return type:** `mat4`
 
@@ -54,7 +52,7 @@ Returns the inverse of the view-projection matrix from `fpConst.inverseViewProje
 mat4 getView()
 ```
 
-Returns the view matrix from `fpConst.view`.
+Returns the view matrix (`fpConst.view`).
 
 **Return type:** `mat4`
 
@@ -64,11 +62,9 @@ Returns the view matrix from `fpConst.view`.
 mat4 getInvView()
 ```
 
-Returns the inverse view matrix from `fpConst.inverseView`.
+Returns the inverse view matrix (`fpConst.inverseView`).
 
 **Return type:** `mat4`
-
-## Camera and Screen Information
 
 ### `getCameraPosition`
 
@@ -76,7 +72,7 @@ Returns the inverse view matrix from `fpConst.inverseView`.
 vec3 getCameraPosition()
 ```
 
-Returns the camera position in world space from `fpConst.cameraPosition`.
+Returns the camera position in world space (`fpConst.cameraPosition`).
 
 **Return type:** `vec3`
 
@@ -86,7 +82,7 @@ Returns the camera position in world space from `fpConst.cameraPosition`.
 vec2 getScreenSize()
 ```
 
-Returns the render target dimensions from `fpConst.screenDimensions`.
+Returns the screen dimensions in pixels (`fpConst.screenDimensions`).
 
 **Return type:** `vec2`
 
@@ -96,13 +92,13 @@ Returns the render target dimensions from `fpConst.screenDimensions`.
 vec3 getViewDirection()
 ```
 
-Returns the normalized direction from the current fragment's world position toward the camera, computed as `normalize(getCameraPosition() - fragWorldPos)`.
+Returns the normalized direction from the current fragment's world position toward the camera. It is computed as `normalize(getCameraPosition() - fragWorldPos)`.
 
 **Return type:** `vec3`
 
 ## Pointer Ring
 
-The pointer ring is a screen-space visual indicator that highlights geometry near the pointer's ray. The functions below read its configuration from `fpConst.pointerRing`.
+The pointer ring is a screen-space highlight drawn around the ray defined by the pointer. The accessors below read its settings from `fpConst.pointerRing`.
 
 ### `isPointerRingEnabled`
 
@@ -110,7 +106,7 @@ The pointer ring is a screen-space visual indicator that highlights geometry nea
 bool isPointerRingEnabled()
 ```
 
-Returns `true` if the pointer ring is enabled (`fpConst.pointerRing.enabled != 0`).
+Returns `true` when the pointer ring is enabled (`fpConst.pointerRing.enabled != 0`).
 
 **Return type:** `bool`
 
@@ -120,7 +116,7 @@ Returns `true` if the pointer ring is enabled (`fpConst.pointerRing.enabled != 0
 vec3 getPointerRayDirection()
 ```
 
-Returns the pointer ray direction from `fpConst.pointerRing.rayDirection`.
+Returns the pointer ray direction (`fpConst.pointerRing.rayDirection`). The value is not normalized by this function.
 
 **Return type:** `vec3`
 
@@ -130,7 +126,7 @@ Returns the pointer ray direction from `fpConst.pointerRing.rayDirection`.
 vec3 getPointerRayOrigin()
 ```
 
-Returns the pointer ray origin from `fpConst.pointerRing.rayOrigin`.
+Returns the origin of the pointer ray (`fpConst.pointerRing.rayOrigin`).
 
 **Return type:** `vec3`
 
@@ -140,7 +136,7 @@ Returns the pointer ray origin from `fpConst.pointerRing.rayOrigin`.
 float getPointerRingOuterDistThreshold()
 ```
 
-Returns the outer distance threshold, the maximum fragment-to-ray distance that is still inside the ring. Read from `fpConst.pointerRing.outerDistThreshold`.
+Returns the outer distance threshold of the ring (`fpConst.pointerRing.outerDistThreshold`). A fragment is inside the ring when its distance to the pointer ray is at or below this value.
 
 **Return type:** `float`
 
@@ -150,7 +146,7 @@ Returns the outer distance threshold, the maximum fragment-to-ray distance that 
 float getPointerRingInnerDistThreshold()
 ```
 
-Returns the inner distance threshold, the minimum fragment-to-ray distance for the ring. Read from `fpConst.pointerRing.innerDistThreshold`.
+Returns the inner distance threshold of the ring (`fpConst.pointerRing.innerDistThreshold`). A fragment is inside the ring when its distance to the pointer ray is at or above this value.
 
 **Return type:** `float`
 
@@ -160,7 +156,7 @@ Returns the inner distance threshold, the minimum fragment-to-ray distance for t
 float getPointerRingColorMix()
 ```
 
-Returns the blend factor used when mixing the ring color with the surface color. Read from `fpConst.pointerRing.colorMix`.
+Returns the blend factor used to mix the ring color into the surface color (`fpConst.pointerRing.colorMix`). Used by `mixWithPointerRing`.
 
 **Return type:** `float`
 
@@ -170,7 +166,7 @@ Returns the blend factor used when mixing the ring color with the surface color.
 vec3 getPointerRingColor()
 ```
 
-Returns the base color of the pointer ring from `fpConst.pointerRing.color`.
+Returns the base color of the pointer ring (`fpConst.pointerRing.color`).
 
 **Return type:** `vec3`
 
@@ -180,7 +176,7 @@ Returns the base color of the pointer ring from `fpConst.pointerRing.color`.
 float getFragToPointerRayDistance()
 ```
 
-Computes the shortest distance from the current fragment's world position to the pointer ray. The ray is treated as a half-line starting at the ray origin, so the closest point is clamped to the origin when the fragment lies behind it.
+Computes the shortest distance from the current fragment's world position (`fragWorldPos`) to the pointer ray. The ray is treated as a half-line starting at the ray origin, so the closest point is clamped to the origin when the fragment lies behind it.
 
 **Return type:** `float`
 
@@ -190,7 +186,7 @@ Computes the shortest distance from the current fragment's world position to the
 bool isInPointerRing()
 ```
 
-Returns `true` if the current fragment's distance to the pointer ray lies between the inner and outer distance thresholds, inclusive.
+Returns `true` when the fragment's distance to the pointer ray lies between the inner and outer distance thresholds, inclusive.
 
 **Return type:** `bool`
 
@@ -200,16 +196,36 @@ Returns `true` if the current fragment's distance to the pointer ray lies betwee
 vec4 mixWithPointerRing(in vec4 color)
 ```
 
-Blends the pointer ring color into the input color when the pointer ring is enabled and the fragment is within the ring. The blend amount is `getPointerRingColorMix()`, and only the RGB channels are modified. The alpha channel is preserved.
+Blends the pointer ring color into the input color when the pointer ring is enabled and the fragment lies inside the ring. The alpha channel is unchanged.
 
-When `EXCLUDE_MESH_PROPS` is not defined, the ring brightness is modulated by the surface normal relative to the view direction. The ring color is scaled by `mix(0.2, 1.0, NdotV)`, where `NdotV` is the clamped dot product of the normalized `fragNormal` and the view direction. This lets the ring shade naturally across curved geometry. When `EXCLUDE_MESH_PROPS` is defined, this shading is skipped and the base ring color is used directly.
-
-**Parameters:**
-
-| Name | Type | Qualifier | Description |
-|------|------|-----------|-------------|
-| `color` | `vec4` | `in` | The input surface color. |
+When `EXCLUDE_MESH_PROPS` is not defined, the ring color is scaled by `mix(0.2, 1.0, NdotV)`, where `NdotV` is the clamped dot product of the normalized `fragNormal` and the view direction. This shades the ring across curved geometry. When `EXCLUDE_MESH_PROPS` is defined, the unmodulated ring color is used.
 
 **Return type:** `vec4`
 
-<!-- source-hash: 5d1e502ea557467e -->
+## Texture Coordinate Selection
+
+These functions are compiled only when `WIREFRAME_PASS` is not defined and `EXCLUDE_MESH_PROPS` is not defined.
+
+### `selectTexCoord`
+
+```glsl
+vec2 selectTexCoord(uint texCoordSets, uint slot)
+```
+
+Selects the texture coordinate set for a material texture slot. It returns `fragTexCoord1` (TEXCOORD_1) if the bit `slot` is set in `texCoordSets`, and `fragTexCoord` (TEXCOORD_0) otherwise.
+
+The `slot` argument is one of the following bit constants, which mirror the C# `PBRTextureSlot` enum:
+
+| Constant | Value |
+|---|---|
+| `UV_SLOT_ALBEDO` | `1u` |
+| `UV_SLOT_NORMAL` | `2u` |
+| `UV_SLOT_METALLIC_ROUGHNESS` | `4u` |
+| `UV_SLOT_AO` | `8u` |
+| `UV_SLOT_BUMP` | `16u` |
+| `UV_SLOT_EMISSIVE` | `32u` |
+| `UV_SLOT_THICKNESS` | `64u` |
+
+**Return type:** `vec2`
+
+<!-- source-hash: 7f3709c090c86893 -->

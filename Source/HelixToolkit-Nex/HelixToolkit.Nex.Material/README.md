@@ -1,4 +1,3 @@
-```markdown
 # HelixToolkit.Nex.Material
 
 The `HelixToolkit.Nex.Material` package provides a comprehensive framework for managing materials in the HelixToolkit-Nex 3D graphics engine. It supports the creation, management, and rendering of Physically Based Rendering (PBR) materials, custom material buffers, point materials, billboard materials, and line materials, integrating seamlessly with the Vulkan API through the HelixToolkit-Nex engine.
@@ -26,6 +25,7 @@ This package plays a crucial role in the rendering pipeline, providing the neces
 | `IPBRMaterialManager` | Interface for managing PBR materials and their pipelines. |
 | `PBRMaterialManager` | Implements `IPBRMaterialManager` for managing PBR materials. |
 | `PBRMaterialProperties` | Manages PBR material properties for a single material instance. |
+| `PBRTextureSlot` | Flags enum selecting which PBR texture slots are sampled with the second UV set (`TEXCOORD_1`). |
 | `PBRMaterialShaderBuilder` | Builds shader code for materials with GLSL integration. |
 | `PBRMaterialTypeRegistry` | Global registry for material types and their shader implementations. |
 | `PointMaterialManager` | Manages point cloud render pipelines. |
@@ -78,6 +78,20 @@ materialProperties.Albedo = new Color4(1, 0, 0, 1);
 materialProperties.Metallic = 0.5f;
 materialProperties.BumpScale = 1.0f;
 materialProperties.DisplaceScale = 0.5f;
+```
+
+### Selecting the Second UV Set for Texture Slots
+
+`PBRMaterialProperties.SecondUvSlots` selects which texture slots are sampled with the second UV set (`TEXCOORD_1`). Slots that are not included use the first UV set (`TEXCOORD_0`).
+
+```csharp
+var materialProperties = materialCreator.Create();
+
+// Sample the albedo and normal maps with TEXCOORD_1; all other slots use TEXCOORD_0
+materialProperties.SecondUvSlots = PBRTextureSlot.Albedo | PBRTextureSlot.Normal;
+
+// Read back the current selection
+PBRTextureSlot slots = materialProperties.SecondUvSlots;
 ```
 
 ### Managing Billboard Materials
@@ -146,4 +160,3 @@ commandBuffer.BindRenderPipeline(alphaMaskPipeline);
 - **Integration**: Works with the HelixToolkit-Nex ECS and Render Graph systems to ensure efficient material management and rendering.
 
 The `HelixToolkit.Nex.Material` package is a vital component of the HelixToolkit-Nex engine, providing robust and flexible material management capabilities essential for advanced 3D rendering applications.
-```
