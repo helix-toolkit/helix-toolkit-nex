@@ -6,6 +6,9 @@ namespace HelixToolkit.Nex.Engine.CameraControllers;
 /// An orbit camera controller that rotates around a target point.
 /// Supports orbiting (rotate), panning, and zooming via mouse-style input.
 /// The camera always looks at <see cref="Camera.Target"/>.
+/// Zooming changes the orbit radius for perspective cameras and
+/// <see cref="OrthographicCamera.Width"/> for orthographic cameras, whose view size does not
+/// depend on the distance to the target.
 /// </summary>
 public class OrbitCameraController : ICameraController
 {
@@ -22,6 +25,7 @@ public class OrbitCameraController : ICameraController
     private readonly float _initialTheta;
     private readonly float _initialPhi;
     private readonly float _initialRadius;
+    private readonly float _initialOrthoWidth;
 
     /// <summary>
     /// Gets the camera being controlled.
@@ -75,6 +79,16 @@ public class OrbitCameraController : ICameraController
     public float MaxRadius { get; set; } = 10000f;
 
     /// <summary>
+    /// Gets or sets the minimum orthographic width for orthographic cameras.
+    /// </summary>
+    public float MinOrthoWidth { get; set; } = 0.1f;
+
+    /// <summary>
+    /// Gets or sets the maximum orthographic width for orthographic cameras.
+    /// </summary>
+    public float MaxOrthoWidth { get; set; } = 100000f;
+
+    /// <summary>
     /// Gets or sets whether to invert the vertical rotation direction.
     /// </summary>
     public bool InvertY { get; set; } = true;
@@ -107,6 +121,7 @@ public class OrbitCameraController : ICameraController
         _initialTheta = _theta;
         _initialPhi = _phi;
         _initialRadius = _radius;
+        _initialOrthoWidth = camera is OrthographicCamera ortho ? ortho.Width : 10f;
 
         UpdateCameraPosition();
     }
@@ -185,6 +200,25 @@ public class OrbitCameraController : ICameraController
     /// <inheritdoc />
     public void OnZoomDelta(float delta, Vector3? pickPosition = null)
     {
+        if (Camera is OrthographicCamera ortho)
+        {
+            // The orthographic view size is set by its width, not the distance to the target, so
+            // zoom by scaling the width and keep the camera where it is (moving it closer would
+            // only start clipping the model at the near plane).
+            float oldWidth = ortho.Width;
+            ortho.Width *= 1f - delta * ZoomSensitivity;
+            ortho.Width = MathUtil.Clamp(ortho.Width, MinOrthoWidth, MaxOrthoWidth);
+
+            // Shift the target toward the pick point proportionally to the zoom change
+            if (pickPosition.HasValue && oldWidth > MathUtil.ZeroTolerance)
+            {
+                float widthRatio = 1f - ortho.Width / oldWidth;
+                Camera.Target += (pickPosition.Value - Camera.Target) * widthRatio;
+                UpdateCameraPosition();
+            }
+            return;
+        }
+
         float oldRadius = _radius;
 
         // Additive zoom scaled by current radius for consistent feel at all distances.
@@ -218,6 +252,11 @@ public class OrbitCameraController : ICameraController
         _phi = _initialPhi;
         _radius = _initialRadius;
         Camera.Target = Vector3.Zero;
+
+        if (Camera is OrthographicCamera ortho)
+        {
+            ortho.Width = _initialOrthoWidth;
+        }
 
         UpdateCameraPosition();
     }

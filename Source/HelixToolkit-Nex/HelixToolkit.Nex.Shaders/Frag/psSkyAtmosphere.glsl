@@ -47,56 +47,38 @@ layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer FP
     FPConstants fpConstants;
 };
 
-const int SKY_PRIMARY_STEPS = 24;
-// Background rays march a fixed multiple of the atmosphere thickness (flat-ground model).
-const float SKY_RAY_LENGTH_SCALE = 8.0;
-// Lowest view elevation (sine, ~0.3 degrees) at which the sky is evaluated. Lower rays,
-// including all rays below the horizon, use the sky at this elevation.
-const float SKY_MIN_ELEVATION = 0.005;
-
 void main() {
     FPConstants fpConst = FPBuffer(pc.value.fpConstAddress).fpConstants;
     AtmosphereConstants atm = atmosphereResolveSun(fpConst);
     EnvironmentMapConstants env = fpConst.environmentMap;
 
-    // Reconstruct the view ray (vsFullScreenQuad flips Y for texture space).
+    // Reconstruct the view ray (vsFullScreenQuad flips Y for texture space) from two finite
+    // depths, so it works for orthographic cameras and infinite far planes.
     vec2 ndc = vec2(inTexCoord.x * 2.0 - 1.0, 1.0 - inTexCoord.y * 2.0);
-    vec4 farPoint = fpConst.inverseViewProjection * vec4(ndc, 0.0, 1.0);
-    vec3 worldFar = farPoint.xyz / farPoint.w;
-    vec3 rayDir = normalize(worldFar - fpConst.cameraPosition);
+    vec3 rayOrigin;
+    vec3 rayDir;
+    atmosphereViewRay(fpConst.inverseViewProjection, ndc, rayOrigin, rayDir);
 
     vec3 sunDir = atm.sunDirection;
-    float observerAlt = atmosphereAltitude(atm, fpConst.cameraPosition);
+    float observerAlt = atmosphereAltitude(atm, rayOrigin);
     // Static per-pixel dither in [0, 0.33) to break up banding between samples.
     float jitter = atmosphereIGN(gl_FragCoord.xy) * 0.33;
 
-    // Clamp the sky ray to SKY_MIN_ELEVATION, keeping its azimuth (any azimuth when looking
-    // straight down).
-    vec3 skyDir = rayDir;
-    if (rayDir.y < SKY_MIN_ELEVATION) {
-        vec2 horizontal = rayDir.xz;
-        float len = length(horizontal);
-        horizontal = len > 1e-5 ? horizontal / len : vec2(0.0, 1.0);
-        float c = sqrt(1.0 - SKY_MIN_ELEVATION * SKY_MIN_ELEVATION);
-        skyDir = vec3(horizontal.x * c, SKY_MIN_ELEVATION, horizontal.y * c);
-    }
-
-    vec3 inscatter;
     vec3 transmittance;
-    integrateAtmosphere(
+    float groundMask;
+    vec3 color = atmosphereSkyRadiance(
         atm,
-        skyDir,
-        sunDir,
-        atm.atmosphereHeight * SKY_RAY_LENGTH_SCALE,
+        rayDir,
         observerAlt,
-        SKY_PRIMARY_STEPS,
         jitter,
-        true,
-        inscatter,
-        transmittance
+        pc.value.groundColor,
+        pc.value.groundBlendSin,
+        transmittance,
+        groundMask
     );
 
-    vec3 color = inscatter;
+    // The ground hides the space backdrop and the sun disc.
+    vec3 beyond = vec3(0.0);
 
     // Space backdrop from the environment cubemap, seen through the atmosphere.
     if (pc.value.spaceBackdrop != 0u && env.envTexIndex != 0u) {
@@ -106,7 +88,7 @@ void main() {
         float maxLod = float(max(textureBindlessQueryLevelsCube(env.envTexIndex) - 1, 0));
         float lod = clamp(env.mipLevel, 0.0, maxLod);
         vec3 space = textureBindlessCubeLod(env.envTexIndex, env.samplerIndex, envDir, lod).rgb;
-        color += space * env.intensity * transmittance;
+        beyond += space * env.intensity * transmittance;
     }
 
     // Sun disc, dimmed by the atmosphere along the view ray and below the horizon.
@@ -114,11 +96,8 @@ void main() {
     float sunAboveHorizon = smoothstep(-0.04, 0.04, sunDir.y);
     float sunShape = atmosphereSunDisc(rayDir, sunDir, atm.sunDiscSize);
     const vec3 SUN_TINT = vec3(1.0, 0.97, 0.92);
-    color += SUN_TINT * atm.sunColor * atm.sunIntensity * directSunFactor * 12.0 * sunShape * transmittance * sunAboveHorizon;
+    beyond += SUN_TINT * atm.sunColor * atm.sunIntensity * directSunFactor * 12.0 * sunShape * transmittance * sunAboveHorizon;
 
-    // Fade into the ground below the horizon. The ground hides the backdrop and sun disc.
-    float groundMask = smoothstep(0.0, max(pc.value.groundBlendSin, 1e-4), -rayDir.y);
-    color = mix(color, pc.value.groundColor * inscatter, groundMask);
-
+    color += beyond * (1.0 - groundMask);
     outColor = vec4(color, 1.0);
 }

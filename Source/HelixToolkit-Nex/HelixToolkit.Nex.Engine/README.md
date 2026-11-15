@@ -21,7 +21,7 @@ HelixToolkit.Nex.Engine is a core component of the HelixToolkit.Nex suite, respo
 | `WorldDataProvider`           | Provides scene data to the engine, managing ECS-to-GPU data pipelines.          |
 | `FirstPersonCameraController` | A camera controller for first-person navigation.                                |
 | `WalkaroundCameraController`  | A specialized first-person camera controller with inverted controls.            |
-| `OrbitCameraController`       | A camera controller for orbiting around a target point.                         |
+| `OrbitCameraController`       | A camera controller for orbiting around a target point. Zooms orthographic cameras by `Width`. |
 | `PanZoomCameraController`     | A camera controller for panning and zooming, suitable for orthographic views.   |
 | `TurntableCameraController`   | A camera controller for turntable-style rotation around a fixed axis.           |
 | `Camera`                      | Base class for camera implementations, supporting view and projection matrices. |
@@ -214,7 +214,11 @@ camera.FocusOn(new Vector3(0, 0, 0), 10f);
 - New methods for enabling specific rendering features: `WithBillBoard()`, `WithTransparent(TransparentMode mode)`, `WithFXAA()`, `WithSMAA()`, `WithBloom()`, `WithFPS()`.
 - Added `WithSSAO(SsaoQuality quality = SsaoQuality.Medium)`: Registers a single `SsaoPostEffect` into the `PostEffectsNode`, unless an effect named `"SsaoPostEffect"` is already present.
 - Added `WithEnvironment()`: Enables the environment-map (skybox) background by registering an `EnvironmentMapNode` into the default pipeline.
-- Added `WithSkyAtmosphere()`: Registers a `SkyAtmosphereNode` that draws a dynamic sky atmosphere once `RenderContext.SkyAtmosphere.Enabled` is set, replacing the environment-map background while enabled.
+- Added `WithSkyAtmosphere()`: Registers a `SkyAtmosphereNode` that draws a dynamic sky atmosphere once `RenderContext.SkyAtmosphere.Enabled` is set, replacing the environment-map background while enabled, plus a `SkyAtmosphereIblNode` that bakes the sky into a cubemap for PBR image-based lighting.
+
+### `OrbitCameraController` Enhancements
+
+- Orthographic zoom: with an `OrthographicCamera`, zooming now scales `OrthographicCamera.Width` (clamped to the new `MinOrthoWidth`/`MaxOrthoWidth`) instead of the orbit radius, which had no visible effect on an orthographic view. Zoom toward the picked point shifts the target as before, and `Reset()` restores the initial width. This matches `PanZoomCameraController`.
 
 ### Buffer Management Updates
 

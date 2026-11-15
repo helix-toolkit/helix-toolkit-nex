@@ -449,6 +449,27 @@ void main() {
     }
 
     [TestMethod]
+    public void TestSkyAtmosphereBakeFragmentShaderCompiles()
+    {
+        // Compiles the sky image-based-lighting bake shader, which shares
+        // atmosphereSkyRadiance with the background pass.
+        var source = GlslUtils.GetEmbeddedGlslShader("Frag/psSkyAtmosphereBake.glsl");
+
+        var (buildResult, shaderModule) = _context!.BuildAndCompileShader(
+            ShaderStage.Fragment,
+            source,
+            debugName: "SkyAtmosphereBake_Fragment_Test"
+        );
+        using var module = shaderModule;
+
+        Assert.IsTrue(
+            buildResult.Success,
+            $"Sky atmosphere bake build should succeed: {string.Join("; ", buildResult.Errors)}"
+        );
+        Assert.IsTrue(shaderModule.Valid, "Sky atmosphere bake fragment module should be valid");
+    }
+
+    [TestMethod]
     [DataRow(null)]
     [DataRow("TRANSPARENT_PASS")]
     [DataRow("ALPHA_MASK")]

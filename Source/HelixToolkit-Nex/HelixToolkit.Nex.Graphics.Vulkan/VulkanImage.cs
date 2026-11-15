@@ -725,6 +725,25 @@ internal sealed class VulkanImage : IDisposable
             return ImageViewForFramebufferMultiview[level];
         }
 
+        if (viewMask != 0)
+        {
+            // Multiview broadcasts each draw to the layers selected by the view mask, so the
+            // attachment must be an array view over all of the image's layers.
+            var multiview = CreateImageView(
+                ctx.GetVkDevice(),
+                VK.VK_IMAGE_VIEW_TYPE_2D_ARRAY,
+                ImageFormat,
+                GetImageAspectFlags(),
+                level,
+                1u,
+                0u,
+                NumLayers,
+                $"Image View: '{_debugName}' imageViewForFramebufferMultiview_[{level}]"
+            );
+            ImageViewForFramebufferMultiview[level] = multiview;
+            return multiview;
+        }
+
         var debugNameImageView =
             $"Image View: '{_debugName}' imageViewForFramebuffer_[{level}][{layer}]";
 
@@ -739,15 +758,8 @@ internal sealed class VulkanImage : IDisposable
             1u,
             debugNameImageView
         );
-        if (viewMask == 0)
-        {
-            ImageViewForFramebuffer[level][layer] = view;
-        }
-        else
-        {
-            ImageViewForFramebufferMultiview[level] = view;
-        }
-        return ImageViewForFramebuffer[level][layer];
+        ImageViewForFramebuffer[level][layer] = view;
+        return view;
     }
 
     public VulkanImage Clone()

@@ -98,7 +98,7 @@ public class PrepareNode : RenderNode
             MaxLightsPerTile = context.FPLightConfig.MaxLightsPerTile,
             PointerRing = context.PointerRing,
             WireframeColor = context.RenderParams.GlobalWireframeColor,
-            EnvironmentMap = BuildEnvironmentMapConstants(context.EnvironmentMap),
+            EnvironmentMap = BuildEnvironmentMapConstants(context, res.Textures),
             Atmosphere = context.SkyAtmosphere.ToConstants(),
         };
 
@@ -131,30 +131,62 @@ public class PrepareNode : RenderNode
 
     /// <summary>
     /// Packs the <see cref="EnvironmentMapConfig"/> into the GPU-side sub-struct shared by the
-    /// skybox background pass (<see cref="EnvironmentMapNode"/>) and the PBR cubemap reflections.
-    /// When no valid cubemap is assigned, <c>RenderCubeMap</c> is forced to 0 so the PBR shader
-    /// skips sampling entirely.
+    /// background passes (<see cref="EnvironmentMapNode"/>, the space backdrop of
+    /// <see cref="SkyAtmosphereNode"/>) and the PBR image-based lighting.
+    /// <para>
+    /// Image-based lighting comes from the sky cube baked by <see cref="SkyAtmosphereIblNode"/>
+    /// while <see cref="SkyAtmosphereConfig.ShouldBakeImageBasedLighting"/> is set and that node has
+    /// baked the cube (no rotation; the sky is world-aligned), otherwise from the environment cubemap with
+    /// its intensity and rotation. With neither available, <c>RenderCubeMap</c> is 0 so the PBR
+    /// shader skips sampling entirely.
+    /// </para>
     /// </summary>
-    private EnvironmentMapConstants BuildEnvironmentMapConstants(EnvironmentMapConfig config)
+    private EnvironmentMapConstants BuildEnvironmentMapConstants(
+        RenderContext context,
+        Dictionary<string, TextureHandle> textures
+    )
     {
-        if (!config.HasValidTexture)
+        var config = context.EnvironmentMap;
+        var constants = new EnvironmentMapConstants();
+        var defaultSamplerIndex = _defaultEnvSampler.GetHandle().Index;
+
+        if (config.HasValidTexture)
         {
-            return default;
+            constants.EnvTexIndex = config.Texture.GetHandle().Index;
+            constants.SamplerIndex = config.Sampler is { Valid: true }
+                ? config.Sampler.GetHandle().Index
+                : defaultSamplerIndex;
+            constants.Intensity = config.Intensity;
+            constants.MipLevel = config.Blur;
+            constants.RotationY = config.RotationY;
         }
 
-        var samplerIndex = config.Sampler is { Valid: true }
-            ? config.Sampler.GetHandle().Index
-            : _defaultEnvSampler.GetHandle().Index;
-
-        return new EnvironmentMapConstants
+        var sky = context.SkyAtmosphere;
+        if (
+            sky.ShouldBakeImageBasedLighting
+            && textures.TryGetValue(SystemBufferNames.TextureSkyAtmosphereCube, out var skyCube)
+            && skyCube.Valid
+            // Only once SkyAtmosphereIblNode has baked this cube; on the very first frame the
+            // bake runs after this node, so that frame falls back to the environment cubemap.
+            && sky.BakedImageBasedLightingCube == skyCube
+        )
         {
-            EnvTexIndex = config.Texture.GetHandle().Index,
-            SamplerIndex = samplerIndex,
-            Intensity = config.Intensity,
-            MipLevel = config.Blur,
-            RotationY = config.RotationY,
-            RenderCubeMap = config.ShouldRenderCubeMap ? 1u : 0u,
-        };
+            constants.IblTexIndex = skyCube.Index;
+            constants.IblSamplerIndex = defaultSamplerIndex;
+            constants.IblIntensity = sky.ImageBasedLightingIntensity;
+            constants.IblRotationY = 0f;
+            constants.RenderCubeMap = 1u;
+        }
+        else if (config.ShouldRenderCubeMap)
+        {
+            constants.IblTexIndex = constants.EnvTexIndex;
+            constants.IblSamplerIndex = constants.SamplerIndex;
+            constants.IblIntensity = config.Intensity;
+            constants.IblRotationY = config.RotationY;
+            constants.RenderCubeMap = 1u;
+        }
+
+        return constants;
     }
 
     protected override bool BeginRender(in RenderResources res)

@@ -148,6 +148,22 @@ commandBuffer.Barrier(bufferHandle, PipelineStageFlags.FragmentShader, AccessFla
 commandBuffer.TransitionToShaderReadOnly(textureHandle, ShaderStage.Vertex);
 ```
 
+### Multiview Rendering into Array or Cube Layers
+
+Set `RenderPass.ViewMask` to broadcast each draw to the selected layers of a layered attachment
+(e.g. `0b111111` for all six faces of a cube); the shader reads the target layer from
+`gl_ViewIndex` (`#extension GL_EXT_multiview : require`). The attachment is bound as a 2D-array
+view over all of the image's layers, so leave `AttachmentDesc.Layer` at 0.
+
+```csharp
+pass.ViewMask = 0b11_1111;
+pass.Colors[0].Layer = 0;
+framebuffer.Colors[0].Texture = cubeTexture;
+commandBuffer.BeginRendering(pass, framebuffer, deps);
+commandBuffer.Draw(3); // drawn once per face
+commandBuffer.EndRendering();
+```
+
 ## Architecture Notes
 
 Dependencies:
