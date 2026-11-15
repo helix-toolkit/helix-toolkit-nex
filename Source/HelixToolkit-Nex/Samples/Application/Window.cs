@@ -67,7 +67,7 @@ public sealed unsafe class Window
         _window = SDL_CreateWindow(title, width, height, sdl_flags);
         if (_window.IsNull)
         {
-            throw new Exception("SDL: failed to create window");
+            throw new Exception($"SDL: failed to create window: {SDL_GetError()}");
         }
 
         _ = SDL_SetWindowPosition(_window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
