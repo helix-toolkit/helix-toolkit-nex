@@ -351,7 +351,9 @@ public sealed class EngineBuilder
     /// the default pipeline. The node draws a raymarched sky behind the scene and is a no-op until
     /// <see cref="SkyAtmosphereConfig.Enabled"/> is set on <see cref="RenderContext.SkyAtmosphere"/>.
     /// While enabled it replaces the <see cref="EnvironmentMapNode"/> background; aerial
-    /// perspective and sun tinting in the PBR shaders follow the same config.
+    /// perspective and sun tinting in the PBR shaders follow the same config. A
+    /// <see cref="SkyAtmosphereIblNode"/> is registered as well, baking the sky into a cubemap
+    /// for PBR image-based lighting (see <see cref="SkyAtmosphereConfig.ImageBasedLighting"/>).
     /// </summary>
     /// <returns>This builder for method chaining.</returns>
     public EngineBuilder WithSkyAtmosphere()
@@ -469,7 +471,9 @@ public sealed class EngineBuilder
         }
         if (_withSkyAtmosphere)
         {
-            // Dynamic sky background. No-ops until RenderContext.SkyAtmosphere is enabled.
+            // Dynamic sky background and its image-based-lighting bake. Both no-op until
+            // RenderContext.SkyAtmosphere is enabled.
+            AddNode(new SkyAtmosphereIblNode());
             AddNode(new SkyAtmosphereNode());
         }
         if (_withPointCloud)

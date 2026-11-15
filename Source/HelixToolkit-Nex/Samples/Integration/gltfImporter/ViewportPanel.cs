@@ -21,7 +21,7 @@ namespace HelixToolkit.Nex.Sample.GltfImporter;
 internal class ViewportPanel
 {
     private readonly SelectionManager _selectionManager;
-    private readonly ICameraController _cameraController;
+    private ICameraController _cameraController;
     private Size _contentSize = new(1, 1);
 
     // Lazily created reusable viewport. Created on the first Draw call once a RenderContext is
@@ -34,6 +34,16 @@ internal class ViewportPanel
 
     /// <summary>Gets the current content region size for render target allocation.</summary>
     public Size ContentSize => _contentSize;
+
+    /// <summary>
+    /// Gets or sets the camera controller driven by viewport input. Replaced when the app switches
+    /// between perspective and orthographic cameras; takes effect on the next <see cref="Draw"/>.
+    /// </summary>
+    public ICameraController CameraController
+    {
+        get => _cameraController;
+        set => _cameraController = value ?? throw new ArgumentNullException(nameof(value));
+    }
 
     public ViewportPanel(SelectionManager selectionManager, ICameraController controller)
     {

@@ -34,6 +34,13 @@ public static class SystemBufferNames
     /// Initialized to 1 and multiplicatively reduced by each transparent fragment's <c>(1 - alpha)</c>.
     /// </summary>
     public const string TextureWboitRevealage = "TexWboitReveal";
+
+    /// <summary>
+    /// RGBA16F cubemap with a full mip chain holding the sky atmosphere baked by
+    /// <see cref="RenderNodes.SkyAtmosphereIblNode"/>, used for PBR image-based lighting while
+    /// the sky atmosphere is enabled.
+    /// </summary>
+    public const string TextureSkyAtmosphereCube = "TexSkyAtmosphereCube";
     public const string BufferLightGrid = "BufLightGrid";
     public const string BufferLightIndex = "BufLightIndex";
     public const string BufferDirectionalLight = "BufDirLight";

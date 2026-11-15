@@ -58,6 +58,8 @@ public class SkyAtmosphereConfigTests
 
         Assert.IsFalse(config.Enabled);
         Assert.AreEqual(0.001f, config.KmPerUnit);
+        // Re-bake the image-based-lighting cube every frame by default.
+        Assert.AreEqual(TimeSpan.Zero, config.ImageBasedLightingUpdateInterval);
     }
 
     [TestMethod]
@@ -112,5 +114,42 @@ public class SkyAtmosphereConfigTests
     {
         // uint64 + 2 uints, then vec3 groundColor (16-byte aligned) + float.
         Assert.AreEqual(32u, SkyAtmospherePushConstants.SizeInBytes);
+        Assert.AreEqual(32u, SkyAtmosphereBakePushConstants.SizeInBytes);
+    }
+
+    [TestMethod]
+    [TestCategory("SkyAtmosphere")]
+    public void EnvironmentMapConstants_MatchesStd430Layout()
+    {
+        // 3 rows of 4 scalars: background cubemap, IBL source, IBL intensity/rotation.
+        Assert.AreEqual(48u, EnvironmentMapConstants.SizeInBytes);
+    }
+
+    [TestMethod]
+    [TestCategory("SkyAtmosphere")]
+    [DataRow(false, false, false)]
+    [DataRow(false, true, false)]
+    [DataRow(true, false, false)]
+    [DataRow(true, true, true)]
+    public void ShouldBakeImageBasedLighting_RequiresEnabledAndImageBasedLighting(
+        bool enabled,
+        bool imageBasedLighting,
+        bool expected
+    )
+    {
+        var config = new SkyAtmosphereConfig
+        {
+            Enabled = enabled,
+            ImageBasedLighting = imageBasedLighting,
+        };
+
+        Assert.AreEqual(expected, config.ShouldBakeImageBasedLighting);
+    }
+
+    [TestMethod]
+    [TestCategory("SkyAtmosphere")]
+    public void IblNode_MipChainReachesOneTexel()
+    {
+        Assert.AreEqual(1u, RenderNodes.SkyAtmosphereIblNode.FaceSize >> (int)(RenderNodes.SkyAtmosphereIblNode.MipLevels - 1));
     }
 }

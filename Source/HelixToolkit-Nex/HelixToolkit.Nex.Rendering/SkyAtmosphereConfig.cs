@@ -90,6 +90,46 @@ public sealed class SkyAtmosphereConfig
     /// </summary>
     public float GroundBlendAngle { get; set; } = 5f * MathF.PI / 180f;
 
+    /// <summary>
+    /// When <see langword="true"/>, <see cref="RenderNodes.SkyAtmosphereIblNode"/> bakes the sky
+    /// into a cubemap every frame and the PBR shader uses it for image-based lighting (diffuse sky
+    /// light and reflections) in place of <see cref="RenderContext.EnvironmentMap"/>, so ambient
+    /// lighting follows the time of day. The bake leaves out the sun disc, which directional light 0
+    /// already provides. Requires <see cref="RenderNodes.SkyAtmosphereIblNode"/> in the pipeline
+    /// (added by <c>EngineBuilder.WithSkyAtmosphere()</c>). Default: <see langword="true"/>.
+    /// </summary>
+    public bool ImageBasedLighting { get; set; } = true;
+
+    /// <summary>
+    /// Linear multiplier applied to the baked sky's image-based lighting. Default: 1.
+    /// </summary>
+    public float ImageBasedLightingIntensity { get; set; } = 1f;
+
+    /// <summary>
+    /// Minimum time between re-bakes of the image-based-lighting cube for a
+    /// <see cref="RenderContext"/>. <see cref="TimeSpan.Zero"/> re-bakes every frame. A bake is
+    /// always done on the first frame and as soon as any setting of this config changes, but
+    /// changes to directional light 0 (direction, intensity, colour) are only picked up at the next
+    /// interval. Applications that render only on demand should keep the default, otherwise the
+    /// last frame after a light change can leave the lighting stale until the next redraw.
+    /// Default: <see cref="TimeSpan.Zero"/> (every frame).
+    /// </summary>
+    public TimeSpan ImageBasedLightingUpdateInterval { get; set; } = TimeSpan.Zero;
+
+    /// <summary>
+    /// Gets a value indicating whether the baked sky should drive image-based lighting this frame
+    /// (<see cref="Enabled"/> and <see cref="ImageBasedLighting"/> both set).
+    /// </summary>
+    public bool ShouldBakeImageBasedLighting => Enabled && ImageBasedLighting;
+
+    /// <summary>
+    /// The sky cube most recently baked by <see cref="RenderNodes.SkyAtmosphereIblNode"/> for this
+    /// context. <see cref="RenderNodes.PrepareNode"/> only uses the sky for image-based lighting
+    /// once this matches the current cube, so a cube that was never baked (for example because the
+    /// bake pipeline failed to set up) is never sampled.
+    /// </summary>
+    internal TextureHandle BakedImageBasedLightingCube { get; set; } = TextureHandle.Null;
+
     /// <summary>Sun disc radius scale; 1 is the default size. Default: 1.</summary>
     public float SunDiscSize { get; set; } = 1f;
 

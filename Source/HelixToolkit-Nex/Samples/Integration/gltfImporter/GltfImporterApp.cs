@@ -41,6 +41,9 @@ internal class GltfImporterApp : ApplicationBase
 
     // Camera
     private Camera _camera = new PerspectiveCamera();
+
+    // Perspective vertical field of view, kept across orthographic switches.
+    private float _perspectiveFov = MathF.PI / 4;
     private ICameraController? _cameraController;
 
     // UI panels
@@ -149,7 +152,7 @@ internal class GltfImporterApp : ApplicationBase
     // Importer config
     public readonly ImporterConfig ImportConfig = new()
     {
-        DefaultShadingMode = Shaders.Frag.PBRShadingMode.CAD,
+        DefaultShadingMode = Shaders.Frag.PBRShadingMode.PBR,
     };
 
     public override string Name => "glTF Importer";
@@ -165,6 +168,22 @@ internal class GltfImporterApp : ApplicationBase
 
     /// <summary>Sun azimuth around the world Y axis in degrees.</summary>
     public float SunAzimuthDeg { get; set; } = 135f;
+
+    /// <summary>
+    /// Gets or sets whether the viewport uses an orthographic camera instead of the perspective
+    /// one. Switching keeps the camera position, target and framing.
+    /// </summary>
+    public bool UseOrthographicCamera
+    {
+        get => _camera is OrthographicCamera;
+        set
+        {
+            if (value != UseOrthographicCamera)
+            {
+                SwitchCamera(value);
+            }
+        }
+    }
 
     /// <param name="initialFile">Optional glTF/GLB file to load on startup.</param>
     public GltfImporterApp(string? initialFile = null)
@@ -238,8 +257,11 @@ internal class GltfImporterApp : ApplicationBase
         _renderContext = _engine.CreateRenderContext();
         _renderContext.Initialize();
 
-        // Load the environment cubemap and enable the environment-map background.
+        // Load the environment cubemap (disabled by default; it can be re-enabled from the
+        // properties panel) and start with the dynamic sky atmosphere, which also drives the
+        // image-based lighting.
         SetupEnvironmentMap();
+        _renderContext.SkyAtmosphere.Enabled = true;
 
         // Create the offscreen render target texture for the 3D viewport
         _renderContext.ResourceSet.AddTexture(
@@ -287,8 +309,9 @@ internal class GltfImporterApp : ApplicationBase
     /// <summary>
     /// Builds an environment cubemap from six individual face images in
     /// <c>Assets/EnvironmentMaps/water</c> and assigns it to the render context's environment-map
-    /// config so <c>EnvironmentMapNode</c> draws it as the scene background. The texture is owned
-    /// by the resource manager's texture repository.
+    /// config, disabled by default because the sample starts with the sky atmosphere. When
+    /// re-enabled, <c>EnvironmentMapNode</c> draws it as the scene background (once the sky
+    /// atmosphere is turned off). The texture is owned by the resource manager's texture repository.
     /// <para>
     /// The faces are supplied in the standard cubemap order expected by
     /// <c>GetOrCreateCubeFromFiles</c>: +X, -X, +Y, -Y, +Z, -Z, which for a skybox-named face set
@@ -327,11 +350,73 @@ internal class GltfImporterApp : ApplicationBase
                 "EnvironmentCubemap"
             );
             _renderContext.EnvironmentMap.Texture = _environmentMap;
-            _renderContext.EnvironmentMap.Enabled = true;
+            _renderContext.EnvironmentMap.Enabled = false;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to build environment cubemap from faces in: {Dir}", dir);
+        }
+    }
+
+    private float ViewportAspect =>
+        _viewportSize.Height > 0 ? (float)_viewportSize.Width / _viewportSize.Height : 1f;
+
+    // Width of an orthographic view that shows what a perspective camera with the given vertical
+    // field of view shows at the given distance, and the inverse.
+    private static float OrthoWidthForDistance(float distance, float fov, float aspect) =>
+        2f * distance * MathF.Tan(fov * 0.5f) * aspect;
+
+    private static float DistanceForOrthoWidth(float width, float fov, float aspect) =>
+        width / aspect / (2f * MathF.Tan(fov * 0.5f));
+
+    /// <summary>
+    /// Replaces the viewport camera with a perspective or orthographic one, copying the target, up
+    /// vector and clip planes, and rebuilds the orbit controller from it so the orbit continues from
+    /// the same view. The framing at the target is kept: switching to orthographic sets its width to
+    /// what the perspective camera showed there, and switching back moves the perspective camera to
+    /// the distance that shows the orthographic width (the orbit controller zooms orthographic
+    /// cameras by width, so the two can differ).
+    /// </summary>
+    private void SwitchCamera(bool orthographic)
+    {
+        var offset = _camera.Position - _camera.Target;
+        var distance = offset.Length();
+        var direction = distance > 1e-6f ? offset / distance : Vector3.UnitZ;
+
+        Camera next;
+        if (orthographic)
+        {
+            if (_camera is PerspectiveCamera perspective)
+            {
+                _perspectiveFov = perspective.Fov;
+            }
+            next = new OrthographicCamera
+            {
+                Width = OrthoWidthForDistance(distance, _perspectiveFov, ViewportAspect),
+                Position = _camera.Position,
+            };
+        }
+        else
+        {
+            var width = (_camera as OrthographicCamera)?.Width ?? 10f;
+            next = new PerspectiveCamera
+            {
+                Fov = _perspectiveFov,
+                Position =
+                    _camera.Target
+                    + direction * DistanceForOrthoWidth(width, _perspectiveFov, ViewportAspect),
+            };
+        }
+        next.Target = _camera.Target;
+        next.Up = _camera.Up;
+        next.NearPlane = _camera.NearPlane;
+        next.FarPlane = _camera.FarPlane;
+        _camera = next;
+
+        _cameraController = new OrbitCameraController(_camera);
+        if (_viewportPanel is not null)
+        {
+            _viewportPanel.CameraController = _cameraController;
         }
     }
 
@@ -929,6 +1014,11 @@ internal class GltfImporterApp : ApplicationBase
         // Set orbit distance to frame the model (use 2x radius for comfortable framing)
         float distance = Math.Max(radius * 2f, 1f);
         _cameraController!.FocusOn(center, distance);
+        if (_camera is OrthographicCamera ortho)
+        {
+            // The orthographic view size does not depend on distance; match the perspective framing.
+            ortho.Width = OrthoWidthForDistance(distance, _perspectiveFov, ViewportAspect);
+        }
     }
 
     public void UpdateShadingMode()

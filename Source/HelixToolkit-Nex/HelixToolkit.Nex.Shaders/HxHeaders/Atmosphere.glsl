@@ -116,6 +116,21 @@ float atmosphereAltitude(in AtmosphereConstants a, vec3 worldPos) {
     return a.groundAltitude + worldPos.y * a.kmPerUnit;
 }
 
+vec3 atmosphereUnproject(in mat4 inverseViewProjection, vec2 ndc, float depth) {
+    vec4 p = inverseViewProjection * vec4(ndc, depth, 1.0);
+    return p.xyz / p.w;
+}
+
+// World-space view ray through an NDC position, valid for perspective (including an infinite
+// far plane) and orthographic cameras: the origin is the point on the near plane (reversed-Z
+// depth 1) and the direction comes from a second finite point (depth 0.5), so orthographic rays
+// stay parallel and no point at infinity (w = 0) is ever divided by.
+void atmosphereViewRay(in mat4 inverseViewProjection, vec2 ndc, out vec3 origin, out vec3 dir) {
+    origin = atmosphereUnproject(inverseViewProjection, ndc, 1.0);
+    vec3 farther = atmosphereUnproject(inverseViewProjection, ndc, 0.5);
+    dir = normalize(farther - origin);
+}
+
 // Single-scattering integral along a view ray.
 //   rayDir        normalized world-space view direction
 //   rayLength     march length in km
@@ -144,6 +159,12 @@ void integrateAtmosphere(
     if (skyRay && rayDir.y < -1e-5) {
         float tGround = max(observerAlt, 0.0) / max(-rayDir.y, 1e-4);
         rayEnd = min(rayEnd, tGround);
+    }
+    if (skyRay && rayDir.y > 1e-5) {
+        // Clip upward rays where they leave the atmosphere, so every sample lands inside it
+        // instead of most of them being spent (and skipped) above the top boundary.
+        float tTop = max(a.atmosphereHeight - observerAlt, 0.0) / rayDir.y;
+        rayEnd = min(rayEnd, tTop);
     }
     float stepSize = rayEnd / float(max(primarySteps, 1));
 
@@ -186,6 +207,66 @@ void integrateAtmosphere(
     transmittance = atmosphereExtinction(a, viewOD);
 }
 
+// Primary samples for background sky rays.
+const int ATMOSPHERE_SKY_STEPS = 24;
+// Background rays march a fixed multiple of the atmosphere thickness (flat-ground model).
+const float ATMOSPHERE_SKY_RAY_LENGTH_SCALE = 8.0;
+// Lowest view elevation (sine, ~0.3 degrees) at which the sky is evaluated. A ray exactly
+// along the flat ground stays inside the faded-out ground layer and would come out black,
+// so lower rays, including all rays below the horizon, use the sky at this elevation.
+const float ATMOSPHERE_SKY_MIN_ELEVATION = 0.005;
+
+// Sky radiance seen along a background (infinitely distant) direction, shared by the sky
+// background pass and the image-based-lighting bake. Excludes the sun disc and any space
+// backdrop, which the caller adds where groundMask is below 1.
+//   rayDir         normalized world-space view direction
+//   observerAlt    altitude of the viewer in km
+//   jitter         primary sample offset within each step, in [0, 1)
+//   groundColor    tint of the ground below the horizon, multiplied by the horizon radiance
+//   groundBlendSin sine of the angle below the horizon over which the sky fades into the ground
+// Outputs the view transmittance along the (horizon-clamped) ray and the ground coverage
+// (0 = sky, 1 = ground).
+vec3 atmosphereSkyRadiance(
+    in AtmosphereConstants a,
+    vec3 rayDir,
+    float observerAlt,
+    float jitter,
+    vec3 groundColor,
+    float groundBlendSin,
+    out vec3 transmittance,
+    out float groundMask)
+{
+    // Clamp the ray to the minimum elevation, keeping its azimuth (any azimuth when looking
+    // straight down).
+    vec3 skyDir = rayDir;
+    if (rayDir.y < ATMOSPHERE_SKY_MIN_ELEVATION) {
+        vec2 horizontal = rayDir.xz;
+        float len = length(horizontal);
+        horizontal = len > 1e-5 ? horizontal / len : vec2(0.0, 1.0);
+        float c = sqrt(1.0 - ATMOSPHERE_SKY_MIN_ELEVATION * ATMOSPHERE_SKY_MIN_ELEVATION);
+        skyDir = vec3(horizontal.x * c, ATMOSPHERE_SKY_MIN_ELEVATION, horizontal.y * c);
+    }
+
+    vec3 inscatter;
+    integrateAtmosphere(
+        a,
+        skyDir,
+        a.sunDirection,
+        a.atmosphereHeight * ATMOSPHERE_SKY_RAY_LENGTH_SCALE,
+        observerAlt,
+        ATMOSPHERE_SKY_STEPS,
+        jitter,
+        true,
+        inscatter,
+        transmittance
+    );
+
+    // Fade into the ground below the horizon; the ground is lit by the horizon radiance so
+    // it follows the time of day.
+    groundMask = smoothstep(0.0, max(groundBlendSin, 1e-4), -rayDir.y);
+    return mix(inscatter, groundColor * inscatter, groundMask);
+}
+
 // Fraction of direct sunlight reaching the given altitude (RGB), including the fade-out
 // as the sun sinks below the horizon. Used to tint the sun directional light.
 vec3 atmosphereSunTransmittance(in AtmosphereConstants a, vec3 sunDir, float altitude) {
@@ -200,7 +281,8 @@ float atmosphereSunDisc(vec3 viewDir, vec3 sunDir, float discScale) {
     float theta = acos(clamp(dot(viewDir, sunDir), -1.0, 1.0));
 
     float core = exp(-pow(theta / max(radius * 0.7, 1e-5), 2.0));
-    float limb = smoothstep(radius * 1.3, radius * 0.2, theta);
+    // Falls from 1 inside 0.2 * radius to 0 beyond 1.3 * radius (smoothstep needs edge0 < edge1).
+    float limb = 1.0 - smoothstep(radius * 0.2, radius * 1.3, theta);
     float halo = exp(-theta / max(radius * 18.0, 1e-5));
     return core * limb + 0.25 * halo;
 }

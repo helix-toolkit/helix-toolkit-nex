@@ -21,7 +21,12 @@ struct EnvironmentMapConstants {
     float mipLevel;        // Background LOD to sample (0 = sharpest). Enables a soft/blurred backdrop.
 
     float rotationY;       // Environment yaw rotation about the world Y axis, in radians.
-    uint renderCubeMap;    // 0 = skip PBR cubemap reflections, 1 = sample the cubemap in the PBR shader.
+    uint renderCubeMap;    // 0 = skip PBR image-based lighting, 1 = sample iblTexIndex in the PBR shader.
+    uint iblTexIndex;      // Bindless index of the cubemap used for PBR image-based lighting (the environment cubemap or the baked sky).
+    uint iblSamplerIndex;  // Bindless index of the image-based lighting sampler.
+
+    float iblIntensity;    // Linear radiance multiplier applied to image-based lighting.
+    float iblRotationY;    // Yaw rotation applied to image-based lighting lookups, in radians.
     uint _padding0;
     uint _padding1;
 };

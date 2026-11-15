@@ -110,6 +110,11 @@ internal class PropertiesPanel
                     light.Color = color.ToColor4(1);
                 }
                 Gui.Spacing();
+                var orthographic = _app.UseOrthographicCamera;
+                if (Gui.Checkbox("Orthographic Camera", ref orthographic))
+                {
+                    _app.UseOrthographicCamera = orthographic;
+                }
                 var wireframe = _renderContext.RenderParams.EnableGlobalWireframe;
                 Gui.Checkbox("Wireframe Mode", ref wireframe);
                 _renderContext.RenderParams.EnableGlobalWireframe = wireframe;
@@ -307,6 +312,25 @@ internal class PropertiesPanel
                 if (Gui.Checkbox("Ozone Absorption", ref ozoneEnabled))
                 {
                     sky.OzoneEnabled = ozoneEnabled;
+                }
+                var skyIbl = sky.ImageBasedLighting;
+                if (Gui.Checkbox("Sky Image-Based Lighting", ref skyIbl))
+                {
+                    sky.ImageBasedLighting = skyIbl;
+                }
+                if (sky.ImageBasedLighting)
+                {
+                    var iblIntensity = sky.ImageBasedLightingIntensity;
+                    if (Gui.SliderFloat("Sky IBL Intensity", ref iblIntensity, 0f, 5f))
+                    {
+                        sky.ImageBasedLightingIntensity = iblIntensity;
+                    }
+                    // 0 = re-bake every frame.
+                    var iblIntervalMs = (float)sky.ImageBasedLightingUpdateInterval.TotalMilliseconds;
+                    if (Gui.SliderFloat("Sky IBL Interval", ref iblIntervalMs, 0f, 1000f, "%.0f ms"))
+                    {
+                        sky.ImageBasedLightingUpdateInterval = TimeSpan.FromMilliseconds(iblIntervalMs);
+                    }
                 }
                 var envAsSpace = sky.ShowEnvironmentMapAsSpace;
                 if (Gui.Checkbox("Env Map Behind Sky", ref envAsSpace))

@@ -199,26 +199,27 @@ vec2 selectTexCoord(uint texCoordSets, uint slot) {
 // ============================================================================
 // Image-Based Lighting (environment cubemap)
 // ============================================================================
-// Rotate a world-space direction about the Y axis to match the skybox background
-// orientation (see psEnvironmentMap.glsl), so reflections line up with the drawn
-// environment.
+// Rotate a world-space direction about the Y axis to match the image-based lighting
+// source orientation (the environment cubemap's rotation, see psEnvironmentMap.glsl, or
+// none for the world-aligned baked sky), so reflections line up with the background.
 vec3 rotateEnvDir(in vec3 dir) {
-    float s = sin(fpConst.environmentMap.rotationY);
-    float c = cos(fpConst.environmentMap.rotationY);
+    float s = sin(fpConst.environmentMap.iblRotationY);
+    float c = cos(fpConst.environmentMap.iblRotationY);
     return vec3(c * dir.x + s * dir.z, dir.y, -s * dir.x + c * dir.z);
 }
 
-// Approximate image-based lighting from the scene environment cubemap. Adds a
+// Approximate image-based lighting from the IBL cubemap: the scene environment cubemap,
+// or the baked sky atmosphere while it is enabled (see SkyAtmosphereIblNode). Adds a
 // diffuse irradiance term (coarsest mip along the surface normal) and a specular
-// reflection term (roughness-selected mip along the reflection vector), matched to
-// the background's rotation and intensity. Gated on environmentMap.renderCubeMap
-// so it is a no-op when no environment is assigned or cubemap rendering is disabled.
+// reflection term (roughness-selected mip along the reflection vector). Gated on
+// environmentMap.renderCubeMap so it is a no-op when no source is available or
+// image-based lighting is disabled.
 vec3 environmentIBL(in PBRMaterial material, in vec3 viewDir) {
     if (fpConst.environmentMap.renderCubeMap == 0u) {
         return vec3(0.0);
     }
-    uint envTex = fpConst.environmentMap.envTexIndex;
-    uint envSampler = fpConst.environmentMap.samplerIndex;
+    uint envTex = fpConst.environmentMap.iblTexIndex;
+    uint envSampler = fpConst.environmentMap.iblSamplerIndex;
 
     vec3 N = normalize(material.normal);
     vec3 V = normalize(viewDir);
@@ -243,7 +244,7 @@ vec3 environmentIBL(in PBRMaterial material, in vec3 viewDir) {
     vec3 prefiltered = textureBindlessCubeLod(envTex, envSampler, rotateEnvDir(R), specLod).rgb;
     vec3 specular = prefiltered * F;
 
-    return (kD * diffuse + specular) * material.ao * fpConst.environmentMap.intensity;
+    return (kD * diffuse + specular) * material.ao * fpConst.environmentMap.iblIntensity;
 }
 
 // ============================================================================
@@ -265,7 +266,7 @@ void atmosphereTintSunLight(inout Light light, uint dirLightIndex) {
     light.color *= atmosphereSunTransmittance(atm, sunDir, atmosphereAltitude(atm, fragWorldPos));
 }
 
-// Aerial perspective: attenuates the surface colour by the atmosphere between the camera and
+// Aerial perspective: attenuates the surface colour by the atmosphere between the viewer and
 // the fragment and adds the in-scattered light along that segment. Call it on the final
 // colour of a material's output. No-op when the atmosphere is disabled.
 vec4 applyAtmosphere(in vec4 color) {
@@ -273,7 +274,12 @@ vec4 applyAtmosphere(in vec4 color) {
         return color;
     }
     AtmosphereConstants atm = atmosphereResolveSun(fpConst);
-    vec3 toFrag = fragWorldPos - fpConst.cameraPosition;
+    // March from the near-plane point on this fragment's own view ray rather than from the
+    // camera position: for orthographic cameras the rays are parallel and start at different
+    // points across the view plane (for perspective the two differ by the near distance only).
+    vec4 clip = fpConst.viewProjection * vec4(fragWorldPos, 1.0);
+    vec3 rayOrigin = atmosphereUnproject(fpConst.inverseViewProjection, clip.xy / clip.w, 1.0);
+    vec3 toFrag = fragWorldPos - rayOrigin;
     float dist = length(toFrag);
     if (dist < 1e-6) {
         return color;
@@ -285,7 +291,7 @@ vec4 applyAtmosphere(in vec4 color) {
         toFrag / dist,
         atm.sunDirection,
         dist * atm.kmPerUnit * atm.aerialPerspectiveScale,
-        atmosphereAltitude(atm, fpConst.cameraPosition),
+        atmosphereAltitude(atm, rayOrigin),
         AERIAL_PERSPECTIVE_STEPS,
         0.5,
         false,
