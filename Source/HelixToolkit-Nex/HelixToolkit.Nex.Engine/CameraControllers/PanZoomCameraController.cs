@@ -181,11 +181,16 @@ public class PanZoomCameraController : ICameraController
             ortho.Width *= 1f - delta * ZoomSensitivity;
             ortho.Width = MathUtil.Clamp(ortho.Width, MinOrthoWidth, MaxOrthoWidth);
 
-            // Shift the target toward the pick point proportionally to the zoom change
+            // Shift the target toward the pick point proportionally to the zoom change, within the
+            // view plane only: orthographic zoom does not change depth, and moving the target along
+            // the view direction would drag the camera through the geometry being zoomed toward.
             if (pickPosition.HasValue && oldWidth > MathUtil.ZeroTolerance)
             {
                 float zoomRatio = 1f - ortho.Width / oldWidth;
-                Camera.Target += (pickPosition.Value - Camera.Target) * zoomRatio;
+                var toPick = pickPosition.Value - Camera.Target;
+                var forward = Camera.LookDir;
+                toPick -= forward * Vector3.Dot(toPick, forward);
+                Camera.Target += toPick * zoomRatio;
                 UpdateCameraPosition();
             }
         }

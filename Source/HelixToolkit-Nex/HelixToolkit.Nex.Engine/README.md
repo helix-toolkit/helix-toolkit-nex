@@ -23,7 +23,7 @@ HelixToolkit.Nex.Engine is a core component of the HelixToolkit.Nex suite, respo
 | `WalkaroundCameraController`  | A specialized first-person camera controller with inverted controls.            |
 | `OrbitCameraController`       | A camera controller for orbiting around a target point. Zooms orthographic cameras by `Width`. |
 | `PanZoomCameraController`     | A camera controller for panning and zooming, suitable for orthographic views.   |
-| `TurntableCameraController`   | A camera controller for turntable-style rotation around a fixed axis.           |
+| `TurntableCameraController`   | A camera controller for turntable-style rotation around a fixed axis. Zooms orthographic cameras by `Width`. |
 | `Camera`                      | Base class for camera implementations, supporting view and projection matrices. |
 | `OrthographicCamera`          | A camera with an orthographic projection.                                       |
 | `PerspectiveCamera`           | A camera with a perspective projection.                                         |
@@ -216,9 +216,9 @@ camera.FocusOn(new Vector3(0, 0, 0), 10f);
 - Added `WithEnvironment()`: Enables the environment-map (skybox) background by registering an `EnvironmentMapNode` into the default pipeline.
 - Added `WithSkyAtmosphere()`: Registers a `SkyAtmosphereNode` that draws a dynamic sky atmosphere once `RenderContext.SkyAtmosphere.Enabled` is set, replacing the environment-map background while enabled, plus a `SkyAtmosphereIblNode` that bakes the sky into a cubemap for PBR image-based lighting.
 
-### `OrbitCameraController` Enhancements
+### `OrbitCameraController` and `TurntableCameraController` Enhancements
 
-- Orthographic zoom: with an `OrthographicCamera`, zooming now scales `OrthographicCamera.Width` (clamped to the new `MinOrthoWidth`/`MaxOrthoWidth`) instead of the orbit radius, which had no visible effect on an orthographic view. Zoom toward the picked point shifts the target as before, and `Reset()` restores the initial width. This matches `PanZoomCameraController`.
+- Orthographic zoom: with an `OrthographicCamera`, zooming now scales `OrthographicCamera.Width` (clamped to the new `MinOrthoWidth`/`MaxOrthoWidth` on both controllers) instead of the orbit radius, which had no visible effect on an orthographic view. Zoom toward the picked point shifts the target within the view plane only, so the camera keeps its depth and never passes the geometry being zoomed toward (this also applies to `PanZoomCameraController`, which previously moved the target by the full 3D offset). `Reset()` restores the initial width. This matches `PanZoomCameraController`.
 
 ### Buffer Management Updates
 
