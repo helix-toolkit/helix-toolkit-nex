@@ -7,6 +7,9 @@ namespace HelixToolkit.Nex.Engine.CameraControllers;
 /// fixed world-up axis. Commonly used in CAD and 3D modelling applications.
 /// Unlike <see cref="OrbitCameraController"/>, this controller uses screen-space delta
 /// directly for azimuth/elevation so it feels natural on a turntable.
+/// Zooming changes the distance to the target for perspective cameras and
+/// <see cref="OrthographicCamera.Width"/> for orthographic cameras, whose view size does not
+/// depend on that distance.
 /// </summary>
 public class TurntableCameraController : ICameraController
 {
@@ -24,6 +27,7 @@ public class TurntableCameraController : ICameraController
     private readonly float _initialPhi;
     private readonly float _initialRadius;
     private readonly Vector3 _initialTarget;
+    private readonly float _initialOrthoWidth;
 
     // Smooth damping state
     private float _thetaVelocity;
@@ -78,6 +82,16 @@ public class TurntableCameraController : ICameraController
     public float MaxRadius { get; set; } = 10000f;
 
     /// <summary>
+    /// Gets or sets the minimum orthographic width for orthographic cameras.
+    /// </summary>
+    public float MinOrthoWidth { get; set; } = 0.1f;
+
+    /// <summary>
+    /// Gets or sets the maximum orthographic width for orthographic cameras.
+    /// </summary>
+    public float MaxOrthoWidth { get; set; } = 100000f;
+
+    /// <summary>
     /// Gets or sets the inertia damping factor (0 = no inertia, 1 = infinite).
     /// A value of 0.9 gives a smooth deceleration effect.
     /// </summary>
@@ -115,6 +129,7 @@ public class TurntableCameraController : ICameraController
         _initialPhi = _phi;
         _initialRadius = _radius;
         _initialTarget = camera.Target;
+        _initialOrthoWidth = camera is OrthographicCamera ortho ? ortho.Width : 10f;
 
         UpdateCameraPosition();
     }
@@ -193,6 +208,30 @@ public class TurntableCameraController : ICameraController
     /// <inheritdoc />
     public void OnZoomDelta(float delta, Vector3? pickPosition = null)
     {
+        if (Camera is OrthographicCamera ortho)
+        {
+            // The orthographic view size is set by its width, not the distance to the target, so
+            // zoom by scaling the width and keep the camera where it is (moving it closer would
+            // only start clipping the model at the near plane).
+            float oldWidth = ortho.Width;
+            ortho.Width *= 1f - delta * ZoomSensitivity;
+            ortho.Width = MathUtil.Clamp(ortho.Width, MinOrthoWidth, MaxOrthoWidth);
+
+            // Shift the target toward the pick point proportionally to the zoom change, within the
+            // view plane only: orthographic zoom does not change depth, and moving the target along
+            // the view direction would drag the camera through the geometry being zoomed toward.
+            if (pickPosition.HasValue && oldWidth > MathUtil.ZeroTolerance)
+            {
+                float widthRatio = 1f - ortho.Width / oldWidth;
+                var toPick = pickPosition.Value - Camera.Target;
+                var forward = Camera.LookDir;
+                toPick -= forward * Vector3.Dot(toPick, forward);
+                Camera.Target += toPick * widthRatio;
+                UpdateCameraPosition();
+            }
+            return;
+        }
+
         float oldRadius = _radius;
 
         _radius -= delta * ZoomSensitivity * _radius;
@@ -238,6 +277,11 @@ public class TurntableCameraController : ICameraController
         Camera.Target = _initialTarget;
         _thetaVelocity = 0;
         _phiVelocity = 0;
+
+        if (Camera is OrthographicCamera ortho)
+        {
+            ortho.Width = _initialOrthoWidth;
+        }
 
         UpdateCameraPosition();
     }
